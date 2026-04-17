@@ -33,6 +33,12 @@ import { batchDeleteByIndex } from "../lib/cascade";
 import { handleWorkpoolResult } from "../lib/workpool";
 import { assertJobOwnership } from "./access";
 import {
+  assertValidJobTransition,
+  assertValidPaperTransition,
+  type JobStatus,
+  type PaperStatus,
+} from "./stateMachine";
+import {
   assertExtractionInputLimits,
   historyEntryInputValidator,
   manualItemInputValidator,
@@ -212,6 +218,7 @@ export const cancelExtraction = mutation({
        return { success: true };
     }
 
+    assertValidJobTransition(job.status as JobStatus, "cancelled");
     await ctx.db.patch("extractionJobs", args.jobId, {
       status: "cancelled",
       updatedAt: Date.now(),
@@ -1331,6 +1338,8 @@ export const updateJobStatus = internalMutation({
       return null;
     }
 
+    assertValidJobTransition(job.status as JobStatus, args.status as JobStatus);
+
     const updates: Record<string, unknown> = {
       status: args.status,
       updatedAt: Date.now(),
@@ -1541,6 +1550,11 @@ async function markPaperTerminalTx(
     return { applied: false, paper };
   }
 
+  assertValidPaperTransition(
+    paper.status as PaperStatus,
+    newStatus as PaperStatus,
+  );
+
   const patch: Partial<Doc<"extractionPapers">> = {
     status: newStatus,
     completedAt: extras.completedAt ?? Date.now(),
@@ -1649,6 +1663,7 @@ export const maybeFinalizeJob = internalMutation({
     // was set to 0 at enqueue time. Fail the job immediately so the UI is
     // not stuck on "extracting".
     if (total === 0) {
+      assertValidJobTransition(job.status as JobStatus, "failed");
       await ctx.db.patch("extractionJobs", args.jobId, {
         status: "failed",
         completedAt: now,
@@ -1662,7 +1677,8 @@ export const maybeFinalizeJob = internalMutation({
       return null;
     }
 
-    const status = failed >= total ? "failed" : "completed";
+    const status: JobStatus = failed >= total ? "failed" : "completed";
+    assertValidJobTransition(job.status as JobStatus, status);
     await ctx.db.patch("extractionJobs", args.jobId, {
       status,
       completedAt: now,
@@ -1847,6 +1863,10 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
           `[handleDownloadAndIndexComplete] Download/index success for ${paperId}, chunks: ${data.chunksCount}`,
         );
 
+        const paperRow = await ctx.db.get(paperId);
+        if (paperRow) {
+          assertValidPaperTransition(paperRow.status as PaperStatus, "indexing");
+        }
         await ctx.db.patch(paperId, { status: "indexing" });
         if ((data.chunksCount ?? 0) === 0) {
           await ctx.db.patch(paperId, { isIndexed: false });
