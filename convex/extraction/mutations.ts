@@ -1542,6 +1542,16 @@ export const finalizeJob = internalMutation({
     const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) return null;
 
+    // Terminal states are sticky: cancelled/failed/completed jobs must not be
+    // resurrected by late-arriving workpool completions.
+    if (
+      job.status === "cancelled" ||
+      job.status === "failed" ||
+      job.status === "completed"
+    ) {
+      return null;
+    }
+
     // Count final stats
     const papers = await ctx.db
       .query("extractionPapers")
@@ -1624,6 +1634,16 @@ export const finalizeJobIfDone = internalMutation({
   handler: async (ctx, args): Promise<null> => {
     const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) return null;
+
+    // Terminal states are sticky: cancelled/failed/completed jobs must not be
+    // resurrected by late-arriving workpool completions.
+    if (
+      job.status === "cancelled" ||
+      job.status === "failed" ||
+      job.status === "completed"
+    ) {
+      return null;
+    }
 
     const papers = await ctx.db
       .query("extractionPapers")
@@ -2143,6 +2163,24 @@ export const saveExtractionResultsAndComplete = internalMutation({
     pdfContentUsed: v.boolean(),
   },
   handler: async (ctx, args): Promise<void> => {
+    // Terminal-state guard: if the job was already cancelled/failed/completed,
+    // do not persist new results and do not trigger finalize. A late-arriving
+    // workpool completion must not resurrect a terminated job.
+    const paper = await ctx.db.get("extractionPapers", args.paperId);
+    if (!paper) return;
+    const parentJob = await ctx.db.get("extractionJobs", paper.jobId);
+    if (
+      parentJob &&
+      (parentJob.status === "cancelled" ||
+        parentJob.status === "failed" ||
+        parentJob.status === "completed")
+    ) {
+      console.log(
+        `[saveExtractionResultsAndComplete] Skipping ${args.paperId}; job ${paper.jobId} already ${parentJob.status}`,
+      );
+      return;
+    }
+
     // Save extraction results
     for (const result of args.results.filter(Boolean)) {
       await ctx.db.insert("extractionResults", {
@@ -2173,9 +2211,6 @@ export const saveExtractionResultsAndComplete = internalMutation({
     if (args.pdfContentUsed) {
       patchData.pdfContentUsed = true;
     }
-
-    const paper = await ctx.db.get("extractionPapers", args.paperId);
-    if (!paper) return;
 
     // Upsert extractionJobStats for each question result
     for (const result of args.results.filter(Boolean)) {

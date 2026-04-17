@@ -970,20 +970,19 @@ export const waitAndExtractAction = internalAction({
         source: unit.source,
       }));
 
-      // Credit guard: skip extraction credit deduction if job was cancelled
+      // Cancellation guard: if the job has been cancelled, abort the extraction
+      // as a failure rather than returning a fake "success" with empty results.
+      // Signalling success here would cause handleExtractionComplete to mark
+      // the paper as completed and resurrect a terminated job.
       const freshJobForCredits = await ctx.runQuery(
         internal.extraction.queries.getJobInternal,
         { jobId: args.jobId }
       );
       if (freshJobForCredits?.status === "cancelled") {
-        console.log(`[creditGuard] Skipping extraction credit deduction - job ${args.jobId} cancelled`);
-        // Return results without billing -- extraction work was done but job is cancelled
-        // Still need to return a valid shape so onComplete can handle gracefully
+        console.log(`[cancellationGuard] Aborting extraction - job ${args.jobId} cancelled`);
         return {
-          success: true,
-          results: [],
-          creditsUsed: 0,
-          pdfContentUsed: false,
+          success: false,
+          error: "Job cancelled before extraction",
         };
       }
 
