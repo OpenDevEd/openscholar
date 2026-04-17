@@ -81,6 +81,7 @@ async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
 
     // 6. Extraction result
     const resultId = await ctx.db.insert("extractionResults", {
+      jobId,
       paperId,
       questionKey: "q1",
       answer: "Test answer",
@@ -102,6 +103,7 @@ async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
 
     // 8. Extraction evidence unit
     const evidenceUnitId = await ctx.db.insert("extractionEvidenceUnits", {
+      jobId,
       paperId,
       evidenceId: "ev1",
       page: 1,

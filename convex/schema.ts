@@ -496,6 +496,7 @@ export default defineSchema({
   // EXTRACTION EVIDENCE UNITS - Anchored sentence evidence (V3)
   // ═══════════════════════════════════════════════════════════════
   extractionEvidenceUnits: defineTable({
+    jobId: v.id("extractionJobs"),
     paperId: v.id("extractionPapers"),
     evidenceId: v.string(),
     page: v.number(),
@@ -509,12 +510,14 @@ export default defineSchema({
   })
     .index("by_paper", ["paperId"])
     .index("by_paper_evidence", ["paperId", "evidenceId"])
-    .index("by_paper_page", ["paperId", "page"]),
+    .index("by_paper_page", ["paperId", "page"])
+    .index("by_job", ["jobId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION RESULTS - Extracted data for each paper/question combo
   // ═══════════════════════════════════════════════════════════════
   extractionResults: defineTable({
+    jobId: v.id("extractionJobs"),
     paperId: v.id("extractionPapers"),
     questionKey: v.string(),
 
@@ -563,7 +566,9 @@ export default defineSchema({
     processedAt: v.number(),
   })
     .index("by_paper", ["paperId"])
-    .index("by_paper_question", ["paperId", "questionKey"]),
+    .index("by_paper_question", ["paperId", "questionKey"])
+    .index("by_job", ["jobId"])
+    .index("by_job_question", ["jobId", "questionKey"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION RESULT REVIEWS - Human QA state and corrections

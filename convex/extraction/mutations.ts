@@ -54,8 +54,9 @@ async function loadJobDataForReporting(
   ctx: MutationCtx,
   jobId: Id<"extractionJobs">
 ) {
-  // Cardinality: ~5-20 questions per extraction job
-  const [questions, papers] = await Promise.all([
+  // Four indexed job-scoped reads replace the previous per-paper fan-out
+  // (which was O(papers) separate result queries + O(papers) review queries).
+  const [questions, papers, allResults, allReviews] = await Promise.all([
     ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
@@ -65,29 +66,27 @@ async function loadJobDataForReporting(
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .take(MAX_PAPERS_PER_JOB),
+    ctx.db
+      .query("extractionResults")
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
+      .take(MAX_PAPERS_PER_JOB * 20),
+    ctx.db
+      .query("extractionResultReviews")
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
+      .take(MAX_PAPERS_PER_JOB * 20),
   ]);
 
   const resultsByPaper = new Map<string, Doc<"extractionResults">[]>();
-  const reviewsByResult = new Map<string, Doc<"extractionResultReviews">>();
+  for (const row of allResults) {
+    const bucket = resultsByPaper.get(row.paperId);
+    if (bucket) bucket.push(row);
+    else resultsByPaper.set(row.paperId, [row]);
+  }
 
-  await Promise.all(papers.map(async (paper) => {
-    const [results, reviews] = await Promise.all([
-      // Cardinality: ~5-20 results per paper
-      ctx.db
-        .query("extractionResults")
-        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
-        .collect(),
-      // Cardinality: ~5-20 reviews per paper
-      ctx.db
-        .query("extractionResultReviews")
-        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
-        .collect(),
-    ]);
-    resultsByPaper.set(paper._id, results);
-    for (const review of reviews) {
-      reviewsByResult.set(review.resultId, review);
-    }
-  }));
+  const reviewsByResult = new Map<string, Doc<"extractionResultReviews">>();
+  for (const review of allReviews) {
+    reviewsByResult.set(review.resultId, review);
+  }
 
   return { questions, papers, resultsByPaper, reviewsByResult };
 }
@@ -2278,6 +2277,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
     // Save extraction results
     for (const result of args.results.filter(Boolean)) {
       await ctx.db.insert("extractionResults", {
+        jobId: paper.jobId,
         paperId: args.paperId,
         questionKey: result.questionKey,
         answer: result.answer,
@@ -2396,6 +2396,9 @@ export const replacePaperEvidenceUnits = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    const paper = await ctx.db.get("extractionPapers", args.paperId);
+    if (!paper) return null;
+
     const existing = await ctx.db
       .query("extractionEvidenceUnits")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
@@ -2407,6 +2410,7 @@ export const replacePaperEvidenceUnits = internalMutation({
 
     for (const unit of args.units) {
       await ctx.db.insert("extractionEvidenceUnits", {
+        jobId: paper.jobId,
         paperId: args.paperId,
         evidenceId: unit.evidenceId,
         page: unit.page,

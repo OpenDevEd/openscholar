@@ -216,6 +216,29 @@ function buildQuestionInfoByKey(questions: Doc<"extractionQuestions">[]) {
   );
 }
 
+/**
+ * Load all results for a job in one indexed query and bucket by paperId in
+ * JS. Replaces the previous N+1 pattern (one by_paper query per paper).
+ * Cardinality: ≤ MAX_PAPERS_PER_JOB × ~20 questions.
+ */
+async function loadResultsByJob(
+  ctx: QueryCtx,
+  jobId: Id<"extractionJobs">,
+): Promise<Map<string, Doc<"extractionResults">[]>> {
+  const all = await ctx.db
+    .query("extractionResults")
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
+    .take(MAX_PAPERS_PER_JOB * 20);
+
+  const byPaper = new Map<string, Doc<"extractionResults">[]>();
+  for (const row of all) {
+    const bucket = byPaper.get(row.paperId);
+    if (bucket) bucket.push(row);
+    else byPaper.set(row.paperId, [row]);
+  }
+  return byPaper;
+}
+
 async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs">) {
   // Cardinality: ~5-20 questions per extraction job (enforced by UI limit)
   const questions = await ctx.db
@@ -229,21 +252,18 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
     .take(MAX_PAPERS_PER_JOB);
 
-  // Load all reviews for the job in a single batch query (fixes N+1)
-  const reviewMap = await loadReviewsByJob(ctx, jobId);
+  // Batch-load reviews + results for the whole job in two indexed queries
+  // (eliminates the per-paper fan-out that dominated this path).
+  const [reviewMap, resultsByPaperRaw] = await Promise.all([
+    loadReviewsByJob(ctx, jobId),
+    loadResultsByJob(ctx, jobId),
+  ]);
 
   const resultsByPaper = new Map<string, ResultWithReview[]>();
-  await Promise.all(papers.map(async (paper) => {
-    // Cardinality: ~5-20 results per paper (one per question)
-    const results = await ctx.db
-      .query("extractionResults")
-      .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
-      .collect();
-    resultsByPaper.set(
-      paper._id,
-      applyReviewMetadata(results, reviewMap)
-    );
-  }));
+  for (const paper of papers) {
+    const rawResults = resultsByPaperRaw.get(paper._id) ?? [];
+    resultsByPaper.set(paper._id, applyReviewMetadata(rawResults, reviewMap));
+  }
 
   return { questions, papers, resultsByPaper };
 }
@@ -511,26 +531,22 @@ export const getJobResults = query({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(MAX_PAPERS_PER_JOB);
 
-    // Load all reviews for the job in a single batch query (fixes N+1)
-    const reviewMap = await loadReviewsByJob(ctx, args.jobId);
+    // Two indexed reads for the whole job (replaces ≤500 serial per-paper
+    // result fetches + ≤500 serial per-paper review fetches).
+    const [reviewMap, resultsByPaper] = await Promise.all([
+      loadReviewsByJob(ctx, args.jobId),
+      loadResultsByJob(ctx, args.jobId),
+    ]);
 
-    // Get all results for all papers
     const allResults: Record<
       string,
       { paper: Doc<"extractionPapers">; results: Doc<"extractionResults">[] }
     > = {};
-
     for (const paper of papers) {
-      // Cardinality: ~5-20 results per paper
-      const results = await ctx.db
-        .query("extractionResults")
-        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
-        .collect();
-      const resultsWithReviews = applyReviewMetadata(results, reviewMap);
-
+      const rawResults = resultsByPaper.get(paper._id) ?? [];
       allResults[paper._id] = {
         paper,
-        results: resultsWithReviews,
+        results: applyReviewMetadata(rawResults, reviewMap),
       };
     }
 
@@ -584,23 +600,20 @@ export const getJobResultsPaginated = query({
       .order("asc")
       .paginate(args.paginationOpts);
 
-    // Load all reviews for the job in a single batch query (fixes N+1)
-    const reviewMap = await loadReviewsByJob(ctx, args.jobId);
+    // Batch-load all reviews + all results for the job in two indexed
+    // queries instead of fetching results per paper in parallel.
+    const [reviewMap, resultsByPaper] = await Promise.all([
+      loadReviewsByJob(ctx, args.jobId),
+      loadResultsByJob(ctx, args.jobId),
+    ]);
 
-    const papersWithResults = await Promise.all(
-      result.page.map(async (paper) => {
-        // Cardinality: ~5-20 results per paper
-        const results = await ctx.db
-          .query("extractionResults")
-          .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
-          .collect();
-        const resultsWithReviews = applyReviewMetadata(results, reviewMap);
-        return {
-          ...paper,
-          results: resultsWithReviews,
-        };
-      })
-    );
+    const papersWithResults = result.page.map((paper) => {
+      const rawResults = resultsByPaper.get(paper._id) ?? [];
+      return {
+        ...paper,
+        results: applyReviewMetadata(rawResults, reviewMap),
+      };
+    });
 
     return {
       status: "ok" as const,
