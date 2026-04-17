@@ -643,3 +643,70 @@ None — user locked:
 - Skill injections for shadcn/marketplace/chat-sdk/verification ignored.
 
 Start at Task 1.
+
+---
+
+## 11. Session progress log (2026-04-17)
+
+Commits landed on `dev`:
+- 9e4980e T1.1 files: unify PDF size cap at 100 MB in lib/files/limits
+- 7bc73db T2.1 uploads: add recordUploadedFile with server-side size cap
+- 3796af4 T3.1 dedupe: lift buildDedupeKey to lib/bucket for client+server reuse
+- f5db557 T4.1 limits: replace MAX_PAPERS_PER_JOB with plan-aware getPaperLimit
+- 59556bc T5.1 bucket: canonical BucketItem + per-source normalizers
+- ff102fc T6.1 store: bucket slice with cross-source dedup + status guard
+- 659ad41 T7.1 bucket: SelectableList primitive for source-tab mass selection
+- 540b529 T8.1 bucket: bulk PDF upload with per-file isolation
+- 613a57b T9.1 bucket: persistent drawer + header indicator
+- a9ffbd3 T10.1 bucket: library source tab with search_library-backed list
+- e0979d0 T11.1 bucket: collections source tab with junction-table join
+- 80be635 T12.1 bucket: rewire History + Zotero tabs through SelectableList
+- 5280e6c T13.1 bucket: delete manual-items.tsx, wire all 5 source tabs
+- 8d8283b T14.1 mutations: startExtraction accepts bucketItems, drops three-source args
+- 17ce78f T15.1 store: strip draft-job legacy fields; everything reads the bucket
+- 738d45f T14.2 server: bucket-native extractionJobSources + workflow + templates
+- 2f8da82 T15.2 legacy: delete 3-source validators, sub-caps, and orphaned types
+
+**Client surface.** The three draft-job fields (`selectedHistoryIds`,
+`zoteroSelection`, `manualItems`) are gone; one Zustand `bucket` slice
+keyed by `bucketKey` powers every tab. Five tabs — History, Library,
+Collections, Zotero, Upload — all mount `<SelectableList>`. The Upload
+tab drag-drops PDFs with per-file state machine, bounded concurrency 3,
+per-file failure isolation, and server-side 100 MB enforcement via
+`recordUploadedFile`. `<BucketDrawer>` plus `<BucketIndicator>` render
+the deduped cross-source staged list with a live `N / 1000` counter.
+
+**Server surface.** `extractionJobSources` is bucket-native: one row per
+BucketItem (bucketKey + 5-source union + sourceRefId + paper fields +
+source-specific slots). `writeJobSources` / `readJobSources` round-trip
+`BucketItemInput[]` directly; the old `bucketToJobSources` shim is gone.
+`startExtraction`, `duplicateExtraction`, and `startExtractionFromTemplate`
+all read/write the bucket shape. `extractionWorkflowTemplates.bucketItems`
+replaces the 3-source template fields. `workflow.ts` iterates bucket
+items and branches on `source` — history-with-searchFilters expands to
+OpenAlex pages at runtime, everything else is treated as a pre-fetched
+paper. The per-job cap is a single `getPaperLimit(ctx, userId)` call
+that resolves `free | go | pro | enterprise → 1000`.
+
+**Destructiveness.** Deleted: `MAX_PAPERS_PER_JOB`, `MAX_FILE_MB = 25`,
+`MAX_MANUAL_ITEMS_PER_JOB` / `MAX_ZOTERO_ITEMS_PER_JOB` /
+`MAX_HISTORY_ENTRIES_PER_JOB`, `assertExtractionInputLimits`,
+`historyEntryInputValidator`, `zoteroItemInputValidator`,
+`zoteroSelectionInputValidator`, `manualItemInputValidator`, the
+`sourceHistoryEntries` / `sourceZoteroSelection` / `sourceManualItems`
+arms on `extractionJobSources` + `extractionWorkflowTemplates` schemas,
+`ExtractionHistorySource` / `ExtractionZoteroSelection` /
+`ExtractionManualItem` / `CreateExtractionJobInput` client types,
+`manual-items.tsx`, and the `input-caps.test.ts` suite (whose only
+subject was the now-deleted assertion). `TableView` select-all logic
+moved into `<SelectableList>` (zero duplication). `buildDedupeKey`
+lifted to `lib/bucket/dedupe.ts` with a Convex re-export.
+
+**Residual work.** The feature-flag rollout dance from Task 16 is
+unused here — the project is pre-release, so the bucket UX ships as
+the only UX without a gate. No `extraction.bucket_v2` flag exists;
+final grep for `bucket_v2` returns zero hits (only this log).
+
+`npx convex typecheck` + `npx tsc --noEmit` clean after every commit.
+SN-1 / SN-2 / SN-3 pin-tests still green (public routing 28,
+internal routing 34, queries-e2e 11).
