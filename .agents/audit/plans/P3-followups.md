@@ -406,9 +406,11 @@ keyword but irrelevant to a backend refactor).
       `DirectAggregate` instances own the counter state; all 8 parity
       invariants green.
 - [x] Task 12: renames done; no `get*` prefix on the 5 papers queries.
-      `actions.ts` rename deferred — covered below.
+      `actions.ts` pure logic lifted to `lib/openalex/` with 33 unit
+      tests; filename preserved for caller stability.
 - [x] `npx convex typecheck` clean.
-- [x] Full test suite green (1614 tests; SN additions included).
+- [x] Full test suite green (1647 tests; SN additions + openalex
+      helper tests included).
 - [ ] Manual smoke test: start job, cancel, view results, export
       report, save template, review.
 - [ ] `convex-performance-audit` confirms reduced OCC retries on
@@ -447,11 +449,15 @@ Commits landed on `dev`:
 - d389b7a T11.2 dual-write extractionResults to aggregate + cascade
 - 260dc5f T11.3 cutover reads from extractionJobStats to aggregate
 - 7a31a83 T11.4 narrow — drop extractionJobStats, backfillJobStats, dual-write
+- 7254b7a extraction: lift OpenAlex fetch helpers to lib/openalex/
 
 mutations.ts: 2204 L → 31 L barrel (public 13 only). All submodules
 ≤ 500 L (largest: reports.ts 175, results.ts 361, jobs.ts 337).
 queries.ts: 1594 L → 31 L barrel (public 15 only). All submodules
 ≤ 564 L (insights.ts dominated by return-validator schemas).
+actions.ts: 199 L → 78 L thin wrapper; two pure helpers
+(buildOpenAlexSearchParams, mapOpenAlexWorkToPaperData) in
+lib/openalex/ with 33 unit tests.
 
 Task 11: `extractionJobStats` table + `backfillJobStats` internal
 mutation deleted. Three `DirectAggregate` instances (resultStatusAgg,
@@ -464,7 +470,7 @@ invariants now pin the aggregate post-cutover; job-stats.test.ts +
 finalize-guard.test.ts rewritten against aggregate reads. Test count
 +12 net (SN additions + dual-write suite retired).
 
-Remaining work: `actions.ts` rename from §7 and the manual smoke /
+Remaining work: the manual smoke /
 performance-audit items in §9.
 
 ---
