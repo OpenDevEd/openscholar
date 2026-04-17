@@ -5,11 +5,9 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useExtractionStore } from "@/lib/store/extraction";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { AlertCircle, Database, FileText, Library, Loader2, Paperclip } from "lucide-react";
+import { AlertCircle, Database, Library, Loader2, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Cascader, type CascaderOption } from "@/components/ui/cascader";
 import { useAppToast } from "@/lib/toast";
@@ -20,6 +18,9 @@ import {
   getToastMessageKeyForErrorCode,
   resolveToastError,
 } from "@/lib/toast/error-resolver";
+import { SelectableList } from "./bucket/selectable-list";
+import { useBucketStore } from "@/lib/store/bucket";
+import { fromZoteroItem } from "@/lib/bucket/bucketItem";
 
 type ZoteroGroup = {
   id: string;
@@ -54,7 +55,8 @@ export function ZoteroSelector() {
   const tToast = useTranslations("toast");
   const te = useTranslations('extraction');
   const tc = useTranslations('common');
-  const { draftJob, setZoteroSelection } = useExtractionStore();
+  const bucketAdd = useBucketStore((s) => s.addMany);
+  const bucketKeys = useBucketStore((s) => new Set(s.order));
   const meQuery = useProtectedQuery(api.users.queries.me, {});
   const me = meQuery.data;
   const connectionStatusQuery = useProtectedQuery(
@@ -128,7 +130,45 @@ export function ZoteroSelector() {
   const isLoadingItems = requiresGroupSelection ? false : (items.isLoading || items.isValidating);
   const isReachingEnd = itemPages.length > 0 && itemPages[itemPages.length - 1]?.hasMore === false;
 
-  const selectedItems = draftJob.zoteroSelection?.items || [];
+  const zoteroContext = useMemo(
+    () => ({
+      libraryType,
+      groupId: libraryType === "group" ? groupId : undefined,
+      zoteroUserId,
+      collectionKey,
+    }),
+    [libraryType, groupId, zoteroUserId, collectionKey],
+  );
+  const addItems = (items: ZoteroItem[]) => {
+    bucketAdd(
+      items.map((item) =>
+        fromZoteroItem(
+          {
+            itemKey: item.key,
+            title: item.title,
+            authors: item.authors,
+            year: item.year,
+            doi: item.doi,
+            abstract: item.abstract,
+          },
+          zoteroContext,
+        ),
+      ),
+    );
+  };
+  const isItemSelected = (item: ZoteroItem) => {
+    const bucketItem = fromZoteroItem(
+      {
+        itemKey: item.key,
+        title: item.title,
+        authors: item.authors,
+        year: item.year,
+        doi: item.doi,
+      },
+      zoteroContext,
+    );
+    return bucketKeys.has(bucketItem.bucketKey);
+  };
   const collectionOptions = useMemo<CascaderOption[]>(() => {
     const source = requiresGroupSelection
       ? []
@@ -169,28 +209,6 @@ export function ZoteroSelector() {
 
     return path;
   }, [collectionKey, collections.data, requiresGroupSelection]);
-
-  const toggleItem = (item: ZoteroItem) => {
-    const exists = selectedItems.some((i) => i.itemKey === item.key);
-    const nextItems = exists
-      ? selectedItems.filter((i) => i.itemKey !== item.key)
-      : [...selectedItems, {
-          itemKey: item.key,
-          title: item.title,
-          abstract: item.abstract,
-          authors: item.authors,
-          year: item.year,
-          doi: item.doi,
-        }];
-      setZoteroSelection({
-        libraryType,
-        groupId: libraryType === "group" ? groupId : undefined,
-        zoteroUserId,
-        collectionKey,
-        includeDescendants,
-        items: nextItems,
-      });
-  };
 
   const isLoading = groups.isLoading || collections.isLoading || isLoadingItems;
   const itemsError = requiresGroupSelection ? undefined : (items.error as Error | undefined);
@@ -267,14 +285,6 @@ export function ZoteroSelector() {
             setGroupId(undefined);
             setCollectionKey(undefined);
             setIncludeDescendants(true);
-            setZoteroSelection({
-              libraryType: value as "user" | "group",
-              groupId: undefined,
-              zoteroUserId,
-              collectionKey: undefined,
-              includeDescendants: true,
-              items: [],
-            });
           }}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder={t('library')} />
@@ -294,14 +304,6 @@ export function ZoteroSelector() {
               setGroupId(value);
               setCollectionKey(undefined);
               setIncludeDescendants(true);
-              setZoteroSelection({
-                libraryType: "group",
-                groupId: value,
-                zoteroUserId,
-                collectionKey: undefined,
-                includeDescendants: true,
-                items: [],
-              });
             }}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t('selectGroup')} />
@@ -326,14 +328,6 @@ export function ZoteroSelector() {
               const nextKey = path.length > 0 ? path[path.length - 1] : undefined;
               setCollectionKey(nextKey);
               setIncludeDescendants(true);
-              setZoteroSelection({
-                libraryType,
-                groupId: libraryType === "group" ? groupId : undefined,
-                zoteroUserId,
-                collectionKey: nextKey,
-                includeDescendants: true,
-                items: [],
-              });
             }}
           />
         </div>
@@ -343,25 +337,13 @@ export function ZoteroSelector() {
             <Checkbox
               checked={includeDescendants}
               onCheckedChange={(checked) => {
-                const next = checked === true;
-                setIncludeDescendants(next);
-                setZoteroSelection({
-                  libraryType,
-                  groupId: libraryType === "group" ? groupId : undefined,
-                  zoteroUserId,
-                  collectionKey,
-                  includeDescendants: next,
-                  items: [],
-                });
+                setIncludeDescendants(checked === true);
               }}
             />
             Include items from subcollections
           </label>
         )}
 
-        <div className="text-sm text-muted-foreground">
-          {t("selectedCount", { count: selectedItems.length })}
-        </div>
       </div>
 
       {isLoading && (
@@ -388,50 +370,31 @@ export function ZoteroSelector() {
         </div>
       )}
 
-      <div className="space-y-0 divide-y divide-border border border-border rounded-xl overflow-hidden">
-        {flattenedItems.map((item: ZoteroItem, index: number) => {
-          const isSelected = selectedItems.some((i) => i.itemKey === item.key);
-          return (
-            <div
-              key={item.key}
-              role="button"
-              tabIndex={0}
-              onClick={() => toggleItem(item)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  toggleItem(item);
-                }
-              }}
-              className={cn(
-                "cursor-pointer transition-all duration-200 p-4",
-                index % 2 === 0 ? "bg-background" : "bg-muted/30",
-                isSelected ? "bg-primary/5 border-l-4 border-l-primary" : "hover:bg-muted/50 border-l-4 border-l-transparent"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <Checkbox checked={isSelected} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {item.authors.slice(0, 3).join(", ") || te('unknownAuthors')}
-                    {item.year ? ` • ${item.year}` : ""}
-                  </p>
-                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    {item.hasPdfChild ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Paperclip className="h-3 w-3" /> {tc('pdfAttached')}
-                      </span>
-                    ) : (
-                      <></>
-                    )}
-                  </div>
+      {flattenedItems.length > 0 && (
+        <SelectableList<ZoteroItem>
+          items={flattenedItems}
+          keyOf={(item) => item.key}
+          isSelected={isItemSelected}
+          onToggle={(item) => addItems([item])}
+          onToggleAll={() => addItems(flattenedItems)}
+          renderRow={(item) => (
+            <div>
+              <p className="font-medium text-foreground truncate">
+                {item.title}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {item.authors.slice(0, 3).join(", ") || te("unknownAuthors")}
+                {item.year ? ` • ${item.year}` : ""}
+              </p>
+              {item.hasPdfChild && (
+                <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Paperclip className="h-3 w-3" /> {tc("pdfAttached")}
                 </div>
-              </div>
+              )}
             </div>
-          );
-        })}
-      </div>
+          )}
+        />
+      )}
       {!isReachingEnd && flattenedItems.length > 0 && (
         <div className="flex items-center justify-center">
           <Button

@@ -69,6 +69,40 @@ export function fromSearchHistoryEntry(
   };
 }
 
+export type SavedSearchInput = {
+  id: string;
+  query: string;
+  count?: number;
+  searchFilters: Record<string, unknown>;
+};
+
+/**
+ * Saved-search placeholder BucketItem. Represents an entire historical
+ * search query; expanded to paper rows server-side at job submit time.
+ * Used by the History source tab until the tab is refactored to fetch
+ * live paper results and produce per-paper bucket items.
+ */
+export function fromSavedSearchQuery(
+  entry: SavedSearchInput,
+  now: number = Date.now(),
+): BucketItem {
+  return {
+    bucketKey: `history:${entry.id}`,
+    source: "history",
+    sourceRefId: entry.id,
+    sourceMeta: {
+      historyId: entry.id,
+      searchFilters: entry.searchFilters,
+      count: entry.count,
+      isSavedSearch: true,
+    },
+    title: entry.query,
+    authors: [],
+    addedAt: now,
+    status: "ready",
+  };
+}
+
 function splitLibraryAuthors(raw?: string): string[] {
   if (!raw) return [];
   return raw
