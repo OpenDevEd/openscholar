@@ -30,6 +30,7 @@ import {
 
 import { createError } from "../lib/errors";
 import { batchDeleteByIndex } from "../lib/cascade";
+import { assertJobOwnership } from "./access";
 import {
   assertExtractionInputLimits,
   historyEntryInputValidator,
@@ -47,18 +48,6 @@ import {
 
 /** Safety bound for per-job paper queries to prevent unbounded memory usage. */
 const MAX_PAPERS_PER_JOB = 500;
-
-async function assertJobOwnership(
-  ctx: MutationCtx,
-  userId: Id<"users">,
-  jobId: Id<"extractionJobs">
-) {
-  const job = await ctx.db.get("extractionJobs", jobId);
-  if (!job || job.userId !== userId) {
-    throw createError("NOT_FOUND", "Job not found");
-  }
-  return job;
-}
 
 async function loadJobDataForReporting(
   ctx: MutationCtx,

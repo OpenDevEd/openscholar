@@ -8,7 +8,8 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
-import { noAccess, notFound, ok, unauthenticated } from "../lib/query_states";
+import { notFound, ok } from "../lib/query_states";
+import { resolveOwnedJob, resolveOwnedPaper } from "./access";
 import {
   getProcessableFlags,
   MIN_ABSTRACT_LENGTH,
@@ -61,45 +62,6 @@ type ResultWithReview = Doc<"extractionResults"> & {
   reviewedAt?: number;
   reviewedBy?: Id<"users">;
 };
-
-type OwnedJobResolution =
-  | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs"> }
-  | { status: "unauthenticated" }
-  | { status: "no_access" };
-
-async function resolveOwnedJob(
-  ctx: QueryCtx,
-  jobId: Id<"extractionJobs">
-): Promise<OwnedJobResolution> {
-  const user = await getCurrentUser(ctx);
-  if (!user) return unauthenticated();
-
-  const job = await ctx.db.get("extractionJobs", jobId);
-  if (!job || job.userId !== user._id) return noAccess();
-
-  return ok({ user, job });
-}
-
-type OwnedPaperResolution =
-  | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs">; paper: Doc<"extractionPapers"> }
-  | { status: "unauthenticated" }
-  | { status: "no_access" };
-
-async function resolveOwnedPaper(
-  ctx: QueryCtx,
-  paperId: Id<"extractionPapers">
-): Promise<OwnedPaperResolution> {
-  const user = await getCurrentUser(ctx);
-  if (!user) return unauthenticated();
-
-  const paper = await ctx.db.get("extractionPapers", paperId);
-  if (!paper) return noAccess();
-
-  const job = await ctx.db.get("extractionJobs", paper.jobId);
-  if (!job || job.userId !== user._id) return noAccess();
-
-  return ok({ user, job, paper });
-}
 
 function hasUsableAbstract(abstract?: string) {
   return typeof abstract === "string" && abstract.trim().length > MIN_ABSTRACT_LENGTH;
