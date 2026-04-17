@@ -56,6 +56,7 @@ export function ZoteroSelector() {
   const te = useTranslations('extraction');
   const tc = useTranslations('common');
   const bucketAdd = useBucketStore((s) => s.addMany);
+  const bucketRemoveMany = useBucketStore((s) => s.removeMany);
   const bucketOrder = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(bucketOrder), [bucketOrder]);
   const meQuery = useProtectedQuery(api.users.queries.me, {});
@@ -140,22 +141,25 @@ export function ZoteroSelector() {
     }),
     [libraryType, groupId, zoteroUserId, collectionKey],
   );
-  const addItems = (items: ZoteroItem[]) => {
-    bucketAdd(
-      items.map((item) =>
-        fromZoteroItem(
-          {
-            itemKey: item.key,
-            title: item.title,
-            authors: item.authors,
-            year: item.year,
-            doi: item.doi,
-            abstract: item.abstract,
-          },
-          zoteroContext,
-        ),
+  const toBucketItems = (items: ZoteroItem[]) =>
+    items.map((item) =>
+      fromZoteroItem(
+        {
+          itemKey: item.key,
+          title: item.title,
+          authors: item.authors,
+          year: item.year,
+          doi: item.doi,
+          abstract: item.abstract,
+        },
+        zoteroContext,
       ),
     );
+  const addItems = (items: ZoteroItem[]) => {
+    bucketAdd(toBucketItems(items));
+  };
+  const removeItems = (items: ZoteroItem[]) => {
+    bucketRemoveMany(toBucketItems(items).map((b) => b.bucketKey));
   };
   const isItemSelected = (item: ZoteroItem) => {
     const bucketItem = fromZoteroItem(
@@ -376,8 +380,12 @@ export function ZoteroSelector() {
           items={flattenedItems}
           keyOf={(item) => item.key}
           isSelected={isItemSelected}
-          onToggle={(item) => addItems([item])}
-          onToggleAll={() => addItems(flattenedItems)}
+          onToggle={(item, next) =>
+            next ? addItems([item]) : removeItems([item])
+          }
+          onToggleAll={(next) =>
+            next ? addItems(flattenedItems) : removeItems(flattenedItems)
+          }
           renderRow={(item) => (
             <div>
               <p className="font-medium text-foreground truncate">

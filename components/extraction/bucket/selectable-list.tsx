@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 export interface SelectableListProps<T> {
   items: T[];
   isSelected: (t: T) => boolean;
-  onToggle: (t: T, mods?: { shift?: boolean }) => void;
-  onToggleAll: () => void;
+  onToggle: (t: T, next: boolean) => void;
+  onToggleAll: (next: boolean) => void;
   renderRow: (t: T) => ReactNode;
   keyOf: (t: T) => string;
   className?: string;
@@ -61,10 +61,10 @@ export function SelectableList<T>({
       for (let i = from; i <= to; i++) {
         const item = items[i];
         if (!item) continue;
-        if (isSelected(item) !== target) onToggle(item, { shift: true });
+        if (isSelected(item) !== target) onToggle(item, target);
       }
     } else {
-      onToggle(current);
+      onToggle(current, !isSelected(current));
     }
     lastIndexRef.current = index;
   };
@@ -87,7 +87,7 @@ export function SelectableList<T>({
         <Checkbox
           aria-label="Select all visible"
           checked={headerChecked}
-          onCheckedChange={() => onToggleAll()}
+          onCheckedChange={() => onToggleAll(headerChecked !== true)}
         />
         {headerLabel ?? (
           <span>
@@ -128,7 +128,7 @@ export function SelectableList<T>({
                 checked={selected}
                 tabIndex={-1}
                 onCheckedChange={() => {
-                  onToggle(item);
+                  onToggle(item, !selected);
                   lastIndexRef.current = index;
                 }}
                 onClick={(e) => e.stopPropagation()}

@@ -24,6 +24,7 @@ export function LibraryTab() {
   );
 
   const addMany = useBucketStore((s) => s.addMany);
+  const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(order), [order]);
 
@@ -35,13 +36,17 @@ export function LibraryTab() {
     [bucketKeys],
   );
 
-  const toggle = (item: LibItem) => {
-    // Adds only; removal is done from the bucket drawer.
-    addMany([fromLibraryItem(item)]);
+  const toggle = (item: LibItem, next: boolean) => {
+    const bucketItem = fromLibraryItem(item);
+    if (next) addMany([bucketItem]);
+    else removeMany([bucketItem.bucketKey]);
   };
 
-  const toggleAll = () => {
-    addMany((list.results ?? []).map((r) => fromLibraryItem(r)));
+  const toggleAll = (next: boolean) => {
+    const rows = list.results ?? [];
+    const bucketItems = rows.map((r) => fromLibraryItem(r));
+    if (next) addMany(bucketItems);
+    else removeMany(bucketItems.map((b) => b.bucketKey));
   };
 
   return (

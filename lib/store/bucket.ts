@@ -17,6 +17,7 @@ type BucketState = {
   order: string[];
   addMany: (items: BucketItem[]) => void;
   remove: (bucketKey: string) => void;
+  removeMany: (bucketKeys: string[]) => void;
   clear: () => void;
   updateStatus: (bucketKey: string, patch: StatusPatch) => void;
 };
@@ -60,6 +61,25 @@ export const useBucketStore = create<BucketState>()(
           return {
             items: rest,
             order: state.order.filter((k) => k !== bucketKey),
+          };
+        }),
+      removeMany: (bucketKeys) =>
+        set((state) => {
+          if (bucketKeys.length === 0) return state;
+          const drop = new Set(bucketKeys);
+          let changed = false;
+          const items: Record<string, BucketItem> = {};
+          for (const key of Object.keys(state.items)) {
+            if (drop.has(key)) {
+              changed = true;
+              continue;
+            }
+            items[key] = state.items[key];
+          }
+          if (!changed) return state;
+          return {
+            items,
+            order: state.order.filter((k) => !drop.has(k)),
           };
         }),
       clear: () => set({ items: {}, order: [] }),

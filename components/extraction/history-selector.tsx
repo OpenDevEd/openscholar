@@ -17,6 +17,7 @@ export function HistorySelector() {
   const tc = useTranslations("common");
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
   const addMany = useBucketStore((s) => s.addMany);
+  const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(order), [order]);
 
@@ -77,10 +78,16 @@ export function HistorySelector() {
       items={searchHistory}
       keyOf={(e) => e.id}
       isSelected={isSelected}
-      onToggle={(entry) => addMany([toBucketItem(entry)])}
-      onToggleAll={() =>
-        addMany(searchHistory.map((e) => toBucketItem(e)))
-      }
+      onToggle={(entry, next) => {
+        const bucketItem = toBucketItem(entry);
+        if (next) addMany([bucketItem]);
+        else removeMany([bucketItem.bucketKey]);
+      }}
+      onToggleAll={(next) => {
+        const bucketItems = searchHistory.map((e) => toBucketItem(e));
+        if (next) addMany(bucketItems);
+        else removeMany(bucketItems.map((b) => b.bucketKey));
+      }}
       renderRow={(entry) => (
         <div>
           <div className="flex items-center gap-2 mb-1">

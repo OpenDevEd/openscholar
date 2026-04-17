@@ -30,19 +30,17 @@ function Harness({
       items={rows}
       keyOf={(r) => r.id}
       isSelected={(r) => selected.has(r.id)}
-      onToggle={(r) => {
+      onToggle={(r, next) => {
         update((prev) => {
-          const next = new Set(prev);
-          if (next.has(r.id)) next.delete(r.id);
-          else next.add(r.id);
-          return next;
+          const n = new Set(prev);
+          if (next) n.add(r.id);
+          else n.delete(r.id);
+          return n;
         });
       }}
-      onToggleAll={() => {
-        update((prev) =>
-          prev.size === rows.length
-            ? new Set()
-            : new Set(rows.map((r) => r.id)),
+      onToggleAll={(next) => {
+        update(() =>
+          next ? new Set(rows.map((r) => r.id)) : new Set(),
         );
       }}
       renderRow={(r) => <span>{r.title}</span>}
@@ -100,5 +98,90 @@ describe("<SelectableList>", () => {
     fireEvent.keyDown(row, { key: " ", code: "Space" });
     const snapshot = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect([...snapshot]).toEqual(["d"]);
+  });
+
+  it("clicking an unselected row passes next=true to onToggle", () => {
+    const onToggle = vi.fn();
+    render(
+      <SelectableList<Row>
+        items={rows}
+        keyOf={(r) => r.id}
+        isSelected={() => false}
+        onToggle={onToggle}
+        onToggleAll={() => {}}
+        renderRow={(r) => <span>{r.title}</span>}
+      />,
+    );
+    fireEvent.click(screen.getByText("Beta"));
+    expect(onToggle).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: "b" }),
+      true,
+    );
+  });
+
+  it("clicking a selected row passes next=false to onToggle (unselects)", () => {
+    const onToggle = vi.fn();
+    render(
+      <SelectableList<Row>
+        items={rows}
+        keyOf={(r) => r.id}
+        isSelected={(r) => r.id === "b"}
+        onToggle={onToggle}
+        onToggleAll={() => {}}
+        renderRow={(r) => <span>{r.title}</span>}
+      />,
+    );
+    fireEvent.click(screen.getByText("Beta"));
+    expect(onToggle).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: "b" }),
+      false,
+    );
+  });
+
+  it("header click passes next=true when nothing selected, next=false when all selected", () => {
+    const onToggleAll = vi.fn();
+    const { rerender } = render(
+      <SelectableList<Row>
+        items={rows}
+        keyOf={(r) => r.id}
+        isSelected={() => false}
+        onToggle={() => {}}
+        onToggleAll={onToggleAll}
+        renderRow={(r) => <span>{r.title}</span>}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    expect(onToggleAll).toHaveBeenLastCalledWith(true);
+
+    rerender(
+      <SelectableList<Row>
+        items={rows}
+        keyOf={(r) => r.id}
+        isSelected={() => true}
+        onToggle={() => {}}
+        onToggleAll={onToggleAll}
+        renderRow={(r) => <span>{r.title}</span>}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    expect(onToggleAll).toHaveBeenLastCalledWith(false);
+  });
+
+  it("shift-click across already-selected rows deselects them (next=false)", () => {
+    const onChange = vi.fn();
+    render(
+      <Harness
+        initial={new Set(["a", "b", "c", "d"])}
+        onChange={onChange}
+      />,
+    );
+    // Click Alpha → flips to unselected. State: {b, c, d}.
+    fireEvent.click(screen.getByText("Alpha"));
+    // Shift-click Gamma → target = !isSelected(Gamma) = false.
+    // Loop i=0..2: a (false=target, skip), b (true≠false, deselect), c (true≠false, deselect).
+    // State: {d}.
+    fireEvent.click(screen.getByText("Gamma"), { shiftKey: true });
+    const snapshot = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect([...snapshot].sort()).toEqual(["d"]);
   });
 });

@@ -56,6 +56,29 @@ describe("useBucketStore", () => {
     expect(state.items["k:a"]).toBeUndefined();
   });
 
+  test("removeMany drops every listed key in one set()", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("k:a"), makeItem("k:b"), makeItem("k:c")]);
+    useBucketStore.getState().removeMany(["k:a", "k:c"]);
+    const state = useBucketStore.getState();
+    expect(state.order).toEqual(["k:b"]);
+    expect(state.items["k:a"]).toBeUndefined();
+    expect(state.items["k:c"]).toBeUndefined();
+  });
+
+  test("removeMany ignores unknown keys and still removes known ones", () => {
+    useBucketStore.getState().addMany([makeItem("k:a")]);
+    useBucketStore.getState().removeMany(["k:missing", "k:a"]);
+    expect(useBucketStore.getState().order).toEqual([]);
+  });
+
+  test("removeMany is a no-op when called with an empty array", () => {
+    useBucketStore.getState().addMany([makeItem("k:a"), makeItem("k:b")]);
+    useBucketStore.getState().removeMany([]);
+    expect(useBucketStore.getState().order).toEqual(["k:a", "k:b"]);
+  });
+
   test("clear empties everything", () => {
     useBucketStore
       .getState()

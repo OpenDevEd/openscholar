@@ -22,6 +22,7 @@ export function CollectionsTab() {
     useState<Id<"collections"> | null>(null);
 
   const addMany = useBucketStore((s) => s.addMany);
+  const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(order), [order]);
 
@@ -73,6 +74,11 @@ export function CollectionsTab() {
             onAdd={(items, collectionId) => {
               addMany(items.map((item) => fromCollectionItem(item, collectionId)));
             }}
+            onRemove={(items, collectionId) => {
+              removeMany(
+                items.map((item) => fromCollectionItem(item, collectionId).bucketKey),
+              );
+            }}
           />
         ) : (
           <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -88,10 +94,12 @@ function CollectionItems({
   collectionId,
   bucketKeys,
   onAdd,
+  onRemove,
 }: {
   collectionId: Id<"collections">;
   bucketKeys: Set<string>;
   onAdd: (items: LibItem[], collectionId: Id<"collections">) => void;
+  onRemove: (items: LibItem[], collectionId: Id<"collections">) => void;
 }) {
   const list = usePaginatedQuery(
     api.extraction.sources.collections.listItems,
@@ -139,8 +147,12 @@ function CollectionItems({
         items={items}
         keyOf={(i) => i._id}
         isSelected={isSelected}
-        onToggle={(item) => onAdd([item], collectionId)}
-        onToggleAll={() => onAdd(items, collectionId)}
+        onToggle={(item, next) =>
+          next ? onAdd([item], collectionId) : onRemove([item], collectionId)
+        }
+        onToggleAll={(next) =>
+          next ? onAdd(items, collectionId) : onRemove(items, collectionId)
+        }
         renderRow={(item) => (
           <div>
             <p className="font-medium text-sm truncate">{item.title}</p>
