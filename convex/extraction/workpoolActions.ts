@@ -116,6 +116,40 @@ const DENSE_THRESHOLD = 0.05;
 const RRF_CONSTANT = 30;
 const FUSED_TOP_N = 48;
 const EVIDENCE_POOL_N = 16;
+/**
+ * Upper bound on simultaneous per-question LLM round trips for a single
+ * paper. Questions are independent so running them in parallel turns wall
+ * time from O(Q) into ~O(1); the cap keeps provider rate-limits quiet
+ * under a full `pdfProcessingPool` (each paper × this = outbound cap).
+ */
+const QUESTION_CONCURRENCY_PER_PAPER = 5;
+
+/**
+ * Bounded-concurrency `Promise.all` — fires at most `concurrency` workers,
+ * each pulls the next index until the input is drained. Order-preserving,
+ * no external dependency.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i], i);
+    }
+  };
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(concurrency, items.length)) },
+    worker,
+  );
+  await Promise.all(workers);
+  return results;
+}
 const BEST_EFFORT_MAX_CITATIONS = 2;
 const BEST_EFFORT_CONFIDENCE_CAP = 0.45;
 const ABSTRACT_ONLY_CONFIDENCE_CAP = 0.7;
@@ -1070,174 +1104,230 @@ export const waitAndExtractAction = internalAction({
       const startedAt = Date.now();
       const extracted = await (async () => {
           const model = await getModel();
-          const results: ExtractionQuestionResult[] = [];
-          const extractionUsages: { inputTokens: number; outputTokens: number }[] = [];
-          const trackingEntries: AITrackingEntry[] = [];
-          let anyPdfEvidenceUsed = false;
           const abstractPresent = isUsableAbstract(paper.abstract);
           const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
 
-          for (const question of args.questions) {
-            if (units.length === 0) {
-              if (abstractText) {
-                const qStart = Date.now();
-                const { result, usage, prompt } = await extractQuestionAnswerFromAbstract({
-                  model,
-                  question,
-                  abstract: abstractText,
-                  pdfEnabled,
-                });
-                const qLatency = Date.now() - qStart;
-                results.push(result);
-                extractionUsages.push(usage);
-                trackingEntries.push({
-                  feature: "extraction_question_abstract",
-                  usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
-                  latencyMs: qLatency,
-                  input: truncateForTracking(prompt),
-                  output: truncateForTracking(JSON.stringify(result)),
-                  temperature: 0,
-                });
+          type PerQuestionOutcome = {
+            result: ExtractionQuestionResult;
+            usage: { inputTokens: number; outputTokens: number };
+            trackingEntry: AITrackingEntry | null;
+            pdfEvidenceUsed: boolean;
+          };
+
+          const processQuestion = async (
+            question: (typeof args.questions)[number],
+          ): Promise<PerQuestionOutcome> => {
+            try {
+              if (units.length === 0) {
+                if (abstractText) {
+                  const qStart = Date.now();
+                  const { result, usage, prompt } = await extractQuestionAnswerFromAbstract({
+                    model,
+                    question,
+                    abstract: abstractText,
+                    pdfEnabled,
+                  });
+                  const qLatency = Date.now() - qStart;
+                  console.info(
+                    "[waitAndExtractAction] question diagnostics",
+                    JSON.stringify({
+                      paperId: args.paperId,
+                      questionKey: question.key,
+                      mode: "abstract_only",
+                      abstractPresent,
+                      denseCandidates: 0,
+                      lexicalCandidates: 0,
+                      fusedCandidates: 0,
+                      citationStatus: result.citationStatus,
+                      selectedEvidenceIds: [],
+                    }),
+                  );
+                  return {
+                    result,
+                    usage,
+                    trackingEntry: {
+                      feature: "extraction_question_abstract",
+                      usage: {
+                        inputTokens: usage.inputTokens,
+                        outputTokens: usage.outputTokens,
+                      },
+                      latencyMs: qLatency,
+                      input: truncateForTracking(prompt),
+                      output: truncateForTracking(JSON.stringify(result)),
+                      temperature: 0,
+                    },
+                    pdfEvidenceUsed: false,
+                  };
+                }
+
+                const noContentResult: ExtractionQuestionResult = {
+                  questionKey: question.key,
+                  answer: null,
+                  confidence: 0,
+                  reasoning: "No PDF evidence and no usable abstract are available for this paper.",
+                  citations: [],
+                  citationStatus: "insufficient_evidence",
+                  retrievalDiagnostics: {
+                    denseCandidates: 0,
+                    lexicalCandidates: 0,
+                    fusedCandidates: 0,
+                    rerankedCandidates: 0,
+                    validatedCitations: 0,
+                    strictNull: true,
+                  },
+                  pdfContentUsed: false,
+                };
                 console.info(
                   "[waitAndExtractAction] question diagnostics",
                   JSON.stringify({
                     paperId: args.paperId,
                     questionKey: question.key,
-                    mode: "abstract_only",
+                    mode: "no_content",
                     abstractPresent,
                     denseCandidates: 0,
                     lexicalCandidates: 0,
                     fusedCandidates: 0,
-                    citationStatus: result.citationStatus,
+                    citationStatus: noContentResult.citationStatus,
                     selectedEvidenceIds: [],
                   }),
                 );
-                continue;
+                return {
+                  result: noContentResult,
+                  usage: { inputTokens: 0, outputTokens: 0 },
+                  trackingEntry: null,
+                  pdfEvidenceUsed: false,
+                };
               }
 
-              const noContentResult: ExtractionQuestionResult = {
-                questionKey: question.key,
-                answer: null,
-                confidence: 0,
-                reasoning: "No PDF evidence and no usable abstract are available for this paper.",
-                citations: [],
-                citationStatus: "insufficient_evidence",
-                retrievalDiagnostics: {
-                  denseCandidates: 0,
-                  lexicalCandidates: 0,
-                  fusedCandidates: 0,
-                  rerankedCandidates: 0,
-                  validatedCitations: 0,
-                  strictNull: true,
-                },
-                pdfContentUsed: false,
+              const denseScores = await runDenseSearch(
+                ctx,
+                `extraction:${args.jobId}`,
+                args.paperId,
+                question.question,
+              );
+              const lexicalScores = scoreLexicalEvidence(
+                question.question,
+                units.map((unit) => ({ evidenceId: unit.evidenceId, tokens: unit.tokens })),
+                DENSE_LIMIT,
+              );
+
+              const fusedScores = reciprocalRankFuse(denseScores, lexicalScores, RRF_CONSTANT);
+              const byEvidenceId = new Map(units.map((unit) => [unit.evidenceId, unit]));
+              const fusedCandidates: RetrievalCandidate[] = [];
+              for (const row of fusedScores.slice(0, FUSED_TOP_N)) {
+                const unit = byEvidenceId.get(row.evidenceId);
+                if (!unit) continue;
+                fusedCandidates.push({
+                  unit,
+                  denseScore: row.denseScore,
+                  lexicalScore: row.lexicalScore,
+                  fusedScore: row.fusedScore,
+                });
+              }
+
+              const evidencePool = fusedCandidates.slice(0, EVIDENCE_POOL_N);
+              const diagnosticsSeed = {
+                denseCandidates: denseScores.length,
+                lexicalCandidates: lexicalScores.length,
+                fusedCandidates: fusedCandidates.length,
+                rerankedCandidates: evidencePool.length,
               };
-              results.push(noContentResult);
+
+              const qStart = Date.now();
+              const { result: extractedResult, usage, prompt: qPrompt } = await extractQuestionAnswer({
+                model,
+                question,
+                abstract: paper.abstract,
+                evidencePool,
+                diagnosticsSeed,
+              });
+              const qLatency = Date.now() - qStart;
+
               console.info(
                 "[waitAndExtractAction] question diagnostics",
                 JSON.stringify({
                   paperId: args.paperId,
                   questionKey: question.key,
-                  mode: "no_content",
+                  mode: "pdf_evidence",
                   abstractPresent,
-                  denseCandidates: 0,
-                  lexicalCandidates: 0,
-                  fusedCandidates: 0,
-                  citationStatus: noContentResult.citationStatus,
-                  selectedEvidenceIds: [],
+                  denseCandidates: diagnosticsSeed.denseCandidates,
+                  lexicalCandidates: diagnosticsSeed.lexicalCandidates,
+                  fusedCandidates: diagnosticsSeed.fusedCandidates,
+                  citationStatus: extractedResult.citationStatus,
+                  selectedEvidenceIds: extractedResult.citations.map((citation) => citation.evidenceId),
                 }),
               );
-              continue;
+
+              return {
+                result: extractedResult,
+                usage,
+                trackingEntry: {
+                  feature: "extraction_question_pdf",
+                  usage: {
+                    inputTokens: usage.inputTokens,
+                    outputTokens: usage.outputTokens,
+                  },
+                  latencyMs: qLatency,
+                  input: truncateForTracking(qPrompt),
+                  output: truncateForTracking(JSON.stringify(extractedResult)),
+                  temperature: 0,
+                },
+                pdfEvidenceUsed: extractedResult.citations.length > 0,
+              };
+            } catch (error) {
+              // Partial-failure isolation: one question throwing must not fail
+              // the whole paper. Record an extraction_error result so the UI
+              // surfaces the bad answer; the other questions still save.
+              const message = error instanceof Error ? error.message : String(error);
+              console.error(
+                `[waitAndExtractAction] question ${question.key} failed:`,
+                message,
+              );
+              return {
+                result: {
+                  questionKey: question.key,
+                  answer: null,
+                  confidence: 0,
+                  reasoning: `Extraction error: ${message}`,
+                  citations: [],
+                  citationStatus: "extraction_error",
+                  retrievalDiagnostics: {
+                    denseCandidates: 0,
+                    lexicalCandidates: 0,
+                    fusedCandidates: 0,
+                    rerankedCandidates: 0,
+                    validatedCitations: 0,
+                    strictNull: false,
+                  },
+                  pdfContentUsed: false,
+                },
+                usage: { inputTokens: 0, outputTokens: 0 },
+                trackingEntry: null,
+                pdfEvidenceUsed: false,
+              };
             }
-
-            const denseScores = await runDenseSearch(
-              ctx,
-              `extraction:${args.jobId}`,
-              args.paperId,
-              question.question,
-            );
-            const lexicalScores = scoreLexicalEvidence(
-              question.question,
-              units.map((unit) => ({ evidenceId: unit.evidenceId, tokens: unit.tokens })),
-              DENSE_LIMIT,
-            );
-
-            const fusedScores = reciprocalRankFuse(denseScores, lexicalScores, RRF_CONSTANT);
-            const byEvidenceId = new Map(units.map((unit) => [unit.evidenceId, unit]));
-            const fusedCandidates: RetrievalCandidate[] = [];
-            for (const row of fusedScores.slice(0, FUSED_TOP_N)) {
-              const unit = byEvidenceId.get(row.evidenceId);
-              if (!unit) continue;
-              fusedCandidates.push({
-                unit,
-                denseScore: row.denseScore,
-                lexicalScore: row.lexicalScore,
-                fusedScore: row.fusedScore,
-              });
-            }
-
-            const evidencePool = fusedCandidates.slice(0, EVIDENCE_POOL_N);
-            const diagnosticsSeed = {
-              denseCandidates: denseScores.length,
-              lexicalCandidates: lexicalScores.length,
-              fusedCandidates: fusedCandidates.length,
-              rerankedCandidates: evidencePool.length,
-            };
-
-            const qStart = Date.now();
-            const { result: extracted, usage, prompt: qPrompt } = await extractQuestionAnswer({
-              model,
-              question,
-              abstract: paper.abstract,
-              evidencePool,
-              diagnosticsSeed,
-            });
-            const qLatency = Date.now() - qStart;
-
-            if (extracted.citations.length > 0) {
-              anyPdfEvidenceUsed = true;
-            }
-
-            extractionUsages.push(usage);
-            trackingEntries.push({
-              feature: "extraction_question_pdf",
-              usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
-              latencyMs: qLatency,
-              input: truncateForTracking(qPrompt),
-              output: truncateForTracking(JSON.stringify(extracted)),
-              temperature: 0,
-            });
-
-            console.info(
-              "[waitAndExtractAction] question diagnostics",
-              JSON.stringify({
-                paperId: args.paperId,
-                questionKey: question.key,
-                mode: "pdf_evidence",
-                abstractPresent,
-                denseCandidates: diagnosticsSeed.denseCandidates,
-                lexicalCandidates: diagnosticsSeed.lexicalCandidates,
-                fusedCandidates: diagnosticsSeed.fusedCandidates,
-                citationStatus: extracted.citationStatus,
-                selectedEvidenceIds: extracted.citations.map((citation) => citation.evidenceId),
-              }),
-            );
-
-            results.push(extracted);
-          }
-
-          const totalInputTokens = extractionUsages.reduce(
-            (acc, usage) => acc + usage.inputTokens,
-            0,
-          );
-          const totalOutputTokens = extractionUsages.reduce(
-            (acc, usage) => acc + usage.outputTokens,
-            0,
-          );
-          const totalUsage = {
-            inputTokens: totalInputTokens,
-            outputTokens: totalOutputTokens,
           };
+
+          // Bounded concurrency per paper — questions are independent but we
+          // don't want to spike provider rate-limits.
+          const outcomes = await mapWithConcurrency(
+            args.questions,
+            QUESTION_CONCURRENCY_PER_PAPER,
+            processQuestion,
+          );
+
+          const results = outcomes.map((o) => o.result);
+          const trackingEntries = outcomes
+            .map((o) => o.trackingEntry)
+            .filter((e): e is AITrackingEntry => e !== null);
+          const totalUsage = outcomes.reduce(
+            (acc, o) => ({
+              inputTokens: acc.inputTokens + o.usage.inputTokens,
+              outputTokens: acc.outputTokens + o.usage.outputTokens,
+            }),
+            { inputTokens: 0, outputTokens: 0 },
+          );
+          const anyPdfEvidenceUsed = outcomes.some((o) => o.pdfEvidenceUsed);
           const billedCredits = calculateServerCreditsToDeduct(totalUsage, pricing);
 
           return {
