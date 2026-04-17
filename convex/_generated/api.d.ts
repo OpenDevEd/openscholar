@@ -24,6 +24,7 @@ import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
+import type * as extraction_aggregates from "../extraction/aggregates.js";
 import type * as extraction_content from "../extraction/content.js";
 import type * as extraction_debug from "../extraction/debug.js";
 import type * as extraction_debug_errors from "../extraction/debug_errors.js";
@@ -169,6 +170,7 @@ declare const fullApi: ApiFromModules<{
   debug_papers: typeof debug_papers;
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
+  "extraction/aggregates": typeof extraction_aggregates;
   "extraction/content": typeof extraction_content;
   "extraction/debug": typeof extraction_debug;
   "extraction/debug_errors": typeof extraction_debug_errors;
@@ -324,4 +326,7 @@ export declare const components: {
   workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
   workpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"workpool">;
   screeningWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"screeningWorkpool">;
+  resultStatusAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultStatusAgg">;
+  resultAnsweredAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultAnsweredAgg">;
+  resultConfidenceAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultConfidenceAgg">;
 };
