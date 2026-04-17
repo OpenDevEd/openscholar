@@ -22,13 +22,15 @@ async function seedAndAuth() {
   const t = convexTest(schema);
   setupAggregates(t);
   const ids = await seedFullJobGraph(t);
-  // Queries gate on feature flags with minimumTier >= 20 (reportBuilder,
-  // insights, reviewQueue). Enable each with zero tier for the pin-test so
-  // routing reaches the real handler.
+  // Queries gate on the extraction.enabled master switch plus the tier
+  // flags (insights, reviewQueue, reportBuilder, templates). Enable each
+  // with zero tier for the pin-test so routing reaches the real handler.
   const FLAG_KEYS = [
+    "extraction.enabled",
     "extraction.insights",
     "extraction.reviewQueue",
     "extraction.reportBuilder",
+    "extraction.templates",
   ] as const;
   await t.run(async (ctx) => {
     for (const key of FLAG_KEYS) {
@@ -59,25 +61,12 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
   });
 
   test("getJobResultsPaginated reaches handler", async () => {
-    // Note: a latent return-validator bug — extractionResultWithReviewValidator
-    // does not declare `jobId`, but applyReviewMetadata spreads the full result
-    // doc (including jobId). convex-test rejects the extra field; production
-    // has been shipping it unnoticed. Scope of SN-3 is routing/plumbing only,
-    // so we accept either ok OR that validator error — both prove the handler
-    // ran. A separate bug-fix commit should either add jobId to the validator
-    // or strip it in applyReviewMetadata.
     const { auth, ids } = await seedAndAuth();
-    try {
-      const res = await auth.query(
-        api.extraction.queries.getJobResultsPaginated,
-        { jobId: ids.jobId, paginationOpts: { numItems: 10, cursor: null } }
-      );
-      expect(res.status).toBe("ok");
-    } catch (e) {
-      expect(String((e as Error).message)).toMatch(
-        /Return value validation failed/
-      );
-    }
+    const res = await auth.query(
+      api.extraction.queries.getJobResultsPaginated,
+      { jobId: ids.jobId, paginationOpts: { numItems: 10, cursor: null } }
+    );
+    expect(res.status).toBe("ok");
   });
 
   test("getJobInsights returns ok with totalPapers=1", async () => {

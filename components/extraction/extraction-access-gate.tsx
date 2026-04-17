@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CommandCenterContainer } from "@/components/command-center";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { ExtractionPlanGate } from "./extraction-plan-gate";
 
 type ExtractionAccessGateProps = {
@@ -12,12 +13,12 @@ type ExtractionAccessGateProps = {
 };
 
 export function ExtractionAccessGate({ children }: ExtractionAccessGateProps) {
-  const subscriptionState = useSubscriptionState();
-  const hasProAccess =
-    subscriptionState.resolvedPlan === "pro" ||
-    subscriptionState.resolvedPlan === "enterprise";
+  const { isSettling } = useSubscriptionState();
+  const extractionEnabled = useFeatureFlag("extraction.enabled");
+  const canStartExtraction = useFeatureFlag("extraction.start");
+  const hasExtractionAccess = extractionEnabled && canStartExtraction;
 
-  if (subscriptionState.isSettling) {
+  if (isSettling) {
     return (
       <PageWrapper>
         <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
@@ -31,7 +32,7 @@ export function ExtractionAccessGate({ children }: ExtractionAccessGateProps) {
     );
   }
 
-  if (!hasProAccess) {
+  if (!hasExtractionAccess) {
     return (
       <PageWrapper>
         <div className="container mx-auto p-4 sm:p-6 max-w-6xl">

@@ -13,6 +13,7 @@ import { v } from "convex/values";
 import type { Doc } from "../../_generated/dataModel";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedJob } from "../access";
+import { requireFeature } from "../../featureFlags/guard";
 import { MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
 import {
   extractionJobValidator,
@@ -48,6 +49,7 @@ export const getJobResults = query({
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { job } = access;
+    await requireFeature(ctx, "extraction.enabled");
 
     const questions = await ctx.db
       .query("extractionQuestions")
@@ -112,6 +114,7 @@ export const getJobResultsPaginated = query({
         pageStatus: null,
       };
     }
+    await requireFeature(ctx, "extraction.enabled");
 
     // Paginate asc (oldest at top) so UI updates land at the top of the list.
     const result = await ctx.db

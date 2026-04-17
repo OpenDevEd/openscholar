@@ -11,7 +11,7 @@ import { query, internalQuery } from "../../_generated/server";
 import { v } from "convex/values";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedPaper } from "../access";
-import { getFlag } from "../../featureFlags/guard";
+import { getFlag, requireFeature } from "../../featureFlags/guard";
 import { MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
 import {
   extractionPaperValidator,
@@ -30,6 +30,7 @@ export const results = query({
     const access = await resolveOwnedPaper(ctx, args.paperId);
     if (access.status !== "ok") return access;
     const { paper } = access;
+    await requireFeature(ctx, "extraction.enabled");
 
     const rows = await ctx.db
       .query("extractionResults")

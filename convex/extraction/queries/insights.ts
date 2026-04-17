@@ -116,6 +116,7 @@ export const getJobInsights = query({
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { user, job } = access;
+    await requireFeature(ctx, "extraction.enabled");
     await requireFeature(ctx, "extraction.insights", user._id);
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(
@@ -370,6 +371,7 @@ export const getQuestionInsights = query({
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { user } = access;
+    await requireFeature(ctx, "extraction.enabled");
     await requireFeature(ctx, "extraction.insights", user._id);
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(
@@ -492,6 +494,7 @@ export const getQuestionDisagreements = query({
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { user } = access;
+    await requireFeature(ctx, "extraction.enabled");
     await requireFeature(ctx, "extraction.insights", user._id);
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(

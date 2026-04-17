@@ -419,6 +419,7 @@ export const extractionResultReviewValidator = v.object({
 export const extractionResultWithReviewValidator = v.object({
   _id: v.id("extractionResults"),
   _creationTime: v.number(),
+  jobId: v.id("extractionJobs"),
   paperId: v.id("extractionPapers"),
   questionKey: v.string(),
   answer: answerValidator,

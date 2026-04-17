@@ -14,6 +14,7 @@ import { mutation, internalMutation } from "../../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { requireAuth } from "../../lib/auth";
+import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
 import { assertJobOwnership } from "../access";
 import {
@@ -59,7 +60,9 @@ export const setResultReviewState = mutation({
     }),
   ),
   handler: async (ctx, args) => {
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
+    await requireFeature(ctx, "extraction.reviewQueue", user._id);
     const result = await ctx.db.get("extractionResults", args.resultId);
     if (!result) throw createError("NOT_FOUND", "Result not found");
 

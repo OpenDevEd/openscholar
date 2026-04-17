@@ -88,6 +88,7 @@ export const getReviewQueue = query({
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { user } = access;
+    await requireFeature(ctx, "extraction.enabled");
     await requireFeature(ctx, "extraction.reviewQueue", user._id);
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(

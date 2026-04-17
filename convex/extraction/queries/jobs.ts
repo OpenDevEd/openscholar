@@ -14,6 +14,7 @@ import type { Doc } from "../../_generated/dataModel";
 import { getCurrentUser } from "../../lib/auth";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedJob } from "../access";
+import { requireFeature } from "../../featureFlags/guard";
 import { MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
 import {
   extractionJobValidator,
@@ -39,6 +40,7 @@ export const getMyJobs = query({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) return [];
+    await requireFeature(ctx, "extraction.enabled");
 
     let jobs: Doc<"extractionJobs">[];
     if (args.status) {
@@ -77,6 +79,7 @@ export const getJobDetails = query({
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { job } = access;
+    await requireFeature(ctx, "extraction.enabled");
 
     const questions = await ctx.db
       .query("extractionQuestions")
@@ -132,6 +135,7 @@ export const subscribeToJobProgress = query({
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { job } = access;
+    await requireFeature(ctx, "extraction.enabled");
 
     return ok({
       job,

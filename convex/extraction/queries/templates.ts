@@ -7,6 +7,7 @@
 import { query } from "../../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "../../lib/auth";
+import { requireFeature } from "../../featureFlags/guard";
 import { MAX_EXTRACTION_JOBS_PER_USER } from "../../lib/queryBounds";
 import { workflowTemplateValidator } from "../validators";
 
@@ -16,6 +17,8 @@ export const getWorkflowTemplates = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) return [];
+    await requireFeature(ctx, "extraction.enabled");
+    await requireFeature(ctx, "extraction.templates", user._id);
 
     return await ctx.db
       .query("extractionWorkflowTemplates")

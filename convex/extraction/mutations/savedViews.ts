@@ -7,6 +7,7 @@
 import { mutation } from "../../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../../lib/auth";
+import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
 import { assertJobOwnership } from "../access";
 
@@ -25,6 +26,7 @@ export const saveExtractionSavedView = mutation({
   },
   returns: v.object({ viewId: v.id("extractionSavedViews") }),
   handler: async (ctx, args) => {
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
     await assertJobOwnership(ctx, user._id, args.jobId);
 
@@ -67,6 +69,7 @@ export const deleteExtractionSavedView = mutation({
   args: { viewId: v.id("extractionSavedViews") },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const view = await ctx.db.get("extractionSavedViews", args.viewId);

@@ -23,6 +23,7 @@ export const getReportSnapshots = query({
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { user } = access;
+    await requireFeature(ctx, "extraction.enabled");
     await requireFeature(ctx, "extraction.reportBuilder", user._id);
 
     const reports = await ctx.db
@@ -45,6 +46,7 @@ export const getRunDiff = query({
   handler: async (ctx, args) => {
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
+    await requireFeature(ctx, "extraction.enabled");
 
     if (args.diffId) {
       const diff = await ctx.db.get("extractionRunDiffs", args.diffId);

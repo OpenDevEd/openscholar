@@ -145,7 +145,9 @@ export const deleteWorkflowTemplate = mutation({
   args: { templateId: v.id("extractionWorkflowTemplates") },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
+    await requireFeature(ctx, "extraction.templates", user._id);
 
     const template = await ctx.db.get(
       "extractionWorkflowTemplates",

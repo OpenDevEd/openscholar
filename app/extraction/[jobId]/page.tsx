@@ -67,7 +67,6 @@ import {
   type Question,
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
-import { resolveEffectivePlan } from "@/lib/billing/entitlements";
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -139,9 +138,6 @@ export default function JobDetailPage() {
   });
   const jobDetails = jobDetailsQuery.data;
   const canReadJob = jobDetails?.status === "ok";
-  const subscriptionQuery = useProtectedQuery(api.subscriptions.queries.getMy, {});
-  const subscription = subscriptionQuery.data;
-  const subscriptionSettlement = subscriptionQuery.settlement;
   const jobProgressQuery = useProtectedQuery(
     api.extraction.queries.subscribeToJobProgress,
     canReadJob ? { jobId } : "skip",
@@ -410,12 +406,6 @@ export default function JobDetailPage() {
     job.status === "pending" ||
     job.status === "downloading_pdfs" ||
     job.status === "extracting";
-  const resolvedPlan =
-    subscriptionSettlement === "ready"
-      ? resolveEffectivePlan(subscription ?? null)
-      : null;
-  const hasProFeatures =
-    resolvedPlan === "pro" || resolvedPlan === "enterprise";
   return (
     <div className="flex w-full flex-1 flex-col overflow-x-clip">
       <TwoColumnLayout
@@ -948,7 +938,7 @@ export default function JobDetailPage() {
                 questions={questions}
                 onApplySavedView={handleApplySavedView}
                 canUseTemplates={templatesEnabled}
-                canUseRunDiff={hasProFeatures}
+                canUseRunDiff={reportBuilderEnabled}
               />
             </motion.div>
           ) : (

@@ -300,7 +300,8 @@ export const getPlans = action({
       plan: planValidator,
     }),
   ),
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
+    await requireFeatureInAction(ctx, "subscriptions.enabled");
     const defaultPriceIds = Object.values(getPlanPriceIds()).filter((id) =>
       isAllowedPriceId(id),
     );
@@ -347,6 +348,7 @@ export const createPortalSession = action({
     url: v.string(),
   }),
   handler: async (ctx): Promise<{ url: string }> => {
+    await requireFeatureInAction(ctx, "subscriptions.enabled");
     await requireActionAuth(ctx);
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
@@ -447,6 +449,7 @@ export const getSubscriptionDetails = action({
     };
     errorCode?: SubscriptionDetailsErrorCode;
   }> => {
+    await requireFeatureInAction(ctx, "subscriptions.enabled");
     await requireActionAuth(ctx);
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 

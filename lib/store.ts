@@ -171,6 +171,8 @@ export const useRatingsStore = create<RatingsState>()(
     }),
     {
       name: 'paper-ratings-store',
+      version: 1,
+      migrate: (persistedState) => persistedState,
     }
   )
 )
@@ -645,7 +647,9 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: 'ui-store',
-      partialize: (state) => ({ 
+      version: 1,
+      migrate: (persistedState) => persistedState,
+      partialize: (state) => ({
         viewMode: state.viewMode,
         historyViewMode: state.historyViewMode,
         historySortBy: state.historySortBy,
@@ -1052,6 +1056,8 @@ export const useResultsTranslationSettingsStore = create<ResultsTranslationSetti
     }),
     {
       name: "results-translation-settings-store",
+      version: 1,
+      migrate: (persistedState) => persistedState,
       partialize: (state) => ({
         autoTranslateResults: state.autoTranslateResults,
         targetLanguageOverride: state.targetLanguageOverride,
@@ -1254,6 +1260,8 @@ export const useTransientScreeningStore = create<{
     }),
     {
       name: 'transient-screening-store',
+      version: 1,
+      migrate: (persistedState) => persistedState,
       partialize: (state) => ({ testIndexPerQuestion: state.testIndexPerQuestion }),
     }
   )
