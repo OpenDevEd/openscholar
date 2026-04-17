@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import { readAggregateCounters } from "./aggregates";
 
 async function seedJob(
   t: ReturnType<typeof convexTest>,
@@ -267,13 +268,14 @@ describe("saveExtractionResultsAndComplete terminal-state guard", () => {
         .withIndex("by_paper", (q) => q.eq("paperId", paperId))
         .collect();
       expect(results).toHaveLength(0);
-
-      const stats = await ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect();
-      expect(stats).toHaveLength(0);
     });
+
+    // No aggregate rows either: the terminal-state guard short-circuits
+    // before recordResult runs.
+    const counters = await t.run(async (ctx) =>
+      readAggregateCounters(ctx, jobId, "q1"),
+    );
+    expect(counters.totalPapers).toBe(0);
   });
 
   it("persists results normally when job is in an active state", async () => {

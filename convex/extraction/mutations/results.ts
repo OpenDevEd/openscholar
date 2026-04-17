@@ -5,10 +5,9 @@
  * setResultReviewState is the public review-workflow entrypoint. The two
  * internal mutations here (updateJobStatus + saveExtractionResultsAndComplete)
  * own the result persistence + job-state transitions triggered by the
- * extraction pipeline.
- *
- * saveExtractionResultsAndComplete still writes the legacy
- * extractionJobStats table; Task 11 will add aggregate dual-write here.
+ * extraction pipeline. saveExtractionResultsAndComplete mirrors every
+ * inserted result into three @convex-dev/aggregate instances (status,
+ * answered, confidence) via recordResult.
  */
 
 import { mutation, internalMutation } from "../../_generated/server";
@@ -254,9 +253,9 @@ export const saveExtractionResultsAndComplete = internalMutation({
         processedAt: Date.now(),
       });
 
-      // Dual-write (T11.2): mirror into @convex-dev/aggregate alongside the
-      // legacy extractionJobStats upsert below. T11.3 flips readers to the
-      // aggregate; T11.4 drops the legacy store.
+      // Mirror into @convex-dev/aggregate. Readers (getJobInsights,
+      // createExtractionReportSnapshot) resolve their counter state
+      // from the aggregate exclusively.
       await recordResult(ctx, {
         _id: resultId,
         jobId: paper.jobId,
@@ -282,78 +281,6 @@ export const saveExtractionResultsAndComplete = internalMutation({
           jobId: String(paper.jobId),
         },
       });
-    }
-
-    // Upsert extractionJobStats for each question result. Task 11 will add
-    // a dual-write to @convex-dev/aggregate alongside this block.
-    for (const result of args.results.filter(Boolean)) {
-      const existingStat = await ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job_question", (q) =>
-          q.eq("jobId", paper.jobId).eq("questionKey", result.questionKey),
-        )
-        .unique();
-
-      const isAnswered = result.answer !== null && result.answer !== undefined;
-      const conf =
-        typeof result.confidence === "number" ? result.confidence : undefined;
-      const confBucket =
-        conf === undefined
-          ? "unknown"
-          : conf >= 0.8
-            ? "high"
-            : conf >= 0.5
-              ? "medium"
-              : "low";
-
-      const delta = {
-        totalPapers: 1,
-        totalAnswered: isAnswered ? 1 : 0,
-        groundedCount: result.citationStatus === "grounded" ? 1 : 0,
-        bestEffortCount: result.citationStatus === "best_effort" ? 1 : 0,
-        insufficientEvidenceCount:
-          result.citationStatus === "insufficient_evidence" ? 1 : 0,
-        extractionErrorCount:
-          result.citationStatus === "extraction_error" ? 1 : 0,
-        confidenceSum: conf ?? 0,
-        confidenceCount: conf !== undefined ? 1 : 0,
-        highConfidenceCount: confBucket === "high" ? 1 : 0,
-        mediumConfidenceCount: confBucket === "medium" ? 1 : 0,
-        lowConfidenceCount: confBucket === "low" ? 1 : 0,
-        unknownConfidenceCount: confBucket === "unknown" ? 1 : 0,
-      };
-
-      if (existingStat) {
-        await ctx.db.patch("extractionJobStats", existingStat._id, {
-          totalPapers: existingStat.totalPapers + delta.totalPapers,
-          totalAnswered: existingStat.totalAnswered + delta.totalAnswered,
-          groundedCount: existingStat.groundedCount + delta.groundedCount,
-          bestEffortCount: existingStat.bestEffortCount + delta.bestEffortCount,
-          insufficientEvidenceCount:
-            existingStat.insufficientEvidenceCount +
-            delta.insufficientEvidenceCount,
-          extractionErrorCount:
-            existingStat.extractionErrorCount + delta.extractionErrorCount,
-          confidenceSum: existingStat.confidenceSum + delta.confidenceSum,
-          confidenceCount: existingStat.confidenceCount + delta.confidenceCount,
-          highConfidenceCount:
-            existingStat.highConfidenceCount + delta.highConfidenceCount,
-          mediumConfidenceCount:
-            existingStat.mediumConfidenceCount + delta.mediumConfidenceCount,
-          lowConfidenceCount:
-            existingStat.lowConfidenceCount + delta.lowConfidenceCount,
-          unknownConfidenceCount:
-            existingStat.unknownConfidenceCount + delta.unknownConfidenceCount,
-          updatedAt: Date.now(),
-        });
-      } else {
-        await ctx.db.insert("extractionJobStats", {
-          jobId: paper.jobId,
-          questionKey: result.questionKey,
-          ...delta,
-          updatedAt: Date.now(),
-        });
-      }
     }
 
     // Terminal transition + counter bump happen atomically inside this mutation.

@@ -4,18 +4,17 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
-import { readAggregateCounters, resultStatusAgg } from "./aggregates";
+import { readAggregateCounters, recordResult, resultStatusAgg } from "./aggregates";
 
 type Ctx = TestConvex<typeof schema>;
 
 /**
- * Safety net SN-5 (P3 plan §6 Parity Contract): the 8 invariants the
- * `@convex-dev/aggregate` migration (Task 11) must preserve. This suite
- * is written against **today's** legacy `extractionJobStats` store; it
- * passes now, keeps passing during the dual-write phase, and keeps
- * passing after the cutover. The only change needed at cutover time is
- * the body of `readCounters` / `readQuestionKeys` below — re-point them
- * at the aggregate and every invariant still holds if parity is real.
+ * Safety net SN-5: the 8 invariants the `@convex-dev/aggregate` store
+ * must uphold, post-Task-11. This suite started life as a parity check
+ * against the legacy `extractionJobStats` table; T11.3 flipped
+ * readCounters / readQuestionKeys to read from the aggregate, and
+ * T11.4 dropped the legacy store entirely. The invariants now read
+ * exclusively against the aggregate component.
  *
  * The 8 invariants (labelled in the tests):
  *   1. Row/key count equals distinct questionKey count per job.
@@ -25,11 +24,11 @@ type Ctx = TestConvex<typeof schema>;
  *   4. Additivity: N papers completed produce N×delta counters.
  *   5. Terminal-state guard: completed/failed/cancelled job counters stay zero.
  *   6. After deleteExtractionInternal, all (jobId, *) counters are zero.
- *   7. Backfill idempotency: two runs produce the same state.
+ *   7. recordResult idempotency: replaying the same result is a no-op.
  *   8. OCC-freedom: parallel completions produce the same sum as
- *      sequential completions. (Pre-migration: convex-test serialises
- *      so this holds trivially; the true OCC-freedom surfaces post-cutover
- *      when the aggregate absorbs the concurrent writes.)
+ *      sequential. (convex-test serialises mutations; the real
+ *      OCC-freedom proof is the B-tree sharding per namespace — see
+ *      the `makeRootLazy` docstring in @convex-dev/aggregate.)
  */
 
 type Counters = {
@@ -172,17 +171,20 @@ async function seedJob(
       createdAt: now,
       updatedAt: now,
     });
-    if (options.questionKeys) {
-      for (let i = 0; i < options.questionKeys.length; i++) {
-        await ctx.db.insert("extractionQuestions", {
-          jobId,
-          key: options.questionKeys[i],
-          question: `Q ${options.questionKeys[i]}`,
-          type: "string" as const,
-          order: i,
-          createdAt: now,
-        });
-      }
+    // Default to a single "k" question when none are specified. T11.4's
+    // aggregate cascade reads extractionQuestions to know which (jobId,
+    // questionKey) namespaces to clear — every test that writes results
+    // must have a matching question row to cascade-clear properly.
+    const questionKeys = options.questionKeys ?? ["k"];
+    for (let i = 0; i < questionKeys.length; i++) {
+      await ctx.db.insert("extractionQuestions", {
+        jobId,
+        key: questionKeys[i],
+        question: `Q ${questionKeys[i]}`,
+        type: "string" as const,
+        order: i,
+        createdAt: now,
+      });
     }
     const paperIds: Id<"extractionPapers">[] = [];
     for (let i = 0; i < options.paperCount; i++) {
@@ -219,7 +221,7 @@ async function complete(
   );
 }
 
-describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
+describe("SN-5 aggregate invariants (post-T11 cutover)", () => {
   test("1. row/key count equals distinct questionKey count per job", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
@@ -340,18 +342,20 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
     expect(await readQuestionKeys(t, jobId)).toEqual([]);
   });
 
-  test("7. backfill idempotency: two runs produce the same state", async () => {
+  test("7. recordResult idempotency: replaying the same result is a no-op", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { jobId, paperIds } = await seedJob(t, {
       paperCount: 2,
       questionKeys: ["k"],
     });
-    // Seed extractionResults directly so backfillJobStats has something to scan.
+    // Seed extractionResults directly and replay through recordResult.
+    // recordResult uses insertIfDoesNotExist, so a replay (OCC retry, a
+    // backfill second pass, etc) must not double-count.
     await t.run(async (ctx) => {
       const now = Date.now();
       for (const paperId of paperIds) {
-        await ctx.db.insert("extractionResults", {
+        const id = await ctx.db.insert("extractionResults", {
           jobId,
           paperId,
           questionKey: "k",
@@ -361,13 +365,21 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
           citationStatus: "grounded" as const,
           processedAt: now,
         });
+        const doc = (await ctx.db.get(id))!;
+        await recordResult(ctx, doc);
       }
     });
-    // No existing stats row → first run rebuilds.
-    await t.mutation(internal.extraction.mutations.internal.admin.backfillJobStats, { jobId });
     const afterFirst = await readCounters(t, jobId, "k");
-    // Second run short-circuits (stats row exists); state must stay identical.
-    await t.mutation(internal.extraction.mutations.internal.admin.backfillJobStats, { jobId });
+    // Replay every result through recordResult again — must stay identical.
+    await t.run(async (ctx) => {
+      const results = await ctx.db
+        .query("extractionResults")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      for (const row of results) {
+        await recordResult(ctx, row);
+      }
+    });
     const afterSecond = await readCounters(t, jobId, "k");
     expect(afterSecond).toEqual(afterFirst);
     expect(afterFirst.totalPapers).toBe(2);

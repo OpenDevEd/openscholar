@@ -3,20 +3,17 @@ import { describe, it, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import { readAggregateCounters } from "./aggregates";
 
 /**
- * Seed a minimal extraction job with papers and results for stats testing.
- * Returns IDs needed for verification.
+ * Seed a minimal extraction job with papers for aggregate testing. Each
+ * caller also inserts the question rows it needs via extractionQuestions
+ * — the cascade-delete path keys the aggregate clear off questions.
  */
 async function seedJobWithPapers(
   t: ReturnType<typeof convexTest>,
   paperCount: number,
-  questionsPerPaper: {
-    questionKey: string;
-    answer: string | boolean | number | string[] | null;
-    confidence?: number;
-    citationStatus: "grounded" | "best_effort" | "insufficient_evidence" | "extraction_error";
-  }[]
+  questionKeys: string[] = [],
 ) {
   const ids = await t.run(async (ctx) => {
     const now = Date.now();
@@ -52,7 +49,17 @@ async function seedJobWithPapers(
       updatedAt: now,
     });
 
-    // Create papers
+    for (let i = 0; i < questionKeys.length; i++) {
+      await ctx.db.insert("extractionQuestions", {
+        jobId,
+        key: questionKeys[i],
+        question: `Q ${questionKeys[i]}`,
+        type: "string" as const,
+        order: i,
+        createdAt: now,
+      });
+    }
+
     const paperIds = [];
     for (let i = 0; i < paperCount; i++) {
       const paperId = await ctx.db.insert("extractionPapers", {
@@ -67,20 +74,19 @@ async function seedJobWithPapers(
     return { userId, jobId, paperIds };
   });
 
-  return { ...ids, questionsPerPaper };
+  return ids;
 }
 
-describe("extractionJobStats upsert", () => {
-  it("creates stats rows after completing 3 papers with 2 questions each", async () => {
+describe("aggregate counters via saveExtractionResultsAndComplete", () => {
+  it("records counters for 3 papers × 2 questions", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 3, [
-      { questionKey: "sample_size", answer: "100", confidence: 0.92, citationStatus: "grounded" },
-      { questionKey: "method", answer: "RCT", confidence: 0.55, citationStatus: "best_effort" },
+      "sample_size",
+      "method",
     ]);
 
-    // Complete each paper via saveExtractionResultsAndComplete
     for (const paperId of paperIds) {
       await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
         paperId,
@@ -107,36 +113,28 @@ describe("extractionJobStats upsert", () => {
       });
     }
 
-    // Verify stats rows
-    await t.run(async (ctx) => {
-      const stats = await ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect();
+    const sample = await t.run(async (ctx) =>
+      readAggregateCounters(ctx, jobId, "sample_size"),
+    );
+    expect(sample.totalPapers).toBe(3);
+    expect(sample.totalAnswered).toBe(3);
+    expect(sample.groundedCount).toBe(3);
+    expect(sample.bestEffortCount).toBe(0);
 
-      expect(stats).toHaveLength(2); // one per question
-
-      const sampleStat = stats.find((s) => s.questionKey === "sample_size");
-      expect(sampleStat).toBeDefined();
-      expect(sampleStat!.totalPapers).toBe(3);
-      expect(sampleStat!.totalAnswered).toBe(3);
-      expect(sampleStat!.groundedCount).toBe(3);
-      expect(sampleStat!.bestEffortCount).toBe(0);
-
-      const methodStat = stats.find((s) => s.questionKey === "method");
-      expect(methodStat).toBeDefined();
-      expect(methodStat!.totalPapers).toBe(3);
-      expect(methodStat!.totalAnswered).toBe(3);
-      expect(methodStat!.groundedCount).toBe(0);
-      expect(methodStat!.bestEffortCount).toBe(3);
-    });
+    const method = await t.run(async (ctx) =>
+      readAggregateCounters(ctx, jobId, "method"),
+    );
+    expect(method.totalPapers).toBe(3);
+    expect(method.totalAnswered).toBe(3);
+    expect(method.groundedCount).toBe(0);
+    expect(method.bestEffortCount).toBe(3);
   });
 
   it("classifies confidence buckets correctly (high/medium/low/unknown)", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
 
-    const { jobId, paperIds } = await seedJobWithPapers(t, 4, []);
+    const { jobId, paperIds } = await seedJobWithPapers(t, 4, ["q1"]);
 
     // Paper 0: high confidence (0.92 >= 0.8)
     await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
@@ -197,43 +195,29 @@ describe("extractionJobStats upsert", () => {
       pdfContentUsed: false,
     });
 
-    // Verify confidence buckets
-    await t.run(async (ctx) => {
-      const stat = await ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job_question", (q) =>
-          q.eq("jobId", jobId).eq("questionKey", "q1"))
-        .unique();
-
-      expect(stat).toBeDefined();
-      expect(stat!.totalPapers).toBe(4);
-      expect(stat!.highConfidenceCount).toBe(1);   // 0.92
-      expect(stat!.mediumConfidenceCount).toBe(1);  // 0.55
-      expect(stat!.lowConfidenceCount).toBe(1);     // 0.21
-      expect(stat!.unknownConfidenceCount).toBe(1); // undefined
-
-      // Confidence sum should only include defined confidences
-      expect(stat!.confidenceCount).toBe(3);
-      expect(stat!.confidenceSum).toBeCloseTo(0.92 + 0.55 + 0.21);
-
-      // Citation status counts
-      expect(stat!.groundedCount).toBe(1);
-      expect(stat!.bestEffortCount).toBe(1);
-      expect(stat!.insufficientEvidenceCount).toBe(1);
-      expect(stat!.extractionErrorCount).toBe(1);
-
-      // Answered: 3 non-null answers (paper 3 has null answer)
-      expect(stat!.totalAnswered).toBe(3);
-    });
+    const c = await t.run(async (ctx) =>
+      readAggregateCounters(ctx, jobId, "q1"),
+    );
+    expect(c.totalPapers).toBe(4);
+    expect(c.highConfidenceCount).toBe(1);
+    expect(c.mediumConfidenceCount).toBe(1);
+    expect(c.lowConfidenceCount).toBe(1);
+    expect(c.unknownConfidenceCount).toBe(1);
+    expect(c.confidenceCount).toBe(3);
+    expect(c.confidenceSum).toBeCloseTo(0.92 + 0.55 + 0.21);
+    expect(c.groundedCount).toBe(1);
+    expect(c.bestEffortCount).toBe(1);
+    expect(c.insufficientEvidenceCount).toBe(1);
+    expect(c.extractionErrorCount).toBe(1);
+    expect(c.totalAnswered).toBe(3);
   });
 
-  it("accumulates stats across multiple paper completions (upsert, not overwrite)", async () => {
+  it("accumulates counters across multiple paper completions", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
 
-    const { jobId, paperIds } = await seedJobWithPapers(t, 2, []);
+    const { jobId, paperIds } = await seedJobWithPapers(t, 2, ["q1"]);
 
-    // Complete paper 0
     await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[0],
       results: [{
@@ -248,20 +232,12 @@ describe("extractionJobStats upsert", () => {
       pdfContentUsed: false,
     });
 
-    // Verify after first paper
-    await t.run(async (ctx) => {
-      const stat = await ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job_question", (q) =>
-          q.eq("jobId", jobId).eq("questionKey", "q1"))
-        .unique();
+    const afterFirst = await t.run(async (ctx) =>
+      readAggregateCounters(ctx, jobId, "q1"),
+    );
+    expect(afterFirst.totalPapers).toBe(1);
+    expect(afterFirst.groundedCount).toBe(1);
 
-      expect(stat).toBeDefined();
-      expect(stat!.totalPapers).toBe(1);
-      expect(stat!.groundedCount).toBe(1);
-    });
-
-    // Complete paper 1 -- stats should accumulate, not reset
     await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[1],
       results: [{
@@ -276,35 +252,27 @@ describe("extractionJobStats upsert", () => {
       pdfContentUsed: false,
     });
 
-    // Verify accumulation
-    await t.run(async (ctx) => {
-      const stat = await ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job_question", (q) =>
-          q.eq("jobId", jobId).eq("questionKey", "q1"))
-        .unique();
-
-      expect(stat).toBeDefined();
-      expect(stat!.totalPapers).toBe(2); // accumulated
-      expect(stat!.totalAnswered).toBe(2);
-      expect(stat!.groundedCount).toBe(1); // only first paper
-      expect(stat!.bestEffortCount).toBe(1); // only second paper
-      expect(stat!.confidenceSum).toBeCloseTo(1.5); // 0.9 + 0.6
-      expect(stat!.confidenceCount).toBe(2);
-      expect(stat!.highConfidenceCount).toBe(1); // 0.9 >= 0.8
-      expect(stat!.mediumConfidenceCount).toBe(1); // 0.6 >= 0.5 < 0.8
-    });
+    const afterSecond = await t.run(async (ctx) =>
+      readAggregateCounters(ctx, jobId, "q1"),
+    );
+    expect(afterSecond.totalPapers).toBe(2);
+    expect(afterSecond.totalAnswered).toBe(2);
+    expect(afterSecond.groundedCount).toBe(1);
+    expect(afterSecond.bestEffortCount).toBe(1);
+    expect(afterSecond.confidenceSum).toBeCloseTo(1.5);
+    expect(afterSecond.confidenceCount).toBe(2);
+    expect(afterSecond.highConfidenceCount).toBe(1);
+    expect(afterSecond.mediumConfidenceCount).toBe(1);
   });
 });
 
-describe("extractionJobStats cascade delete", () => {
-  it("deletes stats rows when job is cascade-deleted", async () => {
+describe("aggregate counters cascade delete", () => {
+  it("clears the aggregate when the job is cascade-deleted", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
 
-    const { jobId, paperIds } = await seedJobWithPapers(t, 1, []);
+    const { jobId, paperIds } = await seedJobWithPapers(t, 1, ["q1"]);
 
-    // Complete a paper to create stats
     await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[0],
       results: [{
@@ -319,33 +287,25 @@ describe("extractionJobStats cascade delete", () => {
       pdfContentUsed: false,
     });
 
-    // Verify stats exist
-    await t.run(async (ctx) => {
-      const stats = await ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect();
-      expect(stats).toHaveLength(1);
-    });
+    const before = await t.run(async (ctx) =>
+      readAggregateCounters(ctx, jobId, "q1"),
+    );
+    expect(before.totalPapers).toBe(1);
 
-    // Cascade delete
     vi.useFakeTimers();
     await t.mutation(
       internal.extraction.mutations.internal.admin.deleteExtractionInternal,
-      { jobId }
+      { jobId },
     );
     await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
     vi.useRealTimers();
 
-    // Verify stats are gone
-    await t.run(async (ctx) => {
-      const stats = await ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect();
-      expect(stats).toHaveLength(0);
+    const after = await t.run(async (ctx) =>
+      readAggregateCounters(ctx, jobId, "q1"),
+    );
+    expect(after.totalPapers).toBe(0);
 
-      // Job itself should be gone
+    await t.run(async (ctx) => {
       const job = await ctx.db.get("extractionJobs", jobId);
       expect(job).toBeNull();
     });

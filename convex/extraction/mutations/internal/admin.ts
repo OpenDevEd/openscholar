@@ -8,42 +8,9 @@
 import { internalMutation } from "../../../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
-import type { Doc } from "../../../_generated/dataModel";
 import { batchDeleteByIndex } from "../../../lib/cascade";
 import { MAX_PAPERS_PER_JOB } from "../../../lib/queryBounds";
-import { clearJobAggregates, recordResult } from "../../aggregates";
-
-type BackfillAccumulator = {
-  totalPapers: number;
-  totalAnswered: number;
-  groundedCount: number;
-  bestEffortCount: number;
-  insufficientEvidenceCount: number;
-  extractionErrorCount: number;
-  confidenceSum: number;
-  confidenceCount: number;
-  highConfidenceCount: number;
-  mediumConfidenceCount: number;
-  lowConfidenceCount: number;
-  unknownConfidenceCount: number;
-};
-
-function emptyBackfillAccumulator(): BackfillAccumulator {
-  return {
-    totalPapers: 0,
-    totalAnswered: 0,
-    groundedCount: 0,
-    bestEffortCount: 0,
-    insufficientEvidenceCount: 0,
-    extractionErrorCount: 0,
-    confidenceSum: 0,
-    confidenceCount: 0,
-    highConfidenceCount: 0,
-    mediumConfidenceCount: 0,
-    lowConfidenceCount: 0,
-    unknownConfidenceCount: 0,
-  };
-}
+import { clearJobAggregates } from "../../aggregates";
 
 export const deleteExtractionInternal = internalMutation({
   args: { jobId: v.id("extractionJobs") },
@@ -111,30 +78,19 @@ export const deleteExtractionInternal = internalMutation({
       return reschedule();
     }
 
-    // Clear the @convex-dev/aggregate state for every question on this job
-    // before dropping extractionQuestions / extractionJobStats below. The
-    // aggregate namespaces are keyed by (jobId, questionKey), so we need
-    // the keys in hand before the drain. Union questions + legacy stats
-    // rows so cascade works on both new jobs (questions always present)
-    // and legacy jobs (no questions row, just a backfilled stats row).
-    // T11.4 drops the stats fallback once the legacy store is removed.
-    const [jobQuestions, jobStats] = await Promise.all([
-      ctx.db
-        .query("extractionQuestions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-      ctx.db
-        .query("extractionJobStats")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    ]);
-    const questionKeys = Array.from(
-      new Set<string>([
-        ...jobQuestions.map((q) => q.key),
-        ...jobStats.map((s) => s.questionKey),
-      ]),
+    // Clear the @convex-dev/aggregate state for every question on this
+    // job before dropping extractionQuestions below. The aggregate
+    // namespaces are keyed by (jobId, questionKey), so we need the keys
+    // in hand before the drain.
+    const jobQuestions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
+      .collect();
+    await clearJobAggregates(
+      ctx,
+      jobId,
+      jobQuestions.map((q) => q.key),
     );
-    await clearJobAggregates(ctx, jobId, questionKeys);
 
     // Steps 5-8b: straightforward by-job drains. Ordered so that
     // extractionRunDiffs rows referencing this job as baseline are
@@ -143,7 +99,6 @@ export const deleteExtractionInternal = internalMutation({
       ["extractionQuestions", "by_job", "jobId"],
       ["extractionSavedViews", "by_job", "jobId"],
       ["extractionReportSnapshots", "by_job", "jobId"],
-      ["extractionJobStats", "by_job", "jobId"],
       ["extractionRunDiffs", "by_job", "jobId"],
       ["extractionJobSources", "by_job_and_position", "jobId"],
       ["extractionRunDiffs", "by_baseline", "baselineJobId"],
@@ -195,105 +150,6 @@ export const cleanupFailedPaperStorage = internalMutation({
     }
 
     return { cleaned };
-  },
-});
-
-/**
- * Backfill pre-aggregated stats for a legacy completed job.
- * Idempotent: skips if stats already exist.
- *
- * Replaces the previous O(Q × P × R) nested scan with a single indexed
- * by_job read over extractionResults bucketed in JS.
- *
- * T11.3: also replays each result through recordResult so the
- * @convex-dev/aggregate instances match the legacy stats for jobs that
- * completed before the migration. T11.4 drops this mutation once the
- * legacy store is gone and only the aggregate remains.
- */
-export const backfillJobStats = internalMutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const existingStats = await ctx.db
-      .query("extractionJobStats")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .first();
-    if (existingStats) return null;
-
-    const [questions, papers, allResults] = await Promise.all([
-      ctx.db
-        .query("extractionQuestions")
-        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-        .order("asc")
-        .collect(),
-      ctx.db
-        .query("extractionPapers")
-        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-        .take(MAX_PAPERS_PER_JOB),
-      ctx.db
-        .query("extractionResults")
-        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-        .take(MAX_PAPERS_PER_JOB * 20),
-    ]);
-
-    // Mirror every legacy result into the aggregate. recordResult is
-    // idempotent via insertIfDoesNotExist, so running this twice after a
-    // partial aggregate fill is still safe.
-    for (const row of allResults) {
-      await recordResult(ctx, row);
-    }
-
-    const processablePapers = papers.filter((p) => p.processable !== false);
-
-    const resultsByKey = new Map<string, Doc<"extractionResults">>();
-    for (const row of allResults) {
-      resultsByKey.set(`${row.questionKey}:${row.paperId}`, row);
-    }
-
-    const now = Date.now();
-    for (const question of questions) {
-      const acc = emptyBackfillAccumulator();
-      for (const paper of processablePapers) {
-        acc.totalPapers += 1;
-        const result = resultsByKey.get(`${question.key}:${paper._id}`);
-        if (!result) {
-          acc.unknownConfidenceCount += 1;
-          continue;
-        }
-
-        const isAnswered =
-          result.answer !== null && result.answer !== undefined;
-        if (isAnswered) acc.totalAnswered += 1;
-        if (result.citationStatus === "grounded") acc.groundedCount += 1;
-        else if (result.citationStatus === "best_effort")
-          acc.bestEffortCount += 1;
-        else if (result.citationStatus === "insufficient_evidence")
-          acc.insufficientEvidenceCount += 1;
-        else if (result.citationStatus === "extraction_error")
-          acc.extractionErrorCount += 1;
-
-        const conf =
-          typeof result.confidence === "number" ? result.confidence : undefined;
-        if (conf === undefined) {
-          acc.unknownConfidenceCount += 1;
-        } else {
-          acc.confidenceSum += conf;
-          acc.confidenceCount += 1;
-          if (conf >= 0.8) acc.highConfidenceCount += 1;
-          else if (conf >= 0.5) acc.mediumConfidenceCount += 1;
-          else acc.lowConfidenceCount += 1;
-        }
-      }
-
-      await ctx.db.insert("extractionJobStats", {
-        jobId: args.jobId,
-        questionKey: question.key,
-        ...acc,
-        updatedAt: now,
-      });
-    }
-
-    return null;
   },
 });
 
