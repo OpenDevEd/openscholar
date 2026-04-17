@@ -391,20 +391,15 @@ export default function JobDetailPage() {
   const jobProgressSafe = jobProgress?.status === "ok" ? jobProgress : null;
   const resolvedProgress = jobProgressSafe
     ? {
-        total: job.totalPapers,
-        processed: jobProgressSafe.statusCounts.completed,
-        failed:
-          jobProgressSafe.statusCounts.failed +
-          jobProgressSafe.statusCounts.download_failed +
-          jobProgressSafe.statusCounts.indexing_failed,
+        total: jobProgressSafe.totalPapers,
+        processed: jobProgressSafe.processedPapers,
+        failed: jobProgressSafe.failedPapers,
         percentage:
-          job.totalPapers > 0
+          jobProgressSafe.totalPapers > 0
             ? Math.round(
-                ((jobProgressSafe.statusCounts.completed +
-                  jobProgressSafe.statusCounts.failed +
-                  jobProgressSafe.statusCounts.download_failed +
-                  jobProgressSafe.statusCounts.indexing_failed) /
-                  job.totalPapers) *
+                ((jobProgressSafe.processedPapers +
+                  jobProgressSafe.failedPapers) /
+                  jobProgressSafe.totalPapers) *
                   100,
               )
             : 0,

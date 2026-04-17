@@ -1584,62 +1584,32 @@ export const getPapersDebug = internalQuery({
   },
 });
 
-// Subscribe to job progress (real-time updates)
+// Subscribe to job progress (real-time updates).
+// Reads only the `extractionJobs` row and returns a constant-size payload.
+// Every terminal paper transition already bumps processedPapers/failedPapers
+// on the job doc (see markPaperTerminalTx in mutations.ts), so Convex
+// reactivity notices exactly one doc-change per transition instead of
+// replaying the full paper set to every subscribed tab.
 export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
   returns: statusResultValidator({
     job: extractionJobValidator,
-    statusCounts: v.object({
-      pending: v.number(),
-      downloading: v.number(),
-      download_failed: v.number(),
-      indexing: v.number(),
-      indexing_failed: v.number(),
-      extracting: v.number(),
-      completed: v.number(),
-      failed: v.number(),
-    }),
-    recentPapers: v.array(extractionPaperValidator),
+    totalPapers: v.number(),
+    processedPapers: v.number(),
+    failedPapers: v.number(),
   }),
   handler: async (ctx, args) => {
-
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
     }
     const { job } = access;
 
-    // Get status counts
-    const allPapers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
-
-    const statusCounts = {
-      pending: 0,
-      downloading: 0,
-      download_failed: 0,
-      indexing: 0,
-      indexing_failed: 0,
-      extracting: 0,
-      completed: 0,
-      failed: 0,
-    };
-
-    for (const paper of allPapers) {
-      if (paper.processable === false) continue;
-      const status = paper.status as keyof typeof statusCounts;
-      if (status in statusCounts) {
-        statusCounts[status]++;
-      }
-    }
-
     return ok({
       job,
-      statusCounts,
-      recentPapers: allPapers
-        .filter((paper) => paper.processable !== false)
-        .slice(-20), // Last 20 updated
+      totalPapers: job.totalPapers,
+      processedPapers: job.processedPapers,
+      failedPapers: job.failedPapers,
     });
   },
 });
