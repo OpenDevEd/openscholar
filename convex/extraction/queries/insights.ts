@@ -29,6 +29,7 @@ import {
   toCitationStatus,
   toReviewState,
 } from "./_shared";
+import { readAggregateSummariesByQuestion } from "../aggregates";
 
 export const getJobInsights = query({
   args: { jobId: v.id("extractionJobs") },
@@ -117,16 +118,23 @@ export const getJobInsights = query({
     const { user, job } = access;
     await requireFeature(ctx, "extraction.insights", user._id);
 
-    const jobStats = await ctx.db
-      .query("extractionJobStats")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
-    const hasPreAggregatedStats = jobStats.length > 0;
-
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(
       ctx,
       args.jobId,
     );
+
+    // T11.3: summary counters live in @convex-dev/aggregate now. Shape
+    // matches the legacy `extractionJobStats` rows so the consumer code
+    // below stays untouched. `hasPreAggregatedStats` is true when any
+    // question has been written to the aggregate (dual-write fills it
+    // alongside legacy rows); zero rows means no results yet so the
+    // fan-out branch below still works for fresh jobs.
+    const jobStats = await readAggregateSummariesByQuestion(
+      ctx,
+      args.jobId,
+      questions.map((q: Doc<"extractionQuestions">) => q.key),
+    );
+    const hasPreAggregatedStats = jobStats.some((s) => s.totalPapers > 0);
     const processablePapers = papers.filter(
       (paper: Doc<"extractionPapers">) => paper.processable !== false,
     );

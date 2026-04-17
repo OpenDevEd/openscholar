@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import { readAggregateCounters, resultStatusAgg } from "./aggregates";
 
 type Ctx = TestConvex<typeof schema>;
 
@@ -62,50 +63,62 @@ const ZERO: Counters = {
 };
 
 /**
- * Swap the body of this function at the T11.3 cutover to read from the
- * three DirectAggregate instances (count/sum per bucket) instead of the
- * legacy table. Callers must stay unchanged.
+ * T11.3 cutover: readCounters now reads from the three DirectAggregate
+ * instances. All 8 SN-5 invariants keep passing because dual-write in
+ * saveExtractionResultsAndComplete (T11.2) means both stores hold the
+ * same numbers during the migration window. T11.4 drops the legacy
+ * store entirely; this reader needs no further change then.
  */
 async function readCounters(
   t: Ctx,
   jobId: Id<"extractionJobs">,
   questionKey: string
 ): Promise<Counters> {
-  return await t.run(async (ctx) => {
-    const row = await ctx.db
-      .query("extractionJobStats")
-      .withIndex("by_job_question", (q) =>
-        q.eq("jobId", jobId).eq("questionKey", questionKey)
-      )
-      .unique();
-    if (!row) return { ...ZERO };
-    return {
-      totalPapers: row.totalPapers,
-      totalAnswered: row.totalAnswered,
-      groundedCount: row.groundedCount,
-      bestEffortCount: row.bestEffortCount,
-      insufficientEvidenceCount: row.insufficientEvidenceCount,
-      extractionErrorCount: row.extractionErrorCount,
-      confidenceSum: row.confidenceSum,
-      confidenceCount: row.confidenceCount,
-      highConfidenceCount: row.highConfidenceCount,
-      mediumConfidenceCount: row.mediumConfidenceCount,
-      lowConfidenceCount: row.lowConfidenceCount,
-      unknownConfidenceCount: row.unknownConfidenceCount,
-    };
-  });
+  return await t.run(async (ctx) =>
+    readAggregateCounters(ctx, jobId, questionKey),
+  );
 }
 
+/**
+ * Distinct question keys that currently carry counters on this job.
+ * Post-cutover we walk the status-aggregate's namespace index and
+ * filter to non-empty namespaces — `clear()` reinitializes a btree
+ * but keeps its namespace row, so a cleared namespace still surfaces
+ * via paginateNamespaces with count=0. That matches invariant 1+6:
+ * "row count = distinct keys with results" and "zero counters after
+ * delete" together imply an empty list post-delete.
+ */
 async function readQuestionKeys(
   t: Ctx,
   jobId: Id<"extractionJobs">
 ): Promise<string[]> {
   return await t.run(async (ctx) => {
-    const rows = await ctx.db
-      .query("extractionJobStats")
-      .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .collect();
-    return rows.map((r) => r.questionKey);
+    const candidates: string[] = [];
+    let cursor: string | undefined;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { page, cursor: next, isDone } = await resultStatusAgg.paginateNamespaces(
+        ctx,
+        cursor,
+        100,
+      );
+      for (const ns of page) {
+        if (Array.isArray(ns) && ns[0] === jobId) {
+          candidates.push(ns[1] as string);
+        }
+      }
+      if (isDone) break;
+      cursor = next;
+    }
+    // Filter to namespaces that still hold results. Batched so we pay
+    // one component round trip regardless of candidate count.
+    if (candidates.length === 0) return [];
+    type NS = [Id<"extractionJobs">, string];
+    const counts = await resultStatusAgg.countBatch(
+      ctx,
+      candidates.map((qk) => ({ namespace: [jobId, qk] as NS })),
+    );
+    return candidates.filter((_, i) => counts[i] > 0);
   });
 }
 

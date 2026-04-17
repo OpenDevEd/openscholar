@@ -11,7 +11,7 @@ import { internal } from "../../../_generated/api";
 import type { Doc } from "../../../_generated/dataModel";
 import { batchDeleteByIndex } from "../../../lib/cascade";
 import { MAX_PAPERS_PER_JOB } from "../../../lib/queryBounds";
-import { clearJobAggregates } from "../../aggregates";
+import { clearJobAggregates, recordResult } from "../../aggregates";
 
 type BackfillAccumulator = {
   totalPapers: number;
@@ -204,6 +204,11 @@ export const cleanupFailedPaperStorage = internalMutation({
  *
  * Replaces the previous O(Q × P × R) nested scan with a single indexed
  * by_job read over extractionResults bucketed in JS.
+ *
+ * T11.3: also replays each result through recordResult so the
+ * @convex-dev/aggregate instances match the legacy stats for jobs that
+ * completed before the migration. T11.4 drops this mutation once the
+ * legacy store is gone and only the aggregate remains.
  */
 export const backfillJobStats = internalMutation({
   args: { jobId: v.id("extractionJobs") },
@@ -230,6 +235,13 @@ export const backfillJobStats = internalMutation({
         .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
         .take(MAX_PAPERS_PER_JOB * 20),
     ]);
+
+    // Mirror every legacy result into the aggregate. recordResult is
+    // idempotent via insertIfDoesNotExist, so running this twice after a
+    // partial aggregate fill is still safe.
+    for (const row of allResults) {
+      await recordResult(ctx, row);
+    }
 
     const processablePapers = papers.filter((p) => p.processable !== false);
 

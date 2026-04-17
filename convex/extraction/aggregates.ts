@@ -180,6 +180,22 @@ export type Counters = {
 };
 
 /**
+ * Slim per-question summary used by `getJobInsights` and
+ * `createExtractionReportSnapshot`. Shape matches the fields those
+ * callers read off the legacy `extractionJobStats` row, so swapping
+ * reads requires no downstream change.
+ */
+export type AggregateQuestionSummary = {
+  questionKey: string;
+  totalPapers: number;
+  totalAnswered: number;
+  groundedCount: number;
+  bestEffortCount: number;
+  confidenceSum: number;
+  confidenceCount: number;
+};
+
+/**
  * Read the 12 counters for one (jobId, questionKey) out of the 3
  * aggregates. Shape matches the legacy `extractionJobStats` row so
  * callers can swap reads with no downstream change.
@@ -240,4 +256,60 @@ export async function readAggregateCounters(
     lowConfidenceCount: lowConfidence,
     unknownConfidenceCount: totalPapers - confidenceCount,
   };
+}
+
+/**
+ * Read the 4-field summary (totalPapers / totalAnswered / groundedCount /
+ * bestEffortCount) for every question on a job in one batched call per
+ * aggregate. Used by getJobInsights and createExtractionReportSnapshot,
+ * which consume the same shape the legacy `extractionJobStats` table
+ * returned.
+ *
+ * Questions with zero activity still surface as rows (all zeros), so the
+ * returned length always equals `questionKeys.length` — this matches the
+ * legacy `jobStats.length === questions.length` gating condition callers
+ * use to decide whether to use the pre-aggregated path.
+ */
+export async function readAggregateSummariesByQuestion(
+  ctx: RunQueryCtx,
+  jobId: Id<"extractionJobs">,
+  questionKeys: string[],
+): Promise<AggregateQuestionSummary[]> {
+  if (questionKeys.length === 0) return [];
+
+  const statusQueries = questionKeys.flatMap((qk) => {
+    const namespace: Namespace = [jobId, qk];
+    return [
+      { namespace, bounds: { eq: "grounded" as const } },
+      { namespace, bounds: { eq: "best_effort" as const } },
+    ];
+  });
+  const answeredQueries = questionKeys.flatMap((qk) => {
+    const namespace: Namespace = [jobId, qk];
+    return [
+      { namespace },
+      { namespace, bounds: { eq: "answered" as const } },
+    ];
+  });
+  const confidenceCountQueries = questionKeys.map((qk) => ({
+    namespace: [jobId, qk] as Namespace,
+  }));
+
+  const [statusCounts, answeredCounts, confidenceCounts, confidenceSums] =
+    await Promise.all([
+      resultStatusAgg.countBatch(ctx, statusQueries),
+      resultAnsweredAgg.countBatch(ctx, answeredQueries),
+      resultConfidenceAgg.countBatch(ctx, confidenceCountQueries),
+      resultConfidenceAgg.sumBatch(ctx, confidenceCountQueries),
+    ]);
+
+  return questionKeys.map((questionKey, i) => ({
+    questionKey,
+    totalPapers: answeredCounts[i * 2],
+    totalAnswered: answeredCounts[i * 2 + 1],
+    groundedCount: statusCounts[i * 2],
+    bestEffortCount: statusCounts[i * 2 + 1],
+    confidenceSum: confidenceSums[i],
+    confidenceCount: confidenceCounts[i],
+  }));
 }

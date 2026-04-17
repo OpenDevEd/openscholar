@@ -7,6 +7,7 @@ import {
   forgetResult,
   clearJobAggregates,
   readAggregateCounters,
+  readAggregateSummariesByQuestion,
 } from "./aggregates";
 import { setupAggregates } from "./aggregates.test-support";
 
@@ -366,5 +367,92 @@ describe("aggregates.clearJobAggregates", () => {
     expect(c1.groundedCount).toBe(0);
     expect(c2.totalPapers).toBe(0);
     expect(c2.bestEffortCount).toBe(0);
+  });
+});
+
+describe("aggregates.readAggregateSummariesByQuestion", () => {
+  test("empty question list returns empty array", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { jobId } = await seedMinimalJob(t);
+    const summaries = await t.run(async (ctx) =>
+      readAggregateSummariesByQuestion(ctx, jobId, []),
+    );
+    expect(summaries).toEqual([]);
+  });
+
+  test("questions with zero activity still surface as zero rows", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { jobId } = await seedMinimalJob(t);
+    const summaries = await t.run(async (ctx) =>
+      readAggregateSummariesByQuestion(ctx, jobId, ["q1", "q2"]),
+    );
+    expect(summaries).toEqual([
+      {
+        questionKey: "q1",
+        totalPapers: 0,
+        totalAnswered: 0,
+        groundedCount: 0,
+        bestEffortCount: 0,
+        confidenceSum: 0,
+        confidenceCount: 0,
+      },
+      {
+        questionKey: "q2",
+        totalPapers: 0,
+        totalAnswered: 0,
+        groundedCount: 0,
+        bestEffortCount: 0,
+        confidenceSum: 0,
+        confidenceCount: 0,
+      },
+    ]);
+  });
+
+  test("per-question summary matches the aggregate state", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { jobId, paperIds } = await seedMinimalJob(t);
+    await insertResult(t, jobId, paperIds[0], {
+      questionKey: "q1",
+      answer: "a",
+      confidence: 0.9,
+      citationStatus: "grounded",
+    });
+    await insertResult(t, jobId, paperIds[1], {
+      questionKey: "q1",
+      answer: null,
+      citationStatus: "insufficient_evidence",
+    });
+    await insertResult(t, jobId, paperIds[2], {
+      questionKey: "q2",
+      answer: "b",
+      confidence: 0.6,
+      citationStatus: "best_effort",
+    });
+    const summaries = await t.run(async (ctx) =>
+      readAggregateSummariesByQuestion(ctx, jobId, ["q1", "q2"]),
+    );
+    expect(summaries).toEqual([
+      {
+        questionKey: "q1",
+        totalPapers: 2,
+        totalAnswered: 1,
+        groundedCount: 1,
+        bestEffortCount: 0,
+        confidenceSum: 0.9,
+        confidenceCount: 1,
+      },
+      {
+        questionKey: "q2",
+        totalPapers: 1,
+        totalAnswered: 1,
+        groundedCount: 0,
+        bestEffortCount: 1,
+        confidenceSum: 0.6,
+        confidenceCount: 1,
+      },
+    ]);
   });
 });

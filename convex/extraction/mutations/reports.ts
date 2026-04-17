@@ -11,7 +11,6 @@
 
 import { mutation, type MutationCtx } from "../../_generated/server";
 import { v } from "convex/values";
-import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
@@ -23,6 +22,7 @@ import {
   buildReportSnapshot,
   buildResultMaps,
 } from "../../../lib/extraction/report-builder";
+import { readAggregateSummariesByQuestion } from "../aggregates";
 
 async function loadJobDataForReporting(
   ctx: MutationCtx,
@@ -79,11 +79,14 @@ export const createExtractionReportSnapshot = mutation({
     const { questions, papers, resultsByPaper, reviewsByResult } =
       await loadJobDataForReporting(ctx, args.jobId);
 
-    const jobStats = await ctx.db
-      .query("extractionJobStats")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
-    const hasStats = jobStats.length > 0;
+    // T11.3: per-question summaries come from @convex-dev/aggregate now.
+    // Shape matches the legacy `extractionJobStats` 4-field row so
+    // buildReportSnapshot stays untouched.
+    const jobStats = await readAggregateSummariesByQuestion(
+      ctx,
+      args.jobId,
+      questions.map((q) => q.key),
+    );
 
     const { sections, metrics } = buildReportSnapshot({
       questions,
@@ -110,15 +113,6 @@ export const createExtractionReportSnapshot = mutation({
       generatedAt: Date.now(),
       createdAt: Date.now(),
     });
-
-    // Lazy backfill for legacy completed jobs that never wrote the stats table.
-    if (!hasStats && job.status === "completed") {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.extraction.mutations.internal.admin.backfillJobStats,
-        { jobId: args.jobId },
-      );
-    }
 
     return { reportId };
   },
