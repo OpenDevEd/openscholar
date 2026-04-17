@@ -1,7 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import { useState, useMemo } from "react";
+import { useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
@@ -25,6 +25,8 @@ import { useBucketStore } from "@/lib/store/bucket";
 import { QuestionBuilder } from "./question-builder";
 import { SourceSelector } from "./source-selector";
 import { SourceSummary } from "./source-summary";
+import { BucketIndicator } from "./bucket/bucket-indicator";
+import { BucketDrawer } from "./bucket/bucket-drawer";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +59,8 @@ export function JobCreator() {
   );
   const [direction, setDirection] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bucketOpen, setBucketOpen] = useState(false);
+  const bucketIndicatorRef = useRef<HTMLButtonElement>(null);
 
   const validStep = Math.min(3, Math.max(1, stepRaw)) as 1 | 2 | 3;
 
@@ -195,10 +199,18 @@ export function JobCreator() {
           {tc("cancel")}
         </Button>
 
-        <div className="text-sm text-muted-foreground">
-          {t("stepOfThree", { step: validStep, total: 3 })}
+        <div className="flex items-center gap-3">
+          <BucketIndicator
+            ref={bucketIndicatorRef}
+            onClick={() => setBucketOpen(true)}
+          />
+          <div className="text-sm text-muted-foreground">
+            {t("stepOfThree", { step: validStep, total: 3 })}
+          </div>
         </div>
       </motion.div>
+
+      <BucketDrawer open={bucketOpen} onOpenChange={setBucketOpen} />
 
       {/* Step Progress - Horizontal Timeline */}
       <motion.div
