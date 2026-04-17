@@ -64,45 +64,6 @@ const paginatedPaperResultValidator = paginationResultValidator(paginatedPaperWi
 
 export { getMyJobs, getJobDetails, subscribeToJobProgress } from "./queries/jobs";
 
-// Get paper extraction results (public API)
-export const getPaperResults = query({
-  args: { paperId: v.id("extractionPapers") },
-  returns: statusResultValidator({
-    paper: extractionPaperValidator,
-    results: v.array(extractionResultWithReviewValidator),
-  }),
-  handler: async (ctx, args) => {
-
-    const access = await resolveOwnedPaper(ctx, args.paperId);
-    if (access.status !== "ok") {
-      return access;
-    }
-    const { paper } = access;
-
-    // Cardinality: ~5-20 results per paper
-    const results = await ctx.db
-      .query("extractionResults")
-      .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .collect();
-
-    const resultsWithReviews = await attachReviewMetadata(ctx, args.paperId, results);
-
-    return ok({ paper, results: resultsWithReviews });
-  },
-});
-
-export const getPaperResultsInternal = internalQuery({
-  args: { paperId: v.id("extractionPapers") },
-  returns: v.array(extractionResultValidator),
-  handler: async (ctx, args) => {
-    // Cardinality: ~5-20 results per paper
-    return await ctx.db
-      .query("extractionResults")
-      .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .collect();
-  },
-});
-
 export const getPdfExtractionEnabledInternal = internalQuery({
   args: {},
   returns: v.boolean(),
@@ -112,41 +73,6 @@ export const getPdfExtractionEnabledInternal = internalQuery({
   },
 });
 
-export const getPaperPdfUrl = query({
-  args: { paperId: v.id("extractionPapers") },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      pdfUrl: v.union(v.string(), v.null()),
-    }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
-  handler: async (ctx, args) => {
-
-    const access = await resolveOwnedPaper(ctx, args.paperId);
-    if (access.status !== "ok") {
-      return access;
-    }
-
-    const pdfFlag = await getFlag(ctx, "extraction.pdf");
-    const pdfEnabled = pdfFlag?.enabled ?? true;
-    if (!pdfEnabled) {
-      return ok({ pdfUrl: null });
-    }
-
-    const { paper } = access;
-
-    let pdfUrl: string | null = null;
-    if (paper.storageId) {
-      pdfUrl = await ctx.storage.getUrl(paper.storageId);
-    } else {
-      pdfUrl = paper.pdfUrl || null;
-    }
-
-    return ok({ pdfUrl });
-  },
-});
 
 // Get all results for a job (public API) - for export
 export const getJobResults = query({
@@ -1131,30 +1057,6 @@ export const getJobAndFlagsInternal = internalQuery({
   },
 });
 
-export const getPapersByOpenAlexIds = internalQuery({
-  args: {
-    jobId: v.id("extractionJobs"),
-    openalexIds: v.array(v.string()),
-  },
-  returns: v.array(extractionPaperValidator),
-  handler: async (ctx, args) => {
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
-
-    // Filter by OpenAlex IDs
-    return papers.filter((p) => args.openalexIds.includes(p.openalexId));
-  },
-});
-
-export const getPaperInternal = internalQuery({
-  args: { paperId: v.id("extractionPapers") },
-  returns: v.union(v.null(), extractionPaperValidator),
-  handler: async (ctx, args) => {
-    return await ctx.db.get("extractionPapers", args.paperId);
-  },
-});
 
 export const getEvidenceUnitsInternal = internalQuery({
   args: { paperId: v.id("extractionPapers") },

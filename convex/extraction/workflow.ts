@@ -166,7 +166,7 @@ export const runExtractionWorkflow = workflow.define({
 
     // Step 4: Get created paper IDs
     const paperIds = await step.runQuery(
-      internal.extraction.queries.getPapersByOpenAlexIds,
+      internal.extraction.queries.papers.byOpenAlexIds,
       {
         jobId,
         openalexIds: dedupedPapers.map((p) => p.openalexId),

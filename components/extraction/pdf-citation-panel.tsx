@@ -68,7 +68,7 @@ export function PdfCitationPanel({
 }: PdfCitationPanelProps) {
   const t = useTranslations();
   const pdfUrlQuery = useProtectedQuery(
-    api.extraction.queries.getPaperPdfUrl,
+    api.extraction.queries.papers.pdfUrl,
     payload?.paperId ? { paperId: payload.paperId } : "skip",
   );
   const pdfUrlResult = pdfUrlQuery.data;

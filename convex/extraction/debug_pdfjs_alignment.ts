@@ -56,7 +56,7 @@ export const debugPdfAlignment = internalAction({
   }> => {
     assertNonProd();
     const paper = await ctx.runQuery(
-      internal.extraction.queries.getPaperInternal,
+      internal.extraction.queries.papers.byId,
       { paperId: args.paperId }
     );
     if (!paper?.storageId) return { error: "Paper missing storageId" };

@@ -60,19 +60,23 @@ const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
   ["evidence", "replacePaperEvidenceUnits"],
 ];
 
-const INTERNAL_QUERIES: ReadonlyArray<string> = [
-  "getPaperResultsInternal",
-  "getPdfExtractionEnabledInternal",
-  "getJobInternal",
-  "debugRecentPapers",
-  "getQuestionsInternal",
-  "getJobSourcesInternal",
-  "getJobAndFlagsInternal",
-  "getPapersByOpenAlexIds",
-  "getPaperInternal",
-  "getEvidenceUnitsInternal",
-  "getJobProgressInternal",
-  "getPapersDebug",
+// [scope, name] — post T5.3 the papers internals moved under
+// `queries.papers.*` with Task 12 renames. Everything else still lives
+// at the root of `internal.extraction.queries` until later Task 5
+// commits peel it off.
+const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
+  ["", "getPdfExtractionEnabledInternal"],
+  ["", "getJobInternal"],
+  ["", "debugRecentPapers"],
+  ["", "getQuestionsInternal"],
+  ["", "getJobSourcesInternal"],
+  ["", "getJobAndFlagsInternal"],
+  ["", "getEvidenceUnitsInternal"],
+  ["", "getJobProgressInternal"],
+  ["", "getPapersDebug"],
+  ["papers", "resultsInternal"],
+  ["papers", "byOpenAlexIds"],
+  ["papers", "byId"],
 ];
 
 // Internal actions — workflow/workpool/crons call these via internal.*.
@@ -99,10 +103,13 @@ describe("SN-2 internal.extraction.mutations routing", () => {
 
 describe("SN-2 internal.extraction.queries routing", () => {
   test.each(INTERNAL_QUERIES)(
-    "internal.extraction.queries.%s is registered and invokable",
-    async (name) => {
+    "internal.extraction.queries.%s.%s is registered and invokable",
+    async (scope, name) => {
       const t = convexTest(schema);
-      const ref = (internal.extraction.queries as unknown as Record<string, never>)[name];
+      const parent = scope === ""
+        ? internal.extraction.queries
+        : resolve(internal.extraction.queries, scope.split("."));
+      const ref = (parent as Record<string, never>)[name];
       await assertRoutes(() => (t.query as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
   );

@@ -42,23 +42,36 @@ const PUBLIC_MUTATIONS: ReadonlyArray<string> = [
   "deleteExtraction",
 ];
 
-const PUBLIC_QUERIES: ReadonlyArray<string> = [
-  "getMyJobs",
-  "getJobDetails",
-  "getPaperResults",
-  "getPaperPdfUrl",
-  "getJobResults",
-  "getJobResultsPaginated",
-  "getJobInsights",
-  "getQuestionInsights",
-  "getQuestionDisagreements",
-  "getReviewQueue",
-  "getSavedViews",
-  "getWorkflowTemplates",
-  "getReportSnapshots",
-  "getRunDiff",
-  "subscribeToJobProgress",
+// [scope, name] — scope is the dotted path under api.extraction.queries, or
+// "" when the function is at the top level (e.g. still on the queries.ts
+// barrel pending its split). Post T5.3 the papers queries moved under
+// `queries.papers.<fn>`.
+const PUBLIC_QUERIES: ReadonlyArray<readonly [string, string]> = [
+  ["", "getMyJobs"],
+  ["", "getJobDetails"],
+  ["papers", "results"],
+  ["papers", "pdfUrl"],
+  ["", "getJobResults"],
+  ["", "getJobResultsPaginated"],
+  ["", "getJobInsights"],
+  ["", "getQuestionInsights"],
+  ["", "getQuestionDisagreements"],
+  ["", "getReviewQueue"],
+  ["", "getSavedViews"],
+  ["", "getWorkflowTemplates"],
+  ["", "getReportSnapshots"],
+  ["", "getRunDiff"],
+  ["", "subscribeToJobProgress"],
 ];
+
+function resolve(root: unknown, scope: string): unknown {
+  if (scope === "") return root;
+  let ref: unknown = root;
+  for (const seg of scope.split(".")) {
+    ref = (ref as Record<string, unknown>)[seg];
+  }
+  return ref;
+}
 
 describe("SN-1 public mutation routing", () => {
   test.each(PUBLIC_MUTATIONS)(
@@ -73,10 +86,11 @@ describe("SN-1 public mutation routing", () => {
 
 describe("SN-1 public query routing", () => {
   test.each(PUBLIC_QUERIES)(
-    "api.extraction.queries.%s is registered and invokable",
-    async (name) => {
+    "api.extraction.queries.%s.%s is registered and invokable",
+    async (scope, name) => {
       const t = convexTest(schema);
-      const ref = (api.extraction.queries as unknown as Record<string, never>)[name];
+      const parent = resolve(api.extraction.queries, scope);
+      const ref = (parent as Record<string, never>)[name];
       await assertRoutes(() => (t.query as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
   );

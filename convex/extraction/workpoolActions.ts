@@ -600,7 +600,7 @@ export const downloadAndIndexPdfAction = internalAction({
       // Idempotency gate: a workpool retry that lands here after the paper
       // was already indexed (and billed) must not re-embed or re-charge.
       const existingPaper = await ctx.runQuery(
-        internal.extraction.queries.getPaperInternal,
+        internal.extraction.queries.papers.byId,
         { paperId: args.paperId },
       );
       if (existingPaper?.isIndexed || existingPaper?.indexingBilled) {
@@ -779,7 +779,7 @@ export const waitAndExtractAction = internalAction({
       // paper on its own. The credit-guard re-read of the job a bit below
       // is intentional (needs a fresh view to see a concurrent cancel).
       const [paper, jobWithFlags] = await Promise.all([
-        ctx.runQuery(internal.extraction.queries.getPaperInternal, {
+        ctx.runQuery(internal.extraction.queries.papers.byId, {
           paperId: args.paperId,
         }),
         ctx.runQuery(internal.extraction.queries.getJobAndFlagsInternal, {
