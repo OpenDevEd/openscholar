@@ -214,6 +214,119 @@ describe("useBucketStore", () => {
   });
 });
 
+describe("useBucketStore — updatePaperCount", () => {
+  // Mirrors the bucket-indicator's derived math so each test can assert
+  // the indicator stays consistent with the store mutation.
+  const computeReadyCount = () => {
+    const state = useBucketStore.getState();
+    return state.order.reduce((n, k) => {
+      const item = state.items[k];
+      return item?.status === "ready" ? n + (item.paperCount ?? 1) : n;
+    }, 0);
+  };
+
+  test("updates paperCount for a staged history item", () => {
+    useBucketStore
+      .getState()
+      .addMany(
+        [makeItem("history:h1", { paperCount: 500 })],
+        1000,
+      );
+    expect(computeReadyCount()).toBe(500);
+    useBucketStore.getState().updatePaperCount("history:h1", 200, 200);
+    expect(useBucketStore.getState().items["history:h1"].paperCount).toBe(
+      200,
+    );
+    expect(computeReadyCount()).toBe(200);
+  });
+
+  test("clamps nextCount down to cap when it exceeds cap", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("history:h1", { paperCount: 100 })], 1000);
+    useBucketStore.getState().updatePaperCount("history:h1", 250, 200);
+    expect(useBucketStore.getState().items["history:h1"].paperCount).toBe(
+      200,
+    );
+  });
+
+  test("clamps nextCount up to zero when it is negative", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("history:h1", { paperCount: 100 })], 1000);
+    useBucketStore.getState().updatePaperCount("history:h1", -5, 200);
+    expect(useBucketStore.getState().items["history:h1"].paperCount).toBe(0);
+  });
+
+  test("floors a fractional nextCount to an integer", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("history:h1", { paperCount: 100 })], 1000);
+    useBucketStore.getState().updatePaperCount("history:h1", 99.7, 200);
+    expect(useBucketStore.getState().items["history:h1"].paperCount).toBe(99);
+  });
+
+  test("is a no-op for an unknown bucketKey", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("history:h1", { paperCount: 100 })], 1000);
+    const before = useBucketStore.getState();
+    useBucketStore.getState().updatePaperCount("history:missing", 50, 200);
+    const after = useBucketStore.getState();
+    expect(after.items).toBe(before.items);
+    expect(after.order).toBe(before.order);
+  });
+
+  test("updates paperCount on an uploading item but keeps it out of readyCount", () => {
+    useBucketStore
+      .getState()
+      .addMany(
+        [
+          makeItem("history:h1", {
+            status: "uploading",
+            paperCount: 100,
+          }),
+        ],
+        1000,
+      );
+    expect(computeReadyCount()).toBe(0);
+    useBucketStore.getState().updatePaperCount("history:h1", 250, 200);
+    expect(useBucketStore.getState().items["history:h1"].paperCount).toBe(
+      200,
+    );
+    expect(computeReadyCount()).toBe(0);
+  });
+
+  test("readyCount updates when status flips from uploading to ready", () => {
+    useBucketStore
+      .getState()
+      .addMany(
+        [
+          makeItem("history:h1", {
+            status: "uploading",
+            paperCount: 100,
+          }),
+        ],
+        1000,
+      );
+    useBucketStore.getState().updatePaperCount("history:h1", 150, 200);
+    expect(computeReadyCount()).toBe(0);
+    useBucketStore
+      .getState()
+      .updateStatus("history:h1", { status: "ready" });
+    expect(computeReadyCount()).toBe(150);
+  });
+
+  test("no-op when the clamped value equals the existing paperCount", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("history:h1", { paperCount: 100 })], 1000);
+    const before = useBucketStore.getState().items;
+    useBucketStore.getState().updatePaperCount("history:h1", 100, 200);
+    expect(useBucketStore.getState().items).toBe(before);
+  });
+});
+
 describe("useBucketStore — dedupeKeys / dedupeKeyToSource", () => {
   test("addMany populates weak dedupe keys from doi/title+year", () => {
     useBucketStore

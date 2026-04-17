@@ -48,6 +48,21 @@ type BucketState = {
   removeMany: (bucketKeys: string[]) => void;
   clear: () => void;
   updateStatus: (bucketKey: string, patch: StatusPatch) => void;
+  /**
+   * Runtime override for a staged item's `paperCount`. Called by the
+   * `<CountChip>` every time the user commits a new value (stepper,
+   * preset, blur). `nextCount` is clamped to `[0, cap]` and floored to
+   * an integer; a no-op when the clamped value equals the current one
+   * or when `bucketKey` is not in the store. The bucket-indicator's
+   * `readyCount` selector re-derives from the new `paperCount`, so the
+   * invariant "ready weight = sum(paperCount of ready items)" is
+   * maintained without a separate stored field.
+   */
+  updatePaperCount: (
+    bucketKey: string,
+    nextCount: number,
+    cap: number,
+  ) => void;
 };
 
 /**
@@ -215,6 +230,23 @@ export const useBucketStore = create<BucketState>()(
                 ...patch,
                 status: guardedStatus,
               },
+            },
+          };
+        }),
+      updatePaperCount: (bucketKey, nextCount, cap) =>
+        set((state) => {
+          const existing = state.items[bucketKey];
+          if (!existing) return state;
+          const clamped = Math.max(
+            0,
+            Math.min(cap, Math.floor(nextCount)),
+          );
+          if (clamped === (existing.paperCount ?? 0)) return state;
+          return {
+            ...state,
+            items: {
+              ...state.items,
+              [bucketKey]: { ...existing, paperCount: clamped },
             },
           };
         }),
