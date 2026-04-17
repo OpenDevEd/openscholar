@@ -587,7 +587,7 @@ export const downloadAndIndexPdfAction = internalAction({
     try {
       // One round trip for job + pdf-flag instead of two.
       const { job, pdfEnabled } = await ctx.runQuery(
-        internal.extraction.queries.getJobAndFlagsInternal,
+        internal.extraction.queries.internal.getJobAndFlagsInternal,
         { jobId: args.jobId },
       );
       if (!job) {
@@ -701,7 +701,7 @@ export const downloadAndIndexPdfAction = internalAction({
         // isIndexed flip inside markPaperIndexed, gated on indexingBilled so
         // workpool retries are safe.
         const freshJobForCredits = await ctx.runQuery(
-          internal.extraction.queries.getJobInternal,
+          internal.extraction.queries.internal.getJobInternal,
           { jobId: args.jobId },
         );
         const shouldBill =
@@ -782,7 +782,7 @@ export const waitAndExtractAction = internalAction({
         ctx.runQuery(internal.extraction.queries.papers.byId, {
           paperId: args.paperId,
         }),
-        ctx.runQuery(internal.extraction.queries.getJobAndFlagsInternal, {
+        ctx.runQuery(internal.extraction.queries.internal.getJobAndFlagsInternal, {
           jobId: args.jobId,
         }),
       ]);
@@ -794,7 +794,7 @@ export const waitAndExtractAction = internalAction({
         return { success: false, error: "Job not found" };
       }
       const unitsRaw = await ctx.runQuery(
-        internal.extraction.queries.getEvidenceUnitsInternal,
+        internal.extraction.queries.internal.getEvidenceUnitsInternal,
         { paperId: args.paperId }
       );
 
@@ -814,7 +814,7 @@ export const waitAndExtractAction = internalAction({
       // Signalling success here would cause handleExtractionComplete to mark
       // the paper as completed and resurrect a terminated job.
       const freshJobForCredits = await ctx.runQuery(
-        internal.extraction.queries.getJobInternal,
+        internal.extraction.queries.internal.getJobInternal,
         { jobId: args.jobId }
       );
       if (freshJobForCredits?.status === "cancelled") {

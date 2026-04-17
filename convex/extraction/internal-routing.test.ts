@@ -65,15 +65,15 @@ const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
 // at the root of `internal.extraction.queries` until later Task 5
 // commits peel it off.
 const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
-  ["", "getPdfExtractionEnabledInternal"],
-  ["", "getJobInternal"],
-  ["", "debugRecentPapers"],
-  ["", "getQuestionsInternal"],
-  ["", "getJobSourcesInternal"],
-  ["", "getJobAndFlagsInternal"],
-  ["", "getEvidenceUnitsInternal"],
-  ["", "getJobProgressInternal"],
-  ["", "getPapersDebug"],
+  ["internal", "getPdfExtractionEnabledInternal"],
+  ["internal", "getJobInternal"],
+  ["internal", "debugRecentPapers"],
+  ["internal", "getQuestionsInternal"],
+  ["internal", "getJobSourcesInternal"],
+  ["internal", "getJobAndFlagsInternal"],
+  ["internal", "getEvidenceUnitsInternal"],
+  ["internal", "getJobProgressInternal"],
+  ["internal", "getPapersDebug"],
   ["papers", "resultsInternal"],
   ["papers", "byOpenAlexIds"],
   ["papers", "byId"],
@@ -106,9 +106,7 @@ describe("SN-2 internal.extraction.queries routing", () => {
     "internal.extraction.queries.%s.%s is registered and invokable",
     async (scope, name) => {
       const t = convexTest(schema);
-      const parent = scope === ""
-        ? internal.extraction.queries
-        : resolve(internal.extraction.queries, scope.split("."));
+      const parent = resolve(internal.extraction.queries, scope.split("."));
       const ref = (parent as Record<string, never>)[name];
       await assertRoutes(() => (t.query as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }

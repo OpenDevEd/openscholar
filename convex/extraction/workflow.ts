@@ -28,7 +28,7 @@ export const runExtractionWorkflow = workflow.define({
     console.log(`[Workflow] Starting extraction for job ${jobId}`);
 
     // Step 1: Get job details and questions
-    const job = await step.runQuery(internal.extraction.queries.getJobInternal, {
+    const job = await step.runQuery(internal.extraction.queries.internal.getJobInternal, {
       jobId,
     });
 
@@ -37,7 +37,7 @@ export const runExtractionWorkflow = workflow.define({
     }
 
     const questionsRaw = await step.runQuery(
-      internal.extraction.queries.getQuestionsInternal,
+      internal.extraction.queries.internal.getQuestionsInternal,
       { jobId }
     );
 
@@ -52,7 +52,7 @@ export const runExtractionWorkflow = workflow.define({
 
     // Step 2: Fetch papers from sources
     const pdfEnabledEarly = await step.runQuery(
-      internal.extraction.queries.getPdfExtractionEnabledInternal,
+      internal.extraction.queries.internal.getPdfExtractionEnabledInternal,
       {}
     );
     await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
@@ -66,7 +66,7 @@ export const runExtractionWorkflow = workflow.define({
     // Per-row sources now live in extractionJobSources. Reconstruct the
     // three buckets the workflow needs in one indexed read.
     const sources = await step.runQuery(
-      internal.extraction.queries.getJobSourcesInternal,
+      internal.extraction.queries.internal.getJobSourcesInternal,
       { jobId },
     );
 
@@ -178,7 +178,7 @@ export const runExtractionWorkflow = workflow.define({
     ).length;
 
     const pdfEnabled = await step.runQuery(
-      internal.extraction.queries.getPdfExtractionEnabledInternal,
+      internal.extraction.queries.internal.getPdfExtractionEnabledInternal,
       {}
     );
 
