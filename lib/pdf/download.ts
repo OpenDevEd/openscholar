@@ -7,11 +7,17 @@
  */
 
 import { buildZoteroHeaders } from "../zotero-utils";
+import {
+  safeFetchPdf,
+  UnsafeUrlError,
+  type SafeFetchPdfResult,
+} from "./url-allowlist";
 
 const PDF_DOWNLOAD_CONFIG = {
   FETCH_TIMEOUT_MS: 30000,
   MAX_RETRIES: 3,
   RETRY_DELAY_MS: 5000,
+  MAX_PDF_BYTES: 100 * 1024 * 1024,
 };
 
 export interface DownloadPdfOptions {
@@ -91,7 +97,16 @@ async function tryDownload(
   maxRetries: number,
   timeout: number
 ): Promise<DownloadPdfResult> {
-  const response = await fetchPdfWithRetry(url, maxRetries, timeout);
+  let fetched: SafeFetchPdfResult;
+  try {
+    fetched = await fetchPdfWithRetry(url, maxRetries, timeout);
+  } catch (e) {
+    if (e instanceof UnsafeUrlError) {
+      return { success: false, error: `Rejected URL: ${e.message}` };
+    }
+    throw e;
+  }
+  const { response, body } = fetched;
 
   // Check for Cloudflare bot protection
   const cfMitigated = response.headers.get("cf-mitigated");
@@ -110,11 +125,11 @@ async function tryDownload(
   }
 
   const contentType = response.headers.get("content-type") || "";
-  
+
   // If HTML, extract PDF URL from it
   if (contentType.includes("text/html") || contentType.includes("application/xhtml")) {
-    const html = await response.text();
-    
+    const html = await body.text();
+
     // Check for PMC PoW challenge page
     if (html.includes('<title>Preparing to download') || html.includes('POW_CHALLENGE')) {
       return {
@@ -122,9 +137,9 @@ async function tryDownload(
         error: "PMC proof-of-work challenge page - cannot bypass",
       };
     }
-    
+
     const pdfUrl = extractPdfUrlFromHtml(html, url);
-    
+
     if (!pdfUrl) {
       return {
         success: false,
@@ -132,18 +147,25 @@ async function tryDownload(
       };
     }
 
-    // Download the extracted PDF URL
-    const pdfResponse = await fetchPdfWithRetry(pdfUrl, maxRetries, timeout, url);
-    
-    if (!pdfResponse.ok) {
+    // Download the extracted PDF URL (also untrusted — runs through safeFetchPdf)
+    let inner: SafeFetchPdfResult;
+    try {
+      inner = await fetchPdfWithRetry(pdfUrl, maxRetries, timeout, url);
+    } catch (e) {
+      if (e instanceof UnsafeUrlError) {
+        return { success: false, error: `Rejected URL: ${e.message}` };
+      }
+      throw e;
+    }
+
+    if (!inner.response.ok) {
       return {
         success: false,
-        error: `HTTP ${pdfResponse.status}: ${pdfResponse.statusText}`,
+        error: `HTTP ${inner.response.status}: ${inner.response.statusText}`,
       };
     }
 
-    const pdfBlob = await pdfResponse.blob();
-    return { success: true, pdfBlob, source: 'html-extraction' };
+    return { success: true, pdfBlob: inner.body, source: 'html-extraction' };
   }
 
   // Direct PDF download
@@ -154,13 +176,11 @@ async function tryDownload(
     };
   }
 
-  const pdfBlob = await response.blob();
-  
-  if (pdfBlob.size === 0) {
+  if (body.size === 0) {
     return { success: false, error: "Empty PDF response" };
   }
 
-  return { success: true, pdfBlob };
+  return { success: true, pdfBlob: body };
 }
 
 /**
@@ -359,43 +379,47 @@ async function fetchAlternativeOaUrls(doi: string): Promise<string[]> {
 }
 
 /**
- * Fetch PDF with retry logic for transient errors
+ * Fetch PDF with retry logic for transient errors. Routes through
+ * safeFetchPdf so user-supplied URLs cannot reach internal metadata
+ * services or other private network targets (SSRF).
  */
 async function fetchPdfWithRetry(
   url: string,
   maxRetries: number,
   timeout: number,
   referer?: string
-): Promise<Response> {
+): Promise<SafeFetchPdfResult> {
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetchWithTimeout(
-        url,
-        {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/pdf,*/*",
-            ...(referer && { "Referer": referer }),
-          },
-          redirect: "follow",
+      const result = await safeFetchPdf(url, {
+        timeoutMs: timeout,
+        maxBytes: PDF_DOWNLOAD_CONFIG.MAX_PDF_BYTES,
+        referer,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/pdf,*/*",
         },
-        timeout
-      );
+      });
 
       // Only retry on transient errors (5xx, 429)
-      if ((response.status >= 500 || response.status === 429) && attempt < maxRetries) {
-        console.log(`[PDF Download] Retry ${attempt + 1}/${maxRetries} for ${url.substring(0, 50)}... (${response.status})`);
+      if (
+        (result.response.status >= 500 || result.response.status === 429) &&
+        attempt < maxRetries
+      ) {
+        console.log(`[PDF Download] Retry ${attempt + 1}/${maxRetries} for ${url.substring(0, 50)}... (${result.response.status})`);
         await new Promise((r) => setTimeout(r, PDF_DOWNLOAD_CONFIG.RETRY_DELAY_MS));
         continue;
       }
 
-      return response;
+      return result;
     } catch (e: unknown) {
+      // Unsafe URLs are not retryable — surface immediately.
+      if (e instanceof UnsafeUrlError) throw e;
       lastError = e instanceof Error ? e : new Error(String(e));
       const isTimeout = e instanceof Error && (e.name === "AbortError" || e.message?.includes("abort"));
-      
+
       if (isTimeout && attempt < maxRetries) {
         console.log(`[PDF Download] Timeout retry ${attempt + 1}/${maxRetries} for ${url.substring(0, 50)}...`);
         await new Promise((r) => setTimeout(r, PDF_DOWNLOAD_CONFIG.RETRY_DELAY_MS));

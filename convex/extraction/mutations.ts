@@ -31,6 +31,7 @@ import {
 import { createError } from "../lib/errors";
 import { searchFiltersValidator } from "./validators";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../lib/queryBounds";
+import { MAX_PDF_URL_LENGTH } from "../../lib/pdf/url-allowlist";
 
 /** Safety bound for per-job paper queries to prevent unbounded memory usage. */
 const MAX_PAPERS_PER_JOB = 500;
@@ -186,6 +187,19 @@ export const startExtraction = mutation({
       key: user._id,
       throws: true,
     });
+
+    // Clamp user-supplied pdfUrl length early so downstream SSRF validation
+    // does not waste work parsing a multi-megabyte URL.
+    if (args.sourceManualItems) {
+      for (const item of args.sourceManualItems) {
+        if (item.pdfUrl && item.pdfUrl.length > MAX_PDF_URL_LENGTH) {
+          throw createError(
+            "VALIDATION_ERROR",
+            `pdfUrl exceeds maximum length of ${MAX_PDF_URL_LENGTH}`,
+          );
+        }
+      }
+    }
 
     const userId = user._id;
 
