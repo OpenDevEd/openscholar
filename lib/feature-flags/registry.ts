@@ -21,6 +21,7 @@ export const FLAG_REGISTRY = {
   "extraction.reportBuilder": { enabled: false, minimumTier: 20, description: "Report builder for extraction jobs" },
   "extraction.start": { enabled: true, minimumTier: 20, description: "Start new extraction jobs (Pro+)" },
   "extraction.templates": { enabled: true, minimumTier: 20, description: "Workflow template management (Pro+)" },
+  "extraction.bucket_v2": { enabled: false, minimumTier: 30, description: "Unified bucket-based paper selection UX (dark launch)" },
   "credits.enabled": { enabled: true, minimumTier: 0, description: "Credit system master switch" },
   "credits.topups": { enabled: true, minimumTier: 0, description: "On-demand credit top-up purchases" },
   "subscriptions.enabled": { enabled: true, minimumTier: 0, description: "Subscription/billing system master switch" },
