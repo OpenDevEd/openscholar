@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -8,10 +8,46 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { Search, Calendar, FileText } from "lucide-react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { SelectableList } from "./bucket/selectable-list";
+import { CountChip } from "./bucket/count-chip";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromSavedSearchQuery } from "@/lib/bucket/bucketItem";
 import { bucketAdded } from "@/lib/toast/bucket";
 import type { SearchResult } from "@/lib/types";
+
+const HISTORY_BUCKET_KEY_PREFIX = "history:";
+
+function historyBucketKey(entry: SearchResult): string {
+  return `${HISTORY_BUCKET_KEY_PREFIX}${entry.id}`;
+}
+
+/**
+ * Per-row CountChip wrapper. Subscribes to only this row's `paperCount`
+ * in the bucket store, so editing one row's count doesn't re-render
+ * every other selected row's chip.
+ */
+function HistoryRowChip({
+  entry,
+  cap,
+  defaultCount,
+}: {
+  entry: SearchResult;
+  cap: number;
+  defaultCount: number;
+}) {
+  const bucketKey = historyBucketKey(entry);
+  const paperCount = useBucketStore(
+    (s) => s.items[bucketKey]?.paperCount ?? 0,
+  );
+  return (
+    <CountChip
+      entry={entry}
+      bucketKey={bucketKey}
+      paperCount={paperCount}
+      cap={cap}
+      defaultCount={defaultCount}
+    />
+  );
+}
 
 export function HistorySelector() {
   const format = useFormatter();
@@ -20,28 +56,78 @@ export function HistorySelector() {
   const tc = useTranslations("common");
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
   const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const pullCap =
+    useQuery(api.extraction.bucket.queries.getMyPaperPullCap) ?? 200;
+  const pullDefault =
+    useQuery(api.extraction.bucket.queries.getMyPaperPullDefault) ?? 200;
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(order), [order]);
 
   const isSelected = useMemo(
-    () => (entry: SearchResult) => bucketKeys.has(`history:${entry.id}`),
+    () => (entry: SearchResult) => bucketKeys.has(historyBucketKey(entry)),
     [bucketKeys],
   );
 
-  const selectedPaperCount = useMemo(
-    () =>
-      searchHistory.reduce(
-        (n, entry) =>
-          bucketKeys.has(`history:${entry.id}`) ? n + (entry.count ?? 0) : n,
-        0,
-      ),
-    [bucketKeys, searchHistory],
+  // Selection summary reads the staged `paperCount` from the bucket
+  // store rather than `entry.count` — after P7 the user can adjust each
+  // row's pull count via the CountChip, so the header must reflect
+  // what will actually be extracted, not the stale saved-search total.
+  const selectedPaperCount = useBucketStore((s) =>
+    searchHistory.reduce((n, entry) => {
+      const item = s.items[historyBucketKey(entry)];
+      return item ? n + (item.paperCount ?? 0) : n;
+    }, 0),
   );
   const selectedEntryCount = useMemo(
-    () => searchHistory.filter((e) => bucketKeys.has(`history:${e.id}`)).length,
+    () =>
+      searchHistory.filter((e) => bucketKeys.has(historyBucketKey(e))).length,
     [bucketKeys, searchHistory],
+  );
+
+  // Clamp the cold-start paperCount down to `pullCap` at selection
+  // time so an entry.count of 3000 doesn't immediately blow past the
+  // per-row cap before the CountChip has a chance to mount. The chip
+  // then refines downward (if fresh count < cap) via its own effect.
+  const toBucketItem = useCallback(
+    (entry: SearchResult) => {
+      const seeded = fromSavedSearchQuery({
+        id: entry.id,
+        query: entry.query,
+        count: entry.count,
+        searchFilters: {
+          query: entry.query,
+          field: entry.field,
+          yearRange: entry.yearRange,
+          dateRange: entry.dateRange
+            ? {
+                from: entry.dateRange.from?.toISOString(),
+                to: entry.dateRange.to?.toISOString(),
+              }
+            : undefined,
+          filterType: entry.filterType,
+          isYearRangeEnabled: entry.isYearRangeEnabled,
+          sortBy: entry.sortBy,
+          selectedRegions: entry.selectedRegions,
+          selectedCountryFocus: entry.selectedCountryFocus,
+          ratingRange: entry.ratingRange,
+          onlyRatedPapers: entry.onlyRatedPapers,
+          citesItemId: entry.citesItemId,
+          citedByItemId: entry.citedByItemId,
+          relatedToItemId: entry.relatedToItemId,
+          reviewFilter: entry.reviewFilter,
+          language: entry.language,
+          searchField: entry.field,
+        },
+      });
+      const initial = Math.min(
+        pullCap,
+        Math.max(0, seeded.paperCount ?? pullDefault),
+      );
+      return { ...seeded, paperCount: initial };
+    },
+    [pullCap, pullDefault],
   );
 
   if (searchHistory.length === 0) {
@@ -59,37 +145,6 @@ export function HistorySelector() {
       </motion.div>
     );
   }
-
-  const toBucketItem = (entry: SearchResult) =>
-    fromSavedSearchQuery({
-      id: entry.id,
-      query: entry.query,
-      count: entry.count,
-      searchFilters: {
-        query: entry.query,
-        field: entry.field,
-        yearRange: entry.yearRange,
-        dateRange: entry.dateRange
-          ? {
-              from: entry.dateRange.from?.toISOString(),
-              to: entry.dateRange.to?.toISOString(),
-            }
-          : undefined,
-        filterType: entry.filterType,
-        isYearRangeEnabled: entry.isYearRangeEnabled,
-        sortBy: entry.sortBy,
-        selectedRegions: entry.selectedRegions,
-        selectedCountryFocus: entry.selectedCountryFocus,
-        ratingRange: entry.ratingRange,
-        onlyRatedPapers: entry.onlyRatedPapers,
-        citesItemId: entry.citesItemId,
-        citedByItemId: entry.citedByItemId,
-        relatedToItemId: entry.relatedToItemId,
-        reviewFilter: entry.reviewFilter,
-        language: entry.language,
-        searchField: entry.field,
-      },
-    });
 
   return (
     <SelectableList<SearchResult>
@@ -124,21 +179,30 @@ export function HistorySelector() {
               {entry.query}
             </span>
           </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>
-                {format.relativeTime(new Date(entry.createdAt), now)}
-              </span>
+          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>
+                  {format.relativeTime(new Date(entry.createdAt), now)}
+                </span>
+              </div>
+              <span className="w-1 h-1 rounded-full bg-border" />
+              <div className="flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5" />
+                <span>
+                  {format.number(entry.count ?? 0)}{" "}
+                  {tc("results").toLowerCase()}
+                </span>
+              </div>
             </div>
-            <span className="w-1 h-1 rounded-full bg-border" />
-            <div className="flex items-center gap-1">
-              <FileText className="w-3.5 h-3.5" />
-              <span>
-                {format.number(entry.count ?? 0)}{" "}
-                {tc("results").toLowerCase()}
-              </span>
-            </div>
+            {isSelected(entry) && (
+              <HistoryRowChip
+                entry={entry}
+                cap={pullCap}
+                defaultCount={pullDefault}
+              />
+            )}
           </div>
         </div>
       )}
