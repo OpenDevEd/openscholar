@@ -6,6 +6,7 @@ import {
   fromCollectionItem,
   fromZoteroItem,
   fromUpload,
+  fromSavedSearchQuery,
 } from "@/lib/bucket/bucketItem";
 
 function libraryDoc(overrides: {
@@ -147,6 +148,26 @@ describe("lib/bucket/bucketItem normalizers", () => {
     });
     expect(item.status).toBe("ready");
     expect(item.storageId).toBe(storageId);
+  });
+
+  test("fromSavedSearchQuery stamps paperCount from entry.count", () => {
+    const item = fromSavedSearchQuery({
+      id: "h1",
+      query: "neural networks",
+      count: 800,
+      searchFilters: {},
+    });
+    expect(item.source).toBe("history");
+    expect(item.paperCount).toBe(800);
+  });
+
+  test("fromSavedSearchQuery defaults paperCount to 0 when count is missing", () => {
+    const item = fromSavedSearchQuery({
+      id: "h2",
+      query: "unknown",
+      searchFilters: {},
+    });
+    expect(item.paperCount).toBe(0);
   });
 
   test("cross-source dedup: library + zotero share doi key", () => {

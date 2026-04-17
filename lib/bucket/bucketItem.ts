@@ -30,6 +30,16 @@ export type BucketItem = {
   pdfUrl?: string;
   addedAt: number;
   status: BucketItemStatus;
+  /**
+   * How many papers this row will produce at submission time. 1 for
+   * per-paper sources (library / collection / zotero / upload). N for
+   * placeholder rows that expand at run time — a saved-search entry
+   * stands in for `entry.count` actual papers. Cap math and the UI
+   * ready-count indicator sum this rather than counting rows, so a
+   * user staging three 800-paper searches sees the cap exhausted
+   * before submit, not after.
+   */
+  paperCount?: number;
 };
 
 export type SearchHistoryPaperInput = {
@@ -100,6 +110,7 @@ export function fromSavedSearchQuery(
     authors: [],
     addedAt: now,
     status: "ready",
+    paperCount: entry.count ?? 0,
   };
 }
 

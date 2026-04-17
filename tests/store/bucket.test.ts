@@ -84,6 +84,44 @@ describe("useBucketStore", () => {
     expect(result).toEqual({ added: 1, deduped: 0, capped: 0 });
   });
 
+  test("addMany cap sums paperCount — a saved-search entry costs N slots", () => {
+    // Limit 1000. One entry costing 800 papers + another costing 300
+    // should hit the cap: 800 lands, 300 gets dropped (800 + 300 > 1000).
+    const res = useBucketStore.getState().addMany(
+      [
+        makeItem("k:big", { paperCount: 800 }),
+        makeItem("k:med", { paperCount: 300 }),
+      ],
+      1000,
+    );
+    expect(res).toEqual({ added: 1, deduped: 0, capped: 1 });
+    expect(useBucketStore.getState().order).toEqual(["k:big"]);
+  });
+
+  test("addMany cap: paperCount exhausts remaining slots exactly", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("k:a", { paperCount: 600 })], 1000);
+    const res = useBucketStore
+      .getState()
+      .addMany([makeItem("k:b", { paperCount: 400 })], 1000);
+    expect(res).toEqual({ added: 1, deduped: 0, capped: 0 });
+  });
+
+  test("addMany cap: paperCount default is 1 for per-paper sources", () => {
+    // Two items without paperCount and one with — the with-count row
+    // takes 50 slots, the others 1 each. Limit 52 → all three land.
+    const res = useBucketStore.getState().addMany(
+      [
+        makeItem("k:a"),
+        makeItem("k:big", { paperCount: 50 }),
+        makeItem("k:b"),
+      ],
+      52,
+    );
+    expect(res).toEqual({ added: 3, deduped: 0, capped: 0 });
+  });
+
   test("remove drops one key and leaves the rest", () => {
     const a = makeItem("k:a");
     const b = makeItem("k:b");

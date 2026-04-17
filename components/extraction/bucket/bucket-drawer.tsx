@@ -56,7 +56,10 @@ export function BucketDrawer({
     .map((k) => itemsMap[k])
     .filter((v): v is BucketItem => Boolean(v));
 
-  const readyCount = items.filter((i) => i.status === "ready").length;
+  const readyCount = items.reduce(
+    (n, i) => (i.status === "ready" ? n + (i.paperCount ?? 1) : n),
+    0,
+  );
   const atCap = readyCount >= limit;
   const nearCap = !atCap && readyCount >= Math.floor(limit * 0.9);
 

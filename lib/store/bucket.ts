@@ -61,8 +61,14 @@ export const useBucketStore = create<BucketState>()(
         set((state) => {
           const items = { ...state.items };
           const order = [...state.order];
+          // `paperCount` drives cap math: a saved-search entry carries
+          // its expansion size here so three 800-paper searches hit the
+          // cap at selection time, not at submit time. Per-paper
+          // sources default to 1.
+          const papersOf = (item: BucketItem | undefined) =>
+            item?.status === "ready" ? item.paperCount ?? 1 : 0;
           const currentReady = order.reduce(
-            (n, k) => n + (items[k]?.status === "ready" ? 1 : 0),
+            (n, k) => n + papersOf(items[k]),
             0,
           );
           let readySlotsLeft = Math.max(0, limit - currentReady);
@@ -76,13 +82,14 @@ export const useBucketStore = create<BucketState>()(
               deduped++;
               continue;
             }
-            if (item.status === "ready" && readySlotsLeft <= 0) {
+            const papers = item.status === "ready" ? item.paperCount ?? 1 : 0;
+            if (papers > readySlotsLeft) {
               capped++;
               continue;
             }
             items[item.bucketKey] = item;
             order.push(item.bucketKey);
-            if (item.status === "ready") readySlotsLeft--;
+            readySlotsLeft -= papers;
             added++;
           }
           result = { added, deduped, capped };

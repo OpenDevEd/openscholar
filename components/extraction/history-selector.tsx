@@ -30,6 +30,20 @@ export function HistorySelector() {
     [bucketKeys],
   );
 
+  const selectedPaperCount = useMemo(
+    () =>
+      searchHistory.reduce(
+        (n, entry) =>
+          bucketKeys.has(`history:${entry.id}`) ? n + (entry.count ?? 0) : n,
+        0,
+      ),
+    [bucketKeys, searchHistory],
+  );
+  const selectedEntryCount = useMemo(
+    () => searchHistory.filter((e) => bucketKeys.has(`history:${e.id}`)).length,
+    [bucketKeys, searchHistory],
+  );
+
   if (searchHistory.length === 0) {
     return (
       <motion.div
@@ -82,6 +96,11 @@ export function HistorySelector() {
       items={searchHistory}
       keyOf={(e) => e.id}
       isSelected={isSelected}
+      headerLabel={
+        selectedEntryCount > 0
+          ? `${format.number(selectedPaperCount)} papers from ${selectedEntryCount} search${selectedEntryCount === 1 ? "" : "es"}`
+          : `${searchHistory.length} saved search${searchHistory.length === 1 ? "" : "es"}`
+      }
       onToggle={(entry, next) => {
         const bucketItem = toBucketItem(entry);
         if (next) bucketAdded(addMany([bucketItem], limit), { silent: true });

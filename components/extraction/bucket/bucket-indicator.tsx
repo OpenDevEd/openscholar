@@ -17,11 +17,13 @@ export function BucketIndicator({
   onClick: () => void;
 }) {
   const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  // Sum `paperCount` (default 1) rather than row count — a staged
+  // saved-search entry contributes its expansion size, not 1.
   const readyCount = useBucketStore((s) =>
-    s.order.reduce(
-      (n, k) => n + (s.items[k]?.status === "ready" ? 1 : 0),
-      0,
-    ),
+    s.order.reduce((n, k) => {
+      const item = s.items[k];
+      return item?.status === "ready" ? n + (item.paperCount ?? 1) : n;
+    }, 0),
   );
   const atCap = readyCount >= limit;
   const nearCap = !atCap && readyCount >= Math.floor(limit * 0.9);

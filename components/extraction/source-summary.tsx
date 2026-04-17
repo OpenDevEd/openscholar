@@ -26,7 +26,10 @@ export function SourceSummary() {
     };
     for (const key of order) {
       const item = items[key];
-      if (item && item.status === "ready") tally[item.source]++;
+      if (!item || item.status !== "ready") continue;
+      // Per-source tally sums paperCount (default 1) rather than row
+      // count, so a saved-search entry of N papers shows up as N, not 1.
+      tally[item.source] += item.paperCount ?? 1;
     }
     return tally;
   }, [order, items]);
