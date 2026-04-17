@@ -1,92 +1,30 @@
 /**
- * Extraction Module Index
- * Export all extraction-related functions
+ * Extraction module namespace marker.
  *
- * Test and debug internals (debug.ts, debug_*.ts, tests/fixtures.ts,
- * tests/runners.ts) are intentionally NOT re-exported here. Each handler
- * calls `assertNonProd` at its top to block prod invocations — callers in
- * dev still address them via their full internal path
- * (internal.extraction.debug.*, internal.extraction.tests.fixtures.*, ...).
+ * This file exists so Convex's bundler recognises the directory as a
+ * module, but it deliberately re-exports nothing. The public surface is
+ * whatever the per-file registrations provide:
+ *
+ *   - UI / public API:
+ *       api.extraction.mutations.*   (convex/extraction/mutations.ts)
+ *       api.extraction.queries.*     (convex/extraction/queries.ts)
+ *       api.extraction.uploads.*     (convex/extraction/uploads.ts)
+ *
+ *   - Internal (workflow / workpool contract):
+ *       internal.extraction.workflow.runExtractionWorkflow
+ *       internal.extraction.actions.*
+ *       internal.extraction.mutations.*  (the *internal* functions)
+ *       internal.extraction.queries.*    (the *Internal functions)
+ *       internal.extraction.workpoolActions.*
+ *
+ *   - Dev-only (gated by assertNonProd at each handler):
+ *       internal.extraction.debug.*
+ *       internal.extraction.debug_*.*
+ *       internal.extraction.tests.fixtures.*
+ *       internal.extraction.tests.runners.*
+ *
+ * Types live in per-file modules (e.g. `convex/extraction/types.ts`) and
+ * are imported directly from there — no barrel re-export needed.
  */
 
-// Workflows
-export { runExtractionWorkflow } from "./workflow";
-
-// Note: "use node" action files (workpoolActions.ts,
-// debug_pdfjs_alignment.ts, tests/runners.ts) are NOT re-exported here.
-// Re-exporting from a non-"use node" barrel file causes the Convex bundler
-// to fail on transitive node:crypto imports. These files are registered
-// individually by the Convex bundler via their own module entries.
-// actions.ts, prompts.ts, and evidence_units.ts are default-runtime
-// (no "use node") and can be imported from anywhere.
-
-// Mutations (public)
-export {
-  startExtraction,
-  cancelExtraction,
-  duplicateExtraction,
-  deleteExtraction,
-  setResultReviewState,
-  saveExtractionSavedView,
-  deleteExtractionSavedView,
-  saveWorkflowTemplateFromJob,
-  saveWorkflowTemplate,
-  deleteWorkflowTemplate,
-  startExtractionFromTemplate,
-  createExtractionReportSnapshot,
-  createExtractionRunDiff,
-} from "./mutations";
-
-// Mutations (internal - for workflow)
-export {
-  maybeFinalizeJob,
-  updatePaperStatus,
-  updatePaperProcessable,
-  setPaperStorage,
-  saveExtractionResultsAndComplete,
-  createJobDirect,
-  createQuestionDirect,
-  setJobWorkflowId,
-  enqueuePaperProcessing,
-  handleDownloadAndIndexComplete,
-  handleExtractionComplete,
-  markPaperIndexed,
-  replacePaperEvidenceUnits,
-} from "./mutations";
-
-// Queries (public)
-export {
-  getMyJobs,
-  getJobDetails,
-  getPaperResults,
-  getJobResults,
-  getJobInsights,
-  getQuestionInsights,
-  getQuestionDisagreements,
-  getReviewQueue,
-  getSavedViews,
-  getWorkflowTemplates,
-  getReportSnapshots,
-  getRunDiff,
-  subscribeToJobProgress,
-} from "./queries";
-
-// Queries (internal)
-export {
-  getPapersByOpenAlexIds,
-  getPaperInternal,
-  getPaperResultsInternal,
-  getJobInternal,
-  getQuestionsInternal,
-  getJobProgressInternal,
-  getEvidenceUnitsInternal,
-} from "./queries";
-
-// Types
-export type {
-  ExtractionQuestionType,
-  ExtractionQuestionInput,
-  PaperData,
-  ExtractionResult,
-  SearchFilters,
-} from "./types";
+export {};
