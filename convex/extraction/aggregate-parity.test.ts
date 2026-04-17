@@ -191,7 +191,7 @@ async function complete(
   results: ResultShape[]
 ) {
   await t.mutation(
-    internal.extraction.mutations.saveExtractionResultsAndComplete,
+    internal.extraction.mutations.results.saveExtractionResultsAndComplete,
     {
       paperId,
       results: results.map((r) => ({
@@ -311,7 +311,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
     ]);
     expect((await readCounters(t, jobId, "k")).totalPapers).toBe(1);
     vi.useFakeTimers();
-    await t.mutation(internal.extraction.mutations.deleteExtractionInternal, {
+    await t.mutation(internal.extraction.mutations.internal.admin.deleteExtractionInternal, {
       jobId,
     });
     await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
@@ -343,10 +343,10 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
       }
     });
     // No existing stats row → first run rebuilds.
-    await t.mutation(internal.extraction.mutations.backfillJobStats, { jobId });
+    await t.mutation(internal.extraction.mutations.internal.admin.backfillJobStats, { jobId });
     const afterFirst = await readCounters(t, jobId, "k");
     // Second run short-circuits (stats row exists); state must stay identical.
-    await t.mutation(internal.extraction.mutations.backfillJobStats, { jobId });
+    await t.mutation(internal.extraction.mutations.internal.admin.backfillJobStats, { jobId });
     const afterSecond = await readCounters(t, jobId, "k");
     expect(afterSecond).toEqual(afterFirst);
     expect(afterFirst.totalPapers).toBe(2);

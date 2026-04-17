@@ -191,7 +191,7 @@ export const enqueuePaperProcessing = internalMutation({
       },
       {
         onComplete:
-          internal.extraction.mutations.handleDownloadAndIndexComplete,
+          internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
         context: {
           paperId: args.paperId,
           jobId: args.jobId,

@@ -42,7 +42,7 @@ export const cleanupDeletedUsers = internalMutation({
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .take(BATCH_SIZE);
         for (const job of extractionJobs) {
-          await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, {
+          await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.admin.deleteExtractionInternal, {
             jobId: job._id,
           });
         }

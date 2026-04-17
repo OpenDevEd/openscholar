@@ -59,7 +59,7 @@ crons.interval(
 crons.interval(
   "cleanup old extraction pdfs",
   { hours: 24 },
-  internal.extraction.mutations.cleanupOldPdfs,
+  internal.extraction.mutations.internal.admin.cleanupOldPdfs,
   { maxAgeHours: 24 * 30 },
 );
 

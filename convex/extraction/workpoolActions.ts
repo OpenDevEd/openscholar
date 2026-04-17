@@ -552,7 +552,7 @@ async function resolvePdfBlob(
   }
 
   const storedId = await ctx.storage.store(downloaded.pdfBlob);
-  await ctx.runMutation(internal.extraction.mutations.setPaperStorage, {
+  await ctx.runMutation(internal.extraction.mutations.papers.setPaperStorage, {
     paperId: args.paperId,
     storageId: storedId,
   });
@@ -615,7 +615,7 @@ export const downloadAndIndexPdfAction = internalAction({
       }
       if (!pdfEnabled) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
-          await ctx.runMutation(internal.extraction.mutations.replacePaperEvidenceUnits, {
+          await ctx.runMutation(internal.extraction.mutations.evidence.replacePaperEvidenceUnits, {
             paperId: args.paperId,
             units: [],
           });
@@ -641,7 +641,7 @@ export const downloadAndIndexPdfAction = internalAction({
       // Keep pipeline alive for abstract-only papers by leaving evidence empty.
       if (!resolved.pdfBlob) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
-          await ctx.runMutation(internal.extraction.mutations.replacePaperEvidenceUnits, {
+          await ctx.runMutation(internal.extraction.mutations.evidence.replacePaperEvidenceUnits, {
             paperId: args.paperId,
             units: [],
           });
@@ -658,7 +658,7 @@ export const downloadAndIndexPdfAction = internalAction({
       const pdfBuffer = await resolved.pdfBlob.arrayBuffer();
       const units = await buildEvidenceUnitsFromPdf(pdfBuffer);
 
-      await ctx.runMutation(internal.extraction.mutations.replacePaperEvidenceUnits, {
+      await ctx.runMutation(internal.extraction.mutations.evidence.replacePaperEvidenceUnits, {
         paperId: args.paperId,
         units: units.map((unit) => ({
           evidenceId: unit.evidenceId,
@@ -713,7 +713,7 @@ export const downloadAndIndexPdfAction = internalAction({
           );
         }
 
-        await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
+        await ctx.runMutation(internal.extraction.mutations.papers.markPaperIndexed, {
           paperId: args.paperId,
           ragEntryId: ragResult.entryId,
           billing: shouldBill

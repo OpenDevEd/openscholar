@@ -312,7 +312,7 @@ export const createExtractionReportSnapshot = mutation({
     if (!hasStats && job.status === "completed") {
       await ctx.scheduler.runAfter(
         0,
-        internal.extraction.mutations.backfillJobStats,
+        internal.extraction.mutations.internal.admin.backfillJobStats,
         { jobId: args.jobId },
       );
     }

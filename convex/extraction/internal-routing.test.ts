@@ -9,10 +9,10 @@ import schema from "../schema";
  * these paths; a bad split that drops an export (or moves an internal without
  * updating callers) is caught here.
  *
- * Path-level note: when Task 4 / Task 5 move internals under
- * `mutations/internal/*` and `queries/internal.ts`, the entries below that
- * reference the old root paths get updated in the SAME commit that moves the
- * caller. Between SN-2 and that commit, every listed path must resolve.
+ * After T4.14, internal mutations surface at the long
+ * `internal.extraction.mutations.<scope>.<fn>` path — the barrel no longer
+ * re-exports them. Entries below track (scope, name) so a refactor that
+ * moves an internal into a different submodule trips this test.
  */
 
 const ROUTING_ERROR_RE =
@@ -29,24 +29,35 @@ async function assertRoutes(op: () => Promise<unknown>) {
   }
 }
 
-const INTERNAL_MUTATIONS: ReadonlyArray<string> = [
-  "deleteExtractionInternal",
-  "cleanupFailedPaperStorage",
-  "backfillJobStats",
-  "createPaperRecords",
-  "updateJobStatus",
-  "updatePaperStatus",
-  "updatePaperProcessable",
-  "setPaperStorage",
-  "markPaperIndexed",
-  "cleanupOldPdfs",
-  "maybeFinalizeJob",
-  "createJobDirect",
-  "createQuestionDirect",
-  "setJobWorkflowId",
-  "enqueuePaperProcessing",
-  "saveExtractionResultsAndComplete",
-  "replacePaperEvidenceUnits",
+function resolve(root: unknown, segments: string[]): unknown {
+  let ref: unknown = root;
+  for (const seg of segments) {
+    ref = (ref as Record<string, unknown>)[seg];
+  }
+  return ref;
+}
+
+// [scope, name] — scope is the dotted path under internal.extraction.mutations.
+const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
+  ["internal.admin", "deleteExtractionInternal"],
+  ["internal.admin", "cleanupFailedPaperStorage"],
+  ["internal.admin", "backfillJobStats"],
+  ["internal.admin", "cleanupOldPdfs"],
+  ["internal.lifecycle", "maybeFinalizeJob"],
+  ["internal.lifecycle", "createJobDirect"],
+  ["internal.lifecycle", "createQuestionDirect"],
+  ["internal.lifecycle", "setJobWorkflowId"],
+  ["internal.lifecycle", "enqueuePaperProcessing"],
+  ["internal.onComplete", "handleDownloadAndIndexComplete"],
+  ["internal.onComplete", "handleExtractionComplete"],
+  ["papers", "createPaperRecords"],
+  ["papers", "updatePaperStatus"],
+  ["papers", "updatePaperProcessable"],
+  ["papers", "setPaperStorage"],
+  ["papers", "markPaperIndexed"],
+  ["results", "updateJobStatus"],
+  ["results", "saveExtractionResultsAndComplete"],
+  ["evidence", "replacePaperEvidenceUnits"],
 ];
 
 const INTERNAL_QUERIES: ReadonlyArray<string> = [
@@ -76,10 +87,11 @@ const INTERNAL_ACTIONS: ReadonlyArray<readonly [string, string]> = [
 
 describe("SN-2 internal.extraction.mutations routing", () => {
   test.each(INTERNAL_MUTATIONS)(
-    "internal.extraction.mutations.%s is registered and invokable",
-    async (name) => {
+    "internal.extraction.mutations.%s.%s is registered and invokable",
+    async (scope, name) => {
       const t = convexTest(schema);
-      const ref = (internal.extraction.mutations as unknown as Record<string, never>)[name];
+      const parent = resolve(internal.extraction.mutations, scope.split("."));
+      const ref = (parent as Record<string, never>)[name];
       await assertRoutes(() => (t.mutation as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
   );

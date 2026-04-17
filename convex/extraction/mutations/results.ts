@@ -350,7 +350,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
       storageId: args.storageId,
       pdfContentUsed: args.pdfContentUsed ? true : undefined,
     });
-    await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
+    await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, {
       jobId: paper.jobId,
     });
     console.log(

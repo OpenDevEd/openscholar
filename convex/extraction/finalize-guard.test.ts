@@ -53,7 +53,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
     const { jobId } = await seedJob(t, "cancelled");
 
     const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
+    await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
 
     expect(after?.status).toBe("cancelled");
@@ -66,7 +66,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
     const { jobId } = await seedJob(t, "failed");
 
     const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
+    await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
 
     expect(after?.status).toBe("failed");
@@ -78,7 +78,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
     const { jobId } = await seedJob(t, "completed");
 
     const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
+    await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
 
     expect(after?.status).toBe("completed");
@@ -102,7 +102,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
       });
     });
 
-    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
+    await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
 
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(after?.status).toBe("completed");
@@ -117,7 +117,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
       await ctx.db.patch("extractionJobs", jobId, { totalPapers: 0 });
     });
 
-    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
+    await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
 
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(after?.status).toBe("failed");
@@ -142,7 +142,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
       }
     });
 
-    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
+    await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
 
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     // Still active because counters say we are not done.
@@ -155,7 +155,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
     const t = convexTest(schema);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
-    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+    await t.mutation(internal.extraction.mutations.papers.updatePaperStatus, {
       paperId,
       status: "completed",
       completedAt: Date.now(),
@@ -170,7 +170,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
     const t = convexTest(schema);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
-    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+    await t.mutation(internal.extraction.mutations.papers.updatePaperStatus, {
       paperId,
       status: "download_failed",
       errorMessage: "no pdf",
@@ -185,11 +185,11 @@ describe("markPaperTerminalTx counter maintenance", () => {
     const t = convexTest(schema);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
-    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+    await t.mutation(internal.extraction.mutations.papers.updatePaperStatus, {
       paperId,
       status: "failed",
     });
-    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+    await t.mutation(internal.extraction.mutations.papers.updatePaperStatus, {
       paperId,
       status: "failed",
     });
@@ -207,7 +207,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
       await ctx.db.patch("extractionJobs", jobId, { totalPapers: 0 });
     });
 
-    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+    await t.mutation(internal.extraction.mutations.papers.updatePaperStatus, {
       paperId,
       status: "download_failed",
     });
@@ -224,7 +224,7 @@ describe("saveExtractionResultsAndComplete terminal-state guard", () => {
     const { jobId, paperId } = await seedJob(t, "cancelled");
 
     await t.mutation(
-      internal.extraction.mutations.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
       {
         paperId,
         results: [
@@ -269,7 +269,7 @@ describe("saveExtractionResultsAndComplete terminal-state guard", () => {
     const { jobId, paperId } = await seedJob(t, "extracting");
 
     await t.mutation(
-      internal.extraction.mutations.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
       {
         paperId,
         results: [

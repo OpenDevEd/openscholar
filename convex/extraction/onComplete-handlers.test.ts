@@ -89,7 +89,7 @@ describe("SN-4 handleDownloadAndIndexComplete branches", () => {
     const t = convexTest(schema);
     const ids = await seedDownloadingPaper(t);
     await t.mutation(
-      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
       {
         workId: FAKE_WORK_ID,
         context: {
@@ -113,7 +113,7 @@ describe("SN-4 handleDownloadAndIndexComplete branches", () => {
     const t = convexTest(schema);
     const ids = await seedDownloadingPaper(t);
     await t.mutation(
-      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
       {
         workId: FAKE_WORK_ID,
         context: {
@@ -133,7 +133,7 @@ describe("SN-4 handleDownloadAndIndexComplete branches", () => {
     const t = convexTest(schema);
     const ids = await seedDownloadingPaper(t);
     await t.mutation(
-      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
       {
         workId: FAKE_WORK_ID,
         context: {
@@ -163,7 +163,7 @@ describe("SN-4 handleExtractionComplete branches", () => {
       );
     });
     await t.mutation(
-      internal.extraction.mutations.handleExtractionComplete,
+      internal.extraction.mutations.internal.onComplete.handleExtractionComplete,
       {
         workId: FAKE_WORK_ID,
         context: { paperId: ids.paperId, jobId: ids.jobId },
@@ -195,7 +195,7 @@ describe("SN-4 handleExtractionComplete branches", () => {
       );
     });
     await t.mutation(
-      internal.extraction.mutations.handleExtractionComplete,
+      internal.extraction.mutations.internal.onComplete.handleExtractionComplete,
       {
         workId: FAKE_WORK_ID,
         context: { paperId: ids.paperId, jobId: ids.jobId },
@@ -221,7 +221,7 @@ describe("SN-4 handleExtractionComplete branches", () => {
       );
     });
     await t.mutation(
-      internal.extraction.mutations.handleExtractionComplete,
+      internal.extraction.mutations.internal.onComplete.handleExtractionComplete,
       {
         workId: FAKE_WORK_ID,
         context: { paperId: ids.paperId, jobId: ids.jobId },
@@ -244,7 +244,7 @@ describe("SN-4 handleExtractionComplete branches", () => {
       );
     });
     await t.mutation(
-      internal.extraction.mutations.handleExtractionComplete,
+      internal.extraction.mutations.internal.onComplete.handleExtractionComplete,
       {
         workId: FAKE_WORK_ID,
         context: { paperId: ids.paperId, jobId: ids.jobId },
@@ -263,7 +263,7 @@ describe("SN-4 terminal-state idempotency", () => {
     const ids = await seedDownloadingPaper(t);
     // First fire: transition to failed + bump.
     await t.mutation(
-      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
       {
         workId: FAKE_WORK_ID,
         context: {
@@ -280,7 +280,7 @@ describe("SN-4 terminal-state idempotency", () => {
 
     // Second fire (late canceled): paper stays failed, job counter unchanged.
     await t.mutation(
-      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
       {
         workId: FAKE_WORK_ID,
         context: {
@@ -312,7 +312,7 @@ describe("SN-4 terminal-state idempotency", () => {
     });
     // Re-fire with a failed RunResult.
     await t.mutation(
-      internal.extraction.mutations.handleExtractionComplete,
+      internal.extraction.mutations.internal.onComplete.handleExtractionComplete,
       {
         workId: FAKE_WORK_ID,
         context: { paperId: ids.paperId, jobId: ids.jobId },

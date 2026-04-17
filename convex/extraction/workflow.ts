@@ -55,7 +55,7 @@ export const runExtractionWorkflow = workflow.define({
       internal.extraction.queries.getPdfExtractionEnabledInternal,
       {}
     );
-    await step.runMutation(internal.extraction.mutations.updateJobStatus, {
+    await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
       jobId,
       status: pdfEnabledEarly ? "downloading_pdfs" : "indexing",
       totalPapers: 0,
@@ -156,7 +156,7 @@ export const runExtractionWorkflow = workflow.define({
     console.log(`[Workflow] Fetched ${papers.length} papers (${dedupedPapers.length} deduped)`);
 
     // Step 3: Create paper records
-    await step.runMutation(internal.extraction.mutations.createPaperRecords, {
+    await step.runMutation(internal.extraction.mutations.papers.createPaperRecords, {
       jobId,
       papers: dedupedPapers.map((p) => ({
         ...p,
@@ -182,7 +182,7 @@ export const runExtractionWorkflow = workflow.define({
       {}
     );
 
-    await step.runMutation(internal.extraction.mutations.updateJobStatus, {
+    await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
       jobId,
       status: pdfEnabled ? "downloading_pdfs" : "indexing",
       totalPapers: processableCount,
@@ -203,14 +203,14 @@ export const runExtractionWorkflow = workflow.define({
 
       if (!isProcessable) {
         await step.runMutation(
-          internal.extraction.mutations.updatePaperStatus,
+          internal.extraction.mutations.papers.updatePaperStatus,
           {
             paperId: paper._id,
             status: "download_failed",
             errorMessage: "No PDF URL or abstract available",
           }
         );
-        await step.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
+        await step.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, {
           jobId,
         });
         continue;
@@ -218,7 +218,7 @@ export const runExtractionWorkflow = workflow.define({
 
       // Enqueue paper processing via workpool (uses new 3-step workflow internally)
       await step.runMutation(
-        internal.extraction.mutations.enqueuePaperProcessing,
+        internal.extraction.mutations.internal.lifecycle.enqueuePaperProcessing,
         {
           paperId: paper._id,
           jobId,
@@ -237,7 +237,7 @@ export const runExtractionWorkflow = workflow.define({
     console.log(`[Workflow] Enqueued ${enqueuedCount} papers for processing`);
 
     // Step 5: Mark workflow as complete (papers will be processed asynchronously)
-    await step.runMutation(internal.extraction.mutations.updateJobStatus, {
+    await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
       jobId,
       status: "extracting",
     });

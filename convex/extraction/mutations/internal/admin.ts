@@ -54,7 +54,7 @@ export const deleteExtractionInternal = internalMutation({
     const reschedule = async (): Promise<null> => {
       await ctx.scheduler.runAfter(
         0,
-        internal.extraction.mutations.deleteExtractionInternal,
+        internal.extraction.mutations.internal.admin.deleteExtractionInternal,
         { jobId },
       );
       return null;
@@ -291,7 +291,7 @@ export const cleanupOldPdfs = internalMutation({
     if (oldPapers.length >= CLEANUP_BATCH) {
       await ctx.scheduler.runAfter(
         0,
-        internal.extraction.mutations.cleanupOldPdfs,
+        internal.extraction.mutations.internal.admin.cleanupOldPdfs,
         { maxAgeHours: args.maxAgeHours },
       );
     }

@@ -34,7 +34,7 @@ async function failPaperAndFinalize(
   errorMessage: string,
 ) {
   await markPaperTerminalTx(ctx, paperId, status, { errorMessage });
-  await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
+  await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, {
     jobId,
   });
 }
@@ -99,7 +99,7 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
             { paperId, jobId, questions },
             {
               onComplete:
-                internal.extraction.mutations.handleExtractionComplete,
+                internal.extraction.mutations.internal.onComplete.handleExtractionComplete,
               context: { paperId, jobId },
               retry: { maxAttempts: 3, initialBackoffMs: 2000, base: 2 },
             },
@@ -162,7 +162,7 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
         // saveExtractionResultsAndComplete owns the terminal transition for
         // the success branch — it calls maybeFinalizeJob as its last step.
         await ctx.runMutation(
-          internal.extraction.mutations.saveExtractionResultsAndComplete,
+          internal.extraction.mutations.results.saveExtractionResultsAndComplete,
           {
             paperId,
             results: data.results,

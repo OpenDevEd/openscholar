@@ -57,7 +57,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
     const t = convexTest(schema);
     const { userId, creditsId, jobId, paperId } = await seed(t, 1000);
 
-    await t.mutation(internal.extraction.mutations.markPaperIndexed, {
+    await t.mutation(internal.extraction.mutations.papers.markPaperIndexed, {
       paperId,
       ragEntryId: "rag:1",
       billing: {
@@ -76,7 +76,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
     // Retry the same mutation — simulates a workpool retry after a crash
     // between rag.add() and the mutation commit. Without the gate this would
     // double-charge.
-    await t.mutation(internal.extraction.mutations.markPaperIndexed, {
+    await t.mutation(internal.extraction.mutations.papers.markPaperIndexed, {
       paperId,
       ragEntryId: "rag:1",
       billing: {
@@ -94,7 +94,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
     const t = convexTest(schema);
     const { creditsId, paperId } = await seed(t, 1000);
 
-    await t.mutation(internal.extraction.mutations.markPaperIndexed, {
+    await t.mutation(internal.extraction.mutations.papers.markPaperIndexed, {
       paperId,
       ragEntryId: "rag:cancel",
     });
@@ -111,7 +111,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
     const t = convexTest(schema);
     const { userId, creditsId, jobId, paperId } = await seed(t, 1000);
 
-    await t.mutation(internal.extraction.mutations.markPaperIndexed, {
+    await t.mutation(internal.extraction.mutations.papers.markPaperIndexed, {
       paperId,
       ragEntryId: "rag:zero",
       billing: { userId, jobId, creditsToDeduct: 0, embeddingTokens: 0 },
@@ -136,7 +136,7 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
     await t.mutation(
-      internal.extraction.mutations.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
       {
         paperId,
         results: [sampleResult],
@@ -157,7 +157,7 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
     // Retry: the job is now "completed", so the terminal-state guard fires
     // at the top of the mutation. No re-bill.
     await t.mutation(
-      internal.extraction.mutations.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
       {
         paperId,
         results: [sampleResult],
@@ -181,7 +181,7 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
     await t.mutation(
-      internal.extraction.mutations.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
       {
         paperId,
         results: [sampleResult],
@@ -200,7 +200,7 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
     });
 
     await t.mutation(
-      internal.extraction.mutations.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
       {
         paperId,
         results: [sampleResult],
@@ -217,7 +217,7 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
     const { creditsId, paperId } = await seed(t, 1000);
 
     await t.mutation(
-      internal.extraction.mutations.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
       {
         paperId,
         results: [sampleResult],

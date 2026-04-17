@@ -16,7 +16,7 @@ describe("deleteExtractionInternal cascade", () => {
 
     // Trigger the cascade delete
     await t.mutation(
-      internal.extraction.mutations.deleteExtractionInternal,
+      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
       { jobId: ids.jobId }
     );
 
@@ -127,7 +127,7 @@ describe("deleteExtractionInternal cascade", () => {
 
     // Delete the PRIMARY job (ids.jobId) -- which is the BASELINE in the reverse diff
     await t.mutation(
-      internal.extraction.mutations.deleteExtractionInternal,
+      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
       { jobId: ids.jobId }
     );
 
@@ -186,7 +186,7 @@ describe("deleteExtractionInternal cascade", () => {
 
     // Trigger the cascade delete
     await t.mutation(
-      internal.extraction.mutations.deleteExtractionInternal,
+      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
       { jobId }
     );
 
@@ -242,7 +242,7 @@ describe("deleteExtractionInternal cascade", () => {
       // (no evidence units) and proceed through steps 2-9
       vi.useFakeTimers();
       await t.mutation(
-        internal.extraction.mutations.deleteExtractionInternal,
+        internal.extraction.mutations.internal.admin.deleteExtractionInternal,
         { jobId: ids.jobId }
       );
       await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
@@ -307,7 +307,7 @@ describe("deleteExtractionInternal cascade", () => {
 
       vi.useFakeTimers();
       await t.mutation(
-        internal.extraction.mutations.deleteExtractionInternal,
+        internal.extraction.mutations.internal.admin.deleteExtractionInternal,
         { jobId: ids.jobId }
       );
       await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
@@ -386,7 +386,7 @@ describe("deleteExtractionInternal cascade", () => {
       // First: complete the full cascade deletion
       vi.useFakeTimers();
       await t.mutation(
-        internal.extraction.mutations.deleteExtractionInternal,
+        internal.extraction.mutations.internal.admin.deleteExtractionInternal,
         { jobId: ids.jobId }
       );
       await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
@@ -403,7 +403,7 @@ describe("deleteExtractionInternal cascade", () => {
       // all child queries return empty, step 9 is a no-op
       vi.useFakeTimers();
       await t.mutation(
-        internal.extraction.mutations.deleteExtractionInternal,
+        internal.extraction.mutations.internal.admin.deleteExtractionInternal,
         { jobId: ids.jobId }
       );
       await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));

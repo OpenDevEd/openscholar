@@ -80,7 +80,7 @@ describe("extractionJobStats upsert", () => {
 
     // Complete each paper via saveExtractionResultsAndComplete
     for (const paperId of paperIds) {
-      await t.mutation(internal.extraction.mutations.saveExtractionResultsAndComplete, {
+      await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
         paperId,
         results: [
           {
@@ -136,7 +136,7 @@ describe("extractionJobStats upsert", () => {
     const { jobId, paperIds } = await seedJobWithPapers(t, 4, []);
 
     // Paper 0: high confidence (0.92 >= 0.8)
-    await t.mutation(internal.extraction.mutations.saveExtractionResultsAndComplete, {
+    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[0],
       results: [{
         questionKey: "q1",
@@ -151,7 +151,7 @@ describe("extractionJobStats upsert", () => {
     });
 
     // Paper 1: medium confidence (0.55, 0.5 <= x < 0.8)
-    await t.mutation(internal.extraction.mutations.saveExtractionResultsAndComplete, {
+    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[1],
       results: [{
         questionKey: "q1",
@@ -166,7 +166,7 @@ describe("extractionJobStats upsert", () => {
     });
 
     // Paper 2: low confidence (0.21, < 0.5)
-    await t.mutation(internal.extraction.mutations.saveExtractionResultsAndComplete, {
+    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[2],
       results: [{
         questionKey: "q1",
@@ -181,7 +181,7 @@ describe("extractionJobStats upsert", () => {
     });
 
     // Paper 3: unknown confidence (undefined)
-    await t.mutation(internal.extraction.mutations.saveExtractionResultsAndComplete, {
+    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[3],
       results: [{
         questionKey: "q1",
@@ -230,7 +230,7 @@ describe("extractionJobStats upsert", () => {
     const { jobId, paperIds } = await seedJobWithPapers(t, 2, []);
 
     // Complete paper 0
-    await t.mutation(internal.extraction.mutations.saveExtractionResultsAndComplete, {
+    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[0],
       results: [{
         questionKey: "q1",
@@ -258,7 +258,7 @@ describe("extractionJobStats upsert", () => {
     });
 
     // Complete paper 1 -- stats should accumulate, not reset
-    await t.mutation(internal.extraction.mutations.saveExtractionResultsAndComplete, {
+    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[1],
       results: [{
         questionKey: "q1",
@@ -300,7 +300,7 @@ describe("extractionJobStats cascade delete", () => {
     const { jobId, paperIds } = await seedJobWithPapers(t, 1, []);
 
     // Complete a paper to create stats
-    await t.mutation(internal.extraction.mutations.saveExtractionResultsAndComplete, {
+    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
       paperId: paperIds[0],
       results: [{
         questionKey: "q1",
@@ -326,7 +326,7 @@ describe("extractionJobStats cascade delete", () => {
     // Cascade delete
     vi.useFakeTimers();
     await t.mutation(
-      internal.extraction.mutations.deleteExtractionInternal,
+      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
       { jobId }
     );
     await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));

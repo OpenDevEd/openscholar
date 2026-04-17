@@ -66,7 +66,7 @@ describe("cleanupOldPdfs", () => {
     });
 
     const result = await t.mutation(
-      internal.extraction.mutations.cleanupOldPdfs,
+      internal.extraction.mutations.internal.admin.cleanupOldPdfs,
       { maxAgeHours },
     );
     expect(result.cleaned).toBe(10);
@@ -85,7 +85,7 @@ describe("cleanupOldPdfs", () => {
     const t = convexTest(schema);
 
     const result = await t.mutation(
-      internal.extraction.mutations.cleanupOldPdfs,
+      internal.extraction.mutations.internal.admin.cleanupOldPdfs,
       { maxAgeHours: 24 * 30 },
     );
     expect(result.cleaned).toBe(0);

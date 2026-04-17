@@ -328,7 +328,7 @@ export const deleteExtraction = mutation({
     // transaction limits on a large job's child tables.
     await ctx.scheduler.runAfter(
       0,
-      internal.extraction.mutations.deleteExtractionInternal,
+      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
       { jobId: args.jobId },
     );
 
