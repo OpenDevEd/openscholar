@@ -22,7 +22,8 @@ export function CollectionsTab() {
     useState<Id<"collections"> | null>(null);
 
   const addMany = useBucketStore((s) => s.addMany);
-  const bucketKeys = useBucketStore((s) => new Set(s.order));
+  const order = useBucketStore((s) => s.order);
+  const bucketKeys = useMemo(() => new Set(order), [order]);
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_minmax(0,1fr)]">

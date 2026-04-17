@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useBucketStore } from "@/lib/store/bucket";
 import type { BucketSource } from "@/lib/bucket/bucketItem";
 
@@ -12,7 +13,10 @@ const SOURCE_KEYS: BucketSource[] = [
 ];
 
 export function SourceSummary() {
-  const counts = useBucketStore((s) => {
+  const order = useBucketStore((s) => s.order);
+  const items = useBucketStore((s) => s.items);
+
+  const counts = useMemo(() => {
     const tally: Record<BucketSource, number> = {
       history: 0,
       library: 0,
@@ -20,12 +24,13 @@ export function SourceSummary() {
       zotero: 0,
       upload: 0,
     };
-    for (const key of s.order) {
-      const item = s.items[key];
+    for (const key of order) {
+      const item = items[key];
       if (item && item.status === "ready") tally[item.source]++;
     }
     return tally;
-  });
+  }, [order, items]);
+
   const total = SOURCE_KEYS.reduce((n, k) => n + counts[k], 0);
 
   if (total === 0) return null;

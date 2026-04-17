@@ -1,7 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, Reorder, useDragControls } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -279,10 +279,14 @@ export function QuestionBuilder() {
   const questionInputRef = useRef<HTMLInputElement>(null);
   const { execute: generateQuestions, isConfigured } =
     useGenerateExtractionQuestions();
-  const bucketItems = useBucketStore((s) =>
-    s.order
-      .map((k) => s.items[k])
-      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+  const bucketOrder = useBucketStore((s) => s.order);
+  const bucketItemsMap = useBucketStore((s) => s.items);
+  const bucketItems = useMemo(
+    () =>
+      bucketOrder
+        .map((k) => bucketItemsMap[k])
+        .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    [bucketOrder, bucketItemsMap],
   );
 
   // Auto-expand questions that already have descriptions

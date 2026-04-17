@@ -56,7 +56,8 @@ export function ZoteroSelector() {
   const te = useTranslations('extraction');
   const tc = useTranslations('common');
   const bucketAdd = useBucketStore((s) => s.addMany);
-  const bucketKeys = useBucketStore((s) => new Set(s.order));
+  const bucketOrder = useBucketStore((s) => s.order);
+  const bucketKeys = useMemo(() => new Set(bucketOrder), [bucketOrder]);
   const meQuery = useProtectedQuery(api.users.queries.me, {});
   const me = meQuery.data;
   const connectionStatusQuery = useProtectedQuery(

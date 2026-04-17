@@ -17,7 +17,8 @@ export function HistorySelector() {
   const tc = useTranslations("common");
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
   const addMany = useBucketStore((s) => s.addMany);
-  const bucketKeys = useBucketStore((s) => new Set(s.order));
+  const order = useBucketStore((s) => s.order);
+  const bucketKeys = useMemo(() => new Set(order), [order]);
 
   const isSelected = useMemo(
     () => (entry: SearchResult) => bucketKeys.has(`history:${entry.id}`),

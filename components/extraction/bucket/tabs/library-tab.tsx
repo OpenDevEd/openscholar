@@ -24,7 +24,8 @@ export function LibraryTab() {
   );
 
   const addMany = useBucketStore((s) => s.addMany);
-  const bucketKeys = useBucketStore((s) => new Set(s.order));
+  const order = useBucketStore((s) => s.order);
+  const bucketKeys = useMemo(() => new Set(order), [order]);
 
   const isSelected = useMemo(
     () => (item: LibItem) => {
