@@ -10,6 +10,7 @@ import { internal } from "../_generated/api";
 import type { PaperData, ExtractionResult } from "./types";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { WorkflowId } from "@convex-dev/workflow";
+import type { WorkId } from "@convex-dev/workpool";
 import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
 import { workflow } from "../workflow";
@@ -271,14 +272,33 @@ export const cancelExtraction = mutation({
       }
     }
 
-    // Cancel all pending workpool items.
-    // Note: cancelAll() cancels ALL pending items across all jobs, not just this job's.
-    // The credit-guard checks in workpool actions prevent incorrect billing for
-    // non-cancelled jobs whose items may be re-enqueued.
-    try {
-      await pdfProcessingPool.cancelAll(ctx);
-    } catch (e) {
-      console.warn(`[cancelExtraction] Failed to cancel workpool items: ${e}`);
+    // Cancel only this job's in-flight workpool items. The pdfProcessingPool
+    // is shared across all users and jobs, so cancelAll() would abort every
+    // tenant's work — cross-tenant denial of service. Instead, we stored the
+    // WorkId of each paper's currently-active pool item and cancel exactly
+    // those. Cancels are idempotent per workpool contract.
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(MAX_PAPERS_PER_JOB);
+
+    for (const paper of papers) {
+      if (!paper.workId) continue;
+      if (
+        paper.status === "completed" ||
+        paper.status === "failed" ||
+        paper.status === "download_failed" ||
+        paper.status === "indexing_failed"
+      ) {
+        continue;
+      }
+      try {
+        await pdfProcessingPool.cancel(ctx, paper.workId as WorkId);
+      } catch (e) {
+        console.warn(
+          `[cancelExtraction] Failed to cancel workpool item ${paper.workId} for paper ${paper._id}: ${e}`,
+        );
+      }
     }
 
     return { success: true };
@@ -1498,20 +1518,6 @@ export const setPaperStorage = internalMutation({
   },
 });
 
-export const setPaperWorkId = internalMutation({
-  args: {
-    paperId: v.id("extractionPapers"),
-    workId: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    await ctx.db.patch("extractionPapers", args.paperId, {
-      workId: args.workId,
-    });
-    return null;
-  },
-});
-
 export const markPaperIndexed = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
@@ -1836,9 +1842,11 @@ export const enqueuePaperProcessing = internalMutation({
     });
     console.log(`[enqueuePaperProcessing] Status updated to 'downloading' for ${args.paperId}`);
 
-    // Enqueue Step 1: Download and index PDF
+    // Enqueue Step 1: Download and index PDF. Capture the WorkId so
+    // cancelExtraction can abort this specific item without touching other
+    // jobs' in-flight work in the shared pool.
     console.log(`[enqueuePaperProcessing] Enqueuing Step 1 (Download & Index) for paper ${args.paperId}`);
-    await pdfProcessingPool.enqueueAction(
+    const workId = await pdfProcessingPool.enqueueAction(
       ctx,
       internal.extraction.workpoolActions.downloadAndIndexPdfAction,
       {
@@ -1852,8 +1860,8 @@ export const enqueuePaperProcessing = internalMutation({
       },
       {
         onComplete: internal.extraction.mutations.handleDownloadAndIndexComplete,
-        context: { 
-          paperId: args.paperId, 
+        context: {
+          paperId: args.paperId,
           jobId: args.jobId,
           questions: args.questions,
         },
@@ -1864,7 +1872,8 @@ export const enqueuePaperProcessing = internalMutation({
         },
       }
     );
-    console.log(`[enqueuePaperProcessing] SUCCESS - Paper ${args.paperId} enqueued for processing`);
+    await ctx.db.patch("extractionPapers", args.paperId, { workId });
+    console.log(`[enqueuePaperProcessing] SUCCESS - Paper ${args.paperId} enqueued for processing (workId ${workId})`);
     return null;
   },
 });
@@ -1914,8 +1923,9 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
           });
         }
 
-        // Step 2: Wait for indexing and extract
-        await pdfProcessingPool.enqueueAction(
+        // Step 2: Wait for indexing and extract. Capture the WorkId so
+        // cancelExtraction can abort only this paper's work item.
+        const extractWorkId = await pdfProcessingPool.enqueueAction(
           ctx,
           internal.extraction.workpoolActions.waitAndExtractAction,
           {
@@ -1933,6 +1943,7 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
             },
           }
         );
+        await ctx.db.patch("extractionPapers", paperId, { workId: extractWorkId });
       } else {
         // Download failed - mark as failed
         console.log(`[handleDownloadAndIndexComplete] Download failed for ${paperId}: ${data.error}`);
