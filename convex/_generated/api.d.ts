@@ -53,6 +53,7 @@ import type * as extraction_queries from "../extraction/queries.js";
 import type * as extraction_queries__shared from "../extraction/queries/_shared.js";
 import type * as extraction_queries_jobs from "../extraction/queries/jobs.js";
 import type * as extraction_queries_papers from "../extraction/queries/papers.js";
+import type * as extraction_queries_results from "../extraction/queries/results.js";
 import type * as extraction_stateMachine from "../extraction/stateMachine.js";
 import type * as extraction_tests_fixtures from "../extraction/tests/fixtures.js";
 import type * as extraction_tests_runners from "../extraction/tests/runners.js";
@@ -191,6 +192,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries/_shared": typeof extraction_queries__shared;
   "extraction/queries/jobs": typeof extraction_queries_jobs;
   "extraction/queries/papers": typeof extraction_queries_papers;
+  "extraction/queries/results": typeof extraction_queries_results;
   "extraction/stateMachine": typeof extraction_stateMachine;
   "extraction/tests/fixtures": typeof extraction_tests_fixtures;
   "extraction/tests/runners": typeof extraction_tests_runners;

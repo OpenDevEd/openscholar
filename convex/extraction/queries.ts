@@ -63,6 +63,7 @@ import {
 const paginatedPaperResultValidator = paginationResultValidator(paginatedPaperWithResultsValidator);
 
 export { getMyJobs, getJobDetails, subscribeToJobProgress } from "./queries/jobs";
+export { getJobResults, getJobResultsPaginated } from "./queries/results";
 
 export const getPdfExtractionEnabledInternal = internalQuery({
   args: {},
@@ -75,130 +76,6 @@ export const getPdfExtractionEnabledInternal = internalQuery({
 
 
 // Get all results for a job (public API) - for export
-export const getJobResults = query({
-  args: { jobId: v.id("extractionJobs") },
-  returns: statusResultValidator({
-    job: extractionJobValidator,
-    questions: v.array(extractionQuestionValidator),
-    papers: v.record(
-      v.string(),
-      v.object({
-        paper: extractionPaperValidator,
-        results: v.array(extractionResultWithReviewValidator),
-      })
-    ),
-  }),
-  handler: async (ctx, args) => {
-
-    const access = await resolveOwnedJob(ctx, args.jobId);
-    if (access.status !== "ok") {
-      return access;
-    }
-    const { job } = access;
-
-    // Cardinality: ~5-20 questions per extraction job
-    const questions = await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .order("asc")
-      .collect();
-
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
-
-    // Two indexed reads for the whole job (replaces ≤500 serial per-paper
-    // result fetches + ≤500 serial per-paper review fetches).
-    const [reviewMap, resultsByPaper] = await Promise.all([
-      loadReviewsByJob(ctx, args.jobId),
-      loadResultsByJob(ctx, args.jobId),
-    ]);
-
-    const allResults: Record<
-      string,
-      { paper: Doc<"extractionPapers">; results: Doc<"extractionResults">[] }
-    > = {};
-    for (const paper of papers) {
-      const rawResults = resultsByPaper.get(paper._id) ?? [];
-      allResults[paper._id] = {
-        paper,
-        results: applyReviewMetadata(rawResults, reviewMap),
-      };
-    }
-
-    return ok({
-      job,
-      questions,
-      papers: allResults,
-    });
-  },
-});
-
-// Get paginated results for a job
-export const getJobResultsPaginated = query({
-  args: {
-    jobId: v.id("extractionJobs"),
-    paginationOpts: paginationOptsValidator,
-  },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      ...paginatedPaperResultValidator.fields,
-    }),
-    v.object({
-      status: v.union(v.literal("unauthenticated"), v.literal("no_access")),
-      ...paginatedPaperResultValidator.fields,
-    })
-  ),
-  handler: async (ctx, args) => {
-
-    const access = await resolveOwnedJob(ctx, args.jobId);
-    if (access.status !== "ok") {
-      return {
-        status: access.status,
-        page: [],
-        isDone: true,
-        continueCursor: "",
-        splitCursor: null,
-        pageStatus: null,
-      };
-    }
-
-    const result = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job_processable", (q) =>
-        q.eq("jobId", args.jobId).eq("processable", true)
-      )
-      //.order("desc") // User wants oldest (processing) first? Or if FIFO queue. 
-      // If user said "scroll to bottom to see updates" and it WAS desc, then updates were at bottom -> Oldest were at bottom.
-      // So FIFO processing matches desc list having updates at bottom.
-      // To see updates at TOP, we need ASC (Oldest at top).
-      .order("asc")
-      .paginate(args.paginationOpts);
-
-    // Batch-load all reviews + all results for the job in two indexed
-    // queries instead of fetching results per paper in parallel.
-    const [reviewMap, resultsByPaper] = await Promise.all([
-      loadReviewsByJob(ctx, args.jobId),
-      loadResultsByJob(ctx, args.jobId),
-    ]);
-
-    const papersWithResults = result.page.map((paper) => {
-      const rawResults = resultsByPaper.get(paper._id) ?? [];
-      return {
-        ...paper,
-        results: applyReviewMetadata(rawResults, reviewMap),
-      };
-    });
-
-    return {
-      status: "ok" as const,
-      ...result,
-      page: papersWithResults,
-    };
-  },
-});
 
 export const getJobInsights = query({
   args: { jobId: v.id("extractionJobs") },
