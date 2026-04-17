@@ -213,3 +213,143 @@ describe("useBucketStore", () => {
     expect(snapshot.state.items["k:a"].bucketKey).toBe("k:a");
   });
 });
+
+describe("useBucketStore — dedupeKeys / dedupeKeyToSource", () => {
+  test("addMany populates weak dedupe keys from doi/title+year", () => {
+    useBucketStore
+      .getState()
+      .addMany(
+        [
+          makeItem("openalex:W1", {
+            source: "library",
+            doi: "10.1/a",
+            title: "Alpha",
+            year: 2020,
+          }),
+        ],
+        NO_CAP,
+      );
+    const { dedupeKeys, dedupeKeyToSource } = useBucketStore.getState();
+    expect(dedupeKeys.has("doi:10.1/a")).toBe(true);
+    expect(dedupeKeyToSource["doi:10.1/a"]).toBe("library");
+  });
+
+  test("dedupeKeyToSource lets Zotero rows cross-match a library-staged paper", () => {
+    // Library row has both openalexId (bucketKey) and DOI; Zotero would
+    // key the same paper by DOI. The weak dedupe key (doi:…) collapses
+    // the two so the Zotero tab can show "also staged from Library".
+    useBucketStore.getState().addMany(
+      [
+        makeItem("openalex:W42", {
+          source: "library",
+          doi: "10.1/shared",
+          title: "Shared Paper",
+          year: 2021,
+        }),
+      ],
+      NO_CAP,
+    );
+    const { dedupeKeys, dedupeKeyToSource, order } = useBucketStore.getState();
+    expect(order).toEqual(["openalex:W42"]);
+    expect(dedupeKeys.has("doi:10.1/shared")).toBe(true);
+    expect(dedupeKeyToSource["doi:10.1/shared"]).toBe("library");
+  });
+
+  test("saved-search placeholders do NOT contribute to dedupe maps", () => {
+    useBucketStore.getState().addMany(
+      [
+        makeItem("history:h1", {
+          source: "history",
+          sourceMeta: { isSavedSearch: true },
+          title: "neural networks",
+        }),
+      ],
+      NO_CAP,
+    );
+    const { dedupeKeys } = useBucketStore.getState();
+    expect(dedupeKeys.size).toBe(0);
+  });
+
+  test("remove prunes the weak key when the last item carrying it leaves", () => {
+    useBucketStore.getState().addMany(
+      [
+        makeItem("openalex:W1", {
+          doi: "10.1/x",
+          title: "X",
+          year: 2020,
+        }),
+      ],
+      NO_CAP,
+    );
+    useBucketStore.getState().remove("openalex:W1");
+    const { dedupeKeys, dedupeKeyToSource } = useBucketStore.getState();
+    expect(dedupeKeys.size).toBe(0);
+    expect(Object.keys(dedupeKeyToSource)).toHaveLength(0);
+  });
+
+  test("removeMany rebuilds dedupe maps from the surviving items", () => {
+    useBucketStore.getState().addMany(
+      [
+        makeItem("openalex:W1", {
+          source: "library",
+          doi: "10.1/a",
+          title: "A",
+          year: 2020,
+        }),
+        makeItem("doi:10.1/b", {
+          source: "zotero",
+          doi: "10.1/b",
+          title: "B",
+          year: 2021,
+        }),
+      ],
+      NO_CAP,
+    );
+    useBucketStore.getState().removeMany(["openalex:W1"]);
+    const { dedupeKeys, dedupeKeyToSource } = useBucketStore.getState();
+    expect(Array.from(dedupeKeys)).toEqual(["doi:10.1/b"]);
+    expect(dedupeKeyToSource["doi:10.1/b"]).toBe("zotero");
+    expect(dedupeKeyToSource["doi:10.1/a"]).toBeUndefined();
+  });
+
+  test("clear empties the dedupe maps too", () => {
+    useBucketStore
+      .getState()
+      .addMany(
+        [makeItem("openalex:W1", { doi: "10.1/x", title: "X", year: 2020 })],
+        NO_CAP,
+      );
+    useBucketStore.getState().clear();
+    const { dedupeKeys, dedupeKeyToSource } = useBucketStore.getState();
+    expect(dedupeKeys.size).toBe(0);
+    expect(Object.keys(dedupeKeyToSource)).toHaveLength(0);
+  });
+
+  test("two items with different bucketKeys but the same doi share one dedupe key", () => {
+    // Edge case: user stages the same paper from both sources (the
+    // cross-source dedup hint is meant to prevent this, but if it
+    // happens the weak key stays in the map until the last carrier
+    // leaves).
+    useBucketStore.getState().addMany(
+      [
+        makeItem("openalex:W9", {
+          source: "library",
+          doi: "10.1/shared",
+          title: "Shared",
+          year: 2020,
+        }),
+        makeItem("doi:10.1/shared", {
+          source: "zotero",
+          doi: "10.1/shared",
+          title: "Shared",
+          year: 2020,
+        }),
+      ],
+      NO_CAP,
+    );
+    useBucketStore.getState().remove("openalex:W9");
+    const { dedupeKeys, dedupeKeyToSource } = useBucketStore.getState();
+    expect(dedupeKeys.has("doi:10.1/shared")).toBe(true);
+    expect(dedupeKeyToSource["doi:10.1/shared"]).toBe("zotero");
+  });
+});

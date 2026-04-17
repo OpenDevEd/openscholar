@@ -6,7 +6,12 @@
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { BucketItem, BucketItemStatus } from "@/lib/bucket/bucketItem";
+import type {
+  BucketItem,
+  BucketItemStatus,
+  BucketSource,
+} from "@/lib/bucket/bucketItem";
+import { buildDedupeKey } from "@/lib/bucket/dedupe";
 
 type StatusPatch = Partial<
   Pick<BucketItem, "status" | "storageId" | "pdfUrl">
@@ -28,12 +33,65 @@ export type AddManyResult = {
 type BucketState = {
   items: Record<string, BucketItem>;
   order: string[];
+  /**
+   * "Weaker" dedupe keys for every staged paper — doi/title+year only,
+   * openalexId deliberately stripped. Lets the source tabs show an
+   * "also staged from X" hint when the same paper lands under different
+   * bucketKeys across sources (e.g. Library stages `openalex:W123` but
+   * the same paper in Zotero keys as `doi:10.1/x`). Rebuilt on every
+   * mutation; see `computeDedupeMaps`.
+   */
+  dedupeKeys: Set<string>;
+  dedupeKeyToSource: Record<string, BucketSource>;
   addMany: (items: BucketItem[], limit: number) => AddManyResult;
   remove: (bucketKey: string) => void;
   removeMany: (bucketKeys: string[]) => void;
   clear: () => void;
   updateStatus: (bucketKey: string, patch: StatusPatch) => void;
 };
+
+/**
+ * Returns the weak dedupe key for an item, or `null` if the item
+ * shouldn't participate in cross-source matching. Saved-search
+ * placeholders (a row standing in for a whole historical search) and
+ * items with no identifiers fall into the null bucket.
+ */
+function weakDedupeKey(item: BucketItem): string | null {
+  const meta = item.sourceMeta as
+    | { isSavedSearch?: boolean }
+    | undefined;
+  if (meta?.isSavedSearch) return null;
+  try {
+    return buildDedupeKey({
+      doi: item.doi,
+      title: item.title,
+      year: item.year,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function computeDedupeMaps(items: Record<string, BucketItem>): {
+  dedupeKeys: Set<string>;
+  dedupeKeyToSource: Record<string, BucketSource>;
+} {
+  const dedupeKeys = new Set<string>();
+  const dedupeKeyToSource: Record<string, BucketSource> = {};
+  for (const key of Object.keys(items)) {
+    const item = items[key];
+    const wk = weakDedupeKey(item);
+    if (!wk) continue;
+    dedupeKeys.add(wk);
+    // First write wins. If the user happens to stage the same paper
+    // from two sources under different bucketKeys, the hint points to
+    // whichever source landed first — stable for the session.
+    if (!(wk in dedupeKeyToSource)) {
+      dedupeKeyToSource[wk] = item.source;
+    }
+  }
+  return { dedupeKeys, dedupeKeyToSource };
+}
 
 function mergeItem(existing: BucketItem, next: BucketItem): BucketItem {
   // Status never regresses from "ready" to "uploading" — once a file has
@@ -51,6 +109,8 @@ export const useBucketStore = create<BucketState>()(
     (set) => ({
       items: {},
       order: [],
+      dedupeKeys: new Set<string>(),
+      dedupeKeyToSource: {},
       addMany: (incoming, limit) => {
         if (incoming.length === 0) {
           return { added: 0, deduped: 0, capped: 0 };
@@ -93,7 +153,8 @@ export const useBucketStore = create<BucketState>()(
             added++;
           }
           result = { added, deduped, capped };
-          return { items, order };
+          const derived = computeDedupeMaps(items);
+          return { items, order, ...derived };
         });
         return result;
       },
@@ -101,9 +162,11 @@ export const useBucketStore = create<BucketState>()(
         set((state) => {
           if (!state.items[bucketKey]) return state;
           const { [bucketKey]: _removed, ...rest } = state.items;
+          const derived = computeDedupeMaps(rest);
           return {
             items: rest,
             order: state.order.filter((k) => k !== bucketKey),
+            ...derived,
           };
         }),
       removeMany: (bucketKeys) =>
@@ -120,12 +183,20 @@ export const useBucketStore = create<BucketState>()(
             items[key] = state.items[key];
           }
           if (!changed) return state;
+          const derived = computeDedupeMaps(items);
           return {
             items,
             order: state.order.filter((k) => !drop.has(k)),
+            ...derived,
           };
         }),
-      clear: () => set({ items: {}, order: [] }),
+      clear: () =>
+        set({
+          items: {},
+          order: [],
+          dedupeKeys: new Set<string>(),
+          dedupeKeyToSource: {},
+        }),
       updateStatus: (bucketKey, patch) =>
         set((state) => {
           const existing = state.items[bucketKey];
@@ -152,6 +223,22 @@ export const useBucketStore = create<BucketState>()(
       name: "extraction-bucket",
       version: 1,
       partialize: (state) => ({ items: state.items, order: state.order }),
+      // `dedupeKeys` and `dedupeKeyToSource` aren't persisted (Set is not
+      // JSON-serialisable and the map is cheap to recompute). Rebuild
+      // both from `items` after hydration so selectors see fresh values
+      // on first render.
+      merge: (persisted, current) => {
+        const p = persisted as Partial<BucketState> | undefined;
+        const items = p?.items ?? current.items;
+        const order = p?.order ?? current.order;
+        const derived = computeDedupeMaps(items);
+        return {
+          ...current,
+          items,
+          order,
+          ...derived,
+        };
+      },
     },
   ),
 );

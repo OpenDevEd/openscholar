@@ -9,6 +9,9 @@ import { Loader2, Search } from "lucide-react";
 import { SelectableList } from "../selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromLibraryItem } from "@/lib/bucket/bucketItem";
+import type { BucketSource } from "@/lib/bucket/bucketItem";
+import { buildDedupeKey } from "@/lib/bucket/dedupe";
+import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
 import { bucketAdded } from "@/lib/toast/bucket";
 import type { Doc } from "@/convex/_generated/dataModel";
 
@@ -30,6 +33,26 @@ export function LibraryTab() {
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(order), [order]);
+  // Cross-source "also staged from X" hint: atomic selectors per P5 §5a.
+  const dedupeKeys = useBucketStore((s) => s.dedupeKeys);
+  const dedupeKeyToSource = useBucketStore((s) => s.dedupeKeyToSource);
+
+  const alsoStagedFrom = (item: LibItem): BucketSource | null => {
+    const bucketKey = fromLibraryItem(item).bucketKey;
+    if (bucketKeys.has(bucketKey)) return null;
+    try {
+      const weakKey = buildDedupeKey({
+        doi: item.doi,
+        title: item.title,
+        year: item.publicationYear,
+      });
+      if (!dedupeKeys.has(weakKey)) return null;
+      const src = dedupeKeyToSource[weakKey];
+      return src && src !== "library" ? src : null;
+    } catch {
+      return null;
+    }
+  };
 
   const isSelected = useMemo(
     () => (item: LibItem) => {
@@ -113,15 +136,23 @@ export function LibraryTab() {
           onToggleAll={toggleAll}
           onSelectAllAcross={selectAllAcross}
           hasMore={list.status === "CanLoadMore"}
-          renderRow={(item) => (
-            <div>
-              <p className="font-medium text-sm truncate">{item.title}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {item.authors ?? "Unknown authors"}
-                {item.publicationYear ? ` · ${item.publicationYear}` : ""}
-              </p>
-            </div>
-          )}
+          renderRow={(item) => {
+            const alsoFrom = alsoStagedFrom(item);
+            return (
+              <div>
+                <p className="font-medium text-sm truncate">{item.title}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {item.authors ?? "Unknown authors"}
+                  {item.publicationYear ? ` · ${item.publicationYear}` : ""}
+                </p>
+                {alsoFrom && (
+                  <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                    Also staged from {BUCKET_SOURCE_LABELS[alsoFrom]}
+                  </p>
+                )}
+              </div>
+            );
+          }}
         />
       )}
 

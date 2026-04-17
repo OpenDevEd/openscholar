@@ -10,6 +10,9 @@ import { Folder, Loader2 } from "lucide-react";
 import { SelectableList } from "../selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromCollectionItem } from "@/lib/bucket/bucketItem";
+import type { BucketSource } from "@/lib/bucket/bucketItem";
+import { buildDedupeKey } from "@/lib/bucket/dedupe";
+import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
 import { bucketAdded } from "@/lib/toast/bucket";
 
 type LibItem = Doc<"libraryItems">;
@@ -86,6 +89,25 @@ function CollectionItems({
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(order), [order]);
+  const dedupeKeys = useBucketStore((s) => s.dedupeKeys);
+  const dedupeKeyToSource = useBucketStore((s) => s.dedupeKeyToSource);
+
+  const alsoStagedFrom = (item: LibItem): BucketSource | null => {
+    const bucketKey = fromCollectionItem(item, collectionId).bucketKey;
+    if (bucketKeys.has(bucketKey)) return null;
+    try {
+      const weakKey = buildDedupeKey({
+        doi: item.doi,
+        title: item.title,
+        year: item.publicationYear,
+      });
+      if (!dedupeKeys.has(weakKey)) return null;
+      const src = dedupeKeyToSource[weakKey];
+      return src && src !== "collection" ? src : null;
+    } catch {
+      return null;
+    }
+  };
   const list = usePaginatedQuery(
     api.extraction.sources.collections.listItems,
     { collectionId },
@@ -152,15 +174,23 @@ function CollectionItems({
         onToggleAll={(next) => (next ? add(items) : remove(items))}
         onSelectAllAcross={selectAllAcross}
         hasMore={list.status === "CanLoadMore"}
-        renderRow={(item) => (
-          <div>
-            <p className="font-medium text-sm truncate">{item.title}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {item.authors ?? "Unknown authors"}
-              {item.publicationYear ? ` · ${item.publicationYear}` : ""}
-            </p>
-          </div>
-        )}
+        renderRow={(item) => {
+          const alsoFrom = alsoStagedFrom(item);
+          return (
+            <div>
+              <p className="font-medium text-sm truncate">{item.title}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {item.authors ?? "Unknown authors"}
+                {item.publicationYear ? ` · ${item.publicationYear}` : ""}
+              </p>
+              {alsoFrom && (
+                <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                  Also staged from {BUCKET_SOURCE_LABELS[alsoFrom]}
+                </p>
+              )}
+            </div>
+          );
+        }}
       />
       {list.status === "CanLoadMore" && (
         <div className="flex justify-center">

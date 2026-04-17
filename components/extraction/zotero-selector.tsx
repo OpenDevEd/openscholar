@@ -25,6 +25,8 @@ import {
   fromZoteroItem,
   zoteroBucketKeyFor,
 } from "@/lib/bucket/bucketItem";
+import type { BucketSource } from "@/lib/bucket/bucketItem";
+import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
 import { bucketAdded } from "@/lib/toast/bucket";
 
 type ZoteroGroup = {
@@ -64,6 +66,8 @@ export function ZoteroSelector() {
   const bucketRemoveMany = useBucketStore((s) => s.removeMany);
   const bucketOrder = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(bucketOrder), [bucketOrder]);
+  const dedupeKeys = useBucketStore((s) => s.dedupeKeys);
+  const dedupeKeyToSource = useBucketStore((s) => s.dedupeKeyToSource);
   const paperLimit =
     useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
   const meQuery = useProtectedQuery(api.users.queries.me, {});
@@ -197,6 +201,20 @@ export function ZoteroSelector() {
         doi: item.doi,
       }),
     );
+  const alsoStagedFrom = (item: ZoteroItem): BucketSource | null => {
+    const weakKey = zoteroBucketKeyFor({
+      title: item.title,
+      year: item.year,
+      doi: item.doi,
+    });
+    // Zotero's bucketKey IS the weak dedupe key. If it's already in the
+    // bucket (isItemSelected === true) this branch isn't entered by the
+    // caller anyway. Any dedupe hit pointing back at zotero is the same
+    // item — skip so we don't show "Also staged from Zotero" on Zotero.
+    if (!dedupeKeys.has(weakKey)) return null;
+    const src = dedupeKeyToSource[weakKey];
+    return src && src !== "zotero" ? src : null;
+  };
   const collectionOptions = useMemo<CascaderOption[]>(() => {
     const source = requiresGroupSelection
       ? []
@@ -415,22 +433,32 @@ export function ZoteroSelector() {
           onSelectAllAcross={selectAllAcross}
           onCancelSelectAllAcross={cancelSelectAllAcross}
           hasMore={!isReachingEnd}
-          renderRow={(item) => (
-            <div>
-              <p className="font-medium text-foreground truncate">
-                {item.title}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {item.authors.slice(0, 3).join(", ") || te("unknownAuthors")}
-                {item.year ? ` • ${item.year}` : ""}
-              </p>
-              {item.hasPdfChild && (
-                <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  <Paperclip className="h-3 w-3" /> {tc("pdfAttached")}
-                </div>
-              )}
-            </div>
-          )}
+          renderRow={(item) => {
+            const alsoFrom = isItemSelected(item)
+              ? null
+              : alsoStagedFrom(item);
+            return (
+              <div>
+                <p className="font-medium text-foreground truncate">
+                  {item.title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {item.authors.slice(0, 3).join(", ") || te("unknownAuthors")}
+                  {item.year ? ` • ${item.year}` : ""}
+                </p>
+                {item.hasPdfChild && (
+                  <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Paperclip className="h-3 w-3" /> {tc("pdfAttached")}
+                  </div>
+                )}
+                {alsoFrom && (
+                  <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                    Also staged from {BUCKET_SOURCE_LABELS[alsoFrom]}
+                  </p>
+                )}
+              </div>
+            );
+          }}
         />
       )}
       {!isReachingEnd && flattenedItems.length > 0 && (
