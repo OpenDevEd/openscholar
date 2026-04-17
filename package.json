@@ -8,7 +8,6 @@
     "dev:all": "pm2 start ecosystem.config.js",
     "build": "next build",
     "start": "next start",
-    "sync:env": "./sync-env.sh",
     "test": "vitest run",
     "test:billing:preflight": "node ./scripts/billing-preflight.mjs",
     "test:billing:live": "vitest run --config vitest.live.config.ts tests/live-billing/required.test.ts",
