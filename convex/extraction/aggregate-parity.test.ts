@@ -1,8 +1,10 @@
-import { convexTest } from "convex-test";
+import { convexTest, type TestConvex } from "convex-test";
 import { describe, test, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+
+type Ctx = TestConvex<typeof schema>;
 
 /**
  * Safety net SN-5 (P3 plan §6 Parity Contract): the 8 invariants the
@@ -64,7 +66,7 @@ const ZERO: Counters = {
  * legacy table. Callers must stay unchanged.
  */
 async function readCounters(
-  t: ReturnType<typeof convexTest>,
+  t: Ctx,
   jobId: Id<"extractionJobs">,
   questionKey: string
 ): Promise<Counters> {
@@ -94,7 +96,7 @@ async function readCounters(
 }
 
 async function readQuestionKeys(
-  t: ReturnType<typeof convexTest>,
+  t: Ctx,
   jobId: Id<"extractionJobs">
 ): Promise<string[]> {
   return await t.run(async (ctx) => {
@@ -118,7 +120,7 @@ type ResultShape = {
 };
 
 async function seedJob(
-  t: ReturnType<typeof convexTest>,
+  t: Ctx,
   options: {
     paperCount: number;
     questionKeys?: string[];
@@ -184,7 +186,7 @@ async function seedJob(
 }
 
 async function complete(
-  t: ReturnType<typeof convexTest>,
+  t: Ctx,
   paperId: Id<"extractionPapers">,
   results: ResultShape[]
 ) {

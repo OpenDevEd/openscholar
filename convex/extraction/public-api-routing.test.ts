@@ -65,8 +65,8 @@ describe("SN-1 public mutation routing", () => {
     "api.extraction.mutations.%s is registered and invokable",
     async (name) => {
       const t = convexTest(schema);
-      const ref = (api.extraction.mutations as Record<string, unknown>)[name];
-      await assertRoutes(() => t.mutation(ref as never, {} as never));
+      const ref = (api.extraction.mutations as unknown as Record<string, never>)[name];
+      await assertRoutes(() => (t.mutation as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
   );
 });
@@ -76,8 +76,8 @@ describe("SN-1 public query routing", () => {
     "api.extraction.queries.%s is registered and invokable",
     async (name) => {
       const t = convexTest(schema);
-      const ref = (api.extraction.queries as Record<string, unknown>)[name];
-      await assertRoutes(() => t.query(ref as never, {} as never));
+      const ref = (api.extraction.queries as unknown as Record<string, never>)[name];
+      await assertRoutes(() => (t.query as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
   );
 });

@@ -36,6 +36,7 @@ import type * as extraction_evidence_units from "../extraction/evidence_units.js
 import type * as extraction_index from "../extraction/index.js";
 import type * as extraction_jobSources from "../extraction/jobSources.js";
 import type * as extraction_mutations from "../extraction/mutations.js";
+import type * as extraction_mutations_jobs from "../extraction/mutations/jobs.js";
 import type * as extraction_pdfjs_extract from "../extraction/pdfjs_extract.js";
 import type * as extraction_prompts from "../extraction/prompts.js";
 import type * as extraction_queries from "../extraction/queries.js";
@@ -160,6 +161,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/index": typeof extraction_index;
   "extraction/jobSources": typeof extraction_jobSources;
   "extraction/mutations": typeof extraction_mutations;
+  "extraction/mutations/jobs": typeof extraction_mutations_jobs;
   "extraction/pdfjs_extract": typeof extraction_pdfjs_extract;
   "extraction/prompts": typeof extraction_prompts;
   "extraction/queries": typeof extraction_queries;

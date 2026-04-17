@@ -121,227 +121,9 @@ function toInsightEntry(
 }
 
 
-// Start a new extraction job (public API)
-export const startExtraction = mutation({
-  args: {
-    name: v.string(),
-    sourceType: sourceTypeValidator,
-    sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
-    sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
-    sourceManualItems: v.optional(v.array(manualItemInputValidator)),
-    questions: v.array(questionInputValidator),
-  },
-  returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
-    await requireFeature(ctx, "extraction.start", user._id);
-    await rateLimit(ctx, {
-      name: "start-extraction",
-      key: user._id,
-      throws: true,
-    });
-
-    assertExtractionInputLimits(args);
-
-    const userId = user._id;
-
-    // Create job record
-    const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-      userId,
-      name: args.name,
-      sourceType: args.sourceType,
-      status: "pending",
-      totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    // Persist per-row sources in the child table (bounded by the input
-    // caps above; each row is its own doc so the 1MB job-doc limit does
-    // not apply).
-    await writeJobSources(ctx, jobId, {
-      historyEntries: args.sourceHistoryEntries,
-      zoteroSelection: args.sourceZoteroSelection,
-      manualItems: args.sourceManualItems,
-    });
-
-    // Create question records
-    for (let i = 0; i < args.questions.length; i++) {
-      await ctx.db.insert("extractionQuestions", {
-        jobId,
-        key: args.questions[i].key,
-        question: args.questions[i].question,
-        type: args.questions[i].type,
-        description: args.questions[i].description,
-        order: i,
-        createdAt: Date.now(),
-      });
-    }
-
-    // Start the extraction workflow
-    // Workflow handles: fetch papers -> create records -> enqueue via workpool -> process
-    const workflowId = await workflow.start(
-      ctx,
-      internal.extraction.workflow.runExtractionWorkflow,
-      { jobId }
-    );
-
-    // Update job with workflow ID
-    await ctx.db.patch("extractionJobs", jobId, {
-      workflowId,
-      updatedAt: Date.now(),
-    });
-
-    return { jobId };
-  },
-});
-
-// Cancel a running job (public API)
-export const cancelExtraction = mutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args): Promise<{ success: boolean }> => {
-    const user = await requireAuth(ctx);
-
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-
-    if (!job || job.userId !== user._id) {
-      throw createError("NOT_FOUND", "Job not found");
-    }
-
-    // Only allow cancelling pending or active jobs
-    if (["completed", "failed", "cancelled"].includes(job.status)) {
-       // Already done, just return success
-       return { success: true };
-    }
-
-    assertValidJobTransition(job.status as JobStatus, "cancelled");
-    await ctx.db.patch("extractionJobs", args.jobId, {
-      status: "cancelled",
-      updatedAt: Date.now(),
-    });
-
-    // Cancel the workflow to prevent new steps from starting
-    if (job.workflowId) {
-      try {
-        await workflow.cancel(ctx, job.workflowId as WorkflowId);
-      } catch (e) {
-        // Workflow may have already completed -- safe to ignore
-        console.warn(`[cancelExtraction] Failed to cancel workflow: ${e}`);
-      }
-    }
-
-    // Cancel only this job's in-flight workpool items. The pdfProcessingPool
-    // is shared across all users and jobs, so cancelAll() would abort every
-    // tenant's work — cross-tenant denial of service. Instead, we stored the
-    // WorkId of each paper's currently-active pool item and cancel exactly
-    // those. Cancels are idempotent per workpool contract.
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
-
-    for (const paper of papers) {
-      if (!paper.workId) continue;
-      if (
-        paper.status === "completed" ||
-        paper.status === "failed" ||
-        paper.status === "download_failed" ||
-        paper.status === "indexing_failed"
-      ) {
-        continue;
-      }
-      try {
-        await pdfProcessingPool.cancel(ctx, paper.workId as WorkId);
-      } catch (e) {
-        console.warn(
-          `[cancelExtraction] Failed to cancel workpool item ${paper.workId} for paper ${paper._id}: ${e}`,
-        );
-      }
-    }
-
-    return { success: true };
-  },
-});
-
-export const duplicateExtraction = mutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
-    await requireFeature(ctx, "extraction.start", user._id);
-    await rateLimit(ctx, {
-      name: "start-extraction",
-      key: user._id,
-      throws: true,
-    });
-
-    const oldJob = await ctx.db.get("extractionJobs", args.jobId);
-    if (!oldJob || oldJob.userId !== user._id) {
-      throw createError("NOT_FOUND", "Job not found");
-    }
-
-    // Cardinality: ~5-20 questions per extraction job
-    const questions = await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .order("asc")
-      .collect();
-
-    const { historyEntries, zoteroSelection, manualItems } =
-      await readJobSources(ctx, args.jobId, MAX_PAPERS_PER_JOB * 2);
-
-    // Create new job record (similar to startExtraction)
-    const newJobId = await ctx.db.insert("extractionJobs", {
-      userId: user._id,
-      name: `${oldJob.name} (Copy)`,
-      sourceType: oldJob.sourceType,
-      status: "pending",
-      totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    await writeJobSources(ctx, newJobId, {
-      historyEntries,
-      zoteroSelection,
-      manualItems,
-    });
-
-    // Copy questions
-    for (const q of questions) {
-      await ctx.db.insert("extractionQuestions", {
-        jobId: newJobId,
-        key: q.key,
-        question: q.question,
-        type: q.type,
-        description: q.description,
-        order: q.order,
-        createdAt: Date.now(),
-      });
-    }
-
-    // Start workflow
-    const workflowId = await workflow.start(
-      ctx,
-      internal.extraction.workflow.runExtractionWorkflow,
-      { jobId: newJobId }
-    );
-
-    await ctx.db.patch("extractionJobs", newJobId, { 
-      workflowId,
-      updatedAt: Date.now(),
-    });
-
-    return { jobId: newJobId };
-  },
-});
+// startExtraction / cancelExtraction / duplicateExtraction / deleteExtraction /
+// startExtractionFromTemplate have moved to ./mutations/jobs.ts and are
+// re-exported at the bottom of this barrel.
 
 export const setResultReviewState = mutation({
   args: {
@@ -429,77 +211,6 @@ export const setResultReviewState = mutation({
       reviewId,
       state: args.state,
     };
-  },
-});
-
-export const startExtractionFromTemplate = mutation({
-  args: {
-    templateId: v.id("extractionWorkflowTemplates"),
-    name: v.optional(v.string()),
-  },
-  returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
-    await requireFeature(ctx, "extraction.start", user._id);
-    await rateLimit(ctx, {
-      name: "start-extraction",
-      key: user._id,
-      throws: true,
-    });
-    const template = await ctx.db.get("extractionWorkflowTemplates", args.templateId);
-    if (!template || template.userId !== user._id) {
-      throw createError("NOT_FOUND", "Template not found");
-    }
-
-    const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-      userId: user._id,
-      name: args.name?.trim() || `${template.name} (Rerun)`,
-      sourceType: template.sourceType,
-      status: "pending",
-      totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    await writeJobSources(ctx, jobId, {
-      historyEntries: template.sourceHistoryEntries as
-        | JobSourceHistoryEntry[]
-        | undefined,
-      zoteroSelection: template.sourceZoteroSelection as
-        | JobSourceZoteroSelection
-        | undefined,
-      manualItems: template.sourceManualItems as
-        | JobSourceManualItem[]
-        | undefined,
-    });
-
-    for (let i = 0; i < template.questions.length; i++) {
-      const question = template.questions[i];
-      await ctx.db.insert("extractionQuestions", {
-        jobId,
-        key: question.key,
-        question: question.question,
-        type: question.type,
-        description: question.description,
-        order: i,
-        createdAt: Date.now(),
-      });
-    }
-
-    const workflowId = await workflow.start(
-      ctx,
-      internal.extraction.workflow.runExtractionWorkflow,
-      { jobId }
-    );
-    await ctx.db.patch("extractionJobs", jobId, {
-      workflowId,
-      updatedAt: Date.now(),
-    });
-
-    return { jobId };
   },
 });
 
@@ -978,24 +689,6 @@ export const createExtractionRunDiff = mutation({
     });
 
     return { diffId, summary };
-  },
-});
-
-export const deleteExtraction = mutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-    if (!job || job.userId !== user._id) throw createError("NOT_FOUND", "Job not found");
-
-    // Schedule the cascade delete as an independent mutation to avoid transaction limits
-    await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, {
-      jobId: args.jobId,
-    });
-
-    return null;
   },
 });
 
@@ -2202,3 +1895,19 @@ export const replacePaperEvidenceUnits = internalMutation({
   },
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// BARREL RE-EXPORTS — stable public paths for extracted submodules.
+// External callers use `api.extraction.mutations.<fn>` regardless of the
+// submodule the implementation now lives in. Submodules MUST NOT be
+// imported directly from outside convex/extraction/ (enforced by the
+// T4.0 import-boundary guard).
+// ═══════════════════════════════════════════════════════════════════════
+
+export {
+  startExtraction,
+  cancelExtraction,
+  duplicateExtraction,
+  startExtractionFromTemplate,
+  deleteExtraction,
+} from "./mutations/jobs";

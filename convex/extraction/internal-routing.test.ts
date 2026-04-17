@@ -79,10 +79,8 @@ describe("SN-2 internal.extraction.mutations routing", () => {
     "internal.extraction.mutations.%s is registered and invokable",
     async (name) => {
       const t = convexTest(schema);
-      const ref = (internal.extraction.mutations as Record<string, unknown>)[
-        name
-      ];
-      await assertRoutes(() => t.mutation(ref as never, {} as never));
+      const ref = (internal.extraction.mutations as unknown as Record<string, never>)[name];
+      await assertRoutes(() => (t.mutation as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
   );
 });
@@ -92,10 +90,8 @@ describe("SN-2 internal.extraction.queries routing", () => {
     "internal.extraction.queries.%s is registered and invokable",
     async (name) => {
       const t = convexTest(schema);
-      const ref = (internal.extraction.queries as Record<string, unknown>)[
-        name
-      ];
-      await assertRoutes(() => t.query(ref as never, {} as never));
+      const ref = (internal.extraction.queries as unknown as Record<string, never>)[name];
+      await assertRoutes(() => (t.query as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
   );
 });
@@ -105,11 +101,9 @@ describe("SN-2 internal.extraction.<actions> routing", () => {
     "internal.extraction.%s.%s is registered and invokable",
     async (module, name) => {
       const t = convexTest(schema);
-      const mod = (internal.extraction as Record<string, unknown>)[module] as
-        | Record<string, unknown>
-        | undefined;
+      const mod = (internal.extraction as unknown as Record<string, Record<string, never> | undefined>)[module];
       const ref = mod?.[name];
-      await assertRoutes(() => t.action(ref as never, {} as never));
+      await assertRoutes(() => (t.action as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
   );
 });

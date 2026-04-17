@@ -14,6 +14,10 @@ export const MAX_EXTRACTION_JOBS_PER_USER = 500;
  * Each extraction run produces evidence; 200 per paper is generous. */
 export const MAX_EVIDENCE_UNITS_PER_PAPER = 200;
 
+/** Maximum papers loaded for per-job queries/mutations. Cardinality bound
+ * for the extraction pipeline; 500 covers any realistic single job. */
+export const MAX_PAPERS_PER_JOB = 500;
+
 /** Maximum reviews loaded in a single batch by job.
  * Worst case: 500 papers x 20 questions = 10,000 reviews. */
 export const MAX_REVIEWS_PER_JOB = 10_000;
