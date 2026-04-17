@@ -3,33 +3,28 @@
  * Queries for retrieving extraction job data
  */
 
-import { query, internalQuery, type QueryCtx } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { notFound, ok } from "../lib/query_states";
 import { resolveOwnedJob, resolveOwnedPaper } from "./access";
-import {
-  getProcessableFlags,
-  MIN_ABSTRACT_LENGTH,
-} from "./content";
+import { getProcessableFlags } from "./content";
 import { requireFeature, getFlag } from "../featureFlags/guard";
 import {
   aggregateQuestionInsights,
   buildArrayAnswerProfileClusters,
   buildDisagreementClusters,
-  type CitationStatus,
   type DisagreementCluster,
   type InsightEntry,
   type QuestionType,
   type ReviewState,
 } from "../../lib/extraction/insights";
-import { createError } from "../lib/errors";
 import {
-  MAX_REVIEWS_PER_JOB,
   MAX_EXTRACTION_JOBS_PER_USER,
   MAX_EVIDENCE_UNITS_PER_PAPER,
+  MAX_PAPERS_PER_JOB,
 } from "../lib/queryBounds";
 import {
   extractionEvidenceUnitValidator,
@@ -45,195 +40,25 @@ import {
   citationStatusValidator,
   reviewStateValidator,
   answerValidator,
-  jobStatusValidator,
   jobSourcesReadValidator,
   paperStatusValidator,
-  searchFiltersValidator,
   paginatedPaperWithResultsValidator,
   workflowTemplateValidator,
 } from "./validators";
 import { statusResultValidator } from "../lib/query_states";
 import { readJobSources } from "./jobSources";
-
-/** Safety bound for per-job paper queries to prevent unbounded memory usage. */
-const MAX_PAPERS_PER_JOB = 500;
-
-/** Result document with optional review overlay fields from attachReviewMetadata. */
-type ResultWithReview = Doc<"extractionResults"> & {
-  reviewState?: ReviewState;
-  reviewNote?: string;
-  correctedAnswer?: Doc<"extractionResults">["answer"];
-  reviewedAt?: number;
-  reviewedBy?: Id<"users">;
-};
-
-function hasUsableAbstract(abstract?: string) {
-  return typeof abstract === "string" && abstract.trim().length > MIN_ABSTRACT_LENGTH;
-}
-
-function hasUsablePdfSource(paper: Doc<"extractionPapers">) {
-  return Boolean(
-    paper.pdfUrl ||
-      paper.storageId ||
-      paper.ragEntryId ||
-      paper.isIndexed
-  );
-}
-
-function toReviewState(value?: string): ReviewState | undefined {
-  if (
-    value === "unreviewed" ||
-    value === "accepted" ||
-    value === "rejected" ||
-    value === "needs_followup"
-  ) {
-    return value;
-  }
-  return undefined;
-}
-
-function toCitationStatus(value?: string): CitationStatus | undefined {
-  if (
-    value === "grounded" ||
-    value === "best_effort" ||
-    value === "insufficient_evidence" ||
-    value === "extraction_error"
-  ) {
-    return value;
-  }
-  return undefined;
-}
-
-async function attachReviewMetadata(
-  ctx: QueryCtx,
-  paperId: Id<"extractionPapers">,
-  results: Doc<"extractionResults">[]
-) {
-  // Cardinality: ~5-20 reviews per paper (one per question)
-  const reviews = await ctx.db
-    .query("extractionResultReviews")
-    .withIndex("by_paper", (q) => q.eq("paperId", paperId))
-    .collect();
-  const reviewByResultId = new Map<string, Doc<"extractionResultReviews">>(
-    reviews.map((review) => [review.resultId, review])
-  );
-
-  return results.map((result): ResultWithReview => {
-    const review = reviewByResultId.get(result._id);
-    if (!review) return result;
-    return {
-      ...result,
-      reviewState: toReviewState(review.state),
-      reviewNote: review.note,
-      correctedAnswer: review.correctedAnswer,
-      reviewedAt: review.reviewedAt,
-      reviewedBy: review.reviewedBy,
-    };
-  });
-}
-
-/**
- * Load ALL reviews for a job in a single batch query (uses by_job index).
- * Returns a Map keyed by resultId for O(1) lookup.
- * This replaces per-paper review queries to eliminate N+1 patterns.
- */
-async function loadReviewsByJob(ctx: QueryCtx, jobId: Id<"extractionJobs">) {
-  const allReviews = await ctx.db
-    .query("extractionResultReviews")
-    .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(MAX_REVIEWS_PER_JOB);
-  return new Map<string, Doc<"extractionResultReviews">>(
-    allReviews.map((review) => [review.resultId, review])
-  );
-}
-
-/**
- * Apply pre-loaded review metadata to results synchronously (no database calls).
- * Use with loadReviewsByJob for batch processing of multiple papers.
- */
-function applyReviewMetadata(
-  results: Doc<"extractionResults">[],
-  reviewMap: Map<string, Doc<"extractionResultReviews">>
-): ResultWithReview[] {
-  return results.map((result): ResultWithReview => {
-    const review = reviewMap.get(result._id);
-    if (!review) return result;
-    return {
-      ...result,
-      reviewState: toReviewState(review.state),
-      reviewNote: review.note,
-      correctedAnswer: review.correctedAnswer,
-      reviewedAt: review.reviewedAt,
-      reviewedBy: review.reviewedBy,
-    };
-  });
-}
-
-function buildQuestionInfoByKey(questions: Doc<"extractionQuestions">[]) {
-  return new Map(
-    questions.map((question) => [
-      question.key,
-      {
-        key: question.key,
-        question: question.question,
-        type: question.type,
-        description: question.description,
-      },
-    ])
-  );
-}
-
-/**
- * Load all results for a job in one indexed query and bucket by paperId in
- * JS. Replaces the previous N+1 pattern (one by_paper query per paper).
- * Cardinality: ≤ MAX_PAPERS_PER_JOB × ~20 questions.
- */
-async function loadResultsByJob(
-  ctx: QueryCtx,
-  jobId: Id<"extractionJobs">,
-): Promise<Map<string, Doc<"extractionResults">[]>> {
-  const all = await ctx.db
-    .query("extractionResults")
-    .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(MAX_PAPERS_PER_JOB * 20);
-
-  const byPaper = new Map<string, Doc<"extractionResults">[]>();
-  for (const row of all) {
-    const bucket = byPaper.get(row.paperId);
-    if (bucket) bucket.push(row);
-    else byPaper.set(row.paperId, [row]);
-  }
-  return byPaper;
-}
-
-async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs">) {
-  // Cardinality: ~5-20 questions per extraction job (enforced by UI limit)
-  const questions = await ctx.db
-    .query("extractionQuestions")
-    .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .order("asc")
-    .collect();
-
-  const papers = await ctx.db
-    .query("extractionPapers")
-    .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(MAX_PAPERS_PER_JOB);
-
-  // Batch-load reviews + results for the whole job in two indexed queries
-  // (eliminates the per-paper fan-out that dominated this path).
-  const [reviewMap, resultsByPaperRaw] = await Promise.all([
-    loadReviewsByJob(ctx, jobId),
-    loadResultsByJob(ctx, jobId),
-  ]);
-
-  const resultsByPaper = new Map<string, ResultWithReview[]>();
-  for (const paper of papers) {
-    const rawResults = resultsByPaperRaw.get(paper._id) ?? [];
-    resultsByPaper.set(paper._id, applyReviewMetadata(rawResults, reviewMap));
-  }
-
-  return { questions, papers, resultsByPaper };
-}
+import {
+  applyReviewMetadata,
+  attachReviewMetadata,
+  buildQuestionInfoByKey,
+  hasUsableAbstract,
+  hasUsablePdfSource,
+  loadJobPapersAndResults,
+  loadResultsByJob,
+  loadReviewsByJob,
+  toCitationStatus,
+  toReviewState,
+} from "./queries/_shared";
 
 const paginatedPaperResultValidator = paginationResultValidator(paginatedPaperWithResultsValidator);
 

@@ -50,6 +50,7 @@ import type * as extraction_paperLifecycle from "../extraction/paperLifecycle.js
 import type * as extraction_pdfjs_extract from "../extraction/pdfjs_extract.js";
 import type * as extraction_prompts from "../extraction/prompts.js";
 import type * as extraction_queries from "../extraction/queries.js";
+import type * as extraction_queries__shared from "../extraction/queries/_shared.js";
 import type * as extraction_stateMachine from "../extraction/stateMachine.js";
 import type * as extraction_tests_fixtures from "../extraction/tests/fixtures.js";
 import type * as extraction_tests_runners from "../extraction/tests/runners.js";
@@ -185,6 +186,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/pdfjs_extract": typeof extraction_pdfjs_extract;
   "extraction/prompts": typeof extraction_prompts;
   "extraction/queries": typeof extraction_queries;
+  "extraction/queries/_shared": typeof extraction_queries__shared;
   "extraction/stateMachine": typeof extraction_stateMachine;
   "extraction/tests/fixtures": typeof extraction_tests_fixtures;
   "extraction/tests/runners": typeof extraction_tests_runners;
