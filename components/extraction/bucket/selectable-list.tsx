@@ -27,6 +27,14 @@ export interface SelectableListProps<T> {
    * staging; SelectableList only drives its disabled/loading state.
    */
   onSelectAllAcross?: () => Promise<void> | void;
+  /**
+   * Optional cancel hook for `onSelectAllAcross`. Zotero fetches pages
+   * sequentially (cursor-paginated API), so mass-select can take a few
+   * seconds. When provided, the banner swaps "Staging…" for a Cancel
+   * link that signals the handler to stop. Library/Collections fetch
+   * everything in one request and don't need this.
+   */
+  onCancelSelectAllAcross?: () => void;
   hasMore?: boolean;
   renderRow: (t: T) => ReactNode;
   keyOf: (t: T) => string;
@@ -42,6 +50,7 @@ export function SelectableList<T>({
   onToggleRange,
   onToggleAll,
   onSelectAllAcross,
+  onCancelSelectAllAcross,
   hasMore,
   renderRow,
   keyOf,
@@ -138,27 +147,39 @@ export function SelectableList<T>({
           <span className="text-muted-foreground">
             All {total} items on this page are selected.
           </span>
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto p-0 text-xs font-medium"
-            disabled={selectingAllAcross}
-            onClick={() => {
-              setSelectingAllAcross(true);
-              Promise.resolve(onSelectAllAcross()).finally(() =>
-                setSelectingAllAcross(false),
-              );
-            }}
-          >
-            {selectingAllAcross ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Staging…
-              </>
-            ) : (
-              <>Select everything that matches →</>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 text-xs font-medium"
+              disabled={selectingAllAcross}
+              onClick={() => {
+                setSelectingAllAcross(true);
+                Promise.resolve(onSelectAllAcross()).finally(() =>
+                  setSelectingAllAcross(false),
+                );
+              }}
+            >
+              {selectingAllAcross ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Staging…
+                </>
+              ) : (
+                <>Select everything that matches →</>
+              )}
+            </Button>
+            {selectingAllAcross && onCancelSelectAllAcross && (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs text-muted-foreground"
+                onClick={onCancelSelectAllAcross}
+              >
+                Cancel
+              </Button>
             )}
-          </Button>
+          </div>
         </div>
       )}
       {items.map((item, index) => {

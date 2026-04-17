@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { collectAllPages } from "@/lib/zotero/collect-all-pages";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, Database, Library, Loader2, Paperclip } from "lucide-react";
@@ -166,6 +167,27 @@ export function ZoteroSelector() {
   };
   const removeItems = (items: ZoteroItem[]) => {
     bucketRemoveMany(toBucketItems(items).map((b) => b.bucketKey));
+  };
+
+  // Zotero can't fetch "all across pages" in one shot — the REST API is
+  // cursor-paginated with 50-item pages. Drive setSize() in a loop until
+  // the server runs out, the plan cap is reached, or the user cancels.
+  const cancelAllAcrossRef = useRef(false);
+  const selectAllAcross = async () => {
+    cancelAllAcrossRef.current = false;
+    const result = await collectAllPages({
+      initialPages: items.data ?? [],
+      fetchNext: (size) => items.setSize(size),
+      cap: paperLimit,
+      isCancelled: () => cancelAllAcrossRef.current,
+    });
+    if (result.cancelled) return;
+    const all = result.pages.flatMap((p) => p.items ?? []);
+    const added = bucketAdd(toBucketItems(all), paperLimit);
+    bucketAdded({ ...added, truncated: result.truncated });
+  };
+  const cancelSelectAllAcross = () => {
+    cancelAllAcrossRef.current = true;
   };
   const isItemSelected = (item: ZoteroItem) =>
     bucketKeys.has(
@@ -390,6 +412,9 @@ export function ZoteroSelector() {
           onToggleAll={(next) =>
             next ? addItems(flattenedItems) : removeItems(flattenedItems)
           }
+          onSelectAllAcross={selectAllAcross}
+          onCancelSelectAllAcross={cancelSelectAllAcross}
+          hasMore={!isReachingEnd}
           renderRow={(item) => (
             <div>
               <p className="font-medium text-foreground truncate">
