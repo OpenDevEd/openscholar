@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, test, expect } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { setupAggregates } from "./aggregates.test-support";
 
 /**
  * Safety net SN-4 (P3 plan): pin the workpool onComplete dispatchers.
@@ -87,6 +88,7 @@ const DOWNLOAD_QUESTIONS: ReadonlyArray<{
 describe("SN-4 handleDownloadAndIndexComplete branches", () => {
   test("success with data.success=false → paper download_failed, failedPapers++", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     await t.mutation(
       internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
@@ -111,6 +113,7 @@ describe("SN-4 handleDownloadAndIndexComplete branches", () => {
 
   test("failed → paper failed, failedPapers++", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     await t.mutation(
       internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
@@ -131,6 +134,7 @@ describe("SN-4 handleDownloadAndIndexComplete branches", () => {
 
   test("canceled → paper failed, failedPapers++", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     await t.mutation(
       internal.extraction.mutations.internal.onComplete.handleDownloadAndIndexComplete,
@@ -153,6 +157,7 @@ describe("SN-4 handleDownloadAndIndexComplete branches", () => {
 describe("SN-4 handleExtractionComplete branches", () => {
   test("success with data.success=true → saveExtractionResultsAndComplete runs, paper completed", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     // Move paper to extracting (the natural predecessor to this handler).
     await t.run(async (ctx) => {
@@ -186,6 +191,7 @@ describe("SN-4 handleExtractionComplete branches", () => {
 
   test("success with data.success=false → paper failed, failedPapers++", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     await t.run(async (ctx) => {
       await ctx.db.patch(
@@ -212,6 +218,7 @@ describe("SN-4 handleExtractionComplete branches", () => {
 
   test("failed → paper failed, failedPapers++", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     await t.run(async (ctx) => {
       await ctx.db.patch(
@@ -235,6 +242,7 @@ describe("SN-4 handleExtractionComplete branches", () => {
 
   test("canceled → paper failed, failedPapers++", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     await t.run(async (ctx) => {
       await ctx.db.patch(
@@ -260,6 +268,7 @@ describe("SN-4 handleExtractionComplete branches", () => {
 describe("SN-4 terminal-state idempotency", () => {
   test("already-failed paper re-fired by handleDownloadAndIndexComplete → no second counter bump", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     // First fire: transition to failed + bump.
     await t.mutation(
@@ -298,6 +307,7 @@ describe("SN-4 terminal-state idempotency", () => {
 
   test("already-completed paper re-fired by handleExtractionComplete → no resurrection, no extra bump", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const ids = await seedDownloadingPaper(t);
     // Seed paper in terminal completed and counter already reflecting it.
     await t.run(async (ctx) => {

@@ -11,6 +11,7 @@ import { internal } from "../../../_generated/api";
 import type { Doc } from "../../../_generated/dataModel";
 import { batchDeleteByIndex } from "../../../lib/cascade";
 import { MAX_PAPERS_PER_JOB } from "../../../lib/queryBounds";
+import { clearJobAggregates } from "../../aggregates";
 
 type BackfillAccumulator = {
   totalPapers: number;
@@ -109,6 +110,31 @@ export const deleteExtractionInternal = internalMutation({
       }
       return reschedule();
     }
+
+    // Clear the @convex-dev/aggregate state for every question on this job
+    // before dropping extractionQuestions / extractionJobStats below. The
+    // aggregate namespaces are keyed by (jobId, questionKey), so we need
+    // the keys in hand before the drain. Union questions + legacy stats
+    // rows so cascade works on both new jobs (questions always present)
+    // and legacy jobs (no questions row, just a backfilled stats row).
+    // T11.4 drops the stats fallback once the legacy store is removed.
+    const [jobQuestions, jobStats] = await Promise.all([
+      ctx.db
+        .query("extractionQuestions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+      ctx.db
+        .query("extractionJobStats")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    ]);
+    const questionKeys = Array.from(
+      new Set<string>([
+        ...jobQuestions.map((q) => q.key),
+        ...jobStats.map((s) => s.questionKey),
+      ]),
+    );
+    await clearJobAggregates(ctx, jobId, questionKeys);
 
     // Steps 5-8b: straightforward by-job drains. Ordered so that
     // extractionRunDiffs rows referencing this job as baseline are

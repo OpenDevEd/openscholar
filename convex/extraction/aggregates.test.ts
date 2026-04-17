@@ -1,6 +1,5 @@
 import { convexTest, type TestConvex } from "convex-test";
 import { describe, test, expect } from "vitest";
-import { register as registerAggregate } from "@convex-dev/aggregate/test";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import {
@@ -9,6 +8,7 @@ import {
   clearJobAggregates,
   readAggregateCounters,
 } from "./aggregates";
+import { setupAggregates } from "./aggregates.test-support";
 
 /**
  * Task 11 — direct tests for the @convex-dev/aggregate helpers. The SN-5
@@ -19,18 +19,6 @@ import {
  */
 
 type Ctx = TestConvex<typeof schema>;
-
-/**
- * convex-test needs each named DirectAggregate instance registered so the
- * component runtime is available inside `t.run`. Without this, any call
- * to recordResult / forgetResult / readAggregateCounters throws
- * `Component "resultStatusAgg" is not registered`.
- */
-function setupAggregates(t: Ctx): void {
-  registerAggregate(t, "resultStatusAgg");
-  registerAggregate(t, "resultAnsweredAgg");
-  registerAggregate(t, "resultConfidenceAgg");
-}
 
 async function seedMinimalJob(
   t: Ctx,

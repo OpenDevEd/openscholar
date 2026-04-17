@@ -3,10 +3,12 @@ import { describe, it, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { seedFullJobGraph } from "./tests/seed";
+import { setupAggregates } from "./aggregates.test-support";
 
 describe("deleteExtractionInternal cascade", () => {
   it("deletes full job graph leaving zero orphaned rows", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
 
     const ids = await seedFullJobGraph(t);
 
@@ -98,6 +100,7 @@ describe("deleteExtractionInternal cascade", () => {
 
   it("deletes diffs where deleted job is the BASELINE (BUG-03 fix)", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
 
     const ids = await seedFullJobGraph(t);
 
@@ -151,6 +154,7 @@ describe("deleteExtractionInternal cascade", () => {
 
   it("handles job with no child records gracefully", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const now = Date.now();
 
     // Seed only a user + job (no papers, questions, or anything)
@@ -208,6 +212,7 @@ describe("deleteExtractionInternal cascade", () => {
   describe("partial-failure recovery (TEST-04)", () => {
     it("resumes cascade after partial deletion (evidence units already removed)", async () => {
       const t = convexTest(schema);
+    setupAggregates(t);
       const ids = await seedFullJobGraph(t);
 
       // Simulate partial failure: manually delete only evidence units
@@ -303,6 +308,7 @@ describe("deleteExtractionInternal cascade", () => {
 
     it("complete deletion leaves no orphaned records in any child table", async () => {
       const t = convexTest(schema);
+    setupAggregates(t);
       const ids = await seedFullJobGraph(t);
 
       vi.useFakeTimers();
@@ -381,6 +387,7 @@ describe("deleteExtractionInternal cascade", () => {
 
     it("re-invocation on already-deleted job is idempotent (no-op)", async () => {
       const t = convexTest(schema);
+    setupAggregates(t);
       const ids = await seedFullJobGraph(t);
 
       // First: complete the full cascade deletion

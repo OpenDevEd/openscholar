@@ -22,6 +22,7 @@ import {
   type JobStatus,
 } from "../stateMachine";
 import { markPaperTerminalTx } from "../paperLifecycle";
+import { recordResult } from "../aggregates";
 
 export const setResultReviewState = mutation({
   args: {
@@ -239,7 +240,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
     }
 
     for (const result of args.results.filter(Boolean)) {
-      await ctx.db.insert("extractionResults", {
+      const resultId = await ctx.db.insert("extractionResults", {
         jobId: paper.jobId,
         paperId: args.paperId,
         questionKey: result.questionKey,
@@ -251,6 +252,18 @@ export const saveExtractionResultsAndComplete = internalMutation({
         retrievalDiagnostics: result.retrievalDiagnostics,
         pdfContentUsed: result.pdfContentUsed,
         processedAt: Date.now(),
+      });
+
+      // Dual-write (T11.2): mirror into @convex-dev/aggregate alongside the
+      // legacy extractionJobStats upsert below. T11.3 flips readers to the
+      // aggregate; T11.4 drops the legacy store.
+      await recordResult(ctx, {
+        _id: resultId,
+        jobId: paper.jobId,
+        questionKey: result.questionKey,
+        answer: result.answer,
+        confidence: result.confidence,
+        citationStatus: result.citationStatus,
       });
     }
 

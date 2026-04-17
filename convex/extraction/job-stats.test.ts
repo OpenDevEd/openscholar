@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { setupAggregates } from "./aggregates.test-support";
 
 /**
  * Seed a minimal extraction job with papers and results for stats testing.
@@ -72,6 +73,7 @@ async function seedJobWithPapers(
 describe("extractionJobStats upsert", () => {
   it("creates stats rows after completing 3 papers with 2 questions each", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 3, [
       { questionKey: "sample_size", answer: "100", confidence: 0.92, citationStatus: "grounded" },
@@ -132,6 +134,7 @@ describe("extractionJobStats upsert", () => {
 
   it("classifies confidence buckets correctly (high/medium/low/unknown)", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 4, []);
 
@@ -226,6 +229,7 @@ describe("extractionJobStats upsert", () => {
 
   it("accumulates stats across multiple paper completions (upsert, not overwrite)", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 2, []);
 
@@ -296,6 +300,7 @@ describe("extractionJobStats upsert", () => {
 describe("extractionJobStats cascade delete", () => {
   it("deletes stats rows when job is cascade-deleted", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 1, []);
 

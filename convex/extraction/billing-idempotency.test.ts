@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { setupAggregates } from "./aggregates.test-support";
 
 async function seed(t: ReturnType<typeof convexTest>, startingCredits = 1000) {
   return await t.run(async (ctx) => {
@@ -55,6 +56,7 @@ async function readBalance(
 describe("embedding credit idempotency (markPaperIndexed)", () => {
   it("deducts once on first billing call, skips on retry", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { userId, creditsId, jobId, paperId } = await seed(t, 1000);
 
     await t.mutation(internal.extraction.mutations.papers.markPaperIndexed, {
@@ -92,6 +94,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
 
   it("does not deduct when billing is omitted (cancellation path)", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { creditsId, paperId } = await seed(t, 1000);
 
     await t.mutation(internal.extraction.mutations.papers.markPaperIndexed, {
@@ -109,6 +112,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
 
   it("does not deduct when creditsToDeduct is 0", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { userId, creditsId, jobId, paperId } = await seed(t, 1000);
 
     await t.mutation(internal.extraction.mutations.papers.markPaperIndexed, {
@@ -133,6 +137,7 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
 
   it("deducts once, skips on direct retry because job becomes terminal", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
     await t.mutation(
@@ -178,6 +183,7 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
 
   it("extractionBilled gate blocks a re-bill even if the terminal-state guard is bypassed", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
     await t.mutation(
@@ -214,6 +220,7 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
 
   it("skips deduct when creditsUsed is 0", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { creditsId, paperId } = await seed(t, 1000);
 
     await t.mutation(

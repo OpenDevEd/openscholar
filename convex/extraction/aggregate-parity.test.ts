@@ -3,6 +3,7 @@ import { describe, test, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { setupAggregates } from "./aggregates.test-support";
 
 type Ctx = TestConvex<typeof schema>;
 
@@ -208,6 +209,7 @@ async function complete(
 describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
   test("1. row/key count equals distinct questionKey count per job", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { jobId, paperIds } = await seedJob(t, {
       paperCount: 1,
       questionKeys: ["q1", "q2", "q3"],
@@ -223,6 +225,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
 
   test("2. per-question scalars (12 fields) match bit-for-bit", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { jobId, paperIds } = await seedJob(t, { paperCount: 1 });
     await complete(t, paperIds[0], [
       { questionKey: "k", answer: "x", confidence: 0.9, citationStatus: "grounded" },
@@ -245,6 +248,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
 
   test("3. confidence bucket boundaries are inclusive-low", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { jobId, paperIds } = await seedJob(t, { paperCount: 5 });
     const cases: Array<[number | undefined, "high" | "medium" | "low" | "unknown"]> = [
       [0.8, "high"],
@@ -273,6 +277,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
 
   test("4. N paper completions produce N×delta counters (additivity)", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const N = 7;
     const { jobId, paperIds } = await seedJob(t, { paperCount: N });
     for (const paperId of paperIds) {
@@ -292,6 +297,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
   test("5. terminal-state guard: cancelled/completed/failed jobs never bump", async () => {
     for (const jobStatus of ["completed", "failed", "cancelled"] as const) {
       const t = convexTest(schema);
+    setupAggregates(t);
       const { jobId, paperIds } = await seedJob(t, {
         paperCount: 1,
         jobStatus,
@@ -305,6 +311,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
 
   test("6. after deleteExtractionInternal, all (jobId, *) counters are zero", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { jobId, paperIds } = await seedJob(t, { paperCount: 1 });
     await complete(t, paperIds[0], [
       { questionKey: "k", answer: "x", confidence: 0.9, citationStatus: "grounded" },
@@ -322,6 +329,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
 
   test("7. backfill idempotency: two runs produce the same state", async () => {
     const t = convexTest(schema);
+    setupAggregates(t);
     const { jobId, paperIds } = await seedJob(t, {
       paperCount: 2,
       questionKeys: ["k"],
@@ -356,6 +364,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
   test("8. parallel completions produce the same sum as sequential", async () => {
     // Sequential baseline
     const tSeq = convexTest(schema);
+    setupAggregates(tSeq);
     const seqSeed = await seedJob(tSeq, { paperCount: 20 });
     for (const paperId of seqSeed.paperIds) {
       await complete(tSeq, paperId, [
@@ -369,6 +378,7 @@ describe("SN-5 parity invariants for extractionJobStats ↔ aggregate", () => {
     // real OCC-freedom proof lands post-migration when the aggregate
     // component absorbs concurrent writes without conflict.
     const tPar = convexTest(schema);
+    setupAggregates(tPar);
     const parSeed = await seedJob(tPar, { paperCount: 20 });
     await Promise.all(
       parSeed.paperIds.map((paperId) =>
