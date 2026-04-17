@@ -89,7 +89,7 @@ describe("Bucket UI mount (P6 T1)", () => {
         );
     });
 
-    const indicator = screen.getByRole("button", { name: /2 \/ 1000/ });
+    const indicator = screen.getByRole("button", { name: /Open bucket/ });
     fireEvent.click(indicator);
 
     expect(screen.getByText("Alpha Paper")).toBeTruthy();
@@ -107,7 +107,7 @@ describe("Bucket UI mount (P6 T1)", () => {
         );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /2 \/ 1000/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Open bucket/ }));
     fireEvent.click(
       screen.getByRole("button", { name: /Remove Alpha Paper/ }),
     );
@@ -126,5 +126,46 @@ describe("Bucket UI mount (P6 T1)", () => {
     rerender(<Capture />);
     expect(captured).not.toBeNull();
     expect(captured!.tagName).toBe("BUTTON");
+  });
+
+  it("indicator exposes an aria-live region mirroring the ready count", () => {
+    render(<Harness />);
+    act(() => {
+      useBucketStore
+        .getState()
+        .addMany(
+          [makeItem("k:a", "Alpha Paper"), makeItem("k:b", "Beta Paper")],
+          1000,
+        );
+    });
+    const live = document.querySelector(
+      "[aria-live='polite']",
+    ) as HTMLElement | null;
+    expect(live).not.toBeNull();
+    expect(live!.textContent).toContain("2 of 1000 papers staged");
+  });
+
+  it("Clear-all invokes onClearReturnFocus after confirmation", () => {
+    const onClearReturnFocus = vi.fn();
+    function LocalHarness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <BucketDrawer
+          open={open}
+          onOpenChange={setOpen}
+          onClearReturnFocus={onClearReturnFocus}
+        />
+      );
+    }
+    act(() => {
+      useBucketStore
+        .getState()
+        .addMany([makeItem("k:a", "Alpha Paper")], 1000);
+    });
+    render(<LocalHarness />);
+    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Clear bucket$/ }));
+    expect(onClearReturnFocus).toHaveBeenCalledTimes(1);
+    expect(useBucketStore.getState().order).toEqual([]);
   });
 });

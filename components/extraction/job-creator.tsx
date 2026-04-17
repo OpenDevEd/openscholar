@@ -210,7 +210,11 @@ export function JobCreator() {
         </div>
       </motion.div>
 
-      <BucketDrawer open={bucketOpen} onOpenChange={setBucketOpen} />
+      <BucketDrawer
+        open={bucketOpen}
+        onOpenChange={setBucketOpen}
+        onClearReturnFocus={() => bucketIndicatorRef.current?.focus()}
+      />
 
       {/* Step Progress - Horizontal Timeline */}
       <motion.div

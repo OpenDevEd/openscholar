@@ -34,10 +34,19 @@ export function BucketIndicator({
       size="sm"
       onClick={onClick}
       className={cn("gap-2", atCap && "border-destructive text-destructive")}
+      aria-label={`Open bucket — ${readyCount} of ${limit} papers staged`}
     >
       <Package className="h-4 w-4" />
-      <span className="font-medium">
+      <span className="font-medium" aria-hidden="true">
         {readyCount} / {limit}
+      </span>
+      {/*
+        Screen readers get a live region on every count change so staging
+        a paper isn't a silent UI update. `polite` (not `assertive`) so
+        rapid bulk selects don't flood the assistive-tech queue.
+      */}
+      <span className="sr-only" aria-live="polite">
+        {readyCount} of {limit} papers staged
       </span>
       {nearCap && !atCap && (
         <Badge variant="outline" className="bg-amber-500/10">

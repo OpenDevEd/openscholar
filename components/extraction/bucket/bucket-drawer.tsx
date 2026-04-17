@@ -42,9 +42,16 @@ const SOURCE_LABELS: Record<BucketSource, string> = {
 export function BucketDrawer({
   open,
   onOpenChange,
+  onClearReturnFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Called after Clear-all is confirmed. Callers typically focus the
+   * indicator button here so the alert-dialog's closing doesn't send
+   * focus to <body> — a screen-reader reset that's easy to miss.
+   */
+  onClearReturnFocus?: () => void;
 }) {
   const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
   const order = useBucketStore((s) => s.order);
@@ -164,6 +171,7 @@ export function BucketDrawer({
                     onClick={() => {
                       clear();
                       setConfirmClear(false);
+                      onClearReturnFocus?.();
                     }}
                   >
                     Clear bucket
