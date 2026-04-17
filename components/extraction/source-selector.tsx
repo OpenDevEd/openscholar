@@ -1,32 +1,44 @@
 "use client";
 
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations } from "next-intl";
-import { useExtractionStore } from "@/lib/store/extraction";
 import { HistorySelector } from "./history-selector";
 import { ZoteroSelector } from "./zotero-selector";
-import { ManualItems } from "./manual-items";
+import { LibraryTab } from "./bucket/tabs/library-tab";
+import { CollectionsTab } from "./bucket/tabs/collections-tab";
+import { BulkPdfUpload } from "./bucket/bulk-pdf-upload";
+
+type SourceTab = "history" | "library" | "collections" | "zotero" | "upload";
 
 export function SourceSelector() {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const { draftJob, setActiveSourceTab } = useExtractionStore();
+  const [tab, setTab] = useState<SourceTab>("history");
 
   return (
-    <Tabs value={draftJob.activeSourceTab} onValueChange={(v) => setActiveSourceTab(v as "history" | "zotero" | "manual")} className="w-full">
+    <Tabs value={tab} onValueChange={(v) => setTab(v as SourceTab)} className="w-full">
       <TabsList className="mb-4">
         <TabsTrigger value="history">{tc("searchHistory")}</TabsTrigger>
+        <TabsTrigger value="library">Library</TabsTrigger>
+        <TabsTrigger value="collections">Collections</TabsTrigger>
         <TabsTrigger value="zotero">{t("zotero")}</TabsTrigger>
-        <TabsTrigger value="manual">{tc("manual")}</TabsTrigger>
+        <TabsTrigger value="upload">Upload</TabsTrigger>
       </TabsList>
       <TabsContent value="history">
         <HistorySelector />
       </TabsContent>
+      <TabsContent value="library">
+        <LibraryTab />
+      </TabsContent>
+      <TabsContent value="collections">
+        <CollectionsTab />
+      </TabsContent>
       <TabsContent value="zotero">
         <ZoteroSelector />
       </TabsContent>
-      <TabsContent value="manual">
-        <ManualItems />
+      <TabsContent value="upload">
+        <BulkPdfUpload />
       </TabsContent>
     </Tabs>
   );
