@@ -55,7 +55,7 @@ export function JobCreator() {
   const tc = useTranslations("common");
   const [stepRaw, setStepRaw] = useQueryState(
     "step",
-    parseAsInteger.withDefault(1).withOptions({ history: "push" }),
+    parseAsInteger.withDefault(1).withOptions({ history: "replace" }),
   );
   const [direction, setDirection] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
