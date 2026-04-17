@@ -1440,6 +1440,23 @@ export const getJobSourcesInternal = internalQuery({
   },
 });
 
+// Combined read so the workpool actions fetch job + pdfEnabled in one
+// round trip instead of two at the top of downloadAndIndexPdfAction and
+// waitAndExtractAction.
+export const getJobAndFlagsInternal = internalQuery({
+  args: { jobId: v.id("extractionJobs") },
+  handler: async (ctx, args) => {
+    const [job, pdfFlag] = await Promise.all([
+      ctx.db.get("extractionJobs", args.jobId),
+      getFlag(ctx, "extraction.pdf"),
+    ]);
+    return {
+      job,
+      pdfEnabled: pdfFlag?.enabled ?? true,
+    };
+  },
+});
+
 export const getPapersByOpenAlexIds = internalQuery({
   args: {
     jobId: v.id("extractionJobs"),

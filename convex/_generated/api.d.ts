@@ -24,7 +24,6 @@ import type * as crons from "../crons.js";
 import type * as debug from "../debug.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as extraction_actions from "../extraction/actions.js";
-import type * as extraction_chunking from "../extraction/chunking.js";
 import type * as extraction_content from "../extraction/content.js";
 import type * as extraction_create_test_job from "../extraction/create_test_job.js";
 import type * as extraction_debug from "../extraction/debug.js";
@@ -150,7 +149,6 @@ declare const fullApi: ApiFromModules<{
   debug: typeof debug;
   debug_papers: typeof debug_papers;
   "extraction/actions": typeof extraction_actions;
-  "extraction/chunking": typeof extraction_chunking;
   "extraction/content": typeof extraction_content;
   "extraction/create_test_job": typeof extraction_create_test_job;
   "extraction/debug": typeof extraction_debug;

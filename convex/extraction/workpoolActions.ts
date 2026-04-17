@@ -738,13 +738,17 @@ async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
   return units;
 }
 
-async function resolvePdfBlob(ctx: ActionCtx, args: {
-  paperId: Id<"extractionPapers">;
-  jobId: Id<"extractionJobs">;
-  pdfUrl: string;
-  storageId?: string;
-  doi?: string;
-}): Promise<{ pdfBlob: Blob | null; storageId?: string; error?: string }> {
+async function resolvePdfBlob(
+  ctx: ActionCtx,
+  job: { userId: Id<"users"> } | null,
+  args: {
+    paperId: Id<"extractionPapers">;
+    jobId: Id<"extractionJobs">;
+    pdfUrl: string;
+    storageId?: string;
+    doi?: string;
+  },
+): Promise<{ pdfBlob: Blob | null; storageId?: string; error?: string }> {
   if (args.storageId) {
     const stored = await ctx.storage.get(args.storageId);
     if (stored) {
@@ -756,9 +760,6 @@ async function resolvePdfBlob(ctx: ActionCtx, args: {
     return { pdfBlob: null, error: "No PDF URL provided" };
   }
 
-    const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, {
-      jobId: args.jobId,
-    });
     const zoteroConnection = job
       ? await ctx.runQuery(internal.zotero.internal.getConnection, {
           userId: job.userId,
@@ -825,9 +826,11 @@ export const downloadAndIndexPdfAction = internalAction({
   },
   handler: async (ctx, args): Promise<IndexResult> => {
     try {
-      const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, {
-        jobId: args.jobId,
-      });
+      // One round trip for job + pdf-flag instead of two.
+      const { job, pdfEnabled } = await ctx.runQuery(
+        internal.extraction.queries.getJobAndFlagsInternal,
+        { jobId: args.jobId },
+      );
       if (!job) {
         return {
           success: false,
@@ -851,8 +854,6 @@ export const downloadAndIndexPdfAction = internalAction({
           storageId: existingPaper.storageId ?? undefined,
         };
       }
-
-      const pdfEnabled = await ctx.runQuery(internal.extraction.queries.getPdfExtractionEnabledInternal, {});
       if (!pdfEnabled) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
           await ctx.runMutation(internal.extraction.mutations.replacePaperEvidenceUnits, {
@@ -870,7 +871,7 @@ export const downloadAndIndexPdfAction = internalAction({
         };
       }
 
-      const resolved = await resolvePdfBlob(ctx, {
+      const resolved = await resolvePdfBlob(ctx, job, {
         paperId: args.paperId,
         jobId: args.jobId,
         pdfUrl: args.pdfUrl,
@@ -1007,19 +1008,24 @@ export const waitAndExtractAction = internalAction({
     error?: string;
   }> => {
     try {
-      const paper = await ctx.runQuery(internal.extraction.queries.getPaperInternal, {
-        paperId: args.paperId,
-      });
+      // Two round trips at the top instead of four — job+flags combined,
+      // paper on its own. The credit-guard re-read of the job a bit below
+      // is intentional (needs a fresh view to see a concurrent cancel).
+      const [paper, jobWithFlags] = await Promise.all([
+        ctx.runQuery(internal.extraction.queries.getPaperInternal, {
+          paperId: args.paperId,
+        }),
+        ctx.runQuery(internal.extraction.queries.getJobAndFlagsInternal, {
+          jobId: args.jobId,
+        }),
+      ]);
       if (!paper) {
         return { success: false, error: "Paper not found" };
       }
-      const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, {
-        jobId: args.jobId,
-      });
+      const { job, pdfEnabled } = jobWithFlags;
       if (!job) {
         return { success: false, error: "Job not found" };
       }
-      const pdfEnabled = await ctx.runQuery(internal.extraction.queries.getPdfExtractionEnabledInternal, {});
       const unitsRaw = await ctx.runQuery(
         internal.extraction.queries.getEvidenceUnitsInternal,
         { paperId: args.paperId }
