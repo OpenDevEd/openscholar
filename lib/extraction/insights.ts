@@ -176,7 +176,7 @@ const GENERIC_ARRAY_ENTITY_STOPLIST = new Set([
   "transformer-based models",
 ]);
 
-function normalizeText(value: string): string {
+export function normalizeArrayEntity(value: string): string {
   return value
     .trim()
     .toLowerCase()
@@ -184,10 +184,13 @@ function normalizeText(value: string): string {
     .replace(/[^\w\s%.-]/g, "");
 }
 
-function splitArrayFragments(value: string): string[] {
+/** @deprecated kept as alias — use `normalizeArrayEntity`. */
+const normalizeText = normalizeArrayEntity;
+
+export function splitArrayFragments(value: string): string[] {
   return value
     .split(/[;,]/g)
-    .map((part) => normalizeText(part))
+    .map((part) => normalizeArrayEntity(part))
     .filter(Boolean);
 }
 

@@ -1,6 +1,10 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { assertNonProd } from "../lib/assertNonProd";
+import {
+  isGenericArrayEntity,
+  splitArrayFragments,
+} from "../../lib/extraction/insights";
 
 const EFFECTIVE_CONFIDENCE_MULTIPLIER: Record<string, number> = {
   grounded: 1,
@@ -9,57 +13,16 @@ const EFFECTIVE_CONFIDENCE_MULTIPLIER: Record<string, number> = {
   extraction_error: 0,
 };
 
-const GENERIC_ARRAY_TERMS = new Set([
-  "artificial intelligence",
-  "artificial-intelligence",
-  "ai",
-  "generative ai",
-  "large language model",
-  "large language models",
-  "llm",
-  "llms",
-  "language model",
-  "language models",
-  "machine learning",
-  "deep learning",
-  "neural network",
-  "neural networks",
-  "transformer",
-  "transformer architecture",
-  "transformer architectures",
-  "transformer-based models",
-]);
-
-function normalizeArrayEntity(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .replace(/[^\w\s%.-]/g, "");
-}
-
 function parseArrayEntities(answer: unknown): string[] {
   if (answer === null || answer === undefined) return [];
   const values = Array.isArray(answer) ? answer : [answer];
   const entities = new Set<string>();
   for (const value of values) {
-    const raw = String(value);
-    for (const part of raw.split(/[;,]/g)) {
-      const normalized = normalizeArrayEntity(part);
-      if (normalized) entities.add(normalized);
+    for (const fragment of splitArrayFragments(String(value))) {
+      entities.add(fragment);
     }
   }
   return Array.from(entities).sort();
-}
-
-function isGenericArrayEntity(value: string) {
-  if (!value) return true;
-  if (GENERIC_ARRAY_TERMS.has(value)) return true;
-  if (value.includes("machine learning")) return true;
-  if (value.includes("deep learning")) return true;
-  if (value.includes("neural network")) return true;
-  if (value.includes("transformer architecture")) return true;
-  return false;
 }
 
 function getEffectiveConfidence(confidence: unknown, citationStatus: string | undefined) {

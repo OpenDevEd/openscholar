@@ -38,6 +38,11 @@ import {
 } from "./evidence_units";
 import { extractPdfJsTextPages } from "./pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
+import {
+  isGenericArrayEntity,
+  normalizeArrayEntity,
+  splitArrayFragments,
+} from "../../lib/extraction/insights";
 
 type CitationStatus =
   | "grounded"
@@ -158,27 +163,6 @@ const ARRAY_ANSWER_MAX_ITEMS = 8;
 const ARRAY_GENERIC_PENALTY = 0.15;
 const ARRAY_GENERIC_THRESHOLD = 0.6;
 const DEFAULT_EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS = 0.02;
-const ARRAY_GENERIC_TERMS = new Set([
-  "artificial intelligence",
-  "artificial-intelligence",
-  "ai",
-  "generative ai",
-  "large language model",
-  "large language models",
-  "llm",
-  "llms",
-  "language model",
-  "language models",
-  "machine learning",
-  "deep learning",
-  "neural network",
-  "neural networks",
-  "transformer",
-  "transformer architecture",
-  "transformer architectures",
-  "transformer-based models",
-]);
-
 function parsePositiveFloat(input: string | undefined, fallback: number): number {
   if (!input) return fallback;
   const parsed = Number.parseFloat(input);
@@ -253,32 +237,6 @@ function dedupeEvidenceIds(ids: string[]) {
     ordered.push(trimmed);
   }
   return ordered;
-}
-
-function normalizeArrayEntity(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .replace(/[^\w\s%.-]/g, "");
-}
-
-function isGenericArrayEntity(value: string) {
-  const normalized = normalizeArrayEntity(value);
-  if (!normalized) return true;
-  if (ARRAY_GENERIC_TERMS.has(normalized)) return true;
-  if (normalized.includes("machine learning")) return true;
-  if (normalized.includes("deep learning")) return true;
-  if (normalized.includes("neural network")) return true;
-  if (normalized.includes("transformer architecture")) return true;
-  return false;
-}
-
-function splitArrayFragments(raw: string): string[] {
-  return raw
-    .split(/[;,]/g)
-    .map((value) => normalizeArrayEntity(value))
-    .filter(Boolean);
 }
 
 function sanitizeArrayAnswer(
