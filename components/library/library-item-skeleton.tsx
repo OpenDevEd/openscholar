@@ -8,9 +8,10 @@ interface LibraryItemSkeletonProps {
   viewMode?: ViewMode;
 }
 
-function SkeletonBar({ className }: { className?: string }) {
+export function SkeletonBar({ className }: { className?: string }) {
   return (
     <div
+      data-slot="skeleton-bar"
       className={cn(
         "h-3 rounded bg-muted animate-pulse",
         className,
