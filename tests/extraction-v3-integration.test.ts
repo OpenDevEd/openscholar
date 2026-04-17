@@ -2,10 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   applyAbstractOnlyPolicy,
   applyEvidencePolicy,
-  isUsableAbstract,
+  isUsableAbstract as isUsableAbstractPure,
   normalizeExtractionOutputForQuestion,
   validateSupportEvidenceIds,
-} from "../convex/extraction/workpoolActions";
+} from "../lib/extraction/evidence-policy";
+import { MIN_ABSTRACT_LENGTH } from "../convex/extraction/content";
+
+// Matches the Convex-side wrapper in workpoolActions: use the pure
+// evidence-policy helper with the production MIN_ABSTRACT_LENGTH.
+const isUsableAbstract = (abstract?: string | null) =>
+  isUsableAbstractPure(abstract, MIN_ABSTRACT_LENGTH);
 
 /**
  * Local replica of the non-exported RetrievalCandidate from workpoolActions.
