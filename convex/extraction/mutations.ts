@@ -1986,7 +1986,10 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
         error?: string;
       };
 
-    if (data.success && data.results) {
+      if (data.success && data.results) {
+        // saveExtractionResultsAndComplete already calls finalizeJobIfDone as
+        // its last step. Calling it a second time here races with itself and
+        // double-counts paper stats before the prior mutation's write lands.
         await ctx.runMutation(
           internal.extraction.mutations.saveExtractionResultsAndComplete,
           {
@@ -1996,9 +1999,6 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
             pdfContentUsed: data.pdfContentUsed || false,
           }
         );
-        await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
-          jobId,
-        });
         console.log(`[handleExtractionComplete] Paper ${paperId} completed successfully`);
       } else {
         await ctx.db.patch("extractionPapers", paperId, {
