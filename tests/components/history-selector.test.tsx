@@ -13,7 +13,7 @@ const { historyEntriesRef, bucketAddedMock, useHistoryCountMock } = vi.hoisted(
   () => ({
     historyEntriesRef: { current: [] as unknown[] },
     bucketAddedMock: vi.fn(),
-    useHistoryCountMock: vi.fn(() => ({
+    useHistoryCountMock: vi.fn((_entry?: unknown) => ({
       count: undefined,
       isLoading: false,
       error: undefined,

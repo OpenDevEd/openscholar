@@ -39,7 +39,7 @@ import { useBucketStore } from "@/lib/store/bucket";
 import { useHistoryCount } from "@/lib/hooks/use-history-count";
 import type { SearchResult } from "@/lib/types";
 
-export type CountChipProps = {
+type CountChipProps = {
   entry: SearchResult;
   bucketKey: string;
   paperCount: number;

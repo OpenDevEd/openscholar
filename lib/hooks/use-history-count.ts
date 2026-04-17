@@ -22,7 +22,7 @@ import { searchOpenAlexCount } from "@/app/actions/openalex-count";
 import { toSearchFilters } from "@/lib/openalex/count";
 import type { SearchResult } from "@/lib/types";
 
-export type UseHistoryCountResult = {
+type UseHistoryCountResult = {
   count: number | undefined;
   isLoading: boolean;
   error: Error | undefined;

@@ -16,7 +16,7 @@
  * to absent values. Dates are normalised to `YYYY-MM-DD` strings.
  */
 
-export type HashableSearchInput = Partial<{
+type HashableSearchInput = Partial<{
   query: string;
   field: string;
   sortBy: string;
