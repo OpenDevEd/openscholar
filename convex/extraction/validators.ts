@@ -5,6 +5,106 @@
  */
 
 import { v } from "convex/values";
+import { MAX_PDF_URL_LENGTH } from "../../lib/pdf/url-allowlist";
+import { createError } from "../lib/errors";
+
+// ---- Input-size caps (enforced at mutation boundary) ----
+//
+// Convex validators cannot express `v.array(...).max(n)` natively, so these
+// are checked manually in each mutation handler that accepts user input.
+// Re-use `assertExtractionInputLimits` below to avoid drift across call sites.
+
+export const MAX_QUESTIONS_PER_JOB = 50;
+export const MAX_MANUAL_ITEMS_PER_JOB = 1000;
+export const MAX_ZOTERO_ITEMS_PER_JOB = 1000;
+export const MAX_HISTORY_ENTRIES_PER_JOB = 20;
+export const MAX_QUESTION_TEXT_LENGTH = 2000;
+export const MAX_PAPER_TITLE_LENGTH = 500;
+export const MAX_PAPER_ABSTRACT_LENGTH = 10000;
+
+export type ExtractionInputLimitsArgs = {
+  questions: ReadonlyArray<{ question: string }>;
+  sourceManualItems?: ReadonlyArray<{
+    title: string;
+    abstract?: string;
+    pdfUrl?: string;
+  }>;
+  sourceZoteroSelection?: {
+    items: ReadonlyArray<unknown>;
+  };
+  sourceHistoryEntries?: ReadonlyArray<unknown>;
+};
+
+export function assertExtractionInputLimits(
+  input: ExtractionInputLimitsArgs,
+): void {
+  if (input.questions.length > MAX_QUESTIONS_PER_JOB) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `questions exceeds maximum of ${MAX_QUESTIONS_PER_JOB}`,
+    );
+  }
+  for (const q of input.questions) {
+    if (q.question.length > MAX_QUESTION_TEXT_LENGTH) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `question text exceeds maximum length of ${MAX_QUESTION_TEXT_LENGTH}`,
+      );
+    }
+  }
+  if (input.sourceManualItems) {
+    if (input.sourceManualItems.length > MAX_MANUAL_ITEMS_PER_JOB) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `sourceManualItems exceeds maximum of ${MAX_MANUAL_ITEMS_PER_JOB}`,
+      );
+    }
+    for (const item of input.sourceManualItems) {
+      if (item.title.length > MAX_PAPER_TITLE_LENGTH) {
+        throw createError(
+          "VALIDATION_ERROR",
+          `sourceManualItems[].title exceeds maximum length of ${MAX_PAPER_TITLE_LENGTH}`,
+        );
+      }
+      if (
+        item.abstract !== undefined &&
+        item.abstract.length > MAX_PAPER_ABSTRACT_LENGTH
+      ) {
+        throw createError(
+          "VALIDATION_ERROR",
+          `sourceManualItems[].abstract exceeds maximum length of ${MAX_PAPER_ABSTRACT_LENGTH}`,
+        );
+      }
+      if (
+        item.pdfUrl !== undefined &&
+        item.pdfUrl.length > MAX_PDF_URL_LENGTH
+      ) {
+        throw createError(
+          "VALIDATION_ERROR",
+          `sourceManualItems[].pdfUrl exceeds maximum length of ${MAX_PDF_URL_LENGTH}`,
+        );
+      }
+    }
+  }
+  if (
+    input.sourceZoteroSelection &&
+    input.sourceZoteroSelection.items.length > MAX_ZOTERO_ITEMS_PER_JOB
+  ) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `sourceZoteroSelection.items exceeds maximum of ${MAX_ZOTERO_ITEMS_PER_JOB}`,
+    );
+  }
+  if (
+    input.sourceHistoryEntries &&
+    input.sourceHistoryEntries.length > MAX_HISTORY_ENTRIES_PER_JOB
+  ) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `sourceHistoryEntries exceeds maximum of ${MAX_HISTORY_ENTRIES_PER_JOB}`,
+    );
+  }
+}
 
 // ---- Scalar union validators ----
 

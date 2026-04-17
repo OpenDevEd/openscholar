@@ -29,9 +29,11 @@ import {
 } from "../../lib/extraction/insights";
 
 import { createError } from "../lib/errors";
-import { searchFiltersValidator } from "./validators";
+import {
+  assertExtractionInputLimits,
+  searchFiltersValidator,
+} from "./validators";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../lib/queryBounds";
-import { MAX_PDF_URL_LENGTH } from "../../lib/pdf/url-allowlist";
 
 /** Safety bound for per-job paper queries to prevent unbounded memory usage. */
 const MAX_PAPERS_PER_JOB = 500;
@@ -188,18 +190,7 @@ export const startExtraction = mutation({
       throws: true,
     });
 
-    // Clamp user-supplied pdfUrl length early so downstream SSRF validation
-    // does not waste work parsing a multi-megabyte URL.
-    if (args.sourceManualItems) {
-      for (const item of args.sourceManualItems) {
-        if (item.pdfUrl && item.pdfUrl.length > MAX_PDF_URL_LENGTH) {
-          throw createError(
-            "VALIDATION_ERROR",
-            `pdfUrl exceeds maximum length of ${MAX_PDF_URL_LENGTH}`,
-          );
-        }
-      }
-    }
+    assertExtractionInputLimits(args);
 
     const userId = user._id;
 
@@ -740,6 +731,8 @@ export const saveWorkflowTemplate = mutation({
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
     await requireFeature(ctx, "extraction.templates", user._id);
+
+    assertExtractionInputLimits(args);
 
     const existing = await ctx.db
       .query("extractionWorkflowTemplates")
