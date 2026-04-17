@@ -14,9 +14,10 @@
  * suspenders fix.
  */
 
+import { MAX_PDF_BYTES } from "../files/limits";
+
 export const MAX_PDF_URL_LENGTH = 2048;
 export const MAX_REDIRECTS = 5;
-export const DEFAULT_MAX_BYTES = 100 * 1024 * 1024;
 export const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class UnsafeUrlError extends Error {
@@ -176,7 +177,7 @@ export async function safeFetchPdf(
   rawUrl: string,
   options: SafeFetchPdfOptions = {},
 ): Promise<SafeFetchPdfResult> {
-  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxBytes = options.maxBytes ?? MAX_PDF_BYTES;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   const controller = new AbortController();

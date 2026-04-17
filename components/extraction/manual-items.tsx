@@ -12,10 +12,10 @@ import { useExtractionStore } from "@/lib/store/extraction";
 import { cn } from "@/lib/utils";
 import { useAppToast } from "@/lib/toast";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { FileUp, Plus, Trash2 } from "lucide-react";
 
 const ACCEPTED_TYPES = ["application/pdf"];
-const MAX_FILE_MB = 25;
 
 export function ManualItems() {
   const toast = useAppToast();
@@ -32,8 +32,8 @@ export function ManualItems() {
       toast.validation.fileType(tToast("entityPdf"));
       return;
     }
-    if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      toast.validation.fileSize(MAX_FILE_MB);
+    if (file.size > MAX_PDF_BYTES) {
+      toast.validation.fileSize(MAX_PDF_MB);
       return;
     }
 

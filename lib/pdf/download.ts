@@ -7,6 +7,7 @@
  */
 
 import { buildZoteroHeaders } from "../zotero-utils";
+import { MAX_PDF_BYTES } from "../files/limits";
 import {
   safeFetchPdf,
   UnsafeUrlError,
@@ -17,7 +18,6 @@ const PDF_DOWNLOAD_CONFIG = {
   FETCH_TIMEOUT_MS: 30000,
   MAX_RETRIES: 3,
   RETRY_DELAY_MS: 5000,
-  MAX_PDF_BYTES: 100 * 1024 * 1024,
 };
 
 export interface DownloadPdfOptions {
@@ -395,7 +395,7 @@ async function fetchPdfWithRetry(
     try {
       const result = await safeFetchPdf(url, {
         timeoutMs: timeout,
-        maxBytes: PDF_DOWNLOAD_CONFIG.MAX_PDF_BYTES,
+        maxBytes: MAX_PDF_BYTES,
         referer,
         headers: {
           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
