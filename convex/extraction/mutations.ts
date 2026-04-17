@@ -358,192 +358,6 @@ export const cleanupOldPdfs = internalMutation({
   },
 });
 
-/**
- * Decide whether the job has reached a terminal state and patch accordingly.
- *
- * Reads only the `extractionJobs` row (1 doc). Every terminal paper
- * transition bumps `processedPapers`/`failedPapers` via `markPaperTerminalTx`,
- * so `(processed + failed) >= totalPapers` is a faithful "all done" signal.
- *
- * Terminal states are sticky: a late onComplete cannot resurrect a job that
- * was cancelled/failed/completed earlier.
- */
-export const maybeFinalizeJob = internalMutation({
-  args: {
-    jobId: v.id("extractionJobs"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-    if (!job) return null;
-
-    if (
-      job.status === "cancelled" ||
-      job.status === "failed" ||
-      job.status === "completed"
-    ) {
-      return null;
-    }
-
-    const now = Date.now();
-    const total = job.totalPapers;
-    const processed = job.processedPapers;
-    const failed = job.failedPapers;
-
-    // Degenerate case: every source was non-processable, so `totalPapers`
-    // was set to 0 at enqueue time. Fail the job immediately so the UI is
-    // not stuck on "extracting".
-    if (total === 0) {
-      assertValidJobTransition(job.status as JobStatus, "failed");
-      await ctx.db.patch("extractionJobs", args.jobId, {
-        status: "failed",
-        completedAt: now,
-        updatedAt: now,
-      });
-      return null;
-    }
-
-    if (processed + failed < total) {
-      await ctx.db.patch("extractionJobs", args.jobId, { updatedAt: now });
-      return null;
-    }
-
-    const status: JobStatus = failed >= total ? "failed" : "completed";
-    assertValidJobTransition(job.status as JobStatus, status);
-    await ctx.db.patch("extractionJobs", args.jobId, {
-      status,
-      completedAt: now,
-      updatedAt: now,
-    });
-    return null;
-  },
-});
-
-// Helper mutations for test job creation. Source rows go into
-// extractionJobSources; callers can pass them here for ergonomics.
-export const createJobDirect = internalMutation({
-  args: {
-    userId: v.id("users"),
-    name: v.string(),
-    sourceType: sourceTypeValidator,
-    sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
-    sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
-    sourceManualItems: v.optional(v.array(manualItemInputValidator)),
-  },
-  returns: v.id("extractionJobs"),
-  handler: async (ctx, args) => {
-    const jobId = await ctx.db.insert("extractionJobs", {
-      userId: args.userId,
-      name: args.name,
-      sourceType: args.sourceType,
-      status: "pending",
-      totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-    await writeJobSources(ctx, jobId, {
-      historyEntries: args.sourceHistoryEntries,
-      zoteroSelection: args.sourceZoteroSelection,
-      manualItems: args.sourceManualItems,
-    });
-    return jobId;
-  },
-});
-
-export const createQuestionDirect = internalMutation({
-  args: {
-    jobId: v.id("extractionJobs"),
-    key: v.string(),
-    question: v.string(),
-    type: questionTypeValidator,
-    description: v.optional(v.string()),
-    order: v.number(),
-  },
-  returns: v.id("extractionQuestions"),
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("extractionQuestions", {
-      jobId: args.jobId,
-      key: args.key,
-      question: args.question,
-      type: args.type,
-      description: args.description,
-      order: args.order,
-      createdAt: Date.now(),
-    });
-  },
-});
-
-export const setJobWorkflowId = internalMutation({
-  args: {
-    jobId: v.id("extractionJobs"),
-    workflowId: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch("extractionJobs", args.jobId, { workflowId: args.workflowId });
-    return null;
-  },
-});
-
-// Enqueue paper for processing via workpool (3-step workflow)
-export const enqueuePaperProcessing = internalMutation({
-  args: {
-    paperId: v.id("extractionPapers"),
-    jobId: v.id("extractionJobs"),
-    pdfUrl: v.string(),
-    storageId: v.optional(v.id("_storage")),
-    title: v.string(),
-    abstract: v.optional(v.string()),
-    doi: v.optional(v.string()),
-    questions: v.array(questionInputValidator),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    console.log(`[enqueuePaperProcessing] START - Paper ${args.paperId}, PDF URL: ${args.pdfUrl ? "YES" : "NO"}`);
-    
-    // Update status to downloading before enqueuing
-    await ctx.db.patch("extractionPapers", args.paperId, {
-      status: "downloading",
-    });
-    console.log(`[enqueuePaperProcessing] Status updated to 'downloading' for ${args.paperId}`);
-
-    // Enqueue Step 1: Download and index PDF. Capture the WorkId so
-    // cancelExtraction can abort this specific item without touching other
-    // jobs' in-flight work in the shared pool.
-    console.log(`[enqueuePaperProcessing] Enqueuing Step 1 (Download & Index) for paper ${args.paperId}`);
-    const workId = await pdfProcessingPool.enqueueAction(
-      ctx,
-      internal.extraction.workpoolActions.downloadAndIndexPdfAction,
-      {
-        paperId: args.paperId,
-        jobId: args.jobId,
-        pdfUrl: args.pdfUrl || "",
-        storageId: args.storageId,
-        title: args.title,
-        abstract: args.abstract,
-        doi: args.doi,
-      },
-      {
-        onComplete: internal.extraction.mutations.handleDownloadAndIndexComplete,
-        context: {
-          paperId: args.paperId,
-          jobId: args.jobId,
-          questions: args.questions,
-        },
-        retry: {
-          maxAttempts: 3,
-          initialBackoffMs: 2000,
-          base: 2,
-        },
-      }
-    );
-    await ctx.db.patch("extractionPapers", args.paperId, { workId });
-    console.log(`[enqueuePaperProcessing] SUCCESS - Paper ${args.paperId} enqueued for processing (workId ${workId})`);
-    return null;
-  },
-});
 
 async function failPaperAndFinalize(
   ctx: MutationCtx,
@@ -751,3 +565,15 @@ export {
 } from "./mutations/reports";
 
 export { replacePaperEvidenceUnits } from "./mutations/evidence";
+
+// Internal lifecycle mutations. Re-exported here so existing callers
+// continue to resolve `internal.extraction.mutations.<fn>`; T4.14 will
+// drop these and migrate callers to the long
+// `internal.extraction.mutations.internal.lifecycle.<fn>` path.
+export {
+  maybeFinalizeJob,
+  createJobDirect,
+  createQuestionDirect,
+  setJobWorkflowId,
+  enqueuePaperProcessing,
+} from "./mutations/internal/lifecycle";
