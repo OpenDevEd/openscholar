@@ -359,6 +359,7 @@ export const extractionPaperValidator = v.object({
 export const extractionResultValidator = v.object({
   _id: v.id("extractionResults"),
   _creationTime: v.number(),
+  jobId: v.id("extractionJobs"),
   paperId: v.id("extractionPapers"),
   questionKey: v.string(),
   answer: answerValidator,
@@ -371,6 +372,32 @@ export const extractionResultValidator = v.object({
   provider: v.optional(v.string()),
   pdfContentUsed: v.optional(v.boolean()),
   processedAt: v.number(),
+});
+
+export const extractionEvidenceUnitValidator = v.object({
+  _id: v.id("extractionEvidenceUnits"),
+  _creationTime: v.number(),
+  jobId: v.id("extractionJobs"),
+  paperId: v.id("extractionPapers"),
+  evidenceId: v.string(),
+  page: v.number(),
+  charRange: v.array(v.number()),
+  text: v.string(),
+  section: v.optional(v.string()),
+  tokens: v.array(v.string()),
+  anchorConfidence: v.number(),
+  source: v.string(),
+  createdAt: v.number(),
+});
+
+/**
+ * Shape returned by readJobSources — matches the reconstructed three
+ * buckets the workflow and duplicate/template flows consume.
+ */
+export const jobSourcesReadValidator = v.object({
+  historyEntries: v.array(historyEntryInputValidator),
+  zoteroSelection: v.optional(zoteroSelectionInputValidator),
+  manualItems: v.array(manualItemInputValidator),
 });
 
 export const extractionResultReviewValidator = v.object({

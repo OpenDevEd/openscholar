@@ -11,6 +11,10 @@ import { assertNonProd } from "../lib/assertNonProd";
  */
 export const debugJobContent = internalQuery({
   args: { jobId: v.id("extractionJobs") },
+  // v.any() on the return shape is intentional: dev-only diagnostic,
+  // assertNonProd-gated, returns a deeply-nested counts+samples object
+  // that evolves freely.
+  returns: v.any(),
   handler: async (ctx, args) => {
     assertNonProd();
     const papers = await ctx.db

@@ -43,6 +43,13 @@ import {
   normalizeArrayEntity,
   splitArrayFragments,
 } from "../../lib/extraction/insights";
+import {
+  answerValidator,
+  citationStatusValidator,
+  citationValidator,
+  questionInputValidator,
+  retrievalDiagnosticsValidator,
+} from "./validators";
 
 type CitationStatus =
   | "grounded"
@@ -782,6 +789,12 @@ export const downloadAndIndexPdfAction = internalAction({
     abstract: v.optional(v.string()),
     doi: v.optional(v.string()),
   },
+  returns: v.object({
+    success: v.boolean(),
+    storageId: v.optional(v.string()),
+    chunksCount: v.optional(v.number()),
+    error: v.optional(v.string()),
+  }),
   handler: async (ctx, args): Promise<IndexResult> => {
     try {
       // One round trip for job + pdf-flag instead of two.
@@ -944,20 +957,28 @@ export const waitAndExtractAction = internalAction({
   args: {
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
-    questions: v.array(
-      v.object({
-        key: v.string(),
-        question: v.string(),
-        type: v.union(
-          v.literal("string"),
-          v.literal("boolean"),
-          v.literal("number"),
-          v.literal("array")
-        ),
-        description: v.optional(v.string()),
-      })
-    ),
+    questions: v.array(questionInputValidator),
   },
+  returns: v.object({
+    success: v.boolean(),
+    results: v.optional(
+      v.array(
+        v.object({
+          questionKey: v.string(),
+          answer: answerValidator,
+          confidence: v.optional(v.number()),
+          reasoning: v.optional(v.string()),
+          citations: v.array(citationValidator),
+          citationStatus: citationStatusValidator,
+          retrievalDiagnostics: retrievalDiagnosticsValidator,
+          pdfContentUsed: v.optional(v.boolean()),
+        }),
+      ),
+    ),
+    creditsUsed: v.optional(v.number()),
+    pdfContentUsed: v.optional(v.boolean()),
+    error: v.optional(v.string()),
+  }),
   handler: async (ctx, args): Promise<{
     success: boolean;
     results?: ExtractionQuestionResult[];

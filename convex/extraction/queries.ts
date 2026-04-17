@@ -32,9 +32,11 @@ import {
   MAX_EVIDENCE_UNITS_PER_PAPER,
 } from "../lib/queryBounds";
 import {
+  extractionEvidenceUnitValidator,
   extractionJobValidator,
   extractionQuestionValidator,
   extractionPaperValidator,
+  extractionResultValidator,
   extractionResultWithReviewValidator,
   extractionSavedViewValidator,
   extractionReportSnapshotValidator,
@@ -44,6 +46,7 @@ import {
   reviewStateValidator,
   answerValidator,
   jobStatusValidator,
+  jobSourcesReadValidator,
   paperStatusValidator,
   searchFiltersValidator,
   paginatedPaperWithResultsValidator,
@@ -375,6 +378,7 @@ export const getPaperResults = query({
 
 export const getPaperResultsInternal = internalQuery({
   args: { paperId: v.id("extractionPapers") },
+  returns: v.array(extractionResultValidator),
   handler: async (ctx, args) => {
     // Cardinality: ~5-20 results per paper
     return await ctx.db
@@ -1332,6 +1336,7 @@ export const getRunDiff = query({
 
 export const getJobInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.union(v.null(), extractionJobValidator),
   handler: async (ctx, args) => {
     return await ctx.db.get("extractionJobs", args.jobId);
   },
@@ -1339,11 +1344,23 @@ export const getJobInternal = internalQuery({
 
 export const debugRecentPapers = internalQuery({
   args: {},
+  returns: v.array(
+    v.object({
+      id: v.id("extractionPapers"),
+      title: v.string(),
+      status: paperStatusValidator,
+      pdfUrl: v.boolean(),
+      storageId: v.optional(v.id("_storage")),
+      ragEntryId: v.optional(v.string()),
+      errorMessage: v.optional(v.string()),
+      completedAt: v.union(v.string(), v.null()),
+    }),
+  ),
   handler: async (ctx) => {
     const papers = await ctx.db.query("extractionPapers")
       .order("desc")
       .take(10);
-      
+
     return papers.map(p => ({
       id: p._id,
       title: p.title.substring(0, 30),
@@ -1359,6 +1376,7 @@ export const debugRecentPapers = internalQuery({
 
 export const getQuestionsInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.array(extractionQuestionValidator),
   handler: async (ctx, args) => {
     // Cardinality: ~5-20 questions per extraction job
     return await ctx.db
@@ -1371,6 +1389,7 @@ export const getQuestionsInternal = internalQuery({
 
 export const getJobSourcesInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
+  returns: jobSourcesReadValidator,
   handler: async (ctx, args) => {
     return await readJobSources(ctx, args.jobId, MAX_PAPERS_PER_JOB * 2);
   },
@@ -1381,6 +1400,10 @@ export const getJobSourcesInternal = internalQuery({
 // waitAndExtractAction.
 export const getJobAndFlagsInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.object({
+    job: v.union(v.null(), extractionJobValidator),
+    pdfEnabled: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     const [job, pdfFlag] = await Promise.all([
       ctx.db.get("extractionJobs", args.jobId),
@@ -1398,6 +1421,7 @@ export const getPapersByOpenAlexIds = internalQuery({
     jobId: v.id("extractionJobs"),
     openalexIds: v.array(v.string()),
   },
+  returns: v.array(extractionPaperValidator),
   handler: async (ctx, args) => {
     const papers = await ctx.db
       .query("extractionPapers")
@@ -1411,6 +1435,7 @@ export const getPapersByOpenAlexIds = internalQuery({
 
 export const getPaperInternal = internalQuery({
   args: { paperId: v.id("extractionPapers") },
+  returns: v.union(v.null(), extractionPaperValidator),
   handler: async (ctx, args) => {
     return await ctx.db.get("extractionPapers", args.paperId);
   },
@@ -1418,6 +1443,7 @@ export const getPaperInternal = internalQuery({
 
 export const getEvidenceUnitsInternal = internalQuery({
   args: { paperId: v.id("extractionPapers") },
+  returns: v.array(extractionEvidenceUnitValidator),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("extractionEvidenceUnits")
@@ -1428,6 +1454,11 @@ export const getEvidenceUnitsInternal = internalQuery({
 
 export const getJobProgressInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.object({
+    totalPapers: v.number(),
+    processedPapers: v.number(),
+    failedPapers: v.number(),
+  }),
   handler: async (ctx, args) => {
     const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) {
@@ -1458,6 +1489,12 @@ export const getJobProgressInternal = internalQuery({
 // Debug query to get all papers for a job with their statuses
 export const getPapersDebug = internalQuery({
   args: { jobId: v.id("extractionJobs") },
+  // v.any() on the return shape is intentional: this is a dev-only
+  // diagnostic that surfaces an evolving, deeply-nested per-paper
+  // snapshot (processable flags, content counts, workId lists). Every
+  // caller is an assertNonProd-gated debug path; investing in a precise
+  // validator would be churn-heavy with no prod consumer.
+  returns: v.any(),
   handler: async (ctx, args) => {
     const papers = await ctx.db
       .query("extractionPapers")

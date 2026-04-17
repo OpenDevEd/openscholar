@@ -11,6 +11,10 @@ export const debugPaperResults = internalQuery({
   args: {
     paperId: v.id("extractionPapers"),
   },
+  // v.any() on the return shape is intentional: dev-only diagnostic
+  // (assertNonProd-gated) with a projection-shaped payload that drifts
+  // independently from the schema.
+  returns: v.any(),
   handler: async (ctx, { paperId }) => {
     assertNonProd();
     const paper = await ctx.db.get("extractionPapers", paperId);

@@ -19,6 +19,25 @@ export const debugPdfAlignment = internalAction({
     pageNumber: v.optional(v.number()),
     charRange: v.optional(v.array(v.number())),
   },
+  returns: v.object({
+    error: v.optional(v.string()),
+    pageNumber: v.optional(v.number()),
+    textPreview: v.optional(v.string()),
+    textLength: v.optional(v.number()),
+    totalPages: v.optional(v.number()),
+    requestedRange: v.optional(v.array(v.number())),
+    clampedRange: v.optional(v.array(v.number())),
+    intersectingItems: v.optional(v.number()),
+    firstIntersectingItem: v.optional(
+      v.object({
+        index: v.number(),
+        start: v.number(),
+        end: v.number(),
+      }),
+    ),
+    textItemCount: v.optional(v.number()),
+    nonEmptyTextItemCount: v.optional(v.number()),
+  }),
   handler: async (
     ctx,
     args

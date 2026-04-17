@@ -7,12 +7,25 @@
  */
 
 import { internalAction } from "../../_generated/server";
+import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { assertNonProd } from "../../lib/assertNonProd";
 
 export const runPdfTestNow = internalAction({
   args: {},
+  returns: v.object({
+    success: v.boolean(),
+    jobId: v.id("extractionJobs"),
+    results: v.object({
+      total: v.number(),
+      completed: v.number(),
+      failed: v.number(),
+      withPdf: v.number(),
+      indexed: v.number(),
+      pdfContentUsed: v.number(),
+    }),
+  }),
   handler: async (
     ctx,
   ): Promise<{

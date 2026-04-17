@@ -1998,12 +1998,13 @@ export const saveExtractionResultsAndComplete = internalMutation({
     storageId: v.optional(v.id("_storage")),
     pdfContentUsed: v.boolean(),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     // Terminal-state guard: if the job was already cancelled/failed/completed,
     // do not persist new results and do not trigger finalize. A late-arriving
     // workpool completion must not resurrect a terminated job.
     const paper = await ctx.db.get("extractionPapers", args.paperId);
-    if (!paper) return;
+    if (!paper) return null;
     const parentJob = await ctx.db.get("extractionJobs", paper.jobId);
     if (
       parentJob &&
@@ -2014,7 +2015,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
       console.log(
         `[saveExtractionResultsAndComplete] Skipping ${args.paperId}; job ${paper.jobId} already ${parentJob.status}`,
       );
-      return;
+      return null;
     }
 
     // Billing-idempotency guard: if we already persisted results + billed this
@@ -2024,7 +2025,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
       console.log(
         `[saveExtractionResultsAndComplete] Skipping ${args.paperId}; already completed/billed`,
       );
-      return;
+      return null;
     }
 
     // Save extraction results
@@ -2128,6 +2129,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
       jobId: paper.jobId,
     });
     console.log(`[saveExtractionResultsAndComplete] Paper ${args.paperId} completed with ${args.results.length} results`);
+    return null;
   },
 });
 

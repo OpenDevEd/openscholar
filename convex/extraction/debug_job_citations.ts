@@ -48,6 +48,11 @@ export const debugJobCitations = internalQuery({
     jobId: v.id("extractionJobs"),
     limit: v.optional(v.number()),
   },
+  // v.any() on the return shape is intentional: this is an evolving
+  // dev diagnostic. Every caller is assertNonProd-gated; locking it
+  // behind a precise validator would be churn-heavy with no prod
+  // consumer.
+  returns: v.any(),
   handler: async (ctx, args) => {
     assertNonProd();
     const questions = await ctx.db
