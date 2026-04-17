@@ -35,7 +35,7 @@ export {
 
 // Mutations (internal - for workflow)
 export {
-  finalizeJob,
+  maybeFinalizeJob,
   updatePaperStatus,
   updatePaperProcessable,
   setPaperStorage,
@@ -48,7 +48,6 @@ export {
   handlePaperFetchComplete,
   handleDownloadAndIndexComplete,
   handleExtractionComplete,
-  finalizeJobIfDone,
   markPaperIndexed,
   replacePaperEvidenceUnits,
 } from "./mutations";

@@ -208,7 +208,7 @@ export const runExtractionWorkflow = workflow.define({
             errorMessage: "No PDF URL or abstract available",
           }
         );
-        await step.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        await step.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
           jobId,
         });
         continue;

@@ -1430,6 +1430,20 @@ export const updateJobStatus = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    const job = await ctx.db.get("extractionJobs", args.jobId);
+    if (!job) return null;
+
+    // Terminal states are sticky. A late workflow step (e.g. the unconditional
+    // `extracting` update at the end of `runExtractionWorkflow`) must not roll
+    // a finalized job back to an active state.
+    const isTerminal =
+      job.status === "cancelled" ||
+      job.status === "failed" ||
+      job.status === "completed";
+    if (isTerminal && args.status !== job.status) {
+      return null;
+    }
+
     const updates: Record<string, unknown> = {
       status: args.status,
       updatedAt: Date.now(),
@@ -1463,6 +1477,18 @@ export const updatePaperStatus = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    // Route terminal transitions through `markPaperTerminalTx` so the per-job
+    // counter is bumped atomically. Non-processable papers are excluded from
+    // the counter inside the helper.
+    if (isTerminalPaperStatus(args.status)) {
+      await markPaperTerminalTx(ctx, args.paperId, args.status, {
+        errorMessage: args.errorMessage,
+        completedAt: args.completedAt,
+        creditsUsed: args.creditsUsed,
+      });
+      return null;
+    }
+
     const updates: Record<string, unknown> = {
       status: args.status,
     };
@@ -1579,56 +1605,85 @@ export const markPaperIndexed = internalMutation({
   },
 });
 
-export const finalizeJob = internalMutation({
-  args: {
-    jobId: v.id("extractionJobs"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-    if (!job) return null;
+/**
+ * Terminal paper statuses. Any transition into one of these is irreversible;
+ * the per-job counter on `extractionJobs` is incremented exactly once per
+ * paper when it lands here, so `maybeFinalizeJob` can decide "done" in O(1).
+ */
+type TerminalPaperStatus =
+  | "completed"
+  | "failed"
+  | "download_failed"
+  | "indexing_failed";
 
-    // Terminal states are sticky: cancelled/failed/completed jobs must not be
-    // resurrected by late-arriving workpool completions.
-    if (
-      job.status === "cancelled" ||
-      job.status === "failed" ||
-      job.status === "completed"
-    ) {
-      return null;
+function isTerminalPaperStatus(
+  status: Doc<"extractionPapers">["status"],
+): status is TerminalPaperStatus {
+  return (
+    status === "completed" ||
+    status === "failed" ||
+    status === "download_failed" ||
+    status === "indexing_failed"
+  );
+}
+
+/**
+ * Transition a paper into a terminal state and bump the owning job's
+ * per-state counter atomically. Idempotent: if the paper is already in a
+ * terminal state, the counter is not re-incremented. Non-processable papers
+ * do not contribute to the counter since they are excluded from
+ * `extractionJobs.totalPapers` at enqueue time.
+ */
+async function markPaperTerminalTx(
+  ctx: MutationCtx,
+  paperId: Id<"extractionPapers">,
+  newStatus: TerminalPaperStatus,
+  extras: {
+    errorMessage?: string;
+    completedAt?: number;
+    creditsUsed?: number;
+    storageId?: Id<"_storage">;
+    extractionBilled?: boolean;
+    pdfContentUsed?: boolean;
+  } = {},
+): Promise<{ applied: boolean; paper: Doc<"extractionPapers"> | null }> {
+  const paper = await ctx.db.get("extractionPapers", paperId);
+  if (!paper) return { applied: false, paper: null };
+
+  if (isTerminalPaperStatus(paper.status)) {
+    return { applied: false, paper };
+  }
+
+  const patch: Partial<Doc<"extractionPapers">> = {
+    status: newStatus,
+    completedAt: extras.completedAt ?? Date.now(),
+  };
+  if (extras.errorMessage !== undefined) patch.errorMessage = extras.errorMessage;
+  if (extras.creditsUsed !== undefined) patch.creditsUsed = extras.creditsUsed;
+  if (extras.storageId !== undefined) patch.storageId = extras.storageId;
+  if (extras.extractionBilled !== undefined) {
+    patch.extractionBilled = extras.extractionBilled;
+  }
+  if (extras.pdfContentUsed !== undefined) {
+    patch.pdfContentUsed = extras.pdfContentUsed;
+  }
+
+  await ctx.db.patch("extractionPapers", paperId, patch);
+
+  if (paper.processable !== false) {
+    const job = await ctx.db.get("extractionJobs", paper.jobId);
+    if (job) {
+      const isSuccess = newStatus === "completed";
+      await ctx.db.patch("extractionJobs", paper.jobId, {
+        processedPapers: job.processedPapers + (isSuccess ? 1 : 0),
+        failedPapers: job.failedPapers + (isSuccess ? 0 : 1),
+        updatedAt: Date.now(),
+      });
     }
+  }
 
-    // Count final stats
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
-
-    const completedCount = papers.filter((p) => p.status === "completed").length;
-    const failedCount = papers.filter(
-      (p) =>
-        p.status === "failed" ||
-        p.status === "download_failed" ||
-        p.status === "indexing_failed"
-    ).length;
-
-    const status =
-      failedCount === papers.length
-        ? "failed"
-        : completedCount + failedCount >= papers.length
-        ? "completed"
-        : job.status;
-
-    await ctx.db.patch("extractionJobs", args.jobId, {
-      status,
-      processedPapers: completedCount,
-      failedPapers: failedCount,
-      completedAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-    return null;
-  },
-});
+  return { applied: true, paper };
+}
 
 // Delete old PDF files (called by cron)
 export const cleanupOldPdfs = internalMutation({
@@ -1671,8 +1726,17 @@ export const cleanupOldPdfs = internalMutation({
   },
 });
 
-// Process papers for active extraction jobs (called by cron every minute)
-export const finalizeJobIfDone = internalMutation({
+/**
+ * Decide whether the job has reached a terminal state and patch accordingly.
+ *
+ * Reads only the `extractionJobs` row (1 doc). Every terminal paper
+ * transition bumps `processedPapers`/`failedPapers` via `markPaperTerminalTx`,
+ * so `(processed + failed) >= totalPapers` is a faithful "all done" signal.
+ *
+ * Terminal states are sticky: a late onComplete cannot resurrect a job that
+ * was cancelled/failed/completed earlier.
+ */
+export const maybeFinalizeJob = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
   },
@@ -1681,8 +1745,6 @@ export const finalizeJobIfDone = internalMutation({
     const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) return null;
 
-    // Terminal states are sticky: cancelled/failed/completed jobs must not be
-    // resurrected by late-arriving workpool completions.
     if (
       job.status === "cancelled" ||
       job.status === "failed" ||
@@ -1691,49 +1753,33 @@ export const finalizeJobIfDone = internalMutation({
       return null;
     }
 
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
+    const now = Date.now();
+    const total = job.totalPapers;
+    const processed = job.processedPapers;
+    const failed = job.failedPapers;
 
-    if (papers.length === 0) return null;
-
-    const processablePapers = papers.filter((p) => p.processable !== false);
-    if (processablePapers.length === 0) {
+    // Degenerate case: every source was non-processable, so `totalPapers`
+    // was set to 0 at enqueue time. Fail the job immediately so the UI is
+    // not stuck on "extracting".
+    if (total === 0) {
       await ctx.db.patch("extractionJobs", args.jobId, {
         status: "failed",
-        processedPapers: 0,
-        failedPapers: 0,
-        completedAt: Date.now(),
-        updatedAt: Date.now(),
+        completedAt: now,
+        updatedAt: now,
       });
       return null;
     }
 
-    const completedCount = processablePapers.filter((p) => p.status === "completed").length;
-    const failedCount = processablePapers.filter(
-      (p) =>
-        p.status === "failed" ||
-        p.status === "download_failed" ||
-        p.status === "indexing_failed"
-    ).length;
-
-    if (completedCount + failedCount < processablePapers.length) {
-      await ctx.db.patch("extractionJobs", args.jobId, {
-        updatedAt: Date.now(),
-      });
+    if (processed + failed < total) {
+      await ctx.db.patch("extractionJobs", args.jobId, { updatedAt: now });
       return null;
     }
 
-    const status =
-      failedCount === processablePapers.length ? "failed" : "completed";
-
+    const status = failed >= total ? "failed" : "completed";
     await ctx.db.patch("extractionJobs", args.jobId, {
       status,
-      processedPapers: completedCount,
-      failedPapers: failedCount,
-      completedAt: Date.now(),
-      updatedAt: Date.now(),
+      completedAt: now,
+      updatedAt: now,
     });
     return null;
   },
@@ -1951,7 +1997,7 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
 
       if (data.success) {
         console.log(`[handleDownloadAndIndexComplete] Download/index success for ${paperId}, chunks: ${data.chunksCount}`);
-        
+
         // Update status to indexing
         await ctx.db.patch("extractionPapers", paperId, {
           status: "indexing",
@@ -1987,31 +2033,25 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
       } else {
         // Download failed - mark as failed
         console.log(`[handleDownloadAndIndexComplete] Download failed for ${paperId}: ${data.error}`);
-        await ctx.db.patch("extractionPapers", paperId, {
-          status: "download_failed",
+        await markPaperTerminalTx(ctx, paperId, "download_failed", {
           errorMessage: data.error || "Download failed",
-          completedAt: Date.now(),
         });
-        await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
           jobId,
         });
       }
     } else if (result.kind === "failed") {
-      await ctx.db.patch("extractionPapers", paperId, {
-        status: "failed",
+      await markPaperTerminalTx(ctx, paperId, "failed", {
         errorMessage: result.error || "Download/index action failed",
-        completedAt: Date.now(),
       });
-      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+      await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
         jobId,
       });
     } else if (result.kind === "canceled") {
-      await ctx.db.patch("extractionPapers", paperId, {
-        status: "failed",
+      await markPaperTerminalTx(ctx, paperId, "failed", {
         errorMessage: "Download/index was canceled",
-        completedAt: Date.now(),
       });
-      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+      await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
         jobId,
       });
     }
@@ -2038,9 +2078,8 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
       };
 
       if (data.success && data.results) {
-        // saveExtractionResultsAndComplete already calls finalizeJobIfDone as
-        // its last step. Calling it a second time here races with itself and
-        // double-counts paper stats before the prior mutation's write lands.
+        // saveExtractionResultsAndComplete owns the terminal transition for
+        // the success branch — it calls maybeFinalizeJob as its last step.
         await ctx.runMutation(
           internal.extraction.mutations.saveExtractionResultsAndComplete,
           {
@@ -2052,31 +2091,25 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
         );
         console.log(`[handleExtractionComplete] Paper ${paperId} completed successfully`);
       } else {
-        await ctx.db.patch("extractionPapers", paperId, {
-          status: "failed",
+        await markPaperTerminalTx(ctx, paperId, "failed", {
           errorMessage: data.error || "Extraction failed",
-          completedAt: Date.now(),
         });
-        await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
           jobId,
         });
       }
     } else if (result.kind === "failed") {
-      await ctx.db.patch("extractionPapers", paperId, {
-        status: "failed",
+      await markPaperTerminalTx(ctx, paperId, "failed", {
         errorMessage: result.error || "Extraction action failed",
-        completedAt: Date.now(),
       });
-      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+      await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
         jobId,
       });
     } else if (result.kind === "canceled") {
-      await ctx.db.patch("extractionPapers", paperId, {
-        status: "failed",
+      await markPaperTerminalTx(ctx, paperId, "failed", {
         errorMessage: "Extraction was canceled",
-        completedAt: Date.now(),
       });
-      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+      await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
         jobId,
       });
     }
@@ -2275,22 +2308,6 @@ export const saveExtractionResultsAndComplete = internalMutation({
       });
     }
 
-    // Mark paper as completed
-    const patchData: Partial<Doc<"extractionPapers">> = {
-      status: "completed",
-      completedAt: Date.now(),
-      creditsUsed: args.creditsUsed,
-      extractionBilled: true,
-    };
-
-    if (args.storageId) {
-      patchData.storageId = args.storageId;
-    }
-
-    if (args.pdfContentUsed) {
-      patchData.pdfContentUsed = true;
-    }
-
     // Upsert extractionJobStats for each question result
     for (const result of args.results.filter(Boolean)) {
       const existingStat = await ctx.db
@@ -2347,8 +2364,14 @@ export const saveExtractionResultsAndComplete = internalMutation({
       }
     }
 
-    await ctx.db.patch("extractionPapers", args.paperId, patchData);
-    await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+    // Terminal transition + counter bump happen atomically inside this mutation.
+    await markPaperTerminalTx(ctx, args.paperId, "completed", {
+      creditsUsed: args.creditsUsed,
+      extractionBilled: true,
+      storageId: args.storageId,
+      pdfContentUsed: args.pdfContentUsed ? true : undefined,
+    });
+    await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
       jobId: paper.jobId,
     });
     console.log(`[saveExtractionResultsAndComplete] Paper ${args.paperId} completed with ${args.results.length} results`);

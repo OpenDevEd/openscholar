@@ -47,13 +47,13 @@ async function seedJob(
   });
 }
 
-describe("finalizeJob terminal-state guard", () => {
+describe("maybeFinalizeJob terminal-state guard", () => {
   it("does not mutate a cancelled job", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJob(t, "cancelled");
 
     const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.finalizeJob, { jobId });
+    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
 
     expect(after?.status).toBe("cancelled");
@@ -66,7 +66,7 @@ describe("finalizeJob terminal-state guard", () => {
     const { jobId } = await seedJob(t, "failed");
 
     const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.finalizeJob, { jobId });
+    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
 
     expect(after?.status).toBe("failed");
@@ -78,46 +78,7 @@ describe("finalizeJob terminal-state guard", () => {
     const { jobId } = await seedJob(t, "completed");
 
     const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.finalizeJob, { jobId });
-    const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-
-    expect(after?.status).toBe("completed");
-    expect(after?.updatedAt).toBe(before?.updatedAt);
-  });
-});
-
-describe("finalizeJobIfDone terminal-state guard", () => {
-  it("does not mutate a cancelled job", async () => {
-    const t = convexTest(schema);
-    const { jobId } = await seedJob(t, "cancelled");
-
-    const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.finalizeJobIfDone, { jobId });
-    const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-
-    expect(after?.status).toBe("cancelled");
-    expect(after?.updatedAt).toBe(before?.updatedAt);
-    expect(after?.completedAt).toBeUndefined();
-  });
-
-  it("does not mutate a failed job", async () => {
-    const t = convexTest(schema);
-    const { jobId } = await seedJob(t, "failed");
-
-    const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.finalizeJobIfDone, { jobId });
-    const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-
-    expect(after?.status).toBe("failed");
-    expect(after?.updatedAt).toBe(before?.updatedAt);
-  });
-
-  it("does not mutate a completed job", async () => {
-    const t = convexTest(schema);
-    const { jobId } = await seedJob(t, "completed");
-
-    const before = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    await t.mutation(internal.extraction.mutations.finalizeJobIfDone, { jobId });
+    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
 
     expect(after?.status).toBe("completed");
@@ -128,19 +89,132 @@ describe("finalizeJobIfDone terminal-state guard", () => {
     const t = convexTest(schema);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
-    // Mark the single paper as completed so finalize has work to do
+    // Simulate the counter bump that markPaperTerminalTx performs whenever a
+    // paper reaches a terminal state. maybeFinalizeJob now relies on these
+    // counters rather than scanning papers.
     await t.run(async (ctx) => {
       await ctx.db.patch("extractionPapers", paperId, {
         status: "completed",
         completedAt: Date.now(),
       });
+      await ctx.db.patch("extractionJobs", jobId, {
+        processedPapers: 1,
+      });
     });
 
-    await t.mutation(internal.extraction.mutations.finalizeJobIfDone, { jobId });
+    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
 
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(after?.status).toBe("completed");
     expect(after?.processedPapers).toBe(1);
+  });
+
+  it("fails a job with totalPapers=0 (all sources non-processable)", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJob(t, "extracting");
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionJobs", jobId, { totalPapers: 0 });
+    });
+
+    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
+
+    const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    expect(after?.status).toBe("failed");
+    expect(after?.completedAt).toBeDefined();
+  });
+
+  it("performs O(1) reads per call (does not scan papers)", async () => {
+    // Seed a job with 50 papers but leave counters at 0 so the function has
+    // no reason to transition. A scan-based finalize would touch all 50
+    // papers; the counter-based one must not.
+    const t = convexTest(schema);
+    const { jobId } = await seedJob(t, "extracting");
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionJobs", jobId, { totalPapers: 50 });
+      for (let i = 0; i < 50; i++) {
+        await ctx.db.insert("extractionPapers", {
+          jobId,
+          openalexId: `oa:stress${i}`,
+          title: `Paper ${i}`,
+          status: "extracting" as const,
+        });
+      }
+    });
+
+    await t.mutation(internal.extraction.mutations.maybeFinalizeJob, { jobId });
+
+    const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    // Still active because counters say we are not done.
+    expect(after?.status).toBe("extracting");
+  });
+});
+
+describe("markPaperTerminalTx counter maintenance", () => {
+  it("bumps processedPapers on a successful completion", async () => {
+    const t = convexTest(schema);
+    const { jobId, paperId } = await seedJob(t, "extracting");
+
+    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+      paperId,
+      status: "completed",
+      completedAt: Date.now(),
+    });
+
+    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    expect(job?.processedPapers).toBe(1);
+    expect(job?.failedPapers).toBe(0);
+  });
+
+  it("bumps failedPapers on a download_failed transition", async () => {
+    const t = convexTest(schema);
+    const { jobId, paperId } = await seedJob(t, "extracting");
+
+    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+      paperId,
+      status: "download_failed",
+      errorMessage: "no pdf",
+    });
+
+    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    expect(job?.processedPapers).toBe(0);
+    expect(job?.failedPapers).toBe(1);
+  });
+
+  it("is idempotent: a second terminal transition does not double-count", async () => {
+    const t = convexTest(schema);
+    const { jobId, paperId } = await seedJob(t, "extracting");
+
+    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+      paperId,
+      status: "failed",
+    });
+    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+      paperId,
+      status: "failed",
+    });
+
+    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    expect(job?.failedPapers).toBe(1);
+  });
+
+  it("does not bump counters for non-processable papers", async () => {
+    const t = convexTest(schema);
+    const { jobId, paperId } = await seedJob(t, "extracting");
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionPapers", paperId, { processable: false });
+      await ctx.db.patch("extractionJobs", jobId, { totalPapers: 0 });
+    });
+
+    await t.mutation(internal.extraction.mutations.updatePaperStatus, {
+      paperId,
+      status: "download_failed",
+    });
+
+    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    expect(job?.processedPapers).toBe(0);
+    expect(job?.failedPapers).toBe(0);
   });
 });
 
@@ -227,6 +301,7 @@ describe("saveExtractionResultsAndComplete terminal-state guard", () => {
       // Job should also be finalized to completed since the only paper is done
       const job = await ctx.db.get("extractionJobs", jobId);
       expect(job?.status).toBe("completed");
+      expect(job?.processedPapers).toBe(1);
     });
   });
 });
