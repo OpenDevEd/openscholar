@@ -14,40 +14,6 @@ export interface ExtractionQuestion {
   description?: string;
 }
 
-export interface ExtractionHistorySource {
-  historyId: string;
-  searchFilters: Record<string, unknown>;
-}
-
-export interface ExtractionZoteroItem {
-  itemKey: string;
-  title: string;
-  abstract?: string;
-  authors: string[];
-  year?: number;
-  doi?: string;
-}
-
-export interface ExtractionZoteroSelection {
-  libraryType: "user" | "group";
-  groupId?: string;
-  zoteroUserId?: string;
-  collectionKey?: string;
-  includeDescendants?: boolean;
-  items: ExtractionZoteroItem[];
-}
-
-export interface ExtractionManualItem {
-  id: string;
-  title: string;
-  abstract?: string;
-  authors?: string[];
-  year?: number;
-  doi?: string;
-  pdfUrl?: string;
-  storageId?: string;
-}
-
 export interface ExtractionJob {
   _id: string;
   name: string;
@@ -137,17 +103,6 @@ export interface ExtractionJobDetails {
     failed: number;
     percentage: number;
   };
-}
-
-export interface CreateExtractionJobInput {
-  name: string;
-  sourceType: ExtractionSourceType;
-  sourceHistoryId?: string;
-  searchFilters?: Record<string, unknown>;
-  sourceHistoryEntries?: ExtractionHistorySource[];
-  sourceZoteroSelection?: ExtractionZoteroSelection;
-  sourceManualItems?: ExtractionManualItem[];
-  questions: ExtractionQuestion[];
 }
 
 export interface ExtractionSavedView {
