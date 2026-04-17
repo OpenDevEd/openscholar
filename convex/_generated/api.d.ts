@@ -25,6 +25,8 @@ import type * as debug_papers from "../debug_papers.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
 import type * as extraction_aggregates from "../extraction/aggregates.js";
+import type * as extraction_bucket_limits from "../extraction/bucket/limits.js";
+import type * as extraction_bucket_queries from "../extraction/bucket/queries.js";
 import type * as extraction_content from "../extraction/content.js";
 import type * as extraction_debug from "../extraction/debug.js";
 import type * as extraction_debug_errors from "../extraction/debug_errors.js";
@@ -61,6 +63,8 @@ import type * as extraction_queries_results from "../extraction/queries/results.
 import type * as extraction_queries_reviews from "../extraction/queries/reviews.js";
 import type * as extraction_queries_templates from "../extraction/queries/templates.js";
 import type * as extraction_queries_views from "../extraction/queries/views.js";
+import type * as extraction_sources_collections from "../extraction/sources/collections.js";
+import type * as extraction_sources_library from "../extraction/sources/library.js";
 import type * as extraction_stateMachine from "../extraction/stateMachine.js";
 import type * as extraction_tests_fixtures from "../extraction/tests/fixtures.js";
 import type * as extraction_tests_runners from "../extraction/tests/runners.js";
@@ -171,6 +175,8 @@ declare const fullApi: ApiFromModules<{
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
   "extraction/aggregates": typeof extraction_aggregates;
+  "extraction/bucket/limits": typeof extraction_bucket_limits;
+  "extraction/bucket/queries": typeof extraction_bucket_queries;
   "extraction/content": typeof extraction_content;
   "extraction/debug": typeof extraction_debug;
   "extraction/debug_errors": typeof extraction_debug_errors;
@@ -207,6 +213,8 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries/reviews": typeof extraction_queries_reviews;
   "extraction/queries/templates": typeof extraction_queries_templates;
   "extraction/queries/views": typeof extraction_queries_views;
+  "extraction/sources/collections": typeof extraction_sources_collections;
+  "extraction/sources/library": typeof extraction_sources_library;
   "extraction/stateMachine": typeof extraction_stateMachine;
   "extraction/tests/fixtures": typeof extraction_tests_fixtures;
   "extraction/tests/runners": typeof extraction_tests_runners;

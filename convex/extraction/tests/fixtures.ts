@@ -3,10 +3,10 @@ import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { workflow } from "../../workflow";
-import { writeJobSources } from "../jobSources";
+import { writeJobSources, type BucketItemInput } from "../jobSources";
 import { assertNonProd } from "../../lib/assertNonProd";
 import {
-  historyEntryInputValidator,
+  bucketItemInputValidator,
   jobStatusValidator,
   questionInputValidator,
 } from "../validators";
@@ -27,6 +27,21 @@ const DEFAULT_QUESTIONS: QuestionInput[] = [
   { key: "q1", question: "What methodology was used?", type: "string" },
 ];
 
+const DEFAULT_BUCKET_ITEMS: BucketItemInput[] = [
+  {
+    bucketKey: "history:test-history",
+    source: "history",
+    sourceRefId: "test-history",
+    title: "machine learning education",
+    authors: [],
+    searchFilters: {
+      query: "machine learning education",
+      yearRange: [2015, 2024],
+      sortBy: "relevance",
+    },
+  },
+];
+
 /**
  * Create a test extraction job. Supersedes the old `createTestJob` /
  * `createTestJobForFix` / `createAndRunTestJob` / `test_automation_internal.createTestJob`
@@ -38,7 +53,7 @@ export const createTestJob = internalMutation({
     userId: v.optional(v.id("users")),
     name: v.optional(v.string()),
     status: v.optional(jobStatusValidator),
-    historyEntries: v.optional(v.array(historyEntryInputValidator)),
+    bucketItems: v.optional(v.array(bucketItemInputValidator)),
     questions: v.optional(v.array(questionInputValidator)),
     start: v.optional(v.boolean()),
   },
@@ -69,17 +84,8 @@ export const createTestJob = internalMutation({
       updatedAt: now,
     });
 
-    const historyEntries = args.historyEntries ?? [
-      {
-        historyId: "test-history",
-        searchFilters: {
-          query: "machine learning education",
-          yearRange: [2015, 2024],
-          sortBy: "relevance",
-        },
-      },
-    ];
-    await writeJobSources(ctx, jobId, { historyEntries });
+    const bucketItems = args.bucketItems ?? DEFAULT_BUCKET_ITEMS;
+    await writeJobSources(ctx, jobId, bucketItems);
 
     const questions = args.questions ?? DEFAULT_QUESTIONS;
     for (let i = 0; i < questions.length; i++) {

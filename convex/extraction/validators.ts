@@ -336,9 +336,7 @@ export const workflowTemplateValidator = v.object({
   name: v.string(),
   description: v.optional(v.string()),
   sourceType: sourceTypeValidator,
-  sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
-  sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
-  sourceManualItems: v.optional(v.array(manualItemInputValidator)),
+  bucketItems: v.array(bucketItemInputValidator),
   questions: v.array(questionInputValidator),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -422,14 +420,10 @@ export const extractionEvidenceUnitValidator = v.object({
 });
 
 /**
- * Shape returned by readJobSources — matches the reconstructed three
- * buckets the workflow and duplicate/template flows consume.
+ * Shape returned by readJobSources — the bucket items that were frozen
+ * onto the job at submission time, replayed in insertion order.
  */
-export const jobSourcesReadValidator = v.object({
-  historyEntries: v.array(historyEntryInputValidator),
-  zoteroSelection: v.optional(zoteroSelectionInputValidator),
-  manualItems: v.array(manualItemInputValidator),
-});
+export const jobSourcesReadValidator = v.array(bucketItemInputValidator);
 
 export const extractionResultReviewValidator = v.object({
   _id: v.id("extractionResultReviews"),

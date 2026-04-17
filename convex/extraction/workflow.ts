@@ -11,6 +11,7 @@ import { getProcessableFlags } from "./content";
 import { buildDedupeKey } from "./dedupe";
 import type { PaperData } from "./types";
 import type { Id } from "../_generated/dataModel";
+import type { BucketItemInput } from "./jobSources";
 
 import { createError } from "../lib/errors";
 
@@ -20,6 +21,12 @@ type WorkflowPaper = PaperData & {
   sourceId: string;
 };
 
+function paperSourceFromBucket(source: BucketItemInput["source"]): SourceType {
+  if (source === "history") return "history";
+  if (source === "zotero") return "zotero";
+  return "manual";
+}
+
 export const runExtractionWorkflow = workflow.define({
   args: {
     jobId: v.id("extractionJobs"),
@@ -27,7 +34,6 @@ export const runExtractionWorkflow = workflow.define({
   handler: async (step, { jobId }) => {
     console.log(`[Workflow] Starting extraction for job ${jobId}`);
 
-    // Step 1: Get job details and questions
     const job = await step.runQuery(internal.extraction.queries.internal.getJobInternal, {
       jobId,
     });
@@ -50,7 +56,6 @@ export const runExtractionWorkflow = workflow.define({
 
     console.log(`[Workflow] Loaded ${questions.length} questions`);
 
-    // Step 2: Fetch papers from sources
     const pdfEnabledEarly = await step.runQuery(
       internal.extraction.queries.internal.getPdfExtractionEnabledInternal,
       {}
@@ -61,49 +66,56 @@ export const runExtractionWorkflow = workflow.define({
       totalPapers: 0,
     });
 
-    const papers: WorkflowPaper[] = [];
-
-    // Per-row sources now live in extractionJobSources. Reconstruct the
-    // three buckets the workflow needs in one indexed read.
-    const sources = await step.runQuery(
+    const bucketItems = await step.runQuery(
       internal.extraction.queries.internal.getJobSourcesInternal,
       { jobId },
     );
 
-    for (const entry of sources.historyEntries) {
-      const result = await step.runAction(
-        internal.extraction.actions.fetchPapersFromHistory,
-        { searchFilters: entry.searchFilters }
-      );
-      const enriched = (result as PaperData[]).map((paper) => ({
-        ...paper,
-        sourceType: "history" as const,
-        sourceId: entry.historyId,
-      }));
-      papers.push(...enriched);
-    }
+    const papers: WorkflowPaper[] = [];
+    let cachedZoteroUserId: string | undefined;
 
-    if (sources.zoteroSelection && sources.zoteroSelection.items.length > 0) {
-      let zoteroUserId: string | undefined = sources.zoteroSelection.zoteroUserId;
-      if (!zoteroUserId) {
-        try {
-          const resolved = await step.runQuery(internal.zotero.queries.getZoteroUserIdInternal, {});
-          zoteroUserId = resolved ?? undefined;
-        } catch (error) {
-          zoteroUserId = undefined;
-        }
+    for (const item of bucketItems) {
+      if (item.source === "history" && item.searchFilters) {
+        // Saved-search placeholder expands to papers at workflow time.
+        const result = await step.runAction(
+          internal.extraction.actions.fetchPapersFromHistory,
+          { searchFilters: item.searchFilters },
+        );
+        const enriched = (result as PaperData[]).map((paper) => ({
+          ...paper,
+          sourceType: "history" as const,
+          sourceId: item.sourceRefId,
+        }));
+        papers.push(...enriched);
+        continue;
       }
-      const libraryType = sources.zoteroSelection.libraryType;
-      const groupId = sources.zoteroSelection.groupId;
-      const zoteroItems = sources.zoteroSelection.items.map((item) => {
-        const uri = libraryType === "group" && groupId
-          ? `zotero://select/groups/${groupId}/items/${item.itemKey}`
-          : zoteroUserId
-            ? `zotero://select/users/${zoteroUserId}/items/${item.itemKey}`
-            : undefined;
 
-        return {
-          openalexId: `zotero:${libraryType}:${item.itemKey}`,
+      if (item.source === "zotero") {
+        const libraryType = item.libraryType ?? "user";
+        const groupId = item.groupId;
+        let zoteroUserId = item.zoteroUserId;
+        if (!zoteroUserId && libraryType === "user") {
+          if (cachedZoteroUserId === undefined) {
+            try {
+              const resolved = await step.runQuery(
+                internal.zotero.queries.getZoteroUserIdInternal,
+                {},
+              );
+              cachedZoteroUserId = resolved ?? undefined;
+            } catch {
+              cachedZoteroUserId = undefined;
+            }
+          }
+          zoteroUserId = cachedZoteroUserId;
+        }
+        const uri =
+          libraryType === "group" && groupId
+            ? `zotero://select/groups/${groupId}/items/${item.sourceRefId}`
+            : zoteroUserId
+              ? `zotero://select/users/${zoteroUserId}/items/${item.sourceRefId}`
+              : undefined;
+        papers.push({
+          openalexId: `zotero:${libraryType}:${item.sourceRefId}`,
           title: item.title,
           doi: item.doi,
           publicationYear: item.year,
@@ -111,16 +123,15 @@ export const runExtractionWorkflow = workflow.define({
           authors: item.authors,
           pdfUrl: uri,
           isOpenAccess: false,
-          sourceType: "zotero" as const,
-          sourceId: item.itemKey,
-        };
-      });
-      papers.push(...zoteroItems);
-    }
+          sourceType: "zotero",
+          sourceId: item.sourceRefId,
+        });
+        continue;
+      }
 
-    if (sources.manualItems.length > 0) {
-      const manualItems = sources.manualItems.map((item) => ({
-        openalexId: `manual:${item.id}`,
+      // history (per-paper), library, collection, upload → processed directly
+      papers.push({
+        openalexId: item.openalexId ?? `${item.source}:${item.sourceRefId}`,
         title: item.title,
         doi: item.doi,
         publicationYear: item.year,
@@ -129,10 +140,9 @@ export const runExtractionWorkflow = workflow.define({
         pdfUrl: item.pdfUrl,
         storageId: item.storageId,
         isOpenAccess: false,
-        sourceType: "manual" as const,
-        sourceId: item.id,
-      }));
-      papers.push(...manualItems);
+        sourceType: paperSourceFromBucket(item.source),
+        sourceId: item.sourceRefId,
+      });
     }
 
     if (papers.length === 0) {
@@ -155,7 +165,6 @@ export const runExtractionWorkflow = workflow.define({
 
     console.log(`[Workflow] Fetched ${papers.length} papers (${dedupedPapers.length} deduped)`);
 
-    // Step 3: Create paper records
     await step.runMutation(internal.extraction.mutations.papers.createPaperRecords, {
       jobId,
       papers: dedupedPapers.map((p) => ({
@@ -164,7 +173,6 @@ export const runExtractionWorkflow = workflow.define({
       })),
     });
 
-    // Step 4: Get created paper IDs
     const paperIds = await step.runQuery(
       internal.extraction.queries.papers.byOpenAlexIds,
       {
@@ -190,7 +198,6 @@ export const runExtractionWorkflow = workflow.define({
 
     console.log(`[Workflow] Enqueueing ${paperIds.length} papers for processing`);
 
-    // Enqueue each paper for processing
     let enqueuedCount = 0;
     for (const paper of paperIds) {
       const { processable: computedProcessable } = getProcessableFlags({
@@ -216,13 +223,12 @@ export const runExtractionWorkflow = workflow.define({
         continue;
       }
 
-      // Enqueue paper processing via workpool (uses new 3-step workflow internally)
       await step.runMutation(
         internal.extraction.mutations.internal.lifecycle.enqueuePaperProcessing,
         {
           paperId: paper._id,
           jobId,
-          pdfUrl: paper.pdfUrl || "", // Empty string if no PDF
+          pdfUrl: paper.pdfUrl || "",
           storageId: paper.storageId,
           title: paper.title,
           abstract: paper.abstract,
@@ -236,7 +242,6 @@ export const runExtractionWorkflow = workflow.define({
 
     console.log(`[Workflow] Enqueued ${enqueuedCount} papers for processing`);
 
-    // Step 5: Mark workflow as complete (papers will be processed asynchronously)
     await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
       jobId,
       status: "extracting",

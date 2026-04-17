@@ -20,12 +20,10 @@ import {
   type JobStatus,
 } from "../../stateMachine";
 import {
-  historyEntryInputValidator,
-  manualItemInputValidator,
+  bucketItemInputValidator,
   questionInputValidator,
   questionTypeValidator,
   sourceTypeValidator,
-  zoteroSelectionInputValidator,
 } from "../../validators";
 
 export const maybeFinalizeJob = internalMutation({
@@ -84,9 +82,7 @@ export const createJobDirect = internalMutation({
     userId: v.id("users"),
     name: v.string(),
     sourceType: sourceTypeValidator,
-    sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
-    sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
-    sourceManualItems: v.optional(v.array(manualItemInputValidator)),
+    bucketItems: v.array(bucketItemInputValidator),
   },
   returns: v.id("extractionJobs"),
   handler: async (ctx, args) => {
@@ -101,11 +97,7 @@ export const createJobDirect = internalMutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-    await writeJobSources(ctx, jobId, {
-      historyEntries: args.sourceHistoryEntries,
-      zoteroSelection: args.sourceZoteroSelection,
-      manualItems: args.sourceManualItems,
-    });
+    await writeJobSources(ctx, jobId, args.bucketItems);
     return jobId;
   },
 });

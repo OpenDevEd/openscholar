@@ -360,29 +360,33 @@ export default defineSchema({
     .index("by_workflow", ["workflowId"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // EXTRACTION JOB SOURCES - per-row sources (history / zotero / manual)
-  // Previously stored inline on extractionJobs; moved here so a 500-paper
-  // Zotero selection cannot trip the 1MB doc limit and so the job doc is
-  // no longer rewritten on every progress tick.
+  // EXTRACTION JOB SOURCES - one row per bucket item
+  // Stores a frozen copy of the BucketItem that produced each paper,
+  // so a job's inputs can be reconstructed exactly after submission.
   // ═══════════════════════════════════════════════════════════════
   extractionJobSources: defineTable({
     jobId: v.id("extractionJobs"),
     position: v.number(),
-    kind: v.union(
+    bucketKey: v.string(),
+    source: v.union(
       v.literal("history"),
+      v.literal("library"),
+      v.literal("collection"),
       v.literal("zotero"),
-      v.literal("manual")
+      v.literal("upload")
     ),
-    // history
-    historyId: v.optional(v.string()),
-    searchFilters: v.optional(searchFiltersValidator),
-    // zotero + manual (shared)
-    title: v.optional(v.string()),
-    abstract: v.optional(v.string()),
-    authors: v.optional(v.array(v.string())),
+    sourceRefId: v.string(),
+    title: v.string(),
+    authors: v.array(v.string()),
     year: v.optional(v.number()),
     doi: v.optional(v.string()),
-    // zotero
+    openalexId: v.optional(v.string()),
+    abstract: v.optional(v.string()),
+    pdfUrl: v.optional(v.string()),
+    storageId: v.optional(v.id("_storage")),
+    // history: saved-search placeholder that expands at workflow time
+    searchFilters: v.optional(searchFiltersValidator),
+    // zotero context (libraryType/groupId resolve the OAuth target at workflow time)
     libraryType: v.optional(
       v.union(v.literal("user"), v.literal("group"))
     ),
@@ -390,14 +394,9 @@ export default defineSchema({
     zoteroUserId: v.optional(v.string()),
     collectionKey: v.optional(v.string()),
     includeDescendants: v.optional(v.boolean()),
-    itemKey: v.optional(v.string()),
-    // manual
-    itemId: v.optional(v.string()),
-    pdfUrl: v.optional(v.string()),
-    storageId: v.optional(v.id("_storage")),
   })
     .index("by_job_and_position", ["jobId", "position"])
-    .index("by_job_and_kind", ["jobId", "kind"]),
+    .index("by_job_and_source", ["jobId", "source"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION QUESTIONS - User-defined questions for data extraction
@@ -629,46 +628,33 @@ export default defineSchema({
       v.literal("manual"),
       v.literal("mixed")
     ),
-    sourceHistoryEntries: v.optional(
-      v.array(
-        v.object({
-          historyId: v.string(),
-          searchFilters: searchFiltersValidator,
-        })
-      )
-    ),
-    sourceZoteroSelection: v.optional(
+    // Frozen bucket snapshot — the exact paper set the template re-runs on.
+    bucketItems: v.array(
       v.object({
-        libraryType: v.union(v.literal("user"), v.literal("group")),
+        bucketKey: v.string(),
+        source: v.union(
+          v.literal("history"),
+          v.literal("library"),
+          v.literal("collection"),
+          v.literal("zotero"),
+          v.literal("upload")
+        ),
+        sourceRefId: v.string(),
+        title: v.string(),
+        authors: v.array(v.string()),
+        year: v.optional(v.number()),
+        doi: v.optional(v.string()),
+        openalexId: v.optional(v.string()),
+        abstract: v.optional(v.string()),
+        pdfUrl: v.optional(v.string()),
+        storageId: v.optional(v.id("_storage")),
+        searchFilters: v.optional(searchFiltersValidator),
+        libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
         groupId: v.optional(v.string()),
         zoteroUserId: v.optional(v.string()),
         collectionKey: v.optional(v.string()),
         includeDescendants: v.optional(v.boolean()),
-        items: v.array(
-          v.object({
-            itemKey: v.string(),
-            title: v.string(),
-            abstract: v.optional(v.string()),
-            authors: v.array(v.string()),
-            year: v.optional(v.number()),
-            doi: v.optional(v.string()),
-          })
-        ),
       })
-    ),
-    sourceManualItems: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          title: v.string(),
-          abstract: v.optional(v.string()),
-          authors: v.optional(v.array(v.string())),
-          year: v.optional(v.number()),
-          doi: v.optional(v.string()),
-          pdfUrl: v.optional(v.string()),
-          storageId: v.optional(v.id("_storage")),
-        })
-      )
     ),
     questions: v.array(
       v.object({

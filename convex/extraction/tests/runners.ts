@@ -46,9 +46,13 @@ export const runPdfTestNow = internalAction({
       internal.extraction.tests.fixtures.createTestJob,
       {
         name: `PDF Test ${Date.now()}`,
-        historyEntries: [
+        bucketItems: [
           {
-            historyId: "pdf-test",
+            bucketKey: "history:pdf-test",
+            source: "history",
+            sourceRefId: "pdf-test",
+            title: "desert climate africa",
+            authors: [],
             searchFilters: {
               query: "desert climate africa",
               yearRange: [2015, 2024],

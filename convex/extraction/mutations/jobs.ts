@@ -31,90 +31,41 @@ import {
 import {
   readJobSources,
   writeJobSources,
-  type JobSourceHistoryEntry,
-  type JobSourceManualItem,
-  type JobSourceZoteroSelection,
-  type JobSourceZoteroItem,
-  type JobSourcesInput,
+  type BucketItemInput,
 } from "../jobSources";
 
-type BucketItemInput = {
-  bucketKey: string;
-  source: "history" | "library" | "collection" | "zotero" | "upload";
-  sourceRefId: string;
-  title: string;
-  authors: string[];
-  year?: number;
-  doi?: string;
-  openalexId?: string;
-  abstract?: string;
-  storageId?: Id<"_storage">;
-  pdfUrl?: string;
-  searchFilters?: JobSourceHistoryEntry["searchFilters"];
-  libraryType?: "user" | "group";
-  groupId?: string;
-  zoteroUserId?: string;
-  collectionKey?: string;
-};
-
-function bucketToJobSources(
+function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
-): JobSourcesInput {
-  const historyEntries: JobSourceHistoryEntry[] = [];
-  const zoteroItems: JobSourceZoteroItem[] = [];
-  let zoteroContext: Omit<JobSourceZoteroSelection, "items"> | undefined;
-  const manualItems: JobSourceManualItem[] = [];
-
+): "history" | "zotero" | "manual" | "mixed" {
+  const kinds = new Set<"history" | "zotero" | "manual">();
   for (const item of items) {
-    if (item.source === "history") {
-      if (!item.searchFilters) continue;
-      historyEntries.push({
-        historyId: item.sourceRefId,
-        searchFilters: item.searchFilters,
-      });
-    } else if (item.source === "zotero") {
-      if (!item.libraryType) continue;
-      if (!zoteroContext) {
-        zoteroContext = {
-          libraryType: item.libraryType,
-          groupId: item.groupId,
-          zoteroUserId: item.zoteroUserId,
-          collectionKey: item.collectionKey,
-        };
-      }
-      zoteroItems.push({
-        itemKey: item.sourceRefId,
-        title: item.title,
-        abstract: item.abstract,
-        authors: item.authors,
-        year: item.year,
-        doi: item.doi,
-      });
-    } else {
-      // library / collection / upload — all flow through the existing
-      // manual-item schema. openalexId on library/collection rows is
-      // preserved on the server-side paper lookup via DOI; the manual
-      // row id falls back to the bucket's sourceRefId.
-      manualItems.push({
-        id: item.sourceRefId,
-        title: item.title,
-        abstract: item.abstract,
-        authors: item.authors,
-        year: item.year,
-        doi: item.doi,
-        pdfUrl: item.pdfUrl,
-        storageId: item.storageId,
-      });
-    }
+    if (item.source === "history") kinds.add("history");
+    else if (item.source === "zotero") kinds.add("zotero");
+    else kinds.add("manual");
   }
+  if (kinds.size >= 2) return "mixed";
+  if (kinds.has("history")) return "history";
+  if (kinds.has("zotero")) return "zotero";
+  return "manual";
+}
 
-  return {
-    historyEntries: historyEntries.length > 0 ? historyEntries : undefined,
-    zoteroSelection: zoteroContext
-      ? { ...zoteroContext, items: zoteroItems }
-      : undefined,
-    manualItems: manualItems.length > 0 ? manualItems : undefined,
-  };
+function dedupeBucketItems(
+  items: ReadonlyArray<BucketItemInput>,
+): BucketItemInput[] {
+  const seen = new Set<string>();
+  const deduped: BucketItemInput[] = [];
+  for (const item of items) {
+    const key = buildDedupeKey({
+      openalexId: item.openalexId,
+      doi: item.doi,
+      title: item.title,
+      year: item.year,
+    });
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  return deduped;
 }
 
 export const startExtraction = mutation({
@@ -134,7 +85,6 @@ export const startExtraction = mutation({
       throws: true,
     });
 
-    // Cap check via plan-aware helper.
     const limit = await getPaperLimit(ctx, user._id);
     if (args.bucketItems.length > limit) {
       throw createError(
@@ -157,45 +107,11 @@ export const startExtraction = mutation({
       }
     }
 
-    // Server-side dedup — defense in depth. If the client submits two
-    // items that collapse to the same key, we keep the first and drop
-    // the rest silently.
-    const seen = new Set<string>();
-    const deduped: BucketItemInput[] = [];
-    for (const item of args.bucketItems) {
-      const key = buildDedupeKey({
-        openalexId: item.openalexId,
-        doi: item.doi,
-        title: item.title,
-        year: item.year,
-      });
-      if (seen.has(key)) continue;
-      seen.add(key);
-      deduped.push(item);
-    }
-
-    // Derive sourceType from the distinct bucket sources. Library /
-    // collection / upload all pipeline-wise are "manual", so three
-    // post-collapse kinds are possible on the job row.
-    const kinds = new Set<"history" | "zotero" | "manual">();
-    for (const item of deduped) {
-      if (item.source === "history") kinds.add("history");
-      else if (item.source === "zotero") kinds.add("zotero");
-      else kinds.add("manual");
-    }
-    const sourceType: "history" | "zotero" | "manual" | "mixed" =
-      kinds.size >= 2
-        ? "mixed"
-        : kinds.has("history")
-          ? "history"
-          : kinds.has("zotero")
-            ? "zotero"
-            : "manual";
-
-    const userId = user._id;
+    const deduped = dedupeBucketItems(args.bucketItems);
+    const sourceType = deriveSourceType(deduped);
 
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-      userId,
+      userId: user._id,
       name: args.name,
       sourceType,
       status: "pending",
@@ -206,7 +122,7 @@ export const startExtraction = mutation({
       updatedAt: Date.now(),
     });
 
-    await writeJobSources(ctx, jobId, bucketToJobSources(deduped));
+    await writeJobSources(ctx, jobId, deduped);
 
     for (let i = 0; i < args.questions.length; i++) {
       await ctx.db.insert("extractionQuestions", {
@@ -322,8 +238,11 @@ export const duplicateExtraction = mutation({
       .collect();
 
     const duplicateLimit = await getPaperLimit(ctx, user._id);
-    const { historyEntries, zoteroSelection, manualItems } =
-      await readJobSources(ctx, args.jobId, duplicateLimit * 2);
+    const bucketItems = await readJobSources(
+      ctx,
+      args.jobId,
+      duplicateLimit * 2,
+    );
 
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
@@ -337,11 +256,7 @@ export const duplicateExtraction = mutation({
       updatedAt: Date.now(),
     });
 
-    await writeJobSources(ctx, newJobId, {
-      historyEntries,
-      zoteroSelection,
-      manualItems,
-    });
+    await writeJobSources(ctx, newJobId, bucketItems);
 
     for (const q of questions) {
       await ctx.db.insert("extractionQuestions", {
@@ -393,10 +308,21 @@ export const startExtractionFromTemplate = mutation({
       throw createError("NOT_FOUND", "Template not found");
     }
 
+    const limit = await getPaperLimit(ctx, user._id);
+    if (template.bucketItems.length > limit) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `Template exceeds plan limit of ${limit} papers`,
+      );
+    }
+
+    const deduped = dedupeBucketItems(template.bucketItems);
+    const sourceType = deriveSourceType(deduped);
+
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       name: args.name?.trim() || `${template.name} (Rerun)`,
-      sourceType: template.sourceType,
+      sourceType,
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
@@ -405,17 +331,7 @@ export const startExtractionFromTemplate = mutation({
       updatedAt: Date.now(),
     });
 
-    await writeJobSources(ctx, jobId, {
-      historyEntries: template.sourceHistoryEntries as
-        | JobSourceHistoryEntry[]
-        | undefined,
-      zoteroSelection: template.sourceZoteroSelection as
-        | JobSourceZoteroSelection
-        | undefined,
-      manualItems: template.sourceManualItems as
-        | JobSourceManualItem[]
-        | undefined,
-    });
+    await writeJobSources(ctx, jobId, deduped);
 
     for (let i = 0; i < template.questions.length; i++) {
       const question = template.questions[i];

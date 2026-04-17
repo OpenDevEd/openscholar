@@ -11,15 +11,48 @@ import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
 import { getPaperLimit } from "../bucket/limits";
 import { assertJobOwnership } from "../access";
-import { readJobSources } from "../jobSources";
+import { readJobSources, type BucketItemInput } from "../jobSources";
 import {
-  assertExtractionInputLimits,
-  historyEntryInputValidator,
-  manualItemInputValidator,
+  bucketItemInputValidator,
   questionInputValidator,
   sourceTypeValidator,
-  zoteroSelectionInputValidator,
+  MAX_QUESTIONS_PER_JOB,
+  MAX_QUESTION_TEXT_LENGTH,
 } from "../validators";
+
+function deriveSourceType(
+  items: ReadonlyArray<BucketItemInput>,
+): "history" | "zotero" | "manual" | "mixed" {
+  const kinds = new Set<"history" | "zotero" | "manual">();
+  for (const item of items) {
+    if (item.source === "history") kinds.add("history");
+    else if (item.source === "zotero") kinds.add("zotero");
+    else kinds.add("manual");
+  }
+  if (kinds.size >= 2) return "mixed";
+  if (kinds.has("history")) return "history";
+  if (kinds.has("zotero")) return "zotero";
+  return "manual";
+}
+
+function assertQuestionLimits(
+  questions: ReadonlyArray<{ question: string }>,
+): void {
+  if (questions.length > MAX_QUESTIONS_PER_JOB) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `questions exceeds maximum of ${MAX_QUESTIONS_PER_JOB}`,
+    );
+  }
+  for (const q of questions) {
+    if (q.question.length > MAX_QUESTION_TEXT_LENGTH) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `question text exceeds maximum length of ${MAX_QUESTION_TEXT_LENGTH}`,
+      );
+    }
+  }
+}
 
 export const saveWorkflowTemplateFromJob = mutation({
   args: {
@@ -49,15 +82,11 @@ export const saveWorkflowTemplateFromJob = mutation({
 
     const now = Date.now();
     const limit = await getPaperLimit(ctx, user._id);
-    const { historyEntries, zoteroSelection, manualItems } =
-      await readJobSources(ctx, args.jobId, limit * 2);
+    const bucketItems = await readJobSources(ctx, args.jobId, limit * 2);
     const templateFields = {
       description: args.description,
       sourceType: job.sourceType,
-      sourceHistoryEntries:
-        historyEntries.length > 0 ? historyEntries : undefined,
-      sourceZoteroSelection: zoteroSelection,
-      sourceManualItems: manualItems.length > 0 ? manualItems : undefined,
+      bucketItems,
       questions: questions.map((q) => ({
         key: q.key,
         question: q.question,
@@ -91,9 +120,7 @@ export const saveWorkflowTemplate = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     sourceType: sourceTypeValidator,
-    sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
-    sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
-    sourceManualItems: v.optional(v.array(manualItemInputValidator)),
+    bucketItems: v.array(bucketItemInputValidator),
     questions: v.array(questionInputValidator),
   },
   returns: v.object({ templateId: v.id("extractionWorkflowTemplates") }),
@@ -102,7 +129,18 @@ export const saveWorkflowTemplate = mutation({
     const user = await requireAuth(ctx);
     await requireFeature(ctx, "extraction.templates", user._id);
 
-    assertExtractionInputLimits(args);
+    const limit = await getPaperLimit(ctx, user._id);
+    if (args.bucketItems.length > limit) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `bucketItems exceeds plan limit of ${limit} papers`,
+      );
+    }
+    assertQuestionLimits(args.questions);
+
+    // Guard against sourceType drift from the bucket contents. Server
+    // recomputes and trusts its own derivation.
+    const derivedSourceType = deriveSourceType(args.bucketItems);
 
     const existing = await ctx.db
       .query("extractionWorkflowTemplates")
@@ -116,10 +154,8 @@ export const saveWorkflowTemplate = mutation({
     if (existing) {
       await ctx.db.patch("extractionWorkflowTemplates", existing._id, {
         description: args.description,
-        sourceType: args.sourceType,
-        sourceHistoryEntries: args.sourceHistoryEntries,
-        sourceZoteroSelection: args.sourceZoteroSelection,
-        sourceManualItems: args.sourceManualItems,
+        sourceType: derivedSourceType,
+        bucketItems: args.bucketItems,
         questions: args.questions,
         updatedAt: now,
       });
@@ -130,10 +166,8 @@ export const saveWorkflowTemplate = mutation({
       userId: user._id,
       name: args.name.trim(),
       description: args.description,
-      sourceType: args.sourceType,
-      sourceHistoryEntries: args.sourceHistoryEntries,
-      sourceZoteroSelection: args.sourceZoteroSelection,
-      sourceManualItems: args.sourceManualItems,
+      sourceType: derivedSourceType,
+      bucketItems: args.bucketItems,
       questions: args.questions,
       createdAt: now,
       updatedAt: now,
