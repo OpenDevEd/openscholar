@@ -53,6 +53,7 @@ import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_assertNonProd from "../lib/assertNonProd.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_cascade from "../lib/cascade.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_creditTopups from "../lib/creditTopups.js";
 import type * as lib_crypto from "../lib/crypto.js";
@@ -172,6 +173,7 @@ declare const fullApi: ApiFromModules<{
   "lib/assertNonProd": typeof lib_assertNonProd;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
+  "lib/cascade": typeof lib_cascade;
   "lib/constants": typeof lib_constants;
   "lib/creditTopups": typeof lib_creditTopups;
   "lib/crypto": typeof lib_crypto;
