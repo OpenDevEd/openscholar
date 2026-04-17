@@ -20,14 +20,13 @@ import { requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { getPaperLimit } from "../bucket/limits";
+import { buildDedupeKey } from "../dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
-  assertExtractionInputLimits,
-  historyEntryInputValidator,
-  manualItemInputValidator,
+  bucketItemInputValidator,
   questionInputValidator,
-  sourceTypeValidator,
-  zoteroSelectionInputValidator,
+  MAX_QUESTIONS_PER_JOB,
+  MAX_QUESTION_TEXT_LENGTH,
 } from "../validators";
 import {
   readJobSources,
@@ -35,15 +34,93 @@ import {
   type JobSourceHistoryEntry,
   type JobSourceManualItem,
   type JobSourceZoteroSelection,
+  type JobSourceZoteroItem,
+  type JobSourcesInput,
 } from "../jobSources";
+
+type BucketItemInput = {
+  bucketKey: string;
+  source: "history" | "library" | "collection" | "zotero" | "upload";
+  sourceRefId: string;
+  title: string;
+  authors: string[];
+  year?: number;
+  doi?: string;
+  openalexId?: string;
+  abstract?: string;
+  storageId?: Id<"_storage">;
+  pdfUrl?: string;
+  searchFilters?: JobSourceHistoryEntry["searchFilters"];
+  libraryType?: "user" | "group";
+  groupId?: string;
+  zoteroUserId?: string;
+  collectionKey?: string;
+};
+
+function bucketToJobSources(
+  items: ReadonlyArray<BucketItemInput>,
+): JobSourcesInput {
+  const historyEntries: JobSourceHistoryEntry[] = [];
+  const zoteroItems: JobSourceZoteroItem[] = [];
+  let zoteroContext: Omit<JobSourceZoteroSelection, "items"> | undefined;
+  const manualItems: JobSourceManualItem[] = [];
+
+  for (const item of items) {
+    if (item.source === "history") {
+      if (!item.searchFilters) continue;
+      historyEntries.push({
+        historyId: item.sourceRefId,
+        searchFilters: item.searchFilters,
+      });
+    } else if (item.source === "zotero") {
+      if (!item.libraryType) continue;
+      if (!zoteroContext) {
+        zoteroContext = {
+          libraryType: item.libraryType,
+          groupId: item.groupId,
+          zoteroUserId: item.zoteroUserId,
+          collectionKey: item.collectionKey,
+        };
+      }
+      zoteroItems.push({
+        itemKey: item.sourceRefId,
+        title: item.title,
+        abstract: item.abstract,
+        authors: item.authors,
+        year: item.year,
+        doi: item.doi,
+      });
+    } else {
+      // library / collection / upload — all flow through the existing
+      // manual-item schema. openalexId on library/collection rows is
+      // preserved on the server-side paper lookup via DOI; the manual
+      // row id falls back to the bucket's sourceRefId.
+      manualItems.push({
+        id: item.sourceRefId,
+        title: item.title,
+        abstract: item.abstract,
+        authors: item.authors,
+        year: item.year,
+        doi: item.doi,
+        pdfUrl: item.pdfUrl,
+        storageId: item.storageId,
+      });
+    }
+  }
+
+  return {
+    historyEntries: historyEntries.length > 0 ? historyEntries : undefined,
+    zoteroSelection: zoteroContext
+      ? { ...zoteroContext, items: zoteroItems }
+      : undefined,
+    manualItems: manualItems.length > 0 ? manualItems : undefined,
+  };
+}
 
 export const startExtraction = mutation({
   args: {
     name: v.string(),
-    sourceType: sourceTypeValidator,
-    sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
-    sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
-    sourceManualItems: v.optional(v.array(manualItemInputValidator)),
+    bucketItems: v.array(bucketItemInputValidator),
     questions: v.array(questionInputValidator),
   },
   returns: v.object({ jobId: v.id("extractionJobs") }),
@@ -57,14 +134,70 @@ export const startExtraction = mutation({
       throws: true,
     });
 
-    assertExtractionInputLimits(args);
+    // Cap check via plan-aware helper.
+    const limit = await getPaperLimit(ctx, user._id);
+    if (args.bucketItems.length > limit) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `Bucket exceeds plan limit of ${limit} papers`,
+      );
+    }
+    if (args.questions.length > MAX_QUESTIONS_PER_JOB) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `questions exceeds maximum of ${MAX_QUESTIONS_PER_JOB}`,
+      );
+    }
+    for (const q of args.questions) {
+      if (q.question.length > MAX_QUESTION_TEXT_LENGTH) {
+        throw createError(
+          "VALIDATION_ERROR",
+          `question text exceeds maximum length of ${MAX_QUESTION_TEXT_LENGTH}`,
+        );
+      }
+    }
+
+    // Server-side dedup — defense in depth. If the client submits two
+    // items that collapse to the same key, we keep the first and drop
+    // the rest silently.
+    const seen = new Set<string>();
+    const deduped: BucketItemInput[] = [];
+    for (const item of args.bucketItems) {
+      const key = buildDedupeKey({
+        openalexId: item.openalexId,
+        doi: item.doi,
+        title: item.title,
+        year: item.year,
+      });
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(item);
+    }
+
+    // Derive sourceType from the distinct bucket sources. Library /
+    // collection / upload all pipeline-wise are "manual", so three
+    // post-collapse kinds are possible on the job row.
+    const kinds = new Set<"history" | "zotero" | "manual">();
+    for (const item of deduped) {
+      if (item.source === "history") kinds.add("history");
+      else if (item.source === "zotero") kinds.add("zotero");
+      else kinds.add("manual");
+    }
+    const sourceType: "history" | "zotero" | "manual" | "mixed" =
+      kinds.size >= 2
+        ? "mixed"
+        : kinds.has("history")
+          ? "history"
+          : kinds.has("zotero")
+            ? "zotero"
+            : "manual";
 
     const userId = user._id;
 
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
       userId,
       name: args.name,
-      sourceType: args.sourceType,
+      sourceType,
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
@@ -73,11 +206,7 @@ export const startExtraction = mutation({
       updatedAt: Date.now(),
     });
 
-    await writeJobSources(ctx, jobId, {
-      historyEntries: args.sourceHistoryEntries,
-      zoteroSelection: args.sourceZoteroSelection,
-      manualItems: args.sourceManualItems,
-    });
+    await writeJobSources(ctx, jobId, bucketToJobSources(deduped));
 
     for (let i = 0; i < args.questions.length; i++) {
       await ctx.db.insert("extractionQuestions", {

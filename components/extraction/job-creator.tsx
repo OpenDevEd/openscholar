@@ -21,9 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useExtractionStore } from "@/lib/store/extraction";
-import { Id } from "@/convex/_generated/dataModel";
-import { useSearchHistoryStore } from "@/lib/store";
-import type { SearchResult } from "@/lib/types";
+import { useBucketStore } from "@/lib/store/bucket";
 import { QuestionBuilder } from "./question-builder";
 import { SourceSelector } from "./source-selector";
 import { SourceSummary } from "./source-summary";
@@ -63,8 +61,10 @@ export function JobCreator() {
   const validStep = Math.min(3, Math.max(1, stepRaw)) as 1 | 2 | 3;
 
   const { draftJob, setDraftJobName, clearDraftJob } = useExtractionStore();
+  const bucketOrder = useBucketStore((s) => s.order);
+  const bucketItemsMap = useBucketStore((s) => s.items);
+  const clearBucket = useBucketStore((s) => s.clear);
   const startExtraction = useMutation(api.extraction.mutations.startExtraction);
-  const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
 
   const steps = useMemo(() => [
     { id: 1, title: t("jobDetails"), icon: Layers, description: t("nameYourJob") },
@@ -89,74 +89,64 @@ export function JobCreator() {
     }
   };
 
+  const readyBucketItems = useMemo(
+    () =>
+      bucketOrder
+        .map((k) => bucketItemsMap[k])
+        .filter((i) => i && i.status === "ready"),
+    [bucketOrder, bucketItemsMap],
+  );
+
   const handleSubmit = async () => {
-    const hasHistory = draftJob.selectedHistoryIds.length > 0;
-    const hasZotero = (draftJob.zoteroSelection?.items || []).length > 0;
-    const hasManual = draftJob.manualItems.length > 0;
-    if (!hasHistory && !hasZotero && !hasManual) {
+    if (readyBucketItems.length === 0) {
       toast.validation.failed(t("pleaseSelectSource"));
       return;
     }
-
     if (draftJob.questions.length === 0) {
       toast.validation.failed(t("pleaseCompleteSteps"));
       return;
     }
 
-    const historyEntries = draftJob.selectedHistoryIds
-      .map((id) => searchHistory.find((h) => h.id === id))
-      .filter((entry): entry is SearchResult => Boolean(entry));
-
-    if (hasHistory && historyEntries.length === 0) {
-      toast.validation.failed(t("selectedHistoryNotFound"));
-      return;
-    }
-
     setIsSubmitting(true);
-
     try {
-      const sourceHistoryEntries = historyEntries.map((entry) => ({
-        historyId: entry.id,
-        searchFilters: {
-          query: entry.query,
-          field: entry.field,
-          yearRange: entry.yearRange,
-          dateRange: entry.dateRange
-            ? { from: entry.dateRange.from?.toISOString(), to: entry.dateRange.to?.toISOString() }
-            : undefined,
-          filterType: entry.filterType,
-          isYearRangeEnabled: entry.isYearRangeEnabled,
-          sortBy: entry.sortBy,
-          selectedRegions: entry.selectedRegions,
-          selectedCountryFocus: entry.selectedCountryFocus,
-          ratingRange: entry.ratingRange,
-          onlyRatedPapers: entry.onlyRatedPapers,
-          citesItemId: entry.citesItemId,
-          citedByItemId: entry.citedByItemId,
-          relatedToItemId: entry.relatedToItemId,
-          reviewFilter: entry.reviewFilter,
-          language: entry.language,
-          searchField: entry.field,
-        },
-      }));
-
       const result = await startExtraction({
         name: draftJob.name || t("untitledJob"),
-        sourceType: hasHistory && !hasZotero && !hasManual
-          ? "history"
-          : hasZotero && !hasHistory && !hasManual
-          ? "zotero"
-          : hasManual && !hasHistory && !hasZotero
-          ? "manual"
-          : "mixed",
-        sourceHistoryEntries: sourceHistoryEntries.length > 0 ? sourceHistoryEntries : undefined,
-        sourceZoteroSelection: hasZotero ? draftJob.zoteroSelection || undefined : undefined,
-        sourceManualItems: hasManual
-          ? draftJob.manualItems.map((item) => ({
-              ...item,
-              storageId: item.storageId as Id<"_storage"> | undefined,
-            }))
-          : undefined,
+        bucketItems: readyBucketItems.map((item) => {
+          const meta = (item.sourceMeta ?? {}) as Record<string, unknown>;
+          return {
+            bucketKey: item.bucketKey,
+            source: item.source,
+            sourceRefId: item.sourceRefId,
+            title: item.title,
+            authors: item.authors,
+            year: item.year,
+            doi: item.doi,
+            openalexId: item.openalexId,
+            abstract: item.abstract,
+            storageId: item.storageId,
+            pdfUrl: item.pdfUrl,
+            searchFilters:
+              item.source === "history"
+                ? (meta.searchFilters as never)
+                : undefined,
+            libraryType:
+              item.source === "zotero"
+                ? (meta.libraryType as "user" | "group" | undefined)
+                : undefined,
+            groupId:
+              item.source === "zotero"
+                ? (meta.groupId as string | undefined)
+                : undefined,
+            zoteroUserId:
+              item.source === "zotero"
+                ? (meta.zoteroUserId as string | undefined)
+                : undefined,
+            collectionKey:
+              item.source === "zotero"
+                ? (meta.collectionKey as string | undefined)
+                : undefined,
+          };
+        }),
         questions: draftJob.questions.map((q, i) => ({
           key: q.key || `q_${i}`,
           question: q.question,
@@ -166,6 +156,7 @@ export function JobCreator() {
       });
 
       clearDraftJob();
+      clearBucket();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
       toast.job.createFailed(error);
@@ -179,11 +170,7 @@ export function JobCreator() {
       case 1:
         return draftJob.name.trim().length > 0;
       case 2:
-        return (
-          (draftJob.selectedHistoryIds ?? []).length > 0 ||
-          (draftJob.zoteroSelection?.items ?? []).length > 0 ||
-          (draftJob.manualItems ?? []).length > 0
-        );
+        return readyBucketItems.length > 0;
       case 3:
         return draftJob.questions.length > 0;
       default:

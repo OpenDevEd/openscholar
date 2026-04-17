@@ -286,6 +286,37 @@ export const manualItemInputValidator = v.object({
   storageId: v.optional(v.id("_storage")),
 });
 
+/**
+ * Bucket item input for startExtraction. Parallels the BucketItem shape
+ * on the client. Covers every source tab in one validator; the mutation
+ * groups rows by `source` to produce the three legacy jobSources shapes.
+ */
+export const bucketItemInputValidator = v.object({
+  bucketKey: v.string(),
+  source: v.union(
+    v.literal("history"),
+    v.literal("library"),
+    v.literal("collection"),
+    v.literal("zotero"),
+    v.literal("upload"),
+  ),
+  sourceRefId: v.string(),
+  title: v.string(),
+  authors: v.array(v.string()),
+  year: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  openalexId: v.optional(v.string()),
+  abstract: v.optional(v.string()),
+  storageId: v.optional(v.id("_storage")),
+  pdfUrl: v.optional(v.string()),
+  // Source-specific
+  searchFilters: v.optional(searchFiltersValidator),
+  libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
+  groupId: v.optional(v.string()),
+  zoteroUserId: v.optional(v.string()),
+  collectionKey: v.optional(v.string()),
+});
+
 /** User-authored question input for startExtraction / templates. */
 export const questionInputValidator = v.object({
   key: v.string(),
