@@ -1191,14 +1191,16 @@ export const cleanupFailedPaperStorage = internalMutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ cleaned: v.number() }),
   handler: async (ctx, args): Promise<{ cleaned: number }> => {
-    const papersWithStorage = await ctx.db
+    // Convex guidelines forbid `.filter()` on DB queries; read via index
+    // and skip papers without a storageId in JS. Bounded by
+    // MAX_PAPERS_PER_JOB, so the extra rows read are acceptable.
+    const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .filter((q) => q.neq(q.field("storageId"), undefined))
       .take(MAX_PAPERS_PER_JOB);
 
     let cleaned = 0;
-    for (const paper of papersWithStorage) {
+    for (const paper of papers) {
       if (!paper.storageId) continue;
       try {
         await ctx.storage.delete(paper.storageId);
