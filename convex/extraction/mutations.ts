@@ -39,6 +39,10 @@ import {
   type PaperStatus,
 } from "./stateMachine";
 import {
+  isTerminalPaperStatus,
+  markPaperTerminalTx,
+} from "./paperLifecycle";
+import {
   assertExtractionInputLimits,
   historyEntryInputValidator,
   manualItemInputValidator,
@@ -943,64 +947,6 @@ export const backfillJobStats = internalMutation({
 
 // Internal mutations (called by workflow/actions)
 
-export const createPaperRecords = internalMutation({
-  args: {
-    jobId: v.id("extractionJobs"),
-    papers: v.array(
-      v.object({
-        openalexId: v.string(),
-        title: v.string(),
-        doi: v.optional(v.string()),
-        publicationYear: v.optional(v.number()),
-        abstract: v.optional(v.string()),
-        authors: v.optional(v.array(v.string())),
-        pdfUrl: v.optional(v.string()),
-        storageId: v.optional(v.id("_storage")),
-        isOpenAccess: v.optional(v.boolean()),
-        sourceType: v.optional(paperSourceTypeValidator),
-        sourceId: v.optional(v.string()),
-      })
-    ),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const pdfFlag = await getFlag(ctx, "extraction.pdf");
-    const pdfEnabled = pdfFlag?.enabled ?? true;
-    for (const paper of args.papers) {
-      const sanitizedPdfUrl = pdfEnabled ? paper.pdfUrl : undefined;
-      const sanitizedStorageId = pdfEnabled ? paper.storageId : undefined;
-      const { processable } = getProcessableFlags({
-        pdfUrl: sanitizedPdfUrl,
-        storageId: sanitizedStorageId,
-        abstract: paper.abstract,
-        pdfEnabled,
-      });
-
-      if (!pdfEnabled && !processable) {
-        continue;
-      }
-
-      await ctx.db.insert("extractionPapers", {
-        jobId: args.jobId,
-        openalexId: paper.openalexId,
-        title: paper.title,
-        doi: paper.doi,
-        publicationYear: paper.publicationYear,
-        abstract: paper.abstract,
-        authors: paper.authors,
-        pdfUrl: sanitizedPdfUrl,
-        storageId: sanitizedStorageId,
-        isOpenAccess: paper.isOpenAccess,
-        sourceType: paper.sourceType,
-        sourceId: paper.sourceId,
-        processable,
-        status: "pending",
-      });
-    }
-    return null;
-  },
-});
-
 export const updateJobStatus = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
@@ -1046,238 +992,6 @@ export const updateJobStatus = internalMutation({
     return null;
   },
 });
-
-export const updatePaperStatus = internalMutation({
-  args: {
-    paperId: v.id("extractionPapers"),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("downloading"),
-      v.literal("download_failed"),
-      v.literal("indexing"),
-      v.literal("indexing_failed"),
-      v.literal("extracting"),
-      v.literal("completed"),
-      v.literal("failed")
-    ),
-    errorMessage: v.optional(v.string()),
-    completedAt: v.optional(v.number()),
-    creditsUsed: v.optional(v.number()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    // Route terminal transitions through `markPaperTerminalTx` so the per-job
-    // counter is bumped atomically. Non-processable papers are excluded from
-    // the counter inside the helper.
-    if (isTerminalPaperStatus(args.status)) {
-      await markPaperTerminalTx(ctx, args.paperId, args.status, {
-        errorMessage: args.errorMessage,
-        completedAt: args.completedAt,
-        creditsUsed: args.creditsUsed,
-      });
-      return null;
-    }
-
-    const updates: Record<string, unknown> = {
-      status: args.status,
-    };
-
-    if (args.errorMessage !== undefined) {
-      updates.errorMessage = args.errorMessage;
-    }
-
-    if (args.completedAt !== undefined) {
-      updates.completedAt = args.completedAt;
-    }
-
-    if (args.creditsUsed !== undefined) {
-      updates.creditsUsed = args.creditsUsed;
-    }
-
-    await ctx.db.patch("extractionPapers", args.paperId, updates);
-    return null;
-  },
-});
-
-export const updatePaperProcessable = internalMutation({
-  args: {
-    paperId: v.id("extractionPapers"),
-    processable: v.boolean(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    await ctx.db.patch("extractionPapers", args.paperId, {
-      processable: args.processable,
-    });
-    return null;
-  },
-});
-
-export const setPaperStorage = internalMutation({
-  args: {
-    paperId: v.id("extractionPapers"),
-    storageId: v.id("_storage"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const paper = await ctx.db.get("extractionPapers", args.paperId);
-    if (!paper) {
-      return null;
-    }
-    const pdfFlag = await getFlag(ctx, "extraction.pdf");
-    const pdfEnabled = pdfFlag?.enabled ?? true;
-    const { processable } = getProcessableFlags({
-      pdfUrl: paper.pdfUrl,
-      storageId: args.storageId,
-      abstract: paper.abstract,
-      pdfEnabled,
-    });
-    await ctx.db.patch("extractionPapers", args.paperId, {
-      storageId: args.storageId,
-      processable,
-    });
-    return null;
-  },
-});
-
-export const markPaperIndexed = internalMutation({
-  args: {
-    paperId: v.id("extractionPapers"),
-    ragEntryId: v.optional(v.string()),
-    // When provided, the embedding credits are deducted atomically with the
-    // isIndexed flip. Gated on `indexingBilled` so a workpool retry that
-    // replays the entire indexing action cannot re-charge the user.
-    billing: v.optional(
-      v.object({
-        userId: v.id("users"),
-        jobId: v.id("extractionJobs"),
-        creditsToDeduct: v.number(),
-        embeddingTokens: v.number(),
-      }),
-    ),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const paper = await ctx.db.get("extractionPapers", args.paperId);
-    if (!paper) return null;
-
-    const updates: Partial<Doc<"extractionPapers">> = {
-      isIndexed: true,
-      indexedAt: Date.now(),
-    };
-
-    if (args.ragEntryId) {
-      updates.ragEntryId = args.ragEntryId;
-    }
-
-    if (
-      args.billing &&
-      !paper.indexingBilled &&
-      args.billing.creditsToDeduct > 0
-    ) {
-      await ctx.runMutation(internal.credits.internal.deductCredits, {
-        userId: args.billing.userId,
-        amount: args.billing.creditsToDeduct,
-        description: "AI: Extraction embedding index",
-        metadata: {
-          billingType: "extraction_embedding",
-          paperId: String(args.paperId),
-          jobId: String(args.billing.jobId),
-          embeddingTokens: String(args.billing.embeddingTokens),
-        },
-      });
-      updates.indexingBilled = true;
-    }
-
-    await ctx.db.patch("extractionPapers", args.paperId, updates);
-    return null;
-  },
-});
-
-/**
- * Terminal paper statuses. Any transition into one of these is irreversible;
- * the per-job counter on `extractionJobs` is incremented exactly once per
- * paper when it lands here, so `maybeFinalizeJob` can decide "done" in O(1).
- */
-type TerminalPaperStatus =
-  | "completed"
-  | "failed"
-  | "download_failed"
-  | "indexing_failed";
-
-function isTerminalPaperStatus(
-  status: Doc<"extractionPapers">["status"],
-): status is TerminalPaperStatus {
-  return (
-    status === "completed" ||
-    status === "failed" ||
-    status === "download_failed" ||
-    status === "indexing_failed"
-  );
-}
-
-/**
- * Transition a paper into a terminal state and bump the owning job's
- * per-state counter atomically. Idempotent: if the paper is already in a
- * terminal state, the counter is not re-incremented. Non-processable papers
- * do not contribute to the counter since they are excluded from
- * `extractionJobs.totalPapers` at enqueue time.
- */
-async function markPaperTerminalTx(
-  ctx: MutationCtx,
-  paperId: Id<"extractionPapers">,
-  newStatus: TerminalPaperStatus,
-  extras: {
-    errorMessage?: string;
-    completedAt?: number;
-    creditsUsed?: number;
-    storageId?: Id<"_storage">;
-    extractionBilled?: boolean;
-    pdfContentUsed?: boolean;
-  } = {},
-): Promise<{ applied: boolean; paper: Doc<"extractionPapers"> | null }> {
-  const paper = await ctx.db.get("extractionPapers", paperId);
-  if (!paper) return { applied: false, paper: null };
-
-  if (isTerminalPaperStatus(paper.status)) {
-    return { applied: false, paper };
-  }
-
-  assertValidPaperTransition(
-    paper.status as PaperStatus,
-    newStatus as PaperStatus,
-  );
-
-  const patch: Partial<Doc<"extractionPapers">> = {
-    status: newStatus,
-    completedAt: extras.completedAt ?? Date.now(),
-  };
-  if (extras.errorMessage !== undefined) patch.errorMessage = extras.errorMessage;
-  if (extras.creditsUsed !== undefined) patch.creditsUsed = extras.creditsUsed;
-  if (extras.storageId !== undefined) patch.storageId = extras.storageId;
-  if (extras.extractionBilled !== undefined) {
-    patch.extractionBilled = extras.extractionBilled;
-  }
-  if (extras.pdfContentUsed !== undefined) {
-    patch.pdfContentUsed = extras.pdfContentUsed;
-  }
-
-  await ctx.db.patch("extractionPapers", paperId, patch);
-
-  if (paper.processable !== false) {
-    const job = await ctx.db.get("extractionJobs", paper.jobId);
-    if (job) {
-      const isSuccess = newStatus === "completed";
-      await ctx.db.patch("extractionJobs", paper.jobId, {
-        processedPapers: job.processedPapers + (isSuccess ? 1 : 0),
-        failedPapers: job.failedPapers + (isSuccess ? 0 : 1),
-        updatedAt: Date.now(),
-      });
-    }
-  }
-
-  return { applied: true, paper };
-}
 
 // Delete old PDF files (called by cron)
 export const cleanupOldPdfs = internalMutation({
@@ -1911,3 +1625,11 @@ export {
   startExtractionFromTemplate,
   deleteExtraction,
 } from "./mutations/jobs";
+
+export {
+  createPaperRecords,
+  updatePaperStatus,
+  updatePaperProcessable,
+  setPaperStorage,
+  markPaperIndexed,
+} from "./mutations/papers";
