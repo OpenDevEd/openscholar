@@ -9,7 +9,7 @@ import { internalMutation } from "../../../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
 import { batchDeleteByIndex } from "../../../lib/cascade";
-import { MAX_PAPERS_PER_JOB } from "../../../lib/queryBounds";
+import { PAPER_LIMIT_MAX } from "../../bucket/limits";
 import { clearJobAggregates } from "../../aggregates";
 
 export const deleteExtractionInternal = internalMutation({
@@ -34,7 +34,7 @@ export const deleteExtractionInternal = internalMutation({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(MAX_PAPERS_PER_JOB);
+      .take(PAPER_LIMIT_MAX);
     const perPaperChildTables: Array<[string, string]> = [
       ["extractionEvidenceUnits", "by_paper"],
       ["extractionResultReviews", "by_paper"],
@@ -129,11 +129,11 @@ export const cleanupFailedPaperStorage = internalMutation({
   handler: async (ctx, args): Promise<{ cleaned: number }> => {
     // Convex guidelines forbid `.filter()` on DB queries; read via index
     // and skip papers without a storageId in JS. Bounded by
-    // MAX_PAPERS_PER_JOB, so the extra rows read are acceptable.
+    // PAPER_LIMIT_MAX, so the extra rows read are acceptable.
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
+      .take(PAPER_LIMIT_MAX);
 
     let cleaned = 0;
     for (const paper of papers) {

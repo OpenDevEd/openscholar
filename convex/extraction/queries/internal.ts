@@ -16,10 +16,8 @@ import { v } from "convex/values";
 import { getFlag } from "../../featureFlags/guard";
 import { getProcessableFlags } from "../content";
 import { readJobSources } from "../jobSources";
-import {
-  MAX_EVIDENCE_UNITS_PER_PAPER,
-  MAX_PAPERS_PER_JOB,
-} from "../../lib/queryBounds";
+import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
+import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import {
   extractionEvidenceUnitValidator,
   extractionJobValidator,
@@ -61,7 +59,7 @@ export const getJobSourcesInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: jobSourcesReadValidator,
   handler: async (ctx, args) => {
-    return await readJobSources(ctx, args.jobId, MAX_PAPERS_PER_JOB * 2);
+    return await readJobSources(ctx, args.jobId, PAPER_LIMIT_MAX * 2);
   },
 });
 
@@ -111,7 +109,7 @@ export const getJobProgressInternal = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
+      .take(PAPER_LIMIT_MAX);
     const processablePapers = papers.filter((p) => p.processable !== false);
     const processed = processablePapers.filter(
       (p) => p.status === "completed",
@@ -177,7 +175,7 @@ export const getPapersDebug = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
+      .take(PAPER_LIMIT_MAX);
 
     const pdfFlag = await getFlag(ctx, "extraction.pdf");
     const pdfEnabled = pdfFlag?.enabled ?? true;

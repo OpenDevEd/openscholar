@@ -20,7 +20,8 @@ import {
   type CitationStatus,
   type ReviewState,
 } from "../../../lib/extraction/insights";
-import { MAX_REVIEWS_PER_JOB, MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
+import { MAX_REVIEWS_PER_JOB } from "../../lib/queryBounds";
+import { PAPER_LIMIT_MAX } from "../bucket/limits";
 
 /** Result document with optional review overlay fields. */
 export type ResultWithReview = Doc<"extractionResults"> & {
@@ -154,7 +155,7 @@ export function buildQuestionInfoByKey(
 /**
  * Load all results for a job in one indexed query and bucket by paperId in
  * JS. Replaces the previous N+1 pattern (one by_paper query per paper).
- * Cardinality: ≤ MAX_PAPERS_PER_JOB × ~20 questions.
+ * Cardinality: ≤ PAPER_LIMIT_MAX × ~20 questions.
  */
 export async function loadResultsByJob(
   ctx: QueryCtx,
@@ -163,7 +164,7 @@ export async function loadResultsByJob(
   const all = await ctx.db
     .query("extractionResults")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(MAX_PAPERS_PER_JOB * 20);
+    .take(PAPER_LIMIT_MAX * 20);
 
   const byPaper = new Map<string, Doc<"extractionResults">[]>();
   for (const row of all) {
@@ -188,7 +189,7 @@ export async function loadJobPapersAndResults(
   const papers = await ctx.db
     .query("extractionPapers")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(MAX_PAPERS_PER_JOB);
+    .take(PAPER_LIMIT_MAX);
 
   // Batch-load reviews + results for the whole job in two indexed queries
   // (eliminates the per-paper fan-out that dominated this path).

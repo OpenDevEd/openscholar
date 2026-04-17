@@ -14,7 +14,7 @@ import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
-import { MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
+import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import { assertJobOwnership } from "../access";
 import { buildRunDiff } from "../../../lib/extraction/insights";
 import {
@@ -39,15 +39,15 @@ async function loadJobDataForReporting(
     ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(MAX_PAPERS_PER_JOB),
+      .take(PAPER_LIMIT_MAX),
     ctx.db
       .query("extractionResults")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(MAX_PAPERS_PER_JOB * 20),
+      .take(PAPER_LIMIT_MAX * 20),
     ctx.db
       .query("extractionResultReviews")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(MAX_PAPERS_PER_JOB * 20),
+      .take(PAPER_LIMIT_MAX * 20),
   ]);
 
   const { resultsByPaper, reviewsByResult } = buildResultMaps(

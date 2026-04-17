@@ -14,7 +14,7 @@ import type { Doc } from "../../_generated/dataModel";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedJob } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
-import { MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
+import { getPaperLimit } from "../bucket/limits";
 import {
   extractionJobValidator,
   extractionPaperValidator,
@@ -48,7 +48,7 @@ export const getJobResults = query({
   handler: async (ctx, args) => {
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
-    const { job } = access;
+    const { job, user } = access;
     await requireFeature(ctx, "extraction.enabled");
 
     const questions = await ctx.db
@@ -57,10 +57,11 @@ export const getJobResults = query({
       .order("asc")
       .collect();
 
+    const limit = await getPaperLimit(ctx, user._id);
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
+      .take(limit);
 
     const [reviewMap, resultsByPaper] = await Promise.all([
       loadReviewsByJob(ctx, args.jobId),

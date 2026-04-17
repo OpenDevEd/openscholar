@@ -9,7 +9,7 @@ import { v } from "convex/values";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
-import { MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
+import { getPaperLimit } from "../bucket/limits";
 import { assertJobOwnership } from "../access";
 import { readJobSources } from "../jobSources";
 import {
@@ -48,8 +48,9 @@ export const saveWorkflowTemplateFromJob = mutation({
       .first();
 
     const now = Date.now();
+    const limit = await getPaperLimit(ctx, user._id);
     const { historyEntries, zoteroSelection, manualItems } =
-      await readJobSources(ctx, args.jobId, MAX_PAPERS_PER_JOB * 2);
+      await readJobSources(ctx, args.jobId, limit * 2);
     const templateFields = {
       description: args.description,
       sourceType: job.sourceType,

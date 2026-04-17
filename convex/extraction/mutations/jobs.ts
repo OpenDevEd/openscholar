@@ -19,7 +19,7 @@ import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
-import { MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
+import { getPaperLimit } from "../bucket/limits";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
   assertExtractionInputLimits,
@@ -139,10 +139,11 @@ export const cancelExtraction = mutation({
     // The pdfProcessingPool is shared across tenants; cancelAll() would be a
     // cross-tenant DoS. Cancel only this job's stored workId values; cancels
     // are idempotent per workpool contract.
+    const limit = await getPaperLimit(ctx, user._id);
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
+      .take(limit);
 
     for (const paper of papers) {
       if (!paper.workId) continue;
@@ -191,8 +192,9 @@ export const duplicateExtraction = mutation({
       .order("asc")
       .collect();
 
+    const duplicateLimit = await getPaperLimit(ctx, user._id);
     const { historyEntries, zoteroSelection, manualItems } =
-      await readJobSources(ctx, args.jobId, MAX_PAPERS_PER_JOB * 2);
+      await readJobSources(ctx, args.jobId, duplicateLimit * 2);
 
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,

@@ -12,7 +12,7 @@ import { v } from "convex/values";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedPaper } from "../access";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
-import { MAX_PAPERS_PER_JOB } from "../../lib/queryBounds";
+import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import {
   extractionPaperValidator,
   extractionResultValidator,
@@ -92,7 +92,7 @@ export const byOpenAlexIds = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
+      .take(PAPER_LIMIT_MAX);
     return papers.filter((p) => args.openalexIds.includes(p.openalexId));
   },
 });
