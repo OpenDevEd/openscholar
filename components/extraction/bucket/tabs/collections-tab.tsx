@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Folder, Loader2, Plus } from "lucide-react";
+import { Folder, Loader2 } from "lucide-react";
 import { SelectableList } from "../selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromCollectionItem } from "@/lib/bucket/bucketItem";
@@ -141,11 +141,6 @@ function CollectionItems({
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button size="sm" variant="outline" onClick={() => add(items)}>
-          <Plus className="h-4 w-4 mr-1" /> Add all visible
-        </Button>
-      </div>
       <SelectableList<LibItem>
         items={items}
         keyOf={(i) => i._id}
