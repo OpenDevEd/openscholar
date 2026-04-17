@@ -31,9 +31,18 @@ import {
 import { createError } from "../lib/errors";
 import {
   assertExtractionInputLimits,
-  searchFiltersValidator,
+  historyEntryInputValidator,
+  manualItemInputValidator,
+  zoteroSelectionInputValidator,
 } from "./validators";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../lib/queryBounds";
+import {
+  readJobSources,
+  writeJobSources,
+  type JobSourceHistoryEntry,
+  type JobSourceManualItem,
+  type JobSourceZoteroSelection,
+} from "./jobSources";
 
 /** Safety bound for per-job paper queries to prevent unbounded memory usage. */
 const MAX_PAPERS_PER_JOB = 500;
@@ -121,49 +130,9 @@ export const startExtraction = mutation({
       v.literal("manual"),
       v.literal("mixed")
     ),
-    sourceHistoryId: v.optional(v.string()),
-    searchFilters: v.optional(searchFiltersValidator),
-    sourceHistoryEntries: v.optional(
-      v.array(
-        v.object({
-          historyId: v.string(),
-          searchFilters: searchFiltersValidator,
-        })
-      )
-    ),
-    sourceZoteroSelection: v.optional(
-      v.object({
-        libraryType: v.union(v.literal("user"), v.literal("group")),
-        groupId: v.optional(v.string()),
-        zoteroUserId: v.optional(v.string()),
-        collectionKey: v.optional(v.string()),
-        includeDescendants: v.optional(v.boolean()),
-        items: v.array(
-          v.object({
-            itemKey: v.string(),
-            title: v.string(),
-            abstract: v.optional(v.string()),
-            authors: v.array(v.string()),
-            year: v.optional(v.number()),
-            doi: v.optional(v.string()),
-          })
-        ),
-      })
-    ),
-    sourceManualItems: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          title: v.string(),
-          abstract: v.optional(v.string()),
-          authors: v.optional(v.array(v.string())),
-          year: v.optional(v.number()),
-          doi: v.optional(v.string()),
-          pdfUrl: v.optional(v.string()),
-          storageId: v.optional(v.id("_storage")),
-        })
-      )
-    ),
+    sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
+    sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
+    sourceManualItems: v.optional(v.array(manualItemInputValidator)),
     questions: v.array(
       v.object({
         key: v.string(),
@@ -198,17 +167,21 @@ export const startExtraction = mutation({
       userId,
       name: args.name,
       sourceType: args.sourceType,
-      sourceHistoryId: args.sourceHistoryId,
-      sourceHistoryEntries: args.sourceHistoryEntries,
-      sourceZoteroSelection: args.sourceZoteroSelection,
-      sourceManualItems: args.sourceManualItems,
-      searchFilters: args.searchFilters,
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+    });
+
+    // Persist per-row sources in the child table (bounded by the input
+    // caps above; each row is its own doc so the 1MB job-doc limit does
+    // not apply).
+    await writeJobSources(ctx, jobId, {
+      historyEntries: args.sourceHistoryEntries,
+      zoteroSelection: args.sourceZoteroSelection,
+      manualItems: args.sourceManualItems,
     });
 
     // Create question records
@@ -233,7 +206,7 @@ export const startExtraction = mutation({
     );
 
     // Update job with workflow ID
-    await ctx.db.patch("extractionJobs", jobId, { 
+    await ctx.db.patch("extractionJobs", jobId, {
       workflowId,
       updatedAt: Date.now(),
     });
@@ -334,23 +307,26 @@ export const duplicateExtraction = mutation({
       .order("asc")
       .collect();
 
+    const { historyEntries, zoteroSelection, manualItems } =
+      await readJobSources(ctx, args.jobId, MAX_PAPERS_PER_JOB * 2);
+
     // Create new job record (similar to startExtraction)
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       name: `${oldJob.name} (Copy)`,
       sourceType: oldJob.sourceType,
-      sourceHistoryId: oldJob.sourceHistoryId,
-      sourceZoteroCollection: oldJob.sourceZoteroCollection,
-      sourceHistoryEntries: oldJob.sourceHistoryEntries,
-      sourceZoteroSelection: oldJob.sourceZoteroSelection,
-      sourceManualItems: oldJob.sourceManualItems,
-      searchFilters: oldJob.searchFilters,
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+    });
+
+    await writeJobSources(ctx, newJobId, {
+      historyEntries,
+      zoteroSelection,
+      manualItems,
     });
 
     // Copy questions
@@ -495,15 +471,24 @@ export const startExtractionFromTemplate = mutation({
       userId: user._id,
       name: args.name?.trim() || `${template.name} (Rerun)`,
       sourceType: template.sourceType,
-      sourceHistoryEntries: template.sourceHistoryEntries,
-      sourceZoteroSelection: template.sourceZoteroSelection,
-      sourceManualItems: template.sourceManualItems,
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+    });
+
+    await writeJobSources(ctx, jobId, {
+      historyEntries: template.sourceHistoryEntries as
+        | JobSourceHistoryEntry[]
+        | undefined,
+      zoteroSelection: template.sourceZoteroSelection as
+        | JobSourceZoteroSelection
+        | undefined,
+      manualItems: template.sourceManualItems as
+        | JobSourceManualItem[]
+        | undefined,
     });
 
     for (let i = 0; i < template.questions.length; i++) {
@@ -630,12 +615,15 @@ export const saveWorkflowTemplateFromJob = mutation({
       .first();
 
     const now = Date.now();
+    const { historyEntries, zoteroSelection, manualItems } =
+      await readJobSources(ctx, args.jobId, MAX_PAPERS_PER_JOB * 2);
     const templateFields = {
       description: args.description,
       sourceType: job.sourceType,
-      sourceHistoryEntries: job.sourceHistoryEntries,
-      sourceZoteroSelection: job.sourceZoteroSelection,
-      sourceManualItems: job.sourceManualItems,
+      sourceHistoryEntries:
+        historyEntries.length > 0 ? historyEntries : undefined,
+      sourceZoteroSelection: zoteroSelection,
+      sourceManualItems: manualItems.length > 0 ? manualItems : undefined,
       questions: questions.map((q) => ({
         key: q.key,
         question: q.question,
@@ -670,47 +658,9 @@ export const saveWorkflowTemplate = mutation({
       v.literal("manual"),
       v.literal("mixed")
     ),
-    sourceHistoryEntries: v.optional(
-      v.array(
-        v.object({
-          historyId: v.string(),
-          searchFilters: searchFiltersValidator,
-        })
-      )
-    ),
-    sourceZoteroSelection: v.optional(
-      v.object({
-        libraryType: v.union(v.literal("user"), v.literal("group")),
-        groupId: v.optional(v.string()),
-        zoteroUserId: v.optional(v.string()),
-        collectionKey: v.optional(v.string()),
-        includeDescendants: v.optional(v.boolean()),
-        items: v.array(
-          v.object({
-            itemKey: v.string(),
-            title: v.string(),
-            abstract: v.optional(v.string()),
-            authors: v.array(v.string()),
-            year: v.optional(v.number()),
-            doi: v.optional(v.string()),
-          })
-        ),
-      })
-    ),
-    sourceManualItems: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          title: v.string(),
-          abstract: v.optional(v.string()),
-          authors: v.optional(v.array(v.string())),
-          year: v.optional(v.number()),
-          doi: v.optional(v.string()),
-          pdfUrl: v.optional(v.string()),
-          storageId: v.optional(v.id("_storage")),
-        })
-      )
-    ),
+    sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
+    sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
+    sourceManualItems: v.optional(v.array(manualItemInputValidator)),
     questions: v.array(
       v.object({
         key: v.string(),
@@ -1202,6 +1152,17 @@ export const deleteExtractionInternal = internalMutation({
       .take(BATCH_SIZE);
     if (runDiffs.length > 0) {
       for (const d of runDiffs) await ctx.db.delete("extractionRunDiffs", d._id);
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      return null;
+    }
+
+    // Step 7c: Delete extractionJobSources (history / zotero / manual rows)
+    const jobSources = await ctx.db
+      .query("extractionJobSources")
+      .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
+      .take(BATCH_SIZE);
+    if (jobSources.length > 0) {
+      for (const s of jobSources) await ctx.db.delete("extractionJobSources", s._id);
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }
@@ -1784,7 +1745,8 @@ export const maybeFinalizeJob = internalMutation({
   },
 });
 
-// Helper mutations for test job creation
+// Helper mutations for test job creation. Source rows go into
+// extractionJobSources; callers can pass them here for ergonomics.
 export const createJobDirect = internalMutation({
   args: {
     userId: v.id("users"),
@@ -1795,59 +1757,16 @@ export const createJobDirect = internalMutation({
       v.literal("manual"),
       v.literal("mixed")
     ),
-    searchFilters: v.optional(searchFiltersValidator),
-    sourceHistoryEntries: v.optional(
-      v.array(
-        v.object({
-          historyId: v.string(),
-          searchFilters: searchFiltersValidator,
-        })
-      )
-    ),
-    sourceZoteroSelection: v.optional(
-      v.object({
-        libraryType: v.union(v.literal("user"), v.literal("group")),
-        groupId: v.optional(v.string()),
-        zoteroUserId: v.optional(v.string()),
-        collectionKey: v.optional(v.string()),
-        includeDescendants: v.optional(v.boolean()),
-        items: v.array(
-          v.object({
-            itemKey: v.string(),
-            title: v.string(),
-            abstract: v.optional(v.string()),
-            authors: v.array(v.string()),
-            year: v.optional(v.number()),
-            doi: v.optional(v.string()),
-          })
-        ),
-      })
-    ),
-    sourceManualItems: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          title: v.string(),
-          abstract: v.optional(v.string()),
-          authors: v.optional(v.array(v.string())),
-          year: v.optional(v.number()),
-          doi: v.optional(v.string()),
-          pdfUrl: v.optional(v.string()),
-          storageId: v.optional(v.id("_storage")),
-        })
-      )
-    ),
+    sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
+    sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
+    sourceManualItems: v.optional(v.array(manualItemInputValidator)),
   },
   returns: v.id("extractionJobs"),
   handler: async (ctx, args) => {
-    return await ctx.db.insert("extractionJobs", {
+    const jobId = await ctx.db.insert("extractionJobs", {
       userId: args.userId,
       name: args.name,
       sourceType: args.sourceType,
-      searchFilters: args.searchFilters,
-      sourceHistoryEntries: args.sourceHistoryEntries,
-      sourceZoteroSelection: args.sourceZoteroSelection,
-      sourceManualItems: args.sourceManualItems,
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
@@ -1855,6 +1774,12 @@ export const createJobDirect = internalMutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+    await writeJobSources(ctx, jobId, {
+      historyEntries: args.sourceHistoryEntries,
+      zoteroSelection: args.sourceZoteroSelection,
+      manualItems: args.sourceManualItems,
+    });
+    return jobId;
   },
 });
 

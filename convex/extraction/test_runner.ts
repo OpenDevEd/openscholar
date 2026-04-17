@@ -2,6 +2,7 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
+import { writeJobSources } from "./jobSources";
 
 /**
  * Internal mutation to create and immediately start a test extraction job.
@@ -37,11 +38,6 @@ export const createAndRunTestJob = internalMutation({
       userId: user._id,
       name: args.name,
       sourceType: "history",
-      searchFilters: {
-        query: args.query || "desert climate north africa",
-        yearRange: [2000, 2024],
-        sortBy: "relevance",
-      },
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
@@ -49,7 +45,20 @@ export const createAndRunTestJob = internalMutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-    
+
+    await writeJobSources(ctx, jobId, {
+      historyEntries: [
+        {
+          historyId: "automation-test",
+          searchFilters: {
+            query: args.query || "desert climate north africa",
+            yearRange: [2000, 2024],
+            sortBy: "relevance",
+          },
+        },
+      ],
+    });
+
     console.log(`[createAndRunTestJob] Created job: ${jobId}`);
     
     // Add test questions

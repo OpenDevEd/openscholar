@@ -62,13 +62,15 @@ export const runExtractionWorkflow = workflow.define({
     });
 
     const papers: WorkflowPaper[] = [];
-    const historyEntries = Array.isArray(job.sourceHistoryEntries)
-      ? job.sourceHistoryEntries
-      : job.searchFilters
-      ? [{ historyId: job.sourceHistoryId || "history", searchFilters: job.searchFilters }]
-      : [];
 
-    for (const entry of historyEntries) {
+    // Per-row sources now live in extractionJobSources. Reconstruct the
+    // three buckets the workflow needs in one indexed read.
+    const sources = await step.runQuery(
+      internal.extraction.queries.getJobSourcesInternal,
+      { jobId },
+    );
+
+    for (const entry of sources.historyEntries) {
       const result = await step.runAction(
         internal.extraction.actions.fetchPapersFromHistory,
         { searchFilters: entry.searchFilters }
@@ -81,8 +83,8 @@ export const runExtractionWorkflow = workflow.define({
       papers.push(...enriched);
     }
 
-    if (job.sourceZoteroSelection?.items?.length) {
-        let zoteroUserId: string | undefined = job.sourceZoteroSelection?.zoteroUserId;
+    if (sources.zoteroSelection && sources.zoteroSelection.items.length > 0) {
+      let zoteroUserId: string | undefined = sources.zoteroSelection.zoteroUserId;
       if (!zoteroUserId) {
         try {
           const resolved = await step.runQuery(internal.zotero.queries.getZoteroUserIdInternal, {});
@@ -91,9 +93,9 @@ export const runExtractionWorkflow = workflow.define({
           zoteroUserId = undefined;
         }
       }
-      const zoteroItems = job.sourceZoteroSelection.items.map((item: { itemKey: string; title: string; doi?: string; year?: number; abstract?: string; authors: string[] }) => {
-        const libraryType = job.sourceZoteroSelection?.libraryType;
-        const groupId = job.sourceZoteroSelection?.groupId;
+      const libraryType = sources.zoteroSelection.libraryType;
+      const groupId = sources.zoteroSelection.groupId;
+      const zoteroItems = sources.zoteroSelection.items.map((item) => {
         const uri = libraryType === "group" && groupId
           ? `zotero://select/groups/${groupId}/items/${item.itemKey}`
           : zoteroUserId
@@ -116,8 +118,8 @@ export const runExtractionWorkflow = workflow.define({
       papers.push(...zoteroItems);
     }
 
-    if (job.sourceManualItems?.length) {
-      const manualItems = job.sourceManualItems.map((item: { id: string; title: string; doi?: string; year?: number; abstract?: string; authors?: string[]; pdfUrl?: string; storageId?: string }) => ({
+    if (sources.manualItems.length > 0) {
+      const manualItems = sources.manualItems.map((item) => ({
         openalexId: `manual:${item.id}`,
         title: item.title,
         doi: item.doi,

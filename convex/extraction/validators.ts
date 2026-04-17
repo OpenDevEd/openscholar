@@ -225,50 +225,6 @@ export const extractionJobValidator = v.object({
   _creationTime: v.number(),
   userId: v.id("users"),
   sourceType: sourceTypeValidator,
-  sourceHistoryId: v.optional(v.string()),
-  sourceZoteroCollection: v.optional(v.string()),
-  sourceHistoryEntries: v.optional(
-    v.array(
-      v.object({
-        historyId: v.string(),
-        searchFilters: searchFiltersValidator,
-      })
-    )
-  ),
-  sourceZoteroSelection: v.optional(
-    v.object({
-      libraryType: v.union(v.literal("user"), v.literal("group")),
-      groupId: v.optional(v.string()),
-      zoteroUserId: v.optional(v.string()),
-      collectionKey: v.optional(v.string()),
-      includeDescendants: v.optional(v.boolean()),
-      items: v.array(
-        v.object({
-          itemKey: v.string(),
-          title: v.string(),
-          abstract: v.optional(v.string()),
-          authors: v.array(v.string()),
-          year: v.optional(v.number()),
-          doi: v.optional(v.string()),
-        })
-      ),
-    })
-  ),
-  sourceManualItems: v.optional(
-    v.array(
-      v.object({
-        id: v.string(),
-        title: v.string(),
-        abstract: v.optional(v.string()),
-        authors: v.optional(v.array(v.string())),
-        year: v.optional(v.number()),
-        doi: v.optional(v.string()),
-        pdfUrl: v.optional(v.string()),
-        storageId: v.optional(v.id("_storage")),
-      })
-    )
-  ),
-  searchFilters: v.optional(searchFiltersValidator),
   status: jobStatusValidator,
   totalPapers: v.number(),
   processedPapers: v.number(),
@@ -279,6 +235,44 @@ export const extractionJobValidator = v.object({
   createdAt: v.number(),
   updatedAt: v.number(),
   completedAt: v.optional(v.number()),
+});
+
+// ---- Input validators for source rows ----
+// Shared across startExtraction / duplicateExtraction /
+// startExtractionFromTemplate / saveWorkflowTemplate*.
+
+export const historyEntryInputValidator = v.object({
+  historyId: v.string(),
+  searchFilters: searchFiltersValidator,
+});
+
+export const zoteroItemInputValidator = v.object({
+  itemKey: v.string(),
+  title: v.string(),
+  abstract: v.optional(v.string()),
+  authors: v.array(v.string()),
+  year: v.optional(v.number()),
+  doi: v.optional(v.string()),
+});
+
+export const zoteroSelectionInputValidator = v.object({
+  libraryType: v.union(v.literal("user"), v.literal("group")),
+  groupId: v.optional(v.string()),
+  zoteroUserId: v.optional(v.string()),
+  collectionKey: v.optional(v.string()),
+  includeDescendants: v.optional(v.boolean()),
+  items: v.array(zoteroItemInputValidator),
+});
+
+export const manualItemInputValidator = v.object({
+  id: v.string(),
+  title: v.string(),
+  abstract: v.optional(v.string()),
+  authors: v.optional(v.array(v.string())),
+  year: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  pdfUrl: v.optional(v.string()),
+  storageId: v.optional(v.id("_storage")),
 });
 
 export const extractionQuestionValidator = v.object({

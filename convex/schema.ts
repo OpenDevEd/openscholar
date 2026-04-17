@@ -319,59 +319,15 @@ export default defineSchema({
   extractionJobs: defineTable({
     userId: v.id("users"),
 
-    // Source information
+    // Source type classifier. Actual per-row source payloads live in
+    // `extractionJobSources` (see above) — inline arrays were removed so
+    // the job doc cannot trip the 1MB limit on large Zotero imports.
     sourceType: v.union(
       v.literal("history"),
       v.literal("zotero"),
       v.literal("manual"),
       v.literal("mixed")
     ),
-    sourceHistoryId: v.optional(v.string()), // For history-based extractions
-    sourceZoteroCollection: v.optional(v.string()), // For future Zotero import
-    sourceHistoryEntries: v.optional(
-      v.array(
-        v.object({
-          historyId: v.string(),
-          searchFilters: searchFiltersValidator,
-        })
-      )
-    ),
-    sourceZoteroSelection: v.optional(
-      v.object({
-        libraryType: v.union(v.literal("user"), v.literal("group")),
-        groupId: v.optional(v.string()),
-        zoteroUserId: v.optional(v.string()),
-        collectionKey: v.optional(v.string()),
-        includeDescendants: v.optional(v.boolean()),
-        items: v.array(
-          v.object({
-            itemKey: v.string(),
-            title: v.string(),
-            abstract: v.optional(v.string()),
-            authors: v.array(v.string()),
-            year: v.optional(v.number()),
-            doi: v.optional(v.string()),
-          })
-        ),
-      })
-    ),
-    sourceManualItems: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          title: v.string(),
-          abstract: v.optional(v.string()),
-          authors: v.optional(v.array(v.string())),
-          year: v.optional(v.number()),
-          doi: v.optional(v.string()),
-          pdfUrl: v.optional(v.string()),
-          storageId: v.optional(v.id("_storage")),
-        })
-      )
-    ),
-
-    // Search reproduction data (when sourceType === "history")
-    searchFilters: v.optional(searchFiltersValidator),
 
     // Job status
     status: v.union(
@@ -402,6 +358,46 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_workflow", ["workflowId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION JOB SOURCES - per-row sources (history / zotero / manual)
+  // Previously stored inline on extractionJobs; moved here so a 500-paper
+  // Zotero selection cannot trip the 1MB doc limit and so the job doc is
+  // no longer rewritten on every progress tick.
+  // ═══════════════════════════════════════════════════════════════
+  extractionJobSources: defineTable({
+    jobId: v.id("extractionJobs"),
+    position: v.number(),
+    kind: v.union(
+      v.literal("history"),
+      v.literal("zotero"),
+      v.literal("manual")
+    ),
+    // history
+    historyId: v.optional(v.string()),
+    searchFilters: v.optional(searchFiltersValidator),
+    // zotero + manual (shared)
+    title: v.optional(v.string()),
+    abstract: v.optional(v.string()),
+    authors: v.optional(v.array(v.string())),
+    year: v.optional(v.number()),
+    doi: v.optional(v.string()),
+    // zotero
+    libraryType: v.optional(
+      v.union(v.literal("user"), v.literal("group"))
+    ),
+    groupId: v.optional(v.string()),
+    zoteroUserId: v.optional(v.string()),
+    collectionKey: v.optional(v.string()),
+    includeDescendants: v.optional(v.boolean()),
+    itemKey: v.optional(v.string()),
+    // manual
+    itemId: v.optional(v.string()),
+    pdfUrl: v.optional(v.string()),
+    storageId: v.optional(v.id("_storage")),
+  })
+    .index("by_job_and_position", ["jobId", "position"])
+    .index("by_job_and_kind", ["jobId", "kind"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION QUESTIONS - User-defined questions for data extraction

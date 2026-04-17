@@ -48,6 +48,7 @@ import {
   paginatedPaperWithResultsValidator,
 } from "./validators";
 import { statusResultValidator } from "../lib/query_states";
+import { readJobSources } from "./jobSources";
 
 /** Safety bound for per-job paper queries to prevent unbounded memory usage. */
 const MAX_PAPERS_PER_JOB = 500;
@@ -285,39 +286,7 @@ export const getMyJobs = query({
       )
     ),
   },
-  returns: v.array(
-    v.object({
-      _id: v.id("extractionJobs"),
-      _creationTime: v.number(),
-      userId: v.id("users"),
-      sourceType: v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"), v.literal("mixed")),
-      sourceHistoryId: v.optional(v.string()),
-      sourceZoteroCollection: v.optional(v.string()),
-      sourceHistoryEntries: v.optional(v.array(v.object({ historyId: v.string(), searchFilters: searchFiltersValidator }))),
-      sourceZoteroSelection: v.optional(v.object({
-        libraryType: v.union(v.literal("user"), v.literal("group")),
-        groupId: v.optional(v.string()),
-        zoteroUserId: v.optional(v.string()),
-        collectionKey: v.optional(v.string()),
-        includeDescendants: v.optional(v.boolean()),
-        items: v.array(v.object({ itemKey: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.array(v.string()), year: v.optional(v.number()), doi: v.optional(v.string()) }))
-      })),
-      sourceManualItems: v.optional(v.array(v.object({
-        id: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.optional(v.array(v.string())), year: v.optional(v.number()), doi: v.optional(v.string()), pdfUrl: v.optional(v.string()), storageId: v.optional(v.id("_storage"))
-      }))),
-      searchFilters: v.optional(searchFiltersValidator),
-      status: v.union(v.literal("pending"), v.literal("downloading_pdfs"), v.literal("indexing"), v.literal("extracting"), v.literal("completed"), v.literal("failed"), v.literal("cancelled")),
-      totalPapers: v.number(),
-      processedPapers: v.number(),
-      failedPapers: v.number(),
-      workflowId: v.optional(v.string()),
-      name: v.string(),
-      description: v.optional(v.string()),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-      completedAt: v.optional(v.number()),
-    })
-  ),
+  returns: v.array(extractionJobValidator),
   handler: async (ctx, args) => {
 
     // Handle unauthenticated gracefully
@@ -1461,6 +1430,13 @@ export const getQuestionsInternal = internalQuery({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .order("asc")
       .collect();
+  },
+});
+
+export const getJobSourcesInternal = internalQuery({
+  args: { jobId: v.id("extractionJobs") },
+  handler: async (ctx, args) => {
+    return await readJobSources(ctx, args.jobId, MAX_PAPERS_PER_JOB * 2);
   },
 });
 

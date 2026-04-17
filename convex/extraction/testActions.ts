@@ -2,6 +2,7 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
+import { writeJobSources } from "./jobSources";
 
 /**
  * Internal mutation to create a test extraction job for debugging.
@@ -23,20 +24,28 @@ export const createTestJob = internalMutation({
       userId,
       name: "Test Sequential Job",
       sourceType: "history",
-      searchFilters: {
-        query: "machine learning education",
-        yearRange: [1900, 2026],
-        sortBy: "relevance",
-        selectedRegions: [],
-        selectedCountryFocus: [],
-        reviewFilter: false
-      },
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+    });
+
+    await writeJobSources(ctx, jobId, {
+      historyEntries: [
+        {
+          historyId: "test-history",
+          searchFilters: {
+            query: "machine learning education",
+            yearRange: [1900, 2026],
+            sortBy: "relevance",
+            selectedRegions: [],
+            selectedCountryFocus: [],
+            reviewFilter: false,
+          },
+        },
+      ],
     });
     
     // Create questions

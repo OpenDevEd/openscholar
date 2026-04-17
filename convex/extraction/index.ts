@@ -5,7 +5,6 @@
 
 // Workflows
 export { runExtractionWorkflow } from "./workflow";
-export { testSimpleWorkflow } from "./testWorkflow";
 
 // Test actions
 export { createTestJob } from "./testActions";

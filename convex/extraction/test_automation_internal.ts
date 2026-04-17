@@ -1,6 +1,7 @@
 import { internalQuery, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
+import { writeJobSources } from "./jobSources";
 
 /**
  * Internal query to get the first user ID for test job creation.
@@ -27,17 +28,25 @@ export const createTestJob = internalMutation({
       userId,
       name: `PDF Test ${Date.now()}`,
       sourceType: "history",
-      searchFilters: {
-        query: "desert climate africa",
-        yearRange: [2015, 2024],
-        sortBy: "relevance",
-      },
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+    });
+
+    await writeJobSources(ctx, jobId, {
+      historyEntries: [
+        {
+          historyId: "pdf-test",
+          searchFilters: {
+            query: "desert climate africa",
+            yearRange: [2015, 2024],
+            sortBy: "relevance",
+          },
+        },
+      ],
     });
     
     // Add questions
