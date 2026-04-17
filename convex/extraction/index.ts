@@ -12,11 +12,13 @@
 // Workflows
 export { runExtractionWorkflow } from "./workflow";
 
-// Note: "use node" action files (actions.ts, workpoolActions.ts,
+// Note: "use node" action files (workpoolActions.ts,
 // debug_pdfjs_alignment.ts, tests/runners.ts) are NOT re-exported here.
 // Re-exporting from a non-"use node" barrel file causes the Convex bundler
 // to fail on transitive node:crypto imports. These files are registered
 // individually by the Convex bundler via their own module entries.
+// actions.ts, prompts.ts, and evidence_units.ts are default-runtime
+// (no "use node") and can be imported from anywhere.
 
 // Mutations (public)
 export {

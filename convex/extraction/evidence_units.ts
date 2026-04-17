@@ -1,4 +1,5 @@
-"use node";
+// Pure helpers — no Node built-ins, no "use node" directive. Safe to
+// import from both default-runtime and node-runtime files.
 
 export type PdfPageAnchorSource = {
   pageNumber: number;

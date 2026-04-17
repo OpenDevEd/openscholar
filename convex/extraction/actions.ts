@@ -1,8 +1,11 @@
-"use node";
-
 /**
  * Extraction Actions
  * Fetch papers from OpenAlex
+ *
+ * No `"use node"` directive: this file uses only global `fetch` +
+ * `URLSearchParams` (available in the default Convex runtime) and pure
+ * helpers. Registering in the default runtime lets v8 code import from
+ * here without a runtime boundary.
  */
 
 import { internalAction } from "../_generated/server";

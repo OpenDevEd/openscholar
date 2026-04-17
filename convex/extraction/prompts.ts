@@ -1,8 +1,8 @@
-"use node";
-
 /**
  * Enhanced extraction prompts for academic paper analysis
  * Strong instructions to ensure AI thoroughly searches provided content
+ *
+ * No `"use node"` directive: this file is pure TS (string + regex).
  */
 
 export interface ExtractionQuestion {
