@@ -30,6 +30,7 @@ import {
 
 import { createError } from "../lib/errors";
 import { batchDeleteByIndex } from "../lib/cascade";
+import { handleWorkpoolResult } from "../lib/workpool";
 import { assertJobOwnership } from "./access";
 import {
   assertExtractionInputLimits,
@@ -1846,6 +1847,19 @@ export const enqueuePaperProcessing = internalMutation({
   },
 });
 
+async function failPaperAndFinalize(
+  ctx: MutationCtx,
+  paperId: Id<"extractionPapers">,
+  jobId: Id<"extractionJobs">,
+  status: "failed" | "download_failed",
+  errorMessage: string,
+) {
+  await markPaperTerminalTx(ctx, paperId, status, { errorMessage });
+  await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
+    jobId,
+  });
+}
+
 // Handle Step 1 completion: Download & Index
 export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete({
   context: v.object({
@@ -1869,26 +1883,34 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
     const { paperId, jobId, questions } = context;
     console.log(`[handleDownloadAndIndexComplete] Paper ${paperId}, result: ${result.kind}`);
 
-    if (result.kind === "success") {
-      const data = result.returnValue as {
-        success: boolean;
-        storageId?: string;
-        chunksCount?: number;
-        error?: string;
-      };
+    await handleWorkpoolResult(ctx, result, {
+      onSuccess: async (ctx, returnValue) => {
+        const data = returnValue as {
+          success: boolean;
+          storageId?: string;
+          chunksCount?: number;
+          error?: string;
+        };
 
-      if (data.success) {
-        console.log(`[handleDownloadAndIndexComplete] Download/index success for ${paperId}, chunks: ${data.chunksCount}`);
+        if (!data.success) {
+          console.log(`[handleDownloadAndIndexComplete] Download failed for ${paperId}: ${data.error}`);
+          await failPaperAndFinalize(
+            ctx,
+            paperId,
+            jobId,
+            "download_failed",
+            data.error || "Download failed",
+          );
+          return;
+        }
 
-        // Update status to indexing
-        await ctx.db.patch("extractionPapers", paperId, {
-          status: "indexing",
-        });
+        console.log(
+          `[handleDownloadAndIndexComplete] Download/index success for ${paperId}, chunks: ${data.chunksCount}`,
+        );
 
+        await ctx.db.patch(paperId, { status: "indexing" });
         if ((data.chunksCount ?? 0) === 0) {
-          await ctx.db.patch("extractionPapers", paperId, {
-            isIndexed: false,
-          });
+          await ctx.db.patch(paperId, { isIndexed: false });
         }
 
         // Step 2: Wait for indexing and extract. Capture the WorkId so
@@ -1896,47 +1918,32 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
         const extractWorkId = await pdfProcessingPool.enqueueAction(
           ctx,
           internal.extraction.workpoolActions.waitAndExtractAction,
-          {
-            paperId,
-            jobId,
-            questions,
-          },
+          { paperId, jobId, questions },
           {
             onComplete: internal.extraction.mutations.handleExtractionComplete,
             context: { paperId, jobId },
-            retry: {
-              maxAttempts: 3,
-              initialBackoffMs: 2000,
-              base: 2,
-            },
-          }
+            retry: { maxAttempts: 3, initialBackoffMs: 2000, base: 2 },
+          },
         );
-        await ctx.db.patch("extractionPapers", paperId, { workId: extractWorkId });
-      } else {
-        // Download failed - mark as failed
-        console.log(`[handleDownloadAndIndexComplete] Download failed for ${paperId}: ${data.error}`);
-        await markPaperTerminalTx(ctx, paperId, "download_failed", {
-          errorMessage: data.error || "Download failed",
-        });
-        await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
+        await ctx.db.patch(paperId, { workId: extractWorkId });
+      },
+      onFailed: (ctx, error) =>
+        failPaperAndFinalize(
+          ctx,
+          paperId,
           jobId,
-        });
-      }
-    } else if (result.kind === "failed") {
-      await markPaperTerminalTx(ctx, paperId, "failed", {
-        errorMessage: result.error || "Download/index action failed",
-      });
-      await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
-        jobId,
-      });
-    } else if (result.kind === "canceled") {
-      await markPaperTerminalTx(ctx, paperId, "failed", {
-        errorMessage: "Download/index was canceled",
-      });
-      await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
-        jobId,
-      });
-    }
+          "failed",
+          error || "Download/index action failed",
+        ),
+      onCanceled: (ctx) =>
+        failPaperAndFinalize(
+          ctx,
+          paperId,
+          jobId,
+          "failed",
+          "Download/index was canceled",
+        ),
+    });
   },
 });
 
@@ -1950,16 +1957,27 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
     const { paperId, jobId } = context;
     console.log(`[handleExtractionComplete] Paper ${paperId}, result: ${result.kind}`);
 
-    if (result.kind === "success") {
-      const data = result.returnValue as {
-        success: boolean;
-        results?: ExtractionResult[];
-        creditsUsed?: number;
-        pdfContentUsed?: boolean;
-        error?: string;
-      };
+    await handleWorkpoolResult(ctx, result, {
+      onSuccess: async (ctx, returnValue) => {
+        const data = returnValue as {
+          success: boolean;
+          results?: ExtractionResult[];
+          creditsUsed?: number;
+          pdfContentUsed?: boolean;
+          error?: string;
+        };
 
-      if (data.success && data.results) {
+        if (!data.success || !data.results) {
+          await failPaperAndFinalize(
+            ctx,
+            paperId,
+            jobId,
+            "failed",
+            data.error || "Extraction failed",
+          );
+          return;
+        }
+
         // saveExtractionResultsAndComplete owns the terminal transition for
         // the success branch — it calls maybeFinalizeJob as its last step.
         await ctx.runMutation(
@@ -1969,32 +1987,27 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
             results: data.results,
             creditsUsed: data.creditsUsed || 0,
             pdfContentUsed: data.pdfContentUsed || false,
-          }
+          },
         );
         console.log(`[handleExtractionComplete] Paper ${paperId} completed successfully`);
-      } else {
-        await markPaperTerminalTx(ctx, paperId, "failed", {
-          errorMessage: data.error || "Extraction failed",
-        });
-        await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
+      },
+      onFailed: (ctx, error) =>
+        failPaperAndFinalize(
+          ctx,
+          paperId,
           jobId,
-        });
-      }
-    } else if (result.kind === "failed") {
-      await markPaperTerminalTx(ctx, paperId, "failed", {
-        errorMessage: result.error || "Extraction action failed",
-      });
-      await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
-        jobId,
-      });
-    } else if (result.kind === "canceled") {
-      await markPaperTerminalTx(ctx, paperId, "failed", {
-        errorMessage: "Extraction was canceled",
-      });
-      await ctx.runMutation(internal.extraction.mutations.maybeFinalizeJob, {
-        jobId,
-      });
-    }
+          "failed",
+          error || "Extraction action failed",
+        ),
+      onCanceled: (ctx) =>
+        failPaperAndFinalize(
+          ctx,
+          paperId,
+          jobId,
+          "failed",
+          "Extraction was canceled",
+        ),
+    });
   },
 });
 
