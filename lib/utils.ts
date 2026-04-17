@@ -221,11 +221,16 @@ export async function downloadWithMetadata(
 
 /**
  * Creates search parameters object for OpenAlex API calls
- * Used by both the OpenAlex action and search metadata creation
+ * Used by both the OpenAlex action and search metadata creation.
+ *
+ * `perPageOverride` is for the count-only path — pass `1` when only
+ * `meta.count` is needed so the request payload is ~200x smaller than
+ * the default search page.
  */
 export function createSearchParameters(
   query: string,
-  filters: SearchFilters
+  filters: SearchFilters,
+  options?: { perPageOverride?: number }
 ) {
   interface OpenAlexSearchParams {
     perPage: number;
@@ -236,7 +241,7 @@ export function createSearchParameters(
   }
 
   const searchParams: OpenAlexSearchParams = {
-    perPage: 200,
+    perPage: options?.perPageOverride ?? 200,
     AbstractArrayToString: true
   };
 
