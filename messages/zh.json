@@ -615,7 +615,22 @@
     "statusDotEmpty": "无回答",
     "answerGrouping": "分组回答",
     "answerGroupingExpand": "{count} 个变体",
-    "answerGroupingVariants": "变体"
+    "answerGroupingVariants": "变体",
+    "countChip": {
+      "chipLabel": "{query} 的 {count, number} 篇论文。点击以更改。",
+      "papersLabel": "{count, number} 篇论文",
+      "title": "要导入的论文",
+      "available": "{count, number} 可用",
+      "capApplies": "已应用上限",
+      "cached": "已缓存",
+      "refreshError": "无法刷新计数",
+      "refresh": "刷新",
+      "step": "论文",
+      "presetFifty": "50",
+      "presetHundred": "100",
+      "presetMax": "最大",
+      "liveAnnouncement": "论文数已设为 {count, number}"
+    }
   },
   "toast": {
     "unexpectedError": "发生意外错误。请重试。",

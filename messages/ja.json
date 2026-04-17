@@ -615,7 +615,22 @@
     "statusDotEmpty": "回答なし",
     "answerGrouping": "グループ化された回答",
     "answerGroupingExpand": "{count} バリアント",
-    "answerGroupingVariants": "バリアント"
+    "answerGroupingVariants": "バリアント",
+    "countChip": {
+      "chipLabel": "{query} の論文 {count, number} 件。クリックして変更します。",
+      "papersLabel": "{count, number} 件の論文",
+      "title": "インポートする論文",
+      "available": "{count, number} 件利用可能",
+      "capApplies": "上限適用",
+      "cached": "キャッシュ",
+      "refreshError": "件数を更新できませんでした",
+      "refresh": "更新",
+      "step": "論文",
+      "presetFifty": "50",
+      "presetHundred": "100",
+      "presetMax": "最大",
+      "liveAnnouncement": "論文数を {count, number} 件に設定しました"
+    }
   },
   "toast": {
     "unexpectedError": "予期しないエラーが発生しました。もう一度お試しください。",

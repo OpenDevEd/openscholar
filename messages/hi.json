@@ -615,7 +615,22 @@
     "statusDotEmpty": "कोई उत्तर नहीं",
     "answerGrouping": "समूहीकृत उत्तर",
     "answerGroupingExpand": "{count} प्रकार",
-    "answerGroupingVariants": "प्रकार"
+    "answerGroupingVariants": "प्रकार",
+    "countChip": {
+      "chipLabel": "{query} के लिए {count, number} पेपर। बदलने के लिए क्लिक करें।",
+      "papersLabel": "{count, number} {count, plural, one {पेपर} other {पेपर}}",
+      "title": "आयात करने के लिए पेपर",
+      "available": "{count, number} उपलब्ध",
+      "capApplies": "सीमा लागू",
+      "cached": "कैश्ड",
+      "refreshError": "गणना ताज़ा नहीं हो सकी",
+      "refresh": "ताज़ा करें",
+      "step": "पेपर",
+      "presetFifty": "50",
+      "presetHundred": "100",
+      "presetMax": "अधिकतम",
+      "liveAnnouncement": "पेपर की संख्या {count, number} पर सेट"
+    }
   },
   "toast": {
     "unexpectedError": "एक अप्रत्याशित त्रुटि हुई। कृपया पुनः प्रयास करें।",

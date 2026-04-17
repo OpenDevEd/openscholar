@@ -615,7 +615,22 @@
     "statusDotEmpty": "Aucune réponse",
     "answerGrouping": "Réponses regroupées",
     "answerGroupingExpand": "{count} variantes",
-    "answerGroupingVariants": "variantes"
+    "answerGroupingVariants": "variantes",
+    "countChip": {
+      "chipLabel": "{count, number} articles pour {query}. Cliquez pour modifier.",
+      "papersLabel": "{count, number} {count, plural, one {article} other {articles}}",
+      "title": "Articles à importer",
+      "available": "{count, number} disponibles",
+      "capApplies": "plafond appliqué",
+      "cached": "en cache",
+      "refreshError": "Impossible d'actualiser le nombre",
+      "refresh": "Actualiser",
+      "step": "Articles",
+      "presetFifty": "50",
+      "presetHundred": "100",
+      "presetMax": "Max",
+      "liveAnnouncement": "Nombre d'articles défini sur {count, number}"
+    }
   },
   "toast": {
     "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",

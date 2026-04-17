@@ -615,7 +615,22 @@
     "statusDotEmpty": "No answers",
     "answerGrouping": "Grouped answers",
     "answerGroupingExpand": "{count} variants",
-    "answerGroupingVariants": "variants"
+    "answerGroupingVariants": "variants",
+    "countChip": {
+      "chipLabel": "{count, number} papers for {query}. Click to change.",
+      "papersLabel": "{count, number} {count, plural, one {paper} other {papers}}",
+      "title": "Papers to import",
+      "available": "{count, number} available",
+      "capApplies": "cap applies",
+      "cached": "cached",
+      "refreshError": "Couldn't refresh count",
+      "refresh": "Refresh",
+      "step": "Papers",
+      "presetFifty": "50",
+      "presetHundred": "100",
+      "presetMax": "Max",
+      "liveAnnouncement": "Papers set to {count, number}"
+    }
   },
   "toast": {
     "unexpectedError": "An unexpected error occurred. Please try again.",
