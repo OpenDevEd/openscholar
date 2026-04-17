@@ -2,6 +2,7 @@ import { internalQuery, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { writeJobSources } from "./jobSources";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Internal query to get the first user ID for test job creation.
@@ -11,6 +12,7 @@ import { writeJobSources } from "./jobSources";
 export const getFirstUserId = internalQuery({
   args: {},
   handler: async (ctx): Promise<Id<"users"> | null> => {
+    assertNonProd();
     const user = await ctx.db.query("users").first();
     return user?._id || null;
   },
@@ -24,6 +26,7 @@ export const getFirstUserId = internalQuery({
 export const createTestJob = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }): Promise<Id<"extractionJobs">> => {
+    assertNonProd();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       name: `PDF Test ${Date.now()}`,
@@ -80,6 +83,7 @@ export const createTestJob = internalMutation({
 export const getJobStatus = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {
+    assertNonProd();
     const job = await ctx.db.get("extractionJobs", jobId);
     const papers = await ctx.db
       .query("extractionPapers")
@@ -104,6 +108,7 @@ export const getJobStatus = internalQuery({
 export const getJobResults = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {
+    assertNonProd();
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))

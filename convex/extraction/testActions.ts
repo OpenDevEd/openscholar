@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
 import { writeJobSources } from "./jobSources";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Internal mutation to create a test extraction job for debugging.
@@ -17,6 +18,7 @@ export const createTestJob = internalMutation({
     jobId: v.string(),
   }),
   handler: async (ctx, args) => {
+    assertNonProd();
     const userId = args.userId;
 
     // Create job directly in database

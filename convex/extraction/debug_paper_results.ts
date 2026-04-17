@@ -1,5 +1,6 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Internal query to inspect extraction results for individual papers.
@@ -11,6 +12,7 @@ export const debugPaperResults = internalQuery({
     paperId: v.id("extractionPapers"),
   },
   handler: async (ctx, { paperId }) => {
+    assertNonProd();
     const paper = await ctx.db.get("extractionPapers", paperId);
     const results = await ctx.db
       .query("extractionResults")

@@ -1,5 +1,6 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Diagnostic query to inspect extraction job status, paper counts, and processing state.
@@ -37,6 +38,7 @@ export const diagnoseJob = internalQuery({
     })),
   }),
   handler: async (ctx, args) => {
+    assertNonProd();
     const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) {
       throw new Error("Job not found");

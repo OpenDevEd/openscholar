@@ -1,13 +1,16 @@
 /**
  * Extraction Module Index
  * Export all extraction-related functions
+ *
+ * Test and debug internals (debug.ts, debug_*.ts, testActions.ts,
+ * test_runner.ts, test_automation_internal.ts, create_test_job.ts) are
+ * intentionally NOT re-exported here. Each handler calls `assertNonProd`
+ * at its top to block prod invocations — callers in dev still address
+ * them via their full internal path (internal.extraction.debug.*, etc.).
  */
 
 // Workflows
 export { runExtractionWorkflow } from "./workflow";
-
-// Test actions
-export { createTestJob } from "./testActions";
 
 // Note: "use node" action files (actions.ts, workpoolActions.ts,
 // debug_pdfjs_alignment.ts, test_automation.ts) are NOT re-exported here.
@@ -78,37 +81,6 @@ export {
   getJobProgressInternal,
   getEvidenceUnitsInternal,
 } from "./queries";
-
-// User lookup moved to mutations for self-hosted compatibility
-
-
-// Debug queries (internal -- not exposed to public API; used for internal diagnostics only)
-export { diagnoseJob } from "./debug";
-export { getFailedPapersDebug } from "./debug_errors";
-export { getPaperErrorsInternal } from "./debug_papers";
-export { debugPaperResults } from "./debug_paper_results";
-export { debugJobContent } from "./debug_job_content";
-export { debugJobCitations } from "./debug_job_citations";
-// debugPdfAlignment is in a "use node" file -- imported directly, not re-exported
-
-// Test job creation
-export { createTestJobForFix } from "./create_test_job";
-
-// Test runner (internal)
-export {
-  createAndRunTestJob,
-  getTestJobStatus,
-} from "./test_runner";
-
-// runPdfTestNow is in a "use node" file -- imported directly, not re-exported
-
-// Internal test automation helpers
-export {
-  getFirstUserId,
-  createTestJob as createTestJobInternal,
-  getJobStatus as getJobStatusInternal,
-  getJobResults as getJobResultsInternal,
-} from "./test_automation_internal";
 
 // Types
 export type {

@@ -1,5 +1,6 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Debug query to retrieve papers that failed during extraction with error details.
@@ -27,6 +28,7 @@ export const getFailedPapersDebug = internalQuery({
     totalDownloadFailed: v.number(),
   }),
   handler: async (ctx, args) => {
+    assertNonProd();
     // Get failed papers with error messages
     const failedPapers = await ctx.db
       .query("extractionPapers")

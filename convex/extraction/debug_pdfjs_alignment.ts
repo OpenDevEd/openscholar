@@ -6,6 +6,7 @@ import { internal } from "../_generated/api";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
 import { findIntersectingItems } from "../../lib/extraction/pdf-highlight";
 import { extractPdfJsTextPages } from "./pdfjs_extract";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Internal action to test PDF.js text extraction alignment against a specific paper.
@@ -34,6 +35,7 @@ export const debugPdfAlignment = internalAction({
     textItemCount?: number;
     nonEmptyTextItemCount?: number;
   }> => {
+    assertNonProd();
     const paper = await ctx.runQuery(
       internal.extraction.queries.getPaperInternal,
       { paperId: args.paperId }

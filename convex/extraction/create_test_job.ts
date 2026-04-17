@@ -1,6 +1,7 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { writeJobSources } from "./jobSources";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Internal mutation to create a test extraction job for verifying fixes.
@@ -16,6 +17,7 @@ export const createTestJobForFix = internalMutation({
     jobId: v.id("extractionJobs"),
   }),
   handler: async (ctx, args) => {
+    assertNonProd();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId: args.userId,
       name: args.name,

@@ -1,5 +1,6 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Internal query to retrieve paper error details for a given extraction job.
@@ -11,6 +12,7 @@ export const getPaperErrorsInternal = internalQuery({
     jobId: v.id("extractionJobs"),
   },
   handler: async (ctx, args) => {
+    assertNonProd();
     const failedPapers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job_status", (q) =>

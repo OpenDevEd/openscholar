@@ -9,6 +9,7 @@ import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
 import type { Id } from "../_generated/dataModel";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Internal action to trigger an immediate PDF extraction test run.
@@ -29,6 +30,7 @@ export const runPdfTestNow = internalAction({
       pdfContentUsed: number;
     };
   }> => {
+    assertNonProd();
 
     // 1. Get first user using internal query
     const userId = await ctx.runQuery(internal.extraction.test_automation_internal.getFirstUserId, {});

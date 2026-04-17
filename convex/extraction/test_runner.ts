@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
 import { writeJobSources } from "./jobSources";
+import { assertNonProd } from "../lib/assertNonProd";
 
 /**
  * Internal mutation to create and immediately start a test extraction job.
@@ -22,6 +23,7 @@ export const createAndRunTestJob = internalMutation({
     userId: v.id("users"),
   }),
   handler: async (ctx, args) => {
+    assertNonProd();
     // Get first user
     const user = await ctx.db
       .query("users")
@@ -148,6 +150,7 @@ export const getTestJobStatus = internalMutation({
     })),
   }),
   handler: async (ctx, args) => {
+    assertNonProd();
     const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) {
       throw new Error("Job not found");
