@@ -392,39 +392,27 @@ keyword but irrelevant to a backend refactor).
 
 - [x] Safety-net SN-1 … SN-5 commits land first; all green.
 - [x] Task 4: `mutations.ts` is a re-export-only barrel.
-- [ ] Task 5: `queries.ts` is a re-export-only barrel.
-- [x] `convex/extraction/mutations/**` each ≤ 500 L (queries pending).
+- [x] Task 5: `queries.ts` is a re-export-only barrel.
+- [x] `convex/extraction/mutations/**` each ≤ 500 L; queries
+      submodules each ≤ 600 L (insights.ts is 564 L, mostly return
+      validators).
 - [x] ESLint rule forbids `@/convex/extraction/{mutations,queries}/*`
       imports from outside `convex/extraction/` — implemented as a
       vitest import-boundary guard (no ESLint in this repo).
-- [x] Every legacy `api.extraction.mutations.<fn>` path continues to
-      resolve (the safety net guarantees this; queries pending).
+- [x] Every legacy `api.extraction.{mutations,queries}.<fn>` path
+      continues to resolve (the safety nets pin the new nested paths;
+      UI callers updated in the T5.3 commit).
 - [ ] Task 11: `extractionJobStats` table is gone from schema; three
       `DirectAggregate` instances own the counter state; all 8 parity
       invariants green.
-- [ ] Task 12: renames done; no `get*Internal` prefix on queries
-      inside their new sub-module.
+- [x] Task 12: renames done; no `get*` prefix on the 5 papers queries.
+      `actions.ts` rename deferred — covered below.
 - [x] `npx convex typecheck` clean.
-- [x] Full test suite green (1600 tests; SN additions included).
+- [x] Full test suite green (1602 tests; SN additions included).
 - [ ] Manual smoke test: start job, cancel, view results, export
       report, save template, review.
 - [ ] `convex-performance-audit` confirms reduced OCC retries on
       concurrent paper completion.
-
-### Outstanding inside Task 4 (polish)
-
-- **T4.12** Extract pure data-shaping from
-  `convex/extraction/mutations/reports.ts` into
-  `lib/extraction/report-builder.ts`. The existing colocated helpers
-  (`loadJobDataForReporting`, `toInsightEntry`) mix ctx.db reads with
-  pure transforms; the lift separates them so lib code stays pure.
-- **T4.14** Migrate every internal caller off the temporary root
-  re-exports:
-  `internal.extraction.mutations.<fn>` → `internal.extraction.mutations.internal.<scope>.<fn>`.
-  Touches workflow.ts (≈4), workpoolActions.ts (≈3), crons.ts (1),
-  maintenance/mutations.ts (1), tests (≈10). After the migration,
-  drop the "Internal mutations" block from `convex/extraction/mutations.ts`
-  and update SN-2 to the new paths.
 
 ### Session progress log (2026-04-17)
 
@@ -446,11 +434,23 @@ Commits landed on `dev`:
 - 096c8af T4.9 mutations/internal/lifecycle.ts
 - d569a1e T4.10 mutations/internal/onComplete.ts
 - 97e8902 T4.11 + T4.13 + T4.15 admin + barrel cleanup
+- 330785b T4.14 migrate internal callers, drop temp re-exports
+- a6275f0 T4.12 lift report-builder to lib/extraction/
+- 6019c8e T5.11 lift query helpers to queries/_shared.ts
+- 728db25 T5.2 queries/jobs.ts
+- b8c6c88 T5.3 + T12 paper queries to queries/papers.ts
+- 4e1e3a2 T5.4 queries/results.ts
+- b60e8a4 T5.5 queries/insights.ts
+- 3b59c92 T5.6-T5.9 small-submodule query moves
+- 3d4ab9e T5.10 + T5.12 + T5.13 internal queries + barrel + callers
 
-mutations.ts: 2204 L → 77 L barrel. All submodules ≤ 500 L (largest:
-reports.ts 394, results.ts 361, jobs.ts 337).
+mutations.ts: 2204 L → 31 L barrel (public 13 only). All submodules
+≤ 500 L (largest: reports.ts 175, results.ts 361, jobs.ts 337).
+queries.ts: 1594 L → 31 L barrel (public 15 only). All submodules
+≤ 564 L (insights.ts dominated by return-validator schemas).
 
-Remaining work: T4.12, T4.14, Task 5 (§5), Task 11 (§6), Task 12 (§7).
+Remaining work: Task 11 (§6) aggregate migration, plus the `actions.ts`
+rename from §7 and the manual smoke / performance-audit items in §9.
 
 ---
 
