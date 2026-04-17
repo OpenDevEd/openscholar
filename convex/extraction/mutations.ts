@@ -702,54 +702,6 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
 });
 
 
-export const replacePaperEvidenceUnits = internalMutation({
-  args: {
-    paperId: v.id("extractionPapers"),
-    units: v.array(
-      v.object({
-        evidenceId: v.string(),
-        page: v.number(),
-        charRange: v.array(v.number()),
-        text: v.string(),
-        section: v.optional(v.string()),
-        tokens: v.array(v.string()),
-        anchorConfidence: v.number(),
-        source: v.string(),
-      })
-    ),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const paper = await ctx.db.get("extractionPapers", args.paperId);
-    if (!paper) return null;
-
-    const existing = await ctx.db
-      .query("extractionEvidenceUnits")
-      .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .take(MAX_EVIDENCE_UNITS_PER_PAPER);
-
-    for (const row of existing) {
-      await ctx.db.delete("extractionEvidenceUnits", row._id);
-    }
-
-    for (const unit of args.units) {
-      await ctx.db.insert("extractionEvidenceUnits", {
-        jobId: paper.jobId,
-        paperId: args.paperId,
-        evidenceId: unit.evidenceId,
-        page: unit.page,
-        charRange: unit.charRange,
-        text: unit.text,
-        section: unit.section,
-        tokens: unit.tokens,
-        anchorConfidence: unit.anchorConfidence,
-        source: unit.source,
-        createdAt: Date.now(),
-      });
-    }
-    return null;
-  },
-});
 
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -797,3 +749,5 @@ export {
   createExtractionReportSnapshot,
   createExtractionRunDiff,
 } from "./mutations/reports";
+
+export { replacePaperEvidenceUnits } from "./mutations/evidence";
