@@ -12,6 +12,7 @@ import type {
   WorkbenchPaper,
   ExtractionQuestion,
 } from "@/lib/extraction/workbench-columns";
+import type { EvidenceDrawerProps } from "@/components/extraction/workbench-shell";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 interface SplitViewProps {
   table: TanStackTable<WorkbenchPaper>;
   questions: ExtractionQuestion[];
+  onEvidenceClick?: (props: EvidenceDrawerProps) => void;
 }
 
 // D-05: denser pagination for left panel
@@ -30,7 +32,7 @@ const SPLIT_PAGE_SIZE = 10;
 // Component
 // ---------------------------------------------------------------------------
 
-export function SplitView({ table, questions }: SplitViewProps) {
+export function SplitView({ table, questions, onEvidenceClick }: SplitViewProps) {
   const t = useTranslations("extraction.workbench");
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -130,6 +132,7 @@ export function SplitView({ table, questions }: SplitViewProps) {
             }}
             questions={questions}
             index={0}
+            onEvidenceClick={onEvidenceClick}
           />
         ) : (
           <div className="flex h-full flex-col items-center justify-center text-center">

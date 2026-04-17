@@ -67,8 +67,24 @@ function statusDotClass(status: string) {
   }
 }
 
+type JobRow = {
+  _id: Id<"extractionJobs">;
+  status: JobStatus;
+  totalPapers: number;
+  processedPapers: number;
+  failedPapers: number;
+  createdAt: number;
+  completedAt?: number;
+  questionCount?: number;
+  firstQuestion?: string;
+};
+
 interface ExtractionJobHistoryProps {
   onClose?: () => void;
+  /** If provided, renders these jobs instead of fetching internally. Enables outer filtering/pagination. */
+  jobs?: JobRow[];
+  /** Custom empty-state node (used when outer filter yields nothing). */
+  emptyState?: React.ReactNode;
 }
 
 /**
@@ -105,8 +121,13 @@ function ActiveJobProgress({ jobId }: { jobId: Id<"extractionJobs"> }) {
   );
 }
 
-export function ExtractionJobHistory({ onClose }: ExtractionJobHistoryProps) {
+export function ExtractionJobHistory({
+  onClose,
+  jobs: externalJobs,
+  emptyState,
+}: ExtractionJobHistoryProps) {
   const t = useTranslations("extraction");
+  const tListPage = useTranslations("extraction.listPage");
   const tc = useTranslations("common");
   const format = useFormatter();
   const convex = useConvex();
@@ -116,10 +137,11 @@ export function ExtractionJobHistory({ onClose }: ExtractionJobHistoryProps) {
     null,
   );
 
-  const { data: jobs } = useProtectedQuery(
+  const { data: fetchedJobs } = useProtectedQuery(
     api.extraction.queries.listUserExtractionJobs,
-    { limit: 10 },
+    externalJobs !== undefined ? "skip" : { limit: 10 },
   );
+  const jobs: JobRow[] | undefined = externalJobs ?? fetchedJobs;
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtractionJob);
 
@@ -189,6 +211,7 @@ export function ExtractionJobHistory({ onClose }: ExtractionJobHistoryProps) {
 
   // Empty state
   if (jobs.length === 0) {
+    if (emptyState) return <>{emptyState}</>;
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="rounded-full bg-muted/50 p-3 mb-3">
@@ -209,15 +232,23 @@ export function ExtractionJobHistory({ onClose }: ExtractionJobHistoryProps) {
         const isExporting = exportingJobId === job._id;
         const isCancelling = cancellingJobId === job._id;
         const isIncomplete = job.status !== "completed";
+        const title = job.firstQuestion?.trim() || tListPage("untitledJob");
 
         return (
           <div
             key={job._id}
             className="rounded-lg border border-border/50 bg-card px-3.5 py-3 transition-colors hover:bg-accent/30"
           >
+            {/* Row 0: Title (firstQuestion) */}
+            {job.firstQuestion !== undefined && (
+              <div className="mb-2 text-sm font-medium text-foreground line-clamp-2">
+                {title}
+              </div>
+            )}
+
             {/* Row 1: Status + date + actions */}
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <span
                   className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(job.status)}`}
                 />
@@ -239,6 +270,22 @@ export function ExtractionJobHistory({ onClose }: ExtractionJobHistoryProps) {
                     dateStyle: "medium",
                   })}
                 </time>
+                <span className="text-xs text-muted-foreground/60">
+                  &middot;
+                </span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {job.totalPapers} {tListPage("papersUnit")}
+                </span>
+                {typeof job.questionCount === "number" && (
+                  <>
+                    <span className="text-xs text-muted-foreground/60">
+                      &middot;
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {job.questionCount} {tListPage("questionsUnit")}
+                    </span>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center gap-1 shrink-0">

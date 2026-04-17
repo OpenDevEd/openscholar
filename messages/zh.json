@@ -1701,6 +1701,26 @@
       "loadCollectionsError": "Failed to load Zotero collections.",
       "loadItemsError": "Failed to load Zotero items.",
       "retryResolve": "Retry"
+    },
+    "listPage": {
+      "title": "抽取",
+      "description": "追踪、查阅并导出您的 AI 论文抽取结果。",
+      "newJob": "新建抽取",
+      "searchPlaceholder": "按问题或状态搜索...",
+      "sortRecent": "最新",
+      "sortOldest": "最早",
+      "sortStatus": "状态",
+      "sortPapers": "论文数量",
+      "emptyHeading": "暂无抽取",
+      "emptyBody": "选择论文并定义问题以开始您的第一次抽取。",
+      "emptyFilteredHeading": "没有匹配的任务",
+      "emptyFilteredBody": "请清除搜索条件或选择其他排序方式。",
+      "questionsUnit": "个问题",
+      "papersUnit": "篇论文",
+      "untitledJob": "未命名任务",
+      "paginationOf": "共",
+      "paginationPrevious": "上一页",
+      "paginationNext": "下一页"
     }
   }
 }

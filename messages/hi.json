@@ -1701,6 +1701,26 @@
       "loadCollectionsError": "Failed to load Zotero collections.",
       "loadItemsError": "Failed to load Zotero items.",
       "retryResolve": "Retry"
+    },
+    "listPage": {
+      "title": "निष्कर्षण",
+      "description": "अपने AI-संचालित पेपर निष्कर्षण को ट्रैक, समीक्षा और निर्यात करें।",
+      "newJob": "नया निष्कर्षण",
+      "searchPlaceholder": "प्रश्न या स्थिति के आधार पर खोजें...",
+      "sortRecent": "सबसे हाल का",
+      "sortOldest": "सबसे पुराना",
+      "sortStatus": "स्थिति",
+      "sortPapers": "पेपर संख्या",
+      "emptyHeading": "अभी तक कोई निष्कर्षण नहीं",
+      "emptyBody": "पेपर चुनकर और प्रश्न परिभाषित करके अपना पहला निष्कर्षण शुरू करें।",
+      "emptyFilteredHeading": "कोई कार्य मेल नहीं खाता",
+      "emptyFilteredBody": "खोज साफ़ करें या कोई भिन्न क्रम चुनें।",
+      "questionsUnit": "प्रश्न",
+      "papersUnit": "पेपर",
+      "untitledJob": "अनाम कार्य",
+      "paginationOf": "में से",
+      "paginationPrevious": "पिछला",
+      "paginationNext": "अगला"
     }
   }
 }

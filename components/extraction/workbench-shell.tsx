@@ -124,12 +124,9 @@ function WorkbenchShellInner({
     props: EvidenceDrawerProps | null;
   }>({ open: false, props: null });
 
-  // openEvidence: callback for views to trigger the evidence drawer (D-08)
-  // Currently wired to drawerState; views will call this when evidence click support is added
   const openEvidence = useCallback((props: EvidenceDrawerProps) => {
     setDrawerState({ open: true, props });
   }, []);
-  void openEvidence; // Prepared for CardView/SplitView onEvidenceClick integration
 
   // Column memoization keyed on questions (per D-04)
   const columns = useMemo(
@@ -203,6 +200,7 @@ function WorkbenchShellInner({
               <CardView
                 table={table}
                 questions={questions}
+                onEvidenceClick={openEvidence}
               />
             </motion.div>
           )}
@@ -217,6 +215,7 @@ function WorkbenchShellInner({
               <SplitView
                 table={table}
                 questions={questions}
+                onEvidenceClick={openEvidence}
               />
             </motion.div>
           )}

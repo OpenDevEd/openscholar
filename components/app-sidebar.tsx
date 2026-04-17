@@ -51,6 +51,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
 import { ExtractionJobsDialog } from "@/components/extraction/extraction-jobs-dialog";
+import { BasketTriggerButton } from "@/components/extraction/basket-trigger-button";
+import { ExtractionBasketDrawer } from "@/components/extraction/extraction-basket-drawer";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -869,6 +871,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 progressPercent={extractionProgressPercent}
                 label={ts("extraction")}
               />
+              {basketCount > 0 && <BasketTriggerButton />}
               <ThemeToggle />
               <LanguageSwitcher isCollapsed={false} />
             </div>
@@ -888,6 +891,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               progressPercent={extractionProgressPercent}
               label={ts("extraction")}
             />
+            {basketCount > 0 && <BasketTriggerButton />}
             <ThemeToggle />
             <LanguageSwitcher isCollapsed={true} />
             <AuthButton isCollapsed={true} />
@@ -904,6 +908,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         open={isExtractionJobsOpen}
         onOpenChange={setIsExtractionJobsOpen}
       />
+
+      <ExtractionBasketDrawer />
     </div>
   );
 }

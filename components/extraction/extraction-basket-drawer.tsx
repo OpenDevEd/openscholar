@@ -20,21 +20,16 @@ import { BasketSourceSection } from "./basket-source-section";
 import { BasketEmptyState } from "./basket-empty-state";
 import { ExtractionCounter } from "./extraction-counter";
 
-interface ExtractionBasketDrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function ExtractionBasketDrawer({
-  isOpen,
-  onClose,
-}: ExtractionBasketDrawerProps) {
+export function ExtractionBasketDrawer() {
   const t = useTranslations("extraction.basket");
   const router = useRouter();
   const hasHydrated = useExtractionBasketStore((s) => s._hasHydrated);
   const papers = useExtractionBasketStore((s) => s.papers);
   const count = useExtractionBasketStore((s) => s.papers.size);
   const remove = useExtractionBasketStore((s) => s.remove);
+  const isOpen = useExtractionBasketStore((s) => s.drawerOpen);
+  const setDrawerOpen = useExtractionBasketStore((s) => s.setDrawerOpen);
+  const onClose = () => setDrawerOpen(false);
 
   const entriesBySource = useMemo(() => {
     const grouped = new Map<BasketSource, BasketEntry[]>();
@@ -62,7 +57,7 @@ export function ExtractionBasketDrawer({
   }, [router, onClose]);
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={setDrawerOpen}>
       <SheetContent side="right" className="flex flex-col p-0 w-full sm:max-w-md">
         <SheetHeader className="border-b p-4">
           <SheetTitle>{t("title")}</SheetTitle>

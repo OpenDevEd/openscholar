@@ -6,24 +6,61 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { X, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
+import {
+  QUESTION_TYPES,
+  DEFAULT_QUESTION_TYPE,
+  QUESTION_TYPE_LABEL,
+  QUESTION_TYPE_ARIA_LABEL,
+  type QuestionType,
+} from "@/lib/extraction/question-types";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+export interface QuestionDraft {
+  question: string;
+  expectedType: QuestionType;
+}
 
 interface QuestionBuilderProps {
-  questions: string[];
-  onAdd: (question: string) => void;
+  questions: QuestionDraft[];
+  onAdd: (draft: QuestionDraft) => void;
   onRemove: (index: number) => void;
-  onEdit: (index: number, newQuestion: string) => void;
+  onEdit: (index: number, next: QuestionDraft) => void;
   className?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+function QuestionTypeSelect({
+  value,
+  onChange,
+}: {
+  value: QuestionType;
+  onChange: (next: QuestionType) => void;
+}) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as QuestionType)}>
+      <SelectTrigger
+        className="w-[110px] shrink-0 h-9"
+        aria-label={QUESTION_TYPE_ARIA_LABEL}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {QUESTION_TYPES.map((type) => (
+          <SelectItem key={type} value={type}>
+            {QUESTION_TYPE_LABEL[type]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export function QuestionBuilder({
   questions,
@@ -34,21 +71,24 @@ export function QuestionBuilder({
 }: QuestionBuilderProps) {
   const t = useTranslations("extraction");
   const [inputValue, setInputValue] = useState("");
+  const [draftType, setDraftType] = useState<QuestionType>(
+    DEFAULT_QUESTION_TYPE,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const prefersReducedMotion = useReducedMotion();
 
   const handleAdd = useCallback(() => {
     const trimmed = inputValue.trim();
     if (!trimmed) return;
-    // Duplicate prevention (case-insensitive)
     const isDuplicate = questions.some(
-      (q) => q.toLowerCase() === trimmed.toLowerCase()
+      (q) => q.question.toLowerCase() === trimmed.toLowerCase(),
     );
     if (isDuplicate) return;
-    onAdd(trimmed);
+    onAdd({ question: trimmed, expectedType: draftType });
     setInputValue("");
+    setDraftType(DEFAULT_QUESTION_TYPE);
     inputRef.current?.focus();
-  }, [inputValue, questions, onAdd]);
+  }, [inputValue, draftType, questions, onAdd]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -57,17 +97,28 @@ export function QuestionBuilder({
         handleAdd();
       }
     },
-    [handleAdd]
+    [handleAdd],
   );
 
-  const handleEditBlur = useCallback(
-    (index: number, newValue: string) => {
-      const trimmed = newValue.trim();
-      if (trimmed && trimmed !== questions[index]) {
-        onEdit(index, trimmed);
+  const handleTextBlur = useCallback(
+    (index: number, nextText: string) => {
+      const trimmed = nextText.trim();
+      const current = questions[index];
+      if (trimmed && trimmed !== current.question) {
+        onEdit(index, { ...current, question: trimmed });
       }
     },
-    [questions, onEdit]
+    [questions, onEdit],
+  );
+
+  const handleTypeChange = useCallback(
+    (index: number, nextType: QuestionType) => {
+      const current = questions[index];
+      if (nextType !== current.expectedType) {
+        onEdit(index, { ...current, expectedType: nextType });
+      }
+    },
+    [questions, onEdit],
   );
 
   const animationProps = prefersReducedMotion
@@ -81,19 +132,22 @@ export function QuestionBuilder({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* Existing question list */}
       <AnimatePresence mode="popLayout" initial={false}>
-        {questions.map((question, index) => (
+        {questions.map((draft, index) => (
           <motion.div
-            key={`question-${index}-${question}`}
+            key={`question-${index}-${draft.question}`}
             layout={!prefersReducedMotion}
             {...animationProps}
             className="flex items-center gap-2"
           >
             <Input
-              defaultValue={question}
-              onBlur={(e) => handleEditBlur(index, e.target.value)}
+              defaultValue={draft.question}
+              onBlur={(e) => handleTextBlur(index, e.target.value)}
               className="flex-1"
+            />
+            <QuestionTypeSelect
+              value={draft.expectedType}
+              onChange={(next) => handleTypeChange(index, next)}
             />
             <Button
               type="button"
@@ -109,7 +163,6 @@ export function QuestionBuilder({
         ))}
       </AnimatePresence>
 
-      {/* Add question row */}
       <div className="flex items-center gap-2">
         <Input
           ref={inputRef}
@@ -118,6 +171,10 @@ export function QuestionBuilder({
           onKeyDown={handleKeyDown}
           placeholder={t("jobCreation.questionPlaceholder")}
           className="flex-1"
+        />
+        <QuestionTypeSelect
+          value={draftType}
+          onChange={setDraftType}
         />
         <Button
           type="button"

@@ -1701,6 +1701,26 @@
       "loadCollectionsError": "Failed to load Zotero collections.",
       "loadItemsError": "Failed to load Zotero items.",
       "retryResolve": "Retry"
+    },
+    "listPage": {
+      "title": "Extraction",
+      "description": "Track, review, and export your AI-powered paper extractions.",
+      "newJob": "New extraction",
+      "searchPlaceholder": "Search by question or status...",
+      "sortRecent": "Most recent",
+      "sortOldest": "Oldest first",
+      "sortStatus": "Status",
+      "sortPapers": "Paper count",
+      "emptyHeading": "No extractions yet",
+      "emptyBody": "Start your first extraction by selecting papers and defining questions.",
+      "emptyFilteredHeading": "No jobs match",
+      "emptyFilteredBody": "Try clearing the search or picking a different sort.",
+      "questionsUnit": "questions",
+      "papersUnit": "papers",
+      "untitledJob": "Untitled job",
+      "paginationOf": "of",
+      "paginationPrevious": "Previous",
+      "paginationNext": "Next"
     }
   }
 }

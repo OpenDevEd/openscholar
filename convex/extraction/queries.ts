@@ -171,6 +171,8 @@ export const listUserExtractionJobs = query({
       failedPapers: v.number(),
       createdAt: v.number(),
       completedAt: v.optional(v.number()),
+      questionCount: v.number(),
+      firstQuestion: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -181,7 +183,7 @@ export const listUserExtractionJobs = query({
       .query("extractionJobs")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .take(args.limit ?? 20);
+      .take(args.limit ?? 100);
 
     return jobs.map((j) => ({
       _id: j._id,
@@ -191,6 +193,8 @@ export const listUserExtractionJobs = query({
       failedPapers: j.failedPapers,
       createdAt: j.createdAt,
       completedAt: j.completedAt,
+      questionCount: j.questions.length,
+      firstQuestion: j.questions[0]?.question,
     }));
   },
 });

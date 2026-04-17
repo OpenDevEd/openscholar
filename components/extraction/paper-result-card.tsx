@@ -16,6 +16,12 @@ import { CriticVerdictBadge } from "@/components/extraction/critic-verdict-badge
 import { EvidenceQuote } from "@/components/extraction/evidence-quote";
 import { InsufficientEvidenceCard } from "@/components/extraction/insufficient-evidence-card";
 import { StatusBadge } from "@/components/extraction/status-badge";
+import type { EvidenceDrawerProps } from "@/components/extraction/workbench-shell";
+import {
+  isQuestionType,
+  QUESTION_TYPE_LABEL,
+  type QuestionType,
+} from "@/lib/extraction/question-types";
 
 interface PaperResult {
   _id: Id<"extractionPapers">;
@@ -44,9 +50,18 @@ interface PaperResult {
 
 interface PaperResultCardProps {
   paper: PaperResult;
-  questions: Array<{ key: string; question: string }>;
+  questions: Array<{ key: string; question: string; expectedType?: string }>;
   index: number;
   className?: string;
+  onEvidenceClick?: (props: EvidenceDrawerProps) => void;
+}
+
+function QuestionTypeBadge({ type }: { type: QuestionType }) {
+  return (
+    <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+      {QUESTION_TYPE_LABEL[type]}
+    </Badge>
+  );
 }
 
 export function PaperResultCard({
@@ -54,12 +69,16 @@ export function PaperResultCard({
   questions,
   index,
   className,
+  onEvidenceClick,
 }: PaperResultCardProps) {
   const t = useTranslations("extraction");
   const shouldReduceMotion = useReducedMotion();
 
-  // Build a lookup from questionId -> question text
+  // Build lookups from questionId -> text and expectedType
   const questionMap = new Map(questions.map((q) => [q.key, q.question]));
+  const questionTypeMap = new Map(
+    questions.map((q) => [q.key, isQuestionType(q.expectedType) ? q.expectedType : undefined]),
+  );
 
   const cardContent = (
     <Card className={cn(className)} role="article">
@@ -103,7 +122,14 @@ export function PaperResultCard({
                 />
               ) : (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">{questionText}</h4>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm font-semibold">{questionText}</h4>
+                    {questionTypeMap.get(result.questionId) && (
+                      <QuestionTypeBadge
+                        type={questionTypeMap.get(result.questionId)!}
+                      />
+                    )}
+                  </div>
 
                   {/* Answer row with badges */}
                   <div className="flex flex-wrap items-center gap-2">
@@ -128,6 +154,20 @@ export function PaperResultCard({
                           paperId={paper._id}
                           startChar={result.evidenceStartChar}
                           endChar={result.evidenceEndChar}
+                          onActivate={
+                            onEvidenceClick
+                              ? () =>
+                                  onEvidenceClick({
+                                    paperId: paper._id,
+                                    startChar: result.evidenceStartChar!,
+                                    endChar: result.evidenceEndChar!,
+                                    questionText,
+                                    parsingSource: paper.parsingSource,
+                                    modelUsed: result.modelUsed,
+                                    criticVerdict: result.criticVerdict,
+                                  })
+                              : undefined
+                          }
                         />
                       </div>
                     )}

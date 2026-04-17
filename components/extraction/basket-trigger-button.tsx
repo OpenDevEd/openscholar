@@ -11,14 +11,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useExtractionBasketStore } from "@/lib/store/extraction-basket";
 
-interface BasketTriggerButtonProps {
-  onClick: () => void;
-}
-
-export function BasketTriggerButton({ onClick }: BasketTriggerButtonProps) {
+export function BasketTriggerButton() {
   const t = useTranslations("extraction.basket");
   const count = useExtractionBasketStore((s) => s.papers.size);
   const hasHydrated = useExtractionBasketStore((s) => s._hasHydrated);
+  const setDrawerOpen = useExtractionBasketStore((s) => s.setDrawerOpen);
 
   return (
     <Tooltip>
@@ -27,7 +24,7 @@ export function BasketTriggerButton({ onClick }: BasketTriggerButtonProps) {
           <Button
             variant="outline"
             size="icon"
-            onClick={onClick}
+            onClick={() => setDrawerOpen(true)}
             aria-label={t("triggerAriaLabel", { count })}
           >
             <FlaskConical className="size-4" />

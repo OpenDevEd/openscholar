@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import posthog from "posthog-js";
+import { useExtractionBasketStore } from "@/lib/store/extraction-basket";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +22,9 @@ import { toast } from "sonner";
 import { showStyledToast } from "@/components/ui/sonner";
 import { resolveToastError, getToastMessageKeyForErrorCode } from "@/lib/toast/error-resolver";
 import { api } from "@/convex/_generated/api";
-import { QuestionBuilder } from "./question-builder";
+import { QuestionBuilder, type QuestionDraft } from "./question-builder";
 import { TierSelector, type ModelTier } from "./tier-selector";
+import { DEFAULT_QUESTION_TYPE } from "@/lib/extraction/question-types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,12 +53,14 @@ export function ExtractionDialog({
 }: ExtractionDialogProps) {
   const t = useTranslations("extraction");
   const tToast = useTranslations("toast");
+  const router = useRouter();
+  const clearBasket = useExtractionBasketStore((s) => s.clear);
 
   // -------------------------------------------------------------------------
   // Form state
   // -------------------------------------------------------------------------
 
-  const [localQuestions, setLocalQuestions] = useState<string[]>([]);
+  const [localQuestions, setLocalQuestions] = useState<QuestionDraft[]>([]);
   const [tier, setTier] = useState<ModelTier>("auto");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -86,14 +91,14 @@ export function ExtractionDialog({
   // -------------------------------------------------------------------------
 
   const handleAddQuestion = useCallback(
-    (question: string) => {
+    (draft: QuestionDraft) => {
       const isDuplicate = localQuestions.some(
-        (q) => q.toLowerCase() === question.toLowerCase()
+        (q) => q.question.toLowerCase() === draft.question.toLowerCase(),
       );
       if (isDuplicate) return;
-      setLocalQuestions((prev) => [...prev, question]);
+      setLocalQuestions((prev) => [...prev, draft]);
     },
-    [localQuestions]
+    [localQuestions],
   );
 
   const handleRemoveQuestion = useCallback((index: number) => {
@@ -101,12 +106,10 @@ export function ExtractionDialog({
   }, []);
 
   const handleEditQuestion = useCallback(
-    (index: number, newQuestion: string) => {
-      setLocalQuestions((prev) =>
-        prev.map((q, i) => (i === index ? newQuestion : q))
-      );
+    (index: number, next: QuestionDraft) => {
+      setLocalQuestions((prev) => prev.map((q, i) => (i === index ? next : q)));
     },
-    []
+    [],
   );
 
   // -------------------------------------------------------------------------
@@ -121,16 +124,19 @@ export function ExtractionDialog({
     try {
       const keyedQuestions = localQuestions.map((q, i) => ({
         key: `q_${i}`,
-        question: q,
+        question: q.question,
+        expectedType: q.expectedType ?? DEFAULT_QUESTION_TYPE,
       }));
-      await createJob({ papers, questions: keyedQuestions, tier });
+      const { jobId } = await createJob({ papers, questions: keyedQuestions, tier });
       toast.success(t("jobCreation.success"), { duration: 3000 });
-      onOpenChange(false);
       posthog.capture("extraction_job_created", {
         paperCount: papers.length,
         questionCount: localQuestions.length,
         tier,
       });
+      clearBasket();
+      onOpenChange(false);
+      router.push(`/extraction/${jobId}`);
     } catch (error: unknown) {
       const resolved = resolveToastError(error, t("jobCreation.error"));
       const messageKey = getToastMessageKeyForErrorCode(resolved.code);
@@ -138,7 +144,7 @@ export function ExtractionDialog({
     } finally {
       setIsSubmitting(false);
     }
-  }, [papers, localQuestions, tier, createJob, onOpenChange, t]);
+  }, [papers, localQuestions, tier, createJob, onOpenChange, t, tToast, router, clearBasket]);
 
   // -------------------------------------------------------------------------
   // Render

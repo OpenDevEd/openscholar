@@ -1701,6 +1701,26 @@
       "loadCollectionsError": "Failed to load Zotero collections.",
       "loadItemsError": "Failed to load Zotero items.",
       "retryResolve": "Retry"
+    },
+    "listPage": {
+      "title": "Extraction",
+      "description": "Suivez, examinez et exportez vos extractions d'articles assistées par IA.",
+      "newJob": "Nouvelle extraction",
+      "searchPlaceholder": "Rechercher par question ou statut...",
+      "sortRecent": "Plus récent",
+      "sortOldest": "Plus ancien",
+      "sortStatus": "Statut",
+      "sortPapers": "Nombre d'articles",
+      "emptyHeading": "Aucune extraction pour le moment",
+      "emptyBody": "Lancez votre première extraction en sélectionnant des articles et en définissant des questions.",
+      "emptyFilteredHeading": "Aucun travail correspondant",
+      "emptyFilteredBody": "Essayez d'effacer la recherche ou de choisir un autre tri.",
+      "questionsUnit": "questions",
+      "papersUnit": "articles",
+      "untitledJob": "Travail sans titre",
+      "paginationOf": "sur",
+      "paginationPrevious": "Précédent",
+      "paginationNext": "Suivant"
     }
   }
 }

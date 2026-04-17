@@ -12,6 +12,7 @@ interface EvidenceQuoteProps {
   startChar: number;
   endChar: number;
   className?: string;
+  onActivate?: () => void;
 }
 
 export function EvidenceQuote({
@@ -19,6 +20,7 @@ export function EvidenceQuote({
   startChar,
   endChar,
   className,
+  onActivate,
 }: EvidenceQuoteProps) {
   const t = useTranslations("extraction");
   const { data: paperData } = useProtectedQuery(
@@ -81,15 +83,26 @@ export function EvidenceQuote({
 
   return (
     <div
-      role="link"
-      tabIndex={0}
+      role={onActivate ? "button" : undefined}
+      tabIndex={onActivate ? 0 : undefined}
+      onClick={onActivate}
+      onKeyDown={
+        onActivate
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onActivate();
+              }
+            }
+          : undefined
+      }
       className={cn(
-        "cursor-pointer rounded-md border-l-[3px] border-l-primary/40 bg-[var(--pdf-highlight)] px-4 py-2 text-sm leading-[1.43] motion-safe:transition-colors",
-        "hover:bg-[color-mix(in_oklch,var(--pdf-highlight)_70%,transparent)]",
+        "rounded-md border-l-[3px] border-l-primary/40 bg-[var(--pdf-highlight)] px-4 py-2 text-sm leading-[1.43] motion-safe:transition-colors",
+        onActivate && "cursor-pointer hover:bg-[color-mix(in_oklch,var(--pdf-highlight)_70%,transparent)]",
         "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         className,
       )}
-      aria-label={`View evidence in source at characters ${startChar} to ${endChar}`}
+      aria-label={onActivate ? `View evidence in source at characters ${startChar} to ${endChar}` : undefined}
     >
       {verbatimText}
     </div>

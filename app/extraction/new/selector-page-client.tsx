@@ -16,7 +16,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ExtractionCounter } from "@/components/extraction/extraction-counter";
-import { ExtractionBasketDrawer } from "@/components/extraction/extraction-basket-drawer";
 import { ExtractionDialog } from "@/components/extraction/extraction-dialog";
 import { useExtractionBasketStore } from "@/lib/store/extraction-basket";
 import { LibraryTab } from "./library-tab";
@@ -29,9 +28,9 @@ import { ShoppingBag, Play, Beaker } from "lucide-react";
 export function SelectorPageClient() {
   const t = useTranslations("extraction.selector");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const basketPapers = useExtractionBasketStore((s) => s.papers);
   const basketCount = useExtractionBasketStore((s) => s.papers.size);
+  const setDrawerOpen = useExtractionBasketStore((s) => s.setDrawerOpen);
 
   const papersForDialog = useMemo(
     () =>
@@ -102,6 +101,7 @@ export function SelectorPageClient() {
               variant="ghost"
               size="sm"
               onClick={() => setDrawerOpen(true)}
+              disabled={basketCount === 0}
             >
               <ShoppingBag className="mr-2 h-4 w-4" />
               {t("reviewBasket")}
@@ -130,11 +130,7 @@ export function SelectorPageClient() {
         </div>
       </div>
 
-      {/* Modals */}
-      <ExtractionBasketDrawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      />
+      {/* Modals -- basket drawer is mounted globally in app-sidebar */}
       <ExtractionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}

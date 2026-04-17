@@ -33,11 +33,13 @@ interface PersistedBasketState {
 interface ExtractionBasketState {
   papers: Map<string, BasketEntry>;
   _hasHydrated: boolean;
+  drawerOpen: boolean;
   add: (input: BasketEntry | BasketEntry[]) => void;
   remove: (id: string) => void;
   has: (id: string) => boolean;
   clear: () => void;
   setHasHydrated: (hydrated: boolean) => void;
+  setDrawerOpen: (open: boolean) => void;
 }
 
 /**
@@ -110,6 +112,7 @@ export const useExtractionBasketStore = create<ExtractionBasketState>()(
     (set, get) => ({
       papers: new Map<string, BasketEntry>(),
       _hasHydrated: false,
+      drawerOpen: false,
 
       add: (input: BasketEntry | BasketEntry[]) => {
         const entries = Array.isArray(input) ? input : [input];
@@ -136,6 +139,8 @@ export const useExtractionBasketStore = create<ExtractionBasketState>()(
       clear: () => set({ papers: new Map() }),
 
       setHasHydrated: (hydrated: boolean) => set({ _hasHydrated: hydrated }),
+
+      setDrawerOpen: (open: boolean) => set({ drawerOpen: open }),
     }),
     {
       name: "extraction-basket",

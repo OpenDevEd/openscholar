@@ -10,6 +10,7 @@ import type {
   WorkbenchPaper,
   ExtractionQuestion,
 } from "@/lib/extraction/workbench-columns";
+import type { EvidenceDrawerProps } from "@/components/extraction/workbench-shell";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -18,13 +19,14 @@ import type {
 interface CardViewProps {
   table: TanStackTable<WorkbenchPaper>;
   questions: ExtractionQuestion[];
+  onEvidenceClick?: (props: EvidenceDrawerProps) => void;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function CardView({ table, questions }: CardViewProps) {
+export function CardView({ table, questions, onEvidenceClick }: CardViewProps) {
   const t = useTranslations("extraction.workbench");
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +90,7 @@ export function CardView({ table, questions }: CardViewProps) {
                   }}
                   questions={questions}
                   index={virtualRow.index}
+                  onEvidenceClick={onEvidenceClick}
                 />
               </div>
             </div>

@@ -1701,6 +1701,26 @@
       "loadCollectionsError": "Failed to load Zotero collections.",
       "loadItemsError": "Failed to load Zotero items.",
       "retryResolve": "Retry"
+    },
+    "listPage": {
+      "title": "抽出",
+      "description": "AI による論文抽出を追跡、確認、エクスポートできます。",
+      "newJob": "新規抽出",
+      "searchPlaceholder": "質問またはステータスで検索...",
+      "sortRecent": "最新順",
+      "sortOldest": "古い順",
+      "sortStatus": "ステータス",
+      "sortPapers": "論文数",
+      "emptyHeading": "まだ抽出はありません",
+      "emptyBody": "論文を選択し、質問を設定して最初の抽出を開始してください。",
+      "emptyFilteredHeading": "該当するジョブはありません",
+      "emptyFilteredBody": "検索をクリアするか、別の並び順を選んでください。",
+      "questionsUnit": "件の質問",
+      "papersUnit": "件の論文",
+      "untitledJob": "無題のジョブ",
+      "paginationOf": "件中",
+      "paginationPrevious": "前へ",
+      "paginationNext": "次へ"
     }
   }
 }
