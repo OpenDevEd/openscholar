@@ -2,18 +2,18 @@
  * Extraction Module Index
  * Export all extraction-related functions
  *
- * Test and debug internals (debug.ts, debug_*.ts, testActions.ts,
- * test_runner.ts, test_automation_internal.ts, create_test_job.ts) are
- * intentionally NOT re-exported here. Each handler calls `assertNonProd`
- * at its top to block prod invocations — callers in dev still address
- * them via their full internal path (internal.extraction.debug.*, etc.).
+ * Test and debug internals (debug.ts, debug_*.ts, tests/fixtures.ts,
+ * tests/runners.ts) are intentionally NOT re-exported here. Each handler
+ * calls `assertNonProd` at its top to block prod invocations — callers in
+ * dev still address them via their full internal path
+ * (internal.extraction.debug.*, internal.extraction.tests.fixtures.*, ...).
  */
 
 // Workflows
 export { runExtractionWorkflow } from "./workflow";
 
 // Note: "use node" action files (actions.ts, workpoolActions.ts,
-// debug_pdfjs_alignment.ts, test_automation.ts) are NOT re-exported here.
+// debug_pdfjs_alignment.ts, tests/runners.ts) are NOT re-exported here.
 // Re-exporting from a non-"use node" barrel file causes the Convex bundler
 // to fail on transitive node:crypto imports. These files are registered
 // individually by the Convex bundler via their own module entries.

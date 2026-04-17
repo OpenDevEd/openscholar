@@ -10,11 +10,8 @@ describe("debug function internal registration", () => {
     "convex/extraction/debug_job_content.ts",
     "convex/extraction/debug_job_citations.ts",
     "convex/extraction/debug_pdfjs_alignment.ts",
-    "convex/extraction/testActions.ts",
-    "convex/extraction/test_runner.ts",
-    "convex/extraction/test_automation.ts",
-    "convex/extraction/test_automation_internal.ts",
-    "convex/extraction/create_test_job.ts",
+    "convex/extraction/tests/fixtures.ts",
+    "convex/extraction/tests/runners.ts",
   ];
 
   it.each(DEBUG_FILES)(
