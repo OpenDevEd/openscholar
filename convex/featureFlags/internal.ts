@@ -51,7 +51,6 @@ export const seed = internalMutation({
       { key: "extraction.reportBuilder", enabled: false, minimumTier: 20, description: "Report builder for extraction jobs" },
       { key: "extraction.start", enabled: true, minimumTier: 20, description: "Start new extraction jobs (Pro+)" },
       { key: "extraction.templates", enabled: true, minimumTier: 20, description: "Workflow template management (Pro+)" },
-      { key: "extraction.bucket_v2", enabled: true, minimumTier: 0, description: "Unified bucket-based paper selection UX" },
       { key: "credits.enabled", enabled: true, minimumTier: 0, description: "Credit system master switch" },
       { key: "credits.topups", enabled: true, minimumTier: 0, description: "On-demand credit top-up purchases" },
       { key: "subscriptions.enabled", enabled: true, minimumTier: 0, description: "Subscription/billing system master switch" },

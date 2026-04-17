@@ -666,6 +666,9 @@ Commits landed on `dev`:
 - 17ce78f T15.1 store: strip draft-job legacy fields; everything reads the bucket
 - 738d45f T14.2 server: bucket-native extractionJobSources + workflow + templates
 - 2f8da82 T15.2 legacy: delete 3-source validators, sub-caps, and orphaned types
+- d5d97ff T16.1 flag: add extraction.bucket_v2 (dark launch) + gate new-job page
+- e56fc46 T16.2 flag: flip extraction.bucket_v2 on for free+ tier
+- (T16.3) flag: remove gate + flag entry — final grep 0 hits
 
 **Client surface.** The three draft-job fields (`selectedHistoryIds`,
 `zoteroSelection`, `manualItems`) are gone; one Zustand `bucket` slice
@@ -702,10 +705,13 @@ subject was the now-deleted assertion). `TableView` select-all logic
 moved into `<SelectableList>` (zero duplication). `buildDedupeKey`
 lifted to `lib/bucket/dedupe.ts` with a Convex re-export.
 
-**Residual work.** The feature-flag rollout dance from Task 16 is
-unused here — the project is pre-release, so the bucket UX ships as
-the only UX without a gate. No `extraction.bucket_v2` flag exists;
-final grep for `bucket_v2` returns zero hits (only this log).
+**Rollout.** Task 16 ran the full dark-launch → flip → cleanup cycle
+in three atomic commits. T16.1 added the flag (disabled, enterprise tier),
+wrapped the new-job page in a `<BucketGate>` that renders a rollout
+notice when the flag resolves to false, and landed a TDD suite. T16.2
+flipped the flag on for the free tier once green. T16.3 deleted the
+gate component, the test, and the registry + seed entry — leaving the
+bucket UX as the only UX with zero flag references in source code.
 
 `npx convex typecheck` + `npx tsc --noEmit` clean after every commit.
 SN-1 / SN-2 / SN-3 pin-tests still green (public routing 28,
