@@ -51,6 +51,7 @@ import type * as extraction_pdfjs_extract from "../extraction/pdfjs_extract.js";
 import type * as extraction_prompts from "../extraction/prompts.js";
 import type * as extraction_queries from "../extraction/queries.js";
 import type * as extraction_queries__shared from "../extraction/queries/_shared.js";
+import type * as extraction_queries_insights from "../extraction/queries/insights.js";
 import type * as extraction_queries_jobs from "../extraction/queries/jobs.js";
 import type * as extraction_queries_papers from "../extraction/queries/papers.js";
 import type * as extraction_queries_results from "../extraction/queries/results.js";
@@ -190,6 +191,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/prompts": typeof extraction_prompts;
   "extraction/queries": typeof extraction_queries;
   "extraction/queries/_shared": typeof extraction_queries__shared;
+  "extraction/queries/insights": typeof extraction_queries_insights;
   "extraction/queries/jobs": typeof extraction_queries_jobs;
   "extraction/queries/papers": typeof extraction_queries_papers;
   "extraction/queries/results": typeof extraction_queries_results;
