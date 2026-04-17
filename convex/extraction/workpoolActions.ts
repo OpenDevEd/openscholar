@@ -10,12 +10,22 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import {
   calculateServerCreditsToDeduct,
+  calculateServerRawCreditCost,
   convertServerCostDollarsToCredits,
+  fetchServerPricing,
   getModel,
-  withUserCreditsBatch,
 } from "../ai/helpers";
 import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
+import {
+  captureAIGenerationBatchServer,
+  captureAIGenerationServer,
+  captureServerEvent,
+} from "../../lib/posthog-server";
+import type { AIProvider } from "../../lib/types";
+import { SERVER_AI_CONFIG } from "../ai/config";
+import { ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
+import { createError } from "../lib/errors";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { decryptApiKey } from "../lib/crypto";
 import { MIN_ABSTRACT_LENGTH } from "./content";
@@ -790,6 +800,24 @@ export const downloadAndIndexPdfAction = internalAction({
           error: "Job not found",
         };
       }
+
+      // Idempotency gate: a workpool retry that lands here after the paper
+      // was already indexed (and billed) must not re-embed or re-charge.
+      const existingPaper = await ctx.runQuery(
+        internal.extraction.queries.getPaperInternal,
+        { paperId: args.paperId },
+      );
+      if (existingPaper?.isIndexed || existingPaper?.indexingBilled) {
+        console.log(
+          `[downloadAndIndexPdfAction] paper ${args.paperId} already indexed/billed; skipping`,
+        );
+        return {
+          success: true,
+          chunksCount: 0,
+          storageId: existingPaper.storageId ?? undefined,
+        };
+      }
+
       const pdfEnabled = await ctx.runQuery(internal.extraction.queries.getPdfExtractionEnabledInternal, {});
       if (!pdfEnabled) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
@@ -873,31 +901,35 @@ export const downloadAndIndexPdfAction = internalAction({
         const embeddingCreditsToDeduct =
           convertServerCostDollarsToCredits(embeddingCostDollars);
 
-        // Credit guard: skip embedding credit deduction if job was cancelled
+        // If the job was cancelled mid-indexing, flip isIndexed but do not
+        // charge the user — preserves the existing UX decision that a cancelled
+        // job is free. If not cancelled, billing is done atomically with the
+        // isIndexed flip inside markPaperIndexed, gated on indexingBilled so
+        // workpool retries are safe.
         const freshJobForCredits = await ctx.runQuery(
           internal.extraction.queries.getJobInternal,
-          { jobId: args.jobId }
+          { jobId: args.jobId },
         );
+        const shouldBill =
+          freshJobForCredits?.status !== "cancelled" &&
+          embeddingCreditsToDeduct > 0;
         if (freshJobForCredits?.status === "cancelled") {
-          console.log(`[creditGuard] Skipping embedding credit deduction - job ${args.jobId} cancelled`);
-        } else if (embeddingCreditsToDeduct > 0) {
-          await ctx.runMutation(internal.credits.internal.deductCredits, {
-            userId: job.userId,
-            amount: embeddingCreditsToDeduct,
-            description: "AI: Extraction embedding index",
-            metadata: {
-              billingType: "extraction_embedding",
-              paperId: String(args.paperId),
-              jobId: String(args.jobId),
-              embeddingTokens: String(embeddingTokens),
-              embeddingUsdPer1m: String(EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS),
-            },
-          });
+          console.log(
+            `[creditGuard] Skipping embedding credit deduction - job ${args.jobId} cancelled`,
+          );
         }
 
         await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
           paperId: args.paperId,
           ragEntryId: ragResult.entryId,
+          billing: shouldBill
+            ? {
+                userId: job.userId,
+                jobId: args.jobId,
+                creditsToDeduct: embeddingCreditsToDeduct,
+                embeddingTokens,
+              }
+            : undefined,
         });
       }
 
@@ -986,11 +1018,57 @@ export const waitAndExtractAction = internalAction({
         };
       }
 
-      const extracted = await withUserCreditsBatch(
-        ctx,
-        job.userId,
-        `Extraction (${args.questions.length} questions)`,
-        async (pricing) => {
+      // Billing-idempotency gate: if a previous run already billed this paper
+      // and persisted results, a workpool retry must not re-charge the user.
+      // The deduction itself happens inside saveExtractionResultsAndComplete
+      // atomically with the results persist, gated on extractionBilled.
+      if (paper.extractionBilled) {
+        console.log(
+          `[waitAndExtractAction] paper ${args.paperId} already billed; skipping LLM re-run`,
+        );
+        return {
+          success: true,
+          results: [],
+          creditsUsed: 0,
+          pdfContentUsed: paper.pdfContentUsed ?? false,
+        };
+      }
+
+      // Credit pre-check so users without credits fail fast before any LLM
+      // work happens. The authoritative deduction is deferred to
+      // saveExtractionResultsAndComplete, where it runs in the same
+      // transaction as the results persist, gated on paper.extractionBilled
+      // so workpool retries cannot double-charge.
+      const operation = `Extraction (${args.questions.length} questions)`;
+      const billingUser = await ctx.runQuery(
+        internal.users.internal.getUserById,
+        { userId: job.userId },
+      );
+      if (!billingUser) {
+        throw createError(
+          "AI_UNAUTHENTICATED",
+          "Authentication required to use AI features",
+        );
+      }
+      const balance = await ctx.runQuery(
+        internal.credits.internal.getBalanceByUserId,
+        { userId: job.userId },
+      );
+      if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
+        await captureServerEvent(billingUser.clerkId, "credits_insufficient", {
+          required_credits: ESTIMATED_CREDITS_PER_QUERY,
+          available_credits: balance?.total ?? 0,
+          feature: operation,
+        });
+        throw createError(
+          "AI_INSUFFICIENT_CREDITS",
+          "Insufficient credits for AI operation",
+        );
+      }
+      const pricing = await fetchServerPricing(ctx);
+
+      const startedAt = Date.now();
+      const extracted = await (async () => {
           const model = await getModel();
           const results: ExtractionQuestionResult[] = [];
           const extractionUsages: { inputTokens: number; outputTokens: number }[] = [];
@@ -1163,16 +1241,55 @@ export const waitAndExtractAction = internalAction({
           const billedCredits = calculateServerCreditsToDeduct(totalUsage, pricing);
 
           return {
-            result: {
-              results,
-              billedCredits,
-              pdfContentUsed: anyPdfEvidenceUsed,
-            },
+            results,
+            billedCredits,
+            pdfContentUsed: anyPdfEvidenceUsed,
             totalUsage,
             trackingEntries,
           };
-        },
-      );
+      })();
+
+      // Mirror the analytics shape used elsewhere in the AI helpers so the
+      // PostHog data is unchanged after moving the credit deduction into
+      // saveExtractionResultsAndComplete.
+      const latencyMs = Date.now() - startedAt;
+      const creditContext = {
+        creditsDeducted: extracted.billedCredits,
+        creditsRawCost: calculateServerRawCreditCost(extracted.totalUsage, pricing),
+        creditsRemaining: Math.max(0, balance.total - extracted.billedCredits),
+        lifetimeCreditsUsed: balance.lifetimeUsed + extracted.billedCredits,
+      };
+      if (extracted.trackingEntries.length > 0) {
+        const enriched = extracted.trackingEntries.map((e) => ({
+          ...e,
+          ...creditContext,
+        }));
+        await captureAIGenerationBatchServer(
+          billingUser.clerkId,
+          SERVER_AI_CONFIG.provider as AIProvider,
+          SERVER_AI_CONFIG.model,
+          enriched,
+        );
+      } else {
+        const hasTokens =
+          (extracted.totalUsage.inputTokens ?? 0) > 0 ||
+          (extracted.totalUsage.outputTokens ?? 0) > 0;
+        await captureAIGenerationServer({
+          distinctId: billingUser.clerkId,
+          provider: SERVER_AI_CONFIG.provider as AIProvider,
+          modelId: SERVER_AI_CONFIG.model,
+          feature: operation,
+          usage: {
+            inputTokens: extracted.totalUsage.inputTokens ?? 0,
+            outputTokens: extracted.totalUsage.outputTokens ?? 0,
+          },
+          latencyMs,
+          input: `Batch: ${operation}`,
+          output: hasTokens ? "Completed (aggregated)" : "No items succeeded",
+          isError: !hasTokens,
+          ...creditContext,
+        });
+      }
 
       return {
         success: true,

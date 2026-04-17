@@ -19,6 +19,13 @@ async function seedJob(
       updatedAt: now,
       lastLoginAt: now,
     });
+    await ctx.db.insert("credits", {
+      userId,
+      freeBalance: 0,
+      paidBalance: 1000,
+      lifetimeUsed: 0,
+      lastUpdatedAt: now,
+    });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       sourceType: "history" as const,

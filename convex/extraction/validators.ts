@@ -316,11 +316,13 @@ export const extractionPaperValidator = v.object({
   ragEntryId: v.optional(v.string()),
   isIndexed: v.optional(v.boolean()),
   indexedAt: v.optional(v.number()),
+  indexingBilled: v.optional(v.boolean()),
   workId: v.optional(v.string()),
   startedAt: v.optional(v.number()),
   completedAt: v.optional(v.number()),
   errorMessage: v.optional(v.string()),
   creditsUsed: v.optional(v.number()),
+  extractionBilled: v.optional(v.boolean()),
   pdfContentUsed: v.optional(v.boolean()),
 });
 

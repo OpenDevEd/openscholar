@@ -462,6 +462,10 @@ export default defineSchema({
     ragEntryId: v.optional(v.string()), // RAG component entry ID (actual entry ID from callback)
     isIndexed: v.optional(v.boolean()), // true when PDF was successfully indexed in RAG
     indexedAt: v.optional(v.number()),
+    // Idempotency flag: true once embedding credits have been deducted.
+    // Prevents double-billing if indexPaperAction is retried after a crash
+    // that occurred between rag.add() and the credit-deduction mutation.
+    indexingBilled: v.optional(v.boolean()),
 
     // Processing metadata
     workId: v.optional(v.string()), // Workpool work ID for tracking
@@ -471,6 +475,11 @@ export default defineSchema({
 
     // Cost tracking
     creditsUsed: v.optional(v.number()),
+    // Idempotency flag: true once LLM extraction credits have been deducted
+    // atomically with persisting extractionResults. Prevents double-billing
+    // if saveExtractionResultsAndComplete is retried (e.g. OCC conflict) or
+    // if handleExtractionComplete fires twice for the same paper.
+    extractionBilled: v.optional(v.boolean()),
 
     // Content usage tracking
     pdfContentUsed: v.optional(v.boolean()), // true if PDF content was actually used for extraction (any question)

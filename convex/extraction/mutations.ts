@@ -1529,16 +1529,49 @@ export const markPaperIndexed = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
     ragEntryId: v.optional(v.string()),
+    // When provided, the embedding credits are deducted atomically with the
+    // isIndexed flip. Gated on `indexingBilled` so a workpool retry that
+    // replays the entire indexing action cannot re-charge the user.
+    billing: v.optional(
+      v.object({
+        userId: v.id("users"),
+        jobId: v.id("extractionJobs"),
+        creditsToDeduct: v.number(),
+        embeddingTokens: v.number(),
+      }),
+    ),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    const updates: Record<string, unknown> = {
+    const paper = await ctx.db.get("extractionPapers", args.paperId);
+    if (!paper) return null;
+
+    const updates: Partial<Doc<"extractionPapers">> = {
       isIndexed: true,
       indexedAt: Date.now(),
     };
 
     if (args.ragEntryId) {
       updates.ragEntryId = args.ragEntryId;
+    }
+
+    if (
+      args.billing &&
+      !paper.indexingBilled &&
+      args.billing.creditsToDeduct > 0
+    ) {
+      await ctx.runMutation(internal.credits.internal.deductCredits, {
+        userId: args.billing.userId,
+        amount: args.billing.creditsToDeduct,
+        description: "AI: Extraction embedding index",
+        metadata: {
+          billingType: "extraction_embedding",
+          paperId: String(args.paperId),
+          jobId: String(args.billing.jobId),
+          embeddingTokens: String(args.billing.embeddingTokens),
+        },
+      });
+      updates.indexingBilled = true;
     }
 
     await ctx.db.patch("extractionPapers", args.paperId, updates);
@@ -2199,6 +2232,16 @@ export const saveExtractionResultsAndComplete = internalMutation({
       return;
     }
 
+    // Billing-idempotency guard: if we already persisted results + billed this
+    // paper, a re-run from a late onComplete or OCC retry must not re-insert
+    // results or re-charge the user.
+    if (paper.status === "completed" || paper.extractionBilled) {
+      console.log(
+        `[saveExtractionResultsAndComplete] Skipping ${args.paperId}; already completed/billed`,
+      );
+      return;
+    }
+
     // Save extraction results
     for (const result of args.results.filter(Boolean)) {
       await ctx.db.insert("extractionResults", {
@@ -2215,11 +2258,29 @@ export const saveExtractionResultsAndComplete = internalMutation({
       });
     }
 
+    // Deduct LLM credits atomically with persisting results. This transaction
+    // either flips extractionBilled=true AND deducts, or neither. A retried
+    // mutation (OCC) reads the committed extractionBilled=true and short-
+    // circuits above.
+    if (args.creditsUsed > 0 && parentJob) {
+      await ctx.runMutation(internal.credits.internal.deductCredits, {
+        userId: parentJob.userId,
+        amount: args.creditsUsed,
+        description: `AI: Extraction (${args.results.length} questions)`,
+        metadata: {
+          billingType: "extraction_llm",
+          paperId: String(args.paperId),
+          jobId: String(paper.jobId),
+        },
+      });
+    }
+
     // Mark paper as completed
     const patchData: Partial<Doc<"extractionPapers">> = {
       status: "completed",
       completedAt: Date.now(),
       creditsUsed: args.creditsUsed,
+      extractionBilled: true,
     };
 
     if (args.storageId) {
