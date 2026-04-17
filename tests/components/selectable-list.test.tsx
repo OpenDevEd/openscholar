@@ -167,6 +167,52 @@ describe("<SelectableList>", () => {
     expect(onToggleAll).toHaveBeenLastCalledWith(false);
   });
 
+  it("shift-click with onToggleRange defined calls it once with the batched items", () => {
+    const onToggleRange = vi.fn();
+    const onToggle = vi.fn();
+    render(
+      <SelectableList<Row>
+        items={rows}
+        keyOf={(r) => r.id}
+        isSelected={() => false}
+        onToggle={onToggle}
+        onToggleRange={onToggleRange}
+        onToggleAll={() => {}}
+        renderRow={(r) => <span>{r.title}</span>}
+      />,
+    );
+    fireEvent.click(screen.getByText("Alpha"));
+    fireEvent.click(screen.getByText("Delta"), { shiftKey: true });
+    expect(onToggleRange).toHaveBeenCalledTimes(1);
+    const [rangeItems, next] = onToggleRange.mock.calls[0];
+    expect(rangeItems.map((r: Row) => r.id)).toEqual(["a", "b", "c", "d"]);
+    expect(next).toBe(true);
+    // Single-click still uses onToggle; shift-range does NOT fan out to onToggle.
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onToggle).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "a" }),
+      true,
+    );
+  });
+
+  it("shift-click without onToggleRange falls back to per-item onToggle", () => {
+    const onToggle = vi.fn();
+    render(
+      <SelectableList<Row>
+        items={rows}
+        keyOf={(r) => r.id}
+        isSelected={() => false}
+        onToggle={onToggle}
+        onToggleAll={() => {}}
+        renderRow={(r) => <span>{r.title}</span>}
+      />,
+    );
+    fireEvent.click(screen.getByText("Alpha"));
+    fireEvent.click(screen.getByText("Delta"), { shiftKey: true });
+    // 1 single-click + 4 range items (all currently unselected, target=true).
+    expect(onToggle).toHaveBeenCalledTimes(1 + 4);
+  });
+
   it("shift-click across already-selected rows deselects them (next=false)", () => {
     const onChange = vi.fn();
     render(

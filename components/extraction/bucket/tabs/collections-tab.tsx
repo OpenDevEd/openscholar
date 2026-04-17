@@ -150,6 +150,11 @@ function CollectionItems({
         onToggle={(item, next) =>
           next ? onAdd([item], collectionId) : onRemove([item], collectionId)
         }
+        onToggleRange={(rangeItems, next) =>
+          next
+            ? onAdd(rangeItems, collectionId)
+            : onRemove(rangeItems, collectionId)
+        }
         onToggleAll={(next) =>
           next ? onAdd(items, collectionId) : onRemove(items, collectionId)
         }

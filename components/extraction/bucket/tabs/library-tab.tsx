@@ -49,6 +49,12 @@ export function LibraryTab() {
     else removeMany(bucketItems.map((b) => b.bucketKey));
   };
 
+  const toggleRange = (rows: LibItem[], next: boolean) => {
+    const bucketItems = rows.map((r) => fromLibraryItem(r));
+    if (next) addMany(bucketItems);
+    else removeMany(bucketItems.map((b) => b.bucketKey));
+  };
+
   return (
     <div className="space-y-4">
       <form
@@ -88,6 +94,7 @@ export function LibraryTab() {
           keyOf={(item) => item._id}
           isSelected={isSelected}
           onToggle={toggle}
+          onToggleRange={toggleRange}
           onToggleAll={toggleAll}
           renderRow={(item) => (
             <div>

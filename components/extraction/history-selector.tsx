@@ -83,6 +83,11 @@ export function HistorySelector() {
         if (next) addMany([bucketItem]);
         else removeMany([bucketItem.bucketKey]);
       }}
+      onToggleRange={(entries, next) => {
+        const bucketItems = entries.map((e) => toBucketItem(e));
+        if (next) addMany(bucketItems);
+        else removeMany(bucketItems.map((b) => b.bucketKey));
+      }}
       onToggleAll={(next) => {
         const bucketItems = searchHistory.map((e) => toBucketItem(e));
         if (next) addMany(bucketItems);

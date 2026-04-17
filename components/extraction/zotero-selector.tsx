@@ -383,6 +383,9 @@ export function ZoteroSelector() {
           onToggle={(item, next) =>
             next ? addItems([item]) : removeItems([item])
           }
+          onToggleRange={(rangeItems, next) =>
+            next ? addItems(rangeItems) : removeItems(rangeItems)
+          }
           onToggleAll={(next) =>
             next ? addItems(flattenedItems) : removeItems(flattenedItems)
           }

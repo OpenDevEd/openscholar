@@ -8,6 +8,14 @@ export interface SelectableListProps<T> {
   items: T[];
   isSelected: (t: T) => boolean;
   onToggle: (t: T, next: boolean) => void;
+  /**
+   * Optional batch handler for shift-click ranges. When defined, a
+   * shift-range collects every item that needs to change state and
+   * issues a single call — one store write instead of N — which avoids
+   * flooding Zustand subscribers with N re-renders inside one user
+   * interaction. Fall back to N `onToggle` calls when undefined.
+   */
+  onToggleRange?: (items: T[], next: boolean) => void;
   onToggleAll: (next: boolean) => void;
   renderRow: (t: T) => ReactNode;
   keyOf: (t: T) => string;
@@ -20,6 +28,7 @@ export function SelectableList<T>({
   items,
   isSelected,
   onToggle,
+  onToggleRange,
   onToggleAll,
   renderRow,
   keyOf,
@@ -58,10 +67,20 @@ export function SelectableList<T>({
       // match the target, so re-entry into an existing selection doesn't
       // flip rows off unexpectedly.
       const target = !isSelected(current);
-      for (let i = from; i <= to; i++) {
-        const item = items[i];
-        if (!item) continue;
-        if (isSelected(item) !== target) onToggle(item, target);
+      if (onToggleRange) {
+        const batch: T[] = [];
+        for (let i = from; i <= to; i++) {
+          const item = items[i];
+          if (!item) continue;
+          if (isSelected(item) !== target) batch.push(item);
+        }
+        if (batch.length > 0) onToggleRange(batch, target);
+      } else {
+        for (let i = from; i <= to; i++) {
+          const item = items[i];
+          if (!item) continue;
+          if (isSelected(item) !== target) onToggle(item, target);
+        }
       }
     } else {
       onToggle(current, !isSelected(current));
