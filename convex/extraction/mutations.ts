@@ -1213,98 +1213,122 @@ export const cleanupFailedPaperStorage = internalMutation({
   },
 });
 
+type BackfillAccumulator = {
+  totalPapers: number;
+  totalAnswered: number;
+  groundedCount: number;
+  bestEffortCount: number;
+  insufficientEvidenceCount: number;
+  extractionErrorCount: number;
+  confidenceSum: number;
+  confidenceCount: number;
+  highConfidenceCount: number;
+  mediumConfidenceCount: number;
+  lowConfidenceCount: number;
+  unknownConfidenceCount: number;
+};
+
+function emptyBackfillAccumulator(): BackfillAccumulator {
+  return {
+    totalPapers: 0,
+    totalAnswered: 0,
+    groundedCount: 0,
+    bestEffortCount: 0,
+    insufficientEvidenceCount: 0,
+    extractionErrorCount: 0,
+    confidenceSum: 0,
+    confidenceCount: 0,
+    highConfidenceCount: 0,
+    mediumConfidenceCount: 0,
+    lowConfidenceCount: 0,
+    unknownConfidenceCount: 0,
+  };
+}
+
 /**
  * Backfill pre-aggregated stats for a legacy completed job.
  * Idempotent: skips if stats already exist.
- * Scheduled from createExtractionReportSnapshot when stats are missing.
+ *
+ * Replaces the previous O(Q × P × R) nested scan (≤10k per-paper
+ * result queries for a 50-question × 500-paper job) with a single
+ * indexed by_job read over `extractionResults` bucketed in JS.
  */
 export const backfillJobStats = internalMutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    // Idempotent: skip if stats already exist
     const existingStats = await ctx.db
       .query("extractionJobStats")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .first();
     if (existingStats) return null;
 
-    // Cardinality: ~5-20 questions per extraction job
-    const questions = await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .order("asc")
-      .collect();
+    const [questions, papers, allResults] = await Promise.all([
+      // Cardinality: ~5-20 questions per extraction job
+      ctx.db
+        .query("extractionQuestions")
+        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+        .order("asc")
+        .collect(),
+      ctx.db
+        .query("extractionPapers")
+        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+        .take(MAX_PAPERS_PER_JOB),
+      // Cardinality: ≤ papers × questions. Bounded by MAX_PAPERS_PER_JOB × 20.
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+        .take(MAX_PAPERS_PER_JOB * 20),
+    ]);
 
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_PAPERS_PER_JOB);
+    const processablePapers = papers.filter((p) => p.processable !== false);
 
+    // Bucket results by (questionKey, paperId) for O(1) lookup in the
+    // aggregation loop. A single indexed scan replaces the prior O(Q·P)
+    // per-paper result queries.
+    const resultsByKey = new Map<string, Doc<"extractionResults">>();
+    for (const row of allResults) {
+      resultsByKey.set(`${row.questionKey}:${row.paperId}`, row);
+    }
+
+    const now = Date.now();
     for (const question of questions) {
-      let totalPapers = 0;
-      let totalAnswered = 0;
-      let groundedCount = 0;
-      let bestEffortCount = 0;
-      let insufficientEvidenceCount = 0;
-      let extractionErrorCount = 0;
-      let confidenceSum = 0;
-      let confidenceCount = 0;
-      let highConfidenceCount = 0;
-      let mediumConfidenceCount = 0;
-      let lowConfidenceCount = 0;
-      let unknownConfidenceCount = 0;
-
-      for (const paper of papers) {
-        if (paper.processable === false) continue;
-        // Cardinality: ~5-20 results per paper
-        const results = await ctx.db
-          .query("extractionResults")
-          .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
-          .collect();
-        const result = results.find((r) => r.questionKey === question.key);
+      const acc = emptyBackfillAccumulator();
+      for (const paper of processablePapers) {
+        acc.totalPapers += 1;
+        const result = resultsByKey.get(`${question.key}:${paper._id}`);
         if (!result) {
-          totalPapers += 1;
-          unknownConfidenceCount += 1;
+          acc.unknownConfidenceCount += 1;
           continue;
         }
 
-        totalPapers += 1;
         const isAnswered = result.answer !== null && result.answer !== undefined;
-        totalAnswered += isAnswered ? 1 : 0;
-        groundedCount += result.citationStatus === "grounded" ? 1 : 0;
-        bestEffortCount += result.citationStatus === "best_effort" ? 1 : 0;
-        insufficientEvidenceCount += result.citationStatus === "insufficient_evidence" ? 1 : 0;
-        extractionErrorCount += result.citationStatus === "extraction_error" ? 1 : 0;
+        if (isAnswered) acc.totalAnswered += 1;
+        if (result.citationStatus === "grounded") acc.groundedCount += 1;
+        else if (result.citationStatus === "best_effort") acc.bestEffortCount += 1;
+        else if (result.citationStatus === "insufficient_evidence")
+          acc.insufficientEvidenceCount += 1;
+        else if (result.citationStatus === "extraction_error")
+          acc.extractionErrorCount += 1;
 
-        const conf = typeof result.confidence === "number" ? result.confidence : undefined;
-        if (conf !== undefined) {
-          confidenceSum += conf;
-          confidenceCount += 1;
-          if (conf >= 0.8) highConfidenceCount += 1;
-          else if (conf >= 0.5) mediumConfidenceCount += 1;
-          else lowConfidenceCount += 1;
+        const conf =
+          typeof result.confidence === "number" ? result.confidence : undefined;
+        if (conf === undefined) {
+          acc.unknownConfidenceCount += 1;
         } else {
-          unknownConfidenceCount += 1;
+          acc.confidenceSum += conf;
+          acc.confidenceCount += 1;
+          if (conf >= 0.8) acc.highConfidenceCount += 1;
+          else if (conf >= 0.5) acc.mediumConfidenceCount += 1;
+          else acc.lowConfidenceCount += 1;
         }
       }
 
       await ctx.db.insert("extractionJobStats", {
         jobId: args.jobId,
         questionKey: question.key,
-        totalPapers,
-        totalAnswered,
-        groundedCount,
-        bestEffortCount,
-        insufficientEvidenceCount,
-        extractionErrorCount,
-        confidenceSum,
-        confidenceCount,
-        highConfidenceCount,
-        mediumConfidenceCount,
-        lowConfidenceCount,
-        unknownConfidenceCount,
-        updatedAt: Date.now(),
+        ...acc,
+        updatedAt: now,
       });
     }
 
