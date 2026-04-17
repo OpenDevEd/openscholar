@@ -1,0 +1,167 @@
+import { describe, expect, test } from "vitest";
+import type { Id } from "@/convex/_generated/dataModel";
+import {
+  fromSearchHistoryEntry,
+  fromLibraryItem,
+  fromCollectionItem,
+  fromZoteroItem,
+  fromUpload,
+} from "@/lib/bucket/bucketItem";
+
+function libraryDoc(overrides: {
+  _id?: Id<"libraryItems">;
+  openalexId?: string;
+  title?: string;
+  authors?: string;
+  doi?: string;
+  publicationYear?: number;
+  abstract?: string;
+} = {}) {
+  return {
+    _id: (overrides._id ?? "lib_1") as Id<"libraryItems">,
+    _creationTime: 0,
+    userId: "user_1" as Id<"users">,
+    openalexId: overrides.openalexId ?? "https://openalex.org/W999",
+    rating: 0,
+    title: overrides.title ?? "A Library Item",
+    authors: overrides.authors,
+    doi: overrides.doi,
+    abstract: overrides.abstract,
+    publicationYear: overrides.publicationYear,
+    searchableText: "",
+    savedAt: 0,
+    updatedAt: 0,
+  };
+}
+
+describe("lib/bucket/bucketItem normalizers", () => {
+  test("fromSearchHistoryEntry keys on openalexId with source=history", () => {
+    const item = fromSearchHistoryEntry(
+      {
+        openalexId: "https://openalex.org/W1",
+        title: "Paper One",
+        authors: ["Alice", "Bob"],
+        year: 2021,
+      },
+      "history_abc",
+    );
+    expect(item.source).toBe("history");
+    expect(item.bucketKey).toBe("openalex:W1");
+    expect(item.sourceRefId).toBe("history_abc");
+    expect(item.title).toBe("Paper One");
+    expect(item.authors).toEqual(["Alice", "Bob"]);
+    expect(item.year).toBe(2021);
+    expect(item.status).toBe("ready");
+  });
+
+  test("fromLibraryItem keys on openalexId, flattens authors string, source=library", () => {
+    const item = fromLibraryItem(
+      libraryDoc({
+        openalexId: "https://openalex.org/W5",
+        authors: "Alice Smith, Bob Jones",
+        doi: "10.1/lib",
+        title: "Lib Paper",
+        publicationYear: 2020,
+      }),
+    );
+    expect(item.source).toBe("library");
+    expect(item.bucketKey).toBe("openalex:W5");
+    expect(item.authors).toEqual(["Alice Smith", "Bob Jones"]);
+    expect(item.sourceRefId).toBe("lib_1");
+    expect(item.title).toBe("Lib Paper");
+    expect(item.year).toBe(2020);
+    expect(item.status).toBe("ready");
+  });
+
+  test("fromLibraryItem handles empty authors", () => {
+    const item = fromLibraryItem(libraryDoc({ authors: undefined }));
+    expect(item.authors).toEqual([]);
+  });
+
+  test("fromCollectionItem matches library shape plus collection source + meta", () => {
+    const libDoc = libraryDoc({ openalexId: "W9", title: "Col Paper" });
+    const collectionId = "col_42" as Id<"collections">;
+    const item = fromCollectionItem(libDoc, collectionId);
+    expect(item.source).toBe("collection");
+    expect(item.bucketKey).toBe("openalex:W9");
+    expect(item.sourceMeta).toEqual({ collectionId });
+  });
+
+  test("fromZoteroItem keys on DOI when present, source=zotero with meta", () => {
+    const item = fromZoteroItem(
+      {
+        itemKey: "ZOT1",
+        title: "Z Paper",
+        authors: ["A", "B"],
+        doi: "10.1/zot",
+        year: 2023,
+      },
+      { libraryType: "group", groupId: "g1", collectionKey: "c1" },
+    );
+    expect(item.source).toBe("zotero");
+    expect(item.bucketKey).toBe("doi:10.1/zot");
+    expect(item.sourceRefId).toBe("ZOT1");
+    expect(item.sourceMeta).toEqual({
+      libraryType: "group",
+      groupId: "g1",
+      collectionKey: "c1",
+    });
+  });
+
+  test("fromZoteroItem falls back to title+year key when no DOI", () => {
+    const item = fromZoteroItem(
+      { itemKey: "ZOT2", title: "Untitled", authors: [], year: 2024 },
+      { libraryType: "user" },
+    );
+    expect(item.bucketKey).toBe("title:untitled#2024");
+  });
+
+  test("fromUpload uses DOI key when supplied, status stays uploading", () => {
+    const item = fromUpload({
+      uploadId: "up_1",
+      title: "Upload Paper",
+      doi: "10.1/up",
+    });
+    expect(item.source).toBe("upload");
+    expect(item.bucketKey).toBe("doi:10.1/up");
+    expect(item.status).toBe("uploading");
+    expect(item.sourceRefId).toBe("up_1");
+  });
+
+  test("fromUpload uses a stable upload:<id> key when no DOI", () => {
+    const item = fromUpload({
+      uploadId: "up_2",
+      title: "Some PDF",
+    });
+    expect(item.bucketKey).toBe("upload:up_2");
+    expect(item.source).toBe("upload");
+  });
+
+  test("fromUpload transitions to ready when storageId provided", () => {
+    const storageId = "kg2_abc" as unknown as Id<"_storage">;
+    const item = fromUpload({
+      uploadId: "up_3",
+      title: "Done PDF",
+      storageId,
+      status: "ready",
+    });
+    expect(item.status).toBe("ready");
+    expect(item.storageId).toBe(storageId);
+  });
+
+  test("cross-source dedup: library + zotero share doi key", () => {
+    const lib = fromLibraryItem(
+      libraryDoc({ openalexId: "", doi: "10.1/shared", authors: "" }),
+    );
+    const zot = fromZoteroItem(
+      { itemKey: "Z", title: lib.title, authors: [], doi: "10.1/shared" },
+      { libraryType: "user" },
+    );
+    // library has openalexId, so key would be openalex:... — reset that case
+    // by dropping the openalexId explicitly to force DOI fallback.
+    const libNoOa = fromLibraryItem(
+      libraryDoc({ openalexId: "", doi: "10.1/shared", authors: "" }),
+    );
+    expect(libNoOa.bucketKey).toBe(zot.bucketKey);
+  });
+});
