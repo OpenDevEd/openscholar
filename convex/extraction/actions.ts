@@ -1,199 +1,78 @@
 /**
- * Extraction Actions
- * Fetch papers from OpenAlex
+ * Extraction Actions — fetch papers from OpenAlex.
  *
- * No `"use node"` directive: this file uses only global `fetch` +
+ * No `"use node"` directive: this action uses only global `fetch` +
  * `URLSearchParams` (available in the default Convex runtime) and pure
- * helpers. Registering in the default runtime lets v8 code import from
- * here without a runtime boundary.
+ * helpers lifted to `lib/openalex/`.
  */
 
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import type { PaperData } from "./types";
 import { searchFiltersValidator } from "./validators";
-import { reconstructAbstract } from "../../lib/openalex/reconstruct-abstract";
+import { buildOpenAlexSearchParams } from "../../lib/openalex/search-params";
+import { mapOpenAlexWorkToPaperData } from "../../lib/openalex/work-mapper";
 
-// Fetch papers from OpenAlex via HTTP API with abstract support
+const OPENALEX_WORKS_URL = "https://api.openalex.org/works";
+
 export const fetchPapersFromHistory = internalAction({
   args: {
     searchFilters: searchFiltersValidator,
   },
-  returns: v.array(v.object({
-    openalexId: v.string(),
-    title: v.string(),
-    doi: v.optional(v.string()),
-    publicationYear: v.optional(v.number()),
-    abstract: v.optional(v.string()),
-    authors: v.optional(v.array(v.string())),
-    pdfUrl: v.optional(v.string()),
-    isOpenAccess: v.optional(v.boolean()),
-  })),
-  handler: async (ctx, args): Promise<PaperData[]> => {
-    const filters = args.searchFilters as {
-      query: string;
-      field?: string;
-      yearRange?: [number, number];
-      dateRange?: { from?: string; to?: string };
-      sortBy?: string;
-      selectedRegions?: string[];
-      selectedCountryFocus?: string[];
-      reviewFilter?: boolean;
-      searchField?: string;
-      citesItemId?: string;
-      citedByItemId?: string;
-      relatedToItemId?: string;
-    };
+  returns: v.array(
+    v.object({
+      openalexId: v.string(),
+      title: v.string(),
+      doi: v.optional(v.string()),
+      publicationYear: v.optional(v.number()),
+      abstract: v.optional(v.string()),
+      authors: v.optional(v.array(v.string())),
+      pdfUrl: v.optional(v.string()),
+      isOpenAccess: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (_ctx, args): Promise<PaperData[]> => {
+    const filters = args.searchFilters as Parameters<
+      typeof buildOpenAlexSearchParams
+    >[0];
+    const searchParams = buildOpenAlexSearchParams(filters);
 
-    const baseUrl = "https://api.openalex.org/works";
-    const searchParams = new URLSearchParams();
-
-    // Add search query with field support
-    if (filters.query) {
-      if (filters.searchField === "title_and_abstract") {
-        searchParams.set("filter", `title_and_abstract.search:${filters.query}`);
-      } else if (filters.searchField === "title") {
-        searchParams.set("filter", `title.search:${filters.query}`);
-      } else if (filters.searchField === "abstract") {
-        searchParams.set("filter", `abstract.search:${filters.query}`);
-      } else if (filters.searchField === "fulltext") {
-        searchParams.set("filter", `fulltext.search:${filters.query}`);
-      } else if (filters.searchField === "display_name") {
-        searchParams.set("filter", `display_name.search:${filters.query}`);
-      } else {
-        searchParams.set("search", filters.query);
-      }
-    }
-
-    const filterParts: string[] = [];
-    const existingFilter = searchParams.get("filter");
-    if (existingFilter) {
-      filterParts.push(existingFilter);
-    }
-
-    // Add year range filter
-    if (filters.yearRange && !filters.dateRange?.from && !filters.dateRange?.to) {
-      filterParts.push(
-        `publication_year:${filters.yearRange[0]}-${filters.yearRange[1]}`
+    // CORR-02: fail loudly when OPENALEX_CONTACT_EMAIL isn't configured —
+    // OpenAlex polite-pool requires a contact address in the UA header.
+    const contactEmail = process.env.OPENALEX_CONTACT_EMAIL;
+    if (!contactEmail) {
+      throw new Error(
+        "OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.",
       );
     }
 
-    if (filters.dateRange?.from) {
-      filterParts.push(`from_publication_date:${filters.dateRange.from}`);
-    }
-    if (filters.dateRange?.to) {
-      filterParts.push(`to_publication_date:${filters.dateRange.to}`);
-    }
+    const url = `${OPENALEX_WORKS_URL}?${searchParams.toString()}`;
+    console.log(`[fetchPapersFromHistory] Fetching: ${url}`);
 
-    if (filters.reviewFilter) {
-      filterParts.push("type:review");
-    }
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": `OpenAlex-Count/1.0 (mailto:${contactEmail})`,
+        Accept: "application/json",
+      },
+    });
 
-    if (filters.selectedCountryFocus && filters.selectedCountryFocus.length > 0) {
-      filterParts.push(`countries:${filters.selectedCountryFocus.join("|")}`);
-    }
-
-    if (filters.selectedRegions && filters.selectedRegions.length > 0) {
-      filterParts.push(`regions:${filters.selectedRegions.join("|")}`);
-    }
-
-    if (filters.citesItemId) {
-      const clean = filters.citesItemId.startsWith("https://openalex.org/")
-        ? filters.citesItemId
-        : `https://openalex.org/${filters.citesItemId}`;
-      filterParts.push(`cites:${clean}`);
-    }
-    if (filters.citedByItemId) {
-      const clean = filters.citedByItemId.startsWith("https://openalex.org/")
-        ? filters.citedByItemId
-        : `https://openalex.org/${filters.citedByItemId}`;
-      filterParts.push(`cited_by:${clean}`);
-    }
-    if (filters.relatedToItemId) {
-      const clean = filters.relatedToItemId.startsWith("https://openalex.org/")
-        ? filters.relatedToItemId
-        : `https://openalex.org/${filters.relatedToItemId}`;
-      filterParts.push(`related_to:${clean}`);
-    }
-
-    if (filterParts.length > 0) {
-      searchParams.set("filter", filterParts.join(","));
-    }
-
-    // Add sorting
-    if (filters.sortBy) {
-      const [field, order] = filters.sortBy.split(":");
-      searchParams.set("sort", `${field}:${order || "desc"}`);
-    }
-
-    // Get 200 papers with abstracts
-    searchParams.set("per-page", "200");
-
-    
-
-    const papers: PaperData[] = [];
-
-    try {
-      console.log(
-        `[fetchPapersFromHistory] Fetching: ${baseUrl}?${searchParams.toString()}`
+    if (!response.ok) {
+      throw new Error(
+        `OpenAlex API error: ${response.status} ${response.statusText}`,
       );
-
-      // CORR-02: Fail loudly when OPENALEX_CONTACT_EMAIL is not configured
-      const contactEmail = process.env.OPENALEX_CONTACT_EMAIL;
-      if (!contactEmail) {
-        throw new Error(
-          "OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard."
-        );
-      }
-
-      const response = await fetch(`${baseUrl}?${searchParams.toString()}`, {
-        headers: {
-          "User-Agent": `OpenAlex-Count/1.0 (mailto:${contactEmail})`,
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `OpenAlex API error: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-
-      for (const work of data.results || []) {
-        // Extract abstract from inverted index if available
-        let abstract: string | undefined;
-        if (work.abstract_inverted_index) {
-          abstract = reconstructAbstract(work.abstract_inverted_index);
-        }
-
-        papers.push({
-          openalexId: work.id?.replace("https://openalex.org/", "") || "",
-          title: work.display_name || "Untitled",
-          doi: work.doi || undefined,
-          publicationYear: work.publication_year || undefined,
-          abstract,
-          authors:
-            work.authorships
-              ?.map((a: { author?: { display_name?: string } }) => a.author?.display_name)
-              .filter(Boolean) || [],
-          pdfUrl: work.open_access?.oa_url || undefined,
-          isOpenAccess: work.open_access?.is_oa || false,
-        });
-      }
-
-      console.log(`[fetchPapersFromHistory] Fetched ${papers.length} papers`);
-      const withAbstracts = papers.filter((p) => p.abstract).length;
-      console.log(
-        `[fetchPapersFromHistory] Papers with abstracts: ${withAbstracts}/${papers.length}`
-      );
-
-      return papers;
-    } catch (error) {
-      console.error(`[fetchPapersFromHistory] Error:`, error);
-      throw error;
     }
+
+    const data = (await response.json()) as { results?: unknown[] };
+    const papers = (data.results ?? []).map((work) =>
+      mapOpenAlexWorkToPaperData(work as Parameters<typeof mapOpenAlexWorkToPaperData>[0]),
+    );
+
+    console.log(`[fetchPapersFromHistory] Fetched ${papers.length} papers`);
+    const withAbstracts = papers.filter((p) => p.abstract).length;
+    console.log(
+      `[fetchPapersFromHistory] Papers with abstracts: ${withAbstracts}/${papers.length}`,
+    );
+
+    return papers;
   },
 });
-
