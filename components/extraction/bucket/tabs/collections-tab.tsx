@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useConvex, useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -101,11 +101,20 @@ function CollectionItems({
   onAdd: (items: LibItem[], collectionId: Id<"collections">) => void;
   onRemove: (items: LibItem[], collectionId: Id<"collections">) => void;
 }) {
+  const convex = useConvex();
   const list = usePaginatedQuery(
     api.extraction.sources.collections.listItems,
     { collectionId },
     { initialNumItems: 30 },
   );
+
+  const selectAllAcross = async () => {
+    const res = await convex.query(
+      api.extraction.sources.collections.listAllItems,
+      { collectionId },
+    );
+    onAdd(res.items, collectionId);
+  };
 
   const isSelected = useMemo(
     () => (item: LibItem) => {
@@ -158,6 +167,8 @@ function CollectionItems({
         onToggleAll={(next) =>
           next ? onAdd(items, collectionId) : onRemove(items, collectionId)
         }
+        onSelectAllAcross={selectAllAcross}
+        hasMore={list.status === "CanLoadMore"}
         renderRow={(item) => (
           <div>
             <p className="font-medium text-sm truncate">{item.title}</p>

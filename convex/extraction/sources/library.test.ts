@@ -134,3 +134,50 @@ describe("extraction.sources.library.list", () => {
     expect(otherRes.page[0].title).toBe("Not Mine");
   });
 });
+
+describe("extraction.sources.library.listAllIds", () => {
+  it("returns every item for the authed user when under the cap", async () => {
+    const t = convexTest(schema);
+    await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(
+      api.extraction.sources.library.listAllIds,
+      {},
+    );
+    expect(res.items).toHaveLength(3);
+    expect(res.truncated).toBe(false);
+    expect(res.items.every((r) => r.userId !== undefined)).toBe(true);
+  });
+
+  it("filters via search_library when a query is supplied", async () => {
+    const t = convexTest(schema);
+    await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(
+      api.extraction.sources.library.listAllIds,
+      { query: "crispr" },
+    );
+    expect(res.items).toHaveLength(1);
+    expect(res.items[0].title).toBe("CRISPR Guide");
+    expect(res.truncated).toBe(false);
+  });
+
+  it("scopes to the authed user — excludes other users' rows", async () => {
+    const t = convexTest(schema);
+    await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(
+      api.extraction.sources.library.listAllIds,
+      {},
+    );
+    expect(res.items.every((r) => r.title !== "Not Mine")).toBe(true);
+  });
+
+  it("rejects unauthenticated callers", async () => {
+    const t = convexTest(schema);
+    await seed(t);
+    await expect(
+      t.query(api.extraction.sources.library.listAllIds, {}),
+    ).rejects.toThrow();
+  });
+});

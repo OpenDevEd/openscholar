@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface SelectableListProps<T> {
@@ -17,6 +19,15 @@ export interface SelectableListProps<T> {
    */
   onToggleRange?: (items: T[], next: boolean) => void;
   onToggleAll: (next: boolean) => void;
+  /**
+   * Optional "select everything that matches across pages" hook. When
+   * defined AND the current page is fully selected AND `hasMore` is
+   * true, the list renders a banner offering to stage every matching
+   * item server-wide. The handler is responsible for fetching and
+   * staging; SelectableList only drives its disabled/loading state.
+   */
+  onSelectAllAcross?: () => Promise<void> | void;
+  hasMore?: boolean;
   renderRow: (t: T) => ReactNode;
   keyOf: (t: T) => string;
   className?: string;
@@ -30,6 +41,8 @@ export function SelectableList<T>({
   onToggle,
   onToggleRange,
   onToggleAll,
+  onSelectAllAcross,
+  hasMore,
   renderRow,
   keyOf,
   className,
@@ -37,6 +50,7 @@ export function SelectableList<T>({
   emptyState,
 }: SelectableListProps<T>) {
   const lastIndexRef = useRef<number | null>(null);
+  const [selectingAllAcross, setSelectingAllAcross] = useState(false);
 
   const total = items.length;
   const selectedCount = items.reduce(
@@ -116,6 +130,37 @@ export function SelectableList<T>({
           </span>
         )}
       </div>
+      {onSelectAllAcross && hasMore && headerChecked === true && (
+        <div
+          className="flex items-center justify-between gap-3 p-3 bg-primary/5 text-xs"
+          data-selectable-all-across
+        >
+          <span className="text-muted-foreground">
+            All {total} items on this page are selected.
+          </span>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-xs font-medium"
+            disabled={selectingAllAcross}
+            onClick={() => {
+              setSelectingAllAcross(true);
+              Promise.resolve(onSelectAllAcross()).finally(() =>
+                setSelectingAllAcross(false),
+              );
+            }}
+          >
+            {selectingAllAcross ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Staging…
+              </>
+            ) : (
+              <>Select everything that matches →</>
+            )}
+          </Button>
+        </div>
+      )}
       {items.map((item, index) => {
         const selected = isSelected(item);
         const key = keyOf(item);

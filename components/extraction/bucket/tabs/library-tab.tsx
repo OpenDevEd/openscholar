@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { usePaginatedQuery } from "convex/react";
+import { useConvex, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export function LibraryTab() {
     { initialNumItems: 30 },
   );
 
+  const convex = useConvex();
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
@@ -53,6 +54,14 @@ export function LibraryTab() {
     const bucketItems = rows.map((r) => fromLibraryItem(r));
     if (next) addMany(bucketItems);
     else removeMany(bucketItems.map((b) => b.bucketKey));
+  };
+
+  const selectAllAcross = async () => {
+    const res = await convex.query(
+      api.extraction.sources.library.listAllIds,
+      { query },
+    );
+    addMany(res.items.map((r) => fromLibraryItem(r)));
   };
 
   return (
@@ -96,6 +105,8 @@ export function LibraryTab() {
           onToggle={toggle}
           onToggleRange={toggleRange}
           onToggleAll={toggleAll}
+          onSelectAllAcross={selectAllAcross}
+          hasMore={list.status === "CanLoadMore"}
           renderRow={(item) => (
             <div>
               <p className="font-medium text-sm truncate">{item.title}</p>

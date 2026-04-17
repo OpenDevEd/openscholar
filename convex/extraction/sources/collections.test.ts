@@ -120,3 +120,39 @@ describe("extraction.sources.collections.listItems", () => {
     expect(first.isDone).toBe(false);
   });
 });
+
+describe("extraction.sources.collections.listAllItems", () => {
+  it("returns every joined libraryItem for the collection", async () => {
+    const t = convexTest(schema);
+    const { collectionId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(
+      api.extraction.sources.collections.listAllItems,
+      { collectionId },
+    );
+    expect(res.items).toHaveLength(3);
+    expect(res.truncated).toBe(false);
+    expect(res.items.every((p) => typeof p.title === "string")).toBe(true);
+  });
+
+  it("rejects access to another user's collection", async () => {
+    const t = convexTest(schema);
+    const { otherCollectionId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    await expect(
+      auth.query(api.extraction.sources.collections.listAllItems, {
+        collectionId: otherCollectionId,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects unauthenticated callers", async () => {
+    const t = convexTest(schema);
+    const { collectionId } = await seed(t);
+    await expect(
+      t.query(api.extraction.sources.collections.listAllItems, {
+        collectionId,
+      }),
+    ).rejects.toThrow();
+  });
+});
