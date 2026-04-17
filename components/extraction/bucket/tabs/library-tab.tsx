@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useConvex, usePaginatedQuery } from "convex/react";
+import { useConvex, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Loader2, Search } from "lucide-react";
 import { SelectableList } from "../selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromLibraryItem } from "@/lib/bucket/bucketItem";
+import { bucketAdded } from "@/lib/toast/bucket";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 type LibItem = Doc<"libraryItems">;
@@ -24,6 +25,7 @@ export function LibraryTab() {
   );
 
   const convex = useConvex();
+  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
@@ -39,20 +41,20 @@ export function LibraryTab() {
 
   const toggle = (item: LibItem, next: boolean) => {
     const bucketItem = fromLibraryItem(item);
-    if (next) addMany([bucketItem]);
+    if (next) bucketAdded(addMany([bucketItem], limit), { silent: true });
     else removeMany([bucketItem.bucketKey]);
   };
 
   const toggleAll = (next: boolean) => {
     const rows = list.results ?? [];
     const bucketItems = rows.map((r) => fromLibraryItem(r));
-    if (next) addMany(bucketItems);
+    if (next) bucketAdded(addMany(bucketItems, limit));
     else removeMany(bucketItems.map((b) => b.bucketKey));
   };
 
   const toggleRange = (rows: LibItem[], next: boolean) => {
     const bucketItems = rows.map((r) => fromLibraryItem(r));
-    if (next) addMany(bucketItems);
+    if (next) bucketAdded(addMany(bucketItems, limit));
     else removeMany(bucketItems.map((b) => b.bucketKey));
   };
 
@@ -61,7 +63,11 @@ export function LibraryTab() {
       api.extraction.sources.library.listAllIds,
       { query },
     );
-    addMany(res.items.map((r) => fromLibraryItem(r)));
+    const result = addMany(
+      res.items.map((r) => fromLibraryItem(r)),
+      limit,
+    );
+    bucketAdded({ ...result, truncated: res.truncated });
   };
 
   return (

@@ -12,10 +12,23 @@ type StatusPatch = Partial<
   Pick<BucketItem, "status" | "storageId" | "pdfUrl">
 >;
 
+/**
+ * Outcome of a batched stage. `added` is new rows that landed in the
+ * bucket; `deduped` is collisions on `bucketKey` with an existing row;
+ * `capped` is new ready-items dropped because they would push ready
+ * count past the per-user paper limit. Callers feed this into the
+ * `bucketAdded` toast helper (see `lib/toast/bucket.ts`).
+ */
+export type AddManyResult = {
+  added: number;
+  deduped: number;
+  capped: number;
+};
+
 type BucketState = {
   items: Record<string, BucketItem>;
   order: string[];
-  addMany: (items: BucketItem[]) => void;
+  addMany: (items: BucketItem[], limit: number) => AddManyResult;
   remove: (bucketKey: string) => void;
   removeMany: (bucketKeys: string[]) => void;
   clear: () => void;
@@ -38,22 +51,45 @@ export const useBucketStore = create<BucketState>()(
     (set) => ({
       items: {},
       order: [],
-      addMany: (incoming) =>
+      addMany: (incoming, limit) => {
+        if (incoming.length === 0) {
+          return { added: 0, deduped: 0, capped: 0 };
+        }
+        // Compute inside the set closure; Zustand runs it synchronously,
+        // so the outer `result` is populated before addMany returns.
+        let result: AddManyResult = { added: 0, deduped: 0, capped: 0 };
         set((state) => {
-          if (incoming.length === 0) return state;
           const items = { ...state.items };
           const order = [...state.order];
+          const currentReady = order.reduce(
+            (n, k) => n + (items[k]?.status === "ready" ? 1 : 0),
+            0,
+          );
+          let readySlotsLeft = Math.max(0, limit - currentReady);
+          let added = 0;
+          let deduped = 0;
+          let capped = 0;
           for (const item of incoming) {
             const existing = items[item.bucketKey];
             if (existing) {
               items[item.bucketKey] = mergeItem(existing, item);
-            } else {
-              items[item.bucketKey] = item;
-              order.push(item.bucketKey);
+              deduped++;
+              continue;
             }
+            if (item.status === "ready" && readySlotsLeft <= 0) {
+              capped++;
+              continue;
+            }
+            items[item.bucketKey] = item;
+            order.push(item.bucketKey);
+            if (item.status === "ready") readySlotsLeft--;
+            added++;
           }
+          result = { added, deduped, capped };
           return { items, order };
-        }),
+        });
+        return result;
+      },
       remove: (bucketKey) =>
         set((state) => {
           if (!state.items[bucketKey]) return state;

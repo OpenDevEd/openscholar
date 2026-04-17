@@ -2,12 +2,15 @@
 
 import { useMemo } from "react";
 import { motion } from "motion/react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { useSearchHistoryStore } from "@/lib/store";
 import { Search, Calendar, FileText } from "lucide-react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { SelectableList } from "./bucket/selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromSavedSearchQuery } from "@/lib/bucket/bucketItem";
+import { bucketAdded } from "@/lib/toast/bucket";
 import type { SearchResult } from "@/lib/types";
 
 export function HistorySelector() {
@@ -16,6 +19,7 @@ export function HistorySelector() {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
+  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);
@@ -80,17 +84,17 @@ export function HistorySelector() {
       isSelected={isSelected}
       onToggle={(entry, next) => {
         const bucketItem = toBucketItem(entry);
-        if (next) addMany([bucketItem]);
+        if (next) bucketAdded(addMany([bucketItem], limit), { silent: true });
         else removeMany([bucketItem.bucketKey]);
       }}
       onToggleRange={(entries, next) => {
         const bucketItems = entries.map((e) => toBucketItem(e));
-        if (next) addMany(bucketItems);
+        if (next) bucketAdded(addMany(bucketItems, limit));
         else removeMany(bucketItems.map((b) => b.bucketKey));
       }}
       onToggleAll={(next) => {
         const bucketItems = searchHistory.map((e) => toBucketItem(e));
-        if (next) addMany(bucketItems);
+        if (next) bucketAdded(addMany(bucketItems, limit));
         else removeMany(bucketItems.map((b) => b.bucketKey));
       }}
       renderRow={(entry) => (

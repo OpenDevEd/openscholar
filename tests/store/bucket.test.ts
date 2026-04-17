@@ -26,11 +26,13 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
+const NO_CAP = Number.POSITIVE_INFINITY;
+
 describe("useBucketStore", () => {
   test("addMany adds items in insertion order", () => {
     const a = makeItem("k:a");
     const b = makeItem("k:b");
-    useBucketStore.getState().addMany([a, b]);
+    useBucketStore.getState().addMany([a, b], NO_CAP);
     const state = useBucketStore.getState();
     expect(state.order).toEqual(["k:a", "k:b"]);
     expect(state.items[a.bucketKey]).toEqual(a);
@@ -40,16 +42,52 @@ describe("useBucketStore", () => {
   test("addMany dedupes on bucketKey without reordering", () => {
     const a = makeItem("k:a");
     const b = makeItem("k:b");
-    useBucketStore.getState().addMany([a, b]);
-    useBucketStore.getState().addMany([a]);
+    useBucketStore.getState().addMany([a, b], NO_CAP);
+    useBucketStore.getState().addMany([a], NO_CAP);
     const state = useBucketStore.getState();
     expect(state.order).toEqual(["k:a", "k:b"]);
+  });
+
+  test("addMany returns { added, deduped, capped } for a fresh batch", () => {
+    const result = useBucketStore
+      .getState()
+      .addMany([makeItem("k:a"), makeItem("k:b")], NO_CAP);
+    expect(result).toEqual({ added: 2, deduped: 0, capped: 0 });
+  });
+
+  test("addMany counts bucketKey collisions as deduped, not added", () => {
+    useBucketStore.getState().addMany([makeItem("k:a")], NO_CAP);
+    const result = useBucketStore
+      .getState()
+      .addMany([makeItem("k:a"), makeItem("k:b")], NO_CAP);
+    expect(result).toEqual({ added: 1, deduped: 1, capped: 0 });
+  });
+
+  test("addMany drops items past the limit as capped and leaves them out of order", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("k:a"), makeItem("k:b")], 3);
+    const result = useBucketStore
+      .getState()
+      .addMany([makeItem("k:c"), makeItem("k:d"), makeItem("k:e")], 3);
+    expect(result).toEqual({ added: 1, deduped: 0, capped: 2 });
+    expect(useBucketStore.getState().order).toEqual(["k:a", "k:b", "k:c"]);
+  });
+
+  test("addMany cap counts only ready items toward the limit", () => {
+    useBucketStore
+      .getState()
+      .addMany([makeItem("k:a", { status: "uploading" })], 1);
+    const result = useBucketStore
+      .getState()
+      .addMany([makeItem("k:b")], 1);
+    expect(result).toEqual({ added: 1, deduped: 0, capped: 0 });
   });
 
   test("remove drops one key and leaves the rest", () => {
     const a = makeItem("k:a");
     const b = makeItem("k:b");
-    useBucketStore.getState().addMany([a, b]);
+    useBucketStore.getState().addMany([a, b], NO_CAP);
     useBucketStore.getState().remove("k:a");
     const state = useBucketStore.getState();
     expect(state.order).toEqual(["k:b"]);
@@ -59,7 +97,7 @@ describe("useBucketStore", () => {
   test("removeMany drops every listed key in one set()", () => {
     useBucketStore
       .getState()
-      .addMany([makeItem("k:a"), makeItem("k:b"), makeItem("k:c")]);
+      .addMany([makeItem("k:a"), makeItem("k:b"), makeItem("k:c")], NO_CAP);
     useBucketStore.getState().removeMany(["k:a", "k:c"]);
     const state = useBucketStore.getState();
     expect(state.order).toEqual(["k:b"]);
@@ -68,13 +106,13 @@ describe("useBucketStore", () => {
   });
 
   test("removeMany ignores unknown keys and still removes known ones", () => {
-    useBucketStore.getState().addMany([makeItem("k:a")]);
+    useBucketStore.getState().addMany([makeItem("k:a")], NO_CAP);
     useBucketStore.getState().removeMany(["k:missing", "k:a"]);
     expect(useBucketStore.getState().order).toEqual([]);
   });
 
   test("removeMany is a no-op when called with an empty array", () => {
-    useBucketStore.getState().addMany([makeItem("k:a"), makeItem("k:b")]);
+    useBucketStore.getState().addMany([makeItem("k:a"), makeItem("k:b")], NO_CAP);
     useBucketStore.getState().removeMany([]);
     expect(useBucketStore.getState().order).toEqual(["k:a", "k:b"]);
   });
@@ -82,7 +120,7 @@ describe("useBucketStore", () => {
   test("clear empties everything", () => {
     useBucketStore
       .getState()
-      .addMany([makeItem("k:a"), makeItem("k:b")]);
+      .addMany([makeItem("k:a"), makeItem("k:b")], NO_CAP);
     useBucketStore.getState().clear();
     const state = useBucketStore.getState();
     expect(state.order).toHaveLength(0);
@@ -92,7 +130,7 @@ describe("useBucketStore", () => {
   test("updateStatus patches an existing item without reordering", () => {
     const a = makeItem("k:a", { status: "uploading" });
     const b = makeItem("k:b");
-    useBucketStore.getState().addMany([a, b]);
+    useBucketStore.getState().addMany([a, b], NO_CAP);
     useBucketStore
       .getState()
       .updateStatus("k:a", { status: "ready" });
@@ -103,7 +141,7 @@ describe("useBucketStore", () => {
 
   test("updateStatus does not regress a ready item to uploading", () => {
     const a = makeItem("k:a", { status: "ready" });
-    useBucketStore.getState().addMany([a]);
+    useBucketStore.getState().addMany([a], NO_CAP);
     useBucketStore
       .getState()
       .updateStatus("k:a", { status: "uploading" });
@@ -111,21 +149,21 @@ describe("useBucketStore", () => {
   });
 
   test("updateStatus is a no-op for unknown keys", () => {
-    useBucketStore.getState().addMany([makeItem("k:a")]);
+    useBucketStore.getState().addMany([makeItem("k:a")], NO_CAP);
     useBucketStore.getState().updateStatus("k:missing", { status: "failed" });
     expect(useBucketStore.getState().order).toEqual(["k:a"]);
   });
 
   test("addMany does not regress status when an existing ready item is re-added as uploading", () => {
-    useBucketStore.getState().addMany([makeItem("k:a", { status: "ready" })]);
+    useBucketStore.getState().addMany([makeItem("k:a", { status: "ready" })], NO_CAP);
     useBucketStore
       .getState()
-      .addMany([makeItem("k:a", { status: "uploading" })]);
+      .addMany([makeItem("k:a", { status: "uploading" })], NO_CAP);
     expect(useBucketStore.getState().items["k:a"].status).toBe("ready");
   });
 
   test("persists to localStorage and rehydrates the same items/order", () => {
-    useBucketStore.getState().addMany([makeItem("k:a"), makeItem("k:b")]);
+    useBucketStore.getState().addMany([makeItem("k:a"), makeItem("k:b")], NO_CAP);
 
     const raw = window.localStorage.getItem("extraction-bucket");
     expect(raw).not.toBeNull();

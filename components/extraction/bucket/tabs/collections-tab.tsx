@@ -10,6 +10,7 @@ import { Folder, Loader2, Plus } from "lucide-react";
 import { SelectableList } from "../selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromCollectionItem } from "@/lib/bucket/bucketItem";
+import { bucketAdded } from "@/lib/toast/bucket";
 
 type LibItem = Doc<"libraryItems">;
 
@@ -20,11 +21,6 @@ export function CollectionsTab() {
   );
   const [selectedCollectionId, setSelectedCollectionId] =
     useState<Id<"collections"> | null>(null);
-
-  const addMany = useBucketStore((s) => s.addMany);
-  const removeMany = useBucketStore((s) => s.removeMany);
-  const order = useBucketStore((s) => s.order);
-  const bucketKeys = useMemo(() => new Set(order), [order]);
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
@@ -68,18 +64,7 @@ export function CollectionsTab() {
 
       <section>
         {selectedCollectionId ? (
-          <CollectionItems
-            collectionId={selectedCollectionId}
-            bucketKeys={bucketKeys}
-            onAdd={(items, collectionId) => {
-              addMany(items.map((item) => fromCollectionItem(item, collectionId)));
-            }}
-            onRemove={(items, collectionId) => {
-              removeMany(
-                items.map((item) => fromCollectionItem(item, collectionId).bucketKey),
-              );
-            }}
-          />
+          <CollectionItems collectionId={selectedCollectionId} />
         ) : (
           <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             Pick a collection on the left to see its papers.
@@ -92,28 +77,41 @@ export function CollectionsTab() {
 
 function CollectionItems({
   collectionId,
-  bucketKeys,
-  onAdd,
-  onRemove,
 }: {
   collectionId: Id<"collections">;
-  bucketKeys: Set<string>;
-  onAdd: (items: LibItem[], collectionId: Id<"collections">) => void;
-  onRemove: (items: LibItem[], collectionId: Id<"collections">) => void;
 }) {
   const convex = useConvex();
+  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const addMany = useBucketStore((s) => s.addMany);
+  const removeMany = useBucketStore((s) => s.removeMany);
+  const order = useBucketStore((s) => s.order);
+  const bucketKeys = useMemo(() => new Set(order), [order]);
   const list = usePaginatedQuery(
     api.extraction.sources.collections.listItems,
     { collectionId },
     { initialNumItems: 30 },
   );
 
+  const add = (items: LibItem[], silent = false) => {
+    const bucketItems = items.map((i) => fromCollectionItem(i, collectionId));
+    bucketAdded(addMany(bucketItems, limit), { silent });
+  };
+  const remove = (items: LibItem[]) => {
+    removeMany(
+      items.map((i) => fromCollectionItem(i, collectionId).bucketKey),
+    );
+  };
+
   const selectAllAcross = async () => {
     const res = await convex.query(
       api.extraction.sources.collections.listAllItems,
       { collectionId },
     );
-    onAdd(res.items, collectionId);
+    const bucketItems = res.items.map((i) =>
+      fromCollectionItem(i, collectionId),
+    );
+    const result = addMany(bucketItems, limit);
+    bucketAdded({ ...result, truncated: res.truncated });
   };
 
   const isSelected = useMemo(
@@ -144,11 +142,7 @@ function CollectionItems({
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onAdd(items, collectionId)}
-        >
+        <Button size="sm" variant="outline" onClick={() => add(items)}>
           <Plus className="h-4 w-4 mr-1" /> Add all visible
         </Button>
       </div>
@@ -156,17 +150,11 @@ function CollectionItems({
         items={items}
         keyOf={(i) => i._id}
         isSelected={isSelected}
-        onToggle={(item, next) =>
-          next ? onAdd([item], collectionId) : onRemove([item], collectionId)
-        }
+        onToggle={(item, next) => (next ? add([item], true) : remove([item]))}
         onToggleRange={(rangeItems, next) =>
-          next
-            ? onAdd(rangeItems, collectionId)
-            : onRemove(rangeItems, collectionId)
+          next ? add(rangeItems) : remove(rangeItems)
         }
-        onToggleAll={(next) =>
-          next ? onAdd(items, collectionId) : onRemove(items, collectionId)
-        }
+        onToggleAll={(next) => (next ? add(items) : remove(items))}
         onSelectAllAcross={selectAllAcross}
         hasMore={list.status === "CanLoadMore"}
         renderRow={(item) => (

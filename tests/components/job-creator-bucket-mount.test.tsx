@@ -69,10 +69,10 @@ describe("Bucket UI mount (P6 T1)", () => {
     act(() => {
       useBucketStore
         .getState()
-        .addMany([
-          makeItem("k:a", "Alpha Paper"),
-          makeItem("k:b", "Beta Paper"),
-        ]);
+        .addMany(
+          [makeItem("k:a", "Alpha Paper"), makeItem("k:b", "Beta Paper")],
+          1000,
+        );
     });
 
     expect(screen.getByText(/2 \/ 1000/)).toBeTruthy();
@@ -83,10 +83,10 @@ describe("Bucket UI mount (P6 T1)", () => {
     act(() => {
       useBucketStore
         .getState()
-        .addMany([
-          makeItem("k:a", "Alpha Paper"),
-          makeItem("k:b", "Beta Paper"),
-        ]);
+        .addMany(
+          [makeItem("k:a", "Alpha Paper"), makeItem("k:b", "Beta Paper")],
+          1000,
+        );
     });
 
     const indicator = screen.getByRole("button", { name: /2 \/ 1000/ });
@@ -101,10 +101,10 @@ describe("Bucket UI mount (P6 T1)", () => {
     act(() => {
       useBucketStore
         .getState()
-        .addMany([
-          makeItem("k:a", "Alpha Paper"),
-          makeItem("k:b", "Beta Paper"),
-        ]);
+        .addMany(
+          [makeItem("k:a", "Alpha Paper"), makeItem("k:b", "Beta Paper")],
+          1000,
+        );
     });
 
     fireEvent.click(screen.getByRole("button", { name: /2 \/ 1000/ }));

@@ -3,7 +3,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ function makeUploadId(): string {
 export function BulkPdfUpload() {
   const toast = useAppToast();
   const pdfEnabled = useFeatureFlag("extraction.pdf");
+  const paperLimit =
+    useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
   const bucketAdd = useBucketStore((s) => s.addMany);
   const bucketRemove = useBucketStore((s) => s.remove);
 
@@ -87,7 +89,14 @@ export function BulkPdfUpload() {
           storageId,
           status: "ready",
         });
-        bucketAdd([item]);
+        const result = bucketAdd([item], paperLimit);
+        if (result.capped > 0) {
+          patch(row.uploadId, {
+            status: "failed",
+            error: "Bucket is full — remove items and retry",
+          });
+          return;
+        }
         patch(row.uploadId, {
           status: "uploaded",
           storageId,
@@ -99,7 +108,7 @@ export function BulkPdfUpload() {
         patch(row.uploadId, { status: "failed", error: message });
       }
     },
-    [bucketAdd, generateUploadUrl, recordUploadedFile, patch],
+    [bucketAdd, paperLimit, generateUploadUrl, recordUploadedFile, patch],
   );
 
   const schedule = useCallback(

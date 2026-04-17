@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,7 @@ import {
 import { SelectableList } from "./bucket/selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromZoteroItem } from "@/lib/bucket/bucketItem";
+import { bucketAdded } from "@/lib/toast/bucket";
 
 type ZoteroGroup = {
   id: string;
@@ -59,6 +60,8 @@ export function ZoteroSelector() {
   const bucketRemoveMany = useBucketStore((s) => s.removeMany);
   const bucketOrder = useBucketStore((s) => s.order);
   const bucketKeys = useMemo(() => new Set(bucketOrder), [bucketOrder]);
+  const paperLimit =
+    useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
   const meQuery = useProtectedQuery(api.users.queries.me, {});
   const me = meQuery.data;
   const connectionStatusQuery = useProtectedQuery(
@@ -155,8 +158,8 @@ export function ZoteroSelector() {
         zoteroContext,
       ),
     );
-  const addItems = (items: ZoteroItem[]) => {
-    bucketAdd(toBucketItems(items));
+  const addItems = (items: ZoteroItem[], silent = false) => {
+    bucketAdded(bucketAdd(toBucketItems(items), paperLimit), { silent });
   };
   const removeItems = (items: ZoteroItem[]) => {
     bucketRemoveMany(toBucketItems(items).map((b) => b.bucketKey));
@@ -381,7 +384,7 @@ export function ZoteroSelector() {
           keyOf={(item) => item.key}
           isSelected={isItemSelected}
           onToggle={(item, next) =>
-            next ? addItems([item]) : removeItems([item])
+            next ? addItems([item], true) : removeItems([item])
           }
           onToggleRange={(rangeItems, next) =>
             next ? addItems(rangeItems) : removeItems(rangeItems)
