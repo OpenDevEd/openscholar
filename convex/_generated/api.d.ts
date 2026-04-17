@@ -42,6 +42,7 @@ import type * as extraction_queries from "../extraction/queries.js";
 import type * as extraction_stateMachine from "../extraction/stateMachine.js";
 import type * as extraction_tests_fixtures from "../extraction/tests/fixtures.js";
 import type * as extraction_tests_runners from "../extraction/tests/runners.js";
+import type * as extraction_tests_seed from "../extraction/tests/seed.js";
 import type * as extraction_types from "../extraction/types.js";
 import type * as extraction_uploads from "../extraction/uploads.js";
 import type * as extraction_validators from "../extraction/validators.js";
@@ -165,6 +166,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/stateMachine": typeof extraction_stateMachine;
   "extraction/tests/fixtures": typeof extraction_tests_fixtures;
   "extraction/tests/runners": typeof extraction_tests_runners;
+  "extraction/tests/seed": typeof extraction_tests_seed;
   "extraction/types": typeof extraction_types;
   "extraction/uploads": typeof extraction_uploads;
   "extraction/validators": typeof extraction_validators;
