@@ -1,0 +1,327 @@
+import { convexTest } from "convex-test";
+import { describe, test, expect } from "vitest";
+import { internal } from "../_generated/api";
+import schema from "../schema";
+
+/**
+ * Safety net SN-4 (P3 plan): pin the workpool onComplete dispatchers.
+ * Three RunResult branches × two handlers, plus terminal-state idempotency.
+ *
+ * Handlers are `pdfProcessingPool.defineOnComplete({...})` — under the
+ * hood each is an internalMutation with args `{workId, context, result}`,
+ * so we drive them directly through convex-test without needing the
+ * workpool component registered.
+ *
+ * Invariants pinned:
+ *   1. Paper terminal status transition (failed / download_failed).
+ *   2. Job.failedPapers counter bump on the first transition to terminal.
+ *   3. No counter double-bump when a terminal paper is re-fired.
+ *   4. No status resurrection — a terminal paper stays terminal.
+ *
+ * The success-with-data.success=true branch of handleDownloadAndIndexComplete
+ * is intentionally out of scope: it calls pdfProcessingPool.enqueueAction,
+ * which needs the workpool component registered. handleExtractionComplete's
+ * equivalent branch (onSuccess → saveExtractionResultsAndComplete) is a
+ * plain ctx.runMutation and is covered.
+ */
+
+async function seedDownloadingPaper(t: ReturnType<typeof convexTest>) {
+  return await t.run(async (ctx) => {
+    const now = Date.now();
+    const userId = await ctx.db.insert("users", {
+      clerkId: "clerk_onComplete",
+      email: "oc@test.com",
+      firstName: "Test",
+      lastName: "User",
+      state: "active" as const,
+      createdAt: now,
+      updatedAt: now,
+      lastLoginAt: now,
+    });
+    const jobId = await ctx.db.insert("extractionJobs", {
+      userId,
+      sourceType: "history" as const,
+      status: "extracting" as const,
+      totalPapers: 1,
+      processedPapers: 0,
+      failedPapers: 0,
+      name: "onComplete pin-test",
+      createdAt: now,
+      updatedAt: now,
+    });
+    const paperId = await ctx.db.insert("extractionPapers", {
+      jobId,
+      openalexId: "oa:oc1",
+      title: "Paper under test",
+      status: "downloading" as const,
+      processable: true,
+    });
+    return { userId, jobId, paperId };
+  });
+}
+
+async function readPaperAndJob(
+  t: ReturnType<typeof convexTest>,
+  ids: { jobId: string; paperId: string }
+) {
+  return await t.run(async (ctx) => {
+    const paper = await ctx.db.get(
+      "extractionPapers",
+      ids.paperId as never
+    );
+    const job = await ctx.db.get("extractionJobs", ids.jobId as never);
+    return { paper, job };
+  });
+}
+
+// A fabricated WorkId. The workpool types use a branded string; casting
+// through unknown keeps us in the dispatcher's internal mutation path
+// without dragging in the component.
+const FAKE_WORK_ID = "work_fake" as never;
+const DOWNLOAD_QUESTIONS: ReadonlyArray<{
+  key: string;
+  question: string;
+  type: "string";
+}> = [{ key: "q1", question: "test?", type: "string" }];
+
+describe("SN-4 handleDownloadAndIndexComplete branches", () => {
+  test("success with data.success=false → paper download_failed, failedPapers++", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    await t.mutation(
+      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: {
+          paperId: ids.paperId,
+          jobId: ids.jobId,
+          questions: DOWNLOAD_QUESTIONS,
+        },
+        result: {
+          kind: "success" as const,
+          returnValue: { success: false, error: "pdf host 404" },
+        },
+      } as never
+    );
+    const { paper, job } = await readPaperAndJob(t, ids);
+    expect(paper?.status).toBe("download_failed");
+    expect(job?.failedPapers).toBe(1);
+    expect(job?.processedPapers).toBe(0);
+  });
+
+  test("failed → paper failed, failedPapers++", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    await t.mutation(
+      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: {
+          paperId: ids.paperId,
+          jobId: ids.jobId,
+          questions: DOWNLOAD_QUESTIONS,
+        },
+        result: { kind: "failed" as const, error: "runtime crash" },
+      } as never
+    );
+    const { paper, job } = await readPaperAndJob(t, ids);
+    expect(paper?.status).toBe("failed");
+    expect(job?.failedPapers).toBe(1);
+  });
+
+  test("canceled → paper failed, failedPapers++", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    await t.mutation(
+      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: {
+          paperId: ids.paperId,
+          jobId: ids.jobId,
+          questions: DOWNLOAD_QUESTIONS,
+        },
+        result: { kind: "canceled" as const },
+      } as never
+    );
+    const { paper, job } = await readPaperAndJob(t, ids);
+    expect(paper?.status).toBe("failed");
+    expect(job?.failedPapers).toBe(1);
+  });
+});
+
+describe("SN-4 handleExtractionComplete branches", () => {
+  test("success with data.success=true → saveExtractionResultsAndComplete runs, paper completed", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    // Move paper to extracting (the natural predecessor to this handler).
+    await t.run(async (ctx) => {
+      await ctx.db.patch(
+        "extractionPapers",
+        ids.paperId as never,
+        { status: "extracting" }
+      );
+    });
+    await t.mutation(
+      internal.extraction.mutations.handleExtractionComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: { paperId: ids.paperId, jobId: ids.jobId },
+        result: {
+          kind: "success" as const,
+          returnValue: {
+            success: true,
+            results: [],
+            creditsUsed: 0,
+            pdfContentUsed: false,
+          },
+        },
+      } as never
+    );
+    const { paper, job } = await readPaperAndJob(t, ids);
+    expect(paper?.status).toBe("completed");
+    expect(job?.processedPapers).toBe(1);
+    expect(job?.failedPapers).toBe(0);
+  });
+
+  test("success with data.success=false → paper failed, failedPapers++", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch(
+        "extractionPapers",
+        ids.paperId as never,
+        { status: "extracting" }
+      );
+    });
+    await t.mutation(
+      internal.extraction.mutations.handleExtractionComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: { paperId: ids.paperId, jobId: ids.jobId },
+        result: {
+          kind: "success" as const,
+          returnValue: { success: false, error: "LLM error" },
+        },
+      } as never
+    );
+    const { paper, job } = await readPaperAndJob(t, ids);
+    expect(paper?.status).toBe("failed");
+    expect(job?.failedPapers).toBe(1);
+  });
+
+  test("failed → paper failed, failedPapers++", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch(
+        "extractionPapers",
+        ids.paperId as never,
+        { status: "extracting" }
+      );
+    });
+    await t.mutation(
+      internal.extraction.mutations.handleExtractionComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: { paperId: ids.paperId, jobId: ids.jobId },
+        result: { kind: "failed" as const, error: "crash" },
+      } as never
+    );
+    const { paper, job } = await readPaperAndJob(t, ids);
+    expect(paper?.status).toBe("failed");
+    expect(job?.failedPapers).toBe(1);
+  });
+
+  test("canceled → paper failed, failedPapers++", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch(
+        "extractionPapers",
+        ids.paperId as never,
+        { status: "extracting" }
+      );
+    });
+    await t.mutation(
+      internal.extraction.mutations.handleExtractionComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: { paperId: ids.paperId, jobId: ids.jobId },
+        result: { kind: "canceled" as const },
+      } as never
+    );
+    const { paper, job } = await readPaperAndJob(t, ids);
+    expect(paper?.status).toBe("failed");
+    expect(job?.failedPapers).toBe(1);
+  });
+});
+
+describe("SN-4 terminal-state idempotency", () => {
+  test("already-failed paper re-fired by handleDownloadAndIndexComplete → no second counter bump", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    // First fire: transition to failed + bump.
+    await t.mutation(
+      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: {
+          paperId: ids.paperId,
+          jobId: ids.jobId,
+          questions: DOWNLOAD_QUESTIONS,
+        },
+        result: { kind: "failed" as const, error: "first crash" },
+      } as never
+    );
+    const mid = await readPaperAndJob(t, ids);
+    expect(mid.paper?.status).toBe("failed");
+    expect(mid.job?.failedPapers).toBe(1);
+
+    // Second fire (late canceled): paper stays failed, job counter unchanged.
+    await t.mutation(
+      internal.extraction.mutations.handleDownloadAndIndexComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: {
+          paperId: ids.paperId,
+          jobId: ids.jobId,
+          questions: DOWNLOAD_QUESTIONS,
+        },
+        result: { kind: "canceled" as const },
+      } as never
+    );
+    const after = await readPaperAndJob(t, ids);
+    expect(after.paper?.status).toBe("failed");
+    expect(after.job?.failedPapers).toBe(1);
+  });
+
+  test("already-completed paper re-fired by handleExtractionComplete → no resurrection, no extra bump", async () => {
+    const t = convexTest(schema);
+    const ids = await seedDownloadingPaper(t);
+    // Seed paper in terminal completed and counter already reflecting it.
+    await t.run(async (ctx) => {
+      await ctx.db.patch(
+        "extractionPapers",
+        ids.paperId as never,
+        { status: "completed", extractionBilled: true }
+      );
+      await ctx.db.patch("extractionJobs", ids.jobId as never, {
+        processedPapers: 1,
+      });
+    });
+    // Re-fire with a failed RunResult.
+    await t.mutation(
+      internal.extraction.mutations.handleExtractionComplete,
+      {
+        workId: FAKE_WORK_ID,
+        context: { paperId: ids.paperId, jobId: ids.jobId },
+        result: { kind: "failed" as const, error: "late error" },
+      } as never
+    );
+    const after = await readPaperAndJob(t, ids);
+    expect(after.paper?.status).toBe("completed");
+    expect(after.job?.processedPapers).toBe(1);
+    expect(after.job?.failedPapers).toBe(0);
+  });
+});
