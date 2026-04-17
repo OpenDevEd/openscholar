@@ -53,4 +53,14 @@ crons.interval(
   internal.lib.envValidation.checkRequiredEnvVars
 );
 
+// Daily cleanup of completed extraction PDFs older than 30 days.
+// The mutation paginates with take(500) + scheduler.runAfter(0) so a single
+// tick drains the backlog safely regardless of size.
+crons.interval(
+  "cleanup old extraction pdfs",
+  { hours: 24 },
+  internal.extraction.mutations.cleanupOldPdfs,
+  { maxAgeHours: 24 * 30 },
+);
+
 export default crons;
