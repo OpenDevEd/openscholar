@@ -54,7 +54,11 @@ import type * as extraction_queries__shared from "../extraction/queries/_shared.
 import type * as extraction_queries_insights from "../extraction/queries/insights.js";
 import type * as extraction_queries_jobs from "../extraction/queries/jobs.js";
 import type * as extraction_queries_papers from "../extraction/queries/papers.js";
+import type * as extraction_queries_reports from "../extraction/queries/reports.js";
 import type * as extraction_queries_results from "../extraction/queries/results.js";
+import type * as extraction_queries_reviews from "../extraction/queries/reviews.js";
+import type * as extraction_queries_templates from "../extraction/queries/templates.js";
+import type * as extraction_queries_views from "../extraction/queries/views.js";
 import type * as extraction_stateMachine from "../extraction/stateMachine.js";
 import type * as extraction_tests_fixtures from "../extraction/tests/fixtures.js";
 import type * as extraction_tests_runners from "../extraction/tests/runners.js";
@@ -194,7 +198,11 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries/insights": typeof extraction_queries_insights;
   "extraction/queries/jobs": typeof extraction_queries_jobs;
   "extraction/queries/papers": typeof extraction_queries_papers;
+  "extraction/queries/reports": typeof extraction_queries_reports;
   "extraction/queries/results": typeof extraction_queries_results;
+  "extraction/queries/reviews": typeof extraction_queries_reviews;
+  "extraction/queries/templates": typeof extraction_queries_templates;
+  "extraction/queries/views": typeof extraction_queries_views;
   "extraction/stateMachine": typeof extraction_stateMachine;
   "extraction/tests/fixtures": typeof extraction_tests_fixtures;
   "extraction/tests/runners": typeof extraction_tests_runners;
