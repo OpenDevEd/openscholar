@@ -1,18 +1,42 @@
 "use client";
 
-import { useExtractionStore } from "@/lib/store/extraction";
-import { useTranslations } from "next-intl";
+import { useBucketStore } from "@/lib/store/bucket";
+import type { BucketSource } from "@/lib/bucket/bucketItem";
+
+const SOURCE_KEYS: BucketSource[] = [
+  "history",
+  "library",
+  "collection",
+  "zotero",
+  "upload",
+];
 
 export function SourceSummary() {
-  const t = useTranslations("extraction");
-  const { draftJob } = useExtractionStore();
-  const historyCount = draftJob.selectedHistoryIds.length;
-  const zoteroCount = draftJob.zoteroSelection?.items.length || 0;
-  const manualCount = draftJob.manualItems.length;
+  const counts = useBucketStore((s) => {
+    const tally: Record<BucketSource, number> = {
+      history: 0,
+      library: 0,
+      collection: 0,
+      zotero: 0,
+      upload: 0,
+    };
+    for (const key of s.order) {
+      const item = s.items[key];
+      if (item && item.status === "ready") tally[item.source]++;
+    }
+    return tally;
+  });
+  const total = SOURCE_KEYS.reduce((n, k) => n + counts[k], 0);
+
+  if (total === 0) return null;
+
+  const pieces = SOURCE_KEYS.filter((k) => counts[k] > 0).map(
+    (k) => `${counts[k]} ${k}`,
+  );
 
   return (
     <div className="text-sm text-muted-foreground">
-      {t("sourceSummary", { history: historyCount, zotero: zoteroCount, manual: manualCount })}
+      {total} papers staged · {pieces.join(" · ")}
     </div>
   );
 }

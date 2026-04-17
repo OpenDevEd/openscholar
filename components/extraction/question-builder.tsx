@@ -29,7 +29,7 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { useExtractionStore } from "@/lib/store/extraction";
-import { useSearchHistoryStore } from "@/lib/store";
+import { useBucketStore } from "@/lib/store/bucket";
 import { useGenerateExtractionQuestions } from "@/lib/ai/client/router";
 import { useAppToast } from "@/lib/toast";
 import type { ExtractionQuestion, ExtractionQuestionType } from "@/lib/types";
@@ -279,7 +279,11 @@ export function QuestionBuilder() {
   const questionInputRef = useRef<HTMLInputElement>(null);
   const { execute: generateQuestions, isConfigured } =
     useGenerateExtractionQuestions();
-  const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
+  const bucketItems = useBucketStore((s) =>
+    s.order
+      .map((k) => s.items[k])
+      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+  );
 
   // Auto-expand questions that already have descriptions
   useEffect(() => {
@@ -336,31 +340,31 @@ export function QuestionBuilder() {
   const buildSourceContext = (): string => {
     const parts: string[] = [];
 
-    const historyEntries = draftJob.selectedHistoryIds
-      .map((id) => searchHistory.find((h) => h.id === id))
-      .filter(Boolean);
-    if (historyEntries.length > 0) {
+    // Group ready bucket items by source. History items get listed as
+    // saved-search queries; other sources get listed as paper snippets.
+    const bySource: Record<string, typeof bucketItems> = {};
+    for (const item of bucketItems) {
+      if (item.status !== "ready") continue;
+      (bySource[item.source] ??= []).push(item);
+    }
+
+    const history = bySource.history ?? [];
+    if (history.length > 0) {
       parts.push(
         t("sourceContextSearchQueries") +
           "\n" +
-          historyEntries.map((e) => `- "${e!.query}"`).join("\n")
+          history.map((e) => `- "${e.title}"`).join("\n"),
       );
     }
 
-    const zoteroItems = draftJob.zoteroSelection?.items || [];
-    if (zoteroItems.length > 0) {
-      const snippets = zoteroItems.slice(0, 10).map((item) => {
-        const abstract = item.abstract
-          ? item.abstract.slice(0, 200) +
-            (item.abstract.length > 200 ? "..." : "")
-          : "";
-        return `- "${item.title}"${abstract ? `\n  ${t("sourceContextAbstract")} ${abstract}` : ""}`;
-      });
-      parts.push(t("sourceContextZoteroPapers") + "\n" + snippets.join("\n"));
-    }
-
-    if (draftJob.manualItems.length > 0) {
-      const snippets = draftJob.manualItems.slice(0, 10).map((item) => {
+    const papery = [
+      ...(bySource.library ?? []),
+      ...(bySource.collection ?? []),
+      ...(bySource.zotero ?? []),
+      ...(bySource.upload ?? []),
+    ];
+    if (papery.length > 0) {
+      const snippets = papery.slice(0, 10).map((item) => {
         const abstract = item.abstract
           ? item.abstract.slice(0, 200) +
             (item.abstract.length > 200 ? "..." : "")
