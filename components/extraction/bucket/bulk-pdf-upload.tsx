@@ -200,7 +200,7 @@ export function BulkPdfUpload() {
             : "Drag PDFs here or click to select"}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          Up to {MAX_PDF_MB} MB per file · {CONCURRENCY} uploads at a time
+          Up to {MAX_PDF_MB} MB per file
         </p>
       </div>
 

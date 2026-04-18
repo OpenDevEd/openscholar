@@ -76,13 +76,17 @@ export const runExtractionWorkflow = workflow.define({
 
     for (const item of bucketItems) {
       if (item.source === "history" && item.searchFilters) {
-        // Honor a user-selected zero-paper count: the CountChip allows
-        // paperCount=0, which surfaces as searchFilters.limit=0. Skipping
-        // here keeps the OpenAlex fetch off the wire entirely, instead of
-        // letting search-params coerce 0 into a full 200-item page.
-        if (item.searchFilters.limit === 0) {
+        // Mirror `paperCountForItem`'s zero-collapse rule: any defined
+        // limit that is non-finite or <= 0 contributes 0 papers to the
+        // effective count, so `assertBucketWithinLimits` already treats
+        // it as "skip this row". Match that here — otherwise a crafted
+        // limit: -1 passes submit-time validation, reaches
+        // `fetchPapersFromHistory`, and then `buildOpenAlexSearchParams`
+        // throws on `< 1`, failing the workflow after the job exists.
+        const limit = item.searchFilters.limit;
+        if (limit !== undefined && (!Number.isFinite(limit) || limit <= 0)) {
           console.log(
-            `[Workflow] Skipping zero-count history source ${item.sourceRefId}`,
+            `[Workflow] Skipping zero-count history source ${item.sourceRefId} (limit=${limit})`,
           );
           continue;
         }

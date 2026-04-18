@@ -153,7 +153,7 @@ export function JobCreator() {
   };
 
   return (
-    <div className="w-full p-4 md:p-6">
+    <div className="w-full px-4 pt-4 md:px-6 md:pt-6">
       {/* Header with Cancel */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -358,12 +358,12 @@ export function JobCreator() {
         </AnimatePresence>
       </div>
 
-      {/* Footer Actions */}
+      {/* Footer Actions — sticky to viewport bottom; releases at end of container */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="mt-12 pt-6 border-t border-border flex justify-between items-center"
+        className="sticky bottom-0 z-20 mt-12 -mx-4 md:-mx-6 rounded-b-2xl border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 md:px-6 py-4 flex justify-between items-center"
       >
         <Button
           variant="ghost"

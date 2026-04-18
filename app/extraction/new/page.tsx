@@ -16,7 +16,7 @@ export default function NewExtractionPage() {
         rightColumn={
           <PageWrapper>
             <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
-              <CommandCenterContainer>
+              <CommandCenterContainer allowOverflow>
                 <Suspense fallback={null}>
                   <JobCreator />
                 </Suspense>

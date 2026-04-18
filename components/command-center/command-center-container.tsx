@@ -8,6 +8,14 @@ import { subtleSpring } from "@/lib/animation-config";
 interface CommandCenterContainerProps {
   children: React.ReactNode;
   className?: string;
+  /**
+   * Allow children to render past the card's rounded edges. Set this
+   * for pages whose descendants use `position: sticky` / `fixed` and
+   * need to escape the card's clip box (e.g. JobCreator's bottom-bar
+   * footer). The gradient overlay is rounded independently so the
+   * card's visual corners remain clean.
+   */
+  allowOverflow?: boolean;
 }
 
 /**
@@ -17,6 +25,7 @@ interface CommandCenterContainerProps {
 export function CommandCenterContainer({
   children,
   className,
+  allowOverflow = false,
 }: CommandCenterContainerProps) {
   return (
     <motion.div
@@ -24,15 +33,17 @@ export function CommandCenterContainer({
       animate={{ opacity: 1, y: 0 }}
       transition={subtleSpring}
       className={cn(
-        "relative rounded-2xl overflow-hidden",
+        "relative rounded-2xl",
+        allowOverflow ? "overflow-visible" : "overflow-clip",
         "bg-background/95 dark:bg-background/90",
         "border border-border/50",
         "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
         className
       )}
     >
-      {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
+      {/* Subtle gradient overlay — rounded independently so the card
+          corners stay clean even when the parent isn't clipping. */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
       {children}
     </motion.div>
   );
