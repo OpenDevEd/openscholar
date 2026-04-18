@@ -18,6 +18,7 @@ import {
   type AllClearSnapshot,
 } from "@/lib/store/bucket";
 import type { BucketItem } from "@/lib/bucket/bucketItem";
+import { authorsPreview } from "@/lib/bucket/authors-preview";
 import { bucketCleared } from "@/lib/toast/bucket";
 import { Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -107,8 +108,7 @@ export function BucketDrawer({
                       {item.title}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {item.authors.slice(0, 3).join(", ") || "Unknown"}
-                      {item.year ? ` · ${item.year}` : ""}
+                      {authorsPreview(item)}
                     </p>
                     {item.status !== "ready" && (
                       <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">

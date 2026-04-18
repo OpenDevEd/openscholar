@@ -6,8 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   Loader2,
   Package,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Trash2,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -27,6 +27,7 @@ import {
 } from "@/lib/store";
 import { useBucketStore, type AllClearSnapshot } from "@/lib/store/bucket";
 import type { BucketItem } from "@/lib/bucket/bucketItem";
+import { authorsPreview } from "@/lib/bucket/authors-preview";
 import { bucketCleared } from "@/lib/toast/bucket";
 import { SourceChip } from "./source-chip";
 import { AnimatedCount } from "./animated-count";
@@ -36,11 +37,6 @@ function capacityTint(readyCount: number, limit: number): string {
   if (readyCount >= Math.floor(limit * 0.9))
     return "text-amber-600 dark:text-amber-400";
   return "text-foreground";
-}
-
-function authorsPreview(item: BucketItem): string {
-  const authors = item.authors.slice(0, 3).join(", ") || "Unknown";
-  return item.year ? `${authors} · ${item.year}` : authors;
 }
 
 const PANEL_ID = "bucket-sidebar-panel";
@@ -132,7 +128,7 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
                   aria-label="Collapse bucket sidebar"
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
-                  <PanelLeftClose className="h-4 w-4" />
+                  <PanelRightClose className="h-4 w-4" />
                 </Button>
               </motion.div>
             </TooltipTrigger>
@@ -168,14 +164,14 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
             {items.map((item) => (
               <li
                 key={item.bucketKey}
-                className="flex items-center gap-3 rounded-lg border border-border/60 bg-card p-3"
+                className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card p-3"
               >
-                <SourceChip source={item.source} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium leading-snug line-clamp-2">
-                    {item.title}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                <p className="text-sm font-medium leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">
+                  {item.title}
+                </p>
+                <div className="flex items-center gap-2">
+                  <SourceChip source={item.source} />
+                  <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                     {authorsPreview(item)}
                     {item.status !== "ready" && (
                       <>
@@ -191,17 +187,17 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
                         )}
                       </>
                     )}
-                  </p>
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => remove(item.bucketKey)}
+                    aria-label={`Remove ${item.title}`}
+                    className="h-6 w-6 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => remove(item.bucketKey)}
-                  aria-label={`Remove ${item.title}`}
-                  className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </li>
             ))}
           </ul>
@@ -326,7 +322,7 @@ export function BucketSidebar() {
                     aria-label={`Open bucket — ${readyCount} of ${limit} papers staged`}
                     className="h-9 w-9 shadow-sm"
                   >
-                    <PanelLeftOpen className="h-4 w-4" />
+                    <PanelRightOpen className="h-4 w-4" />
                   </Button>
                 </motion.div>
               </TooltipTrigger>

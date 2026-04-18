@@ -282,18 +282,34 @@ describe("<BucketSidebar> row layout (T8)", () => {
     expect(title.className).not.toMatch(/\btruncate\b/);
   });
 
-  it("row is items-center, not items-start", () => {
+  it("row stacks title above chip + authors + trash so the delete button sits far from the title", () => {
     act(() => {
       useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
     });
     render(withProviders(<BucketSidebar />));
     const li = screen.getByText("Alpha").closest("li");
     expect(li).not.toBeNull();
-    expect(li!.className).toMatch(/items-center/);
-    expect(li!.className).not.toMatch(/items-start/);
+    expect(li!.className).toMatch(/flex-col/);
+    // Trash button's nearest flex parent is the bottom row (chip + authors).
+    const trash = screen.getByRole("button", { name: /remove alpha/i });
+    const trashRow = trash.parentElement;
+    expect(trashRow?.className).toMatch(/\bflex\b/);
+    expect(trashRow?.className).not.toMatch(/flex-col/);
   });
 
-  it("uploading status renders inline in the authors line, not in a nested div", () => {
+  it("title has break-words + overflow-wrap:anywhere for long unbroken strings", () => {
+    const longDoi =
+      "doi:10.1016/j.verylongjournalnamethatneverbreaksnaturally.2024.123456";
+    act(() => {
+      useBucketStore.getState().addMany([makeItem("k:a", longDoi)], 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    const title = screen.getByText(longDoi);
+    expect(title.className).toMatch(/break-words/);
+    expect(title.className).toMatch(/overflow-wrap:anywhere/);
+  });
+
+  it("authors line truncates and still renders an inline uploading status", () => {
     act(() => {
       useBucketStore
         .getState()
@@ -303,19 +319,21 @@ describe("<BucketSidebar> row layout (T8)", () => {
         );
     });
     render(withProviders(<BucketSidebar />));
-    const authorsLine = screen.getByText(/uploading/i).closest("p");
-    expect(authorsLine).not.toBeNull();
-    expect(authorsLine!.tagName).toBe("P");
+    const uploadingLabel = screen.getByText(/uploading/i);
+    const authorsSpan = uploadingLabel.closest("span");
+    expect(authorsSpan).not.toBeNull();
+    expect(authorsSpan!.className.includes("truncate") ||
+      authorsSpan!.parentElement?.className.includes("truncate")).toBe(true);
   });
 
-  it("remove button has the 40 px touch target class", () => {
+  it("remove button is compact (h-6 w-6) so it visually matches the source chip, not the title", () => {
     act(() => {
       useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
     });
     render(withProviders(<BucketSidebar />));
     const btn = screen.getByRole("button", { name: /remove alpha/i });
-    expect(btn.className).toMatch(/\bh-10\b/);
-    expect(btn.className).toMatch(/\bw-10\b/);
+    expect(btn.className).toMatch(/\bh-6\b/);
+    expect(btn.className).toMatch(/\bw-6\b/);
     expect(btn.className).toMatch(/\bshrink-0\b/);
   });
 });
