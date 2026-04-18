@@ -22,6 +22,7 @@ import {
 import { useBucketStore } from "@/lib/store/bucket";
 import type { BucketItem } from "@/lib/bucket/bucketItem";
 import { SourceChip } from "./source-chip";
+import { AnimatedCount } from "./animated-count";
 
 function capacityTint(readyCount: number, limit: number): string {
   if (readyCount >= limit) return "text-destructive";
@@ -78,11 +79,12 @@ function BucketSidebarSliver({
       )}
     >
       <Package className="h-4 w-4 shrink-0" />
-      <span
-        className={cn("text-[11px] font-semibold tabular-nums", tint)}
-      >
-        {readyCount}
-      </span>
+      <AnimatedCount
+        value={readyCount}
+        total={limit}
+        tint={tint}
+        className="flex-col items-center gap-0 text-[11px] leading-tight"
+      />
       <span className="sr-only" aria-live="polite">
         {readyCount} of {limit} papers staged
       </span>
@@ -131,12 +133,15 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
             </h2>
             <p
               data-testid="bucket-sidebar-capacity"
-              className={cn(
-                "text-xs font-medium tabular-nums mt-0.5",
-                tint,
-              )}
+              className={cn("mt-0.5 text-xs", tint)}
             >
-              {readyCount} / {limit} papers ready to submit
+              <AnimatedCount
+                value={readyCount}
+                total={limit}
+                tint={tint}
+                className="text-xs"
+              />{" "}
+              <span className="text-muted-foreground">papers ready to submit</span>
             </p>
           </div>
           <Tooltip delayDuration={0}>

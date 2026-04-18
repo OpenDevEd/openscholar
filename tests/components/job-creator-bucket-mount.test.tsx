@@ -64,7 +64,10 @@ afterEach(() => {
 describe("Bucket UI mount (P6 T1)", () => {
   it("indicator renders the live ready-count against the cap", () => {
     render(<Harness />);
-    expect(screen.getByText(/0 \/ 1000/)).toBeTruthy();
+    const live = document.querySelector(
+      "[aria-live='polite']",
+    ) as HTMLElement | null;
+    expect(live!.textContent).toContain("0 of 1000 papers staged");
 
     act(() => {
       useBucketStore
@@ -75,7 +78,7 @@ describe("Bucket UI mount (P6 T1)", () => {
         );
     });
 
-    expect(screen.getByText(/2 \/ 1000/)).toBeTruthy();
+    expect(live!.textContent).toContain("2 of 1000 papers staged");
   });
 
   it("clicking the indicator opens the drawer and lists staged items", () => {

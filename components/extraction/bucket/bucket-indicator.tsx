@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useBucketStore } from "@/lib/store/bucket";
+import { AnimatedCount } from "./animated-count";
 
 export function BucketIndicator({
   ref,
@@ -37,9 +38,12 @@ export function BucketIndicator({
       aria-label={`Open bucket — ${readyCount} of ${limit} papers staged`}
     >
       <Package className="h-4 w-4" />
-      <span className="font-medium" aria-hidden="true">
-        {readyCount} / {limit}
-      </span>
+      <AnimatedCount
+        value={readyCount}
+        total={limit}
+        tint=""
+        className="text-sm"
+      />
       {/*
         Screen readers get a live region on every count change so staging
         a paper isn't a silent UI update. `polite` (not `assertive`) so
