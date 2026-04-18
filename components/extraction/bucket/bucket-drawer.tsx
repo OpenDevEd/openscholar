@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery } from "convex/react";
 import {
   Drawer,
@@ -11,33 +10,18 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { api } from "@/convex/_generated/api";
-import { useBucketStore } from "@/lib/store/bucket";
-import type { BucketItem, BucketSource } from "@/lib/bucket/bucketItem";
+import {
+  useBucketStore,
+  type AllClearSnapshot,
+} from "@/lib/store/bucket";
+import type { BucketItem } from "@/lib/bucket/bucketItem";
+import { bucketCleared } from "@/lib/toast/bucket";
 import { Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const SOURCE_LABELS: Record<BucketSource, string> = {
-  history: "History",
-  library: "Library",
-  collection: "Collection",
-  zotero: "Zotero",
-  upload: "Upload",
-};
+import { SourceChip } from "./source-chip";
 
 export function BucketDrawer({
   open,
@@ -47,9 +31,9 @@ export function BucketDrawer({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
-   * Called after Clear-all is confirmed. Callers typically focus the
-   * indicator button here so the alert-dialog's closing doesn't send
-   * focus to <body> — a screen-reader reset that's easy to miss.
+   * Called after Clear-all fires. Callers typically focus the
+   * indicator button here so focus doesn't end up on <body> — a
+   * screen-reader reset that's easy to miss.
    */
   onClearReturnFocus?: () => void;
 }) {
@@ -58,6 +42,7 @@ export function BucketDrawer({
   const itemsMap = useBucketStore((s) => s.items);
   const remove = useBucketStore((s) => s.remove);
   const clear = useBucketStore((s) => s.clear);
+  const restoreFromSnapshot = useBucketStore((s) => s.restoreFromSnapshot);
 
   const items = order
     .map((k) => itemsMap[k])
@@ -70,7 +55,15 @@ export function BucketDrawer({
   const atCap = readyCount >= limit;
   const nearCap = !atCap && readyCount >= Math.floor(limit * 0.9);
 
-  const [confirmClear, setConfirmClear] = useState(false);
+  const handleClearAll = () => {
+    const snapshot: AllClearSnapshot = {
+      items: { ...itemsMap },
+      order: [...order],
+    };
+    clear();
+    bucketCleared(readyCount, snapshot, restoreFromSnapshot);
+    onClearReturnFocus?.();
+  };
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -108,9 +101,7 @@ export function BucketDrawer({
                   key={item.bucketKey}
                   className="flex items-start gap-3 rounded-lg border border-border p-3"
                 >
-                  <Badge variant="outline" className="shrink-0">
-                    {SOURCE_LABELS[item.source]}
-                  </Badge>
+                  <SourceChip source={item.source} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
                       {item.title}
@@ -147,38 +138,14 @@ export function BucketDrawer({
 
         <DrawerFooter className="border-t">
           <div className="flex items-center justify-between">
-            <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={items.length === 0}
-                >
-                  Clear all
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Clear the bucket?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This removes every staged paper. You can always add them
-                    back from the source tabs.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      clear();
-                      setConfirmClear(false);
-                      onClearReturnFocus?.();
-                    }}
-                  >
-                    Clear bucket
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearAll}
+              disabled={items.length === 0}
+            >
+              Clear all
+            </Button>
             <DrawerClose asChild>
               <Button size="sm">Close</Button>
             </DrawerClose>

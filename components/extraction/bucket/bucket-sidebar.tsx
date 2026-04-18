@@ -19,8 +19,9 @@ import {
   useBucketSidebarStore,
   getBucketSidebarDimensions,
 } from "@/lib/store";
-import { useBucketStore } from "@/lib/store/bucket";
+import { useBucketStore, type AllClearSnapshot } from "@/lib/store/bucket";
 import type { BucketItem } from "@/lib/bucket/bucketItem";
+import { bucketCleared } from "@/lib/toast/bucket";
 import { SourceChip } from "./source-chip";
 import { AnimatedCount } from "./animated-count";
 
@@ -102,10 +103,24 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
   const itemsMap = useBucketStore((s) => s.items);
   const remove = useBucketStore((s) => s.remove);
   const clear = useBucketStore((s) => s.clear);
+  const restoreFromSnapshot = useBucketStore((s) => s.restoreFromSnapshot);
 
   const items = order
     .map((k) => itemsMap[k])
     .filter((v): v is BucketItem => Boolean(v));
+
+  const handleClearAll = () => {
+    const snapshot: AllClearSnapshot = {
+      items: { ...itemsMap },
+      order: [...order],
+    };
+    const count = items.reduce(
+      (n, i) => (i.status === "ready" ? n + (i.paperCount ?? 1) : n),
+      0,
+    );
+    clear();
+    bucketCleared(count, snapshot, restoreFromSnapshot);
+  };
 
   const readyCount = items.reduce(
     (n, i) => (i.status === "ready" ? n + (i.paperCount ?? 1) : n),
@@ -231,7 +246,7 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => clear()}
+          onClick={handleClearAll}
           disabled={items.length === 0}
         >
           Clear all

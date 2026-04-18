@@ -148,7 +148,7 @@ describe("Bucket UI mount (P6 T1)", () => {
     expect(live!.textContent).toContain("2 of 1000 papers staged");
   });
 
-  it("Clear-all invokes onClearReturnFocus after confirmation", () => {
+  it("Clear-all invokes onClearReturnFocus and empties the bucket", () => {
     const onClearReturnFocus = vi.fn();
     function LocalHarness() {
       const [open, setOpen] = useState(true);
@@ -166,8 +166,7 @@ describe("Bucket UI mount (P6 T1)", () => {
         .addMany([makeItem("k:a", "Alpha Paper")], 1000);
     });
     render(<LocalHarness />);
-    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Clear bucket$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Clear all$/ }));
     expect(onClearReturnFocus).toHaveBeenCalledTimes(1);
     expect(useBucketStore.getState().order).toEqual([]);
   });

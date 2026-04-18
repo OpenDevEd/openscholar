@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import type { AddManyResult } from "@/lib/store/bucket";
+import type { AddManyResult, AllClearSnapshot } from "@/lib/store/bucket";
 
 /**
  * Single source of truth for the "N added · M already in bucket · K
@@ -35,4 +35,25 @@ export function bucketAdded(
     return;
   }
   toast.success(message);
+}
+
+/**
+ * Clear-all undo toast. The snapshot lives in the callback closure,
+ * not the store, so rows staged during the 5s undo window get dropped
+ * on Undo click — restore means "bring back what was cleared", not
+ * "merge".
+ */
+export function bucketCleared(
+  clearedCount: number,
+  snapshot: AllClearSnapshot,
+  restore: (snap: AllClearSnapshot) => void,
+): void {
+  const noun = clearedCount === 1 ? "paper" : "papers";
+  toast(`Cleared ${clearedCount} ${noun} from the bucket`, {
+    duration: 5000,
+    action: {
+      label: "Undo",
+      onClick: () => restore(snapshot),
+    },
+  });
 }
