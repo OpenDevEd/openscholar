@@ -2,8 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
-import { motion } from "motion/react";
-import { Loader2, Package, PanelRightClose, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import {
+  Loader2,
+  Package,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Trash2,
+} from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,51 +54,6 @@ function useReadyCount(): number {
   );
 }
 
-type SliverProps = {
-  onExpand: () => void;
-  sliverRef: React.RefObject<HTMLButtonElement | null>;
-  readyCount: number;
-  limit: number;
-};
-
-function BucketSidebarSliver({
-  onExpand,
-  sliverRef,
-  readyCount,
-  limit,
-}: SliverProps) {
-  const tint = capacityTint(readyCount, limit);
-  return (
-    <motion.button
-      ref={sliverRef}
-      type="button"
-      onClick={onExpand}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.97 }}
-      transition={hoverSpring}
-      aria-expanded={false}
-      aria-controls={PANEL_ID}
-      aria-label={`Open bucket — ${readyCount} of ${limit} papers staged`}
-      className={cn(
-        "absolute inset-0 flex flex-col items-center gap-3 py-4 px-1",
-        "text-muted-foreground hover:text-foreground",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-      )}
-    >
-      <Package className="h-4 w-4 shrink-0" />
-      <AnimatedCount
-        value={readyCount}
-        total={limit}
-        tint={tint}
-        className="flex-col items-center gap-0 text-[11px] leading-tight"
-      />
-      <span className="sr-only" aria-live="polite">
-        {readyCount} of {limit} papers staged
-      </span>
-    </motion.button>
-  );
-}
-
 type PanelProps = {
   onCollapse: () => void;
   limit: number;
@@ -109,19 +70,6 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
     .map((k) => itemsMap[k])
     .filter((v): v is BucketItem => Boolean(v));
 
-  const handleClearAll = () => {
-    const snapshot: AllClearSnapshot = {
-      items: { ...itemsMap },
-      order: [...order],
-    };
-    const count = items.reduce(
-      (n, i) => (i.status === "ready" ? n + (i.paperCount ?? 1) : n),
-      0,
-    );
-    clear();
-    bucketCleared(count, snapshot, restoreFromSnapshot);
-  };
-
   const readyCount = items.reduce(
     (n, i) => (i.status === "ready" ? n + (i.paperCount ?? 1) : n),
     0,
@@ -129,6 +77,15 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
   const atCap = readyCount >= limit;
   const nearCap = !atCap && readyCount >= Math.floor(limit * 0.9);
   const tint = capacityTint(readyCount, limit);
+
+  const handleClearAll = () => {
+    const snapshot: AllClearSnapshot = {
+      items: { ...itemsMap },
+      order: [...order],
+    };
+    clear();
+    bucketCleared(readyCount, snapshot, restoreFromSnapshot);
+  };
 
   return (
     <section
@@ -138,7 +95,7 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
       className="flex h-full flex-col"
     >
       <header className="flex flex-col gap-2 border-b border-border/50 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2
               id="bucket-sidebar-title"
@@ -156,7 +113,9 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
                 tint={tint}
                 className="text-xs"
               />{" "}
-              <span className="text-muted-foreground">papers ready to submit</span>
+              <span className="font-medium text-muted-foreground">
+                papers ready to submit
+              </span>
             </p>
           </div>
           <Tooltip delayDuration={0}>
@@ -171,13 +130,15 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
                   size="icon"
                   onClick={onCollapse}
                   aria-label="Collapse bucket sidebar"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
-                  <PanelRightClose className="h-4 w-4" />
+                  <PanelLeftClose className="h-4 w-4" />
                 </Button>
               </motion.div>
             </TooltipTrigger>
-            <TooltipContent side="left">Collapse bucket</TooltipContent>
+            <TooltipContent side="left">
+              Collapse bucket (⌘⇧B)
+            </TooltipContent>
           </Tooltip>
         </div>
         {(nearCap || atCap) && (
@@ -301,7 +262,14 @@ export function BucketSidebar() {
 
   const { expandedWidth, collapsedWidth } =
     getBucketSidebarDimensions(isCollapsed);
-  const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;
+  // Right-side sidebar: motion.aside anchors to the LEFT edge of its
+  // slot and slides RIGHT by (expanded - collapsed) when collapsing,
+  // hiding itself entirely past the right viewport edge. The sliver
+  // (separate element below) lives at the slot's left edge and is
+  // always visible when collapsed. Mirrors filter-sidebar's pattern
+  // but reflected for right-side mounting.
+  const translateX = isCollapsed ? expandedWidth - collapsedWidth : 0;
+  const tint = capacityTint(readyCount, limit);
 
   return (
     <div
@@ -315,7 +283,7 @@ export function BucketSidebar() {
         role="complementary"
         aria-label="Staged papers bucket"
         className={cn(
-          "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
+          "h-full flex flex-col overflow-hidden absolute left-0 top-0 bottom-0",
           "bg-background/95 dark:bg-background/90",
           "border-l border-border/50",
         )}
@@ -324,19 +292,66 @@ export function BucketSidebar() {
         transition={sidebarSpring}
         style={{ width: expandedWidth }}
       >
-        {isCollapsed ? (
-          <div className="relative h-full" style={{ width: collapsedWidth }}>
-            <BucketSidebarSliver
-              onExpand={toggle}
-              sliverRef={sliverRef}
-              readyCount={readyCount}
-              limit={limit}
-            />
-          </div>
-        ) : (
-          <BucketSidebarPanel onCollapse={toggle} limit={limit} />
-        )}
+        <BucketSidebarPanel onCollapse={toggle} limit={limit} />
       </motion.aside>
+
+      <AnimatePresence>
+        {isCollapsed && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className={cn(
+              "absolute top-0 bottom-0 left-0 z-20 flex flex-col items-center gap-3 py-4",
+              "bg-background/95 dark:bg-background/90",
+              "border-l border-border/50",
+            )}
+            style={{ width: collapsedWidth }}
+          >
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={hoverSpring}
+                >
+                  <Button
+                    ref={sliverRef}
+                    variant="outline"
+                    size="icon"
+                    onClick={toggle}
+                    aria-expanded={false}
+                    aria-controls={PANEL_ID}
+                    aria-label={`Open bucket — ${readyCount} of ${limit} papers staged`}
+                    className="h-9 w-9 shadow-sm"
+                  >
+                    <PanelLeftOpen className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                Open bucket (⌘⇧B)
+              </TooltipContent>
+            </Tooltip>
+
+            <div className="mt-1 flex flex-col items-center gap-1 text-muted-foreground">
+              <Package className="h-4 w-4" />
+              <AnimatedCount
+                value={readyCount}
+                total={limit}
+                showTotal={false}
+                tint={tint || "text-foreground"}
+                className="text-sm"
+              />
+            </div>
+
+            <span className="sr-only" aria-live="polite">
+              {readyCount} of {limit} papers staged
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

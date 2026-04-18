@@ -8,26 +8,41 @@ type Props = {
   total: number;
   tint?: string;
   /**
-   * Visual scale of the count text. Used to render a compact variant in
-   * the collapsed sliver (vertical layout) vs. the panel header.
+   * Extra classes for the outer span — callers pass size/alignment
+   * tweaks (e.g. `text-xs` or `text-sm`) without having to replicate
+   * the base `font-semibold tabular-nums` styling.
    */
   className?: string;
+  /**
+   * Render the `/ total` suffix. Defaults to true. Pass `false` in
+   * the collapsed sliver where 48 px of horizontal space can't fit
+   * "N / total".
+   */
+  showTotal?: boolean;
 };
 
-export function AnimatedCount({ value, total, tint, className }: Props) {
+export function AnimatedCount({
+  value,
+  total,
+  tint,
+  className,
+  showTotal = true,
+}: Props) {
   const prefersReduced = useReducedMotion();
 
   if (prefersReduced) {
     return (
       <span
         className={cn(
-          "inline-flex items-baseline gap-1 font-medium tabular-nums",
+          "inline-flex items-baseline gap-1 font-semibold tabular-nums",
           tint,
           className,
         )}
       >
         <span>{value}</span>
-        <span className="text-muted-foreground">/ {total}</span>
+        {showTotal && (
+          <span className="font-medium text-muted-foreground">/ {total}</span>
+        )}
       </span>
     );
   }
@@ -36,7 +51,7 @@ export function AnimatedCount({ value, total, tint, className }: Props) {
     <motion.span
       key={`pulse-${value}`}
       className={cn(
-        "inline-flex items-baseline gap-1 font-medium tabular-nums",
+        "inline-flex items-baseline gap-1 font-semibold tabular-nums",
         tint,
         className,
       )}
@@ -47,7 +62,7 @@ export function AnimatedCount({ value, total, tint, className }: Props) {
         ease: [0.4, 0, 0.2, 1],
       }}
     >
-      <span className="relative inline-block overflow-hidden leading-none">
+      <span className="relative inline-block overflow-hidden">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
             key={value}
@@ -61,7 +76,9 @@ export function AnimatedCount({ value, total, tint, className }: Props) {
           </motion.span>
         </AnimatePresence>
       </span>
-      <span className="text-muted-foreground">/ {total}</span>
+      {showTotal && (
+        <span className="font-medium text-muted-foreground">/ {total}</span>
+      )}
     </motion.span>
   );
 }

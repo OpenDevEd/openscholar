@@ -11,6 +11,7 @@ export default function NewExtractionPage() {
   return (
     <div className="flex w-full flex-1 flex-col overflow-x-clip">
       <TwoColumnLayout
+        sidebarSide="right"
         leftColumn={<BucketSidebar />}
         rightColumn={
           <PageWrapper>
