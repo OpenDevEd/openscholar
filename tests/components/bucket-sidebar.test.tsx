@@ -268,3 +268,54 @@ describe("<BucketSidebar> capacity signals", () => {
     expect(capacity.className).toMatch(/text-destructive/);
   });
 });
+
+describe("<BucketSidebar> row layout (T8)", () => {
+  it("title uses line-clamp-2, no truncate", () => {
+    const longTitle =
+      "A very long title that easily exceeds one line of rendered text in the bucket sidebar so that line-clamp-2 actually kicks in and wraps to two lines of content";
+    act(() => {
+      useBucketStore.getState().addMany([makeItem("k:a", longTitle)], 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    const title = screen.getByText(longTitle);
+    expect(title.className).toMatch(/line-clamp-2/);
+    expect(title.className).not.toMatch(/\btruncate\b/);
+  });
+
+  it("row is items-center, not items-start", () => {
+    act(() => {
+      useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    const li = screen.getByText("Alpha").closest("li");
+    expect(li).not.toBeNull();
+    expect(li!.className).toMatch(/items-center/);
+    expect(li!.className).not.toMatch(/items-start/);
+  });
+
+  it("uploading status renders inline in the authors line, not in a nested div", () => {
+    act(() => {
+      useBucketStore
+        .getState()
+        .addMany(
+          [makeItem("k:a", "Alpha", { status: "uploading" })],
+          1000,
+        );
+    });
+    render(withProviders(<BucketSidebar />));
+    const authorsLine = screen.getByText(/uploading/i).closest("p");
+    expect(authorsLine).not.toBeNull();
+    expect(authorsLine!.tagName).toBe("P");
+  });
+
+  it("remove button has the 40 px touch target class", () => {
+    act(() => {
+      useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    const btn = screen.getByRole("button", { name: /remove alpha/i });
+    expect(btn.className).toMatch(/\bh-10\b/);
+    expect(btn.className).toMatch(/\bw-10\b/);
+    expect(btn.className).toMatch(/\bshrink-0\b/);
+  });
+});

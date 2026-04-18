@@ -207,32 +207,37 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
             {items.map((item) => (
               <li
                 key={item.bucketKey}
-                className="flex items-start gap-3 rounded-lg border border-border/60 bg-card p-3"
+                className="flex items-center gap-3 rounded-lg border border-border/60 bg-card p-3"
               >
                 <SourceChip source={item.source} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{item.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {authorsPreview(item)}
+                  <p className="text-sm font-medium leading-snug line-clamp-2">
+                    {item.title}
                   </p>
-                  {item.status !== "ready" && (
-                    <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      {item.status === "uploading" && (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          uploading
-                        </>
-                      )}
-                      {item.status === "failed" && <span>upload failed</span>}
-                    </div>
-                  )}
+                  <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                    {authorsPreview(item)}
+                    {item.status !== "ready" && (
+                      <>
+                        {" · "}
+                        {item.status === "uploading" && (
+                          <span className="inline-flex items-center gap-1 align-middle">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            uploading
+                          </span>
+                        )}
+                        {item.status === "failed" && (
+                          <span>upload failed</span>
+                        )}
+                      </>
+                    )}
+                  </p>
                 </div>
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={() => remove(item.bucketKey)}
                   aria-label={`Remove ${item.title}`}
-                  className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="h-10 w-10 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
