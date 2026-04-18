@@ -135,9 +135,31 @@ describe("buildOpenAlexSearchParams — sort + pagination", () => {
     expect(p.get("sort")).toBe("publication_date:asc");
   });
 
-  it("always sets per-page=200", () => {
+  it("defaults per-page to 200 when limit is unset", () => {
     const p = buildOpenAlexSearchParams({ query: "q" });
     expect(p.get("per-page")).toBe("200");
+  });
+
+  it("uses a configured limit as per-page", () => {
+    const p = buildOpenAlexSearchParams({ query: "q", limit: 50 });
+    expect(p.get("per-page")).toBe("50");
+  });
+
+  it("clamps per-page to 200 when limit exceeds OpenAlex's single-page ceiling", () => {
+    const p = buildOpenAlexSearchParams({ query: "q", limit: 500 });
+    expect(p.get("per-page")).toBe("200");
+  });
+
+  it("floors a fractional limit to an integer per-page", () => {
+    const p = buildOpenAlexSearchParams({ query: "q", limit: 99.7 });
+    expect(p.get("per-page")).toBe("99");
+  });
+
+  it("ignores a non-positive limit and falls back to 200", () => {
+    const p1 = buildOpenAlexSearchParams({ query: "q", limit: 0 });
+    const p2 = buildOpenAlexSearchParams({ query: "q", limit: -10 });
+    expect(p1.get("per-page")).toBe("200");
+    expect(p2.get("per-page")).toBe("200");
   });
 });
 

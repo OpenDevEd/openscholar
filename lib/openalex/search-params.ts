@@ -23,7 +23,17 @@ export type OpenAlexSearchFilters = {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  /**
+   * Per-request page size. When the caller (today: the P7 CountChip
+   * via `searchFilters.limit`) knows how many papers the user chose to
+   * pull, thread it in here so OpenAlex returns exactly that many in
+   * one request. Clamped to OpenAlex's 200-item single-page ceiling;
+   * lifting requires cursor pagination (ticketed as P8).
+   */
+  limit?: number;
 };
+
+const OPENALEX_MAX_PER_PAGE = 200;
 
 const OPENALEX_ID_PREFIX = "https://openalex.org/";
 
@@ -114,7 +124,11 @@ export function buildOpenAlexSearchParams(
     params.set("sort", `${field}:${order || "desc"}`);
   }
 
-  params.set("per-page", "200");
+  const perPage =
+    filters.limit && filters.limit > 0
+      ? Math.min(OPENALEX_MAX_PER_PAGE, Math.floor(filters.limit))
+      : OPENALEX_MAX_PER_PAGE;
+  params.set("per-page", String(perPage));
 
   return params;
 }

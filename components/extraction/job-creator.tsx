@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useBucketStore } from "@/lib/store/bucket";
+import { bucketItemToServerInput } from "@/lib/bucket/to-server-input";
 import { QuestionBuilder } from "./question-builder";
 import { SourceSelector } from "./source-selector";
 import { SourceSummary } from "./source-summary";
@@ -115,42 +116,9 @@ export function JobCreator() {
     try {
       const result = await startExtraction({
         name: draftJob.name || t("untitledJob"),
-        bucketItems: readyBucketItems.map((item) => {
-          const meta = (item.sourceMeta ?? {}) as Record<string, unknown>;
-          return {
-            bucketKey: item.bucketKey,
-            source: item.source,
-            sourceRefId: item.sourceRefId,
-            title: item.title,
-            authors: item.authors,
-            year: item.year,
-            doi: item.doi,
-            openalexId: item.openalexId,
-            abstract: item.abstract,
-            storageId: item.storageId,
-            pdfUrl: item.pdfUrl,
-            searchFilters:
-              item.source === "history"
-                ? (meta.searchFilters as never)
-                : undefined,
-            libraryType:
-              item.source === "zotero"
-                ? (meta.libraryType as "user" | "group" | undefined)
-                : undefined,
-            groupId:
-              item.source === "zotero"
-                ? (meta.groupId as string | undefined)
-                : undefined,
-            zoteroUserId:
-              item.source === "zotero"
-                ? (meta.zoteroUserId as string | undefined)
-                : undefined,
-            collectionKey:
-              item.source === "zotero"
-                ? (meta.collectionKey as string | undefined)
-                : undefined,
-          };
-        }),
+        bucketItems: readyBucketItems.map(
+          (item) => bucketItemToServerInput(item) as never,
+        ),
         questions: draftJob.questions.map((q, i) => ({
           key: q.key || `q_${i}`,
           question: q.question,
