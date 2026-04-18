@@ -197,11 +197,21 @@ export function HistorySelector() {
               </div>
             </div>
             {isSelected(entry) && (
-              <HistoryRowChip
-                entry={entry}
-                cap={pullCap}
-                defaultCount={pullDefault}
-              />
+              // Stop click/keyboard propagation so interacting with the
+              // chip (opening the popover, picking a preset, typing in
+              // the stepper) doesn't bubble up to SelectableList's row
+              // onClick/onKeyDown and toggle the row off. Same pattern
+              // the checkbox uses in selectable-list.tsx.
+              <div
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                <HistoryRowChip
+                  entry={entry}
+                  cap={pullCap}
+                  defaultCount={pullDefault}
+                />
+              </div>
             )}
           </div>
         </div>

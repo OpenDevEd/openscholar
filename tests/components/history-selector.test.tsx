@@ -220,6 +220,29 @@ describe("<HistorySelector> ↔ <CountChip> integration", () => {
     expect(screen.queryByRole("button", { name: /chipLabel/ })).toBeNull();
   });
 
+  it("clicking the CountChip trigger does NOT bubble up to deselect the row", () => {
+    const entry = makeHistoryEntry("sr_1");
+    historyEntriesRef.current = [entry];
+    stageEntry(entry);
+    render(<HistorySelector />);
+    expect(useBucketStore.getState().items["history:sr_1"]).toBeDefined();
+    const chip = screen.getByRole("button", { name: /chipLabel/ });
+    fireEvent.click(chip);
+    // Row would call removeMany on a deselect bubble — staged must stay.
+    expect(useBucketStore.getState().items["history:sr_1"]).toBeDefined();
+  });
+
+  it("pressing Space/Enter on a chip preset does NOT bubble up to the row", () => {
+    const entry = makeHistoryEntry("sr_1");
+    historyEntriesRef.current = [entry];
+    stageEntry(entry);
+    render(<HistorySelector />);
+    const chip = screen.getByRole("button", { name: /chipLabel/ });
+    fireEvent.keyDown(chip, { key: "Enter" });
+    fireEvent.keyDown(chip, { key: " " });
+    expect(useBucketStore.getState().items["history:sr_1"]).toBeDefined();
+  });
+
   it("clamps the staged paperCount to the per-row pull cap at selection time", () => {
     const entry = makeHistoryEntry("sr_1", { count: 3000 });
     historyEntriesRef.current = [entry];
