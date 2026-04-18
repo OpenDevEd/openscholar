@@ -19,7 +19,7 @@
 import useSWR from "swr";
 import { hashSearchFilters } from "@/lib/openalex/filter-hash";
 import { searchOpenAlexCount } from "@/app/actions/openalex-count";
-import { toSearchFilters } from "@/lib/openalex/count";
+import { toSearchFilters } from "@/lib/openalex/to-search-filters";
 import type { SearchResult } from "@/lib/types";
 
 type UseHistoryCountResult = {

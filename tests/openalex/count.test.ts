@@ -6,7 +6,8 @@ vi.mock("@/lib/openalex", () => ({
   default: { works: worksMock },
 }));
 
-import { fetchOpenAlexCount, toSearchFilters } from "@/lib/openalex/count";
+import { fetchOpenAlexCount } from "@/lib/openalex/count";
+import { toSearchFilters } from "@/lib/openalex/to-search-filters";
 import type { SearchFilters } from "@/lib/types";
 import type { SearchResult } from "@/lib/types";
 

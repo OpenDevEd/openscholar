@@ -1,5 +1,10 @@
 /**
- * Count-only OpenAlex helper.
+ * Count-only OpenAlex helper — SERVER SIDE ONLY.
+ *
+ * Imports the OpenAlex SDK, which itself imports Node's `fs`. Pulling
+ * this module into the client bundle will break the Turbopack build
+ * (`Module not found: Can't resolve 'fs'`). Every consumer must be
+ * a `"use server"` action or an internal action.
  *
  * When the UI needs "how many papers match this filter?" without caring
  * about the actual works, this path sends `per-page=1` and reads back
@@ -7,12 +12,12 @@
  * and the SDK response time drops accordingly.
  *
  * Shares `createSearchParameters` with the main search path — the only
- * difference is the `perPageOverride: 1` hint. No other branching, no
- * duplicated filter-assembly logic.
+ * difference is the `perPageOverride: 1` hint. The client-safe
+ * SearchResult → SearchFilters projection lives in `./to-search-filters`.
  */
 import client from "@/lib/openalex";
 import { createSearchParameters } from "@/lib/utils";
-import type { SearchFilters, SearchResult } from "@/lib/types";
+import type { SearchFilters } from "@/lib/types";
 
 export async function fetchOpenAlexCount(
   query: string,
@@ -29,29 +34,4 @@ export async function fetchOpenAlexCount(
       error instanceof Error ? error.message : "Unknown error";
     throw new Error(`OpenAlex API error: ${message}`);
   }
-}
-
-/**
- * Projects a stored `SearchResult` history entry down to the
- * `SearchFilters` shape consumed by `createSearchParameters`. Fields
- * that don't feed the OpenAlex request (id, timestamps, count,
- * screening state, queryHistory) are dropped.
- */
-export function toSearchFilters(entry: SearchResult): SearchFilters {
-  return {
-    searchField: entry.field,
-    sortBy: entry.sortBy ?? "relevance_score:desc",
-    filterType: entry.filterType ?? "year",
-    yearRange: entry.yearRange,
-    isYearRangeEnabled: entry.isYearRangeEnabled,
-    dateRange: entry.dateRange,
-    ratingRange: entry.ratingRange,
-    onlyRatedPapers: entry.onlyRatedPapers,
-    selectedRegions: entry.selectedRegions ?? [],
-    selectedCountryFocus: entry.selectedCountryFocus ?? [],
-    citesItemId: entry.citesItemId ?? "",
-    citedByItemId: entry.citedByItemId ?? "",
-    relatedToItemId: entry.relatedToItemId ?? "",
-    reviewFilter: entry.reviewFilter ?? false,
-  };
 }
