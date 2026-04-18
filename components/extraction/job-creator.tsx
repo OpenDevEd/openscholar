@@ -28,8 +28,10 @@ import { SourceSelector } from "./source-selector";
 import { SourceSummary } from "./source-summary";
 import { BucketIndicator } from "./bucket/bucket-indicator";
 import { BucketDrawer } from "./bucket/bucket-drawer";
+import { BucketSidebar } from "./bucket/bucket-sidebar";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/lib/hooks";
 
 const stepVariants = {
   enter: (direction: number) => ({
@@ -62,6 +64,7 @@ export function JobCreator() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bucketOpen, setBucketOpen] = useState(false);
   const bucketIndicatorRef = useRef<HTMLButtonElement>(null);
+  const isMobile = useIsMobile();
 
   const validStep = Math.min(3, Math.max(1, stepRaw)) as 1 | 2 | 3;
 
@@ -151,7 +154,8 @@ export function JobCreator() {
   };
 
   return (
-    <div className="w-full p-4 md:p-6">
+    <div className="h-full md:flex md:gap-0">
+      <div className="flex-1 min-w-0 p-4 md:p-6 md:overflow-y-auto">
       {/* Header with Cancel */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -168,21 +172,25 @@ export function JobCreator() {
         </Button>
 
         <div className="flex items-center gap-3">
-          <BucketIndicator
-            ref={bucketIndicatorRef}
-            onClick={() => setBucketOpen(true)}
-          />
+          {isMobile && (
+            <BucketIndicator
+              ref={bucketIndicatorRef}
+              onClick={() => setBucketOpen(true)}
+            />
+          )}
           <div className="text-sm text-muted-foreground">
             {t("stepOfThree", { step: validStep, total: 3 })}
           </div>
         </div>
       </motion.div>
 
-      <BucketDrawer
-        open={bucketOpen}
-        onOpenChange={setBucketOpen}
-        onClearReturnFocus={() => bucketIndicatorRef.current?.focus()}
-      />
+      {isMobile && (
+        <BucketDrawer
+          open={bucketOpen}
+          onOpenChange={setBucketOpen}
+          onClearReturnFocus={() => bucketIndicatorRef.current?.focus()}
+        />
+      )}
 
       {/* Step Progress - Horizontal Timeline */}
       <motion.div
@@ -392,6 +400,8 @@ export function JobCreator() {
           )}
         </Button>
       </motion.div>
+      </div>
+      <BucketSidebar />
     </div>
   );
 }
