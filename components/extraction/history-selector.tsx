@@ -166,11 +166,6 @@ export function HistorySelector() {
         if (next) bucketAdded(addMany(bucketItems, limit));
         else removeMany(bucketItems.map((b) => b.bucketKey));
       }}
-      onToggleAll={(next) => {
-        const bucketItems = searchHistory.map((e) => toBucketItem(e));
-        if (next) bucketAdded(addMany(bucketItems, limit));
-        else removeMany(bucketItems.map((b) => b.bucketKey));
-      }}
       renderRow={(entry) => (
         <div>
           <div className="flex items-center gap-2 mb-1">

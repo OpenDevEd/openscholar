@@ -18,7 +18,14 @@ export interface SelectableListProps<T> {
    * interaction. Fall back to N `onToggle` calls when undefined.
    */
   onToggleRange?: (items: T[], next: boolean) => void;
-  onToggleAll: (next: boolean) => void;
+  /**
+   * Header "select all / deselect all" handler. Optional: when
+   * omitted, the header checkbox is not rendered (e.g. the History
+   * tab staging a mass-select is unnecessary and the full-list
+   * behaviour risks blowing past caps). Shift-click ranges still work
+   * via `onToggleRange`.
+   */
+  onToggleAll?: (next: boolean) => void;
   /**
    * Optional "select everything that matches across pages" hook. When
    * defined AND the current page is fully selected AND `hasMore` is
@@ -126,11 +133,13 @@ export function SelectableList<T>({
         className="flex items-center gap-3 p-3 bg-muted/50 text-xs font-medium text-muted-foreground"
         data-selectable-header
       >
-        <Checkbox
-          aria-label="Select all visible"
-          checked={headerChecked}
-          onCheckedChange={() => onToggleAll(headerChecked !== true)}
-        />
+        {onToggleAll && (
+          <Checkbox
+            aria-label="Select all visible"
+            checked={headerChecked}
+            onCheckedChange={() => onToggleAll(headerChecked !== true)}
+          />
+        )}
         {headerLabel ?? (
           <span>
             {selectedCount > 0

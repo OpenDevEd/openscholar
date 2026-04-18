@@ -213,6 +213,21 @@ describe("<SelectableList>", () => {
     expect(onToggle).toHaveBeenCalledTimes(1 + 4);
   });
 
+  it("omits the header checkbox when onToggleAll is not provided", () => {
+    render(
+      <SelectableList<Row>
+        items={rows}
+        keyOf={(r) => r.id}
+        isSelected={() => false}
+        onToggle={() => {}}
+        renderRow={(r) => <span>{r.title}</span>}
+      />,
+    );
+    const checkboxes = screen.getAllByRole("checkbox");
+    // Only per-row checkboxes remain — no header select-all.
+    expect(checkboxes).toHaveLength(rows.length);
+  });
+
   it("shift-click across already-selected rows deselects them (next=false)", () => {
     const onChange = vi.fn();
     render(
