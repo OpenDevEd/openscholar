@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useQuery } from "convex/react";
 import { motion } from "motion/react";
 import { Loader2, Package, PanelRightClose, Trash2 } from "lucide-react";
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -20,6 +22,13 @@ import {
 import { useBucketStore } from "@/lib/store/bucket";
 import type { BucketItem } from "@/lib/bucket/bucketItem";
 import { SourceChip } from "./source-chip";
+
+function capacityTint(readyCount: number, limit: number): string {
+  if (readyCount >= limit) return "text-destructive";
+  if (readyCount >= Math.floor(limit * 0.9))
+    return "text-amber-600 dark:text-amber-400";
+  return "text-foreground";
+}
 
 function authorsPreview(item: BucketItem): string {
   const authors = item.authors.slice(0, 3).join(", ") || "Unknown";
@@ -41,9 +50,16 @@ type SliverProps = {
   onExpand: () => void;
   sliverRef: React.RefObject<HTMLButtonElement | null>;
   readyCount: number;
+  limit: number;
 };
 
-function BucketSidebarSliver({ onExpand, sliverRef, readyCount }: SliverProps) {
+function BucketSidebarSliver({
+  onExpand,
+  sliverRef,
+  readyCount,
+  limit,
+}: SliverProps) {
+  const tint = capacityTint(readyCount, limit);
   return (
     <motion.button
       ref={sliverRef}
@@ -54,7 +70,7 @@ function BucketSidebarSliver({ onExpand, sliverRef, readyCount }: SliverProps) {
       transition={hoverSpring}
       aria-expanded={false}
       aria-controls={PANEL_ID}
-      aria-label={`Open bucket — ${readyCount} papers staged`}
+      aria-label={`Open bucket — ${readyCount} of ${limit} papers staged`}
       className={cn(
         "absolute inset-0 flex flex-col items-center gap-3 py-4 px-1",
         "text-muted-foreground hover:text-foreground",
@@ -62,11 +78,13 @@ function BucketSidebarSliver({ onExpand, sliverRef, readyCount }: SliverProps) {
       )}
     >
       <Package className="h-4 w-4 shrink-0" />
-      <span className="text-[11px] font-semibold tabular-nums">
+      <span
+        className={cn("text-[11px] font-semibold tabular-nums", tint)}
+      >
         {readyCount}
       </span>
       <span className="sr-only" aria-live="polite">
-        {readyCount} papers staged
+        {readyCount} of {limit} papers staged
       </span>
     </motion.button>
   );
@@ -74,9 +92,10 @@ function BucketSidebarSliver({ onExpand, sliverRef, readyCount }: SliverProps) {
 
 type PanelProps = {
   onCollapse: () => void;
+  limit: number;
 };
 
-function BucketSidebarPanel({ onCollapse }: PanelProps) {
+function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
   const order = useBucketStore((s) => s.order);
   const itemsMap = useBucketStore((s) => s.items);
   const remove = useBucketStore((s) => s.remove);
@@ -86,6 +105,14 @@ function BucketSidebarPanel({ onCollapse }: PanelProps) {
     .map((k) => itemsMap[k])
     .filter((v): v is BucketItem => Boolean(v));
 
+  const readyCount = items.reduce(
+    (n, i) => (i.status === "ready" ? n + (i.paperCount ?? 1) : n),
+    0,
+  );
+  const atCap = readyCount >= limit;
+  const nearCap = !atCap && readyCount >= Math.floor(limit * 0.9);
+  const tint = capacityTint(readyCount, limit);
+
   return (
     <section
       id={PANEL_ID}
@@ -93,35 +120,61 @@ function BucketSidebarPanel({ onCollapse }: PanelProps) {
       aria-labelledby="bucket-sidebar-title"
       className="flex h-full flex-col"
     >
-      <header className="flex items-center justify-between border-b border-border/50 p-4">
-        <div className="min-w-0 flex-1">
-          <h2
-            id="bucket-sidebar-title"
-            className="text-sm font-semibold text-foreground"
-          >
-            Bucket
-          </h2>
-        </div>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              transition={hoverSpring}
+      <header className="flex flex-col gap-2 border-b border-border/50 p-4">
+        <div className="flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            <h2
+              id="bucket-sidebar-title"
+              className="text-sm font-semibold text-foreground"
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onCollapse}
-                aria-label="Collapse bucket sidebar"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              Bucket
+            </h2>
+            <p
+              data-testid="bucket-sidebar-capacity"
+              className={cn(
+                "text-xs font-medium tabular-nums mt-0.5",
+                tint,
+              )}
+            >
+              {readyCount} / {limit} papers ready to submit
+            </p>
+          </div>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={hoverSpring}
               >
-                <PanelRightClose className="h-4 w-4" />
-              </Button>
-            </motion.div>
-          </TooltipTrigger>
-          <TooltipContent side="left">Collapse bucket</TooltipContent>
-        </Tooltip>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onCollapse}
+                  aria-label="Collapse bucket sidebar"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                </Button>
+              </motion.div>
+            </TooltipTrigger>
+            <TooltipContent side="left">Collapse bucket</TooltipContent>
+          </Tooltip>
+        </div>
+        {(nearCap || atCap) && (
+          <div
+            role="status"
+            className={cn(
+              "rounded-md p-2 text-xs",
+              atCap
+                ? "bg-destructive/10 text-destructive"
+                : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+            )}
+          >
+            {atCap
+              ? "You've hit the per-job cap. Remove items before submitting."
+              : "Approaching the per-job cap."}
+          </div>
+        )}
       </header>
 
       <ScrollArea className="flex-1 min-h-0 px-4">
@@ -189,6 +242,7 @@ export function BucketSidebar() {
   const isCollapsed = useBucketSidebarStore((s) => s.isCollapsed);
   const toggle = useBucketSidebarStore((s) => s.toggle);
   const readyCount = useReadyCount();
+  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
   const sliverRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -251,10 +305,11 @@ export function BucketSidebar() {
               onExpand={toggle}
               sliverRef={sliverRef}
               readyCount={readyCount}
+              limit={limit}
             />
           </div>
         ) : (
-          <BucketSidebarPanel onCollapse={toggle} />
+          <BucketSidebarPanel onCollapse={toggle} limit={limit} />
         )}
       </motion.aside>
     </div>

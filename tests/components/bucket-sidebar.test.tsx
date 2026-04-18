@@ -207,3 +207,64 @@ describe("<BucketSidebar> panel body", () => {
     expect(btn).toHaveAttribute("disabled");
   });
 });
+
+describe("<BucketSidebar> capacity signals", () => {
+  it("no tint and no warning row when under the cap threshold", () => {
+    act(() => {
+      useBucketStore
+        .getState()
+        .addMany([makeItem("k:a", "Alpha")], 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    expect(screen.queryByText(/approaching the per-job cap/i)).toBeNull();
+    expect(screen.queryByText(/you've hit the per-job cap/i)).toBeNull();
+  });
+
+  it("amber warning row when nearCap (>=90%)", () => {
+    const items: BucketItem[] = Array.from({ length: 950 }, (_, i) =>
+      makeItem(`k:${i}`, `Paper ${i}`),
+    );
+    act(() => {
+      useBucketStore.getState().addMany(items, 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    expect(
+      screen.getByText(/approaching the per-job cap/i),
+    ).toBeTruthy();
+  });
+
+  it("destructive warning row when atCap", () => {
+    const items: BucketItem[] = Array.from({ length: 1000 }, (_, i) =>
+      makeItem(`k:${i}`, `Paper ${i}`),
+    );
+    act(() => {
+      useBucketStore.getState().addMany(items, 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    expect(screen.getByText(/you've hit the per-job cap/i)).toBeTruthy();
+  });
+
+  it("capacity count span gains amber class at nearCap", () => {
+    const items: BucketItem[] = Array.from({ length: 950 }, (_, i) =>
+      makeItem(`k:${i}`, `Paper ${i}`),
+    );
+    act(() => {
+      useBucketStore.getState().addMany(items, 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    const capacity = screen.getByTestId("bucket-sidebar-capacity");
+    expect(capacity.className).toMatch(/text-amber-600/);
+  });
+
+  it("capacity count span gains destructive class at cap", () => {
+    const items: BucketItem[] = Array.from({ length: 1000 }, (_, i) =>
+      makeItem(`k:${i}`, `Paper ${i}`),
+    );
+    act(() => {
+      useBucketStore.getState().addMany(items, 1000);
+    });
+    render(withProviders(<BucketSidebar />));
+    const capacity = screen.getByTestId("bucket-sidebar-capacity");
+    expect(capacity.className).toMatch(/text-destructive/);
+  });
+});
