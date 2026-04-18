@@ -22,6 +22,7 @@ import {
 } from "../../../lib/extraction/insights";
 import { MAX_REVIEWS_PER_JOB } from "../../lib/queryBounds";
 import { PAPER_LIMIT_MAX } from "../bucket/limits";
+import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 /** Result document with optional review overlay fields. */
 export type ResultWithReview = Doc<"extractionResults"> & {
@@ -155,7 +156,9 @@ export function buildQuestionInfoByKey(
 /**
  * Load all results for a job in one indexed query and bucket by paperId in
  * JS. Replaces the previous N+1 pattern (one by_paper query per paper).
- * Cardinality: ≤ PAPER_LIMIT_MAX × ~20 questions.
+ * Cap matches the true ceiling: PAPER_LIMIT_MAX × MAX_QUESTIONS_PER_JOB
+ * rows (one extractionResult per paper × question). An earlier cap of
+ * `× 20` silently truncated jobs that used more than 20 questions.
  */
 export async function loadResultsByJob(
   ctx: QueryCtx,
@@ -164,7 +167,7 @@ export async function loadResultsByJob(
   const all = await ctx.db
     .query("extractionResults")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(PAPER_LIMIT_MAX * 20);
+    .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB);
 
   const byPaper = new Map<string, Doc<"extractionResults">[]>();
   for (const row of all) {

@@ -48,3 +48,30 @@ export function buildDedupeKey(args: DedupeKeyInput): string {
     "buildDedupeKey requires at least one of openalexId, doi, or title",
   );
 }
+
+/**
+ * Dedupe bucket items by their precomputed `bucketKey`.
+ *
+ * The client store already keys rows by `bucketKey`, so a correct
+ * server-side dedupe must honor the same identity. Rebuilding a key
+ * from bibliographic fields (openalexId/doi/title/year) collapses
+ * saved-search placeholders that share a query title but differ in
+ * filters (yearRange, regions, reviewOnly), because those placeholders
+ * carry no openalexId/doi/year — their identity lives in `bucketKey =
+ * history:${savedSearchId}` and in `searchFilters`, neither of which
+ * the bibliographic builder sees.
+ *
+ * Insertion order is preserved — first occurrence wins.
+ */
+export function dedupeBucketItems<T extends { bucketKey: string }>(
+  items: ReadonlyArray<T>,
+): T[] {
+  const seen = new Set<string>();
+  const deduped: T[] = [];
+  for (const item of items) {
+    if (seen.has(item.bucketKey)) continue;
+    seen.add(item.bucketKey);
+    deduped.push(item);
+  }
+  return deduped;
+}

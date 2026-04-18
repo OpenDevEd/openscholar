@@ -76,6 +76,16 @@ export const runExtractionWorkflow = workflow.define({
 
     for (const item of bucketItems) {
       if (item.source === "history" && item.searchFilters) {
+        // Honor a user-selected zero-paper count: the CountChip allows
+        // paperCount=0, which surfaces as searchFilters.limit=0. Skipping
+        // here keeps the OpenAlex fetch off the wire entirely, instead of
+        // letting search-params coerce 0 into a full 200-item page.
+        if (item.searchFilters.limit === 0) {
+          console.log(
+            `[Workflow] Skipping zero-count history source ${item.sourceRefId}`,
+          );
+          continue;
+        }
         // Saved-search placeholder expands to papers at workflow time.
         const result = await step.runAction(
           internal.extraction.actions.fetchPapersFromHistory,

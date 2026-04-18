@@ -15,6 +15,7 @@ import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { PAPER_LIMIT_MAX } from "../bucket/limits";
+import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { assertJobOwnership } from "../access";
 import { buildRunDiff } from "../../../lib/extraction/insights";
 import {
@@ -43,11 +44,11 @@ async function loadJobDataForReporting(
     ctx.db
       .query("extractionResults")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT_MAX * 20),
+      .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
     ctx.db
       .query("extractionResultReviews")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT_MAX * 20),
+      .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
   ]);
 
   const { resultsByPaper, reviewsByResult } = buildResultMaps(

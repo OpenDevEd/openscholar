@@ -15,8 +15,10 @@ export const MAX_EXTRACTION_JOBS_PER_USER = 500;
 export const MAX_EVIDENCE_UNITS_PER_PAPER = 200;
 
 /** Maximum reviews loaded in a single batch by job.
- * Worst case: 1000 papers x 20 questions = 20,000 reviews. */
-export const MAX_REVIEWS_PER_JOB = 20_000;
+ * Worst case: PAPER_LIMIT_MAX (1000) × MAX_QUESTIONS_PER_JOB (50) = 50,000
+ * reviews (one per result). Kept in sync with the result-table cap used
+ * by loadResultsByJob and loadJobDataForReporting. */
+export const MAX_REVIEWS_PER_JOB = 50_000;
 
 /** Maximum credit transactions loaded per user.
  * Users accumulate transactions over time; 1,000 is generous. */

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildDedupeKey } from "@/lib/bucket/dedupe";
+import { buildDedupeKey, dedupeBucketItems } from "@/lib/bucket/dedupe";
 
 describe("lib/bucket/dedupe", () => {
   test("uses the normalised openalexId when present", () => {
@@ -54,5 +54,47 @@ describe("lib/bucket/dedupe", () => {
   test("throws when none of openalexId, doi, or title is provided", () => {
     expect(() => buildDedupeKey({})).toThrow();
     expect(() => buildDedupeKey({ year: 2020 })).toThrow();
+  });
+});
+
+describe("lib/bucket/dedupe.dedupeBucketItems", () => {
+  test("collapses two items that share a bucketKey, preserving insertion order (first wins)", () => {
+    const a = { bucketKey: "openalex:W1", source: "library", label: "first" };
+    const b = { bucketKey: "openalex:W1", source: "history", label: "second" };
+    const c = { bucketKey: "openalex:W2", source: "library", label: "third" };
+    const out = dedupeBucketItems([a, b, c]);
+    expect(out).toEqual([a, c]);
+  });
+
+  test("preserves two saved-search placeholders that share a query title but have distinct bucketKeys", () => {
+    // Saved-search rows set bucketKey = `history:${savedSearchId}`, so two
+    // searches with title="AI ethics" and different filters (yearRange,
+    // regions) land with different bucketKeys and must NOT collapse.
+    const a = {
+      bucketKey: "history:s1",
+      source: "history",
+      title: "AI ethics",
+      searchFilters: { yearRange: [2020, 2024] },
+    };
+    const b = {
+      bucketKey: "history:s2",
+      source: "history",
+      title: "AI ethics",
+      searchFilters: { yearRange: [2015, 2019] },
+    };
+    expect(dedupeBucketItems([a, b])).toEqual([a, b]);
+  });
+
+  test("cross-source paper dedupe still works when both sides produce the same bucketKey", () => {
+    // Library and history agree on `openalex:W42` when the same paper is
+    // staged from both source tabs — they share a bucketKey and collapse
+    // as intended.
+    const fromLibrary = { bucketKey: "openalex:W42", source: "library" };
+    const fromHistory = { bucketKey: "openalex:W42", source: "history" };
+    expect(dedupeBucketItems([fromLibrary, fromHistory])).toEqual([fromLibrary]);
+  });
+
+  test("returns an empty array for empty input", () => {
+    expect(dedupeBucketItems([])).toEqual([]);
   });
 });

@@ -155,11 +155,21 @@ describe("buildOpenAlexSearchParams — sort + pagination", () => {
     expect(p.get("per-page")).toBe("99");
   });
 
-  it("ignores a non-positive limit and falls back to 200", () => {
-    const p1 = buildOpenAlexSearchParams({ query: "q", limit: 0 });
-    const p2 = buildOpenAlexSearchParams({ query: "q", limit: -10 });
-    expect(p1.get("per-page")).toBe("200");
-    expect(p2.get("per-page")).toBe("200");
+  it("throws when limit is 0 — a zero-paper source must be skipped upstream, not silently fetched as 200", () => {
+    expect(() =>
+      buildOpenAlexSearchParams({ query: "q", limit: 0 }),
+    ).toThrow(/limit must be >= 1/);
+  });
+
+  it("throws when limit is negative", () => {
+    expect(() =>
+      buildOpenAlexSearchParams({ query: "q", limit: -10 }),
+    ).toThrow(/limit must be >= 1/);
+  });
+
+  it("honors limit=1 as the minimum valid page size", () => {
+    const p = buildOpenAlexSearchParams({ query: "q", limit: 1 });
+    expect(p.get("per-page")).toBe("1");
   });
 });
 

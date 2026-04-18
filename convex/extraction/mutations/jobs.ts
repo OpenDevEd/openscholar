@@ -20,7 +20,7 @@ import { requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { getPaperLimit } from "../bucket/limits";
-import { buildDedupeKey } from "../dedupe";
+import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
   bucketItemInputValidator,
@@ -47,25 +47,6 @@ function deriveSourceType(
   if (kinds.has("history")) return "history";
   if (kinds.has("zotero")) return "zotero";
   return "manual";
-}
-
-function dedupeBucketItems(
-  items: ReadonlyArray<BucketItemInput>,
-): BucketItemInput[] {
-  const seen = new Set<string>();
-  const deduped: BucketItemInput[] = [];
-  for (const item of items) {
-    const key = buildDedupeKey({
-      openalexId: item.openalexId,
-      doi: item.doi,
-      title: item.title,
-      year: item.year,
-    });
-    if (seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(item);
-  }
-  return deduped;
 }
 
 export const startExtraction = mutation({

@@ -124,8 +124,18 @@ export function buildOpenAlexSearchParams(
     params.set("sort", `${field}:${order || "desc"}`);
   }
 
+  if (filters.limit !== undefined && filters.limit < 1) {
+    // A zero/negative limit means "fetch nothing" — a legitimate user
+    // signal (CountChip allows paperCount=0). Callers MUST short-circuit
+    // the fetch upstream for that case; reaching here is a bug. We throw
+    // rather than silently fall back to 200, which used to turn "zero
+    // selected" into "up to 200 fetched" and burn API quota.
+    throw new Error(
+      `buildOpenAlexSearchParams: limit must be >= 1 (received ${filters.limit}); callers should skip the fetch for zero-paper sources`,
+    );
+  }
   const perPage =
-    filters.limit && filters.limit > 0
+    filters.limit !== undefined
       ? Math.min(OPENALEX_MAX_PER_PAGE, Math.floor(filters.limit))
       : OPENALEX_MAX_PER_PAGE;
   params.set("per-page", String(perPage));
