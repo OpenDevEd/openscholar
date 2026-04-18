@@ -5,7 +5,6 @@ import { useQuery } from "convex/react";
 import { Package } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useBucketStore } from "@/lib/store/bucket";
 import { AnimatedCount } from "./animated-count";
@@ -28,6 +27,11 @@ export function BucketIndicator({
   );
   const atCap = readyCount >= limit;
   const nearCap = !atCap && readyCount >= Math.floor(limit * 0.9);
+  const tint = atCap
+    ? "text-destructive"
+    : nearCap
+      ? "text-amber-600 dark:text-amber-400"
+      : "";
   return (
     <Button
       ref={ref}
@@ -41,7 +45,7 @@ export function BucketIndicator({
       <AnimatedCount
         value={readyCount}
         total={limit}
-        tint=""
+        tint={tint}
         className="text-sm"
       />
       {/*
@@ -52,16 +56,6 @@ export function BucketIndicator({
       <span className="sr-only" aria-live="polite">
         {readyCount} of {limit} papers staged
       </span>
-      {nearCap && !atCap && (
-        <Badge variant="outline" className="bg-amber-500/10">
-          near cap
-        </Badge>
-      )}
-      {atCap && (
-        <Badge variant="outline" className="bg-destructive/10">
-          at cap
-        </Badge>
-      )}
     </Button>
   );
 }
