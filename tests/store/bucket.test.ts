@@ -466,3 +466,59 @@ describe("useBucketStore — dedupeKeys / dedupeKeyToSource", () => {
     expect(dedupeKeyToSource["doi:10.1/shared"]).toBe("zotero");
   });
 });
+
+describe("useBucketStore.restoreFromSnapshot", () => {
+  test("snapshot taken pre-clear is restored exactly by restoreFromSnapshot", () => {
+    const a = makeItem("k:a", { doi: "10.1/a", title: "Alpha", year: 2020 });
+    const b = makeItem("k:b", { doi: "10.1/b", title: "Beta", year: 2021 });
+    useBucketStore.getState().addMany([a, b], NO_CAP);
+
+    const before = useBucketStore.getState();
+    const snapshot = {
+      items: { ...before.items },
+      order: [...before.order],
+    };
+
+    useBucketStore.getState().clear();
+    expect(useBucketStore.getState().order).toEqual([]);
+
+    useBucketStore.getState().restoreFromSnapshot(snapshot);
+    const after = useBucketStore.getState();
+    expect(after.order).toEqual(["k:a", "k:b"]);
+    expect(after.items["k:a"]).toEqual(a);
+    expect(after.items["k:b"]).toEqual(b);
+  });
+
+  test("restore recomputes dedupe maps", () => {
+    const a = makeItem("k:a", { doi: "10.1/a", title: "Alpha", year: 2020 });
+    useBucketStore.getState().addMany([a], NO_CAP);
+    const snapshot = {
+      items: { ...useBucketStore.getState().items },
+      order: [...useBucketStore.getState().order],
+    };
+    useBucketStore.getState().clear();
+    useBucketStore.getState().restoreFromSnapshot(snapshot);
+    const { dedupeKeys, dedupeKeyToSource } = useBucketStore.getState();
+    expect(dedupeKeys.size).toBeGreaterThan(0);
+    expect(Object.keys(dedupeKeyToSource).length).toBeGreaterThan(0);
+  });
+
+  test("restore overwrites post-clear additions", () => {
+    const a = makeItem("k:a");
+    const b = makeItem("k:b");
+    const c = makeItem("k:c");
+    useBucketStore.getState().addMany([a, b], NO_CAP);
+    const snapshot = {
+      items: { ...useBucketStore.getState().items },
+      order: [...useBucketStore.getState().order],
+    };
+    useBucketStore.getState().clear();
+
+    useBucketStore.getState().addMany([c], NO_CAP);
+    expect(useBucketStore.getState().order).toEqual(["k:c"]);
+
+    useBucketStore.getState().restoreFromSnapshot(snapshot);
+    expect(useBucketStore.getState().order).toEqual(["k:a", "k:b"]);
+    expect(useBucketStore.getState().items["k:c"]).toBeUndefined();
+  });
+});

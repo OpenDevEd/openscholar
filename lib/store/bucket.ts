@@ -30,6 +30,16 @@ export type AddManyResult = {
   capped: number;
 };
 
+/**
+ * Minimal snapshot of the mutable bucket — `items` map + `order` array.
+ * Dedupe maps are recomputed on restore. Captured by the Clear-all
+ * path so the Sonner undo toast can round-trip a `clear()`.
+ */
+export type AllClearSnapshot = {
+  items: Record<string, BucketItem>;
+  order: string[];
+};
+
 type BucketState = {
   items: Record<string, BucketItem>;
   order: string[];
@@ -63,6 +73,14 @@ type BucketState = {
     nextCount: number,
     cap: number,
   ) => void;
+  /**
+   * Replace `items` + `order` wholesale with the passed snapshot and
+   * recompute dedupe maps. Used by the Clear-all undo toast to reverse
+   * a `clear()`. Any rows added between `clear()` and
+   * `restoreFromSnapshot(...)` are dropped — restore means "bring back
+   * exactly what was there", not "merge".
+   */
+  restoreFromSnapshot: (snapshot: AllClearSnapshot) => void;
 };
 
 /**
@@ -248,6 +266,16 @@ export const useBucketStore = create<BucketState>()(
               ...state.items,
               [bucketKey]: { ...existing, paperCount: clamped },
             },
+          };
+        }),
+      restoreFromSnapshot: (snapshot) =>
+        set(() => {
+          const items = { ...snapshot.items };
+          const order = [...snapshot.order];
+          return {
+            items,
+            order,
+            ...computeDedupeMaps(items),
           };
         }),
     }),
