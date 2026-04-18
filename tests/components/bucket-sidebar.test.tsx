@@ -5,13 +5,32 @@
  * - Desktop viewport (matchMedia max-width:767px -> false): aside renders.
  * - Mobile viewport (matchMedia -> true): returns null.
  * - Collapse / expand via sliver button + panel collapse button + keyboard.
+ * - Panel body: lists items, per-item remove, empty state.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useBucketSidebarStore } from "@/lib/store";
 import { useBucketStore } from "@/lib/store/bucket";
+import type { BucketItem } from "@/lib/bucket/bucketItem";
 import { BucketSidebar } from "@/components/extraction/bucket/bucket-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
+function makeItem(
+  key: string,
+  title: string,
+  overrides: Partial<BucketItem> = {},
+): BucketItem {
+  return {
+    bucketKey: key,
+    source: "library",
+    sourceRefId: key,
+    title,
+    authors: [],
+    addedAt: 1,
+    status: "ready",
+    ...overrides,
+  };
+}
 
 function withProviders(ui: React.ReactElement) {
   return <TooltipProvider>{ui}</TooltipProvider>;
@@ -141,5 +160,50 @@ describe("<BucketSidebar> collapse control", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
     expect(useBucketSidebarStore.getState().isCollapsed).toBe(true);
+  });
+});
+
+describe("<BucketSidebar> panel body", () => {
+  it("renders the empty state when no items are staged", () => {
+    render(withProviders(<BucketSidebar />));
+    expect(
+      screen.getByText(/the bucket is empty/i),
+    ).toBeTruthy();
+  });
+
+  it("lists staged items with titles", () => {
+    act(() => {
+      useBucketStore
+        .getState()
+        .addMany(
+          [makeItem("k:a", "Alpha Paper"), makeItem("k:b", "Beta Paper")],
+          1000,
+        );
+    });
+    render(withProviders(<BucketSidebar />));
+    expect(screen.getByText("Alpha Paper")).toBeTruthy();
+    expect(screen.getByText("Beta Paper")).toBeTruthy();
+  });
+
+  it("per-item remove button drops the row from the store", () => {
+    act(() => {
+      useBucketStore
+        .getState()
+        .addMany(
+          [makeItem("k:a", "Alpha Paper"), makeItem("k:b", "Beta Paper")],
+          1000,
+        );
+    });
+    render(withProviders(<BucketSidebar />));
+    fireEvent.click(
+      screen.getByRole("button", { name: /remove alpha paper/i }),
+    );
+    expect(useBucketStore.getState().order).toEqual(["k:b"]);
+  });
+
+  it("Clear-all disabled with no items, enabled with items", () => {
+    render(withProviders(<BucketSidebar />));
+    const btn = screen.getByRole("button", { name: /^clear all$/i });
+    expect(btn).toHaveAttribute("disabled");
   });
 });

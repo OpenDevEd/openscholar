@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { Package, PanelRightClose } from "lucide-react";
+import { Loader2, Package, PanelRightClose, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -17,6 +18,13 @@ import {
   getBucketSidebarDimensions,
 } from "@/lib/store";
 import { useBucketStore } from "@/lib/store/bucket";
+import type { BucketItem } from "@/lib/bucket/bucketItem";
+import { SourceChip } from "./source-chip";
+
+function authorsPreview(item: BucketItem): string {
+  const authors = item.authors.slice(0, 3).join(", ") || "Unknown";
+  return item.year ? `${authors} · ${item.year}` : authors;
+}
 
 const PANEL_ID = "bucket-sidebar-panel";
 
@@ -69,6 +77,15 @@ type PanelProps = {
 };
 
 function BucketSidebarPanel({ onCollapse }: PanelProps) {
+  const order = useBucketStore((s) => s.order);
+  const itemsMap = useBucketStore((s) => s.items);
+  const remove = useBucketStore((s) => s.remove);
+  const clear = useBucketStore((s) => s.clear);
+
+  const items = order
+    .map((k) => itemsMap[k])
+    .filter((v): v is BucketItem => Boolean(v));
+
   return (
     <section
       id={PANEL_ID}
@@ -107,9 +124,61 @@ function BucketSidebarPanel({ onCollapse }: PanelProps) {
         </Tooltip>
       </header>
 
-      <div className="flex-1 min-h-0 overflow-hidden" />
+      <ScrollArea className="flex-1 min-h-0 px-4">
+        {items.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            The bucket is empty. Add papers from any tab.
+          </p>
+        ) : (
+          <ul className="space-y-2 py-4">
+            {items.map((item) => (
+              <li
+                key={item.bucketKey}
+                className="flex items-start gap-3 rounded-lg border border-border/60 bg-card p-3"
+              >
+                <SourceChip source={item.source} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{item.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {authorsPreview(item)}
+                  </p>
+                  {item.status !== "ready" && (
+                    <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      {item.status === "uploading" && (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          uploading
+                        </>
+                      )}
+                      {item.status === "failed" && <span>upload failed</span>}
+                    </div>
+                  )}
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => remove(item.bucketKey)}
+                  aria-label={`Remove ${item.title}`}
+                  className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ScrollArea>
 
-      <footer className="border-t border-border/50 p-4" />
+      <footer className="flex items-center justify-start border-t border-border/50 p-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => clear()}
+          disabled={items.length === 0}
+        >
+          Clear all
+        </Button>
+      </footer>
     </section>
   );
 }
