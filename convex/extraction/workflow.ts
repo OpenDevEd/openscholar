@@ -182,25 +182,16 @@ export const runExtractionWorkflow = workflow.define({
     // Defense-in-depth: `assertBucketWithinLimits` already rejects jobs
     // whose effective paper count exceeds the user's plan cap at submit
     // time. History expansion is bounded by the per-row pull cap, so
-    // this guard catches only two residual cases:
-    //   1. Pre-existing jobs created before the submit-time validator.
-    //   2. Any future drift where an item's expansion outstrips its
-    //      declared `searchFilters.limit` (e.g., OpenAlex returns more
-    //      rows than `per-page` ever should).
-    // We fail-closed rather than silently truncate so the user sees the
-    // cap breach explicitly and billing stays predictable.
+    // this guard catches only one residual case: OpenAlex returns more
+    // rows than the requested per-page cap (shouldn't happen, but we
+    // fail-closed rather than silently truncate so billing stays
+    // predictable). The throw is caught by `handleExtractionJobComplete`
+    // which marks the job `failed` with this error message.
     const paperLimit: number = await step.runQuery(
       internal.extraction.bucket.limits.getPaperLimitForUser,
       { userId: job.userId },
     );
     if (dedupedPapers.length > paperLimit) {
-      // Mark the job failed before throwing so the user sees an actionable
-      // terminal status instead of a job stuck in `downloading_pdfs` /
-      // `indexing` waiting for a workflow that already gave up.
-      await step.runMutation(
-        internal.extraction.mutations.results.updateJobStatus,
-        { jobId, status: "failed" },
-      );
       throw createError(
         "VALIDATION_ERROR",
         `Job would produce ${dedupedPapers.length} papers, exceeding plan limit of ${paperLimit}`,

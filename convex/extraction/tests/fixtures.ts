@@ -106,6 +106,12 @@ export const createTestJob = internalMutation({
         ctx,
         internal.extraction.workflow.runExtractionWorkflow,
         { jobId },
+        {
+          onComplete:
+            internal.extraction.mutations.internal.onComplete
+              .handleExtractionJobComplete,
+          context: { jobId },
+        },
       );
       await ctx.db.patch(jobId, { workflowId, updatedAt: Date.now() });
     }

@@ -335,3 +335,143 @@ describe("SN-4 terminal-state idempotency", () => {
     expect(after.job?.failedPapers).toBe(0);
   });
 });
+
+/**
+ * Workflow-level onComplete: the framework-guaranteed job-failure safety
+ * net. Pins the three RunResult branches plus terminal-state idempotency
+ * for `handleExtractionJobComplete`.
+ */
+const FAKE_WORKFLOW_ID = "workflow_fake" as never;
+
+async function seedDownloadingJob(t: ReturnType<typeof convexTest>) {
+  return await t.run(async (ctx) => {
+    const now = Date.now();
+    const userId = await ctx.db.insert("users", {
+      clerkId: "clerk_workflow_onComplete",
+      email: "wfoc@test.com",
+      firstName: "Test",
+      lastName: "User",
+      state: "active" as const,
+      createdAt: now,
+      updatedAt: now,
+      lastLoginAt: now,
+    });
+    const jobId = await ctx.db.insert("extractionJobs", {
+      userId,
+      sourceType: "history" as const,
+      // Typical workflow-failure condition: status was advanced past
+      // `pending` before the handler threw.
+      status: "downloading_pdfs" as const,
+      totalPapers: 0,
+      processedPapers: 0,
+      failedPapers: 0,
+      name: "workflow onComplete pin-test",
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { userId, jobId };
+  });
+}
+
+describe("handleExtractionJobComplete", () => {
+  test("failed result → patches job to failed with errorMessage", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedDownloadingJob(t);
+    await t.mutation(
+      internal.extraction.mutations.internal.onComplete.handleExtractionJobComplete,
+      {
+        workflowId: FAKE_WORKFLOW_ID,
+        context: { jobId },
+        result: { kind: "failed" as const, error: "VALIDATION_ERROR: No sources selected" },
+      } as never
+    );
+    const job = await t.run((ctx) =>
+      ctx.db.get("extractionJobs", jobId as never)
+    );
+    expect(job?.status).toBe("failed");
+    expect(job?.errorMessage).toBe("VALIDATION_ERROR: No sources selected");
+  });
+
+  test("success result → no job-status change", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedDownloadingJob(t);
+    await t.mutation(
+      internal.extraction.mutations.internal.onComplete.handleExtractionJobComplete,
+      {
+        workflowId: FAKE_WORKFLOW_ID,
+        context: { jobId },
+        result: { kind: "success" as const, returnValue: null },
+      } as never
+    );
+    const job = await t.run((ctx) =>
+      ctx.db.get("extractionJobs", jobId as never)
+    );
+    // Workflow handler owns the `extracting → completed` transition via
+    // paper-level onCompletes; this handler must not touch it.
+    expect(job?.status).toBe("downloading_pdfs");
+    expect(job?.errorMessage).toBeUndefined();
+  });
+
+  test("canceled result → no-op (cancelExtraction already wrote cancelled)", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedDownloadingJob(t);
+    // Mirror cancelExtraction's effect before the workflow's onComplete fires.
+    await t.run((ctx) =>
+      ctx.db.patch("extractionJobs", jobId as never, { status: "cancelled" })
+    );
+    await t.mutation(
+      internal.extraction.mutations.internal.onComplete.handleExtractionJobComplete,
+      {
+        workflowId: FAKE_WORKFLOW_ID,
+        context: { jobId },
+        result: { kind: "canceled" as const },
+      } as never
+    );
+    const job = await t.run((ctx) =>
+      ctx.db.get("extractionJobs", jobId as never)
+    );
+    expect(job?.status).toBe("cancelled");
+    expect(job?.errorMessage).toBeUndefined();
+  });
+
+  test("failed result on already-terminal job → does not overwrite status or errorMessage", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedDownloadingJob(t);
+    await t.run((ctx) =>
+      ctx.db.patch("extractionJobs", jobId as never, {
+        status: "cancelled",
+      })
+    );
+    await t.mutation(
+      internal.extraction.mutations.internal.onComplete.handleExtractionJobComplete,
+      {
+        workflowId: FAKE_WORKFLOW_ID,
+        context: { jobId },
+        result: { kind: "failed" as const, error: "late failure" },
+      } as never
+    );
+    const job = await t.run((ctx) =>
+      ctx.db.get("extractionJobs", jobId as never)
+    );
+    expect(job?.status).toBe("cancelled");
+    expect(job?.errorMessage).toBeUndefined();
+  });
+
+  test("deleted job → no throw, no side effects", async () => {
+    // Simulates the job being deleted between workflow start and
+    // onComplete firing. A real workflowId + real (now-deleted) jobId.
+    const t = convexTest(schema);
+    const { jobId } = await seedDownloadingJob(t);
+    await t.run((ctx) => ctx.db.delete("extractionJobs", jobId as never));
+    await expect(
+      t.mutation(
+        internal.extraction.mutations.internal.onComplete.handleExtractionJobComplete,
+        {
+          workflowId: FAKE_WORKFLOW_ID,
+          context: { jobId },
+          result: { kind: "failed" as const, error: "whatever" },
+        } as never
+      )
+    ).resolves.toBeNull();
+  });
+});

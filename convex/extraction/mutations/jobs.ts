@@ -117,6 +117,12 @@ export const startExtraction = mutation({
       ctx,
       internal.extraction.workflow.runExtractionWorkflow,
       { jobId },
+      {
+        onComplete:
+          internal.extraction.mutations.internal.onComplete
+            .handleExtractionJobComplete,
+        context: { jobId },
+      },
     );
 
     await ctx.db.patch("extractionJobs", jobId, {
@@ -261,6 +267,12 @@ export const duplicateExtraction = mutation({
       ctx,
       internal.extraction.workflow.runExtractionWorkflow,
       { jobId: newJobId },
+      {
+        onComplete:
+          internal.extraction.mutations.internal.onComplete
+            .handleExtractionJobComplete,
+        context: { jobId: newJobId },
+      },
     );
 
     await ctx.db.patch("extractionJobs", newJobId, {
@@ -330,6 +342,12 @@ export const startExtractionFromTemplate = mutation({
       ctx,
       internal.extraction.workflow.runExtractionWorkflow,
       { jobId },
+      {
+        onComplete:
+          internal.extraction.mutations.internal.onComplete
+            .handleExtractionJobComplete,
+        context: { jobId },
+      },
     );
     await ctx.db.patch("extractionJobs", jobId, {
       workflowId,
