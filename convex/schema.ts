@@ -354,6 +354,12 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
+
+    // Populated by the workflow onComplete handler when the workflow
+    // terminates with kind: "failed". Surfaces the failure reason to
+    // the UI so the user sees why a job ended in `failed` without
+    // having to dig through per-paper statuses.
+    errorMessage: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])

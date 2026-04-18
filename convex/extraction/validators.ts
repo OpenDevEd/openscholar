@@ -157,6 +157,7 @@ export const extractionJobValidator = v.object({
   createdAt: v.number(),
   updatedAt: v.number(),
   completedAt: v.optional(v.number()),
+  errorMessage: v.optional(v.string()),
 });
 
 /**
