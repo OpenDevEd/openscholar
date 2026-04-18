@@ -168,6 +168,18 @@ export async function assertBucketWithinLimits(
   }
 
   const count = effectivePaperCount(items, pullCap);
+  // Reject empty buckets up-front. A bucket with zero effective papers
+  // (e.g. every history row has `searchFilters.limit <= 0`) would
+  // otherwise pass the plan-cap check, spin up a workflow, advance the
+  // job to `downloading_pdfs`/`indexing`, and only then throw — leaving
+  // the job stranded in an intermediate status. Fail fast so the client
+  // sees a synchronous VALIDATION_ERROR and no job is ever created.
+  if (count === 0) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "Bucket must include at least one paper",
+    );
+  }
   if (count > paperLimit) {
     throw createError(
       "VALIDATION_ERROR",

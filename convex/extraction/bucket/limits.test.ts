@@ -183,4 +183,26 @@ describe("assertBucketWithinLimits", () => {
     );
     expect(result.effectiveCount).toBe(999);
   });
+
+  it("rejects an empty bucket", async () => {
+    const t = convexTest(schema);
+    const userId = await seedUser(t, "clerk_assert_empty");
+    await expect(
+      t.run((ctx) => assertBucketWithinLimits(ctx, userId, [])),
+    ).rejects.toThrow(/at least one paper/);
+  });
+
+  it("rejects a bucket whose every history row has limit <= 0", async () => {
+    // Every row contributes 0 effective papers. Without the count===0
+    // guard, this bucket would start a workflow that would then strand
+    // the job in downloading_pdfs/indexing when its loop skipped every
+    // source and threw "No sources selected" post-status-transition.
+    const t = convexTest(schema);
+    const userId = await seedUser(t, "clerk_assert_zerosum");
+    await expect(
+      t.run((ctx) =>
+        assertBucketWithinLimits(ctx, userId, [historyRow(0), historyRow(-5)]),
+      ),
+    ).rejects.toThrow(/at least one paper/);
+  });
 });
