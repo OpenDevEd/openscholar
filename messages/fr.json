@@ -621,7 +621,7 @@
       "papersLabel": "{count, number} {count, plural, one {article} other {articles}}",
       "title": "Articles à importer",
       "available": "{count, number} disponibles",
-      "capApplies": "plafond appliqué",
+      "capApplies": "plafond atteint",
       "cached": "en cache",
       "refreshError": "Impossible d'actualiser le nombre",
       "refresh": "Actualiser",

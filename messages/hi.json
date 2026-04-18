@@ -617,19 +617,19 @@
     "answerGroupingExpand": "{count} प्रकार",
     "answerGroupingVariants": "प्रकार",
     "countChip": {
-      "chipLabel": "{query} के लिए {count, number} पेपर। बदलने के लिए क्लिक करें।",
-      "papersLabel": "{count, number} {count, plural, one {पेपर} other {पेपर}}",
-      "title": "आयात करने के लिए पेपर",
+      "chipLabel": "{query} के लिए {count, number} शोधपत्र। बदलने के लिए क्लिक करें।",
+      "papersLabel": "{count, number} शोधपत्र",
+      "title": "आयात करने के लिए शोधपत्र",
       "available": "{count, number} उपलब्ध",
-      "capApplies": "सीमा लागू",
-      "cached": "कैश्ड",
-      "refreshError": "गणना ताज़ा नहीं हो सकी",
-      "refresh": "ताज़ा करें",
-      "step": "पेपर",
+      "capApplies": "सीमा तक पहुँचे",
+      "cached": "कैश किया गया",
+      "refreshError": "गणना अपडेट नहीं हो सकी",
+      "refresh": "अपडेट करें",
+      "step": "शोधपत्र",
       "presetFifty": "50",
       "presetHundred": "100",
       "presetMax": "अधिकतम",
-      "liveAnnouncement": "पेपर की संख्या {count, number} पर सेट"
+      "liveAnnouncement": "शोधपत्रों की संख्या {count, number} पर सेट की गई"
     }
   },
   "toast": {
