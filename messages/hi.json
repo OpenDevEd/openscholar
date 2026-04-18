@@ -513,7 +513,7 @@
     "noDisagreementClusters": "इस प्रश्न के लिए कोई महत्वपूर्ण असहमति क्लस्टर नहीं मिला।",
     "noAnswerProfiles": "इस प्रश्न के लिए कोई महत्वपूर्ण उत्तर प्रोफ़ाइल नहीं मिली।",
     "suppressedSingletonProfiles": "शोर कम करने के लिए {count} सिंगलटन प्रोफ़ाइल दबा दिए गए।",
-    "sourceSummary": "{history} इतिहास • {zotero} Zotero • {manual} मैन्युअल",
+    "papersStagedSuffix": "{count, plural, one {पेपर तैयार} other {पेपर तैयार}}",
     "addedQuestions": "{count, plural, one {# नया प्रश्न जोड़ा गया} other {# नए प्रश्न जोड़े गए}}",
     "noNewQuestions": "कोई नया प्रश्न नहीं बनाया गया",
     "apiKeyRequired": "API की आवश्यक है",

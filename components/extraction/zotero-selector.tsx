@@ -20,6 +20,7 @@ import {
   resolveToastError,
 } from "@/lib/toast/error-resolver";
 import { SelectableList } from "./bucket/selectable-list";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useBucketStore } from "@/lib/store/bucket";
 import {
   fromZoteroItem,
@@ -271,9 +272,15 @@ export function ZoteroSelector() {
     connectionStatusQuery.isDeferred ||
     connectionStatus === undefined
   ) {
+    // Shape matches the connected-state header (library-type select +
+    // collection cascader) so the layout doesn't shift when auth resolves.
     return (
-      <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
-        {t('loadingStatus')}
+      <div className="space-y-4" aria-busy="true" aria-live="polite">
+        <span className="sr-only">{t('loadingStatus')}</span>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <SkeletonBar className="h-9 w-full rounded-md" />
+          <SkeletonBar className="h-9 w-full rounded-md sm:col-span-2 lg:col-span-1" />
+        </div>
       </div>
     );
   }

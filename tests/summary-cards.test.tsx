@@ -26,30 +26,8 @@ vi.mock("@/lib/feature-flags/hook", () => ({
   useFeatureFlag: () => true,
 }));
 
-vi.mock("@/lib/extraction/card-thresholds", () => ({
-  getCardColor: (_metricType: string, value: number) => {
-    if (value >= 0.75) return "green";
-    if (value >= 0.50) return "yellow";
-    return "red";
-  },
-  BORDER_COLOR_CLASSES: {
-    green: "border-l-4 border-l-emerald-500",
-    yellow: "border-l-4 border-l-amber-500",
-    red: "border-l-4 border-l-red-500",
-  },
-  CARD_TINT_CLASSES: {
-    green: "bg-emerald-50/40",
-    yellow: "bg-amber-50/40",
-    red: "bg-red-50/40",
-  },
-  ICON_COLOR_CLASSES: {
-    green: "text-emerald-600",
-    yellow: "text-amber-600",
-    red: "text-red-600",
-  },
-  pct: (value: number) => `${Math.round(value * 100)}%`,
-}));
-
+// Real thresholds — we want the test to fail if the mapping drifts.
+// Unit tests for the threshold math live in tests/lib/card-thresholds.test.ts.
 vi.mock("@/lib/animation-config", () => ({
   cardEntrance: { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 } },
   cardEntranceTransition: (delay = 0) => ({ duration: 0.35, delay }),
@@ -76,21 +54,11 @@ describe("SummaryCards component", () => {
     expect(area.querySelector("[data-testid='confidence-badge-mock']")).toBeTruthy();
   });
 
-  it("cards appear in correct DOM order: answered before grounded", () => {
+  it("cards appear in correct DOM order: answered, grounded, bestEffort, noContentPapers", () => {
     const { container } = render(<SummaryCards {...defaultProps} />);
     const text = container.textContent ?? "";
     expect(text.indexOf("answered")).toBeLessThan(text.indexOf("grounded"));
-  });
-
-  it("cards appear in correct DOM order: grounded before bestEffort", () => {
-    const { container } = render(<SummaryCards {...defaultProps} />);
-    const text = container.textContent ?? "";
     expect(text.indexOf("grounded")).toBeLessThan(text.indexOf("bestEffort"));
-  });
-
-  it("cards appear in correct DOM order: bestEffort before noContentPapers", () => {
-    const { container } = render(<SummaryCards {...defaultProps} />);
-    const text = container.textContent ?? "";
     expect(text.indexOf("bestEffort")).toBeLessThan(text.indexOf("noContentPapers"));
   });
 
@@ -113,49 +81,43 @@ describe("SummaryCards component", () => {
     expect(screen.getByTestId("confidence-area")).toBeTruthy();
   });
 
-  it("answered card at 0.80 has emerald border class", () => {
+  it("answered card exposes its threshold color role via data-color-role (green at/above 0.75)", () => {
     const { container } = render(<SummaryCards {...defaultProps} answeredRate={0.80} />);
-    const cards = container.querySelectorAll(".rounded-xl");
-    const answeredCard = Array.from(cards).find((c) => c.textContent?.includes("answered") && !c.textContent?.includes("grounded"));
-    expect(answeredCard?.className).toContain("border-l-emerald-500");
+    const card = container.querySelector('[data-card="answered"]');
+    expect(card).toHaveAttribute("data-color-role", "green");
   });
 
-  it("answered card at 0.60 has amber border class", () => {
+  it("answered card exposes 'yellow' color role between 0.50 and 0.75", () => {
     const { container } = render(<SummaryCards {...defaultProps} answeredRate={0.60} />);
-    const cards = container.querySelectorAll(".rounded-xl");
-    const answeredCard = Array.from(cards).find((c) => c.textContent?.includes("answered") && !c.textContent?.includes("grounded"));
-    expect(answeredCard?.className).toContain("border-l-amber-500");
+    const card = container.querySelector('[data-card="answered"]');
+    expect(card).toHaveAttribute("data-color-role", "yellow");
   });
 
-  it("answered card at 0.30 has red border class", () => {
+  it("answered card exposes 'red' color role below 0.50", () => {
     const { container } = render(<SummaryCards {...defaultProps} answeredRate={0.30} />);
-    const cards = container.querySelectorAll(".rounded-xl");
-    const answeredCard = Array.from(cards).find((c) => c.textContent?.includes("answered") && !c.textContent?.includes("grounded"));
-    expect(answeredCard?.className).toContain("border-l-red-500");
+    const card = container.querySelector('[data-card="answered"]');
+    expect(card).toHaveAttribute("data-color-role", "red");
   });
 
-  it("grounded card at 0.75 has emerald border class", () => {
+  it("grounded card exposes 'green' color role at/above 0.70", () => {
     const { container } = render(<SummaryCards {...defaultProps} groundedRate={0.75} />);
-    const cards = container.querySelectorAll(".rounded-xl");
-    const groundedCard = Array.from(cards).find((c) => c.textContent?.includes("grounded") && !c.textContent?.includes("answered"));
-    expect(groundedCard?.className).toContain("border-l-emerald-500");
+    const card = container.querySelector('[data-card="grounded"]');
+    expect(card).toHaveAttribute("data-color-role", "green");
   });
 
-  it("grounded card at 0.55 has amber border class", () => {
+  it("grounded card exposes 'yellow' color role between 0.50 and 0.70", () => {
     const { container } = render(<SummaryCards {...defaultProps} groundedRate={0.55} />);
-    const cards = container.querySelectorAll(".rounded-xl");
-    const groundedCard = Array.from(cards).find((c) => c.textContent?.includes("grounded") && !c.textContent?.includes("answered"));
-    expect(groundedCard?.className).toContain("border-l-amber-500");
+    const card = container.querySelector('[data-card="grounded"]');
+    expect(card).toHaveAttribute("data-color-role", "yellow");
   });
 
-  it("grounded card at 0.40 has red border class", () => {
+  it("grounded card exposes 'red' color role below 0.50", () => {
     const { container } = render(<SummaryCards {...defaultProps} groundedRate={0.40} />);
-    const cards = container.querySelectorAll(".rounded-xl");
-    const groundedCard = Array.from(cards).find((c) => c.textContent?.includes("grounded") && !c.textContent?.includes("answered"));
-    expect(groundedCard?.className).toContain("border-l-red-500");
+    const card = container.querySelector('[data-card="grounded"]');
+    expect(card).toHaveAttribute("data-color-role", "red");
   });
 
-  it("shows percentage values for answered and grounded rates", () => {
+  it("shows percentage values for answered, grounded, and bestEffort rates", () => {
     const { container } = render(<SummaryCards {...defaultProps} />);
     expect(container.textContent).toContain("75%");
     expect(container.textContent).toContain("60%");

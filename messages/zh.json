@@ -513,7 +513,7 @@
     "noDisagreementClusters": "未检测到此问题的有意义分歧簇。",
     "noAnswerProfiles": "未检测到此问题的有意义答案档案。",
     "suppressedSingletonProfiles": "已抑制 {count} 个单例档案以减少噪音。",
-    "sourceSummary": "{history} 历史 • {zotero} Zotero • {manual} 手动",
+    "papersStagedSuffix": "{count, plural, other {篇论文已暂存}}",
     "addedQuestions": "已添加 {count, plural, other {# 个新问题}}",
     "noNewQuestions": "未生成新问题",
     "apiKeyRequired": "需要 API 密钥",

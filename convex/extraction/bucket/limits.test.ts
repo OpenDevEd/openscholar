@@ -6,7 +6,9 @@ import type { Id } from "../../_generated/dataModel";
 import {
   PAPER_LIMIT_BY_PLAN,
   PAPER_LIMIT_MAX,
+  assertBucketWithinLimits,
 } from "./limits";
+import type { EffectiveCountItem } from "../../../lib/bucket/effective-paper-count";
 
 async function seedUser(
   t: ReturnType<typeof convexTest>,
@@ -107,5 +109,78 @@ describe("convex/extraction/bucket/limits", () => {
       { userId: pastDueUserId },
     );
     expect(pastDueLimit).toBe(PAPER_LIMIT_BY_PLAN.enterprise);
+  });
+});
+
+/**
+ * `assertBucketWithinLimits` is the single pre-flight gate every
+ * mutation that accepts user-staged sources runs through. These tests
+ * pin the two bypass scenarios the validator exists to block.
+ */
+describe("assertBucketWithinLimits", () => {
+  function historyRow(limit: number): EffectiveCountItem {
+    return { source: "history", searchFilters: { limit } };
+  }
+  function libraryRow(): EffectiveCountItem {
+    return { source: "library" };
+  }
+
+  it("accepts a small honest bucket", async () => {
+    const t = convexTest(schema);
+    const userId = await seedUser(t, "clerk_assert_ok");
+    const result = await t.run((ctx) =>
+      assertBucketWithinLimits(ctx, userId, [
+        libraryRow(),
+        historyRow(50),
+      ]),
+    );
+    expect(result.effectiveCount).toBe(51);
+    expect(result.paperLimit).toBe(PAPER_LIMIT_BY_PLAN.free);
+    expect(result.pullCap).toBe(200);
+  });
+
+  it("rejects a single placeholder whose limit exceeds the per-row pull cap", async () => {
+    // Row count is 1 — old check passed. New check rejects because
+    // searchFilters.limit (9999) > pullCap (200).
+    const t = convexTest(schema);
+    const userId = await seedUser(t, "clerk_assert_pull");
+    await expect(
+      t.run((ctx) =>
+        assertBucketWithinLimits(ctx, userId, [historyRow(9999)]),
+      ),
+    ).rejects.toThrow(/per-row pull cap/);
+  });
+
+  it("rejects N placeholders whose post-expansion sum exceeds the plan cap", async () => {
+    // 10 history rows × 200 papers each = 2000 effective papers.
+    // Free plan cap is 1000; old check (rows ≤ 1000) passed. New check
+    // measures 2000 > 1000 and rejects.
+    const t = convexTest(schema);
+    const userId = await seedUser(t, "clerk_assert_sum");
+    const items = Array.from({ length: 10 }, () => historyRow(200));
+    await expect(
+      t.run((ctx) => assertBucketWithinLimits(ctx, userId, items)),
+    ).rejects.toThrow(/exceeding plan limit/);
+  });
+
+  it("regression: 1 placeholder + limit=200 stays under cap when alone", async () => {
+    // Five rows × 200 = 1000 effective, exactly the free-plan cap.
+    const t = convexTest(schema);
+    const userId = await seedUser(t, "clerk_assert_edge");
+    const items = Array.from({ length: 5 }, () => historyRow(200));
+    const result = await t.run((ctx) =>
+      assertBucketWithinLimits(ctx, userId, items),
+    );
+    expect(result.effectiveCount).toBe(1000);
+  });
+
+  it("counts non-history rows as 1 each, even when bucket has many of them", async () => {
+    const t = convexTest(schema);
+    const userId = await seedUser(t, "clerk_assert_lib");
+    const items = Array.from({ length: 999 }, () => libraryRow());
+    const result = await t.run((ctx) =>
+      assertBucketWithinLimits(ctx, userId, items),
+    );
+    expect(result.effectiveCount).toBe(999);
   });
 });

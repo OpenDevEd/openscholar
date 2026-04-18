@@ -33,6 +33,12 @@ import {
   type SubscriptionPlan,
 } from "../../../lib/billing/entitlements";
 import { selectCanonicalSubscription } from "../../subscriptions/lib/selectCanonicalSubscription";
+import {
+  effectivePaperCount,
+  findOverPullCapIndex,
+  type EffectiveCountItem,
+} from "../../../lib/bucket/effective-paper-count";
+import { createError } from "../../lib/errors";
 
 export const PAPER_LIMIT_BY_PLAN: Record<SubscriptionPlan, number> = {
   free: 1000,
@@ -126,3 +132,48 @@ export const getPaperPullDefaultForUser = internalQuery({
     return await getPaperPullDefault(ctx, args.userId);
   },
 });
+
+/**
+ * Single-source-of-truth pre-flight validation for any mutation that
+ * accepts a user-supplied bucket. Enforces both:
+ *
+ *  1. Per-row pull cap — no history row may request more than `pullCap`
+ *     papers via `searchFilters.limit`. Catches crafted requests that
+ *     try to bypass the row-count limit by inflating one row's expansion.
+ *  2. Plan-level paper cap — the post-expansion sum (history rows count
+ *     their `searchFilters.limit`, others count 1) must fit the user's
+ *     plan. Catches crafted requests that multiply rows × per-row limit
+ *     past the row-count cap.
+ *
+ * Throws the project-standard `VALIDATION_ERROR` so callers don't have
+ * to handle it. Returns the resolved plan limit so the caller can reuse
+ * the value (e.g., for downstream `take(limit)` queries).
+ */
+export async function assertBucketWithinLimits(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  items: ReadonlyArray<EffectiveCountItem>,
+): Promise<{ paperLimit: number; pullCap: number; effectiveCount: number }> {
+  const [paperLimit, pullCap] = await Promise.all([
+    getPaperLimit(ctx, userId),
+    getPaperPullCap(ctx, userId),
+  ]);
+
+  const overIndex = findOverPullCapIndex(items, pullCap);
+  if (overIndex !== -1) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `Bucket row ${overIndex} requests more than the per-row pull cap of ${pullCap} papers`,
+    );
+  }
+
+  const count = effectivePaperCount(items, pullCap);
+  if (count > paperLimit) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `Bucket would produce ${count} papers, exceeding plan limit of ${paperLimit}`,
+    );
+  }
+
+  return { paperLimit, pullCap, effectiveCount: count };
+}

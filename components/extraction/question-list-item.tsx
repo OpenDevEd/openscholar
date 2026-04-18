@@ -33,6 +33,7 @@ export function QuestionListItem({
   return (
     <button
       type="button"
+      aria-pressed={isSelected}
       className={cn(
         "w-full px-5 py-3.5 text-left transition-all flex items-center gap-3.5 group",
         isSelected
@@ -42,6 +43,7 @@ export function QuestionListItem({
       onClick={onClick}
     >
       <div
+        data-status={status}
         className={cn("w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-background shadow-sm", STATUS_DOT_CLASSES[status])}
         aria-hidden="true"
       />

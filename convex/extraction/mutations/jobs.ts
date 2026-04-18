@@ -19,7 +19,7 @@ import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
-import { getPaperLimit } from "../bucket/limits";
+import { PAPER_LIMIT_MAX, assertBucketWithinLimits } from "../bucket/limits";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
@@ -66,13 +66,6 @@ export const startExtraction = mutation({
       throws: true,
     });
 
-    const limit = await getPaperLimit(ctx, user._id);
-    if (args.bucketItems.length > limit) {
-      throw createError(
-        "VALIDATION_ERROR",
-        `Bucket exceeds plan limit of ${limit} papers`,
-      );
-    }
     if (args.questions.length > MAX_QUESTIONS_PER_JOB) {
       throw createError(
         "VALIDATION_ERROR",
@@ -88,7 +81,10 @@ export const startExtraction = mutation({
       }
     }
 
+    // Validate post-dedupe so duplicate rows don't double-count toward
+    // the cap (matches the workflow's actual paper-creation set).
     const deduped = dedupeBucketItems(args.bucketItems);
+    await assertBucketWithinLimits(ctx, user._id, deduped);
     const sourceType = deriveSourceType(deduped);
 
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
@@ -165,11 +161,16 @@ export const cancelExtraction = mutation({
     // The pdfProcessingPool is shared across tenants; cancelAll() would be a
     // cross-tenant DoS. Cancel only this job's stored workId values; cancels
     // are idempotent per workpool contract.
-    const limit = await getPaperLimit(ctx, user._id);
+    //
+    // Bound by `PAPER_LIMIT_MAX` (the cross-plan ceiling), NOT by the
+    // user's current `getPaperLimit` — a plan downgrade between job-start
+    // and cancel must still cancel every workpool item the job created,
+    // and `assertBucketWithinLimits` already prevents jobs from exceeding
+    // `PAPER_LIMIT_MAX` rows at submit time.
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(limit);
+      .take(PAPER_LIMIT_MAX);
 
     for (const paper of papers) {
       if (!paper.workId) continue;
@@ -218,12 +219,17 @@ export const duplicateExtraction = mutation({
       .order("asc")
       .collect();
 
-    const duplicateLimit = await getPaperLimit(ctx, user._id);
+    // Bound the read by the cross-plan ceiling so a downgrade between
+    // original-job-creation and duplication can't truncate the source set
+    // before validation. The validator below rejects oversized buckets
+    // outright, so honest jobs round-trip and bypass-jobs surface as a
+    // VALIDATION_ERROR instead of silently shrinking.
     const bucketItems = await readJobSources(
       ctx,
       args.jobId,
-      duplicateLimit * 2,
+      PAPER_LIMIT_MAX * 2,
     );
+    await assertBucketWithinLimits(ctx, user._id, bucketItems);
 
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
@@ -289,15 +295,8 @@ export const startExtractionFromTemplate = mutation({
       throw createError("NOT_FOUND", "Template not found");
     }
 
-    const limit = await getPaperLimit(ctx, user._id);
-    if (template.bucketItems.length > limit) {
-      throw createError(
-        "VALIDATION_ERROR",
-        `Template exceeds plan limit of ${limit} papers`,
-      );
-    }
-
     const deduped = dedupeBucketItems(template.bucketItems);
+    await assertBucketWithinLimits(ctx, user._id, deduped);
     const sourceType = deriveSourceType(deduped);
 
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {

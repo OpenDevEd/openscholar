@@ -44,8 +44,9 @@ async function seed(t: ReturnType<typeof convexTest>) {
       updatedAt: now,
     });
     const titles = ["Neural Networks Review", "CRISPR Guide", "Quantum Solar Cells"];
+    const itemIds: Id<"libraryItems">[] = [];
     for (const title of titles) {
-      await ctx.db.insert("libraryItems", {
+      const id = await ctx.db.insert("libraryItems", {
         userId,
         openalexId: `https://openalex.org/W${title.length}`,
         rating: 5,
@@ -53,6 +54,28 @@ async function seed(t: ReturnType<typeof convexTest>) {
         searchableText: title.toLowerCase(),
         savedAt: now,
         updatedAt: now,
+      });
+      itemIds.push(id);
+    }
+    const collectionId = await ctx.db.insert("collections", {
+      userId,
+      name: "Favorites",
+      createdAt: now,
+      updatedAt: now,
+    });
+    const otherCollectionId = await ctx.db.insert("collections", {
+      userId: otherUserId,
+      name: "Theirs",
+      createdAt: now,
+      updatedAt: now,
+    });
+    // Put the first two items in the collection; third stays unfiled.
+    for (const libraryItemId of itemIds.slice(0, 2)) {
+      await ctx.db.insert("libraryItemCollections", {
+        userId,
+        collectionId,
+        libraryItemId,
+        assignedAt: now,
       });
     }
     await ctx.db.insert("libraryItems", {
@@ -64,9 +87,18 @@ async function seed(t: ReturnType<typeof convexTest>) {
       savedAt: now,
       updatedAt: now,
     });
-    return { userId, otherUserId } as {
+    return {
+      userId,
+      otherUserId,
+      collectionId,
+      otherCollectionId,
+      unfiledItemId: itemIds[2],
+    } as {
       userId: Id<"users">;
       otherUserId: Id<"users">;
+      collectionId: Id<"collections">;
+      otherCollectionId: Id<"collections">;
+      unfiledItemId: Id<"libraryItems">;
     };
   });
 }
@@ -179,5 +211,94 @@ describe("extraction.sources.library.listAllIds", () => {
     await expect(
       t.query(api.extraction.sources.library.listAllIds, {}),
     ).rejects.toThrow();
+  });
+});
+
+describe("extraction.sources.library.list with collectionId", () => {
+  it("returns only items joined to the given collection", async () => {
+    const t = convexTest(schema);
+    const { collectionId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(api.extraction.sources.library.list, {
+      paginationOpts: { numItems: 10, cursor: null },
+      collectionId,
+    });
+    expect(res.page).toHaveLength(2);
+    expect(res.page.every((p) => p.title !== "Quantum Solar Cells")).toBe(true);
+  });
+
+  it("rejects access to another user's collection", async () => {
+    const t = convexTest(schema);
+    const { otherCollectionId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    await expect(
+      auth.query(api.extraction.sources.library.list, {
+        paginationOpts: { numItems: 10, cursor: null },
+        collectionId: otherCollectionId,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("returns only unfiled items when collectionId is 'unfiled'", async () => {
+    const t = convexTest(schema);
+    const { unfiledItemId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(api.extraction.sources.library.list, {
+      paginationOpts: { numItems: 10, cursor: null },
+      collectionId: "unfiled",
+    });
+    expect(res.page).toHaveLength(1);
+    expect(res.page[0]._id).toBe(unfiledItemId);
+  });
+
+  it("combines fulltext search with collection scope", async () => {
+    const t = convexTest(schema);
+    const { collectionId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(api.extraction.sources.library.list, {
+      paginationOpts: { numItems: 10, cursor: null },
+      collectionId,
+      query: "crispr",
+    });
+    expect(res.page).toHaveLength(1);
+    expect(res.page[0].title).toBe("CRISPR Guide");
+  });
+});
+
+describe("extraction.sources.library.listAllIds with collectionId", () => {
+  it("returns every joined item for a collection", async () => {
+    const t = convexTest(schema);
+    const { collectionId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(
+      api.extraction.sources.library.listAllIds,
+      { collectionId },
+    );
+    expect(res.items).toHaveLength(2);
+    expect(res.truncated).toBe(false);
+  });
+
+  it("rejects access to another user's collection", async () => {
+    const t = convexTest(schema);
+    const { otherCollectionId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    await expect(
+      auth.query(api.extraction.sources.library.listAllIds, {
+        collectionId: otherCollectionId,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("returns every unfiled item", async () => {
+    const t = convexTest(schema);
+    const { unfiledItemId } = await seed(t);
+    const auth = t.withIdentity(identity);
+    const res = await auth.query(
+      api.extraction.sources.library.listAllIds,
+      { collectionId: "unfiled" },
+    );
+    expect(res.items).toHaveLength(1);
+    expect(res.items[0]._id).toBe(unfiledItemId);
+    expect(res.truncated).toBe(false);
   });
 });

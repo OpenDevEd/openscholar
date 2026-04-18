@@ -513,7 +513,7 @@
     "noDisagreementClusters": "Aucun cluster de désaccord significatif détecté pour cette question.",
     "noAnswerProfiles": "Aucun profil de réponse significatif détecté pour cette question.",
     "suppressedSingletonProfiles": "{count} profils singletons supprimés pour réduire le bruit.",
-    "sourceSummary": "{history} historique • {zotero} Zoteur • {manual} manuel",
+    "papersStagedSuffix": "{count, plural, one {article en attente} other {articles en attente}}",
     "addedQuestions": "{count, plural, one {# nouvelle question ajoutée} other {# nouvelles questions ajoutées}}",
     "noNewQuestions": "Aucune nouvelle question générée",
     "apiKeyRequired": "Clé API requise",

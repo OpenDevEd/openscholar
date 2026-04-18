@@ -3,6 +3,11 @@
  *
  * <AnimatedCount> — digit swap via AnimatePresence + scale pulse; bypassed
  * when the user prefers reduced motion (renders a plain span).
+ *
+ * Testing philosophy: assert on observable output (rendered text, DOM
+ * structure), not on Tailwind class strings passed through via the
+ * `tint` prop. Tint is a cosmetic passthrough and doesn't need a unit
+ * test — visual-regression coverage belongs in a real browser.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -40,16 +45,16 @@ describe("<AnimatedCount>", () => {
     expect(screen.getByText(/\/ 1000/)).toBeTruthy();
   });
 
-  it("applies the passed tint class to the container", async () => {
+  it("omits the '/ total' suffix when showTotal is false", async () => {
     const AnimatedCount = await loadAnimatedCount();
     const { container } = render(
-      <AnimatedCount value={5} total={1000} tint="text-destructive" />,
+      <AnimatedCount value={5} total={1000} tint="" showTotal={false} />,
     );
-    const root = container.firstChild as HTMLElement;
-    expect(root.className).toMatch(/text-destructive/);
+    expect(container.textContent).not.toMatch(/\/\s*1000/);
+    expect(container.textContent).toMatch(/5/);
   });
 
-  it("reduced-motion path renders a plain span (no motion wrappers)", async () => {
+  it("reduced-motion path renders plain text (no motion wrappers)", async () => {
     reduced = true;
     const AnimatedCount = await loadAnimatedCount();
     const { container } = render(

@@ -513,7 +513,7 @@
     "noDisagreementClusters": "この質問に対する有意な不一致クラスターは検出されませんでした。",
     "noAnswerProfiles": "この質問に対する有意な回答プロファイルは検出されませんでした。",
     "suppressedSingletonProfiles": "ノイズ削減のため {count} 件のシングルトンプロファイルを抑制しました。",
-    "sourceSummary": "{history} 履歴 • {zotero} Zotero • {manual} 手動",
+    "papersStagedSuffix": "{count, plural, other {件の論文をステージング}}",
     "addedQuestions": "{count, plural, one {# 件の新しい質問} other {# 件の新しい質問}} を追加",
     "noNewQuestions": "新しい質問は生成されませんでした",
     "apiKeyRequired": "APIキーが必要です",

@@ -513,7 +513,7 @@
     "noDisagreementClusters": "No meaningful disagreement clusters detected for this question.",
     "noAnswerProfiles": "No meaningful answer profiles detected for this question.",
     "suppressedSingletonProfiles": "Suppressed {count} singleton profiles to reduce noise.",
-    "sourceSummary": "{history} history • {zotero} Zotero • {manual} manual",
+    "papersStagedSuffix": "{count, plural, one {paper staged} other {papers staged}}",
     "addedQuestions": "Added {count, plural, one {# new question} other {# new questions}}",
     "noNewQuestions": "No new questions generated",
     "apiKeyRequired": "API Key Required",

@@ -1,10 +1,15 @@
 /**
  * @vitest-environment jsdom
+ *
+ * <SourceChip> — renders the canonical source label and exposes the
+ * source as a data-source attribute. The dot's color comes from a CSS
+ * variable driven by data-source, so testing the literal inline style
+ * would re-state the source-labels constant against itself. The
+ * behavioral contract is `data-source={source}` + the visible label.
  */
 import { describe, expect, test } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SourceChip } from "@/components/extraction/bucket/source-chip";
-import { SOURCE_COLOR_VAR } from "@/lib/bucket/source-labels";
 import type { BucketSource } from "@/lib/bucket/bucketItem";
 
 const SOURCES: { source: BucketSource; label: string }[] = [
@@ -22,15 +27,11 @@ describe("SourceChip", () => {
       expect(screen.getByText(label)).toBeTruthy();
     });
 
-    test(`${source} dot backgroundColor uses var(${SOURCE_COLOR_VAR[source]})`, () => {
+    test(`${source} exposes data-source="${source}" for styling + test hooks`, () => {
       const { container } = render(<SourceChip source={source} />);
-      const dot = container.querySelector(
-        'span[aria-hidden="true"]',
-      ) as HTMLElement | null;
-      expect(dot).not.toBeNull();
-      expect(dot!.style.backgroundColor).toBe(
-        `var(${SOURCE_COLOR_VAR[source]})`,
-      );
+      const chip = container.querySelector<HTMLElement>(`[data-source]`);
+      expect(chip).not.toBeNull();
+      expect(chip).toHaveAttribute("data-source", source);
     });
   }
 });

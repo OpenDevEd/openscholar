@@ -63,7 +63,6 @@ import type * as extraction_queries_results from "../extraction/queries/results.
 import type * as extraction_queries_reviews from "../extraction/queries/reviews.js";
 import type * as extraction_queries_templates from "../extraction/queries/templates.js";
 import type * as extraction_queries_views from "../extraction/queries/views.js";
-import type * as extraction_sources_collections from "../extraction/sources/collections.js";
 import type * as extraction_sources_library from "../extraction/sources/library.js";
 import type * as extraction_stateMachine from "../extraction/stateMachine.js";
 import type * as extraction_tests_fixtures from "../extraction/tests/fixtures.js";
@@ -213,7 +212,6 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries/reviews": typeof extraction_queries_reviews;
   "extraction/queries/templates": typeof extraction_queries_templates;
   "extraction/queries/views": typeof extraction_queries_views;
-  "extraction/sources/collections": typeof extraction_sources_collections;
   "extraction/sources/library": typeof extraction_sources_library;
   "extraction/stateMachine": typeof extraction_stateMachine;
   "extraction/tests/fixtures": typeof extraction_tests_fixtures;

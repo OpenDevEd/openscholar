@@ -6,6 +6,11 @@
  * - Mobile viewport (matchMedia -> true): returns null.
  * - Collapse / expand via sliver button + panel collapse button + keyboard.
  * - Panel body: lists items, per-item remove, empty state.
+ * - Capacity state: exposed via data-capacity-state + warning row text.
+ *
+ * Testing philosophy: assert on observable behavior — text content,
+ * role/ARIA, data-* contracts, store state. Never on literal Tailwind
+ * class strings or inline style values.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -209,18 +214,19 @@ describe("<BucketSidebar> panel body", () => {
 });
 
 describe("<BucketSidebar> capacity signals", () => {
-  it("no tint and no warning row when under the cap threshold", () => {
+  it("below threshold: capacity state is 'normal' and no warning row renders", () => {
     act(() => {
       useBucketStore
         .getState()
         .addMany([makeItem("k:a", "Alpha")], 1000);
     });
     render(withProviders(<BucketSidebar />));
-    expect(screen.queryByText(/approaching the per-job cap/i)).toBeNull();
-    expect(screen.queryByText(/you've hit the per-job cap/i)).toBeNull();
+    const capacity = screen.getByTestId("bucket-sidebar-capacity");
+    expect(capacity).toHaveAttribute("data-capacity-state", "normal");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("amber warning row when nearCap (>=90%)", () => {
+  it("at >=90%: capacity state is 'near' and the near-cap warning renders", () => {
     const items: BucketItem[] = Array.from({ length: 950 }, (_, i) =>
       makeItem(`k:${i}`, `Paper ${i}`),
     );
@@ -228,12 +234,16 @@ describe("<BucketSidebar> capacity signals", () => {
       useBucketStore.getState().addMany(items, 1000);
     });
     render(withProviders(<BucketSidebar />));
-    expect(
-      screen.getByText(/approaching the per-job cap/i),
-    ).toBeTruthy();
+    expect(screen.getByTestId("bucket-sidebar-capacity")).toHaveAttribute(
+      "data-capacity-state",
+      "near",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /approaching the per-job cap/i,
+    );
   });
 
-  it("destructive warning row when atCap", () => {
+  it("at 100%: capacity state is 'at' and the at-cap warning renders", () => {
     const items: BucketItem[] = Array.from({ length: 1000 }, (_, i) =>
       makeItem(`k:${i}`, `Paper ${i}`),
     );
@@ -241,99 +251,60 @@ describe("<BucketSidebar> capacity signals", () => {
       useBucketStore.getState().addMany(items, 1000);
     });
     render(withProviders(<BucketSidebar />));
-    expect(screen.getByText(/you've hit the per-job cap/i)).toBeTruthy();
-  });
-
-  it("capacity count span gains amber class at nearCap", () => {
-    const items: BucketItem[] = Array.from({ length: 950 }, (_, i) =>
-      makeItem(`k:${i}`, `Paper ${i}`),
+    expect(screen.getByTestId("bucket-sidebar-capacity")).toHaveAttribute(
+      "data-capacity-state",
+      "at",
     );
-    act(() => {
-      useBucketStore.getState().addMany(items, 1000);
-    });
-    render(withProviders(<BucketSidebar />));
-    const capacity = screen.getByTestId("bucket-sidebar-capacity");
-    expect(capacity.className).toMatch(/text-amber-600/);
-  });
-
-  it("capacity count span gains destructive class at cap", () => {
-    const items: BucketItem[] = Array.from({ length: 1000 }, (_, i) =>
-      makeItem(`k:${i}`, `Paper ${i}`),
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /you've hit the per-job cap/i,
     );
-    act(() => {
-      useBucketStore.getState().addMany(items, 1000);
-    });
-    render(withProviders(<BucketSidebar />));
-    const capacity = screen.getByTestId("bucket-sidebar-capacity");
-    expect(capacity.className).toMatch(/text-destructive/);
   });
 });
 
-describe("<BucketSidebar> row layout (T8)", () => {
-  it("title uses line-clamp-2, no truncate", () => {
+describe("<BucketSidebar> panel row structure", () => {
+  it("renders long titles in full (no truncation at the DOM level)", () => {
     const longTitle =
-      "A very long title that easily exceeds one line of rendered text in the bucket sidebar so that line-clamp-2 actually kicks in and wraps to two lines of content";
+      "A very long title that easily exceeds one line of rendered text in the bucket sidebar so that line clamping actually matters in a real browser";
     act(() => {
       useBucketStore.getState().addMany([makeItem("k:a", longTitle)], 1000);
     });
     render(withProviders(<BucketSidebar />));
-    const title = screen.getByText(longTitle);
-    expect(title.className).toMatch(/line-clamp-2/);
-    expect(title.className).not.toMatch(/\btruncate\b/);
+    // The full title text reaches the DOM; visual 2-line clamping is a
+    // browser-rendering concern and belongs in a visual-regression test,
+    // not a JSDOM unit test.
+    expect(screen.getByText(longTitle)).toBeTruthy();
   });
 
-  it("row stacks title above chip + authors + trash so the delete button sits far from the title", () => {
+  it("remove button lives outside the title element so a misclick near the title does not hit delete", () => {
     act(() => {
       useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
     });
     render(withProviders(<BucketSidebar />));
-    const li = screen.getByText("Alpha").closest("li");
-    expect(li).not.toBeNull();
-    expect(li!.className).toMatch(/flex-col/);
-    // Trash button's nearest flex parent is the bottom row (chip + authors).
+    const title = screen.getByText("Alpha");
     const trash = screen.getByRole("button", { name: /remove alpha/i });
-    const trashRow = trash.parentElement;
-    expect(trashRow?.className).toMatch(/\bflex\b/);
-    expect(trashRow?.className).not.toMatch(/flex-col/);
+    // Structural invariant: the trash button is not nested inside the
+    // title element (separate click target, separate row).
+    expect(title.contains(trash)).toBe(false);
+    expect(trash.contains(title)).toBe(false);
   });
 
-  it("title has break-words + overflow-wrap:anywhere for long unbroken strings", () => {
-    const longDoi =
-      "doi:10.1016/j.verylongjournalnamethatneverbreaksnaturally.2024.123456";
-    act(() => {
-      useBucketStore.getState().addMany([makeItem("k:a", longDoi)], 1000);
-    });
-    render(withProviders(<BucketSidebar />));
-    const title = screen.getByText(longDoi);
-    expect(title.className).toMatch(/break-words/);
-    expect(title.className).toMatch(/overflow-wrap:anywhere/);
-  });
-
-  it("authors line truncates and still renders an inline uploading status", () => {
+  it("uploading status surfaces inline next to the authors line", () => {
     act(() => {
       useBucketStore
         .getState()
-        .addMany(
-          [makeItem("k:a", "Alpha", { status: "uploading" })],
-          1000,
-        );
+        .addMany([makeItem("k:a", "Alpha", { status: "uploading" })], 1000);
     });
     render(withProviders(<BucketSidebar />));
-    const uploadingLabel = screen.getByText(/uploading/i);
-    const authorsSpan = uploadingLabel.closest("span");
-    expect(authorsSpan).not.toBeNull();
-    expect(authorsSpan!.className.includes("truncate") ||
-      authorsSpan!.parentElement?.className.includes("truncate")).toBe(true);
+    expect(screen.getByText(/uploading/i)).toBeTruthy();
   });
 
-  it("remove button is compact (h-6 w-6) so it visually matches the source chip, not the title", () => {
+  it("upload-failed status surfaces next to the authors line", () => {
     act(() => {
-      useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
+      useBucketStore
+        .getState()
+        .addMany([makeItem("k:a", "Alpha", { status: "failed" })], 1000);
     });
     render(withProviders(<BucketSidebar />));
-    const btn = screen.getByRole("button", { name: /remove alpha/i });
-    expect(btn.className).toMatch(/\bh-6\b/);
-    expect(btn.className).toMatch(/\bw-6\b/);
-    expect(btn.className).toMatch(/\bshrink-0\b/);
+    expect(screen.getByText(/upload failed/i)).toBeTruthy();
   });
 });

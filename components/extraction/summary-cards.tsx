@@ -47,6 +47,8 @@ export function SummaryCards({
       <motion.div
         {...cardEntrance}
         transition={cardEntranceTransition(0)}
+        data-card="answered"
+        data-color-role={answeredColor}
         className={cn(
           "rounded-xl border border-border/60 p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md",
           BORDER_COLOR_CLASSES[answeredColor],
@@ -68,6 +70,8 @@ export function SummaryCards({
         <motion.div
           {...cardEntrance}
           transition={cardEntranceTransition(0.06)}
+          data-card="grounded"
+          data-color-role={groundedColor}
           className={cn(
             "rounded-xl border border-border/60 p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md",
             BORDER_COLOR_CLASSES[groundedColor],
@@ -90,6 +94,8 @@ export function SummaryCards({
         <motion.div
           {...cardEntrance}
           transition={cardEntranceTransition(0.12)}
+          data-card="bestEffort"
+          data-color-role="yellow"
           className={cn(
             "rounded-xl border border-border/60 p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md",
             BORDER_COLOR_CLASSES["yellow"],
@@ -112,6 +118,8 @@ export function SummaryCards({
         <motion.div
           {...cardEntrance}
           transition={cardEntranceTransition(0.18)}
+          data-card="noContent"
+          data-color-role="red"
           className={cn(
             "rounded-xl border border-border/60 p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md",
             BORDER_COLOR_CLASSES["red"],

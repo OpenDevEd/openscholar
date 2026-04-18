@@ -35,32 +35,36 @@ vi.mock("@/components/ui/progress", () => ({
   ),
 }));
 
+function getStatusDot(container: HTMLElement): HTMLElement {
+  const dot = container.querySelector<HTMLElement>("[data-status]");
+  if (!dot) throw new Error("status dot not found");
+  return dot;
+}
+
 describe("QuestionListItem component", () => {
-  it("renders status dot with correct CSS class for complete state", () => {
+  it("exposes status='complete' when all papers are answered", () => {
     const { container } = render(
       <QuestionListItem questionKey="q1" question="What is the sample size?" answered={10} total={10} />
     );
-    const dot = container.querySelector('[aria-hidden="true"]');
-    expect(dot).not.toBeNull();
-    expect((dot as HTMLElement).className).toContain("bg-emerald-500");
+    expect(getStatusDot(container)).toHaveAttribute("data-status", "complete");
+    // Accessible label backs the visual dot for screen-reader users.
+    expect(screen.getByText("statusDotComplete")).toBeTruthy();
   });
 
-  it("renders status dot with correct CSS class for partial state", () => {
+  it("exposes status='partial' when some papers are answered", () => {
     const { container } = render(
       <QuestionListItem questionKey="q1" question="What is the sample size?" answered={5} total={10} />
     );
-    const dot = container.querySelector('[aria-hidden="true"]');
-    expect(dot).not.toBeNull();
-    expect((dot as HTMLElement).className).toContain("bg-amber-500");
+    expect(getStatusDot(container)).toHaveAttribute("data-status", "partial");
+    expect(screen.getByText("statusDotPartial")).toBeTruthy();
   });
 
-  it("renders status dot with correct CSS class for empty state", () => {
+  it("exposes status='empty' when no papers are answered", () => {
     const { container } = render(
       <QuestionListItem questionKey="q1" question="What is the sample size?" answered={0} total={10} />
     );
-    const dot = container.querySelector('[aria-hidden="true"]');
-    expect(dot).not.toBeNull();
-    expect((dot as HTMLElement).className).toContain("bg-gray-300");
+    expect(getStatusDot(container)).toHaveAttribute("data-status", "empty");
+    expect(screen.getByText("statusDotEmpty")).toBeTruthy();
   });
 
   it("renders progress bar with correct percentage", () => {
@@ -90,9 +94,13 @@ describe("QuestionListItem component", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("applies selected styling when isSelected=true", () => {
+  it("reflects selection state via aria-pressed='true'", () => {
     render(<QuestionListItem questionKey="q1" question="What is the sample size?" answered={7} total={10} isSelected={true} />);
-    const button = screen.getByRole("button");
-    expect(button.className).toContain("bg-primary");
+    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("reflects unselected state via aria-pressed='false'", () => {
+    render(<QuestionListItem questionKey="q1" question="What is the sample size?" answered={7} total={10} isSelected={false} />);
+    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   });
 });

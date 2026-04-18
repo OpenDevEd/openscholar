@@ -31,12 +31,19 @@ import { bucketCleared } from "@/lib/toast/bucket";
 import { SourceChip } from "./source-chip";
 import { AnimatedCount } from "./animated-count";
 
-function capacityTint(readyCount: number, limit: number): string {
-  if (readyCount >= limit) return "text-destructive";
-  if (readyCount >= Math.floor(limit * 0.9))
-    return "text-amber-600 dark:text-amber-400";
-  return "text-foreground";
+type CapacityState = "normal" | "near" | "at";
+
+function capacityState(readyCount: number, limit: number): CapacityState {
+  if (readyCount >= limit) return "at";
+  if (readyCount >= Math.floor(limit * 0.9)) return "near";
+  return "normal";
 }
+
+const CAPACITY_TINT: Record<CapacityState, string> = {
+  normal: "text-foreground",
+  near: "text-amber-600 dark:text-amber-400",
+  at: "text-destructive",
+};
 
 const PANEL_ID = "bucket-sidebar-panel";
 
@@ -69,9 +76,10 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
     (n, i) => (i.status === "ready" ? n + (i.paperCount ?? 1) : n),
     0,
   );
-  const atCap = readyCount >= limit;
-  const nearCap = !atCap && readyCount >= Math.floor(limit * 0.9);
-  const tint = capacityTint(readyCount, limit);
+  const state = capacityState(readyCount, limit);
+  const atCap = state === "at";
+  const nearCap = state === "near";
+  const tint = CAPACITY_TINT[state];
 
   const handleClearAll = () => {
     const snapshot: AllClearSnapshot = {
@@ -100,6 +108,7 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
             </h2>
             <p
               data-testid="bucket-sidebar-capacity"
+              data-capacity-state={state}
               className={cn("mt-0.5 text-xs", tint)}
             >
               <AnimatedCount
@@ -264,7 +273,7 @@ export function BucketSidebar() {
   // always visible when collapsed. Mirrors filter-sidebar's pattern
   // but reflected for right-side mounting.
   const translateX = isCollapsed ? expandedWidth - collapsedWidth : 0;
-  const tint = capacityTint(readyCount, limit);
+  const tint = CAPACITY_TINT[capacityState(readyCount, limit)];
 
   return (
     <div

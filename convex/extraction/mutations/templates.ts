@@ -9,7 +9,7 @@ import { v } from "convex/values";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
-import { getPaperLimit } from "../bucket/limits";
+import { PAPER_LIMIT_MAX, assertBucketWithinLimits } from "../bucket/limits";
 import { assertJobOwnership } from "../access";
 import { readJobSources, type BucketItemInput } from "../jobSources";
 import {
@@ -81,8 +81,12 @@ export const saveWorkflowTemplateFromJob = mutation({
       .first();
 
     const now = Date.now();
-    const limit = await getPaperLimit(ctx, user._id);
-    const bucketItems = await readJobSources(ctx, args.jobId, limit * 2);
+    const bucketItems = await readJobSources(
+      ctx,
+      args.jobId,
+      PAPER_LIMIT_MAX * 2,
+    );
+    await assertBucketWithinLimits(ctx, user._id, bucketItems);
     const templateFields = {
       description: args.description,
       sourceType: job.sourceType,
@@ -129,13 +133,7 @@ export const saveWorkflowTemplate = mutation({
     const user = await requireAuth(ctx);
     await requireFeature(ctx, "extraction.templates", user._id);
 
-    const limit = await getPaperLimit(ctx, user._id);
-    if (args.bucketItems.length > limit) {
-      throw createError(
-        "VALIDATION_ERROR",
-        `bucketItems exceeds plan limit of ${limit} papers`,
-      );
-    }
+    await assertBucketWithinLimits(ctx, user._id, args.bucketItems);
     assertQuestionLimits(args.questions);
 
     // Guard against sourceType drift from the bucket contents. Server
