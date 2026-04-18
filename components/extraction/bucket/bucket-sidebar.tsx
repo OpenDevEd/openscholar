@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -154,17 +153,17 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
         )}
       </header>
 
-      <ScrollArea className="flex-1 min-h-0 px-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4">
         {items.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             The bucket is empty. Add papers from any tab.
           </p>
         ) : (
-          <ul className="space-y-2 py-4">
+          <ul className="w-full space-y-2 py-4">
             {items.map((item) => (
               <li
                 key={item.bucketKey}
-                className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card p-3"
+                className="flex min-w-0 max-w-full flex-col gap-2 rounded-lg border border-border/60 bg-card p-3"
               >
                 <p className="text-sm font-medium leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">
                   {item.title}
@@ -202,7 +201,7 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
             ))}
           </ul>
         )}
-      </ScrollArea>
+      </div>
 
       <footer className="flex items-center justify-start border-t border-border/50 p-4">
         <Button
