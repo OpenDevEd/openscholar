@@ -57,4 +57,12 @@ describe("extractMatchSnippet", () => {
     const [start, end] = result!.highlightRanges[0];
     expect(result!.text.slice(start, end)).toBe("photosynthesis");
   });
+
+  it("R8: matching is case-insensitive and the highlight preserves the source casing", () => {
+    const source = "Photosynthesis is the process of converting light energy";
+    const result = extractMatchSnippet(source, "PHOTO", 60);
+    expect(result).not.toBeNull();
+    const [start, end] = result!.highlightRanges[0];
+    expect(result!.text.slice(start, end)).toBe("Photo");
+  });
 });
