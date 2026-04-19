@@ -1,6 +1,15 @@
 "use client";
 
-import { Fragment, memo, useMemo } from "react";
+import {
+  Children,
+  Fragment,
+  cloneElement,
+  createElement,
+  isValidElement,
+  memo,
+  useMemo,
+  type ReactNode,
+} from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
@@ -35,11 +44,11 @@ interface MessageListProps {
   chatModelId: Id<"models"> | null;
 }
 
-type ResolvedPaper = PaperCitationTarget & { _id: string };
+export type ResolvedPaper = PaperCitationTarget & { _id: string };
 
 function splitTextForChips(
   text: string,
-  papers: ResolvedPaper[],
+  papers: ReadonlyArray<ResolvedPaper>,
 ): React.ReactNode[] {
   const groups = resolvePaperReferences<ResolvedPaper>(text, papers);
   if (groups.length === 0) return [text];
@@ -69,40 +78,80 @@ function splitTextForChips(
   return out;
 }
 
-interface CitationAwareParagraphProps {
-  children?: React.ReactNode;
-  papers: ResolvedPaper[];
+/**
+ * Recursively rewrite every string in a React node tree so that any
+ * `[Pn]` / `[Pn, Pm, …]` citation tokens become <PaperCitation> chips.
+ * Non-string nodes (elements, fragments) are walked through but
+ * otherwise preserved, so citations inside list items, headings,
+ * table cells, blockquotes, and inline emphasis all get resolved.
+ * Without this, only text directly inside <p> becomes interactive —
+ * which is why production messages with citations inside markdown
+ * bullets render as plain text.
+ */
+function renderWithCitations(
+  node: ReactNode,
+  papers: ReadonlyArray<ResolvedPaper>,
+): ReactNode {
+  if (node == null || typeof node === "boolean") return node;
+  if (typeof node === "string") {
+    return splitTextForChips(node, papers);
+  }
+  if (typeof node === "number") return node;
+  if (Array.isArray(node)) {
+    return node.map((child, i) => (
+      <Fragment key={i}>{renderWithCitations(child, papers)}</Fragment>
+    ));
+  }
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    const { children } = node.props;
+    if (children == null) return node;
+    return cloneElement(node, undefined, renderWithCitations(children, papers));
+  }
+  return node;
 }
 
-function CitationAwareParagraph({
-  children,
-  papers,
-}: CitationAwareParagraphProps) {
-  const rendered = useMemo(() => {
-    const nodes = Array.isArray(children) ? children : [children];
-    const out: React.ReactNode[] = [];
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      if (typeof node === "string") {
-        out.push(...splitTextForChips(node, papers));
-      } else {
-        out.push(node);
-      }
-    }
-    return out;
-  }, [children, papers]);
+/**
+ * Tag names the Streamdown markdown renderer emits that can contain
+ * user-visible text. Each of these gets a citation-aware override.
+ * `code` / `pre` are intentionally excluded — we don't want to rewrite
+ * tokens inside fenced code blocks.
+ */
+const CITATION_TAGS = [
+  "p",
+  "li",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "blockquote",
+  "td",
+  "th",
+  "strong",
+  "em",
+  "del",
+  "span",
+] as const;
 
-  return <p>{rendered}</p>;
-}
+type CitationTag = (typeof CITATION_TAGS)[number];
 
-function buildStreamdownComponents(papers: ResolvedPaper[]) {
-  return {
-    p: (props: { children?: React.ReactNode }) => (
-      <CitationAwareParagraph papers={papers}>
-        {props.children}
-      </CitationAwareParagraph>
-    ),
-  } as const;
+export function buildStreamdownComponents(
+  papers: ReadonlyArray<ResolvedPaper>,
+) {
+  const components: Record<
+    string,
+    (props: { children?: ReactNode }) => ReactNode
+  > = {};
+  for (const tag of CITATION_TAGS) {
+    components[tag] = (props: { children?: ReactNode }) => {
+      const rendered = Children.toArray(props.children).map((child, i) => (
+        <Fragment key={i}>{renderWithCitations(child, papers)}</Fragment>
+      ));
+      return createElement(tag, null, rendered);
+    };
+  }
+  return components;
 }
 
 function getMessageText(message: UIMessage): string {
