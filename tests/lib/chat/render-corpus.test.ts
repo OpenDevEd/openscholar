@@ -64,9 +64,33 @@ describe("renderPaperCorpus", () => {
   });
 });
 
+const cs = (
+  sourceId: string,
+  position: number,
+  overrides: Partial<CorpusSource> = {},
+): CorpusSource => ({
+  sourceId,
+  position,
+  openalexId: `W${position}`,
+  title: `Paper ${position}`,
+  authors: ["Doe"],
+  year: 2024,
+  abstract: "abs",
+  ...overrides,
+});
+
 describe("filterAndPreservePositions", () => {
   it("returns [] for empty input and empty includedSourceIds", () => {
     expect(filterAndPreservePositions([], new Set<string>())).toEqual([]);
+  });
+
+  it("emits every source with promptIds P1..Pn when all are included", () => {
+    const sources = [cs("s1", 1), cs("s2", 2), cs("s3", 3)];
+    const included = new Set(["s1", "s2", "s3"]);
+    const out = filterAndPreservePositions(sources, included);
+    expect(out).toHaveLength(3);
+    expect(out.map((r) => r.promptId)).toEqual(["P1", "P2", "P3"]);
+    expect(out.map((r) => r.sourceId)).toEqual(["s1", "s2", "s3"]);
   });
 });
 

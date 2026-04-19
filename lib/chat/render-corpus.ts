@@ -25,10 +25,15 @@ export type CorpusSourceForPrompt = CorpusSource & {
 };
 
 export function filterAndPreservePositions(
-  _sources: ReadonlyArray<CorpusSource>,
-  _includedSourceIds: ReadonlySet<string>,
+  sources: ReadonlyArray<CorpusSource>,
+  includedSourceIds: ReadonlySet<string>,
 ): CorpusSourceForPrompt[] {
-  return [];
+  const out: CorpusSourceForPrompt[] = [];
+  for (const s of sources) {
+    if (!includedSourceIds.has(s.sourceId)) continue;
+    out.push({ ...s, promptId: `P${s.position}` });
+  }
+  return out;
 }
 
 export interface PaperForCorpus {
