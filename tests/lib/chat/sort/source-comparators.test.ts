@@ -79,4 +79,17 @@ describe("sortByComparator", () => {
     sortByComparator(rows, "title", "asc");
     expect(rows.map((r) => r.position)).toEqual(snapshot);
   });
+
+  it("R8: equal-primary rows fall back on ascending position regardless of dir", () => {
+    const rows = [
+      row({ position: 5, year: 2024 }),
+      row({ position: 1, year: 2024 }),
+      row({ position: 9, year: 2010 }),
+      row({ position: 3, year: 2010 }),
+    ];
+    const ascSorted = sortByComparator(rows, "year", "asc");
+    expect(ascSorted.map((r) => r.position)).toEqual([3, 9, 1, 5]);
+    const descSorted = sortByComparator(rows, "year", "desc");
+    expect(descSorted.map((r) => r.position)).toEqual([1, 5, 3, 9]);
+  });
 });
