@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import {
@@ -22,12 +21,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ModelPicker } from "@/components/extraction/model-picker";
 import { ClearConversationDialog } from "./clear-conversation";
-import { api } from "@/convex/_generated/api";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { useAppToast } from "@/lib/toast";
-import { toast } from "sonner";
+import type { Doc } from "@/convex/_generated/dataModel";
 
 interface ChatHeaderProps {
   job: Doc<"extractionJobs">;
@@ -37,25 +32,8 @@ interface ChatHeaderProps {
 export function ChatHeader({ job, threadId }: ChatHeaderProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const appToast = useAppToast();
-  const swapModel = useMutation(api.chat.messages.swapModel);
   const [clearOpen, setClearOpen] = useState(false);
-
   const isGenerating = job.isGenerating ?? false;
-
-  const handleModelChange = useCallback(
-    (modelId: Id<"models">) => {
-      void swapModel({ threadId, modelId })
-        .then(() => {
-          toast.success(t("chatModelChanged"));
-        })
-        .catch((err) => {
-          appToast.error(t("chatFailedMessage"));
-          console.error("swap model failed", err);
-        });
-    },
-    [swapModel, threadId, appToast, t],
-  );
 
   return (
     <>
@@ -99,13 +77,6 @@ export function ChatHeader({ job, threadId }: ChatHeaderProps) {
         </motion.nav>
 
         <div className="flex items-center gap-1.5">
-          <div className="hidden min-w-[180px] sm:block">
-            <ModelPicker
-              value={job.chatModelId ?? null}
-              onChange={handleModelChange}
-              disabled={isGenerating}
-            />
-          </div>
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>

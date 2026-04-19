@@ -1,34 +1,33 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { SquareIcon } from "lucide-react";
-import {
-  PromptInput,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputTools,
-  type PromptInputMessage,
-} from "@/components/ai-elements/prompt-input";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ComposerModelPicker } from "./composer-model-picker";
 import { api } from "@/convex/_generated/api";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useAppToast } from "@/lib/toast";
+import { toast } from "sonner";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
+import { cn } from "@/lib/utils";
 
 interface MessageComposerProps {
+  job: Doc<"extractionJobs">;
   threadId: string;
-  jobIsGenerating: boolean;
 }
 
-export function MessageComposer({
-  threadId,
-  jobIsGenerating,
-}: MessageComposerProps) {
+export function MessageComposer({ job, threadId }: MessageComposerProps) {
   const t = useTranslations("extraction");
-  const toast = useAppToast();
+  const appToast = useAppToast();
   const [text, setText] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isComposingRef = useRef(false);
+  const reduceMotion = useReducedMotion();
+  const jobIsGenerating = job.isGenerating ?? false;
 
   const sendMessage = useMutation(
     api.chat.messages.sendMessage,
@@ -36,21 +35,24 @@ export function MessageComposer({
     optimisticallySendMessage(api.chat.messages.listThreadMessages),
   );
   const abortGeneration = useMutation(api.chat.messages.abortGeneration);
+  const swapModel = useMutation(api.chat.messages.swapModel);
 
-  const handleSubmit = useCallback(
-    async (message: PromptInputMessage) => {
-      const prompt = message.text.trim();
-      if (!prompt) return;
-      try {
-        await sendMessage({ threadId, prompt });
-        setText("");
-      } catch (err) {
-        toast.error(t("chatFailedMessage"));
-        console.error("send message failed", err);
-      }
-    },
-    [sendMessage, threadId, toast, t],
-  );
+  const handleSubmit = useCallback(async () => {
+    const prompt = text.trim();
+    if (!prompt || jobIsGenerating) return;
+    setText("");
+    try {
+      await sendMessage({ threadId, prompt });
+      // Refocus the textarea after submit so the next keystroke goes
+      // straight back to typing — no mouse round-trip.
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    } catch (err) {
+      // Restore the text so the user doesn't lose their typing.
+      setText(prompt);
+      appToast.error(t("chatFailedMessage"));
+      console.error("send message failed", err);
+    }
+  }, [text, jobIsGenerating, sendMessage, threadId, appToast, t]);
 
   const handleStop = useCallback(() => {
     void abortGeneration({ threadId }).catch((err) => {
@@ -58,45 +60,159 @@ export function MessageComposer({
     });
   }, [abortGeneration, threadId]);
 
+  const handleModelChange = useCallback(
+    (modelId: Id<"models">) => {
+      void swapModel({ threadId, modelId })
+        .then(() => toast.success(t("chatModelChanged")))
+        .catch((err) => {
+          appToast.error(t("chatFailedMessage"));
+          console.error("swap model failed", err);
+        });
+    },
+    [swapModel, threadId, appToast, t],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // IME composition guard: while a user is composing (Japanese,
+      // Chinese, Korean), Enter should commit the composition — not
+      // submit the message. Both `nativeEvent.isComposing` and the
+      // 229 keyCode legacy signal show up; check both for safety.
+      if (
+        e.nativeEvent.isComposing ||
+        e.nativeEvent.keyCode === 229 ||
+        isComposingRef.current
+      ) {
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        void handleSubmit();
+      }
+    },
+    [handleSubmit],
+  );
+
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true;
+  }, []);
+  const handleCompositionEnd = useCallback(() => {
+    isComposingRef.current = false;
+  }, []);
+
+  // Keep focus when the disabled state flips from true → false (i.e.
+  // generation finished while the user was waiting).
+  const wasGeneratingRef = useRef(jobIsGenerating);
+  useEffect(() => {
+    if (wasGeneratingRef.current && !jobIsGenerating) {
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    }
+    wasGeneratingRef.current = jobIsGenerating;
+  }, [jobIsGenerating]);
+
   const isEmpty = text.trim().length === 0;
-  const submitDisabled = isEmpty || jobIsGenerating;
+  const submitDisabled = isEmpty;
 
   return (
-    <PromptInput
-      onSubmit={handleSubmit}
-      className="border-t bg-background"
-      data-generating={jobIsGenerating}
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSubmit();
+      }}
+      className="border-t bg-background p-3 sm:p-4"
       data-chat-composer="true"
+      data-generating={jobIsGenerating}
     >
-      <PromptInputTextarea
-        placeholder={t("chatEmptyStatePrompt")}
-        value={text}
-        onChange={(e) => setText(e.currentTarget.value)}
-        disabled={jobIsGenerating}
-        aria-label={t("chatSend")}
-      />
-      <PromptInputFooter>
-        <PromptInputTools />
-        <div className="flex items-center gap-1">
-          {jobIsGenerating ? (
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="outline"
-              onClick={handleStop}
-              aria-label={t("chatStop")}
-              data-action="stop"
-            >
-              <SquareIcon className="size-3.5" />
-            </Button>
-          ) : null}
-          <PromptInputSubmit
-            disabled={submitDisabled}
-            aria-label={t("chatSend")}
-            data-action="send"
+      <motion.div
+        layout={reduceMotion ? false : "size"}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+        className={cn(
+          "group/composer flex flex-col rounded-2xl border bg-card shadow-sm transition-shadow",
+          "focus-within:border-primary/40 focus-within:shadow-md focus-within:ring-2 focus-within:ring-ring/15",
+        )}
+      >
+        <textarea
+          ref={textareaRef}
+          name="message"
+          value={text}
+          onChange={(e) => setText(e.currentTarget.value)}
+          onKeyDown={handleKeyDown}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
+          placeholder={t("chatComposerPlaceholder")}
+          aria-label={t("chatSend")}
+          rows={1}
+          className={cn(
+            "field-sizing-content min-h-[44px] max-h-60 w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm leading-relaxed outline-none",
+            "placeholder:text-muted-foreground",
+          )}
+        />
+
+        <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">
+          <ComposerModelPicker
+            value={job.chatModelId ?? null}
+            onChange={handleModelChange}
+            disabled={jobIsGenerating}
           />
+
+          <div className="flex items-center gap-2">
+            <span
+              className="hidden items-center gap-2 text-[11px] text-muted-foreground sm:inline-flex"
+              aria-hidden
+            >
+              <kbd className="rounded border border-border/60 bg-background px-1 py-0.5 font-mono text-[10px] leading-none">
+                {t("chatHintEnter")}
+              </kbd>
+              <kbd className="rounded border border-border/60 bg-background px-1 py-0.5 font-mono text-[10px] leading-none">
+                {t("chatHintShiftEnter")}
+              </kbd>
+            </span>
+
+            <AnimatePresence mode="wait" initial={false}>
+              {jobIsGenerating ? (
+                <motion.div
+                  key="stop"
+                  initial={reduceMotion ? false : { scale: 0.85, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={reduceMotion ? undefined : { scale: 0.85, opacity: 0 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
+                >
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={handleStop}
+                    aria-label={t("chatStop")}
+                    data-action="stop"
+                    className="size-8 rounded-full"
+                  >
+                    <SquareIcon className="size-3.5 fill-current" />
+                  </Button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="send"
+                  initial={reduceMotion ? false : { scale: 0.85, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={reduceMotion ? undefined : { scale: 0.85, opacity: 0 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
+                >
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={submitDisabled}
+                    aria-label={t("chatSend")}
+                    data-action="send"
+                    className="size-8 rounded-full disabled:opacity-40"
+                  >
+                    <ArrowUpIcon className="size-4" />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-      </PromptInputFooter>
-    </PromptInput>
+      </motion.div>
+    </form>
   );
 }

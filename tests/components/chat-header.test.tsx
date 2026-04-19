@@ -47,7 +47,6 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     chat: {
       messages: {
-        swapModel: "stub",
         clearThread: "stub",
       },
     },
@@ -56,10 +55,6 @@ vi.mock("@/convex/_generated/api", () => ({
 
 vi.mock("@/lib/toast", () => ({
   useAppToast: () => ({ error: vi.fn() }),
-}));
-
-vi.mock("@/components/extraction/model-picker", () => ({
-  ModelPicker: () => <div data-testid="model-picker" />,
 }));
 
 function makeJob(over: Partial<Doc<"extractionJobs">> = {}): Doc<"extractionJobs"> {

@@ -24,10 +24,7 @@ export function ChatJobView({ job, threadId }: ChatJobViewProps) {
         >
           <ChatHeader job={job} threadId={threadId} />
           <MessageList threadId={threadId} jobId={job._id} />
-          <MessageComposer
-            threadId={threadId}
-            jobIsGenerating={job.isGenerating ?? false}
-          />
+          <MessageComposer job={job} threadId={threadId} />
         </div>
       }
     />
