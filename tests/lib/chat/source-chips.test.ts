@@ -55,4 +55,9 @@ describe("filterBySourceChip", () => {
     expect(filtered).toHaveLength(2);
     expect(filtered.every((r) => r.sourceType === "openalex")).toBe(true);
   });
+
+  it("R5: filtering on a bucket with zero matching rows returns []", () => {
+    const rows = [row("openalex"), row("zotero")];
+    expect(filterBySourceChip(rows, "history")).toEqual([]);
+  });
 });
