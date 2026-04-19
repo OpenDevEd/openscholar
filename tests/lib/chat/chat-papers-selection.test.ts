@@ -81,4 +81,13 @@ describe("buildBulkPatch", () => {
     const patch = buildBulkPatch(rows, undefined, true);
     expect(patch.size).toBe(0);
   });
+
+  it("with an explicit sourceIds list, filters to that subset", () => {
+    const rows = [row(1, true), row(2, true), row(3, true)];
+    const patch = buildBulkPatch(rows, [src(1), src(3)], false);
+    expect(patch.size).toBe(2);
+    expect(patch.get(cp(1))).toBe(false);
+    expect(patch.get(cp(3))).toBe(false);
+    expect(patch.has(cp(2))).toBe(false);
+  });
 });
