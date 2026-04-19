@@ -34,4 +34,36 @@ describe("classifySourceType", () => {
   it("returns 'unknown' when no discriminator field is set", () => {
     expect(classifySourceType(empty)).toBe("unknown");
   });
+
+  it("applies precedence: zotero > history > upload > openalex", () => {
+    // zotero beats everything
+    expect(
+      classifySourceType({
+        zoteroUserId: "uid",
+        searchFilters: { q: "x" },
+        pdfUrl: "storage:abc",
+        openalexId: "W1",
+      }),
+    ).toBe("zotero");
+
+    // history beats upload + openalex
+    expect(
+      classifySourceType({
+        searchFilters: { q: "x" },
+        pdfUrl: "storage:abc",
+        openalexId: "W1",
+      }),
+    ).toBe("history");
+
+    // upload beats openalex
+    expect(
+      classifySourceType({
+        pdfUrl: "storage:abc",
+        openalexId: "W1",
+      }),
+    ).toBe("upload");
+
+    // openalex lone winner
+    expect(classifySourceType({ openalexId: "W1" })).toBe("openalex");
+  });
 });
