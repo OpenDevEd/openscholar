@@ -19,7 +19,25 @@ describe("computeChipCounts", () => {
       unknown: 0,
     });
   });
-});
 
-// row() is exercised by later cycles; suppress unused-import lint until then.
-void row;
+  it("R2: mixed rows produce per-bucket counts and an aggregate 'all'", () => {
+    const rows = [
+      row("openalex"),
+      row("openalex"),
+      row("upload"),
+      row("zotero"),
+      row("history"),
+      row("history"),
+      row("history"),
+      row("unknown"),
+    ];
+    expect(computeChipCounts(rows)).toEqual({
+      all: 8,
+      openalex: 2,
+      upload: 1,
+      zotero: 1,
+      history: 3,
+      unknown: 1,
+    });
+  });
+});

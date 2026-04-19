@@ -26,14 +26,16 @@ export type ChipCounts = {
 };
 
 export function computeChipCounts(
-  _rows: ReadonlyArray<ChippableSource>,
+  rows: ReadonlyArray<ChippableSource>,
 ): ChipCounts {
-  return {
-    all: 0,
+  const counts: ChipCounts = {
+    all: rows.length,
     openalex: 0,
     upload: 0,
     zotero: 0,
     history: 0,
     unknown: 0,
   };
+  for (const row of rows) counts[row.sourceType] += 1;
+  return counts;
 }
