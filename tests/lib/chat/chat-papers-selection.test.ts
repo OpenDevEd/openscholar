@@ -96,4 +96,16 @@ describe("buildBulkPatch", () => {
     const patch = buildBulkPatch(rows, [], false);
     expect(patch.size).toBe(0);
   });
+
+  it("is order-independent on the input rows (same patch entries under any permutation)", () => {
+    const rows = [row(1, true), row(2, false), row(3, true), row(4, false)];
+    const permuted = [rows[3], rows[0], rows[2], rows[1]];
+    const a = buildBulkPatch(rows, undefined, true);
+    const b = buildBulkPatch(permuted, undefined, true);
+    const normalize = (m: Map<unknown, unknown>) =>
+      Array.from(m.entries())
+        .map(([k, v]) => `${String(k)}=${String(v)}`)
+        .sort();
+    expect(normalize(a)).toEqual(normalize(b));
+  });
 });
