@@ -30,4 +30,8 @@ describe("classifySourceType", () => {
       classifySourceType({ ...empty, openalexId: "W1234567890" }),
     ).toBe("openalex");
   });
+
+  it("returns 'unknown' when no discriminator field is set", () => {
+    expect(classifySourceType(empty)).toBe("unknown");
+  });
 });
