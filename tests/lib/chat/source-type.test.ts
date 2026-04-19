@@ -24,4 +24,10 @@ describe("classifySourceType", () => {
       classifySourceType({ ...empty, pdfUrl: "storage:abc123" }),
     ).toBe("upload");
   });
+
+  it("returns 'openalex' when openalexId is set and nothing else discriminates", () => {
+    expect(
+      classifySourceType({ ...empty, openalexId: "W1234567890" }),
+    ).toBe("openalex");
+  });
 });
