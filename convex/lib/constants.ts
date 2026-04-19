@@ -24,6 +24,15 @@ export const ESTIMATED_CREDITS_PER_PAPER = 4.5;
  */
 export const ESTIMATED_CREDITS_PER_QUERY = 2;
 
+/**
+ * Estimated credit cost for a single chat-message generation
+ * (~20k tokens prompt + ~1k output on a Sonnet-class model). Used as
+ * the pre-flight balance floor in chat's generateResponse so a user
+ * with near-zero credits can't trigger an LLM call that can't be paid
+ * for. Revisit after a week of usage logs.
+ */
+export const ESTIMATED_CREDITS_PER_CHAT_MESSAGE = 200;
+
 export const PLAN_CONFIG = {
   free: { creditsPerMonth: 0, tier: 0, freeCreditCap: FREE_SIGNUP_CREDIT_GRANT },
   go: { creditsPerMonth: 3_000, tier: 10, freeCreditCap: 6_000 },

@@ -18,6 +18,7 @@ import type * as apiKeys_queries from "../apiKeys/queries.js";
 import type * as chat_agent from "../chat/agent.js";
 import type * as chat_concurrency from "../chat/concurrency.js";
 import type * as chat_context from "../chat/context.js";
+import type * as chat_messages from "../chat/messages.js";
 import type * as chat_model from "../chat/model.js";
 import type * as chat_provider from "../chat/provider.js";
 import type * as chat_threads from "../chat/threads.js";
@@ -174,6 +175,7 @@ declare const fullApi: ApiFromModules<{
   "chat/agent": typeof chat_agent;
   "chat/concurrency": typeof chat_concurrency;
   "chat/context": typeof chat_context;
+  "chat/messages": typeof chat_messages;
   "chat/model": typeof chat_model;
   "chat/provider": typeof chat_provider;
   "chat/threads": typeof chat_threads;
