@@ -8,7 +8,7 @@ const row = (overrides: Partial<SortableSource> & { position: number }): Sortabl
   position: overrides.position,
   included: overrides.included ?? true,
   title: overrides.title ?? "z",
-  year: overrides.year ?? 2024,
+  year: "year" in overrides ? overrides.year as number | null : 2024,
   sourceType: overrides.sourceType ?? "openalex",
 });
 
@@ -33,5 +33,16 @@ describe("sortByComparator", () => {
     ];
     const sorted = sortByComparator(rows, "title", "asc");
     expect(sorted.map((r) => r.title)).toEqual(["apple", "Banana", "Cherry"]);
+  });
+
+  it("R4: 'year' desc orders newest first and pushes nulls last", () => {
+    const rows = [
+      row({ position: 1, year: 1999 }),
+      row({ position: 2, year: 2024 }),
+      row({ position: 3, year: null }),
+      row({ position: 4, year: 2010 }),
+    ];
+    const sorted = sortByComparator(rows, "year", "desc");
+    expect(sorted.map((r) => r.year)).toEqual([2024, 2010, 1999, null]);
   });
 });

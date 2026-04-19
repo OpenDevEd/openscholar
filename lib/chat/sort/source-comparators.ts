@@ -20,15 +20,26 @@ export type SortableSource = {
   sourceType: SourceType;
 };
 
-// Each comparator is defined ascending; sortByComparator multiplies by
-// -1 for desc and always applies a position-asc tiebreak so equal
-// primary keys preserve the frozen original order regardless of dir.
-const PRIMARY_COMPARATORS: Record<
-  Exclude<SortField, "added">,
-  (a: SortableSource, b: SortableSource) => number
-> = {
-  title: (a, b) => a.title.localeCompare(b.title),
-  year: () => 0,
+type DirectedComparator = (
+  a: SortableSource,
+  b: SortableSource,
+  sign: 1 | -1,
+) => number;
+
+// Each comparator returns the directed primary delta. Most fields just
+// multiply their natural-asc delta by `sign`. Nullable fields (year)
+// always send nulls last regardless of direction — the sign only flips
+// the comparison among non-null values.
+const PRIMARY_COMPARATORS: Record<Exclude<SortField, "added">, DirectedComparator> = {
+  title: (a, b, sign) => a.title.localeCompare(b.title) * sign,
+  year: (a, b, sign) => {
+    const aNull = a.year === null;
+    const bNull = b.year === null;
+    if (aNull && bNull) return 0;
+    if (aNull) return 1;
+    if (bNull) return -1;
+    return (a.year! - b.year!) * sign;
+  },
   source: () => 0,
   inContext: () => 0,
 };
@@ -38,13 +49,13 @@ export function sortByComparator<R extends SortableSource>(
   field: SortField,
   dir: SortDir,
 ): R[] {
-  const sign = dir === "desc" ? -1 : 1;
+  const sign: 1 | -1 = dir === "desc" ? -1 : 1;
   if (field === "added") {
     return [...rows].sort((a, b) => (a.position - b.position) * sign);
   }
   const cmp = PRIMARY_COMPARATORS[field];
   return [...rows].sort((a, b) => {
-    const primary = cmp(a, b) * sign;
+    const primary = cmp(a, b, sign);
     if (primary !== 0) return primary;
     return a.position - b.position;
   });
