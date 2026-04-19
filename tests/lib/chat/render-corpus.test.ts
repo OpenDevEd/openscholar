@@ -92,6 +92,15 @@ describe("filterAndPreservePositions", () => {
     expect(out.map((r) => r.promptId)).toEqual(["P1", "P2", "P3"]);
     expect(out.map((r) => r.sourceId)).toEqual(["s1", "s2", "s3"]);
   });
+
+  it("preserves positional IDs across gaps when a middle source is excluded", () => {
+    const sources = [cs("s1", 1), cs("s2", 2), cs("s3", 3)];
+    const included = new Set(["s1", "s3"]);
+    const out = filterAndPreservePositions(sources, included);
+    expect(out).toHaveLength(2);
+    expect(out.map((r) => r.promptId)).toEqual(["P1", "P3"]);
+    expect(out.map((r) => r.sourceId)).toEqual(["s1", "s3"]);
+  });
 });
 
 describe("sortPapersForCorpus", () => {
