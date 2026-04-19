@@ -18,9 +18,12 @@ export type InclusionLike = {
 
 export function applyInclusionPatch<R extends InclusionLike>(
   rows: ReadonlyArray<R>,
-  _patch: ReadonlyMap<Id<"chatPapers">, boolean>,
+  patch: ReadonlyMap<Id<"chatPapers">, boolean>,
 ): R[] {
-  return rows.map((row) => row);
+  return rows.map((row) => {
+    const next = patch.get(row.chatPaperId);
+    return next === undefined ? row : { ...row, included: next };
+  });
 }
 
 export function buildBulkPatch<R extends InclusionLike>(

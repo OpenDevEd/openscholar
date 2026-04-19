@@ -35,4 +35,12 @@ describe("applyInclusionPatch", () => {
     expect(out[0]).toBe(r1);
     expect(out[1]).toBe(r2);
   });
+
+  it("flips a single row's included flag via patch", () => {
+    const r1 = row(1, true);
+    const out = applyInclusionPatch([r1], new Map([[cp(1), false]]));
+    expect(out).toHaveLength(1);
+    expect(out[0].chatPaperId).toBe(cp(1));
+    expect(out[0].included).toBe(false);
+  });
 });
