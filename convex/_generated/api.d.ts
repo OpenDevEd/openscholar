@@ -16,6 +16,7 @@ import type * as apiKeys_actions from "../apiKeys/actions.js";
 import type * as apiKeys_mutations from "../apiKeys/mutations.js";
 import type * as apiKeys_queries from "../apiKeys/queries.js";
 import type * as chat_adminBackfill from "../chat/adminBackfill.js";
+import type * as chat_adminPerfSeed from "../chat/adminPerfSeed.js";
 import type * as chat_agent from "../chat/agent.js";
 import type * as chat_auth from "../chat/auth.js";
 import type * as chat_chatPapers from "../chat/chatPapers.js";
@@ -179,6 +180,7 @@ declare const fullApi: ApiFromModules<{
   "apiKeys/mutations": typeof apiKeys_mutations;
   "apiKeys/queries": typeof apiKeys_queries;
   "chat/adminBackfill": typeof chat_adminBackfill;
+  "chat/adminPerfSeed": typeof chat_adminPerfSeed;
   "chat/agent": typeof chat_agent;
   "chat/auth": typeof chat_auth;
   "chat/chatPapers": typeof chat_chatPapers;
