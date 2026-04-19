@@ -57,4 +57,15 @@ describe("sortByComparator", () => {
     const sorted = sortByComparator(rows, "source", "asc");
     expect(sorted.map((r) => r.position)).toEqual([2, 4, 3, 5, 1]);
   });
+
+  it("R6: 'inContext' desc puts included rows first and excluded last (tiebreak by position)", () => {
+    const rows = [
+      row({ position: 1, included: false }),
+      row({ position: 2, included: true }),
+      row({ position: 3, included: false }),
+      row({ position: 4, included: true }),
+    ];
+    const sorted = sortByComparator(rows, "inContext", "desc");
+    expect(sorted.map((r) => r.position)).toEqual([2, 4, 1, 3]);
+  });
 });

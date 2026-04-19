@@ -42,7 +42,8 @@ const PRIMARY_COMPARATORS: Record<Exclude<SortField, "added">, DirectedComparato
   },
   source: (a, b, sign) =>
     (SOURCE_ORDER[a.sourceType] - SOURCE_ORDER[b.sourceType]) * sign,
-  inContext: () => 0,
+  inContext: (a, b, sign) =>
+    (Number(a.included) - Number(b.included)) * sign,
 };
 
 const SOURCE_ORDER: Record<SourceType, number> = {
