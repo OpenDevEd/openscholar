@@ -24,6 +24,7 @@ import { replaceJobSources, type BucketItemInput } from "../extraction/jobSource
 import type { PaperData } from "../extraction/types";
 import { internal } from "../_generated/api";
 import { bucketItemInputValidator } from "../extraction/validators";
+import { buildSeedChatPaperRows } from "./chatPapersSeed";
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim().length > 0) {
@@ -176,7 +177,34 @@ export const persistPreparedSourcesForJob = internalMutation({
     if (!job || job.mode !== "chat") {
       throw createError("NOT_FOUND", "Chat job not found");
     }
+
+    // Wipe existing chatPapers before replaceJobSources rotates source
+    // _ids — otherwise stale rows would point at deleted sources on a
+    // partial-commit retry. The mutation is transactional, so all three
+    // steps (wipe chatPapers / replace sources / seed chatPapers) commit
+    // together or roll back together.
+    const existingPapers = await ctx.db
+      .query("chatPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
+      .collect();
+    for (const row of existingPapers) {
+      await ctx.db.delete(row._id);
+    }
+
     await replaceJobSources(ctx, jobId, items);
+
+    const newSources = await ctx.db
+      .query("extractionJobSources")
+      .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+      .collect();
+    const seedRows = buildSeedChatPaperRows(
+      jobId,
+      newSources.map((s) => s._id),
+    );
+    for (const row of seedRows) {
+      await ctx.db.insert("chatPapers", row);
+    }
+
     await ctx.db.patch(jobId, {
       errorMessage: undefined,
       updatedAt: Date.now(),
