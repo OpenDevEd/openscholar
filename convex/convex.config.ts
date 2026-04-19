@@ -5,6 +5,7 @@ import workflow from "@convex-dev/workflow/convex.config.js";
 import workpool from "@convex-dev/workpool/convex.config.js";
 import screeningWorkpool from "@convex-dev/workpool/convex.config.js";
 import aggregate from "@convex-dev/aggregate/convex.config.js";
+import agent from "@convex-dev/agent/convex.config.js";
 
 const app = defineApp();
 app.use(stripe);
@@ -12,6 +13,7 @@ app.use(rag);
 app.use(workflow);
 app.use(workpool);
 app.use(screeningWorkpool, { name: "screeningWorkpool" });
+app.use(agent);
 // Three @convex-dev/aggregate instances back extractionJobStats (Task 11):
 // - resultStatusAgg: per-(jobId, questionKey) counts by citationStatus
 // - resultAnsweredAgg: per-(jobId, questionKey) counts by answered/unanswered
