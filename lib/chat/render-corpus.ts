@@ -24,6 +24,10 @@ export type CorpusSourceForPrompt = CorpusSource & {
   promptId: `P${number}`;
 };
 
+export function toPromptId(position: number): `P${number}` {
+  return `P${position}`;
+}
+
 export function filterAndPreservePositions(
   sources: ReadonlyArray<CorpusSource>,
   includedSourceIds: ReadonlySet<string>,
@@ -31,7 +35,7 @@ export function filterAndPreservePositions(
   const out: CorpusSourceForPrompt[] = [];
   for (const s of sources) {
     if (!includedSourceIds.has(s.sourceId)) continue;
-    out.push({ ...s, promptId: `P${s.position}` });
+    out.push({ ...s, promptId: toPromptId(s.position) });
   }
   out.sort((a, b) => a.position - b.position);
   return out;
