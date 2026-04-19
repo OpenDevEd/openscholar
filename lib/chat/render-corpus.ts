@@ -1,11 +1,12 @@
 /**
  * Deterministic paper-corpus renderer for chat-mode prompts.
  *
- * Pure function — byte-identical output for a given paper set regardless
- * of insertion order. Sorted by openalexId ascending so the prompt
- * prefix stays stable across turns (prerequisite for prompt caching
- * when the provider layer starts forwarding cache_control; see plan
- * §4i for the rationale).
+ * Pure function. Emits the full `<papers count="N">...</papers>` XML
+ * envelope. Each paper's `id` attribute is its `promptId` — anchored
+ * on the upstream `position` field, not the array index — so excluding
+ * a source leaves a stable hole in the emitted id sequence instead of
+ * renumbering surviving papers. See `filterAndPreservePositions` for
+ * the upstream gap-preserving filter step.
  */
 
 export type CorpusSource = {
@@ -41,15 +42,6 @@ export function filterAndPreservePositions(
   return out;
 }
 
-export interface PaperForCorpus {
-  openalexId?: string;
-  title: string;
-  authors: ReadonlyArray<string>;
-  year?: number;
-  abstract?: string;
-}
-
-/** Escape a handful of characters that would break the XML envelope. */
 function xmlEscape(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -58,38 +50,13 @@ function xmlEscape(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/**
- * Sorts papers by openalexId ascending. Missing IDs sort last (preserves
- * the historical order among those so the output stays deterministic).
- */
-export function sortPapersForCorpus<T extends PaperForCorpus>(
-  papers: ReadonlyArray<T>,
-): T[] {
-  const withIds = papers
-    .map((p, i) => ({ p, i }))
-    .filter(({ p }) => !!p.openalexId);
-  const withoutIds = papers
-    .map((p, i) => ({ p, i }))
-    .filter(({ p }) => !p.openalexId);
-
-  withIds.sort((a, b) => {
-    if (a.p.openalexId! < b.p.openalexId!) return -1;
-    if (a.p.openalexId! > b.p.openalexId!) return 1;
-    return 0;
-  });
-  withoutIds.sort((a, b) => a.i - b.i);
-
-  return [...withIds.map(({ p }) => p), ...withoutIds.map(({ p }) => p)];
-}
-
 export function renderPaperCorpus(
-  papers: ReadonlyArray<PaperForCorpus>,
+  papers: ReadonlyArray<CorpusSourceForPrompt>,
 ): string {
-  const sorted = sortPapersForCorpus(papers);
-  const blocks: string[] = [];
-  for (let i = 0; i < sorted.length; i++) {
-    const p = sorted[i];
-    const id = `P${i + 1}`;
+  if (papers.length === 0) {
+    return `<papers count="0"></papers>`;
+  }
+  const blocks = papers.map((p) => {
     const oa = p.openalexId ? xmlEscape(p.openalexId) : "";
     const title = xmlEscape(p.title);
     const authors = xmlEscape(p.authors.join(", ") || "Unknown");
@@ -98,14 +65,14 @@ export function renderPaperCorpus(
       p.abstract && p.abstract.trim().length > 0
         ? xmlEscape(p.abstract.trim())
         : "(no abstract available)";
-    blocks.push(
-      `<paper id="${id}"${oa ? ` openalex="${oa}"` : ""}>\n` +
-        `<title>${title}</title>\n` +
-        `<year>${year}</year>\n` +
-        `<authors>${authors}</authors>\n` +
-        `<abstract>${abstract}</abstract>\n` +
-        `</paper>`,
+    return (
+      `<paper id="${p.promptId}"${oa ? ` openalex="${oa}"` : ""}>\n` +
+      `<title>${title}</title>\n` +
+      `<year>${year}</year>\n` +
+      `<authors>${authors}</authors>\n` +
+      `<abstract>${abstract}</abstract>\n` +
+      `</paper>`
     );
-  }
-  return blocks.join("\n\n");
+  });
+  return `<papers count="${papers.length}">\n${blocks.join("\n\n")}\n</papers>`;
 }

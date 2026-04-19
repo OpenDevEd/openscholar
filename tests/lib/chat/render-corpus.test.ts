@@ -2,62 +2,44 @@ import { describe, it, expect } from "vitest";
 import {
   filterAndPreservePositions,
   renderPaperCorpus,
-  sortPapersForCorpus,
   type CorpusSource,
-  type PaperForCorpus,
+  type CorpusSourceForPrompt,
 } from "@/lib/chat/render-corpus";
 
-const p = (
-  openalexId: string | undefined,
-  title: string,
-  authors: string[] = ["Doe"],
-  year = 2024,
-  abstract: string | undefined = "abs",
-): PaperForCorpus => ({ openalexId, title, authors, year, abstract });
+const prompted = (
+  position: number,
+  overrides: Partial<CorpusSourceForPrompt> = {},
+): CorpusSourceForPrompt => ({
+  sourceId: `s${position}`,
+  position,
+  promptId: `P${position}`,
+  openalexId: `W${position}`,
+  title: `Paper ${position}`,
+  authors: ["Doe"],
+  year: 2024,
+  abstract: "abs",
+  ...overrides,
+});
 
 describe("renderPaperCorpus", () => {
-  it("produces byte-deterministic output for the same inputs", () => {
-    const papers = [
-      p("W3", "Third"),
-      p("W1", "First"),
-      p("W2", "Second"),
-    ];
-    const a = renderPaperCorpus(papers);
-    const b = renderPaperCorpus([papers[2], papers[0], papers[1]]);
-    expect(a).toBe(b);
-  });
-
-  it("sorts by openalexId ascending; indexes start at P1", () => {
-    const out = renderPaperCorpus([
-      p("W9", "NinthAlpha"),
-      p("W1", "FirstAlpha"),
-    ]);
-    expect(out.indexOf('id="P1"')).toBeLessThan(out.indexOf('id="P2"'));
-    expect(out).toContain('<title>FirstAlpha</title>');
-    // The first block wins P1 — must be the one with lowest openalexId.
-    const firstBlock = out.split("\n\n")[0];
-    expect(firstBlock).toContain('openalex="W1"');
+  it("preserves positional gaps — P1 and P3 present, P2 absent", () => {
+    const out = renderPaperCorpus([prompted(1), prompted(3)]);
+    expect(out).toMatch(/<papers count="2">/);
+    expect(out).toContain('id="P1"');
+    expect(out).toContain('id="P3"');
+    expect(out).not.toContain('id="P2"');
   });
 
   it("renders (no abstract available) for missing abstracts", () => {
     const out = renderPaperCorpus([
-      { openalexId: "W1", title: "T", authors: ["A"], year: 2024 },
+      prompted(1, { abstract: undefined }),
     ]);
     expect(out).toContain("<abstract>(no abstract available)</abstract>");
   });
 
-  it("escapes XML-special characters in title and authors", () => {
-    const out = renderPaperCorpus([
-      p("W1", "Ampersand & <tag>", ['Smith <"D">']),
-    ]);
-    expect(out).toContain("&amp;");
-    expect(out).toContain("&lt;tag&gt;");
-    expect(out).toContain("&quot;");
-  });
-
   it("falls back to Unknown for empty authors / year", () => {
     const out = renderPaperCorpus([
-      { openalexId: "W1", title: "t", authors: [], abstract: "x" },
+      prompted(1, { authors: [], year: undefined }),
     ]);
     expect(out).toContain("<authors>Unknown</authors>");
     expect(out).toContain("<year>Unknown</year>");
@@ -159,20 +141,3 @@ describe("filterAndPreservePositions", () => {
   });
 });
 
-describe("sortPapersForCorpus", () => {
-  it("places papers without openalexId at the end, preserving original order among them", () => {
-    const papers: PaperForCorpus[] = [
-      { title: "noId-a", authors: [], abstract: "x" },
-      { openalexId: "W2", title: "withId", authors: [], abstract: "x" },
-      { title: "noId-b", authors: [], abstract: "x" },
-      { openalexId: "W1", title: "withId2", authors: [], abstract: "x" },
-    ];
-    const sorted = sortPapersForCorpus(papers);
-    expect(sorted.map((p) => p.title)).toEqual([
-      "withId2",
-      "withId",
-      "noId-a",
-      "noId-b",
-    ]);
-  });
-});

@@ -1,21 +1,40 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import type { Id } from "../_generated/dataModel";
-import { readJobSources } from "../extraction/jobSources";
-import { renderPaperCorpus } from "../../lib/chat/render-corpus";
+import type { Doc, Id } from "../_generated/dataModel";
+import {
+  filterAndPreservePositions,
+  renderPaperCorpus,
+  type CorpusSource,
+} from "../../lib/chat/render-corpus";
 import { PAPER_LIMIT_MAX } from "../extraction/bucket/limits";
 
 /**
  * Builds the chat system prompt array for a given job. Returns two
  * messages:
  *   1. persona + citation instructions
- *   2. the paper corpus (XML envelope, sorted by openalexId ASC)
+ *   2. the paper corpus (XML envelope, papers sorted by stable `position`
+ *      ASC with gaps preserved when rows are excluded — see plan-02)
  *
  * The split is intentional: the corpus message is the cache-hot prefix
  * once OpenRouter's v6 provider starts forwarding cache_control through
- * the Responses API (see plan §4i). For V1 neither branch carries
+ * the Responses API. For V1 neither branch carries
  * providerOptions.cacheControl — the provider drops them silently.
  */
+
+function toCorpusSource(row: Doc<"extractionJobSources">): CorpusSource {
+  return {
+    sourceId: row._id,
+    position: row.position,
+    openalexId: row.openalexId,
+    title: row.title,
+    authors: row.authors,
+    year: row.year,
+    abstract: row.abstract,
+    doi: row.doi,
+    pdfUrl: row.pdfUrl,
+  };
+}
+
 export const buildSystemPromptForJob = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.array(
@@ -25,15 +44,19 @@ export const buildSystemPromptForJob = internalQuery({
     }),
   ),
   handler: async (ctx, { jobId }) => {
-    const sources = await readJobSources(ctx, jobId, PAPER_LIMIT_MAX * 2);
-    const corpus = renderPaperCorpus(
-      sources.map((s) => ({
-        openalexId: s.openalexId,
-        title: s.title,
-        authors: s.authors,
-        year: s.year,
-        abstract: s.abstract,
-      })),
+    const sourceRows = await ctx.db
+      .query("extractionJobSources")
+      .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+      .take(PAPER_LIMIT_MAX * 2);
+    const corpusSources = sourceRows.map(toCorpusSource);
+    // Phase A pass-through — all sources included. Phase B (next commit)
+    // replaces this with a live read from chatPapers.by_job_included.
+    const includedSourceIds = new Set<string>(
+      corpusSources.map((s) => s.sourceId),
+    );
+    const prompted = filterAndPreservePositions(
+      corpusSources,
+      includedSourceIds,
     );
 
     return [
@@ -55,7 +78,7 @@ export const buildSystemPromptForJob = internalQuery({
       },
       {
         role: "system" as const,
-        content: `<papers count="${sources.length}">\n${corpus}\n</papers>`,
+        content: renderPaperCorpus(prompted),
       },
     ];
   },
