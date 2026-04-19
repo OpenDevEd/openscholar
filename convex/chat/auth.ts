@@ -40,3 +40,15 @@ export async function authorizeThreadAccess(
   }
   return { job, user };
 }
+
+export async function assertCallerOwnsJob(
+  ctx: QueryCtx | MutationCtx,
+  jobId: Id<"extractionJobs">,
+): Promise<{ job: Doc<"extractionJobs">; user: Doc<"users"> }> {
+  const user = await requireAuth(ctx);
+  const job = await ctx.db.get(jobId);
+  if (!job || job.userId !== user._id || job.mode !== "chat") {
+    throw createError("FORBIDDEN", "Access denied");
+  }
+  return { job, user };
+}
