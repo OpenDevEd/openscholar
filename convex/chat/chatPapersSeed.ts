@@ -6,9 +6,15 @@ export type SeedChatPaperRow = {
   included: boolean;
 };
 
+export const DEFAULT_INCLUDED = true;
+
 export function buildSeedChatPaperRows(
   jobId: Id<"extractionJobs">,
   sourceIds: ReadonlyArray<Id<"extractionJobSources">>,
 ): SeedChatPaperRow[] {
-  return sourceIds.map((sourceId) => ({ jobId, sourceId, included: true }));
+  return sourceIds.map((sourceId) => ({
+    jobId,
+    sourceId,
+    included: DEFAULT_INCLUDED,
+  }));
 }
