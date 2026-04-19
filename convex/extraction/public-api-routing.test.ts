@@ -439,9 +439,9 @@ describe("duplicateJob", () => {
     ).rejects.toThrow(WORKFLOW_NOT_REGISTERED_RE);
   });
 
-  it("rejects chat-mode jobs as not yet duplicable", async () => {
+  it("rejects chat-mode duplicate when the extraction.chat flag is OFF", async () => {
     const t = convexTest(schema);
-    const { userId } = await seedUserAndFlags(t);
+    const { userId } = await seedUserAndFlags(t, { chat: false });
 
     const chatJobId = await t.run(async (ctx) => {
       const now = Date.now();
@@ -460,7 +460,97 @@ describe("duplicateJob", () => {
       auth.mutation(api.extraction.mutations.duplicateJob, {
         jobId: chatJobId,
       }),
-    ).rejects.toThrow(/cannot be duplicated/i);
+    ).rejects.toThrow(/extraction\.chat/i);
+  });
+
+  it("duplicates a chat-mode job with sources and chatPapers when extraction.chat is ON", async () => {
+    const t = convexTest(schema);
+    const { userId } = await seedUserAndFlags(t, { chat: true });
+
+    const { chatJobId, oldSourceIds } = await t.run(async (ctx) => {
+      const now = Date.now();
+      const chatJobId = await ctx.db.insert("extractionJobs", {
+        userId,
+        mode: "chat" as const,
+        name: "Chat Base",
+        sourceType: "history" as const,
+        messageCount: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const s1 = await ctx.db.insert("extractionJobSources", {
+        jobId: chatJobId,
+        position: 0,
+        bucketKey: BUCKET_ITEM_HISTORY.bucketKey,
+        source: "history" as const,
+        sourceRefId: BUCKET_ITEM_HISTORY.sourceRefId,
+        title: BUCKET_ITEM_HISTORY.title,
+        authors: BUCKET_ITEM_HISTORY.authors,
+        openalexId: BUCKET_ITEM_HISTORY.openalexId,
+        searchFilters: BUCKET_ITEM_HISTORY.searchFilters,
+      });
+      const s2 = await ctx.db.insert("extractionJobSources", {
+        jobId: chatJobId,
+        position: 1,
+        bucketKey: "history:W2",
+        source: "history" as const,
+        sourceRefId: "W2",
+        title: "Paper Two",
+        authors: ["B"],
+        openalexId: "W2",
+        searchFilters: { limit: 1 },
+      });
+      await ctx.db.insert("chatPapers", {
+        jobId: chatJobId,
+        sourceId: s1,
+        included: true,
+      });
+      await ctx.db.insert("chatPapers", {
+        jobId: chatJobId,
+        sourceId: s2,
+        included: false,
+      });
+      return { chatJobId, oldSourceIds: [s1, s2] };
+    });
+
+    const auth = t.withIdentity(STARTJOB_IDENTITY);
+    const { jobId: newJobId } = await auth.mutation(
+      api.extraction.mutations.duplicateJob,
+      { jobId: chatJobId },
+    );
+
+    await t.run(async (ctx) => {
+      const newJob = await ctx.db.get("extractionJobs", newJobId);
+      expect(newJob).not.toBeNull();
+      expect(newJob!.mode).toBe("chat");
+      expect(newJob!.name).toBe("Chat Base (Copy)");
+
+      const newSources = await ctx.db
+        .query("extractionJobSources")
+        .withIndex("by_job_and_position", (q) => q.eq("jobId", newJobId))
+        .collect();
+      expect(newSources).toHaveLength(2);
+
+      const newPapers = await ctx.db
+        .query("chatPapers")
+        .withIndex("by_job", (q) => q.eq("jobId", newJobId))
+        .collect();
+      expect(newPapers).toHaveLength(2);
+      const bySourceIncluded = new Map(
+        newPapers.map((p) => [p.sourceId, p.included]),
+      );
+      const newBySourceRef = new Map(
+        newSources.map((s) => [s.sourceRefId, s._id]),
+      );
+      expect(bySourceIncluded.get(newBySourceRef.get("W1")!)).toBe(true);
+      expect(bySourceIncluded.get(newBySourceRef.get("W2")!)).toBe(false);
+
+      // New chatPapers must NOT reference the old sourceIds — they were
+      // remapped to the cloned sources.
+      for (const oldId of oldSourceIds) {
+        expect(bySourceIncluded.has(oldId)).toBe(false);
+      }
+    });
   });
 });
 

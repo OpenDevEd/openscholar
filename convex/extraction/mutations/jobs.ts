@@ -38,10 +38,10 @@ import {
   MAX_QUESTION_TEXT_LENGTH,
 } from "../validators";
 import {
-  readJobSources,
   writeJobSources,
   type BucketItemInput,
 } from "../jobSources";
+import { cloneChatPapersForDuplicate } from "../../chat/chatPapersDuplicate";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -191,43 +191,101 @@ export const duplicateJob = mutation({
       throw createError("NOT_FOUND", "Job not found");
     }
 
+    // Feature gate + rate limit, branched by mode.
     if (oldJob.mode === "chat") {
-      // Chat-mode duplication lands in a follow-up (not V1). Surface as
-      // a clean VALIDATION_ERROR rather than letting the chat branch
-      // fall through with a new thread.
-      throw createError(
-        "VALIDATION_ERROR",
-        "Chat jobs cannot be duplicated yet",
-      );
+      await requireFeature(ctx, "extraction.chat", user._id);
+    } else {
+      await requireFeature(ctx, "extraction.start", user._id);
     }
-
-    // Extraction-mode duplicate: gate + rate-limit identically to start.
-    await requireFeature(ctx, "extraction.start", user._id);
     await rateLimit(ctx, {
       name: "start-extraction",
       key: user._id,
       throws: true,
     });
 
+    // Read old source rows in position order — we need _ids (not just
+    // bucket-item shape) to build the old→new source mapping for the
+    // chat-mode chatPapers clone.
+    const oldSourceRows = await ctx.db
+      .query("extractionJobSources")
+      .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
+      .take(PAPER_LIMIT_MAX * 2);
+    const bucketItems: BucketItemInput[] = oldSourceRows.map((row) => ({
+      bucketKey: row.bucketKey,
+      source: row.source,
+      sourceRefId: row.sourceRefId,
+      title: row.title,
+      authors: row.authors,
+      year: row.year,
+      doi: row.doi,
+      openalexId: row.openalexId,
+      abstract: row.abstract,
+      pdfUrl: row.pdfUrl,
+      storageId: row.storageId,
+      searchFilters: row.searchFilters,
+      libraryType: row.libraryType,
+      groupId: row.groupId,
+      zoteroUserId: row.zoteroUserId,
+      collectionKey: row.collectionKey,
+      includeDescendants: row.includeDescendants,
+    }));
+    await assertBucketWithinLimits(ctx, user._id, bucketItems);
+
+    const now = Date.now();
+
+    if (oldJob.mode === "chat") {
+      const newJobId = await ctx.db.insert("extractionJobs", {
+        userId: user._id,
+        mode: "chat" as const,
+        name: `${oldJob.name} (Copy)`,
+        sourceType: oldJob.sourceType,
+        messageCount: 0,
+        chatModelId: oldJob.chatModelId,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const newSourceIds = await writeJobSources(ctx, newJobId, bucketItems);
+      const sourceIdMap = new Map<
+        Id<"extractionJobSources">,
+        Id<"extractionJobSources">
+      >();
+      for (let i = 0; i < oldSourceRows.length; i++) {
+        sourceIdMap.set(oldSourceRows[i]._id, newSourceIds[i]);
+      }
+
+      const oldChatPapers = await ctx.db
+        .query("chatPapers")
+        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+        .collect();
+      const newChatPaperRows = cloneChatPapersForDuplicate(
+        newJobId,
+        oldChatPapers.map((r) => ({
+          sourceId: r.sourceId,
+          included: r.included,
+        })),
+        sourceIdMap,
+      );
+      for (const row of newChatPaperRows) {
+        await ctx.db.insert("chatPapers", row);
+      }
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.chat.threads.createThreadForDuplicatedJob,
+        { jobId: newJobId },
+      );
+
+      return { jobId: newJobId };
+    }
+
+    // Extraction-mode duplicate.
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .order("asc")
       .collect();
 
-    // Bound the read by the cross-plan ceiling so a downgrade between
-    // original-job-creation and duplication can't truncate the source set
-    // before validation. The validator below rejects oversized buckets
-    // outright, so honest jobs round-trip and bypass-jobs surface as a
-    // VALIDATION_ERROR instead of silently shrinking.
-    const bucketItems = await readJobSources(
-      ctx,
-      args.jobId,
-      PAPER_LIMIT_MAX * 2,
-    );
-    await assertBucketWithinLimits(ctx, user._id, bucketItems);
-
-    const now = Date.now();
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       mode: "extraction" as const,

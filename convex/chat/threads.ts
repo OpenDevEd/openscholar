@@ -139,6 +139,56 @@ export const ensureThreadForJob = internalAction({
   },
 });
 
+/**
+ * Lighter-weight thread bootstrap for duplicated chat jobs. The sources
+ * and chatPapers have already been cloned inside `duplicateJob`'s
+ * transaction, so we skip source resolution / replace / seed entirely
+ * and just create the agent thread + patch chatThreadId. Re-resolving
+ * saved-search sources would break the "duplicate preserves state"
+ * contract — the cloned job must mirror the original's paper set at
+ * duplication time, not re-fetch live data.
+ */
+export const createThreadForDuplicatedJob = internalAction({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.object({ threadId: v.string() }),
+  handler: async (ctx, { jobId }): Promise<{ threadId: string }> => {
+    const job = await ctx.runQuery(
+      internal.chat.threads.getChatJobForPreparation,
+      { jobId },
+    );
+    if (!job) {
+      throw createError("NOT_FOUND", "Job not found");
+    }
+    if (job.mode !== "chat") {
+      throw createError(
+        "VALIDATION_ERROR",
+        "createThreadForDuplicatedJob called on a non-chat job",
+      );
+    }
+    if (job.chatThreadId) {
+      return { threadId: job.chatThreadId };
+    }
+
+    try {
+      const { threadId } = await paperChat.createThread(ctx, {
+        userId: job.userId,
+        title: job.name,
+      });
+      await ctx.runMutation(internal.chat.threads.completeThreadForJob, {
+        jobId,
+        threadId,
+      });
+      return { threadId };
+    } catch (error) {
+      await ctx.runMutation(internal.chat.threads.failThreadForJob, {
+        jobId,
+        errorMessage: getErrorMessage(error),
+      });
+      throw error;
+    }
+  },
+});
+
 export const getChatJobForPreparation = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.union(

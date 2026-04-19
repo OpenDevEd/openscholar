@@ -99,21 +99,24 @@ export async function writeJobSources(
   ctx: MutationCtx,
   jobId: Id<"extractionJobs">,
   items: ReadonlyArray<BucketItemInput>,
-): Promise<void> {
+): Promise<Id<"extractionJobSources">[]> {
+  const inserted: Id<"extractionJobSources">[] = [];
   let position = 0;
   for (const item of items) {
-    await ctx.db.insert(
+    const id = await ctx.db.insert(
       "extractionJobSources",
       rowFromBucketItem(jobId, position++, item),
     );
+    inserted.push(id);
   }
+  return inserted;
 }
 
 export async function replaceJobSources(
   ctx: MutationCtx,
   jobId: Id<"extractionJobs">,
   items: ReadonlyArray<BucketItemInput>,
-): Promise<void> {
+): Promise<Id<"extractionJobSources">[]> {
   const existing = await ctx.db
     .query("extractionJobSources")
     .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
@@ -123,7 +126,7 @@ export async function replaceJobSources(
     await ctx.db.delete(row._id);
   }
 
-  await writeJobSources(ctx, jobId, items);
+  return await writeJobSources(ctx, jobId, items);
 }
 
 export async function readJobSources(
