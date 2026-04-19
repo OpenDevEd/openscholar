@@ -66,6 +66,7 @@ export function MessageComposer({
       onSubmit={handleSubmit}
       className="border-t bg-background"
       data-generating={jobIsGenerating}
+      data-chat-composer="true"
     >
       <PromptInputTextarea
         placeholder={t("chatEmptyStatePrompt")}

@@ -44,6 +44,15 @@ export function ClearConversation({
     try {
       await clearThread({ threadId });
       setOpen(false);
+      // Return focus to the composer textarea after the dialog closes.
+      // data-chat-composer="true" is set on the PromptInput root; the
+      // textarea is its only focusable child.
+      requestAnimationFrame(() => {
+        const textarea = document.querySelector<HTMLTextAreaElement>(
+          '[data-chat-composer] textarea',
+        );
+        textarea?.focus();
+      });
     } catch (err) {
       toast.error(t("chatFailedMessage"));
       console.error("clear thread failed", err);
