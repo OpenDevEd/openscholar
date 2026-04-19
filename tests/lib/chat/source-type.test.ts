@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, expectTypeOf } from "vitest";
 import {
   classifySourceType,
+  type SourceType,
   type SourceTypeInput,
 } from "@/lib/chat/source-type";
 
@@ -65,5 +66,12 @@ describe("classifySourceType", () => {
 
     // openalex lone winner
     expect(classifySourceType({ openalexId: "W1" })).toBe("openalex");
+  });
+
+  it("narrows its return type to the literal union (not string)", () => {
+    expectTypeOf(classifySourceType({})).toEqualTypeOf<SourceType>();
+    expectTypeOf<SourceType>().toEqualTypeOf<
+      "openalex" | "upload" | "zotero" | "history" | "unknown"
+    >();
   });
 });
