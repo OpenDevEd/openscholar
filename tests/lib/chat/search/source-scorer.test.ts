@@ -107,4 +107,11 @@ describe("scoreSource", () => {
     expect(upper).toEqual(lower);
     expect(upper.score).toBeGreaterThan(0);
   });
+
+  it("R11: row with null abstract does not throw and falls back to other fields", () => {
+    const noAbs: ScorerInput = { ...baseRow, abstract: null };
+    expect(() => scoreSource(noAbs, "photosynthesis")).not.toThrow();
+    const result = scoreSource(noAbs, "marine");
+    expect(result.field).toBe("title");
+  });
 });
