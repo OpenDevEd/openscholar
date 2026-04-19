@@ -12,4 +12,10 @@ describe("classifySourceType", () => {
       "zotero",
     );
   });
+
+  it("returns 'history' when searchFilters is set", () => {
+    expect(
+      classifySourceType({ ...empty, searchFilters: { q: "anything" } }),
+    ).toBe("history");
+  });
 });
