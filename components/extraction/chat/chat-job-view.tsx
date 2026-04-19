@@ -7,7 +7,7 @@ import { MessageComposer } from "./message-composer";
 import { MessageList } from "./message-list";
 import { PapersInContextSidebar } from "./papers-in-context-sidebar";
 
-export interface ChatJobViewProps {
+interface ChatJobViewProps {
   job: Doc<"extractionJobs">;
   threadId: string;
 }

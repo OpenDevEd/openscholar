@@ -10,7 +10,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useAppToast } from "@/lib/toast";
 import { toast } from "sonner";
 
-export interface ChatHeaderProps {
+interface ChatHeaderProps {
   job: Doc<"extractionJobs">;
   threadId: string;
 }

@@ -13,14 +13,14 @@ import { api } from "@/convex/_generated/api";
 import { useAppToast } from "@/lib/toast";
 import type { UIMessage } from "@convex-dev/agent/react";
 
-export interface ChatUIMessage {
+interface ChatUIMessage {
   status: UIMessage["status"];
   role: UIMessage["role"];
   parts?: UIMessage["parts"];
   text?: string;
 }
 
-export interface MessageActionsProps {
+interface MessageActionsProps {
   message: ChatUIMessage;
   isLastAssistant: boolean;
   threadId: string;

@@ -25,7 +25,7 @@ import {
 import { api } from "@/convex/_generated/api";
 import { useAppToast } from "@/lib/toast";
 
-export interface ClearConversationProps {
+interface ClearConversationProps {
   threadId: string;
   disabled: boolean;
 }

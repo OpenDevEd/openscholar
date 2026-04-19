@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { AlertCircleIcon, RefreshCwIcon } from "lucide-react";
 import { useMutation } from "convex/react";
 
-export interface MessageListProps {
+interface MessageListProps {
   threadId: string;
   jobId: Id<"extractionJobs">;
 }

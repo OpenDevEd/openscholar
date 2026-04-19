@@ -17,7 +17,7 @@ import { api } from "@/convex/_generated/api";
 import { useAppToast } from "@/lib/toast";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
 
-export interface MessageComposerProps {
+interface MessageComposerProps {
   threadId: string;
   jobIsGenerating: boolean;
 }

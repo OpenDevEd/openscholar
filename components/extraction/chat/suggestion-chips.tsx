@@ -11,7 +11,7 @@ import { api } from "@/convex/_generated/api";
 import { useAppToast } from "@/lib/toast";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
 
-export interface SuggestionChipsProps {
+interface SuggestionChipsProps {
   threadId: string;
 }
 

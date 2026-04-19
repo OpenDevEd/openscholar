@@ -20,7 +20,7 @@ export interface ResolvablePaper {
   doi?: string;
 }
 
-export interface PaperReferenceMatch<P extends ResolvablePaper = ResolvablePaper> {
+interface PaperReferenceMatch<P extends ResolvablePaper = ResolvablePaper> {
   /** Byte offset of the opening `[` in the source text. */
   start: number;
   /** Byte offset one past the closing `]`. */

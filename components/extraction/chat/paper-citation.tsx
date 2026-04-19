@@ -21,7 +21,7 @@ export interface PaperCitationTarget extends ResolvablePaper {
   doi?: string;
 }
 
-export interface PaperCitationProps {
+interface PaperCitationProps {
   index: number;
   paper: PaperCitationTarget | null;
 }

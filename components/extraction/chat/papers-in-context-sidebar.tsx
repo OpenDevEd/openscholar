@@ -20,7 +20,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-export interface PapersInContextSidebarProps {
+interface PapersInContextSidebarProps {
   jobId: Id<"extractionJobs">;
 }
 
