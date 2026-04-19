@@ -11,4 +11,13 @@ describe("extractMatchSnippet", () => {
     expect(extractMatchSnippet("hello world", "xyz")).toBeNull();
     expect(extractMatchSnippet("", "anything")).toBeNull();
   });
+
+  it("R3: query at the start of source has no leading ellipsis", () => {
+    const long =
+      "photosynthesis powers the carbon cycle in coral reefs across the equatorial pacific ocean";
+    const result = extractMatchSnippet(long, "photosynthesis", 60);
+    expect(result).not.toBeNull();
+    expect(result!.text.startsWith("\u2026")).toBe(false);
+    expect(result!.text.startsWith("photosynthesis")).toBe(true);
+  });
 });
