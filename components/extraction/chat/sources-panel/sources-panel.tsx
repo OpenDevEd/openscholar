@@ -34,7 +34,15 @@ interface SourcesPanelProps {
 export function SourcesPanel({ jobId }: SourcesPanelProps) {
   const isMobile = useIsMobile();
   if (isMobile) return null;
-  return <SourcesPanelInner jobId={jobId} />;
+  // Desktop rail: bound the column to a fixed width inside the
+  // TwoColumnLayout shrink-0 sticky slot, otherwise the panel grows to
+  // fill the page. The Sheet variant skips this wrapper because the
+  // SheetContent already sizes itself (w-[90vw] max-w-md).
+  return (
+    <div className="h-full w-[360px] shrink-0 border-l">
+      <SourcesPanelInner jobId={jobId} />
+    </div>
+  );
 }
 
 export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
