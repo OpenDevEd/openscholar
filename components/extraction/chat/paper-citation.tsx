@@ -3,7 +3,6 @@
 import { ExternalLink, FileText, Library, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
-import { toast } from "sonner";
 
 import {
   InlineCitationCard,
@@ -163,12 +162,8 @@ export function PaperCitation({ index, paper, jobId }: PaperCitationProps) {
 
   const pillClass = PILL_CLASS_BY_STATE[state];
 
-  const handleReinclude = async () => {
-    try {
-      await reinclude({ chatPaperId: p.chatPaperId, included: true });
-    } catch {
-      toast.error(t("chatCitationReincludeError"));
-    }
+  const handleReinclude = () => {
+    void reinclude({ chatPaperId: p.chatPaperId, included: true });
   };
 
   return (

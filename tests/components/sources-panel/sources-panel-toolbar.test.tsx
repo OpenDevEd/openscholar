@@ -3,17 +3,18 @@
  *
  * Behavioral tests for <SourcesPanelToolbar>.
  *
- * Asserts on the user-observable contract:
- * - typing in the search input fires onQueryChange with the new value
- *   (the panel state hook is the URL/filter source-of-truth)
- * - clicking a sort pill while it's already active flips dir, while
- *   clicking an inactive pill activates it with the field's default
- *   direction (year and inContext default to desc)
- * - clicking the bulk Include button calls bulkSetChatPapers with
- *   every visible row's sourceId and included=true
- * - bulk buttons are disabled when there are no visible rows
+ * Asserts on the user-observable contract of the redesigned toolbar:
+ * - search input (role=searchbox) fires onQueryChange on typing
+ * - a clear-search button appears only when there's a query and resets it
+ * - bulk include/exclude/invert buttons fire Convex mutations with the
+ *   visible sourceIds and the expected `included` value
+ * - bulk buttons are disabled when visibleRows is empty
+ * - the source filter Select reflects `chipSelected` on the trigger
+ * - the sort trigger surfaces the current sort field and direction via
+ *   data-sort-field and data-sort-dir for test/route reasoning
  *
- * No CSS-class assertions per project doctrine.
+ * No CSS-class assertions per project doctrine — attributes and roles
+ * only.
  */
 import { useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -22,6 +23,7 @@ import { SourcesPanelToolbar } from "@/components/extraction/chat/sources-panel/
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { SortDir, SortField } from "@/lib/chat/sort/source-comparators";
+import type { ChipCounts, SourceChip } from "@/lib/chat/source-chips";
 
 const bulkSpy = vi.fn();
 
@@ -75,20 +77,33 @@ function row(n: number, included = true): ChatSourceRow {
   };
 }
 
+const baseCounts: ChipCounts = {
+  all: 3,
+  openalex: 3,
+  zotero: 0,
+  unknown: 0,
+};
+
 function Harness({
   visibleRows = [row(1), row(2)],
   query = "",
   sort = "added" as SortField,
   dir = "asc" as SortDir,
+  chipSelected = "all" as SourceChip,
+  chipCounts = baseCounts,
   onQueryChange = vi.fn(),
   onSortChange = vi.fn(),
+  onChipChange = vi.fn(),
 }: {
   visibleRows?: ChatSourceRow[];
   query?: string;
   sort?: SortField;
   dir?: SortDir;
+  chipSelected?: SourceChip;
+  chipCounts?: ChipCounts;
   onQueryChange?: (v: string) => void;
   onSortChange?: (f: SortField, d: SortDir) => void;
+  onChipChange?: (c: SourceChip) => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
@@ -100,13 +115,16 @@ function Harness({
       sort={sort}
       dir={dir}
       onSortChange={onSortChange}
+      chipSelected={chipSelected}
+      chipCounts={chipCounts}
+      onChipChange={onChipChange}
       searchInputRef={ref}
     />
   );
 }
 
 describe("<SourcesPanelToolbar>", () => {
-  it("typing in the search input fires onQueryChange", () => {
+  it("typing in the search input fires onQueryChange with the new value", () => {
     const onQueryChange = vi.fn();
     render(<Harness onQueryChange={onQueryChange} />);
     const input = screen.getByRole("searchbox");
@@ -114,28 +132,28 @@ describe("<SourcesPanelToolbar>", () => {
     expect(onQueryChange).toHaveBeenCalledWith("photosynthesis");
   });
 
-  it("clicking the active sort pill flips dir asc <-> desc", () => {
-    const onSortChange = vi.fn();
-    render(
-      <Harness sort="title" dir="asc" onSortChange={onSortChange} />,
-    );
-    const titlePill = document.querySelector("[data-sort-pill='title']");
-    expect(titlePill).not.toBeNull();
-    fireEvent.click(titlePill as Element);
-    expect(onSortChange).toHaveBeenCalledWith("title", "desc");
+  it("shows a clear-search button only when the query is non-empty", () => {
+    const { rerender } = render(<Harness query="" />);
+    expect(
+      document.querySelector("[data-sources-panel-search-clear]"),
+    ).toBeNull();
+    rerender(<Harness query="foo" />);
+    expect(
+      document.querySelector("[data-sources-panel-search-clear]"),
+    ).not.toBeNull();
   });
 
-  it("clicking an inactive sort pill activates it with the field default direction (year defaults to desc)", () => {
-    const onSortChange = vi.fn();
-    render(
-      <Harness sort="added" dir="asc" onSortChange={onSortChange} />,
-    );
-    const yearPill = document.querySelector("[data-sort-pill='year']");
-    fireEvent.click(yearPill as Element);
-    expect(onSortChange).toHaveBeenCalledWith("year", "desc");
+  it("clicking the clear-search button fires onQueryChange with an empty string", () => {
+    const onQueryChange = vi.fn();
+    render(<Harness query="foo" onQueryChange={onQueryChange} />);
+    const clear = document.querySelector(
+      "[data-sources-panel-search-clear]",
+    ) as HTMLElement;
+    fireEvent.click(clear);
+    expect(onQueryChange).toHaveBeenCalledWith("");
   });
 
-  it("clicking the bulk Include button calls bulkSetChatPapers with every visible sourceId + included=true", async () => {
+  it("clicking the bulk Include button calls bulkSetChatPapers with every visible sourceId + included=true", () => {
     bulkSpy.mockClear();
     bulkSpy.mockResolvedValue(undefined);
     render(<Harness visibleRows={[row(1), row(2), row(3)]} />);
@@ -148,9 +166,39 @@ describe("<SourcesPanelToolbar>", () => {
     });
   });
 
+  it("clicking the bulk Exclude button calls bulkSetChatPapers with included=false", () => {
+    bulkSpy.mockClear();
+    bulkSpy.mockResolvedValue(undefined);
+    render(<Harness visibleRows={[row(1), row(2)]} />);
+    const excludeBtn = document.querySelector("[data-bulk-action='exclude']");
+    fireEvent.click(excludeBtn as Element);
+    expect(bulkSpy).toHaveBeenCalledWith({
+      jobId: job,
+      sourceIds: [src(1), src(2)],
+      included: false,
+    });
+  });
+
   it("bulk buttons are disabled when visibleRows is empty", () => {
     render(<Harness visibleRows={[]} />);
     const includeBtn = document.querySelector("[data-bulk-action='include']");
+    const excludeBtn = document.querySelector("[data-bulk-action='exclude']");
+    const invertBtn = document.querySelector("[data-bulk-action='invert']");
     expect(includeBtn?.hasAttribute("disabled")).toBe(true);
+    expect(excludeBtn?.hasAttribute("disabled")).toBe(true);
+    expect(invertBtn?.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("the source filter Select trigger exposes data-source-selected reflecting the chip prop", () => {
+    render(<Harness chipSelected="openalex" />);
+    const trigger = document.querySelector("[data-sources-filter-trigger]");
+    expect(trigger?.getAttribute("data-source-selected")).toBe("openalex");
+  });
+
+  it("the sort trigger exposes data-sort-field and data-sort-dir reflecting props", () => {
+    render(<Harness sort="year" dir="desc" />);
+    const sortTrigger = document.querySelector("[data-sort-trigger]");
+    expect(sortTrigger?.getAttribute("data-sort-field")).toBe("year");
+    expect(sortTrigger?.getAttribute("data-sort-dir")).toBe("desc");
   });
 });

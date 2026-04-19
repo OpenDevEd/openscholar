@@ -447,7 +447,6 @@
     "chatCitationUnresolved": "来源 [{index}] — 未解析",
     "chatCitationOpenOpenAlex": "在 OpenAlex 上打开",
     "chatCitationReincludeForFutureTurns": "在后续对话中重新包含",
-    "chatCitationReincludeError": "无法重新包含该论文。请重试。",
     "jobs": "任务",
     "exportResults": "导出结果",
     "exportDescription": "为 {label} 选择导出格式和选项",
@@ -723,9 +722,7 @@
       "groupLabel": "按来源类型筛选",
       "all": "全部",
       "openalex": "OpenAlex",
-      "upload": "上传",
-      "zotero": "Zotero",
-      "history": "历史"
+      "zotero": "Zotero"
     },
     "sort": {
       "groupLabel": "对来源排序",
@@ -741,28 +738,17 @@
       "groupLabel": "批量操作",
       "include": "全部包含",
       "exclude": "全部排除",
-      "invert": "反转",
-      "undo": "撤销",
-      "success": {
-        "include": "已包含 {count, number} 项来源",
-        "exclude": "已排除 {count, number} 项来源",
-        "invert": "已反转 {count, number} 项来源"
-      },
-      "error": "{action} 操作失败"
+      "invert": "反转"
     },
     "extensionBanner": {
       "filtered": "已包含全部 {filtered, number} 项已筛选来源。",
       "includeAll": "包含全部 {total, number} 项来源",
-      "dismiss": "关闭横幅",
-      "error": "无法包含全部来源"
+      "dismiss": "关闭横幅"
     },
     "matchedIn": {
       "abstract": "摘要",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
-    },
-    "toggle": {
-      "error": "无法更新来源"
     }
   },
   "composer": {

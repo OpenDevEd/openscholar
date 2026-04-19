@@ -22,7 +22,7 @@ import { createError } from "../lib/errors";
 import { assertCallerOwnsJob } from "./auth";
 import {
   classifySourceType,
-  type SourceType,
+  type ChatSourceType,
 } from "../../lib/chat/source-type";
 
 export type ChatSourceRow = {
@@ -39,14 +39,12 @@ export type ChatSourceRow = {
   pdfUrl: string | null;
   openalexId: string | null;
   bucketKey: string;
-  sourceType: SourceType;
+  sourceType: ChatSourceType;
 };
 
 const sourceTypeValidator = v.union(
   v.literal("openalex"),
-  v.literal("upload"),
   v.literal("zotero"),
-  v.literal("history"),
   v.literal("unknown"),
 );
 

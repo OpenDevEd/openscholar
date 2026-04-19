@@ -447,7 +447,6 @@
     "chatCitationUnresolved": "स्रोत [{index}] — अनसुलझा",
     "chatCitationOpenOpenAlex": "OpenAlex पर खोलें",
     "chatCitationReincludeForFutureTurns": "भविष्य के टर्न के लिए पुनः शामिल करें",
-    "chatCitationReincludeError": "शोधपत्र को पुनः शामिल नहीं किया जा सका। कृपया पुनः प्रयास करें।",
     "jobs": "जॉब्स",
     "exportResults": "परिणाम निर्यात करें",
     "exportDescription": "{label} के लिए निर्यात प्रारूप और विकल्प चुनें",
@@ -723,9 +722,7 @@
       "groupLabel": "स्रोत प्रकार से फ़िल्टर करें",
       "all": "सभी",
       "openalex": "OpenAlex",
-      "upload": "अपलोड",
-      "zotero": "Zotero",
-      "history": "इतिहास"
+      "zotero": "Zotero"
     },
     "sort": {
       "groupLabel": "स्रोतों को क्रमबद्ध करें",
@@ -741,28 +738,17 @@
       "groupLabel": "बल्क क्रियाएँ",
       "include": "सभी शामिल करें",
       "exclude": "सभी हटाएँ",
-      "invert": "उलटें",
-      "undo": "पूर्ववत्त करें",
-      "success": {
-        "include": "{count, number} स्रोत शामिल किए गए",
-        "exclude": "{count, number} स्रोत हटाए गए",
-        "invert": "{count, number} स्रोत उलटे गए"
-      },
-      "error": "{action} क्रिया विफल"
+      "invert": "उलटें"
     },
     "extensionBanner": {
       "filtered": "{filtered, number} फ़िल्टर किए गए सभी स्रोत शामिल किए गए।",
       "includeAll": "सभी {total, number} स्रोत शामिल करें",
-      "dismiss": "बैनर हटाएँ",
-      "error": "सभी स्रोत शामिल नहीं किए जा सके"
+      "dismiss": "बैनर हटाएँ"
     },
     "matchedIn": {
       "abstract": "सार",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
-    },
-    "toggle": {
-      "error": "स्रोत अद्यतन नहीं किया जा सका"
     }
   },
   "composer": {

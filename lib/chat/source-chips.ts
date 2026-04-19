@@ -8,20 +8,18 @@
  * here for completeness so future debug surfaces can read it.
  */
 
-import type { SourceType } from "@/lib/chat/source-type";
+import type { ChatSourceType } from "@/lib/chat/source-type";
 
-export type SourceChip = "all" | "openalex" | "upload" | "zotero" | "history";
+export type SourceChip = "all" | "openalex" | "zotero";
 
 export type ChippableSource = {
-  sourceType: SourceType;
+  sourceType: ChatSourceType;
 };
 
 export type ChipCounts = {
   all: number;
   openalex: number;
-  upload: number;
   zotero: number;
-  history: number;
   unknown: number;
 };
 
@@ -31,9 +29,7 @@ export function computeChipCounts(
   const counts: ChipCounts = {
     all: rows.length,
     openalex: 0,
-    upload: 0,
     zotero: 0,
-    history: 0,
     unknown: 0,
   };
   for (const row of rows) counts[row.sourceType] += 1;

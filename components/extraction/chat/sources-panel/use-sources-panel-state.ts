@@ -22,13 +22,7 @@ import {
 
 const SORT_FIELDS = ["added", "title", "year", "source", "inContext"] as const;
 const SORT_DIRS = ["asc", "desc"] as const;
-const SOURCE_CHIPS = [
-  "all",
-  "openalex",
-  "upload",
-  "zotero",
-  "history",
-] as const;
+const SOURCE_CHIPS = ["all", "openalex", "zotero"] as const;
 
 export type SourcesPanelState = {
   q: string;

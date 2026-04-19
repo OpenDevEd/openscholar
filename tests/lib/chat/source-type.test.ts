@@ -1,7 +1,7 @@
 import { describe, it, expect, expectTypeOf } from "vitest";
 import {
   classifySourceType,
-  type SourceType,
+  type ChatSourceType,
   type SourceTypeInput,
 } from "@/lib/chat/source-type";
 
@@ -14,18 +14,6 @@ describe("classifySourceType", () => {
     );
   });
 
-  it("returns 'history' when searchFilters is set", () => {
-    expect(
-      classifySourceType({ ...empty, searchFilters: { q: "anything" } }),
-    ).toBe("history");
-  });
-
-  it("returns 'upload' when pdfUrl starts with 'storage:'", () => {
-    expect(
-      classifySourceType({ ...empty, pdfUrl: "storage:abc123" }),
-    ).toBe("upload");
-  });
-
   it("returns 'openalex' when openalexId is set and nothing else discriminates", () => {
     expect(
       classifySourceType({ ...empty, openalexId: "W1234567890" }),
@@ -36,42 +24,20 @@ describe("classifySourceType", () => {
     expect(classifySourceType(empty)).toBe("unknown");
   });
 
-  it("applies precedence: zotero > history > upload > openalex", () => {
-    // zotero beats everything
+  it("applies precedence: zotero > openalex", () => {
     expect(
       classifySourceType({
         zoteroUserId: "uid",
-        searchFilters: { q: "x" },
-        pdfUrl: "storage:abc",
         openalexId: "W1",
       }),
     ).toBe("zotero");
-
-    // history beats upload + openalex
-    expect(
-      classifySourceType({
-        searchFilters: { q: "x" },
-        pdfUrl: "storage:abc",
-        openalexId: "W1",
-      }),
-    ).toBe("history");
-
-    // upload beats openalex
-    expect(
-      classifySourceType({
-        pdfUrl: "storage:abc",
-        openalexId: "W1",
-      }),
-    ).toBe("upload");
-
-    // openalex lone winner
     expect(classifySourceType({ openalexId: "W1" })).toBe("openalex");
   });
 
   it("narrows its return type to the literal union (not string)", () => {
-    expectTypeOf(classifySourceType({})).toEqualTypeOf<SourceType>();
-    expectTypeOf<SourceType>().toEqualTypeOf<
-      "openalex" | "upload" | "zotero" | "history" | "unknown"
+    expectTypeOf(classifySourceType({})).toEqualTypeOf<ChatSourceType>();
+    expectTypeOf<ChatSourceType>().toEqualTypeOf<
+      "openalex" | "zotero" | "unknown"
     >();
   });
 });

@@ -14,9 +14,7 @@ describe("computeChipCounts", () => {
     expect(computeChipCounts([])).toEqual({
       all: 0,
       openalex: 0,
-      upload: 0,
       zotero: 0,
-      history: 0,
       unknown: 0,
     });
   });
@@ -25,19 +23,13 @@ describe("computeChipCounts", () => {
     const rows = [
       row("openalex"),
       row("openalex"),
-      row("upload"),
       row("zotero"),
-      row("history"),
-      row("history"),
-      row("history"),
       row("unknown"),
     ];
     expect(computeChipCounts(rows)).toEqual({
-      all: 8,
+      all: 4,
       openalex: 2,
-      upload: 1,
       zotero: 1,
-      history: 3,
       unknown: 1,
     });
   });
@@ -50,14 +42,14 @@ describe("filterBySourceChip", () => {
   });
 
   it("R4: a specific bucket returns only rows of that sourceType", () => {
-    const rows = [row("openalex"), row("zotero"), row("openalex"), row("upload")];
+    const rows = [row("openalex"), row("zotero"), row("openalex")];
     const filtered = filterBySourceChip(rows, "openalex");
     expect(filtered).toHaveLength(2);
     expect(filtered.every((r) => r.sourceType === "openalex")).toBe(true);
   });
 
   it("R5: filtering on a bucket with zero matching rows returns []", () => {
-    const rows = [row("openalex"), row("zotero")];
-    expect(filterBySourceChip(rows, "history")).toEqual([]);
+    const rows = [row("openalex"), row("openalex")];
+    expect(filterBySourceChip(rows, "zotero")).toEqual([]);
   });
 });

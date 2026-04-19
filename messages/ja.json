@@ -447,7 +447,6 @@
     "chatCitationUnresolved": "ソース [{index}] — 未解決",
     "chatCitationOpenOpenAlex": "OpenAlex で開く",
     "chatCitationReincludeForFutureTurns": "次のターンから再び含める",
-    "chatCitationReincludeError": "論文を再度含めることができませんでした。もう一度お試しください。",
     "jobs": "ジョブ",
     "exportResults": "結果をエクスポート",
     "exportDescription": "{label} のエクスポート形式とオプションを選択",
@@ -723,9 +722,7 @@
       "groupLabel": "ソース種別で絞り込み",
       "all": "すべて",
       "openalex": "OpenAlex",
-      "upload": "アップロード",
-      "zotero": "Zotero",
-      "history": "履歴"
+      "zotero": "Zotero"
     },
     "sort": {
       "groupLabel": "ソースを並べ替え",
@@ -741,28 +738,17 @@
       "groupLabel": "一括操作",
       "include": "すべて含める",
       "exclude": "すべて除外",
-      "invert": "反転",
-      "undo": "元に戻す",
-      "success": {
-        "include": "{count, number} 件のソースを含めました",
-        "exclude": "{count, number} 件のソースを除外しました",
-        "invert": "{count, number} 件のソースを反転しました"
-      },
-      "error": "{action} 操作に失敗しました"
+      "invert": "反転"
     },
     "extensionBanner": {
       "filtered": "フィルターに一致する {filtered, number} 件すべてが含められました。",
       "includeAll": "全 {total, number} 件のソースを含める",
-      "dismiss": "バナーを非表示",
-      "error": "すべてのソースを含めることができませんでした"
+      "dismiss": "バナーを非表示"
     },
     "matchedIn": {
       "abstract": "概要",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
-    },
-    "toggle": {
-      "error": "ソースを更新できませんでした"
     }
   },
   "composer": {

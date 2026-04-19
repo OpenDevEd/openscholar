@@ -447,7 +447,6 @@
     "chatCitationUnresolved": "Source [{index}] — non résolue",
     "chatCitationOpenOpenAlex": "Ouvrir sur OpenAlex",
     "chatCitationReincludeForFutureTurns": "Réintégrer pour les tours suivants",
-    "chatCitationReincludeError": "Impossible de réintégrer l'article. Veuillez réessayer.",
     "jobs": "tâches",
     "exportResults": "Exporter les résultats",
     "exportDescription": "Choisissez le format d'exportation et les options pour {label}",
@@ -723,9 +722,7 @@
       "groupLabel": "Filtrer par type de source",
       "all": "Toutes",
       "openalex": "OpenAlex",
-      "upload": "Imports",
-      "zotero": "Zotero",
-      "history": "Historique"
+      "zotero": "Zotero"
     },
     "sort": {
       "groupLabel": "Trier les sources",
@@ -741,28 +738,17 @@
       "groupLabel": "Actions groupées",
       "include": "Tout inclure",
       "exclude": "Tout exclure",
-      "invert": "Inverser",
-      "undo": "Annuler",
-      "success": {
-        "include": "{count, number} sources incluses",
-        "exclude": "{count, number} sources exclues",
-        "invert": "{count, number} sources inversées"
-      },
-      "error": "L'action {action} a échoué"
+      "invert": "Inverser"
     },
     "extensionBanner": {
       "filtered": "Toutes les {filtered, number} sources filtrées sont incluses.",
       "includeAll": "Inclure les {total, number} sources",
-      "dismiss": "Masquer la bannière",
-      "error": "Impossible d'inclure toutes les sources"
+      "dismiss": "Masquer la bannière"
     },
     "matchedIn": {
       "abstract": "résumé",
       "doi": "DOI",
       "openalexId": "Identifiant OpenAlex"
-    },
-    "toggle": {
-      "error": "Impossible de mettre à jour la source"
     }
   },
   "composer": {

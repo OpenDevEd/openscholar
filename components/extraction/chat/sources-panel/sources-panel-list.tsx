@@ -5,7 +5,6 @@ import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CheckIcon } from "lucide-react";
-import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -93,18 +92,14 @@ export function SourcesPanelList({
     );
   });
 
-  async function handleSingleToggle(row: ChatSourceRow) {
-    try {
-      await toggleChatPaper({
-        chatPaperId: row.chatPaperId,
-        included: !row.included,
-      });
-    } catch {
-      toast.error(t("toggle.error"));
-    }
+  function handleSingleToggle(row: ChatSourceRow) {
+    void toggleChatPaper({
+      chatPaperId: row.chatPaperId,
+      included: !row.included,
+    });
   }
 
-  async function handleRangeToggle(
+  function handleRangeToggle(
     fromIndex: number,
     toIndex: number,
     targetIncluded: boolean,
@@ -115,17 +110,11 @@ export function SourcesPanelList({
       .slice(from, to + 1)
       .filter((r) => r.included !== targetIncluded);
     if (batch.length === 0) return;
-    try {
-      await bulkSetChatPapers({
-        jobId,
-        sourceIds: batch.map((r) => r.sourceId),
-        included: targetIncluded,
-      });
-    } catch {
-      toast.error(
-        t("bulk.error", { action: targetIncluded ? "include" : "exclude" }),
-      );
-    }
+    void bulkSetChatPapers({
+      jobId,
+      sourceIds: batch.map((r) => r.sourceId),
+      included: targetIncluded,
+    });
   }
 
   function handleRowActivate(index: number, shiftKey: boolean) {
@@ -133,9 +122,9 @@ export function SourcesPanelList({
     if (!current) return;
     const last = lastIndexRef.current;
     if (shiftKey && last !== null && last !== index) {
-      void handleRangeToggle(last, index, !current.included);
+      handleRangeToggle(last, index, !current.included);
     } else {
-      void handleSingleToggle(current);
+      handleSingleToggle(current);
     }
     lastIndexRef.current = index;
   }
@@ -174,8 +163,10 @@ export function SourcesPanelList({
               data-chat-paper-id={row.chatPaperId}
               onClick={(e) => handleRowActivate(index, e.shiftKey)}
               className={cn(
-                "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors",
-                selected ? "bg-primary/5" : "hover:bg-muted/40",
+                "flex items-start gap-2.5 cursor-pointer border-l-2 px-3 py-2.5 transition-colors",
+                selected
+                  ? "border-l-primary bg-primary/[0.06] hover:bg-primary/[0.09]"
+                  : "border-l-transparent hover:bg-muted/40",
               )}
             >
               <motion.span

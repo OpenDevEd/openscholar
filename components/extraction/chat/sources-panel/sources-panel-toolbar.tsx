@@ -2,11 +2,40 @@
 
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Search } from "lucide-react";
-import { toast } from "sonner";
+import {
+  ArrowDown,
+  ArrowLeftRight,
+  ArrowUp,
+  ArrowUpDown,
+  CheckCheck,
+  Search,
+  SquareMinus,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -14,6 +43,11 @@ import {
   applyInclusionPatch,
   buildBulkPatch,
 } from "@/lib/chat/chat-papers-selection";
+import {
+  CHAT_SOURCE_COLOR_VAR,
+  CHAT_SOURCE_ICON,
+} from "@/lib/chat/source-presentation";
+import type { ChipCounts, SourceChip } from "@/lib/chat/source-chips";
 import type { SortDir, SortField } from "@/lib/chat/sort/source-comparators";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +59,8 @@ const SORT_FIELDS: ReadonlyArray<SortField> = [
   "inContext",
 ];
 
+const VISIBLE_CHIPS: ReadonlyArray<SourceChip> = ["all", "openalex", "zotero"];
+
 interface SourcesPanelToolbarProps {
   jobId: Id<"extractionJobs">;
   visibleRows: ChatSourceRow[];
@@ -33,6 +69,9 @@ interface SourcesPanelToolbarProps {
   sort: SortField;
   dir: SortDir;
   onSortChange: (next: SortField, nextDir: SortDir) => void;
+  chipSelected: SourceChip;
+  chipCounts: ChipCounts;
+  onChipChange: (next: SourceChip) => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
@@ -44,10 +83,12 @@ export function SourcesPanelToolbar({
   sort,
   dir,
   onSortChange,
+  chipSelected,
+  chipCounts,
+  onChipChange,
   searchInputRef,
 }: SourcesPanelToolbarProps) {
   const t = useTranslations("sourcesPanel");
-  const reduceMotion = useReducedMotion();
 
   const bulkSetChatPapers = useMutation(
     api.chat.chatPapers.bulkSetChatPapers,
@@ -65,187 +106,323 @@ export function SourcesPanelToolbar({
     );
   });
 
-  function handleSortPillClick(field: SortField) {
-    if (field === sort) {
-      onSortChange(field, dir === "asc" ? "desc" : "asc");
-    } else {
-      onSortChange(field, defaultDir(field));
-    }
-  }
-
-  async function bulkApply(
-    nextIncluded: boolean | "invert",
-    successKey: "include" | "exclude" | "invert",
-  ) {
-    const visibleSourceIds = visibleRows.map((r) => r.sourceId);
-    const prevState = visibleRows.map((r) => ({
-      sourceId: r.sourceId,
-      included: r.included,
-    }));
-
-    try {
-      if (nextIncluded === "invert") {
-        const wasIncluded = visibleRows
-          .filter((r) => r.included)
-          .map((r) => r.sourceId);
-        const wasExcluded = visibleRows
-          .filter((r) => !r.included)
-          .map((r) => r.sourceId);
-        if (wasIncluded.length) {
-          await bulkSetChatPapers({
-            jobId,
-            sourceIds: wasIncluded,
-            included: false,
-          });
-        }
-        if (wasExcluded.length) {
-          await bulkSetChatPapers({
-            jobId,
-            sourceIds: wasExcluded,
-            included: true,
-          });
-        }
-      } else {
-        await bulkSetChatPapers({
+  function bulkApply(nextIncluded: boolean | "invert") {
+    if (nextIncluded === "invert") {
+      const wasIncluded = visibleRows
+        .filter((r) => r.included)
+        .map((r) => r.sourceId);
+      const wasExcluded = visibleRows
+        .filter((r) => !r.included)
+        .map((r) => r.sourceId);
+      if (wasIncluded.length) {
+        void bulkSetChatPapers({
           jobId,
-          sourceIds: visibleSourceIds,
-          included: nextIncluded,
+          sourceIds: wasIncluded,
+          included: false,
         });
       }
-
-      toast(t(`bulk.success.${successKey}`, { count: visibleSourceIds.length }), {
-        duration: 5000,
-        action: {
-          label: t("bulk.undo"),
-          onClick: async () => {
-            const wasIncluded = prevState
-              .filter((p) => p.included)
-              .map((p) => p.sourceId);
-            const wasExcluded = prevState
-              .filter((p) => !p.included)
-              .map((p) => p.sourceId);
-            if (wasIncluded.length) {
-              await bulkSetChatPapers({
-                jobId,
-                sourceIds: wasIncluded,
-                included: true,
-              });
-            }
-            if (wasExcluded.length) {
-              await bulkSetChatPapers({
-                jobId,
-                sourceIds: wasExcluded,
-                included: false,
-              });
-            }
-          },
-        },
-      });
-    } catch {
-      toast.error(t("bulk.error", { action: successKey }));
+      if (wasExcluded.length) {
+        void bulkSetChatPapers({
+          jobId,
+          sourceIds: wasExcluded,
+          included: true,
+        });
+      }
+      return;
     }
+    void bulkSetChatPapers({
+      jobId,
+      sourceIds: visibleRows.map((r) => r.sourceId),
+      included: nextIncluded,
+    });
   }
 
+  const disabled = visibleRows.length === 0;
+
   return (
-    <div
-      className="flex flex-col gap-2 border-b border-border/50 px-4 py-3"
-      data-sources-panel-toolbar
-    >
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-          aria-hidden="true"
+    <TooltipProvider delayDuration={0}>
+      <div
+        className="flex flex-col gap-2 border-b border-border/50 px-3 py-2"
+        data-sources-panel-toolbar
+      >
+        <SourceFilterSelect
+          selected={chipSelected}
+          counts={chipCounts}
+          onChange={onChipChange}
         />
-        <Input
-          ref={searchInputRef}
-          type="search"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          placeholder={t("searchPlaceholder")}
-          aria-label={t("searchPlaceholder")}
-          data-sources-panel-search
-          className="h-8 pl-7 text-xs"
-        />
-      </div>
-      <div className="flex flex-wrap gap-1" role="group" aria-label={t("sort.groupLabel")}>
-        {SORT_FIELDS.map((field) => {
-          const active = field === sort;
-          return (
-            <Button
-              key={field}
-              variant={active ? "secondary" : "ghost"}
-              size="sm"
-              className={cn("h-7 px-2 text-[11px]")}
-              data-sort-pill={field}
-              data-active={active ? "true" : undefined}
-              data-dir={active ? dir : undefined}
-              aria-pressed={active}
-              onClick={() => handleSortPillClick(field)}
+
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            ref={searchInputRef}
+            type="search"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchPlaceholder")}
+            data-sources-panel-search
+            className="h-8 pl-8 pr-8 text-sm"
+          />
+          {query.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onQueryChange("")}
+              aria-label={t("searchClear")}
+              data-sources-panel-search-clear
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {t(`sort.${field}`)}
-              {active ? (
-                <AnimatePresence initial={false} mode="wait">
-                  <motion.span
-                    key={dir}
-                    aria-hidden
-                    className="ml-1 inline-block"
-                    data-sort-glyph={dir}
-                    initial={reduceMotion ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
-                    transition={
-                      reduceMotion
-                        ? { duration: 0 }
-                        : { duration: 0.12, ease: "easeOut" }
-                    }
-                  >
-                    {dir === "asc" ? "\u2191" : "\u2193"}
-                  </motion.span>
-                </AnimatePresence>
-              ) : null}
-            </Button>
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <SortMenu sort={sort} dir={dir} onChange={onSortChange} />
+          <div className="ml-auto" />
+          <div
+            role="group"
+            aria-label={t("bulk.include")}
+            data-bulk-group
+            className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5"
+          >
+            <BulkIconButton
+              icon={CheckCheck}
+              tooltip={t("bulk.include")}
+              tone="positive"
+              action="include"
+              disabled={disabled}
+              onClick={() => bulkApply(true)}
+            />
+            <BulkIconButton
+              icon={SquareMinus}
+              tooltip={t("bulk.exclude")}
+              tone="neutral"
+              action="exclude"
+              disabled={disabled}
+              onClick={() => bulkApply(false)}
+            />
+            <BulkIconButton
+              icon={ArrowLeftRight}
+              tooltip={t("bulk.invert")}
+              tone="accent"
+              action="invert"
+              disabled={disabled}
+              onClick={() => bulkApply("invert")}
+            />
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
+  );
+}
+
+function SourceFilterSelect({
+  selected,
+  counts,
+  onChange,
+}: {
+  selected: SourceChip;
+  counts: ChipCounts;
+  onChange: (next: SourceChip) => void;
+}) {
+  const t = useTranslations("sourcesPanel");
+  const SelectedIcon = CHAT_SOURCE_ICON[selected];
+
+  return (
+    <Select
+      value={selected}
+      onValueChange={(value) => onChange(value as SourceChip)}
+    >
+      <SelectTrigger
+        size="sm"
+        aria-label={t("source.filterLabel")}
+        data-sources-filter-trigger
+        data-source-selected={selected}
+        className="h-8 w-full text-sm"
+      >
+        <SelectValue placeholder={t("source.placeholder")}>
+          <span
+            className="flex items-center gap-2"
+            data-source-filter-value={selected}
+          >
+            <SelectedIcon
+              className="size-4 shrink-0"
+              style={{ color: `var(${CHAT_SOURCE_COLOR_VAR[selected]})` }}
+              aria-hidden="true"
+            />
+            <span className="truncate">{t(`source.${selected}`)}</span>
+            <span className="ml-auto pl-2 text-xs tabular-nums text-muted-foreground">
+              {counts[selected]}
+            </span>
+          </span>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent position="popper" sideOffset={4}>
+        {VISIBLE_CHIPS.map((chip) => {
+          const ChipIcon = CHAT_SOURCE_ICON[chip];
+          const count = counts[chip];
+          const disabled = chip !== "all" && count === 0;
+          return (
+            <SelectItem
+              key={chip}
+              value={chip}
+              disabled={disabled}
+              data-source-chip-item={chip}
+              data-chip-count={count}
+              className="pr-10"
+            >
+              <span className="flex w-full items-center gap-2">
+                <ChipIcon
+                  className="size-4 shrink-0"
+                  style={{ color: `var(${CHAT_SOURCE_COLOR_VAR[chip]})` }}
+                  aria-hidden="true"
+                />
+                <span className="truncate">{t(`source.${chip}`)}</span>
+                <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                  {count}
+                </span>
+              </span>
+            </SelectItem>
           );
         })}
-      </div>
-      <div className="flex flex-wrap gap-1" role="group" aria-label={t("bulk.groupLabel")}>
+      </SelectContent>
+    </Select>
+  );
+}
+
+function SortMenu({
+  sort,
+  dir,
+  onChange,
+}: {
+  sort: SortField;
+  dir: SortDir;
+  onChange: (next: SortField, nextDir: SortDir) => void;
+}) {
+  const t = useTranslations("sourcesPanel");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="h-7 px-2 text-[11px]"
-          data-bulk-action="include"
-          disabled={visibleRows.length === 0}
-          onClick={() => bulkApply(true, "include")}
+          data-sort-trigger
+          data-sort-field={sort}
+          data-sort-dir={dir}
+          className="h-7 gap-1.5 px-2 text-xs"
+          aria-label={t("sort.triggerLabel")}
         >
-          {t("bulk.include")}
+          <ArrowUpDown className="size-3.5 text-muted-foreground" aria-hidden />
+          <span className="font-medium">{t(`sort.${sort}`)}</span>
+          {dir === "asc" ? (
+            <ArrowUp className="size-3 text-muted-foreground" aria-hidden />
+          ) : (
+            <ArrowDown className="size-3 text-muted-foreground" aria-hidden />
+          )}
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2 text-[11px]"
-          data-bulk-action="exclude"
-          disabled={visibleRows.length === 0}
-          onClick={() => bulkApply(false, "exclude")}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-44">
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          {t("sort.menuLabel")}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={sort}
+          onValueChange={(value) =>
+            onChange(value as SortField, defaultDir(value as SortField))
+          }
         >
-          {t("bulk.exclude")}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2 text-[11px]"
-          data-bulk-action="invert"
-          disabled={visibleRows.length === 0}
-          onClick={() => bulkApply("invert", "invert")}
+          {SORT_FIELDS.map((field) => (
+            <DropdownMenuRadioItem
+              key={field}
+              value={field}
+              data-sort-field-item={field}
+              className="text-sm"
+            >
+              {t(`sort.${field}`)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          {t("sort.directionLabel")}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={dir}
+          onValueChange={(value) => onChange(sort, value as SortDir)}
         >
-          {t("bulk.invert")}
-        </Button>
-      </div>
-    </div>
+          <DropdownMenuRadioItem
+            value="asc"
+            data-sort-dir-item="asc"
+            className="text-sm"
+          >
+            <ArrowUp className="size-3.5 text-muted-foreground" />
+            {t("sort.asc")}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem
+            value="desc"
+            data-sort-dir-item="desc"
+            className="text-sm"
+          >
+            <ArrowDown className="size-3.5 text-muted-foreground" />
+            {t("sort.desc")}
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function BulkIconButton({
+  icon: Icon,
+  tooltip,
+  tone,
+  action,
+  disabled,
+  onClick,
+}: {
+  icon: typeof CheckCheck;
+  tooltip: string;
+  tone: "positive" | "neutral" | "accent";
+  action: "include" | "exclude" | "invert";
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={tooltip}
+          data-bulk-action={action}
+          data-bulk-tone={tone}
+          disabled={disabled}
+          onClick={onClick}
+          className={cn(
+            "inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors",
+            "hover:bg-muted hover:text-foreground",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "disabled:pointer-events-none disabled:opacity-40",
+            tone === "positive" &&
+              "data-[bulk-tone=positive]:hover:text-[color:var(--chart-3)]",
+            tone === "accent" &&
+              "data-[bulk-tone=accent]:hover:text-[color:var(--chart-2)]",
+          )}
+        >
+          <Icon className="size-4" aria-hidden />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6}>
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
 function defaultDir(field: SortField): SortDir {
-  // year and inContext default to "newest first" / "included first" when
-  // the user first picks the pill; everything else starts ascending.
   if (field === "year" || field === "inContext") return "desc";
   return "asc";
 }

@@ -74,10 +74,10 @@ const seedRows = [
     year: 2023,
     abstract: null,
     doi: null,
-    pdfUrl: "storage:abc",
+    pdfUrl: null,
     openalexId: null,
-    bucketKey: "upload:abc",
-    sourceType: "upload" as const,
+    bucketKey: "zotero:abc",
+    sourceType: "zotero" as const,
   },
   {
     chatPaperId: cp(3),
@@ -92,8 +92,8 @@ const seedRows = [
     doi: null,
     pdfUrl: null,
     openalexId: null,
-    bucketKey: "history:abc",
-    sourceType: "history" as const,
+    bucketKey: "unknown:abc",
+    sourceType: "unknown" as const,
   },
 ];
 

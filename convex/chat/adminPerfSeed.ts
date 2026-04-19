@@ -46,7 +46,7 @@ function buildSyntheticSourceRow(
     jobId: Id<"extractionJobs">;
     position: number;
     bucketKey: string;
-    source: "history" | "library" | "collection" | "zotero" | "upload";
+    source: "library";
     sourceRefId: string;
     title: string;
     authors: string[];

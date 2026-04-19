@@ -7,7 +7,7 @@
  * order regardless of direction (per design D8).
  */
 
-import type { SourceType } from "@/lib/chat/source-type";
+import type { ChatSourceType } from "@/lib/chat/source-type";
 
 export type SortField = "added" | "title" | "year" | "source" | "inContext";
 export type SortDir = "asc" | "desc";
@@ -17,7 +17,7 @@ export type SortableSource = {
   included: boolean;
   title: string;
   year: number | null;
-  sourceType: SourceType;
+  sourceType: ChatSourceType;
 };
 
 type DirectedComparator = (
@@ -46,12 +46,10 @@ const PRIMARY_COMPARATORS: Record<Exclude<SortField, "added">, DirectedComparato
     (Number(a.included) - Number(b.included)) * sign,
 };
 
-const SOURCE_ORDER: Record<SourceType, number> = {
+const SOURCE_ORDER: Record<ChatSourceType, number> = {
   openalex: 0,
-  upload: 1,
-  zotero: 2,
-  history: 3,
-  unknown: 4,
+  zotero: 1,
+  unknown: 2,
 };
 
 export function sortByComparator<R extends SortableSource>(

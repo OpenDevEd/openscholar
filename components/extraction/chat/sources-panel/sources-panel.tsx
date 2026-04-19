@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useReducedMotion } from "motion/react";
-import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
@@ -12,7 +11,6 @@ import {
   buildBulkPatch,
 } from "@/lib/chat/chat-papers-selection";
 import { useIsMobile } from "@/lib/hooks";
-import { SourcesPanelChips } from "./sources-panel-chips";
 import { SourcesPanelExtensionBanner } from "./sources-panel-extension-banner";
 import { SourcesPanelHeader } from "./sources-panel-header";
 import { SourcesPanelList } from "./sources-panel-list";
@@ -117,59 +115,46 @@ export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
 
   const keyboard = useSourcesPanelKeyboard({
     visibleRows,
-    onToggleOne: async (row, next) => {
-      try {
-        await toggleChatPaper({ chatPaperId: row.chatPaperId, included: next });
-      } catch {
-        toast.error(t("toggle.error"));
-      }
+    onToggleOne: (row, next) => {
+      void toggleChatPaper({
+        chatPaperId: row.chatPaperId,
+        included: next,
+      });
     },
-    onToggleRange: async (rangeRows, next) => {
-      try {
-        await bulkSetChatPapers({
-          jobId,
-          sourceIds: rangeRows.map((r) => r.sourceId),
-          included: next,
-        });
-      } catch {
-        toast.error(t("bulk.error", { action: next ? "include" : "exclude" }));
-      }
+    onToggleRange: (rangeRows, next) => {
+      void bulkSetChatPapers({
+        jobId,
+        sourceIds: rangeRows.map((r) => r.sourceId),
+        included: next,
+      });
     },
-    onIncludeAllVisible: async () => {
-      try {
-        await bulkSetChatPapers({
-          jobId,
-          sourceIds: visibleRows.map((r) => r.sourceId),
-          included: true,
-        });
-      } catch {
-        toast.error(t("bulk.error", { action: "include" }));
-      }
+    onIncludeAllVisible: () => {
+      void bulkSetChatPapers({
+        jobId,
+        sourceIds: visibleRows.map((r) => r.sourceId),
+        included: true,
+      });
     },
-    onInvertVisible: async () => {
+    onInvertVisible: () => {
       const wasIncluded = visibleRows
         .filter((r) => r.included)
         .map((r) => r.sourceId);
       const wasExcluded = visibleRows
         .filter((r) => !r.included)
         .map((r) => r.sourceId);
-      try {
-        if (wasIncluded.length) {
-          await bulkSetChatPapers({
-            jobId,
-            sourceIds: wasIncluded,
-            included: false,
-          });
-        }
-        if (wasExcluded.length) {
-          await bulkSetChatPapers({
-            jobId,
-            sourceIds: wasExcluded,
-            included: true,
-          });
-        }
-      } catch {
-        toast.error(t("bulk.error", { action: "invert" }));
+      if (wasIncluded.length) {
+        void bulkSetChatPapers({
+          jobId,
+          sourceIds: wasIncluded,
+          included: false,
+        });
+      }
+      if (wasExcluded.length) {
+        void bulkSetChatPapers({
+          jobId,
+          sourceIds: wasExcluded,
+          included: true,
+        });
       }
     },
     onClearSearch: () => setState({ q: "" }),
@@ -189,11 +174,6 @@ export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
         totalCount={totalCount}
         includedCount={includedCount}
       />
-      <SourcesPanelChips
-        counts={chipCounts}
-        selected={state.src}
-        onSelect={(next) => setState({ src: next })}
-      />
       <SourcesPanelToolbar
         jobId={jobId}
         visibleRows={visibleRows}
@@ -202,6 +182,9 @@ export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
         sort={state.sort}
         dir={state.dir}
         onSortChange={(sort, dir) => setState({ sort, dir })}
+        chipSelected={state.src}
+        chipCounts={chipCounts}
+        onChipChange={(next) => setState({ src: next })}
         searchInputRef={searchInputRef}
       />
       <SourcesPanelExtensionBanner

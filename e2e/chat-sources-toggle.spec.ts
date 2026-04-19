@@ -157,28 +157,6 @@ test.describe("chat sources toggle — golden path (plan 06)", () => {
     await expect(status).toHaveAttribute("data-sources-count-state", "normal");
   });
 
-  test("3 — bulk Exclude all + undo flips back to all-included", async ({
-    page,
-  }) => {
-    await bootstrapChat(page, {
-      name: "Sources toggle: bulk + undo",
-      expectedRowCount: 2,
-    });
-
-    await page.locator("[data-bulk-action='exclude']").click();
-    const status = page.locator("[data-sources-count-state]");
-    await expect(status).toHaveAttribute("data-sources-count-state", "zero");
-    await expect(page.locator("[data-composer-empty-banner]")).toBeVisible();
-    await expect(page.locator("[data-action='send']")).toBeDisabled();
-
-    // Sonner toast Undo — sonner mounts a button labelled by the action
-    // payload's `label`, which we set to bulk.undo.
-    const undoBtn = page.getByRole("button", { name: /bulk\.undo|undo/i });
-    await undoBtn.click();
-    await expect(status).toHaveAttribute("data-sources-included", "2");
-    await expect(status).toHaveAttribute("data-sources-count-state", "normal");
-  });
-
   test("4 — search narrows then extension banner offers Include all matching", async ({
     page,
   }) => {

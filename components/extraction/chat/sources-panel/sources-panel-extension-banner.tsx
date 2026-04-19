@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { X } from "lucide-react";
-import { toast } from "sonner";
+import { CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -55,8 +54,6 @@ export function SourcesPanelExtensionBanner({
     setPending(true);
     try {
       await bulkSetChatPapers({ jobId, sourceIds: undefined, included: true });
-    } catch {
-      toast.error(t("error"));
     } finally {
       setPending(false);
     }
@@ -68,10 +65,8 @@ export function SourcesPanelExtensionBanner({
         <motion.div
           role="status"
           data-sources-extension-banner
-          className="flex items-center justify-between gap-3 border-b border-border/50 bg-primary/5 px-4 py-2 text-xs overflow-hidden"
-          initial={
-            reduceMotion ? false : { opacity: 0, y: 8, height: 0 }
-          }
+          className="flex items-center justify-between gap-2 overflow-hidden border-b border-primary/20 bg-primary/5 px-3 py-1.5 text-xs"
+          initial={reduceMotion ? false : { opacity: 0, y: 8, height: 0 }}
           animate={{ opacity: 1, y: 0, height: "auto" }}
           exit={
             reduceMotion
@@ -82,14 +77,20 @@ export function SourcesPanelExtensionBanner({
             reduceMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }
           }
         >
-          <span className="text-muted-foreground">
-            {t("filtered", { filtered: visibleCount })}
+          <span className="flex min-w-0 items-center gap-1.5 text-foreground/80">
+            <CheckCircle2
+              className="size-3.5 shrink-0 text-primary"
+              aria-hidden
+            />
+            <span className="truncate">
+              {t("filtered", { filtered: visibleCount })}
+            </span>
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-0.5">
             <Button
-              variant="link"
+              variant="ghost"
               size="sm"
-              className="h-auto p-0 text-xs font-medium"
+              className="h-6 px-2 text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary"
               data-banner-include-all
               disabled={pending}
               onClick={handleIncludeAll}
@@ -99,12 +100,12 @@ export function SourcesPanelExtensionBanner({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="size-6"
               aria-label={t("dismiss")}
               data-banner-dismiss
               onClick={onDismiss}
             >
-              <X className="h-3 w-3" />
+              <X className="size-3" />
             </Button>
           </div>
         </motion.div>
