@@ -31,15 +31,21 @@ interface SourcesPanelProps {
  * Hidden on mobile; the mobile entry point is `SourcesPanelSheet` mounted
  * inside the chat header.
  */
+const DESKTOP_RAIL_WIDTH = 360;
+
 export function SourcesPanel({ jobId }: SourcesPanelProps) {
   const isMobile = useIsMobile();
   if (isMobile) return null;
-  // Desktop rail: bound the column to a fixed width inside the
-  // TwoColumnLayout shrink-0 sticky slot, otherwise the panel grows to
-  // fill the page. The Sheet variant skips this wrapper because the
-  // SheetContent already sizes itself (w-[90vw] max-w-md).
+  // Desktop rail: bound the column to a fixed pixel width inside the
+  // TwoColumnLayout shrink-0 sticky slot. Inline style (matches the
+  // legacy PaperSidebarShell pattern) so JIT doesn't have to compile
+  // an arbitrary Tailwind class. The Sheet variant skips this wrapper
+  // because SheetContent already sizes itself (w-[90vw] max-w-md).
   return (
-    <div className="h-full w-[360px] shrink-0 border-l">
+    <div
+      className="h-full shrink-0 border-l"
+      style={{ width: DESKTOP_RAIL_WIDTH }}
+    >
       <SourcesPanelInner jobId={jobId} />
     </div>
   );
