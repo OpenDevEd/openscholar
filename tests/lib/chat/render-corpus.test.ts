@@ -120,6 +120,14 @@ describe("filterAndPreservePositions", () => {
     expect(out).toHaveLength(2);
     expect(out.map((r) => r.sourceId).sort()).toEqual(["s1", "s2b"]);
   });
+
+  it("drops sources whose sourceId is absent from includedSourceIds", () => {
+    const sources = [cs("a", 1), cs("b", 2), cs("c", 3), cs("d", 4)];
+    const included = new Set(["b", "d"]);
+    const out = filterAndPreservePositions(sources, included);
+    expect(out.map((r) => r.sourceId)).toEqual(["b", "d"]);
+    expect(out.map((r) => r.promptId)).toEqual(["P2", "P4"]);
+  });
 });
 
 describe("sortPapersForCorpus", () => {
