@@ -5,8 +5,9 @@ import { motion } from "motion/react";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import { cn } from "@/lib/utils";
-import { FileText, Clock } from "lucide-react";
+import { FileText, Clock, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import type { ViewMode } from "@/lib/types";
 import { subtleSpring } from "@/lib/animation-config";
 
@@ -71,6 +72,13 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
       ? Math.round((processedPapers / totalPapers) * 100)
       : 0;
 
+  const isChat = job.mode === "chat";
+  const messageCount = job.messageCount ?? 0;
+  const bucketCount = isChat ? messageCount : totalPapers;
+  const relativeTimestamp = new Date(
+    isChat ? (job.lastMessageAt ?? job.updatedAt) : job.createdAt,
+  );
+
   // list-simple: Single compact row
   if (viewMode === "list-simple") {
     return (
@@ -79,6 +87,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...subtleSpring, delay: index * 0.03 }}
+          data-mode={job.mode}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-xl",
             "bg-card/40 dark:bg-card/30",
@@ -87,22 +96,35 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
             "transition-all duration-200"
           )}
         >
-          {/* Status dot */}
-          <span className={cn("w-2 h-2 rounded-full shrink-0", getStatusDotColor(status))} />
+          {/* Status dot (hidden in chat mode — no pipeline state) */}
+          {!isChat && (
+            <span className={cn("w-2 h-2 rounded-full shrink-0", getStatusDotColor(status))} />
+          )}
+
+          {/* Mode badge */}
+          <Badge
+            variant={isChat ? "secondary" : "default"}
+            data-mode={job.mode}
+            className="shrink-0"
+          >
+            {isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")}
+          </Badge>
 
           {/* Job name */}
           <span className="flex-1 text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
             {job.name}
           </span>
 
-          {/* Papers count */}
+          {/* Mode-aware count */}
           <span className="text-xs text-muted-foreground shrink-0">
-            {t("paperProgress", { processed: processedPapers, total: totalPapers })}
+            {isChat
+              ? t("jobChatSubline", { messages: bucketCount })
+              : t("paperProgress", { processed: processedPapers, total: totalPapers })}
           </span>
 
           {/* Time ago */}
           <span className="text-xs text-muted-foreground shrink-0">
-            {format.relativeTime(new Date(job.createdAt), now)}
+            {format.relativeTime(relativeTimestamp, now)}
           </span>
         </motion.div>
       </Link>
@@ -117,6 +139,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...subtleSpring, delay: index * 0.03 }}
+          data-mode={job.mode}
           className={cn(
             "relative rounded-xl overflow-hidden",
             "bg-card/50 dark:bg-card/40",
@@ -127,14 +150,25 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         >
           <div className="p-4">
             <div className="flex items-start gap-3">
-              {/* Status dot */}
-              <span className={cn("w-2 h-2 rounded-full shrink-0 mt-2", getStatusDotColor(status))} />
+              {/* Status dot (extraction only) */}
+              {!isChat && (
+                <span className={cn("w-2 h-2 rounded-full shrink-0 mt-2", getStatusDotColor(status))} />
+              )}
 
               <div className="flex-1 min-w-0 space-y-2">
-                {/* Job name */}
-                <h3 className="text-base font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                  {job.name}
-                </h3>
+                {/* Header row: name + mode badge */}
+                <div className="flex items-start gap-2">
+                  <h3 className="flex-1 text-base font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                    {job.name}
+                  </h3>
+                  <Badge
+                    variant={isChat ? "secondary" : "default"}
+                    data-mode={job.mode}
+                    className="shrink-0"
+                  >
+                    {isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")}
+                  </Badge>
+                </div>
 
                 {/* Description */}
                 {job.description && (
@@ -143,38 +177,52 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
                   </p>
                 )}
 
-                {/* Progress bar */}
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden max-w-xs">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercentage}%` }}
-                    transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    className={cn("h-full rounded-full", getStatusBarColor(status))}
-                  />
-                </div>
+                {/* Progress bar (extraction only) */}
+                {!isChat && (
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden max-w-xs">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progressPercentage}%` }}
+                      transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
+                      className={cn("h-full rounded-full", getStatusBarColor(status))}
+                    />
+                  </div>
+                )}
 
                 {/* Metadata row */}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className={cn("text-xs font-medium capitalize", {
-                    "text-emerald-600 dark:text-emerald-400": status === "completed",
-                    "text-destructive": status === "failed",
-                    "text-primary": status !== "completed" && status !== "failed" && status !== "cancelled",
-                  })}>
-                    {getStatusLabel(status)}
-                  </span>
+                  {!isChat && (
+                    <>
+                      <span className={cn("text-xs font-medium capitalize", {
+                        "text-emerald-600 dark:text-emerald-400": status === "completed",
+                        "text-destructive": status === "failed",
+                        "text-primary": status !== "completed" && status !== "failed" && status !== "cancelled",
+                      })}>
+                        {getStatusLabel(status)}
+                      </span>
 
-                  <span className="w-1 h-1 rounded-full bg-border" />
+                      <span className="w-1 h-1 rounded-full bg-border" />
+                    </>
+                  )}
 
                   <div className="flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>{t("paperProgress", { processed: processedPapers, total: totalPapers })}</span>
+                    {isChat ? (
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    ) : (
+                      <FileText className="w-3.5 h-3.5" />
+                    )}
+                    <span>
+                      {isChat
+                        ? t("jobChatSubline", { messages: bucketCount })
+                        : t("paperProgress", { processed: processedPapers, total: totalPapers })}
+                    </span>
                   </div>
 
                   <span className="w-1 h-1 rounded-full bg-border" />
 
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>{format.relativeTime(new Date(job.createdAt), now)}</span>
+                    <span>{format.relativeTime(relativeTimestamp, now)}</span>
                   </div>
                 </div>
               </div>
@@ -194,6 +242,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ ...subtleSpring, delay: index * 0.03 }}
+        data-mode={job.mode}
         className={cn(
           "relative flex flex-col rounded-xl overflow-hidden",
           "bg-card/50 dark:bg-card/40",
@@ -203,17 +252,26 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         )}
       >
         {/* Colored top stripe */}
-        <div className={cn("h-[3px]", getStatusStripeColor(status))} />
+        <div className={cn("h-[3px]", isChat ? "bg-primary/60" : getStatusStripeColor(status))} />
 
         {/* Content */}
         <div className={cn("flex-1 flex flex-col", isCompact ? "p-3" : "p-4")}>
-          {/* Job name */}
-          <h3 className={cn(
-            "font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2",
-            isCompact ? "text-sm" : "text-base"
-          )}>
-            {job.name}
-          </h3>
+          {/* Header: name + mode badge */}
+          <div className="flex items-start gap-2">
+            <h3 className={cn(
+              "flex-1 font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2",
+              isCompact ? "text-sm" : "text-base"
+            )}>
+              {job.name}
+            </h3>
+            <Badge
+              variant={isChat ? "secondary" : "default"}
+              data-mode={job.mode}
+              className="shrink-0"
+            >
+              {isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")}
+            </Badge>
+          </div>
 
           {/* Description */}
           {job.description && (
@@ -225,24 +283,34 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
             </p>
           )}
 
-          {/* Progress bar */}
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-3">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercentage}%` }}
-              transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className={cn("h-full rounded-full", getStatusBarColor(status))}
-            />
-          </div>
+          {/* Progress bar (extraction only) */}
+          {!isChat && (
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-3">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercentage}%` }}
+                transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className={cn("h-full rounded-full", getStatusBarColor(status))}
+              />
+            </div>
+          )}
 
           {/* Metadata */}
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <FileText className="w-3 h-3" />
-              <span>{t("paperProgress", { processed: processedPapers, total: totalPapers })}</span>
+              {isChat ? (
+                <MessageSquare className="w-3 h-3" />
+              ) : (
+                <FileText className="w-3 h-3" />
+              )}
+              <span>
+                {isChat
+                  ? t("jobChatSubline", { messages: bucketCount })
+                  : t("paperProgress", { processed: processedPapers, total: totalPapers })}
+              </span>
             </div>
             <span className="text-xs text-muted-foreground">
-              {format.relativeTime(new Date(job.createdAt), now)}
+              {format.relativeTime(relativeTimestamp, now)}
             </span>
           </div>
         </div>

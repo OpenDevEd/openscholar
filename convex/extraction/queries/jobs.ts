@@ -36,6 +36,9 @@ export const getMyJobs = query({
         v.literal("cancelled"),
       ),
     ),
+    mode: v.optional(
+      v.union(v.literal("extraction"), v.literal("chat")),
+    ),
   },
   returns: v.array(extractionJobValidator),
   handler: async (ctx, args) => {
@@ -49,6 +52,14 @@ export const getMyJobs = query({
         .query("extractionJobs")
         .withIndex("by_user_status", (q) =>
           q.eq("userId", user._id).eq("status", args.status!),
+        )
+        .order("desc")
+        .take(50);
+    } else if (args.mode) {
+      jobs = await ctx.db
+        .query("extractionJobs")
+        .withIndex("by_user_mode_updated", (q) =>
+          q.eq("userId", user._id).eq("mode", args.mode!),
         )
         .order("desc")
         .take(50);
