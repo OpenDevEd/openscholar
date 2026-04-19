@@ -101,6 +101,11 @@ export const deleteExtractionInternal = internalMutation({
       ["extractionReportSnapshots", "by_job", "jobId"],
       ["extractionRunDiffs", "by_job", "jobId"],
       ["extractionJobSources", "by_job_and_position", "jobId"],
+      // Drain chatPapers after extractionJobSources so any brief window of
+      // stale sourceId references is closed out by the time the bridge
+      // rows are gone. chatPapers only ever exists for chat-mode jobs;
+      // for extraction-mode jobs this is a no-op drain.
+      ["chatPapers", "by_job", "jobId"],
       ["extractionRunDiffs", "by_baseline", "baselineJobId"],
     ];
     for (const [table, indexName, field] of byJobDrains) {
