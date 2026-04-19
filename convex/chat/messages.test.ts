@@ -1,7 +1,9 @@
 /// <reference types="vite/client" />
+import { ConvexError } from "convex/values";
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { api } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import { paperChat } from "./agent";
@@ -57,6 +59,34 @@ function asCaller(
   });
 }
 
+async function seedChatPapers(
+  t: ReturnType<typeof convexTest>,
+  jobId: Id<"extractionJobs">,
+  includedMask: boolean[],
+) {
+  await t.run(async (ctx) => {
+    for (let i = 0; i < includedMask.length; i++) {
+      const sourceId = await ctx.db.insert("extractionJobSources", {
+        jobId,
+        position: i + 1,
+        bucketKey: `openalex:W${2000 + i}`,
+        source: "library",
+        sourceRefId: `W${2000 + i}`,
+        openalexId: `W${2000 + i}`,
+        title: `Paper ${i + 1}`,
+        authors: ["Doe"],
+        year: 2024,
+        abstract: "abs",
+      });
+      await ctx.db.insert("chatPapers", {
+        jobId,
+        sourceId,
+        included: includedMask[i],
+      });
+    }
+  });
+}
+
 describe("chat.messages — auth + mode gating", () => {
   it("sendMessage rejects unauthenticated callers", async () => {
     const t = createTestConvex();
@@ -105,6 +135,45 @@ describe("chat.messages — auth + mode gating", () => {
     await caller.mutation(api.chat.messages.abortGeneration, { threadId });
     const after = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(after?.shouldAbort).toBeUndefined();
+  });
+
+  it("sendMessage throws NO_SOURCES_INCLUDED when every chatPapers row is excluded", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t);
+    await seedChatPapers(t, jobId, [false, false, false]);
+
+    const caller = asCaller(t, "c_msg");
+    const err = await caller
+      .mutation(api.chat.messages.sendMessage, { threadId, prompt: "hi" })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ConvexError);
+    // convex-test serializes .data to a JSON string on the caught error.
+    const envelope = JSON.parse(
+      (err as ConvexError<string>).data,
+    ) as { code: string; message?: string };
+    expect(envelope.code).toBe("NO_SOURCES_INCLUDED");
+
+    // Guard short-circuits before any saveMessage / job.patch runs.
+    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(job?.messageCount).toBe(0);
+    expect(job?.isGenerating).toBeUndefined();
+    expect(job?.lastMessageAt).toBeUndefined();
+  });
+
+  it("sendMessage succeeds when at least one chatPapers row is included", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t);
+    await seedChatPapers(t, jobId, [false, true, false]);
+
+    const caller = asCaller(t, "c_msg");
+    await caller.mutation(api.chat.messages.sendMessage, {
+      threadId,
+      prompt: "hi",
+    });
+
+    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(job?.messageCount).toBe(1);
+    expect(job?.isGenerating).toBe(true);
   });
 
   it("listThreadMessages resolves on an empty thread when streamArgs is omitted", async () => {

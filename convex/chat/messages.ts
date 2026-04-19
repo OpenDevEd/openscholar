@@ -59,6 +59,26 @@ export const sendMessage = mutation({
     }
     const { job } = await authorizeThreadAccess(ctx, threadId);
 
+    // Zero-included guard (D9). Defensive second gate — the composer
+    // should already have Send disabled via its reactive `includedCount`
+    // subscription, but a race between client-side click and server-side
+    // handler entry could slip through. Short-circuit read: .take(1) is
+    // O(1); we only need to know whether *any* included row exists.
+    const hasIncluded = (
+      await ctx.db
+        .query("chatPapers")
+        .withIndex("by_job_included", (q) =>
+          q.eq("jobId", job._id).eq("included", true),
+        )
+        .take(1)
+    ).length > 0;
+    if (!hasIncluded) {
+      throw createError(
+        "NO_SOURCES_INCLUDED",
+        "At least one source must be included before sending a message.",
+      );
+    }
+
     // Inline lock logic — runMutation to acquireThreadLock would be a
     // separate transaction; we want the lock set atomically with the
     // user-message insert below so a concurrent sendMessage can't slip
