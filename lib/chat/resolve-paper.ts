@@ -1,17 +1,23 @@
 /**
  * Paper-reference resolution for chat-mode responses.
  *
- * Pure function: given a chunk of text and the ordered paper set for the
- * job, find every citation group and return the byte span plus the
+ * Pure function: given a chunk of text and the live source set for the
+ * chat, find every citation group and return the byte span plus the
  * resolved papers. A "group" is one pair of square brackets in the
  * assistant's text; it may contain a single citation (`[P3]`) or
  * multiple comma-separated ones (`[P1, P3, P7]`). The combined form
  * was observed in real production messages — Gemini routinely emits up
  * to ten papers inside one bracket pair.
  *
- * Mirrors the `[P1]..[PN]` ids emitted by `renderPaperCorpus`
- * (lib/chat/render-corpus.ts) — the paper at position `index - 1` in
- * the sorted corpus becomes `[P{index}]` in the assistant's response.
+ * Lookup is by **stable `position`**, not array index. The paper whose
+ * `position === N` becomes `[P{N}]`. Positional gaps are first-class:
+ * if a source at position 2 was excluded (soft-hidden from the prompt)
+ * but a past assistant message still cites `[P2]`, the resolver returns
+ * `null` — the pill renders as `unresolved`. If the caller instead
+ * passes a `chatPapers`-joined list that keeps every source in the
+ * array and only toggles the `included` flag, `[P2]` still resolves
+ * and the pill renders `excluded` (still clickable). Both render paths
+ * come from `classifyCitationState`.
  *
  * The parser is intentionally narrow: it only matches well-formed
  * brackets of `[P<n>]` (case-insensitive) or the combined form.
@@ -20,20 +26,26 @@
  * clickable-but-wrong pills.
  */
 
+import type { Id } from "@/convex/_generated/dataModel";
+
 export interface ResolvablePaper {
-  openalexId?: string;
+  sourceId: Id<"extractionJobSources">;
+  chatPaperId: Id<"chatPapers">;
+  position: number;
   title: string;
   authors: ReadonlyArray<string>;
-  year?: number;
-  abstract?: string;
-  doi?: string;
-  pdfUrl?: string;
+  year: number | null;
+  abstract: string | null;
+  doi: string | null;
+  pdfUrl: string | null;
+  openalexId: string | null;
+  included: boolean;
 }
 
 export interface PaperCitation<P extends ResolvablePaper = ResolvablePaper> {
-  /** 1-based index from the text (e.g. `3` for `[P3]`). */
+  /** 1-based number from the text (e.g. `3` for `[P3]`); lines up with `position`. */
   index: number;
-  /** The paper at `index - 1`, or `null` when the index is out of range. */
+  /** The paper whose `position` equals `index`, or `null` when no such paper is live. */
   paper: P | null;
 }
 
@@ -60,6 +72,9 @@ export function resolvePaperReferences<P extends ResolvablePaper>(
 ): PaperCitationGroup<P>[] {
   if (!text) return [];
 
+  const byPosition = new Map<number, P>();
+  for (const p of papers) byPosition.set(p.position, p);
+
   const groups: PaperCitationGroup<P>[] = [];
   const outer = new RegExp(GROUP_RE.source, GROUP_RE.flags);
 
@@ -71,10 +86,9 @@ export function resolvePaperReferences<P extends ResolvablePaper>(
     let im: RegExpExecArray | null;
     while ((im = inner.exec(raw)) !== null) {
       const index = Number.parseInt(im[1], 10);
-      const paper =
-        Number.isFinite(index) && index >= 1 && index <= papers.length
-          ? papers[index - 1]
-          : null;
+      const paper = Number.isFinite(index)
+        ? (byPosition.get(index) ?? null)
+        : null;
       citations.push({ index, paper });
     }
     if (citations.length > 0) {
