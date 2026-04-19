@@ -32,6 +32,7 @@ import { ModeSelector } from "./mode-selector";
 import { PdfToggle } from "./pdf-toggle";
 import { ModelPicker } from "./model-picker";
 import { AbstractMissingBanner } from "./chat/abstract-missing-banner";
+import { ChatStartReview } from "./chat/chat-start-review";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -392,7 +393,7 @@ export function JobCreator() {
               </div>
             )}
 
-            {validStep === 3 && (
+            {validStep === 3 && draftJob.mode === "extraction" && (
               <div className="h-full">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -410,6 +411,10 @@ export function JobCreator() {
 
                 <QuestionBuilder />
               </div>
+            )}
+
+            {validStep === 3 && draftJob.mode === "chat" && (
+              <ChatStartReview modelId={draftJob.chatModelId} />
             )}
           </motion.div>
         </AnimatePresence>
@@ -444,7 +449,7 @@ export function JobCreator() {
             </>
           ) : validStep === 3 ? (
             <>
-              {t("startExtraction")}
+              {draftJob.mode === "chat" ? t("startChat") : t("startExtraction")}
               <Zap className="ml-2 h-4 w-4" />
             </>
           ) : (
