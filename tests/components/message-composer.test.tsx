@@ -39,9 +39,15 @@ vi.mock("convex/react", () => ({
     if (fnRef === "abortGeneration") return abortMock;
     if (fnRef === "swapModel") return swapMock;
     if (fnRef === "listChatModels") return vi.fn();
+    if (fnRef === "bulkSetChatPapers") {
+      const fn = vi.fn().mockResolvedValue({ changedCount: 0 });
+      (fn as unknown as { withOptimisticUpdate: () => typeof fn }).withOptimisticUpdate =
+        () => fn;
+      return fn;
+    }
     return vi.fn();
   },
-  useQuery: () => [],
+  useQuery: () => [{ included: true, chatPaperId: "cp1" }],
 }));
 
 vi.mock("@convex-dev/agent/react", () => ({
@@ -59,6 +65,10 @@ vi.mock("@/convex/_generated/api", () => ({
       },
       model: {
         listChatModels: "listChatModels",
+      },
+      chatPapers: {
+        listChatSourcesWithInclusion: "listChatSourcesWithInclusion",
+        bulkSetChatPapers: "bulkSetChatPapers",
       },
     },
   },

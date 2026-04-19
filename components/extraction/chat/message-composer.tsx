@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { ComposerModelPicker } from "./composer-model-picker";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import {
+  applyInclusionPatch,
+  buildBulkPatch,
+} from "@/lib/chat/chat-papers-selection";
 import { useAppToast } from "@/lib/toast";
 import { toast } from "sonner";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
@@ -22,12 +26,22 @@ interface MessageComposerProps {
 
 export function MessageComposer({ job, threadId }: MessageComposerProps) {
   const t = useTranslations("extraction");
+  const tc = useTranslations("composer");
   const appToast = useAppToast();
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isComposingRef = useRef(false);
   const reduceMotion = useReducedMotion();
   const jobIsGenerating = job.isGenerating ?? false;
+
+  const chatSources = useQuery(
+    api.chat.chatPapers.listChatSourcesWithInclusion,
+    { jobId: job._id },
+  );
+  const totalSources = chatSources?.length ?? 0;
+  const includedSources =
+    chatSources?.filter((row) => row.included).length ?? 0;
+  const hasNoSourcesIncluded = chatSources !== undefined && includedSources === 0;
 
   const sendMessage = useMutation(
     api.chat.messages.sendMessage,
@@ -36,6 +50,21 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
   );
   const abortGeneration = useMutation(api.chat.messages.abortGeneration);
   const swapModel = useMutation(api.chat.messages.swapModel);
+  const bulkSetChatPapers = useMutation(
+    api.chat.chatPapers.bulkSetChatPapers,
+  ).withOptimisticUpdate((localStore, args) => {
+    const current = localStore.getQuery(
+      api.chat.chatPapers.listChatSourcesWithInclusion,
+      { jobId: job._id },
+    );
+    if (!current) return;
+    const patch = buildBulkPatch(current, args.sourceIds, args.included);
+    localStore.setQuery(
+      api.chat.chatPapers.listChatSourcesWithInclusion,
+      { jobId: job._id },
+      applyInclusionPatch(current, patch),
+    );
+  });
 
   const handleSubmit = useCallback(async () => {
     const prompt = text.trim();
@@ -111,7 +140,20 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
   }, [jobIsGenerating]);
 
   const isEmpty = text.trim().length === 0;
-  const submitDisabled = isEmpty;
+  const submitDisabled = isEmpty || hasNoSourcesIncluded;
+
+  async function handleIncludeAllSources() {
+    try {
+      await bulkSetChatPapers({
+        jobId: job._id,
+        sourceIds: undefined,
+        included: true,
+      });
+    } catch (err) {
+      appToast.error(t("chatFailedMessage"));
+      console.error("include-all from composer banner failed", err);
+    }
+  }
 
   return (
     <form
@@ -123,6 +165,43 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
       data-chat-composer="true"
       data-generating={jobIsGenerating}
     >
+      <p
+        role="status"
+        aria-live="polite"
+        data-sources-count-state={hasNoSourcesIncluded ? "zero" : "normal"}
+        data-sources-included={includedSources}
+        data-sources-total={totalSources}
+        className="mb-2 text-xs text-muted-foreground tabular-nums"
+      >
+        {hasNoSourcesIncluded
+          ? tc("sources.zero")
+          : tc("sources.live", {
+              included: includedSources,
+              total: totalSources,
+            })}
+      </p>
+
+      {hasNoSourcesIncluded && (
+        <div
+          role="alert"
+          data-composer-empty-banner
+          className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive-foreground"
+        >
+          <span className="text-foreground">{tc("sources.emptyBanner")}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-composer-include-all
+            onClick={() => {
+              void handleIncludeAllSources();
+            }}
+          >
+            {tc("sources.includeAll")}
+          </Button>
+        </div>
+      )}
+
       <motion.div
         layout={reduceMotion ? false : "size"}
         transition={{ duration: 0.18, ease: "easeOut" }}
