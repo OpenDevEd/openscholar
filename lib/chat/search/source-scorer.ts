@@ -58,6 +58,15 @@ function fuzzyScore(haystack: string, needle: string): number {
   return 0.7;
 }
 
+type RankedField = { score: number; field: ScorerField };
+
+function pickBestField(candidates: ReadonlyArray<RankedField>): RankedField {
+  return candidates.reduce((acc, r) => (r.score > acc.score ? r : acc), {
+    score: 0,
+    field: null,
+  });
+}
+
 export function scoreSource(row: ScorerInput, query: string): SearchMatch {
   const q = query.trim().toLowerCase();
   if (q.length === 0) return { score: 1, field: null };
@@ -69,22 +78,52 @@ export function scoreSource(row: ScorerInput, query: string): SearchMatch {
     return { score: 1, field: "openalexId" };
   }
 
-  const titleScore = fuzzyScore(row.title.toLowerCase(), q) * WEIGHTS.title;
-  const authorsScore =
-    fuzzyScore(row.authors.join(" ").toLowerCase(), q) * WEIGHTS.authors;
-  const yearScore =
-    row.year !== null && String(row.year).includes(q) ? WEIGHTS.year : 0;
-  const abstractScore =
-    row.abstract !== null
-      ? fuzzyScore(row.abstract.toLowerCase(), q) * WEIGHTS.abstract
-      : 0;
-  const ranked: Array<{ score: number; field: ScorerField }> = [
-    { score: titleScore, field: "title" },
-    { score: authorsScore, field: "authors" },
-    { score: yearScore, field: "year" },
-    { score: abstractScore, field: "abstract" },
-  ];
-  const best = ranked.reduce((acc, r) => (r.score > acc.score ? r : acc));
+  const best = pickBestField([
+    {
+      score: fuzzyScore(row.title.toLowerCase(), q) * WEIGHTS.title,
+      field: "title",
+    },
+    {
+      score: fuzzyScore(row.authors.join(" ").toLowerCase(), q) * WEIGHTS.authors,
+      field: "authors",
+    },
+    {
+      score:
+        row.year !== null && String(row.year).includes(q) ? WEIGHTS.year : 0,
+      field: "year",
+    },
+    {
+      score:
+        row.abstract !== null
+          ? fuzzyScore(row.abstract.toLowerCase(), q) * WEIGHTS.abstract
+          : 0,
+      field: "abstract",
+    },
+  ]);
+
   if (best.score === 0) return { score: 0, field: null };
   return { score: Math.min(best.score / WEIGHTS.idExact, 1), field: best.field };
+}
+
+/**
+ * Filter + rank a row collection by `scoreSource(row, query)`. Rows
+ * with score == 0 are dropped; surviving rows sort by score descending,
+ * with the original input order preserved as a stable tiebreaker.
+ *
+ * Empty query returns the input unchanged (every row scores 1 with
+ * field=null), so the default order survives.
+ */
+export function runWeightedSearch<R extends ScorerInput>(
+  rows: ReadonlyArray<R>,
+  query: string,
+): R[] {
+  const q = query.trim();
+  if (q.length === 0) return rows.slice();
+
+  const scored = rows
+    .map((row, index) => ({ row, index, match: scoreSource(row, query) }))
+    .filter((entry) => entry.match.score > 0);
+
+  scored.sort((a, b) => b.match.score - a.match.score || a.index - b.index);
+  return scored.map((entry) => entry.row);
 }
