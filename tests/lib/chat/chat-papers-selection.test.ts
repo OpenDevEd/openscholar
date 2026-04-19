@@ -53,4 +53,15 @@ describe("applyInclusionPatch", () => {
     expect(out[0].included).toBe(false);
     expect(out[1]).toBe(r2);
   });
+
+  it("does not mutate the input array or its rows (freeze-safe)", () => {
+    const r1 = Object.freeze(row(1, true));
+    const r2 = Object.freeze(row(2, true));
+    const input = Object.freeze([r1, r2]);
+    expect(() =>
+      applyInclusionPatch(input, new Map([[cp(1), false]])),
+    ).not.toThrow();
+    expect(r1.included).toBe(true);
+    expect(r2.included).toBe(true);
+  });
 });
