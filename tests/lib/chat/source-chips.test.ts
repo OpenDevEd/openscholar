@@ -48,4 +48,11 @@ describe("filterBySourceChip", () => {
     const rows = [row("openalex"), row("zotero")];
     expect(filterBySourceChip(rows, "all")).toBe(rows);
   });
+
+  it("R4: a specific bucket returns only rows of that sourceType", () => {
+    const rows = [row("openalex"), row("zotero"), row("openalex"), row("upload")];
+    const filtered = filterBySourceChip(rows, "openalex");
+    expect(filtered).toHaveLength(2);
+    expect(filtered.every((r) => r.sourceType === "openalex")).toBe(true);
+  });
 });
