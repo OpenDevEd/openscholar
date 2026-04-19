@@ -120,4 +120,10 @@ describe("scoreSource", () => {
     expect(() => scoreSource(noYear, "2024")).not.toThrow();
     expect(scoreSource(noYear, "2024")).toEqual({ score: 0, field: null });
   });
+
+  it("R13: row with empty authors[] does not throw and skips the authors field", () => {
+    const noAuthors: ScorerInput = { ...baseRow, authors: [] };
+    expect(() => scoreSource(noAuthors, "doe")).not.toThrow();
+    expect(scoreSource(noAuthors, "doe")).toEqual({ score: 0, field: null });
+  });
 });
