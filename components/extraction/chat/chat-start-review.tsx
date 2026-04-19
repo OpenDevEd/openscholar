@@ -7,6 +7,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useBucketStore } from "@/lib/store/bucket";
 import { useTranslations } from "next-intl";
 import { FileText, MessageSquare, Bot } from "lucide-react";
+import { summarizeChatSources } from "@/lib/bucket/chat-source-stats";
 
 interface ChatStartReviewProps {
   modelId: Id<"models"> | null;
@@ -18,17 +19,10 @@ export function ChatStartReview({ modelId }: ChatStartReviewProps) {
   const items = useBucketStore((s) => s.items);
   const models = useQuery(api.chat.model.listChatModels, {});
 
-  const { totalPapers, withAbstract } = useMemo(() => {
-    let total = 0;
-    let withAbs = 0;
-    for (const k of order) {
-      const item = items[k];
-      if (!item || item.status !== "ready") continue;
-      total += 1;
-      if (item.abstract && item.abstract.trim().length > 0) withAbs += 1;
-    }
-    return { totalPapers: total, withAbstract: withAbs };
-  }, [order, items]);
+  const { totalPapers, unresolvedPapers, withAbstractPapers } = useMemo(
+    () => summarizeChatSources(order.flatMap((key) => (items[key] ? [items[key]] : []))),
+    [order, items],
+  );
 
   const modelName = useMemo(() => {
     if (!models || !modelId) return null;
@@ -59,7 +53,11 @@ export function ChatStartReview({ modelId }: ChatStartReviewProps) {
               {t("chatStartReviewPapers", { count: totalPapers })}
             </div>
             <div className="text-xs text-muted-foreground">
-              {t("chatStartReviewAbstracts", { count: withAbstract })}
+              {unresolvedPapers > 0
+                ? t("chatPreparing")
+                : t("chatStartReviewAbstracts", {
+                    count: withAbstractPapers,
+                  })}
             </div>
           </div>
         </div>

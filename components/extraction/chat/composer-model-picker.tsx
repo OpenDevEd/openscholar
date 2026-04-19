@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { CheckIcon, ChevronDownIcon, SparklesIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -22,6 +22,9 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { getProviderIcon } from "@/components/icons/provider-icons";
+import { stripProviderPrefix } from "@/lib/chat/model-display";
+import type { AIProvider } from "@/lib/types/ai.types";
 
 interface ComposerModelPickerProps {
   value: Id<"models"> | null;
@@ -29,12 +32,46 @@ interface ComposerModelPickerProps {
   disabled?: boolean;
 }
 
+// Display labels keep editorial casing (OpenAI, DeepSeek) instead of the
+// lowercase slug stored on each model row.
+const PROVIDER_LABEL: Record<string, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  google: "Google",
+  openrouter: "OpenRouter",
+  deepseek: "DeepSeek",
+  azure: "Azure",
+};
+
+const PROVIDER_ORDER: Record<string, number> = {
+  anthropic: 0,
+  openai: 1,
+  google: 2,
+  deepseek: 3,
+  openrouter: 4,
+  azure: 5,
+};
+
+function providerLabel(slug: string): string {
+  return PROVIDER_LABEL[slug] ?? slug.charAt(0).toUpperCase() + slug.slice(1);
+}
+
+function formatContextLength(n: number | undefined | null): string | null {
+  if (!n || n <= 0) return null;
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `${m >= 10 ? Math.round(m) : Math.round(m * 10) / 10}M`;
+  }
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return String(n);
+}
+
 /**
  * Composer-anchored model picker. Renders as a low-weight ghost pill
- * (model name + chevron) inside the composer toolbar — pattern adopted
- * by Cursor / v0 / ChatGPT new composer. Click → searchable command
- * palette grouped by provider. Avoids the previous header dropdown
- * which the user called out as cramped and out of place.
+ * (provider icon + model name + chevron) inside the composer toolbar.
+ * Click → searchable command palette grouped by provider, each row
+ * showing its provider glyph and context length so the user can pick
+ * the right model without reading a settings page first.
  */
 export function ComposerModelPicker({
   value,
@@ -50,7 +87,6 @@ export function ComposerModelPicker({
     return [...models].sort((a, b) => a.sortOrder - b.sortOrder);
   }, [models]);
 
-  // First-run default: pick the first served model if none selected yet.
   useEffect(() => {
     if (value === null && sortedModels.length > 0) {
       onChange(sortedModels[0]._id);
@@ -64,7 +100,12 @@ export function ComposerModelPicker({
       list.push(m);
       byProvider.set(m.provider, list);
     }
-    return Array.from(byProvider.entries());
+    return Array.from(byProvider.entries()).sort((a, b) => {
+      const ra = PROVIDER_ORDER[a[0]] ?? 99;
+      const rb = PROVIDER_ORDER[b[0]] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return a[0].localeCompare(b[0]);
+    });
   }, [sortedModels]);
 
   const selected = useMemo(
@@ -72,11 +113,16 @@ export function ComposerModelPicker({
     [sortedModels, value],
   );
 
-  const triggerLabel =
-    selected?.name ??
-    (sortedModels.length === 0
+  const TriggerIcon = useMemo(
+    () => getProviderIcon((selected?.provider as AIProvider) ?? "openai"),
+    [selected?.provider],
+  );
+
+  const triggerLabel = selected
+    ? stripProviderPrefix(selected.name)
+    : sortedModels.length === 0
       ? t("chatModelPickerLoading")
-      : t("chatModelPickerTrigger"));
+      : t("chatModelPickerTrigger");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -89,54 +135,100 @@ export function ComposerModelPicker({
           aria-label={t("chatModelPickerTrigger")}
           data-action="open-model-picker"
           data-model-id={value ?? ""}
-          className="h-7 gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
+          data-provider={selected?.provider ?? ""}
+          className={cn(
+            "h-7 gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground",
+            "hover:bg-accent hover:text-foreground",
+            "data-[state=open]:bg-accent data-[state=open]:text-foreground",
+          )}
         >
-          <SparklesIcon className="size-3.5" />
-          <span className="max-w-[160px] truncate">{triggerLabel}</span>
+          {selected ? (
+            <TriggerIcon className="size-3.5 text-foreground/80" />
+          ) : null}
+          <span className="max-w-[200px] truncate">{triggerLabel}</span>
           <ChevronDownIcon className="size-3 opacity-60" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         side="top"
-        className="w-[280px] p-0"
+        className="w-[340px] p-0"
         data-composer-model-picker="true"
       >
         <Command>
           <CommandInput placeholder={t("chatModelPickerSearch")} />
-          <CommandList>
+          <CommandList className="max-h-[340px]">
             <CommandEmpty>{t("chatModelPickerEmpty")}</CommandEmpty>
-            {groups.map(([provider, list], i) => (
-              <div key={provider}>
-                {i > 0 ? <CommandSeparator /> : null}
-                <CommandGroup heading={provider}>
-                  {list.map((m) => {
-                    const isSelected = m._id === value;
-                    return (
-                      <CommandItem
-                        key={m._id}
-                        value={`${provider} ${m.name}`}
-                        onSelect={() => {
-                          onChange(m._id);
-                          setOpen(false);
-                        }}
-                        data-model-option={m._id}
-                        data-selected={isSelected}
-                      >
-                        <span className="flex-1 truncate">{m.name}</span>
-                        <CheckIcon
-                          className={cn(
-                            "size-4 shrink-0 text-primary transition-opacity",
-                            isSelected ? "opacity-100" : "opacity-0",
-                          )}
-                          aria-hidden
-                        />
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              </div>
-            ))}
+            {groups.map(([provider, list], i) => {
+              const Icon = getProviderIcon(provider as AIProvider);
+              return (
+                <div key={provider} data-provider-group={provider}>
+                  {i > 0 ? <CommandSeparator /> : null}
+                  <CommandGroup
+                    heading={
+                      <span className="flex items-center gap-1.5">
+                        <Icon className="size-3 text-muted-foreground/70" />
+                        <span className="tracking-wide">
+                          {providerLabel(provider)}
+                        </span>
+                      </span>
+                    }
+                  >
+                    {list.map((m) => {
+                      const isSelected = m._id === value;
+                      const ctx = formatContextLength(m.contextLength);
+                      const label = stripProviderPrefix(m.name);
+                      return (
+                        <CommandItem
+                          key={m._id}
+                          value={`${providerLabel(provider)} ${label}`}
+                          onSelect={() => {
+                            onChange(m._id);
+                            setOpen(false);
+                          }}
+                          data-model-option={m._id}
+                          data-selected={isSelected}
+                          className="gap-2.5 py-2"
+                        >
+                          <Icon
+                            className={cn(
+                              "size-3.5 shrink-0",
+                              isSelected
+                                ? "text-foreground"
+                                : "text-muted-foreground/70",
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 truncate",
+                              isSelected && "font-medium",
+                            )}
+                          >
+                            {label}
+                          </span>
+                          {ctx ? (
+                            <span
+                              className="shrink-0 rounded border border-border/60 bg-background/60 px-1 py-0.5 font-mono text-[10px] leading-none text-muted-foreground"
+                              aria-label={`${ctx} tokens context`}
+                              title={`${m.contextLength?.toLocaleString()} token context`}
+                            >
+                              {ctx}
+                            </span>
+                          ) : null}
+                          <CheckIcon
+                            className={cn(
+                              "size-3.5 shrink-0 text-primary transition-opacity",
+                              isSelected ? "opacity-100" : "opacity-0",
+                            )}
+                            aria-hidden
+                          />
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </div>
+              );
+            })}
           </CommandList>
         </Command>
       </PopoverContent>

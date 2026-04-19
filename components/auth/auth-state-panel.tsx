@@ -163,7 +163,7 @@ export function AuthStatePanel({
           <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/25 bg-card/95 shadow-lg">
             <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
           </div>
-          <span className="sr-only">{t("loadingSession")}</span>
+          <span className="sr-only">{resolvedTitle || t("loadingSession")}</span>
         </div>
       </motion.section>
     );

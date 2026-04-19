@@ -19,15 +19,25 @@ export function ChatJobView({ job, threadId }: ChatJobViewProps) {
   return (
     <TwoColumnLayout
       sidebarSide="right"
+      // Bound the chat shell to its parent so the message list — not the
+      // page — owns the scroll. `h-full` resolves against the bounded
+      // app content shell; `min-h-0` releases the flex default so an
+      // overflowing child can shrink and scroll; `overflow-hidden`
+      // clips so the scroll bar appears on the inner pane.
+      className="h-full min-h-0 overflow-hidden"
       leftColumn={<PapersInContextSidebar jobId={job._id} />}
       rightColumn={
         <div
-          className="flex h-full min-h-0 flex-col"
+          className="flex h-full min-h-0 flex-col overflow-hidden"
           data-mode="chat"
           data-job-id={job._id}
         >
           <ChatHeader job={job} threadId={threadId} />
-          <MessageList threadId={threadId} jobId={job._id} />
+          <MessageList
+            threadId={threadId}
+            jobId={job._id}
+            chatModelId={job.chatModelId ?? null}
+          />
           <MessageComposer job={job} threadId={threadId} />
         </div>
       }

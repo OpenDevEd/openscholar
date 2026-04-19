@@ -6,9 +6,11 @@
  */
 
 import {
+  internalAction,
   internalMutation,
   internalQuery,
   mutation,
+  type ActionCtx,
   type MutationCtx,
   type QueryCtx,
 } from "../_generated/server";
@@ -17,6 +19,56 @@ import type { Id, Doc } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { paperChat } from "./agent";
+import { dedupeExpandedSources, expandJobSources } from "../extraction/expandSources";
+import { replaceJobSources, type BucketItemInput } from "../extraction/jobSources";
+import type { PaperData } from "../extraction/types";
+import { internal } from "../_generated/api";
+import { bucketItemInputValidator } from "../extraction/validators";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+  return "Chat preparation failed.";
+}
+
+async function resolvePreparedSources(
+  ctx: ActionCtx,
+  jobId: Id<"extractionJobs">,
+): Promise<BucketItemInput[]> {
+  const bucketItems = await ctx.runQuery(
+    internal.extraction.queries.internal.getJobSourcesInternal,
+    { jobId },
+  );
+  let cachedZoteroUserId: string | undefined;
+
+  const expanded = await expandJobSources(bucketItems, {
+    fetchPapersFromHistory: async (searchFilters) => {
+      const result = await ctx.runAction(
+        internal.extraction.actions.fetchPapersFromHistory,
+        { searchFilters },
+      );
+      return result as PaperData[];
+    },
+    resolveZoteroUserId: async () => {
+      if (cachedZoteroUserId !== undefined) {
+        return cachedZoteroUserId;
+      }
+      try {
+        const resolved = await ctx.runQuery(
+          internal.zotero.queries.getZoteroUserIdInternal,
+          {},
+        );
+        cachedZoteroUserId = resolved ?? undefined;
+      } catch {
+        cachedZoteroUserId = undefined;
+      }
+      return cachedZoteroUserId;
+    },
+  });
+
+  return dedupeExpandedSources(expanded).map((item) => item.bucketItem);
+}
 
 /**
  * Atomic: creates an agent thread for `jobId` and patches the job row
@@ -27,11 +79,14 @@ import { paperChat } from "./agent";
  * Idempotent: if the job already has a chatThreadId, returns it.
  * If the job doesn't exist or is extraction-mode, throws.
  */
-export const ensureThreadForJob = internalMutation({
+export const ensureThreadForJob = internalAction({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ threadId: v.string() }),
   handler: async (ctx, { jobId }): Promise<{ threadId: string }> => {
-    const job = await ctx.db.get(jobId);
+    const job = await ctx.runQuery(
+      internal.chat.threads.getChatJobForPreparation,
+      { jobId },
+    );
     if (!job) {
       throw createError("NOT_FOUND", "Job not found");
     }
@@ -45,17 +100,130 @@ export const ensureThreadForJob = internalMutation({
       return { threadId: job.chatThreadId };
     }
 
-    const { threadId } = await paperChat.createThread(ctx, {
-      userId: job.userId,
-      title: job.name,
-    });
+    try {
+      const preparedSources = await resolvePreparedSources(ctx, jobId);
+      await ctx.runQuery(
+        internal.extraction.bucket.limits.assertBucketWithinLimitsForUser,
+        {
+          userId: job.userId,
+          items: preparedSources.map((item) => ({
+            source: item.source,
+            searchFilters: item.searchFilters,
+          })),
+        },
+      );
+      await ctx.runMutation(internal.chat.threads.persistPreparedSourcesForJob, {
+        jobId,
+        items: preparedSources,
+      });
 
+      const { threadId } = await paperChat.createThread(ctx, {
+        userId: job.userId,
+        title: job.name,
+      });
+
+      await ctx.runMutation(internal.chat.threads.completeThreadForJob, {
+        jobId,
+        threadId,
+      });
+
+      return { threadId };
+    } catch (error) {
+      await ctx.runMutation(internal.chat.threads.failThreadForJob, {
+        jobId,
+        errorMessage: getErrorMessage(error),
+      });
+      throw error;
+    }
+  },
+});
+
+export const getChatJobForPreparation = internalQuery({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("extractionJobs"),
+      userId: v.id("users"),
+      mode: v.union(v.literal("chat"), v.literal("extraction")),
+      name: v.string(),
+      chatThreadId: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, { jobId }) => {
+    const job = await ctx.db.get(jobId);
+    if (!job) {
+      return null;
+    }
+    return {
+      _id: job._id,
+      userId: job.userId,
+      mode: job.mode,
+      name: job.name,
+      chatThreadId: job.chatThreadId,
+    };
+  },
+});
+
+export const persistPreparedSourcesForJob = internalMutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    items: v.array(bucketItemInputValidator),
+  },
+  returns: v.null(),
+  handler: async (ctx, { jobId, items }) => {
+    const job = await ctx.db.get(jobId);
+    if (!job || job.mode !== "chat") {
+      throw createError("NOT_FOUND", "Chat job not found");
+    }
+    await replaceJobSources(ctx, jobId, items);
     await ctx.db.patch(jobId, {
-      chatThreadId: threadId,
+      errorMessage: undefined,
       updatedAt: Date.now(),
     });
+    return null;
+  },
+});
 
-    return { threadId };
+export const completeThreadForJob = internalMutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    threadId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { jobId, threadId }) => {
+    const job = await ctx.db.get(jobId);
+    if (!job || job.mode !== "chat") {
+      throw createError("NOT_FOUND", "Chat job not found");
+    }
+    if (job.chatThreadId) {
+      return null;
+    }
+    await ctx.db.patch(jobId, {
+      chatThreadId: threadId,
+      errorMessage: undefined,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const failThreadForJob = internalMutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    errorMessage: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { jobId, errorMessage }) => {
+    const job = await ctx.db.get(jobId);
+    if (!job || job.mode !== "chat" || job.chatThreadId) {
+      return null;
+    }
+    await ctx.db.patch(jobId, {
+      errorMessage,
+      updatedAt: Date.now(),
+    });
+    return null;
   },
 });
 

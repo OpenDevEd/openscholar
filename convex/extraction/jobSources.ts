@@ -45,7 +45,7 @@ export type BucketItemInput = {
   includeDescendants?: boolean;
 };
 
-function rowFromBucketItem(
+export function rowFromBucketItem(
   jobId: Id<"extractionJobs">,
   position: number,
   item: BucketItemInput,
@@ -107,6 +107,23 @@ export async function writeJobSources(
       rowFromBucketItem(jobId, position++, item),
     );
   }
+}
+
+export async function replaceJobSources(
+  ctx: MutationCtx,
+  jobId: Id<"extractionJobs">,
+  items: ReadonlyArray<BucketItemInput>,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("extractionJobSources")
+    .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+    .collect();
+
+  for (const row of existing) {
+    await ctx.db.delete(row._id);
+  }
+
+  await writeJobSources(ctx, jobId, items);
 }
 
 export async function readJobSources(

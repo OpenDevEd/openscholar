@@ -32,7 +32,17 @@ export function TwoColumnLayout({
     </div>
   );
   const content = (
-    <div className={cn("flex-1 min-w-0 flex flex-col", rightColumnClassName)}>
+    <div
+      className={cn(
+        // `min-h-0` is required so a `flex-1` child (e.g. a chat
+        // message list) can become its own scroll container instead of
+        // growing past the viewport and pushing siblings (composer)
+        // off-screen. Without this, flex items keep their default
+        // `min-height: auto`, which is what breaks scroll panes.
+        "flex min-h-0 min-w-0 flex-1 flex-col",
+        rightColumnClassName,
+      )}
+    >
       {rightColumn}
     </div>
   );

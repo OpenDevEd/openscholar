@@ -45,7 +45,8 @@ export const seed = internalMutation({
   handler: async (ctx) => {
     const defaults: Array<{ key: string; enabled: boolean; minimumTier: number; description: string }> = [
       { key: "extraction.enabled", enabled: true, minimumTier: 0, description: "Master switch for the extraction feature" },
-      { key: "extraction.pdf", enabled: true, minimumTier: 0, description: "PDF processing in extraction pipelines" },
+      { key: "extraction.pdf", enabled: true, minimumTier: 0, description: "PDF processing capability gate (per-job toggle visibility)" },
+      { key: "extraction.chat", enabled: false, minimumTier: 0, description: "Chat mode for job creation (paper Q&A)" },
       { key: "extraction.insights", enabled: true, minimumTier: 20, description: "AI-powered insights panel in extraction results" },
       { key: "extraction.reviewQueue", enabled: false, minimumTier: 20, description: "Manual review queue for extraction results" },
       { key: "extraction.reportBuilder", enabled: false, minimumTier: 20, description: "Report builder for extraction jobs" },

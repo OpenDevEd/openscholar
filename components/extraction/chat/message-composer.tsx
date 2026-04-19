@@ -119,7 +119,7 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
         e.preventDefault();
         void handleSubmit();
       }}
-      className="border-t bg-background p-3 sm:p-4"
+      className="shrink-0 border-t bg-background p-3 sm:p-4"
       data-chat-composer="true"
       data-generating={jobIsGenerating}
     >

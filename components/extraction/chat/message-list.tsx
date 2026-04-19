@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertCircleIcon, RefreshCwIcon, SparklesIcon } from "lucide-react";
+import { AlertCircleIcon, RefreshCwIcon } from "lucide-react";
 import { useMutation } from "convex/react";
 import {
   Conversation,
@@ -15,6 +15,7 @@ import { JumpToLatestPill } from "./jump-to-latest-pill";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MessageActions } from "./message-actions";
@@ -31,6 +32,7 @@ import { cn } from "@/lib/utils";
 interface MessageListProps {
   threadId: string;
   jobId: Id<"extractionJobs">;
+  chatModelId: Id<"models"> | null;
 }
 
 type ResolvedPaper = PaperCitationTarget & { _id: string };
@@ -117,6 +119,7 @@ interface MessageRowProps {
   isLastAssistant: boolean;
   isFirstInGroup: boolean;
   threadId: string;
+  chatModelId: Id<"models"> | null;
   errorLabel: string;
   retryLabel: string;
   onRetry: () => void;
@@ -129,6 +132,7 @@ const MessageRow = memo(function MessageRow({
   isLastAssistant,
   isFirstInGroup,
   threadId,
+  chatModelId,
   errorLabel,
   retryLabel,
   onRetry,
@@ -169,10 +173,11 @@ const MessageRow = memo(function MessageRow({
       )}
     >
       {!isUser && isFirstInGroup ? (
-        <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-          <span className="inline-flex size-4 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
-            <SparklesIcon className="size-2.5" />
-          </span>
+        <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <span
+            className="inline-block size-1 rounded-full bg-primary"
+            aria-hidden
+          />
           <span>Assistant</span>
         </div>
       ) : null}
@@ -205,6 +210,7 @@ const MessageRow = memo(function MessageRow({
             message={message}
             isLastAssistant={isLastAssistant}
             threadId={threadId}
+            chatModelId={chatModelId}
           />
         </div>
       ) : null}
@@ -236,16 +242,23 @@ const MessageRow = memo(function MessageRow({
   );
 });
 
-export function MessageList({ threadId, jobId }: MessageListProps) {
+export function MessageList({
+  threadId,
+  jobId,
+  chatModelId,
+}: MessageListProps) {
   const t = useTranslations("extraction");
   const reduceMotion = useReducedMotion() ?? false;
   const regenerate = useMutation(api.chat.messages.regenerateLastAssistant);
 
-  const { results } = useUIMessages(
+  const { results, status } = useUIMessages(
     api.chat.messages.listThreadMessages,
     { threadId },
     { initialNumItems: 20, stream: true },
   );
+
+  const isLoadingFirstPage =
+    status === "LoadingFirstPage" && results.length === 0;
 
   const sourcesQuery = useQuery(api.extraction.queries.getJobSources, {
     jobId,
@@ -295,9 +308,31 @@ export function MessageList({ threadId, jobId }: MessageListProps) {
   const retryLabel = t("chatRetryResponse");
 
   if (results.length === 0) {
+    if (isLoadingFirstPage) {
+      return (
+        <motion.div
+          className="flex min-h-0 flex-1"
+          data-message-list="loading"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{
+            delay: 3,
+            duration: reduceMotion ? 0 : 0.4,
+            ease: "easeOut",
+          }}
+        >
+          <AuthStatePanel
+            variant="loading"
+            layout="fullscreen"
+            loadingStyle="spinner"
+            title={t("chatRetryLoadingMessages")}
+          />
+        </motion.div>
+      );
+    }
     return (
       <div
-        className="flex flex-1 flex-col overflow-y-auto"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
         data-message-list="empty"
       >
         <SuggestionChips threadId={threadId} jobId={jobId} />
@@ -307,7 +342,10 @@ export function MessageList({ threadId, jobId }: MessageListProps) {
 
   return (
     <Conversation
-      className={cn("flex-1")}
+      // `min-h-0` releases the default flex `min-height: auto` so the
+      // StickToBottom internal `overflow: auto` can actually scroll
+      // instead of pushing the composer off-screen.
+      className={cn("min-h-0 flex-1 overscroll-contain")}
       data-message-list="populated"
       role="presentation"
     >
@@ -330,6 +368,7 @@ export function MessageList({ threadId, jobId }: MessageListProps) {
                     isLastAssistant={message.id === lastAssistantId}
                     isFirstInGroup={isFirstInGroup}
                     threadId={threadId}
+                    chatModelId={chatModelId}
                     errorLabel={errorLabel}
                     retryLabel={retryLabel}
                     onRetry={handleRetry}

@@ -15,6 +15,7 @@ export const listChatModels = query({
       name: v.string(),
       provider: v.string(),
       sortOrder: v.number(),
+      contextLength: v.optional(v.number()),
     }),
   ),
   handler: async (ctx) => {
@@ -28,6 +29,7 @@ export const listChatModels = query({
       name: m.name,
       provider: m.provider,
       sortOrder: m.sortOrder,
+      contextLength: m.contextLength,
     }));
   },
 });

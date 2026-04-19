@@ -138,10 +138,16 @@ export default function JobDetailPage() {
     jobId,
   });
   const jobDetails = jobDetailsQuery.data;
-  const canReadJob = jobDetails?.status === "ok";
+  const hasCurrentJobDetails =
+    jobDetails?.status !== "ok" || jobDetails.job._id === jobId;
+  const canReadJob = hasCurrentJobDetails && jobDetails?.status === "ok";
+  const isExtractionJob =
+    hasCurrentJobDetails &&
+    jobDetails?.status === "ok" &&
+    jobDetails.job.mode === "extraction";
   const jobProgressQuery = useProtectedQuery(
     api.extraction.queries.subscribeToJobProgress,
-    canReadJob ? { jobId } : "skip",
+    isExtractionJob ? { jobId } : "skip",
   );
   const jobProgress = jobProgressQuery.data;
 
@@ -154,7 +160,7 @@ export default function JobDetailPage() {
     hasLoadedFirstPage,
   } = useProtectedPaginatedQuery(
     api.extraction.queries.getJobResultsPaginated,
-    canReadJob ? { jobId } : "skip",
+    isExtractionJob ? { jobId } : "skip",
     { initialNumItems: 200 },
   );
 
@@ -344,10 +350,19 @@ export default function JobDetailPage() {
     [setViewMode, setFilters, setResultsSortBy, toast, tJob, tc]
   );
 
-  if (jobDetailsQuery.isDeferred || isResultsDeferred || jobDetails === undefined) {
+  if (
+    jobDetailsQuery.isDeferred ||
+    jobDetails === undefined ||
+    !hasCurrentJobDetails ||
+    (isExtractionJob && isResultsDeferred)
+  ) {
     return (
       <PageWrapper>
-        <AuthStatePanel variant="loading" layout="fullscreen" />
+        <AuthStatePanel
+          variant="loading"
+          layout="fullscreen"
+          loadingStyle="spinner"
+        />
       </PageWrapper>
     );
   }
@@ -414,18 +429,38 @@ export default function JobDetailPage() {
     if (!job.chatThreadId) {
       return (
         <PageWrapper>
-          <div
-            className="flex min-h-[60vh] items-center justify-center p-8 text-center text-muted-foreground"
-            data-chat-state="preparing"
-          >
-            {tExtraction("chatPreparing")}
-          </div>
+          {job.errorMessage ? (
+            <div
+              className="flex min-h-[60vh] items-center justify-center p-8 text-center text-destructive"
+              data-chat-state="error"
+            >
+              {job.errorMessage}
+            </div>
+          ) : (
+            <div data-chat-state="preparing">
+              <AuthStatePanel
+                variant="loading"
+                layout="fullscreen"
+                loadingStyle="spinner"
+                title={tExtraction("chatPreparing")}
+              />
+            </div>
+          )}
         </PageWrapper>
       );
     }
     return (
       <div
-        className="flex w-full flex-1 flex-col overflow-x-clip"
+        // The app shell uses `min-h-screen` + page-level scroll for every
+        // other route, so there is no definite-height anchor for a
+        // `flex-1` chat shell to resolve against — the message list just
+        // grows the column and the composer rides the page scroll down.
+        // We bind the chat surface directly to the viewport with an
+        // explicit height. On mobile the sticky MobileNavbar (`h-14` =
+        // 3.5rem) sits above this, so we subtract it; above `lg` the
+        // navbar is `lg:hidden` and the sidebar is the only sibling, so
+        // the chat takes the full dynamic viewport.
+        className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden lg:h-dvh"
         data-job-mode="chat"
       >
         <ChatJobView job={job} threadId={job.chatThreadId} />

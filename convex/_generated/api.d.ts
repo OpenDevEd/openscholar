@@ -43,6 +43,7 @@ import type * as extraction_debug_paper_results from "../extraction/debug_paper_
 import type * as extraction_debug_pdfjs_alignment from "../extraction/debug_pdfjs_alignment.js";
 import type * as extraction_dedupe from "../extraction/dedupe.js";
 import type * as extraction_evidence_units from "../extraction/evidence_units.js";
+import type * as extraction_expandSources from "../extraction/expandSources.js";
 import type * as extraction_index from "../extraction/index.js";
 import type * as extraction_jobSources from "../extraction/jobSources.js";
 import type * as extraction_mutations from "../extraction/mutations.js";
@@ -200,6 +201,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/debug_pdfjs_alignment": typeof extraction_debug_pdfjs_alignment;
   "extraction/dedupe": typeof extraction_dedupe;
   "extraction/evidence_units": typeof extraction_evidence_units;
+  "extraction/expandSources": typeof extraction_expandSources;
   "extraction/index": typeof extraction_index;
   "extraction/jobSources": typeof extraction_jobSources;
   "extraction/mutations": typeof extraction_mutations;

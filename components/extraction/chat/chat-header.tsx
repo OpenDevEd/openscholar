@@ -38,7 +38,7 @@ export function ChatHeader({ job, threadId }: ChatHeaderProps) {
   return (
     <>
       <header
-        className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
+        className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5"
         data-chat-header="true"
       >
         <motion.nav

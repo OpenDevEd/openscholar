@@ -4,15 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import {
-  ArrowRightIcon,
-  GitCompareArrowsIcon,
-  type LucideIcon,
-  NetworkIcon,
-  QuoteIcon,
-  ScrollTextIcon,
-  SparklesIcon,
-} from "lucide-react";
+import { ArrowRightIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAppToast } from "@/lib/toast";
@@ -24,15 +16,12 @@ interface SuggestionChipsProps {
   jobId?: Id<"extractionJobs">;
 }
 
-const SUGGESTION_DEFS: ReadonlyArray<{
-  key: "suggestionSummarise" | "suggestionThemes" | "suggestionMostCited" | "suggestionCompare";
-  icon: LucideIcon;
-}> = [
-  { key: "suggestionSummarise", icon: ScrollTextIcon },
-  { key: "suggestionThemes", icon: NetworkIcon },
-  { key: "suggestionMostCited", icon: QuoteIcon },
-  { key: "suggestionCompare", icon: GitCompareArrowsIcon },
-];
+const SUGGESTION_KEYS = [
+  "suggestionSummarise",
+  "suggestionThemes",
+  "suggestionMostCited",
+  "suggestionCompare",
+] as const;
 
 export function SuggestionChips({ threadId, jobId }: SuggestionChipsProps) {
   const t = useTranslations("extraction");
@@ -45,9 +34,6 @@ export function SuggestionChips({ threadId, jobId }: SuggestionChipsProps) {
     optimisticallySendMessage(api.chat.messages.listThreadMessages),
   );
 
-  // Optional jobId — when present, surface paper count in the empty
-  // hero. Skips the query when not provided so this component remains
-  // testable in isolation without a Convex job stub.
   const sources = useQuery(
     api.extraction.queries.getJobSources,
     jobId ? { jobId } : "skip",
@@ -56,7 +42,7 @@ export function SuggestionChips({ threadId, jobId }: SuggestionChipsProps) {
     sources && sources.status === "ok" ? sources.sources.length : null;
 
   const suggestions = useMemo(
-    () => SUGGESTION_DEFS.map((def) => ({ ...def, text: t(def.key) })),
+    () => SUGGESTION_KEYS.map((key) => ({ key, text: t(key) })),
     [t],
   );
 
@@ -72,70 +58,78 @@ export function SuggestionChips({ threadId, jobId }: SuggestionChipsProps) {
 
   return (
     <div
-      className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-8 p-6"
+      className="mx-auto flex h-full w-full max-w-xl flex-col justify-center gap-7 p-6"
       data-empty-state="true"
     >
-      <motion.div
-        initial={reduceMotion ? false : { opacity: 0, y: -8 }}
+      <motion.header
+        initial={reduceMotion ? false : { opacity: 0, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.32, ease: "easeOut" }}
-        className="flex flex-col items-center gap-3 text-center"
+        transition={{ duration: 0.28, ease: "easeOut" }}
+        className="flex flex-col gap-3"
       >
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 text-primary shadow-sm">
-          <SparklesIcon className="size-6" />
-        </div>
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">
+        {paperCount !== null && paperCount > 0 ? (
+          <div
+            className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
+            data-paper-context="true"
+            data-paper-count={paperCount}
+          >
+            <span
+              className="inline-block size-1 rounded-full bg-primary"
+              aria-hidden
+            />
+            <span>{t("chatEmptyPaperCount", { count: paperCount })}</span>
+          </div>
+        ) : null}
+        <h2 className="text-balance text-[26px] font-medium leading-[1.15] tracking-tight text-foreground">
           {t("chatEmptyHeadline")}
         </h2>
-        {paperCount !== null ? (
-          <p className="text-sm text-muted-foreground">
-            {t("chatEmptyPaperCount", { count: paperCount })}
-          </p>
-        ) : null}
-      </motion.div>
+      </motion.header>
 
-      <div
-        className="grid w-full gap-3 sm:grid-cols-2"
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: 0.3,
+          ease: "easeOut",
+          delay: reduceMotion ? 0 : 0.06,
+        }}
+        className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs"
         role="list"
         data-suggestions="true"
       >
-        {suggestions.map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <motion.button
-              key={s.key}
-              type="button"
-              role="listitem"
-              onClick={() => handleSelect(s.text)}
-              data-suggestion-key={s.key}
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.28,
-                ease: "easeOut",
-                delay: reduceMotion ? 0 : 0.08 + i * 0.06,
-              }}
-              whileHover={
-                reduceMotion ? undefined : { y: -2, transition: { duration: 0.15 } }
-              }
-              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-              className={cn(
-                "group flex items-start gap-3 rounded-xl border bg-card p-4 text-left shadow-sm",
-                "transition-colors hover:border-primary/40 hover:bg-accent/30",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              )}
+        {suggestions.map((s, i) => (
+          <button
+            key={s.key}
+            type="button"
+            role="listitem"
+            onClick={() => handleSelect(s.text)}
+            data-suggestion-key={s.key}
+            data-suggestion-index={i}
+            className={cn(
+              "group relative flex w-full items-center gap-4 px-4 py-3 text-left text-sm text-foreground",
+              "transition-colors hover:bg-accent/40 focus-visible:bg-accent/40",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40",
+            )}
+          >
+            <span
+              className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/70"
+              aria-hidden
             >
-              <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1 text-sm text-foreground">
-                {s.text}
-              </span>
-              <ArrowRightIcon className="mt-1 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-            </motion.button>
-          );
-        })}
-      </div>
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{s.text}</span>
+            <ArrowRightIcon
+              className={cn(
+                "size-3.5 shrink-0 text-muted-foreground/60 transition-all",
+                reduceMotion
+                  ? "opacity-60"
+                  : "-translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100",
+              )}
+              aria-hidden
+            />
+          </button>
+        ))}
+      </motion.div>
 
       <p
         className="hidden text-[11px] text-muted-foreground sm:block"

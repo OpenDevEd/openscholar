@@ -39,6 +39,7 @@ import {
   type EffectiveCountItem,
 } from "../../../lib/bucket/effective-paper-count";
 import { createError } from "../../lib/errors";
+import { searchFiltersValidator } from "../validators";
 
 export const PAPER_LIMIT_BY_PLAN: Record<SubscriptionPlan, number> = {
   free: 1000,
@@ -161,6 +162,32 @@ export const getChatConcurrencyLimitForUser = internalQuery({
   returns: v.number(),
   handler: async (ctx, args): Promise<number> => {
     return await getChatConcurrencyLimit(ctx, args.userId);
+  },
+});
+
+export const assertBucketWithinLimitsForUser = internalQuery({
+  args: {
+    userId: v.id("users"),
+    items: v.array(
+      v.object({
+        source: v.union(
+          v.literal("history"),
+          v.literal("library"),
+          v.literal("collection"),
+          v.literal("zotero"),
+          v.literal("upload"),
+        ),
+        searchFilters: v.optional(searchFiltersValidator),
+      }),
+    ),
+  },
+  returns: v.object({
+    paperLimit: v.number(),
+    pullCap: v.number(),
+    effectiveCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    return await assertBucketWithinLimits(ctx, args.userId, args.items);
   },
 });
 

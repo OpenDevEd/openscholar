@@ -149,7 +149,7 @@ export const listThreadMessages = query({
     page: v.array(v.any()),
     isDone: v.boolean(),
     continueCursor: v.union(v.string(), v.null()),
-    streams: v.any(),
+    streams: v.optional(v.any()),
   }),
   handler: async (ctx, args) => {
     await authorizeThreadAccess(ctx, args.threadId);
@@ -179,12 +179,13 @@ export const regenerateLastAssistant = mutation({
       threadId,
       paginationOpts: { numItems: 4, cursor: null },
     });
-    // Ordered oldest-first by default for listMessages — last entry is
-    // the most recent. We need the last assistant and its prior user.
+    // paperChat.listMessages returns newest-first (order: "desc" inside
+    // the agent component), so msgs[0] is the latest message and msgs[1]
+    // is the one before it. We need the last assistant and its prior user.
     const msgs = page.page;
     if (msgs.length < 2) return null;
-    const last = msgs[msgs.length - 1];
-    const prev = msgs[msgs.length - 2];
+    const last = msgs[0];
+    const prev = msgs[1];
     if (last.message?.role !== "assistant") return null;
     if (prev.message?.role !== "user") return null;
 

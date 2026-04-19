@@ -8,24 +8,11 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
-import { buildDedupeKey } from "./dedupe";
 import type { PaperData } from "./types";
 import type { Id } from "../_generated/dataModel";
-import type { BucketItemInput } from "./jobSources";
+import { dedupeExpandedSources, expandJobSources } from "./expandSources";
 
 import { createError } from "../lib/errors";
-
-type SourceType = "history" | "zotero" | "manual";
-type WorkflowPaper = PaperData & {
-  sourceType: SourceType;
-  sourceId: string;
-};
-
-function paperSourceFromBucket(source: BucketItemInput["source"]): SourceType {
-  if (source === "history") return "history";
-  if (source === "zotero") return "zotero";
-  return "manual";
-}
 
 export const runExtractionWorkflow = workflow.define({
   args: {
@@ -71,113 +58,48 @@ export const runExtractionWorkflow = workflow.define({
       { jobId },
     );
 
-    const papers: WorkflowPaper[] = [];
     let cachedZoteroUserId: string | undefined;
 
-    for (const item of bucketItems) {
-      if (item.source === "history" && item.searchFilters) {
-        // Mirror `paperCountForItem`'s zero-collapse rule: any defined
-        // limit that is non-finite or <= 0 contributes 0 papers to the
-        // effective count, so `assertBucketWithinLimits` already treats
-        // it as "skip this row". Match that here — otherwise a crafted
-        // limit: -1 passes submit-time validation, reaches
-        // `fetchPapersFromHistory`, and then `buildOpenAlexSearchParams`
-        // throws on `< 1`, failing the workflow after the job exists.
-        const limit = item.searchFilters.limit;
-        if (limit !== undefined && (!Number.isFinite(limit) || limit <= 0)) {
-          console.log(
-            `[Workflow] Skipping zero-count history source ${item.sourceRefId} (limit=${limit})`,
-          );
-          continue;
-        }
-        // Saved-search placeholder expands to papers at workflow time.
+    const expandedSources = await expandJobSources(bucketItems, {
+      fetchPapersFromHistory: async (searchFilters) => {
         const result = await step.runAction(
           internal.extraction.actions.fetchPapersFromHistory,
-          { searchFilters: item.searchFilters },
+          { searchFilters },
         );
-        const enriched = (result as PaperData[]).map((paper) => ({
-          ...paper,
-          sourceType: "history" as const,
-          sourceId: item.sourceRefId,
-        }));
-        papers.push(...enriched);
-        continue;
-      }
-
-      if (item.source === "zotero") {
-        const libraryType = item.libraryType ?? "user";
-        const groupId = item.groupId;
-        let zoteroUserId = item.zoteroUserId;
-        if (!zoteroUserId && libraryType === "user") {
-          if (cachedZoteroUserId === undefined) {
-            try {
-              const resolved = await step.runQuery(
-                internal.zotero.queries.getZoteroUserIdInternal,
-                {},
-              );
-              cachedZoteroUserId = resolved ?? undefined;
-            } catch {
-              cachedZoteroUserId = undefined;
-            }
-          }
-          zoteroUserId = cachedZoteroUserId;
+        return result as PaperData[];
+      },
+      resolveZoteroUserId: async () => {
+        if (cachedZoteroUserId !== undefined) {
+          return cachedZoteroUserId;
         }
-        const uri =
-          libraryType === "group" && groupId
-            ? `zotero://select/groups/${groupId}/items/${item.sourceRefId}`
-            : zoteroUserId
-              ? `zotero://select/users/${zoteroUserId}/items/${item.sourceRefId}`
-              : undefined;
-        papers.push({
-          openalexId: `zotero:${libraryType}:${item.sourceRefId}`,
-          title: item.title,
-          doi: item.doi,
-          publicationYear: item.year,
-          abstract: item.abstract,
-          authors: item.authors,
-          pdfUrl: uri,
-          isOpenAccess: false,
-          sourceType: "zotero",
-          sourceId: item.sourceRefId,
-        });
-        continue;
-      }
+        try {
+          const resolved = await step.runQuery(
+            internal.zotero.queries.getZoteroUserIdInternal,
+            {},
+          );
+          cachedZoteroUserId = resolved ?? undefined;
+        } catch {
+          cachedZoteroUserId = undefined;
+        }
+        return cachedZoteroUserId;
+      },
+    });
 
-      // history (per-paper), library, collection, upload → processed directly
-      papers.push({
-        openalexId: item.openalexId ?? `${item.source}:${item.sourceRefId}`,
-        title: item.title,
-        doi: item.doi,
-        publicationYear: item.year,
-        abstract: item.abstract,
-        authors: item.authors,
-        pdfUrl: item.pdfUrl,
-        storageId: item.storageId,
-        isOpenAccess: false,
-        sourceType: paperSourceFromBucket(item.source),
-        sourceId: item.sourceRefId,
-      });
-    }
-
-    if (papers.length === 0) {
+    if (expandedSources.length === 0) {
       throw createError("VALIDATION_ERROR", "No sources selected");
     }
 
-    const dedupedMap = new Map<string, WorkflowPaper>();
-    for (const paper of papers) {
-      const key = buildDedupeKey({
-        openalexId: paper.openalexId,
-        doi: paper.doi,
-        title: paper.title,
-        year: paper.publicationYear,
-      });
-      if (!dedupedMap.has(key)) {
-        dedupedMap.set(key, paper);
-      }
-    }
-    const dedupedPapers = Array.from(dedupedMap.values());
+    const dedupedPapers = dedupeExpandedSources(expandedSources).map(
+      ({ paper, sourceType, sourceId }) => ({
+        ...paper,
+        sourceType,
+        sourceId,
+      }),
+    );
 
-    console.log(`[Workflow] Fetched ${papers.length} papers (${dedupedPapers.length} deduped)`);
+    console.log(
+      `[Workflow] Fetched ${expandedSources.length} papers (${dedupedPapers.length} deduped)`,
+    );
 
     // Defense-in-depth: `assertBucketWithinLimits` already rejects jobs
     // whose effective paper count exceeds the user's plan cap at submit
@@ -215,7 +137,7 @@ export const runExtractionWorkflow = workflow.define({
     );
 
     const processableCount = paperIds.filter(
-      (paper) => paper.processable !== false
+      (paper: { processable?: boolean }) => paper.processable !== false,
     ).length;
 
     const { pdfEnabled } = await step.runQuery(

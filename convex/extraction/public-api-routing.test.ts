@@ -1,8 +1,10 @@
+/// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, it, test, expect } from "vitest";
+import { beforeEach, afterEach, describe, it, test, expect, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { register as registerAgentComponent } from "@convex-dev/agent/test";
 
 /**
  * Safety net SN-1 (P3 plan): pin the PUBLIC `api.extraction.{mutations,queries}`
@@ -15,6 +17,12 @@ import schema from "../schema";
 
 const ROUTING_ERROR_RE =
   /Could not find module for|there is no such export|Expected a (query|mutation|action) function/;
+
+function createTestConvex() {
+  const t = convexTest(schema);
+  registerAgentComponent(t);
+  return t;
+}
 
 async function assertRoutes(op: () => Promise<unknown>) {
   try {
@@ -173,6 +181,32 @@ const BUCKET_ITEM_HISTORY = {
   searchFilters: { limit: 1 },
 };
 
+const BUCKET_ITEM_SAVED_SEARCH = {
+  bucketKey: "history:search_1",
+  source: "history" as const,
+  sourceRefId: "search_1",
+  title: "heart disease",
+  authors: [],
+  searchFilters: {
+    query: "heart disease",
+    searchField: "title_and_abstract" as const,
+    limit: 2,
+  },
+};
+
+const BUCKET_ITEM_ZOTERO = {
+  bucketKey: "zotero:item_1",
+  source: "zotero" as const,
+  sourceRefId: "item_1",
+  title: "Zotero paper",
+  authors: ["Z Author"],
+  year: 2023,
+  doi: "10.1000/zotero",
+  abstract: "Zotero abstract",
+  libraryType: "user" as const,
+  zoteroUserId: "98765",
+};
+
 // Matches the runtime message convex-test emits when an un-registered
 // Convex component is invoked. Reaching this point proves the mutation
 // advanced through every server-side step before workflow.start.
@@ -205,14 +239,14 @@ describe("startJob — chat mode", () => {
     await seedUserAndFlags(t, { chat: true });
     const auth = t.withIdentity(STARTJOB_IDENTITY);
 
-    const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
+    const { jobId } = (await auth.mutation(api.extraction.mutations.startJob, {
       name: "Chat Job",
       mode: "chat",
       bucketItems: [BUCKET_ITEM_HISTORY],
-    });
+    })) as { jobId: Id<"extractionJobs"> };
     expect(jobId).toBeTruthy();
 
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.mode).toBe("chat");
     expect(job?.status).toBeUndefined();
     expect(job?.messageCount).toBe(0);
@@ -231,6 +265,125 @@ describe("startJob — chat mode", () => {
         bucketItems: [BUCKET_ITEM_HISTORY],
       }),
     ).rejects.toThrow(/disabled/i);
+  });
+});
+
+describe("startJob — chat source preparation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    delete process.env.OPENALEX_CONTACT_EMAIL;
+  });
+
+  it("expands saved-search history rows before creating the chat thread", async () => {
+    const t = createTestConvex();
+    await seedUserAndFlags(t, { chat: true });
+    const auth = t.withIdentity(STARTJOB_IDENTITY);
+    process.env.OPENALEX_CONTACT_EMAIL = "test@example.com";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                id: "https://openalex.org/W100",
+                display_name: "Expanded paper one",
+                publication_year: 2022,
+                authorships: [{ author: { display_name: "Alpha" } }],
+                abstract_inverted_index: { Expanded: [0], paper: [1], one: [2] },
+                open_access: { oa_url: "https://example.com/one.pdf", is_oa: true },
+              },
+              {
+                id: "https://openalex.org/W200",
+                display_name: "Expanded paper two",
+                publication_year: 2021,
+                authorships: [{ author: { display_name: "Beta" } }],
+                abstract_inverted_index: { Expanded: [0], paper: [1], two: [2] },
+                open_access: { oa_url: "https://example.com/two.pdf", is_oa: true },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    const { jobId } = (await auth.mutation(api.extraction.mutations.startJob, {
+      name: "Chat Job",
+      mode: "chat",
+      bucketItems: [BUCKET_ITEM_SAVED_SEARCH],
+    })) as { jobId: Id<"extractionJobs"> };
+
+    let job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.chatThreadId).toBeUndefined();
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+
+    job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.chatThreadId).toBeTruthy();
+    expect(job?.errorMessage).toBeUndefined();
+
+    const sources = await t.run((ctx) =>
+      ctx.db
+        .query("extractionJobSources")
+        .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(sources).toHaveLength(2);
+    expect(sources.map((source) => source.title)).toEqual([
+      "Expanded paper one",
+      "Expanded paper two",
+    ]);
+    expect(sources.every((source) => source.searchFilters === undefined)).toBe(
+      true,
+    );
+    expect(sources.every((source) => source.openalexId?.startsWith("W"))).toBe(
+      true,
+    );
+  });
+
+  it("normalizes zotero rows before creating the chat thread", async () => {
+    const t = createTestConvex();
+    const { userId } = await seedUserAndFlags(t, { chat: true });
+    const auth = t.withIdentity(STARTJOB_IDENTITY);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("zoteroConnections", {
+        userId,
+        zoteroUserId: "98765",
+        encryptedApiKey: "encrypted",
+        keyPrefix: "zot",
+        connectedAt: Date.now(),
+      });
+    });
+
+    const { jobId } = (await auth.mutation(api.extraction.mutations.startJob, {
+      name: "Zotero Chat Job",
+      mode: "chat",
+      bucketItems: [BUCKET_ITEM_ZOTERO],
+    })) as { jobId: Id<"extractionJobs"> };
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+
+    const job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.chatThreadId).toBeTruthy();
+    expect(job?.errorMessage).toBeUndefined();
+
+    const sources = await t.run((ctx) =>
+      ctx.db
+        .query("extractionJobSources")
+        .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(sources).toHaveLength(1);
+    expect(sources[0].openalexId).toBe("zotero:user:item_1");
+    expect(sources[0].pdfUrl).toBe("zotero://select/users/98765/items/item_1");
+    expect(sources[0].searchFilters).toBeUndefined();
   });
 });
 

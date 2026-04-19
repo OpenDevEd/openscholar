@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
-import { useMutation } from "convex/react";
+import { useCallback, useMemo } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CopyIcon, RefreshCwIcon } from "lucide-react";
@@ -12,7 +12,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useAppToast } from "@/lib/toast";
+import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { getProviderIcon } from "@/components/icons/provider-icons";
+import type { AIProvider } from "@/lib/types/ai.types";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "@convex-dev/agent/react";
 
@@ -27,6 +31,8 @@ interface MessageActionsProps {
   message: ChatUIMessage;
   isLastAssistant: boolean;
   threadId: string;
+  /** Currently-selected chat model. Used to label the regenerate button. */
+  chatModelId: Id<"models"> | null;
   /** When false, actions are hidden until the parent <article> is hovered/focused. */
   alwaysVisible?: boolean;
 }
@@ -44,13 +50,15 @@ function extractText(message: ChatUIMessage): string {
 }
 
 function ActionButton({
-  label,
+  ariaLabel,
+  tooltip,
   onClick,
   disabled,
   dataAction,
   children,
 }: {
-  label: string;
+  ariaLabel: string;
+  tooltip: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
   dataAction: string;
@@ -65,15 +73,15 @@ function ActionButton({
           variant="ghost"
           onClick={onClick}
           disabled={disabled}
-          aria-label={label}
+          aria-label={ariaLabel}
           data-action={dataAction}
           className="size-7 text-muted-foreground hover:text-foreground"
         >
           {children}
-          <span className="sr-only">{label}</span>
+          <span className="sr-only">{ariaLabel}</span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
     </Tooltip>
   );
 }
@@ -82,15 +90,53 @@ export function MessageActions({
   message,
   isLastAssistant,
   threadId,
+  chatModelId,
   alwaysVisible = false,
 }: MessageActionsProps) {
   const t = useTranslations("extraction");
   const appToast = useAppToast();
   const regenerate = useMutation(api.chat.messages.regenerateLastAssistant);
+  // Convex dedupes identical query subscriptions, so this shares state
+  // with the composer's model picker — no extra network round-trip.
+  const models = useQuery(api.chat.model.listChatModels, {});
 
   const isStreaming = message.status === "streaming";
   const isFailed = message.status === "failed";
   const showRetry = isLastAssistant || isFailed;
+
+  const activeModel = useMemo(() => {
+    if (!chatModelId || !models) return null;
+    const found = models.find((m) => m._id === chatModelId);
+    if (!found) return null;
+    return {
+      label: stripProviderPrefix(found.name),
+      provider: found.provider as AIProvider,
+    };
+  }, [chatModelId, models]);
+
+  const ProviderIcon = useMemo(
+    () => (activeModel ? getProviderIcon(activeModel.provider) : null),
+    [activeModel],
+  );
+
+  const retryLabel = activeModel
+    ? t("chatRetryResponseWith", { model: activeModel.label })
+    : t("chatRetryResponse");
+
+  const retryTooltip =
+    activeModel && ProviderIcon ? (
+      <span className="flex items-center gap-2">
+        <ProviderIcon className="size-4 shrink-0" aria-hidden />
+        <span className="flex items-baseline gap-1">
+          <span className="opacity-60">{t("chatRetryWithPrefix")}</span>
+          <span className="font-semibold tracking-tight">
+            {activeModel.label}
+          </span>
+        </span>
+      </span>
+    ) : (
+      retryLabel
+    );
 
   const handleCopy = useCallback(() => {
     const text = extractText(message);
@@ -115,6 +161,7 @@ export function MessageActions({
   return (
     <div
       data-streaming={isStreaming}
+      data-active-model={activeModel?.provider ?? ""}
       className={cn(
         "flex items-center gap-0.5 transition-opacity duration-150",
         alwaysVisible
@@ -123,7 +170,8 @@ export function MessageActions({
       )}
     >
       <ActionButton
-        label={t("chatCopyMessage")}
+        ariaLabel={t("chatCopyMessage")}
+        tooltip={t("chatCopyMessage")}
         onClick={handleCopy}
         disabled={isStreaming}
         dataAction="copy"
@@ -132,7 +180,8 @@ export function MessageActions({
       </ActionButton>
       {showRetry && (
         <ActionButton
-          label={t("chatRetryResponse")}
+          ariaLabel={retryLabel}
+          tooltip={retryTooltip}
           onClick={handleRetry}
           disabled={isStreaming}
           dataAction="retry"

@@ -30,7 +30,6 @@ import { BucketIndicator } from "./bucket/bucket-indicator";
 import { BucketDrawer } from "./bucket/bucket-drawer";
 import { ModeSelector } from "./mode-selector";
 import { PdfToggle } from "./pdf-toggle";
-import { ModelPicker } from "./model-picker";
 import { AbstractMissingBanner } from "./chat/abstract-missing-banner";
 import { ChatStartReview } from "./chat/chat-start-review";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -77,7 +76,6 @@ export function JobCreator() {
     draftJob,
     setDraftJobName,
     setMode,
-    setChatModelId,
     setUsePdfs,
     clearDraftJob,
   } = useExtractionStore();
@@ -128,10 +126,6 @@ export function JobCreator() {
       toast.validation.failed(t("pleaseCompleteSteps"));
       return;
     }
-    if (draftJob.mode === "chat" && draftJob.chatModelId === null) {
-      toast.validation.failed(t("pleaseSelectModel"));
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -173,7 +167,6 @@ export function JobCreator() {
     switch (validStep) {
       case 1:
         if (draftJob.name.trim().length === 0) return false;
-        if (draftJob.mode === "chat" && draftJob.chatModelId === null) return false;
         return true;
       case 2:
         return readyBucketItems.length > 0;
@@ -360,13 +353,6 @@ export function JobCreator() {
                     />
                   )}
 
-                  {draftJob.mode === "chat" && (
-                    <ModelPicker
-                      value={draftJob.chatModelId}
-                      onChange={setChatModelId}
-                      disabled={isSubmitting}
-                    />
-                  )}
                 </motion.div>
               </form>
             )}

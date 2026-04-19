@@ -1,4 +1,5 @@
 import { Agent, stepCountIs } from "@convex-dev/agent";
+import type { ModelMessage } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -26,13 +27,37 @@ const defaultModelId = SERVER_AI_CONFIG.model.includes("/")
 const openrouter = createOpenRouter();
 const defaultLanguageModel = openrouter.chat(defaultModelId);
 
-export const paperChat = new Agent(components.agent, {
+async function buildChatContext(
+  ctx: Parameters<NonNullable<Agent["options"]["contextHandler"]>>[0],
+  args: Parameters<NonNullable<Agent["options"]["contextHandler"]>>[1],
+): Promise<ModelMessage[]> {
+  if (!args.threadId) {
+    return args.allMessages;
+  }
+
+  const meta = await ctx.runQuery(
+    internal.chat.threads.getModelForThread,
+    { threadId: args.threadId },
+  );
+  if (!meta) {
+    return args.allMessages;
+  }
+
+  const systemMessages = await ctx.runQuery(
+    internal.chat.context.buildSystemPromptForJob,
+    { jobId: meta.jobId },
+  );
+  return [...systemMessages, ...args.allMessages];
+}
+
+export const paperChat: Agent = new Agent(components.agent, {
   name: "Paper Chat",
   languageModel: defaultLanguageModel,
   contextOptions: {
     recentMessages: 40,
     excludeToolMessages: true,
   },
+  contextHandler: buildChatContext,
   storageOptions: {
     saveMessages: "promptAndOutput",
   },
