@@ -65,3 +65,14 @@ describe("applyInclusionPatch", () => {
     expect(r2.included).toBe(true);
   });
 });
+
+describe("buildBulkPatch", () => {
+  it("with undefined sourceIds targets every row that needs a change", () => {
+    const rows = [row(1, true), row(2, false), row(3, true)];
+    const patch = buildBulkPatch(rows, undefined, false);
+    expect(patch.size).toBe(2);
+    expect(patch.get(cp(1))).toBe(false);
+    expect(patch.get(cp(3))).toBe(false);
+    expect(patch.has(cp(2))).toBe(false);
+  });
+});

@@ -27,9 +27,15 @@ export function applyInclusionPatch<R extends InclusionLike>(
 }
 
 export function buildBulkPatch<R extends InclusionLike>(
-  _rows: ReadonlyArray<R>,
+  rows: ReadonlyArray<R>,
   _sourceIds: ReadonlyArray<Id<"extractionJobSources">> | undefined,
-  _included: boolean,
+  included: boolean,
 ): Map<Id<"chatPapers">, boolean> {
-  return new Map();
+  const patch = new Map<Id<"chatPapers">, boolean>();
+  for (const row of rows) {
+    if (row.included !== included) {
+      patch.set(row.chatPaperId, included);
+    }
+  }
+  return patch;
 }
