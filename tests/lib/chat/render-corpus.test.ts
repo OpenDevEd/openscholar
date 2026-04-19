@@ -48,6 +48,19 @@ describe("renderPaperCorpus", () => {
     expect(out).toContain("<authors>Unknown</authors>");
     expect(out).toContain("<year>Unknown</year>");
   });
+
+  it("escapes XML-special characters in title and authors after shape change", () => {
+    const out = renderPaperCorpus([
+      prompted(1, {
+        title: "Ampersand & <tag>",
+        authors: ['Smith <"D">'],
+      }),
+    ]);
+    expect(out).toContain("&amp;");
+    expect(out).toContain("&lt;tag&gt;");
+    expect(out).toContain("&quot;");
+    expect(out).not.toContain("<tag>Ampersand");
+  });
 });
 
 const cs = (
