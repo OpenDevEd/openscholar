@@ -49,10 +49,20 @@ export const buildSystemPromptForJob = internalQuery({
       .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
       .take(PAPER_LIMIT_MAX * 2);
     const corpusSources = sourceRows.map(toCorpusSource);
-    // Phase A pass-through — all sources included. Phase B (next commit)
-    // replaces this with a live read from chatPapers.by_job_included.
+
+    // Live-read the inclusion layer. Re-evaluated at every stream-start
+    // so mid-conversation toggles take effect on the very next turn
+    // (decision D2). Rows missing from chatPapers (e.g. a chat seeded
+    // before the backfill ran) are implicitly excluded — the send-guard
+    // in messages.ts blocks sends when zero rows pass this filter.
+    const includedRows = await ctx.db
+      .query("chatPapers")
+      .withIndex("by_job_included", (q) =>
+        q.eq("jobId", jobId).eq("included", true),
+      )
+      .take(PAPER_LIMIT_MAX * 2);
     const includedSourceIds = new Set<string>(
-      corpusSources.map((s) => s.sourceId),
+      includedRows.map((r) => r.sourceId),
     );
     const prompted = filterAndPreservePositions(
       corpusSources,
