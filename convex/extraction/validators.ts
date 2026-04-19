@@ -171,7 +171,7 @@ export const extractionJobValidator = v.object({
 
 /**
  * Bucket item input — the single validator for every source-tab payload
- * that reaches startExtraction, saveWorkflowTemplate, or createJobDirect.
+ * that reaches startJob, saveWorkflowTemplate, or createJobDirect.
  * Server round-trip mirrors `lib/bucket/bucketItem.ts::BucketItem` minus
  * the client-only `addedAt` / `status` fields.
  */
@@ -201,7 +201,7 @@ export const bucketItemInputValidator = v.object({
   includeDescendants: v.optional(v.boolean()),
 });
 
-/** User-authored question input for startExtraction / templates. */
+/** User-authored question input for startJob / templates. */
 export const questionInputValidator = v.object({
   key: v.string(),
   question: v.string(),

@@ -130,7 +130,7 @@ export default function JobDetailPage() {
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
   const duplicateJob = useMutation(
-    api.extraction.mutations.duplicateExtraction,
+    api.extraction.mutations.duplicateJob,
   );
 
   const jobDetailsQuery = useProtectedQuery(api.extraction.queries.getJobDetails, {

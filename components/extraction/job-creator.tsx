@@ -71,7 +71,7 @@ export function JobCreator() {
   const bucketOrder = useBucketStore((s) => s.order);
   const bucketItemsMap = useBucketStore((s) => s.items);
   const clearBucket = useBucketStore((s) => s.clear);
-  const startExtraction = useMutation(api.extraction.mutations.startExtraction);
+  const startJob = useMutation(api.extraction.mutations.startJob);
 
   const steps = useMemo(() => [
     { id: 1, title: t("jobDetails"), icon: Layers, description: t("nameYourJob") },
@@ -116,8 +116,9 @@ export function JobCreator() {
 
     setIsSubmitting(true);
     try {
-      const result = await startExtraction({
+      const result = await startJob({
         name: draftJob.name || t("untitledJob"),
+        mode: "extraction",
         bucketItems: readyBucketItems.map(
           (item) => bucketItemToServerInput(item) as never,
         ),
@@ -127,6 +128,7 @@ export function JobCreator() {
           type: q.type,
           description: q.description,
         })),
+        usePdfs: false,
       });
 
       clearDraftJob();

@@ -110,7 +110,7 @@ export function ReportBuilder({
   const deleteView = useMutation(api.extraction.mutations.deleteExtractionSavedView);
   const saveTemplate = useMutation(api.extraction.mutations.saveWorkflowTemplateFromJob);
   const deleteTemplate = useMutation(api.extraction.mutations.deleteWorkflowTemplate);
-  const rerunTemplate = useMutation(api.extraction.mutations.startExtractionFromTemplate);
+  const rerunTemplate = useMutation(api.extraction.mutations.startJobFromTemplate);
   const createReport = useMutation(api.extraction.mutations.createExtractionReportSnapshot);
   const createRunDiff = useMutation(api.extraction.mutations.createExtractionRunDiff);
 

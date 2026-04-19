@@ -12,10 +12,10 @@
  */
 
 export {
-  startExtraction,
+  startJob,
   cancelExtraction,
-  duplicateExtraction,
-  startExtractionFromTemplate,
+  duplicateJob,
+  startJobFromTemplate,
   deleteExtraction,
 } from "./mutations/jobs";
 

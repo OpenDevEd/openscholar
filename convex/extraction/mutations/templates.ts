@@ -1,7 +1,7 @@
 /**
  * Workflow template mutations. Templates are user-owned saved source +
- * question sets that `startExtractionFromTemplate` (jobs.ts) uses to
- * re-launch a job with the same configuration.
+ * question sets that `startJobFromTemplate` (jobs.ts) uses to re-launch
+ * a job with the same configuration.
  */
 
 import { mutation } from "../../_generated/server";

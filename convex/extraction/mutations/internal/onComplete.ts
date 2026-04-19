@@ -212,7 +212,7 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
 /**
  * Workflow-level onComplete for `runExtractionWorkflow`. Wired in at
  * every `workflow.start(...)` call site that launches the extraction
- * workflow (startExtraction, duplicateExtraction, startExtractionFromTemplate,
+ * workflow (startJob, duplicateJob, startJobFromTemplate,
  * and the test fixture).
  *
  * Fires exactly once per workflow, regardless of how it terminates:

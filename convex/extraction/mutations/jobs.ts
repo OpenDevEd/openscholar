@@ -1,10 +1,19 @@
 /**
- * Extraction job lifecycle mutations (public API).
+ * Job lifecycle mutations (public API).
  *
- * startExtraction / duplicateExtraction / startExtractionFromTemplate own
- * the workflow-start path; cancelExtraction / deleteExtraction own the
- * terminal paths. The surviving mutations.ts barrel re-exports all five
- * at `api.extraction.mutations.<fn>`, so external callers don't change.
+ * startJob / duplicateJob / startJobFromTemplate own the job-start path;
+ * cancelExtraction / deleteExtraction own the terminal paths. The
+ * surviving mutations.ts barrel re-exports all five at
+ * `api.extraction.mutations.<fn>`, so external callers don't change.
+ *
+ * startJob is mode-aware: `mode: "extraction"` launches the data
+ * extraction workflow (existing behaviour); `mode: "chat"` schedules
+ * the P9.T10 ensureThreadForJob stub. Validation, auth, rate-limit
+ * and bucket persistence are shared between both branches.
+ *
+ * cancelExtraction and deleteExtraction stay extraction-specific.
+ * cancelExtraction rejects chat jobs up front; deleteExtraction
+ * cascades for both modes (cascade is mode-agnostic).
  */
 
 import { mutation } from "../../_generated/server";
@@ -49,11 +58,229 @@ function deriveSourceType(
   return "manual";
 }
 
-export const startExtraction = mutation({
+export const startJob = mutation({
   args: {
     name: v.string(),
+    mode: v.union(v.literal("extraction"), v.literal("chat")),
     bucketItems: v.array(bucketItemInputValidator),
-    questions: v.array(questionInputValidator),
+    // extraction-only
+    questions: v.optional(v.array(questionInputValidator)),
+    usePdfs: v.optional(v.boolean()),
+    // chat-only
+    chatModelId: v.optional(v.id("models")),
+  },
+  returns: v.object({ jobId: v.id("extractionJobs") }),
+  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+    await requireFeature(ctx, "extraction.enabled");
+    const user = await requireAuth(ctx);
+    if (args.mode === "extraction") {
+      await requireFeature(ctx, "extraction.start", user._id);
+    } else {
+      await requireFeature(ctx, "extraction.chat", user._id);
+    }
+    await rateLimit(ctx, {
+      name: "start-extraction",
+      key: user._id,
+      throws: true,
+    });
+
+    // Shared: bucket validation + source persistence.
+    const deduped = dedupeBucketItems(args.bucketItems);
+    await assertBucketWithinLimits(ctx, user._id, deduped);
+    const sourceType = deriveSourceType(deduped);
+
+    // Extraction-mode question validation happens after bucket validation
+    // so an empty bucket throws first (consistent with the old path).
+    if (args.mode === "extraction") {
+      const qs = args.questions ?? [];
+      if (qs.length > MAX_QUESTIONS_PER_JOB) {
+        throw createError(
+          "VALIDATION_ERROR",
+          `questions exceeds maximum of ${MAX_QUESTIONS_PER_JOB}`,
+        );
+      }
+      for (const q of qs) {
+        if (q.question.length > MAX_QUESTION_TEXT_LENGTH) {
+          throw createError(
+            "VALIDATION_ERROR",
+            `question text exceeds maximum length of ${MAX_QUESTION_TEXT_LENGTH}`,
+          );
+        }
+      }
+    }
+
+    const now = Date.now();
+    const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
+      userId: user._id,
+      mode: args.mode,
+      name: args.name,
+      sourceType,
+      createdAt: now,
+      updatedAt: now,
+      ...(args.mode === "extraction"
+        ? {
+            status: "pending" as const,
+            totalPapers: 0,
+            processedPapers: 0,
+            failedPapers: 0,
+            usePdfs: args.usePdfs ?? false,
+          }
+        : {
+            messageCount: 0,
+            chatModelId: args.chatModelId,
+          }),
+    });
+
+    await writeJobSources(ctx, jobId, deduped);
+
+    if (args.mode === "extraction") {
+      const qs = args.questions ?? [];
+      for (let i = 0; i < qs.length; i++) {
+        await ctx.db.insert("extractionQuestions", {
+          jobId,
+          key: qs[i].key,
+          question: qs[i].question,
+          type: qs[i].type,
+          description: qs[i].description,
+          order: i,
+          createdAt: now,
+        });
+      }
+
+      const workflowId = await workflow.start(
+        ctx,
+        internal.extraction.workflow.runExtractionWorkflow,
+        { jobId },
+        {
+          onComplete:
+            internal.extraction.mutations.internal.onComplete
+              .handleExtractionJobComplete,
+          context: { jobId },
+        },
+      );
+
+      await ctx.db.patch("extractionJobs", jobId, {
+        workflowId,
+        updatedAt: Date.now(),
+      });
+    } else {
+      // Chat branch: schedule thread creation. The scheduler target is the
+      // P9.T10 stub for now — it throws FEATURE_DISABLED. The job row
+      // still lands so the UI has something to navigate to; chat is
+      // gated behind the extraction.chat flag (default OFF) at entry.
+      await ctx.scheduler.runAfter(
+        0,
+        internal.chat.threads.ensureThreadForJob,
+        { jobId },
+      );
+    }
+
+    return { jobId };
+  },
+});
+
+export const duplicateJob = mutation({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.object({ jobId: v.id("extractionJobs") }),
+  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+    await requireFeature(ctx, "extraction.enabled");
+    const user = await requireAuth(ctx);
+
+    const oldJob = await ctx.db.get("extractionJobs", args.jobId);
+    if (!oldJob || oldJob.userId !== user._id) {
+      throw createError("NOT_FOUND", "Job not found");
+    }
+
+    if (oldJob.mode === "chat") {
+      // Chat-mode duplication lands in a follow-up (not V1). Surface as
+      // a clean VALIDATION_ERROR rather than letting the chat branch
+      // fall through with a new thread.
+      throw createError(
+        "VALIDATION_ERROR",
+        "Chat jobs cannot be duplicated yet",
+      );
+    }
+
+    // Extraction-mode duplicate: gate + rate-limit identically to start.
+    await requireFeature(ctx, "extraction.start", user._id);
+    await rateLimit(ctx, {
+      name: "start-extraction",
+      key: user._id,
+      throws: true,
+    });
+
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("asc")
+      .collect();
+
+    // Bound the read by the cross-plan ceiling so a downgrade between
+    // original-job-creation and duplication can't truncate the source set
+    // before validation. The validator below rejects oversized buckets
+    // outright, so honest jobs round-trip and bypass-jobs surface as a
+    // VALIDATION_ERROR instead of silently shrinking.
+    const bucketItems = await readJobSources(
+      ctx,
+      args.jobId,
+      PAPER_LIMIT_MAX * 2,
+    );
+    await assertBucketWithinLimits(ctx, user._id, bucketItems);
+
+    const now = Date.now();
+    const newJobId = await ctx.db.insert("extractionJobs", {
+      userId: user._id,
+      mode: "extraction" as const,
+      name: `${oldJob.name} (Copy)`,
+      sourceType: oldJob.sourceType,
+      status: "pending",
+      totalPapers: 0,
+      processedPapers: 0,
+      failedPapers: 0,
+      usePdfs: oldJob.usePdfs ?? false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await writeJobSources(ctx, newJobId, bucketItems);
+
+    for (const q of questions) {
+      await ctx.db.insert("extractionQuestions", {
+        jobId: newJobId,
+        key: q.key,
+        question: q.question,
+        type: q.type,
+        description: q.description,
+        order: q.order,
+        createdAt: now,
+      });
+    }
+
+    const workflowId = await workflow.start(
+      ctx,
+      internal.extraction.workflow.runExtractionWorkflow,
+      { jobId: newJobId },
+      {
+        onComplete:
+          internal.extraction.mutations.internal.onComplete
+            .handleExtractionJobComplete,
+        context: { jobId: newJobId },
+      },
+    );
+
+    await ctx.db.patch("extractionJobs", newJobId, {
+      workflowId,
+      updatedAt: Date.now(),
+    });
+
+    return { jobId: newJobId };
+  },
+});
+
+export const startJobFromTemplate = mutation({
+  args: {
+    templateId: v.id("extractionWorkflowTemplates"),
+    name: v.optional(v.string()),
   },
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
@@ -66,51 +293,45 @@ export const startExtraction = mutation({
       throws: true,
     });
 
-    if (args.questions.length > MAX_QUESTIONS_PER_JOB) {
-      throw createError(
-        "VALIDATION_ERROR",
-        `questions exceeds maximum of ${MAX_QUESTIONS_PER_JOB}`,
-      );
-    }
-    for (const q of args.questions) {
-      if (q.question.length > MAX_QUESTION_TEXT_LENGTH) {
-        throw createError(
-          "VALIDATION_ERROR",
-          `question text exceeds maximum length of ${MAX_QUESTION_TEXT_LENGTH}`,
-        );
-      }
+    const template = await ctx.db.get(
+      "extractionWorkflowTemplates",
+      args.templateId,
+    );
+    if (!template || template.userId !== user._id) {
+      throw createError("NOT_FOUND", "Template not found");
     }
 
-    // Validate post-dedupe so duplicate rows don't double-count toward
-    // the cap (matches the workflow's actual paper-creation set).
-    const deduped = dedupeBucketItems(args.bucketItems);
+    const deduped = dedupeBucketItems(template.bucketItems);
     await assertBucketWithinLimits(ctx, user._id, deduped);
     const sourceType = deriveSourceType(deduped);
 
+    const now = Date.now();
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       mode: "extraction" as const,
-      name: args.name,
+      name: args.name?.trim() || `${template.name} (Rerun)`,
       sourceType,
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      usePdfs: false,
+      createdAt: now,
+      updatedAt: now,
     });
 
     await writeJobSources(ctx, jobId, deduped);
 
-    for (let i = 0; i < args.questions.length; i++) {
+    for (let i = 0; i < template.questions.length; i++) {
+      const question = template.questions[i];
       await ctx.db.insert("extractionQuestions", {
         jobId,
-        key: args.questions[i].key,
-        question: args.questions[i].question,
-        type: args.questions[i].type,
-        description: args.questions[i].description,
+        key: question.key,
+        question: question.question,
+        type: question.type,
+        description: question.description,
         order: i,
-        createdAt: Date.now(),
+        createdAt: now,
       });
     }
 
@@ -125,7 +346,6 @@ export const startExtraction = mutation({
         context: { jobId },
       },
     );
-
     await ctx.db.patch("extractionJobs", jobId, {
       workflowId,
       updatedAt: Date.now(),
@@ -145,6 +365,13 @@ export const cancelExtraction = mutation({
 
     if (!job || job.userId !== user._id) {
       throw createError("NOT_FOUND", "Job not found");
+    }
+
+    if (job.mode === "chat") {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Chat jobs cannot be cancelled this way",
+      );
     }
 
     if (job.status && ["completed", "failed", "cancelled"].includes(job.status)) {
@@ -202,165 +429,6 @@ export const cancelExtraction = mutation({
   },
 });
 
-export const duplicateExtraction = mutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
-    await requireFeature(ctx, "extraction.start", user._id);
-    await rateLimit(ctx, {
-      name: "start-extraction",
-      key: user._id,
-      throws: true,
-    });
-
-    const oldJob = await ctx.db.get("extractionJobs", args.jobId);
-    if (!oldJob || oldJob.userId !== user._id) {
-      throw createError("NOT_FOUND", "Job not found");
-    }
-
-    const questions = await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .order("asc")
-      .collect();
-
-    // Bound the read by the cross-plan ceiling so a downgrade between
-    // original-job-creation and duplication can't truncate the source set
-    // before validation. The validator below rejects oversized buckets
-    // outright, so honest jobs round-trip and bypass-jobs surface as a
-    // VALIDATION_ERROR instead of silently shrinking.
-    const bucketItems = await readJobSources(
-      ctx,
-      args.jobId,
-      PAPER_LIMIT_MAX * 2,
-    );
-    await assertBucketWithinLimits(ctx, user._id, bucketItems);
-
-    const newJobId = await ctx.db.insert("extractionJobs", {
-      userId: user._id,
-      mode: "extraction" as const,
-      name: `${oldJob.name} (Copy)`,
-      sourceType: oldJob.sourceType,
-      status: "pending",
-      totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    await writeJobSources(ctx, newJobId, bucketItems);
-
-    for (const q of questions) {
-      await ctx.db.insert("extractionQuestions", {
-        jobId: newJobId,
-        key: q.key,
-        question: q.question,
-        type: q.type,
-        description: q.description,
-        order: q.order,
-        createdAt: Date.now(),
-      });
-    }
-
-    const workflowId = await workflow.start(
-      ctx,
-      internal.extraction.workflow.runExtractionWorkflow,
-      { jobId: newJobId },
-      {
-        onComplete:
-          internal.extraction.mutations.internal.onComplete
-            .handleExtractionJobComplete,
-        context: { jobId: newJobId },
-      },
-    );
-
-    await ctx.db.patch("extractionJobs", newJobId, {
-      workflowId,
-      updatedAt: Date.now(),
-    });
-
-    return { jobId: newJobId };
-  },
-});
-
-export const startExtractionFromTemplate = mutation({
-  args: {
-    templateId: v.id("extractionWorkflowTemplates"),
-    name: v.optional(v.string()),
-  },
-  returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
-    await requireFeature(ctx, "extraction.start", user._id);
-    await rateLimit(ctx, {
-      name: "start-extraction",
-      key: user._id,
-      throws: true,
-    });
-    const template = await ctx.db.get(
-      "extractionWorkflowTemplates",
-      args.templateId,
-    );
-    if (!template || template.userId !== user._id) {
-      throw createError("NOT_FOUND", "Template not found");
-    }
-
-    const deduped = dedupeBucketItems(template.bucketItems);
-    await assertBucketWithinLimits(ctx, user._id, deduped);
-    const sourceType = deriveSourceType(deduped);
-
-    const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-      userId: user._id,
-      mode: "extraction" as const,
-      name: args.name?.trim() || `${template.name} (Rerun)`,
-      sourceType,
-      status: "pending",
-      totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    await writeJobSources(ctx, jobId, deduped);
-
-    for (let i = 0; i < template.questions.length; i++) {
-      const question = template.questions[i];
-      await ctx.db.insert("extractionQuestions", {
-        jobId,
-        key: question.key,
-        question: question.question,
-        type: question.type,
-        description: question.description,
-        order: i,
-        createdAt: Date.now(),
-      });
-    }
-
-    const workflowId = await workflow.start(
-      ctx,
-      internal.extraction.workflow.runExtractionWorkflow,
-      { jobId },
-      {
-        onComplete:
-          internal.extraction.mutations.internal.onComplete
-            .handleExtractionJobComplete,
-        context: { jobId },
-      },
-    );
-    await ctx.db.patch("extractionJobs", jobId, {
-      workflowId,
-      updatedAt: Date.now(),
-    });
-
-    return { jobId };
-  },
-});
-
 export const deleteExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
@@ -373,7 +441,8 @@ export const deleteExtraction = mutation({
     }
 
     // Schedule the cascade delete as an independent mutation to avoid
-    // transaction limits on a large job's child tables.
+    // transaction limits on a large job's child tables. Cascade is
+    // mode-agnostic — chat jobs carry extractionJobSources too.
     await ctx.scheduler.runAfter(
       0,
       internal.extraction.mutations.internal.admin.deleteExtractionInternal,
