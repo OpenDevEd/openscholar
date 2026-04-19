@@ -64,7 +64,6 @@ const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
 // at the root of `internal.extraction.queries` until later Task 5
 // commits peel it off.
 const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
-  ["internal", "getPdfExtractionEnabledInternal"],
   ["internal", "getJobInternal"],
   ["internal", "debugRecentPapers"],
   ["internal", "getQuestionsInternal"],

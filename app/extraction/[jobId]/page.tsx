@@ -484,7 +484,7 @@ export default function JobDetailPage() {
                             failed: tJob("statusFailed"),
                             cancelled: tJob("statusCancelled"),
                           } as Record<string, string>
-                        )[job.status] ?? job.status.replace(/_/g, " ")}
+                        )[job.status ?? "pending"] ?? (job.status ?? "pending").replace(/_/g, " ")}
                       </span>
                     </div>
 
@@ -492,7 +492,7 @@ export default function JobDetailPage() {
 
                     <div className="flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>{tJob('papersCount', { count: format.number(job.totalPapers) })}</span>
+                      <span>{tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}</span>
                     </div>
 
                     <span className="w-1 h-1 rounded-full bg-border" />
@@ -599,7 +599,7 @@ export default function JobDetailPage() {
                   {tJob('totalPapers')}
                 </p>
                 <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {format.number(job.totalPapers)}
+                  {format.number(job.totalPapers ?? 0)}
                 </p>
               </div>
 
@@ -812,6 +812,7 @@ export default function JobDetailPage() {
                           onSelectionChange={handleTableSelectionChange}
                           searchQuery={filters.searchQuery}
                           onOpenCitationPanel={openCitationPanel}
+                          usePdfs={job.usePdfs ?? false}
                         />
                       )}
                       {viewMode === 'cards' && (

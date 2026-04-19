@@ -89,7 +89,7 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
       case "status":
         return sorted.sort(
-          (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
+          (a, b) => (STATUS_ORDER[a.status ?? "pending"] ?? 99) - (STATUS_ORDER[b.status ?? "pending"] ?? 99)
         );
       case "recent":
       default:

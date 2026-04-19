@@ -26,15 +26,6 @@ import {
   paperStatusValidator,
 } from "../validators";
 
-export const getPdfExtractionEnabledInternal = internalQuery({
-  args: {},
-  returns: v.boolean(),
-  handler: async (ctx) => {
-    const pdfFlag = await getFlag(ctx, "extraction.pdf");
-    return pdfFlag?.enabled ?? true;
-  },
-});
-
 export const getJobInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.union(v.null(), extractionJobValidator),
@@ -63,9 +54,11 @@ export const getJobSourcesInternal = internalQuery({
   },
 });
 
-// Combined read so workpool actions fetch job + pdfEnabled in one
-// round trip instead of two at the top of downloadAndIndexPdfAction and
-// waitAndExtractAction.
+// Combined read so workpool actions fetch job + effective pdfEnabled in
+// one round trip. `pdfEnabled` is the EFFECTIVE flag: both the admin
+// capability gate (`extraction.pdf`) AND the per-job opt-in
+// (`job.usePdfs`) must be true. This keeps the AND logic in one place
+// so every caller stays consistent.
 export const getJobAndFlagsInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
@@ -77,9 +70,11 @@ export const getJobAndFlagsInternal = internalQuery({
       ctx.db.get("extractionJobs", args.jobId),
       getFlag(ctx, "extraction.pdf"),
     ]);
+    const flagOn = pdfFlag?.enabled ?? true;
+    const jobOptedIn = job?.usePdfs ?? false;
     return {
       job,
-      pdfEnabled: pdfFlag?.enabled ?? true,
+      pdfEnabled: flagOn && jobOptedIn,
     };
   },
 });

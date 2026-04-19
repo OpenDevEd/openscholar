@@ -56,9 +56,9 @@ export const runExtractionWorkflow = workflow.define({
 
     console.log(`[Workflow] Loaded ${questions.length} questions`);
 
-    const pdfEnabledEarly = await step.runQuery(
-      internal.extraction.queries.internal.getPdfExtractionEnabledInternal,
-      {}
+    const { pdfEnabled: pdfEnabledEarly } = await step.runQuery(
+      internal.extraction.queries.internal.getJobAndFlagsInternal,
+      { jobId },
     );
     await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
       jobId,
@@ -218,9 +218,9 @@ export const runExtractionWorkflow = workflow.define({
       (paper) => paper.processable !== false
     ).length;
 
-    const pdfEnabled = await step.runQuery(
-      internal.extraction.queries.internal.getPdfExtractionEnabledInternal,
-      {}
+    const { pdfEnabled } = await step.runQuery(
+      internal.extraction.queries.internal.getJobAndFlagsInternal,
+      { jobId },
     );
 
     await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {

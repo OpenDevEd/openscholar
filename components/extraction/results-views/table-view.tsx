@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import type { ExtractionResultWithReview } from "@/lib/extraction/types";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
-import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import {
   getAllCitationLocations,
   getCitationStatus,
@@ -40,6 +39,7 @@ interface TableViewProps {
   onSelectionChange: (selectedIds: Set<string>) => void;
   searchQuery?: string;
   onOpenCitationPanel: (payload: CitationPanelPayload) => void;
+  usePdfs: boolean;
 }
 
 export const TableView = memo(function TableView({
@@ -49,10 +49,11 @@ export const TableView = memo(function TableView({
   onSelectionChange,
   searchQuery = '',
   onOpenCitationPanel,
+  usePdfs,
 }: TableViewProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const pdfEnabled = useFeatureFlag("extraction.pdf");
+  const pdfEnabled = usePdfs;
   const allSelected = papers.length > 0 && papers.every(p => selectedIds.has(p._id));
   const someSelected = papers.some(p => selectedIds.has(p._id)) && !allSelected;
 

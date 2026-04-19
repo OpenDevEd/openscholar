@@ -63,9 +63,12 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
 
   const getStatusLabel = (status: string) =>
     statusLabelMap[status] ?? status.replace(/_/g, " ");
+  const status = job.status ?? "pending";
+  const totalPapers = job.totalPapers ?? 0;
+  const processedPapers = job.processedPapers ?? 0;
   const progressPercentage =
-    job.totalPapers > 0
-      ? Math.round((job.processedPapers / job.totalPapers) * 100)
+    totalPapers > 0
+      ? Math.round((processedPapers / totalPapers) * 100)
       : 0;
 
   // list-simple: Single compact row
@@ -85,7 +88,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           )}
         >
           {/* Status dot */}
-          <span className={cn("w-2 h-2 rounded-full shrink-0", getStatusDotColor(job.status))} />
+          <span className={cn("w-2 h-2 rounded-full shrink-0", getStatusDotColor(status))} />
 
           {/* Job name */}
           <span className="flex-1 text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
@@ -94,7 +97,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
 
           {/* Papers count */}
           <span className="text-xs text-muted-foreground shrink-0">
-            {t("paperProgress", { processed: job.processedPapers, total: job.totalPapers })}
+            {t("paperProgress", { processed: processedPapers, total: totalPapers })}
           </span>
 
           {/* Time ago */}
@@ -125,7 +128,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           <div className="p-4">
             <div className="flex items-start gap-3">
               {/* Status dot */}
-              <span className={cn("w-2 h-2 rounded-full shrink-0 mt-2", getStatusDotColor(job.status))} />
+              <span className={cn("w-2 h-2 rounded-full shrink-0 mt-2", getStatusDotColor(status))} />
 
               <div className="flex-1 min-w-0 space-y-2">
                 {/* Job name */}
@@ -146,25 +149,25 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
                     initial={{ width: 0 }}
                     animate={{ width: `${progressPercentage}%` }}
                     transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    className={cn("h-full rounded-full", getStatusBarColor(job.status))}
+                    className={cn("h-full rounded-full", getStatusBarColor(status))}
                   />
                 </div>
 
                 {/* Metadata row */}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className={cn("text-xs font-medium capitalize", {
-                    "text-emerald-600 dark:text-emerald-400": job.status === "completed",
-                    "text-destructive": job.status === "failed",
-                    "text-primary": job.status !== "completed" && job.status !== "failed" && job.status !== "cancelled",
+                    "text-emerald-600 dark:text-emerald-400": status === "completed",
+                    "text-destructive": status === "failed",
+                    "text-primary": status !== "completed" && status !== "failed" && status !== "cancelled",
                   })}>
-                    {getStatusLabel(job.status)}
+                    {getStatusLabel(status)}
                   </span>
 
                   <span className="w-1 h-1 rounded-full bg-border" />
 
                   <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5" />
-                    <span>{t("paperProgress", { processed: job.processedPapers, total: job.totalPapers })}</span>
+                    <span>{t("paperProgress", { processed: processedPapers, total: totalPapers })}</span>
                   </div>
 
                   <span className="w-1 h-1 rounded-full bg-border" />
@@ -200,7 +203,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         )}
       >
         {/* Colored top stripe */}
-        <div className={cn("h-[3px]", getStatusStripeColor(job.status))} />
+        <div className={cn("h-[3px]", getStatusStripeColor(status))} />
 
         {/* Content */}
         <div className={cn("flex-1 flex flex-col", isCompact ? "p-3" : "p-4")}>
@@ -228,7 +231,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
               initial={{ width: 0 }}
               animate={{ width: `${progressPercentage}%` }}
               transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className={cn("h-full rounded-full", getStatusBarColor(job.status))}
+              className={cn("h-full rounded-full", getStatusBarColor(status))}
             />
           </div>
 
@@ -236,7 +239,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <FileText className="w-3 h-3" />
-              <span>{t("paperProgress", { processed: job.processedPapers, total: job.totalPapers })}</span>
+              <span>{t("paperProgress", { processed: processedPapers, total: totalPapers })}</span>
             </div>
             <span className="text-xs text-muted-foreground">
               {format.relativeTime(new Date(job.createdAt), now)}
