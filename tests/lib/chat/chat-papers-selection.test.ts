@@ -90,4 +90,10 @@ describe("buildBulkPatch", () => {
     expect(patch.get(cp(3))).toBe(false);
     expect(patch.has(cp(2))).toBe(false);
   });
+
+  it("with an empty sourceIds array produces an empty patch (distinct from undefined)", () => {
+    const rows = [row(1, true), row(2, true)];
+    const patch = buildBulkPatch(rows, [], false);
+    expect(patch.size).toBe(0);
+  });
 });
