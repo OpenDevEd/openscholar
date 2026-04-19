@@ -46,5 +46,8 @@ export function scoreSource(row: ScorerInput, query: string): SearchMatch {
   if (row.doi !== null && row.doi.toLowerCase() === q) {
     return { score: 1, field: "doi" };
   }
+  if (row.openalexId !== null && row.openalexId.toLowerCase() === q) {
+    return { score: 1, field: "openalexId" };
+  }
   return { score: 0, field: null };
 }

@@ -34,4 +34,15 @@ describe("scoreSource", () => {
       field: "doi",
     });
   });
+
+  it("R3: OpenAlex ID exact-match returns top score with field='openalexId'", () => {
+    expect(scoreSource(baseRow, "W1234567890")).toEqual({
+      score: 1,
+      field: "openalexId",
+    });
+    expect(scoreSource(baseRow, "w1234567890")).toEqual({
+      score: 1,
+      field: "openalexId",
+    });
+  });
 });
