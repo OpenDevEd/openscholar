@@ -65,6 +65,21 @@ export const PAPER_PULL_DEFAULT_BY_PLAN: Record<SubscriptionPlan, number> = {
   enterprise: 200,
 };
 
+/**
+ * Per-user concurrent in-flight chat generations. V1 is 3 everywhere;
+ * subscription-tier differentiation is a one-line change later.
+ */
+export const CHAT_CONCURRENCY_LIMIT_BY_PLAN: Record<SubscriptionPlan, number> = {
+  free: 3,
+  go: 3,
+  pro: 3,
+  enterprise: 3,
+};
+
+export const CHAT_CONCURRENCY_LIMIT_MAX = Math.max(
+  ...Object.values(CHAT_CONCURRENCY_LIMIT_BY_PLAN),
+);
+
 async function resolvePlan(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
@@ -130,6 +145,22 @@ export const getPaperPullDefaultForUser = internalQuery({
   returns: v.number(),
   handler: async (ctx, args): Promise<number> => {
     return await getPaperPullDefault(ctx, args.userId);
+  },
+});
+
+export async function getChatConcurrencyLimit(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+): Promise<number> {
+  const plan = await resolvePlan(ctx, userId);
+  return CHAT_CONCURRENCY_LIMIT_BY_PLAN[plan];
+}
+
+export const getChatConcurrencyLimitForUser = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.number(),
+  handler: async (ctx, args): Promise<number> => {
+    return await getChatConcurrencyLimit(ctx, args.userId);
   },
 });
 

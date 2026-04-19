@@ -50,6 +50,40 @@ export const getServedByModelId = internalQuery({
 });
 
 /**
+ * Internal query: resolve a models row by its Convex _id, returning
+ * the fields the chat pipeline needs at per-turn model resolution.
+ * Used by convex/chat/provider.ts::resolveOpenRouterModel.
+ */
+export const getById = internalQuery({
+  args: { modelId: v.id("models") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("models"),
+      modelId: v.string(),
+      name: v.string(),
+      provider: v.string(),
+      isServed: v.boolean(),
+      inputPricePerMillion: v.number(),
+      outputPricePerMillion: v.number(),
+    }),
+  ),
+  handler: async (ctx, { modelId }) => {
+    const row = await ctx.db.get(modelId);
+    if (!row) return null;
+    return {
+      _id: row._id,
+      modelId: row.modelId,
+      name: row.name,
+      provider: row.provider,
+      isServed: row.isServed,
+      inputPricePerMillion: row.inputPricePerMillion,
+      outputPricePerMillion: row.outputPricePerMillion,
+    };
+  },
+});
+
+/**
  * Internal query: get pricing for a model by ID.
  * Used by the credit billing system.
  */

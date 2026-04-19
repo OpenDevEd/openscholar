@@ -63,4 +63,13 @@ crons.interval(
   { maxAgeHours: 24 * 30 },
 );
 
+// 5-minute sweep of chat threads where a generate died mid-stream and
+// left isGenerating === true. Safety net only — the action's try/finally
+// clears the lock on every normal path.
+crons.interval(
+  "cleanup zombie chat locks",
+  { minutes: 5 },
+  internal.chat.concurrency.cleanupZombieChatLocks,
+);
+
 export default crons;
