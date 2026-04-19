@@ -483,6 +483,8 @@
     "modelPickerLabel": "チャットモデル",
     "modelPickerPlaceholder": "モデルを選択",
     "pleaseSelectModel": "チャットモデルを選択してください",
+    "abstractMissingTitle": "一部の論文に抄録がありません",
+    "abstractMissingDescription": "選択した{total}件の論文のうち{missing}件に抄録がありません。これらの論文についてはチャットの回答が役に立たない場合があります。",
     "selectPapers": "論文を選択",
     "chooseFromHistory": "履歴から選択",
     "defineQuestions": "質問を定義",

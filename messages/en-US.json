@@ -483,6 +483,8 @@
     "modelPickerLabel": "Chat model",
     "modelPickerPlaceholder": "Select a model",
     "pleaseSelectModel": "Please select a chat model",
+    "abstractMissingTitle": "Some papers are missing an abstract",
+    "abstractMissingDescription": "{missing} of {total} selected papers have no abstract. Chat answers may be less useful for those papers.",
     "selectPapers": "Select Papers",
     "chooseFromHistory": "Choose from history",
     "defineQuestions": "Define Questions",

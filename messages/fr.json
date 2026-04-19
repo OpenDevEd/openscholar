@@ -483,6 +483,8 @@
     "modelPickerLabel": "Modèle de conversation",
     "modelPickerPlaceholder": "Sélectionner un modèle",
     "pleaseSelectModel": "Veuillez sélectionner un modèle de conversation",
+    "abstractMissingTitle": "Certains articles n'ont pas de résumé",
+    "abstractMissingDescription": "{missing} des {total} articles sélectionnés n'ont pas de résumé. Les réponses de la conversation peuvent être moins utiles pour ces articles.",
     "selectPapers": "Sélectionner des articles",
     "chooseFromHistory": "Choisir dans l'historique",
     "defineQuestions": "Définir les questions",

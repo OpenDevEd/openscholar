@@ -31,6 +31,7 @@ import { BucketDrawer } from "./bucket/bucket-drawer";
 import { ModeSelector } from "./mode-selector";
 import { PdfToggle } from "./pdf-toggle";
 import { ModelPicker } from "./model-picker";
+import { AbstractMissingBanner } from "./chat/abstract-missing-banner";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -386,6 +387,7 @@ export function JobCreator() {
                  <SourceSummary />
                 </motion.div>
 
+                 {draftJob.mode === "chat" && <AbstractMissingBanner />}
                  <SourceSelector />
               </div>
             )}

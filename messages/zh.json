@@ -483,6 +483,8 @@
     "modelPickerLabel": "对话模型",
     "modelPickerPlaceholder": "选择一个模型",
     "pleaseSelectModel": "请选择一个对话模型",
+    "abstractMissingTitle": "部分论文缺少摘要",
+    "abstractMissingDescription": "已选择的 {total} 篇论文中有 {missing} 篇没有摘要。对于这些论文，对话回答可能帮助有限。",
     "selectPapers": "选择论文",
     "chooseFromHistory": "从历史记录中选择",
     "defineQuestions": "定义问题",

@@ -483,6 +483,8 @@
     "modelPickerLabel": "चैट मॉडल",
     "modelPickerPlaceholder": "एक मॉडल चुनें",
     "pleaseSelectModel": "कृपया एक चैट मॉडल चुनें",
+    "abstractMissingTitle": "कुछ पेपरों में सार (abstract) नहीं है",
+    "abstractMissingDescription": "चयनित {total} पेपरों में से {missing} में कोई सार नहीं है। उन पेपरों के लिए चैट उत्तर कम उपयोगी हो सकते हैं।",
     "selectPapers": "पेपर चुनें",
     "chooseFromHistory": "इतिहास से चुनें",
     "defineQuestions": "प्रश्न परिभाषित करें",
