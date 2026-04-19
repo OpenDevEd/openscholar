@@ -1,7 +1,9 @@
 "use client";
 
-import { ExternalLink, FileText, Library } from "lucide-react";
+import { ExternalLink, FileText, Library, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useMutation } from "convex/react";
+import { toast } from "sonner";
 
 import {
   InlineCitationCard,
@@ -10,44 +12,22 @@ import {
 } from "@/components/ai-elements/inline-citation";
 import { Button } from "@/components/ui/button";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import {
+  classifyCitationState,
+  type CitationState,
+} from "@/lib/chat/citation-state";
+import { applyInclusionPatch } from "@/lib/chat/chat-papers-selection";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import { cn } from "@/lib/utils";
 
-/**
- * Inline citation pill — tiny, primary-tinted chip carrying just
- * the paper number. Sized so it sits on the baseline without
- * disrupting prose line-height. Adjacent pills in combined-bracket
- * form nestle together via the space-x rhythm in the parent.
- */
-const PILL_CLASS = cn(
-  "mx-0.5 inline-flex h-[1.1rem] min-w-[1.1rem] items-center justify-center",
-  "rounded-full px-1 text-[0.72em] font-semibold leading-none",
-  "bg-primary/10 text-primary align-baseline",
-  "transition-colors no-underline",
-  "hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-);
-
-const PILL_UNRESOLVED_CLASS = cn(
-  "mx-0.5 inline-flex h-[1.1rem] min-w-[1.1rem] items-center justify-center",
-  "rounded-full px-1 text-[0.72em] font-semibold leading-none",
-  "bg-muted text-muted-foreground/80 align-baseline",
-);
-
-/**
- * Resolved paper shape the citation renderer consumes. Narrowed from
- * the `extractionJobSources` row to only the fields the citation card
- * displays — the sidebar resolver passes a superset and it's fine.
- */
-export interface PaperCitationTarget extends ResolvablePaper {
-  _id?: string;
-  openalexId?: string;
-  doi?: string;
-  pdfUrl?: string;
-}
+export type PaperCitationTarget = ResolvablePaper;
 
 interface PaperCitationProps {
   index: number;
-  paper: PaperCitationTarget | null;
+  paper: ResolvablePaper | null;
+  jobId: Id<"extractionJobs">;
 }
 
 interface PaperLinks {
@@ -60,12 +40,43 @@ interface PaperLinks {
 }
 
 /**
+ * Pill chrome keyed on `data-citation-state`. Included is the primary-
+ * tinted chip that users see most of the time; excluded is muted with a
+ * dashed border — still clickable so the link and metadata still work,
+ * just visually honest that the LLM won't see this paper on the next
+ * turn; unresolved is the grey `[N?]` chip for rare data-integrity
+ * cases (paper gone from the live list altogether).
+ */
+const BASE_PILL = cn(
+  "mx-0.5 inline-flex h-[1.1rem] min-w-[1.1rem] items-center justify-center",
+  "rounded-full px-1 text-[0.72em] font-semibold leading-none",
+  "align-baseline transition-colors no-underline",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+);
+
+const PILL_CLASS_BY_STATE: Record<CitationState, string> = {
+  included: cn(
+    BASE_PILL,
+    "bg-primary/10 text-primary hover:bg-primary/20",
+  ),
+  excluded: cn(
+    BASE_PILL,
+    "border border-dashed border-muted-foreground/40 bg-muted/40 text-muted-foreground",
+    "hover:bg-muted/60 hover:text-foreground",
+  ),
+  unresolved: cn(
+    BASE_PILL,
+    "bg-muted text-muted-foreground/80",
+  ),
+};
+
+/**
  * Resolve every external link the citation card may surface. OpenAlex
  * is always shown when we have an openalexId (the user asked for it
  * as the guaranteed baseline). DOI and PDF are additive — shown when
  * present, hidden when not, matching the paper-card button pattern.
  */
-function resolvePaperLinks(paper: PaperCitationTarget): PaperLinks {
+function resolvePaperLinks(paper: ResolvablePaper): PaperLinks {
   const openalexUrl = paper.openalexId
     ? `https://openalex.org/${paper.openalexId}`
     : undefined;
@@ -88,17 +99,39 @@ function resolvePaperLinks(paper: PaperCitationTarget): PaperLinks {
   return { openalexUrl, doiUrl, pdfUrl, shortDoi, primary };
 }
 
-export function PaperCitation({ index, paper }: PaperCitationProps) {
+export function PaperCitation({ index, paper, jobId }: PaperCitationProps) {
   const t = useTranslations("extraction");
   const tCommon = useTranslations("common");
   const tAcc = useTranslations("accessibility");
 
-  if (!paper) {
+  const reinclude = useMutation(
+    api.chat.chatPapers.toggleChatPaper,
+  ).withOptimisticUpdate((localStore, args) => {
+    const current = localStore.getQuery(
+      api.chat.chatPapers.listChatSourcesWithInclusion,
+      { jobId },
+    );
+    if (!current) return;
+    localStore.setQuery(
+      api.chat.chatPapers.listChatSourcesWithInclusion,
+      { jobId },
+      applyInclusionPatch(
+        current,
+        new Map([[args.chatPaperId, args.included]]),
+      ),
+    );
+  });
+
+  const state = classifyCitationState(paper);
+
+  if (state === "unresolved") {
     return (
       <span
-        className={PILL_UNRESOLVED_CLASS}
+        className={PILL_CLASS_BY_STATE.unresolved}
+        data-citation-state="unresolved"
         data-paper-index={index}
         data-paper-resolved="false"
+        aria-label={t("chatCitationUnresolved", { index })}
         title={`${index}?`}
       >
         {index}?
@@ -106,20 +139,36 @@ export function PaperCitation({ index, paper }: PaperCitationProps) {
     );
   }
 
+  // Non-null by classifyCitationState contract.
+  const p = paper!;
   const authorsStr =
-    paper.authors.length > 0 ? paper.authors.join(", ") : t("unknownAuthors");
-  const yearStr = paper.year != null ? String(paper.year) : "—";
+    p.authors.length > 0 ? p.authors.join(", ") : t("unknownAuthors");
+  const yearStr = p.year != null ? String(p.year) : "—";
   const description = `${authorsStr} · ${yearStr}`;
   const { openalexUrl, doiUrl, pdfUrl, shortDoi, primary } =
-    resolvePaperLinks(paper);
-  const ariaLabel = t("chatCitationOpen", { title: paper.title });
+    resolvePaperLinks(p);
+  const ariaLabel =
+    state === "excluded"
+      ? t("chatCitationExcluded", { title: p.title })
+      : t("chatCitationOpen", { title: p.title });
 
   const sharedData = {
-    "data-paper-id": paper._id ?? "",
+    "data-citation-state": state,
+    "data-paper-id": p.sourceId,
     "data-paper-index": index,
     "data-paper-resolved": "true",
     "data-paper-url": primary ?? "",
   } as const;
+
+  const pillClass = PILL_CLASS_BY_STATE[state];
+
+  const handleReinclude = async () => {
+    try {
+      await reinclude({ chatPaperId: p.chatPaperId, included: true });
+    } catch {
+      toast.error(t("chatCitationReincludeError"));
+    }
+  };
 
   return (
     <InlineCitationCard openDelay={120} closeDelay={160}>
@@ -130,15 +179,19 @@ export function PaperCitation({ index, paper }: PaperCitationProps) {
             target="_blank"
             rel="noreferrer"
             aria-label={ariaLabel}
-            className={PILL_CLASS}
+            className={pillClass}
             {...sharedData}
           >
             {index}
           </a>
         ) : (
           <span
-            className={PILL_CLASS}
-            aria-label={t("chatCitationPreview", { title: paper.title })}
+            className={pillClass}
+            aria-label={
+              state === "excluded"
+                ? t("chatCitationExcluded", { title: p.title })
+                : t("chatCitationPreview", { title: p.title })
+            }
             role="button"
             tabIndex={0}
             {...sharedData}
@@ -149,7 +202,7 @@ export function PaperCitation({ index, paper }: PaperCitationProps) {
       </HoverCardTrigger>
       <InlineCitationCardBody>
         <div className="space-y-3 p-3">
-          <InlineCitationSource title={paper.title} description={description} />
+          <InlineCitationSource title={p.title} description={description} />
           {(openalexUrl || doiUrl || pdfUrl) && (
             <div className="flex flex-wrap items-center gap-1.5">
               {pdfUrl ? (
@@ -219,6 +272,21 @@ export function PaperCitation({ index, paper }: PaperCitationProps) {
               ) : null}
             </div>
           )}
+          {state === "excluded" ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 w-full px-2"
+              data-reinclude-action
+              onClick={handleReinclude}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="text-xs">
+                {t("chatCitationReincludeForFutureTurns")}
+              </span>
+            </Button>
+          ) : null}
         </div>
       </InlineCitationCardBody>
     </InlineCitationCard>

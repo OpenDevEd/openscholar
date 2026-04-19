@@ -26,7 +26,7 @@ import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MessageActions } from "./message-actions";
-import { PaperCitation, type PaperCitationTarget } from "./paper-citation";
+import { PaperCitation } from "./paper-citation";
 import { SuggestionChips } from "./suggestion-chips";
 import { StreamingCursor } from "./streaming-cursor";
 import { TypingDots } from "./typing-dots";
@@ -42,7 +42,7 @@ interface MessageListProps {
   chatModelId: Id<"models"> | null;
 }
 
-export type ResolvedPaper = PaperCitationTarget & { _id: string };
+export type ResolvedPaper = ResolvablePaper;
 
 /**
  * Our `listThreadMessages` query enriches each UIMessage with an
@@ -54,6 +54,7 @@ type ChatUIMessage = UIMessage & { error?: string };
 function splitTextForChips(
   text: string,
   papers: ReadonlyArray<ResolvedPaper>,
+  jobId: Id<"extractionJobs">,
 ): React.ReactNode[] {
   const groups = resolvePaperReferences<ResolvedPaper>(text, papers);
   if (groups.length === 0) return [text];
@@ -72,6 +73,7 @@ function splitTextForChips(
           key={`cite-${g}-${c}-${citation.index}`}
           index={citation.index}
           paper={citation.paper}
+          jobId={jobId}
         />,
       );
     }
@@ -96,21 +98,26 @@ function splitTextForChips(
 function renderWithCitations(
   node: ReactNode,
   papers: ReadonlyArray<ResolvedPaper>,
+  jobId: Id<"extractionJobs">,
 ): ReactNode {
   if (node == null || typeof node === "boolean") return node;
   if (typeof node === "string") {
-    return splitTextForChips(node, papers);
+    return splitTextForChips(node, papers, jobId);
   }
   if (typeof node === "number") return node;
   if (Array.isArray(node)) {
     return node.map((child, i) => (
-      <Fragment key={i}>{renderWithCitations(child, papers)}</Fragment>
+      <Fragment key={i}>{renderWithCitations(child, papers, jobId)}</Fragment>
     ));
   }
   if (isValidElement<{ children?: ReactNode }>(node)) {
     const { children } = node.props;
     if (children == null) return node;
-    return cloneElement(node, undefined, renderWithCitations(children, papers));
+    return cloneElement(
+      node,
+      undefined,
+      renderWithCitations(children, papers, jobId),
+    );
   }
   return node;
 }
@@ -143,6 +150,7 @@ type CitationTag = (typeof CITATION_TAGS)[number];
 
 export function buildStreamdownComponents(
   papers: ReadonlyArray<ResolvedPaper>,
+  jobId: Id<"extractionJobs">,
 ) {
   const components: Record<
     string,
@@ -151,7 +159,9 @@ export function buildStreamdownComponents(
   for (const tag of CITATION_TAGS) {
     components[tag] = (props: { children?: ReactNode }) => {
       const rendered = Children.toArray(props.children).map((child, i) => (
-        <Fragment key={i}>{renderWithCitations(child, papers)}</Fragment>
+        <Fragment key={i}>
+          {renderWithCitations(child, papers, jobId)}
+        </Fragment>
       ));
       return createElement(tag, null, rendered);
     };
@@ -176,6 +186,7 @@ interface MessageRowProps {
   isLastAssistant: boolean;
   isFirstInGroup: boolean;
   threadId: string;
+  jobId: Id<"extractionJobs">;
   chatModelId: Id<"models"> | null;
   onRetry: () => void;
   reduceMotion: boolean;
@@ -187,6 +198,7 @@ const MessageRow = memo(function MessageRow({
   isLastAssistant,
   isFirstInGroup,
   threadId,
+  jobId,
   chatModelId,
   onRetry,
   reduceMotion,
@@ -198,8 +210,8 @@ const MessageRow = memo(function MessageRow({
   const isUser = message.role === "user";
 
   const streamdownComponents = useMemo(
-    () => buildStreamdownComponents(papers),
-    [papers],
+    () => buildStreamdownComponents(papers, jobId),
+    [papers, jobId],
   );
 
   const rawError = message.error;
@@ -294,28 +306,20 @@ export function MessageList({
   const isLoadingFirstPage =
     status === "LoadingFirstPage" && results.length === 0;
 
-  const sourcesQuery = useQuery(api.extraction.queries.getJobSources, {
-    jobId,
-  });
+  const chatSources = useQuery(
+    api.chat.chatPapers.listChatSourcesWithInclusion,
+    { jobId },
+  );
 
   const papers = useMemo<ResolvedPaper[]>(() => {
-    if (!sourcesQuery || sourcesQuery.status !== "ok") return [];
-    const rows = [...sourcesQuery.sources];
-    const withIds: typeof rows = [];
-    const withoutIds: typeof rows = [];
-    for (const row of rows) {
-      if (row.openalexId) withIds.push(row);
-      else withoutIds.push(row);
-    }
-    withIds.sort((a, b) =>
-      a.openalexId! < b.openalexId!
-        ? -1
-        : a.openalexId! > b.openalexId!
-          ? 1
-          : 0,
-    );
-    return [...withIds, ...withoutIds].map((row) => ({
-      _id: row._id,
+    if (!chatSources) return [];
+    // The query already returns rows sorted by `position` — the same
+    // field the resolver looks up — so no re-sort here. Every field
+    // maps 1:1 from ChatSourceRow to ResolvablePaper.
+    return chatSources.map((row) => ({
+      sourceId: row.sourceId,
+      chatPaperId: row.chatPaperId,
+      position: row.position,
       title: row.title,
       authors: row.authors,
       year: row.year,
@@ -323,8 +327,9 @@ export function MessageList({
       openalexId: row.openalexId,
       doi: row.doi,
       pdfUrl: row.pdfUrl,
+      included: row.included,
     }));
-  }, [sourcesQuery]);
+  }, [chatSources]);
 
   const lastAssistantId = useMemo(() => {
     for (let i = results.length - 1; i >= 0; i--) {
@@ -400,6 +405,7 @@ export function MessageList({
                     isLastAssistant={message.id === lastAssistantId}
                     isFirstInGroup={isFirstInGroup}
                     threadId={threadId}
+                    jobId={jobId}
                     chatModelId={chatModelId}
                     onRetry={handleRetry}
                     reduceMotion={reduceMotion}
