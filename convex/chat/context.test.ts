@@ -123,6 +123,19 @@ describe("buildSystemPromptForJob", () => {
     expect(rules.content.toLowerCase()).toMatch(/do not invent/);
   });
 
+  it("warns the model that paper ids are stable anchors and may contain gaps", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithSources(t, ["Alpha"]);
+    const [rules] = await t.query(
+      internal.chat.context.buildSystemPromptForJob,
+      { jobId },
+    );
+    const lowered = rules.content.toLowerCase();
+    expect(lowered).toContain("stable anchors");
+    expect(lowered).toContain("gaps");
+    expect(rules.content).toMatch(/\[P1\],\s*\[P4\],\s*\[P7\]/);
+  });
+
   it("excludes excluded papers from the prompt, keeping stable positional ids", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithSources(

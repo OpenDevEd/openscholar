@@ -82,6 +82,7 @@ export const buildSystemPromptForJob = internalQuery({
           "- Place the citation immediately after the claim it supports.\n" +
           "- Cite every paper whose content you use.\n" +
           "- Do not invent paper ids. Only cite ids that appear in the <papers> list below.\n" +
+          "- Paper ids are stable anchors assigned once per chat. The visible list may contain gaps (e.g. only [P1], [P4], [P7] appear) when the user has excluded sources from context — always cite the exact id shown in each <paper id=\"...\"> attribute and never cite ids that are absent from the visible list.\n" +
           "- If an answer is not supported by the provided papers, say so explicitly and do not cite.\n" +
           "\n" +
           'Examples of valid citations: "This claim is well established [P2]." · "Multiple authors report similar findings [P1, P4, P9]."',
