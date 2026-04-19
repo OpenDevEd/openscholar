@@ -68,4 +68,15 @@ describe("sortByComparator", () => {
     const sorted = sortByComparator(rows, "inContext", "desc");
     expect(sorted.map((r) => r.position)).toEqual([2, 4, 1, 3]);
   });
+
+  it("R7: sortByComparator does not mutate the input array", () => {
+    const rows = [
+      row({ position: 3, title: "z" }),
+      row({ position: 1, title: "a" }),
+      row({ position: 2, title: "m" }),
+    ];
+    const snapshot = rows.map((r) => r.position);
+    sortByComparator(rows, "title", "asc");
+    expect(rows.map((r) => r.position)).toEqual(snapshot);
+  });
 });
