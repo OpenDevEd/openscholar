@@ -139,6 +139,24 @@ describe("filterAndPreservePositions", () => {
     expect(out).toHaveLength(1);
     expect(out[0].promptId).toBe("P7");
   });
+
+  it("does not mutate the input array or its element identities", () => {
+    // Purity guard: calling the helper must not reorder or rewrite the
+    // caller's source array. Two back-to-back calls must return
+    // equivalent outputs.
+    const sources: ReadonlyArray<CorpusSource> = Object.freeze([
+      cs("s3", 3),
+      cs("s1", 1),
+      cs("s2", 2),
+    ]);
+    const before = sources.map((s) => s);
+    const included = new Set(["s1", "s2", "s3"]);
+    const a = filterAndPreservePositions(sources, included);
+    const b = filterAndPreservePositions(sources, included);
+    expect(sources).toEqual(before);
+    expect(sources[0].sourceId).toBe("s3");
+    expect(a).toEqual(b);
+  });
 });
 
 describe("sortPapersForCorpus", () => {
