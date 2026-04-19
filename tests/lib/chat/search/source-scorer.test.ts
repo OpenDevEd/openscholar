@@ -58,4 +58,10 @@ describe("scoreSource", () => {
     expect(result.field).toBe("authors");
     expect(result.score).toBeGreaterThan(0);
   });
+
+  it("R6: year match (string of the row's year) returns field='year'", () => {
+    const result = scoreSource(baseRow, "2024");
+    expect(result.field).toBe("year");
+    expect(result.score).toBeGreaterThan(0);
+  });
 });
