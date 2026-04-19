@@ -18,6 +18,7 @@ import type * as apiKeys_queries from "../apiKeys/queries.js";
 import type * as chat_adminBackfill from "../chat/adminBackfill.js";
 import type * as chat_agent from "../chat/agent.js";
 import type * as chat_auth from "../chat/auth.js";
+import type * as chat_chatPapers from "../chat/chatPapers.js";
 import type * as chat_chatPapersDuplicate from "../chat/chatPapersDuplicate.js";
 import type * as chat_chatPapersSeed from "../chat/chatPapersSeed.js";
 import type * as chat_concurrency from "../chat/concurrency.js";
@@ -180,6 +181,7 @@ declare const fullApi: ApiFromModules<{
   "chat/adminBackfill": typeof chat_adminBackfill;
   "chat/agent": typeof chat_agent;
   "chat/auth": typeof chat_auth;
+  "chat/chatPapers": typeof chat_chatPapers;
   "chat/chatPapersDuplicate": typeof chat_chatPapersDuplicate;
   "chat/chatPapersSeed": typeof chat_chatPapersSeed;
   "chat/concurrency": typeof chat_concurrency;
