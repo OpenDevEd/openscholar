@@ -39,3 +39,11 @@ export function computeChipCounts(
   for (const row of rows) counts[row.sourceType] += 1;
   return counts;
 }
+
+export function filterBySourceChip<R extends ChippableSource>(
+  rows: ReadonlyArray<R>,
+  chip: SourceChip,
+): ReadonlyArray<R> {
+  if (chip === "all") return rows;
+  return rows.filter((row) => row.sourceType === chip);
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeChipCounts,
+  filterBySourceChip,
   type ChippableSource,
 } from "@/lib/chat/source-chips";
 
@@ -39,5 +40,12 @@ describe("computeChipCounts", () => {
       history: 3,
       unknown: 1,
     });
+  });
+});
+
+describe("filterBySourceChip", () => {
+  it("R3: 'all' returns the same array reference (no copy)", () => {
+    const rows = [row("openalex"), row("zotero")];
+    expect(filterBySourceChip(rows, "all")).toBe(rows);
   });
 });
