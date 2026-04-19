@@ -392,6 +392,8 @@ export default defineSchema({
     .index("by_user_status", ["userId", "status"])
     // Unified history list + single-mode scoping (count user's chats).
     .index("by_user_mode_updated", ["userId", "mode", "updatedAt"])
+    // Cross-user iteration by mode (admin backfills, ops tooling).
+    .index("by_mode", ["mode"])
     // Reverse lookup: thread -> job (auth + lock acquisition).
     .index("by_chatThread", ["chatThreadId"])
     .index("by_workflow", ["workflowId"]),
@@ -434,6 +436,24 @@ export default defineSchema({
   })
     .index("by_job_and_position", ["jobId", "position"])
     .index("by_job_and_source", ["jobId", "source"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // CHAT PAPERS - Live inclusion bridge for chat-mode jobs.
+  // 1:1 with extractionJobSources (for chat jobs only). Seeded
+  // included=true at ensureThreadForJob; toggled by the Sources panel;
+  // read at every stream-start to filter the <papers> prompt block.
+  // Kept separate so the frozen source snapshot stays immutable and
+  // high-frequency toggle writes do not touch the audit table.
+  // ═══════════════════════════════════════════════════════════════
+  chatPapers: defineTable({
+    jobId: v.id("extractionJobs"),
+    sourceId: v.id("extractionJobSources"),
+    included: v.boolean(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_included", ["jobId", "included"])
+    .index("by_job_source", ["jobId", "sourceId"])
+    .index("by_source", ["sourceId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION QUESTIONS - User-defined questions for data extraction
