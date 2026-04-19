@@ -29,4 +29,14 @@ describe("extractMatchSnippet", () => {
     expect(result!.text.endsWith("\u2026")).toBe(false);
     expect(result!.text.endsWith("photosynthesis")).toBe(true);
   });
+
+  it("R5: query in the middle of a long source emits both leading and trailing ellipsis", () => {
+    const long =
+      "the carbon cycle in coral reefs across the equatorial pacific includes photosynthesis as a key driver of biomass production over geologic time scales";
+    const result = extractMatchSnippet(long, "photosynthesis", 60);
+    expect(result).not.toBeNull();
+    expect(result!.text.startsWith("\u2026")).toBe(true);
+    expect(result!.text.endsWith("\u2026")).toBe(true);
+    expect(result!.text).toContain("photosynthesis");
+  });
 });
