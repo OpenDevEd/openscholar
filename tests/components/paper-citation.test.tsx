@@ -73,7 +73,7 @@ describe("<PaperCitation>", () => {
     render(<PaperCitation index={3} paper={mkPaper()} />);
     const pill = getPill();
     expect(pill.tagName).toBe("A");
-    expect(pill).toHaveTextContent("[P3]");
+    expect(pill).toHaveTextContent("3");
   });
 
   it("pill always points at OpenAlex when openalexId is present", () => {
@@ -204,13 +204,13 @@ describe("<PaperCitation>", () => {
   it("renders unresolved (paper=null) as non-link muted text", () => {
     render(<PaperCitation index={99} paper={null} />);
     expect(screen.queryByRole("link")).toBeNull();
-    expect(screen.getByText("[P99?]")).toBeInTheDocument();
+    expect(screen.getByText("99?")).toBeInTheDocument();
     expect(
-      screen.getByText("[P99?]").getAttribute("data-paper-resolved"),
+      screen.getByText("99?").getAttribute("data-paper-resolved"),
     ).toBe("false");
   });
 
-  it("renders non-link Badge when paper has no identifier at all", () => {
+  it("renders non-link pill when paper has no identifier at all", () => {
     render(
       <PaperCitation
         index={7}
@@ -222,6 +222,9 @@ describe("<PaperCitation>", () => {
       />,
     );
     expect(screen.queryByRole("link")).toBeNull();
-    expect(screen.getByText("[P7]")).toBeInTheDocument();
+    // Still rendered as an interactive trigger for the hover card, just
+    // with role=button since it has nowhere to navigate.
+    const pill = screen.getByRole("button", { name: /chatCitationPreview/ });
+    expect(pill).toHaveTextContent("7");
   });
 });

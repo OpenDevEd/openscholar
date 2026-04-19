@@ -8,11 +8,30 @@ import {
   InlineCitationCardBody,
   InlineCitationSource,
 } from "@/components/ai-elements/inline-citation";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import { cn } from "@/lib/utils";
+
+/**
+ * Inline citation pill — tiny, primary-tinted chip carrying just
+ * the paper number. Sized so it sits on the baseline without
+ * disrupting prose line-height. Adjacent pills in combined-bracket
+ * form nestle together via the space-x rhythm in the parent.
+ */
+const PILL_CLASS = cn(
+  "mx-0.5 inline-flex h-[1.1rem] min-w-[1.1rem] items-center justify-center",
+  "rounded-full px-1 text-[0.72em] font-semibold leading-none",
+  "bg-primary/10 text-primary align-baseline",
+  "transition-colors no-underline",
+  "hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+);
+
+const PILL_UNRESOLVED_CLASS = cn(
+  "mx-0.5 inline-flex h-[1.1rem] min-w-[1.1rem] items-center justify-center",
+  "rounded-full px-1 text-[0.72em] font-semibold leading-none",
+  "bg-muted text-muted-foreground/80 align-baseline",
+);
 
 /**
  * Resolved paper shape the citation renderer consumes. Narrowed from
@@ -77,11 +96,12 @@ export function PaperCitation({ index, paper }: PaperCitationProps) {
   if (!paper) {
     return (
       <span
-        className="text-muted-foreground"
+        className={PILL_UNRESOLVED_CLASS}
         data-paper-index={index}
         data-paper-resolved="false"
+        title={`${index}?`}
       >
-        [P{index}?]
+        {index}?
       </span>
     );
   }
@@ -105,31 +125,26 @@ export function PaperCitation({ index, paper }: PaperCitationProps) {
     <InlineCitationCard openDelay={120} closeDelay={160}>
       <HoverCardTrigger asChild>
         {primary ? (
-          <Badge
-            asChild
-            variant="secondary"
-            className="ml-0.5 rounded-full font-medium no-underline hover:bg-secondary/80"
+          <a
+            href={primary}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={ariaLabel}
+            className={PILL_CLASS}
+            {...sharedData}
           >
-            <a
-              href={primary}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={ariaLabel}
-              {...sharedData}
-            >
-              [P{index}]
-            </a>
-          </Badge>
+            {index}
+          </a>
         ) : (
-          <Badge
-            variant="secondary"
-            className="ml-0.5 rounded-full font-medium"
+          <span
+            className={PILL_CLASS}
             aria-label={t("chatCitationPreview", { title: paper.title })}
+            role="button"
             tabIndex={0}
             {...sharedData}
           >
-            [P{index}]
-          </Badge>
+            {index}
+          </span>
         )}
       </HoverCardTrigger>
       <InlineCitationCardBody>

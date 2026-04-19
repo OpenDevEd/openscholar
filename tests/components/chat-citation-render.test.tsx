@@ -53,7 +53,7 @@ describe("chat citation rendering end-to-end (Streamdown + CitationAwareParagrap
     );
     const link = screen.getByRole("link");
     expect(link.getAttribute("href")).toBe("https://openalex.org/W1");
-    expect(link).toHaveTextContent("[P1]");
+    expect(link).toHaveTextContent("1");
   });
 
   it("renders the combined-bracket form [P1, P2, P3] as three clickable links", () => {
@@ -77,7 +77,7 @@ describe("chat citation rendering end-to-end (Streamdown + CitationAwareParagrap
     );
     const links = screen.getAllByRole("link");
     expect(links).toHaveLength(3);
-    expect(links.map((l) => l.textContent)).toEqual(["[P1]", "[P2]", "[P3]"]);
+    expect(links.map((l) => l.textContent)).toEqual(["1", "2", "3"]);
   });
 
   it("leaves surrounding prose intact around a citation", () => {
@@ -98,7 +98,7 @@ describe("chat citation rendering end-to-end (Streamdown + CitationAwareParagrap
   it("falls back to unresolved muted text for out-of-range [P99]", () => {
     renderAssistantMarkdown("Weird [P99] here.", [P1]);
     expect(screen.queryByRole("link")).toBeNull();
-    expect(screen.getByText("[P99?]")).toBeInTheDocument();
+    expect(screen.getByText("99?")).toBeInTheDocument();
   });
 
   it("resolves a citation inside a markdown bullet list item", () => {
@@ -108,7 +108,7 @@ describe("chat citation rendering end-to-end (Streamdown + CitationAwareParagrap
     );
     const links = screen.getAllByRole("link");
     expect(links).toHaveLength(2);
-    expect(links.map((l) => l.textContent)).toEqual(["[P1]", "[P2]"]);
+    expect(links.map((l) => l.textContent)).toEqual(["1", "2"]);
   });
 
   it("resolves a citation inside bold emphasis inside a bullet", () => {
