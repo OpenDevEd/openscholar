@@ -28,6 +28,10 @@ import { SourceSelector } from "./source-selector";
 import { SourceSummary } from "./source-summary";
 import { BucketIndicator } from "./bucket/bucket-indicator";
 import { BucketDrawer } from "./bucket/bucket-drawer";
+import { ModeSelector } from "./mode-selector";
+import { PdfToggle } from "./pdf-toggle";
+import { ModelPicker } from "./model-picker";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/lib/hooks";
@@ -67,14 +71,23 @@ export function JobCreator() {
 
   const validStep = Math.min(3, Math.max(1, stepRaw)) as 1 | 2 | 3;
 
-  const { draftJob, setDraftJobName, clearDraftJob } = useExtractionStore();
+  const {
+    draftJob,
+    setDraftJobName,
+    setMode,
+    setChatModelId,
+    setUsePdfs,
+    clearDraftJob,
+  } = useExtractionStore();
   const bucketOrder = useBucketStore((s) => s.order);
   const bucketItemsMap = useBucketStore((s) => s.items);
   const clearBucket = useBucketStore((s) => s.clear);
   const startJob = useMutation(api.extraction.mutations.startJob);
+  const pdfCapabilityEnabled = useFeatureFlag("extraction.pdf");
+  const chatFlagEnabled = useFeatureFlag("extraction.chat");
 
   const steps = useMemo(() => [
-    { id: 1, title: t("jobDetails"), icon: Layers, description: t("nameYourJob") },
+    { id: 1, title: t("modeAndDetails"), icon: Layers, description: t("pickModeAndName") },
     { id: 2, title: t("selectPapers"), icon: FileText, description: t("chooseFromHistory") },
     { id: 3, title: t("defineQuestions"), icon: Zap, description: t("whatToExtract") },
   ], [t]);
@@ -109,27 +122,40 @@ export function JobCreator() {
       toast.validation.failed(t("pleaseSelectSource"));
       return;
     }
-    if (draftJob.questions.length === 0) {
+    if (draftJob.mode === "extraction" && draftJob.questions.length === 0) {
       toast.validation.failed(t("pleaseCompleteSteps"));
+      return;
+    }
+    if (draftJob.mode === "chat" && draftJob.chatModelId === null) {
+      toast.validation.failed(t("pleaseSelectModel"));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const result = await startJob({
-        name: draftJob.name || t("untitledJob"),
-        mode: "extraction",
-        bucketItems: readyBucketItems.map(
-          (item) => bucketItemToServerInput(item) as never,
-        ),
-        questions: draftJob.questions.map((q, i) => ({
-          key: q.key || `q_${i}`,
-          question: q.question,
-          type: q.type,
-          description: q.description,
-        })),
-        usePdfs: false,
-      });
+      const bucketItems = readyBucketItems.map(
+        (item) => bucketItemToServerInput(item) as never,
+      );
+      const result =
+        draftJob.mode === "extraction"
+          ? await startJob({
+              name: draftJob.name || t("untitledJob"),
+              mode: "extraction",
+              bucketItems,
+              questions: draftJob.questions.map((q, i) => ({
+                key: q.key || `q_${i}`,
+                question: q.question,
+                type: q.type,
+                description: q.description,
+              })),
+              usePdfs: draftJob.usePdfs,
+            })
+          : await startJob({
+              name: draftJob.name || t("untitledJob"),
+              mode: "chat",
+              bucketItems,
+              chatModelId: draftJob.chatModelId ?? undefined,
+            });
 
       clearDraftJob();
       clearBucket();
@@ -144,10 +170,13 @@ export function JobCreator() {
   const canProceed = () => {
     switch (validStep) {
       case 1:
-        return draftJob.name.trim().length > 0;
+        if (draftJob.name.trim().length === 0) return false;
+        if (draftJob.mode === "chat" && draftJob.chatModelId === null) return false;
+        return true;
       case 2:
         return readyBucketItems.length > 0;
       case 3:
+        if (draftJob.mode === "chat") return true;
         return draftJob.questions.length > 0;
       default:
         return false;
@@ -286,10 +315,10 @@ export function JobCreator() {
                   className="text-center mb-8"
                 >
                   <h2 className="text-2xl font-bold text-foreground mb-2">
-                    {t("nameYourJob")}
+                    {t("modeAndDetails")}
                   </h2>
                   <p className="text-muted-foreground">
-                    {t("nameYourJobDescription")}
+                    {t("pickModeAndName")}
                   </p>
                 </motion.div>
 
@@ -297,8 +326,16 @@ export function JobCreator() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="space-y-4"
+                  className="space-y-6"
                 >
+                  {chatFlagEnabled && (
+                    <ModeSelector
+                      value={draftJob.mode}
+                      onChange={setMode}
+                      disabled={isSubmitting}
+                    />
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="name">
                       {t("jobName")}
@@ -312,6 +349,22 @@ export function JobCreator() {
                       autoFocus
                     />
                   </div>
+
+                  {draftJob.mode === "extraction" && pdfCapabilityEnabled && (
+                    <PdfToggle
+                      value={draftJob.usePdfs}
+                      onChange={setUsePdfs}
+                      disabled={isSubmitting}
+                    />
+                  )}
+
+                  {draftJob.mode === "chat" && (
+                    <ModelPicker
+                      value={draftJob.chatModelId}
+                      onChange={setChatModelId}
+                      disabled={isSubmitting}
+                    />
+                  )}
                 </motion.div>
               </form>
             )}

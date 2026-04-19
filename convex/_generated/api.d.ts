@@ -15,6 +15,7 @@ import type * as ai_lib_creditBilling from "../ai/lib/creditBilling.js";
 import type * as apiKeys_actions from "../apiKeys/actions.js";
 import type * as apiKeys_mutations from "../apiKeys/mutations.js";
 import type * as apiKeys_queries from "../apiKeys/queries.js";
+import type * as chat_model from "../chat/model.js";
 import type * as chat_threads from "../chat/threads.js";
 import type * as credits_actions from "../credits/actions.js";
 import type * as credits_internal from "../credits/internal.js";
@@ -166,6 +167,7 @@ declare const fullApi: ApiFromModules<{
   "apiKeys/actions": typeof apiKeys_actions;
   "apiKeys/mutations": typeof apiKeys_mutations;
   "apiKeys/queries": typeof apiKeys_queries;
+  "chat/model": typeof chat_model;
   "chat/threads": typeof chat_threads;
   "credits/actions": typeof credits_actions;
   "credits/internal": typeof credits_internal;
