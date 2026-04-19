@@ -27,6 +27,7 @@ export interface ResolvablePaper {
   year?: number;
   abstract?: string;
   doi?: string;
+  pdfUrl?: string;
 }
 
 export interface PaperCitation<P extends ResolvablePaper = ResolvablePaper> {

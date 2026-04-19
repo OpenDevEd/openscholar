@@ -443,7 +443,6 @@
     "unknownAuthors": "著者不明",
     "chatCitationOpen": "論文を開く: {title}",
     "chatCitationPreview": "論文のプレビュー: {title}",
-    "chatCitationOpenDoi": "DOI で開く",
     "chatCitationOpenOpenAlex": "OpenAlex で開く",
     "jobs": "ジョブ",
     "exportResults": "結果をエクスポート",

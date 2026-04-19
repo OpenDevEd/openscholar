@@ -340,6 +340,7 @@ export function MessageList({
       abstract: row.abstract,
       openalexId: row.openalexId,
       doi: row.doi,
+      pdfUrl: row.pdfUrl,
     }));
   }, [sourcesQuery]);
 

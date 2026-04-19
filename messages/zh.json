@@ -443,7 +443,6 @@
     "unknownAuthors": "作者未知",
     "chatCitationOpen": "打开论文：{title}",
     "chatCitationPreview": "预览论文：{title}",
-    "chatCitationOpenDoi": "通过 DOI 打开",
     "chatCitationOpenOpenAlex": "在 OpenAlex 上打开",
     "jobs": "任务",
     "exportResults": "导出结果",

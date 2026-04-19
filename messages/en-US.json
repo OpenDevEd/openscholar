@@ -443,7 +443,6 @@
     "unknownAuthors": "Unknown authors",
     "chatCitationOpen": "Open paper: {title}",
     "chatCitationPreview": "Preview paper: {title}",
-    "chatCitationOpenDoi": "Open via DOI",
     "chatCitationOpenOpenAlex": "Open on OpenAlex",
     "jobs": "jobs",
     "exportResults": "Export Results",
