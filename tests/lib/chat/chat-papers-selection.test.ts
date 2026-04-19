@@ -75,4 +75,10 @@ describe("buildBulkPatch", () => {
     expect(patch.get(cp(3))).toBe(false);
     expect(patch.has(cp(2))).toBe(false);
   });
+
+  it("skips rows already at the target state (empty patch)", () => {
+    const rows = [row(1, true), row(2, true), row(3, true)];
+    const patch = buildBulkPatch(rows, undefined, true);
+    expect(patch.size).toBe(0);
+  });
 });
