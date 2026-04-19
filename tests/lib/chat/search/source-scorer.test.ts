@@ -52,4 +52,10 @@ describe("scoreSource", () => {
     expect(result.score).toBeGreaterThan(0);
     expect(result.score).toBeLessThanOrEqual(1);
   });
+
+  it("R5: author-only substring match returns field='authors'", () => {
+    const result = scoreSource(baseRow, "doe");
+    expect(result.field).toBe("authors");
+    expect(result.score).toBeGreaterThan(0);
+  });
 });

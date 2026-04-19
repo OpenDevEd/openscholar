@@ -70,8 +70,11 @@ export function scoreSource(row: ScorerInput, query: string): SearchMatch {
   }
 
   const titleScore = fuzzyScore(row.title.toLowerCase(), q) * WEIGHTS.title;
+  const authorsScore =
+    fuzzyScore(row.authors.join(" ").toLowerCase(), q) * WEIGHTS.authors;
   const ranked: Array<{ score: number; field: ScorerField }> = [
     { score: titleScore, field: "title" },
+    { score: authorsScore, field: "authors" },
   ];
   const best = ranked.reduce((acc, r) => (r.score > acc.score ? r : acc));
   if (best.score === 0) return { score: 0, field: null };
