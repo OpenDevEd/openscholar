@@ -89,8 +89,14 @@ export function JobCreator() {
   const steps = useMemo(() => [
     { id: 1, title: t("modeAndDetails"), icon: Layers, description: t("pickModeAndName") },
     { id: 2, title: t("selectPapers"), icon: FileText, description: t("chooseFromHistory") },
-    { id: 3, title: t("defineQuestions"), icon: Zap, description: t("whatToExtract") },
-  ], [t]);
+    {
+      id: 3,
+      title: draftJob.mode === "chat" ? t("chatStartReviewTitle") : t("defineQuestions"),
+      icon: Zap,
+      description:
+        draftJob.mode === "chat" ? t("chatReviewStepDescription") : t("whatToExtract"),
+    },
+  ], [t, draftJob.mode]);
 
   const handleNext = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -399,9 +405,7 @@ export function JobCreator() {
               </div>
             )}
 
-            {validStep === 3 && draftJob.mode === "chat" && (
-              <ChatStartReview modelId={draftJob.chatModelId} />
-            )}
+            {validStep === 3 && draftJob.mode === "chat" && <ChatStartReview />}
           </motion.div>
         </AnimatePresence>
       </div>

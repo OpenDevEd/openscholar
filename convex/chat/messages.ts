@@ -18,6 +18,7 @@
  *   regenerateLastAssistant / clearThread / swapModel: affordances.
  */
 
+import type { ActionCtx } from "../_generated/server";
 import {
   internalAction,
   internalQuery,
@@ -26,7 +27,12 @@ import {
 } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { listUIMessages, syncStreams, vStreamArgs } from "@convex-dev/agent";
+import {
+  listMessages,
+  listUIMessages,
+  syncStreams,
+  vStreamArgs,
+} from "@convex-dev/agent";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
@@ -35,6 +41,10 @@ import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./threads";
 import { resolveOpenRouterModel } from "./provider";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
+import {
+  classifyChatError,
+  serializeChatError,
+} from "../../lib/chat/error-classifier";
 
 /* ────────────────────────────────────────────────────────────────── */
 /*                      User → Assistant turn                         */
@@ -101,6 +111,15 @@ export const generateResponse = internalAction({
     }
     const { jobId, userId, chatModelId } = meta;
 
+    // True once `onError` has patched the pending message with a
+    // structured envelope *from the original provider error* (which has
+    // statusCode, headers, body — everything we need for a precise
+    // classification). If it ran, the inner catch skips re-patching,
+    // because the error reaching the catch is the agent's stringified
+    // wrapper ("Provider returned error") and would downgrade our
+    // envelope from `rate_limit` to `provider_5xx` / `unknown`.
+    let envelopePatchedFromOnError = false;
+
     try {
       const balance = await ctx.runQuery(
         internal.credits.internal.getBalanceByUserId,
@@ -115,16 +134,60 @@ export const generateResponse = internalAction({
 
       const { model } = await resolveOpenRouterModel(ctx, chatModelId);
 
-      const result = await paperChat.streamText(
-        ctx,
-        { threadId, userId },
-        {
-          promptMessageId,
-          model,
-        },
-        { saveStreamDeltas: { chunking: "word", throttleMs: 100 } },
-      );
-      await result.consumeStream();
+      try {
+        await paperChat.streamText(
+          ctx,
+          { threadId, userId },
+          {
+            promptMessageId,
+            model,
+            onError: async ({ error }) => {
+              // This runs with the ORIGINAL provider error (429 w/
+              // retry-after, etc.) but only if the agent's own
+              // `call.fail` → `finalizeMessage` path did not throw.
+              // When finalizeMessage DOES throw (stream-had-error-
+              // chunks case), this never runs and we fall back to the
+              // inner catch below.
+              const patched = await patchLastAssistantAsFailed(
+                ctx,
+                threadId,
+                error,
+              ).catch(() => false);
+              if (patched) envelopePatchedFromOnError = true;
+            },
+          },
+          { saveStreamDeltas: { chunking: "word", throttleMs: 100 } },
+        );
+      } catch (err) {
+        // The agent's `streamText` wrapper re-throws stream errors
+        // (node_modules/@convex-dev/agent/src/client/streamText.ts:180).
+        // We land here for every stream-time failure — and sometimes
+        // before onError got a chance, when the agent's call.fail
+        // itself threw inside finalizeMessage. Force-transition the
+        // stuck pending assistant to `failed` so the UI can render an
+        // alert instead of an empty bubble.
+        if (!envelopePatchedFromOnError) {
+          const patched = await patchLastAssistantAsFailed(
+            ctx,
+            threadId,
+            err,
+          ).catch(() => false);
+          // startGeneration failed before a pending assistant could be
+          // saved — persist a standalone one so the thread still shows
+          // the error.
+          if (!patched) {
+            await saveStandaloneErrorMessage(ctx, threadId, err).catch(
+              () => {},
+            );
+          }
+        }
+      }
+    } catch (err) {
+      // Genuine pre-stream failures only: credit guard, thread/model
+      // lookup, provider construction. No pending assistant message
+      // exists yet, so persist a standalone one inline.
+      await saveStandaloneErrorMessage(ctx, threadId, err).catch(() => {});
+      throw err;
     } finally {
       await ctx.runMutation(
         internal.chat.concurrency.releaseThreadLock,
@@ -134,6 +197,64 @@ export const generateResponse = internalAction({
     return null;
   },
 });
+
+/**
+ * Force-transition the newest pending/failed assistant message to
+ * `status:"failed"` with a serialized {@link ChatErrorEnvelope} as its
+ * `error` field.
+ *
+ * We accept `pending` here because the agent's own `call.fail` may have
+ * thrown inside `finalizeMessage` (it re-processes saved stream chunks,
+ * and that processor throws on error chunks — see
+ * node_modules/@convex-dev/agent/src/deltas.ts). In that case the
+ * pending row is stuck in `status:"pending"` and the UI sees an empty
+ * bubble. Patching it here is what lets the failure alert render.
+ *
+ * Returns true if a patch was made (so callers can know whether they
+ * still need to save a standalone error message).
+ */
+async function patchLastAssistantAsFailed(
+  ctx: ActionCtx,
+  threadId: string,
+  rawError: unknown,
+): Promise<boolean> {
+  const envelope = classifyChatError(rawError);
+  const serialized = serializeChatError(envelope);
+  const { page } = await listMessages(ctx, components.agent, {
+    threadId,
+    paginationOpts: { numItems: 1, cursor: null },
+    statuses: ["pending", "failed"],
+  });
+  const last = page[0];
+  if (!last) return false;
+  if (last.message?.role !== "assistant") return false;
+  await ctx.runMutation(components.agent.messages.updateMessage, {
+    messageId: last._id,
+    patch: { status: "failed", error: serialized },
+  });
+  return true;
+}
+
+/**
+ * For failures that occur before `streamText` gets a chance to create a
+ * pending assistant message (e.g. insufficient credits, thread lookup
+ * failure), persist a standalone assistant message with the envelope so
+ * the chat UI can still render the error inline.
+ */
+async function saveStandaloneErrorMessage(
+  ctx: ActionCtx,
+  threadId: string,
+  rawError: unknown,
+) {
+  const envelope = classifyChatError(rawError);
+  const serialized = serializeChatError(envelope);
+  await paperChat.saveMessage(ctx, {
+    threadId,
+    message: { role: "assistant", content: "" },
+    metadata: { status: "failed", error: serialized },
+    skipEmbeddings: true,
+  });
+}
 
 /* ────────────────────────────────────────────────────────────────── */
 /*                        Reactive message list                       */
@@ -153,9 +274,23 @@ export const listThreadMessages = query({
   }),
   handler: async (ctx, args) => {
     await authorizeThreadAccess(ctx, args.threadId);
-    const paginated = await listUIMessages(ctx, components.agent, args);
-    const streams = await syncStreams(ctx, components.agent, args);
-    return { ...paginated, streams };
+    const [paginated, rawPage, streams] = await Promise.all([
+      listUIMessages(ctx, components.agent, args),
+      listMessages(ctx, components.agent, args),
+      syncStreams(ctx, components.agent, args),
+    ]);
+    // `listUIMessages` drops the `error` field during the doc→UI
+    // conversion. Attach it back by id so the client's failure Alert
+    // can classify and render without a second query.
+    const errorById = new Map<string, string>();
+    for (const doc of rawPage.page) {
+      if (doc.error) errorById.set(doc._id, doc.error);
+    }
+    const page = paginated.page.map((m) => {
+      const err = errorById.get(m.id);
+      return err ? { ...m, error: err } : m;
+    });
+    return { ...paginated, page, streams };
   },
 });
 

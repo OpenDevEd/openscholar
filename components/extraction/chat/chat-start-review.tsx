@@ -1,86 +1,149 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
+import { motion, useReducedMotion } from "motion/react";
 import { useBucketStore } from "@/lib/store/bucket";
+import { useExtractionStore } from "@/lib/store/extraction";
 import { useTranslations } from "next-intl";
-import { FileText, MessageSquare, Bot } from "lucide-react";
-import { summarizeChatSources } from "@/lib/bucket/chat-source-stats";
+import {
+  breakdownChatSources,
+  summarizeChatSources,
+  type ChatSourceBreakdownRow,
+} from "@/lib/bucket/chat-source-stats";
+import {
+  BUCKET_SOURCE_LABELS,
+  SOURCE_COLOR_VAR,
+} from "@/lib/bucket/source-labels";
+import { cn } from "@/lib/utils";
 
-interface ChatStartReviewProps {
-  modelId: Id<"models"> | null;
-}
-
-export function ChatStartReview({ modelId }: ChatStartReviewProps) {
+export function ChatStartReview() {
   const t = useTranslations("extraction");
   const order = useBucketStore((s) => s.order);
   const items = useBucketStore((s) => s.items);
-  const models = useQuery(api.chat.model.listChatModels, {});
+  const jobName = useExtractionStore((s) => s.draftJob.name);
+  const prefersReduced = useReducedMotion();
 
-  const { totalPapers, unresolvedPapers, withAbstractPapers } = useMemo(
-    () => summarizeChatSources(order.flatMap((key) => (items[key] ? [items[key]] : []))),
+  const readyItems = useMemo(
+    () => order.flatMap((key) => (items[key] ? [items[key]] : [])),
     [order, items],
   );
 
-  const modelName = useMemo(() => {
-    if (!models || !modelId) return null;
-    return models.find((m) => m._id === modelId)?.name ?? null;
-  }, [models, modelId]);
+  const { totalPapers, unresolvedPapers } = useMemo(
+    () => summarizeChatSources(readyItems),
+    [readyItems],
+  );
+
+  const breakdown = useMemo(() => {
+    const rows = breakdownChatSources(readyItems);
+    // Concrete rows first, saved-searches last — the saved-search row has
+    // a "row → papers" expansion affordance that reads better as a
+    // footnote-adjacent final row.
+    return rows.sort((a, b) => {
+      if (a.isSavedSearch !== b.isSavedSearch) return a.isSavedSearch ? 1 : -1;
+      return a.source.localeCompare(b.source);
+    });
+  }, [readyItems]);
+
+  const sourceTypeCount = breakdown.length;
+  const hasUnresolved = unresolvedPapers > 0;
+
+  return (
+    <motion.div
+      data-role="chat-start-review"
+      data-total-papers={totalPapers}
+      data-unresolved-papers={unresolvedPapers}
+      initial={prefersReduced ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      className="mx-auto max-w-md space-y-8 py-6"
+    >
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+          {t("chatStartReviewTitle")}
+        </h2>
+        {jobName.trim().length > 0 && (
+          <p
+            data-role="job-name"
+            className="text-base italic text-muted-foreground"
+          >
+            &ldquo;{jobName}&rdquo;
+          </p>
+        )}
+      </header>
+
+      <p className="text-sm text-foreground">
+        {t("chatReviewSummary", {
+          papers: totalPapers,
+          sources: sourceTypeCount,
+        })}
+      </p>
+
+      <dl
+        data-role="source-ledger"
+        className="divide-y divide-border/60 border-y border-border/60"
+      >
+        {breakdown.map((row) => (
+          <LedgerRow key={rowKey(row)} row={row} t={t} />
+        ))}
+      </dl>
+
+      {hasUnresolved && (
+        <p
+          role="note"
+          className="text-xs leading-relaxed text-muted-foreground"
+        >
+          {t("chatReviewSavedSearchFootnote", { count: unresolvedPapers })}
+        </p>
+      )}
+    </motion.div>
+  );
+}
+
+function rowKey(row: ChatSourceBreakdownRow): string {
+  return `${row.source}:${row.isSavedSearch ? "saved" : "concrete"}`;
+}
+
+function LedgerRow({
+  row,
+  t,
+}: {
+  row: ChatSourceBreakdownRow;
+  t: ReturnType<typeof useTranslations<"extraction">>;
+}) {
+  const label = row.isSavedSearch
+    ? t("chatReviewSourceSavedSearch")
+    : BUCKET_SOURCE_LABELS[row.source];
 
   return (
     <div
-      data-role="chat-start-review"
-      className="max-w-xl mx-auto space-y-6"
+      data-source={row.source}
+      data-saved-search={row.isSavedSearch || undefined}
+      className="flex items-baseline justify-between gap-4 py-3"
     >
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-foreground mb-2">
-          {t("chatStartReviewTitle")}
-        </h2>
-        <p className="text-muted-foreground">
-          {t("chatStartReviewSubtitle")}
-        </p>
-      </div>
-
-      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="rounded-md bg-muted p-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium text-foreground">
-              {t("chatStartReviewPapers", { count: totalPapers })}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {unresolvedPapers > 0
-                ? t("chatPreparing")
-                : t("chatStartReviewAbstracts", {
-                    count: withAbstractPapers,
-                  })}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="rounded-md bg-muted p-2">
-            <Bot className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium text-foreground">
-              {modelName ?? t("chatStartReviewNoModel")}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {t("chatStartReviewModelHint")}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-start gap-3 p-3 rounded-md bg-muted/50 text-sm text-muted-foreground">
-        <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
-        <p>{t("chatStartReviewCta")}</p>
-      </div>
+      <dt className="flex items-center gap-2 text-sm text-foreground">
+        <span
+          aria-hidden="true"
+          className={cn("inline-block h-1.5 w-1.5 rounded-full")}
+          style={{ backgroundColor: `var(${SOURCE_COLOR_VAR[row.source]})` }}
+        />
+        {label}
+      </dt>
+      <dd className="font-mono text-sm tabular-nums text-foreground">
+        {row.isSavedSearch ? (
+          <>
+            <span>{row.rowCount}</span>
+            <span
+              aria-hidden="true"
+              className="mx-1.5 text-muted-foreground"
+            >
+              →
+            </span>
+            <span>{row.paperCount}</span>
+          </>
+        ) : (
+          <span>{row.paperCount}</span>
+        )}
+      </dd>
     </div>
   );
 }

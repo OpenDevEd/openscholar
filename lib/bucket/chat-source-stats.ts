@@ -1,4 +1,4 @@
-import type { BucketItem } from "@/lib/bucket/bucketItem";
+import type { BucketItem, BucketSource } from "@/lib/bucket/bucketItem";
 
 type ReadyBucketItem = BucketItem & { status: "ready" };
 
@@ -54,4 +54,43 @@ export function summarizeChatSources(
     withAbstractPapers,
     missingAbstractPapers,
   };
+}
+
+/**
+ * Grouped breakdown by (source, isSavedSearch). Each row tracks both
+ * rowCount (how many bucket items) and paperCount (how many papers they
+ * represent) — the two diverge only for saved-search placeholders, where
+ * 1 row expands to N papers at submit.
+ */
+export type ChatSourceBreakdownRow = {
+  source: BucketSource;
+  isSavedSearch: boolean;
+  rowCount: number;
+  paperCount: number;
+};
+
+export function breakdownChatSources(
+  items: ReadonlyArray<BucketItem>,
+): ChatSourceBreakdownRow[] {
+  const byKey = new Map<string, ChatSourceBreakdownRow>();
+
+  for (const item of items) {
+    if (item.status !== "ready") continue;
+    const savedSearch = isSavedSearchPlaceholder(item);
+    const key = `${item.source}:${savedSearch ? "saved" : "concrete"}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.rowCount += 1;
+      existing.paperCount += paperCount(item);
+    } else {
+      byKey.set(key, {
+        source: item.source,
+        isSavedSearch: savedSearch,
+        rowCount: 1,
+        paperCount: paperCount(item),
+      });
+    }
+  }
+
+  return Array.from(byKey.values());
 }

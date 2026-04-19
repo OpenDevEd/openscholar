@@ -14,7 +14,6 @@ import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertCircleIcon, RefreshCwIcon } from "lucide-react";
 import { useMutation } from "convex/react";
 import {
   Conversation,
@@ -22,8 +21,7 @@ import {
 } from "@/components/ai-elements/conversation";
 import { JumpToLatestPill } from "./jump-to-latest-pill";
 import { MessageResponse } from "@/components/ai-elements/message";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { ChatErrorAlert } from "./chat-error-alert";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -45,6 +43,13 @@ interface MessageListProps {
 }
 
 export type ResolvedPaper = PaperCitationTarget & { _id: string };
+
+/**
+ * Our `listThreadMessages` query enriches each UIMessage with an
+ * `error` string (a serialized ChatErrorEnvelope) — @convex-dev/agent's
+ * own UIMessage type strips that field, so we widen it here.
+ */
+type ChatUIMessage = UIMessage & { error?: string };
 
 function splitTextForChips(
   text: string,
@@ -166,14 +171,12 @@ function getMessageText(message: UIMessage): string {
 }
 
 interface MessageRowProps {
-  message: UIMessage;
+  message: ChatUIMessage;
   papers: ResolvedPaper[];
   isLastAssistant: boolean;
   isFirstInGroup: boolean;
   threadId: string;
   chatModelId: Id<"models"> | null;
-  errorLabel: string;
-  retryLabel: string;
   onRetry: () => void;
   reduceMotion: boolean;
 }
@@ -185,8 +188,6 @@ const MessageRow = memo(function MessageRow({
   isFirstInGroup,
   threadId,
   chatModelId,
-  errorLabel,
-  retryLabel,
   onRetry,
   reduceMotion,
 }: MessageRowProps) {
@@ -201,10 +202,7 @@ const MessageRow = memo(function MessageRow({
     [papers],
   );
 
-  const metaError =
-    typeof message.metadata === "object" && message.metadata
-      ? ((message.metadata as { error?: unknown }).error as string | undefined)
-      : undefined;
+  const rawError = message.error;
 
   return (
     <motion.li
@@ -267,28 +265,12 @@ const MessageRow = memo(function MessageRow({
         </div>
       ) : null}
 
-      {isFailed && isEmpty ? (
-        <Alert
-          variant="destructive"
-          className="mt-2 self-start"
-          data-message-error="true"
-        >
-          <AlertCircleIcon className="size-4" />
-          <AlertTitle>{errorLabel}</AlertTitle>
-          <AlertDescription>
-            <span className="mb-2 block">{metaError ?? errorLabel}</span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onRetry}
-              aria-label={retryLabel}
-              data-action="retry-inline"
-            >
-              <RefreshCwIcon className="mr-2 size-3.5" />
-              {retryLabel}
-            </Button>
-          </AlertDescription>
-        </Alert>
+      {isFailed && rawError ? (
+        <ChatErrorAlert
+          rawError={rawError}
+          onRetry={onRetry}
+          chatModelId={chatModelId}
+        />
       ) : null}
     </motion.li>
   );
@@ -357,9 +339,6 @@ export function MessageList({
     });
   };
 
-  const errorLabel = t("chatFailedMessage");
-  const retryLabel = t("chatRetryResponse");
-
   if (results.length === 0) {
     if (isLoadingFirstPage) {
       return (
@@ -416,14 +395,12 @@ export function MessageList({
               return (
                 <Fragment key={message.id}>
                   <MessageRow
-                    message={message as UIMessage}
+                    message={message as ChatUIMessage}
                     papers={papers}
                     isLastAssistant={message.id === lastAssistantId}
                     isFirstInGroup={isFirstInGroup}
                     threadId={threadId}
                     chatModelId={chatModelId}
-                    errorLabel={errorLabel}
-                    retryLabel={retryLabel}
                     onRetry={handleRetry}
                     reduceMotion={reduceMotion}
                   />
