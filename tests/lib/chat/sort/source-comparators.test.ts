@@ -18,4 +18,10 @@ describe("sortByComparator", () => {
     const sorted = sortByComparator(rows, "added", "asc");
     expect(sorted.map((r) => r.position)).toEqual([1, 2, 3]);
   });
+
+  it("R2: 'added' desc reverses position order", () => {
+    const rows = [row({ position: 3 }), row({ position: 1 }), row({ position: 2 })];
+    const sorted = sortByComparator(rows, "added", "desc");
+    expect(sorted.map((r) => r.position)).toEqual([3, 2, 1]);
+  });
 });
