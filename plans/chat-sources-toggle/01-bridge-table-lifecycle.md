@@ -126,7 +126,9 @@ for (const row of seedRows) {
 
 **Why not batched:** 500 inserts in a single mutation is well within Convex's 16k write ceiling. Current jobs typically have 5–50 sources; no chained-scheduler needed.
 
-**Idempotency:** `ensureThreadForJob` is already idempotent (the existing implementation returns the existing thread if one is present). Add a pre-check before inserting seed rows: if `chatPapers.by_job(jobId)` already returns any row, skip the seed (the chat was already bootstrapped). This prevents duplicate-seeding on retry.
+**Idempotency — wipe-and-rewrite, not pre-check-and-skip.** The original plan proposed a pre-check ("if `chatPapers.by_job(jobId)` already returns any row, skip the seed"). That approach has a partial-retry bug: if a prior `persistPreparedSourcesForJob` mutation committed successfully but the downstream `paperChat.createThread` call then failed, a retry re-enters `persistPreparedSourcesForJob` and `replaceJobSources` wipes+re-inserts source rows with new `_id`s — while the pre-check would leave the previous run's `chatPapers` pointing at now-deleted `sourceId`s.
+
+Instead, mirror `replaceJobSources`'s wipe-and-rewrite semantic: delete any existing `chatPapers` rows for the job before seeding, then always seed fresh from the newly written source `_id`s. The whole mutation is transactional, so all-or-nothing — no duplicate rows, no stale references.
 
 ### 4. Cascade hook — `convex/extraction/mutations/jobs.ts::deleteExtraction`
 
