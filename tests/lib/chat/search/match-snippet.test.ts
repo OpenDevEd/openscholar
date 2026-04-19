@@ -47,4 +47,14 @@ describe("extractMatchSnippet", () => {
     expect(result).not.toBeNull();
     expect(result!.text.length).toBeLessThanOrEqual(60 + 2);
   });
+
+  it("R7: highlightRanges point to the exact match substring inside the snippet text", () => {
+    const long =
+      "the carbon cycle in coral reefs across the equatorial pacific includes photosynthesis as a key driver of biomass production over geologic time scales";
+    const result = extractMatchSnippet(long, "photosynthesis", 60);
+    expect(result).not.toBeNull();
+    expect(result!.highlightRanges).toHaveLength(1);
+    const [start, end] = result!.highlightRanges[0];
+    expect(result!.text.slice(start, end)).toBe("photosynthesis");
+  });
 });
