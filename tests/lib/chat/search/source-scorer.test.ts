@@ -100,4 +100,11 @@ describe("scoreSource", () => {
     const result = scoreSource(both, "photosynthesis");
     expect(result.field).toBe("title");
   });
+
+  it("R10: matching is case-insensitive across fields", () => {
+    const upper = scoreSource(baseRow, "PHOTOSYNTHESIS");
+    const lower = scoreSource(baseRow, "photosynthesis");
+    expect(upper).toEqual(lower);
+    expect(upper.score).toBeGreaterThan(0);
+  });
 });
