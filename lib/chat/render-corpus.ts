@@ -33,6 +33,7 @@ export function filterAndPreservePositions(
     if (!includedSourceIds.has(s.sourceId)) continue;
     out.push({ ...s, promptId: `P${s.position}` });
   }
+  out.sort((a, b) => a.position - b.position);
   return out;
 }
 

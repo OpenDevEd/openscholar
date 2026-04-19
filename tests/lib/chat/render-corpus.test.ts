@@ -101,6 +101,14 @@ describe("filterAndPreservePositions", () => {
     expect(out.map((r) => r.promptId)).toEqual(["P1", "P3"]);
     expect(out.map((r) => r.sourceId)).toEqual(["s1", "s3"]);
   });
+
+  it("sorts output by position ascending even when input is unsorted", () => {
+    const sources = [cs("s3", 3), cs("s1", 1), cs("s2", 2)];
+    const included = new Set(["s1", "s2", "s3"]);
+    const out = filterAndPreservePositions(sources, included);
+    expect(out.map((r) => r.position)).toEqual([1, 2, 3]);
+    expect(out.map((r) => r.promptId)).toEqual(["P1", "P2", "P3"]);
+  });
 });
 
 describe("sortPapersForCorpus", () => {
