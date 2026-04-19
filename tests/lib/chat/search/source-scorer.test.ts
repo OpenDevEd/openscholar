@@ -19,4 +19,19 @@ describe("scoreSource", () => {
       field: null,
     });
   });
+
+  it("R2: DOI exact-match (case-insensitive) returns top score with field='doi'", () => {
+    expect(scoreSource(baseRow, "10.1234/abc.2024")).toEqual({
+      score: 1,
+      field: "doi",
+    });
+    expect(scoreSource(baseRow, "10.1234/ABC.2024")).toEqual({
+      score: 1,
+      field: "doi",
+    });
+    expect(scoreSource(baseRow, "  10.1234/abc.2024  ")).toEqual({
+      score: 1,
+      field: "doi",
+    });
+  });
 });

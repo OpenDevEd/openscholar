@@ -39,7 +39,12 @@ export type ScorerInput = {
   openalexId: string | null;
 };
 
-export function scoreSource(_row: ScorerInput, query: string): SearchMatch {
-  if (query.trim().length === 0) return { score: 1, field: null };
+export function scoreSource(row: ScorerInput, query: string): SearchMatch {
+  const q = query.trim().toLowerCase();
+  if (q.length === 0) return { score: 1, field: null };
+
+  if (row.doi !== null && row.doi.toLowerCase() === q) {
+    return { score: 1, field: "doi" };
+  }
   return { score: 0, field: null };
 }
