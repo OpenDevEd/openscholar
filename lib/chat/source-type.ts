@@ -28,5 +28,6 @@ export type SourceTypeInput = {
 export function classifySourceType(row: SourceTypeInput): SourceType {
   if (row.zoteroUserId != null) return "zotero";
   if (row.searchFilters != null) return "history";
+  if (row.pdfUrl?.startsWith("storage:")) return "upload";
   return "unknown";
 }

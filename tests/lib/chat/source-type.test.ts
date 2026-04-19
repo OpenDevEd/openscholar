@@ -18,4 +18,10 @@ describe("classifySourceType", () => {
       classifySourceType({ ...empty, searchFilters: { q: "anything" } }),
     ).toBe("history");
   });
+
+  it("returns 'upload' when pdfUrl starts with 'storage:'", () => {
+    expect(
+      classifySourceType({ ...empty, pdfUrl: "storage:abc123" }),
+    ).toBe("upload");
+  });
 });
