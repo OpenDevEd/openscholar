@@ -6,4 +6,9 @@ describe("extractMatchSnippet", () => {
     expect(extractMatchSnippet("any source text", "")).toBeNull();
     expect(extractMatchSnippet("any source text", "   ")).toBeNull();
   });
+
+  it("R2: query not present in the source returns null", () => {
+    expect(extractMatchSnippet("hello world", "xyz")).toBeNull();
+    expect(extractMatchSnippet("", "anything")).toBeNull();
+  });
 });
