@@ -1,4 +1,14 @@
-import type { BucketItem } from "@/lib/bucket/bucketItem";
+/**
+ * Narrow subset of BucketItem (or any equivalent shape) that
+ * authorsPreview reads. Lets non-bucket callers (e.g. the chat
+ * papers-in-context list) reuse the formatter without a synthetic item.
+ */
+export type AuthorsPreviewInput = {
+  authors: string[];
+  year?: number;
+  paperCount?: number;
+  sourceMeta?: Record<string, unknown>;
+};
 
 /**
  * Subtitle shown below a bucket item's title in sidebar + drawer rows.
@@ -12,7 +22,7 @@ import type { BucketItem } from "@/lib/bucket/bucketItem";
  * 3. Per-paper item with no authors (e.g. a bare Upload): year only, or
  *    empty — never "Unknown", which reads as a data bug to the user.
  */
-export function authorsPreview(item: BucketItem): string {
+export function authorsPreview(item: AuthorsPreviewInput): string {
   const meta = item.sourceMeta as { isSavedSearch?: boolean } | undefined;
   if (meta?.isSavedSearch) {
     const count = item.paperCount ?? 0;

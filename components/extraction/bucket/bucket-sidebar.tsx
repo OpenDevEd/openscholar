@@ -4,11 +4,9 @@ import { useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  Loader2,
   Package,
   PanelRightClose,
   PanelRightOpen,
-  Trash2,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -26,9 +24,8 @@ import {
 } from "@/lib/store";
 import { useBucketStore, type AllClearSnapshot } from "@/lib/store/bucket";
 import type { BucketItem } from "@/lib/bucket/bucketItem";
-import { authorsPreview } from "@/lib/bucket/authors-preview";
 import { bucketCleared } from "@/lib/toast/bucket";
-import { SourceChip } from "./source-chip";
+import { BucketPaperRow } from "./bucket-paper-row";
 import { AnimatedCount } from "./animated-count";
 
 type CapacityState = "normal" | "near" | "at";
@@ -169,45 +166,15 @@ function BucketSidebarPanel({ onCollapse, limit }: PanelProps) {
           </p>
         ) : (
           <ul className="w-full space-y-2 py-4">
-            {items.map((item) => (
-              <li
-                key={item.bucketKey}
-                className="flex min-w-0 max-w-full flex-col gap-2 rounded-lg border border-border/60 bg-card p-3"
-              >
-                <p className="text-sm font-medium leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">
-                  {item.title}
-                </p>
-                <div className="flex items-center gap-2">
-                  <SourceChip source={item.source} />
-                  <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                    {authorsPreview(item)}
-                    {item.status !== "ready" && (
-                      <>
-                        {" · "}
-                        {item.status === "uploading" && (
-                          <span className="inline-flex items-center gap-1 align-middle">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            uploading
-                          </span>
-                        )}
-                        {item.status === "failed" && (
-                          <span>upload failed</span>
-                        )}
-                      </>
-                    )}
-                  </span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => remove(item.bucketKey)}
-                    aria-label={`Remove ${item.title}`}
-                    className="h-6 w-6 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </li>
-            ))}
+            <AnimatePresence initial={false}>
+              {items.map((item) => (
+                <BucketPaperRow
+                  key={item.bucketKey}
+                  paper={item}
+                  onRemove={() => remove(item.bucketKey)}
+                />
+              ))}
+            </AnimatePresence>
           </ul>
         )}
       </div>

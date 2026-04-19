@@ -14,58 +14,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { SourceChip } from "@/components/extraction/bucket/source-chip";
+import { BucketPaperRow } from "@/components/extraction/bucket/bucket-paper-row";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useIsMobile } from "@/lib/hooks";
-import { cn } from "@/lib/utils";
 
 interface PapersInContextSidebarProps {
   jobId: Id<"extractionJobs">;
-}
-
-type PaperRow = {
-  _id: Id<"extractionJobSources">;
-  title: string;
-  authors: string[];
-  year?: number;
-  openalexId?: string;
-  doi?: string;
-  source:
-    | "history"
-    | "library"
-    | "collection"
-    | "zotero"
-    | "upload";
-};
-
-function PaperRow({ row }: { row: PaperRow }) {
-  const t = useTranslations("extraction");
-  const authorsStr =
-    row.authors.length > 0 ? row.authors.join(", ") : t("unknownAuthors");
-  return (
-    <li
-      data-paper-id={row._id}
-      data-paper-source={row.source}
-      className={cn(
-        "group flex flex-col gap-1 rounded-md border border-border/60 bg-card px-3 py-2.5",
-        "transition-colors hover:bg-accent/40",
-      )}
-    >
-      <p className="line-clamp-2 text-sm font-medium leading-snug">
-        {row.title}
-      </p>
-      <p className="line-clamp-1 text-xs text-muted-foreground">
-        {authorsStr}
-      </p>
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <SourceChip source={row.source} />
-        {row.year != null ? (
-          <span className="text-[11px] text-muted-foreground">{row.year}</span>
-        ) : null}
-      </div>
-    </li>
-  );
 }
 
 function PapersContent({ jobId }: { jobId: Id<"extractionJobs"> }) {
@@ -111,17 +66,15 @@ function PapersContent({ jobId }: { jobId: Id<"extractionJobs"> }) {
       <ScrollArea className="flex-1">
         <ul className="flex flex-col gap-2 p-3">
           {sources.sources.map((row) => (
-            <PaperRow
+            <BucketPaperRow
               key={row._id}
-              row={{
-                _id: row._id,
+              paper={{
                 title: row.title,
                 authors: row.authors,
                 year: row.year,
-                openalexId: row.openalexId,
-                doi: row.doi,
                 source: row.source,
               }}
+              dataAttrs={{ "data-paper-id": row._id }}
             />
           ))}
         </ul>

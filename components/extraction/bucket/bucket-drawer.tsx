@@ -18,11 +18,10 @@ import {
   type AllClearSnapshot,
 } from "@/lib/store/bucket";
 import type { BucketItem } from "@/lib/bucket/bucketItem";
-import { authorsPreview } from "@/lib/bucket/authors-preview";
 import { bucketCleared } from "@/lib/toast/bucket";
-import { Loader2, Trash2 } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
-import { SourceChip } from "./source-chip";
+import { BucketPaperRow } from "./bucket-paper-row";
 
 export function BucketDrawer({
   open,
@@ -97,41 +96,15 @@ export function BucketDrawer({
             </p>
           ) : (
             <ul className="space-y-2 pb-4">
-              {items.map((item) => (
-                <li
-                  key={item.bucketKey}
-                  className="flex items-start gap-3 rounded-lg border border-border p-3"
-                >
-                  <SourceChip source={item.source} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {item.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {authorsPreview(item)}
-                    </p>
-                    {item.status !== "ready" && (
-                      <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        {item.status === "uploading" && (
-                          <>
-                            <Loader2 className="h-3 w-3 animate-spin" />{" "}
-                            uploading
-                          </>
-                        )}
-                        {item.status === "failed" && <span>upload failed</span>}
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => remove(item.bucketKey)}
-                    aria-label={`Remove ${item.title}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </li>
-              ))}
+              <AnimatePresence initial={false}>
+                {items.map((item) => (
+                  <BucketPaperRow
+                    key={item.bucketKey}
+                    paper={item}
+                    onRemove={() => remove(item.bucketKey)}
+                  />
+                ))}
+              </AnimatePresence>
             </ul>
           )}
         </ScrollArea>
