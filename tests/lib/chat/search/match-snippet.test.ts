@@ -74,4 +74,10 @@ describe("extractMatchSnippet", () => {
     expect(result!.text.startsWith("\u2026")).toBe(false);
     expect(result!.text.endsWith("\u2026")).toBe(false);
   });
+
+  it("R10: extractMatchSnippet is pure — does not mutate the source string", () => {
+    const source = Object.freeze("photosynthesis study");
+    expect(() => extractMatchSnippet(source, "synth", 60)).not.toThrow();
+    expect(source).toBe("photosynthesis study");
+  });
 });
