@@ -21,8 +21,27 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { PaperCitation } from "@/components/extraction/chat/paper-citation";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import type { Id } from "@/convex/_generated/dataModel";
+
+function renderCitation({
+  index,
+  paper,
+  jobId,
+}: {
+  index: number;
+  paper: ResolvablePaper | null;
+  jobId: Id<"extractionJobs">;
+}) {
+  const papersByPosition = new Map<number, ResolvablePaper>();
+  if (paper) papersByPosition.set(index, paper);
+  return render(
+    <PapersContext.Provider value={{ papersByPosition, jobId }}>
+      <PaperCitation index={index} />
+    </PapersContext.Provider>,
+  );
+}
 
 expect.extend(toHaveNoViolations);
 
@@ -96,27 +115,29 @@ const AXE_OPTIONS = {
 
 describe("<PaperCitation> a11y audit (plan-06)", () => {
   it("included pill has zero axe violations", async () => {
-    const { container } = render(
-      <PaperCitation index={3} paper={mkPaper({ included: true })} jobId={JOB} />,
-    );
+    const { container } = renderCitation({
+      index: 3,
+      paper: mkPaper({ included: true }),
+      jobId: JOB,
+    });
     expect(await axe(container, AXE_OPTIONS)).toHaveNoViolations();
   });
 
   it("excluded pill has zero axe violations", async () => {
-    const { container } = render(
-      <PaperCitation
-        index={3}
-        paper={mkPaper({ included: false })}
-        jobId={JOB}
-      />,
-    );
+    const { container } = renderCitation({
+      index: 3,
+      paper: mkPaper({ included: false }),
+      jobId: JOB,
+    });
     expect(await axe(container, AXE_OPTIONS)).toHaveNoViolations();
   });
 
   it("unresolved pill has zero axe violations", async () => {
-    const { container } = render(
-      <PaperCitation index={9} paper={null} jobId={JOB} />,
-    );
+    const { container } = renderCitation({
+      index: 9,
+      paper: null,
+      jobId: JOB,
+    });
     expect(await axe(container, AXE_OPTIONS)).toHaveNoViolations();
   });
 });

@@ -73,11 +73,16 @@ export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
   const filterActive = state.q.trim().length > 0 || state.src !== "all";
   const allVisibleIncluded =
     visibleRows.length > 0 && visibleRows.every((r) => r.included);
+  // Only surface the "Include all N" CTA if some hidden row is actually
+  // excluded. When everything is already included the action is a no-op
+  // and the banner is just noise.
+  const hasHiddenExcluded = includedCount < totalCount;
   const showExtensionBanner =
     !bannerDismissed &&
     filterActive &&
     allVisibleIncluded &&
-    visibleRows.length < totalCount;
+    visibleRows.length < totalCount &&
+    hasHiddenExcluded;
 
   const bulkSetChatPapers = useMutation(
     api.chat.chatPapers.bulkSetChatPapers,

@@ -24,8 +24,27 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PaperCitation } from "@/components/extraction/chat/paper-citation";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import type { Id } from "@/convex/_generated/dataModel";
+
+function renderCitation({
+  index,
+  paper,
+  jobId,
+}: {
+  index: number;
+  paper: ResolvablePaper | null;
+  jobId: Id<"extractionJobs">;
+}) {
+  const papersByPosition = new Map<number, ResolvablePaper>();
+  if (paper) papersByPosition.set(index, paper);
+  return render(
+    <PapersContext.Provider value={{ papersByPosition, jobId }}>
+      <PaperCitation index={index} />
+    </PapersContext.Provider>,
+  );
+}
 
 const toggleSpy = vi.fn(async () => undefined);
 
@@ -113,64 +132,56 @@ function getPill(labelMatch: RegExp = /chatCitationOpen/): HTMLAnchorElement {
 
 describe("<PaperCitation>", () => {
   it("renders a resolved citation as an <a> link", () => {
-    render(<PaperCitation index={3} paper={mkPaper()} jobId={JOB_ID} />);
+    renderCitation({ index: 3, paper: mkPaper(), jobId: JOB_ID });
     const pill = getPill();
     expect(pill.tagName).toBe("A");
     expect(pill).toHaveTextContent("3");
   });
 
   it("pill always points at OpenAlex when openalexId is present", () => {
-    render(
-      <PaperCitation
-        index={2}
-        paper={mkPaper({ doi: "10.1234/abc.2024" })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 2,
+      paper: mkPaper({ doi: "10.1234/abc.2024" }),
+      jobId: JOB_ID,
+    });
     expect(getPill().getAttribute("href")).toBe(
       "https://openalex.org/W1234567890",
     );
   });
 
   it("falls back to DOI on the pill when no openalexId is present", () => {
-    render(
-      <PaperCitation
-        index={1}
-        paper={mkPaper({ openalexId: null, doi: "10.1234/abc.2024" })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 1,
+      paper: mkPaper({ openalexId: null, doi: "10.1234/abc.2024" }),
+      jobId: JOB_ID,
+    });
     expect(getPill().getAttribute("href")).toBe(
       "https://doi.org/10.1234/abc.2024",
     );
   });
 
   it("opens the pill in a new tab with rel=noreferrer", () => {
-    render(<PaperCitation index={1} paper={mkPaper()} jobId={JOB_ID} />);
+    renderCitation({ index: 1, paper: mkPaper(), jobId: JOB_ID });
     const pill = getPill();
     expect(pill.getAttribute("target")).toBe("_blank");
     expect(pill.getAttribute("rel") ?? "").toMatch(/noreferrer/);
   });
 
   it("exposes an aria-label describing the destination paper on the pill", () => {
-    render(
-      <PaperCitation
-        index={1}
-        paper={mkPaper({ title: "My Paper" })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 1,
+      paper: mkPaper({ title: "My Paper" }),
+      jobId: JOB_ID,
+    });
     expect(getPill().getAttribute("aria-label")).toContain("My Paper");
   });
 
   it("marks the pill with data attributes for downstream tooling", () => {
-    render(
-      <PaperCitation
-        index={5}
-        paper={mkPaper({ sourceId: "s_abc" as Id<"extractionJobSources"> })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 5,
+      paper: mkPaper({ sourceId: "s_abc" as Id<"extractionJobSources"> }),
+      jobId: JOB_ID,
+    });
     const pill = getPill();
     expect(pill.getAttribute("data-paper-resolved")).toBe("true");
     expect(pill.getAttribute("data-paper-index")).toBe("5");
@@ -178,7 +189,7 @@ describe("<PaperCitation>", () => {
   });
 
   it("renders an OpenAlex action button in the hover card when openalexId is present", async () => {
-    render(<PaperCitation index={1} paper={mkPaper()} jobId={JOB_ID} />);
+    renderCitation({ index: 1, paper: mkPaper(), jobId: JOB_ID });
     await openHoverCard();
     const openalexBtn = document.querySelector(
       'a[data-paper-card-link="openalex"]',
@@ -190,13 +201,11 @@ describe("<PaperCitation>", () => {
   });
 
   it("renders a DOI action button in the hover card when doi is present", async () => {
-    render(
-      <PaperCitation
-        index={1}
-        paper={mkPaper({ doi: "10.1234/abc.2024" })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 1,
+      paper: mkPaper({ doi: "10.1234/abc.2024" }),
+      jobId: JOB_ID,
+    });
     await openHoverCard();
     const doiBtn = document.querySelector(
       'a[data-paper-card-link="doi"]',
@@ -209,13 +218,11 @@ describe("<PaperCitation>", () => {
   });
 
   it("renders a PDF action button in the hover card when pdfUrl is present", async () => {
-    render(
-      <PaperCitation
-        index={1}
-        paper={mkPaper({ pdfUrl: "https://example.com/paper.pdf" })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 1,
+      paper: mkPaper({ pdfUrl: "https://example.com/paper.pdf" }),
+      jobId: JOB_ID,
+    });
     await openHoverCard();
     const pdfBtn = document.querySelector(
       'a[data-paper-card-link="pdf"]',
@@ -225,13 +232,11 @@ describe("<PaperCitation>", () => {
   });
 
   it("hides action buttons for missing identifiers", async () => {
-    render(
-      <PaperCitation
-        index={1}
-        paper={mkPaper({ openalexId: "W1", doi: null, pdfUrl: null })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 1,
+      paper: mkPaper({ openalexId: "W1", doi: null, pdfUrl: null }),
+      jobId: JOB_ID,
+    });
     await openHoverCard();
     expect(
       document.querySelector('a[data-paper-card-link="openalex"]'),
@@ -241,13 +246,11 @@ describe("<PaperCitation>", () => {
   });
 
   it("normalises a DOI that is already a full URL", async () => {
-    render(
-      <PaperCitation
-        index={1}
-        paper={mkPaper({ doi: "https://doi.org/10.9/XYZ" })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 1,
+      paper: mkPaper({ doi: "https://doi.org/10.9/XYZ" }),
+      jobId: JOB_ID,
+    });
     await openHoverCard();
     const doiBtn = document.querySelector(
       'a[data-paper-card-link="doi"]',
@@ -257,7 +260,7 @@ describe("<PaperCitation>", () => {
   });
 
   it("renders unresolved (paper=null) as non-link muted text", () => {
-    render(<PaperCitation index={99} paper={null} jobId={JOB_ID} />);
+    renderCitation({ index: 99, paper: null, jobId: JOB_ID });
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.getByText("99?")).toBeInTheDocument();
     const el = screen.getByText("99?");
@@ -266,17 +269,15 @@ describe("<PaperCitation>", () => {
   });
 
   it("renders non-link pill when paper has no identifier at all", () => {
-    render(
-      <PaperCitation
-        index={7}
-        paper={mkPaper({
-          openalexId: null,
-          doi: null,
-          pdfUrl: null,
-        })}
-        jobId={JOB_ID}
-      />,
-    );
+    renderCitation({
+      index: 7,
+      paper: mkPaper({
+        openalexId: null,
+        doi: null,
+        pdfUrl: null,
+      }),
+      jobId: JOB_ID,
+    });
     expect(screen.queryByRole("link")).toBeNull();
     const pill = screen.getByRole("button", { name: /chatCitationPreview/ });
     expect(pill).toHaveTextContent("7");
@@ -284,36 +285,30 @@ describe("<PaperCitation>", () => {
 
   describe("tri-state", () => {
     it("marks an included pill with data-citation-state='included'", () => {
-      render(
-        <PaperCitation
-          index={3}
-          paper={mkPaper({ included: true })}
-          jobId={JOB_ID}
-        />,
-      );
+      renderCitation({
+        index: 3,
+        paper: mkPaper({ included: true }),
+        jobId: JOB_ID,
+      });
       expect(getPill().getAttribute("data-citation-state")).toBe("included");
     });
 
     it("marks an excluded pill with data-citation-state='excluded'", () => {
-      render(
-        <PaperCitation
-          index={3}
-          paper={mkPaper({ included: false })}
-          jobId={JOB_ID}
-        />,
-      );
+      renderCitation({
+        index: 3,
+        paper: mkPaper({ included: false }),
+        jobId: JOB_ID,
+      });
       const pill = getPill(/chatCitationExcluded/);
       expect(pill.getAttribute("data-citation-state")).toBe("excluded");
     });
 
     it("excluded pill is still clickable (links still resolve)", () => {
-      render(
-        <PaperCitation
-          index={3}
-          paper={mkPaper({ included: false })}
-          jobId={JOB_ID}
-        />,
-      );
+      renderCitation({
+        index: 3,
+        paper: mkPaper({ included: false }),
+        jobId: JOB_ID,
+      });
       const pill = getPill(/chatCitationExcluded/);
       expect(pill.tagName).toBe("A");
       expect(pill.getAttribute("href")).toBe(
@@ -322,19 +317,17 @@ describe("<PaperCitation>", () => {
     });
 
     it("unresolved pill text is '[N]?' (not '[N]') and carries unresolved state", () => {
-      render(<PaperCitation index={12} paper={null} jobId={JOB_ID} />);
+      renderCitation({ index: 12, paper: null, jobId: JOB_ID });
       const el = screen.getByText("12?");
       expect(el.getAttribute("data-citation-state")).toBe("unresolved");
     });
 
     it("excluded aria-label uses the excluded variant", () => {
-      render(
-        <PaperCitation
-          index={3}
-          paper={mkPaper({ included: false, title: "Paper X" })}
-          jobId={JOB_ID}
-        />,
-      );
+      renderCitation({
+        index: 3,
+        paper: mkPaper({ included: false, title: "Paper X" }),
+        jobId: JOB_ID,
+      });
       expect(getPill(/chatCitationExcluded/).getAttribute("aria-label"))
         .toContain("Paper X");
     });
@@ -342,13 +335,11 @@ describe("<PaperCitation>", () => {
 
   describe("re-include hover action", () => {
     it("shows the Re-include button in the hover card when excluded", async () => {
-      render(
-        <PaperCitation
-          index={3}
-          paper={mkPaper({ included: false })}
-          jobId={JOB_ID}
-        />,
-      );
+      renderCitation({
+        index: 3,
+        paper: mkPaper({ included: false }),
+        jobId: JOB_ID,
+      });
       await openHoverCard(/chatCitationExcluded/);
       const btn = document.querySelector(
         "[data-reinclude-action]",
@@ -357,13 +348,11 @@ describe("<PaperCitation>", () => {
     });
 
     it("hides the Re-include button when the pill is included", async () => {
-      render(
-        <PaperCitation
-          index={3}
-          paper={mkPaper({ included: true })}
-          jobId={JOB_ID}
-        />,
-      );
+      renderCitation({
+        index: 3,
+        paper: mkPaper({ included: true }),
+        jobId: JOB_ID,
+      });
       await openHoverCard();
       expect(
         document.querySelector("[data-reinclude-action]"),
@@ -376,7 +365,7 @@ describe("<PaperCitation>", () => {
         included: false,
         chatPaperId: "cp_xyz" as Id<"chatPapers">,
       });
-      render(<PaperCitation index={3} paper={paper} jobId={JOB_ID} />);
+      renderCitation({ index: 3, paper, jobId: JOB_ID });
       await openHoverCard(/chatCitationExcluded/);
       const btn = document.querySelector(
         "[data-reinclude-action]",

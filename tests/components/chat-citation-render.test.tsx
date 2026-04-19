@@ -24,6 +24,8 @@ import {
   buildStreamdownComponents,
   type ResolvedPaper,
 } from "@/components/extraction/chat/message-list";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
+import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import type { Id } from "@/convex/_generated/dataModel";
 
 vi.mock("convex/react", () => ({
@@ -57,9 +59,13 @@ vi.mock("next-intl", () => ({
 const JOB_ID = "job_test" as Id<"extractionJobs">;
 
 function renderAssistantMarkdown(text: string, papers: ResolvedPaper[]) {
-  const components = buildStreamdownComponents(papers, JOB_ID);
+  const components = buildStreamdownComponents();
+  const papersByPosition = new Map<number, ResolvablePaper>();
+  for (const p of papers) papersByPosition.set(p.position, p);
   return render(
-    <MessageResponse components={components}>{text}</MessageResponse>,
+    <PapersContext.Provider value={{ papersByPosition, jobId: JOB_ID }}>
+      <MessageResponse components={components}>{text}</MessageResponse>
+    </PapersContext.Provider>,
   );
 }
 

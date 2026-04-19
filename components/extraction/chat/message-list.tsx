@@ -27,6 +27,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MessageActions } from "./message-actions";
 import { PaperCitation } from "./paper-citation";
+import { PapersContext, type PapersContextValue } from "./papers-context";
 import { SuggestionChips } from "./suggestion-chips";
 import { StreamingCursor } from "./streaming-cursor";
 import { TypingDots } from "./typing-dots";
@@ -51,12 +52,17 @@ export type ResolvedPaper = ResolvablePaper;
  */
 type ChatUIMessage = UIMessage & { error?: string };
 
-function splitTextForChips(
-  text: string,
-  papers: ReadonlyArray<ResolvedPaper>,
-  jobId: Id<"extractionJobs">,
-): React.ReactNode[] {
-  const groups = resolvePaperReferences<ResolvedPaper>(text, papers);
+/**
+ * Parse `[Pn]` / `[Pn, Pm, …]` tokens in a string and emit text chunks
+ * interleaved with <PaperCitation> pills. The pill itself reads its
+ * paper from PapersContext — this function has no paper data at all,
+ * which is what lets citation state stay live across Streamdown's
+ * aggressive internal memoization (memoized JSX reuses the cached
+ * <PaperCitation> element, but context consumers always re-render on
+ * value change).
+ */
+function splitTextForChips(text: string): React.ReactNode[] {
+  const groups = resolvePaperReferences<ResolvedPaper>(text, []);
   if (groups.length === 0) return [text];
 
   const out: React.ReactNode[] = [];
@@ -72,8 +78,6 @@ function splitTextForChips(
         <PaperCitation
           key={`cite-${g}-${c}-${citation.index}`}
           index={citation.index}
-          paper={citation.paper}
-          jobId={jobId}
         />,
       );
     }
@@ -95,29 +99,21 @@ function splitTextForChips(
  * which is why production messages with citations inside markdown
  * bullets render as plain text.
  */
-function renderWithCitations(
-  node: ReactNode,
-  papers: ReadonlyArray<ResolvedPaper>,
-  jobId: Id<"extractionJobs">,
-): ReactNode {
+function renderWithCitations(node: ReactNode): ReactNode {
   if (node == null || typeof node === "boolean") return node;
   if (typeof node === "string") {
-    return splitTextForChips(node, papers, jobId);
+    return splitTextForChips(node);
   }
   if (typeof node === "number") return node;
   if (Array.isArray(node)) {
     return node.map((child, i) => (
-      <Fragment key={i}>{renderWithCitations(child, papers, jobId)}</Fragment>
+      <Fragment key={i}>{renderWithCitations(child)}</Fragment>
     ));
   }
   if (isValidElement<{ children?: ReactNode }>(node)) {
     const { children } = node.props;
     if (children == null) return node;
-    return cloneElement(
-      node,
-      undefined,
-      renderWithCitations(children, papers, jobId),
-    );
+    return cloneElement(node, undefined, renderWithCitations(children));
   }
   return node;
 }
@@ -146,12 +142,15 @@ const CITATION_TAGS = [
   "span",
 ] as const;
 
-type CitationTag = (typeof CITATION_TAGS)[number];
-
-export function buildStreamdownComponents(
-  papers: ReadonlyArray<ResolvedPaper>,
-  jobId: Id<"extractionJobs">,
-) {
+/**
+ * Build the Streamdown tag → component map. Pure: no closure over
+ * papers or jobId — pill data comes from PapersContext at render time.
+ * Exported for tests; the runtime uses the module-level constant
+ * `STREAMDOWN_COMPONENTS` below so every <Streamdown> call shares the
+ * same `components` reference and the library's internal Block memo
+ * stays stable.
+ */
+export function buildStreamdownComponents() {
   const components: Record<
     string,
     (props: { children?: ReactNode }) => ReactNode
@@ -159,15 +158,15 @@ export function buildStreamdownComponents(
   for (const tag of CITATION_TAGS) {
     components[tag] = (props: { children?: ReactNode }) => {
       const rendered = Children.toArray(props.children).map((child, i) => (
-        <Fragment key={i}>
-          {renderWithCitations(child, papers, jobId)}
-        </Fragment>
+        <Fragment key={i}>{renderWithCitations(child)}</Fragment>
       ));
       return createElement(tag, null, rendered);
     };
   }
   return components;
 }
+
+const STREAMDOWN_COMPONENTS = buildStreamdownComponents();
 
 function getMessageText(message: UIMessage): string {
   if (message.text) return message.text;
@@ -182,11 +181,9 @@ function getMessageText(message: UIMessage): string {
 
 interface MessageRowProps {
   message: ChatUIMessage;
-  papers: ResolvedPaper[];
   isLastAssistant: boolean;
   isFirstInGroup: boolean;
   threadId: string;
-  jobId: Id<"extractionJobs">;
   chatModelId: Id<"models"> | null;
   onRetry: () => void;
   reduceMotion: boolean;
@@ -194,11 +191,9 @@ interface MessageRowProps {
 
 const MessageRow = memo(function MessageRow({
   message,
-  papers,
   isLastAssistant,
   isFirstInGroup,
   threadId,
-  jobId,
   chatModelId,
   onRetry,
   reduceMotion,
@@ -208,11 +203,6 @@ const MessageRow = memo(function MessageRow({
   const isFailed = message.status === "failed";
   const isEmpty = text.length === 0;
   const isUser = message.role === "user";
-
-  const streamdownComponents = useMemo(
-    () => buildStreamdownComponents(papers, jobId),
-    [papers, jobId],
-  );
 
   const rawError = message.error;
 
@@ -258,7 +248,7 @@ const MessageRow = memo(function MessageRow({
           <TypingDots />
         ) : (
           <div className="min-w-0">
-            <MessageResponse components={streamdownComponents}>
+            <MessageResponse components={STREAMDOWN_COMPONENTS}>
               {text}
             </MessageResponse>
             {isStreaming && !isEmpty ? <StreamingCursor /> : null}
@@ -311,25 +301,27 @@ export function MessageList({
     { jobId },
   );
 
-  const papers = useMemo<ResolvedPaper[]>(() => {
-    if (!chatSources) return [];
-    // The query already returns rows sorted by `position` — the same
-    // field the resolver looks up — so no re-sort here. Every field
-    // maps 1:1 from ChatSourceRow to ResolvablePaper.
-    return chatSources.map((row) => ({
-      sourceId: row.sourceId,
-      chatPaperId: row.chatPaperId,
-      position: row.position,
-      title: row.title,
-      authors: row.authors,
-      year: row.year,
-      abstract: row.abstract,
-      openalexId: row.openalexId,
-      doi: row.doi,
-      pdfUrl: row.pdfUrl,
-      included: row.included,
-    }));
-  }, [chatSources]);
+  const papersContextValue = useMemo<PapersContextValue>(() => {
+    const papersByPosition = new Map<number, ResolvablePaper>();
+    if (chatSources) {
+      for (const row of chatSources) {
+        papersByPosition.set(row.position, {
+          sourceId: row.sourceId,
+          chatPaperId: row.chatPaperId,
+          position: row.position,
+          title: row.title,
+          authors: row.authors,
+          year: row.year,
+          abstract: row.abstract,
+          openalexId: row.openalexId,
+          doi: row.doi,
+          pdfUrl: row.pdfUrl,
+          included: row.included,
+        });
+      }
+    }
+    return { papersByPosition, jobId };
+  }, [chatSources, jobId]);
 
   const lastAssistantId = useMemo(() => {
     for (let i = results.length - 1; i >= 0; i--) {
@@ -378,45 +370,45 @@ export function MessageList({
   }
 
   return (
-    <Conversation
-      // `min-h-0` releases the default flex `min-height: auto` so the
-      // StickToBottom internal `overflow: auto` can actually scroll
-      // instead of pushing the composer off-screen.
-      className={cn("min-h-0 flex-1 overscroll-contain")}
-      data-message-list="populated"
-      role="presentation"
-    >
-      <ConversationContent>
-        <ol
-          role="log"
-          aria-live="polite"
-          aria-relevant="additions"
-          className="mx-auto flex w-full max-w-3xl flex-col gap-2"
-        >
-          <AnimatePresence initial={false}>
-            {results.map((message, i) => {
-              const prev = results[i - 1];
-              const isFirstInGroup = !prev || prev.role !== message.role;
-              return (
-                <Fragment key={message.id}>
-                  <MessageRow
-                    message={message as ChatUIMessage}
-                    papers={papers}
-                    isLastAssistant={message.id === lastAssistantId}
-                    isFirstInGroup={isFirstInGroup}
-                    threadId={threadId}
-                    jobId={jobId}
-                    chatModelId={chatModelId}
-                    onRetry={handleRetry}
-                    reduceMotion={reduceMotion}
-                  />
-                </Fragment>
-              );
-            })}
-          </AnimatePresence>
-        </ol>
-      </ConversationContent>
-      <JumpToLatestPill messageCount={results.length} />
-    </Conversation>
+    <PapersContext.Provider value={papersContextValue}>
+      <Conversation
+        // `min-h-0` releases the default flex `min-height: auto` so the
+        // StickToBottom internal `overflow: auto` can actually scroll
+        // instead of pushing the composer off-screen.
+        className={cn("min-h-0 flex-1 overscroll-contain")}
+        data-message-list="populated"
+        role="presentation"
+      >
+        <ConversationContent>
+          <ol
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            className="mx-auto flex w-full max-w-3xl flex-col gap-2"
+          >
+            <AnimatePresence initial={false}>
+              {results.map((message, i) => {
+                const prev = results[i - 1];
+                const isFirstInGroup = !prev || prev.role !== message.role;
+                return (
+                  <Fragment key={message.id}>
+                    <MessageRow
+                      message={message as ChatUIMessage}
+                      isLastAssistant={message.id === lastAssistantId}
+                      isFirstInGroup={isFirstInGroup}
+                      threadId={threadId}
+                      chatModelId={chatModelId}
+                      onRetry={handleRetry}
+                      reduceMotion={reduceMotion}
+                    />
+                  </Fragment>
+                );
+              })}
+            </AnimatePresence>
+          </ol>
+        </ConversationContent>
+        <JumpToLatestPill messageCount={results.length} />
+      </Conversation>
+    </PapersContext.Provider>
   );
 }

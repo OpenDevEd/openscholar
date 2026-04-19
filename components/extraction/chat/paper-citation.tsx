@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import {
   classifyCitationState,
   type CitationState,
@@ -20,13 +19,12 @@ import {
 import { applyInclusionPatch } from "@/lib/chat/chat-papers-selection";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import { cn } from "@/lib/utils";
+import { usePapersContext } from "./papers-context";
 
 export type PaperCitationTarget = ResolvablePaper;
 
 interface PaperCitationProps {
   index: number;
-  paper: ResolvablePaper | null;
-  jobId: Id<"extractionJobs">;
 }
 
 interface PaperLinks {
@@ -99,10 +97,12 @@ function resolvePaperLinks(paper: ResolvablePaper): PaperLinks {
   return { openalexUrl, doiUrl, pdfUrl, shortDoi, primary };
 }
 
-export function PaperCitation({ index, paper, jobId }: PaperCitationProps) {
+export function PaperCitation({ index }: PaperCitationProps) {
   const t = useTranslations("extraction");
   const tCommon = useTranslations("common");
   const tAcc = useTranslations("accessibility");
+  const { papersByPosition, jobId } = usePapersContext();
+  const paper = papersByPosition.get(index) ?? null;
 
   const reinclude = useMutation(
     api.chat.chatPapers.toggleChatPaper,

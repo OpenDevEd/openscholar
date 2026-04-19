@@ -165,13 +165,21 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
       data-chat-composer="true"
       data-generating={jobIsGenerating}
     >
+      {/*
+        Screen-reader-only live region. The visible count lives on the
+        desktop rail header and the mobile sheet trigger — a third
+        visible "N of M" above the textarea is pure noise. We keep an
+        sr-only aria-live region so SR users on mobile still hear
+        inclusion changes when the sheet is closed, and so e2e + unit
+        tests can still read the data-sources-* attributes.
+      */}
       <p
         role="status"
         aria-live="polite"
         data-sources-count-state={hasNoSourcesIncluded ? "zero" : "normal"}
         data-sources-included={includedSources}
         data-sources-total={totalSources}
-        className="mb-2 text-xs text-muted-foreground tabular-nums"
+        className="sr-only"
       >
         {hasNoSourcesIncluded
           ? tc("sources.zero")
@@ -196,6 +204,7 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
             onClick={() => {
               void handleIncludeAllSources();
             }}
+            className="text-foreground"
           >
             {tc("sources.includeAll")}
           </Button>
