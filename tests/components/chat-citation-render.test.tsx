@@ -66,7 +66,6 @@ function renderAssistantMarkdown(text: string, papers: ResolvedPaper[]) {
 const mkPaper = (over: Partial<ResolvedPaper> & { position: number }): ResolvedPaper => ({
   sourceId: `src_${over.position}` as Id<"extractionJobSources">,
   chatPaperId: `cp_${over.position}` as Id<"chatPapers">,
-  position: over.position,
   title: "Placeholder",
   authors: ["Doe"],
   year: 2024,
