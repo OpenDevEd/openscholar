@@ -43,4 +43,14 @@ describe("applyInclusionPatch", () => {
     expect(out[0].chatPaperId).toBe(cp(1));
     expect(out[0].included).toBe(false);
   });
+
+  it("leaves untargeted rows reference-equal while flipping the targeted one", () => {
+    const r1 = row(1, true);
+    const r2 = row(2, true);
+    const out = applyInclusionPatch([r1, r2], new Map([[cp(1), false]]));
+    expect(out).toHaveLength(2);
+    expect(out[0]).not.toBe(r1);
+    expect(out[0].included).toBe(false);
+    expect(out[1]).toBe(r2);
+  });
 });
