@@ -7,8 +7,8 @@ import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
 import {
   Conversation,
   ConversationContent,
-  ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
+import { JumpToLatestPill } from "./jump-to-latest-pill";
 import {
   Message,
   MessageContent,
@@ -316,7 +316,7 @@ export function MessageList({ threadId, jobId }: MessageListProps) {
           ))}
         </ol>
       </ConversationContent>
-      <ConversationScrollButton />
+      <JumpToLatestPill messageCount={results.length} />
     </Conversation>
   );
 }

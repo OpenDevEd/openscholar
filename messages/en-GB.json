@@ -512,6 +512,8 @@
     "chatModelPickerSearch": "Search models…",
     "chatModelPickerEmpty": "No models found.",
     "chatModelPickerLoading": "Loading models…",
+    "chatJumpToLatest": "Jump to latest",
+    "chatJumpToLatestWithCount": "{count, plural, one {# new message} other {# new messages}}",
     "chatModelChanged": "Model changed",
     "chatPapersInContext": "Papers in context",
     "chatEmptyStatePrompt": "Ask a question to get started.",
