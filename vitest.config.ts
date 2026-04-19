@@ -18,6 +18,7 @@ export default defineConfig({
       ["tests/hooks/**/*.test.ts", "jsdom"],
       ["tests/hooks/**/*.test.tsx", "jsdom"],
       ["tests/components/**/*.test.tsx", "jsdom"],
+      ["tests/a11y/**/*.test.tsx", "jsdom"],
       ["app/**/__tests__/**/*.test.tsx", "jsdom"],
       // tsx test files at tests root level use jsdom
       ["tests/*.test.tsx", "jsdom"],
