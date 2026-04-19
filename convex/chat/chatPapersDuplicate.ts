@@ -7,13 +7,18 @@ export type SourceChatPaperRow = {
 };
 
 export function cloneChatPapersForDuplicate(
-  _newJobId: Id<"extractionJobs">,
+  newJobId: Id<"extractionJobs">,
   sourceRows: ReadonlyArray<SourceChatPaperRow>,
-  _sourceIdMap: ReadonlyMap<
+  sourceIdMap: ReadonlyMap<
     Id<"extractionJobSources">,
     Id<"extractionJobSources">
   >,
 ): SeedChatPaperRow[] {
-  if (sourceRows.length === 0) return [];
-  throw new Error("not implemented");
+  const out: SeedChatPaperRow[] = [];
+  for (const row of sourceRows) {
+    const newSourceId = sourceIdMap.get(row.sourceId);
+    if (!newSourceId) continue;
+    out.push({ jobId: newJobId, sourceId: newSourceId, included: row.included });
+  }
+  return out;
 }
