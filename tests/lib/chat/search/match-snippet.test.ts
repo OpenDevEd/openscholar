@@ -65,4 +65,13 @@ describe("extractMatchSnippet", () => {
     const [start, end] = result!.highlightRanges[0];
     expect(result!.text.slice(start, end)).toBe("Photo");
   });
+
+  it("R9: source shorter than maxLen returns the entire source with no ellipses", () => {
+    const short = "tiny abstract";
+    const result = extractMatchSnippet(short, "abstract", 60);
+    expect(result).not.toBeNull();
+    expect(result!.text).toBe(short);
+    expect(result!.text.startsWith("\u2026")).toBe(false);
+    expect(result!.text.endsWith("\u2026")).toBe(false);
+  });
 });
