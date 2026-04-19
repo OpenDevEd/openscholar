@@ -50,7 +50,8 @@ interface PaperLinks {
 const BASE_PILL = cn(
   "mx-0.5 inline-flex h-[1.1rem] min-w-[1.1rem] items-center justify-center",
   "rounded-full px-1 text-[0.72em] font-semibold leading-none",
-  "align-baseline transition-colors no-underline",
+  "align-baseline no-underline",
+  "transition-[background-color,border-color,color] duration-[180ms] ease-out motion-reduce:transition-none",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
 );
 

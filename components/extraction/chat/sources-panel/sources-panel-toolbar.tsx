@@ -2,6 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export function SourcesPanelToolbar({
   searchInputRef,
 }: SourcesPanelToolbarProps) {
   const t = useTranslations("sourcesPanel");
+  const reduceMotion = useReducedMotion();
 
   const bulkSetChatPapers = useMutation(
     api.chat.chatPapers.bulkSetChatPapers,
@@ -181,7 +183,26 @@ export function SourcesPanelToolbar({
               onClick={() => handleSortPillClick(field)}
             >
               {t(`sort.${field}`)}
-              {active ? (dir === "asc" ? " \u2191" : " \u2193") : ""}
+              {active ? (
+                <AnimatePresence initial={false} mode="wait">
+                  <motion.span
+                    key={dir}
+                    aria-hidden
+                    className="ml-1 inline-block"
+                    data-sort-glyph={dir}
+                    initial={reduceMotion ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : { duration: 0.12, ease: "easeOut" }
+                    }
+                  >
+                    {dir === "asc" ? "\u2191" : "\u2193"}
+                  </motion.span>
+                </AnimatePresence>
+              ) : null}
             </Button>
           );
         })}

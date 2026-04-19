@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChipCounts, SourceChip } from "@/lib/chat/source-chips";
@@ -25,6 +26,7 @@ export function SourcesPanelChips({
   onSelect,
 }: SourcesPanelChipsProps) {
   const t = useTranslations("sourcesPanel.chips");
+  const reduceMotion = useReducedMotion();
   return (
     <div
       role="group"
@@ -37,21 +39,30 @@ export function SourcesPanelChips({
         const disabled = chip !== "all" && count === 0;
         const active = chip === selected;
         return (
-          <Button
+          <motion.div
             key={chip}
-            variant={active ? "secondary" : "ghost"}
-            size="sm"
-            className={cn("h-7 px-2 text-[11px]")}
-            data-source-chip-button={chip}
-            data-active={active ? "true" : undefined}
-            data-chip-count={count}
-            aria-pressed={active}
-            aria-disabled={disabled || undefined}
-            disabled={disabled}
-            onClick={() => onSelect(chip)}
+            animate={
+              reduceMotion ? { scale: 1 } : { scale: active ? 1.03 : 1 }
+            }
+            transition={
+              reduceMotion ? { duration: 0 } : { duration: 0.15, ease: "easeOut" }
+            }
           >
-            {t(chip)} ({count})
-          </Button>
+            <Button
+              variant={active ? "secondary" : "ghost"}
+              size="sm"
+              className={cn("h-7 px-2 text-[11px]")}
+              data-source-chip-button={chip}
+              data-active={active ? "true" : undefined}
+              data-chip-count={count}
+              aria-pressed={active}
+              aria-disabled={disabled || undefined}
+              disabled={disabled}
+              onClick={() => onSelect(chip)}
+            >
+              {t(chip)} ({count})
+            </Button>
+          </motion.div>
         );
       })}
     </div>

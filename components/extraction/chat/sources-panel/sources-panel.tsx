@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
+import { useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -38,6 +39,7 @@ export function SourcesPanel({ jobId }: SourcesPanelProps) {
 
 export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
   const t = useTranslations("sourcesPanel");
+  const reduceMotion = useReducedMotion();
   const rawRows = useQuery(
     api.chat.chatPapers.listChatSourcesWithInclusion,
     { jobId },
@@ -166,6 +168,7 @@ export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
       className="flex h-full w-full flex-col bg-background"
       data-sources-panel
       data-job-id={jobId}
+      data-motion-disabled={reduceMotion ? "true" : "false"}
       onKeyDown={keyboard.onKeyDown}
     >
       <SourcesPanelHeader

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function SourcesPanelExtensionBanner({
   onDismiss,
 }: SourcesPanelExtensionBannerProps) {
   const t = useTranslations("sourcesPanel.extensionBanner");
+  const reduceMotion = useReducedMotion();
   const [pending, setPending] = useState(false);
 
   const bulkSetChatPapers = useMutation(
@@ -47,7 +49,7 @@ export function SourcesPanelExtensionBanner({
     );
   });
 
-  if (!visible || visibleCount >= totalCount) return null;
+  const showBanner = visible && visibleCount < totalCount;
 
   async function handleIncludeAll() {
     setPending(true);
@@ -61,36 +63,52 @@ export function SourcesPanelExtensionBanner({
   }
 
   return (
-    <div
-      role="status"
-      data-sources-extension-banner
-      className="flex items-center justify-between gap-3 border-b border-border/50 bg-primary/5 px-4 py-2 text-xs"
-    >
-      <span className="text-muted-foreground">
-        {t("filtered", { filtered: visibleCount })}
-      </span>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="link"
-          size="sm"
-          className="h-auto p-0 text-xs font-medium"
-          data-banner-include-all
-          disabled={pending}
-          onClick={handleIncludeAll}
+    <AnimatePresence initial={false}>
+      {showBanner && (
+        <motion.div
+          role="status"
+          data-sources-extension-banner
+          className="flex items-center justify-between gap-3 border-b border-border/50 bg-primary/5 px-4 py-2 text-xs overflow-hidden"
+          initial={
+            reduceMotion ? false : { opacity: 0, y: 8, height: 0 }
+          }
+          animate={{ opacity: 1, y: 0, height: "auto" }}
+          exit={
+            reduceMotion
+              ? { opacity: 1, height: 0 }
+              : { opacity: 0, y: 8, height: 0 }
+          }
+          transition={
+            reduceMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }
+          }
         >
-          {t("includeAll", { total: totalCount })}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          aria-label={t("dismiss")}
-          data-banner-dismiss
-          onClick={onDismiss}
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      </div>
-    </div>
+          <span className="text-muted-foreground">
+            {t("filtered", { filtered: visibleCount })}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 text-xs font-medium"
+              data-banner-include-all
+              disabled={pending}
+              onClick={handleIncludeAll}
+            >
+              {t("includeAll", { total: totalCount })}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              aria-label={t("dismiss")}
+              data-banner-dismiss
+              onClick={onDismiss}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

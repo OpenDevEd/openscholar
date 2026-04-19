@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CheckIcon } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -56,6 +57,7 @@ export function SourcesPanelList({
 }: SourcesPanelListProps) {
   const t = useTranslations("sourcesPanel");
   const lastIndexRef = useRef<number | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const toggleChatPaper = useMutation(
     api.chat.chatPapers.toggleChatPaper,
@@ -151,49 +153,69 @@ export function SourcesPanelList({
       data-sources-panel-list
       className="divide-y divide-border/40"
     >
-      {rows.map((row, index) => {
-        const selected = row.included;
-        return (
-          <div
-            key={row.chatPaperId}
-            // The actual role="option" + id + aria-selected lives on the
-            // <SourceRow> inner. This outer is a non-interactive click
-            // target so axe's nested-interactive rule stays clean.
-            data-selectable-row
-            data-paper-included={selected}
-            data-paper-source={row.sourceType}
-            data-chat-paper-id={row.chatPaperId}
-            onClick={(e) => handleRowActivate(index, e.shiftKey)}
-            className={cn(
-              "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors",
-              selected ? "bg-primary/5" : "hover:bg-muted/40",
-            )}
-          >
-            <span
-              aria-hidden="true"
+      <AnimatePresence initial={false}>
+        {rows.map((row, index) => {
+          const selected = row.included;
+          return (
+            <motion.div
+              key={row.chatPaperId}
+              layout={reduceMotion ? false : "position"}
+              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 4 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.15, ease: "easeOut" }
+              }
+              data-selectable-row
+              data-paper-included={selected}
+              data-paper-source={row.sourceType}
+              data-chat-paper-id={row.chatPaperId}
+              onClick={(e) => handleRowActivate(index, e.shiftKey)}
               className={cn(
-                "mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded border",
-                selected
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-input bg-background",
+                "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors",
+                selected ? "bg-primary/5" : "hover:bg-muted/40",
               )}
-              data-checkbox-state={selected ? "checked" : "unchecked"}
             >
-              {selected ? <CheckIcon className="size-3" /> : null}
-            </span>
-            <div className="flex-1 min-w-0">
-              <SourceRow
-                row={row}
-                match={matches.get(row.chatPaperId)}
-                query={query}
-                isActiveDescendant={
-                  `src-row-${row.chatPaperId}` === activeDescendantId
+              <motion.span
+                aria-hidden="true"
+                className={cn(
+                  "mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded border",
+                  selected
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background",
+                )}
+                data-checkbox-state={selected ? "checked" : "unchecked"}
+                animate={
+                  reduceMotion
+                    ? { scale: 1 }
+                    : selected
+                      ? { scale: [1, 1.18, 1] }
+                      : { scale: 1 }
                 }
-              />
-            </div>
-          </div>
-        );
-      })}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { duration: 0.18, ease: "easeOut" }
+                }
+              >
+                {selected ? <CheckIcon className="size-3" /> : null}
+              </motion.span>
+              <div className="flex-1 min-w-0">
+                <SourceRow
+                  row={row}
+                  match={matches.get(row.chatPaperId)}
+                  query={query}
+                  isActiveDescendant={
+                    `src-row-${row.chatPaperId}` === activeDescendantId
+                  }
+                />
+              </div>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }
