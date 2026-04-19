@@ -128,6 +128,17 @@ describe("filterAndPreservePositions", () => {
     expect(out.map((r) => r.sourceId)).toEqual(["b", "d"]);
     expect(out.map((r) => r.promptId)).toEqual(["P2", "P4"]);
   });
+
+  it("derives promptId from position, not array index (P7 for the lone surviving position 7)", () => {
+    // Critical invariant: under the old array-index scheme, a single
+    // element would always get P1. Under position-anchoring, a lone
+    // surviving row at position 7 keeps promptId "P7".
+    const sources = [cs("lone", 7)];
+    const included = new Set(["lone"]);
+    const out = filterAndPreservePositions(sources, included);
+    expect(out).toHaveLength(1);
+    expect(out[0].promptId).toBe("P7");
+  });
 });
 
 describe("sortPapersForCorpus", () => {
