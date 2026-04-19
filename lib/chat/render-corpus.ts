@@ -8,6 +8,29 @@
  * §4i for the rationale).
  */
 
+export type CorpusSource = {
+  sourceId: string;
+  position: number;
+  openalexId?: string;
+  title: string;
+  authors: ReadonlyArray<string>;
+  year?: number;
+  abstract?: string;
+  doi?: string;
+  pdfUrl?: string;
+};
+
+export type CorpusSourceForPrompt = CorpusSource & {
+  promptId: `P${number}`;
+};
+
+export function filterAndPreservePositions(
+  _sources: ReadonlyArray<CorpusSource>,
+  _includedSourceIds: ReadonlySet<string>,
+): CorpusSourceForPrompt[] {
+  return [];
+}
+
 export interface PaperForCorpus {
   openalexId?: string;
   title: string;

@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  filterAndPreservePositions,
   renderPaperCorpus,
   sortPapersForCorpus,
+  type CorpusSource,
   type PaperForCorpus,
 } from "@/lib/chat/render-corpus";
 
@@ -59,6 +61,12 @@ describe("renderPaperCorpus", () => {
     ]);
     expect(out).toContain("<authors>Unknown</authors>");
     expect(out).toContain("<year>Unknown</year>");
+  });
+});
+
+describe("filterAndPreservePositions", () => {
+  it("returns [] for empty input and empty includedSourceIds", () => {
+    expect(filterAndPreservePositions([], new Set<string>())).toEqual([]);
   });
 });
 
