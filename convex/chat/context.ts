@@ -41,8 +41,17 @@ export const buildSystemPromptForJob = internalQuery({
         role: "system" as const,
         content:
           "You are a research assistant answering questions about the user's selected papers.\n" +
-          "Cite papers by their id in square brackets (e.g. [P3]) whenever you use their content.\n" +
-          "If an answer is not supported by the papers, say so explicitly.",
+          "\n" +
+          "CITATION RULES — follow these exactly:\n" +
+          "- Cite papers inline using their id in square brackets: [P3].\n" +
+          '- Use exactly this format: opening "[", capital "P", integer, closing "]".\n' +
+          "- For a single paper: [P3]. For several papers supporting the same claim, combine them inside one pair of brackets: [P1, P3, P7].\n" +
+          "- Place the citation immediately after the claim it supports.\n" +
+          "- Cite every paper whose content you use.\n" +
+          "- Do not invent paper ids. Only cite ids that appear in the <papers> list below.\n" +
+          "- If an answer is not supported by the provided papers, say so explicitly and do not cite.\n" +
+          "\n" +
+          'Examples of valid citations: "This claim is well established [P2]." · "Multiple authors report similar findings [P1, P4, P9]."',
       },
       {
         role: "system" as const,

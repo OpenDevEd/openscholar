@@ -24,7 +24,7 @@ import { SuggestionChips } from "./suggestion-chips";
 import { StreamingCursor } from "./streaming-cursor";
 import { TypingDots } from "./typing-dots";
 import {
-  resolvePaperReference,
+  resolvePaperReferences,
   type ResolvablePaper,
 } from "@/lib/chat/resolve-paper";
 import { cn } from "@/lib/utils";
@@ -41,24 +41,27 @@ function splitTextForChips(
   text: string,
   papers: ResolvedPaper[],
 ): React.ReactNode[] {
-  const matches = resolvePaperReference<ResolvedPaper>(text, papers);
-  if (matches.length === 0) return [text];
+  const groups = resolvePaperReferences<ResolvedPaper>(text, papers);
+  if (groups.length === 0) return [text];
 
   const out: React.ReactNode[] = [];
   let cursor = 0;
-  for (let i = 0; i < matches.length; i++) {
-    const m = matches[i];
-    if (m.start > cursor) {
-      out.push(text.slice(cursor, m.start));
+  for (let g = 0; g < groups.length; g++) {
+    const group = groups[g];
+    if (group.start > cursor) {
+      out.push(text.slice(cursor, group.start));
     }
-    out.push(
-      <PaperCitation
-        key={`cite-${i}-${m.index}`}
-        index={m.index}
-        paper={m.paper}
-      />,
-    );
-    cursor = m.end;
+    for (let c = 0; c < group.citations.length; c++) {
+      const citation = group.citations[c];
+      out.push(
+        <PaperCitation
+          key={`cite-${g}-${c}-${citation.index}`}
+          index={citation.index}
+          paper={citation.paper}
+        />,
+      );
+    }
+    cursor = group.end;
   }
   if (cursor < text.length) {
     out.push(text.slice(cursor));
