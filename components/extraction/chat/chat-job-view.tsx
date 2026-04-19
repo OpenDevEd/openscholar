@@ -6,6 +6,7 @@ import { ChatHeader } from "./chat-header";
 import { MessageComposer } from "./message-composer";
 import { MessageList } from "./message-list";
 import { PapersInContextSidebar } from "./papers-in-context-sidebar";
+import { useChatShortcuts } from "./use-chat-shortcuts";
 
 interface ChatJobViewProps {
   job: Doc<"extractionJobs">;
@@ -13,6 +14,8 @@ interface ChatJobViewProps {
 }
 
 export function ChatJobView({ job, threadId }: ChatJobViewProps) {
+  useChatShortcuts();
+
   return (
     <TwoColumnLayout
       leftColumn={<PapersInContextSidebar jobId={job._id} />}

@@ -300,7 +300,7 @@ export function MessageList({ threadId, jobId }: MessageListProps) {
         className="flex flex-1 flex-col overflow-y-auto"
         data-message-list="empty"
       >
-        <SuggestionChips threadId={threadId} />
+        <SuggestionChips threadId={threadId} jobId={jobId} />
       </div>
     );
   }
