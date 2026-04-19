@@ -44,6 +44,7 @@ import { ReviewQueue } from "@/components/extraction/review-queue";
 import { ReportBuilder } from "@/components/extraction/report-builder";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
+import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
 import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
@@ -406,8 +407,37 @@ export default function JobDetailPage() {
     job.status === "pending" ||
     job.status === "downloading_pdfs" ||
     job.status === "extracting";
+
+  // Chat-mode branch: completely different layout — Papers sidebar + header + messages + composer.
+  // Extraction-mode continues through the existing TwoColumnLayout below.
+  if (job.mode === "chat") {
+    if (!job.chatThreadId) {
+      return (
+        <PageWrapper>
+          <div
+            className="flex min-h-[60vh] items-center justify-center p-8 text-center text-muted-foreground"
+            data-chat-state="preparing"
+          >
+            {tExtraction("chatPreparing")}
+          </div>
+        </PageWrapper>
+      );
+    }
+    return (
+      <div
+        className="flex w-full flex-1 flex-col overflow-x-clip"
+        data-job-mode="chat"
+      >
+        <ChatJobView job={job} threadId={job.chatThreadId} />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex w-full flex-1 flex-col overflow-x-clip">
+    <div
+      className="flex w-full flex-1 flex-col overflow-x-clip"
+      data-job-mode="extraction"
+    >
       <TwoColumnLayout
         leftColumn={
           isMobile ? null : (

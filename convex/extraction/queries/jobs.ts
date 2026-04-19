@@ -15,11 +15,12 @@ import { getCurrentUser } from "../../lib/auth";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedJob } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
-import { getPaperLimit } from "../bucket/limits";
+import { getPaperLimit, PAPER_LIMIT_MAX } from "../bucket/limits";
 import {
   extractionJobValidator,
   extractionPaperValidator,
   extractionQuestionValidator,
+  searchFiltersValidator,
 } from "../validators";
 
 export const getMyJobs = query({
@@ -144,5 +145,70 @@ export const subscribeToJobProgress = query({
       processedPapers: job.processedPapers ?? 0,
       failedPapers: job.failedPapers ?? 0,
     });
+  },
+});
+
+/**
+ * Public read of the frozen bucket-source rows for a job. Drives the
+ * Papers-in-context sidebar in chat mode, but is mode-agnostic — a
+ * future extraction-side consumer can reuse it too.
+ *
+ * Returns the rows ordered by insertion position so the UI list matches
+ * the corpus order sent to the model (sorted by openalexId in the
+ * prompt renderer, but displayed in user-selection order in the
+ * sidebar).
+ */
+export const getJobSources = query({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.union(
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") }),
+    v.object({
+      status: v.literal("ok"),
+      sources: v.array(
+        v.object({
+          _id: v.id("extractionJobSources"),
+          _creationTime: v.number(),
+          jobId: v.id("extractionJobs"),
+          position: v.number(),
+          bucketKey: v.string(),
+          source: v.union(
+            v.literal("history"),
+            v.literal("library"),
+            v.literal("collection"),
+            v.literal("zotero"),
+            v.literal("upload"),
+          ),
+          sourceRefId: v.string(),
+          title: v.string(),
+          authors: v.array(v.string()),
+          year: v.optional(v.number()),
+          doi: v.optional(v.string()),
+          openalexId: v.optional(v.string()),
+          abstract: v.optional(v.string()),
+          pdfUrl: v.optional(v.string()),
+          storageId: v.optional(v.id("_storage")),
+          searchFilters: v.optional(searchFiltersValidator),
+          libraryType: v.optional(
+            v.union(v.literal("user"), v.literal("group")),
+          ),
+          groupId: v.optional(v.string()),
+          zoteroUserId: v.optional(v.string()),
+          collectionKey: v.optional(v.string()),
+          includeDescendants: v.optional(v.boolean()),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") return access;
+
+    const sources = await ctx.db
+      .query("extractionJobSources")
+      .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
+      .take(PAPER_LIMIT_MAX);
+
+    return { status: "ok" as const, sources };
   },
 });

@@ -15,6 +15,7 @@ export {
   getMyJobs,
   getJobDetails,
   subscribeToJobProgress,
+  getJobSources,
 } from "./queries/jobs";
 
 export { getJobResults, getJobResultsPaginated } from "./queries/results";
