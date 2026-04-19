@@ -11,13 +11,11 @@ import {
   internalQuery,
   mutation,
   type ActionCtx,
-  type MutationCtx,
-  type QueryCtx,
 } from "../_generated/server";
 import { v } from "convex/values";
-import type { Id, Doc } from "../_generated/dataModel";
-import { requireAuth } from "../lib/auth";
+import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
+import { authorizeThreadAccess } from "./auth";
 import { paperChat } from "./agent";
 import { dedupeExpandedSources, expandJobSources } from "../extraction/expandSources";
 import { replaceJobSources, type BucketItemInput } from "../extraction/jobSources";
@@ -362,26 +360,6 @@ export const getModelForThread = internalQuery({
     };
   },
 });
-
-/**
- * Shared ownership guard. Every public chat mutation/query starts with
- * this — the thread id is the only handle the client has, so we must
- * resolve it to a job and verify the caller owns it.
- */
-export async function authorizeThreadAccess(
-  ctx: QueryCtx | MutationCtx,
-  threadId: string,
-): Promise<{ job: Doc<"extractionJobs">; user: Doc<"users"> }> {
-  const user = await requireAuth(ctx);
-  const job = await ctx.db
-    .query("extractionJobs")
-    .withIndex("by_chatThread", (q) => q.eq("chatThreadId", threadId))
-    .unique();
-  if (!job || job.userId !== user._id || job.mode !== "chat") {
-    throw createError("FORBIDDEN", "Access denied");
-  }
-  return { job, user };
-}
 
 /**
  * Thin public wrapper around authorizeThreadAccess for client-side

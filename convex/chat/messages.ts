@@ -35,10 +35,9 @@ import {
 } from "@convex-dev/agent";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { paperChat } from "./agent";
-import { authorizeThreadAccess } from "./threads";
+import { authorizeThreadAccess } from "./auth";
 import { resolveOpenRouterModel } from "./provider";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {
