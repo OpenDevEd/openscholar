@@ -126,4 +126,20 @@ describe("scoreSource", () => {
     expect(() => scoreSource(noAuthors, "doe")).not.toThrow();
     expect(scoreSource(noAuthors, "doe")).toEqual({ score: 0, field: null });
   });
+
+  it("R14: scoreSource is pure — does not mutate the row or its arrays", () => {
+    const frozenAuthors = Object.freeze(["Smith, J", "Doe, A"]);
+    const frozen: ScorerInput = Object.freeze({
+      title: baseRow.title,
+      authors: frozenAuthors as unknown as string[],
+      year: baseRow.year,
+      abstract: baseRow.abstract,
+      doi: baseRow.doi,
+      openalexId: baseRow.openalexId,
+    });
+    expect(() => scoreSource(frozen, "marine")).not.toThrow();
+    expect(frozen.title).toBe(baseRow.title);
+    expect(frozen.authors).toBe(frozenAuthors);
+    expect(frozenAuthors.length).toBe(2);
+  });
 });
