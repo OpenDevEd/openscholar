@@ -90,4 +90,14 @@ describe("scoreSource", () => {
       field: null,
     });
   });
+
+  it("R9: when a query hits both title and abstract, title wins via higher weight", () => {
+    const both: ScorerInput = {
+      ...baseRow,
+      title: "photosynthesis study",
+      abstract: "details of photosynthesis here",
+    };
+    const result = scoreSource(both, "photosynthesis");
+    expect(result.field).toBe("title");
+  });
 });
