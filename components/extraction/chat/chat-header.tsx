@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ClearConversationDialog } from "./clear-conversation";
+import { SourcesPanelSheet } from "./sources-panel";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 interface ChatHeaderProps {
@@ -77,6 +78,7 @@ export function ChatHeader({ job, threadId }: ChatHeaderProps) {
         </motion.nav>
 
         <div className="flex items-center gap-1.5">
+          <SourcesPanelSheet jobId={job._id} />
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>

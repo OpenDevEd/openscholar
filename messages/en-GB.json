@@ -723,6 +723,70 @@
       "liveAnnouncement": "Papers set to {count, number}"
     }
   },
+  "sourcesPanel": {
+    "title": "Sources",
+    "countLive": "{included, number} of {total, number}",
+    "countZero": "0 sources \u2014 chat needs at least one paper",
+    "searchPlaceholder": "Search sources",
+    "listLabel": "Chat sources",
+    "emptyMatch": "No sources match the current filter.",
+    "mobileTrigger": "Sources ({included, number} of {total, number})",
+    "mobileTriggerShort": "{included, number}/{total, number}",
+    "chips": {
+      "groupLabel": "Filter by source type",
+      "all": "All",
+      "openalex": "OpenAlex",
+      "upload": "Uploads",
+      "zotero": "Zotero",
+      "history": "History"
+    },
+    "sort": {
+      "groupLabel": "Sort sources",
+      "added": "Added",
+      "title": "Title",
+      "year": "Year",
+      "source": "Source",
+      "inContext": "In context",
+      "dirAsc": "Ascending",
+      "dirDesc": "Descending"
+    },
+    "bulk": {
+      "groupLabel": "Bulk actions",
+      "include": "Include all",
+      "exclude": "Exclude all",
+      "invert": "Invert",
+      "undo": "Undo",
+      "success": {
+        "include": "Included {count, number} sources",
+        "exclude": "Excluded {count, number} sources",
+        "invert": "Inverted {count, number} sources"
+      },
+      "error": "Bulk {action} failed"
+    },
+    "extensionBanner": {
+      "filtered": "All {filtered, number} filtered sources included.",
+      "includeAll": "Include all {total, number} sources",
+      "dismiss": "Dismiss banner",
+      "error": "Could not include all sources"
+    },
+    "matchedIn": {
+      "abstract": "abstract",
+      "doi": "DOI",
+      "openalexId": "OpenAlex ID"
+    },
+    "toggle": {
+      "error": "Could not update source"
+    }
+  },
+  "composer": {
+    "send": "Send",
+    "sources": {
+      "live": "{included, number} of {total, number} sources in context for next message",
+      "zero": "0 sources \u2014 chat needs at least one paper",
+      "emptyBanner": "No sources are currently in context. Send is disabled.",
+      "includeAll": "Include all"
+    }
+  },
   "toast": {
     "unexpectedError": "An unexpected error occurred. Please try again.",
     "openAISettings": "Open AI Settings",

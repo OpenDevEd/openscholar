@@ -41,6 +41,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("convex/react", () => ({
   useMutation: () => vi.fn(),
+  useQuery: () => undefined,
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
@@ -49,6 +50,9 @@ vi.mock("@/convex/_generated/api", () => ({
       messages: {
         clearThread: "stub",
       },
+      chatPapers: {
+        listChatSourcesWithInclusion: "stub",
+      },
     },
   },
 }));
@@ -56,6 +60,23 @@ vi.mock("@/convex/_generated/api", () => ({
 vi.mock("@/lib/toast", () => ({
   useAppToast: () => ({ error: vi.fn() }),
 }));
+
+beforeAll(() => {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+});
 
 function makeJob(over: Partial<Doc<"extractionJobs">> = {}): Doc<"extractionJobs"> {
   return {

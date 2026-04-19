@@ -706,6 +706,70 @@
       "liveAnnouncement": "论文数已设为 {count, number}"
     }
   },
+  "sourcesPanel": {
+    "title": "来源",
+    "countLive": "{total, number} 中的 {included, number} 项",
+    "countZero": "0 项来源 \u2014 对话至少需要一篇论文",
+    "searchPlaceholder": "搜索来源",
+    "listLabel": "对话来源",
+    "emptyMatch": "当前筛选条件下没有匹配的来源。",
+    "mobileTrigger": "来源 ({total, number} 中的 {included, number} 项)",
+    "mobileTriggerShort": "{included, number}/{total, number}",
+    "chips": {
+      "groupLabel": "按来源类型筛选",
+      "all": "全部",
+      "openalex": "OpenAlex",
+      "upload": "上传",
+      "zotero": "Zotero",
+      "history": "历史"
+    },
+    "sort": {
+      "groupLabel": "对来源排序",
+      "added": "添加时间",
+      "title": "标题",
+      "year": "年份",
+      "source": "来源",
+      "inContext": "在上下文中",
+      "dirAsc": "升序",
+      "dirDesc": "降序"
+    },
+    "bulk": {
+      "groupLabel": "批量操作",
+      "include": "全部包含",
+      "exclude": "全部排除",
+      "invert": "反转",
+      "undo": "撤销",
+      "success": {
+        "include": "已包含 {count, number} 项来源",
+        "exclude": "已排除 {count, number} 项来源",
+        "invert": "已反转 {count, number} 项来源"
+      },
+      "error": "{action} 操作失败"
+    },
+    "extensionBanner": {
+      "filtered": "已包含全部 {filtered, number} 项已筛选来源。",
+      "includeAll": "包含全部 {total, number} 项来源",
+      "dismiss": "关闭横幅",
+      "error": "无法包含全部来源"
+    },
+    "matchedIn": {
+      "abstract": "摘要",
+      "doi": "DOI",
+      "openalexId": "OpenAlex ID"
+    },
+    "toggle": {
+      "error": "无法更新来源"
+    }
+  },
+  "composer": {
+    "send": "发送",
+    "sources": {
+      "live": "下一条消息将使用 {total, number} 中的 {included, number} 项来源",
+      "zero": "0 项来源 \u2014 对话至少需要一篇论文",
+      "emptyBanner": "当前没有任何来源在上下文中。发送已禁用。",
+      "includeAll": "全部包含"
+    }
+  },
   "toast": {
     "unexpectedError": "发生意外错误。请重试。",
     "openAISettings": "打开 AI 设置",

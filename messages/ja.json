@@ -706,6 +706,70 @@
       "liveAnnouncement": "論文数を {count, number} 件に設定しました"
     }
   },
+  "sourcesPanel": {
+    "title": "ソース",
+    "countLive": "{total, number} 件中 {included, number} 件",
+    "countZero": "0 件のソース \u2014 チャットには少なくとも 1 件の論文が必要です",
+    "searchPlaceholder": "ソースを検索",
+    "listLabel": "チャットのソース",
+    "emptyMatch": "現在のフィルターに一致するソースはありません。",
+    "mobileTrigger": "ソース ({total, number} 件中 {included, number} 件)",
+    "mobileTriggerShort": "{included, number}/{total, number}",
+    "chips": {
+      "groupLabel": "ソース種別で絞り込み",
+      "all": "すべて",
+      "openalex": "OpenAlex",
+      "upload": "アップロード",
+      "zotero": "Zotero",
+      "history": "履歴"
+    },
+    "sort": {
+      "groupLabel": "ソースを並べ替え",
+      "added": "追加日",
+      "title": "タイトル",
+      "year": "年",
+      "source": "ソース",
+      "inContext": "コンテキスト内",
+      "dirAsc": "昇順",
+      "dirDesc": "降順"
+    },
+    "bulk": {
+      "groupLabel": "一括操作",
+      "include": "すべて含める",
+      "exclude": "すべて除外",
+      "invert": "反転",
+      "undo": "元に戻す",
+      "success": {
+        "include": "{count, number} 件のソースを含めました",
+        "exclude": "{count, number} 件のソースを除外しました",
+        "invert": "{count, number} 件のソースを反転しました"
+      },
+      "error": "{action} 操作に失敗しました"
+    },
+    "extensionBanner": {
+      "filtered": "フィルターに一致する {filtered, number} 件すべてが含められました。",
+      "includeAll": "全 {total, number} 件のソースを含める",
+      "dismiss": "バナーを非表示",
+      "error": "すべてのソースを含めることができませんでした"
+    },
+    "matchedIn": {
+      "abstract": "概要",
+      "doi": "DOI",
+      "openalexId": "OpenAlex ID"
+    },
+    "toggle": {
+      "error": "ソースを更新できませんでした"
+    }
+  },
+  "composer": {
+    "send": "送信",
+    "sources": {
+      "live": "次のメッセージで使用するソース: {total, number} 件中 {included, number} 件",
+      "zero": "0 件のソース \u2014 チャットには少なくとも 1 件の論文が必要です",
+      "emptyBanner": "現在コンテキストにソースがありません。送信は無効化されています。",
+      "includeAll": "すべて含める"
+    }
+  },
   "toast": {
     "unexpectedError": "予期しないエラーが発生しました。もう一度お試しください。",
     "openAISettings": "AI設定を開く",

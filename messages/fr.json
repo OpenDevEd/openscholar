@@ -706,6 +706,70 @@
       "liveAnnouncement": "Nombre d'articles défini sur {count, number}"
     }
   },
+  "sourcesPanel": {
+    "title": "Sources",
+    "countLive": "{included, number} sur {total, number}",
+    "countZero": "0 source \u2014 le chat doit contenir au moins un article",
+    "searchPlaceholder": "Rechercher des sources",
+    "listLabel": "Sources de la conversation",
+    "emptyMatch": "Aucune source ne correspond au filtre actuel.",
+    "mobileTrigger": "Sources ({included, number} sur {total, number})",
+    "mobileTriggerShort": "{included, number}/{total, number}",
+    "chips": {
+      "groupLabel": "Filtrer par type de source",
+      "all": "Toutes",
+      "openalex": "OpenAlex",
+      "upload": "Imports",
+      "zotero": "Zotero",
+      "history": "Historique"
+    },
+    "sort": {
+      "groupLabel": "Trier les sources",
+      "added": "Ajoutées",
+      "title": "Titre",
+      "year": "Année",
+      "source": "Source",
+      "inContext": "En contexte",
+      "dirAsc": "Croissant",
+      "dirDesc": "Décroissant"
+    },
+    "bulk": {
+      "groupLabel": "Actions groupées",
+      "include": "Tout inclure",
+      "exclude": "Tout exclure",
+      "invert": "Inverser",
+      "undo": "Annuler",
+      "success": {
+        "include": "{count, number} sources incluses",
+        "exclude": "{count, number} sources exclues",
+        "invert": "{count, number} sources inversées"
+      },
+      "error": "L'action {action} a échoué"
+    },
+    "extensionBanner": {
+      "filtered": "Toutes les {filtered, number} sources filtrées sont incluses.",
+      "includeAll": "Inclure les {total, number} sources",
+      "dismiss": "Masquer la bannière",
+      "error": "Impossible d'inclure toutes les sources"
+    },
+    "matchedIn": {
+      "abstract": "résumé",
+      "doi": "DOI",
+      "openalexId": "Identifiant OpenAlex"
+    },
+    "toggle": {
+      "error": "Impossible de mettre à jour la source"
+    }
+  },
+  "composer": {
+    "send": "Envoyer",
+    "sources": {
+      "live": "{included, number} sur {total, number} sources en contexte pour le prochain message",
+      "zero": "0 source \u2014 le chat doit contenir au moins un article",
+      "emptyBanner": "Aucune source n'est actuellement en contexte. L'envoi est désactivé.",
+      "includeAll": "Tout inclure"
+    }
+  },
   "toast": {
     "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",
     "openAISettings": "Ouvrir les paramètres IA",

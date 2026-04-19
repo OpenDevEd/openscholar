@@ -5,7 +5,7 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { ChatHeader } from "./chat-header";
 import { MessageComposer } from "./message-composer";
 import { MessageList } from "./message-list";
-import { PapersInContextSidebar } from "./papers-in-context-sidebar";
+import { SourcesPanel } from "./sources-panel";
 import { useChatShortcuts } from "./use-chat-shortcuts";
 
 interface ChatJobViewProps {
@@ -25,7 +25,7 @@ export function ChatJobView({ job, threadId }: ChatJobViewProps) {
       // overflowing child can shrink and scroll; `overflow-hidden`
       // clips so the scroll bar appears on the inner pane.
       className="h-full min-h-0 overflow-hidden"
-      leftColumn={<PapersInContextSidebar jobId={job._id} />}
+      leftColumn={<SourcesPanel jobId={job._id} />}
       rightColumn={
         <div
           className="flex h-full min-h-0 flex-col overflow-hidden"
