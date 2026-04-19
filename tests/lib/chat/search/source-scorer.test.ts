@@ -83,4 +83,11 @@ describe("scoreSource", () => {
     expect(a.score).toBeGreaterThan(0);
     expect(a.score).toBeLessThan(t.score);
   });
+
+  it("R8: no match anywhere returns { score: 0, field: null }", () => {
+    expect(scoreSource(baseRow, "totally-absent-token-xyzzy")).toEqual({
+      score: 0,
+      field: null,
+    });
+  });
 });
