@@ -18,6 +18,7 @@ export function ChatJobView({ job, threadId }: ChatJobViewProps) {
 
   return (
     <TwoColumnLayout
+      sidebarSide="right"
       leftColumn={<PapersInContextSidebar jobId={job._id} />}
       rightColumn={
         <div

@@ -1201,6 +1201,12 @@ export const getLibrarySidebarDimensions = createSidebarDimensions(320, 48);
 export const useBucketSidebarStore = createSidebarStore('openalex-bucket-sidebar');
 export const getBucketSidebarDimensions = createSidebarDimensions(360, 48);
 
+// Chat papers-in-context sidebar — same visual shell as bucket, read-only,
+// independent collapse persistence so users can prefer it open in chat
+// even if they collapsed bucket on the creator.
+export const useChatPapersSidebarStore = createSidebarStore('openalex-chat-papers-sidebar');
+export const getChatPapersSidebarDimensions = createSidebarDimensions(320, 48);
+
 // Extraction source sidebar — collection picker inside the Library tab
 export const useExtractionSourceSidebarStore = createSidebarStore('openalex-extraction-source-sidebar');
 export const getExtractionSourceSidebarDimensions = createSidebarDimensions(240, 48);
