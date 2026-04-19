@@ -45,4 +45,16 @@ describe("sortByComparator", () => {
     const sorted = sortByComparator(rows, "year", "desc");
     expect(sorted.map((r) => r.year)).toEqual([2024, 2010, 1999, null]);
   });
+
+  it("R5: 'source' asc orders openalex < upload < zotero < history with position tiebreak", () => {
+    const rows = [
+      row({ position: 1, sourceType: "history" }),
+      row({ position: 2, sourceType: "openalex" }),
+      row({ position: 3, sourceType: "upload" }),
+      row({ position: 4, sourceType: "openalex" }),
+      row({ position: 5, sourceType: "zotero" }),
+    ];
+    const sorted = sortByComparator(rows, "source", "asc");
+    expect(sorted.map((r) => r.position)).toEqual([2, 4, 3, 5, 1]);
+  });
 });

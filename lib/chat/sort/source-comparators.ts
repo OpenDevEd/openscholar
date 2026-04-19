@@ -40,8 +40,17 @@ const PRIMARY_COMPARATORS: Record<Exclude<SortField, "added">, DirectedComparato
     if (bNull) return -1;
     return (a.year! - b.year!) * sign;
   },
-  source: () => 0,
+  source: (a, b, sign) =>
+    (SOURCE_ORDER[a.sourceType] - SOURCE_ORDER[b.sourceType]) * sign,
   inContext: () => 0,
+};
+
+const SOURCE_ORDER: Record<SourceType, number> = {
+  openalex: 0,
+  upload: 1,
+  zotero: 2,
+  history: 3,
+  unknown: 4,
 };
 
 export function sortByComparator<R extends SortableSource>(
