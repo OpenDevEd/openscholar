@@ -22,6 +22,10 @@ const prompted = (
 });
 
 describe("renderPaperCorpus", () => {
+  it("emits <papers count=\"0\"></papers> for empty input (no throw)", () => {
+    expect(renderPaperCorpus([])).toBe('<papers count="0"></papers>');
+  });
+
   it("preserves positional gaps — P1 and P3 present, P2 absent", () => {
     const out = renderPaperCorpus([prompted(1), prompted(3)]);
     expect(out).toMatch(/<papers count="2">/);
