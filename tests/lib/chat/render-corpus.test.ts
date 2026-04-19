@@ -109,6 +109,17 @@ describe("filterAndPreservePositions", () => {
     expect(out.map((r) => r.position)).toEqual([1, 2, 3]);
     expect(out.map((r) => r.promptId)).toEqual(["P1", "P2", "P3"]);
   });
+
+  it("still filters correctly when duplicate positions exist in input", () => {
+    // Upstream data bug: two rows share position 2. Helper filters by
+    // sourceId membership regardless and does not dedupe on its own —
+    // uniqueness is the caller's responsibility.
+    const sources = [cs("s1", 1), cs("s2a", 2), cs("s2b", 2)];
+    const included = new Set(["s1", "s2b"]);
+    const out = filterAndPreservePositions(sources, included);
+    expect(out).toHaveLength(2);
+    expect(out.map((r) => r.sourceId).sort()).toEqual(["s1", "s2b"]);
+  });
 });
 
 describe("sortPapersForCorpus", () => {
