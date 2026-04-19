@@ -87,6 +87,12 @@ export const saveWorkflowTemplateFromJob = mutation({
       PAPER_LIMIT_MAX * 2,
     );
     await assertBucketWithinLimits(ctx, user._id, bucketItems);
+    if (!job.sourceType) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Job is missing sourceType and cannot be saved as a template",
+      );
+    }
     const templateFields = {
       description: args.description,
       sourceType: job.sourceType,

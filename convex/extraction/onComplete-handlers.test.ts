@@ -41,6 +41,7 @@ async function seedDownloadingPaper(t: ReturnType<typeof convexTest>) {
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
+      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       totalPapers: 1,
@@ -358,6 +359,7 @@ async function seedDownloadingJob(t: ReturnType<typeof convexTest>) {
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
+      mode: "extraction" as const,
       sourceType: "history" as const,
       // Typical workflow-failure condition: status was advanced past
       // `pending` before the handler threw.

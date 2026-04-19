@@ -87,8 +87,8 @@ export async function markPaperTerminalTx(
     if (job) {
       const isSuccess = newStatus === "completed";
       await ctx.db.patch("extractionJobs", paper.jobId, {
-        processedPapers: job.processedPapers + (isSuccess ? 1 : 0),
-        failedPapers: job.failedPapers + (isSuccess ? 0 : 1),
+        processedPapers: (job.processedPapers ?? 0) + (isSuccess ? 1 : 0),
+        failedPapers: (job.failedPapers ?? 0) + (isSuccess ? 0 : 1),
         updatedAt: Date.now(),
       });
     }

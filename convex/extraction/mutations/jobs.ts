@@ -89,6 +89,7 @@ export const startExtraction = mutation({
 
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
       userId: user._id,
+      mode: "extraction" as const,
       name: args.name,
       sourceType,
       status: "pending",
@@ -146,7 +147,7 @@ export const cancelExtraction = mutation({
       throw createError("NOT_FOUND", "Job not found");
     }
 
-    if (["completed", "failed", "cancelled"].includes(job.status)) {
+    if (job.status && ["completed", "failed", "cancelled"].includes(job.status)) {
       return { success: true };
     }
 
@@ -239,6 +240,7 @@ export const duplicateExtraction = mutation({
 
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
+      mode: "extraction" as const,
       name: `${oldJob.name} (Copy)`,
       sourceType: oldJob.sourceType,
       status: "pending",
@@ -313,6 +315,7 @@ export const startExtractionFromTemplate = mutation({
 
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
       userId: user._id,
+      mode: "extraction" as const,
       name: args.name?.trim() || `${template.name} (Rerun)`,
       sourceType,
       status: "pending",

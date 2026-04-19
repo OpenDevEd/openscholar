@@ -44,9 +44,9 @@ export const maybeFinalizeJob = internalMutation({
     }
 
     const now = Date.now();
-    const total = job.totalPapers;
-    const processed = job.processedPapers;
-    const failed = job.failedPapers;
+    const total = job.totalPapers ?? 0;
+    const processed = job.processedPapers ?? 0;
+    const failed = job.failedPapers ?? 0;
 
     // Degenerate case: every source was non-processable, so totalPapers was
     // set to 0 at enqueue time. Fail the job immediately so the UI is not
@@ -88,6 +88,7 @@ export const createJobDirect = internalMutation({
   handler: async (ctx, args) => {
     const jobId = await ctx.db.insert("extractionJobs", {
       userId: args.userId,
+      mode: "extraction" as const,
       name: args.name,
       sourceType: args.sourceType,
       status: "pending",

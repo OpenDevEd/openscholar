@@ -11,10 +11,10 @@ export const diagnoseJob = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
     job: v.object({
-      status: v.string(),
-      totalPapers: v.number(),
-      processedPapers: v.number(),
-      failedPapers: v.number(),
+      status: v.optional(v.string()),
+      totalPapers: v.optional(v.number()),
+      processedPapers: v.optional(v.number()),
+      failedPapers: v.optional(v.number()),
       workflowId: v.optional(v.string()),
     }),
     papersSummary: v.object({

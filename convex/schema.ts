@@ -314,42 +314,69 @@ export default defineSchema({
     .index("by_expiry", ["expiresAt"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // EXTRACTION JOBS - Data extraction from papers (Elicit-style)
+  // EXTRACTION JOBS - Dual-mode job rows: "extraction" (data pipeline)
+  //                   and "chat" (conversational Q&A over papers).
+  //                   One table, one set of URLs, mode-discriminated.
   // ═══════════════════════════════════════════════════════════════
   extractionJobs: defineTable({
     userId: v.id("users"),
 
-    // Source type classifier. Actual per-row source payloads live in
-    // `extractionJobSources` (see above) — inline arrays were removed so
-    // the job doc cannot trip the 1MB limit on large Zotero imports.
-    sourceType: v.union(
-      v.literal("history"),
-      v.literal("zotero"),
-      v.literal("manual"),
-      v.literal("mixed")
+    // Required discriminator. Every field below that is mode-specific is
+    // optional in the schema; the mode is what tells the reader which
+    // subset to expect.
+    mode: v.union(v.literal("extraction"), v.literal("chat")),
+
+    // Source type classifier. Present for both modes — chat also pins a
+    // paper set. Actual per-row source payloads live in
+    // `extractionJobSources` (below).
+    sourceType: v.optional(
+      v.union(
+        v.literal("history"),
+        v.literal("zotero"),
+        v.literal("manual"),
+        v.literal("mixed")
+      )
     ),
 
-    // Job status
-    status: v.union(
-      v.literal("pending"),
-      v.literal("downloading_pdfs"),
-      v.literal("indexing"),
-      v.literal("extracting"),
-      v.literal("completed"),
-      v.literal("failed"),
-      v.literal("cancelled")
+    // ─── Extraction-only fields ───────────────────────────────────
+    // Status / counters / workflowId only apply to the data-extraction
+    // pipeline. Unset on chat rows.
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("downloading_pdfs"),
+        v.literal("indexing"),
+        v.literal("extracting"),
+        v.literal("completed"),
+        v.literal("failed"),
+        v.literal("cancelled")
+      )
     ),
-
-    // Progress tracking
-    totalPapers: v.number(),
-    processedPapers: v.number(),
-    failedPapers: v.number(),
-
-    // Workflow tracking
+    totalPapers: v.optional(v.number()),
+    processedPapers: v.optional(v.number()),
+    failedPapers: v.optional(v.number()),
     workflowId: v.optional(v.string()),
+    // Per-job PDF opt-in. Replaces the old global `extraction.pdf` flag
+    // as the *default*; the flag remains as an admin capability gate.
+    usePdfs: v.optional(v.boolean()),
 
-    // Metadata
-    name: v.string(), // User-friendly job name
+    // ─── Chat-only fields ─────────────────────────────────────────
+    // @convex-dev/agent thread id (component-owned).
+    chatThreadId: v.optional(v.string()),
+    // Current model choice — picker seeds from models table (isServed).
+    chatModelId: v.optional(v.id("models")),
+    // Denormalised for list rendering + sort.
+    lastMessageAt: v.optional(v.number()),
+    messageCount: v.optional(v.number()),
+    // Per-thread concurrency lock — one in-flight generation per chat.
+    isGenerating: v.optional(v.boolean()),
+    generatingStartedAt: v.optional(v.number()),
+    // Mid-stream abort flag — flipped by abortGeneration, polled by the
+    // streaming action to break out of streamText.
+    shouldAbort: v.optional(v.boolean()),
+
+    // ─── Shared metadata ──────────────────────────────────────────
+    name: v.string(),
     description: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -357,12 +384,16 @@ export default defineSchema({
 
     // Populated by the workflow onComplete handler when the workflow
     // terminates with kind: "failed". Surfaces the failure reason to
-    // the UI so the user sees why a job ended in `failed` without
-    // having to dig through per-paper statuses.
+    // the UI so the user sees why an extraction ended without having
+    // to dig through per-paper statuses.
     errorMessage: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
+    // Unified history list + single-mode scoping (count user's chats).
+    .index("by_user_mode_updated", ["userId", "mode", "updatedAt"])
+    // Reverse lookup: thread -> job (auth + lock acquisition).
+    .index("by_chatThread", ["chatThreadId"])
     .index("by_workflow", ["workflowId"]),
 
   // ═══════════════════════════════════════════════════════════════

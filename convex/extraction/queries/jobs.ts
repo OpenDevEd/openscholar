@@ -140,9 +140,9 @@ export const subscribeToJobProgress = query({
 
     return ok({
       job,
-      totalPapers: job.totalPapers,
-      processedPapers: job.processedPapers,
-      failedPapers: job.failedPapers,
+      totalPapers: job.totalPapers ?? 0,
+      processedPapers: job.processedPapers ?? 0,
+      failedPapers: job.failedPapers ?? 0,
     });
   },
 });

@@ -74,6 +74,7 @@ export const createTestJob = internalMutation({
     const now = Date.now();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
+      mode: "extraction" as const,
       name: args.name ?? `PDF Test ${now}`,
       sourceType: "history",
       status: args.status ?? "pending",
@@ -127,7 +128,7 @@ export const createTestJob = internalMutation({
 export const getTestJobStatus = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
-    jobStatus: v.string(),
+    jobStatus: v.optional(v.string()),
     totalPapers: v.number(),
     statusCounts: v.record(v.string(), v.number()),
     pdfUsedCount: v.number(),
