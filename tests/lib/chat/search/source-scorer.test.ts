@@ -114,4 +114,10 @@ describe("scoreSource", () => {
     const result = scoreSource(noAbs, "marine");
     expect(result.field).toBe("title");
   });
+
+  it("R12: row with null year does not throw and skips the year field", () => {
+    const noYear: ScorerInput = { ...baseRow, year: null };
+    expect(() => scoreSource(noYear, "2024")).not.toThrow();
+    expect(scoreSource(noYear, "2024")).toEqual({ score: 0, field: null });
+  });
 });
