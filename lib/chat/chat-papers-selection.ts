@@ -17,10 +17,10 @@ export type InclusionLike = {
 };
 
 export function applyInclusionPatch<R extends InclusionLike>(
-  _rows: ReadonlyArray<R>,
+  rows: ReadonlyArray<R>,
   _patch: ReadonlyMap<Id<"chatPapers">, boolean>,
 ): R[] {
-  return [];
+  return rows.map((row) => row);
 }
 
 export function buildBulkPatch<R extends InclusionLike>(

@@ -26,4 +26,13 @@ describe("applyInclusionPatch", () => {
   it("returns [] for empty input and empty patch", () => {
     expect(applyInclusionPatch([], new Map())).toEqual([]);
   });
+
+  it("preserves identity of untouched rows when patch is empty", () => {
+    const r1 = row(1, true);
+    const r2 = row(2, false);
+    const out = applyInclusionPatch([r1, r2], new Map());
+    expect(out).toHaveLength(2);
+    expect(out[0]).toBe(r1);
+    expect(out[1]).toBe(r2);
+  });
 });
