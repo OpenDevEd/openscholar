@@ -74,10 +74,15 @@ export function scoreSource(row: ScorerInput, query: string): SearchMatch {
     fuzzyScore(row.authors.join(" ").toLowerCase(), q) * WEIGHTS.authors;
   const yearScore =
     row.year !== null && String(row.year).includes(q) ? WEIGHTS.year : 0;
+  const abstractScore =
+    row.abstract !== null
+      ? fuzzyScore(row.abstract.toLowerCase(), q) * WEIGHTS.abstract
+      : 0;
   const ranked: Array<{ score: number; field: ScorerField }> = [
     { score: titleScore, field: "title" },
     { score: authorsScore, field: "authors" },
     { score: yearScore, field: "year" },
+    { score: abstractScore, field: "abstract" },
   ];
   const best = ranked.reduce((acc, r) => (r.score > acc.score ? r : acc));
   if (best.score === 0) return { score: 0, field: null };

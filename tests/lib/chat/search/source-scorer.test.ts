@@ -64,4 +64,23 @@ describe("scoreSource", () => {
     expect(result.field).toBe("year");
     expect(result.score).toBeGreaterThan(0);
   });
+
+  it("R7: abstract-only match returns field='abstract' and ranks below a title-only match for the same query", () => {
+    const abstractOnly: ScorerInput = {
+      ...baseRow,
+      title: "Unrelated topic",
+      authors: [],
+      abstract: "We examine the use of photosynthesis in marine systems.",
+    };
+    const titleOnly: ScorerInput = {
+      ...baseRow,
+      title: "photosynthesis",
+      abstract: null,
+    };
+    const a = scoreSource(abstractOnly, "photosynthesis");
+    const t = scoreSource(titleOnly, "photosynthesis");
+    expect(a.field).toBe("abstract");
+    expect(a.score).toBeGreaterThan(0);
+    expect(a.score).toBeLessThan(t.score);
+  });
 });
