@@ -48,6 +48,21 @@ export interface SelectableListProps<T> {
   className?: string;
   headerLabel?: ReactNode;
   emptyState?: ReactNode;
+  /**
+   * Row ARIA role.
+   *
+   * - "button" (default): each row is a focusable role="button" with
+   *   aria-pressed and tabindex=0. Right semantic for the bucket flow,
+   *   where each row is a discrete actionable target with its own tab
+   *   stop.
+   * - "option": each row becomes a non-focusable role="option" with
+   *   aria-selected. Right semantic for a WAI-ARIA APG listbox where
+   *   the parent container is the single tab stop and manages focus
+   *   via aria-activedescendant. Avoids the nested-interactive axe
+   *   violation that role="button"+focusable inner controls would
+   *   otherwise raise.
+   */
+  rowAs?: "button" | "option";
 }
 
 export function SelectableList<T>({
@@ -64,6 +79,7 @@ export function SelectableList<T>({
   className,
   headerLabel,
   emptyState,
+  rowAs = "button",
 }: SelectableListProps<T>) {
   const lastIndexRef = useRef<number | null>(null);
   const [selectingAllAcross, setSelectingAllAcross] = useState(false);
@@ -198,11 +214,17 @@ export function SelectableList<T>({
           <div
             key={key}
             data-selectable-row
-            role="button"
-            tabIndex={0}
-            aria-pressed={selected}
+            // In option mode the inner renderRow owns the role="option"
+            // semantics (id + aria-selected), and this outer wrapper is
+            // a non-interactive click target — that avoids the
+            // nested-interactive axe violation that role="button"+
+            // focusable inner controls (Checkbox, anchors) would raise.
+            {...(rowAs === "button"
+              ? { role: "button", tabIndex: 0, "aria-pressed": selected }
+              : {})}
             onClick={(e) => handleRowActivate(index, { shiftKey: e.shiftKey })}
             onKeyDown={(e) => {
+              if (rowAs === "option") return;
               if (e.key === " " || e.key === "Enter") {
                 e.preventDefault();
                 handleRowActivate(index, { shiftKey: e.shiftKey });

@@ -101,7 +101,7 @@ describe("<SourcesPanelList>", () => {
     );
   });
 
-  it("clicking a row's checkbox calls toggleChatPaper with the inverted included flag", async () => {
+  it("clicking a row toggles via toggleChatPaper with the inverted included flag", async () => {
     toggleSpy.mockClear();
     toggleSpy.mockResolvedValue(undefined);
     const rows = [row(1, true), row(2, false)];
@@ -115,10 +115,11 @@ describe("<SourcesPanelList>", () => {
         emptyState={<p>empty</p>}
       />,
     );
-    const checkboxes = screen.getAllByRole("checkbox");
-    // SelectableList omits the header checkbox when onToggleAll is unset,
-    // so the row checkboxes start at index 0.
-    fireEvent.click(checkboxes[0]);
+    // Listbox-pattern rows are non-interactive at the row level; the
+    // outer wrapper (data-selectable-row) acts as the click target so
+    // the listbox owns selection (option's aria-selected reflects state).
+    const rowEl = document.querySelectorAll("[data-selectable-row]")[0];
+    fireEvent.click(rowEl as Element);
     expect(toggleSpy).toHaveBeenCalledWith({
       chatPaperId: cp(1),
       included: false,
