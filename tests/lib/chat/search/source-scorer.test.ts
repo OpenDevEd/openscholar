@@ -45,4 +45,11 @@ describe("scoreSource", () => {
       field: "openalexId",
     });
   });
+
+  it("R4: title substring match returns field='title' and a positive score", () => {
+    const result = scoreSource(baseRow, "marine algae");
+    expect(result.field).toBe("title");
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.score).toBeLessThanOrEqual(1);
+  });
 });

@@ -39,6 +39,25 @@ export type ScorerInput = {
   openalexId: string | null;
 };
 
+const WEIGHTS = {
+  idExact: 5,
+  title: 3,
+  authors: 2,
+  year: 1,
+  abstract: 0.5,
+} as const;
+
+// Cheap substring scorer in [0, 1]. A leading-token match boosts above
+// a mid-string match so "marine" matches "marine algae" stronger than
+// "submarine". A non-match returns 0.
+function fuzzyScore(haystack: string, needle: string): number {
+  if (needle.length === 0) return 1;
+  const idx = haystack.indexOf(needle);
+  if (idx === -1) return 0;
+  if (idx === 0 || haystack[idx - 1] === " ") return 1;
+  return 0.7;
+}
+
 export function scoreSource(row: ScorerInput, query: string): SearchMatch {
   const q = query.trim().toLowerCase();
   if (q.length === 0) return { score: 1, field: null };
@@ -49,5 +68,12 @@ export function scoreSource(row: ScorerInput, query: string): SearchMatch {
   if (row.openalexId !== null && row.openalexId.toLowerCase() === q) {
     return { score: 1, field: "openalexId" };
   }
-  return { score: 0, field: null };
+
+  const titleScore = fuzzyScore(row.title.toLowerCase(), q) * WEIGHTS.title;
+  const ranked: Array<{ score: number; field: ScorerField }> = [
+    { score: titleScore, field: "title" },
+  ];
+  const best = ranked.reduce((acc, r) => (r.score > acc.score ? r : acc));
+  if (best.score === 0) return { score: 0, field: null };
+  return { score: Math.min(best.score / WEIGHTS.idExact, 1), field: best.field };
 }
