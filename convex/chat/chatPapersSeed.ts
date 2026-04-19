@@ -7,9 +7,8 @@ export type SeedChatPaperRow = {
 };
 
 export function buildSeedChatPaperRows(
-  _jobId: Id<"extractionJobs">,
+  jobId: Id<"extractionJobs">,
   sourceIds: ReadonlyArray<Id<"extractionJobSources">>,
 ): SeedChatPaperRow[] {
-  if (sourceIds.length === 0) return [];
-  throw new Error("not implemented");
+  return sourceIds.map((sourceId) => ({ jobId, sourceId, included: true }));
 }
