@@ -1,10 +1,9 @@
-"use node";
-
-import { internalAction } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
+import { readJobSources } from "../extraction/jobSources";
 import { renderPaperCorpus } from "../../lib/chat/render-corpus";
+import { PAPER_LIMIT_MAX } from "../extraction/bucket/limits";
 
 /**
  * Builds the chat system prompt array for a given job. Returns two
@@ -17,7 +16,7 @@ import { renderPaperCorpus } from "../../lib/chat/render-corpus";
  * the Responses API (see plan §4i). For V1 neither branch carries
  * providerOptions.cacheControl — the provider drops them silently.
  */
-export const buildSystemPromptForJob = internalAction({
+export const buildSystemPromptForJob = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.array(
     v.object({
@@ -25,21 +24,8 @@ export const buildSystemPromptForJob = internalAction({
       content: v.string(),
     }),
   ),
-  handler: async (ctx, { jobId }): Promise<Array<{ role: "system"; content: string }>> => {
-    // Typed via the explicit shape we read — sidesteps a circularity
-    // between ctx.runQuery's inferred type and this action's `returns`.
-    type SourceRow = {
-      openalexId?: string;
-      title: string;
-      authors: string[];
-      year?: number;
-      abstract?: string;
-    };
-    const sources = (await ctx.runQuery(
-      internal.extraction.queries.internal.getJobSourcesInternal,
-      { jobId },
-    )) as SourceRow[];
-
+  handler: async (ctx, { jobId }) => {
+    const sources = await readJobSources(ctx, jobId, PAPER_LIMIT_MAX * 2);
     const corpus = renderPaperCorpus(
       sources.map((s) => ({
         openalexId: s.openalexId,

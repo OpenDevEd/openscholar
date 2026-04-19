@@ -1,5 +1,3 @@
-"use node";
-
 import { Agent, stepCountIs } from "@convex-dev/agent";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { components } from "../_generated/api";
