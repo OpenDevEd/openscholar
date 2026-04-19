@@ -5,12 +5,15 @@ import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CopyIcon, RefreshCwIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-  MessageAction,
-  MessageActions as MessageActionsContainer,
-} from "@/components/ai-elements/message";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import { useAppToast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import type { UIMessage } from "@convex-dev/agent/react";
 
 interface ChatUIMessage {
@@ -24,6 +27,8 @@ interface MessageActionsProps {
   message: ChatUIMessage;
   isLastAssistant: boolean;
   threadId: string;
+  /** When false, actions are hidden until the parent <article> is hovered/focused. */
+  alwaysVisible?: boolean;
 }
 
 function extractText(message: ChatUIMessage): string {
@@ -38,10 +43,46 @@ function extractText(message: ChatUIMessage): string {
     .join("\n");
 }
 
+function ActionButton({
+  label,
+  onClick,
+  disabled,
+  dataAction,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  dataAction: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={label}
+          data-action={dataAction}
+          className="size-7 text-muted-foreground hover:text-foreground"
+        >
+          {children}
+          <span className="sr-only">{label}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function MessageActions({
   message,
   isLastAssistant,
   threadId,
+  alwaysVisible = false,
 }: MessageActionsProps) {
   const t = useTranslations("extraction");
   const appToast = useAppToast();
@@ -72,29 +113,33 @@ export function MessageActions({
   }, [regenerate, threadId, appToast, t]);
 
   return (
-    <MessageActionsContainer data-streaming={isStreaming}>
-      <MessageAction
-        tooltip={t("chatCopyMessage")}
-        aria-label={t("chatCopyMessage")}
+    <div
+      data-streaming={isStreaming}
+      className={cn(
+        "flex items-center gap-0.5 transition-opacity duration-150",
+        alwaysVisible
+          ? "opacity-100"
+          : "opacity-0 group-hover/message:opacity-100 group-focus-within/message:opacity-100",
+      )}
+    >
+      <ActionButton
+        label={t("chatCopyMessage")}
         onClick={handleCopy}
         disabled={isStreaming}
-        data-streaming={isStreaming}
-        data-action="copy"
+        dataAction="copy"
       >
         <CopyIcon className="size-3.5" />
-      </MessageAction>
+      </ActionButton>
       {showRetry && (
-        <MessageAction
-          tooltip={t("chatRetryResponse")}
-          aria-label={t("chatRetryResponse")}
+        <ActionButton
+          label={t("chatRetryResponse")}
           onClick={handleRetry}
           disabled={isStreaming}
-          data-streaming={isStreaming}
-          data-action="retry"
+          dataAction="retry"
         >
           <RefreshCwIcon className="size-3.5" />
-        </MessageAction>
+        </ActionButton>
       )}
-    </MessageActionsContainer>
+    </div>
   );
 }
