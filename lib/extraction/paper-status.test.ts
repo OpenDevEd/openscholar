@@ -35,4 +35,17 @@ describe("aggregatePaperStatus", () => {
       failedQuestions: 1,
     });
   });
+
+  it("R4: mix of completed + retryable-failed (not yet maxed out) → still extracting", () => {
+    const results = [
+      { status: "completed" as const },
+      { status: "completed" as const },
+      {
+        status: "failed" as const,
+        lastError: { code: "rate_limit" as const },
+        attemptCount: 1,
+      },
+    ];
+    expect(aggregatePaperStatus(results).status).toBe("extracting");
+  });
 });

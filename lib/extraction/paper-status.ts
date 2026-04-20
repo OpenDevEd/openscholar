@@ -27,12 +27,21 @@ export type PaperRollupResult = {
   failedQuestions: number;
 };
 
+/**
+ * Workflow step retry budget. Matches the per-step retry configured on the
+ * WorkflowManager in `convex/workflow.ts` — three attempts total before a
+ * question's `attemptCount` ticks past the cap and the rollup treats the
+ * retryable failure as effectively terminal.
+ */
+export const MAX_QUESTION_ATTEMPTS = 3;
+
 export function aggregatePaperStatus(results: PaperQuestionInput[]): PaperRollupResult {
   if (results.length === 0) {
     return { status: "pending", completedQuestions: 0, failedQuestions: 0 };
   }
   let completedQuestions = 0;
-  let failedQuestions = 0;
+  let terminalFailures = 0;
+  let retryableFailuresPending = 0;
   for (const r of results) {
     if (r.status === "completed") {
       completedQuestions += 1;
@@ -40,10 +49,21 @@ export function aggregatePaperStatus(results: PaperQuestionInput[]): PaperRollup
     }
     if (r.status === "failed") {
       const code = r.lastError?.code;
-      if (code !== undefined && !isRetryable[code]) {
-        failedQuestions += 1;
+      const retryable = code === undefined ? false : isRetryable[code];
+      const maxedOut = (r.attemptCount ?? 0) >= MAX_QUESTION_ATTEMPTS;
+      if (retryable && !maxedOut) {
+        retryableFailuresPending += 1;
+      } else {
+        terminalFailures += 1;
       }
     }
   }
-  return { status: "completed", completedQuestions, failedQuestions };
+  if (retryableFailuresPending > 0) {
+    return { status: "extracting", completedQuestions, failedQuestions: terminalFailures };
+  }
+  return {
+    status: "completed",
+    completedQuestions,
+    failedQuestions: terminalFailures,
+  };
 }
