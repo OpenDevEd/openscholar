@@ -60,4 +60,25 @@ describe("stabilizeRowsById", () => {
     expect(out[1]).toBe(prev[1]);
     expect(out[2]).toBe(prev[2]);
   });
+
+  it("gives the toggled row a new ref when only its `included` flag flips", () => {
+    const prev = [
+      row(),
+      row({ chatPaperId: cp(2), position: 2, title: "Row two" }),
+      row({ chatPaperId: cp(3), position: 3, title: "Row three" }),
+    ];
+    const next = [
+      { ...prev[0]! },
+      { ...prev[1]!, included: !prev[1]!.included },
+      { ...prev[2]! },
+    ];
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out[0]).toBe(prev[0]);
+    expect(out[1]).toBe(next[1]);
+    expect(out[1]).not.toBe(prev[1]);
+    expect(out[1]!.included).toBe(!prev[1]!.included);
+    expect(out[2]).toBe(prev[2]);
+  });
 });
