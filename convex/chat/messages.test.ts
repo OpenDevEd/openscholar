@@ -6,6 +6,7 @@ import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { register as registerAgentComponent } from "@convex-dev/agent/test";
+import { APICallError } from "@ai-sdk/provider";
 import { paperChat } from "./agent";
 
 // Capture the composed abortSignal the library hands to doStream so
@@ -631,5 +632,39 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const job = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(job?.isGenerating).toBe(false);
     expect(job?.shouldAbort).toBeUndefined();
+  });
+
+  it("A8 — maxRetries:0 — a retryable doStream failure is NOT retried", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    // Retryable 503 — AI SDK would normally retry twice on this. With
+    // maxRetries:0 (set by generateResponse), the failure must bubble
+    // out after exactly one attempt.
+    mockDoStream.mockImplementation(async () => {
+      throw new APICallError({
+        message: "mock 503",
+        url: "https://mock/provider",
+        requestBodyValues: {},
+        statusCode: 503,
+        isRetryable: true,
+      });
+    });
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    expect(mockDoStream).toHaveBeenCalledTimes(1);
+
+    // Lock still released even on the error path.
+    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(job?.isGenerating).toBe(false);
   });
 });
