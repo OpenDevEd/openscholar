@@ -73,7 +73,17 @@ Use existing `sonner` toast primitive (project-standard — verify via `grep -l 
 
 **Surface B — Pill on the aborted message.**
 
-The assistant message list renders from `listThreadMessages` (or the project's wrapper around it). Each message has some state discriminator. Per research, `@convex-dev/agent` returns messages with `status` / `state` indicating streaming lifecycle. **The exact shape must be verified at execution time** — spawn an agent to read `node_modules/@convex-dev/agent/src/client/index.ts` around `listThreadMessages` and identify the field name.
+⚠️ **Deviation resolved during Phase A research** (2026-04-20): the discriminator is NOT `message.state.kind === "aborted"`. `@convex-dev/agent`'s `useUIMessages` hook has `UIMessage.status: "streaming" | "pending" | "success" | "failed"` — `"aborted"` is not in the union. Internally (`deltas.ts:41-54`, `statusFromStreamStatus`) the library maps stream `status: "aborted"` → UIMessage `status: "failed"`. Separately, the library's `call.fail` handler at `node_modules/@convex-dev/agent/src/client/start.ts:162-169` calls `finalizeMessage({status:"failed", error: reason})` where `reason` is the `AbortSignal.reason.toString()` — plan 01 aborts with `new DOMException("user_stopped", "AbortError")`, so the persisted error string is exactly `"AbortError: user_stopped"`.
+
+**Chosen predicate path (server-authoritative):**
+
+1. Extract `"user_stopped"` to a shared constant in `lib/chat/abort-signal.ts` so server (plan 01's abort controller) and server-side `listThreadMessages` share the sentinel — no drift possible.
+2. In `listThreadMessages` on the server:
+   - Pass `includeStatuses: ["streaming", "finished", "aborted"]` to `syncStreams` (required — library default is `["streaming"]` only; see `node_modules/@convex-dev/agent/src/component/streams.ts:125`).
+   - When enriching `page` with the stored `error`: if the error string equals `ABORT_ERROR_STRING` (`"AbortError: user_stopped"`), emit `{...m, aborted: true}` INSTEAD of `{...m, error: ...}`. Real errors keep their envelope; aborted messages surface a clean boolean flag with no error.
+3. Client predicate: `message.aborted === true`. No string parsing, no envelope inspection — just a boolean from the server.
+
+This is cleaner than "status=failed && !error" heuristics and survives any future library change to the mapping.
 
 ```tsx
 // components/extraction/chat/aborted-pill.tsx
@@ -81,61 +91,45 @@ import { StopCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function AbortedPill() {
-  const t = useTranslations();
+  const t = useTranslations("extraction");
   return (
     <span
       role="status"
       data-message-state="aborted"
-      aria-label={t("chat.abortedPill.aria")}
+      aria-label={t("chatAbortedPillAria")}
       className="inline-flex items-center gap-1 text-xs text-muted-foreground"
     >
       <StopCircle className="size-3" aria-hidden="true" />
-      {t("chat.abortedPill.label")}
+      {t("chatAbortedPillLabel")}
     </span>
   );
 }
 ```
 
-Render site (pseudocode — exact location depends on current message layout):
+Render site (in `MessageRow` inside `message-list.tsx`, alongside `MessageActions`):
 
 ```tsx
-{message.role === "assistant" && message.state?.kind === "aborted" && (
-  <AbortedPill />
-)}
+{!isUser && isAborted && <AbortedPill />}
 ```
 
-Place adjacent to the existing message-actions row (copy/retry icons). Do not replace them; the pill sits alongside. `data-message-state="aborted"` on the pill itself AND on the message-row container for test targeting.
+Also set `data-message-state="aborted"` on the motion.li row container when `isAborted` (overriding the existing `data-status="failed"` signal) and suppress `data-error={true}` for aborted messages so tests can distinguish abort from failure.
 
 **Surface C — Retry enabled in aborted state.**
 
-Audit `components/extraction/chat/message-actions.tsx`. The retry button's `disabled` prop likely uses something like:
+Audited `components/extraction/chat/message-actions.tsx` during Phase A. Current logic:
 
-```tsx
-disabled={isStreaming || !isComplete}
-```
+- `isStreaming = message.status === "streaming"`
+- `isFailed = message.status === "failed"`
+- `showRetry = isLastAssistant || isFailed`
+- `disabled={isStreaming}` (on the retry ActionButton)
 
-Change to:
-
-```tsx
-disabled={isStreaming}  // enabled when aborted, disabled only during an active stream
-```
-
-Exact check depends on current predicate — verify with a read.
+Because aborted messages map to `status: "failed"` via the library, they already satisfy `isFailed` → `showRetry=true`, and `isStreaming=false` → retry is **already enabled**. **No change to message-actions.tsx needed.** Only concern: ChatErrorAlert (rendered at `message-list.tsx:268-274` when `isFailed && rawError`) must NOT render for aborted — which is automatic once the server drops the error envelope and emits `aborted:true` instead.
 
 ### 2. `listThreadMessages` includeStatuses verification
 
-`@convex-dev/agent`'s `syncStreams` RPC has an `includeStatuses` config that filters which stream states are returned to the client. Per research, values are `"streaming" | "finished" | "aborted" | "pending" | ...` (exact union in `node_modules/@convex-dev/agent/src/client/index.ts:835` and nearby).
+**Confirmed during Phase A research**: the library's `syncStreams` accepts `includeStatuses: ("streaming"|"finished"|"aborted")[]` at `node_modules/@convex-dev/agent/src/client/streaming.ts:48-81`, and **defaults to `["streaming"]` only** (`node_modules/@convex-dev/agent/src/component/streams.ts:125`). Our current call at `convex/chat/messages.ts:351` passes `args` directly without overriding — aborted streams are **silently filtered out**. Adding `"aborted"` is mandatory, not optional.
 
-If the project's current thread-messages query is:
-
-```ts
-return await paperChat.listThreadMessages(ctx, { threadId, paginationOpts });
-// where listThreadMessages internally calls syncStreams
-```
-
-…check what `includeStatuses` it uses. If it's `["streaming", "finished"]` (for example), add `"aborted"`. The aborted message should appear in the list same as a finished one, just with different `state`.
-
-Do this in a **very short commit** — one line or two — separate from the UI work, so the wiring is easy to verify independently.
+Fold the `includeStatuses` change into the same commit as the server-side `aborted`-flag enrichment (they're the same edit surface — `listThreadMessages` in `convex/chat/messages.ts`).
 
 ### 3. The pill's visual language (decision, not code)
 
@@ -151,12 +145,24 @@ Per D12 scope discipline — no pill enter-animation, no fade. The stream row st
 
 ## Files touched
 
-- `components/extraction/chat/message-composer.tsx` — 4 lines in `handleStop` (toast on resolve).
-- `components/extraction/chat/aborted-pill.tsx` — NEW (~20 lines).
-- `components/extraction/chat/message-list.tsx` — conditional `<AbortedPill />` render (~3 lines).
-- `components/extraction/chat/message-actions.tsx` — loosen retry `disabled` predicate (~1 line).
-- `messages/en.json` + every other locale — add `chat.stop.toast`, `chat.stop.toastFailure`, `chat.abortedPill.label`, `chat.abortedPill.aria`.
-- `convex/chat/messages.ts` (or wherever `listThreadMessages` lives) — add `"aborted"` to `includeStatuses` if not present. Likely zero-change if library defaults already include it; verify.
+- `lib/chat/abort-signal.ts` — **NEW** (~10 lines). Exports `ABORT_REASON_USER_STOPPED` and `ABORT_ERROR_STRING` constants so the server (plan 01's abort controller) and `listThreadMessages` enrichment share a single sentinel.
+- `convex/chat/messages.ts` —
+  - Import `ABORT_REASON_USER_STOPPED`, use it in the `abortController.abort(new DOMException(...))` at line 150 (replace hardcoded `"user_stopped"`).
+  - In `listThreadMessages` (line 334–366): pass `includeStatuses: ["streaming","finished","aborted"]` to `syncStreams`; in page-enrichment, recognize the sentinel error string and emit `{aborted: true}` instead of `{error}`.
+- `components/extraction/chat/message-composer.tsx` — `handleStop` fires toast.success on resolve and toast.error on reject; uses existing `sonner`-backed pattern.
+- `components/extraction/chat/aborted-pill.tsx` — **NEW** (~20 lines). Presentational component, `role="status"`, `data-message-state="aborted"`.
+- `components/extraction/chat/message-list.tsx` —
+  - Widen `ChatUIMessage` type to include `aborted?: boolean`.
+  - Compute `isAborted = message.aborted === true` in `MessageRow`.
+  - Conditionally render `<AbortedPill />` next to `MessageActions`.
+  - Override `data-status` to `"aborted"` and suppress `data-error` when `isAborted`.
+  - Add `data-message-state="aborted"` on the message row.
+- `components/extraction/chat/message-actions.tsx` — **no change** (retry is already enabled for `status: "failed"`, which aborted maps to).
+- `messages/en-GB.json`, `messages/en-US.json`, `messages/fr.json`, `messages/hi.json`, `messages/ja.json`, `messages/zh.json` — add 4 keys under `extraction` namespace (matching existing `chatXxx` naming convention): `chatStopToast`, `chatStopToastFailure`, `chatAbortedPillLabel`, `chatAbortedPillAria`.
+- `lib/chat/abort-signal.test.ts` — **NEW** pure unit tests for the sentinel constant.
+- `components/extraction/chat/aborted-pill.test.tsx` — **NEW** Testing Library test B3.
+- Tests B1, B2, B4, B5, B6, B7 — colocated next to their component under test.
+- `convex/chat/messages.test.ts` — extend with M1 (aborted message enrichment).
 
 ## Migration stance — **none**
 
@@ -182,23 +188,25 @@ All assertions use aria, `data-*`, and visible text. **Never CSS classes.**
 - **B3 — `AbortedPill` renders visible label + role + data attr**
   - Render `<AbortedPill />`.
   - Assert `getByRole("status")` exists.
-  - Assert `getByText("Stopped by user")` (localized) is visible.
-  - Assert `container.querySelector('[data-message-state="aborted"]')` is truthy.
+  - Assert `getByText(/stopped by user/i)` (localized) is visible.
+  - Assert the element has `data-message-state="aborted"`.
 
-- **B4 — message-list renders pill for aborted assistant message**
-  - Render message-list with a mocked message list containing `{ role: "assistant", state: { kind: "aborted" }, content: "Partial text..." }`.
+- **B4 — message-list renders pill for aborted assistant message** (integration test against `MessageRow`)
+  - Render `MessageRow` directly with a mocked message `{ role: "assistant", status: "failed", aborted: true, text: "Partial text..." }`.
   - Assert the partial text is visible.
-  - Assert exactly one `<AbortedPill>` renders (via `getAllByRole("status")` + filter).
-  - Assert a NON-aborted finished message does NOT render a pill.
+  - Assert one element with `data-message-state="aborted"` exists.
+  - Assert the message row container has `data-message-state="aborted"` and does NOT have `data-error="true"`.
+  - Assert `ChatErrorAlert` is NOT in the DOM (no "rate limit"-style copy).
+  - Separately: render with `{ role: "assistant", status: "failed", error: '{"kind":"rate_limit"}' }` (no `aborted` flag). Assert `data-error="true"` is present and NO `data-message-state="aborted"` attr, and `ChatErrorAlert` IS in the DOM.
 
 - **B5 — retry button enabled on aborted message**
-  - Render message-actions in the context of an aborted assistant message.
-  - Find the retry button by accessible name (e.g., `getByRole("button", { name: /regenerate/i })`).
+  - Render `MessageActions` with `{ role: "assistant", status: "failed" }` (aborted shows up as status=failed on the UIMessage; the retry predicate doesn't need to know why).
+  - Find the retry button by accessible name.
   - Assert `.toBeEnabled()`.
 
 - **B6 — retry button disabled during active stream**
-  - Same, but with a streaming message (`state.kind === "streaming"`).
-  - Assert `.toBeDisabled()`. (Guards against a regression from loosening the predicate.)
+  - Same, but with `{ role: "assistant", status: "streaming" }`.
+  - Assert the retry button is either not rendered (current behavior — `showRetry` gates on `isLastAssistant || isFailed`) or is disabled. The guard is: no way to click retry while streaming.
 
 - **B7 — stop button disappears after abort completes**
   - Render composer with `jobIsGenerating=true`.
@@ -207,11 +215,13 @@ All assertions use aria, `data-*`, and visible text. **Never CSS classes.**
 
 ### Convex integration (test-after, in `convex/chat/messages.test.ts`)
 
-- **M1 — `listThreadMessages` includes aborted messages**
-  - Seed a thread with: one finished assistant message + one aborted assistant message (manually write the stream row with `state:{kind:"aborted"}`).
-  - Call `listThreadMessages` via `paperChat`.
-  - Assert both messages are returned.
-  - Assert the aborted one has its state discriminator preserved in the response (so the UI can branch on it).
+- **M1 — `listThreadMessages` enriches aborted messages with `aborted: true` instead of `error`**
+  - Seed a thread with: one "regular" finished assistant message; one message whose MessageDoc has `{status:"failed", error: "AbortError: user_stopped"}` (simulating library's `call.fail` on abort); one real-error message with `{status:"failed", error: '{"kind":"rate_limit",...}'}`.
+  - Call `listThreadMessages` as the authenticated owner.
+  - Assert all three messages appear in the `page` array.
+  - Assert the aborted message has `aborted: true` and NO `error` field.
+  - Assert the real-error message has its JSON `error` envelope and NO `aborted` field.
+  - Assert the finished message has neither `aborted` nor `error`.
 
 ### E2E smoke (no code — do this after merge)
 
@@ -228,12 +238,14 @@ All assertions use aria, `data-*`, and visible text. **Never CSS classes.**
 - [ ] Clicking stop produces a toast within 200ms of click (B1, E2E step 3).
 - [ ] Aborted assistant messages render an `<AbortedPill>` with `role="status"` and `data-message-state="aborted"` (B3, B4).
 - [ ] Partial text on aborted messages is preserved and visible (covered by plan 01 at the data layer; this plan just doesn't hide it).
-- [ ] Retry button is enabled on aborted messages, disabled only during active streaming (B5, B6).
-- [ ] `listThreadMessages` returns messages with `state.kind === "aborted"` (M1).
-- [ ] Toast + pill strings are localized across all project locales.
-- [ ] No CSS-class assertions anywhere in the new tests (`rg -n "toMatch\\(/.*(-|_).*/|toHaveClass\\(" tests/ components/` for new test files returns zero against color/layout classes).
+- [ ] Retry button is enabled on aborted messages, disabled/absent during active streaming (B5, B6).
+- [ ] `listThreadMessages` returns aborted messages with `aborted: true` and no `error`; real-error messages retain their `error` envelope (M1).
+- [ ] Abort sentinel string lives in a single shared constant (`lib/chat/abort-signal.ts`) consumed by both `convex/chat/messages.ts::generateResponse` and `convex/chat/messages.ts::listThreadMessages`.
+- [ ] Toast + pill strings are localized across all 6 project locales (en-GB, en-US, fr, hi, ja, zh).
+- [ ] No CSS-class assertions anywhere in the new tests (`rg -n "toMatch\\(/.*(-|_).*/\\)|toHaveClass\\(" components/extraction/chat/ lib/chat/` for new test files returns zero against color/layout classes).
 - [ ] E2E smoke test passes on desktop + mobile viewports.
 - [ ] `rg -n "aborted" components/extraction/chat/` shows the new pill + message-list integration + composer toast. Clean, no orphans.
+- [ ] ChatErrorAlert does NOT render for aborted messages; only for real-error (has `error` envelope) messages.
 
 ## Known pitfalls
 
