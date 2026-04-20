@@ -40,7 +40,17 @@ function renderCitation({
   const papersByPosition = new Map<number, ResolvablePaper>();
   if (paper) papersByPosition.set(index, paper);
   return render(
-    <PapersContext.Provider value={{ papersByPosition, jobId }}>
+    <PapersContext.Provider
+      value={{
+        jobId,
+        rows: [],
+        rowsById: new Map(),
+        papersByPosition,
+        totalCount: 0,
+        includedCount: 0,
+        isLoading: false,
+      }}
+    >
       <PaperCitation index={index} />
     </PapersContext.Provider>,
   );

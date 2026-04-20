@@ -63,7 +63,17 @@ function renderAssistantMarkdown(text: string, papers: ResolvedPaper[]) {
   const papersByPosition = new Map<number, ResolvablePaper>();
   for (const p of papers) papersByPosition.set(p.position, p);
   return render(
-    <PapersContext.Provider value={{ papersByPosition, jobId: JOB_ID }}>
+    <PapersContext.Provider
+      value={{
+        jobId: JOB_ID,
+        rows: [],
+        rowsById: new Map(),
+        papersByPosition,
+        totalCount: 0,
+        includedCount: 0,
+        isLoading: false,
+      }}
+    >
       <MessageResponse components={components}>{text}</MessageResponse>
     </PapersContext.Provider>,
   );

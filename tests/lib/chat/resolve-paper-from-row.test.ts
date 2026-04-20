@@ -46,7 +46,10 @@ describe("resolvePaperFromRow", () => {
   });
 
   it("does not expose Convex-only fields (jobId, bucketKey, sourceType)", () => {
-    const paper = resolvePaperFromRow(row()) as Record<string, unknown>;
+    const paper = resolvePaperFromRow(row()) as unknown as Record<
+      string,
+      unknown
+    >;
     expect(paper.jobId).toBeUndefined();
     expect(paper.bucketKey).toBeUndefined();
     expect(paper.sourceType).toBeUndefined();

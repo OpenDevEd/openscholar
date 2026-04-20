@@ -320,7 +320,18 @@ export function MessageList({
         });
       }
     }
-    return { papersByPosition, jobId };
+    const rows = chatSources ?? [];
+    const rowsById = new Map(rows.map((r) => [r.chatPaperId, r]));
+    const includedCount = rows.reduce((n, r) => n + (r.included ? 1 : 0), 0);
+    return {
+      jobId,
+      rows,
+      rowsById,
+      papersByPosition,
+      totalCount: rows.length,
+      includedCount,
+      isLoading: chatSources === undefined,
+    };
   }, [chatSources, jobId]);
 
   const lastAssistantId = useMemo(() => {
