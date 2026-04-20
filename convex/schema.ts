@@ -136,6 +136,22 @@ export default defineSchema({
     amount: v.number(),
     balanceAfter: v.number(),
     description: v.optional(v.string()),
+    // First-class scoping columns (plan-04). `metadata` stays as the
+    // escape hatch for non-promoted keys (usage tokens, finishReason,
+    // etc). Promotions here fuel the `by_job` index and cost-breakdown
+    // ledger queries. jobId/paperId/resultId/billingType MUST NOT be
+    // duplicated into metadata.
+    jobId: v.optional(v.id("extractionJobs")),
+    paperId: v.optional(v.id("extractionPapers")),
+    resultId: v.optional(v.id("extractionResults")),
+    billingType: v.optional(
+      v.union(
+        v.literal("extraction_llm"),
+        v.literal("embedding"),
+        v.literal("screening"),
+        v.literal("chat"),
+      ),
+    ),
     metadata: v.optional(v.record(v.string(), v.string())),
     stripeInvoiceId: v.optional(v.string()), // For idempotency
     stripePaymentIntentId: v.optional(v.string()),
@@ -149,7 +165,9 @@ export default defineSchema({
     .index("by_stripe_charge", ["stripeChargeId"])
     .index("by_stripe_checkout_session", ["stripeCheckoutSessionId"])
     .index("by_user", ["userId"])
-    .index("by_type_date", ["type", "createdAt"]),
+    .index("by_type_date", ["type", "createdAt"])
+    // plan-04: per-job transaction ledger + breakdown queries.
+    .index("by_job", ["jobId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SUBSCRIPTIONS - Stripe billing integration ready

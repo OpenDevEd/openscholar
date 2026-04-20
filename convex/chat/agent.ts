@@ -80,8 +80,8 @@ export const paperChat: Agent = new Agent(components.agent, {
       userId: userId as Id<"users">,
       amount: credits,
       description: "AI: Chat message",
+      billingType: "chat",
       metadata: {
-        billingType: "chat_llm",
         model,
         inputTokens: String(usage.inputTokens ?? 0),
         outputTokens: String(usage.outputTokens ?? 0),

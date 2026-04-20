@@ -214,10 +214,10 @@ export const markPaperIndexed = internalMutation({
         userId: args.billing.userId,
         amount: args.billing.creditsToDeduct,
         description: "AI: Extraction embedding index",
+        jobId: args.billing.jobId,
+        paperId: args.paperId,
+        billingType: "embedding",
         metadata: {
-          billingType: "extraction_embedding",
-          paperId: String(args.paperId),
-          jobId: String(args.billing.jobId),
           embeddingTokens: String(args.billing.embeddingTokens),
         },
       });

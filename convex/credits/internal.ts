@@ -1434,11 +1434,30 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
  * Option B: Add a version field to the credits record and assert expected version
  * in the mutation (optimistic locking on top of OCC -- defense in depth).
  */
+const billingTypeValidator = v.union(
+  v.literal("extraction_llm"),
+  v.literal("embedding"),
+  v.literal("screening"),
+  v.literal("chat"),
+);
+
 export const deductCredits = internalMutation({
   args: {
     userId: v.id("users"),
     amount: v.number(),
     description: v.optional(v.string()),
+    // Plan-04 first-class scoping columns. Pass these instead of keying
+    // jobId / paperId / resultId / billingType through the metadata
+    // record — records are not indexable, so the job-scoped ledger and
+    // cost-breakdown queries need these promoted to columns.
+    jobId: v.optional(v.id("extractionJobs")),
+    paperId: v.optional(v.id("extractionPapers")),
+    resultId: v.optional(v.id("extractionResults")),
+    billingType: v.optional(billingTypeValidator),
+    // Escape hatch for usage telemetry that isn't worth promoting
+    // (embeddingTokens, inputTokens, finishReason, ...). Callers that
+    // pass jobId/paperId/resultId/billingType MUST NOT also key them
+    // into metadata — keep the single source of truth in columns.
     metadata: v.optional(v.record(v.string(), v.string())),
   },
   returns: v.number(),
@@ -1467,6 +1486,13 @@ export const deductCredits = internalMutation({
     let newFreeBalance = credits.freeBalance;
     let newPaidBalance = credits.paidBalance;
 
+    const scope = {
+      jobId: args.jobId,
+      paperId: args.paperId,
+      resultId: args.resultId,
+      billingType: args.billingType,
+    };
+
     if (newFreeBalance >= amountToDeduct) {
       newFreeBalance -= amountToDeduct;
 
@@ -1479,6 +1505,7 @@ export const deductCredits = internalMutation({
         balanceAfter: newFreeBalance,
         description: args.description,
         metadata: args.metadata,
+        ...scope,
         createdAt: now,
       });
     } else {
@@ -1495,6 +1522,7 @@ export const deductCredits = internalMutation({
           balanceAfter: 0,
           description: args.description,
           metadata: args.metadata,
+          ...scope,
           createdAt: now,
         });
       }
@@ -1511,6 +1539,7 @@ export const deductCredits = internalMutation({
         balanceAfter: newPaidBalance,
         description: args.description,
         metadata: args.metadata,
+        ...scope,
         createdAt: now,
       });
     }

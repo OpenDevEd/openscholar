@@ -317,12 +317,11 @@ export const recordOneAnswer = internalMutation({
         userId: job.userId,
         amount: args.creditsUsed,
         description: "AI: Extraction (1 question)",
-        metadata: {
-          billingType: "extraction_llm",
-          paperId: String(args.paperId),
-          jobId: String(paper.jobId),
-          questionKey: args.questionKey,
-        },
+        jobId: paper.jobId,
+        paperId: args.paperId,
+        resultId,
+        billingType: "extraction_llm",
+        metadata: { questionKey: args.questionKey },
       });
       // Same-txn spend mirror for the creditsAgg B-tree. `billed` gates
       // retries before we reach here so insertIfDoesNotExist just needs
