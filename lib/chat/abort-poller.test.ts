@@ -18,4 +18,12 @@ describe("startAbortPoller", () => {
     expect(typeof stop).toBe("function");
     stop();
   });
+
+  it("stop() clears the interval — readFlag never called after stop", async () => {
+    const readFlag = vi.fn(async () => false);
+    const stop = startAbortPoller({ readFlag, onAbort: () => {} });
+    stop();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(readFlag).not.toHaveBeenCalled();
+  });
 });
