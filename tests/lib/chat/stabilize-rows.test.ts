@@ -141,4 +141,36 @@ describe("stabilizeRowsById", () => {
     expect(out[1]).toBe(prev[1]);
     expect(out[2]).toBe(newRow);
   });
+
+  it("preserves refs when array-index is reordered but each row's position field is unchanged", () => {
+    const prev = [
+      row({ chatPaperId: cp(1), position: 1 }),
+      row({ chatPaperId: cp(2), position: 2 }),
+    ];
+    const next = [{ ...prev[1]! }, { ...prev[0]! }];
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out).toHaveLength(2);
+    expect(out[0]).toBe(prev[1]);
+    expect(out[1]).toBe(prev[0]);
+  });
+
+  it("gives new refs when array-index is reordered and position fields are swapped", () => {
+    const prev = [
+      row({ chatPaperId: cp(1), position: 1 }),
+      row({ chatPaperId: cp(2), position: 2 }),
+    ];
+    const next = [
+      { ...prev[1]!, position: 1 },
+      { ...prev[0]!, position: 2 },
+    ];
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out[0]).toBe(next[0]);
+    expect(out[0]).not.toBe(prev[1]);
+    expect(out[1]).toBe(next[1]);
+    expect(out[1]).not.toBe(prev[0]);
+  });
 });
