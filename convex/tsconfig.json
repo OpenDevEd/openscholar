@@ -18,7 +18,16 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+
+    /* Match root tsconfig path alias so Convex esbuild resolves @/*.
+     * Omit baseUrl on purpose — setting it would steal bare-package
+     * imports like "stripe" and resolve them against convex/ (which has
+     * a local stripe.ts component). paths without baseUrl is valid for
+     * TS >= 4.1 when entries are relative. */
+    "paths": {
+      "@/*": ["../*"]
+    }
   },
   "include": ["./**/*"],
   "exclude": ["./_generated"]

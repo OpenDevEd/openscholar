@@ -22,5 +22,10 @@ app.use(agent);
 app.use(aggregate, { name: "resultStatusAgg" });
 app.use(aggregate, { name: "resultAnsweredAgg" });
 app.use(aggregate, { name: "resultConfidenceAgg" });
+// creditsAgg (plan-04): per-job credit-spend aggregate for O(log n) total
+// cost queries. Namespace = jobId; sumValue = credits spent per entry
+// (extraction_llm per-result + embedding per-paper). Cleared on cascade
+// delete via admin.clearJobCredits.
+app.use(aggregate, { name: "creditsAgg" });
 
 export default app;

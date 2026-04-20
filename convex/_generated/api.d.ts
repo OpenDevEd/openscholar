@@ -366,4 +366,5 @@ export declare const components: {
   resultStatusAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultStatusAgg">;
   resultAnsweredAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultAnsweredAgg">;
   resultConfidenceAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultConfidenceAgg">;
+  creditsAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"creditsAgg">;
 };
