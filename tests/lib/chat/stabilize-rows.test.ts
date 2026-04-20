@@ -31,4 +31,17 @@ describe("stabilizeRowsById", () => {
   it("returns an empty array when both prev and next are empty", () => {
     expect(stabilizeRowsById([], [])).toEqual([]);
   });
+
+  it("returns a structural copy of next when prev is undefined", () => {
+    const r1 = row();
+    const r2 = row({ chatPaperId: cp(2), position: 2 });
+    const next = [r1, r2];
+
+    const out = stabilizeRowsById(undefined, next);
+
+    expect(out).not.toBe(next);
+    expect(out).toHaveLength(2);
+    expect(out[0]).toBe(r1);
+    expect(out[1]).toBe(r2);
+  });
 });

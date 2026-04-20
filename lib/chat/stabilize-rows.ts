@@ -1,8 +1,9 @@
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 
 export function stabilizeRowsById(
-  _prev: ReadonlyArray<ChatSourceRow> | undefined,
-  _next: ReadonlyArray<ChatSourceRow>,
+  prev: ReadonlyArray<ChatSourceRow> | undefined,
+  next: ReadonlyArray<ChatSourceRow>,
 ): ChatSourceRow[] {
+  if (prev === undefined || prev.length === 0) return next.slice();
   return [];
 }
