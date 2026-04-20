@@ -25,6 +25,9 @@ export function validatePauseTransition(
   if (currentStatus === "paused") {
     return { ok: false, reason: "already_paused" };
   }
+  if (currentStatus === "creditsExhausted") {
+    return { ok: false, reason: "credits_exhausted" };
+  }
   if (TERMINAL_JOB_STATUSES.has(currentStatus)) {
     return { ok: false, reason: "terminal" };
   }

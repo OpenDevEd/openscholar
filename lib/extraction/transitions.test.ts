@@ -42,4 +42,13 @@ describe("validatePauseTransition", () => {
       });
     },
   );
+
+  it("R6: from 'creditsExhausted' → not-ok with reason 'credits_exhausted'", () => {
+    // Pause on an auto-paused (credits-exhausted) job is a distinct no-op —
+    // the user should hit Buy Credits + Resume, not Pause.
+    expect(validatePauseTransition("creditsExhausted")).toEqual({
+      ok: false,
+      reason: "credits_exhausted",
+    });
+  });
 });
