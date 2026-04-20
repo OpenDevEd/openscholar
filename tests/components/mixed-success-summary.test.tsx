@@ -47,6 +47,8 @@ const fakeJobId = "job_abc" as Id<"extractionJobs">;
 function withSummary(summary: {
   total: number;
   byCode: Array<{ code: string; count: number; retryable: boolean }>;
+  answeredTotal: number;
+  totalQuestions: number;
 }) {
   useProtectedQueryMock.mockReturnValue({
     data: summary,
@@ -72,25 +74,18 @@ function withLoading() {
 describe("<MixedSuccessSummary>", () => {
   it("renders nothing while the summary query is loading", () => {
     withLoading();
-    const { container } = render(
-      <MixedSuccessSummary
-        jobId={fakeJobId}
-        totalQuestions={500}
-        answeredTotal={473}
-      />,
-    );
+    const { container } = render(<MixedSuccessSummary jobId={fakeJobId} />);
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders nothing when there are zero failures (clean completed job)", () => {
-    withSummary({ total: 0, byCode: [] });
-    const { container } = render(
-      <MixedSuccessSummary
-        jobId={fakeJobId}
-        totalQuestions={500}
-        answeredTotal={500}
-      />,
-    );
+    withSummary({
+      total: 0,
+      byCode: [],
+      answeredTotal: 500,
+      totalQuestions: 500,
+    });
+    const { container } = render(<MixedSuccessSummary jobId={fakeJobId} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -102,14 +97,10 @@ describe("<MixedSuccessSummary>", () => {
         { code: "pdf_invalid", count: 8, retryable: false },
         { code: "context_too_long", count: 4, retryable: false },
       ],
+      answeredTotal: 473,
+      totalQuestions: 500,
     });
-    render(
-      <MixedSuccessSummary
-        jobId={fakeJobId}
-        totalQuestions={500}
-        answeredTotal={473}
-      />,
-    );
+    render(<MixedSuccessSummary jobId={fakeJobId} />);
     const region = screen.getByRole("region");
     expect(region).toHaveAttribute("data-mixed-success-summary");
     expect(region).toHaveAttribute("data-answered-total", "473");
@@ -132,14 +123,10 @@ describe("<MixedSuccessSummary>", () => {
         { code: "auth", count: 2, retryable: false },
         { code: "pdf_invalid", count: 1, retryable: false },
       ],
+      answeredTotal: 3,
+      totalQuestions: 10,
     });
-    render(
-      <MixedSuccessSummary
-        jobId={fakeJobId}
-        totalQuestions={10}
-        answeredTotal={3}
-      />,
-    );
+    render(<MixedSuccessSummary jobId={fakeJobId} />);
     const rows = document.querySelectorAll("[data-failure-code]");
     expect(rows.length).toBe(3);
     expect(rows[0]).toHaveAttribute("data-failure-code", "rate_limit");
@@ -154,14 +141,10 @@ describe("<MixedSuccessSummary>", () => {
         { code: "pdf_invalid", count: 2, retryable: false },
         { code: "auth", count: 1, retryable: false },
       ],
+      answeredTotal: 7,
+      totalQuestions: 10,
     });
-    render(
-      <MixedSuccessSummary
-        jobId={fakeJobId}
-        totalQuestions={10}
-        answeredTotal={7}
-      />,
-    );
+    render(<MixedSuccessSummary jobId={fakeJobId} />);
     const region = screen.getByRole("region");
     expect(region).toHaveAttribute("data-retryable-total", "0");
   });

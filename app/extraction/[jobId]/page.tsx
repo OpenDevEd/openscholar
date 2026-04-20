@@ -53,6 +53,8 @@ import { CostBadge } from "@/components/extraction/cost-badge";
 import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
 import { JobStatusBanner } from "@/components/extraction/job-status-banner";
 import { JobProgressBar } from "@/components/extraction/job-progress-bar";
+import { NowProcessing } from "@/components/extraction/now-processing";
+import { MixedSuccessSummary } from "@/components/extraction/mixed-success-summary";
 import { RetrySummary } from "@/components/extraction/retry-summary";
 import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
@@ -812,6 +814,23 @@ export default function JobDetailPage() {
               />
             </div>
           )}
+
+          {/* Plan-07: mixed-success narrative callout. Self-hides on
+              clean completions (zero classified failures) so it only
+              appears when there's something substantive to say. */}
+          {job.status === "completed" && (
+            <div className="px-4 md:px-6 pt-4">
+              <MixedSuccessSummary jobId={jobId} />
+            </div>
+          )}
+
+          {/* Plan-07: live "currently extracting" banner. Mounts for
+              every job; self-hides when no paper is in-flight
+              (idle / completed / failed). role=status + aria-live
+              announces paper transitions to screen readers. */}
+          <div className="px-4 md:px-6 pt-4">
+            <NowProcessing jobId={jobId} />
+          </div>
 
           {/* Stats Section */}
           <motion.div

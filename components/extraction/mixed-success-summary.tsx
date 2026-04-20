@@ -33,17 +33,9 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 export interface MixedSuccessSummaryProps {
   jobId: Id<"extractionJobs">;
-  /** Total questions × processable papers. Used for the "X / Y" ratio. */
-  totalQuestions: number;
-  /** Number of questions that produced an accepted answer. */
-  answeredTotal: number;
 }
 
-export function MixedSuccessSummary({
-  jobId,
-  totalQuestions,
-  answeredTotal,
-}: MixedSuccessSummaryProps) {
+export function MixedSuccessSummary({ jobId }: MixedSuccessSummaryProps) {
   const t = useTranslations("extraction.mixedSuccess");
   const tTitle = useTranslations("errors.title");
   const headingId = useId();
@@ -67,8 +59,8 @@ export function MixedSuccessSummary({
       role="region"
       aria-labelledby={headingId}
       data-mixed-success-summary
-      data-answered-total={answeredTotal}
-      data-total-questions={totalQuestions}
+      data-answered-total={summary.answeredTotal}
+      data-total-questions={summary.totalQuestions}
       data-failed-total={summary.total}
       data-retryable-total={retryableTotal}
       className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4"
@@ -84,8 +76,8 @@ export function MixedSuccessSummary({
           </h3>
           <p className="text-muted-foreground">
             {t("answeredOverTotal", {
-              answered: answeredTotal,
-              total: totalQuestions,
+              answered: summary.answeredTotal,
+              total: summary.totalQuestions,
             })}
           </p>
           <p>

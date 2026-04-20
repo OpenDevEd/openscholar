@@ -76,7 +76,7 @@ async function seedJobWithErrors(
 }
 
 describe("getMixedSuccessSummary", () => {
-  it("returns zeros for a job with no error rows", async () => {
+  it("returns zeros for a job with no error rows and no result rows", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithErrors(t, []);
     const auth = t.withIdentity(OWNER_IDENTITY);
@@ -85,7 +85,12 @@ describe("getMixedSuccessSummary", () => {
       api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary,
       { jobId },
     );
-    expect(result).toEqual({ total: 0, byCode: [] });
+    expect(result).toEqual({
+      total: 0,
+      byCode: [],
+      answeredTotal: 0,
+      totalQuestions: 0,
+    });
   });
 
   it("groups by code with counts sorted desc, carrying retryable flags from taxonomy", async () => {
@@ -116,6 +121,48 @@ describe("getMixedSuccessSummary", () => {
     ]);
   });
 
+  it("reports answeredTotal and totalQuestions from extractionResults rows", async () => {
+    const t = convexTest(schema);
+    const { jobId, paperId } = await seedJobWithErrors(t, []);
+    await t.run(async (ctx) => {
+      const now = Date.now();
+      for (let i = 0; i < 7; i++) {
+        await ctx.db.insert("extractionResults", {
+          jobId,
+          paperId,
+          questionKey: `q_ok_${i}`,
+          answer: "A",
+          citations: [],
+          citationStatus: "grounded" as const,
+          status: "completed" as const,
+          billed: true,
+          processedAt: now,
+        });
+      }
+      for (let i = 0; i < 3; i++) {
+        await ctx.db.insert("extractionResults", {
+          jobId,
+          paperId,
+          questionKey: `q_fail_${i}`,
+          answer: null,
+          citations: [],
+          citationStatus: "extraction_error" as const,
+          status: "failed" as const,
+          billed: false,
+          processedAt: now,
+        });
+      }
+    });
+
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const result = await auth.query(
+      api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary,
+      { jobId },
+    );
+    expect(result.answeredTotal).toBe(7);
+    expect(result.totalQuestions).toBe(10);
+  });
+
   it("returns zeros for an unowned job (caller-safe)", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithErrors(t, ["rate_limit"]);
@@ -139,6 +186,11 @@ describe("getMixedSuccessSummary", () => {
       api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary,
       { jobId },
     );
-    expect(result).toEqual({ total: 0, byCode: [] });
+    expect(result).toEqual({
+      total: 0,
+      byCode: [],
+      answeredTotal: 0,
+      totalQuestions: 0,
+    });
   });
 });
