@@ -9,11 +9,13 @@
 
 import {
   TERMINAL_JOB_STATUSES,
+  isRunningJobStatus,
   type JobStatus,
+  type RunningJobStatus,
 } from "@/convex/extraction/stateMachine";
 
 export type PauseTransitionResult =
-  | { ok: true; nextStatus: "paused"; pausedFrom: JobStatus }
+  | { ok: true; nextStatus: "paused"; pausedFrom: RunningJobStatus }
   | { ok: false; reason: "already_paused" | "terminal" | "credits_exhausted" };
 
 export type ResumeTransitionResult =
@@ -36,6 +38,13 @@ export function validatePauseTransition(
     return { ok: false, reason: "credits_exhausted" };
   }
   if (TERMINAL_JOB_STATUSES.has(currentStatus)) {
+    return { ok: false, reason: "terminal" };
+  }
+  if (!isRunningJobStatus(currentStatus)) {
+    // Unreachable — the three guards above enumerate every non-running
+    // JobStatus. Keeps the type narrow on the happy return so pause
+    // mutations can persist `pausedFrom` into the narrowed schema column
+    // without a cast.
     return { ok: false, reason: "terminal" };
   }
   return { ok: true, nextStatus: "paused", pausedFrom: currentStatus };

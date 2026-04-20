@@ -38,13 +38,26 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
  * accepts as input (everything else is either already paused, credits-
  * exhausted, or terminal). Source of truth for the pause-eligibility
  * predicate in `lib/extraction/transitions.ts`.
+ *
+ * The array form is kept alongside the Set so callers can derive the
+ * narrowed `RunningJobStatus` type — the Set by itself can't narrow.
  */
-export const RUNNING_JOB_STATUSES = new Set<JobStatus>([
+export const RUNNING_JOB_STATUSES_LIST = [
   "pending",
   "downloading_pdfs",
   "indexing",
   "extracting",
-]);
+] as const satisfies readonly JobStatus[];
+
+export type RunningJobStatus = (typeof RUNNING_JOB_STATUSES_LIST)[number];
+
+export const RUNNING_JOB_STATUSES = new Set<JobStatus>(RUNNING_JOB_STATUSES_LIST);
+
+export function isRunningJobStatus(
+  status: JobStatus,
+): status is RunningJobStatus {
+  return (RUNNING_JOB_STATUSES_LIST as readonly JobStatus[]).includes(status);
+}
 
 /**
  * Terminal job statuses. Once a job lands here, only plan-05's retry
