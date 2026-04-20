@@ -2,6 +2,13 @@
 
 **Depends on:** 01 (taxonomy). **Blocks:** 06.
 
+## Context / dependencies
+
+- **Credits-balance reuse**: this plan consumes `checkBalance` from `convex/credits/queries.ts:81-119` (returns `{hasEnough, free, paid, total, required, deficit}`) — do not hand-roll the credits-table read. Same call pattern used by `components/screening/screening-dialog.tsx:212`.
+- **No other billing helpers to reuse**: `lib/billing/` currently only contains `lib/billing/entitlements.ts`, which handles plan entitlements (not credits). There is no shared preflight helper beyond `checkBalance` to reuse.
+- **Workpool 0.3.2**: this plan has no workpool dependency; safe on 0.3.2.
+- **`deductCredits` line anchor**: if a downstream section (or a later plan revision) cites a line range inside `convex/credits/internal.ts` (e.g., `:1459-1516`), TODO: re-anchor during execution — that file may have drifted. Do not delete the reference; flag it.
+
 ## Goal
 
 Before the job is even created, check the user has enough credits. If not, block with the same UX screening uses — inline balance display and a "Buy Credits" CTA that deep-links to the billing page. If credits run out **mid-job**, transition the job to a new **non-terminal** `creditsExhausted` status that plan 06 will allow to resume automatically.
@@ -77,27 +84,36 @@ estimatedCredits: v.optional(v.object({ low: v.number(), mid: v.number(), high: 
 
 ### State-machine transitions (`convex/extraction/stateMachine.ts`)
 
-Add `creditsExhausted` as a legal transition from `downloading_pdfs | indexing | extracting`. Legal outgoing: `extracting` (on resume), `cancelled`, `failed`. NOT terminal (diverges from screening's semantics deliberately — user wants resume).
+Add `creditsExhausted` to `JOB_STATUSES` (`convex/extraction/stateMachine.ts:17-25`). Extend `VALID_JOB_TRANSITIONS` (`:38-54`) to make it non-terminal with outgoing edges to `extracting` (on resume / retry with credits), `cancelled`, and `failed`. Incoming edges: from `downloading_pdfs | indexing | extracting`. NOT terminal (diverges from screening's semantics deliberately — user wants resume).
 
-### Terminal statuses list
+### Terminal statuses
 
-`convex/extraction/stateMachine.ts:17-25` — existing `TERMINAL` set. `creditsExhausted` is **NOT** in terminal. `completed|failed|cancelled` remain terminal.
+`convex/extraction/stateMachine.ts` does not export a dedicated `TERMINAL` constant — terminal-ness is implicit (a status whose `VALID_JOB_TRANSITIONS` entry maps to `[]`). `creditsExhausted` must have a non-empty outgoing list (see above) so it is **NOT** terminal. `completed|failed|cancelled` remain terminal (empty outgoing lists).
 
 Skip logic in workpool actions: treat `creditsExhausted|paused` as "skip-and-return", NOT as terminal. When the job resumes, a new workflow step re-dispatches.
 
+### Rationale: deliberate divergence from screening
+
+Screening currently treats `creditsExhausted` as terminal (see `convex/screening/mutations.ts:183` using `TERMINAL_STATUSES.includes`). Plan 03 deliberately diverges: for extraction, `creditsExhausted` is NON-terminal — the user can top up credits and resume. A reviewer who greps for `creditsExhausted` will find screening treating it as terminal; this split is intentional.
+
 ### Pre-flight check in `startJob`
 
-`convex/extraction/mutations/jobs.ts:61-179`:
+`convex/extraction/mutations/jobs.ts:61-180`:
+
+Gate the pre-flight inside the `if (args.mode === "extraction")` branch of `startJob` (post-`df532e6`). Insert between the question-length validator end at `:110` and `const now` at `:112`.
+
 ```ts
 // After all input validation, before workflow.start:
 if (args.mode === "extraction") {
   const { papers, questions } = await expandedCounts(ctx, args);
   const estimate = estimateExtractionCredits({ papers, questions, usePdfs, avgPaperKind });
-  const credits = await ctx.db.query("credits").withIndex("by_user", q => q.eq("userId", user._id)).unique();
-  const available = (credits?.freeBalance ?? 0) + (credits?.paidBalance ?? 0);
-  if (available < estimate.high) {
+  const balance = await ctx.runQuery(api.credits.queries.checkBalance, {
+    requiredAmount: estimate.high,
+  });
+  // Same pattern as components/screening/screening-dialog.tsx:212
+  if (!balance.hasEnough) {
     throw createTaxonomyError("insufficient_credits", {
-      needed: estimate.high, available,
+      needed: estimate.high, available: balance.total, deficit: balance.deficit,
     });
   }
   // persist estimate on the job document

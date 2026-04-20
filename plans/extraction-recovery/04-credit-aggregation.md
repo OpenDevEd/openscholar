@@ -2,6 +2,8 @@
 
 **Depends on:** 01 (taxonomy — for `creditTransactions` shape reuse). Independent of 02, 03, 05, 06, 07 — can parallelize.
 
+> **Workpool note:** This plan has no workpool dependency. Safe on the pinned 0.3.2.
+
 ## Goal
 
 Surface credit usage at every level the user cares about: a pre-flight estimate (ships in plan 03), a live running total during execution, a cost summary on completion, a per-paper column in the results table, and a job-scoped transaction ledger in the billing history.
@@ -55,7 +57,14 @@ export async function clearJobCredits(ctx, jobId) {
 ```
 
 Call sites:
-- Plan 02's `recordOneAnswer` mutation calls `recordCreditSpend` in the same txn as credit deduction.
+- **DRY hook site (single choke-point):** The `creditsUsed` write choke-point is `markPaperTerminalTx` in `convex/extraction/paperLifecycle.ts:74` — every terminal transition flows through this helper (called by `results.ts`, `papers.ts`, `onComplete.ts`, and the workpool action error-paths). Add the `creditsAgg.insertIfDoesNotExist` / `replaceIfExists` call inside `markPaperTerminalTx` so there is exactly ONE hook site. Do NOT mirror the write into each caller — DRY.
+  - For reference, the 5 existing write call sites that all funnel through `markPaperTerminalTx`:
+    - `convex/extraction/mutations/results.ts:210,276-295` (`saveExtractionResultsAndComplete`)
+    - `convex/extraction/mutations/papers.ts:94,105,118-119` (direct `markPaperCompleted`)
+    - `convex/extraction/paperLifecycle.ts:51,74` (`markPaperTerminalTx` patch path — the common denominator)
+    - `convex/extraction/workpoolActions.ts:766,773,839,1160` (action-level pass-through)
+    - `convex/extraction/mutations/internal/onComplete.ts:161,184` (defensive fallback)
+- Plan 02's `recordOneAnswer` mutation calls `recordCreditSpend` in the same txn as credit deduction (per-question granularity, complementary to the paper-terminal hook).
 - `deleteExtractionInternal` cascade calls `clearJobCredits`.
 - `cancelExtraction` does NOT clear (you keep the receipt for already-spent credits).
 
@@ -81,7 +90,8 @@ Current (`convex/schema.ts:121-148`): `metadata: v.record(v.string(), v.string()
 Change:
 ```ts
 creditTransactions: defineTable({
-  userId, amount, type, reason, ...
+  userId: v.optional(v.id("users")),   // unchanged — preserve existing optionality (see note below)
+  amount, type, reason, ...
   jobId: v.optional(v.id("extractionJobs")),   // NEW, first-class
   paperId: v.optional(v.id("extractionPapers")),
   resultId: v.optional(v.id("extractionResults")),  // post-plan-02
@@ -93,13 +103,15 @@ creditTransactions: defineTable({
   )),
   // metadata kept as escape hatch for things we haven't promoted yet
 })
-.index("by_user", ["userId"])
-.index("by_job", ["jobId"])
+.index("by_user", ["userId"])   // PRE-EXISTING — not net-new
+.index("by_job", ["jobId"])     // NEW — only this index is net-new
 ```
+
+> The current schema keeps `userId` optional (FK to `credits` row is the canonical owner). Do not silently tighten it as part of this refactor; if tightening is desired, call it out explicitly with a migration.
 
 **No migration.** Per `00-README.md`: wipe `creditTransactions` in the Convex dashboard when the schema validator rejects old rows. Fresh ledger from day one of the new schema. The user has authorized wiping dev data.
 
-Call sites that write credit transactions (currently: `internal.credits.internal.deductCredits` in `convex/credits/internal.ts:1459-1516`): switch to passing structured args, not `metadata` objects.
+Call sites that write credit transactions (currently: `internal.credits.internal.deductCredits` in `convex/credits/internal.ts:1459-1516` — **TODO: re-anchor this line range before executing; file may have drifted.**): switch to passing structured args, not `metadata` objects.
 
 ### UI surfaces
 
@@ -148,7 +160,7 @@ Otherwise, proceed to test-after implementation as enumerated in the Test plan s
 - `convex/convex.config.ts` — register `creditsAgg`.
 - `convex/extraction/aggregates.ts` — add instance + helpers.
 - `convex/extraction/queries/costs.ts` (new).
-- `convex/extraction/mutations/results.ts` — call `recordCreditSpend` at deduction site.
+- `convex/extraction/paperLifecycle.ts` — add `recordCreditSpend` call inside `markPaperTerminalTx` (the single DRY hook site; see Call sites above). No mirrored writes in `results.ts` / `papers.ts` / `onComplete.ts` / `workpoolActions.ts` — they all flow through this helper.
 - `convex/credits/internal.ts` — `deductCredits` accepts structured args.
 - `convex/schema.ts` — `creditTransactions` refactor.
 - (no migration file — dev data is disposable; wipe `creditTransactions` instead)

@@ -10,18 +10,24 @@ Closes gap #6.
 
 ## Approach: workflow-gated cooperative pause (no pool-level pause)
 
+**Workpool 0.3.2 note**: the project pins `@convex-dev/workpool@0.3.2` (satisfies `@convex-dev/rag@0.7.2`'s peer range). On 0.3.2, `pool.config.update({ maxParallelism: 0 })` is not available on the client. This doesn't affect Plan 06 — we chose workflow-gated pause (`step.awaitEvent`) regardless. If a future upgrade reopens pool-level pause, the cross-tenant isolation objection (pausing pool A also pauses other users' jobs sharing the pool) still stands.
+
 The research surfaced two primitives:
-1. **Workpool** has native pause: `components.pdfProcessingPool.config.update({ maxParallelism: 0 })`. But this is pool-global — pausing job A pauses other users' jobs sharing the pool.
+1. **Workpool pool-level pause** (`pool.config.update({ maxParallelism: 0 })`): doubly-unavailable — not on the pinned 0.3.2 client (no runtime `config.update` method) AND rejected on design grounds (pool-global; pausing job A also pauses other users' jobs sharing the pool, breaking cross-tenant isolation).
 2. **Workflow** has `step.awaitEvent({ name })` + `sendEvent` for cooperative resume.
 
-We use **workflow-gate only** (no pool pause). The enqueue loop checks `job.status` before each question dispatch and `awaitEvent` if paused. Cost: up to `maxParallelism` already-enqueued questions will still start — each one early-returns from `extractOneQuestion` on a status re-check. Small, bounded, and isolates pause to one job.
+We use **workflow-gate only** (no pool pause). The enqueue loop checks `job.status` before each question dispatch and `awaitEvent` if paused. Cost: up to `maxParallelism` already-enqueued questions will still start — each one early-returns from the per-question extraction action on a status re-check. Small, bounded, and isolates pause to one job.
 
 User choice made in the grill: "you can wait for the llm to finish" → this approach is consistent.
+
+**Hard block on Plan 02 AND Plan 03.** Plan 06 cannot land until (a) Plan 02's per-question decomposition exists — `step.awaitEvent` is placed inside a per-question loop that Plan 02 creates, and (b) Plan 03's status widening lands — the UI needs to distinguish `creditsExhausted` from user-initiated `paused`. A degraded paper-level-only fallback (gate before each `enqueuePaperProcessing` call at `workflow.ts:167-206`) is possible if shipping before Plan 02, but not recommended.
+
+**Ownership of new status literals**: this plan (Plan 06) owns adding `paused` to the schema and validator unions. Plan 03 owns adding `creditsExhausted`. Do NOT split ownership of the status union — both statuses land in their respective plans. If Plans 03 and 06 ship in either order, each plan adds only its own literal.
 
 ## Scope
 
 **In scope**
-- New status value `paused` on `extractionJobs.status` (added by plan 03's schema change; this plan wires behavior).
+- New status value `paused` on `extractionJobs.status` (Plan 06 owns adding this literal to the schema/validator; Plan 03 owns adding `creditsExhausted`).
 - `pauseExtraction(jobId)` public mutation.
 - `resumeExtraction(jobId)` public mutation (also used by `creditsExhausted` auto-pause).
 - Workflow gate: `step.awaitEvent({ name: `resume:${jobId}` })` between enqueue batches.
@@ -156,6 +162,8 @@ export const runExtractionWorkflow = workflow.define({
 
 ### Skip-guard in `extractOneQuestion`
 
+> **Note on `extractOneQuestion`**: this standalone per-question action is Plan 02's deliverable and does NOT exist pre-Plan-02. Current equivalents in the codebase are the `processQuestion` closure (`convex/extraction/workpoolActions.ts:890`) and the helpers `extractQuestionAnswer` (`:288`) / `extractQuestionAnswerFromAbstract` (`:377`). The skip-guard described below lands at the entry of whatever per-question action Plan 02 extracts.
+
 At the top of the action, after argument validation:
 
 ```ts
@@ -242,11 +250,12 @@ Workflow gate, skip-guard, mutations, and UI — test-after.
 
 - `convex/extraction/mutations/pause.ts` (new).
 - `convex/extraction/workflow.ts` — insert gate.
-- `convex/extraction/workpoolActions.ts` — entry-point skip-guard in `extractOneQuestion` and `downloadAndIndex`.
+- `convex/extraction/workpoolActions.ts` — entry-point skip-guard in `extractOneQuestion` (Plan 02's extracted action) and `downloadAndIndex`.
 - `convex/extraction/queries/internal.ts` (if not exists) — `getJobStatusForWorkflow`, `getJobStatusForAction`.
-- `convex/extraction/stateMachine.ts` — transitions.
-- `convex/schema.ts` — `pausedAt`, `pausedFromStatus` fields.
-- `convex/extraction/validators.ts` — add to status validator.
+- `convex/extraction/stateMachine.ts:17-25` — add `paused` to `JOB_STATUSES`. Extend `VALID_JOB_TRANSITIONS` (`:38-54`) to allow `extracting → paused → extracting` and `paused → cancelled`.
+- `convex/extraction/mutations/internal/lifecycle.ts` — extend the `maybeFinalizeJob` guard at `:38-44` to also skip `paused` and `creditsExhausted` (prevents counter-driven race into `completed`).
+- `convex/schema.ts` — `pausedAt`, `pausedFromStatus` fields, and widen the `extractionJobs.status` union to include `paused` (Plan 06 owns this literal; Plan 03 owns `creditsExhausted`).
+- `convex/extraction/validators.ts` — mirror the status-union widening: add `v.literal("paused")` to `jobStatusValidator` (currently `:22-30`).
 - `app/extraction/[jobId]/page.tsx` — Pause/Resume buttons + banner.
 - `components/extraction/job-status-banner.tsx` (new) — unified banner for paused/creditsExhausted.
 - `messages/*.json` — keys `extraction.pause.button`, `.paused.banner`, `.resume.button`, `.pause.toastSuccess`, `.resume.toastSuccess`.

@@ -4,18 +4,26 @@
 
 ## Goal
 
-Stop losing error information. Today `createError("AI_INSUFFICIENT_CREDITS", msg)` is thrown but only the message string is persisted — the code is discarded. Refactor so (a) every extraction error persists a structured `{ code, message, context?, retryable, httpStatus?, providerName? }` shape, (b) chat and extraction share one codebook, (c) an append-only per-paper history survives unlimited retries.
+Stop losing error information. Today `createError("AI_INSUFFICIENT_CREDITS", msg)` (see `convex/lib/errors.ts:72-80`) is thrown but only the message string is persisted — the code is discarded. Refactor so (a) every extraction error persists a structured `{ code, message, context?, retryable, httpStatus?, providerName? }` shape, (b) chat and extraction share one codebook, (c) an append-only per-paper history survives unlimited retries.
 
 Closes gap #5 (structured errors), #10 (error history). Foundation for #3 (retryable classification), #2 (detect credit exhaustion by code), #8 (UI shows title/body per code).
+
+### Starting state (already on `dev`)
+
+- `lib/chat/error-classifier.ts` already ships a full 10-class `ChatErrorClass` runtime (`classifyChatError`, `isRetryable`, `requiresUserEdit`, `requiresAdminAction`, envelope serialize/parse). This landed with the chat-abort work already merged on `dev`.
+- Chat-side i18n keys `chatErrorTitle`/`chatErrorBody` were committed 2026-04-20 (`3b53c17`) across all 6 locales in `messages/*.json`. They are NOT uncommitted.
+- `components/extraction/chat/chat-error-alert.tsx:237-246` already consumes the taxonomy via a `data-error-class` attribute.
+
+This plan **consumes** that existing work — no coordination with in-flight chat branches is required.
 
 ## Scope
 
 **In scope**
-- New `lib/errors/taxonomy.ts` — canonical list of error codes + `isRetryable` predicate + provider/network-error classifier.
+- **Promote/rename** `lib/chat/error-classifier.ts` → `lib/errors/taxonomy.ts`. Extend the existing 10-class `ChatErrorClass` runtime with 8 extraction-only codes (`action_timeout`, `pdf_download_failed`, `pdf_invalid`, `paper_not_found`, `indexing_failed`, `llm_content_refusal`, `schema_validation`, `cancelled`) for a unified 18-code taxonomy. Do NOT create a parallel module. All existing callers of `lib/chat/error-classifier` must be redirected to the new path.
 - New `extractionPaperErrors` table (append-only history).
 - Schema refactor: `extractionJobs.errorMessage: string` → `errorCode + errorMessage + errorContext` (breaking, user approved).
 - Schema refactor: `extractionPapers.errorMessage: string` → same, plus link to error-history table.
-- Translations: merge chat's in-flight `chatErrorTitle`/`chatErrorBody` blocks into a shared `errors.title` / `errors.body` namespace. Chat keys become thin references.
+- Translations: lift the already-committed chat `chatErrorTitle`/`chatErrorBody` blocks (at `messages/en-US.json:541-564` and mirrored across the other 5 locales) into a shared `errors.title` / `errors.body` namespace. Chat keys are removed (no-legacy rule); the chat UI consumer is updated to read the shared namespace.
 - Error-resolver refactor: `lib/toast/error-resolver.ts` consumes taxonomy.
 - Tests for taxonomy and classifier logic.
 
@@ -51,14 +59,21 @@ Closes gap #5 (structured errors), #10 (error history). Foundation for #3 (retry
 
 ## Design
 
-### 1. `lib/errors/taxonomy.ts`
+### 1. `lib/errors/taxonomy.ts` (promote + extend `lib/chat/error-classifier.ts`)
+
+**Step 1**: `git mv lib/chat/error-classifier.ts lib/errors/taxonomy.ts`. Redirect every import of `lib/chat/error-classifier` to the new path in a single sweep (grep-and-replace). No shim, no re-export alias — the no-legacy rule applies.
+
+**Step 2**: Extend the existing 10-class `ChatErrorClass` to an 18-class `ErrorCode`:
 
 ```ts
+// Promoted from lib/chat/error-classifier.ts; extended with 8 extraction-only codes.
 export const ERROR_CODES = [
+  // existing 10 from ChatErrorClass (chat + extraction shared):
   "insufficient_credits","rate_limit","model_unavailable","auth","moderation",
-  "context_too_long","network","provider_5xx","aborted","action_timeout",
-  "pdf_download_failed","pdf_invalid","paper_not_found","indexing_failed",
-  "llm_content_refusal","schema_validation","cancelled","unknown",
+  "context_too_long","network","provider_5xx","aborted","unknown",
+  // new 8 extraction-only:
+  "action_timeout","pdf_download_failed","pdf_invalid","paper_not_found",
+  "indexing_failed","llm_content_refusal","schema_validation","cancelled",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
@@ -66,13 +81,17 @@ export const isRetryable: Record<ErrorCode, boolean> = { ... };
 
 export function classifyUnknownError(err: unknown): { code: ErrorCode; message: string; httpStatus?: number; providerName?: string; context?: unknown } {
   // Fingerprint based on: ConvexError.data.code → ConvexError.message patterns → HTTP status → generic network/AbortError patterns.
-  // Map "AI_INSUFFICIENT_CREDITS" (from lib/errors.ts) → "insufficient_credits".
+  // Map "AI_INSUFFICIENT_CREDITS" (from convex/lib/errors.ts:72-80) → "insufficient_credits".
   // Map "INSUFFICIENT_CREDITS" (app-level) → "insufficient_credits".
   // Map AbortError → "aborted". Fetch TypeError → "network". 429 → "rate_limit". etc.
 }
 
 export const errorCodeValidator = v.union(...ERROR_CODES.map(c => v.literal(c)));
 ```
+
+The existing `classifyChatError`, `isRetryable(envelope)`, `requiresUserEdit`, `requiresAdminAction`, and envelope serialize/parse helpers from the chat file are preserved; the refactor widens the union and adds the extraction-side fingerprints to `classifyUnknownError`.
+
+**Note**: there is no pre-existing `extractError` helper — the current throw site is `createError` at `convex/lib/errors.ts:72-80`, which the taxonomy layer wraps (not replaces). `createError` continues to throw; `classifyUnknownError` normalizes anything thrown back into a taxonomy entry at the catch site.
 
 ### 2. Schema changes (`convex/schema.ts`)
 
@@ -123,13 +142,13 @@ Why a separate table (and not an array on the paper)?
 
 Every `try/catch` in extraction maps to taxonomy before persisting:
 
-- `convex/extraction/workpoolActions.ts:570-742` — both catches. Replace `errorMessage: toErrorMessage(e)` with `error: classifyUnknownError(e)` in the returned RunResult.
-- `convex/extraction/mutations/internal/onComplete.ts:57-205` — `failPaperAndFinalize` signature changes from `(error: string)` to `(error: ClassifiedError)`. Internally: insert into `extractionPaperErrors`, patch `paper.lastError`, increment `attemptCount`.
+- `convex/extraction/workpoolActions.ts:735-739` and `:1163-1167` — the two action-level catches. Replace `errorMessage: toErrorMessage(e)` with `error: classifyUnknownError(e)` in each returned RunResult.
+- `convex/extraction/mutations/internal/onComplete.ts:44-55` — `failPaperAndFinalize` signature changes from `(errorMessage: string)` to `(error: ClassifiedError)`. Internally: insert into `extractionPaperErrors`, patch `paper.lastError`, increment `attemptCount`.
 - `convex/extraction/mutations/internal/onComplete.ts:237-266` — `handleExtractionJobComplete`: reclassify the workflow's `result.error` string → taxonomy code before patching `extractionJobs.error`.
 
 ### 4. Translation unification
 
-Current chat work (uncommitted) adds `messages/en-US.json`:
+The chat taxonomy keys are **already committed on `dev`** (2026-04-20, `3b53c17`) at `messages/en-US.json:541-564` and mirrored across all 6 locales:
 ```
 "chatErrorTitle": { "rate_limit": "The model is busy", ... },
 "chatErrorBody": { "rate_limit": "Upstream capacity...", ... }
@@ -138,19 +157,21 @@ Current chat work (uncommitted) adds `messages/en-US.json`:
 Lift to shared namespace:
 ```
 "errors": {
-  "title": { "rate_limit": "...", ... },   // superset of codes
+  "title": { "rate_limit": "...", ... },   // superset of 18 codes
   "body":  { "rate_limit": "...", ... }
 }
 ```
 
-Chat UI consumer reads `useTranslations("errors")`. Extraction consumer reads the same. Existing `chatErrorTitle`/`chatErrorBody` deleted (user's "no legacy compatibility" rule). Apply to all locales in `messages/*.json`.
+Chat UI consumer (`components/extraction/chat/chat-error-alert.tsx:237-246`) currently reads `chatErrorTitle.${envelope.class}` / `chatErrorBody.${envelope.class}` — redirect it to `useTranslations("errors")` and emit `data-error-code` (see §5 below). Extraction consumer reads the same. Existing `chatErrorTitle`/`chatErrorBody` keys are deleted in the same commit (no-legacy rule). Apply to all locales in `messages/*.json`.
 
-### 5. Error-resolver refactor
+### 5. Error-resolver refactor + `data-error-code` contract
 
 `lib/toast/error-resolver.ts:71` currently maps `INSUFFICIENT_CREDITS → "convexInsufficientCredits"` (a toast key). Refactor so it:
 1. Calls `classifyUnknownError(err)` → `{ code, message, ... }`.
 2. Returns `{ titleKey: `errors.title.${code}`, bodyKey: `errors.body.${code}`, retryable, ... }`.
 3. Toast/inline UIs render from that.
+
+**Attribute naming contract.** `components/extraction/chat/chat-error-alert.tsx:237-246` already exposes an attribute named **`data-error-class`** (reflecting the original `ChatErrorClass` type name). Per the no-legacy rule and plan-wide naming consistency, we **rename that attribute to `data-error-code`** everywhere in the same sweep that promotes the module — including the existing chat consumer. Every UI surface that displays a classified error (toast container, inline alert, chat error alert, future extraction retry affordance) emits `data-error-code="${code}"`. All acceptance criteria and tests in this plan use `data-error-code`. Do not ship both attribute names.
 
 ## TDD sequence (pure logic only — `lib/errors/taxonomy.ts`)
 
@@ -183,17 +204,18 @@ Only after this file is fully green does any Convex/schema/translation work begi
 
 ## Files touched
 
-- `lib/errors/taxonomy.ts` (new)
-- `lib/errors/taxonomy.test.ts` (new)
-- `lib/toast/error-resolver.ts` (refactor)
-- `convex/schema.ts` (error column shape; new `extractionPaperErrors` table + 2 indexes)
-- `convex/extraction/workpoolActions.ts` (catch sites, ~6 call sites)
-- `convex/extraction/mutations/internal/onComplete.ts` (`failPaperAndFinalize`, `handleExtractionJobComplete`)
-- `convex/extraction/paperLifecycle.ts` (`markPaperTerminalTx` signature)
-- `convex/extraction/validators.ts` (`errorCodeValidator` export)
-- `convex/lib/errors.ts` (deprecate `createError(code, msg)` wrappers that throw untyped — route through taxonomy)
-- `messages/*.json` (all 6 locales — add `errors.*`, remove `chatErrorTitle`/`chatErrorBody`)
-- `components/chat/**` (any consumer reading `chatErrorTitle`/`chatErrorBody` — update to shared namespace). Grep first for keys.
+- `lib/chat/error-classifier.ts` → **renamed to** `lib/errors/taxonomy.ts` (`git mv`), then extended. All existing importers of `lib/chat/error-classifier` are redirected in the same commit.
+- `lib/errors/taxonomy.test.ts` (new — supersedes any existing `lib/chat/error-classifier.test.ts`, which is moved in the same `git mv`).
+- `lib/toast/error-resolver.ts` (refactor).
+- `convex/schema.ts` (error column shape; new `extractionPaperErrors` table + 2 indexes).
+- `convex/extraction/workpoolActions.ts` (catch sites at `:735-739` and `:1163-1167`).
+- `convex/extraction/mutations/internal/onComplete.ts` (`failPaperAndFinalize` at `:44-55`; `handleExtractionJobComplete` at `:237-266`).
+- `convex/extraction/paperLifecycle.ts` (`markPaperTerminalTx` signature).
+- `convex/extraction/validators.ts` (`errorCodeValidator` export).
+- `convex/lib/errors.ts` (`createError` at `:72-80` continues to throw; taxonomy wraps it at catch sites — no replacement, no deprecation).
+- `messages/*.json` (all 6 locales — add `errors.*`, remove `chatErrorTitle`/`chatErrorBody` currently at `en-US.json:541-564` and the matching ranges in the other locales).
+- `components/extraction/chat/chat-error-alert.tsx:237-246` (update to shared `errors.*` namespace; replace `data-error-class` with `data-error-code`).
+- `components/chat/**` and any other consumer reading `chatErrorTitle`/`chatErrorBody` or emitting `data-error-class` — grep first, update in the same commit.
 
 ## Migration — **none (dev data is disposable)**
 
@@ -221,19 +243,21 @@ Do NOT write a backfill. Do NOT keep `errorMessage` as optional for compat. The 
 
 **UI tests (React Testing Library, behavior-first)**
 - Toast renders the localized title+body by code, not a raw string. Assert via `getByRole("alert")` + `toHaveTextContent(...)`, not className.
-- Expose `data-error-code` on the toast container; assert on that attribute.
+- Every error-surfacing container exposes `data-error-code="${code}"` (replacing the current `data-error-class` at `components/extraction/chat/chat-error-alert.tsx:237-246`); assert on that attribute.
 
 ## Acceptance criteria
 
 - [ ] Every extraction failure (job + paper) stores a structured `error` object with a code from taxonomy.
 - [ ] `extractionPaperErrors` rows accumulate one per retry attempt, queryable by `by_paper` and `by_job`.
-- [ ] Chat and extraction both read titles/bodies from `errors.title.*` / `errors.body.*` (no `chatErrorTitle`/`chatErrorBody` anywhere).
+- [ ] Chat and extraction both read titles/bodies from `errors.title.*` / `errors.body.*` (no `chatErrorTitle`/`chatErrorBody` anywhere — the keys currently at `messages/en-US.json:541-564` and mirrored across the other 5 locales are removed).
+- [ ] Every error-surfacing UI container emits `data-error-code="${code}"`. `rg -n "data-error-class"` returns zero matches (the existing attribute at `components/extraction/chat/chat-error-alert.tsx:237-246` is renamed in the same sweep).
+- [ ] `rg -n "from [\"']@/lib/chat/error-classifier[\"']"` returns zero matches — every importer has been redirected to `@/lib/errors/taxonomy`.
 - [ ] Migration runs idempotently against existing dev data.
 - [ ] `classifyUnknownError` test coverage ≥ 95% of codes.
 - [ ] `rg -n "errorMessage:" convex/` returns zero references in extraction files (only legitimately-named unrelated fields remain).
 
 ## Known pitfalls
 
-- **Chat uncommitted work**: do this plan's translation merge in a single commit that both removes `chatErrorTitle`/`chatErrorBody` and adds `errors.*`. Coordinate with the chat work's commit — if chat lands first, consume its keys; if this lands first, delete and replace.
+- **Chat taxonomy is already committed**: `lib/chat/error-classifier.ts` and the `chatErrorTitle`/`chatErrorBody` keys are already on `dev` (committed 2026-04-20, `3b53c17`). This plan **consumes and extends** them — no coordination with in-flight chat branches is required. Do the module rename (`git mv lib/chat/error-classifier.ts lib/errors/taxonomy.ts`), the i18n namespace lift, and the `data-error-class → data-error-code` rename in a single commit so the repo never sits in a half-renamed state.
 - **Context field**: `v.any()` on `context` is dangerous. Cap serialized size at 4KB in `classifyUnknownError` to prevent 1MB doc bloat.
 - **History table growth**: one row per retry per paper. At unlimited retries, a pathologically failing paper could accumulate many rows. Acceptable — plan 07 adds a "clear error history" admin mutation; plan 05's retry-classification short-circuits obvious non-retryable errors.

@@ -35,7 +35,7 @@
     "@convex-dev/rag": "^0.7.2",
     "@convex-dev/stripe": "^0.1.4",
     "@convex-dev/workflow": "^0.3.11",
-    "@convex-dev/workpool": "^0.4.6",
+    "@convex-dev/workpool": "0.3.2",
     "@formatjs/intl-localematcher": "^0.8.1",
     "@next/third-parties": "^16.2.2",
     "@openrouter/ai-sdk-provider": "^6.0.0-alpha.1",

@@ -57,7 +57,7 @@ These plans lean hard on patterns the codebase already has. Primary donors:
 - **Screening** (`convex/screening/**`) — pre-flight check, `creditsExhausted` status, `isInsufficientCredits` detection, pre-submission balance-check UI with "Buy Credits" CTA (`components/screening/screening-dialog.tsx:411-440`), `exportIncompleteWarning` pattern, analytics events.
 - **Chat error work in flight** (`messages/en-US.json` lines 530-556 in the working tree) — `chatErrorTitle`/`chatErrorBody` taxonomy. Plan 01 unifies this into `lib/errors/taxonomy.ts` so chat and extraction share one codebook.
 - **Existing aggregates** (`convex/extraction/aggregates.ts`) — three `DirectAggregate` instances. Plan 04 adds a fourth with the same shape.
-- **Workpool + Workflow components** — native `maxParallelism=0` pause + `step.awaitEvent` gate (plan 06).
+- **Workflow component** — `step.awaitEvent` gate for cooperative pause (plan 06). Pool-level pause is intentionally not used.
 
 ## Coordination with parallel chat error work
 
@@ -96,6 +96,17 @@ When a plan introduces a schema change:
 Do **not** write `@convex-dev/migrations` scripts, do **not** preserve old rows by widening + backfilling + narrowing, do **not** add optional-field compat shims. The user has explicitly authorized destructive schema evolution on this deployment.
 
 If a production deployment ever exists, re-open every plan's schema change section and write a proper migration then. Until that day, go fast.
+
+## Dependency pin — workpool 0.3.2
+
+`@convex-dev/workpool` is pinned at exact version `0.3.2` (not `^0.3.2`; 0.3.2 is the terminal 0.3.x release). This pin exists because `@convex-dev/rag@0.7.2` declares a peer `@convex-dev/workpool: ^0.3.0` that does not accept 0.4.x, and Vercel runs strict `npm ci` which hard-fails on ERESOLVE.
+
+**What we give up by staying on 0.3.2**:
+- args/context ≥ 8 KB can't be enqueued safely — 0.4.0 added a `payload` side-table that 0.3.2 doesn't read. All plans (especially Plan 02) must keep per-action args under 8 KB; pass IDs, not heavy blobs.
+- OCC-conflict cooldowns (0.4.3), batched recovery (0.4.2), graceful deleted-row recovery (0.4.6).
+- `pool.config.update({ maxParallelism: N })` runtime mutation — not on the 0.3.2 client. Plan 06 does not need it.
+
+**When to revisit**: once `get-convex/rag` PR #93 (widens peer to `^0.3.0 || ^0.4.0`) merges and rag 0.7.3+ ships, bump both `@convex-dev/rag` and `@convex-dev/workpool` in the same commit.
 
 ## Delegation policy — protect the main session's context
 
@@ -145,14 +156,14 @@ If the main session accumulates many tool calls and you feel quality drifting, *
 ## Convex patterns referenced across plans
 
 - `@convex-dev/workflow` v0.3.11 — `step.awaitEvent` + `sendEvent` for cooperative pause.
-- `@convex-dev/workpool` v0.4.6 — `config.update({ maxParallelism: 0 })` as native pause.
+- `@convex-dev/workpool` **pinned at 0.3.2** to satisfy `@convex-dev/rag@0.7.2`'s peer range (`^0.3.0`). See https://github.com/get-convex/rag/pull/93 — when it merges and rag 0.7.3+ ships, we can bump back to 0.4.x. Pool-level pause via `config.update({ maxParallelism: 0 })` is **not available** on the 0.3.2 client and was independently rejected on design grounds (pool-global, leaks across tenants). Plan 06 uses workflow-gated pause instead.
 - `@convex-dev/aggregate` — `DirectAggregate` with `Namespace = Id<"extractionJobs">` for per-job O(log n) sums.
 - `ctx.scheduler.runAfter(0, internal.foo.continue, { cursor })` for self-rescheduling continuations (guidelines.md:245).
 
 ## Sources
 
 - [Convex Workflow README](https://github.com/get-convex/workflow) — step.awaitEvent, restart-from-step semantics
-- [Convex Workpool README](https://github.com/get-convex/workpool) — `maxParallelism: 0` as documented pause
+- [Convex Workpool README](https://github.com/get-convex/workpool) — 0.3.x constructor API (active pin); 0.4.x `config.update` is unavailable
 - [Convex Aggregate README](https://github.com/get-convex/aggregate) — namespaced DirectAggregate, sumValue
 - [Convex Action limits](https://docs.convex.dev/functions/actions) — 10-minute ceiling
 - [Stack: Migrating Data with Mutations](https://stack.convex.dev/migrating-data-with-mutations) — self-reschedule recipe

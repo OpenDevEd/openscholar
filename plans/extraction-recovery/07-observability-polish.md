@@ -2,6 +2,13 @@
 
 **Depends on:** 01, 02, 06. **Blocks:** nothing.
 
+**Hard block on Plan 01.** The append-only error-history UI and the failures-by-code summary depend on Plan 01's `extractionPaperErrors` table and `errorCode` field on `extractionPapers`. Neither exists yet. Do not start Plan 07 until Plan 01 is deployed. The current schema has only flat `errorMessage: v.optional(v.string())` at `schema.ts:527`, with no per-attempt history.
+
+## Context
+
+- No workpool dependency; safe on 0.3.2.
+- `2b4acf2` landed a11y improvements in bucket/source-summary components, but NOT in the Plan-07 target surfaces (`components/extraction/job-list-item.tsx`, `app/extraction/[jobId]/page.tsx` header + progress bar, results table, error-history UI). `84a1cec` added JobDetailPage unit tests but did not assert on a11y. The Plan 07 scope remains fully unaddressed.
+
 ## Goal
 
 The user can see what's happening at a glance. Current paper being processed. Current question being extracted. Per-item success/failure with expandable error history. Screen readers announce state changes. Tests assert on behavior via `data-*` and ARIA attributes (per project testing doctrine).
@@ -29,29 +36,28 @@ Closes gap #8 (per-item progress, ARIA) and the UI leg of #10 (error history dis
 On the job detail header, a line below the progress bar:
 
 ```
-Currently: "Attention is all you need" · Q3 "What dataset was used?"
+Currently: "Attention is all you need"
 ```
 
-Data source: `ctx.db.query("extractionResults").withIndex("by_job_status").filter("status=extracting").first()` → returns the oldest-started in-flight question. Cheap via index.
+**Option A (preferred, no schema change).** Source the banner from `extractionPapers.by_job_status` (already exists at `convex/schema.ts:542`) filtered to `status="extracting"`. Surface the paper title only; per-question progress requires Plan 02's per-question result rows and is a soft-dep.
+
+Data source: `ctx.db.query("extractionPapers").withIndex("by_job_status", q => q.eq("jobId", jobId).eq("status", "extracting")).first()` → returns the in-flight paper. Cheap via index.
 
 ```ts
 // convex/extraction/queries/nowProcessing.ts
 export const getNowProcessing = query({
   args: { jobId },
   handler: async (ctx, { jobId }) => {
-    // Use existing index or add one: by_job_and_status
-    const result = await ctx.db.query("extractionResults")
+    const paper = await ctx.db.query("extractionPapers")
       .withIndex("by_job_status", q => q.eq("jobId", jobId).eq("status", "extracting"))
-      .order("asc")
       .first();
-    if (!result) return null;
-    const [paper, question] = await Promise.all([ ... ]);
-    return { paperTitle: paper.title, questionLabel: question.label, startedAt: result.startedAt };
+    if (!paper) return null;
+    return { paperTitle: paper.title, startedAt: paper.startedAt };
   },
 });
 ```
 
-Add index `extractionResults.by_job_status` if not already present.
+**Option B (upgrade path, if per-question banner is essential).** Precondition: `extractionResults` gains a `status` + `startedAt` field (Plan 02's responsibility), and a new `extractionResults.by_job_status` index is added. Only then can the banner source per-question granularity from `extractionResults`. Defer this until Plan 02 ships the required fields; `extractionResults` currently has NO `status` field (schema at `convex/schema.ts:572-624`).
 
 ### Per-paper status row
 
@@ -117,6 +123,8 @@ Every piece of status info gets both text AND an ARIA attribute:
 | Paused banner | `role="status"` + `aria-live="polite"` |
 | Error history panel | expandable `<details>` with `aria-expanded` or equivalent via Radix |
 
+- Paused banner (`role="status"`, `aria-live="polite"`) wiring requires that Plan 06 has delivered the banner element itself. If Plan 07 ships before Plan 06, omit the paused-banner ARIA work and return to it after Plan 06 lands.
+
 ### Mixed-success summary
 
 On a `completed` job with `failedQuestions > 0`:
@@ -150,7 +158,7 @@ Queries, components, indexes, ARIA wiring — test-after. ARIA coverage is a smo
 
 ## Files touched
 
-- `convex/schema.ts` — add index `extractionResults.by_job_status` if not present.
+- `convex/schema.ts` — no schema change needed for Option A (uses existing `extractionPapers.by_job_status` at `convex/schema.ts:542`). Option B would require adding `extractionResults.by_job_status` plus `status`/`startedAt` fields on `extractionResults`, but that is Plan 02's responsibility and out of scope here.
 - `convex/extraction/queries/nowProcessing.ts` (new).
 - `convex/extraction/queries/errorHistory.ts` (new).
 - `convex/extraction/queries/mixedSuccessSummary.ts` (new).
@@ -174,7 +182,7 @@ Queries, components, indexes, ARIA wiring — test-after. ARIA coverage is a smo
   - Paginate through 50 errors; `isDone` flips correctly.
   - Ordering: newest first.
 - **UI** (`now-processing.test.tsx`):
-  - Given mocked query → renders paper title + question label. `data-now-processing-paper` attr matches.
+  - Given mocked query → renders paper title (Option A). `data-now-processing-paper` attr matches. Question label is Option B only.
   - Null query → component renders nothing (no empty state — redundant with progress bar).
 - **UI** (`error-history.test.tsx`):
   - Given 3 errors → renders 3 rows. Each has `data-error-code` attribute. Texts match localized taxonomy.
@@ -189,7 +197,7 @@ Queries, components, indexes, ARIA wiring — test-after. ARIA coverage is a smo
 
 ## Acceptance criteria
 
-- [ ] Job detail page shows which paper + question is being processed right now.
+- [ ] Job detail page shows which paper is being processed right now (Option A). Question-level granularity is deferred to Option B once Plan 02 delivers `status` + `startedAt` on `extractionResults`.
 - [ ] Each paper row shows per-question progress bar + counts.
 - [ ] Failed questions have an expandable error history sourced from `extractionPaperErrors`.
 - [ ] Screen-reader announcement of pause/resume/credit-exhaustion transitions via `aria-live`.

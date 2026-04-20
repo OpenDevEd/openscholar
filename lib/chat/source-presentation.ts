@@ -1,18 +1,23 @@
-import {
-  CircleHelp,
-  FlaskConical,
-  Layers,
-  Library,
-  type LucideIcon,
-} from "lucide-react";
+import type { ComponentType, CSSProperties } from "react";
+import { CircleHelp, Layers, Library } from "lucide-react";
+import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import type { ChatSourceType } from "@/lib/chat/source-type";
 import type { SourceChip } from "@/lib/chat/source-chips";
 
 export type ChatSourcePresentationKey = SourceChip | "unknown";
 
-export const CHAT_SOURCE_ICON: Record<ChatSourcePresentationKey, LucideIcon> = {
+export type ChatSourceIconComponent = ComponentType<{
+  className?: string;
+  style?: CSSProperties;
+  "aria-hidden"?: boolean | "true" | "false";
+}>;
+
+export const CHAT_SOURCE_ICON: Record<
+  ChatSourcePresentationKey,
+  ChatSourceIconComponent
+> = {
   all: Layers,
-  openalex: FlaskConical,
+  openalex: OpenAlexIcon,
   zotero: Library,
   unknown: CircleHelp,
 };
@@ -27,7 +32,9 @@ export const CHAT_SOURCE_COLOR_VAR: Record<
   unknown: "--chart-3",
 };
 
-export function iconForSource(sourceType: ChatSourceType): LucideIcon {
+export function iconForSource(
+  sourceType: ChatSourceType,
+): ChatSourceIconComponent {
   return CHAT_SOURCE_ICON[sourceType];
 }
 

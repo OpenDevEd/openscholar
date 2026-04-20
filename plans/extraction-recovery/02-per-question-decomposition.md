@@ -32,6 +32,8 @@ Each workflow step is a workpool-dispatched action → inherits 10-min ceiling. 
 
 ## Design
 
+**Related but unrelated:** `lib/extraction/question-status.ts` already exists (UI-scoped `statusFromCompletion` helper for progress bars). The new `lib/extraction/paper-status.ts` proposed here is distinct — it's a backend rollup of per-question result-row status codes into paper status. Don't confuse the two.
+
 ### Workflow shape
 
 Current (`convex/extraction/workflow.ts`):
@@ -55,6 +57,8 @@ for each paper:
 
 Parallelism clamped by the workpool's `maxParallelism` (already wired).
 
+- The new per-question workflow must preserve `convex/extraction/workflow.ts:154-162`'s zero-paper `maybeFinalizeJob` short-circuit (added after this plan was written). Skip the enqueue loop entirely when `papers.length === 0`.
+
 ### `extractOneQuestion` action
 
 ```ts
@@ -70,6 +74,8 @@ export const extractOneQuestion = internalAction({
 ```
 
 ### Schema additions
+
+> **Note on error fields:** The current schema has no per-paper `lastError` — only `extractionPapers.errorMessage` (see `convex/schema.ts:527`). Plan 02 introduces a per-question `lastError` field on the new per-question result rows; `extractionPapers.errorMessage` remains as a coarse fallback.
 
 `extractionResults` (existing, see `convex/schema.ts`):
 ```ts
@@ -94,7 +100,7 @@ lastError: v.optional(errorShape),      // classified taxonomy error
 
 ### Billing changes
 
-Today: one debit per paper at `convex/extraction/mutations/results.ts:237-292`.
+Today: one debit per paper at `convex/extraction/mutations/results.ts:229-300`.
 New: one debit per question at `recordOneAnswer` (atomic with result write + `billed=true` flag). Aggregate per-job cost remains sum over all question rows.
 
 **Idempotency preserved**: `if (result?.billed) return`.
@@ -108,6 +114,14 @@ Per-question action: 1 dense search (sub-second) + 1 LLM call (up to ~60s worst 
 ### Workflow-journal size
 
 Workflow's durable replay stores step history. N questions × M papers = many steps. Workflow README notes `"Steps can only take in and return a total of 1 MB"` — individual step args stay tiny (two IDs). Workflow-global history can grow; not a concern until 10k+ papers per job, well beyond MVP scale. Revisit if an extraction job exceeds ~500 papers.
+
+### Workpool 0.3.2 constraint — keep per-question args under 8 KB
+
+The project pins `@convex-dev/workpool@0.3.2` to satisfy `@convex-dev/rag`'s peer range. On 0.3.2, enqueue args ≥ 8 KB are silently unreadable (0.4.0 introduced a `payload` side-table that 0.3.2 does not read). Per-question actions MUST pass IDs and short prompt text only; fetch PDF chunks / RAG context inside the action using the IDs. Do NOT serialize `chunk[]` or full question text in the workpool args payload. The existing `extractQuestionAnswer` / `extractQuestionAnswerFromAbstract` calling convention already follows this pattern — extend it, don't widen it.
+
+### Chat-mode interaction
+
+Chat-mode jobs branch earlier in `convex/extraction/mutations/jobs.ts:76` (`args.mode === "chat"`) and never reach the extraction per-question fan-out. The Plan-01-era chat work does not interact with Plan 02's decomposition surface.
 
 ## TDD sequence (pure logic only — `lib/extraction/paper-status.ts`)
 

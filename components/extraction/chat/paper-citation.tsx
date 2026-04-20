@@ -1,6 +1,8 @@
 "use client";
 
-import { ExternalLink, FileText, Library, RotateCcw } from "lucide-react";
+import { ExternalLink, FileText, RotateCcw } from "lucide-react";
+
+import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 
@@ -261,7 +263,7 @@ export function PaperCitation({ index }: PaperCitationProps) {
                     rel="noreferrer"
                     data-paper-card-link="openalex"
                   >
-                    <Library className="h-3.5 w-3.5" />
+                    <OpenAlexIcon className="h-3.5 w-3.5" />
                     <span className="text-xs">OpenAlex</span>
                   </a>
                 </Button>
