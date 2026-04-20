@@ -23,6 +23,10 @@ export const JOB_STATUSES = [
   // credits mid-run, transitions the job here, and stops dispatching.
   // Plan 06 adds the resume mutation that transitions back to `extracting`.
   "creditsExhausted",
+  // Non-terminal user-initiated pause (plan 06). The workflow's gate
+  // step.awaitEvent holds new dispatches until resume fires sendEvent.
+  // The pausedFromStatus column captures the phase to resume to.
+  "paused",
   "completed",
   "failed",
   "cancelled",
@@ -68,6 +72,7 @@ const VALID_JOB_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
     "indexing",
     "extracting",
     "creditsExhausted",
+    "paused",
     "completed",
     "failed",
     "cancelled",
@@ -76,6 +81,7 @@ const VALID_JOB_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
     "indexing",
     "extracting",
     "creditsExhausted",
+    "paused",
     "completed",
     "failed",
     "cancelled",
@@ -83,16 +89,36 @@ const VALID_JOB_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
   indexing: [
     "extracting",
     "creditsExhausted",
+    "paused",
     "completed",
     "failed",
     "cancelled",
   ],
-  extracting: ["creditsExhausted", "completed", "failed", "cancelled"],
+  extracting: [
+    "creditsExhausted",
+    "paused",
+    "completed",
+    "failed",
+    "cancelled",
+  ],
   // Non-terminal. Outgoing edges are the only legal exits: back to
   // `extracting` via plan 06's resume, or any terminal state (cancel,
   // fail permanently, or final completion if the user cancels remaining
   // and the already-completed papers roll up).
   creditsExhausted: ["extracting", "completed", "cancelled", "failed"],
+  // Non-terminal user-initiated pause (plan 06). Resume restores the
+  // phase captured in `pausedFromStatus`; cancel is the only other exit
+  // while paused. No transition to `creditsExhausted` from paused — the
+  // mid-run credit detector only fires during active phases, not while
+  // the workflow is blocked on awaitEvent.
+  paused: [
+    "pending",
+    "downloading_pdfs",
+    "indexing",
+    "extracting",
+    "cancelled",
+    "failed",
+  ],
   // Plan-05 retry un-terminals these two. The user can re-open a
   // completed-with-failures or fully-failed job via
   // `retryFailedQuestions`, which flips status back to `extracting` to

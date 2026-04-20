@@ -65,9 +65,25 @@ export const jobStatusValidator = v.union(
   // Non-terminal: user can top up credits and resume (plan 06 lands
   // the resume mutation; plan 03 persists the status transition).
   v.literal("creditsExhausted"),
+  // Non-terminal user-initiated pause (plan 06). Resume restores the
+  // phase captured in `pausedFromStatus`.
+  v.literal("paused"),
   v.literal("completed"),
   v.literal("failed"),
   v.literal("cancelled")
+);
+
+/**
+ * Phases a job can be paused from. Matches the `pausedFromStatus`
+ * column on extractionJobs (plan 06). Excludes terminal statuses and
+ * the auto-pause `creditsExhausted` (that path resumes to `extracting`
+ * unconditionally, not a captured phase).
+ */
+export const pausedFromStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("downloading_pdfs"),
+  v.literal("indexing"),
+  v.literal("extracting"),
 );
 
 export const paperStatusValidator = v.union(

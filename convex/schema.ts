@@ -373,6 +373,9 @@ export default defineSchema({
         // Deliberately diverges from screening where creditsExhausted is
         // terminal.
         v.literal("creditsExhausted"),
+        // Non-terminal user-initiated pause (plan 06). Resume transitions
+        // back to `pausedFromStatus` (or `extracting` as fallback).
+        v.literal("paused"),
         v.literal("completed"),
         v.literal("failed"),
         v.literal("cancelled")
@@ -385,6 +388,19 @@ export default defineSchema({
     // Per-job PDF opt-in. Replaces the old global `extraction.pdf` flag
     // as the *default*; the flag remains as an admin capability gate.
     usePdfs: v.optional(v.boolean()),
+    // Plan-06 pause state. `pausedAt` timestamps the transition; the UI
+    // renders "paused N min ago". `pausedFromStatus` captures the phase
+    // the job was in at pause time so resume can restore it (workflow
+    // gate replays from that phase).
+    pausedAt: v.optional(v.number()),
+    pausedFromStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("downloading_pdfs"),
+        v.literal("indexing"),
+        v.literal("extracting"),
+      ),
+    ),
     // Pre-flight credit estimate persisted at startJob time. Consumed
     // by the UI to size remaining-work banners and by plan 06's Resume
     // button gate.

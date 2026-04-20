@@ -37,7 +37,13 @@ export const maybeFinalizeJob = internalMutation({
     if (
       job.status === "cancelled" ||
       job.status === "failed" ||
-      job.status === "completed"
+      job.status === "completed" ||
+      // Paused and creditsExhausted are non-terminal pauses. Do not let
+      // a late counter-increment cascade through to `completed`/`failed`
+      // while the workflow is blocked on awaitEvent — the resume path
+      // owns status transitions back to active.
+      job.status === "paused" ||
+      job.status === "creditsExhausted"
     ) {
       return null;
     }

@@ -61,6 +61,7 @@ import type * as extraction_mutations_jobs from "../extraction/mutations/jobs.js
 import type * as extraction_mutations_papers from "../extraction/mutations/papers.js";
 import type * as extraction_mutations_reports from "../extraction/mutations/reports.js";
 import type * as extraction_mutations_results from "../extraction/mutations/results.js";
+import type * as extraction_mutations_retry from "../extraction/mutations/retry.js";
 import type * as extraction_mutations_savedViews from "../extraction/mutations/savedViews.js";
 import type * as extraction_mutations_templates from "../extraction/mutations/templates.js";
 import type * as extraction_paperLifecycle from "../extraction/paperLifecycle.js";
@@ -75,6 +76,7 @@ import type * as extraction_queries_jobs from "../extraction/queries/jobs.js";
 import type * as extraction_queries_papers from "../extraction/queries/papers.js";
 import type * as extraction_queries_reports from "../extraction/queries/reports.js";
 import type * as extraction_queries_results from "../extraction/queries/results.js";
+import type * as extraction_queries_retry from "../extraction/queries/retry.js";
 import type * as extraction_queries_reviews from "../extraction/queries/reviews.js";
 import type * as extraction_queries_templates from "../extraction/queries/templates.js";
 import type * as extraction_queries_views from "../extraction/queries/views.js";
@@ -226,6 +228,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/mutations/papers": typeof extraction_mutations_papers;
   "extraction/mutations/reports": typeof extraction_mutations_reports;
   "extraction/mutations/results": typeof extraction_mutations_results;
+  "extraction/mutations/retry": typeof extraction_mutations_retry;
   "extraction/mutations/savedViews": typeof extraction_mutations_savedViews;
   "extraction/mutations/templates": typeof extraction_mutations_templates;
   "extraction/paperLifecycle": typeof extraction_paperLifecycle;
@@ -240,6 +243,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries/papers": typeof extraction_queries_papers;
   "extraction/queries/reports": typeof extraction_queries_reports;
   "extraction/queries/results": typeof extraction_queries_results;
+  "extraction/queries/retry": typeof extraction_queries_retry;
   "extraction/queries/reviews": typeof extraction_queries_reviews;
   "extraction/queries/templates": typeof extraction_queries_templates;
   "extraction/queries/views": typeof extraction_queries_views;
