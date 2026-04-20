@@ -23,6 +23,22 @@ export type RetryableResultInput = {
 
 const retryableTable: Record<string, boolean | undefined> = isRetryable;
 
+/**
+ * Is a failed extractionResults row retryable? Single source the
+ * retry mutation and the summarizer both consume — keeps the
+ * "unknown code → retryable" forward-compat rule (see R7) in one
+ * place instead of duplicating the `=== false` comparison.
+ */
+export function isResultRetryableFailure(
+  result: RetryableResultInput,
+): boolean {
+  if (result.status !== "failed") return false;
+  const code = result.lastError?.code;
+  // Treat missing code + taxonomy-unknown codes as retryable (never
+  // trap the user on codes the classifier hasn't caught up to).
+  return !code || retryableTable[code] !== false;
+}
+
 export type RetrySummary = {
   retryableCount: number;
   permanentCount: number;
@@ -42,11 +58,12 @@ export function summarizeRetryable(
 
   for (const r of results) {
     if (r.status !== "failed") continue;
-    const code = r.lastError?.code;
-    if (code && retryableTable[code] === false) {
-      counts.set(code, (counts.get(code) ?? 0) + 1);
-    } else {
+    if (isResultRetryableFailure(r)) {
       retryableCount += 1;
+    } else {
+      // Non-retryable failed result ⇒ code is present and known-permanent.
+      const code = r.lastError?.code ?? "unknown";
+      counts.set(code, (counts.get(code) ?? 0) + 1);
     }
   }
 
