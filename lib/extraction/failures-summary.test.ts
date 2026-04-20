@@ -28,4 +28,25 @@ describe("summarizeFailures", () => {
       byCode: [{ code: "pdf_invalid", count: 3, retryable: false }],
     });
   });
+
+  it("R4: multiple codes → sorted count-desc, ties broken by code-asc", () => {
+    const input: FailureInput[] = [
+      // Encounter order intentionally scrambled.
+      { code: "schema_validation" }, // count 1, tie with moderation
+      { code: "moderation" }, // count 1
+      { code: "pdf_invalid" },
+      { code: "pdf_invalid" },
+      { code: "pdf_invalid" }, // count 3 → first
+      { code: "rate_limit" },
+      { code: "rate_limit" }, // count 2 → second
+    ];
+    const { byCode } = summarizeFailures(input);
+    expect(byCode.map((e) => e.code)).toEqual([
+      "pdf_invalid", // count 3
+      "rate_limit", // count 2
+      "moderation", // count 1, "moderation" < "schema_validation"
+      "schema_validation", // count 1
+    ]);
+    expect(byCode.map((e) => e.count)).toEqual([3, 2, 1, 1]);
+  });
 });

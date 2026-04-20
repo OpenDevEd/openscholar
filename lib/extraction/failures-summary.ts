@@ -41,10 +41,16 @@ export function summarizeFailures(
     counts.set(f.code, (counts.get(f.code) ?? 0) + 1);
   }
 
-  const byCode: FailureByCode[] = [];
-  for (const [code, count] of counts) {
-    byCode.push({ code, count, retryable: resolveRetryable(code) });
-  }
+  const byCode: FailureByCode[] = [...counts.entries()]
+    .sort(([codeA, countA], [codeB, countB]) => {
+      if (countB !== countA) return countB - countA;
+      return codeA < codeB ? -1 : codeA > codeB ? 1 : 0;
+    })
+    .map(([code, count]) => ({
+      code,
+      count,
+      retryable: resolveRetryable(code),
+    }));
 
   return { total: failures.length, byCode };
 }
