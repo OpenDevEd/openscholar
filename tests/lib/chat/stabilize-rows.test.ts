@@ -223,4 +223,29 @@ describe("stabilizeRowsById", () => {
     expect(next).toEqual(nextSnapshot);
     next.forEach((r, i) => expect(r).toBe(nextSnapshot[i]));
   });
+
+  it("preserves all 1000 prev refs when next is a structurally identical rebuild", () => {
+    const N = 1000;
+    const prev: ChatSourceRow[] = [];
+    for (let i = 0; i < N; i += 1) {
+      prev.push(
+        row({
+          chatPaperId: cp(i),
+          sourceId: src(i),
+          position: i,
+          title: `Row ${i}`,
+        }),
+      );
+    }
+    const next = prev.map((r) => ({ ...r }));
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out).toHaveLength(N);
+    let preservedCount = 0;
+    for (let i = 0; i < N; i += 1) {
+      if (out[i] === prev[i]) preservedCount += 1;
+    }
+    expect(preservedCount).toBe(N);
+  });
 });
