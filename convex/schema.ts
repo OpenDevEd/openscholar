@@ -167,7 +167,9 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_type_date", ["type", "createdAt"])
     // plan-04: per-job transaction ledger + breakdown queries.
-    .index("by_job", ["jobId"]),
+    .index("by_job", ["jobId"])
+    // billing-txn plan-01: user-scoped type filter for paginated ledger.
+    .index("by_credits_type", ["creditsId", "type"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SUBSCRIPTIONS - Stripe billing integration ready

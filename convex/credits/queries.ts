@@ -1,10 +1,13 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator, type Cursor } from "convex/server";
+import { filter } from "convex-helpers/server/filter";
 import { getCurrentUser } from "../lib/auth";
 import { creditBalanceValidator, creditTransactionValidator } from "../lib/validators";
 import { components } from "../_generated/api";
 import { getCreditTopupCatalog, getCreditsPerUsd } from "../lib/creditTopups";
 import { getFlag } from "../featureFlags/guard";
+import type { Doc } from "../_generated/dataModel";
 
 
 export const TRACKED_GRANT_EVENT_TYPES = [
@@ -294,5 +297,99 @@ export const getLatestGrantStatus = query({
       latestEventError: latestRelevantEvent?.lastError,
       latestEventUpdatedAt: latestRelevantEvent?.updatedAt,
     };
+  },
+});
+
+const transactionTypeValidator = v.union(
+  v.literal("purchase"),
+  v.literal("usage"),
+  v.literal("grant"),
+  v.literal("refund"),
+  v.literal("expiry"),
+);
+
+/**
+ * Paginated ledger for the signed-in user. Split from `getTransactions`
+ * because `usePaginatedQuery` cannot type-narrow a union return shape;
+ * the two queries exist side-by-side until plan 03 migrates the UI
+ * caller and the old query retires.
+ *
+ * Server-side narrowing:
+ * - `jobId` → `by_job` index (O(rows-for-job)); ownership enforced
+ *   by post-filtering on creditsId.
+ * - single `types[]` entry → `by_credits_type` index (O(user's txns of
+ *   that type)).
+ * - multi-type or no-type → `by_credits` index with in-scan post-filter.
+ *
+ * Post-filtering via `filter()` from convex-helpers, so pages are
+ * refilled to `numItems` when the predicate drops rows; end-of-list is
+ * signalled by `isDone`, not by `page.length < numItems`.
+ */
+export const listTransactionsPaginated = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    types: v.optional(v.array(transactionTypeValidator)),
+    from: v.optional(v.number()),
+    to: v.optional(v.number()),
+    jobId: v.optional(v.id("extractionJobs")),
+  },
+  handler: async (ctx, args) => {
+    const emptyPage = {
+      page: [] as Doc<"creditTransactions">[],
+      isDone: true,
+      continueCursor: "" as Cursor,
+    };
+
+    const user = await getCurrentUser(ctx);
+    if (!user) return emptyPage;
+
+    const credits = await ctx.db
+      .query("credits")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (!credits) return emptyPage;
+
+    const { paginationOpts, types, from, to, jobId } = args;
+    const creditsId = credits._id;
+
+    const matchesRange = (row: Doc<"creditTransactions">): boolean => {
+      if (from !== undefined && row.createdAt < from) return false;
+      if (to !== undefined && row.createdAt > to) return false;
+      return true;
+    };
+
+    if (jobId) {
+      const base = ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .order("desc");
+      return await filter(base, (row) => {
+        if (row.creditsId !== creditsId) return false;
+        if (types && types.length > 0 && !types.includes(row.type)) return false;
+        return matchesRange(row);
+      }).paginate(paginationOpts);
+    }
+
+    if (types && types.length === 1) {
+      const only = types[0];
+      const base = ctx.db
+        .query("creditTransactions")
+        .withIndex("by_credits_type", (q) =>
+          q.eq("creditsId", creditsId).eq("type", only),
+        )
+        .order("desc");
+      return await filter(base, matchesRange).paginate(paginationOpts);
+    }
+
+    const base = ctx.db
+      .query("creditTransactions")
+      .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+      .order("desc");
+
+    return await filter(base, (row) => {
+      if (types && types.length > 0 && !types.includes(row.type)) return false;
+      return matchesRange(row);
+    }).paginate(paginationOpts);
   },
 });
