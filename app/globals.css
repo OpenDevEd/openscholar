@@ -477,3 +477,25 @@
     animation: none;
   }
 }
+
+/* Transaction row pending-state pulse. 1.6s loop, opacity-only so
+   the compositor can paint it cheaply. */
+.txn-pulse {
+  animation: txn-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes txn-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .txn-pulse {
+    animation: none;
+  }
+}

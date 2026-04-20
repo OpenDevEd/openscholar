@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   devIndicators: false,
   poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   async headers() {
     return [
       {
