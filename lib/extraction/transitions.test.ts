@@ -25,4 +25,11 @@ describe("validatePauseTransition", () => {
       pausedFrom: "indexing",
     });
   });
+
+  it("R4: from 'paused' → not-ok with reason 'already_paused' (idempotent)", () => {
+    expect(validatePauseTransition("paused")).toEqual({
+      ok: false,
+      reason: "already_paused",
+    });
+  });
 });

@@ -16,5 +16,8 @@ export type PauseTransitionResult =
 export function validatePauseTransition(
   currentStatus: JobStatus,
 ): PauseTransitionResult {
+  if (currentStatus === "paused") {
+    return { ok: false, reason: "already_paused" };
+  }
   return { ok: true, nextStatus: "paused", pausedFrom: currentStatus };
 }
