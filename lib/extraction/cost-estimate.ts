@@ -49,6 +49,17 @@ export function estimateExtractionCredits(
   }
   const c = EXTRACTION_COST_CONSTANTS;
   const qPairs = args.papers * args.questions;
+  const isPdfTier = args.usePdfs || args.avgPaperKind === "pdf";
+
+  if (isPdfTier) {
+    const indexCost = args.papers * c.INDEX_PDF_CREDIT;
+    return {
+      low: indexCost + qPairs * c.PDF_Q_CREDIT_LOW,
+      mid: indexCost + qPairs * c.PDF_Q_CREDIT_MID,
+      high: indexCost + qPairs * c.PDF_Q_CREDIT_HIGH,
+    };
+  }
+
   return {
     low: qPairs * c.ABSTRACT_Q_CREDIT_LOW,
     mid: qPairs * c.ABSTRACT_Q_CREDIT_MID,

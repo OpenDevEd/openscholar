@@ -47,4 +47,17 @@ describe("estimateExtractionCredits", () => {
     });
     expect(mid).toBe(10 * 5 * EXTRACTION_COST_CONSTANTS.ABSTRACT_Q_CREDIT_MID);
   });
+
+  it("R4: 10 papers × 5 Qs × PDFs → mid includes indexing + PDF-tier LLM cost", () => {
+    const { mid } = estimateExtractionCredits({
+      papers: 10,
+      questions: 5,
+      usePdfs: true,
+      avgPaperKind: "pdf",
+    });
+    const expected =
+      10 * EXTRACTION_COST_CONSTANTS.INDEX_PDF_CREDIT +
+      10 * 5 * EXTRACTION_COST_CONSTANTS.PDF_Q_CREDIT_MID;
+    expect(mid).toBe(expected);
+  });
 });
