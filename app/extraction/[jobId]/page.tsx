@@ -45,6 +45,7 @@ import { ReportBuilder } from "@/components/extraction/report-builder";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
+import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
 import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
@@ -658,6 +659,16 @@ export default function JobDetailPage() {
               </motion.div>
             </div>
           </div>
+
+          {/* Plan-03: credit-exhausted CTA. Banner lives above the stats
+              section so it's the first thing the user sees on returning
+              to a paused job. Resume button is deliberately unwired here
+              — plan 06 adds the mutation + onResume prop. */}
+          {job.status === "creditsExhausted" && (
+            <div className="px-4 md:px-6 pt-4">
+              <CreditsExhaustedBanner onCancelRemaining={handleCancel} />
+            </div>
+          )}
 
           {/* Stats Section */}
           <motion.div
