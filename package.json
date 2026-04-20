@@ -41,6 +41,7 @@
     "@sickrin/openalex-sdk": "^1.0.0",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
+    "@tanstack/react-virtual": "^3.13.24",
     "ai": "^6.0.168",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
