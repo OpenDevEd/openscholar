@@ -82,10 +82,9 @@ class MockIntersectionObserver implements IntersectionObserver {
 
 function mkRef<T extends HTMLElement>(tag: string): React.RefObject<T | null> {
   const el = document.createElement(tag) as T;
-  const ref = createRef<T | null>();
-  // @ts-expect-error — writing to current for test seed
+  const ref = createRef<T | null>() as { current: T | null };
   ref.current = el;
-  return ref;
+  return ref as React.RefObject<T | null>;
 }
 
 describe("useTransactionsLoadMore", () => {

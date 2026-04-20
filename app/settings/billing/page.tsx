@@ -12,7 +12,7 @@ import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 import { CreditTopupCard } from "@/components/billing/credit-topup-card";
-import { TransactionsList } from "@/components/billing/transactions-list";
+import { TransactionsPanel } from "@/components/billing/transactions/transactions-panel";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
@@ -29,6 +29,10 @@ export default function BillingPage() {
   const format = useFormatter();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const txnSearchParams = React.useMemo(
+    () => ({ jobId: searchParams.get("jobId") ?? undefined }),
+    [searchParams],
+  );
   const creditsEnabled = useFeatureFlag("credits.enabled");
   const topupsEnabled = useFeatureFlag("credits.topups");
   const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
@@ -583,7 +587,7 @@ export default function BillingPage() {
             </div>
           )}
 
-        {creditsEnabled && <TransactionsList />}
+        {creditsEnabled && <TransactionsPanel searchParams={txnSearchParams} />}
 
         {/* {grantDiagnostics && (
           <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm">
