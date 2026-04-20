@@ -16,12 +16,17 @@ export function startAbortPoller({
 
   const handle = setInterval(() => {
     if (fired || stopped) return;
-    void readFlag().then((flag) => {
-      if (flag && !fired && !stopped) {
-        fired = true;
-        onAbort();
-      }
-    });
+    readFlag()
+      .then((flag) => {
+        if (flag && !fired && !stopped) {
+          fired = true;
+          onAbort();
+        }
+      })
+      .catch(() => {
+        // readFlag failures shouldn't abort the stream. The outer finally
+        // + concurrency.cleanupZombieChatLocks sweep handles stale state.
+      });
   }, intervalMs);
 
   return () => {

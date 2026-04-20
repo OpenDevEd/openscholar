@@ -63,4 +63,19 @@ describe("startAbortPoller", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(onAbort).not.toHaveBeenCalled();
   });
+
+  it("swallows readFlag errors — keeps polling, never fires onAbort spuriously", async () => {
+    let i = 0;
+    const readFlag = vi.fn(async () => {
+      i++;
+      if (i <= 2) throw new Error("boom");
+      return false;
+    });
+    const onAbort = vi.fn();
+    const stop = startAbortPoller({ readFlag, onAbort, intervalMs: 100 });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(readFlag.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(onAbort).not.toHaveBeenCalled();
+    stop();
+  });
 });
