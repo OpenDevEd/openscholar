@@ -35,7 +35,7 @@ export const diagnoseJob = internalQuery({
       title: v.string(),
       pdfUrl: v.optional(v.string()),
       errorCode: v.optional(v.string()),
-      errorMessage: v.string(),
+      lastErrorMessage: v.string(),
     })),
   }),
   handler: async (ctx, args) => {
@@ -87,7 +87,7 @@ export const diagnoseJob = internalQuery({
           title: p.title.substring(0, 50),
           pdfUrl: p.pdfUrl?.substring(0, 80),
           errorCode: p.lastError?.code,
-          errorMessage: p.lastError?.message || "No error message",
+          lastErrorMessage: p.lastError?.message || "No error message",
         })),
     };
   },

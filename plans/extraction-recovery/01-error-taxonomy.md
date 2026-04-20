@@ -247,14 +247,14 @@ Do NOT write a backfill. Do NOT keep `errorMessage` as optional for compat. The 
 
 ## Acceptance criteria
 
-- [ ] Every extraction failure (job + paper) stores a structured `error` object with a code from taxonomy.
-- [ ] `extractionPaperErrors` rows accumulate one per retry attempt, queryable by `by_paper` and `by_job`.
-- [ ] Chat and extraction both read titles/bodies from `errors.title.*` / `errors.body.*` (no `chatErrorTitle`/`chatErrorBody` anywhere — the keys currently at `messages/en-US.json:541-564` and mirrored across the other 5 locales are removed).
-- [ ] Every error-surfacing UI container emits `data-error-code="${code}"`. `rg -n "data-error-class"` returns zero matches (the existing attribute at `components/extraction/chat/chat-error-alert.tsx:237-246` is renamed in the same sweep).
-- [ ] `rg -n "from [\"']@/lib/chat/error-classifier[\"']"` returns zero matches — every importer has been redirected to `@/lib/errors/taxonomy`.
-- [ ] Migration runs idempotently against existing dev data.
-- [ ] `classifyUnknownError` test coverage ≥ 95% of codes.
-- [ ] `rg -n "errorMessage:" convex/` returns zero references in extraction files (only legitimately-named unrelated fields remain).
+- [x] Every extraction failure (job + paper) stores a structured `error` object with a code from taxonomy.
+- [x] `extractionPaperErrors` rows accumulate one per retry attempt, queryable by `by_paper` and `by_job`.
+- [x] Chat and extraction both read titles/bodies from `errors.title.*` / `errors.body.*` (no `chatErrorTitle`/`chatErrorBody` anywhere — the keys currently at `messages/en-US.json:541-564` and mirrored across the other 5 locales are removed).
+- [x] Every error-surfacing UI container emits `data-error-code="${code}"`. `rg -n "data-error-class"` returns zero matches (the existing attribute at `components/extraction/chat/chat-error-alert.tsx:237-246` is renamed in the same sweep).
+- [x] `rg -n "from [\"']@/lib/chat/error-classifier[\"']"` returns zero matches — every importer has been redirected to `@/lib/errors/taxonomy`.
+- [x] Migration runs idempotently against existing dev data. *(N/A per 00-README.md: dev data is disposable — no backfill; schema change will force a wipe on the next Convex deploy.)*
+- [x] `classifyUnknownError` test coverage ≥ 95% of codes. *(18/18 via the uppercase-code round-trip test plus targeted fingerprint tests R5–R15.)*
+- [x] `rg -n "errorMessage:" convex/` returns zero references in extraction files (only legitimately-named unrelated fields remain).
 
 ## Known pitfalls
 

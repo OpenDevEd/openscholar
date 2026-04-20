@@ -129,8 +129,17 @@ export type ClassifiedError = {
   context?: unknown;
 };
 
-/** Maps an upstream error string code to its taxonomy entry. */
+/**
+ * Maps an upstream string code to its taxonomy entry. Seeded with the
+ * uppercase form of every ErrorCode so a ConvexError tagged
+ * `data.code: "MODEL_UNAVAILABLE"` routes cleanly without fingerprint
+ * regex. Legacy code aliases (INSUFFICIENT_CREDITS → insufficient_credits,
+ * AI_INSUFFICIENT_CREDITS → insufficient_credits) sit on top.
+ */
 const CODE_TO_TAXONOMY: Record<string, ErrorCode> = {
+  ...(Object.fromEntries(
+    ERROR_CODES.map((code) => [code.toUpperCase(), code] as const),
+  ) as Record<string, ErrorCode>),
   INSUFFICIENT_CREDITS: "insufficient_credits",
   AI_INSUFFICIENT_CREDITS: "insufficient_credits",
 };

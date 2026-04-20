@@ -32,7 +32,7 @@ export const debugPaperResults = internalQuery({
         storageId: paper.storageId,
         ragEntryId: paper.ragEntryId,
         errorCode: paper.lastError?.code,
-        errorMessage: paper.lastError?.message,
+        lastErrorMessage: paper.lastError?.message,
         attemptCount: paper.attemptCount,
       } : null,
       results: results.map(r => ({

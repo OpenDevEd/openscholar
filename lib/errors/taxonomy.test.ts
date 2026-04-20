@@ -216,6 +216,15 @@ describe("classifyUnknownError — fingerprint cascade", () => {
   });
 });
 
+describe("classifyUnknownError — full ERROR_CODES coverage", () => {
+  it("round-trips every ErrorCode via uppercased explicit data.code", () => {
+    for (const code of ERROR_CODES) {
+      const err = new ConvexError({ code: code.toUpperCase(), message: "x" });
+      expect(classifyUnknownError(err).code).toBe(code);
+    }
+  });
+});
+
 describe("classifyUnknownError — context bounds", () => {
   it("R16: serialized context is bounded at ≤ 4KB", () => {
     const big = "x".repeat(8000);

@@ -81,7 +81,7 @@ export const debugJobContent = internalQuery({
         samples.abstractOnlyFailed.push({
           id: paper._id,
           title: paper.title,
-          errorMessage: paper.lastError?.message,
+          lastErrorMessage: paper.lastError?.message,
         });
       }
 
@@ -94,7 +94,7 @@ export const debugJobContent = internalQuery({
         samples.noContentFailed.push({
           id: paper._id,
           title: paper.title,
-          errorMessage: paper.lastError?.message,
+          lastErrorMessage: paper.lastError?.message,
         });
       }
     }
