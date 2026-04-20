@@ -10,7 +10,6 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -27,7 +26,6 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MessageActions } from "./message-actions";
 import { PaperCitation } from "./paper-citation";
-import { PapersContext, type PapersContextValue } from "./papers-context";
 import { SuggestionChips } from "./suggestion-chips";
 import { StreamingCursor } from "./streaming-cursor";
 import { TypingDots } from "./typing-dots";
@@ -296,44 +294,6 @@ export function MessageList({
   const isLoadingFirstPage =
     status === "LoadingFirstPage" && results.length === 0;
 
-  const chatSources = useQuery(
-    api.chat.chatPapers.listChatSourcesWithInclusion,
-    { jobId },
-  );
-
-  const papersContextValue = useMemo<PapersContextValue>(() => {
-    const papersByPosition = new Map<number, ResolvablePaper>();
-    if (chatSources) {
-      for (const row of chatSources) {
-        papersByPosition.set(row.position, {
-          sourceId: row.sourceId,
-          chatPaperId: row.chatPaperId,
-          position: row.position,
-          title: row.title,
-          authors: row.authors,
-          year: row.year,
-          abstract: row.abstract,
-          openalexId: row.openalexId,
-          doi: row.doi,
-          pdfUrl: row.pdfUrl,
-          included: row.included,
-        });
-      }
-    }
-    const rows = chatSources ?? [];
-    const rowsById = new Map(rows.map((r) => [r.chatPaperId, r]));
-    const includedCount = rows.reduce((n, r) => n + (r.included ? 1 : 0), 0);
-    return {
-      jobId,
-      rows,
-      rowsById,
-      papersByPosition,
-      totalCount: rows.length,
-      includedCount,
-      isLoading: chatSources === undefined,
-    };
-  }, [chatSources, jobId]);
-
   const lastAssistantId = useMemo(() => {
     for (let i = results.length - 1; i >= 0; i--) {
       if (results[i].role === "assistant") return results[i].id;
@@ -381,45 +341,43 @@ export function MessageList({
   }
 
   return (
-    <PapersContext.Provider value={papersContextValue}>
-      <Conversation
-        // `min-h-0` releases the default flex `min-height: auto` so the
-        // StickToBottom internal `overflow: auto` can actually scroll
-        // instead of pushing the composer off-screen.
-        className={cn("min-h-0 flex-1 overscroll-contain")}
-        data-message-list="populated"
-        role="presentation"
-      >
-        <ConversationContent>
-          <ol
-            role="log"
-            aria-live="polite"
-            aria-relevant="additions"
-            className="mx-auto flex w-full max-w-3xl flex-col gap-2"
-          >
-            <AnimatePresence initial={false}>
-              {results.map((message, i) => {
-                const prev = results[i - 1];
-                const isFirstInGroup = !prev || prev.role !== message.role;
-                return (
-                  <Fragment key={message.id}>
-                    <MessageRow
-                      message={message as ChatUIMessage}
-                      isLastAssistant={message.id === lastAssistantId}
-                      isFirstInGroup={isFirstInGroup}
-                      threadId={threadId}
-                      chatModelId={chatModelId}
-                      onRetry={handleRetry}
-                      reduceMotion={reduceMotion}
-                    />
-                  </Fragment>
-                );
-              })}
-            </AnimatePresence>
-          </ol>
-        </ConversationContent>
-        <JumpToLatestPill messageCount={results.length} />
-      </Conversation>
-    </PapersContext.Provider>
+    <Conversation
+      // `min-h-0` releases the default flex `min-height: auto` so the
+      // StickToBottom internal `overflow: auto` can actually scroll
+      // instead of pushing the composer off-screen.
+      className={cn("min-h-0 flex-1 overscroll-contain")}
+      data-message-list="populated"
+      role="presentation"
+    >
+      <ConversationContent>
+        <ol
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions"
+          className="mx-auto flex w-full max-w-3xl flex-col gap-2"
+        >
+          <AnimatePresence initial={false}>
+            {results.map((message, i) => {
+              const prev = results[i - 1];
+              const isFirstInGroup = !prev || prev.role !== message.role;
+              return (
+                <Fragment key={message.id}>
+                  <MessageRow
+                    message={message as ChatUIMessage}
+                    isLastAssistant={message.id === lastAssistantId}
+                    isFirstInGroup={isFirstInGroup}
+                    threadId={threadId}
+                    chatModelId={chatModelId}
+                    onRetry={handleRetry}
+                    reduceMotion={reduceMotion}
+                  />
+                </Fragment>
+              );
+            })}
+          </AnimatePresence>
+        </ol>
+      </ConversationContent>
+      <JumpToLatestPill messageCount={results.length} />
+    </Conversation>
   );
 }
