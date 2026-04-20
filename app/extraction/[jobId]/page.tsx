@@ -45,6 +45,8 @@ import { ReportBuilder } from "@/components/extraction/report-builder";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
+import { CompletionToastObserver } from "@/components/extraction/completion-toast-observer";
+import { CostBadge } from "@/components/extraction/cost-badge";
 import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
 import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
@@ -509,6 +511,11 @@ export default function JobDetailPage() {
         }
         rightColumn={
           <PageWrapper>
+            <CompletionToastObserver
+              jobId={jobId}
+              jobStatus={job.status}
+              processedPapers={job.processedPapers ?? job.totalPapers ?? 0}
+            />
             <div className="container mx-auto max-w-6xl p-4 sm:p-6">
               <CommandCenterContainer>
           {/* Header Section */}
@@ -592,6 +599,10 @@ export default function JobDetailPage() {
                       <RefreshCw className={cn("w-3.5 h-3.5", isProcessing && "animate-spin")} />
                       <span>{tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}</span>
                     </div>
+
+                    <span className="w-1 h-1 rounded-full bg-border" />
+
+                    <CostBadge jobId={jobId} compact />
                   </motion.div>
                 </div>
               </div>
