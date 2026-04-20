@@ -25,4 +25,15 @@ describe("summarizeRetryable", () => {
       permanentBreakdown: {},
     });
   });
+
+  it("R3: one retryable failure (rate_limit) → retryableCount=1, empty breakdown", () => {
+    const results: RetryableResultInput[] = [
+      { status: "failed", lastError: { code: "rate_limit" } },
+    ];
+    expect(summarizeRetryable(results)).toEqual({
+      retryableCount: 1,
+      permanentCount: 0,
+      permanentBreakdown: {},
+    });
+  });
 });

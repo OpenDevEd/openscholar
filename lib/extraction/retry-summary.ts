@@ -30,11 +30,23 @@ export type RetrySummary = {
 };
 
 export function summarizeRetryable(
-  _results: ReadonlyArray<RetryableResultInput>,
+  results: ReadonlyArray<RetryableResultInput>,
 ): RetrySummary {
-  return {
-    retryableCount: 0,
-    permanentCount: 0,
-    permanentBreakdown: {},
-  };
+  let retryableCount = 0;
+  const permanentBreakdown: Record<string, number> = {};
+
+  for (const r of results) {
+    if (r.status !== "failed") continue;
+    const code = r.lastError?.code;
+    if (code && isRetryable[code] === false) {
+      permanentBreakdown[code] = (permanentBreakdown[code] ?? 0) + 1;
+    } else {
+      retryableCount += 1;
+    }
+  }
+
+  let permanentCount = 0;
+  for (const n of Object.values(permanentBreakdown)) permanentCount += n;
+
+  return { retryableCount, permanentCount, permanentBreakdown };
 }
