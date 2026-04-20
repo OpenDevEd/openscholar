@@ -62,6 +62,7 @@ export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
     chipCounts,
     totalCount,
     includedCount,
+    isSearchStale,
   } = useSourcesPanelState(rows);
 
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -188,6 +189,7 @@ export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
         chipCounts={chipCounts}
         onChipChange={(next) => setState({ src: next })}
         searchInputRef={searchInputRef}
+        isSearchStale={isSearchStale}
       />
       <SourcesPanelExtensionBanner
         jobId={jobId}
@@ -203,6 +205,7 @@ export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
           matches={matches}
           query={state.q}
           activeDescendantId={keyboard.activeId}
+          isSearchStale={isSearchStale}
           emptyState={
             <p
               className="px-4 py-8 text-center text-sm text-muted-foreground"
