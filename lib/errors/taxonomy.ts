@@ -137,6 +137,18 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
     return finalize("aborted", message);
   }
 
+  // 4. Network failures: TypeError "fetch failed" + node-style transport errors.
+  if (errName === "TypeError" && /fetch failed/i.test(message)) {
+    return finalize("network", message);
+  }
+  if (
+    /\bnetwork( request)? failed\b|socket hang up|ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(
+      message,
+    )
+  ) {
+    return finalize("network", message);
+  }
+
   return finalize("unknown", message);
 }
 

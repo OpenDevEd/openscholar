@@ -111,6 +111,17 @@ describe("classifyUnknownError — fingerprint cascade", () => {
     err.name = "AbortError";
     expect(classifyUnknownError(err).code).toBe("aborted");
   });
+
+  it("R8: TypeError with 'fetch failed' message → network", () => {
+    const err = new TypeError("fetch failed");
+    expect(classifyUnknownError(err).code).toBe("network");
+  });
+
+  it("R8: Error with /network|socket hang up|ENOTFOUND/i message → network", () => {
+    expect(classifyUnknownError(new Error("network request failed")).code).toBe("network");
+    expect(classifyUnknownError(new Error("socket hang up")).code).toBe("network");
+    expect(classifyUnknownError(new Error("getaddrinfo ENOTFOUND api.foo")).code).toBe("network");
+  });
 });
 
 describe("classifyChatError", () => {
