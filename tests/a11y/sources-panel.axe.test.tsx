@@ -38,6 +38,8 @@ vi.mock("motion/react", async () => {
 });
 
 import { SourcesPanelInner } from "@/components/extraction/chat/sources-panel/sources-panel";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
+import { fakePapersContext } from "@/tests/helpers/papers-context-fixture";
 import type { Id } from "@/convex/_generated/dataModel";
 
 expect.extend(toHaveNoViolations);
@@ -98,7 +100,6 @@ const seedRows = [
 ];
 
 vi.mock("convex/react", () => ({
-  useQuery: () => seedRows,
   useMutation: () => {
     const fn = vi.fn();
     Object.assign(fn, { withOptimisticUpdate: () => fn });
@@ -165,10 +166,19 @@ beforeEach(() => {
   reduceMotionRef.current = false;
 });
 
+function renderPanel() {
+  const ctx = fakePapersContext({ jobId: job, rows: seedRows });
+  return render(
+    <PapersContext.Provider value={ctx}>
+      <SourcesPanelInner jobId={job} />
+    </PapersContext.Provider>,
+  );
+}
+
 describe("<SourcesPanel> a11y audit (plan-06)", () => {
   it("renders zero axe violations with motion enabled", async () => {
     reduceMotionRef.current = false;
-    const { container } = render(<SourcesPanelInner jobId={job} />);
+    const { container } = renderPanel();
     const panel = container.querySelector("[data-sources-panel]");
     expect(panel?.getAttribute("data-motion-disabled")).toBe("false");
     expect(await axe(container, AXE_OPTIONS)).toHaveNoViolations();
@@ -176,7 +186,7 @@ describe("<SourcesPanel> a11y audit (plan-06)", () => {
 
   it("renders zero axe violations and exposes data-motion-disabled when reduced-motion is on", async () => {
     reduceMotionRef.current = true;
-    const { container } = render(<SourcesPanelInner jobId={job} />);
+    const { container } = renderPanel();
     const panel = container.querySelector("[data-sources-panel]");
     expect(panel?.getAttribute("data-motion-disabled")).toBe("true");
     expect(await axe(container, AXE_OPTIONS)).toHaveNoViolations();

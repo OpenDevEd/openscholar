@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useReducedMotion } from "motion/react";
 import { api } from "@/convex/_generated/api";
@@ -11,6 +11,7 @@ import {
   buildBulkPatch,
 } from "@/lib/chat/chat-papers-selection";
 import { useIsMobile } from "@/lib/hooks";
+import { usePapersContext } from "../papers-context";
 import { SourcesPanelExtensionBanner } from "./sources-panel-extension-banner";
 import { SourcesPanelHeader } from "./sources-panel-header";
 import { SourcesPanelList } from "./sources-panel-list";
@@ -52,11 +53,7 @@ export function SourcesPanel({ jobId }: SourcesPanelProps) {
 export function SourcesPanelInner({ jobId }: SourcesPanelProps) {
   const t = useTranslations("sourcesPanel");
   const reduceMotion = useReducedMotion();
-  const rawRows = useQuery(
-    api.chat.chatPapers.listChatSourcesWithInclusion,
-    { jobId },
-  );
-  const rows = rawRows ?? [];
+  const { rows } = usePapersContext();
   const {
     state,
     setState,

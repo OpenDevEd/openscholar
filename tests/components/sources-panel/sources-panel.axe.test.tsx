@@ -16,6 +16,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { SourcesPanelInner } from "@/components/extraction/chat/sources-panel/sources-panel";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
+import { fakePapersContext } from "@/tests/helpers/papers-context-fixture";
 import type { Id } from "@/convex/_generated/dataModel";
 
 expect.extend(toHaveNoViolations);
@@ -60,7 +62,6 @@ const sampleRows = [
 ];
 
 vi.mock("convex/react", () => ({
-  useQuery: () => sampleRows,
   useMutation: () => {
     const fn = vi.fn();
     Object.assign(fn, { withOptimisticUpdate: () => fn });
@@ -118,7 +119,12 @@ beforeAll(() => {
 
 describe("<SourcesPanel> accessibility", () => {
   it("renders with zero axe violations", async () => {
-    const { container } = render(<SourcesPanelInner jobId={job} />);
+    const ctx = fakePapersContext({ jobId: job, rows: sampleRows });
+    const { container } = render(
+      <PapersContext.Provider value={ctx}>
+        <SourcesPanelInner jobId={job} />
+      </PapersContext.Provider>,
+    );
     const results = await axe(container, {
       rules: {
         // Color-contrast checks rely on a real layout/paint engine; jsdom

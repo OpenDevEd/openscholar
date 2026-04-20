@@ -18,14 +18,16 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import { MessageComposer } from "@/components/extraction/chat/message-composer";
-import type { Doc } from "@/convex/_generated/dataModel";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
+import {
+  fakePapersContext,
+  mkChatSourceRow,
+} from "@/tests/helpers/papers-context-fixture";
+import type { ChatSourceRow } from "@/convex/chat/chatPapers";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 
 const sendMessageMock = vi.fn().mockResolvedValue(undefined);
 const bulkSetMock = vi.fn().mockResolvedValue({ changedCount: 0 });
-
-let queryRows: Array<{ included: boolean; chatPaperId: string }> = [
-  { included: true, chatPaperId: "cp1" },
-];
 
 vi.mock("next-intl", () => ({
   useTranslations: () =>
@@ -47,7 +49,6 @@ vi.mock("convex/react", () => ({
     }
     return vi.fn();
   },
-  useQuery: () => queryRows,
 }));
 
 vi.mock("@convex-dev/agent/react", () => ({
@@ -94,6 +95,30 @@ function makeJob(): Doc<"extractionJobs"> {
   } as Doc<"extractionJobs">;
 }
 
+const JOB_ID = "job1" as unknown as Id<"extractionJobs">;
+
+function renderWithRows(rows: ChatSourceRow[]) {
+  const ctx = fakePapersContext({ jobId: JOB_ID, rows });
+  return render(
+    <PapersContext.Provider value={ctx}>
+      <MessageComposer job={makeJob()} threadId="t1" />
+    </PapersContext.Provider>,
+  );
+}
+
+function makeRow(
+  n: number,
+  included: boolean,
+): ChatSourceRow {
+  return mkChatSourceRow({
+    jobId: JOB_ID,
+    chatPaperId: `cp${n}` as unknown as ChatSourceRow["chatPaperId"],
+    sourceId: `src${n}` as unknown as ChatSourceRow["sourceId"],
+    position: n,
+    included,
+  });
+}
+
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -113,14 +138,11 @@ beforeAll(() => {
 
 describe("MessageComposer sources guard", () => {
   it("renders the live-hint with the included/total counts when sources exist", () => {
-    queryRows = [
-      { included: true, chatPaperId: "cp1" },
-      { included: true, chatPaperId: "cp2" },
-      { included: false, chatPaperId: "cp3" },
-    ];
-    const { container } = render(
-      <MessageComposer job={makeJob()} threadId="t1" />,
-    );
+    const { container } = renderWithRows([
+      makeRow(1, true),
+      makeRow(2, true),
+      makeRow(3, false),
+    ]);
     const status = container.querySelector("[role='status']");
     expect(status).not.toBeNull();
     expect(status?.getAttribute("data-sources-included")).toBe("2");
@@ -129,13 +151,10 @@ describe("MessageComposer sources guard", () => {
   });
 
   it("when included==0 shows the empty banner and disables Send even with non-empty text", () => {
-    queryRows = [
-      { included: false, chatPaperId: "cp1" },
-      { included: false, chatPaperId: "cp2" },
-    ];
-    const { container } = render(
-      <MessageComposer job={makeJob()} threadId="t1" />,
-    );
+    const { container } = renderWithRows([
+      makeRow(1, false),
+      makeRow(2, false),
+    ]);
 
     const status = container.querySelector("[role='status']");
     expect(status?.getAttribute("data-sources-count-state")).toBe("zero");
@@ -155,11 +174,8 @@ describe("MessageComposer sources guard", () => {
   });
 
   it("clicking the banner [Include all] fires bulkSetChatPapers with sourceIds=undefined + included=true", () => {
-    queryRows = [{ included: false, chatPaperId: "cp1" }];
     bulkSetMock.mockClear();
-    const { container } = render(
-      <MessageComposer job={makeJob()} threadId="t1" />,
-    );
+    const { container } = renderWithRows([makeRow(1, false)]);
     const cta = container.querySelector("[data-composer-include-all]");
     fireEvent.click(cta as Element);
     expect(bulkSetMock).toHaveBeenCalledWith({

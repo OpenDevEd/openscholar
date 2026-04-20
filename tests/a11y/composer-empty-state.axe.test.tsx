@@ -16,16 +16,34 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { MessageComposer } from "@/components/extraction/chat/message-composer";
-import type { Doc } from "@/convex/_generated/dataModel";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
+import {
+  fakePapersContext,
+  mkChatSourceRow,
+} from "@/tests/helpers/papers-context-fixture";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 
 expect.extend(toHaveNoViolations);
 
 const sendMessageMock = vi.fn().mockResolvedValue(undefined);
 const bulkSetMock = vi.fn().mockResolvedValue({ changedCount: 0 });
 
-const queryRows = [
-  { included: false, chatPaperId: "cp1" },
-  { included: false, chatPaperId: "cp2" },
+const JOB_ID = "job1" as unknown as Id<"extractionJobs">;
+const zeroIncludedRows = [
+  mkChatSourceRow({
+    jobId: JOB_ID,
+    chatPaperId: "cp1" as unknown as Id<"chatPapers">,
+    sourceId: "src1" as unknown as Id<"extractionJobSources">,
+    position: 1,
+    included: false,
+  }),
+  mkChatSourceRow({
+    jobId: JOB_ID,
+    chatPaperId: "cp2" as unknown as Id<"chatPapers">,
+    sourceId: "src2" as unknown as Id<"extractionJobSources">,
+    position: 2,
+    included: false,
+  }),
 ];
 
 vi.mock("next-intl", () => ({
@@ -48,7 +66,6 @@ vi.mock("convex/react", () => ({
     }
     return vi.fn();
   },
-  useQuery: () => queryRows,
 }));
 
 vi.mock("@convex-dev/agent/react", () => ({
@@ -120,8 +137,11 @@ const AXE_OPTIONS = {
 
 describe("composer empty-state a11y audit (plan-06)", () => {
   it("renders zero axe violations when zero sources are included", async () => {
+    const ctx = fakePapersContext({ jobId: JOB_ID, rows: zeroIncludedRows });
     const { container } = render(
-      <MessageComposer job={makeJob()} threadId="t1" />,
+      <PapersContext.Provider value={ctx}>
+        <MessageComposer job={makeJob()} threadId="t1" />
+      </PapersContext.Provider>,
     );
     expect(container.querySelector("[data-composer-empty-banner]")).not.toBeNull();
     expect(await axe(container, AXE_OPTIONS)).toHaveNoViolations();
