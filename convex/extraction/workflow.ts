@@ -1,18 +1,24 @@
 /**
- * Extraction Workflow using Workpool
- * Proper pattern for self-hosted Convex with durable execution
+ * Extraction workflow — plan-02 per-question decomposition.
+ *
+ * The handler owns every paper's pipeline end-to-end via
+ * `step.runAction` + `step.runMutation`, so the 10-minute ceiling is
+ * now per-question (≤ 1 LLM call + 1 dense search) instead of
+ * per-paper-with-all-questions. The earlier workpool `onComplete`
+ * chain (handleDownloadAndIndexComplete → waitAndExtractAction →
+ * handleExtractionComplete) is retired in plan-02 step 5.
  */
 
 import { workflow } from "../workflow";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
 import type { PaperData } from "./types";
 import type { Id } from "../_generated/dataModel";
 import { dedupeExpandedSources, expandJobSources } from "./expandSources";
 
 import { createError } from "../lib/errors";
+import { classifyUnknownError } from "@/lib/errors/taxonomy";
 
 export const runExtractionWorkflow = workflow.define({
   args: {
@@ -29,19 +35,12 @@ export const runExtractionWorkflow = workflow.define({
       throw createError("NOT_FOUND", "Job not found");
     }
 
-    const questionsRaw = await step.runQuery(
+    const questionIds = await step.runQuery(
       internal.extraction.queries.internal.getQuestionsInternal,
       { jobId }
     );
 
-    const questions = questionsRaw.map((q: { key: string; question: string; type: "string" | "boolean" | "number" | "array"; description?: string }) => ({
-      key: q.key,
-      question: q.question,
-      type: q.type,
-      description: q.description,
-    }));
-
-    console.log(`[Workflow] Loaded ${questions.length} questions`);
+    console.log(`[Workflow] Loaded ${questionIds.length} questions`);
 
     const { pdfEnabled: pdfEnabledEarly } = await step.runQuery(
       internal.extraction.queries.internal.getJobAndFlagsInternal,
@@ -161,60 +160,155 @@ export const runExtractionWorkflow = workflow.define({
       return;
     }
 
-    console.log(`[Workflow] Enqueueing ${paperIds.length} papers for processing`);
-
-    let enqueuedCount = 0;
-    for (const paper of paperIds) {
-      const { processable: computedProcessable } = getProcessableFlags({
-        pdfUrl: paper.pdfUrl,
-        storageId: paper.storageId,
-        abstract: paper.abstract,
-        pdfEnabled,
-      });
-      const isProcessable = paper.processable !== false && computedProcessable;
-
-      if (!isProcessable) {
-        await step.runMutation(
-          internal.extraction.mutations.papers.updatePaperStatus,
-          {
-            paperId: paper._id,
-            status: "download_failed",
-            error: {
-              code: "pdf_invalid",
-              message: "No PDF URL or abstract available",
-            },
-          }
-        );
-        await step.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, {
-          jobId,
-        });
-        continue;
-      }
-
-      await step.runMutation(
-        internal.extraction.mutations.internal.lifecycle.enqueuePaperProcessing,
-        {
-          paperId: paper._id,
-          jobId,
-          pdfUrl: paper.pdfUrl || "",
-          storageId: paper.storageId,
-          title: paper.title,
-          abstract: paper.abstract,
-          doi: paper.doi,
-          questions,
-        }
-      );
-
-      enqueuedCount++;
-    }
-
-    console.log(`[Workflow] Enqueued ${enqueuedCount} papers for processing`);
-
+    // Pre-plan-02 flipped the job to "extracting" after the async
+    // enqueue loop. The handler now awaits the per-paper pipeline
+    // synchronously, so we flip upfront — otherwise the UI would sit
+    // in "indexing" for the whole run.
     await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
       jobId,
       status: "extracting",
     });
 
-    console.log(`[Workflow] Complete - papers processing asynchronously`);
+    console.log(
+      `[Workflow] Fanning out ${paperIds.length} papers × ${questionIds.length} questions`,
+    );
+
+    // Per-paper pipeline in parallel. Concurrency is bounded by the
+    // workflow component's own workpool (maxParallelism = 10 — see
+    // `convex/workflow.ts`). Each paper runs: download+index → N
+    // `extractOneQuestion` steps in parallel → finalizePaper.
+    await Promise.all(
+      paperIds.map(async (paper) => {
+        const { processable: computedProcessable } = getProcessableFlags({
+          pdfUrl: paper.pdfUrl,
+          storageId: paper.storageId,
+          abstract: paper.abstract,
+          pdfEnabled,
+        });
+        const isProcessable = paper.processable !== false && computedProcessable;
+
+        if (!isProcessable) {
+          await step.runMutation(
+            internal.extraction.mutations.papers.updatePaperStatus,
+            {
+              paperId: paper._id,
+              status: "download_failed",
+              error: {
+                code: "pdf_invalid",
+                message: "No PDF URL or abstract available",
+              },
+            },
+            { name: `skip:${paper._id}` },
+          );
+          await step.runMutation(
+            internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
+            { jobId },
+            { name: `finjob:${paper._id}` },
+          );
+          return;
+        }
+
+        // 1. Flip paper to "downloading" so the UI reflects the stage
+        // transition. Status validator also covers the "pending →
+        // downloading → extracting → completed" happy path.
+        await step.runMutation(
+          internal.extraction.mutations.papers.updatePaperStatus,
+          { paperId: paper._id, status: "downloading" },
+          { name: `mark-dl:${paper._id}` },
+        );
+
+        // 2. Download + index. Auto-retries transient failures via the
+        // workflow component's retry budget.
+        const indexed = await step.runAction(
+          internal.extraction.workpoolActions.downloadAndIndexPdfAction,
+          {
+            paperId: paper._id,
+            jobId,
+            pdfUrl: paper.pdfUrl || "",
+            storageId: paper.storageId,
+            title: paper.title,
+            abstract: paper.abstract,
+            doi: paper.doi,
+          },
+          { retry: true, name: `dl:${paper._id}` },
+        );
+
+        if (!indexed.success) {
+          const code = indexed.error?.code ?? "pdf_download_failed";
+          const message = indexed.error?.message ?? "Download failed";
+          await step.runMutation(
+            internal.extraction.mutations.papers.updatePaperStatus,
+            {
+              paperId: paper._id,
+              status: "download_failed",
+              error: { code, message },
+            },
+            { name: `fail-dl:${paper._id}` },
+          );
+          await step.runMutation(
+            internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
+            { jobId },
+            { name: `finjob-dl:${paper._id}` },
+          );
+          return;
+        }
+
+        // 3. Flip paper to "extracting" for the question fan-out.
+        await step.runMutation(
+          internal.extraction.mutations.papers.updatePaperStatus,
+          { paperId: paper._id, status: "extracting" },
+          { name: `mark-ex:${paper._id}` },
+        );
+
+        // 4. Fan out one step per question. On exhausted retries, the
+        // workflow step throws; the catch persists a terminal failure
+        // row so finalizePaper can aggregate it.
+        await Promise.all(
+          questionIds.map(async (q) => {
+            try {
+              await step.runAction(
+                internal.extraction.workpoolActions.extractOneQuestion,
+                {
+                  paperId: paper._id,
+                  jobId,
+                  questionId: q._id,
+                },
+                { retry: true, name: `q:${paper._id}:${q.key}` },
+              );
+            } catch (error) {
+              const classified = classifyUnknownError(error);
+              await step.runMutation(
+                internal.extraction.mutations.results.recordOneAnswerFailure,
+                {
+                  paperId: paper._id,
+                  questionKey: q.key,
+                  error: {
+                    code: classified.code,
+                    message: classified.message,
+                    retryable: classified.retryable,
+                    ...(classified.httpStatus !== undefined
+                      ? { httpStatus: classified.httpStatus }
+                      : {}),
+                    ...(classified.providerName !== undefined
+                      ? { providerName: classified.providerName }
+                      : {}),
+                  },
+                },
+                { name: `qfail:${paper._id}:${q.key}` },
+              );
+            }
+          }),
+        );
+
+        // 5. Fold question-level rows into the paper's terminal status.
+        await step.runMutation(
+          internal.extraction.mutations.results.finalizePaper,
+          { paperId: paper._id },
+          { name: `finpaper:${paper._id}` },
+        );
+      }),
+    );
+
+    console.log(`[Workflow] Per-question fan-out complete for job ${jobId}`);
   },
 });
