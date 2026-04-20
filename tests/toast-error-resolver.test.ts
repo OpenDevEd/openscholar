@@ -81,4 +81,27 @@ describe("toast error resolver", () => {
     expect(resolved.code).toBe("AI_CREDITS_DISABLED");
     expect(getToastMessageKeyForErrorCode(resolved.code)).toBe("aiCreditsDisabled");
   });
+
+  it("populates the taxonomy bridge — Convex INSUFFICIENT_CREDITS → insufficient_credits", () => {
+    const resolved = resolveToastError(
+      {
+        message: "Server error",
+        data: { code: "INSUFFICIENT_CREDITS", message: "Not enough credits" },
+      },
+      "fallback",
+    );
+
+    expect(resolved.taxonomy.code).toBe("insufficient_credits");
+    expect(resolved.taxonomy.titleKey).toBe("errors.title.insufficient_credits");
+    expect(resolved.taxonomy.bodyKey).toBe("errors.body.insufficient_credits");
+    expect(resolved.taxonomy.retryable).toBe(true);
+  });
+
+  it("populates the taxonomy bridge — unrecognised → unknown", () => {
+    const resolved = resolveToastError(new Error("freshly-baked weirdness"), "fallback");
+    expect(resolved.taxonomy.code).toBe("unknown");
+    expect(resolved.taxonomy.titleKey).toBe("errors.title.unknown");
+    expect(resolved.taxonomy.bodyKey).toBe("errors.body.unknown");
+    expect(resolved.taxonomy.retryable).toBe(true);
+  });
 });

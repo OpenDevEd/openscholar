@@ -228,7 +228,22 @@ function extractData(err: unknown): Record<string, unknown> | undefined {
       ? (err.data as Record<string, unknown>)
       : undefined;
   }
-  if (err && typeof err === "object") return err as Record<string, unknown>;
+  if (err && typeof err === "object") {
+    const rec = err as Record<string, unknown>;
+    // Serialized ConvexError on the wire surfaces as a plain object with a
+    // nested `.data` payload — promote it so the fingerprint cascade can
+    // see `data.code` etc. without an extra hop.
+    const nested = rec.data;
+    if (
+      nested &&
+      typeof nested === "object" &&
+      !Array.isArray(nested) &&
+      typeof (nested as Record<string, unknown>).code === "string"
+    ) {
+      return nested as Record<string, unknown>;
+    }
+    return rec;
+  }
   return undefined;
 }
 

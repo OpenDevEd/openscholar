@@ -1,3 +1,5 @@
+import { classifyUnknownError, isRetryable, type ErrorCode } from "@/lib/errors/taxonomy";
+
 type ErrorRecord = Record<string, unknown>;
 
 export type ToastErrorMessageKey =
@@ -37,10 +39,28 @@ export type ToastErrorMessageKey =
   | "creditsTopupBundleInvalid"
   | "creditsProductMisconfigured";
 
+/**
+ * Taxonomy-keyed view of a resolved error. Lets toast/inline UIs render
+ * a localized title + body via `t(titleKey)` / `t(bodyKey)` instead of
+ * piping a raw message string through.
+ */
+export type ResolvedToastTaxonomy = {
+  code: ErrorCode;
+  titleKey: `errors.title.${ErrorCode}`;
+  bodyKey: `errors.body.${ErrorCode}`;
+  retryable: boolean;
+};
+
 export type ResolvedToastError = {
   code?: string;
   isConvex: boolean;
   message: string;
+  /**
+   * Plan-01 taxonomy bridge. Always populated — falls back to "unknown"
+   * when no fingerprint matched. UIs that want a localized title+body
+   * by code read this; legacy consumers still see `code` + `message`.
+   */
+  taxonomy: ResolvedToastTaxonomy;
 };
 
 const CONVEX_MESSAGE_SIGNATURES = ["[CONVEX", "Called by client"] as const;
@@ -216,6 +236,16 @@ export function isPlanUpgradeCode(code?: string): boolean {
   return PLAN_UPGRADE_CODES.has(code);
 }
 
+function buildTaxonomy(error: unknown): ResolvedToastTaxonomy {
+  const classified = classifyUnknownError(error);
+  return {
+    code: classified.code,
+    titleKey: `errors.title.${classified.code}` as const,
+    bodyKey: `errors.body.${classified.code}` as const,
+    retryable: isRetryable[classified.code],
+  };
+}
+
 export function resolveToastError(error: unknown, fallback: string): ResolvedToastError {
   const data = readErrorData(error);
   const recordCode = readCodeFromError(error);
@@ -226,12 +256,14 @@ export function resolveToastError(error: unknown, fallback: string): ResolvedToa
   const inferredCode = inferLegacyCode(dataMessage, sanitizedMessage, rawMessage);
   const code = dataCode ?? recordCode ?? inferredCode;
   const isConvex = Boolean(dataCode || data !== undefined || hasConvexSignature(rawMessage));
+  const taxonomy = buildTaxonomy(error);
 
   if (isConvex && !code) {
     return {
       code: undefined,
       isConvex: true,
       message: fallback,
+      taxonomy,
     };
   }
 
@@ -239,5 +271,6 @@ export function resolveToastError(error: unknown, fallback: string): ResolvedToa
     code,
     isConvex,
     message: dataMessage ?? sanitizedMessage ?? rawMessage ?? fallback,
+    taxonomy,
   };
 }
