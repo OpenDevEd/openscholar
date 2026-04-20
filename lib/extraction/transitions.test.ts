@@ -9,4 +9,12 @@ describe("validatePauseTransition", () => {
       pausedFrom: "extracting",
     });
   });
+
+  it("R2: from 'downloading_pdfs' → ok, pausedFrom carries through", () => {
+    expect(validatePauseTransition("downloading_pdfs")).toEqual({
+      ok: true,
+      nextStatus: "paused",
+      pausedFrom: "downloading_pdfs",
+    });
+  });
 });
