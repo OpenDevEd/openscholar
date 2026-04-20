@@ -29,7 +29,7 @@ import {
   type JobStatus,
 } from "../stateMachine";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
-import { forgetResult, recordResult } from "../aggregates";
+import { forgetResult, recordCreditSpend, recordResult } from "../aggregates";
 import {
   answerValidator,
   citationStatusValidator,
@@ -323,6 +323,16 @@ export const recordOneAnswer = internalMutation({
           jobId: String(paper.jobId),
           questionKey: args.questionKey,
         },
+      });
+      // Same-txn spend mirror for the creditsAgg B-tree. `billed` gates
+      // retries before we reach here so insertIfDoesNotExist just needs
+      // to be idempotent on the (jobId, now, resultId) triple — which it
+      // is via the dedup on (namespace, key+id position).
+      await recordCreditSpend(ctx, {
+        jobId: paper.jobId,
+        key: now,
+        id: resultId,
+        creditsUsed: args.creditsUsed,
       });
     }
 

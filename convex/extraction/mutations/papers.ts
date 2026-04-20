@@ -17,6 +17,7 @@ import { getFlag } from "../../featureFlags/guard";
 import { getProcessableFlags } from "../content";
 import { errorCodeValidator, paperSourceTypeValidator } from "../validators";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
+import { recordCreditSpend } from "../aggregates";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
 
 export const createPaperRecords = internalMutation({
@@ -208,6 +209,7 @@ export const markPaperIndexed = internalMutation({
       !paper.indexingBilled &&
       args.billing.creditsToDeduct > 0
     ) {
+      const now = Date.now();
       await ctx.runMutation(internal.credits.internal.deductCredits, {
         userId: args.billing.userId,
         amount: args.billing.creditsToDeduct,
@@ -218,6 +220,16 @@ export const markPaperIndexed = internalMutation({
           jobId: String(args.billing.jobId),
           embeddingTokens: String(args.billing.embeddingTokens),
         },
+      });
+      // Same-txn spend mirror for creditsAgg. Id is `embed:<paperId>`
+      // because the aggregate mixes extraction_llm (keyed by resultId)
+      // and embedding (keyed by paperId) entries in the same namespace;
+      // prefixing keeps them collision-free.
+      await recordCreditSpend(ctx, {
+        jobId: args.billing.jobId,
+        key: now,
+        id: `embed:${args.paperId}`,
+        creditsUsed: args.billing.creditsToDeduct,
       });
       updates.indexingBilled = true;
     }
