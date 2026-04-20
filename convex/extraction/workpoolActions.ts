@@ -1206,3 +1206,398 @@ export const waitAndExtractAction = internalAction({
     }
   },
 });
+
+// ──────────────────────────────────────────────────────────────────────
+// Plan-02 per-question action
+// ──────────────────────────────────────────────────────────────────────
+
+type PerQuestionOutcome = {
+  result: ExtractionQuestionResult;
+  usage: { inputTokens: number; outputTokens: number };
+  trackingEntry: AITrackingEntry | null;
+};
+
+/**
+ * One-question extraction pipeline. Factored out of `waitAndExtractAction`
+ * so the new per-question workflow step can call it without rebuilding
+ * the three-mode (abstract-only / no-content / PDF-evidence) selector
+ * that `waitAndExtractAction` encapsulates.
+ *
+ * Errors propagate so the workflow-step retry budget is meaningful —
+ * catching + recording a failure row is the workflow handler's job once
+ * retries exhaust. See `recordOneAnswerFailure`.
+ */
+async function runOneQuestionExtraction(params: {
+  ctx: ActionCtx;
+  paperId: Id<"extractionPapers">;
+  jobId: Id<"extractionJobs">;
+  model: Awaited<ReturnType<typeof getModel>>;
+  question: {
+    key: string;
+    question: string;
+    type: "string" | "boolean" | "number" | "array";
+    description?: string;
+  };
+  abstractText: string | undefined;
+  abstractPresent: boolean;
+  units: EvidenceUnitDoc[];
+  pdfEnabled: boolean;
+}): Promise<PerQuestionOutcome> {
+  const {
+    ctx,
+    paperId,
+    jobId,
+    model,
+    question,
+    abstractText,
+    abstractPresent,
+    units,
+    pdfEnabled,
+  } = params;
+
+  if (units.length === 0) {
+    if (abstractText) {
+      const qStart = Date.now();
+      const { result, usage, prompt } = await extractQuestionAnswerFromAbstract({
+        model,
+        question,
+        abstract: abstractText,
+        pdfEnabled,
+      });
+      const qLatency = Date.now() - qStart;
+      console.info(
+        "[extractOneQuestion] question diagnostics",
+        JSON.stringify({
+          paperId,
+          questionKey: question.key,
+          mode: "abstract_only",
+          abstractPresent,
+          denseCandidates: 0,
+          lexicalCandidates: 0,
+          fusedCandidates: 0,
+          citationStatus: result.citationStatus,
+          selectedEvidenceIds: [],
+        }),
+      );
+      return {
+        result,
+        usage,
+        trackingEntry: {
+          feature: "extraction_question_abstract",
+          usage: {
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+          },
+          latencyMs: qLatency,
+          input: truncateForTracking(prompt),
+          output: truncateForTracking(JSON.stringify(result)),
+          temperature: 0,
+        },
+      };
+    }
+
+    const noContentResult: ExtractionQuestionResult = {
+      questionKey: question.key,
+      answer: null,
+      confidence: 0,
+      reasoning:
+        "No PDF evidence and no usable abstract are available for this paper.",
+      citations: [],
+      citationStatus: "insufficient_evidence",
+      retrievalDiagnostics: {
+        denseCandidates: 0,
+        lexicalCandidates: 0,
+        fusedCandidates: 0,
+        rerankedCandidates: 0,
+        validatedCitations: 0,
+        strictNull: true,
+      },
+      pdfContentUsed: false,
+    };
+    console.info(
+      "[extractOneQuestion] question diagnostics",
+      JSON.stringify({
+        paperId,
+        questionKey: question.key,
+        mode: "no_content",
+        abstractPresent,
+        denseCandidates: 0,
+        lexicalCandidates: 0,
+        fusedCandidates: 0,
+        citationStatus: noContentResult.citationStatus,
+        selectedEvidenceIds: [],
+      }),
+    );
+    return {
+      result: noContentResult,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      trackingEntry: null,
+    };
+  }
+
+  const denseScores = await runDenseSearch(
+    ctx,
+    `extraction:${jobId}`,
+    paperId,
+    question.question,
+  );
+  const lexicalScores = scoreLexicalEvidence(
+    question.question,
+    units.map((unit) => ({ evidenceId: unit.evidenceId, tokens: unit.tokens })),
+    DENSE_LIMIT,
+  );
+  const fusedScores = reciprocalRankFuse(denseScores, lexicalScores, RRF_CONSTANT);
+  const byEvidenceId = new Map(units.map((unit) => [unit.evidenceId, unit]));
+  const fusedCandidates: RetrievalCandidate[] = [];
+  for (const row of fusedScores.slice(0, FUSED_TOP_N)) {
+    const unit = byEvidenceId.get(row.evidenceId);
+    if (!unit) continue;
+    fusedCandidates.push({
+      unit,
+      denseScore: row.denseScore,
+      lexicalScore: row.lexicalScore,
+      fusedScore: row.fusedScore,
+    });
+  }
+  const evidencePool = fusedCandidates.slice(0, EVIDENCE_POOL_N);
+  const diagnosticsSeed = {
+    denseCandidates: denseScores.length,
+    lexicalCandidates: lexicalScores.length,
+    fusedCandidates: fusedCandidates.length,
+    rerankedCandidates: evidencePool.length,
+  };
+
+  const qStart = Date.now();
+  const { result, usage, prompt } = await extractQuestionAnswer({
+    model,
+    question,
+    abstract: abstractText,
+    evidencePool,
+    diagnosticsSeed,
+  });
+  const qLatency = Date.now() - qStart;
+
+  console.info(
+    "[extractOneQuestion] question diagnostics",
+    JSON.stringify({
+      paperId,
+      questionKey: question.key,
+      mode: "pdf_evidence",
+      abstractPresent,
+      denseCandidates: diagnosticsSeed.denseCandidates,
+      lexicalCandidates: diagnosticsSeed.lexicalCandidates,
+      fusedCandidates: diagnosticsSeed.fusedCandidates,
+      citationStatus: result.citationStatus,
+      selectedEvidenceIds: result.citations.map((c) => c.evidenceId),
+    }),
+  );
+
+  return {
+    result,
+    usage,
+    trackingEntry: {
+      feature: "extraction_question_pdf",
+      usage: {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+      },
+      latencyMs: qLatency,
+      input: truncateForTracking(prompt),
+      output: truncateForTracking(JSON.stringify(result)),
+      temperature: 0,
+    },
+  };
+}
+
+export const extractOneQuestion = internalAction({
+  args: {
+    paperId: v.id("extractionPapers"),
+    jobId: v.id("extractionJobs"),
+    questionId: v.id("extractionQuestions"),
+  },
+  returns: v.union(
+    v.object({ status: v.literal("completed") }),
+    v.object({
+      status: v.literal("skipped"),
+      reason: v.union(
+        v.literal("already_billed"),
+        v.literal("cancelled"),
+        v.literal("job_terminal"),
+      ),
+    }),
+  ),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    | { status: "completed" }
+    | { status: "skipped"; reason: "already_billed" | "cancelled" | "job_terminal" }
+  > => {
+    const question = await ctx.runQuery(
+      internal.extraction.queries.internal.getQuestionByIdInternal,
+      { questionId: args.questionId },
+    );
+    if (!question) {
+      throw createError("NOT_FOUND", "Question not found");
+    }
+
+    const [paper, jobWithFlags, existingResult] = await Promise.all([
+      ctx.runQuery(internal.extraction.queries.papers.byId, {
+        paperId: args.paperId,
+      }),
+      ctx.runQuery(internal.extraction.queries.internal.getJobAndFlagsInternal, {
+        jobId: args.jobId,
+      }),
+      ctx.runQuery(
+        internal.extraction.queries.internal.getResultByPaperAndQuestionInternal,
+        { paperId: args.paperId, questionKey: question.key },
+      ),
+    ]);
+    if (!paper) {
+      throw createError("NOT_FOUND", "Paper not found");
+    }
+    const { job, pdfEnabled } = jobWithFlags;
+    if (!job) {
+      throw createError("NOT_FOUND", "Job not found");
+    }
+
+    // Billing-idempotency gate: a workpool retry after a successful
+    // persist must skip the LLM round trip and the credit charge.
+    if (existingResult?.billed) {
+      console.log(
+        `[extractOneQuestion] Skipping ${args.paperId}:${question.key}; already billed`,
+      );
+      return { status: "skipped", reason: "already_billed" };
+    }
+
+    // Cancellation guard — signalling "completed" here would cause
+    // the workflow to continue and potentially resurrect a cancelled
+    // job. "skipped" leaves the result row absent so finalizePaper
+    // treats the question as pending (the job will finalize via its
+    // cancelled path, not via per-question rollup).
+    if (job.status === "cancelled") {
+      console.log(
+        `[extractOneQuestion] Skipping ${args.paperId}:${question.key}; job cancelled`,
+      );
+      return { status: "skipped", reason: "cancelled" };
+    }
+    if (
+      job.status === "completed" ||
+      job.status === "failed"
+    ) {
+      return { status: "skipped", reason: "job_terminal" };
+    }
+
+    const operation = `Extraction (1 question)`;
+    const billingUser = await ctx.runQuery(
+      internal.users.internal.getUserById,
+      { userId: job.userId },
+    );
+    if (!billingUser) {
+      throw createError(
+        "AI_UNAUTHENTICATED",
+        "Authentication required to use AI features",
+      );
+    }
+    const balance = await ctx.runQuery(
+      internal.credits.internal.getBalanceByUserId,
+      { userId: job.userId },
+    );
+    if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
+      await captureServerEvent(billingUser.clerkId, "credits_insufficient", {
+        required_credits: ESTIMATED_CREDITS_PER_QUERY,
+        available_credits: balance?.total ?? 0,
+        feature: operation,
+      });
+      throw createError(
+        "AI_INSUFFICIENT_CREDITS",
+        "Insufficient credits for AI operation",
+      );
+    }
+
+    const unitsRaw = await ctx.runQuery(
+      internal.extraction.queries.internal.getEvidenceUnitsInternal,
+      { paperId: args.paperId },
+    );
+    const units: EvidenceUnitDoc[] = (unitsRaw || []).map((unit) => ({
+      evidenceId: unit.evidenceId,
+      page: unit.page,
+      charRange: toTupleRange(unit.charRange),
+      text: unit.text,
+      section: unit.section,
+      tokens: Array.isArray(unit.tokens) ? unit.tokens : [],
+      anchorConfidence: unit.anchorConfidence,
+      source: unit.source,
+    }));
+
+    const abstractPresent = isUsableAbstract(paper.abstract);
+    const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
+    const model = await getModel();
+    const pricing = await fetchServerPricing(ctx);
+
+    const startedAt = Date.now();
+    const outcome = await runOneQuestionExtraction({
+      ctx,
+      paperId: args.paperId,
+      jobId: args.jobId,
+      model,
+      question: {
+        key: question.key,
+        question: question.question,
+        type: question.type,
+        description: question.description,
+      },
+      abstractText,
+      abstractPresent,
+      units,
+      pdfEnabled,
+    });
+    const latencyMs = Date.now() - startedAt;
+
+    const creditsUsed = calculateServerCreditsToDeduct(outcome.usage, pricing);
+
+    // Persist + bill in one transaction. recordOneAnswer internally
+    // gates on result.billed, so a late workpool retry that re-runs
+    // this action after a successful persist is still a no-op.
+    await ctx.runMutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      {
+        paperId: args.paperId,
+        questionKey: question.key,
+        result: {
+          answer: outcome.result.answer,
+          confidence: outcome.result.confidence,
+          reasoning: outcome.result.reasoning,
+          citations: outcome.result.citations,
+          citationStatus: outcome.result.citationStatus,
+          retrievalDiagnostics: outcome.result.retrievalDiagnostics,
+          pdfContentUsed: outcome.result.pdfContentUsed,
+        },
+        creditsUsed,
+      },
+    );
+
+    const creditContext = {
+      creditsDeducted: creditsUsed,
+      creditsRawCost: calculateServerRawCreditCost(outcome.usage, pricing),
+      creditsRemaining: Math.max(0, balance.total - creditsUsed),
+      lifetimeCreditsUsed: balance.lifetimeUsed + creditsUsed,
+    };
+    if (outcome.trackingEntry) {
+      await captureAIGenerationServer({
+        distinctId: billingUser.clerkId,
+        provider: SERVER_AI_CONFIG.provider as AIProvider,
+        modelId: SERVER_AI_CONFIG.model,
+        feature: outcome.trackingEntry.feature,
+        usage: outcome.trackingEntry.usage,
+        latencyMs,
+        input: outcome.trackingEntry.input,
+        output: outcome.trackingEntry.output,
+        temperature: outcome.trackingEntry.temperature,
+        ...creditContext,
+      });
+    }
+
+    return { status: "completed" };
+  },
+});

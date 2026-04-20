@@ -23,6 +23,7 @@ import {
   extractionEvidenceUnitValidator,
   extractionJobValidator,
   extractionQuestionValidator,
+  extractionResultValidator,
   jobSourcesReadValidator,
   paperStatusValidator,
 } from "../validators";
@@ -88,6 +89,36 @@ export const getEvidenceUnitsInternal = internalQuery({
       .query("extractionEvidenceUnits")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
       .take(MAX_EVIDENCE_UNITS_PER_PAPER);
+  },
+});
+
+export const getQuestionByIdInternal = internalQuery({
+  args: { questionId: v.id("extractionQuestions") },
+  returns: v.union(v.null(), extractionQuestionValidator),
+  handler: async (ctx, args) => {
+    return await ctx.db.get("extractionQuestions", args.questionId);
+  },
+});
+
+/**
+ * Per-question idempotency read used by `extractOneQuestion`. Returns
+ * `null` when the question hasn't been processed yet for this paper.
+ * Consumers gate on `result.billed` to skip redundant LLM work after a
+ * workpool retry.
+ */
+export const getResultByPaperAndQuestionInternal = internalQuery({
+  args: {
+    paperId: v.id("extractionPapers"),
+    questionKey: v.string(),
+  },
+  returns: v.union(v.null(), extractionResultValidator),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("extractionResults")
+      .withIndex("by_paper_question", (q) =>
+        q.eq("paperId", args.paperId).eq("questionKey", args.questionKey),
+      )
+      .unique();
   },
 });
 
