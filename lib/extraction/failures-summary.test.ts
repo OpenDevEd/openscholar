@@ -85,4 +85,25 @@ describe("summarizeFailures", () => {
       insufficient_credits: true,
     });
   });
+
+  it("R7: unknown code defaults retryable:true and preserves the code string", () => {
+    // Simulate codes the classifier hasn't been taught about yet — the
+    // summarizer must not trap the user behind retryable:false on an
+    // unrecognised string.
+    const input: FailureInput[] = [
+      { code: "future_unseen_code" },
+      { code: "also_unseen" },
+    ];
+    const result = summarizeFailures(input);
+    expect(result.total).toBe(2);
+    for (const entry of result.byCode) {
+      expect(entry.retryable).toBe(true);
+    }
+    // Code strings survive verbatim — the UI uses them as a label
+    // fallback when no taxonomy translation is registered.
+    expect(result.byCode.map((e) => e.code).sort()).toEqual([
+      "also_unseen",
+      "future_unseen_code",
+    ]);
+  });
 });
