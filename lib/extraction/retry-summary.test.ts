@@ -47,4 +47,19 @@ describe("summarizeRetryable", () => {
       permanentBreakdown: { pdf_invalid: 1 },
     });
   });
+
+  it("R5: mixed bag — 2 rate_limit + 1 network retryable, 1 pdf_invalid + 1 moderation permanent", () => {
+    const results: RetryableResultInput[] = [
+      { status: "failed", lastError: { code: "rate_limit" } },
+      { status: "failed", lastError: { code: "rate_limit" } },
+      { status: "failed", lastError: { code: "network" } },
+      { status: "failed", lastError: { code: "pdf_invalid" } },
+      { status: "failed", lastError: { code: "moderation" } },
+    ];
+    expect(summarizeRetryable(results)).toEqual({
+      retryableCount: 3,
+      permanentCount: 2,
+      permanentBreakdown: { pdf_invalid: 1, moderation: 1 },
+    });
+  });
 });
