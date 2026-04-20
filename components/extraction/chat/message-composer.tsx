@@ -83,10 +83,19 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
   }, [text, jobIsGenerating, sendMessage, threadId, appToast, t]);
 
   const handleStop = useCallback(() => {
-    void abortGeneration({ threadId }).catch((err) => {
-      console.error("abort failed", err);
-    });
-  }, [abortGeneration, threadId]);
+    void abortGeneration({ threadId })
+      .then(() => {
+        // Fired on mutation resolve (within ~50ms) rather than after the
+        // stream actually cuts (can lag up to the poller interval + the
+        // throttleMs window). The mutation IS the "I heard your click"
+        // acknowledgement; users get instant feedback.
+        toast.success(t("chatStopToast"));
+      })
+      .catch((err) => {
+        console.error("abort failed", err);
+        toast.error(t("chatStopToastFailure"));
+      });
+  }, [abortGeneration, threadId, t]);
 
   const handleModelChange = useCallback(
     (modelId: Id<"models">) => {
