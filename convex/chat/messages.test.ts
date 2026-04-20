@@ -592,4 +592,44 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const job = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(job?.isGenerating).toBe(false);
   });
+
+  it("A7 — rapid click-stop-click is safe (abortGeneration is idempotent)", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+    const caller = asCaller(t, "c_msg");
+
+    mockDoStream.mockImplementation(hangingDoStream());
+
+    const actionPromise = t.action(
+      internal.chat.messages.generateResponse,
+      { threadId, promptMessageId },
+    );
+    await waitFor(() => doStreamArgsSeen.length > 0);
+
+    // Double-click stop — both should resolve without throwing. Second
+    // call either flips shouldAbort (idempotent patch) or no-ops via
+    // the !job.isGenerating guard depending on who races whom.
+    await caller.mutation(api.chat.messages.abortGeneration, { threadId });
+    await caller.mutation(api.chat.messages.abortGeneration, { threadId });
+
+    await actionPromise;
+
+    // Exactly one aborted stream row — no duplicate on the second click.
+    const abortedRows: Array<{ status: string }> = await t.run(async (ctx) =>
+      ctx.runQuery(components.agent.streams.list, {
+        threadId: threadId as Id<"threads">,
+        statuses: ["aborted"],
+      }),
+    );
+    expect(abortedRows.length).toBe(1);
+
+    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(job?.isGenerating).toBe(false);
+    expect(job?.shouldAbort).toBeUndefined();
+  });
 });
