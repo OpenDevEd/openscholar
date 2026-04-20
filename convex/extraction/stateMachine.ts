@@ -70,9 +70,13 @@ const VALID_JOB_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
   // fail permanently, or final completion if the user cancels remaining
   // and the already-completed papers roll up).
   creditsExhausted: ["extracting", "completed", "cancelled", "failed"],
-  // Terminal states: once a job is in one of these, it stays there.
-  completed: [],
-  failed: [],
+  // Plan-05 retry un-terminals these two. The user can re-open a
+  // completed-with-failures or fully-failed job via
+  // `retryFailedQuestions`, which flips status back to `extracting` to
+  // re-run only the retryable failed questions. Cancelled stays
+  // terminal — a cancelled job is reopened via Duplicate, not Retry.
+  completed: ["extracting"],
+  failed: ["extracting"],
   cancelled: [],
 };
 
@@ -130,9 +134,14 @@ const VALID_PAPER_TRANSITIONS: Record<PaperStatus, readonly PaperStatus[]> = {
   downloading: ACTIVE_OR_TERMINAL_PAPER_STATUSES,
   indexing: ACTIVE_OR_TERMINAL_PAPER_STATUSES,
   extracting: ACTIVE_OR_TERMINAL_PAPER_STATUSES,
-  // Terminal states.
-  completed: [],
-  failed: [],
+  // Plan-05 retry un-terminals these. A paper that carried failed-but-
+  // retryable questions (completed-with-failed-questions or fully-failed)
+  // is flipped back to `extracting` when the user hits Retry so
+  // `finalizePaper` can re-trigger the rollup after the retry wave.
+  // download_failed and indexing_failed are paper-level permanent
+  // outcomes (no retry at question granularity rescues them).
+  completed: ["extracting"],
+  failed: ["extracting"],
   download_failed: [],
   indexing_failed: [],
 };

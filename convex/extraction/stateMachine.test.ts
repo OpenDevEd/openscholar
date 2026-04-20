@@ -48,6 +48,15 @@ describe("assertValidJobTransition", () => {
     },
   );
 
+  it("plan-05 un-terminals completed/failed → extracting for retry", () => {
+    expect(() =>
+      assertValidJobTransition("completed", "extracting"),
+    ).not.toThrow();
+    expect(() =>
+      assertValidJobTransition("failed", "extracting"),
+    ).not.toThrow();
+  });
+
   it("creditsExhausted is non-terminal (resumable by plan 06)", () => {
     // Incoming edges: any active phase can run out of credits.
     for (const from of [
@@ -102,7 +111,6 @@ describe("assertValidPaperTransition", () => {
     ["download_failed", "indexing"],
     ["indexing_failed", "extracting"],
     ["completed", "pending"],
-    ["failed", "extracting"],
   ] as const)(
     "rejects illegal transition %s → %s",
     (from, to) => {
@@ -111,4 +119,13 @@ describe("assertValidPaperTransition", () => {
       );
     },
   );
+
+  it("plan-05 un-terminals completed/failed → extracting for retry", () => {
+    expect(() =>
+      assertValidPaperTransition("completed", "extracting"),
+    ).not.toThrow();
+    expect(() =>
+      assertValidPaperTransition("failed", "extracting"),
+    ).not.toThrow();
+  });
 });
