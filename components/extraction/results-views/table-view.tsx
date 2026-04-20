@@ -31,6 +31,8 @@ import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { getReviewLabel, getReviewState, isReviewed } from "@/lib/extraction/reviews";
 import { HighlightedText } from "./highlighted-text";
+import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
+import { ErrorHistory } from "@/components/extraction/error-history";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -148,9 +150,20 @@ export const TableView = memo(function TableView({
                   paper.status === "download_failed" && !hasAbstract;
                 const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
 
+                const completedCount = paper.results.filter(
+                  (r) => r.status === "completed",
+                ).length;
+                const questionProgress = `${completedCount}/${Math.max(
+                  questions.length,
+                  paper.results.length,
+                )}`;
+
                 return (
                   <TableRow
                     key={paper._id}
+                    data-paper-id={paper._id}
+                    data-paper-status={paper.status}
+                    data-question-progress={questionProgress}
                     className={cn(
                       "group hover:bg-muted/50 transition-colors cursor-pointer",
                       isSelected && "bg-primary/5",
@@ -245,6 +258,30 @@ export const TableView = memo(function TableView({
                               {t("reviewed", { count: reviewedCount, total: paper.results.length })}
                             </Badge>
                           ) : null}
+                        </div>
+
+                        {/* Plan-07: inline per-paper question progress.
+                            Pure presentational — counts derive from
+                            paper.results. Renders a group role with
+                            data-question-progress for behavior tests. */}
+                        <div
+                          className="pt-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <PaperQuestionProgress
+                            paperStatus={paper.status}
+                            results={paper.results}
+                            totalQuestions={questions.length}
+                          />
+                        </div>
+
+                        {/* Plan-07: expandable error history.
+                            Self-hides when the paper has no error rows
+                            (the 99% happy path). Click bubbling is
+                            stopped so toggling the accordion doesn't
+                            also toggle the row selection. */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <ErrorHistory paperId={paper._id} />
                         </div>
                       </div>
                     </TableCell>

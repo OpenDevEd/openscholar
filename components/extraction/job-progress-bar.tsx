@@ -54,7 +54,7 @@ export function JobProgressBar({
   failed,
   total,
 }: JobProgressBarProps) {
-  const t = useTranslations("extraction.job");
+  const t = useTranslations("jobStatus");
   const percent = percentFromCounts(processed, failed, total);
   const processedPlusFailed = processed + failed;
 

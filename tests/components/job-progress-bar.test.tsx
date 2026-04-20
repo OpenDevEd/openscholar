@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
 import { render, screen } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({
@@ -24,16 +25,15 @@ vi.mock("motion/react", () => ({
     {},
     {
       get:
-        (_, tag: string) =>
-        ({ children, ...props }: { children?: React.ReactNode }) => {
-          const Tag = tag as keyof JSX.IntrinsicElements;
+        () =>
+        ({ children, ...props }: ComponentProps<"div">) => {
           const {
             initial: _i,
             animate: _a,
             transition: _t,
             ...rest
           } = props as Record<string, unknown>;
-          return <Tag {...rest}>{children}</Tag>;
+          return <div {...rest}>{children as React.ReactNode}</div>;
         },
     },
   ),

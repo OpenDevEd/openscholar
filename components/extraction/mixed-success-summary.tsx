@@ -30,6 +30,9 @@ import { PartyPopper } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { ERROR_CODES, type ErrorCode } from "@/lib/errors/taxonomy";
+
+const KNOWN_CODES: ReadonlySet<string> = new Set(ERROR_CODES);
 
 export interface MixedSuccessSummaryProps {
   jobId: Id<"extractionJobs">;
@@ -39,6 +42,13 @@ export function MixedSuccessSummary({ jobId }: MixedSuccessSummaryProps) {
   const t = useTranslations("extraction.mixedSuccess");
   const tTitle = useTranslations("errors.title");
   const headingId = useId();
+
+  // The query widens `code` to `string` for forward-compat with codes
+  // the taxonomy doesn't yet recognise. Fall back to the raw code
+  // string (humanised) when the translation key is absent, so a future
+  // classifier revision never renders a blank cell.
+  const titleForCode = (code: string): string =>
+    KNOWN_CODES.has(code) ? tTitle(code as ErrorCode) : code.replace(/_/g, " ");
 
   const { data: summary, settlement } = useProtectedQuery(
     api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary,
@@ -88,7 +98,7 @@ export function MixedSuccessSummary({ jobId }: MixedSuccessSummaryProps) {
               {summary.byCode
                 .map(
                   (entry) =>
-                    `${entry.count} ${tTitle(entry.code).toLowerCase()}`,
+                    `${entry.count} ${titleForCode(entry.code).toLowerCase()}`,
                 )
                 .join(", ")}
             </span>
@@ -96,7 +106,7 @@ export function MixedSuccessSummary({ jobId }: MixedSuccessSummaryProps) {
           <ul className="sr-only">
             {summary.byCode.map((entry) => (
               <li key={entry.code} data-failure-code={entry.code}>
-                {entry.count} {tTitle(entry.code)}
+                {entry.count} {titleForCode(entry.code)}
               </li>
             ))}
           </ul>
