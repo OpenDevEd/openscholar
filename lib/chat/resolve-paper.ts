@@ -27,6 +27,7 @@
  */
 
 import type { Id } from "@/convex/_generated/dataModel";
+import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 
 export interface ResolvablePaper {
   sourceId: Id<"extractionJobSources">;
@@ -40,6 +41,29 @@ export interface ResolvablePaper {
   pdfUrl: string | null;
   openalexId: string | null;
   included: boolean;
+}
+
+/**
+ * Pure 1:1 projection from the Convex row shape to the citation-rendering
+ * contract. Extracted from `MessageList` where the same projection lived
+ * inline inside a `useMemo`. Ref-stability of the output depends entirely
+ * on the input `row` identity — do NOT call this on `next` each render
+ * without upstream stabilization (see `stabilizeRowsById`).
+ */
+export function resolvePaperFromRow(row: ChatSourceRow): ResolvablePaper {
+  return {
+    sourceId: row.sourceId,
+    chatPaperId: row.chatPaperId,
+    position: row.position,
+    title: row.title,
+    authors: row.authors,
+    year: row.year,
+    abstract: row.abstract,
+    doi: row.doi,
+    pdfUrl: row.pdfUrl,
+    openalexId: row.openalexId,
+    included: row.included,
+  };
 }
 
 export interface PaperCitation<P extends ResolvablePaper = ResolvablePaper> {
