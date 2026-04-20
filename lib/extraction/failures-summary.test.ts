@@ -65,4 +65,24 @@ describe("summarizeFailures", () => {
     expect(result.total).toBe(sum);
     expect(result.total).toBe(7);
   });
+
+  it("R6: each entry carries retryable flag sourced from taxonomy.isRetryable", () => {
+    const input: FailureInput[] = [
+      { code: "rate_limit" }, // retryable:true per taxonomy
+      { code: "pdf_invalid" }, // retryable:false
+      { code: "network" }, // retryable:true
+      { code: "auth" }, // retryable:false
+      { code: "insufficient_credits" }, // retryable:true
+    ];
+    const byCodeMap = Object.fromEntries(
+      summarizeFailures(input).byCode.map((e) => [e.code, e.retryable]),
+    );
+    expect(byCodeMap).toEqual({
+      rate_limit: true,
+      pdf_invalid: false,
+      network: true,
+      auth: false,
+      insufficient_credits: true,
+    });
+  });
 });
