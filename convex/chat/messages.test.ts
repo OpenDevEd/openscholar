@@ -347,4 +347,73 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     await actionPromise;
     expect(doStreamArgsSeen[0]?.abortSignal?.aborted).toBe(true);
   });
+
+  it("A2 — onAbort wiring logs '[chat] stream aborted by user'", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    mockDoStream.mockImplementation(hangingDoStream());
+
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      const actionPromise = t.action(
+        internal.chat.messages.generateResponse,
+        { threadId, promptMessageId },
+      );
+      await waitFor(() => doStreamArgsSeen.length > 0);
+      await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+      await actionPromise;
+
+      const abortLog = infoSpy.mock.calls.find(
+        (call) =>
+          typeof call[0] === "string" &&
+          call[0].includes("[chat] stream aborted by user"),
+      );
+      expect(abortLog).toBeDefined();
+      // The action's onAbort passes { jobId, threadId, stepCount } as
+      // the structured payload — assert the shape is honest.
+      const payload = abortLog?.[1] as
+        | { jobId: string; threadId: string; stepCount: number }
+        | undefined;
+      expect(payload?.jobId).toBe(jobId);
+      expect(payload?.threadId).toBe(threadId);
+      expect(typeof payload?.stepCount).toBe("number");
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it("A3 — stream row transitions to state:{kind:'aborted'} after abort", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    mockDoStream.mockImplementation(hangingDoStream());
+
+    const actionPromise = t.action(
+      internal.chat.messages.generateResponse,
+      { threadId, promptMessageId },
+    );
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+    await actionPromise;
+
+    const abortedRows: Array<{ status: string }> = await t.run(async (ctx) =>
+      ctx.runQuery(components.agent.streams.list, {
+        threadId: threadId as Id<"threads">,
+        statuses: ["aborted"],
+      }),
+    );
+    expect(abortedRows.length).toBeGreaterThanOrEqual(1);
+    expect(abortedRows[0]?.status).toBe("aborted");
+  });
 });
