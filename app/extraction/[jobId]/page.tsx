@@ -48,6 +48,7 @@ import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
 import { CompletionToastObserver } from "@/components/extraction/completion-toast-observer";
 import { CostBadge } from "@/components/extraction/cost-badge";
 import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
+import { RetrySummary } from "@/components/extraction/retry-summary";
 import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
@@ -703,6 +704,20 @@ export default function JobDetailPage() {
           {job.status === "creditsExhausted" && (
             <div className="px-4 md:px-6 pt-4">
               <CreditsExhaustedBanner onCancelRemaining={handleCancel} />
+            </div>
+          )}
+
+          {/* Plan-05: retry-failed CTA. Sits beside (not replacing) the
+              Duplicate button; self-hides when there's nothing to retry
+              or flag. Visible for completed / failed / creditsExhausted. */}
+          {(job.status === "completed" ||
+            job.status === "failed" ||
+            job.status === "creditsExhausted") && (
+            <div className="px-4 md:px-6 pt-4">
+              <RetrySummary
+                jobId={jobId}
+                usePdfs={job.usePdfs ?? false}
+              />
             </div>
           )}
 
