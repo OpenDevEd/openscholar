@@ -15,6 +15,8 @@
  *   can restore focus to the textarea after closing the dialog
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
+import { waitFor } from "@testing-library/react";
 import {
   render,
   screen,
@@ -218,6 +220,68 @@ describe("<MessageComposer>", () => {
     );
     await user.click(screen.getByRole("button", { name: /chatStop/i }));
     expect(abortMock).toHaveBeenCalledWith({ threadId: "t_xyz" });
+  });
+
+  it("B1 — Stop click fires toast.success with the localized chatStopToast key", async () => {
+    const user = userEvent.setup();
+    abortMock.mockClear();
+    abortMock.mockResolvedValueOnce(undefined);
+    (toast.success as ReturnType<typeof vi.fn>).mockClear();
+    renderWithSources(
+      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_xyz" />,
+    );
+    await user.click(screen.getByRole("button", { name: /chatStop/i }));
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("chatStopToast");
+    });
+  });
+
+  it("B2 — Stop click on a failing mutation fires toast.error and logs", async () => {
+    const user = userEvent.setup();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    abortMock.mockClear();
+    abortMock.mockRejectedValueOnce(new Error("network"));
+    (toast.error as ReturnType<typeof vi.fn>).mockClear();
+    renderWithSources(
+      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_xyz" />,
+    );
+    await user.click(screen.getByRole("button", { name: /chatStop/i }));
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("chatStopToastFailure");
+    });
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("B7 — Stop disappears once the job stops generating; Send returns", async () => {
+    const { rerender } = renderWithSources(
+      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_1" />,
+    );
+    expect(screen.getByRole("button", { name: /chatStop/i })).toBeTruthy();
+
+    rerender(
+      <PapersContext.Provider
+        value={fakePapersContext({
+          jobId: "job_1" as Id<"extractionJobs">,
+          rows: [mkChatSourceRow({ included: true })],
+        })}
+      >
+        <MessageComposer
+          job={makeJob({ isGenerating: false })}
+          threadId="t_1"
+        />
+      </PapersContext.Provider>,
+    );
+    // AnimatePresence runs an exit transition on the stop button; wait
+    // for it to leave the DOM before asserting the send button is back.
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /chatStop/i })).toBeNull();
+    });
+    expect(
+      screen.getByRole("button", { name: /chatSend/i }),
+    ).toBeInTheDocument();
   });
 
   it("exposes data-chat-composer so ClearConversation can refocus the textarea", () => {
