@@ -50,6 +50,20 @@ export function validateResumeTransition(args: {
   availableCredits: number;
   remainingEstimate: number;
 }): ResumeTransitionResult {
-  const { pausedFromStatus } = args;
+  const { currentStatus, pausedFromStatus, availableCredits, remainingEstimate } =
+    args;
+
+  if (
+    currentStatus === "creditsExhausted" &&
+    availableCredits < remainingEstimate
+  ) {
+    return {
+      ok: false,
+      reason: "insufficient_credits",
+      needed: remainingEstimate,
+      available: availableCredits,
+    };
+  }
+
   return { ok: true, nextStatus: pausedFromStatus ?? "extracting" };
 }

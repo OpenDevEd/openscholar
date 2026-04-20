@@ -80,4 +80,19 @@ describe("validateResumeTransition", () => {
       }),
     ).toEqual({ ok: true, nextStatus: "extracting" });
   });
+
+  it("R9: from 'creditsExhausted' with insufficient balance → not-ok with needed/available", () => {
+    expect(
+      validateResumeTransition({
+        currentStatus: "creditsExhausted",
+        availableCredits: 10,
+        remainingEstimate: 50,
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "insufficient_credits",
+      needed: 50,
+      available: 10,
+    });
+  });
 });
