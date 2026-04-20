@@ -74,6 +74,33 @@ function hangingDoStream(
   });
 }
 
+/** A doStream that emits `deltas.length` text-delta chunks then hangs
+ *  until abortSignal fires. Used to verify partial-delta persistence. */
+function partialDeltasThenHangDoStream(
+  deltas: string[],
+): (options: {
+  abortSignal?: AbortSignal;
+}) => Promise<{ stream: ReadableStream<unknown> }> {
+  return async (options) => ({
+    stream: new ReadableStream({
+      start(controller) {
+        controller.enqueue({ type: "stream-start", warnings: [] });
+        controller.enqueue({ type: "text-start", id: "0" });
+        for (const d of deltas) {
+          controller.enqueue({ type: "text-delta", id: "0", delta: d });
+        }
+        options.abortSignal?.addEventListener("abort", () => {
+          try {
+            controller.close();
+          } catch {
+            // already closed
+          }
+        });
+      },
+    }),
+  });
+}
+
 /** Poll helper: wait until a predicate returns true, or throw. */
 async function waitFor(
   predicate: () => boolean,
@@ -415,5 +442,55 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     );
     expect(abortedRows.length).toBeGreaterThanOrEqual(1);
     expect(abortedRows[0]?.status).toBe("aborted");
+  });
+
+  it("A4 — partial deltas written before abort survive the abort", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    mockDoStream.mockImplementation(
+      partialDeltasThenHangDoStream(["hello ", "world", "!"]),
+    );
+
+    const actionPromise = t.action(
+      internal.chat.messages.generateResponse,
+      { threadId, promptMessageId },
+    );
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    // Give DeltaStreamer's 250ms throttle (convex/chat/messages.ts:178)
+    // time to flush at least one batch before abort fires.
+    await new Promise((r) => setTimeout(r, 400));
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+    await actionPromise;
+
+    const allStreams: Array<{ streamId: Id<"streamingMessages"> }> =
+      await t.run(async (ctx) =>
+        ctx.runQuery(components.agent.streams.list, {
+          threadId: threadId as Id<"threads">,
+          statuses: ["aborted"],
+        }),
+      );
+    expect(allStreams.length).toBeGreaterThanOrEqual(1);
+    const streamId = allStreams[0]!.streamId;
+
+    const deltas: Array<{ streamId: string; parts: unknown[] }> =
+      await t.run(async (ctx) =>
+        ctx.runQuery(components.agent.streams.listDeltas, {
+          threadId: threadId as Id<"threads">,
+          cursors: [{ streamId, cursor: 0 }],
+        }),
+      );
+    // At least one delta batch should have flushed pre-abort.
+    expect(deltas.length).toBeGreaterThanOrEqual(1);
+    const totalParts = deltas.reduce(
+      (acc, d) => acc + (d.parts?.length ?? 0),
+      0,
+    );
+    expect(totalParts).toBeGreaterThanOrEqual(1);
   });
 });
