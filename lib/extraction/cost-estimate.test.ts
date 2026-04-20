@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   estimateExtractionCredits,
   EXTRACTION_COST_CONSTANTS,
+  type ExtractionEstimateArgs,
 } from "@/lib/extraction/cost-estimate";
 
 describe("estimateExtractionCredits", () => {
@@ -79,6 +80,53 @@ describe("estimateExtractionCredits", () => {
       const { low, mid, high } = estimateExtractionCredits(args);
       expect(high).toBeGreaterThanOrEqual(mid);
       expect(mid).toBeGreaterThanOrEqual(low);
+    }
+  });
+
+  it("R6: strictly monotonic in papers (doubling papers increases mid)", () => {
+    const base = { questions: 4, usePdfs: false, avgPaperKind: "abstract" as const };
+    const small = estimateExtractionCredits({ ...base, papers: 10 });
+    const large = estimateExtractionCredits({ ...base, papers: 20 });
+    expect(large.mid).toBeGreaterThan(small.mid);
+    expect(large.low).toBeGreaterThan(small.low);
+    expect(large.high).toBeGreaterThan(small.high);
+  });
+
+  it("R7: strictly monotonic in questions (doubling questions increases mid)", () => {
+    const base = { papers: 10, usePdfs: true, avgPaperKind: "pdf" as const };
+    const small = estimateExtractionCredits({ ...base, questions: 3 });
+    const large = estimateExtractionCredits({ ...base, questions: 6 });
+    expect(large.mid).toBeGreaterThan(small.mid);
+    expect(large.low).toBeGreaterThan(small.low);
+    expect(large.high).toBeGreaterThan(small.high);
+  });
+
+  it("R8: usePdfs=true overrides avgPaperKind='abstract' → PDF-tier math wins", () => {
+    const result = estimateExtractionCredits({
+      papers: 10,
+      questions: 5,
+      usePdfs: true,
+      avgPaperKind: "abstract",
+    });
+    const pdfExpected =
+      10 * EXTRACTION_COST_CONSTANTS.INDEX_PDF_CREDIT +
+      10 * 5 * EXTRACTION_COST_CONSTANTS.PDF_Q_CREDIT_MID;
+    expect(result.mid).toBe(pdfExpected);
+    // Sanity: not the cheaper abstract-path number.
+    const abstractWould = 10 * 5 * EXTRACTION_COST_CONSTANTS.ABSTRACT_Q_CREDIT_MID;
+    expect(result.mid).toBeGreaterThan(abstractWould);
+  });
+
+  it("R9: widening factor — high is always ≥ 1.2 × mid when papers > 0 (safety margin for preflight block)", () => {
+    const matrix: Array<ExtractionEstimateArgs> = [
+      { papers: 1, questions: 1, usePdfs: false, avgPaperKind: "abstract" },
+      { papers: 10, questions: 5, usePdfs: false, avgPaperKind: "abstract" },
+      { papers: 10, questions: 5, usePdfs: true, avgPaperKind: "pdf" },
+      { papers: 200, questions: 10, usePdfs: true, avgPaperKind: "pdf" },
+    ];
+    for (const args of matrix) {
+      const { mid, high } = estimateExtractionCredits(args);
+      expect(high).toBeGreaterThanOrEqual(mid * 1.2);
     }
   });
 });
