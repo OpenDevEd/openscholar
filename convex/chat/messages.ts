@@ -43,7 +43,7 @@ import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {
   classifyChatError,
   serializeChatError,
-} from "../../lib/chat/error-classifier";
+} from "../../lib/errors/taxonomy";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
 import {
   ABORT_REASON_USER_STOPPED,

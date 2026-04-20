@@ -30,7 +30,7 @@ import {
   requiresUserEdit,
   type ChatErrorClass,
   type ChatErrorEnvelope,
-} from "@/lib/chat/error-classifier";
+} from "@/lib/errors/taxonomy";
 
 interface ChatErrorAlertProps {
   rawError: string;
@@ -102,7 +102,7 @@ export function ChatErrorAlert({
       role={role}
       className="mt-2 self-start"
       data-message-error="true"
-      data-error-class={envelope.class}
+      data-error-code={envelope.class}
       data-http-status={envelope.httpStatus}
     >
       <Icon className="size-4" aria-hidden="true" />

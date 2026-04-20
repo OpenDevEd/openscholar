@@ -7,7 +7,7 @@ import {
   requiresUserEdit,
   serializeChatError,
   type ChatErrorEnvelope,
-} from "@/lib/chat/error-classifier";
+} from "@/lib/errors/taxonomy";
 
 describe("classifyChatError", () => {
   it("maps HTTP 429 with OpenRouter body to rate_limit + retryAfter", () => {
