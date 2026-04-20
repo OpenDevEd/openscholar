@@ -45,6 +45,10 @@ import {
   serializeChatError,
 } from "../../lib/chat/error-classifier";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
+import {
+  ABORT_REASON_USER_STOPPED,
+  ABORT_ERROR_STRING,
+} from "../../lib/chat/abort-signal";
 
 /* ────────────────────────────────────────────────────────────────── */
 /*                      User → Assistant turn                         */
@@ -147,7 +151,7 @@ export const generateResponse = internalAction({
       onAbort: () => {
         if (!abortController.signal.aborted) {
           abortController.abort(
-            new DOMException("user_stopped", "AbortError"),
+            new DOMException(ABORT_REASON_USER_STOPPED, "AbortError"),
           );
         }
       },
@@ -348,18 +352,33 @@ export const listThreadMessages = query({
     const [paginated, rawPage, streams] = await Promise.all([
       listUIMessages(ctx, components.agent, args),
       listMessages(ctx, components.agent, args),
-      syncStreams(ctx, components.agent, args),
+      // includeStatuses is required for aborted stream rows to reach the
+      // client — the library default is ["streaming"] only
+      // (@convex-dev/agent/src/component/streams.ts:125), which silently
+      // drops aborted streams. Passing all three here means a user-stopped
+      // message stays visible with its partial deltas.
+      syncStreams(ctx, components.agent, {
+        ...args,
+        includeStatuses: ["streaming", "finished", "aborted"],
+      }),
     ]);
     // `listUIMessages` drops the `error` field during the doc→UI
     // conversion. Attach it back by id so the client's failure Alert
     // can classify and render without a second query.
+    // Aborted messages are a special case: the library's call.fail path
+    // persists them as {status:"failed", error: ABORT_ERROR_STRING}. We
+    // translate that sentinel into a clean `aborted: true` boolean and
+    // drop the envelope so the client branches cleanly without parsing
+    // an error string.
     const errorById = new Map<string, string>();
     for (const doc of rawPage.page) {
       if (doc.error) errorById.set(doc._id, doc.error);
     }
     const page = paginated.page.map((m) => {
       const err = errorById.get(m.id);
-      return err ? { ...m, error: err } : m;
+      if (!err) return m;
+      if (err === ABORT_ERROR_STRING) return { ...m, aborted: true };
+      return { ...m, error: err };
     });
     return { ...paginated, page, streams };
   },
