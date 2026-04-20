@@ -959,6 +959,10 @@ export const extractOneQuestion = internalAction({
         v.literal("cancelled"),
         v.literal("job_terminal"),
         v.literal("credits_exhausted"),
+        // Plan-06: question was already enqueued before the user hit
+        // pause. The workflow gate stops NEW dispatches; this guard
+        // handles the ones already in flight.
+        v.literal("paused"),
       ),
     }),
   ),
@@ -973,7 +977,8 @@ export const extractOneQuestion = internalAction({
           | "already_billed"
           | "cancelled"
           | "job_terminal"
-          | "credits_exhausted";
+          | "credits_exhausted"
+          | "paused";
       }
   > => {
     const question = await ctx.runQuery(
@@ -1036,6 +1041,15 @@ export const extractOneQuestion = internalAction({
     // resume.
     if (job.status === "creditsExhausted") {
       return { status: "skipped", reason: "credits_exhausted" };
+    }
+    // Plan-06: user-initiated pause skip-guard. If a question was
+    // already in flight when the user hit Pause, the workflow gate
+    // couldn't stop it; this guard ensures it short-circuits before
+    // the LLM call and the credit charge. No bill is posted, no row is
+    // persisted — the workflow's resume-side re-dispatch re-enters
+    // this same action and bills on the retry.
+    if (job.status === "paused") {
+      return { status: "skipped", reason: "paused" };
     }
 
     const operation = `Extraction (1 question)`;
