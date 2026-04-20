@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useDeferredValue, useMemo } from "react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import {
@@ -39,6 +39,9 @@ export type SourcesPanelStateApi = {
   chipCounts: ChipCounts;
   totalCount: number;
   includedCount: number;
+  /** True when the deferred query lags behind the eager `state.q` — i.e., the
+   *  filter pipeline is still catching up with the latest keystroke. */
+  isSearchStale: boolean;
 };
 
 export function useSourcesPanelState(
@@ -61,6 +64,12 @@ export function useSourcesPanelState(
     },
   );
 
+  // Eager `state.q` binds the <input value={...}> for zero perceived lag.
+  // The deferred value drives the expensive filter + scorer pipeline — under
+  // rendering pressure React can interrupt its render for newer keystrokes.
+  const deferredQuery = useDeferredValue(state.q);
+  const isSearchStale = deferredQuery !== state.q;
+
   const chipCounts = useMemo(() => computeChipCounts(rows), [rows]);
 
   const filteredByChip = useMemo(
@@ -69,8 +78,8 @@ export function useSourcesPanelState(
   );
 
   const searched = useMemo(
-    () => runWeightedSearch(filteredByChip, state.q),
-    [filteredByChip, state.q],
+    () => runWeightedSearch(filteredByChip, deferredQuery),
+    [filteredByChip, deferredQuery],
   );
 
   const visibleRows = useMemo(
@@ -80,12 +89,12 @@ export function useSourcesPanelState(
 
   const matches = useMemo(() => {
     const map = new Map<string, SearchMatch>();
-    if (state.q.trim().length === 0) return map;
+    if (deferredQuery.trim().length === 0) return map;
     for (const row of visibleRows) {
-      map.set(row.chatPaperId, scoreSource(row, state.q));
+      map.set(row.chatPaperId, scoreSource(row, deferredQuery));
     }
     return map;
-  }, [visibleRows, state.q]);
+  }, [visibleRows, deferredQuery]);
 
   const totalCount = rows.length;
   const includedCount = useMemo(
@@ -103,5 +112,6 @@ export function useSourcesPanelState(
     chipCounts,
     totalCount,
     includedCount,
+    isSearchStale,
   };
 }
