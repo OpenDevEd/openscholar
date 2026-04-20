@@ -588,6 +588,16 @@
     "chooseFromHistory": "Choose from history",
     "defineQuestions": "Define Questions",
     "whatToExtract": "What to extract",
+    "preflight": {
+      "sufficient": "~{estimate} credits",
+      "insufficient": "Need ~{estimate} credits, you have {balance}"
+    },
+    "creditsExhausted": {
+      "title": "Extraction paused — out of credits",
+      "body": "The job stopped mid-run because your credit balance ran out. Top up to resume, or cancel the remaining papers.",
+      "resume": "Resume",
+      "cancelRemaining": "Cancel remaining papers"
+    },
     "pleaseSelectSource": "Please select at least one source",
     "pleaseCompleteSteps": "Please complete all steps",
     "selectedHistoryNotFound": "Selected history entries not found",

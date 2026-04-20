@@ -571,6 +571,16 @@
     "chooseFromHistory": "履歴から選択",
     "defineQuestions": "質問を定義",
     "whatToExtract": "抽出する内容",
+    "preflight": {
+      "sufficient": "約{estimate}クレジット",
+      "insufficient": "約{estimate}クレジット必要、現在{balance}保有"
+    },
+    "creditsExhausted": {
+      "title": "抽出を一時停止しました — クレジット不足",
+      "body": "クレジット残高が不足したため、実行中にジョブが停止しました。チャージして再開するか、残りの論文をキャンセルしてください。",
+      "resume": "再開",
+      "cancelRemaining": "残りの論文をキャンセル"
+    },
     "pleaseSelectSource": "少なくとも1つのソースを選択してください",
     "pleaseCompleteSteps": "すべてのステップを完了してください",
     "selectedHistoryNotFound": "選択した履歴エントリが見つかりません",

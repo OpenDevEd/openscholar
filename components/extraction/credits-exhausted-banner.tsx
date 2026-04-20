@@ -62,7 +62,7 @@ export function CreditsExhaustedBanner({
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Coins className="h-3.5 w-3.5" aria-hidden="true" />
           <span className="tabular-nums">
-            {tc("balance")}: {total.toLocaleString()}
+            {tc("balanceLabel")}: {total.toLocaleString()}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">

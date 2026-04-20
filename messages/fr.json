@@ -571,6 +571,16 @@
     "chooseFromHistory": "Choisir dans l'historique",
     "defineQuestions": "Définir les questions",
     "whatToExtract": "Qu'extraire",
+    "preflight": {
+      "sufficient": "~{estimate} crédits",
+      "insufficient": "Besoin de ~{estimate} crédits, vous en avez {balance}"
+    },
+    "creditsExhausted": {
+      "title": "Extraction en pause — crédits épuisés",
+      "body": "La tâche s'est arrêtée en cours d'exécution car votre solde de crédits est épuisé. Rechargez pour reprendre, ou annulez les articles restants.",
+      "resume": "Reprendre",
+      "cancelRemaining": "Annuler les articles restants"
+    },
     "pleaseSelectSource": "Veuillez sélectionner au moins une source",
     "pleaseCompleteSteps": "Veuillez compléter toutes les étapes",
     "selectedHistoryNotFound": "Entrées d'historique sélectionnées non trouvées",

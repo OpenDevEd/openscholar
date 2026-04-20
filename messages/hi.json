@@ -571,6 +571,16 @@
     "chooseFromHistory": "इतिहास से चुनें",
     "defineQuestions": "प्रश्न परिभाषित करें",
     "whatToExtract": "क्या निकालना है",
+    "preflight": {
+      "sufficient": "~{estimate} क्रेडिट",
+      "insufficient": "~{estimate} क्रेडिट आवश्यक, आपके पास {balance} हैं"
+    },
+    "creditsExhausted": {
+      "title": "निष्कर्षण रोक दिया गया — क्रेडिट समाप्त",
+      "body": "क्रेडिट शेष समाप्त होने के कारण कार्य बीच में रुक गया। फिर से शुरू करने के लिए टॉप अप करें, या शेष पेपर रद्द करें।",
+      "resume": "फिर से शुरू करें",
+      "cancelRemaining": "शेष पेपर रद्द करें"
+    },
     "pleaseSelectSource": "कृपया कम से कम एक स्रोत चुनें",
     "pleaseCompleteSteps": "कृपया सभी चरण पूरे करें",
     "selectedHistoryNotFound": "चयनित इतिहास प्रविष्टियां नहीं मिलीं",

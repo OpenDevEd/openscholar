@@ -571,6 +571,16 @@
     "chooseFromHistory": "从历史记录中选择",
     "defineQuestions": "定义问题",
     "whatToExtract": "提取内容",
+    "preflight": {
+      "sufficient": "约 {estimate} 积分",
+      "insufficient": "需要约 {estimate} 积分，您现有 {balance}"
+    },
+    "creditsExhausted": {
+      "title": "提取已暂停 — 积分已用尽",
+      "body": "由于积分余额耗尽，作业在运行中已停止。请充值以继续，或取消剩余的论文。",
+      "resume": "继续",
+      "cancelRemaining": "取消剩余论文"
+    },
     "pleaseSelectSource": "请至少选择一个来源",
     "pleaseCompleteSteps": "请完成所有步骤",
     "selectedHistoryNotFound": "未找到选定的历史记录条目",
