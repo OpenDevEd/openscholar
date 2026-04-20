@@ -62,6 +62,10 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
     cancelled: tc("cancelled"),
   }), [tc]);
 
+  // Humanise the remaining states ("downloading_pdfs" → "downloading pdfs").
+  // Translation keys for every pipeline status land in the plan-07 B11
+  // translation pass; until then the English literal passes as aria-label
+  // because it's already meaningful to a screen reader.
   const getStatusLabel = (status: string) =>
     statusLabelMap[status] ?? status.replace(/_/g, " ");
   const status = job.status ?? "pending";
@@ -98,7 +102,12 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         >
           {/* Status dot (hidden in chat mode — no pipeline state) */}
           {!isChat && (
-            <span className={cn("w-2 h-2 rounded-full shrink-0", getStatusDotColor(status))} />
+            <span
+              role="img"
+              aria-label={getStatusLabel(status)}
+              data-job-status={status}
+              className={cn("w-2 h-2 rounded-full shrink-0", getStatusDotColor(status))}
+            />
           )}
 
           {/* Mode badge */}
@@ -152,7 +161,12 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
             <div className="flex items-start gap-3">
               {/* Status dot (extraction only) */}
               {!isChat && (
-                <span className={cn("w-2 h-2 rounded-full shrink-0 mt-2", getStatusDotColor(status))} />
+                <span
+                  role="img"
+                  aria-label={getStatusLabel(status)}
+                  data-job-status={status}
+                  className={cn("w-2 h-2 rounded-full shrink-0 mt-2", getStatusDotColor(status))}
+                />
               )}
 
               <div className="flex-1 min-w-0 space-y-2">
@@ -252,7 +266,12 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         )}
       >
         {/* Colored top stripe */}
-        <div className={cn("h-[3px]", isChat ? "bg-primary/60" : getStatusStripeColor(status))} />
+        <div
+          role={isChat ? undefined : "img"}
+          aria-label={isChat ? undefined : getStatusLabel(status)}
+          data-job-status={isChat ? undefined : status}
+          className={cn("h-[3px]", isChat ? "bg-primary/60" : getStatusStripeColor(status))}
+        />
 
         {/* Content */}
         <div className={cn("flex-1 flex flex-col", isCompact ? "p-3" : "p-4")}>
