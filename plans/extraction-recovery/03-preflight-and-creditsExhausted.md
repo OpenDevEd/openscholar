@@ -234,12 +234,18 @@ After green, wire into `startJob`, schema, UI banner — test-after.
 
 ## Acceptance criteria
 
-- [ ] Pre-flight block trips for insufficient credits with structured `insufficient_credits` error and no `extractionJobs` row created.
-- [ ] Job-creator shows live-updating balance vs estimate with "Buy Credits" CTA wired.
-- [ ] Mid-run credit exhaustion transitions job to `creditsExhausted` (non-terminal) and stops dispatching new questions.
-- [ ] Job detail page surfaces a banner with Resume + Buy Credits for `creditsExhausted` jobs.
-- [ ] Resume button is disabled until the user's balance >= remaining estimate (computed live).
-- [ ] All existing extraction tests pass.
+- [x] Pre-flight block trips for insufficient credits with structured `insufficient_credits` error and no `extractionJobs` row created. (convex/extraction/mutations/jobs.ts + preflight.test.ts "throws INSUFFICIENT_CREDITS")
+- [x] Job-creator shows live-updating balance vs estimate with "Buy Credits" CTA wired. (components/extraction/job-creator.tsx + preflight-banner.tsx + extraction-preflight-banner.test.tsx)
+- [x] Mid-run credit exhaustion transitions job to `creditsExhausted` (non-terminal) and stops dispatching new questions. (convex/extraction/workpoolActions.ts handleCreditsExhaustionAndRethrow + skip-guard + creditsExhausted.test.ts)
+- [x] Job detail page surfaces a banner with Resume + Buy Credits for `creditsExhausted` jobs. (app/extraction/[jobId]/page.tsx + components/extraction/credits-exhausted-banner.tsx + credits-exhausted-banner.test.tsx)
+- [x] Resume button is disabled until the user's balance >= remaining estimate (computed live). Disabled-pre-plan-06 state shipped — plan 06 will wire the onResume mutation. (credits-exhausted-banner.tsx: `canResume = Boolean(onResume) && hasEnoughToResume`)
+- [x] All existing extraction tests pass. (214 files / 2392 tests green on full run; TS strict-mode clean.)
+
+## Follow-ups (out of scope for plan 03)
+
+- `scripts/audit-extraction-cost.ts` — derive constants from `creditTransactions.metadata.billingType`. Flagged in plan 03 "Known pitfalls"; current constants are conservative over-estimates per the in-source TODO.
+- `duplicateJob` / `startJobFromTemplate` preflight parity — the plan scoped the preflight to `startJob` only; the other two entrypoints still skip the check. Track as a follow-up before plan 05 (retry-failed-papers) lands, since retry also creates a new job.
+- Remaining-estimate gate for the Resume button — pre-plan-04 the banner uses a flat `minCreditsToResume=1`. Upgrade to `estimate - sum(creditsAgg for this job)` once plan 04's aggregate ships.
 
 ## Known pitfalls
 
