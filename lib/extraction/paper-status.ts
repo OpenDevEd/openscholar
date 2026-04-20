@@ -27,6 +27,10 @@ export type PaperRollupResult = {
   failedQuestions: number;
 };
 
-export function aggregatePaperStatus(_results: PaperQuestionInput[]): PaperRollupResult {
-  return { status: "pending", completedQuestions: 0, failedQuestions: 0 };
+export function aggregatePaperStatus(results: PaperQuestionInput[]): PaperRollupResult {
+  if (results.length === 0) {
+    return { status: "pending", completedQuestions: 0, failedQuestions: 0 };
+  }
+  const completedQuestions = results.filter((r) => r.status === "completed").length;
+  return { status: "completed", completedQuestions, failedQuestions: 0 };
 }

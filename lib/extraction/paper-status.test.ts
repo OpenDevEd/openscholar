@@ -9,4 +9,17 @@ describe("aggregatePaperStatus", () => {
       failedQuestions: 0,
     });
   });
+
+  it("R2: all completed → completed / N answered", () => {
+    const results = [
+      { status: "completed" as const },
+      { status: "completed" as const },
+      { status: "completed" as const },
+    ];
+    expect(aggregatePaperStatus(results)).toEqual({
+      status: "completed",
+      completedQuestions: 3,
+      failedQuestions: 0,
+    });
+  });
 });
