@@ -8,6 +8,8 @@ import {
   ArrowUpDown,
   ChevronDown,
   Download,
+  Columns3,
+  Check,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +45,9 @@ interface ResultsToolbarProps {
   sortBy: ResultsSortBy;
   onSortChange: (sort: ResultsSortBy) => void;
   onExportAll: () => void;
+  /** Plan-04: Credits column visibility toggle (table view only). */
+  showCredits: boolean;
+  onShowCreditsChange: (next: boolean) => void;
 }
 
 export function ResultsToolbar({
@@ -57,6 +62,8 @@ export function ResultsToolbar({
   sortBy,
   onSortChange,
   onExportAll,
+  showCredits,
+  onShowCreditsChange,
 }: ResultsToolbarProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
@@ -163,6 +170,42 @@ export function ResultsToolbar({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Columns dropdown — table view only */}
+          {viewMode === "table" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
+                  aria-label={tc("columns")}
+                >
+                  <Columns3 className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    onShowCreditsChange(!showCredits);
+                  }}
+                  data-column-toggle="credits"
+                  data-column-visible={showCredits ? "true" : "false"}
+                  className="gap-2"
+                >
+                  <Check
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      showCredits ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  {tc("credits")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* Export button */}
           <Button

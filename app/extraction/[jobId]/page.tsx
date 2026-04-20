@@ -105,6 +105,23 @@ export default function JobDetailPage() {
     viewModeDeserialize
   );
 
+  // Plan-04: per-paper Credits column visibility. URL-backed so refresh
+  // and deep-links preserve the user's chosen column set.
+  const showCreditsSerialize = useCallback(
+    (v: boolean) => (v ? "1" : "0"),
+    [],
+  );
+  const showCreditsDeserialize = useCallback(
+    (v: string) => v === "1",
+    [],
+  );
+  const [showCreditsColumn, setShowCreditsColumn] = useUrlState<boolean>(
+    "credits",
+    false,
+    showCreditsSerialize,
+    showCreditsDeserialize,
+  );
+
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [searchQueryResetKey, setSearchQueryResetKey] = useState(0);
   const debouncedFilters = useDebouncedValue(filters, 150);
@@ -842,6 +859,8 @@ export default function JobDetailPage() {
                     setExportMode('all');
                     setExportDialogOpen(true);
                   }}
+                  showCredits={showCreditsColumn}
+                  onShowCreditsChange={setShowCreditsColumn}
                 />
 
                 <div className="min-h-[600px] min-w-0">
@@ -897,6 +916,7 @@ export default function JobDetailPage() {
                           searchQuery={filters.searchQuery}
                           onOpenCitationPanel={openCitationPanel}
                           usePdfs={job.usePdfs ?? false}
+                          showCredits={showCreditsColumn}
                         />
                       )}
                       {viewMode === 'cards' && (

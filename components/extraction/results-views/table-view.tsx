@@ -40,6 +40,8 @@ interface TableViewProps {
   searchQuery?: string;
   onOpenCitationPanel: (payload: CitationPanelPayload) => void;
   usePdfs: boolean;
+  /** Plan-04: opt-in per-paper Credits column, toggled via toolbar. */
+  showCredits?: boolean;
 }
 
 export const TableView = memo(function TableView({
@@ -50,6 +52,7 @@ export const TableView = memo(function TableView({
   searchQuery = '',
   onOpenCitationPanel,
   usePdfs,
+  showCredits = false,
 }: TableViewProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
@@ -90,6 +93,14 @@ export const TableView = memo(function TableView({
                 <TableHead className="sticky left-0 w-[320px] min-w-[320px] bg-card/95 font-medium text-foreground">
                   {tc("paper")}
                 </TableHead>
+                {showCredits && (
+                  <TableHead
+                    className="w-[100px] min-w-[100px] text-right font-medium text-foreground tabular-nums"
+                    data-column="credits"
+                  >
+                    {tc("credits")}
+                  </TableHead>
+                )}
                 {questions.map((q) => (
                   <TableHead
                     key={q.key}
@@ -238,6 +249,16 @@ export const TableView = memo(function TableView({
                       </div>
                     </TableCell>
 
+                    {showCredits && (
+                      <TableCell
+                        className="align-top py-4 text-right tabular-nums"
+                        data-column="credits"
+                        data-credits={String(paper.creditsUsed ?? 0)}
+                      >
+                        {(paper.creditsUsed ?? 0).toLocaleString()}
+                      </TableCell>
+                    )}
+
                     {/* Results Columns */}
                     {questions.map((q) => {
                       const result = paper.results.find(
@@ -287,7 +308,8 @@ export const TableView = memo(function TableView({
     prevProps.questions === nextProps.questions &&
     prevProps.selectedIds === nextProps.selectedIds &&
     prevProps.searchQuery === nextProps.searchQuery &&
-    prevProps.onOpenCitationPanel === nextProps.onOpenCitationPanel
+    prevProps.onOpenCitationPanel === nextProps.onOpenCitationPanel &&
+    prevProps.showCredits === nextProps.showCredits
   );
 });
 
