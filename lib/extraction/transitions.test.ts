@@ -17,4 +17,12 @@ describe("validatePauseTransition", () => {
       pausedFrom: "downloading_pdfs",
     });
   });
+
+  it("R3: from 'indexing' → ok, pausedFrom carries through", () => {
+    expect(validatePauseTransition("indexing")).toEqual({
+      ok: true,
+      nextStatus: "paused",
+      pausedFrom: "indexing",
+    });
+  });
 });
