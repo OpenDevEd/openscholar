@@ -120,4 +120,22 @@ describe("summarizeRetryable", () => {
       permanentBreakdown: {},
     });
   });
+
+  it("R9: summarizer is pure — same input → same output, input unchanged", () => {
+    const input: RetryableResultInput[] = [
+      { status: "failed", lastError: { code: "rate_limit" } },
+      { status: "failed", lastError: { code: "pdf_invalid" } },
+      { status: "failed", lastError: { code: "moderation" } },
+      { status: "completed" },
+    ];
+    const snapshot = JSON.parse(JSON.stringify(input));
+
+    const first = summarizeRetryable(input);
+    const second = summarizeRetryable(input);
+
+    // Deterministic output.
+    expect(first).toEqual(second);
+    // Input unchanged (no in-place sort, no field mutation).
+    expect(input).toEqual(snapshot);
+  });
 });
