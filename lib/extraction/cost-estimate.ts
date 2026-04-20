@@ -25,11 +25,33 @@ export type ExtractionEstimateArgs = {
   avgPaperKind: AvgPaperKind;
 };
 
+// Conservative over-estimates — we prefer blocking preflight over mid-run
+// failure. Derived empirically from screening's ESTIMATED_CREDITS_PER_QUERY=2
+// floor (convex/lib/constants.ts) and RAG embedding pricing at
+// $0.02/1M tokens × AI_COST_MARKUP=1.3 × 10k credits/USD.
+// TODO(plan-03): re-calibrate from creditTransactions once 30 days of
+// billingType="extraction_llm" / "extraction_embedding" data exists.
+export const EXTRACTION_COST_CONSTANTS = {
+  INDEX_PDF_CREDIT: 1.5,
+  ABSTRACT_Q_CREDIT_LOW: 3,
+  ABSTRACT_Q_CREDIT_MID: 6,
+  ABSTRACT_Q_CREDIT_HIGH: 12,
+  PDF_Q_CREDIT_LOW: 10,
+  PDF_Q_CREDIT_MID: 20,
+  PDF_Q_CREDIT_HIGH: 50,
+} as const;
+
 export function estimateExtractionCredits(
   args: ExtractionEstimateArgs,
 ): ExtractionCostEstimate {
   if (args.papers === 0 || args.questions === 0) {
     return { low: 0, mid: 0, high: 0 };
   }
-  throw new Error("not implemented");
+  const c = EXTRACTION_COST_CONSTANTS;
+  const qPairs = args.papers * args.questions;
+  return {
+    low: qPairs * c.ABSTRACT_Q_CREDIT_LOW,
+    mid: qPairs * c.ABSTRACT_Q_CREDIT_MID,
+    high: qPairs * c.ABSTRACT_Q_CREDIT_HIGH,
+  };
 }
