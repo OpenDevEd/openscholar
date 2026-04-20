@@ -184,13 +184,64 @@ Otherwise, proceed to test-after implementation as enumerated in the Test plan s
 
 ## Acceptance criteria
 
-- [ ] `getJobCost(jobId)` returns O(log n) regardless of job size.
-- [ ] Job detail header shows live cost and updates within ~1s of each question completion.
-- [ ] Results table has Credits column (opt-in via column-visibility control).
-- [ ] Completion toast mentions credit count.
-- [ ] Billing page filters transactions by jobId and the URL updates accordingly.
-- [ ] `creditTransactions.metadata` no longer stores `jobId`/`paperId` — those are first-class fields.
-- [ ] All existing billing + credit tests pass.
+- [x] `getJobCost(jobId)` returns O(log n) regardless of job size.
+      _Verified via `creditsAgg.sum(ctx, { namespace: jobId })` backing the
+      total — O(log n) by construction per the @convex-dev/aggregate
+      component. Breakdown path uses the new `by_job` index so it scales
+      with this-job's debit count (bounded by P × Q), not the global
+      ledger. Covered by `convex/extraction/costs.test.ts`._
+- [x] Job detail header shows live cost and updates within ~1s of each
+      question completion.
+      _Via `<CostBadge jobId compact />` in the header metadata row,
+      subscribing to `api.extraction.queries.costs.getJobCost`._
+- [x] Results table has Credits column (opt-in via column-visibility
+      control).
+      _Added Columns dropdown to `ResultsToolbar` (table-view only) with a
+      Credits toggle. State URL-backed via `?credits=1`. Cells render
+      `paper.creditsUsed ?? 0` + `data-credits` attribute._
+- [x] Completion toast mentions credit count.
+      _`<CompletionToastObserver />` observes extracting → completed and
+      fires one sonner.success with total + paper count. Four guards:
+      no-fire on direct mount, no-double-fire on re-render, wait for cost
+      query, fire only on real transition. Tests in
+      `tests/components/completion-toast-observer.test.tsx`._
+- [x] Billing page filters transactions by jobId and the URL updates
+      accordingly.
+      _`<TransactionsList />` reads `?jobId=` from `useSearchParams`, runs
+      the scoped `getTransactions({ jobId })` path, renders clearable
+      filter chip. "View transactions" deep-link on extraction detail
+      header._
+- [x] `creditTransactions.metadata` no longer stores `jobId` / `paperId`
+      — those are first-class fields.
+      _Schema promotion (`creditTransactions.jobId | paperId | resultId |
+      billingType`) + `by_job` index. `deductCredits` accepts structured
+      scope args. All three extraction+chat call sites migrated. Behavior
+      test asserts `metadata.jobId === undefined` on every usage row._
+- [x] All existing billing + credit tests pass.
+      _216 test files / 2403 tests green (after registering `creditsAgg`
+      in `aggregates.test-support.ts` for the cascade-delete path)._
+
+## Implementation notes (post-execution)
+
+- **Embedding credits**: the plan originally suggested hooking only the
+  `recordOneAnswer` path, but that would have left embedding debits out
+  of `creditsAgg` and broken the O(log n) total. Also hooked
+  `markPaperIndexed`; aggregate `Id` widened to `string` to accept both
+  resultId (extraction_llm) and `embed:<paperId>` (embedding) in the
+  same namespace.
+- **billingType taxonomy**: renamed `extraction_embedding` → `embedding`
+  and `chat_llm` → `chat` to match the plan's four-value enum. Wallet
+  gateway's `wallet_api` stays in metadata only (not in the plan enum).
+- **`clearJobCredits` only, no ledger purge**: `deleteExtractionInternal`
+  clears the aggregate namespace but deliberately does NOT delete
+  `creditTransactions` rows — the ledger is the user's credit-audit
+  trail and must survive job deletion.
+- **Pre-step deviation**: Convex `esbuild` couldn't resolve `@/` alias
+  used by plan-01 taxonomy imports in `convex/*`. Fix: add `paths` to
+  `convex/tsconfig.json` (omit `baseUrl` on purpose — setting it would
+  steal bare-package imports like `"stripe"` to `convex/stripe.ts`).
+  Also wiped 530 legacy `extractionBilled` fields on `extractionPapers`
+  that were left behind by plan-02.
 
 ## Known pitfalls
 
