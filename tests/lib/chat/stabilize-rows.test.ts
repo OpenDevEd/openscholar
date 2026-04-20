@@ -173,4 +173,13 @@ describe("stabilizeRowsById", () => {
     expect(out[1]).toBe(next[1]);
     expect(out[1]).not.toBe(prev[0]);
   });
+
+  it("preserves the row ref when authors is a new array with identical contents", () => {
+    const prev = [row({ authors: ["Alpha", "Beta"] })];
+    const next = [{ ...prev[0]!, authors: ["Alpha", "Beta"] }];
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out[0]).toBe(prev[0]);
+  });
 });
