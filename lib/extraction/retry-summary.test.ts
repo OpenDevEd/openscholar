@@ -36,4 +36,15 @@ describe("summarizeRetryable", () => {
       permanentBreakdown: {},
     });
   });
+
+  it("R4: one permanent failure (pdf_invalid) → permanentCount=1 with per-code breakdown", () => {
+    const results: RetryableResultInput[] = [
+      { status: "failed", lastError: { code: "pdf_invalid" } },
+    ];
+    expect(summarizeRetryable(results)).toEqual({
+      retryableCount: 0,
+      permanentCount: 1,
+      permanentBreakdown: { pdf_invalid: 1 },
+    });
+  });
 });
