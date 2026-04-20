@@ -13,15 +13,15 @@
  * the trigger surface; the inner-panel contract is covered elsewhere.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
+import {
+  fakePapersContext,
+  mkChatSourceRow,
+} from "@/tests/helpers/papers-context-fixture";
 
 vi.mock("convex/react", () => ({
-  useQuery: () => [
-    { included: true, chatPaperId: "cp1" },
-    { included: false, chatPaperId: "cp2" },
-    { included: true, chatPaperId: "cp3" },
-  ],
   useMutation: () => {
     const fn = vi.fn();
     Object.assign(fn, { withOptimisticUpdate: () => fn });
@@ -80,15 +80,46 @@ describe("<SourcesPanelSheet>", () => {
     });
   });
 
+  function renderSheet() {
+    const rows = [
+      mkChatSourceRow({
+        jobId: job,
+        chatPaperId: "cp1" as unknown as Id<"chatPapers">,
+        sourceId: "src1" as unknown as Id<"extractionJobSources">,
+        position: 1,
+        included: true,
+      }),
+      mkChatSourceRow({
+        jobId: job,
+        chatPaperId: "cp2" as unknown as Id<"chatPapers">,
+        sourceId: "src2" as unknown as Id<"extractionJobSources">,
+        position: 2,
+        included: false,
+      }),
+      mkChatSourceRow({
+        jobId: job,
+        chatPaperId: "cp3" as unknown as Id<"chatPapers">,
+        sourceId: "src3" as unknown as Id<"extractionJobSources">,
+        position: 3,
+        included: true,
+      }),
+    ];
+    return render(
+      <PapersContext.Provider value={fakePapersContext({ jobId: job, rows })}>
+        <SourcesPanelSheet jobId={job} />
+      </PapersContext.Provider>,
+    );
+  }
+
   it("renders nothing on desktop (useIsMobile=false)", () => {
     isMobileResult = false;
-    const { container } = render(<SourcesPanelSheet jobId={job} />);
+    const { container } = renderSheet();
     expect(container.querySelector("[data-sources-trigger]")).toBeNull();
   });
 
   it("renders the trigger on mobile with the N/M counter from the query", () => {
     isMobileResult = true;
-    render(<SourcesPanelSheet jobId={job} />);
+    renderSheet();
     const trigger = document.querySelector("[data-sources-trigger]");
     expect(trigger).not.toBeNull();
     // Trigger label encodes the count parameters; assert the N/M shape.

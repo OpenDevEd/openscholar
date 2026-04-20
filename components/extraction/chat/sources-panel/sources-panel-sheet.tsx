@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useQuery } from "convex/react";
 import { PanelRightOpenIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +12,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useIsMobile } from "@/lib/hooks";
+import { usePapersContext } from "../papers-context";
 import { SourcesPanelInner } from "./sources-panel";
 
 interface SourcesPanelSheetProps {
@@ -31,11 +30,7 @@ export function SourcesPanelSheet({ jobId }: SourcesPanelSheetProps) {
   const t = useTranslations("sourcesPanel");
   const [open, setOpen] = useState(false);
 
-  const rows = useQuery(api.chat.chatPapers.listChatSourcesWithInclusion, {
-    jobId,
-  });
-  const total = rows?.length ?? 0;
-  const included = rows?.filter((r) => r.included).length ?? 0;
+  const { totalCount: total, includedCount: included } = usePapersContext();
 
   if (!isMobile) return null;
 
