@@ -68,6 +68,42 @@ export function estimateExtractionCredits(
 }
 
 /**
+ * Plan-06 resume-time remaining estimator.
+ *
+ * Called by `resumeExtraction` when resuming a `creditsExhausted` job
+ * to decide whether the user's topped-up balance now covers what's
+ * left. Counts:
+ *   - `remainingQuestions`: non-completed, non-billed extractionResults
+ *     (the LLM calls still owed)
+ *   - `unindexedPapers`: papers without `indexingBilled === true` (each
+ *     still owes an indexing charge on PDF-tier jobs)
+ *
+ * Returns the same `{low, mid, high}` shape as the other estimators so
+ * the caller can block on `high` (conservative — better to refuse resume
+ * than fall into creditsExhausted again immediately).
+ */
+export function estimateRemainingCredits(args: {
+  remainingQuestions: number;
+  unindexedPapers: number;
+  usePdfs: boolean;
+  avgPaperKind: AvgPaperKind;
+}): ExtractionCostEstimate {
+  const c = EXTRACTION_COST_CONSTANTS;
+  const isPdfTier = args.usePdfs || args.avgPaperKind === "pdf";
+  const indexCost = isPdfTier ? args.unindexedPapers * c.INDEX_PDF_CREDIT : 0;
+
+  const perQLow = isPdfTier ? c.PDF_Q_CREDIT_LOW : c.ABSTRACT_Q_CREDIT_LOW;
+  const perQMid = isPdfTier ? c.PDF_Q_CREDIT_MID : c.ABSTRACT_Q_CREDIT_MID;
+  const perQHigh = isPdfTier ? c.PDF_Q_CREDIT_HIGH : c.ABSTRACT_Q_CREDIT_HIGH;
+
+  return {
+    low: indexCost + args.remainingQuestions * perQLow,
+    mid: indexCost + args.remainingQuestions * perQMid,
+    high: indexCost + args.remainingQuestions * perQHigh,
+  };
+}
+
+/**
  * Plan-05 retry-only estimator.
  *
  * Indexing cost is NOT charged (retry reuses the already-indexed PDF

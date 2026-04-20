@@ -62,6 +62,7 @@ import type * as extraction_mutations_papers from "../extraction/mutations/paper
 import type * as extraction_mutations_pause from "../extraction/mutations/pause.js";
 import type * as extraction_mutations_reports from "../extraction/mutations/reports.js";
 import type * as extraction_mutations_results from "../extraction/mutations/results.js";
+import type * as extraction_mutations_resume from "../extraction/mutations/resume.js";
 import type * as extraction_mutations_retry from "../extraction/mutations/retry.js";
 import type * as extraction_mutations_savedViews from "../extraction/mutations/savedViews.js";
 import type * as extraction_mutations_templates from "../extraction/mutations/templates.js";
@@ -230,6 +231,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/mutations/pause": typeof extraction_mutations_pause;
   "extraction/mutations/reports": typeof extraction_mutations_reports;
   "extraction/mutations/results": typeof extraction_mutations_results;
+  "extraction/mutations/resume": typeof extraction_mutations_resume;
   "extraction/mutations/retry": typeof extraction_mutations_retry;
   "extraction/mutations/savedViews": typeof extraction_mutations_savedViews;
   "extraction/mutations/templates": typeof extraction_mutations_templates;
