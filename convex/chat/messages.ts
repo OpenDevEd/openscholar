@@ -44,6 +44,7 @@ import {
   classifyChatError,
   serializeChatError,
 } from "../../lib/chat/error-classifier";
+import { startAbortPoller } from "../../lib/chat/abort-poller";
 
 /* ────────────────────────────────────────────────────────────────── */
 /*                      User → Assistant turn                         */
@@ -130,6 +131,29 @@ export const generateResponse = internalAction({
     }
     const { jobId, userId, chatModelId } = meta;
 
+    // Abort wiring (plans/chat-stop-streaming/01-action-abort-wiring.md).
+    // Poll job.shouldAbort every 500ms; when flipped, abort the signal
+    // we pass into paperChat.streamText, which cascades through the
+    // library's DeltaStreamer → AI SDK streamText → OpenRouter fetch.
+    const abortController = new AbortController();
+    const stopAbortPoller = startAbortPoller({
+      readFlag: async () => {
+        const flag: boolean = await ctx.runQuery(
+          internal.chat.messages.shouldAbortInternal,
+          { jobId },
+        );
+        return flag;
+      },
+      onAbort: () => {
+        if (!abortController.signal.aborted) {
+          abortController.abort(
+            new DOMException("user_stopped", "AbortError"),
+          );
+        }
+      },
+      intervalMs: 500,
+    });
+
     // True once `onError` has patched the pending message with a
     // structured envelope *from the original provider error* (which has
     // statusCode, headers, body — everything we need for a precise
@@ -160,6 +184,24 @@ export const generateResponse = internalAction({
           {
             promptMessageId,
             model,
+            abortSignal: abortController.signal,
+            // Retries serve no user when the stream is live — the user
+            // is watching and would prefer a fast failure or a clean
+            // abort over a ~2s wait for a retry that mid-stream can't
+            // salvage anyway.
+            maxRetries: 0,
+            onAbort: async ({ steps }) => {
+              // Observability only. DeltaStreamer's own signal listener
+              // patches the stream row to state:{kind:"aborted"} and
+              // preserves already-written deltas; usageHandler (see
+              // convex/chat/agent.ts) receives the partial usage via
+              // the library's usage accumulator.
+              console.info("[chat] stream aborted by user", {
+                jobId,
+                threadId,
+                stepCount: steps.length,
+              });
+            },
             onError: async ({ error }) => {
               // This runs with the ORIGINAL provider error (429 w/
               // retry-after, etc.) but only if the agent's own
@@ -185,6 +227,10 @@ export const generateResponse = internalAction({
         // itself threw inside finalizeMessage. Force-transition the
         // stuck pending assistant to `failed` so the UI can render an
         // alert instead of an empty bubble.
+        // NOTE: abort is NOT an error path. AI SDK swallows AbortError
+        // and converts it to an {type:"abort"} stream chunk; paperChat
+        // .streamText returns normally on abort and this catch never
+        // fires for user-stop.
         if (!envelopePatchedFromOnError) {
           const patched = await patchLastAssistantAsFailed(
             ctx,
@@ -208,6 +254,12 @@ export const generateResponse = internalAction({
       await saveStandaloneErrorMessage(ctx, threadId, err).catch(() => {});
       throw err;
     } finally {
+      // Stop the poller BEFORE releasing the lock. releaseThreadLock
+      // clears shouldAbort=undefined; if a poll tick raced past that
+      // clear we could — in theory — spuriously abort the very next
+      // turn (impossible under the current per-thread lock, but
+      // defence in depth). See plan § 3 placement notes.
+      stopAbortPoller();
       await ctx.runMutation(
         internal.chat.concurrency.releaseThreadLock,
         { jobId },
