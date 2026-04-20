@@ -248,4 +248,69 @@ describe("<SourcesPanelList>", () => {
     expect(options[0].getAttribute("aria-posinset")).toBe("1");
     expect(options[1].getAttribute("aria-posinset")).toBe("2");
   });
+
+  it("defaults data-search-deferred to 'false' on the listbox when isSearchStale is unset", () => {
+    render(
+      <SourcesPanelList
+        jobId={job}
+        rows={[row(1, true)]}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+      />,
+    );
+    expect(
+      screen.getByRole("listbox").getAttribute("data-search-deferred"),
+    ).toBe("false");
+  });
+
+  it("forwards isSearchStale=true to data-search-deferred='true' on the listbox", () => {
+    render(
+      <SourcesPanelList
+        jobId={job}
+        rows={[row(1, true)]}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+        isSearchStale={true}
+      />,
+    );
+    expect(
+      screen.getByRole("listbox").getAttribute("data-search-deferred"),
+    ).toBe("true");
+  });
+
+  it("transitions data-search-deferred from 'true' back to 'false' on the listbox when isSearchStale clears", () => {
+    const rows = [row(1, true), row(2, false)];
+    const { rerender } = render(
+      <SourcesPanelList
+        jobId={job}
+        rows={rows}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+        isSearchStale={true}
+      />,
+    );
+    expect(
+      screen.getByRole("listbox").getAttribute("data-search-deferred"),
+    ).toBe("true");
+    rerender(
+      <SourcesPanelList
+        jobId={job}
+        rows={rows}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+        isSearchStale={false}
+      />,
+    );
+    expect(
+      screen.getByRole("listbox").getAttribute("data-search-deferred"),
+    ).toBe("false");
+  });
 });
