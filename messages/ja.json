@@ -590,6 +590,36 @@
       "resume": "再開",
       "cancelRemaining": "残りの論文をキャンセル"
     },
+    "retry": {
+      "summary": {
+        "retryableOnly": "再試行可能な失敗 {retryable} 件",
+        "permanentOnly": "永続的な失敗 {permanent} 件",
+        "both": "再試行可能 {retryable} 件 · 永続的 {permanent} 件"
+      },
+      "retryButton": "失敗 {count} 件を再試行",
+      "confirmDialog": {
+        "title": "失敗 {count} 件を再試行しますか？",
+        "body": "再試行可能な失敗のみが再実行されます。すでに課金済みの質問と永続的な失敗はそのまま残ります。",
+        "estimateLabel": "推定コスト",
+        "continue": "続行",
+        "cancel": "キャンセル"
+      },
+      "permanent": {
+        "title": "再試行できない質問 {count} 件",
+        "dismiss": "閉じる",
+        "body": {
+          "pdf_invalid": "無効または読み取れないPDF",
+          "paper_not_found": "OpenAlexで論文が見つかりません",
+          "moderation": "コンテンツモデレーションによりブロックされました",
+          "context_too_long": "モデルのコンテキストウィンドウに対してコンテンツが長すぎます",
+          "llm_content_refusal": "モデルが回答を拒否しました",
+          "schema_validation": "回答が質問の必要な型と一致しません",
+          "auth": "プロバイダー認証失敗 (運用)",
+          "cancelled": "ユーザーによりキャンセルされました",
+          "unknown": "不明なエラー"
+        }
+      }
+    },
     "cost": {
       "credits": "{amount}クレジット",
       "completionToastTitle": "抽出が完了しました",

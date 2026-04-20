@@ -590,6 +590,36 @@
       "resume": "继续",
       "cancelRemaining": "取消剩余论文"
     },
+    "retry": {
+      "summary": {
+        "retryableOnly": "{retryable} 个可重试失败",
+        "permanentOnly": "{permanent} 个永久失败",
+        "both": "{retryable} 个可重试 · {permanent} 个永久"
+      },
+      "retryButton": "重试 {count} 个失败",
+      "confirmDialog": {
+        "title": "重试 {count} 个失败？",
+        "body": "只有可重试的失败会重新运行。已计费的问题和永久失败不会改动。",
+        "estimateLabel": "预计费用",
+        "continue": "继续",
+        "cancel": "取消"
+      },
+      "permanent": {
+        "title": "{count} 个问题无法重试",
+        "dismiss": "关闭",
+        "body": {
+          "pdf_invalid": "无效或无法读取的 PDF",
+          "paper_not_found": "在 OpenAlex 中未找到该论文",
+          "moderation": "被内容审核拦截",
+          "context_too_long": "内容超过模型的上下文窗口",
+          "llm_content_refusal": "模型拒绝回答",
+          "schema_validation": "答案不符合问题要求的类型",
+          "auth": "供应商认证失败（运维）",
+          "cancelled": "用户已取消",
+          "unknown": "未知错误"
+        }
+      }
+    },
     "cost": {
       "credits": "{amount} 积分",
       "completionToastTitle": "提取完成",

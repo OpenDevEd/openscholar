@@ -607,6 +607,36 @@
       "resume": "Resume",
       "cancelRemaining": "Cancel remaining papers"
     },
+    "retry": {
+      "summary": {
+        "retryableOnly": "{retryable, plural, one {# retryable failure} other {# retryable failures}}",
+        "permanentOnly": "{permanent, plural, one {# permanent failure} other {# permanent failures}}",
+        "both": "{retryable, plural, one {# retryable} other {# retryable}} · {permanent, plural, one {# permanent} other {# permanent}}"
+      },
+      "retryButton": "Retry {count, plural, one {# failure} other {# failures}}",
+      "confirmDialog": {
+        "title": "Retry {count, plural, one {# failure} other {# failures}}?",
+        "body": "Only the retryable failures will re-run. Already-billed questions and permanent failures are untouched.",
+        "estimateLabel": "Estimated cost",
+        "continue": "Continue",
+        "cancel": "Cancel"
+      },
+      "permanent": {
+        "title": "{count, plural, one {# question cannot be retried} other {# questions cannot be retried}}",
+        "dismiss": "Dismiss",
+        "body": {
+          "pdf_invalid": "Invalid or unreadable PDF",
+          "paper_not_found": "Paper not found in OpenAlex",
+          "moderation": "Blocked by content moderation",
+          "context_too_long": "Content too long for the model's context window",
+          "llm_content_refusal": "Model refused to answer",
+          "schema_validation": "Answer didn't match the question's required type",
+          "auth": "Provider authentication failed (ops)",
+          "cancelled": "Cancelled by user",
+          "unknown": "Unknown error"
+        }
+      }
+    },
     "cost": {
       "credits": "{amount, plural, one {# credit} other {# credits}}",
       "completionToastTitle": "Extraction complete",

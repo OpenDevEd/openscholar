@@ -590,6 +590,36 @@
       "resume": "Reprendre",
       "cancelRemaining": "Annuler les articles restants"
     },
+    "retry": {
+      "summary": {
+        "retryableOnly": "{retryable, plural, one {# échec récupérable} other {# échecs récupérables}}",
+        "permanentOnly": "{permanent, plural, one {# échec permanent} other {# échecs permanents}}",
+        "both": "{retryable, plural, one {# récupérable} other {# récupérables}} · {permanent, plural, one {# permanent} other {# permanents}}"
+      },
+      "retryButton": "Réessayer {count, plural, one {# échec} other {# échecs}}",
+      "confirmDialog": {
+        "title": "Réessayer {count, plural, one {# échec} other {# échecs}} ?",
+        "body": "Seuls les échecs récupérables seront relancés. Les questions déjà facturées et les échecs permanents ne sont pas touchés.",
+        "estimateLabel": "Coût estimé",
+        "continue": "Continuer",
+        "cancel": "Annuler"
+      },
+      "permanent": {
+        "title": "{count, plural, one {# question ne peut pas être réessayée} other {# questions ne peuvent pas être réessayées}}",
+        "dismiss": "Fermer",
+        "body": {
+          "pdf_invalid": "PDF invalide ou illisible",
+          "paper_not_found": "Article introuvable dans OpenAlex",
+          "moderation": "Bloqué par la modération de contenu",
+          "context_too_long": "Contenu trop long pour la fenêtre de contexte du modèle",
+          "llm_content_refusal": "Le modèle a refusé de répondre",
+          "schema_validation": "La réponse ne correspond pas au type requis par la question",
+          "auth": "Échec de l'authentification du fournisseur (ops)",
+          "cancelled": "Annulé par l'utilisateur",
+          "unknown": "Erreur inconnue"
+        }
+      }
+    },
     "cost": {
       "credits": "{amount, plural, one {# crédit} other {# crédits}}",
       "completionToastTitle": "Extraction terminée",

@@ -590,6 +590,36 @@
       "resume": "फिर से शुरू करें",
       "cancelRemaining": "शेष पेपर रद्द करें"
     },
+    "retry": {
+      "summary": {
+        "retryableOnly": "{retryable, plural, one {# पुनः प्रयास योग्य विफलता} other {# पुनः प्रयास योग्य विफलताएँ}}",
+        "permanentOnly": "{permanent, plural, one {# स्थायी विफलता} other {# स्थायी विफलताएँ}}",
+        "both": "{retryable, plural, one {# पुनः प्रयास योग्य} other {# पुनः प्रयास योग्य}} · {permanent, plural, one {# स्थायी} other {# स्थायी}}"
+      },
+      "retryButton": "{count, plural, one {# विफलता पुनः प्रयास करें} other {# विफलताएँ पुनः प्रयास करें}}",
+      "confirmDialog": {
+        "title": "{count, plural, one {# विफलता पुनः प्रयास करें?} other {# विफलताएँ पुनः प्रयास करें?}}",
+        "body": "केवल पुनः प्रयास योग्य विफलताएँ फिर से चलेंगी। पहले से बिल की गई प्रश्न और स्थायी विफलताएँ अपरिवर्तित रहेंगी।",
+        "estimateLabel": "अनुमानित लागत",
+        "continue": "जारी रखें",
+        "cancel": "रद्द करें"
+      },
+      "permanent": {
+        "title": "{count, plural, one {# प्रश्न पुनः प्रयास नहीं किया जा सकता} other {# प्रश्न पुनः प्रयास नहीं किए जा सकते}}",
+        "dismiss": "बंद करें",
+        "body": {
+          "pdf_invalid": "अमान्य या अपठनीय पीडीएफ",
+          "paper_not_found": "OpenAlex में पेपर नहीं मिला",
+          "moderation": "सामग्री मॉडरेशन द्वारा अवरुद्ध",
+          "context_too_long": "सामग्री मॉडल की कॉन्टेक्स्ट विंडो के लिए बहुत लंबी है",
+          "llm_content_refusal": "मॉडल ने उत्तर देने से इंकार किया",
+          "schema_validation": "उत्तर प्रश्न के आवश्यक प्रकार से मेल नहीं खाता",
+          "auth": "प्रदाता प्रमाणीकरण विफल (ऑप्स)",
+          "cancelled": "उपयोगकर्ता द्वारा रद्द",
+          "unknown": "अज्ञात त्रुटि"
+        }
+      }
+    },
     "cost": {
       "credits": "{amount, plural, one {# क्रेडिट} other {# क्रेडिट}}",
       "completionToastTitle": "निष्कर्षण पूर्ण",
