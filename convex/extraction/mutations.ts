@@ -36,3 +36,5 @@ export {
   createExtractionReportSnapshot,
   createExtractionRunDiff,
 } from "./mutations/reports";
+
+export { retryFailedQuestions } from "./mutations/retry";

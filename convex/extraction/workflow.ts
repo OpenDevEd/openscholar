@@ -312,3 +312,119 @@ export const runExtractionWorkflow = workflow.define({
     console.log(`[Workflow] Per-question fan-out complete for job ${jobId}`);
   },
 });
+
+/**
+ * Plan-05 retry workflow.
+ *
+ * Secondary workflow fired by `retryFailedQuestions`. The mutation has
+ * already:
+ *   1. Reset every retryable failed result to status "pending"
+ *      (status === "failed" ∧ isResultRetryableFailure ∧ billed !== true).
+ *   2. Flipped the containing papers back to "extracting".
+ *   3. Flipped the job back to "extracting".
+ *
+ * All this workflow does is re-dispatch `extractOneQuestion` for each
+ * pending (paperId, questionKey) pair and call `finalizePaper` per
+ * paper. Download + indexing are NOT re-run; retry reuses the
+ * already-indexed PDF (see `indexingBilled` guard in the mutation).
+ *
+ * Pre-plan-06: this is a separate workflow. Once plan 06 lands with
+ * `awaitEvent`, retry becomes `sendEvent` into the paused workflow and
+ * this export is removed.
+ */
+export const runRetryWorkflow = workflow.define({
+  args: {
+    jobId: v.id("extractionJobs"),
+  },
+  handler: async (step, { jobId }) => {
+    console.log(`[RetryWorkflow] Starting retry for job ${jobId}`);
+
+    const questionList = await step.runQuery(
+      internal.extraction.queries.internal.getQuestionsInternal,
+      { jobId },
+    );
+    const keyToId = new Map<string, Id<"extractionQuestions">>(
+      questionList.map((q) => [q.key, q._id]),
+    );
+
+    const pending = await step.runQuery(
+      internal.extraction.queries.internal.getPendingResultsInternal,
+      { jobId },
+    );
+
+    if (pending.length === 0) {
+      console.log(`[RetryWorkflow] Nothing pending for job ${jobId}`);
+      // Still trigger maybeFinalizeJob so the job status aggregator
+      // settles on the right terminal state (covers a race where the
+      // mutation reset rows but the workflow sees zero on its first read).
+      await step.runMutation(
+        internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
+        { jobId },
+      );
+      return;
+    }
+
+    // Group pending results by paperId for per-paper fan-out +
+    // finalizePaper call.
+    const byPaper = new Map<Id<"extractionPapers">, string[]>();
+    for (const r of pending) {
+      const existing = byPaper.get(r.paperId);
+      if (existing) existing.push(r.questionKey);
+      else byPaper.set(r.paperId, [r.questionKey]);
+    }
+
+    console.log(
+      `[RetryWorkflow] Re-dispatching ${pending.length} question(s) across ${byPaper.size} paper(s)`,
+    );
+
+    await Promise.all(
+      [...byPaper.entries()].map(async ([paperId, questionKeys]) => {
+        await Promise.all(
+          questionKeys.map(async (questionKey) => {
+            const questionId = keyToId.get(questionKey);
+            if (!questionId) {
+              // Question deleted since the row was created — can't retry.
+              return;
+            }
+            try {
+              await step.runAction(
+                internal.extraction.workpoolActions.extractOneQuestion,
+                { paperId, jobId, questionId },
+                { retry: true, name: `retry:${paperId}:${questionKey}` },
+              );
+            } catch (error) {
+              const classified = classifyUnknownError(error);
+              await step.runMutation(
+                internal.extraction.mutations.results.recordOneAnswerFailure,
+                {
+                  paperId,
+                  questionKey,
+                  error: {
+                    code: classified.code,
+                    message: classified.message,
+                    retryable: classified.retryable,
+                    ...(classified.httpStatus !== undefined
+                      ? { httpStatus: classified.httpStatus }
+                      : {}),
+                    ...(classified.providerName !== undefined
+                      ? { providerName: classified.providerName }
+                      : {}),
+                  },
+                },
+                { name: `qfail-retry:${paperId}:${questionKey}` },
+              );
+            }
+          }),
+        );
+
+        await step.runMutation(
+          internal.extraction.mutations.results.finalizePaper,
+          { paperId },
+          { name: `finpaper-retry:${paperId}` },
+        );
+      }),
+    );
+
+    console.log(`[RetryWorkflow] Retry fan-out complete for job ${jobId}`);
+  },
+});
