@@ -590,6 +590,15 @@
       "resume": "继续",
       "cancelRemaining": "取消剩余论文"
     },
+    "paused": {
+      "title": "提取已暂停",
+      "body": "已在 {total} 篇论文中的 {processed} 篇处暂停。继续以恢复。",
+      "resume": "继续",
+      "cancelRemaining": "取消剩余论文"
+    },
+    "pause": {
+      "button": "暂停"
+    },
     "retry": {
       "summary": {
         "retryableOnly": "{retryable} 个可重试失败",
@@ -885,6 +894,8 @@
     "jobDeleteFailed": "删除失败",
     "jobCreateFailed": "启动失败",
     "jobDuplicateFailed": "复制失败",
+    "jobPauseFailed": "暂停失败",
+    "jobResumeFailed": "恢复失败",
     "billingCancelFailed": "取消失败",
     "billingPortalFailed": "无法打开账单门户",
     "billingCheckoutFailed": "无法启动结账",

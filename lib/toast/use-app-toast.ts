@@ -84,6 +84,8 @@ export type AppToastApi = {
     deleteFailed: () => void;
     createFailed: (error?: unknown) => void;
     duplicateFailed: () => void;
+    pauseFailed: () => void;
+    resumeFailed: (error?: unknown) => void;
   };
   billing: {
     cancelFailed: () => void;
@@ -229,6 +231,14 @@ export function useAppToast(): AppToastApi {
         });
       },
       duplicateFailed: () => showStyledToast("error", t("jobDuplicateFailed")),
+      pauseFailed: () => showStyledToast("error", t("jobPauseFailed")),
+      resumeFailed: (error?: unknown) => {
+        const resolved = resolveErrorDetails(error, t("jobResumeFailed"));
+        showStyledToast("error", t("jobResumeFailed"), {
+          description: resolved.message,
+          action: getActionFromCode(resolved.code),
+        });
+      },
     },
     billing: {
       cancelFailed: () => showStyledToast("error", t("billingCancelFailed")),

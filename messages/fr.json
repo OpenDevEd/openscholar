@@ -590,6 +590,15 @@
       "resume": "Reprendre",
       "cancelRemaining": "Annuler les articles restants"
     },
+    "paused": {
+      "title": "Extraction en pause",
+      "body": "En pause à {processed} articles sur {total}. Reprenez pour continuer.",
+      "resume": "Reprendre",
+      "cancelRemaining": "Annuler les articles restants"
+    },
+    "pause": {
+      "button": "Pause"
+    },
     "retry": {
       "summary": {
         "retryableOnly": "{retryable, plural, one {# échec récupérable} other {# échecs récupérables}}",
@@ -885,6 +894,8 @@
     "jobDeleteFailed": "Échec de la suppression",
     "jobCreateFailed": "Échec du démarrage",
     "jobDuplicateFailed": "Échec de la duplication",
+    "jobPauseFailed": "Échec de la mise en pause",
+    "jobResumeFailed": "Échec de la reprise",
     "billingCancelFailed": "Échec de l'annulation",
     "billingPortalFailed": "Échec de l'ouverture du portail de facturation",
     "billingCheckoutFailed": "Échec du démarrage du paiement",

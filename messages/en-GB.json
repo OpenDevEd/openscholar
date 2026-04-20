@@ -607,6 +607,15 @@
       "resume": "Resume",
       "cancelRemaining": "Cancel remaining papers"
     },
+    "paused": {
+      "title": "Extraction paused",
+      "body": "Paused at {processed} of {total} papers. Resume to continue.",
+      "resume": "Resume",
+      "cancelRemaining": "Cancel remaining papers"
+    },
+    "pause": {
+      "button": "Pause"
+    },
     "retry": {
       "summary": {
         "retryableOnly": "{retryable, plural, one {# retryable failure} other {# retryable failures}}",
@@ -908,6 +917,8 @@
     "jobDeleteFailed": "Failed to delete",
     "jobCreateFailed": "Failed to start",
     "jobDuplicateFailed": "Failed to duplicate",
+    "jobPauseFailed": "Failed to pause",
+    "jobResumeFailed": "Failed to resume",
     "billingCancelFailed": "Failed to cancel",
     "billingPortalFailed": "Failed to open billing portal",
     "billingCheckoutFailed": "Failed to start checkout",

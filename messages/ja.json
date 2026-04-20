@@ -590,6 +590,15 @@
       "resume": "再開",
       "cancelRemaining": "残りの論文をキャンセル"
     },
+    "paused": {
+      "title": "抽出を一時停止",
+      "body": "{processed}/{total} 件で一時停止中。再開して続行します。",
+      "resume": "再開",
+      "cancelRemaining": "残りの論文をキャンセル"
+    },
+    "pause": {
+      "button": "一時停止"
+    },
     "retry": {
       "summary": {
         "retryableOnly": "再試行可能な失敗 {retryable} 件",
@@ -885,6 +894,8 @@
     "jobDeleteFailed": "削除に失敗しました",
     "jobCreateFailed": "開始に失敗しました",
     "jobDuplicateFailed": "複製に失敗しました",
+    "jobPauseFailed": "一時停止に失敗しました",
+    "jobResumeFailed": "再開に失敗しました",
     "billingCancelFailed": "キャンセルに失敗しました",
     "billingPortalFailed": "請求ポータルを開けませんでした",
     "billingCheckoutFailed": "チェックアウトを開始できませんでした",

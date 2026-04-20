@@ -590,6 +590,15 @@
       "resume": "फिर से शुरू करें",
       "cancelRemaining": "शेष पेपर रद्द करें"
     },
+    "paused": {
+      "title": "निष्कर्षण रोका गया",
+      "body": "{total} में से {processed} पेपर पर रुका है। जारी रखने के लिए फिर से शुरू करें।",
+      "resume": "फिर से शुरू करें",
+      "cancelRemaining": "शेष पेपर रद्द करें"
+    },
+    "pause": {
+      "button": "रोकें"
+    },
     "retry": {
       "summary": {
         "retryableOnly": "{retryable, plural, one {# पुनः प्रयास योग्य विफलता} other {# पुनः प्रयास योग्य विफलताएँ}}",
@@ -885,6 +894,8 @@
     "jobDeleteFailed": "हटाने में विफल",
     "jobCreateFailed": "शुरू करने में विफल",
     "jobDuplicateFailed": "डुप्लिकेट करने में विफल",
+    "jobPauseFailed": "रोकने में विफल",
+    "jobResumeFailed": "फिर से शुरू करने में विफल",
     "billingCancelFailed": "रद्द करने में विफल",
     "billingPortalFailed": "बिलिंग पोर्टल खोलने में विफल",
     "billingCheckoutFailed": "चेकआउट शुरू करने में विफल",
