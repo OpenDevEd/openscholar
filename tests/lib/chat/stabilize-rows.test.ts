@@ -44,4 +44,20 @@ describe("stabilizeRowsById", () => {
     expect(out[0]).toBe(r1);
     expect(out[1]).toBe(r2);
   });
+
+  it("preserves every element reference when prev and next are structurally identical", () => {
+    const prev = [
+      row(),
+      row({ chatPaperId: cp(2), position: 2, title: "Row two" }),
+      row({ chatPaperId: cp(3), position: 3, title: "Row three" }),
+    ];
+    const next = prev.map((r) => ({ ...r }));
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out).toHaveLength(3);
+    expect(out[0]).toBe(prev[0]);
+    expect(out[1]).toBe(prev[1]);
+    expect(out[2]).toBe(prev[2]);
+  });
 });
