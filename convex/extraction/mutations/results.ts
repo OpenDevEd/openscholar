@@ -36,6 +36,7 @@ import {
   citationValidator,
   classifiedErrorValidator,
   retrievalDiagnosticsValidator,
+  structuredErrorValidator,
 } from "../validators";
 import { aggregatePaperStatus } from "@/lib/extraction/paper-status";
 import type { ErrorCode } from "@/lib/errors/taxonomy";
@@ -136,11 +137,16 @@ export const updateJobStatus = internalMutation({
       v.literal("downloading_pdfs"),
       v.literal("indexing"),
       v.literal("extracting"),
+      v.literal("creditsExhausted"),
       v.literal("completed"),
       v.literal("failed"),
       v.literal("cancelled"),
     ),
     totalPapers: v.optional(v.number()),
+    // Optional structured error stamped on the job when we transition
+    // to a failure-ish state (e.g. creditsExhausted). Lets the UI pick
+    // a localized title/body without parsing the message.
+    error: v.optional(structuredErrorValidator),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
@@ -158,6 +164,17 @@ export const updateJobStatus = internalMutation({
       return null;
     }
 
+    // Idempotency for creditsExhausted: if the job is already
+    // creditsExhausted, a concurrent second extractOneQuestion catch
+    // site transitioning it again is a no-op (plan-03 "race on mid-run
+    // detection" pitfall).
+    if (
+      args.status === "creditsExhausted" &&
+      job.status === "creditsExhausted"
+    ) {
+      return null;
+    }
+
     assertValidJobTransition(job.status as JobStatus, args.status as JobStatus);
 
     const updates: Record<string, unknown> = {
@@ -167,6 +184,9 @@ export const updateJobStatus = internalMutation({
 
     if (args.totalPapers !== undefined) {
       updates.totalPapers = args.totalPapers;
+    }
+    if (args.error !== undefined) {
+      updates.error = args.error;
     }
 
     await ctx.db.patch("extractionJobs", args.jobId, updates);

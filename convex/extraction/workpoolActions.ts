@@ -958,6 +958,7 @@ export const extractOneQuestion = internalAction({
         v.literal("already_billed"),
         v.literal("cancelled"),
         v.literal("job_terminal"),
+        v.literal("credits_exhausted"),
       ),
     }),
   ),
@@ -966,7 +967,14 @@ export const extractOneQuestion = internalAction({
     args,
   ): Promise<
     | { status: "completed" }
-    | { status: "skipped"; reason: "already_billed" | "cancelled" | "job_terminal" }
+    | {
+        status: "skipped";
+        reason:
+          | "already_billed"
+          | "cancelled"
+          | "job_terminal"
+          | "credits_exhausted";
+      }
   > => {
     const question = await ctx.runQuery(
       internal.extraction.queries.internal.getQuestionByIdInternal,
@@ -1022,6 +1030,13 @@ export const extractOneQuestion = internalAction({
     ) {
       return { status: "skipped", reason: "job_terminal" };
     }
+    // Plan-03: credits-exhausted skip-guard. Stops the workpool's 3×
+    // retry from hammering a doomed dispatch — a catch site upstream
+    // has flipped the job and marked the transient errors for plan-06
+    // resume.
+    if (job.status === "creditsExhausted") {
+      return { status: "skipped", reason: "credits_exhausted" };
+    }
 
     const operation = `Extraction (1 question)`;
     const billingUser = await ctx.runQuery(
@@ -1034,6 +1049,50 @@ export const extractOneQuestion = internalAction({
         "Authentication required to use AI features",
       );
     }
+
+    // Plan-03: detect credit exhaustion at the pre-flight check and at
+    // the recordOneAnswer deductCredits call. Transition the job to
+    // creditsExhausted (non-terminal) and re-throw so the workflow
+    // records a per-question failure row that plan-06's resume path
+    // will retry.
+    const handleCreditsExhaustionAndRethrow = async (
+      error: unknown,
+    ): Promise<never> => {
+      const classified = classifyUnknownError(error);
+      if (classified.code === "insufficient_credits") {
+        try {
+          await ctx.runMutation(
+            internal.extraction.mutations.results.updateJobStatus,
+            {
+              jobId: args.jobId,
+              status: "creditsExhausted",
+              error: {
+                code: classified.code,
+                message: classified.message,
+                context: classified.context,
+                httpStatus: classified.httpStatus,
+                providerName: classified.providerName,
+                at: Date.now(),
+              },
+            },
+          );
+          await captureServerEvent(
+            billingUser.clerkId,
+            "extraction_job_credits_exhausted",
+            {
+              job_id: args.jobId,
+              question_key: question.key,
+            },
+          );
+        } catch (transitionErr) {
+          console.warn(
+            `[extractOneQuestion] Failed to transition job to creditsExhausted: ${transitionErr}`,
+          );
+        }
+      }
+      throw error;
+    };
+
     const balance = await ctx.runQuery(
       internal.credits.internal.getBalanceByUserId,
       { userId: job.userId },
@@ -1044,9 +1103,11 @@ export const extractOneQuestion = internalAction({
         available_credits: balance?.total ?? 0,
         feature: operation,
       });
-      throw createError(
-        "AI_INSUFFICIENT_CREDITS",
-        "Insufficient credits for AI operation",
+      await handleCreditsExhaustionAndRethrow(
+        createError(
+          "AI_INSUFFICIENT_CREDITS",
+          "Insufficient credits for AI operation",
+        ),
       );
     }
 
@@ -1094,23 +1155,29 @@ export const extractOneQuestion = internalAction({
     // Persist + bill in one transaction. recordOneAnswer internally
     // gates on result.billed, so a late workpool retry that re-runs
     // this action after a successful persist is still a no-op.
-    await ctx.runMutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId: args.paperId,
-        questionKey: question.key,
-        result: {
-          answer: outcome.result.answer,
-          confidence: outcome.result.confidence,
-          reasoning: outcome.result.reasoning,
-          citations: outcome.result.citations,
-          citationStatus: outcome.result.citationStatus,
-          retrievalDiagnostics: outcome.result.retrievalDiagnostics,
-          pdfContentUsed: outcome.result.pdfContentUsed,
+    // Plan-03: a mid-run insufficient_credits throw here transitions
+    // the job to creditsExhausted before bubbling the error up.
+    try {
+      await ctx.runMutation(
+        internal.extraction.mutations.results.recordOneAnswer,
+        {
+          paperId: args.paperId,
+          questionKey: question.key,
+          result: {
+            answer: outcome.result.answer,
+            confidence: outcome.result.confidence,
+            reasoning: outcome.result.reasoning,
+            citations: outcome.result.citations,
+            citationStatus: outcome.result.citationStatus,
+            retrievalDiagnostics: outcome.result.retrievalDiagnostics,
+            pdfContentUsed: outcome.result.pdfContentUsed,
+          },
+          creditsUsed,
         },
-        creditsUsed,
-      },
-    );
+      );
+    } catch (error) {
+      await handleCreditsExhaustionAndRethrow(error);
+    }
 
     const creditContext = {
       creditsDeducted: creditsUsed,
