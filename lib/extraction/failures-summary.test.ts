@@ -106,4 +106,22 @@ describe("summarizeFailures", () => {
       "future_unseen_code",
     ]);
   });
+
+  it("R8: pure — deterministic output and no input mutation", () => {
+    const input: FailureInput[] = [
+      { code: "rate_limit" },
+      { code: "pdf_invalid" },
+      { code: "moderation" },
+      { code: "rate_limit" },
+    ];
+    const snapshot = JSON.parse(JSON.stringify(input));
+
+    const first = summarizeFailures(input);
+    const second = summarizeFailures(input);
+
+    // Deterministic output.
+    expect(first).toEqual(second);
+    // Input array and its elements are not mutated.
+    expect(input).toEqual(snapshot);
+  });
 });
