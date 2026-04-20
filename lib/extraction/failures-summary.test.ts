@@ -16,4 +16,16 @@ describe("summarizeFailures", () => {
       byCode: [{ code: "rate_limit", count: 1, retryable: true }],
     });
   });
+
+  it("R3: multiple same-code errors → one entry with count:N", () => {
+    const input: FailureInput[] = [
+      { code: "pdf_invalid" },
+      { code: "pdf_invalid" },
+      { code: "pdf_invalid" },
+    ];
+    expect(summarizeFailures(input)).toEqual({
+      total: 3,
+      byCode: [{ code: "pdf_invalid", count: 3, retryable: false }],
+    });
+  });
 });
