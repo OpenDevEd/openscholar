@@ -30,6 +30,29 @@ export const JOB_STATUSES = [
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
 /**
+ * Running/active job statuses. These are the states a pause mutation
+ * accepts as input (everything else is either already paused, credits-
+ * exhausted, or terminal). Source of truth for the pause-eligibility
+ * predicate in `lib/extraction/transitions.ts`.
+ */
+export const RUNNING_JOB_STATUSES = new Set<JobStatus>([
+  "pending",
+  "downloading_pdfs",
+  "indexing",
+  "extracting",
+]);
+
+/**
+ * Terminal job statuses. Once a job lands here, only plan-05's retry
+ * re-opens the completed/failed pair; cancelled is sticky.
+ */
+export const TERMINAL_JOB_STATUSES = new Set<JobStatus>([
+  "completed",
+  "failed",
+  "cancelled",
+]);
+
+/**
  * Source of truth for job transitions. Derived from the workflow
  * orchestration in convex/extraction/workflow.ts + finalize /
  * cancel paths in mutations.ts.

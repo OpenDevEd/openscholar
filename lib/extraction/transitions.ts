@@ -7,7 +7,10 @@
  * credit pre-flight is satisfied.
  */
 
-import type { JobStatus } from "@/convex/extraction/stateMachine";
+import {
+  TERMINAL_JOB_STATUSES,
+  type JobStatus,
+} from "@/convex/extraction/stateMachine";
 
 export type PauseTransitionResult =
   | { ok: true; nextStatus: "paused"; pausedFrom: JobStatus }
@@ -22,12 +25,6 @@ export type ResumeTransitionResult =
       needed: number;
       available: number;
     };
-
-const TERMINAL_JOB_STATUSES = new Set<JobStatus>([
-  "completed",
-  "failed",
-  "cancelled",
-]);
 
 export function validatePauseTransition(
   currentStatus: JobStatus,
