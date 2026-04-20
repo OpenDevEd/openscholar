@@ -21,9 +21,10 @@
  * reasons documented in the per-component test (jsdom has no paint
  * engine; the listbox option exposes inner action affordances on hover).
  */
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { axe, toHaveNoViolations } from "jest-axe";
+import { installJsdomVirtualizerStubs } from "@/tests/helpers/jsdom-virtualizer";
 
 const reduceMotionRef = { current: false };
 
@@ -162,8 +163,13 @@ beforeAll(() => {
   });
 });
 
+let restoreLayoutStubs: () => void;
 beforeEach(() => {
   reduceMotionRef.current = false;
+  restoreLayoutStubs = installJsdomVirtualizerStubs();
+});
+afterEach(() => {
+  restoreLayoutStubs();
 });
 
 function renderPanel() {

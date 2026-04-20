@@ -12,14 +12,23 @@
  * Mocks the inner <SourcesPanelInner> so this test stays focused on
  * the trigger surface; the inner-panel contract is covered elsewhere.
  */
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { fireEvent, render } from "@testing-library/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PapersContext } from "@/components/extraction/chat/papers-context";
 import {
   fakePapersContext,
   mkChatSourceRow,
 } from "@/tests/helpers/papers-context-fixture";
+import { installJsdomVirtualizerStubs } from "@/tests/helpers/jsdom-virtualizer";
 
 vi.mock("convex/react", () => ({
   useMutation: () => {
@@ -34,9 +43,26 @@ vi.mock("@/convex/_generated/api", () => ({
     chat: {
       chatPapers: {
         listChatSourcesWithInclusion: "stub:listChatSourcesWithInclusion",
+        toggleChatPaper: "stub:toggleChatPaper",
+        bulkSetChatPapers: "stub:bulkSetChatPapers",
       },
     },
   },
+}));
+
+vi.mock("nuqs", async () => {
+  const actual = await vi.importActual<typeof import("nuqs")>("nuqs");
+  return {
+    ...actual,
+    useQueryStates: () => [
+      { q: "", sort: "added", dir: "asc", src: "all" },
+      () => Promise.resolve(),
+    ],
+  };
+});
+
+vi.mock("sonner", () => ({
+  toast: Object.assign(() => {}, { error: vi.fn() }),
 }));
 
 vi.mock("next-intl", () => ({
@@ -50,17 +76,24 @@ vi.mock("@/lib/hooks", () => ({
   useMediaQuery: () => false,
 }));
 
-vi.mock(
-  "@/components/extraction/chat/sources-panel/sources-panel",
-  () => ({
-    SourcesPanel: () => <div data-testid="desktop-rail" />,
-    SourcesPanelInner: () => <div data-testid="inner-panel" />,
-  }),
-);
+// Intentionally NOT mocking "sources-panel" here: the mobile sheet's
+// whole value is that it mounts the real SourcesPanelInner (and therefore
+// the virtualized list) on mobile. The virtualizer-integration test
+// below asserts against the real tree. The pre-existing trigger tests
+// below use the fake mobile path and don't depend on SourcesPanelInner
+// rendering anything specific.
 
 import { SourcesPanelSheet } from "@/components/extraction/chat/sources-panel/sources-panel-sheet";
 
 const job = "job1" as unknown as Id<"extractionJobs">;
+
+let restoreLayoutStubs: () => void;
+beforeEach(() => {
+  restoreLayoutStubs = installJsdomVirtualizerStubs();
+});
+afterEach(() => {
+  restoreLayoutStubs();
+});
 
 describe("<SourcesPanelSheet>", () => {
   beforeAll(() => {
@@ -125,5 +158,18 @@ describe("<SourcesPanelSheet>", () => {
     // Trigger label encodes the count parameters; assert the N/M shape.
     expect(trigger?.textContent).toContain("\"included\":2");
     expect(trigger?.textContent).toContain("\"total\":3");
+  });
+
+  it("opens the sheet and renders the virtualized listbox on mobile", () => {
+    isMobileResult = true;
+    renderSheet();
+    const trigger = document.querySelector("[data-sources-trigger]");
+    fireEvent.click(trigger as Element);
+    // The real SourcesPanelInner mounts inside the SheetContent; its list
+    // exposes the same virtualization contracts as the desktop rail.
+    const listbox = document.querySelector('[role="listbox"]');
+    expect(listbox).not.toBeNull();
+    expect(listbox?.getAttribute("data-virtualized")).toBe("true");
+    expect(listbox?.getAttribute("data-total-rows")).toBe("3");
   });
 });

@@ -149,4 +149,103 @@ describe("<SourcesPanelList>", () => {
     );
     expect(document.querySelector("[data-empty]")).not.toBeNull();
   });
+
+  it("exposes data-virtualized and data-total-rows on the listbox", () => {
+    const rows = [row(1, true), row(2, false), row(3, true)];
+    render(
+      <SourcesPanelList
+        jobId={job}
+        rows={rows}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+      />,
+    );
+    const listbox = screen.getByRole("listbox");
+    expect(listbox.getAttribute("data-virtualized")).toBe("true");
+    expect(listbox.getAttribute("data-total-rows")).toBe("3");
+  });
+
+  it("keeps the rendered DOM bounded to ~(viewport + overscan) at N=1000 — NOT 1000 rows", () => {
+    const rows = Array.from({ length: 1000 }, (_, i) =>
+      row(i + 1, i % 2 === 0),
+    );
+    render(
+      <SourcesPanelList
+        jobId={job}
+        rows={rows}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+      />,
+    );
+    const listbox = screen.getByRole("listbox");
+    expect(listbox.getAttribute("data-total-rows")).toBe("1000");
+    // Viewport 400 / row 76 ≈ 5 visible + overscan 8 above & below = ~21.
+    // Use ≤ 30 as a robustness bound (plan-02 acceptance criterion).
+    const options = document.querySelectorAll('[role="option"]');
+    expect(options.length).toBeLessThanOrEqual(30);
+    expect(options.length).toBeGreaterThan(0);
+    // data-visible-rows agrees with the actual DOM count.
+    const visibleRowsAttr = Number(listbox.getAttribute("data-visible-rows"));
+    expect(visibleRowsAttr).toBe(options.length);
+  });
+
+  it("updates data-total-rows when the rows prop changes (filter-like)", () => {
+    const initial = [row(1, true), row(2, false), row(3, true)];
+    const { rerender } = render(
+      <SourcesPanelList
+        jobId={job}
+        rows={initial}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+      />,
+    );
+    expect(screen.getByRole("listbox").getAttribute("data-total-rows")).toBe(
+      "3",
+    );
+    rerender(
+      <SourcesPanelList
+        jobId={job}
+        rows={[row(1, true)]}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+      />,
+    );
+    expect(screen.getByRole("listbox").getAttribute("data-total-rows")).toBe(
+      "1",
+    );
+  });
+
+  it("preserves data-paper-source and data-paper-included on every rendered row", () => {
+    const rows = [
+      { ...row(1, true), sourceType: "openalex" as const },
+      { ...row(2, false), sourceType: "zotero" as const },
+    ];
+    render(
+      <SourcesPanelList
+        jobId={job}
+        rows={rows}
+        matches={new Map()}
+        query=""
+        activeDescendantId={null}
+        emptyState={<p>empty</p>}
+      />,
+    );
+    const options = Array.from(document.querySelectorAll('[role="option"]'));
+    expect(options.length).toBe(2);
+    for (const o of options) {
+      expect(o.getAttribute("data-paper-source")).not.toBeNull();
+      expect(o.getAttribute("data-paper-included")).not.toBeNull();
+      expect(o.getAttribute("aria-setsize")).toBe("2");
+    }
+    expect(options[0].getAttribute("aria-posinset")).toBe("1");
+    expect(options[1].getAttribute("aria-posinset")).toBe("2");
+  });
 });
