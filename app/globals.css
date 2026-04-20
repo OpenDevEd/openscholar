@@ -453,3 +453,27 @@
     transform: scale(1.05);
   }
 }
+
+/* Sources-panel row enter animation. Cheaper than Framer's AnimatePresence
+   inside the virtualized list — the compositor handles it, React never
+   re-renders for the fade. */
+.source-row-enter {
+  animation: source-row-fade-in 140ms ease-out;
+}
+
+@keyframes source-row-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .source-row-enter {
+    animation: none;
+  }
+}
