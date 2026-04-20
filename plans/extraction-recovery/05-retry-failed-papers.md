@@ -182,13 +182,13 @@ Then wire the mutation, workflow integration, and UI — test-after.
 
 ## Acceptance criteria
 
-- [ ] Retry never re-charges a paper where `extractionBilled === true` or `indexingBilled === true`; only resets-and-re-enqueues papers where BOTH flags are still `false`.
-- [ ] Retry only touches `isRetryable === true` codes (driven by `errorCode` post-Plan-01; by `errorMessage` + classifier parse pre-Plan-01).
-- [ ] Permanent failures have a distinct UI treatment with per-code messaging.
-- [ ] Retry mutation passes all ownership + status preconditions. Status-guard includes `creditsExhausted` only if Plan 03 has landed; otherwise `{completed, failed}` only.
-- [ ] New "Retry N failed" button sits beside the existing Duplicate CTA (`handleDuplicate` in `app/extraction/[jobId]/page.tsx:321, 583, 953`), not replacing it.
-- [ ] Attempt count bumps and `extractionPaperErrors` accumulates on subsequent failures.
-- [ ] A full retry cycle: cancel → resume (via retry) → complete works end-to-end.
+- [x] Retry never re-charges a paper where `extractionBilled === true` or `indexingBilled === true`; only resets-and-re-enqueues papers where BOTH flags are still `false`. *(Plan-02 collapsed paper-level `extractionBilled` into per-question `extractionResults.billed`; the retry mutation's filter `r.billed !== true` + the "never touch indexingBilled" rule enforces this. `retry.test.ts::applyRetryResetTx — resets only retryable failures` pins it: a `billed: true, status: "failed"` row (the anomalous case) is left alone.)*
+- [x] Retry only touches `isRetryable === true` codes (driven by `errorCode` post-Plan-01). *(Shared predicate: `lib/extraction/retry-summary.ts::isResultRetryableFailure` is the single source, consumed by both the summarizer and the mutation. Unknown codes fall into retryable — R7 forward-compat.)*
+- [x] Permanent failures have a distinct UI treatment with per-code messaging. *(`components/extraction/permanent-failures-callout.tsx` — dismissible amber callout listing each non-retryable code with a localized body label; `role="note"` + `data-permanent-code` on each `<li>` for behavior assertions. Per-code labels live at `extraction.retry.permanent.body.{code}` across all 6 locales.)*
+- [x] Retry mutation passes all ownership + status preconditions. Status-guard includes `creditsExhausted` (Plan 03 has landed). *(Ownership: `assertJobOwnership` from `convex/extraction/access.ts`. Status: `ALLOWED_RETRY_STATUSES = ["completed","failed","creditsExhausted"]`. Rejections on active-status jobs covered by the `rejects retry on a job in an active status` test.)*
+- [x] New "Retry N failed" button sits beside the existing Duplicate CTA, not replacing it. *(Mounted in `app/extraction/[jobId]/page.tsx` inside the existing per-status banner stack, same `px-4 md:px-6 pt-4` container pattern as the CreditsExhaustedBanner. `handleDuplicate` call sites untouched.)*
+- [x] Attempt count bumps and `extractionPaperErrors` accumulates on subsequent failures. *(Handled by the existing plan-01/plan-02 persistence path: `recordOneAnswerFailure` bumps `attemptCount` + the retry workflow's catch branch goes through that same mutation. The retry mutation itself only resets `status: "pending"` + clears `lastError` — it never touches `attemptCount` so the retry trail is preserved across attempts.)*
+- [ ] A full retry cycle: cancel → resume (via retry) → complete works end-to-end. *(Partial. Unit + convex-test coverage pins every tx-level invariant, including the billing-idempotency guard and the un-terminal state-machine transitions. A live browser smoke (real Convex + real Workflow component + credit top-up + a bad-PDF seed) is still outstanding — convex-test has no workflow component, so the happy-path mutation call always rolls back at `workflow.start` and we prove state changes via the extracted `applyRetryResetTx` helper. Handing off to human for the live cycle test.)*
 
 ## Known pitfalls
 
