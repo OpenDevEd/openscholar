@@ -361,7 +361,28 @@
       "empty": "No transactions yet.",
       "emptyForJob": "No transactions for this job.",
       "filteredByJob": "Filtered by job",
-      "clearFilter": "Clear filter"
+      "clearFilter": "Clear filter",
+      "type": {
+        "purchase": "Credit purchase",
+        "grant": "Free credit grant",
+        "refund": "Refund",
+        "usage": "Usage",
+        "expiry": "Credits expired"
+      },
+      "billingType": {
+        "extraction_llm": "Extraction",
+        "embedding": "Indexing",
+        "screening": "Screening",
+        "chat": "Chat"
+      },
+      "status": {
+        "pending": "Pending",
+        "failed": "Failed",
+        "expired": "Expired"
+      },
+      "actions": {
+        "openJob": "Open job"
+      }
     },
     "billingAndPlans": "Billing & Plans",
     "manageSubscription": "Manage your subscription and usage.",

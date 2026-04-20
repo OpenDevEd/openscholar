@@ -361,7 +361,28 @@
       "empty": "取引はまだありません。",
       "emptyForJob": "このジョブの取引はありません。",
       "filteredByJob": "ジョブでフィルタ中",
-      "clearFilter": "フィルタを解除"
+      "clearFilter": "フィルタを解除",
+      "type": {
+        "purchase": "クレジット購入",
+        "grant": "無料クレジット付与",
+        "refund": "返金",
+        "usage": "利用",
+        "expiry": "クレジットの失効"
+      },
+      "billingType": {
+        "extraction_llm": "抽出",
+        "embedding": "インデックス",
+        "screening": "スクリーニング",
+        "chat": "チャット"
+      },
+      "status": {
+        "pending": "処理中",
+        "failed": "失敗",
+        "expired": "期限切れ"
+      },
+      "actions": {
+        "openJob": "ジョブを開く"
+      }
     },
     "billingAndPlans": "請求とプラン",
     "manageSubscription": "サブスクリプションと使用量を管理",

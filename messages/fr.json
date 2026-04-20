@@ -361,7 +361,28 @@
       "empty": "Aucune transaction pour l'instant.",
       "emptyForJob": "Aucune transaction pour cette tâche.",
       "filteredByJob": "Filtré par tâche",
-      "clearFilter": "Effacer le filtre"
+      "clearFilter": "Effacer le filtre",
+      "type": {
+        "purchase": "Achat de crédits",
+        "grant": "Crédits gratuits offerts",
+        "refund": "Remboursement",
+        "usage": "Utilisation",
+        "expiry": "Crédits expirés"
+      },
+      "billingType": {
+        "extraction_llm": "Extraction",
+        "embedding": "Indexation",
+        "screening": "Filtrage",
+        "chat": "Chat"
+      },
+      "status": {
+        "pending": "En attente",
+        "failed": "Échec",
+        "expired": "Expiré"
+      },
+      "actions": {
+        "openJob": "Ouvrir la tâche"
+      }
     },
     "billingAndPlans": "Facturation et forfaits",
     "manageSubscription": "Gérez votre abonnement et votre utilisation.",

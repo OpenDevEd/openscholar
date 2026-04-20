@@ -361,7 +361,28 @@
       "empty": "暂无交易。",
       "emptyForJob": "此作业暂无交易。",
       "filteredByJob": "按作业筛选",
-      "clearFilter": "清除筛选"
+      "clearFilter": "清除筛选",
+      "type": {
+        "purchase": "购买积分",
+        "grant": "免费积分",
+        "refund": "退款",
+        "usage": "使用",
+        "expiry": "积分已过期"
+      },
+      "billingType": {
+        "extraction_llm": "提取",
+        "embedding": "索引",
+        "screening": "筛选",
+        "chat": "聊天"
+      },
+      "status": {
+        "pending": "处理中",
+        "failed": "失败",
+        "expired": "已过期"
+      },
+      "actions": {
+        "openJob": "打开作业"
+      }
     },
     "billingAndPlans": "账单和计划",
     "manageSubscription": "管理您的订阅和使用情况。",

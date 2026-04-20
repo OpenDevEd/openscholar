@@ -361,7 +361,28 @@
       "empty": "अभी तक कोई लेन-देन नहीं।",
       "emptyForJob": "इस कार्य के लिए कोई लेन-देन नहीं।",
       "filteredByJob": "कार्य द्वारा फ़िल्टर किया गया",
-      "clearFilter": "फ़िल्टर साफ़ करें"
+      "clearFilter": "फ़िल्टर साफ़ करें",
+      "type": {
+        "purchase": "क्रेडिट खरीद",
+        "grant": "मुफ़्त क्रेडिट अनुदान",
+        "refund": "धनवापसी",
+        "usage": "उपयोग",
+        "expiry": "क्रेडिट समाप्त"
+      },
+      "billingType": {
+        "extraction_llm": "निष्कर्षण",
+        "embedding": "इंडेक्सिंग",
+        "screening": "स्क्रीनिंग",
+        "chat": "चैट"
+      },
+      "status": {
+        "pending": "लंबित",
+        "failed": "विफल",
+        "expired": "समाप्त"
+      },
+      "actions": {
+        "openJob": "कार्य खोलें"
+      }
     },
     "billingAndPlans": "बिलिंग और प्लान्स",
     "manageSubscription": "अपनी सदस्यता और उपयोग प्रबंधित करें।",
