@@ -10,7 +10,7 @@ import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
 import { batchDeleteByIndex } from "../../../lib/cascade";
 import { PAPER_LIMIT_MAX } from "../../bucket/limits";
-import { clearJobAggregates } from "../../aggregates";
+import { clearJobAggregates, clearJobCredits } from "../../aggregates";
 
 export const deleteExtractionInternal = internalMutation({
   args: { jobId: v.id("extractionJobs") },
@@ -91,6 +91,13 @@ export const deleteExtractionInternal = internalMutation({
       jobId,
       jobQuestions.map((q) => q.key),
     );
+
+    // Plan-04: wipe the creditsAgg namespace for this job so cached
+    // per-job totals return 0 immediately. The creditTransactions
+    // rows are intentionally NOT deleted — the ledger is the user's
+    // credit-audit trail and must survive job deletion, even if the
+    // jobId FK becomes dangling.
+    await clearJobCredits(ctx, jobId);
 
     // Steps 5-8b: straightforward by-job drains. Ordered so that
     // extractionRunDiffs rows referencing this job as baseline are
