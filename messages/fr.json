@@ -642,6 +642,28 @@
       },
       "viewTransactions": "Voir les transactions"
     },
+    "nowProcessing": {
+      "prefix": "Extraction en cours :",
+      "label": "Extraction en cours de {title}"
+    },
+    "questionProgress": {
+      "completedOverTotal": "{completed}/{total}",
+      "summary": "{completed} questions terminées sur {total}",
+      "failedCount": "· {count, plural, one {# échec} other {# échecs}}",
+      "retryingCount": "· {count, plural, one {# nouvelle tentative} other {# nouvelles tentatives}}"
+    },
+    "errorHistory": {
+      "trigger": "Historique des erreurs · {count, plural, one {# tentative} other {# tentatives}}",
+      "triggerLabel": "Afficher l'historique des erreurs ({count, plural, one {# tentative} other {# tentatives}})",
+      "attempt": "Tentative {n}",
+      "loadMore": "Afficher les tentatives plus anciennes"
+    },
+    "mixedSuccess": {
+      "title": "Terminé avec succès partiel",
+      "answeredOverTotal": "{answered} questions répondues sur {total}.",
+      "failedTotal": "{count, plural, one {# échec :} other {# échecs :}}",
+      "retryableHint": "{count, plural, one {# échec est récupérable} other {# échecs sont récupérables}}."
+    },
     "pleaseSelectSource": "Veuillez sélectionner au moins une source",
     "pleaseCompleteSteps": "Veuillez compléter toutes les étapes",
     "selectedHistoryNotFound": "Entrées d'historique sélectionnées non trouvées",

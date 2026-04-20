@@ -642,6 +642,28 @@
       },
       "viewTransactions": "查看交易"
     },
+    "nowProcessing": {
+      "prefix": "正在提取：",
+      "label": "正在提取 {title}"
+    },
+    "questionProgress": {
+      "completedOverTotal": "{completed}/{total}",
+      "summary": "{total} 个问题中已完成 {completed} 个",
+      "failedCount": "· {count, plural, one {# 个失败} other {# 个失败}}",
+      "retryingCount": "· {count, plural, one {# 个重试中} other {# 个重试中}}"
+    },
+    "errorHistory": {
+      "trigger": "错误历史 · {count, plural, one {# 次尝试} other {# 次尝试}}",
+      "triggerLabel": "显示错误历史（{count, plural, one {# 次尝试} other {# 次尝试}}）",
+      "attempt": "第 {n} 次尝试",
+      "loadMore": "显示更早的尝试"
+    },
+    "mixedSuccess": {
+      "title": "部分成功完成",
+      "answeredOverTotal": "{total} 个问题中已回答 {answered} 个。",
+      "failedTotal": "{count, plural, one {# 个失败：} other {# 个失败：}}",
+      "retryableHint": "{count, plural, one {# 个失败可重试} other {# 个失败可重试}}。"
+    },
     "pleaseSelectSource": "请至少选择一个来源",
     "pleaseCompleteSteps": "请完成所有步骤",
     "selectedHistoryNotFound": "未找到选定的历史记录条目",

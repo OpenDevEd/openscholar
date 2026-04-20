@@ -642,6 +642,28 @@
       },
       "viewTransactions": "取引を表示"
     },
+    "nowProcessing": {
+      "prefix": "現在抽出中:",
+      "label": "{title} を抽出中"
+    },
+    "questionProgress": {
+      "completedOverTotal": "{completed}/{total}",
+      "summary": "{total} 件中 {completed} 件の質問が完了",
+      "failedCount": "· {count, plural, one {# 件失敗} other {# 件失敗}}",
+      "retryingCount": "· {count, plural, one {# 件再試行中} other {# 件再試行中}}"
+    },
+    "errorHistory": {
+      "trigger": "エラー履歴 · {count, plural, one {# 回の試行} other {# 回の試行}}",
+      "triggerLabel": "エラー履歴を表示 ({count, plural, one {# 回の試行} other {# 回の試行}})",
+      "attempt": "試行 {n}",
+      "loadMore": "以前の試行を表示"
+    },
+    "mixedSuccess": {
+      "title": "一部成功で完了",
+      "answeredOverTotal": "{total} 件中 {answered} 件の質問に回答済み。",
+      "failedTotal": "{count, plural, one {# 件失敗:} other {# 件失敗:}}",
+      "retryableHint": "{count, plural, one {# 件の失敗は再試行可能} other {# 件の失敗は再試行可能}}です。"
+    },
     "pleaseSelectSource": "少なくとも1つのソースを選択してください",
     "pleaseCompleteSteps": "すべてのステップを完了してください",
     "selectedHistoryNotFound": "選択した履歴エントリが見つかりません",
