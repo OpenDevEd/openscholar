@@ -3,6 +3,7 @@ import { describe, test, expect } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import { markPaperTerminalTx } from "./paperLifecycle";
 
 /**
  * Safety net SN-4 (P3 plan): pin the workpool onComplete dispatchers.
@@ -514,5 +515,130 @@ describe("handleExtractionJobComplete", () => {
         } as never
       )
     ).resolves.toBeNull();
+  });
+});
+
+describe("markPaperTerminalTx — error history & attempt counter", () => {
+  test("writes lastError, appends extractionPaperErrors row, bumps attemptCount", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const ids = await seedDownloadingPaper(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionPapers", ids.paperId as never, {
+        status: "extracting",
+      });
+    });
+
+    await t.run(async (ctx) => {
+      await markPaperTerminalTx(ctx, ids.paperId as never, "failed", {
+        error: {
+          code: "rate_limit",
+          message: "429 from upstream",
+          retryable: true,
+          httpStatus: 429,
+        },
+      });
+    });
+
+    const { paper } = await readPaperAndJob(t, ids);
+    expect(paper?.lastError?.code).toBe("rate_limit");
+    expect(paper?.lastError?.httpStatus).toBe(429);
+    expect(paper?.attemptCount).toBe(1);
+
+    const history = await t.run((ctx) =>
+      ctx.db
+        .query("extractionPaperErrors")
+        .withIndex("by_paper", (q) =>
+          q.eq("paperId", ids.paperId as never),
+        )
+        .collect(),
+    );
+    expect(history).toHaveLength(1);
+    expect(history[0].code).toBe("rate_limit");
+    expect(history[0].attempt).toBe(1);
+    expect(history[0].httpStatus).toBe(429);
+  });
+
+  test("second terminal transition after retry bumps attemptCount and appends second row", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const ids = await seedDownloadingPaper(t);
+
+    // First attempt: downloading → extracting → failed.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionPapers", ids.paperId as never, {
+        status: "extracting",
+      });
+      await markPaperTerminalTx(ctx, ids.paperId as never, "failed", {
+        error: {
+          code: "provider_5xx",
+          message: "502 bad gateway",
+          retryable: true,
+        },
+      });
+    });
+
+    // Plan-05 will expose a proper retry mutation; here we cheat the paper
+    // back to non-terminal so we can exercise the second-attempt branch.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionPapers", ids.paperId as never, {
+        status: "extracting",
+      });
+    });
+
+    // Second attempt: fails with a different code.
+    await t.run(async (ctx) => {
+      await markPaperTerminalTx(ctx, ids.paperId as never, "failed", {
+        error: {
+          code: "llm_content_refusal",
+          message: "model declined to answer",
+          retryable: false,
+        },
+      });
+    });
+
+    const { paper } = await readPaperAndJob(t, ids);
+    expect(paper?.lastError?.code).toBe("llm_content_refusal");
+    expect(paper?.attemptCount).toBe(2);
+
+    const history = await t.run((ctx) =>
+      ctx.db
+        .query("extractionPaperErrors")
+        .withIndex("by_paper", (q) =>
+          q.eq("paperId", ids.paperId as never),
+        )
+        .collect(),
+    );
+    expect(history).toHaveLength(2);
+    const codes = history.map((h) => h.code).sort();
+    expect(codes).toEqual(["llm_content_refusal", "provider_5xx"]);
+    const attempts = history.map((h) => h.attempt).sort();
+    expect(attempts).toEqual([1, 2]);
+  });
+
+  test("success transition does not append to extractionPaperErrors", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const ids = await seedDownloadingPaper(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionPapers", ids.paperId as never, {
+        status: "extracting",
+      });
+      await markPaperTerminalTx(ctx, ids.paperId as never, "completed");
+    });
+
+    const history = await t.run((ctx) =>
+      ctx.db
+        .query("extractionPaperErrors")
+        .withIndex("by_paper", (q) =>
+          q.eq("paperId", ids.paperId as never),
+        )
+        .collect(),
+    );
+    expect(history).toHaveLength(0);
+
+    const { paper } = await readPaperAndJob(t, ids);
+    expect(paper?.lastError).toBeUndefined();
+    expect(paper?.attemptCount).toBeUndefined();
   });
 });
