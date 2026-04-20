@@ -37,4 +37,13 @@ describe("startAbortPoller", () => {
     expect(onAbort).toHaveBeenCalledTimes(1);
     stop();
   });
+
+  it("fires onAbort at most once even when readFlag stays true", async () => {
+    const readFlag = vi.fn(async () => true);
+    const onAbort = vi.fn();
+    const stop = startAbortPoller({ readFlag, onAbort, intervalMs: 100 });
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(onAbort).toHaveBeenCalledTimes(1);
+    stop();
+  });
 });

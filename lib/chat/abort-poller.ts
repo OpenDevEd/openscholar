@@ -11,9 +11,15 @@ export function startAbortPoller({
   onAbort,
   intervalMs = 500,
 }: StartAbortPollerArgs): StopPoller {
+  let fired = false;
+
   const handle = setInterval(() => {
+    if (fired) return;
     void readFlag().then((flag) => {
-      if (flag) onAbort();
+      if (flag && !fired) {
+        fired = true;
+        onAbort();
+      }
     });
   }, intervalMs);
 
