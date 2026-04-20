@@ -5,7 +5,7 @@
  * can render a specific code instead of a generic "Something went wrong".
  */
 
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 export const ERROR_CODES = [
   // chat + extraction shared
@@ -31,6 +31,32 @@ export const ERROR_CODES = [
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/**
+ * Convex validator for taxonomy codes — used in schema definitions for
+ * the structured `error.code` field on extractionJobs / extractionPapers
+ * / extractionPaperErrors.
+ */
+export const errorCodeValidator = v.union(
+  v.literal("insufficient_credits"),
+  v.literal("rate_limit"),
+  v.literal("model_unavailable"),
+  v.literal("auth"),
+  v.literal("moderation"),
+  v.literal("context_too_long"),
+  v.literal("network"),
+  v.literal("provider_5xx"),
+  v.literal("aborted"),
+  v.literal("unknown"),
+  v.literal("action_timeout"),
+  v.literal("pdf_download_failed"),
+  v.literal("pdf_invalid"),
+  v.literal("paper_not_found"),
+  v.literal("indexing_failed"),
+  v.literal("llm_content_refusal"),
+  v.literal("schema_validation"),
+  v.literal("cancelled"),
+);
 
 /** Chat-side alias for ErrorCode; chat envelopes only emit the first 10 codes. */
 export type ChatErrorClass = ErrorCode;
@@ -118,58 +144,61 @@ const CODE_TO_TAXONOMY: Record<string, ErrorCode> = {
 export function classifyUnknownError(err: unknown): ClassifiedError {
   const data = extractData(err);
   const message = extractClassifiableMessage(err, data);
+  const context = captureContext(data);
 
   // 1. Explicit code match against ConvexError.data.code or err.code.
   const explicitCode = typeof data?.code === "string" ? data.code : undefined;
   if (explicitCode && CODE_TO_TAXONOMY[explicitCode]) {
-    return finalize(CODE_TO_TAXONOMY[explicitCode], message);
+    return finalize(CODE_TO_TAXONOMY[explicitCode], message, { context });
   }
 
   // 2. Prefix-message fallback: "INSUFFICIENT_CREDITS: …" → insufficient_credits.
   const prefixMatch = /^([A-Z][A-Z0-9_]+):/.exec(message);
   if (prefixMatch && CODE_TO_TAXONOMY[prefixMatch[1]]) {
-    return finalize(CODE_TO_TAXONOMY[prefixMatch[1]], message);
+    return finalize(CODE_TO_TAXONOMY[prefixMatch[1]], message, { context });
   }
 
   // 3. AbortError / AbortSignal — user-initiated stop.
   const errName = err instanceof Error ? err.name : "";
   if (errName === "AbortError") {
-    return finalize("aborted", message);
+    return finalize("aborted", message, { context });
   }
 
   // 4. Network failures: TypeError "fetch failed" + node-style transport errors.
   if (errName === "TypeError" && /fetch failed/i.test(message)) {
-    return finalize("network", message);
+    return finalize("network", message, { context });
   }
   if (
     /\bnetwork( request)? failed\b|socket hang up|ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(
       message,
     )
   ) {
-    return finalize("network", message);
+    return finalize("network", message, { context });
   }
 
   // 5. HTTP status fingerprints (AI SDK uses statusCode, fetch Response uses status).
   const httpStatus = extractHttpStatus(data);
   if (typeof httpStatus === "number") {
-    if (httpStatus === 429) return finalize("rate_limit", message, { httpStatus });
-    if (httpStatus === 402) return finalize("insufficient_credits", message, { httpStatus });
+    if (httpStatus === 429) return finalize("rate_limit", message, { httpStatus, context });
+    if (httpStatus === 402) {
+      return finalize("insufficient_credits", message, { httpStatus, context });
+    }
     if (httpStatus === 401 || httpStatus === 403) {
-      return finalize("auth", message, { httpStatus });
+      return finalize("auth", message, { httpStatus, context });
     }
     if (httpStatus >= 500 && httpStatus < 600) {
-      return finalize("provider_5xx", message, { httpStatus });
+      return finalize("provider_5xx", message, { httpStatus, context });
     }
   }
 
   // 6. Message-shaped fingerprints — last resort before "unknown".
   for (const { pattern, code } of MESSAGE_FINGERPRINTS) {
     if (pattern.test(message)) {
-      return finalize(code, message);
+      return finalize(code, message, { context });
     }
   }
 
-  return finalize("unknown", message);
+  return finalize("unknown", message, { context });
 }
 
 /** Pattern → taxonomy code, evaluated in order. First match wins. */
@@ -201,6 +230,47 @@ function extractData(err: unknown): Record<string, unknown> | undefined {
   }
   if (err && typeof err === "object") return err as Record<string, unknown>;
   return undefined;
+}
+
+const CONTEXT_BYTE_CAP = 4096;
+const ALREADY_EXTRACTED_FIELDS = new Set([
+  "code",
+  "message",
+  "statusCode",
+  "status",
+  "name",
+  "stack",
+]);
+
+/**
+ * Capture every own-enumerable field on the error/data payload that we
+ * haven't already lifted into a top-level taxonomy field, then bound the
+ * serialised size at 4 KB so a pathological context can't bloat a Convex
+ * doc past the 1 MB row limit.
+ */
+function captureContext(
+  source: Record<string, unknown> | undefined,
+): unknown {
+  if (!source) return undefined;
+  const ownProps: Record<string, unknown> = {};
+  for (const key of Object.keys(source)) {
+    if (ALREADY_EXTRACTED_FIELDS.has(key)) continue;
+    ownProps[key] = source[key];
+  }
+  if (Object.keys(ownProps).length === 0) return undefined;
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(ownProps);
+  } catch {
+    return undefined;
+  }
+  if (serialized === "{}" || serialized === "null") return undefined;
+  if (serialized.length <= CONTEXT_BYTE_CAP) return ownProps;
+  return {
+    _truncated: true,
+    preview: serialized.slice(0, CONTEXT_BYTE_CAP - 200),
+    originalLength: serialized.length,
+  };
 }
 
 function extractClassifiableMessage(

@@ -4,6 +4,7 @@ import {
   classifyChatError,
   classifyUnknownError,
   ERROR_CODES,
+  errorCodeValidator,
   isRetryable,
   parseChatError,
   requiresAdminAction,
@@ -212,6 +213,52 @@ describe("classifyUnknownError — fingerprint cascade", () => {
     const result = classifyUnknownError("a stringified error");
     expect(result.code).toBe("unknown");
     expect(result.message).toBe("a stringified error");
+  });
+});
+
+describe("classifyUnknownError — context bounds", () => {
+  it("R16: serialized context is bounded at ≤ 4KB", () => {
+    const big = "x".repeat(8000);
+    const err = Object.assign(new Error("with attached context"), {
+      payload: { huge: big, nested: { huge2: big } },
+    });
+    const result = classifyUnknownError(err);
+    if (result.context !== undefined) {
+      const serialized = JSON.stringify(result.context);
+      expect(serialized.length).toBeLessThanOrEqual(4096);
+    }
+  });
+
+  it("R16: small structured context is preserved as-is", () => {
+    const err = Object.assign(new Error("small ctx"), {
+      payload: { paperId: "abc-123", attempt: 2 },
+    });
+    const result = classifyUnknownError(err);
+    expect(result.context).toBeDefined();
+    const serialized = JSON.stringify(result.context);
+    expect(serialized.length).toBeLessThanOrEqual(4096);
+  });
+});
+
+describe("errorCodeValidator", () => {
+  it("R17: is a v.union of literals covering every ERROR_CODES entry", () => {
+    type UnionLike = { kind: string; members?: Array<{ kind: string; value?: unknown }> };
+    const v = errorCodeValidator as unknown as UnionLike;
+    expect(v.kind).toBe("union");
+    expect(v.members).toBeDefined();
+    expect(v.members).toHaveLength(ERROR_CODES.length);
+    const literalValues = (v.members ?? []).map((m) => m.value);
+    for (const code of ERROR_CODES) {
+      expect(literalValues).toContain(code);
+    }
+  });
+
+  it("R17: members are all literal validators", () => {
+    type UnionLike = { kind: string; members?: Array<{ kind: string }> };
+    const members = (errorCodeValidator as unknown as UnionLike).members ?? [];
+    for (const m of members) {
+      expect(m.kind).toBe("literal");
+    }
   });
 });
 
