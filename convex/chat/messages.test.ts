@@ -687,6 +687,75 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(balance?.total).toBe(10_000);
   });
 
+  it("M1 — listThreadMessages enriches aborted messages with aborted:true and drops the sentinel error", async () => {
+    const t = createTestConvex();
+    const { threadId } = await seedUserAndChatJob(t);
+    const caller = asCaller(t, "c_msg");
+
+    // Seed three assistant messages into the same thread:
+    //   - regular (success, no error)
+    //   - aborted (failed + the exact sentinel the library writes on abort)
+    //   - real error (failed + serialized envelope)
+    await t.run(async (ctx) => {
+      await paperChat.saveMessage(ctx, {
+        threadId,
+        message: { role: "assistant", content: "All done." },
+        metadata: { status: "success" },
+        skipEmbeddings: true,
+      });
+      await paperChat.saveMessage(ctx, {
+        threadId,
+        message: { role: "assistant", content: "Partial text before stop" },
+        metadata: {
+          status: "failed",
+          error: "AbortError: user_stopped",
+        },
+        skipEmbeddings: true,
+      });
+      await paperChat.saveMessage(ctx, {
+        threadId,
+        message: { role: "assistant", content: "" },
+        metadata: {
+          status: "failed",
+          error: '{"kind":"rate_limit","message":"busy"}',
+        },
+        skipEmbeddings: true,
+      });
+    });
+
+    const result = await caller.query(api.chat.messages.listThreadMessages, {
+      threadId,
+      paginationOpts: { numItems: 10, cursor: null },
+      streamArgs: undefined,
+    });
+
+    // All three persisted rows show up.
+    expect(result.page.length).toBeGreaterThanOrEqual(3);
+
+    const byText = Object.fromEntries(
+      result.page.map((m: { text?: string; aborted?: boolean; error?: string }) => [
+        m.text ?? "",
+        m,
+      ]),
+    ) as Record<string, { aborted?: boolean; error?: string }>;
+
+    const regular = byText["All done."];
+    expect(regular).toBeDefined();
+    expect(regular.aborted).toBeUndefined();
+    expect(regular.error).toBeUndefined();
+
+    const aborted = byText["Partial text before stop"];
+    expect(aborted).toBeDefined();
+    expect(aborted.aborted).toBe(true);
+    // Critical: the raw sentinel string never reaches the client.
+    expect(aborted.error).toBeUndefined();
+
+    const realError = byText[""];
+    expect(realError).toBeDefined();
+    expect(realError.error).toBe('{"kind":"rate_limit","message":"busy"}');
+    expect(realError.aborted).toBeUndefined();
+  });
+
   it("A8 — maxRetries:0 — a retryable doStream failure is NOT retried", async () => {
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
