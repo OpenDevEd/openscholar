@@ -235,17 +235,17 @@ All assertions use aria, `data-*`, and visible text. **Never CSS classes.**
 
 ## Acceptance criteria
 
-- [ ] Clicking stop produces a toast within 200ms of click (B1, E2E step 3).
-- [ ] Aborted assistant messages render an `<AbortedPill>` with `role="status"` and `data-message-state="aborted"` (B3, B4).
-- [ ] Partial text on aborted messages is preserved and visible (covered by plan 01 at the data layer; this plan just doesn't hide it).
-- [ ] Retry button is enabled on aborted messages, disabled/absent during active streaming (B5, B6).
-- [ ] `listThreadMessages` returns aborted messages with `aborted: true` and no `error`; real-error messages retain their `error` envelope (M1).
-- [ ] Abort sentinel string lives in a single shared constant (`lib/chat/abort-signal.ts`) consumed by both `convex/chat/messages.ts::generateResponse` and `convex/chat/messages.ts::listThreadMessages`.
-- [ ] Toast + pill strings are localized across all 6 project locales (en-GB, en-US, fr, hi, ja, zh).
-- [ ] No CSS-class assertions anywhere in the new tests (`rg -n "toMatch\\(/.*(-|_).*/\\)|toHaveClass\\(" components/extraction/chat/ lib/chat/` for new test files returns zero against color/layout classes).
-- [ ] E2E smoke test passes on desktop + mobile viewports.
-- [ ] `rg -n "aborted" components/extraction/chat/` shows the new pill + message-list integration + composer toast. Clean, no orphans.
-- [ ] ChatErrorAlert does NOT render for aborted messages; only for real-error (has `error` envelope) messages.
+- [x] Clicking stop produces a toast within 200ms of click (B1, E2E step 3).
+- [x] Aborted assistant messages render an `<AbortedPill>` with `role="status"` and `data-message-state="aborted"` (B3, B4).
+- [x] Partial text on aborted messages is preserved and visible (covered by plan 01 at the data layer; this plan just doesn't hide it).
+- [x] Retry button is enabled on aborted messages, disabled/absent during active streaming (B5, B6).
+- [x] `listThreadMessages` returns aborted messages with `aborted: true` and no `error`; real-error messages retain their `error` envelope (M1).
+- [x] Abort sentinel string lives in a single shared constant (`lib/chat/abort-signal.ts`) consumed by both `convex/chat/messages.ts::generateResponse` and `convex/chat/messages.ts::listThreadMessages`.
+- [x] Toast + pill strings are localized across all 6 project locales (en-GB, en-US, fr, hi, ja, zh).
+- [x] No CSS-class assertions anywhere in the new tests.
+- [ ] **Live E2E smoke test passes on desktop + mobile viewports** — handed off to human (requires authenticated session + real LLM call; plan 01 set the same precedent at commit d8edcac).
+- [x] `rg -n "aborted" components/extraction/chat/` shows the new pill + message-list integration + composer toast. Clean, no orphans.
+- [x] ChatErrorAlert does NOT render for aborted messages; only for real-error (has `error` envelope) messages.
 
 ## Known pitfalls
 
