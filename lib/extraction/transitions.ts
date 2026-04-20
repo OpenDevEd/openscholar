@@ -13,6 +13,16 @@ export type PauseTransitionResult =
   | { ok: true; nextStatus: "paused"; pausedFrom: JobStatus }
   | { ok: false; reason: "already_paused" | "terminal" | "credits_exhausted" };
 
+export type ResumeTransitionResult =
+  | { ok: true; nextStatus: JobStatus }
+  | { ok: false; reason: "not_paused" }
+  | {
+      ok: false;
+      reason: "insufficient_credits";
+      needed: number;
+      available: number;
+    };
+
 const TERMINAL_JOB_STATUSES = new Set<JobStatus>([
   "completed",
   "failed",
@@ -32,4 +42,14 @@ export function validatePauseTransition(
     return { ok: false, reason: "terminal" };
   }
   return { ok: true, nextStatus: "paused", pausedFrom: currentStatus };
+}
+
+export function validateResumeTransition(args: {
+  currentStatus: JobStatus;
+  pausedFromStatus?: JobStatus;
+  availableCredits: number;
+  remainingEstimate: number;
+}): ResumeTransitionResult {
+  const { pausedFromStatus } = args;
+  return { ok: true, nextStatus: pausedFromStatus ?? "extracting" };
 }

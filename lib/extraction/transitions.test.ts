@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { validatePauseTransition } from "@/lib/extraction/transitions";
+import {
+  validatePauseTransition,
+  validateResumeTransition,
+} from "@/lib/extraction/transitions";
 
 describe("validatePauseTransition", () => {
   it("R1: from 'extracting' → ok, nextStatus='paused', pausedFrom='extracting'", () => {
@@ -50,5 +53,18 @@ describe("validatePauseTransition", () => {
       ok: false,
       reason: "credits_exhausted",
     });
+  });
+});
+
+describe("validateResumeTransition", () => {
+  it("R7: from 'paused' with pausedFromStatus='downloading_pdfs' → resumes back to that phase", () => {
+    expect(
+      validateResumeTransition({
+        currentStatus: "paused",
+        pausedFromStatus: "downloading_pdfs",
+        availableCredits: 100,
+        remainingEstimate: 50,
+      }),
+    ).toEqual({ ok: true, nextStatus: "downloading_pdfs" });
   });
 });
