@@ -493,4 +493,29 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     );
     expect(totalParts).toBeGreaterThanOrEqual(1);
   });
+
+  it("A5 — releaseThreadLock clears isGenerating/shouldAbort/generatingStartedAt after abort", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    mockDoStream.mockImplementation(hangingDoStream());
+
+    const actionPromise = t.action(
+      internal.chat.messages.generateResponse,
+      { threadId, promptMessageId },
+    );
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+    await actionPromise;
+
+    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(job?.isGenerating).toBe(false);
+    expect(job?.shouldAbort).toBeUndefined();
+    expect(job?.generatingStartedAt).toBeUndefined();
+  });
 });
