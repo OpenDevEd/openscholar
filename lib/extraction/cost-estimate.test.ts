@@ -60,4 +60,25 @@ describe("estimateExtractionCredits", () => {
       10 * 5 * EXTRACTION_COST_CONSTANTS.PDF_Q_CREDIT_MID;
     expect(mid).toBe(expected);
   });
+
+  it("R5: high ≥ mid ≥ low invariant across a sampled matrix of shapes", () => {
+    const matrix: Array<{
+      papers: number;
+      questions: number;
+      usePdfs: boolean;
+      avgPaperKind: "abstract" | "pdf";
+    }> = [
+      { papers: 1, questions: 1, usePdfs: false, avgPaperKind: "abstract" },
+      { papers: 5, questions: 3, usePdfs: false, avgPaperKind: "abstract" },
+      { papers: 50, questions: 1, usePdfs: true, avgPaperKind: "pdf" },
+      { papers: 3, questions: 12, usePdfs: true, avgPaperKind: "pdf" },
+      { papers: 200, questions: 8, usePdfs: false, avgPaperKind: "abstract" },
+      { papers: 100, questions: 5, usePdfs: true, avgPaperKind: "abstract" },
+    ];
+    for (const args of matrix) {
+      const { low, mid, high } = estimateExtractionCredits(args);
+      expect(high).toBeGreaterThanOrEqual(mid);
+      expect(mid).toBeGreaterThanOrEqual(low);
+    }
+  });
 });
