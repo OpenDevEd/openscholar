@@ -151,6 +151,16 @@ export const runExtractionWorkflow = workflow.define({
       totalPapers: processableCount,
     });
 
+    // Without this, maybeFinalizeJob never fires for a zero-paper run and the job strands in `extracting`.
+    if (paperIds.length === 0) {
+      await step.runMutation(
+        internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
+        { jobId },
+      );
+      console.log(`[Workflow] No papers to process — job finalized`);
+      return;
+    }
+
     console.log(`[Workflow] Enqueueing ${paperIds.length} papers for processing`);
 
     let enqueuedCount = 0;

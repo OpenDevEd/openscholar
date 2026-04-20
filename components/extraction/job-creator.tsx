@@ -20,7 +20,7 @@ import {
   FileText,
   Zap,
 } from "lucide-react";
-import { useExtractionStore } from "@/lib/store/extraction";
+import { useExtractionStore, type JobMode } from "@/lib/store/extraction";
 import { useBucketStore } from "@/lib/store/bucket";
 import { bucketItemToServerInput } from "@/lib/bucket/to-server-input";
 import { QuestionBuilder } from "./question-builder";
@@ -86,17 +86,20 @@ export function JobCreator() {
   const pdfCapabilityEnabled = useFeatureFlag("extraction.pdf");
   const chatFlagEnabled = useFeatureFlag("extraction.chat");
 
+  // Persisted `mode: "chat"` would strand a user behind a hidden selector if the flag flipped off after they picked it.
+  const effectiveMode: JobMode = chatFlagEnabled ? draftJob.mode : "extraction";
+
   const steps = useMemo(() => [
     { id: 1, title: t("modeAndDetails"), icon: Layers, description: t("pickModeAndName") },
     { id: 2, title: t("selectPapers"), icon: FileText, description: t("chooseFromHistory") },
     {
       id: 3,
-      title: draftJob.mode === "chat" ? t("chatStartReviewTitle") : t("defineQuestions"),
+      title: effectiveMode === "chat" ? t("chatStartReviewTitle") : t("defineQuestions"),
       icon: Zap,
       description:
-        draftJob.mode === "chat" ? t("chatReviewStepDescription") : t("whatToExtract"),
+        effectiveMode === "chat" ? t("chatReviewStepDescription") : t("whatToExtract"),
     },
-  ], [t, draftJob.mode]);
+  ], [t, effectiveMode]);
 
   const handleNext = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -128,7 +131,7 @@ export function JobCreator() {
       toast.validation.failed(t("pleaseSelectSource"));
       return;
     }
-    if (draftJob.mode === "extraction" && draftJob.questions.length === 0) {
+    if (effectiveMode === "extraction" && draftJob.questions.length === 0) {
       toast.validation.failed(t("pleaseCompleteSteps"));
       return;
     }
@@ -139,7 +142,7 @@ export function JobCreator() {
         (item) => bucketItemToServerInput(item) as never,
       );
       const result =
-        draftJob.mode === "extraction"
+        effectiveMode === "extraction"
           ? await startJob({
               name: draftJob.name || t("untitledJob"),
               mode: "extraction",
@@ -177,7 +180,7 @@ export function JobCreator() {
       case 2:
         return readyBucketItems.length > 0;
       case 3:
-        if (draftJob.mode === "chat") return true;
+        if (effectiveMode === "chat") return true;
         return draftJob.questions.length > 0;
       default:
         return false;
@@ -351,7 +354,7 @@ export function JobCreator() {
                     />
                   </div>
 
-                  {draftJob.mode === "extraction" && pdfCapabilityEnabled && (
+                  {effectiveMode === "extraction" && pdfCapabilityEnabled && (
                     <PdfToggle
                       value={draftJob.usePdfs}
                       onChange={setUsePdfs}
@@ -380,12 +383,12 @@ export function JobCreator() {
                  <SourceSummary />
                 </motion.div>
 
-                 {draftJob.mode === "chat" && <AbstractMissingBanner />}
+                 {effectiveMode === "chat" && <AbstractMissingBanner />}
                  <SourceSelector />
               </div>
             )}
 
-            {validStep === 3 && draftJob.mode === "extraction" && (
+            {validStep === 3 && effectiveMode === "extraction" && (
               <div className="h-full">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -405,7 +408,7 @@ export function JobCreator() {
               </div>
             )}
 
-            {validStep === 3 && draftJob.mode === "chat" && <ChatStartReview />}
+            {validStep === 3 && effectiveMode === "chat" && <ChatStartReview />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -439,7 +442,7 @@ export function JobCreator() {
             </>
           ) : validStep === 3 ? (
             <>
-              {draftJob.mode === "chat" ? t("startChat") : t("startExtraction")}
+              {effectiveMode === "chat" ? t("startChat") : t("startExtraction")}
               <Zap className="ml-2 h-4 w-4" />
             </>
           ) : (
