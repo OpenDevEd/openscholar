@@ -61,10 +61,7 @@ export function ChatPapersProvider({
   "use no memo";
 
   const skipArgs = useSkipWhenHidden({ jobId });
-  const raw = useQuery(
-    api.chat.chatPapers.listChatSourcesWithInclusion,
-    skipArgs,
-  );
+  const raw = useQuery(api.chat.chatPapers.listChatSourcesWithInclusion, skipArgs);
 
   const prevRef = useRef<ChatSourceRow[] | undefined>(undefined);
   const rows = useMemo<ReadonlyArray<ChatSourceRow>>(() => {
