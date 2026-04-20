@@ -1,26 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useVisibilityState } from "./use-visibility-state";
 
 /**
  * Returns `"skip"` when the document is backgrounded, else `args`. Wrap a
  * Convex `useQuery` arg through this to unsubscribe while the tab is hidden
  * (see news.convex.dev/how-convex-took-down-t3-chat-june-1-2025-postmortem).
  *
- * SSR-safe: the initial state reads `document.visibilityState` only when a
- * document exists; on the server it falls through to `false`.
+ * Delegates to `useVisibilityState` — the raw state primitive.
  */
 export function useSkipWhenHidden<T>(args: T): T | "skip" {
-  const [hidden, setHidden] = useState(() =>
-    typeof document !== "undefined" &&
-    document.visibilityState === "hidden",
-  );
-
-  useEffect(() => {
-    const onChange = () => setHidden(document.visibilityState === "hidden");
-    document.addEventListener("visibilitychange", onChange);
-    return () => document.removeEventListener("visibilitychange", onChange);
-  }, []);
-
-  return hidden ? ("skip" as const) : args;
+  return useVisibilityState() === "hidden" ? ("skip" as const) : args;
 }
