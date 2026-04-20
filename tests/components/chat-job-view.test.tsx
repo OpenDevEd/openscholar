@@ -9,8 +9,8 @@
  * Child components are stubbed so the only caller of Convex `useQuery`
  * for this endpoint is `ChatPapersProvider`.
  */
-import { describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, render } from "@testing-library/react";
 import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 
@@ -84,5 +84,62 @@ describe("<ChatJobView> — unified papers subscription", () => {
     );
     expect(callsForListChatSources).toHaveLength(1);
     expect(callsForListChatSources[0]?.[1]).toEqual({ jobId: "job_test" });
+  });
+});
+
+function setVisibility(state: DocumentVisibilityState) {
+  Object.defineProperty(document, "visibilityState", {
+    configurable: true,
+    get: () => state,
+  });
+  document.dispatchEvent(new Event("visibilitychange"));
+}
+
+describe("<ChatJobView> — tab-visibility subscription pause", () => {
+  afterEach(() => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "visible",
+    });
+  });
+
+  it("passes 'skip' to useQuery while the tab is hidden and resubscribes when visible", () => {
+    useQuerySpy.mockClear();
+    render(<ChatJobView job={makeJob()} threadId="t1" />);
+
+    // Isolate calls to the papers-subscription endpoint — the view also
+    // mounts unrelated useQuery consumers we don't care about here.
+    const callsFor = () =>
+      useQuerySpy.mock.calls.filter(
+        ([fn]) => fn === "stub:listChatSourcesWithInclusion",
+      );
+
+    // Initial mount: live args object.
+    expect(callsFor()).toHaveLength(1);
+    expect(callsFor()[0]?.[1]).toEqual({ jobId: "job_test" });
+
+    // Flip hidden → the provider must re-run useQuery with "skip".
+    act(() => {
+      setVisibility("hidden");
+    });
+    const hiddenCalls = callsFor();
+    expect(hiddenCalls.length).toBeGreaterThan(1);
+    expect(hiddenCalls[hiddenCalls.length - 1]?.[1]).toBe("skip");
+
+    // Flip visible → provider re-runs useQuery with the live args object.
+    act(() => {
+      setVisibility("visible");
+    });
+    const visibleCalls = callsFor();
+    expect(visibleCalls.length).toBeGreaterThan(hiddenCalls.length);
+    expect(visibleCalls[visibleCalls.length - 1]?.[1]).toEqual({
+      jobId: "job_test",
+    });
+
+    // No spurious double-transitions: each visibility flip produces one
+    // additional listChatSources call. Anything more than initial + 2
+    // would hint at a re-render storm (e.g., both the provider and a
+    // listener re-running the query).
+    expect(visibleCalls.length - 1).toBe(2);
   });
 });
