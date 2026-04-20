@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
@@ -24,7 +25,7 @@ interface SourceRowProps {
   isActiveDescendant?: boolean;
 }
 
-export function SourceRow({
+function SourceRowImpl({
   row,
   match,
   query = "",
@@ -149,6 +150,20 @@ export function SourceRow({
     </div>
   );
 }
+
+/**
+ * Identity-compare memo. The provider's `stabilizeRowsById` preserves
+ * the `row` reference when structural content is unchanged, so toggling
+ * one row does not cascade re-renders across the list.
+ */
+export const SourceRow = memo(SourceRowImpl, (prev, next) => {
+  return (
+    prev.row === next.row &&
+    prev.match === next.match &&
+    prev.query === next.query &&
+    prev.isActiveDescendant === next.isActiveDescendant
+  );
+});
 
 function SnippetText({
   text,
