@@ -535,13 +535,10 @@ export default defineSchema({
     // terminal transition by markPaperTerminalTx.
     attemptCount: v.optional(v.number()),
 
-    // Cost tracking
+    // Cost tracking. Plan-02 billing-idempotency lives on the per-question
+    // extractionResults.billed flag; per-paper creditsUsed is just the
+    // running aggregate of recordOneAnswer's debits.
     creditsUsed: v.optional(v.number()),
-    // Idempotency flag: true once LLM extraction credits have been deducted
-    // atomically with persisting extractionResults. Prevents double-billing
-    // if saveExtractionResultsAndComplete is retried (e.g. OCC conflict) or
-    // if handleExtractionComplete fires twice for the same paper.
-    extractionBilled: v.optional(v.boolean()),
 
     // Content usage tracking
     pdfContentUsed: v.optional(v.boolean()), // true if PDF content was actually used for extraction (any question)
@@ -658,8 +655,9 @@ export default defineSchema({
       ),
     ),
     // Idempotency gate: true once the LLM credits for this question have
-    // been deducted atomically with persisting the answer. Replaces the
-    // per-paper `extractionPapers.extractionBilled` flag.
+    // been deducted atomically with persisting the answer. This is the
+    // per-question billing flag plan-02 uses in place of any per-paper
+    // equivalent.
     billed: v.optional(v.boolean()),
     // Per-question retry counter. Bumped every time the workflow step
     // terminates (success or failure) so `aggregatePaperStatus` can decide

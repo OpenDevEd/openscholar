@@ -51,7 +51,6 @@ export async function markPaperTerminalTx(
     completedAt?: number;
     creditsUsed?: number;
     storageId?: Id<"_storage">;
-    extractionBilled?: boolean;
     pdfContentUsed?: boolean;
   } = {},
 ): Promise<{ applied: boolean; paper: Doc<"extractionPapers"> | null }> {
@@ -74,9 +73,6 @@ export async function markPaperTerminalTx(
   };
   if (extras.creditsUsed !== undefined) patch.creditsUsed = extras.creditsUsed;
   if (extras.storageId !== undefined) patch.storageId = extras.storageId;
-  if (extras.extractionBilled !== undefined) {
-    patch.extractionBilled = extras.extractionBilled;
-  }
   if (extras.pdfContentUsed !== undefined) {
     patch.pdfContentUsed = extras.pdfContentUsed;
   }
