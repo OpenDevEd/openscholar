@@ -15,10 +15,21 @@
  *   can restore focus to the textarea after closing the dialog
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  type RenderOptions,
+  type RenderResult,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MessageComposer } from "@/components/extraction/chat/message-composer";
-import type { Doc } from "@/convex/_generated/dataModel";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
+import {
+  fakePapersContext,
+  mkChatSourceRow,
+} from "@/tests/helpers/papers-context-fixture";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 
 const sendMessageMock = vi.fn().mockResolvedValue(undefined);
 const abortMock = vi.fn().mockResolvedValue(undefined);
@@ -47,7 +58,6 @@ vi.mock("convex/react", () => ({
     }
     return vi.fn();
   },
-  useQuery: () => [{ included: true, chatPaperId: "cp1" }],
 }));
 
 vi.mock("@convex-dev/agent/react", () => ({
@@ -117,16 +127,37 @@ function makeJob(over: Partial<Doc<"extractionJobs">> = {}): Doc<"extractionJobs
   } as Doc<"extractionJobs">;
 }
 
+function renderWithSources(
+  ui: React.ReactElement,
+  {
+    jobId,
+    rows,
+    ...options
+  }: {
+    jobId?: Id<"extractionJobs">;
+    rows?: ReturnType<typeof mkChatSourceRow>[];
+  } & Omit<RenderOptions, "wrapper"> = {},
+): RenderResult {
+  const effectiveJobId = jobId ?? ("job_1" as Id<"extractionJobs">);
+  const effectiveRows =
+    rows ?? [mkChatSourceRow({ included: true })];
+  const ctx = fakePapersContext({ jobId: effectiveJobId, rows: effectiveRows });
+  return render(
+    <PapersContext.Provider value={ctx}>{ui}</PapersContext.Provider>,
+    options,
+  );
+}
+
 describe("<MessageComposer>", () => {
   it("Send button is disabled when the input is empty", () => {
-    render(<MessageComposer job={makeJob()} threadId="t_1" />);
+    renderWithSources(<MessageComposer job={makeJob()} threadId="t_1" />);
     const send = screen.getByRole("button", { name: /chatSend/i });
     expect(send).toBeDisabled();
   });
 
   it("Send button enables once text is typed", async () => {
     const user = userEvent.setup();
-    render(<MessageComposer job={makeJob()} threadId="t_1" />);
+    renderWithSources(<MessageComposer job={makeJob()} threadId="t_1" />);
     await user.type(screen.getByRole("textbox"), "hello");
     expect(screen.getByRole("button", { name: /chatSend/i })).not.toBeDisabled();
   });
@@ -134,7 +165,7 @@ describe("<MessageComposer>", () => {
   it("Enter alone submits the message (no Shift)", async () => {
     const user = userEvent.setup();
     sendMessageMock.mockClear();
-    render(<MessageComposer job={makeJob()} threadId="t_1" />);
+    renderWithSources(<MessageComposer job={makeJob()} threadId="t_1" />);
     const textarea = screen.getByRole("textbox");
     await user.type(textarea, "hello");
     await user.type(textarea, "{Enter}");
@@ -147,7 +178,7 @@ describe("<MessageComposer>", () => {
   it("Shift+Enter inserts a newline and does NOT submit", async () => {
     const user = userEvent.setup();
     sendMessageMock.mockClear();
-    render(<MessageComposer job={makeJob()} threadId="t_1" />);
+    renderWithSources(<MessageComposer job={makeJob()} threadId="t_1" />);
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
     await user.type(textarea, "line1");
     await user.type(textarea, "{Shift>}{Enter}{/Shift}line2");
@@ -158,7 +189,7 @@ describe("<MessageComposer>", () => {
 
   it("IME composition guard: Enter during composition does not submit", () => {
     sendMessageMock.mockClear();
-    render(<MessageComposer job={makeJob()} threadId="t_1" />);
+    renderWithSources(<MessageComposer job={makeJob()} threadId="t_1" />);
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: "こん" } });
     fireEvent.compositionStart(textarea);
@@ -172,7 +203,9 @@ describe("<MessageComposer>", () => {
   });
 
   it("Stop button replaces Send while the job is generating", () => {
-    render(<MessageComposer job={makeJob({ isGenerating: true })} threadId="t_1" />);
+    renderWithSources(
+      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_1" />,
+    );
     expect(screen.getByRole("button", { name: /chatStop/i })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /chatSend/i })).toBeNull();
   });
@@ -180,13 +213,15 @@ describe("<MessageComposer>", () => {
   it("Stop button calls abortGeneration with the threadId", async () => {
     const user = userEvent.setup();
     abortMock.mockClear();
-    render(<MessageComposer job={makeJob({ isGenerating: true })} threadId="t_xyz" />);
+    renderWithSources(
+      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_xyz" />,
+    );
     await user.click(screen.getByRole("button", { name: /chatStop/i }));
     expect(abortMock).toHaveBeenCalledWith({ threadId: "t_xyz" });
   });
 
   it("exposes data-chat-composer so ClearConversation can refocus the textarea", () => {
-    render(<MessageComposer job={makeJob()} threadId="t_1" />);
+    renderWithSources(<MessageComposer job={makeJob()} threadId="t_1" />);
     const root = document.querySelector('[data-chat-composer="true"]');
     expect(root).not.toBeNull();
     expect(root?.querySelector("textarea")).not.toBeNull();

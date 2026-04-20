@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ComposerModelPicker } from "./composer-model-picker";
+import { usePapersContext } from "./papers-context";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
@@ -34,14 +35,12 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
   const reduceMotion = useReducedMotion();
   const jobIsGenerating = job.isGenerating ?? false;
 
-  const chatSources = useQuery(
-    api.chat.chatPapers.listChatSourcesWithInclusion,
-    { jobId: job._id },
-  );
-  const totalSources = chatSources?.length ?? 0;
-  const includedSources =
-    chatSources?.filter((row) => row.included).length ?? 0;
-  const hasNoSourcesIncluded = chatSources !== undefined && includedSources === 0;
+  const {
+    totalCount: totalSources,
+    includedCount: includedSources,
+    isLoading: sourcesLoading,
+  } = usePapersContext();
+  const hasNoSourcesIncluded = !sourcesLoading && includedSources === 0;
 
   const sendMessage = useMutation(
     api.chat.messages.sendMessage,
