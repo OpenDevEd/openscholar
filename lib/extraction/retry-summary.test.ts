@@ -90,4 +90,19 @@ describe("summarizeRetryable", () => {
       schema_validation: 1,
     });
   });
+
+  it("R7: unknown code (not in taxonomy) falls into retryable bucket — never trap the user", () => {
+    const results: RetryableResultInput[] = [
+      // Simulate a code produced by a future classifier revision that
+      // this summarizer hasn't been taught about. If we naively asked
+      // `isRetryable[code] !== false` we'd land here anyway; the
+      // test pins the forward-compat guarantee.
+      { status: "failed", lastError: { code: "future_unseen_code" } },
+    ];
+    expect(summarizeRetryable(results)).toEqual({
+      retryableCount: 1,
+      permanentCount: 0,
+      permanentBreakdown: {},
+    });
+  });
 });

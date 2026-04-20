@@ -11,12 +11,17 @@
  * from the single-source taxonomy so there's no classification drift.
  */
 
-import { isRetryable, type ErrorCode } from "@/lib/errors/taxonomy";
+import { isRetryable } from "@/lib/errors/taxonomy";
 
 export type RetryableResultInput = {
   status?: "pending" | "extracting" | "completed" | "failed";
-  lastError?: { code: ErrorCode } | null;
+  // `code` widened from ErrorCode to string for forward-compat: if the
+  // classifier evolves ahead of this module, unknown codes route to the
+  // retryable bucket (see R7) rather than trapping the user.
+  lastError?: { code: string } | null;
 };
+
+const retryableTable: Record<string, boolean | undefined> = isRetryable;
 
 export type RetrySummary = {
   retryableCount: number;
@@ -38,7 +43,7 @@ export function summarizeRetryable(
   for (const r of results) {
     if (r.status !== "failed") continue;
     const code = r.lastError?.code;
-    if (code && isRetryable[code] === false) {
+    if (code && retryableTable[code] === false) {
       counts.set(code, (counts.get(code) ?? 0) + 1);
     } else {
       retryableCount += 1;
