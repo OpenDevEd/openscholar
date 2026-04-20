@@ -122,6 +122,56 @@ describe("classifyUnknownError — fingerprint cascade", () => {
     expect(classifyUnknownError(new Error("socket hang up")).code).toBe("network");
     expect(classifyUnknownError(new Error("getaddrinfo ENOTFOUND api.foo")).code).toBe("network");
   });
+
+  it("R9: httpStatus 429 → rate_limit", () => {
+    const result = classifyUnknownError(
+      Object.assign(new Error("Too many requests"), { statusCode: 429 }),
+    );
+    expect(result.code).toBe("rate_limit");
+    expect(result.httpStatus).toBe(429);
+  });
+
+  it("R9: 'status' field also picked up (fetch Response style)", () => {
+    expect(
+      classifyUnknownError(Object.assign(new Error("Too many"), { status: 429 })).code,
+    ).toBe("rate_limit");
+  });
+
+  it("R10: httpStatus 503 → provider_5xx", () => {
+    const result = classifyUnknownError(
+      Object.assign(new Error("Service unavailable"), { statusCode: 503 }),
+    );
+    expect(result.code).toBe("provider_5xx");
+    expect(result.httpStatus).toBe(503);
+  });
+
+  it("R10: httpStatus 500 / 502 / 504 → provider_5xx", () => {
+    for (const s of [500, 502, 504] as const) {
+      expect(
+        classifyUnknownError(Object.assign(new Error("oops"), { statusCode: s })).code,
+      ).toBe("provider_5xx");
+    }
+  });
+
+  it("R11: httpStatus 401 → auth", () => {
+    const result = classifyUnknownError(
+      Object.assign(new Error("Invalid API key"), { statusCode: 401 }),
+    );
+    expect(result.code).toBe("auth");
+    expect(result.retryable).toBe(false);
+  });
+
+  it("R11: httpStatus 403 → auth", () => {
+    expect(
+      classifyUnknownError(Object.assign(new Error("Forbidden"), { statusCode: 403 })).code,
+    ).toBe("auth");
+  });
+
+  it("R11: httpStatus 402 → insufficient_credits", () => {
+    expect(
+      classifyUnknownError(Object.assign(new Error("Payment required"), { statusCode: 402 })).code,
+    ).toBe("insufficient_credits");
+  });
 });
 
 describe("classifyChatError", () => {

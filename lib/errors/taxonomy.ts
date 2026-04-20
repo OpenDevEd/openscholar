@@ -149,7 +149,31 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
     return finalize("network", message);
   }
 
+  // 5. HTTP status fingerprints (AI SDK uses statusCode, fetch Response uses status).
+  const httpStatus = extractHttpStatus(data);
+  if (typeof httpStatus === "number") {
+    if (httpStatus === 429) return finalize("rate_limit", message, { httpStatus });
+    if (httpStatus === 402) return finalize("insufficient_credits", message, { httpStatus });
+    if (httpStatus === 401 || httpStatus === 403) {
+      return finalize("auth", message, { httpStatus });
+    }
+    if (httpStatus >= 500 && httpStatus < 600) {
+      return finalize("provider_5xx", message, { httpStatus });
+    }
+  }
+
   return finalize("unknown", message);
+}
+
+function extractHttpStatus(
+  data: Record<string, unknown> | undefined,
+): number | undefined {
+  if (!data) return undefined;
+  const raw = data.statusCode ?? data.status;
+  if (typeof raw === "number" && Number.isInteger(raw) && raw >= 100 && raw < 600) {
+    return raw;
+  }
+  return undefined;
 }
 
 function extractData(err: unknown): Record<string, unknown> | undefined {
@@ -173,11 +197,19 @@ function extractClassifiableMessage(
   return "Unknown error";
 }
 
-function finalize(code: ErrorCode, message: string): ClassifiedError {
+function finalize(
+  code: ErrorCode,
+  message: string,
+  extras: { httpStatus?: number; providerName?: string; context?: unknown } = {},
+): ClassifiedError {
+  const { httpStatus, providerName, context } = extras;
   return {
     code,
     message: truncate(message, 500),
     retryable: isRetryable[code],
+    ...(httpStatus !== undefined ? { httpStatus } : {}),
+    ...(providerName !== undefined ? { providerName } : {}),
+    ...(context !== undefined ? { context } : {}),
   };
 }
 
