@@ -12,4 +12,17 @@ describe("summarizeRetryable", () => {
       permanentBreakdown: {},
     });
   });
+
+  it("R2: only completed results → all zeros (no failures to retry)", () => {
+    const results: RetryableResultInput[] = [
+      { status: "completed" },
+      { status: "completed" },
+      { status: "completed" },
+    ];
+    expect(summarizeRetryable(results)).toEqual({
+      retryableCount: 0,
+      permanentCount: 0,
+      permanentBreakdown: {},
+    });
+  });
 });
