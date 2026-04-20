@@ -130,4 +130,19 @@ describe("validateResumeTransition", () => {
       ).toEqual({ ok: false, reason: "not_paused" });
     },
   );
+
+  it("R12: double-resume is idempotent — no throw, stable not_paused result", () => {
+    // Post-resume the job sits in 'extracting'. A second resume click must
+    // fall through without throwing so the caller mutation can return
+    // silently (contract documented in plan 06 § 'Idempotent mutations').
+    const resumed = () =>
+      validateResumeTransition({
+        currentStatus: "extracting",
+        availableCredits: 100,
+        remainingEstimate: 50,
+      });
+    expect(resumed).not.toThrow();
+    expect(resumed()).toEqual({ ok: false, reason: "not_paused" });
+    expect(resumed()).toEqual({ ok: false, reason: "not_paused" });
+  });
 });
