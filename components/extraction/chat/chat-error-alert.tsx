@@ -44,7 +44,7 @@ interface ChatErrorAlertProps {
   chatModelId?: Id<"models"> | null;
 }
 
-const ICONS: Record<ChatErrorClass, LucideIcon> = {
+const ICONS: Partial<Record<ChatErrorClass, LucideIcon>> = {
   rate_limit: ClockIcon,
   insufficient_credits: CoinsIcon,
   model_unavailable: SlidersHorizontalIcon,
@@ -92,7 +92,7 @@ export function ChatErrorAlert({
 
   if (!envelope) return null;
 
-  const Icon = ICONS[envelope.class];
+  const Icon = ICONS[envelope.class] ?? AlertCircleIcon;
   const variant = NON_DESTRUCTIVE.has(envelope.class) ? "default" : "destructive";
   const role = variant === "destructive" ? "alert" : "status";
 

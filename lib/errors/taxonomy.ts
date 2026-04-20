@@ -1,25 +1,37 @@
 /**
- * Chat error classifier — shared between Convex runtime and the Next.js
+ * Unified error taxonomy — shared between Convex runtime and the Next.js
  * client. Produces a structured envelope from any error shape we see
- * coming out of the AI SDK / OpenRouter so the UI can render a specific
- * class instead of a generic "Response failed".
- *
- * Error classes track the design spec produced by the redesign research:
- * rate_limit, insufficient_credits, model_unavailable, auth, moderation,
- * context_too_long, network, provider_5xx, aborted, unknown.
+ * coming out of the AI SDK / OpenRouter / extraction pipeline so the UI
+ * can render a specific code instead of a generic "Something went wrong".
  */
 
-export type ChatErrorClass =
-  | "rate_limit"
-  | "insufficient_credits"
-  | "model_unavailable"
-  | "auth"
-  | "moderation"
-  | "context_too_long"
-  | "network"
-  | "provider_5xx"
-  | "aborted"
-  | "unknown";
+export const ERROR_CODES = [
+  // chat + extraction shared
+  "insufficient_credits",
+  "rate_limit",
+  "model_unavailable",
+  "auth",
+  "moderation",
+  "context_too_long",
+  "network",
+  "provider_5xx",
+  "aborted",
+  "unknown",
+  // extraction-only
+  "action_timeout",
+  "pdf_download_failed",
+  "pdf_invalid",
+  "paper_not_found",
+  "indexing_failed",
+  "llm_content_refusal",
+  "schema_validation",
+  "cancelled",
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/** Chat-side alias for ErrorCode; chat envelopes only emit the first 10 codes. */
+export type ChatErrorClass = ErrorCode;
 
 export type ChatErrorEnvelope = {
   version: 1;

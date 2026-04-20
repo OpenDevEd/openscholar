@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyChatError,
+  ERROR_CODES,
   isRetryable,
   parseChatError,
   requiresAdminAction,
@@ -8,6 +9,32 @@ import {
   serializeChatError,
   type ChatErrorEnvelope,
 } from "@/lib/errors/taxonomy";
+
+describe("ERROR_CODES taxonomy", () => {
+  it("is an 18-entry tuple covering chat + extraction codes", () => {
+    expect(ERROR_CODES).toEqual([
+      "insufficient_credits",
+      "rate_limit",
+      "model_unavailable",
+      "auth",
+      "moderation",
+      "context_too_long",
+      "network",
+      "provider_5xx",
+      "aborted",
+      "unknown",
+      "action_timeout",
+      "pdf_download_failed",
+      "pdf_invalid",
+      "paper_not_found",
+      "indexing_failed",
+      "llm_content_refusal",
+      "schema_validation",
+      "cancelled",
+    ]);
+    expect(ERROR_CODES).toHaveLength(18);
+  });
+});
 
 describe("classifyChatError", () => {
   it("maps HTTP 429 with OpenRouter body to rate_limit + retryAfter", () => {
