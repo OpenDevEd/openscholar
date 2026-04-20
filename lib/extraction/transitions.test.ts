@@ -32,4 +32,14 @@ describe("validatePauseTransition", () => {
       reason: "already_paused",
     });
   });
+
+  it.each(["completed", "failed", "cancelled"] as const)(
+    "R5: from terminal status '%s' → not-ok with reason 'terminal'",
+    (status) => {
+      expect(validatePauseTransition(status)).toEqual({
+        ok: false,
+        reason: "terminal",
+      });
+    },
+  );
 });
