@@ -326,6 +326,14 @@ export const extractionPaperErrorValidator = v.object({
   context: v.optional(v.any()),
 });
 
+/** Per-question lifecycle status on an extractionResults row. */
+export const resultStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("extracting"),
+  v.literal("completed"),
+  v.literal("failed"),
+);
+
 export const extractionResultValidator = v.object({
   _id: v.id("extractionResults"),
   _creationTime: v.number(),
@@ -338,6 +346,10 @@ export const extractionResultValidator = v.object({
   citations: v.array(citationValidator),
   citationStatus: citationStatusValidator,
   retrievalDiagnostics: v.optional(retrievalDiagnosticsValidator),
+  status: v.optional(resultStatusValidator),
+  billed: v.optional(v.boolean()),
+  attemptCount: v.optional(v.number()),
+  lastError: v.optional(structuredErrorValidator),
   model: v.optional(v.string()),
   provider: v.optional(v.string()),
   pdfContentUsed: v.optional(v.boolean()),
@@ -394,6 +406,10 @@ export const extractionResultWithReviewValidator = v.object({
   citations: v.array(citationValidator),
   citationStatus: citationStatusValidator,
   retrievalDiagnostics: v.optional(retrievalDiagnosticsValidator),
+  status: v.optional(resultStatusValidator),
+  billed: v.optional(v.boolean()),
+  attemptCount: v.optional(v.number()),
+  lastError: v.optional(structuredErrorValidator),
   model: v.optional(v.string()),
   provider: v.optional(v.string()),
   pdfContentUsed: v.optional(v.boolean()),

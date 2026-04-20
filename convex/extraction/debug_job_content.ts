@@ -38,12 +38,12 @@ export const debugJobContent = internalQuery({
       abstractOnlyFailed: [] as Array<{
         id: string;
         title: string;
-        errorMessage?: string;
+        lastErrorMessage?: string;
       }>,
       noContentFailed: [] as Array<{
         id: string;
         title: string;
-        errorMessage?: string;
+        lastErrorMessage?: string;
       }>,
     };
 

@@ -646,6 +646,31 @@ export default defineSchema({
       })
     ),
 
+    // Per-question lifecycle status. Plan-02 moves the orchestration from
+    // per-paper to per-(paper, question) so every question gets its own
+    // workflow step, its own retry budget, and its own billing gate.
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("extracting"),
+        v.literal("completed"),
+        v.literal("failed"),
+      ),
+    ),
+    // Idempotency gate: true once the LLM credits for this question have
+    // been deducted atomically with persisting the answer. Replaces the
+    // per-paper `extractionPapers.extractionBilled` flag.
+    billed: v.optional(v.boolean()),
+    // Per-question retry counter. Bumped every time the workflow step
+    // terminates (success or failure) so `aggregatePaperStatus` can decide
+    // whether a retryable failure has exhausted its budget.
+    attemptCount: v.optional(v.number()),
+    // Most recent structured failure for this question, classified by
+    // `lib/errors/taxonomy`. Paper-level `extractionPapers.lastError`
+    // still exists as the coarse per-paper fallback used by the
+    // download/index stages.
+    lastError: v.optional(structuredErrorValidator),
+
     // Source tracking
     model: v.optional(v.string()),
     provider: v.optional(v.string()),
