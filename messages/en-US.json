@@ -623,6 +623,7 @@
       },
       "permanent": {
         "title": "{count, plural, one {# question cannot be retried} other {# questions cannot be retried}}",
+        "dismiss": "Dismiss",
         "body": {
           "pdf_invalid": "Invalid or unreadable PDF",
           "paper_not_found": "Paper not found in OpenAlex",
@@ -631,7 +632,8 @@
           "llm_content_refusal": "Model refused to answer",
           "schema_validation": "Answer didn't match the question's required type",
           "auth": "Provider authentication failed (ops)",
-          "cancelled": "Cancelled by user"
+          "cancelled": "Cancelled by user",
+          "unknown": "Unknown error"
         }
       }
     },

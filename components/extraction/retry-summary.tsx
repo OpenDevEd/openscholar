@@ -9,6 +9,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { RetryConfirmDialog } from "@/components/extraction/retry-confirm-dialog";
+import { PermanentFailuresCallout } from "@/components/extraction/permanent-failures-callout";
 
 export interface RetrySummaryProps {
   jobId: Id<"extractionJobs">;
@@ -43,46 +44,51 @@ export function RetrySummary({ jobId, usePdfs = false }: RetrySummaryProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   if (!summary) return null;
-  const { retryableCount, permanentCount } = summary;
+  const { retryableCount, permanentCount, permanentBreakdown } = summary;
   if (retryableCount === 0 && permanentCount === 0) return null;
 
   return (
-    <div
-      role="status"
-      data-retryable-count={retryableCount}
-      data-permanent-count={permanentCount}
-      className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-xs"
-    >
-      <span className="tabular-nums">
-        {retryableCount > 0 && permanentCount > 0
-          ? t("summary.both", {
-              retryable: retryableCount,
-              permanent: permanentCount,
-            })
-          : retryableCount > 0
-            ? t("summary.retryableOnly", { retryable: retryableCount })
-            : t("summary.permanentOnly", { permanent: permanentCount })}
-      </span>
-      {retryableCount > 0 && (
-        <>
-          <Button
-            size="sm"
-            onClick={() => setDialogOpen(true)}
-            data-action="retry"
-          >
-            <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
-            {t("retryButton", { count: retryableCount })}
-          </Button>
-          <RetryConfirmDialog
-            open={dialogOpen}
-            onOpenChange={setDialogOpen}
-            retryableCount={retryableCount}
-            usePdfs={usePdfs}
-            onConfirm={async () => {
-              await retryFailed({ jobId });
-            }}
-          />
-        </>
+    <div className="space-y-2">
+      <div
+        role="status"
+        data-retryable-count={retryableCount}
+        data-permanent-count={permanentCount}
+        className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-xs"
+      >
+        <span className="tabular-nums">
+          {retryableCount > 0 && permanentCount > 0
+            ? t("summary.both", {
+                retryable: retryableCount,
+                permanent: permanentCount,
+              })
+            : retryableCount > 0
+              ? t("summary.retryableOnly", { retryable: retryableCount })
+              : t("summary.permanentOnly", { permanent: permanentCount })}
+        </span>
+        {retryableCount > 0 && (
+          <>
+            <Button
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+              data-action="retry"
+            >
+              <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("retryButton", { count: retryableCount })}
+            </Button>
+            <RetryConfirmDialog
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              retryableCount={retryableCount}
+              usePdfs={usePdfs}
+              onConfirm={async () => {
+                await retryFailed({ jobId });
+              }}
+            />
+          </>
+        )}
+      </div>
+      {permanentCount > 0 && (
+        <PermanentFailuresCallout breakdown={permanentBreakdown} />
       )}
     </div>
   );
