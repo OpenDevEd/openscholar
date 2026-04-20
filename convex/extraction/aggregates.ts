@@ -64,6 +64,68 @@ export const resultConfidenceAgg = new DirectAggregate<{
 }>(components.resultConfidenceAgg);
 
 /**
+ * Plan-04: per-job credit-spend aggregate. Backs `getJobCost` with an
+ * O(log n) sum call regardless of job size, and drives the header cost
+ * badge's live-updating subscription (namespace isolation means
+ * paper-N completing on job-A does not rerun queries for job-B).
+ *
+ * Namespace: the jobId — one B-tree per job.
+ * Key:       the debit timestamp (ms). Entries sort by spend order.
+ * Id:        opaque unique string per debit (resultId for extraction_llm,
+ *            or `embed:${paperId}` for embedding). Typed as string
+ *            because the aggregate captures both per-question results
+ *            and per-paper embedding charges — a mixed-ID namespace
+ *            needs the string union.
+ * sumValue:  credits spent for that debit.
+ *
+ * Cleared on cascade delete via `clearJobCredits` (see below). NOT
+ * cleared on cancel — the receipt for already-spent credits must be
+ * preserved (partial-work billing integrity).
+ */
+export const creditsAgg = new DirectAggregate<{
+  Namespace: Id<"extractionJobs">;
+  Key: number;
+  Id: string;
+}>(components.creditsAgg);
+
+/**
+ * Record one credit-spend entry into `creditsAgg`. Use from the same
+ * transaction as `deductCredits` so the aggregate total stays
+ * exactly in sync with the ledger.
+ *
+ * Uses `insertIfDoesNotExist` so a workpool retry (OCC) or a replay
+ * through an already-billed path is a no-op.
+ */
+export async function recordCreditSpend(
+  ctx: RunMutationCtx,
+  args: {
+    jobId: Id<"extractionJobs">;
+    key: number;
+    id: string;
+    creditsUsed: number;
+  },
+): Promise<void> {
+  await creditsAgg.insertIfDoesNotExist(ctx, {
+    namespace: args.jobId,
+    key: args.key,
+    id: args.id,
+    sumValue: args.creditsUsed,
+  });
+}
+
+/**
+ * Wipe every entry for a job's namespace. Called from the
+ * `deleteExtractionInternal` cascade. One component call (not O(N))
+ * because `clear` walks the namespace B-tree directly.
+ */
+export async function clearJobCredits(
+  ctx: RunMutationCtx,
+  jobId: Id<"extractionJobs">,
+): Promise<void> {
+  await creditsAgg.clear(ctx, { namespace: jobId });
+}
+
+/**
  * Minimal result shape the helpers need — structurally compatible with
  * Doc<"extractionResults"> so callers can pass the doc straight through
  * after ctx.db.get / ctx.db.query.
