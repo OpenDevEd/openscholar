@@ -33,6 +33,7 @@ export default defineConfig({
       "tests/**/*.test.ts",
       "tests/**/*.test.tsx",
       "convex/**/*.test.ts",
+      "lib/**/*.test.ts",
       "app/**/__tests__/**/*.test.tsx",
     ],
     exclude: ["tests/live-billing/**/*.test.ts"],
