@@ -32,6 +32,9 @@ import { ModeSelector } from "./mode-selector";
 import { PdfToggle } from "./pdf-toggle";
 import { AbstractMissingBanner } from "./chat/abstract-missing-banner";
 import { ChatStartReview } from "./chat/chat-start-review";
+import { ExtractionPreflightBanner } from "./preflight-banner";
+import { estimateExtractionCredits } from "@/lib/extraction/cost-estimate";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -126,6 +129,30 @@ export function JobCreator() {
     [bucketOrder, bucketItemsMap],
   );
 
+  // Plan-03: live preflight estimate + balance check. Mirrors the
+  // screening-dialog balance row (components/screening/screening-dialog.tsx:210-215).
+  const preflightEstimate = useMemo(
+    () =>
+      estimateExtractionCredits({
+        papers: readyBucketItems.length,
+        questions: draftJob.questions.length,
+        usePdfs: draftJob.usePdfs,
+        avgPaperKind: draftJob.usePdfs ? "pdf" : "abstract",
+      }),
+    [readyBucketItems.length, draftJob.questions.length, draftJob.usePdfs],
+  );
+  const { data: preflightBalance } = useProtectedQuery(
+    api.credits.queries.checkBalance,
+    effectiveMode === "extraction" && preflightEstimate.high > 0
+      ? { requiredAmount: preflightEstimate.high }
+      : "skip",
+  );
+  const preflightBlocked =
+    effectiveMode === "extraction" &&
+    preflightEstimate.high > 0 &&
+    preflightBalance !== undefined &&
+    (preflightBalance === null || !preflightBalance.hasEnough);
+
   const handleSubmit = async () => {
     if (readyBucketItems.length === 0) {
       toast.validation.failed(t("pleaseSelectSource"));
@@ -181,7 +208,12 @@ export function JobCreator() {
         return readyBucketItems.length > 0;
       case 3:
         if (effectiveMode === "chat") return true;
-        return draftJob.questions.length > 0;
+        if (draftJob.questions.length === 0) return false;
+        // Plan-03: disable submit on step 3 when the user cannot cover
+        // the estimate. Server preflight still runs and is the source
+        // of truth; this is a UX courtesy.
+        if (preflightBlocked) return false;
+        return true;
       default:
         return false;
     }
@@ -405,6 +437,15 @@ export function JobCreator() {
                 </motion.div>
 
                 <QuestionBuilder />
+
+                {draftJob.questions.length > 0 && (
+                  <div className="mt-6">
+                    <ExtractionPreflightBanner
+                      estimate={preflightEstimate}
+                      balance={preflightBalance}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
