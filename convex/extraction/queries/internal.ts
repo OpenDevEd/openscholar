@@ -25,6 +25,7 @@ import {
   extractionQuestionValidator,
   extractionResultValidator,
   jobSourcesReadValidator,
+  jobStatusValidator,
   paperStatusValidator,
 } from "../validators";
 
@@ -33,6 +34,21 @@ export const getJobInternal = internalQuery({
   returns: v.union(v.null(), extractionJobValidator),
   handler: async (ctx, args) => {
     return await ctx.db.get("extractionJobs", args.jobId);
+  },
+});
+
+/**
+ * Plan-06 — lean status read used by the workflow gate + the per-action
+ * skip-guard. Returns just the status (or null for a missing job) so
+ * repeated checks are cheap; the workflow calls this before every paper
+ * and every question dispatch, and extractOneQuestion calls it at entry.
+ */
+export const getJobStatusInternal = internalQuery({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.union(v.null(), jobStatusValidator),
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get("extractionJobs", args.jobId);
+    return job?.status ?? null;
   },
 });
 
