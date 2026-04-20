@@ -105,4 +105,19 @@ describe("summarizeRetryable", () => {
       permanentBreakdown: {},
     });
   });
+
+  it("R8: completed result carrying a stale lastError is ignored (status is the source of truth)", () => {
+    // A result that succeeded after a previous attempt hit rate_limit.
+    // The lastError from the failed attempt is still on the row but
+    // the latest status is completed — it must not count.
+    const results: RetryableResultInput[] = [
+      { status: "completed", lastError: { code: "rate_limit" } },
+      { status: "completed", lastError: { code: "pdf_invalid" } },
+    ];
+    expect(summarizeRetryable(results)).toEqual({
+      retryableCount: 0,
+      permanentCount: 0,
+      permanentBreakdown: {},
+    });
+  });
 });
