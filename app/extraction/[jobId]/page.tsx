@@ -76,6 +76,7 @@ export default function JobDetailPage() {
   const tConfirm = useTranslations('confirmations');
   const tView = useTranslations('extractionView');
   const tExtraction = useTranslations('extraction');
+  const tErrors = useTranslations('errors');
   const tc = useTranslations('common');
   const tPdf = useTranslations('pdfViewer');
   const locale = useLocale();
@@ -431,11 +432,17 @@ export default function JobDetailPage() {
         <PageWrapper>
           {job.error ? (
             <div
-              className="flex min-h-[60vh] items-center justify-center p-8 text-center text-destructive"
+              role="alert"
+              className="flex min-h-[60vh] flex-col items-center justify-center gap-2 p-8 text-center text-destructive"
               data-chat-state="error"
               data-error-code={job.error.code}
             >
-              {job.error.message}
+              <strong>
+                {tErrors(`title.${job.error.code}` as never)}
+              </strong>
+              <span className="text-sm text-muted-foreground">
+                {tErrors(`body.${job.error.code}` as never)}
+              </span>
             </div>
           ) : (
             <div data-chat-state="preparing">

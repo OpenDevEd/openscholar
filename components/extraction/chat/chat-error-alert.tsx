@@ -75,6 +75,7 @@ export function ChatErrorAlert({
   chatModelId,
 }: ChatErrorAlertProps) {
   const t = useTranslations("extraction");
+  const tErrors = useTranslations("errors");
   const envelope = parseChatError(rawError);
 
   // Dedup'd with the composer's model picker & MessageActions —
@@ -106,9 +107,9 @@ export function ChatErrorAlert({
       data-http-status={envelope.httpStatus}
     >
       <Icon className="size-4" aria-hidden="true" />
-      <AlertTitle>{titleFor(envelope, t)}</AlertTitle>
+      <AlertTitle>{titleFor(envelope, tErrors)}</AlertTitle>
       <AlertDescription>
-        <span className="mb-2 block">{bodyFor(envelope, t)}</span>
+        <span className="mb-2 block">{bodyFor(envelope, tErrors)}</span>
         <ActionRow
           envelope={envelope}
           onRetry={onRetry}
@@ -235,14 +236,14 @@ function useCountdown(retryAfterMs: number | undefined): number | null {
 
 function titleFor(
   envelope: ChatErrorEnvelope,
-  t: ReturnType<typeof useTranslations<"extraction">>,
+  t: ReturnType<typeof useTranslations<"errors">>,
 ): string {
-  return t(`chatErrorTitle.${envelope.class}` as never);
+  return t(`title.${envelope.class}` as never);
 }
 
 function bodyFor(
   envelope: ChatErrorEnvelope,
-  t: ReturnType<typeof useTranslations<"extraction">>,
+  t: ReturnType<typeof useTranslations<"errors">>,
 ): string {
-  return t(`chatErrorBody.${envelope.class}` as never);
+  return t(`body.${envelope.class}` as never);
 }
