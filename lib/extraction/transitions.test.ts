@@ -67,4 +67,17 @@ describe("validateResumeTransition", () => {
       }),
     ).toEqual({ ok: true, nextStatus: "downloading_pdfs" });
   });
+
+  it("R8: from 'creditsExhausted' with sufficient balance → resumes to 'extracting'", () => {
+    // creditsExhausted is only ever entered mid-extracting (plan 03), so
+    // the resume target is always 'extracting' — no pausedFromStatus is
+    // captured on that path.
+    expect(
+      validateResumeTransition({
+        currentStatus: "creditsExhausted",
+        availableCredits: 100,
+        remainingEstimate: 50,
+      }),
+    ).toEqual({ ok: true, nextStatus: "extracting" });
+  });
 });
