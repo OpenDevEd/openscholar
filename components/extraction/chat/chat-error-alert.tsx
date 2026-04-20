@@ -154,7 +154,9 @@ function ActionRow({
       </span>
     );
   }
-  if (!isRetryable(envelope)) {
+  // Aborts are taxonomy-retryable but the user explicitly stopped — don't
+  // surface a one-click retry that contradicts their intent.
+  if (envelope.class === "aborted" || !isRetryable[envelope.class]) {
     return null;
   }
   return (

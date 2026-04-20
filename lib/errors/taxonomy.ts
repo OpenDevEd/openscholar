@@ -46,23 +46,41 @@ export type ChatErrorEnvelope = {
   message: string;
 };
 
-/** Envelopes that aren't recoverable by hitting "retry" with the same model. */
-const REQUIRES_EDIT: ReadonlySet<ChatErrorClass> = new Set([
+/**
+ * Per-code retryability — the intrinsic taxonomy property. UI policy
+ * (whether to expose a retry button to the user) is a separate concern
+ * layered on top via `requiresUserEdit` / `requiresAdminAction` plus
+ * any UX-level gating the consumer wants.
+ */
+export const isRetryable: Record<ErrorCode, boolean> = {
+  insufficient_credits: true,
+  rate_limit: true,
+  model_unavailable: true,
+  auth: false,
+  moderation: false,
+  context_too_long: false,
+  network: true,
+  provider_5xx: true,
+  aborted: true,
+  unknown: true,
+  action_timeout: true,
+  pdf_download_failed: true,
+  pdf_invalid: false,
+  paper_not_found: false,
+  indexing_failed: true,
+  llm_content_refusal: false,
+  schema_validation: false,
+  cancelled: false,
+};
+
+const REQUIRES_EDIT: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
   "moderation",
   "context_too_long",
 ]);
-const REQUIRES_ATTENTION: ReadonlySet<ChatErrorClass> = new Set([
+const REQUIRES_ATTENTION: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
   "insufficient_credits",
   "auth",
 ]);
-
-export function isRetryable(envelope: ChatErrorEnvelope): boolean {
-  return (
-    !REQUIRES_EDIT.has(envelope.class) &&
-    !REQUIRES_ATTENTION.has(envelope.class) &&
-    envelope.class !== "aborted"
-  );
-}
 
 export function requiresUserEdit(envelope: ChatErrorEnvelope): boolean {
   return REQUIRES_EDIT.has(envelope.class);

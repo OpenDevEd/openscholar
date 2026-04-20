@@ -36,6 +36,37 @@ describe("ERROR_CODES taxonomy", () => {
   });
 });
 
+describe("isRetryable record", () => {
+  it.each([
+    ["insufficient_credits", true],
+    ["rate_limit", true],
+    ["model_unavailable", true],
+    ["auth", false],
+    ["moderation", false],
+    ["context_too_long", false],
+    ["network", true],
+    ["provider_5xx", true],
+    ["aborted", true],
+    ["unknown", true],
+    ["action_timeout", true],
+    ["pdf_download_failed", true],
+    ["pdf_invalid", false],
+    ["paper_not_found", false],
+    ["indexing_failed", true],
+    ["llm_content_refusal", false],
+    ["schema_validation", false],
+    ["cancelled", false],
+  ] as const)("isRetryable[%s] === %s", (code, expected) => {
+    expect(isRetryable[code]).toBe(expected);
+  });
+
+  it("covers every ERROR_CODES entry with a boolean", () => {
+    for (const code of ERROR_CODES) {
+      expect(typeof isRetryable[code]).toBe("boolean");
+    }
+  });
+});
+
 describe("classifyChatError", () => {
   it("maps HTTP 429 with OpenRouter body to rate_limit + retryAfter", () => {
     const envelope = classifyChatError({
@@ -69,7 +100,7 @@ describe("classifyChatError", () => {
       message: "Invalid API key",
     });
     expect(envelope.class).toBe("auth");
-    expect(isRetryable(envelope)).toBe(false);
+    expect(isRetryable[envelope.class]).toBe(false);
     expect(requiresAdminAction(envelope)).toBe(true);
   });
 
@@ -130,13 +161,16 @@ describe("classifyChatError", () => {
       message: "The operation was aborted.",
     });
     expect(envelope.class).toBe("aborted");
-    expect(isRetryable(envelope)).toBe(false);
+    // Aborts are retryable in the unified taxonomy — the request itself
+    // is not broken, the user just stopped it. UI consumers that want to
+    // suppress an automatic retry button on abort should gate separately.
+    expect(isRetryable[envelope.class]).toBe(true);
   });
 
   it("falls back to unknown for unrecognised shapes", () => {
     const envelope = classifyChatError({ message: "something weird happened" });
     expect(envelope.class).toBe("unknown");
-    expect(isRetryable(envelope)).toBe(true);
+    expect(isRetryable[envelope.class]).toBe(true);
   });
 
   it("truncates extremely long raw messages", () => {
@@ -181,25 +215,24 @@ describe("serializeChatError / parseChatError", () => {
   });
 });
 
-describe("action helpers", () => {
+describe("envelope-bound chat helpers", () => {
   it.each([
-    ["rate_limit", true, false, false],
-    ["model_unavailable", true, false, false],
-    ["network", true, false, false],
-    ["provider_5xx", true, false, false],
-    ["unknown", true, false, false],
-    ["aborted", false, false, false],
-    ["moderation", false, true, false],
-    ["context_too_long", false, true, false],
-    ["auth", false, false, true],
-    ["insufficient_credits", false, false, true],
-  ] as const)("class %s: retry=%s edit=%s admin=%s", (cls, retry, edit, admin) => {
+    ["rate_limit", false, false],
+    ["model_unavailable", false, false],
+    ["network", false, false],
+    ["provider_5xx", false, false],
+    ["unknown", false, false],
+    ["aborted", false, false],
+    ["moderation", true, false],
+    ["context_too_long", true, false],
+    ["auth", false, true],
+    ["insufficient_credits", false, true],
+  ] as const)("class %s: edit=%s admin=%s", (cls, edit, admin) => {
     const envelope: ChatErrorEnvelope = {
       version: 1,
       class: cls,
       message: "m",
     };
-    expect(isRetryable(envelope)).toBe(retry);
     expect(requiresUserEdit(envelope)).toBe(edit);
     expect(requiresAdminAction(envelope)).toBe(admin);
   });
