@@ -49,4 +49,20 @@ describe("summarizeFailures", () => {
     ]);
     expect(byCode.map((e) => e.count)).toEqual([3, 2, 1, 1]);
   });
+
+  it("R5: total equals sum of per-code counts", () => {
+    const input: FailureInput[] = [
+      { code: "rate_limit" },
+      { code: "rate_limit" },
+      { code: "network" },
+      { code: "pdf_invalid" },
+      { code: "auth" },
+      { code: "auth" },
+      { code: "auth" },
+    ];
+    const result = summarizeFailures(input);
+    const sum = result.byCode.reduce((acc, e) => acc + e.count, 0);
+    expect(result.total).toBe(sum);
+    expect(result.total).toBe(7);
+  });
 });
