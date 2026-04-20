@@ -109,4 +109,20 @@ describe("stabilizeRowsById", () => {
     expect(out[1]).toBe(next[1]);
     expect(out[1]).not.toBe(prev[1]);
   });
+
+  it("drops a row that is absent from next and preserves refs for survivors", () => {
+    const prev = [
+      row(),
+      row({ chatPaperId: cp(2), position: 2, title: "Row two" }),
+      row({ chatPaperId: cp(3), position: 3, title: "Row three" }),
+    ];
+    const next = [{ ...prev[0]! }, { ...prev[2]! }];
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out).toHaveLength(2);
+    expect(out[0]).toBe(prev[0]);
+    expect(out[1]).toBe(prev[2]);
+    expect(out.some((r) => r.chatPaperId === cp(2))).toBe(false);
+  });
 });
