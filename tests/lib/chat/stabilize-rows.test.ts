@@ -202,4 +202,25 @@ describe("stabilizeRowsById", () => {
     expect(out[0]).toBe(next[0]);
     expect(out[0]).not.toBe(prev[0]);
   });
+
+  it("does not mutate prev or next arrays", () => {
+    const prev: ChatSourceRow[] = [
+      row(),
+      row({ chatPaperId: cp(2), position: 2, title: "Row two" }),
+    ];
+    const next: ChatSourceRow[] = [
+      { ...prev[0]! },
+      { ...prev[1]!, included: !prev[1]!.included },
+    ];
+    const prevSnapshot = prev.slice();
+    const nextSnapshot = next.slice();
+
+    stabilizeRowsById(prev, next);
+
+    expect(prev).toEqual(prevSnapshot);
+    expect(prev.length).toBe(prevSnapshot.length);
+    prev.forEach((r, i) => expect(r).toBe(prevSnapshot[i]));
+    expect(next).toEqual(nextSnapshot);
+    next.forEach((r, i) => expect(r).toBe(nextSnapshot[i]));
+  });
 });
