@@ -76,4 +76,28 @@ describe("aggregatePaperStatus", () => {
       ]).status,
     ).toBe("extracting");
   });
+
+  it("R7: undefined lastError.code is treated as retryable (conservative)", () => {
+    // failed row with no classified code, below attempt cap → still wait
+    expect(
+      aggregatePaperStatus([
+        { status: "completed" as const },
+        { status: "failed" as const, attemptCount: 1 },
+      ]).status,
+    ).toBe("extracting");
+    // same row with explicit lastError object but missing code field
+    expect(
+      aggregatePaperStatus([
+        { status: "completed" as const },
+        { status: "failed" as const, lastError: {}, attemptCount: 2 },
+      ]).status,
+    ).toBe("extracting");
+    // past the attempt cap the same row is terminal
+    expect(
+      aggregatePaperStatus([
+        { status: "completed" as const },
+        { status: "failed" as const, attemptCount: 3 },
+      ]).status,
+    ).toBe("completed");
+  });
 });
