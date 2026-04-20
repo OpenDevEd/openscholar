@@ -581,6 +581,19 @@
       "resume": "继续",
       "cancelRemaining": "取消剩余论文"
     },
+    "cost": {
+      "credits": "{amount} 积分",
+      "completionToastTitle": "提取完成",
+      "completionToast": "在 {papers} 篇论文上使用了 {credits} 积分。",
+      "breakdown": {
+        "indexing": "索引",
+        "extraction": "提取",
+        "screening": "筛选",
+        "chat": "聊天",
+        "other": "其他"
+      },
+      "viewTransactions": "查看交易"
+    },
     "pleaseSelectSource": "请至少选择一个来源",
     "pleaseCompleteSteps": "请完成所有步骤",
     "selectedHistoryNotFound": "未找到选定的历史记录条目",

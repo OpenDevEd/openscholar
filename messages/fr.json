@@ -581,6 +581,19 @@
       "resume": "Reprendre",
       "cancelRemaining": "Annuler les articles restants"
     },
+    "cost": {
+      "credits": "{amount, plural, one {# crédit} other {# crédits}}",
+      "completionToastTitle": "Extraction terminée",
+      "completionToast": "{credits, plural, one {# crédit utilisé} other {# crédits utilisés}} sur {papers, plural, one {# article} other {# articles}}.",
+      "breakdown": {
+        "indexing": "Indexation",
+        "extraction": "Extraction",
+        "screening": "Filtrage",
+        "chat": "Chat",
+        "other": "Autre"
+      },
+      "viewTransactions": "Voir les transactions"
+    },
     "pleaseSelectSource": "Veuillez sélectionner au moins une source",
     "pleaseCompleteSteps": "Veuillez compléter toutes les étapes",
     "selectedHistoryNotFound": "Entrées d'historique sélectionnées non trouvées",

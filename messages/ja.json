@@ -581,6 +581,19 @@
       "resume": "再開",
       "cancelRemaining": "残りの論文をキャンセル"
     },
+    "cost": {
+      "credits": "{amount}クレジット",
+      "completionToastTitle": "抽出が完了しました",
+      "completionToast": "{papers}件の論文で{credits}クレジットを使用しました。",
+      "breakdown": {
+        "indexing": "インデックス",
+        "extraction": "抽出",
+        "screening": "スクリーニング",
+        "chat": "チャット",
+        "other": "その他"
+      },
+      "viewTransactions": "取引を表示"
+    },
     "pleaseSelectSource": "少なくとも1つのソースを選択してください",
     "pleaseCompleteSteps": "すべてのステップを完了してください",
     "selectedHistoryNotFound": "選択した履歴エントリが見つかりません",

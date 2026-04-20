@@ -598,6 +598,19 @@
       "resume": "Resume",
       "cancelRemaining": "Cancel remaining papers"
     },
+    "cost": {
+      "credits": "{amount, plural, one {# credit} other {# credits}}",
+      "completionToastTitle": "Extraction complete",
+      "completionToast": "Used {credits, plural, one {# credit} other {# credits}} on {papers, plural, one {# paper} other {# papers}}.",
+      "breakdown": {
+        "indexing": "Indexing",
+        "extraction": "Extraction",
+        "screening": "Screening",
+        "chat": "Chat",
+        "other": "Other"
+      },
+      "viewTransactions": "View transactions"
+    },
     "pleaseSelectSource": "Please select at least one source",
     "pleaseCompleteSteps": "Please complete all steps",
     "selectedHistoryNotFound": "Selected history entries not found",
