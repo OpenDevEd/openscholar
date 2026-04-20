@@ -52,6 +52,7 @@ import { CompletionToastObserver } from "@/components/extraction/completion-toas
 import { CostBadge } from "@/components/extraction/cost-badge";
 import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
 import { JobStatusBanner } from "@/components/extraction/job-status-banner";
+import { JobProgressBar } from "@/components/extraction/job-progress-bar";
 import { RetrySummary } from "@/components/extraction/retry-summary";
 import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
@@ -863,25 +864,12 @@ export default function JobDetailPage() {
             </div>
 
             {/* Progress Bar */}
-            <div className="mt-6">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-muted-foreground">{tJob('extractionProgress')}</span>
-                <span className="font-medium text-foreground">
-                  {tJob('progressOfPapers', {
-                    processed: resolvedProgress.processed + resolvedProgress.failed,
-                    total: resolvedProgress.total,
-                  })}
-                </span>
-              </div>
-              <div className="h-3 bg-muted rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${resolvedProgress.percentage}%` }}
-                  transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                  className="h-full bg-primary rounded-full"
-                />
-              </div>
-            </div>
+            <JobProgressBar
+              jobName={job.name}
+              processed={resolvedProgress.processed}
+              failed={resolvedProgress.failed}
+              total={resolvedProgress.total}
+            />
           </motion.div>
 
           {/* Tab Navigation */}
