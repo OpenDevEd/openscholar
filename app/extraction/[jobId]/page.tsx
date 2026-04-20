@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "motion/react";
+import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CommandCenterContainer } from "@/components/command-center";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
@@ -339,16 +340,40 @@ export default function JobDetailPage() {
   };
 
   const handlePause = async () => {
+    const job =
+      jobDetails?.status === "ok" ? jobDetails.job : undefined;
     try {
-      await pauseJob({ jobId });
+      const result = await pauseJob({ jobId });
+      if (result.paused && job) {
+        posthog.capture("extraction_job_paused", {
+          jobId,
+          duration_so_far_ms: Date.now() - job.createdAt,
+          processed_papers: job.processedPapers ?? 0,
+        });
+      }
     } catch (error) {
       toast.job.pauseFailed();
     }
   };
 
   const handleResume = async () => {
+    const job =
+      jobDetails?.status === "ok" ? jobDetails.job : undefined;
+    // Capture the source BEFORE calling the mutation — post-mutation the
+    // status has already flipped away from creditsExhausted/paused.
+    const source: "user" | "credits_topup" =
+      job?.status === "creditsExhausted" ? "credits_topup" : "user";
+    const pausedForMs =
+      job?.pausedAt !== undefined ? Date.now() - job.pausedAt : 0;
     try {
-      await resumeJob({ jobId });
+      const result = await resumeJob({ jobId });
+      if (result.resumed) {
+        posthog.capture("extraction_job_resumed", {
+          jobId,
+          paused_for_ms: pausedForMs,
+          source,
+        });
+      }
     } catch (error) {
       // resumeFailed carries through INSUFFICIENT_CREDITS context so the
       // user gets the "buy credits" CTA.
