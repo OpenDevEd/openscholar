@@ -191,7 +191,7 @@ interface MessageRowProps {
   reduceMotion: boolean;
 }
 
-const MessageRow = memo(function MessageRow({
+export const MessageRow = memo(function MessageRow({
   message,
   isLastAssistant,
   isFirstInGroup,
