@@ -73,6 +73,10 @@ interface SourcesPanelToolbarProps {
   chipCounts: ChipCounts;
   onChipChange: (next: SourceChip) => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
+  /** Forwarded to `data-search-deferred` on the search input — `"true"` while
+   *  the deferred filter query lags the eager input value. Behavioral hook
+   *  for tests that verify the concurrent-render deferral. */
+  isSearchStale?: boolean;
 }
 
 export function SourcesPanelToolbar({
@@ -87,6 +91,7 @@ export function SourcesPanelToolbar({
   chipCounts,
   onChipChange,
   searchInputRef,
+  isSearchStale = false,
 }: SourcesPanelToolbarProps) {
   const t = useTranslations("sourcesPanel");
 
@@ -164,6 +169,7 @@ export function SourcesPanelToolbar({
             placeholder={t("searchPlaceholder")}
             aria-label={t("searchPlaceholder")}
             data-sources-panel-search
+            data-search-deferred={isSearchStale ? "true" : "false"}
             className="h-8 pl-8 pr-8 text-sm"
           />
           {query.length > 0 && (
