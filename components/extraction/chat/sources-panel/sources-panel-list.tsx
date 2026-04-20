@@ -27,6 +27,10 @@ interface SourcesPanelListProps {
   query: string;
   activeDescendantId: string | null;
   emptyState: React.ReactNode;
+  /** Forwarded to `data-search-deferred` on the listbox container — `"true"`
+   *  while the deferred filter query lags the eager input. Lets tests + devs
+   *  observe when the concurrent render pipeline is catching up. */
+  isSearchStale?: boolean;
 }
 
 const ROW_HEIGHT_ESTIMATE = 76;
@@ -56,6 +60,7 @@ export function SourcesPanelList({
   query,
   activeDescendantId,
   emptyState,
+  isSearchStale = false,
 }: SourcesPanelListProps) {
   const t = useTranslations("sourcesPanel");
   const scrollParentRef = useRef<HTMLDivElement>(null);
@@ -186,6 +191,7 @@ export function SourcesPanelList({
       data-virtualized="true"
       data-visible-rows={virtualItems.length}
       data-total-rows={rows.length}
+      data-search-deferred={isSearchStale ? "true" : "false"}
       className="relative h-full w-full overflow-auto"
     >
       <div
