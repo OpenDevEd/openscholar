@@ -125,4 +125,20 @@ describe("stabilizeRowsById", () => {
     expect(out[1]).toBe(prev[2]);
     expect(out.some((r) => r.chatPaperId === cp(2))).toBe(false);
   });
+
+  it("uses the incoming ref for a row added to next and preserves refs for existing rows", () => {
+    const prev = [
+      row(),
+      row({ chatPaperId: cp(2), position: 2, title: "Row two" }),
+    ];
+    const newRow = row({ chatPaperId: cp(3), position: 3, title: "Row three" });
+    const next = [{ ...prev[0]! }, { ...prev[1]! }, newRow];
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out).toHaveLength(3);
+    expect(out[0]).toBe(prev[0]);
+    expect(out[1]).toBe(prev[1]);
+    expect(out[2]).toBe(newRow);
+  });
 });
