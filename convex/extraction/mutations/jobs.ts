@@ -21,8 +21,6 @@ import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import type { WorkflowId } from "@convex-dev/workflow";
-import type { WorkId } from "@convex-dev/workpool";
-import { pdfProcessingPool } from "../../workpool";
 import { workflow } from "../../workflow";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
@@ -450,39 +448,11 @@ export const cancelExtraction = mutation({
       }
     }
 
-    // The pdfProcessingPool is shared across tenants; cancelAll() would be a
-    // cross-tenant DoS. Cancel only this job's stored workId values; cancels
-    // are idempotent per workpool contract.
-    //
-    // Bound by `PAPER_LIMIT_MAX` (the cross-plan ceiling), NOT by the
-    // user's current `getPaperLimit` — a plan downgrade between job-start
-    // and cancel must still cancel every workpool item the job created,
-    // and `assertBucketWithinLimits` already prevents jobs from exceeding
-    // `PAPER_LIMIT_MAX` rows at submit time.
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT_MAX);
-
-    for (const paper of papers) {
-      if (!paper.workId) continue;
-      if (
-        paper.status === "completed" ||
-        paper.status === "failed" ||
-        paper.status === "download_failed" ||
-        paper.status === "indexing_failed"
-      ) {
-        continue;
-      }
-      try {
-        await pdfProcessingPool.cancel(ctx, paper.workId as WorkId);
-      } catch (e) {
-        console.warn(
-          `[cancelExtraction] Failed to cancel workpool item ${paper.workId} for paper ${paper._id}: ${e}`,
-        );
-      }
-    }
-
+    // Plan-02 removed the workpool-driven per-paper pipeline — the
+    // workflow handler now owns every paper via step.runAction. The
+    // workflow.cancel call above short-circuits queued steps; any
+    // in-flight action sees the cancelled job on its next status check
+    // and returns without persisting.
     return { success: true };
   },
 });

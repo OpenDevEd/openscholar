@@ -46,16 +46,16 @@ const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
   ["internal.lifecycle", "createJobDirect"],
   ["internal.lifecycle", "createQuestionDirect"],
   ["internal.lifecycle", "setJobWorkflowId"],
-  ["internal.lifecycle", "enqueuePaperProcessing"],
-  ["internal.onComplete", "handleDownloadAndIndexComplete"],
-  ["internal.onComplete", "handleExtractionComplete"],
+  ["internal.onComplete", "handleExtractionJobComplete"],
   ["papers", "createPaperRecords"],
   ["papers", "updatePaperStatus"],
   ["papers", "updatePaperProcessable"],
   ["papers", "setPaperStorage"],
   ["papers", "markPaperIndexed"],
   ["results", "updateJobStatus"],
-  ["results", "saveExtractionResultsAndComplete"],
+  ["results", "recordOneAnswer"],
+  ["results", "recordOneAnswerFailure"],
+  ["results", "finalizePaper"],
   ["evidence", "replacePaperEvidenceUnits"],
 ];
 
@@ -72,6 +72,8 @@ const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
   ["internal", "getEvidenceUnitsInternal"],
   ["internal", "getJobProgressInternal"],
   ["internal", "getPapersDebug"],
+  ["internal", "getQuestionByIdInternal"],
+  ["internal", "getResultByPaperAndQuestionInternal"],
   ["papers", "resultsInternal"],
   ["papers", "byOpenAlexIds"],
   ["papers", "byId"],
@@ -83,7 +85,7 @@ const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
 const INTERNAL_ACTIONS: ReadonlyArray<readonly [string, string]> = [
   ["actions", "fetchPapersFromHistory"],
   ["workpoolActions", "downloadAndIndexPdfAction"],
-  ["workpoolActions", "waitAndExtractAction"],
+  ["workpoolActions", "extractOneQuestion"],
   ["debug_pdfjs_alignment", "debugPdfAlignment"],
 ];
 

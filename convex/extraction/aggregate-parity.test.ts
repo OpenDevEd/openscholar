@@ -207,18 +207,26 @@ async function complete(
   paperId: Id<"extractionPapers">,
   results: ResultShape[]
 ) {
+  for (const r of results) {
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      {
+        paperId,
+        questionKey: r.questionKey,
+        result: {
+          answer: r.answer,
+          confidence: r.confidence,
+          citationStatus: r.citationStatus,
+          reasoning: "",
+          citations: [],
+        },
+        creditsUsed: 0,
+      }
+    );
+  }
   await t.mutation(
-    internal.extraction.mutations.results.saveExtractionResultsAndComplete,
-    {
-      paperId,
-      results: results.map((r) => ({
-        ...r,
-        reasoning: "",
-        citations: [],
-      })),
-      creditsUsed: 0,
-      pdfContentUsed: false,
-    }
+    internal.extraction.mutations.results.finalizePaper,
+    { paperId }
   );
 }
 
