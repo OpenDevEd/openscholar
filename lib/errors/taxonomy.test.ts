@@ -97,6 +97,22 @@ describe("classifyUnknownError — ConvexError fingerprints", () => {
   });
 });
 
+describe("classifyUnknownError — fingerprint cascade", () => {
+  it("R7: DOMException with name 'AbortError' → aborted", () => {
+    const err = Object.assign(new Error("Operation was aborted"), {
+      name: "AbortError",
+    });
+    const result = classifyUnknownError(err);
+    expect(result.code).toBe("aborted");
+  });
+
+  it("R7: AbortSignal-style DOMException → aborted", () => {
+    const err = new Error("AbortSignal triggered");
+    err.name = "AbortError";
+    expect(classifyUnknownError(err).code).toBe("aborted");
+  });
+});
+
 describe("classifyChatError", () => {
   it("maps HTTP 429 with OpenRouter body to rate_limit + retryAfter", () => {
     const envelope = classifyChatError({

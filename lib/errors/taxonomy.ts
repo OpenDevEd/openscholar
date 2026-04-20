@@ -131,6 +131,12 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
     return finalize(CODE_TO_TAXONOMY[prefixMatch[1]], message);
   }
 
+  // 3. AbortError / AbortSignal — user-initiated stop.
+  const errName = err instanceof Error ? err.name : "";
+  if (errName === "AbortError") {
+    return finalize("aborted", message);
+  }
+
   return finalize("unknown", message);
 }
 
