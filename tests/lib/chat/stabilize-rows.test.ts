@@ -95,4 +95,18 @@ describe("stabilizeRowsById", () => {
     expect(out[1]).toBe(next[1]);
     expect(out[1]).not.toBe(prev[1]);
   });
+
+  it("gives a row a new ref when its `title` changes", () => {
+    const prev = [
+      row(),
+      row({ chatPaperId: cp(2), position: 2, title: "Row two" }),
+    ];
+    const next = [{ ...prev[0]! }, { ...prev[1]!, title: "Row two v2" }];
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out[0]).toBe(prev[0]);
+    expect(out[1]).toBe(next[1]);
+    expect(out[1]).not.toBe(prev[1]);
+  });
 });
