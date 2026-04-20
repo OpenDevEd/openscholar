@@ -94,6 +94,7 @@ function Harness({
   onQueryChange = vi.fn(),
   onSortChange = vi.fn(),
   onChipChange = vi.fn(),
+  isSearchStale,
 }: {
   visibleRows?: ChatSourceRow[];
   query?: string;
@@ -104,6 +105,7 @@ function Harness({
   onQueryChange?: (v: string) => void;
   onSortChange?: (f: SortField, d: SortDir) => void;
   onChipChange?: (c: SourceChip) => void;
+  isSearchStale?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
@@ -119,6 +121,7 @@ function Harness({
       chipCounts={chipCounts}
       onChipChange={onChipChange}
       searchInputRef={ref}
+      isSearchStale={isSearchStale}
     />
   );
 }
@@ -200,5 +203,28 @@ describe("<SourcesPanelToolbar>", () => {
     const sortTrigger = document.querySelector("[data-sort-trigger]");
     expect(sortTrigger?.getAttribute("data-sort-field")).toBe("year");
     expect(sortTrigger?.getAttribute("data-sort-dir")).toBe("desc");
+  });
+
+  it("defaults data-search-deferred to 'false' on the search input when isSearchStale is not passed", () => {
+    render(<Harness />);
+    const input = screen.getByRole("searchbox");
+    expect(input.getAttribute("data-search-deferred")).toBe("false");
+  });
+
+  it("forwards isSearchStale=true to data-search-deferred='true' on the search input", () => {
+    render(<Harness isSearchStale={true} />);
+    const input = screen.getByRole("searchbox");
+    expect(input.getAttribute("data-search-deferred")).toBe("true");
+  });
+
+  it("transitions data-search-deferred from 'true' back to 'false' when isSearchStale clears", () => {
+    const { rerender } = render(<Harness isSearchStale={true} />);
+    expect(
+      screen.getByRole("searchbox").getAttribute("data-search-deferred"),
+    ).toBe("true");
+    rerender(<Harness isSearchStale={false} />);
+    expect(
+      screen.getByRole("searchbox").getAttribute("data-search-deferred"),
+    ).toBe("false");
   });
 });
