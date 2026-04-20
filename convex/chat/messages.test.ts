@@ -1,12 +1,137 @@
 /// <reference types="vite/client" />
 import { ConvexError } from "convex/values";
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
-import { api } from "../_generated/api";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import { paperChat } from "./agent";
+
+// Capture the composed abortSignal the library hands to doStream so
+// tests can assert it transitioned to aborted after we flip
+// job.shouldAbort. Populated on each mock doStream call.
+const { mockDoStream, doStreamArgsSeen } = vi.hoisted(() => ({
+  mockDoStream: vi.fn(),
+  doStreamArgsSeen: [] as Array<{ abortSignal?: AbortSignal }>,
+}));
+
+// vi.mock replaces ./provider for every importer in this test file —
+// including generateResponse's own import. The factory is async so it
+// can pull in ai/test (which is not available at the hoisted phase).
+vi.mock("./provider", async () => {
+  const { MockLanguageModelV3 } = await import("ai/test");
+  return {
+    resolveOpenRouterModel: async () => ({
+      model: new MockLanguageModelV3({
+        doStream: async (options) => {
+          doStreamArgsSeen.push({ abortSignal: options.abortSignal });
+          return mockDoStream(options);
+        },
+      }),
+      modelSlug: "mock/model",
+      pricing: { input: 0, output: 0 },
+    }),
+  };
+});
+
+beforeEach(() => {
+  mockDoStream.mockReset();
+  doStreamArgsSeen.length = 0;
+});
+
+afterEach(() => {
+  // Abort any lingering signals so stale setIntervals from abandoned
+  // tests don't leak across test boundaries.
+  for (const { abortSignal } of doStreamArgsSeen) {
+    if (abortSignal && !abortSignal.aborted) {
+      // No-op — just a sanity net.
+    }
+  }
+});
+
+/** A doStream that opens a minimal stream and blocks until the
+ *  composed abortSignal fires, then closes cleanly. */
+function hangingDoStream(
+  opts: { onStarted?: () => void } = {},
+): (options: {
+  abortSignal?: AbortSignal;
+}) => Promise<{ stream: ReadableStream<unknown> }> {
+  return async (options) => ({
+    stream: new ReadableStream({
+      start(controller) {
+        controller.enqueue({ type: "stream-start", warnings: [] });
+        opts.onStarted?.();
+        options.abortSignal?.addEventListener("abort", () => {
+          try {
+            controller.close();
+          } catch {
+            // already closed
+          }
+        });
+      },
+    }),
+  });
+}
+
+/** Poll helper: wait until a predicate returns true, or throw. */
+async function waitFor(
+  predicate: () => boolean,
+  { timeoutMs = 2_000, intervalMs = 20 } = {},
+): Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(`waitFor timed out after ${timeoutMs}ms`);
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
+async function seedModelAndCredits(
+  t: ReturnType<typeof convexTest>,
+  userId: Id<"users">,
+): Promise<{ modelId: Id<"models"> }> {
+  return await t.run(async (ctx) => {
+    const now = Date.now();
+    const modelId = await ctx.db.insert("models", {
+      modelId: "mock/model",
+      name: "Mock Model",
+      provider: "openrouter",
+      inputPricePerMillion: 0,
+      outputPricePerMillion: 0,
+      costMarkup: 1,
+      isServed: true,
+      sortOrder: 0,
+      syncedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.insert("credits", {
+      userId,
+      freeBalance: 10_000,
+      paidBalance: 0,
+      lifetimeUsed: 0,
+      lastUpdatedAt: now,
+    });
+    return { modelId };
+  });
+}
+
+async function seedUserMessage(
+  t: ReturnType<typeof convexTest>,
+  threadId: string,
+  body: string,
+): Promise<string> {
+  return await t.run(async (ctx) => {
+    const { messageId } = await paperChat.saveMessage(ctx, {
+      threadId,
+      prompt: body,
+      skipEmbeddings: true,
+    });
+    return messageId;
+  });
+}
 
 function createTestConvex() {
   const t = convexTest(schema);
@@ -192,5 +317,34 @@ describe("chat.messages — auth + mode gating", () => {
       isDone: true,
       continueCursor: "[]",
     });
+  });
+});
+
+describe("chat.messages.generateResponse — stop-streaming wiring", () => {
+  it("A1 — poller fires controller.abort() when shouldAbort flips true", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    mockDoStream.mockImplementation(hangingDoStream());
+
+    const actionPromise = t.action(
+      internal.chat.messages.generateResponse,
+      { threadId, promptMessageId },
+    );
+
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    // Sanity: the composed signal exists and is not yet aborted.
+    expect(doStreamArgsSeen[0]?.abortSignal).toBeDefined();
+    expect(doStreamArgsSeen[0]?.abortSignal?.aborted).toBe(false);
+
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+
+    await actionPromise;
+    expect(doStreamArgsSeen[0]?.abortSignal?.aborted).toBe(true);
   });
 });
