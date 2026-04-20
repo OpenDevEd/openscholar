@@ -53,6 +53,10 @@ export function validateResumeTransition(args: {
   const { currentStatus, pausedFromStatus, availableCredits, remainingEstimate } =
     args;
 
+  if (currentStatus !== "paused" && currentStatus !== "creditsExhausted") {
+    return { ok: false, reason: "not_paused" };
+  }
+
   if (
     currentStatus === "creditsExhausted" &&
     availableCredits < remainingEstimate

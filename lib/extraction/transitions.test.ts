@@ -109,4 +109,25 @@ describe("validateResumeTransition", () => {
       }),
     ).toEqual({ ok: true, nextStatus: "extracting" });
   });
+
+  it.each([
+    "pending",
+    "downloading_pdfs",
+    "indexing",
+    "extracting",
+    "completed",
+    "failed",
+    "cancelled",
+  ] as const)(
+    "R11: from non-paused status '%s' → not-ok with reason 'not_paused'",
+    (status) => {
+      expect(
+        validateResumeTransition({
+          currentStatus: status,
+          availableCredits: 100,
+          remainingEstimate: 50,
+        }),
+      ).toEqual({ ok: false, reason: "not_paused" });
+    },
+  );
 });
