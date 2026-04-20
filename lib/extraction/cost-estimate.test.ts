@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   estimateExtractionCredits,
+  estimateRetryCredits,
   EXTRACTION_COST_CONSTANTS,
   type ExtractionEstimateArgs,
 } from "@/lib/extraction/cost-estimate";
@@ -128,5 +129,55 @@ describe("estimateExtractionCredits", () => {
       const { mid, high } = estimateExtractionCredits(args);
       expect(high).toBeGreaterThanOrEqual(mid * 1.2);
     }
+  });
+});
+
+describe("estimateRetryCredits (plan-05)", () => {
+  it("zero retryable → zero estimate (nothing to block on)", () => {
+    expect(
+      estimateRetryCredits({
+        retryableCount: 0,
+        usePdfs: false,
+        avgPaperKind: "abstract",
+      }),
+    ).toEqual({ low: 0, mid: 0, high: 0 });
+  });
+
+  it("abstract tier — 5 retryable Qs → 5 × per-Q constants (no indexing cost)", () => {
+    const est = estimateRetryCredits({
+      retryableCount: 5,
+      usePdfs: false,
+      avgPaperKind: "abstract",
+    });
+    expect(est).toEqual({
+      low: 5 * EXTRACTION_COST_CONSTANTS.ABSTRACT_Q_CREDIT_LOW,
+      mid: 5 * EXTRACTION_COST_CONSTANTS.ABSTRACT_Q_CREDIT_MID,
+      high: 5 * EXTRACTION_COST_CONSTANTS.ABSTRACT_Q_CREDIT_HIGH,
+    });
+  });
+
+  it("PDF tier skips indexing cost (PDFs already billed via indexingBilled guard)", () => {
+    const est = estimateRetryCredits({
+      retryableCount: 5,
+      usePdfs: true,
+      avgPaperKind: "pdf",
+    });
+    // Crucially: no `INDEX_PDF_CREDIT` term — retry never re-indexes.
+    expect(est).toEqual({
+      low: 5 * EXTRACTION_COST_CONSTANTS.PDF_Q_CREDIT_LOW,
+      mid: 5 * EXTRACTION_COST_CONSTANTS.PDF_Q_CREDIT_MID,
+      high: 5 * EXTRACTION_COST_CONSTANTS.PDF_Q_CREDIT_HIGH,
+    });
+  });
+
+  it("high ≥ mid ≥ low invariant", () => {
+    const args = {
+      retryableCount: 7,
+      usePdfs: true,
+      avgPaperKind: "pdf" as const,
+    };
+    const { low, mid, high } = estimateRetryCredits(args);
+    expect(high).toBeGreaterThanOrEqual(mid);
+    expect(mid).toBeGreaterThanOrEqual(low);
   });
 });

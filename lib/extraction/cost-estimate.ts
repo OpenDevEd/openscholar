@@ -66,3 +66,31 @@ export function estimateExtractionCredits(
     high: qPairs * c.ABSTRACT_Q_CREDIT_HIGH,
   };
 }
+
+/**
+ * Plan-05 retry-only estimator.
+ *
+ * Indexing cost is NOT charged (retry reuses the already-indexed PDF
+ * per the `indexingBilled` guard in the retry mutation). The estimate
+ * is therefore a pure per-(paper, question) multiple of the same LLM
+ * tier constants that `estimateExtractionCredits` uses.
+ */
+export function estimateRetryCredits(args: {
+  retryableCount: number;
+  usePdfs: boolean;
+  avgPaperKind: AvgPaperKind;
+}): ExtractionCostEstimate {
+  if (args.retryableCount <= 0) {
+    return { low: 0, mid: 0, high: 0 };
+  }
+  const c = EXTRACTION_COST_CONSTANTS;
+  const isPdfTier = args.usePdfs || args.avgPaperKind === "pdf";
+  const perQLow = isPdfTier ? c.PDF_Q_CREDIT_LOW : c.ABSTRACT_Q_CREDIT_LOW;
+  const perQMid = isPdfTier ? c.PDF_Q_CREDIT_MID : c.ABSTRACT_Q_CREDIT_MID;
+  const perQHigh = isPdfTier ? c.PDF_Q_CREDIT_HIGH : c.ABSTRACT_Q_CREDIT_HIGH;
+  return {
+    low: args.retryableCount * perQLow,
+    mid: args.retryableCount * perQMid,
+    high: args.retryableCount * perQHigh,
+  };
+}
