@@ -467,7 +467,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     const abortedRows: Array<{ status: string }> = await t.run(async (ctx) =>
       ctx.runQuery(components.agent.streams.list, {
-        threadId: threadId as Id<"threads">,
+        threadId: threadId as never,
         statuses: ["aborted"],
       }),
     );
@@ -499,21 +499,20 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
     await actionPromise;
 
-    const allStreams: Array<{ streamId: Id<"streamingMessages"> }> =
-      await t.run(async (ctx) =>
-        ctx.runQuery(components.agent.streams.list, {
-          threadId: threadId as Id<"threads">,
-          statuses: ["aborted"],
-        }),
-      );
+    const allStreams: Array<{ streamId: string }> = await t.run(async (ctx) =>
+      ctx.runQuery(components.agent.streams.list, {
+        threadId: threadId as never,
+        statuses: ["aborted"],
+      }),
+    );
     expect(allStreams.length).toBeGreaterThanOrEqual(1);
     const streamId = allStreams[0]!.streamId;
 
     const deltas: Array<{ streamId: string; parts: unknown[] }> =
       await t.run(async (ctx) =>
         ctx.runQuery(components.agent.streams.listDeltas, {
-          threadId: threadId as Id<"threads">,
-          cursors: [{ streamId, cursor: 0 }],
+          threadId: threadId as never,
+          cursors: [{ streamId: streamId as never, cursor: 0 }],
         }),
       );
     // At least one delta batch should have flushed pre-abort.
@@ -580,7 +579,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     const finishedRows: Array<{ status: string }> = await t.run(async (ctx) =>
       ctx.runQuery(components.agent.streams.list, {
-        threadId: threadId as Id<"threads">,
+        threadId: threadId as never,
         statuses: ["finished"],
       }),
     );
@@ -589,7 +588,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     const abortedRows: Array<{ status: string }> = await t.run(async (ctx) =>
       ctx.runQuery(components.agent.streams.list, {
-        threadId: threadId as Id<"threads">,
+        threadId: threadId as never,
         statuses: ["aborted"],
       }),
     );
@@ -628,7 +627,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     // Exactly one aborted stream row — no duplicate on the second click.
     const abortedRows: Array<{ status: string }> = await t.run(async (ctx) =>
       ctx.runQuery(components.agent.streams.list, {
-        threadId: threadId as Id<"threads">,
+        threadId: threadId as never,
         statuses: ["aborted"],
       }),
     );
@@ -641,23 +640,15 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
   it("C1 — usageHandler does NOT fire when abort lands before a step finishes (library limitation)", async () => {
     // Empirical contract test documenting a known library gap — not a
-    // celebration.
+    // celebration. See plans/chat-stop-streaming/01-BLOCKER.md for the
+    // full rationale, library-version cites, and the decision to accept
+    // the gap for V1.
     //
-    // @convex-dev/agent wires usageHandler inside the library's `save()`
-    // function, which runs only when a step finishes (see
-    // node_modules/@convex-dev/agent/src/client/start.ts:314-324). AI SDK
-    // v6's onAbort fires with recordedSteps = completed steps up to the
-    // abort; if the current in-flight step was mid-stream (no finish
-    // chunk yet), it is NOT in recordedSteps, no usage is emitted, and
-    // usageHandler is not called.
-    //
-    // Net effect on our billing: credits are deducted only for turns
-    // whose first step completed before the user hit stop. Mid-stream
-    // aborts of a still-in-flight step are FREE to the user.
-    //
-    // This is acceptable for V1 (stepCountIs(1), rare in practice, small
-    // per-event cost). The /plans/chat-stop-streaming/01-BLOCKER.md file
-    // captures the behavior for future billing-completeness work.
+    // Summary: the agent library invokes usageHandler only when a step
+    // finishes. AI SDK v6 onAbort fires with completed steps only. With
+    // stepCountIs(1) a mid-stream abort leaves the single in-flight
+    // step incomplete → no usage surfaced → usageHandler not called →
+    // no credits deducted for the partial tokens.
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
