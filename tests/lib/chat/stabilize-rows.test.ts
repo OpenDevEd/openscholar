@@ -182,4 +182,14 @@ describe("stabilizeRowsById", () => {
 
     expect(out[0]).toBe(prev[0]);
   });
+
+  it("gives a new ref when authors has the same length but different contents", () => {
+    const prev = [row({ authors: ["Alpha", "Beta"] })];
+    const next = [{ ...prev[0]!, authors: ["Alpha", "Gamma"] }];
+
+    const out = stabilizeRowsById(prev, next);
+
+    expect(out[0]).toBe(next[0]);
+    expect(out[0]).not.toBe(prev[0]);
+  });
 });
