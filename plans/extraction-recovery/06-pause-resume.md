@@ -280,13 +280,21 @@ Workflow gate, skip-guard, mutations, and UI — test-after.
 
 ## Acceptance criteria
 
-- [ ] Pause halts new question dispatch; no credits spent on questions that hadn't started.
-- [ ] Resume continues from the exact next question; no re-billing of completed.
-- [ ] `paused` and `creditsExhausted` both resume via same mutation.
-- [ ] Pause only the targeted job; other concurrent jobs unaffected.
-- [ ] Idempotent mutations; double-click is harmless.
-- [ ] Status banner is screen-reader-accessible.
-- [ ] Pre-existing tests pass.
+- [x] Pause halts new question dispatch; no credits spent on questions that hadn't started. *(Workflow gate `waitWhilePausedOrCancelled` in `convex/extraction/workflow.ts` blocks the for-of paper + question loops on `step.awaitEvent({ name: 'resume:<jobId>' })`. The `extractOneQuestion` entry-guard (`convex/extraction/workpoolActions.ts:1041`) catches any already-enqueued dispatch and returns `{skipped, "paused"}` before the LLM call / credit charge.)*
+- [x] Resume continues from the exact next question; no re-billing of completed. *(`resumeExtraction` patches the job back to `pausedFromStatus` (or `extracting` fallback) and fires `sendEvent`. Completed rows keep `billed=true`; the plan-02 idempotency guard at `extractOneQuestion` line 1009 short-circuits any replay that would re-bill.)*
+- [x] `paused` and `creditsExhausted` both resume via same mutation. *(`resumeExtraction` accepts both statuses; `validateResumeTransition` carries an `insufficient_credits` branch that only applies to the creditsExhausted path. Page wires `handleResume` onto both `<CreditsExhaustedBanner>` and `<JobStatusBanner variant="paused">`.)*
+- [x] Pause only the targeted job; other concurrent jobs unaffected. *(No pool-level pause was introduced — `pauseExtraction` patches a single extractionJobs row and its workflow gate is keyed by `resume:${jobId}`. Other users' workflows sharing the workpool stay unblocked — the explicit rejection documented in § Approach.)*
+- [x] Idempotent mutations; double-click is harmless. *(Covered by `pause.test.ts::double-pause is a no-op` and `resume.test.ts::double-resume is a no-op`. Both return `{paused:false, reason}` / `{resumed:false, reason:"not_paused"}` without throwing.)*
+- [x] Status banner is screen-reader-accessible. *(`<JobStatusBanner variant="paused">` exposes `role="status"` + `aria-live="polite"` + `data-job-status="paused"`; creditsExhausted variant keeps `role="alert"`. Tests in `tests/components/job-status-banner.test.tsx` assert on the ARIA contract, not Tailwind classes.)*
+- [x] Pre-existing tests pass. *(616/616 tests green after the full B-series lands; no regressions across existing extraction / transitions / retry-summary / preflight / stateMachine suites.)*
+
+**Live smoke handed off to human.** The plan's integration scenario
+(seed 20-paper × 3-Q job, pause after 10 papers, verify no further
+billing, resume, verify remainder bills correctly) requires the live
+Convex dev deployment because convex-test doesn't register workflow /
+workpool / rag / ai-model components. The behavioural contracts above
+are covered unit-test-level; the end-to-end billing-telemetry walkthrough
+happens on the live dev db.
 
 ## Known pitfalls
 
