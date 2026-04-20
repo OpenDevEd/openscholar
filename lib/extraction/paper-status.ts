@@ -31,6 +31,19 @@ export function aggregatePaperStatus(results: PaperQuestionInput[]): PaperRollup
   if (results.length === 0) {
     return { status: "pending", completedQuestions: 0, failedQuestions: 0 };
   }
-  const completedQuestions = results.filter((r) => r.status === "completed").length;
-  return { status: "completed", completedQuestions, failedQuestions: 0 };
+  let completedQuestions = 0;
+  let failedQuestions = 0;
+  for (const r of results) {
+    if (r.status === "completed") {
+      completedQuestions += 1;
+      continue;
+    }
+    if (r.status === "failed") {
+      const code = r.lastError?.code;
+      if (code !== undefined && !isRetryable[code]) {
+        failedQuestions += 1;
+      }
+    }
+  }
+  return { status: "completed", completedQuestions, failedQuestions };
 }
