@@ -8,14 +8,11 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { RetryConfirmDialog } from "@/components/extraction/retry-confirm-dialog";
 
 export interface RetrySummaryProps {
   jobId: Id<"extractionJobs">;
-  /**
-   * When true, uses the PDF-tier per-question cost constants for the
-   * preflight estimate. Mirrors `extractionJobs.usePdfs`. Used by the
-   * confirm dialog (plan-05 B5) — not read here yet.
-   */
+  /** Mirrors `extractionJobs.usePdfs`; drives the PDF-tier retry cost. */
   usePdfs?: boolean;
 }
 
@@ -26,17 +23,15 @@ export interface RetrySummaryProps {
  *   - "N retryable · M permanent" counts (exposed as data-retryable-count
  *     + data-permanent-count for behavior tests).
  *   - A primary "Retry N failed" button when `retryableCount > 0`.
+ *   - A confirmation dialog on click (plan 05 B5) that reuses plan 03's
+ *     `<ExtractionPreflightBanner>` for the estimate + Buy-Credits CTA.
  *   - Hidden entirely when both counts are zero (nothing to show).
- *
- * Button click currently fires `retryFailedQuestions` directly;
- * plan-05 B5 wraps this in a confirm dialog that reuses plan-03's
- * `<ExtractionPreflightBanner>` for the estimate.
  *
  * Permanent failures are rendered by a sibling callout (plan-05 B6),
  * intentionally not folded into this component so it stays focused on
  * the retryable CTA.
  */
-export function RetrySummary({ jobId }: RetrySummaryProps) {
+export function RetrySummary({ jobId, usePdfs = false }: RetrySummaryProps) {
   const t = useTranslations("extraction.retry");
   const { data: summary } = useProtectedQuery(
     api.extraction.queries.retry.getRetryableSummary,
@@ -45,21 +40,11 @@ export function RetrySummary({ jobId }: RetrySummaryProps) {
   const retryFailed = useMutation(
     api.extraction.mutations.retryFailedQuestions,
   );
-  const [submitting, setSubmitting] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   if (!summary) return null;
   const { retryableCount, permanentCount } = summary;
   if (retryableCount === 0 && permanentCount === 0) return null;
-
-  const handleRetry = async () => {
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      await retryFailed({ jobId });
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <div
@@ -79,18 +64,25 @@ export function RetrySummary({ jobId }: RetrySummaryProps) {
             : t("summary.permanentOnly", { permanent: permanentCount })}
       </span>
       {retryableCount > 0 && (
-        <Button
-          size="sm"
-          onClick={handleRetry}
-          disabled={submitting}
-          data-action="retry"
-        >
-          <RotateCw
-            className={`h-3.5 w-3.5 ${submitting ? "animate-spin" : ""}`}
-            aria-hidden="true"
+        <>
+          <Button
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            data-action="retry"
+          >
+            <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("retryButton", { count: retryableCount })}
+          </Button>
+          <RetryConfirmDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            retryableCount={retryableCount}
+            usePdfs={usePdfs}
+            onConfirm={async () => {
+              await retryFailed({ jobId });
+            }}
           />
-          {t("retryButton", { count: retryableCount })}
-        </Button>
+        </>
       )}
     </div>
   );

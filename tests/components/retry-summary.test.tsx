@@ -17,7 +17,13 @@ vi.mock("next-intl", () => ({
     params ? `${key}:${JSON.stringify(params)}` : key,
 }));
 
-// Drive the summary query output per-test.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+// Drive the summary query output per-test. Single shared store so the
+// dialog's checkBalance query also reads from here — tests typically
+// don't care about the dialog's balance, just that it mounts.
 const summaryStore = {
   data: undefined as
     | undefined
@@ -41,6 +47,9 @@ vi.mock("@/convex/_generated/api", () => ({
     extraction: {
       queries: { retry: { getRetryableSummary: "getRetryableSummary" } },
       mutations: { retryFailedQuestions: "retryFailedQuestions" },
+    },
+    credits: {
+      queries: { checkBalance: "checkBalance" },
     },
   },
 }));
@@ -109,7 +118,7 @@ describe("<RetrySummary>", () => {
     );
   });
 
-  it("clicking retry fires the retryFailedQuestions mutation with the job id", async () => {
+  it("clicking retry opens the confirm dialog (does NOT call the mutation directly)", async () => {
     summaryStore.data = {
       retryableCount: 2,
       permanentCount: 0,
@@ -118,8 +127,12 @@ describe("<RetrySummary>", () => {
     retryMock.mockResolvedValue({ retryableCount: 2 });
     render(<RetrySummary jobId={jobId} />);
     fireEvent.click(screen.getByRole("button", { name: /retryButton/ }));
+    // Dialog mounts on click.
     await waitFor(() =>
-      expect(retryMock).toHaveBeenCalledWith({ jobId }),
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument(),
     );
+    // Mutation NOT invoked on the trigger — only on dialog confirm
+    // (which is covered by retry-confirm-dialog tests).
+    expect(retryMock).not.toHaveBeenCalled();
   });
 });
