@@ -5,6 +5,8 @@
  * any source (live query, snapshot, test fixture) without a round trip.
  */
 
+import { isRetryable } from "@/lib/errors/taxonomy";
+
 export type FailureInput = {
   code: string;
 };
@@ -20,8 +22,29 @@ export type FailuresSummary = {
   byCode: FailureByCode[];
 };
 
+const retryableTable: Record<string, boolean | undefined> = isRetryable;
+
+/**
+ * Unknown codes (not in the taxonomy) default to retryable:true so a
+ * future classifier revision that produces a code this module has not
+ * been taught about never traps the user behind a non-retryable label.
+ */
+function resolveRetryable(code: string): boolean {
+  return retryableTable[code] !== false;
+}
+
 export function summarizeFailures(
-  _failures: ReadonlyArray<FailureInput>,
+  failures: ReadonlyArray<FailureInput>,
 ): FailuresSummary {
-  return { total: 0, byCode: [] };
+  const counts = new Map<string, number>();
+  for (const f of failures) {
+    counts.set(f.code, (counts.get(f.code) ?? 0) + 1);
+  }
+
+  const byCode: FailureByCode[] = [];
+  for (const [code, count] of counts) {
+    byCode.push({ code, count, retryable: resolveRetryable(code) });
+  }
+
+  return { total: failures.length, byCode };
 }
