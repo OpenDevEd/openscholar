@@ -1,0 +1,123 @@
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { TransactionsPanelHeader } from "@/components/billing/transactions/transactions-panel-header";
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) =>
+    params
+      ? `${key}:${Object.entries(params)
+          .map(([k, v]) => `${k}=${String(v)}`)
+          .join(",")}`
+      : key,
+  useFormatter: () => ({
+    number: (n: number) => String(n),
+  }),
+}));
+
+describe("TransactionsPanelHeader", () => {
+  it("renders a single role=status aria-live=polite region for the summary", () => {
+    const { container } = render(
+      <TransactionsPanelHeader
+        shownCount={10}
+        summary={{ in: 150, out: 30, net: 120 }}
+      />,
+    );
+    const statusRegions = container.querySelectorAll('[role="status"]');
+    expect(statusRegions.length).toBe(1);
+    expect(statusRegions[0].getAttribute("aria-live")).toBe("polite");
+    expect(statusRegions[0].getAttribute("aria-atomic")).toBe("true");
+  });
+
+  it("exposes the in/out/net/shown counts as stable data attributes", () => {
+    const { container } = render(
+      <TransactionsPanelHeader
+        shownCount={10}
+        summary={{ in: 150, out: 30, net: 120 }}
+      />,
+    );
+    const region = container.querySelector("[data-transactions-summary]")!;
+    expect(region.getAttribute("data-transactions-shown")).toBe("10");
+    expect(region.getAttribute("data-transactions-in")).toBe("150");
+    expect(region.getAttribute("data-transactions-out")).toBe("30");
+    expect(region.getAttribute("data-transactions-net")).toBe("120");
+  });
+
+  it("renders +in · −out · Net +N for a net-positive summary", () => {
+    render(
+      <TransactionsPanelHeader
+        shownCount={3}
+        summary={{ in: 150, out: 30, net: 120 }}
+      />,
+    );
+    const region = screen.getByRole("status");
+    expect(region.textContent).toContain("+150");
+    expect(region.textContent).toContain("−30");
+    expect(region.textContent).toContain("+120");
+  });
+
+  it("surfaces negative net via the data attribute and signed display text", () => {
+    render(
+      <TransactionsPanelHeader
+        shownCount={2}
+        summary={{ in: 0, out: 40, net: -40 }}
+      />,
+    );
+    const region = screen.getByRole("status");
+    expect(region.getAttribute("data-transactions-net")).toBe("-40");
+    expect(region.textContent).toContain("−40");
+    expect(region.textContent).not.toContain("+40");
+  });
+
+  it("renders a progress indicator with role=presentation and aria-hidden", () => {
+    const { container } = render(
+      <TransactionsPanelHeader
+        shownCount={5}
+        summary={{ in: 0, out: 0, net: 0 }}
+      />,
+    );
+    const bar = container.querySelector("[data-transactions-progress]");
+    expect(bar).toBeTruthy();
+    expect(bar?.getAttribute("role")).toBe("presentation");
+    expect(bar?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("renders the Export button as disabled with data-transactions-export", () => {
+    const { container } = render(
+      <TransactionsPanelHeader
+        shownCount={5}
+        summary={{ in: 0, out: 0, net: 0 }}
+      />,
+    );
+    const exportBtn = container.querySelector("[data-transactions-export]");
+    expect(exportBtn).toBeTruthy();
+    expect(exportBtn).toBeDisabled();
+  });
+
+  it("sets data-transactions-progress to 0 when shownCount is 0", () => {
+    const { container } = render(
+      <TransactionsPanelHeader
+        shownCount={0}
+        summary={{ in: 0, out: 0, net: 0 }}
+      />,
+    );
+    expect(
+      container.querySelector("[data-transactions-progress]")?.getAttribute(
+        "data-transactions-progress",
+      ),
+    ).toBe("0");
+  });
+
+  it("caps data-transactions-progress at 100 once shownCount >= 25", () => {
+    const { container } = render(
+      <TransactionsPanelHeader
+        shownCount={50}
+        summary={{ in: 0, out: 0, net: 0 }}
+      />,
+    );
+    expect(
+      container.querySelector("[data-transactions-progress]")?.getAttribute(
+        "data-transactions-progress",
+      ),
+    ).toBe("100");
+  });
+});
