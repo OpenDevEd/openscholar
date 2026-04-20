@@ -20,6 +20,7 @@ import {
 } from "@/components/ai-elements/conversation";
 import { JumpToLatestPill } from "./jump-to-latest-pill";
 import { MessageResponse } from "@/components/ai-elements/message";
+import { AbortedPill } from "./aborted-pill";
 import { ChatErrorAlert } from "./chat-error-alert";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { api } from "@/convex/_generated/api";
@@ -47,8 +48,11 @@ export type ResolvedPaper = ResolvablePaper;
  * Our `listThreadMessages` query enriches each UIMessage with an
  * `error` string (a serialized ChatErrorEnvelope) — @convex-dev/agent's
  * own UIMessage type strips that field, so we widen it here.
+ * `aborted: true` appears when the server detected the plan-01 abort
+ * sentinel (ABORT_ERROR_STRING) on the MessageDoc; a message with
+ * `aborted: true` never carries `error`, and vice versa.
  */
-type ChatUIMessage = UIMessage & { error?: string };
+type ChatUIMessage = UIMessage & { error?: string; aborted?: boolean };
 
 /**
  * Parse `[Pn]` / `[Pn, Pm, …]` tokens in a string and emit text chunks
@@ -198,7 +202,12 @@ const MessageRow = memo(function MessageRow({
 }: MessageRowProps) {
   const text = getMessageText(message);
   const isStreaming = message.status === "streaming";
-  const isFailed = message.status === "failed";
+  const isAborted = message.aborted === true;
+  // Aborted messages surface to the client as status:"failed" (the library
+  // maps stream aborted → "failed" internally — see
+  // node_modules/@convex-dev/agent/src/deltas.ts statusFromStreamStatus).
+  // The `aborted` flag discriminates: real failure vs. user stop.
+  const isFailed = message.status === "failed" && !isAborted;
   const isEmpty = text.length === 0;
   const isUser = message.role === "user";
 
@@ -207,9 +216,10 @@ const MessageRow = memo(function MessageRow({
   return (
     <motion.li
       data-role={message.role}
-      data-status={message.status}
+      data-status={isAborted ? "aborted" : message.status}
       data-streaming={isStreaming}
       data-error={isFailed}
+      data-message-state={isAborted ? "aborted" : undefined}
       data-message-id={message.id}
       data-first-in-group={isFirstInGroup ? "true" : undefined}
       aria-busy={isStreaming}
@@ -254,14 +264,17 @@ const MessageRow = memo(function MessageRow({
         )}
       </div>
 
-      {!isUser && !isEmpty ? (
-        <div className="mt-1">
-          <MessageActions
-            message={message}
-            isLastAssistant={isLastAssistant}
-            threadId={threadId}
-            chatModelId={chatModelId}
-          />
+      {!isUser && (!isEmpty || isAborted) ? (
+        <div className="mt-1 flex items-center gap-2">
+          {!isEmpty ? (
+            <MessageActions
+              message={message}
+              isLastAssistant={isLastAssistant}
+              threadId={threadId}
+              chatModelId={chatModelId}
+            />
+          ) : null}
+          {isAborted ? <AbortedPill /> : null}
         </div>
       ) : null}
 
