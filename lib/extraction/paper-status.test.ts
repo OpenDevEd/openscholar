@@ -48,4 +48,17 @@ describe("aggregatePaperStatus", () => {
     ];
     expect(aggregatePaperStatus(results).status).toBe("extracting");
   });
+
+  it("R5: all hard-failed → paper failed with failedQuestions=N", () => {
+    const results = [
+      { status: "failed" as const, lastError: { code: "pdf_invalid" as const } },
+      { status: "failed" as const, lastError: { code: "paper_not_found" as const } },
+      { status: "failed" as const, lastError: { code: "moderation" as const } },
+    ];
+    expect(aggregatePaperStatus(results)).toEqual({
+      status: "failed",
+      completedQuestions: 0,
+      failedQuestions: 3,
+    });
+  });
 });

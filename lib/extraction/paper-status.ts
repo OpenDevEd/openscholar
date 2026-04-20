@@ -61,6 +61,9 @@ export function aggregatePaperStatus(results: PaperQuestionInput[]): PaperRollup
   if (retryableFailuresPending > 0) {
     return { status: "extracting", completedQuestions, failedQuestions: terminalFailures };
   }
+  if (completedQuestions === 0 && terminalFailures === results.length) {
+    return { status: "failed", completedQuestions, failedQuestions: terminalFailures };
+  }
   return {
     status: "completed",
     completedQuestions,
