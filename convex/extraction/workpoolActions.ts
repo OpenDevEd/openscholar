@@ -1103,11 +1103,19 @@ export const extractOneQuestion = internalAction({
         available_credits: balance?.total ?? 0,
         feature: operation,
       });
+      // handleCreditsExhaustionAndRethrow is typed Promise<never> but
+      // TS does not narrow `balance` across an awaited throw-helper, so
+      // the explicit throw below is unreachable yet keeps the flow
+      // analyser happy for the downstream `balance.total` references.
       await handleCreditsExhaustionAndRethrow(
         createError(
           "AI_INSUFFICIENT_CREDITS",
           "Insufficient credits for AI operation",
         ),
+      );
+      throw createError(
+        "AI_INSUFFICIENT_CREDITS",
+        "Insufficient credits for AI operation",
       );
     }
 
