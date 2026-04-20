@@ -12,4 +12,26 @@ describe("estimateExtractionCredits", () => {
       }),
     ).toEqual({ low: 0, mid: 0, high: 0 });
   });
+
+  it("R2: zero papers AND zero questions → zero (bivariate zero)", () => {
+    expect(
+      estimateExtractionCredits({
+        papers: 0,
+        questions: 0,
+        usePdfs: false,
+        avgPaperKind: "abstract",
+      }),
+    ).toEqual({ low: 0, mid: 0, high: 0 });
+  });
+
+  it("R2b: zero questions with positive papers → zero (no questions, no LLM work)", () => {
+    expect(
+      estimateExtractionCredits({
+        papers: 10,
+        questions: 0,
+        usePdfs: false,
+        avgPaperKind: "abstract",
+      }),
+    ).toEqual({ low: 0, mid: 0, high: 0 });
+  });
 });

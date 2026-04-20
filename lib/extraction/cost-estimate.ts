@@ -28,6 +28,8 @@ export type ExtractionEstimateArgs = {
 export function estimateExtractionCredits(
   args: ExtractionEstimateArgs,
 ): ExtractionCostEstimate {
-  if (args.papers === 0) return { low: 0, mid: 0, high: 0 };
+  if (args.papers === 0 || args.questions === 0) {
+    return { low: 0, mid: 0, high: 0 };
+  }
   throw new Error("not implemented");
 }
