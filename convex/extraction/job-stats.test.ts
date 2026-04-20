@@ -2,8 +2,70 @@ import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import type { Id } from "../_generated/dataModel";
 import { setupAggregates } from "./aggregates.test-support";
 import { readAggregateCounters } from "./aggregates";
+
+type LegacyResultRow = {
+  questionKey: string;
+  answer: string | boolean | number | string[] | null;
+  confidence?: number;
+  reasoning?: string;
+  citations?: Array<{
+    evidenceId: string;
+    page: number;
+    charRange: number[];
+    quote: string;
+    retrieval: {
+      denseScore?: number;
+      lexicalScore?: number;
+      fusedScore?: number;
+      rerankScore?: number;
+    };
+    validated: boolean;
+  }>;
+  citationStatus: "grounded" | "best_effort" | "insufficient_evidence" | "extraction_error";
+  pdfContentUsed?: boolean;
+};
+
+/**
+ * Plan-02 shim: the pre-plan-02 `saveExtractionResultsAndComplete`
+ * bundled N results + one credit debit + finalize into a single call.
+ * The new flow records one result at a time via `recordOneAnswer`, then
+ * rolls the paper up with `finalizePaper`. Splitting the legacy-shape
+ * bundle here keeps the aggregate counter assertions one-to-one with
+ * the pre-plan-02 test body.
+ */
+async function saveLegacyBundle(
+  t: ReturnType<typeof convexTest>,
+  paperId: Id<"extractionPapers">,
+  results: LegacyResultRow[],
+  creditsUsedTotal: number,
+): Promise<void> {
+  const perQ = results.length > 0 ? creditsUsedTotal / results.length : 0;
+  for (const row of results) {
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      {
+        paperId,
+        questionKey: row.questionKey,
+        result: {
+          answer: row.answer,
+          confidence: row.confidence,
+          reasoning: row.reasoning,
+          citations: row.citations ?? [],
+          citationStatus: row.citationStatus,
+          pdfContentUsed: row.pdfContentUsed,
+        },
+        creditsUsed: perQ,
+      },
+    );
+  }
+  await t.mutation(
+    internal.extraction.mutations.results.finalizePaper,
+    { paperId },
+  );
+}
 
 /**
  * Seed a minimal extraction job with papers for aggregate testing. Each
@@ -78,7 +140,7 @@ async function seedJobWithPapers(
   return ids;
 }
 
-describe("aggregate counters via saveExtractionResultsAndComplete", () => {
+describe("aggregate counters via recordOneAnswer + finalizePaper", () => {
   it("records counters for 3 papers × 2 questions", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
@@ -89,16 +151,17 @@ describe("aggregate counters via saveExtractionResultsAndComplete", () => {
     ]);
 
     for (const paperId of paperIds) {
-      await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
+      await saveLegacyBundle(
+        t,
         paperId,
-        results: [
+        [
           {
             questionKey: "sample_size",
             answer: "100",
             confidence: 0.92,
             reasoning: "Found in abstract",
             citations: [],
-            citationStatus: "grounded" as const,
+            citationStatus: "grounded",
           },
           {
             questionKey: "method",
@@ -106,12 +169,11 @@ describe("aggregate counters via saveExtractionResultsAndComplete", () => {
             confidence: 0.55,
             reasoning: "Mentioned in methods",
             citations: [],
-            citationStatus: "best_effort" as const,
+            citationStatus: "best_effort",
           },
         ],
-        creditsUsed: 1,
-        pdfContentUsed: false,
-      });
+        1,
+      );
     }
 
     const sample = await t.run(async (ctx) =>
@@ -138,63 +200,43 @@ describe("aggregate counters via saveExtractionResultsAndComplete", () => {
     const { jobId, paperIds } = await seedJobWithPapers(t, 4, ["q1"]);
 
     // Paper 0: high confidence (0.92 >= 0.8)
-    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
-      paperId: paperIds[0],
-      results: [{
-        questionKey: "q1",
-        answer: "yes",
-        confidence: 0.92,
-        reasoning: "",
-        citations: [],
-        citationStatus: "grounded" as const,
-      }],
-      creditsUsed: 1,
-      pdfContentUsed: false,
-    });
+    await saveLegacyBundle(t, paperIds[0], [{
+      questionKey: "q1",
+      answer: "yes",
+      confidence: 0.92,
+      reasoning: "",
+      citations: [],
+      citationStatus: "grounded",
+    }], 1);
 
     // Paper 1: medium confidence (0.55, 0.5 <= x < 0.8)
-    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
-      paperId: paperIds[1],
-      results: [{
-        questionKey: "q1",
-        answer: "no",
-        confidence: 0.55,
-        reasoning: "",
-        citations: [],
-        citationStatus: "best_effort" as const,
-      }],
-      creditsUsed: 1,
-      pdfContentUsed: false,
-    });
+    await saveLegacyBundle(t, paperIds[1], [{
+      questionKey: "q1",
+      answer: "no",
+      confidence: 0.55,
+      reasoning: "",
+      citations: [],
+      citationStatus: "best_effort",
+    }], 1);
 
     // Paper 2: low confidence (0.21, < 0.5)
-    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
-      paperId: paperIds[2],
-      results: [{
-        questionKey: "q1",
-        answer: "maybe",
-        confidence: 0.21,
-        reasoning: "",
-        citations: [],
-        citationStatus: "insufficient_evidence" as const,
-      }],
-      creditsUsed: 1,
-      pdfContentUsed: false,
-    });
+    await saveLegacyBundle(t, paperIds[2], [{
+      questionKey: "q1",
+      answer: "maybe",
+      confidence: 0.21,
+      reasoning: "",
+      citations: [],
+      citationStatus: "insufficient_evidence",
+    }], 1);
 
     // Paper 3: unknown confidence (undefined)
-    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
-      paperId: paperIds[3],
-      results: [{
-        questionKey: "q1",
-        answer: null,
-        citationStatus: "extraction_error" as const,
-        reasoning: "",
-        citations: [],
-      }],
-      creditsUsed: 1,
-      pdfContentUsed: false,
-    });
+    await saveLegacyBundle(t, paperIds[3], [{
+      questionKey: "q1",
+      answer: null,
+      citationStatus: "extraction_error",
+      reasoning: "",
+      citations: [],
+    }], 1);
 
     const c = await t.run(async (ctx) =>
       readAggregateCounters(ctx, jobId, "q1"),
@@ -219,19 +261,14 @@ describe("aggregate counters via saveExtractionResultsAndComplete", () => {
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 2, ["q1"]);
 
-    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
-      paperId: paperIds[0],
-      results: [{
-        questionKey: "q1",
-        answer: "A",
-        confidence: 0.9,
-        reasoning: "",
-        citations: [],
-        citationStatus: "grounded" as const,
-      }],
-      creditsUsed: 1,
-      pdfContentUsed: false,
-    });
+    await saveLegacyBundle(t, paperIds[0], [{
+      questionKey: "q1",
+      answer: "A",
+      confidence: 0.9,
+      reasoning: "",
+      citations: [],
+      citationStatus: "grounded",
+    }], 1);
 
     const afterFirst = await t.run(async (ctx) =>
       readAggregateCounters(ctx, jobId, "q1"),
@@ -239,19 +276,14 @@ describe("aggregate counters via saveExtractionResultsAndComplete", () => {
     expect(afterFirst.totalPapers).toBe(1);
     expect(afterFirst.groundedCount).toBe(1);
 
-    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
-      paperId: paperIds[1],
-      results: [{
-        questionKey: "q1",
-        answer: "B",
-        confidence: 0.6,
-        reasoning: "",
-        citations: [],
-        citationStatus: "best_effort" as const,
-      }],
-      creditsUsed: 1,
-      pdfContentUsed: false,
-    });
+    await saveLegacyBundle(t, paperIds[1], [{
+      questionKey: "q1",
+      answer: "B",
+      confidence: 0.6,
+      reasoning: "",
+      citations: [],
+      citationStatus: "best_effort",
+    }], 1);
 
     const afterSecond = await t.run(async (ctx) =>
       readAggregateCounters(ctx, jobId, "q1"),
@@ -274,19 +306,14 @@ describe("aggregate counters cascade delete", () => {
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 1, ["q1"]);
 
-    await t.mutation(internal.extraction.mutations.results.saveExtractionResultsAndComplete, {
-      paperId: paperIds[0],
-      results: [{
-        questionKey: "q1",
-        answer: "test",
-        confidence: 0.85,
-        reasoning: "",
-        citations: [],
-        citationStatus: "grounded" as const,
-      }],
-      creditsUsed: 1,
-      pdfContentUsed: false,
-    });
+    await saveLegacyBundle(t, paperIds[0], [{
+      questionKey: "q1",
+      answer: "test",
+      confidence: 0.85,
+      reasoning: "",
+      citations: [],
+      citationStatus: "grounded",
+    }], 1);
 
     const before = await t.run(async (ctx) =>
       readAggregateCounters(ctx, jobId, "q1"),

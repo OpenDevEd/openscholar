@@ -40,6 +40,16 @@ async function seedJob(
       createdAt: now,
       updatedAt: now,
     });
+    // Plan-02 finalizePaper reads extractionQuestions to know how many
+    // per-question result rows to expect.
+    await ctx.db.insert("extractionQuestions", {
+      jobId,
+      key: "q1",
+      question: "Q1?",
+      type: "string" as const,
+      order: 0,
+      createdAt: now,
+    });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
       openalexId: "oa:fg1",
@@ -231,29 +241,30 @@ describe("markPaperTerminalTx counter maintenance", () => {
   });
 });
 
-describe("saveExtractionResultsAndComplete terminal-state guard", () => {
+describe("recordOneAnswer + finalizePaper terminal-state guard", () => {
   it("does not persist results or finalize when job is cancelled", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "cancelled");
 
     await t.mutation(
-      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.recordOneAnswer,
       {
         paperId,
-        results: [
-          {
-            questionKey: "q1",
-            answer: "A",
-            confidence: 0.9,
-            reasoning: "r",
-            citations: [],
-            citationStatus: "grounded" as const,
-          },
-        ],
+        questionKey: "q1",
+        result: {
+          answer: "A",
+          confidence: 0.9,
+          reasoning: "r",
+          citations: [],
+          citationStatus: "grounded",
+        },
         creditsUsed: 1,
-        pdfContentUsed: false,
       },
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
     );
 
     await t.run(async (ctx) => {
@@ -285,22 +296,23 @@ describe("saveExtractionResultsAndComplete terminal-state guard", () => {
     const { jobId, paperId } = await seedJob(t, "extracting");
 
     await t.mutation(
-      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.recordOneAnswer,
       {
         paperId,
-        results: [
-          {
-            questionKey: "q1",
-            answer: "A",
-            confidence: 0.9,
-            reasoning: "r",
-            citations: [],
-            citationStatus: "grounded" as const,
-          },
-        ],
+        questionKey: "q1",
+        result: {
+          answer: "A",
+          confidence: 0.9,
+          reasoning: "r",
+          citations: [],
+          citationStatus: "grounded",
+        },
         creditsUsed: 1,
-        pdfContentUsed: false,
       },
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
     );
 
     await t.run(async (ctx) => {

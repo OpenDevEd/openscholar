@@ -36,6 +36,16 @@ async function seed(t: ReturnType<typeof convexTest>, startingCredits = 1000) {
       createdAt: now,
       updatedAt: now,
     });
+    // Plan-02 finalizePaper counts pending questions, so every test needs
+    // at least one seeded extractionQuestion row per questionKey it uses.
+    await ctx.db.insert("extractionQuestions", {
+      jobId,
+      key: "q1",
+      question: "Q1?",
+      type: "string" as const,
+      order: 0,
+      createdAt: now,
+    });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
       openalexId: "oa:idem",
@@ -126,9 +136,8 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
   });
 });
 
-describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)", () => {
+describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", () => {
   const sampleResult = {
-    questionKey: "q1",
     answer: "A",
     confidence: 0.9,
     reasoning: "r",
@@ -136,19 +145,23 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
     citationStatus: "grounded" as const,
   };
 
-  it("deducts once, skips on direct retry because job becomes terminal", async () => {
+  it("deducts once, skips on direct retry because the result.billed gate short-circuits", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
     await t.mutation(
-      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.recordOneAnswer,
       {
         paperId,
-        results: [sampleResult],
+        questionKey: "q1",
+        result: sampleResult,
         creditsUsed: 5,
-        pdfContentUsed: false,
       },
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
     );
 
     expect(await readBalance(t, creditsId)).toBe(995);
@@ -156,19 +169,25 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
       ctx.db.get("extractionPapers", paperId),
     );
     expect(firstPaper?.status).toBe("completed");
-    expect(firstPaper?.extractionBilled).toBe(true);
+    const firstResult = await t.run((ctx) =>
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q) => q.eq("paperId", paperId))
+        .unique(),
+    );
+    expect(firstResult?.billed).toBe(true);
     const firstJob = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(firstJob?.status).toBe("completed");
 
-    // Retry: the job is now "completed", so the terminal-state guard fires
-    // at the top of the mutation. No re-bill.
+    // Retry: the result row already has billed=true, so the per-question
+    // idempotency gate short-circuits before the LLM re-run / credit debit.
     await t.mutation(
-      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.recordOneAnswer,
       {
         paperId,
-        results: [sampleResult],
+        questionKey: "q1",
+        result: sampleResult,
         creditsUsed: 5,
-        pdfContentUsed: false,
       },
     );
 
@@ -182,37 +201,42 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
     expect(results).toHaveLength(1);
   });
 
-  it("extractionBilled gate blocks a re-bill even if the terminal-state guard is bypassed", async () => {
+  it("result.billed gate blocks re-bill even if job+paper are reset to active", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
     await t.mutation(
-      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.recordOneAnswer,
       {
         paperId,
-        results: [sampleResult],
+        questionKey: "q1",
+        result: sampleResult,
         creditsUsed: 5,
-        pdfContentUsed: false,
       },
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
     );
     expect(await readBalance(t, creditsId)).toBe(995);
 
-    // Adversarial case: something resets the job back to "extracting" and the
-    // paper back to "extracting" (e.g. buggy admin tool). extractionBilled is
-    // still true — the billing guard must still fire.
+    // Adversarial case: something resets the job back to "extracting"
+    // and the paper back to "extracting" (e.g. buggy admin tool). The
+    // extractionResults row still has billed=true — the per-question
+    // gate must still fire.
     await t.run(async (ctx) => {
       await ctx.db.patch("extractionJobs", jobId, { status: "extracting" });
       await ctx.db.patch("extractionPapers", paperId, { status: "extracting" });
     });
 
     await t.mutation(
-      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.recordOneAnswer,
       {
         paperId,
-        results: [sampleResult],
+        questionKey: "q1",
+        result: sampleResult,
         creditsUsed: 5,
-        pdfContentUsed: false,
       },
     );
 
@@ -225,12 +249,12 @@ describe("LLM extraction credit idempotency (saveExtractionResultsAndComplete)",
     const { creditsId, paperId } = await seed(t, 1000);
 
     await t.mutation(
-      internal.extraction.mutations.results.saveExtractionResultsAndComplete,
+      internal.extraction.mutations.results.recordOneAnswer,
       {
         paperId,
-        results: [sampleResult],
+        questionKey: "q1",
+        result: sampleResult,
         creditsUsed: 0,
-        pdfContentUsed: false,
       },
     );
 
