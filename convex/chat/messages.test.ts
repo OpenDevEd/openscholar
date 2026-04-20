@@ -101,6 +101,31 @@ function partialDeltasThenHangDoStream(
   });
 }
 
+/** A doStream that emits a complete `deltas → finish` stream
+ *  synchronously, so paperChat.streamText resolves the happy path. */
+function finishingDoStream(
+  deltas: string[],
+): () => Promise<{ stream: ReadableStream<unknown> }> {
+  return async () => ({
+    stream: new ReadableStream({
+      start(controller) {
+        controller.enqueue({ type: "stream-start", warnings: [] });
+        controller.enqueue({ type: "text-start", id: "0" });
+        for (const d of deltas) {
+          controller.enqueue({ type: "text-delta", id: "0", delta: d });
+        }
+        controller.enqueue({ type: "text-end", id: "0" });
+        controller.enqueue({
+          type: "finish",
+          finishReason: "stop",
+          usage: { inputTokens: 5, outputTokens: 3, totalTokens: 8 },
+        });
+        controller.close();
+      },
+    }),
+  });
+}
+
 /** Poll helper: wait until a predicate returns true, or throw. */
 async function waitFor(
   predicate: () => boolean,
@@ -517,5 +542,54 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(job?.isGenerating).toBe(false);
     expect(job?.shouldAbort).toBeUndefined();
     expect(job?.generatingStartedAt).toBeUndefined();
+  });
+
+  it("A6 — happy path: no abort, onAbort never fires, stream row finishes", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    mockDoStream.mockImplementation(finishingDoStream(["hi"]));
+
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      await t.action(internal.chat.messages.generateResponse, {
+        threadId,
+        promptMessageId,
+      });
+
+      const abortLog = infoSpy.mock.calls.find(
+        (call) =>
+          typeof call[0] === "string" &&
+          call[0].includes("[chat] stream aborted by user"),
+      );
+      expect(abortLog).toBeUndefined();
+    } finally {
+      infoSpy.mockRestore();
+    }
+
+    const finishedRows: Array<{ status: string }> = await t.run(async (ctx) =>
+      ctx.runQuery(components.agent.streams.list, {
+        threadId: threadId as Id<"threads">,
+        statuses: ["finished"],
+      }),
+    );
+    expect(finishedRows.length).toBeGreaterThanOrEqual(1);
+    expect(finishedRows[0]?.status).toBe("finished");
+
+    const abortedRows: Array<{ status: string }> = await t.run(async (ctx) =>
+      ctx.runQuery(components.agent.streams.list, {
+        threadId: threadId as Id<"threads">,
+        statuses: ["aborted"],
+      }),
+    );
+    expect(abortedRows.length).toBe(0);
+
+    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(job?.isGenerating).toBe(false);
   });
 });
