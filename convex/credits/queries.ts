@@ -54,6 +54,14 @@ export const getMyBalance = query({
 export const getTransactions = query({
   args: {
     limit: v.optional(v.number()),
+    /**
+     * Plan-04: when provided, returns only usage rows whose first-class
+     * jobId column matches. Uses the by_job index so the filter is
+     * O(rows for this job) rather than scanning the user's full ledger.
+     * Ownership is enforced by refusing to surface rows that don't
+     * belong to the caller's credits record.
+     */
+    jobId: v.optional(v.id("extractionJobs")),
   },
   returns: v.array(creditTransactionValidator),
   handler: async (ctx, args) => {
@@ -67,6 +75,15 @@ export const getTransactions = query({
       .unique();
 
     if (!credits) return [];
+
+    if (args.jobId) {
+      const rows = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+        .order("desc")
+        .take(args.limit ?? 200);
+      return rows.filter((row) => row.creditsId === credits._id);
+    }
 
     const transactions = await ctx.db
       .query("creditTransactions")

@@ -355,6 +355,14 @@
     "creditsModeDisabledDescription": "इस ऐप के लिए क्रेडिट्स अभी बंद हैं। Smart Mode या Use My API Keys चुनें।"
   },
   "billingPage": {
+    "transactions": {
+      "title": "लेन-देन",
+      "loading": "लेन-देन लोड हो रहे हैं…",
+      "empty": "अभी तक कोई लेन-देन नहीं।",
+      "emptyForJob": "इस कार्य के लिए कोई लेन-देन नहीं।",
+      "filteredByJob": "कार्य द्वारा फ़िल्टर किया गया",
+      "clearFilter": "फ़िल्टर साफ़ करें"
+    },
     "billingAndPlans": "बिलिंग और प्लान्स",
     "manageSubscription": "अपनी सदस्यता और उपयोग प्रबंधित करें।",
     "upgradePlan": "प्लान अपग्रेड करें",

@@ -12,6 +12,7 @@ import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 import { CreditTopupCard } from "@/components/billing/credit-topup-card";
+import { TransactionsList } from "@/components/billing/transactions-list";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
@@ -581,6 +582,8 @@ export default function BillingPage() {
               />
             </div>
           )}
+
+        {creditsEnabled && <TransactionsList />}
 
         {/* {grantDiagnostics && (
           <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm">

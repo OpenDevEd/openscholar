@@ -355,6 +355,14 @@
     "creditsModeDisabledDescription": "Les crédits sont actuellement désactivés pour cette application. Passez au mode intelligent ou utilisez vos clés API."
   },
   "billingPage": {
+    "transactions": {
+      "title": "Transactions",
+      "loading": "Chargement des transactions…",
+      "empty": "Aucune transaction pour l'instant.",
+      "emptyForJob": "Aucune transaction pour cette tâche.",
+      "filteredByJob": "Filtré par tâche",
+      "clearFilter": "Effacer le filtre"
+    },
     "billingAndPlans": "Facturation et forfaits",
     "manageSubscription": "Gérez votre abonnement et votre utilisation.",
     "upgradePlan": "Passer à un forfait supérieur",

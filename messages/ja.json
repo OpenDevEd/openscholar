@@ -355,6 +355,14 @@
     "creditsModeDisabledDescription": "このアプリでは現在クレジットが無効です。スマートモードかAPIキー利用に切り替えてください。"
   },
   "billingPage": {
+    "transactions": {
+      "title": "取引履歴",
+      "loading": "取引を読み込み中…",
+      "empty": "取引はまだありません。",
+      "emptyForJob": "このジョブの取引はありません。",
+      "filteredByJob": "ジョブでフィルタ中",
+      "clearFilter": "フィルタを解除"
+    },
     "billingAndPlans": "請求とプラン",
     "manageSubscription": "サブスクリプションと使用量を管理",
     "upgradePlan": "プランをアップグレード",

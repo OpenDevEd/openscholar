@@ -112,6 +112,19 @@ export const creditTransactionValidator = v.object({
   amount: v.number(),
   balanceAfter: v.number(),
   description: v.optional(v.string()),
+  // Plan-04 first-class scoping columns. Present on all usage rows
+  // created after the plan-04 schema refactor; optional on legacy rows.
+  jobId: v.optional(v.id("extractionJobs")),
+  paperId: v.optional(v.id("extractionPapers")),
+  resultId: v.optional(v.id("extractionResults")),
+  billingType: v.optional(
+    v.union(
+      v.literal("extraction_llm"),
+      v.literal("embedding"),
+      v.literal("screening"),
+      v.literal("chat"),
+    ),
+  ),
   metadata: v.optional(v.record(v.string(), v.string())),
   stripeInvoiceId: v.optional(v.string()),
   stripePaymentIntentId: v.optional(v.string()),

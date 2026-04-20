@@ -355,6 +355,14 @@
     "creditsModeDisabledDescription": "Credits are currently disabled for this app. Switch to Smart Mode or Use My API Keys."
   },
   "billingPage": {
+    "transactions": {
+      "title": "Transactions",
+      "loading": "Loading transactions…",
+      "empty": "No transactions yet.",
+      "emptyForJob": "No transactions for this job.",
+      "filteredByJob": "Filtered by job",
+      "clearFilter": "Clear filter"
+    },
     "billingAndPlans": "Billing & Plans",
     "manageSubscription": "Manage your subscription and usage.",
     "upgradePlan": "Upgrade Plan",

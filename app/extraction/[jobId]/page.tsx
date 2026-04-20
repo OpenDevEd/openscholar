@@ -603,6 +603,14 @@ export default function JobDetailPage() {
                     <span className="w-1 h-1 rounded-full bg-border" />
 
                     <CostBadge jobId={jobId} compact />
+
+                    <Link
+                      href={`/settings/billing?jobId=${jobId}`}
+                      className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                      data-transactions-link="view"
+                    >
+                      {tExtraction("cost.viewTransactions")}
+                    </Link>
                   </motion.div>
                 </div>
               </div>

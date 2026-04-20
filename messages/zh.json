@@ -355,6 +355,14 @@
     "creditsModeDisabledDescription": "此应用当前已禁用积分。请切换到智能模式或使用我的 API 密钥。"
   },
   "billingPage": {
+    "transactions": {
+      "title": "交易记录",
+      "loading": "加载交易中…",
+      "empty": "暂无交易。",
+      "emptyForJob": "此作业暂无交易。",
+      "filteredByJob": "按作业筛选",
+      "clearFilter": "清除筛选"
+    },
     "billingAndPlans": "账单和计划",
     "manageSubscription": "管理您的订阅和使用情况。",
     "upgradePlan": "升级计划",
