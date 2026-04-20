@@ -172,6 +172,47 @@ describe("classifyUnknownError — fingerprint cascade", () => {
       classifyUnknownError(Object.assign(new Error("Payment required"), { statusCode: 402 })).code,
     ).toBe("insufficient_credits");
   });
+
+  it("R12: message /content filter|moderation|safety/i → moderation", () => {
+    expect(classifyUnknownError(new Error("flagged by content filter")).code).toBe("moderation");
+    expect(classifyUnknownError(new Error("Output blocked by moderation policy")).code).toBe(
+      "moderation",
+    );
+    expect(classifyUnknownError(new Error("Safety classifier triggered")).code).toBe("moderation");
+  });
+
+  it("R13: message /context length|token limit|too long/i → context_too_long", () => {
+    expect(
+      classifyUnknownError(new Error("Maximum context length is 32k tokens")).code,
+    ).toBe("context_too_long");
+    expect(classifyUnknownError(new Error("Token limit exceeded")).code).toBe("context_too_long");
+    expect(classifyUnknownError(new Error("Input is too long for this model")).code).toBe(
+      "context_too_long",
+    );
+  });
+
+  it("R14: message /timed out|deadline/i → action_timeout", () => {
+    expect(classifyUnknownError(new Error("Request timed out after 600s")).code).toBe(
+      "action_timeout",
+    );
+    expect(classifyUnknownError(new Error("Deadline exceeded")).code).toBe("action_timeout");
+  });
+
+  it("R15: unrecognised shapes fall through to unknown / retryable:true", () => {
+    const result = classifyUnknownError(new Error("Some weird thing happened"));
+    expect(result.code).toBe("unknown");
+    expect(result.retryable).toBe(true);
+  });
+
+  it("R15: classifyUnknownError(undefined) → unknown without throwing", () => {
+    expect(classifyUnknownError(undefined).code).toBe("unknown");
+  });
+
+  it("R15: classifyUnknownError(string) → unknown with the string as message", () => {
+    const result = classifyUnknownError("a stringified error");
+    expect(result.code).toBe("unknown");
+    expect(result.message).toBe("a stringified error");
+  });
 });
 
 describe("classifyChatError", () => {

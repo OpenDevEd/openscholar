@@ -162,8 +162,25 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
     }
   }
 
+  // 6. Message-shaped fingerprints — last resort before "unknown".
+  for (const { pattern, code } of MESSAGE_FINGERPRINTS) {
+    if (pattern.test(message)) {
+      return finalize(code, message);
+    }
+  }
+
   return finalize("unknown", message);
 }
+
+/** Pattern → taxonomy code, evaluated in order. First match wins. */
+const MESSAGE_FINGERPRINTS: ReadonlyArray<{ pattern: RegExp; code: ErrorCode }> = [
+  { pattern: /content filter|moderation|safety classifier/i, code: "moderation" },
+  {
+    pattern: /context length|context_length|token limit|too long for|maximum context/i,
+    code: "context_too_long",
+  },
+  { pattern: /timed out|deadline (?:exceeded|reached)/i, code: "action_timeout" },
+];
 
 function extractHttpStatus(
   data: Record<string, unknown> | undefined,
