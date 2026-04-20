@@ -429,12 +429,13 @@ export default function JobDetailPage() {
     if (!job.chatThreadId) {
       return (
         <PageWrapper>
-          {job.errorMessage ? (
+          {job.error ? (
             <div
               className="flex min-h-[60vh] items-center justify-center p-8 text-center text-destructive"
               data-chat-state="error"
+              data-error-code={job.error.code}
             >
-              {job.errorMessage}
+              {job.error.message}
             </div>
           ) : (
             <div data-chat-state="preparing">

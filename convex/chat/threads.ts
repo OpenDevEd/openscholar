@@ -21,14 +21,16 @@ import { dedupeExpandedSources, expandJobSources } from "../extraction/expandSou
 import { replaceJobSources, type BucketItemInput } from "../extraction/jobSources";
 import type { PaperData } from "../extraction/types";
 import { internal } from "../_generated/api";
-import { bucketItemInputValidator } from "../extraction/validators";
+import { bucketItemInputValidator, structuredErrorValidator } from "../extraction/validators";
 import { buildSeedChatPaperRows } from "./chatPapersSeed";
+import { classifyUnknownError } from "@/lib/errors/taxonomy";
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
+function classifyChatPrepError(error: unknown) {
+  const result = classifyUnknownError(error);
+  if (result.message === "Unknown error") {
+    return { ...result, message: "Chat preparation failed." };
   }
-  return "Chat preparation failed.";
+  return result;
 }
 
 async function resolvePreparedSources(
@@ -128,9 +130,21 @@ export const ensureThreadForJob = internalAction({
 
       return { threadId };
     } catch (error) {
+      const classified = classifyChatPrepError(error);
       await ctx.runMutation(internal.chat.threads.failThreadForJob, {
         jobId,
-        errorMessage: getErrorMessage(error),
+        error: {
+          code: classified.code,
+          message: classified.message,
+          ...(classified.context !== undefined ? { context: classified.context } : {}),
+          ...(classified.httpStatus !== undefined
+            ? { httpStatus: classified.httpStatus }
+            : {}),
+          ...(classified.providerName !== undefined
+            ? { providerName: classified.providerName }
+            : {}),
+          at: Date.now(),
+        },
       });
       throw error;
     }
@@ -178,9 +192,21 @@ export const createThreadForDuplicatedJob = internalAction({
       });
       return { threadId };
     } catch (error) {
+      const classified = classifyChatPrepError(error);
       await ctx.runMutation(internal.chat.threads.failThreadForJob, {
         jobId,
-        errorMessage: getErrorMessage(error),
+        error: {
+          code: classified.code,
+          message: classified.message,
+          ...(classified.context !== undefined ? { context: classified.context } : {}),
+          ...(classified.httpStatus !== undefined
+            ? { httpStatus: classified.httpStatus }
+            : {}),
+          ...(classified.providerName !== undefined
+            ? { providerName: classified.providerName }
+            : {}),
+          at: Date.now(),
+        },
       });
       throw error;
     }
@@ -254,7 +280,7 @@ export const persistPreparedSourcesForJob = internalMutation({
     }
 
     await ctx.db.patch(jobId, {
-      errorMessage: undefined,
+      error: undefined,
       updatedAt: Date.now(),
     });
     return null;
@@ -277,7 +303,7 @@ export const completeThreadForJob = internalMutation({
     }
     await ctx.db.patch(jobId, {
       chatThreadId: threadId,
-      errorMessage: undefined,
+      error: undefined,
       updatedAt: Date.now(),
     });
     return null;
@@ -287,16 +313,16 @@ export const completeThreadForJob = internalMutation({
 export const failThreadForJob = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
-    errorMessage: v.string(),
+    error: structuredErrorValidator,
   },
   returns: v.null(),
-  handler: async (ctx, { jobId, errorMessage }) => {
+  handler: async (ctx, { jobId, error }) => {
     const job = await ctx.db.get(jobId);
     if (!job || job.mode !== "chat" || job.chatThreadId) {
       return null;
     }
     await ctx.db.patch(jobId, {
-      errorMessage,
+      error,
       updatedAt: Date.now(),
     });
     return null;

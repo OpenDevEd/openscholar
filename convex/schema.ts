@@ -1,7 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
-import { searchFiltersValidator } from "./extraction/validators";
+import {
+  errorCodeValidator,
+  searchFiltersValidator,
+  structuredErrorValidator,
+} from "./extraction/validators";
 
 export default defineSchema({
   // Rate limiting (convex-helpers)
@@ -384,10 +388,10 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
 
     // Populated by the workflow onComplete handler when the workflow
-    // terminates with kind: "failed". Surfaces the failure reason to
-    // the UI so the user sees why an extraction ended without having
-    // to dig through per-paper statuses.
-    errorMessage: v.optional(v.string()),
+    // terminates with kind: "failed", or by any catch site that wants
+    // to surface a structured failure reason. The taxonomy code lets
+    // the UI pick localized title/body without parsing the message.
+    error: v.optional(structuredErrorValidator),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
@@ -524,7 +528,12 @@ export default defineSchema({
     workId: v.optional(v.string()), // Workpool work ID for tracking
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
-    errorMessage: v.optional(v.string()),
+    // Most recent structured failure for this paper. Append-only history
+    // of every attempt is kept in `extractionPaperErrors` (see below).
+    lastError: v.optional(structuredErrorValidator),
+    // Number of completed attempts (success or failure). Bumped on every
+    // terminal transition by markPaperTerminalTx.
+    attemptCount: v.optional(v.number()),
 
     // Cost tracking
     creditsUsed: v.optional(v.number()),
@@ -544,6 +553,31 @@ export default defineSchema({
     .index("by_work", ["workId"])
     .index("by_status_completedAt", ["status", "completedAt"])
     .index("by_ragEntryId_isIndexed", ["ragEntryId", "isIndexed"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION PAPER ERRORS - Append-only failure history per paper
+  //
+  // One row inserted on every terminal failure (download, indexing, or
+  // extraction). Lets us paginate the full retry trail per paper and
+  // diagnose flaky upstream behavior without bloating extractionPapers.
+  // Plan-01 § "Persistence hooks".
+  // ═══════════════════════════════════════════════════════════════
+  extractionPaperErrors: defineTable({
+    paperId: v.id("extractionPapers"),
+    jobId: v.id("extractionJobs"),
+    // 1-indexed attempt number; matches the attemptCount on the paper
+    // *after* this row is written.
+    attempt: v.number(),
+    at: v.number(),
+    code: errorCodeValidator,
+    message: v.string(),
+    httpStatus: v.optional(v.number()),
+    providerName: v.optional(v.string()),
+    // Capped at 4 KB by classifyUnknownError before insert.
+    context: v.optional(v.any()),
+  })
+    .index("by_paper", ["paperId"])
+    .index("by_job", ["jobId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION EVIDENCE UNITS - Anchored sentence evidence (V3)

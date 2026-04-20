@@ -60,9 +60,9 @@ export const debugJobContent = internalQuery({
       const isProcessable = paper.processable !== false;
 
       counts.byStatus[paper.status] = (counts.byStatus[paper.status] || 0) + 1;
-      if (paper.errorMessage) {
-        counts.byErrorMessage[paper.errorMessage] =
-          (counts.byErrorMessage[paper.errorMessage] || 0) + 1;
+      if (paper.lastError) {
+        const key = paper.lastError.code;
+        counts.byErrorMessage[key] = (counts.byErrorMessage[key] || 0) + 1;
       }
 
       if (hasPdfUrl) counts.hasPdfUrl++;
@@ -81,7 +81,7 @@ export const debugJobContent = internalQuery({
         samples.abstractOnlyFailed.push({
           id: paper._id,
           title: paper.title,
-          errorMessage: paper.errorMessage,
+          errorMessage: paper.lastError?.message,
         });
       }
 
@@ -94,7 +94,7 @@ export const debugJobContent = internalQuery({
         samples.noContentFailed.push({
           id: paper._id,
           title: paper.title,
-          errorMessage: paper.errorMessage,
+          errorMessage: paper.lastError?.message,
         });
       }
     }

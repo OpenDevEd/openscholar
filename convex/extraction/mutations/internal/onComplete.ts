@@ -40,15 +40,36 @@ import {
   type PaperStatus,
 } from "../../stateMachine";
 import { markPaperTerminalTx } from "../../paperLifecycle";
+import {
+  classifyUnknownError,
+  type ClassifiedError,
+  type ErrorCode,
+} from "@/lib/errors/taxonomy";
+
+/**
+ * Stage-aware fallback codes used when the workpool delivered a
+ * `failed`/`canceled` outcome with only a string `error` to work from.
+ * Choosing the right code here lets the UI render a stage-correct title
+ * even when the upstream throw was generic.
+ */
+function fallbackForStage(
+  status: "failed" | "download_failed",
+  context: "download" | "extraction" | "cancelled",
+): ErrorCode {
+  if (context === "cancelled") return "cancelled";
+  if (status === "download_failed") return "pdf_download_failed";
+  if (context === "extraction") return "schema_validation";
+  return "unknown";
+}
 
 async function failPaperAndFinalize(
   ctx: MutationCtx,
   paperId: Id<"extractionPapers">,
   jobId: Id<"extractionJobs">,
   status: "failed" | "download_failed",
-  errorMessage: string,
+  error: ClassifiedError,
 ) {
-  await markPaperTerminalTx(ctx, paperId, status, { errorMessage });
+  await markPaperTerminalTx(ctx, paperId, status, { error });
   await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, {
     jobId,
   });
@@ -73,20 +94,20 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
             success: boolean;
             storageId?: string;
             chunksCount?: number;
-            error?: string;
+            error?: ClassifiedError;
           };
 
           if (!data.success) {
             console.log(
-              `[handleDownloadAndIndexComplete] Download failed for ${paperId}: ${data.error}`,
+              `[handleDownloadAndIndexComplete] Download failed for ${paperId}: ${data.error?.message}`,
             );
-            await failPaperAndFinalize(
-              ctx,
-              paperId,
-              jobId,
-              "download_failed",
-              data.error || "Download failed",
-            );
+            const error: ClassifiedError =
+              data.error ?? {
+                code: fallbackForStage("download_failed", "download"),
+                message: "Download failed",
+                retryable: false,
+              };
+            await failPaperAndFinalize(ctx, paperId, jobId, "download_failed", error);
             return;
           }
 
@@ -127,16 +148,14 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
             paperId,
             jobId,
             "failed",
-            error || "Download/index action failed",
+            classifyUnknownError(new Error(error || "Download/index action failed")),
           ),
         onCanceled: (ctx) =>
-          failPaperAndFinalize(
-            ctx,
-            paperId,
-            jobId,
-            "failed",
-            "Download/index was canceled",
-          ),
+          failPaperAndFinalize(ctx, paperId, jobId, "failed", {
+            code: "cancelled",
+            message: "Download/index was canceled",
+            retryable: false,
+          }),
       });
     },
   },
@@ -160,17 +179,17 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
           results?: ExtractionResult[];
           creditsUsed?: number;
           pdfContentUsed?: boolean;
-          error?: string;
+          error?: ClassifiedError;
         };
 
         if (!data.success || !data.results) {
-          await failPaperAndFinalize(
-            ctx,
-            paperId,
-            jobId,
-            "failed",
-            data.error || "Extraction failed",
-          );
+          const error: ClassifiedError =
+            data.error ?? {
+              code: fallbackForStage("failed", "extraction"),
+              message: "Extraction failed",
+              retryable: false,
+            };
+          await failPaperAndFinalize(ctx, paperId, jobId, "failed", error);
           return;
         }
 
@@ -195,16 +214,14 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
           paperId,
           jobId,
           "failed",
-          error || "Extraction action failed",
+          classifyUnknownError(new Error(error || "Extraction action failed")),
         ),
       onCanceled: (ctx) =>
-        failPaperAndFinalize(
-          ctx,
-          paperId,
-          jobId,
-          "failed",
-          "Extraction was canceled",
-        ),
+        failPaperAndFinalize(ctx, paperId, jobId, "failed", {
+          code: "cancelled",
+          message: "Extraction was canceled",
+          retryable: false,
+        }),
     });
   },
 });
@@ -253,13 +270,26 @@ export const handleExtractionJobComplete = internalMutation({
       job.status === "cancelled";
     if (isTerminal) return null;
 
+    const classified = classifyUnknownError(new Error(result.error));
+    const at = Date.now();
     await ctx.db.patch(jobId, {
       status: "failed",
-      errorMessage: result.error,
-      updatedAt: Date.now(),
+      error: {
+        code: classified.code,
+        message: classified.message,
+        ...(classified.context !== undefined ? { context: classified.context } : {}),
+        ...(classified.httpStatus !== undefined
+          ? { httpStatus: classified.httpStatus }
+          : {}),
+        ...(classified.providerName !== undefined
+          ? { providerName: classified.providerName }
+          : {}),
+        at,
+      },
+      updatedAt: at,
     });
     console.log(
-      `[handleExtractionJobComplete] Job ${jobId} failed: ${result.error}`,
+      `[handleExtractionJobComplete] Job ${jobId} failed (${classified.code}): ${result.error}`,
     );
     return null;
   },

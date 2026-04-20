@@ -28,6 +28,12 @@ import { ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { decryptApiKey } from "../lib/crypto";
+import {
+  classifyUnknownError,
+  isRetryable,
+  type ClassifiedError,
+  type ErrorCode,
+} from "@/lib/errors/taxonomy";
 import { MIN_ABSTRACT_LENGTH } from "./content";
 import { buildEnhancedExtractionPrompt, type ExtractionQuestion } from "./prompts";
 import {
@@ -66,6 +72,7 @@ import {
   answerValidator,
   citationStatusValidator,
   citationValidator,
+  classifiedErrorValidator,
   questionInputValidator,
   retrievalDiagnosticsValidator,
 } from "./validators";
@@ -136,20 +143,35 @@ function estimateEmbeddingCostDollars(tokens: number): number {
   return (tokens / 1_000_000) * EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS;
 }
 
-function toErrorMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === "object" && "data" in error) {
-    const data = (error as { data?: unknown }).data;
-    if (data && typeof data === "object" && "message" in data) {
-      const message = (data as { message?: unknown }).message;
-      if (typeof message === "string" && message.length > 0) {
-        return message;
-      }
-    }
+/**
+ * Build a fully classified error from anything an action catch site
+ * sees. Layered on top of `classifyUnknownError` so we can attach a
+ * stage-specific fallback code when the upstream throw doesn't carry
+ * enough signal to fingerprint on its own.
+ */
+function toClassifiedError(
+  error: unknown,
+  fallbackCode: ErrorCode,
+  fallbackMessage: string,
+): ClassifiedError {
+  const result = classifyUnknownError(error);
+  if (result.code === "unknown") {
+    return {
+      ...result,
+      code: fallbackCode,
+      retryable: isRetryable[fallbackCode],
+      message: result.message === "Unknown error" ? fallbackMessage : result.message,
+    };
   }
-  if (error instanceof Error && error.message.length > 0) {
-    return error.message;
-  }
-  return fallback;
+  return result;
+}
+
+/**
+ * Build a ClassifiedError from a known taxonomy code + human message.
+ * Used by graceful (non-throw) failure returns at the action level.
+ */
+function mkError(code: ErrorCode, message: string): ClassifiedError {
+  return { code, message, retryable: isRetryable[code] };
 }
 
 function toTupleRange(charRange: number[] | [number, number]): [number, number] {
@@ -564,7 +586,7 @@ type IndexResult = {
   success: boolean;
   storageId?: string;
   chunksCount?: number;
-  error?: string;
+  error?: ClassifiedError;
 };
 
 export const downloadAndIndexPdfAction = internalAction({
@@ -581,7 +603,7 @@ export const downloadAndIndexPdfAction = internalAction({
     success: v.boolean(),
     storageId: v.optional(v.string()),
     chunksCount: v.optional(v.number()),
-    error: v.optional(v.string()),
+    error: v.optional(classifiedErrorValidator),
   }),
   handler: async (ctx, args): Promise<IndexResult> => {
     try {
@@ -593,7 +615,7 @@ export const downloadAndIndexPdfAction = internalAction({
       if (!job) {
         return {
           success: false,
-          error: "Job not found",
+          error: mkError("paper_not_found", "Job not found"),
         };
       }
 
@@ -626,7 +648,10 @@ export const downloadAndIndexPdfAction = internalAction({
         }
         return {
           success: false,
-          error: "PDF processing is disabled and no usable abstract is available.",
+          error: mkError(
+            "pdf_invalid",
+            "PDF processing is disabled and no usable abstract is available.",
+          ),
         };
       }
 
@@ -649,10 +674,15 @@ export const downloadAndIndexPdfAction = internalAction({
             success: true,
             chunksCount: 0,
             storageId: resolved.storageId,
-            error: resolved.error,
           };
         }
-        return { success: false, error: resolved.error || "No PDF available" };
+        return {
+          success: false,
+          error: mkError(
+            "pdf_download_failed",
+            resolved.error || "No PDF available",
+          ),
+        };
       }
 
       const pdfBuffer = await resolved.pdfBlob.arrayBuffer();
@@ -735,7 +765,11 @@ export const downloadAndIndexPdfAction = internalAction({
     } catch (error) {
       return {
         success: false,
-        error: toErrorMessage(error, "Unknown indexing error"),
+        error: toClassifiedError(
+          error,
+          "indexing_failed",
+          "Unknown indexing error",
+        ),
       };
     }
   },
@@ -765,14 +799,14 @@ export const waitAndExtractAction = internalAction({
     ),
     creditsUsed: v.optional(v.number()),
     pdfContentUsed: v.optional(v.boolean()),
-    error: v.optional(v.string()),
+    error: v.optional(classifiedErrorValidator),
   }),
   handler: async (ctx, args): Promise<{
     success: boolean;
     results?: ExtractionQuestionResult[];
     creditsUsed?: number;
     pdfContentUsed?: boolean;
-    error?: string;
+    error?: ClassifiedError;
   }> => {
     try {
       // Two round trips at the top instead of four — job+flags combined,
@@ -787,11 +821,11 @@ export const waitAndExtractAction = internalAction({
         }),
       ]);
       if (!paper) {
-        return { success: false, error: "Paper not found" };
+        return { success: false, error: mkError("paper_not_found", "Paper not found") };
       }
       const { job, pdfEnabled } = jobWithFlags;
       if (!job) {
-        return { success: false, error: "Job not found" };
+        return { success: false, error: mkError("paper_not_found", "Job not found") };
       }
       const unitsRaw = await ctx.runQuery(
         internal.extraction.queries.internal.getEvidenceUnitsInternal,
@@ -821,7 +855,7 @@ export const waitAndExtractAction = internalAction({
         console.log(`[cancellationGuard] Aborting extraction - job ${args.jobId} cancelled`);
         return {
           success: false,
-          error: "Job cancelled before extraction",
+          error: mkError("cancelled", "Job cancelled before extraction"),
         };
       }
 
@@ -1163,7 +1197,11 @@ export const waitAndExtractAction = internalAction({
     } catch (error) {
       return {
         success: false,
-        error: toErrorMessage(error, "Unknown extraction error"),
+        error: toClassifiedError(
+          error,
+          "schema_validation",
+          "Unknown extraction error",
+        ),
       };
     }
   },

@@ -19,6 +19,7 @@ import { readJobSources } from "../jobSources";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
 import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import {
+  errorCodeValidator,
   extractionEvidenceUnitValidator,
   extractionJobValidator,
   extractionQuestionValidator,
@@ -134,7 +135,9 @@ export const debugRecentPapers = internalQuery({
       pdfUrl: v.boolean(),
       storageId: v.optional(v.id("_storage")),
       ragEntryId: v.optional(v.string()),
-      errorMessage: v.optional(v.string()),
+      lastErrorCode: v.optional(errorCodeValidator),
+      lastErrorMessage: v.optional(v.string()),
+      attemptCount: v.optional(v.number()),
       completedAt: v.union(v.string(), v.null()),
     }),
   ),
@@ -151,7 +154,9 @@ export const debugRecentPapers = internalQuery({
       pdfUrl: !!p.pdfUrl,
       storageId: p.storageId,
       ragEntryId: p.ragEntryId,
-      errorMessage: p.errorMessage,
+      lastErrorCode: p.lastError?.code,
+      lastErrorMessage: p.lastError?.message,
+      attemptCount: p.attemptCount,
       completedAt: p.completedAt
         ? new Date(p.completedAt).toISOString()
         : null,

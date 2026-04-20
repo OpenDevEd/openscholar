@@ -6,6 +6,7 @@
 
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+import type { ClassifiedError } from "@/lib/errors/taxonomy";
 import {
   assertValidPaperTransition,
   type PaperStatus,
@@ -46,7 +47,7 @@ export async function markPaperTerminalTx(
   paperId: Id<"extractionPapers">,
   newStatus: TerminalPaperStatus,
   extras: {
-    errorMessage?: string;
+    error?: ClassifiedError;
     completedAt?: number;
     creditsUsed?: number;
     storageId?: Id<"_storage">;
@@ -66,11 +67,11 @@ export async function markPaperTerminalTx(
     newStatus as PaperStatus,
   );
 
+  const completedAt = extras.completedAt ?? Date.now();
   const patch: Partial<Doc<"extractionPapers">> = {
     status: newStatus,
-    completedAt: extras.completedAt ?? Date.now(),
+    completedAt,
   };
-  if (extras.errorMessage !== undefined) patch.errorMessage = extras.errorMessage;
   if (extras.creditsUsed !== undefined) patch.creditsUsed = extras.creditsUsed;
   if (extras.storageId !== undefined) patch.storageId = extras.storageId;
   if (extras.extractionBilled !== undefined) {
@@ -78,6 +79,39 @@ export async function markPaperTerminalTx(
   }
   if (extras.pdfContentUsed !== undefined) {
     patch.pdfContentUsed = extras.pdfContentUsed;
+  }
+
+  // Structured error: persist on paper.lastError, append-only row to
+  // extractionPaperErrors, and bump attemptCount. Always do this if an
+  // error is supplied — even on `failed` retries — so the per-paper
+  // history reflects every attempt.
+  let attempt = paper.attemptCount ?? 0;
+  if (extras.error !== undefined) {
+    attempt += 1;
+    patch.attemptCount = attempt;
+    patch.lastError = {
+      code: extras.error.code,
+      message: extras.error.message,
+      ...(extras.error.context !== undefined ? { context: extras.error.context } : {}),
+      ...(extras.error.httpStatus !== undefined ? { httpStatus: extras.error.httpStatus } : {}),
+      ...(extras.error.providerName !== undefined
+        ? { providerName: extras.error.providerName }
+        : {}),
+      at: completedAt,
+    };
+    await ctx.db.insert("extractionPaperErrors", {
+      paperId,
+      jobId: paper.jobId,
+      attempt,
+      at: completedAt,
+      code: extras.error.code,
+      message: extras.error.message,
+      ...(extras.error.context !== undefined ? { context: extras.error.context } : {}),
+      ...(extras.error.httpStatus !== undefined ? { httpStatus: extras.error.httpStatus } : {}),
+      ...(extras.error.providerName !== undefined
+        ? { providerName: extras.error.providerName }
+        : {}),
+    });
   }
 
   await ctx.db.patch("extractionPapers", paperId, patch);

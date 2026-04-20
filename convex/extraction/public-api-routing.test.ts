@@ -326,7 +326,7 @@ describe("startJob — chat source preparation", () => {
 
     job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.chatThreadId).toBeTruthy();
-    expect(job?.errorMessage).toBeUndefined();
+    expect(job?.error).toBeUndefined();
 
     const sources = await t.run((ctx) =>
       ctx.db
@@ -372,7 +372,7 @@ describe("startJob — chat source preparation", () => {
 
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.chatThreadId).toBeTruthy();
-    expect(job?.errorMessage).toBeUndefined();
+    expect(job?.error).toBeUndefined();
 
     const sources = await t.run((ctx) =>
       ctx.db

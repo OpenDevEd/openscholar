@@ -102,7 +102,14 @@ describe("SN-4 handleDownloadAndIndexComplete branches", () => {
         },
         result: {
           kind: "success" as const,
-          returnValue: { success: false, error: "pdf host 404" },
+          returnValue: {
+            success: false,
+            error: {
+              code: "pdf_download_failed",
+              message: "pdf host 404",
+              retryable: true,
+            },
+          },
         },
       } as never
     );
@@ -110,6 +117,18 @@ describe("SN-4 handleDownloadAndIndexComplete branches", () => {
     expect(paper?.status).toBe("download_failed");
     expect(job?.failedPapers).toBe(1);
     expect(job?.processedPapers).toBe(0);
+    // Plan-01: per-paper error history is appended on every terminal failure
+    expect(paper?.lastError?.code).toBe("pdf_download_failed");
+    expect(paper?.attemptCount).toBe(1);
+    const errors = await t.run((ctx) =>
+      ctx.db
+        .query("extractionPaperErrors")
+        .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId as never))
+        .collect(),
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0].code).toBe("pdf_download_failed");
+    expect(errors[0].attempt).toBe(1);
   });
 
   test("failed → paper failed, failedPapers++", async () => {
@@ -208,13 +227,31 @@ describe("SN-4 handleExtractionComplete branches", () => {
         context: { paperId: ids.paperId, jobId: ids.jobId },
         result: {
           kind: "success" as const,
-          returnValue: { success: false, error: "LLM error" },
+          returnValue: {
+            success: false,
+            error: {
+              code: "schema_validation",
+              message: "LLM error",
+              retryable: false,
+            },
+          },
         },
       } as never
     );
     const { paper, job } = await readPaperAndJob(t, ids);
     expect(paper?.status).toBe("failed");
     expect(job?.failedPapers).toBe(1);
+    // Plan-01: structured error + history row + attempt counter
+    expect(paper?.lastError?.code).toBe("schema_validation");
+    expect(paper?.attemptCount).toBe(1);
+    const errors = await t.run((ctx) =>
+      ctx.db
+        .query("extractionPaperErrors")
+        .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId as never))
+        .collect(),
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0].code).toBe("schema_validation");
   });
 
   test("failed → paper failed, failedPapers++", async () => {
@@ -376,7 +413,7 @@ async function seedDownloadingJob(t: ReturnType<typeof convexTest>) {
 }
 
 describe("handleExtractionJobComplete", () => {
-  test("failed result → patches job to failed with errorMessage", async () => {
+  test("failed result → patches job to failed with structured error", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedDownloadingJob(t);
     await t.mutation(
@@ -391,7 +428,9 @@ describe("handleExtractionJobComplete", () => {
       ctx.db.get("extractionJobs", jobId as never)
     );
     expect(job?.status).toBe("failed");
-    expect(job?.errorMessage).toBe("VALIDATION_ERROR: No sources selected");
+    expect(job?.error?.message).toBe("VALIDATION_ERROR: No sources selected");
+    expect(typeof job?.error?.code).toBe("string");
+    expect(typeof job?.error?.at).toBe("number");
   });
 
   test("success result → no job-status change", async () => {
@@ -411,7 +450,7 @@ describe("handleExtractionJobComplete", () => {
     // Workflow handler owns the `extracting → completed` transition via
     // paper-level onCompletes; this handler must not touch it.
     expect(job?.status).toBe("downloading_pdfs");
-    expect(job?.errorMessage).toBeUndefined();
+    expect(job?.error).toBeUndefined();
   });
 
   test("canceled result → no-op (cancelExtraction already wrote cancelled)", async () => {
@@ -433,10 +472,10 @@ describe("handleExtractionJobComplete", () => {
       ctx.db.get("extractionJobs", jobId as never)
     );
     expect(job?.status).toBe("cancelled");
-    expect(job?.errorMessage).toBeUndefined();
+    expect(job?.error).toBeUndefined();
   });
 
-  test("failed result on already-terminal job → does not overwrite status or errorMessage", async () => {
+  test("failed result on already-terminal job → does not overwrite status or error", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedDownloadingJob(t);
     await t.run((ctx) =>
@@ -456,7 +495,7 @@ describe("handleExtractionJobComplete", () => {
       ctx.db.get("extractionJobs", jobId as never)
     );
     expect(job?.status).toBe("cancelled");
-    expect(job?.errorMessage).toBeUndefined();
+    expect(job?.error).toBeUndefined();
   });
 
   test("deleted job → no throw, no side effects", async () => {

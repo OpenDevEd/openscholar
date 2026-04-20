@@ -5,6 +5,44 @@
  */
 
 import { v } from "convex/values";
+import { errorCodeValidator } from "@/lib/errors/taxonomy";
+
+/**
+ * Re-export so all extraction code can pull the taxonomy validator from
+ * one place alongside the other extraction validators.
+ */
+export { errorCodeValidator };
+
+/**
+ * Structured error shape persisted on extractionJobs.error,
+ * extractionPapers.lastError, and extractionPaperErrors rows.
+ *
+ * `at` is the millisecond timestamp the error was captured.
+ * `context` is bounded at 4 KB by classifyUnknownError to keep doc
+ * sizes well under the 1 MB row limit.
+ */
+export const structuredErrorValidator = v.object({
+  code: errorCodeValidator,
+  message: v.string(),
+  context: v.optional(v.any()),
+  httpStatus: v.optional(v.number()),
+  providerName: v.optional(v.string()),
+  at: v.number(),
+});
+
+/**
+ * Wire shape returned from a workpool action's catch site (no `at`
+ * timestamp; that's stamped at persistence time). Mirrors the
+ * `ClassifiedError` runtime type from `lib/errors/taxonomy`.
+ */
+export const classifiedErrorValidator = v.object({
+  code: errorCodeValidator,
+  message: v.string(),
+  retryable: v.boolean(),
+  context: v.optional(v.any()),
+  httpStatus: v.optional(v.number()),
+  providerName: v.optional(v.string()),
+});
 
 // ---- Input-size caps (enforced at mutation boundary) ----
 //
@@ -166,7 +204,7 @@ export const extractionJobValidator = v.object({
   createdAt: v.number(),
   updatedAt: v.number(),
   completedAt: v.optional(v.number()),
-  errorMessage: v.optional(v.string()),
+  error: v.optional(structuredErrorValidator),
 });
 
 /**
@@ -263,10 +301,29 @@ export const extractionPaperValidator = v.object({
   workId: v.optional(v.string()),
   startedAt: v.optional(v.number()),
   completedAt: v.optional(v.number()),
-  errorMessage: v.optional(v.string()),
+  lastError: v.optional(structuredErrorValidator),
+  attemptCount: v.optional(v.number()),
   creditsUsed: v.optional(v.number()),
   extractionBilled: v.optional(v.boolean()),
   pdfContentUsed: v.optional(v.boolean()),
+});
+
+/**
+ * Append-only history of every error a paper has hit. One row per
+ * attempt; pagination/queries via by_paper / by_job indexes.
+ */
+export const extractionPaperErrorValidator = v.object({
+  _id: v.id("extractionPaperErrors"),
+  _creationTime: v.number(),
+  paperId: v.id("extractionPapers"),
+  jobId: v.id("extractionJobs"),
+  attempt: v.number(),
+  at: v.number(),
+  code: errorCodeValidator,
+  message: v.string(),
+  httpStatus: v.optional(v.number()),
+  providerName: v.optional(v.string()),
+  context: v.optional(v.any()),
 });
 
 export const extractionResultValidator = v.object({

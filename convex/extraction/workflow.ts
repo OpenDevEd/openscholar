@@ -179,7 +179,10 @@ export const runExtractionWorkflow = workflow.define({
           {
             paperId: paper._id,
             status: "download_failed",
-            errorMessage: "No PDF URL or abstract available",
+            error: {
+              code: "pdf_invalid",
+              message: "No PDF URL or abstract available",
+            },
           }
         );
         await step.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, {

@@ -31,7 +31,9 @@ export const debugPaperResults = internalQuery({
         pdfUrl: paper.pdfUrl,
         storageId: paper.storageId,
         ragEntryId: paper.ragEntryId,
-        errorMessage: paper.errorMessage,
+        errorCode: paper.lastError?.code,
+        errorMessage: paper.lastError?.message,
+        attemptCount: paper.attemptCount,
       } : null,
       results: results.map(r => ({
         questionKey: r.questionKey,

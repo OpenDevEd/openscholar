@@ -15,8 +15,9 @@ import { internal } from "../../_generated/api";
 import type { Doc } from "../../_generated/dataModel";
 import { getFlag } from "../../featureFlags/guard";
 import { getProcessableFlags } from "../content";
-import { paperSourceTypeValidator } from "../validators";
+import { errorCodeValidator, paperSourceTypeValidator } from "../validators";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
+import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
 
 export const createPaperRecords = internalMutation({
   args: {
@@ -89,18 +90,31 @@ export const updatePaperStatus = internalMutation({
       v.literal("completed"),
       v.literal("failed"),
     ),
-    errorMessage: v.optional(v.string()),
+    error: v.optional(
+      v.object({
+        code: errorCodeValidator,
+        message: v.string(),
+      }),
+    ),
     completedAt: v.optional(v.number()),
     creditsUsed: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    const classified: ClassifiedError | undefined = args.error
+      ? {
+          code: args.error.code,
+          message: args.error.message,
+          retryable: isRetryable[args.error.code],
+        }
+      : undefined;
+
     // Route terminal transitions through markPaperTerminalTx so the per-job
-    // counter is bumped atomically. Non-processable papers are excluded from
-    // the counter inside the helper.
+    // counter, lastError, attemptCount, and history-table insert all happen
+    // atomically.
     if (isTerminalPaperStatus(args.status)) {
       await markPaperTerminalTx(ctx, args.paperId, args.status, {
-        errorMessage: args.errorMessage,
+        error: classified,
         completedAt: args.completedAt,
         creditsUsed: args.creditsUsed,
       });
@@ -108,10 +122,6 @@ export const updatePaperStatus = internalMutation({
     }
 
     const updates: Record<string, unknown> = { status: args.status };
-
-    if (args.errorMessage !== undefined) {
-      updates.errorMessage = args.errorMessage;
-    }
     if (args.completedAt !== undefined) {
       updates.completedAt = args.completedAt;
     }

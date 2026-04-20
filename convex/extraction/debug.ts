@@ -34,6 +34,7 @@ export const diagnoseJob = internalQuery({
       id: v.id("extractionPapers"),
       title: v.string(),
       pdfUrl: v.optional(v.string()),
+      errorCode: v.optional(v.string()),
       errorMessage: v.string(),
     })),
   }),
@@ -85,7 +86,8 @@ export const diagnoseJob = internalQuery({
           id: p._id,
           title: p.title.substring(0, 50),
           pdfUrl: p.pdfUrl?.substring(0, 80),
-          errorMessage: p.errorMessage || "No error message",
+          errorCode: p.lastError?.code,
+          errorMessage: p.lastError?.message || "No error message",
         })),
     };
   },

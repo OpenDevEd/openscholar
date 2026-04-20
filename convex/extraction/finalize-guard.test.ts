@@ -184,7 +184,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
     await t.mutation(internal.extraction.mutations.papers.updatePaperStatus, {
       paperId,
       status: "download_failed",
-      errorMessage: "no pdf",
+      error: { code: "pdf_invalid", message: "no pdf" },
     });
 
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
