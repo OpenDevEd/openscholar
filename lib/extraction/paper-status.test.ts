@@ -61,4 +61,19 @@ describe("aggregatePaperStatus", () => {
       failedQuestions: 3,
     });
   });
+
+  it("R6: any pending/extracting question blocks finalize", () => {
+    expect(
+      aggregatePaperStatus([
+        { status: "completed" as const },
+        { status: "pending" as const },
+      ]).status,
+    ).toBe("extracting");
+    expect(
+      aggregatePaperStatus([
+        { status: "completed" as const },
+        { status: "extracting" as const },
+      ]).status,
+    ).toBe("extracting");
+  });
 });

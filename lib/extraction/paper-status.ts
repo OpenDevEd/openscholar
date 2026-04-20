@@ -42,6 +42,7 @@ export function aggregatePaperStatus(results: PaperQuestionInput[]): PaperRollup
   let completedQuestions = 0;
   let terminalFailures = 0;
   let retryableFailuresPending = 0;
+  let openQuestions = 0;
   for (const r of results) {
     if (r.status === "completed") {
       completedQuestions += 1;
@@ -56,9 +57,11 @@ export function aggregatePaperStatus(results: PaperQuestionInput[]): PaperRollup
       } else {
         terminalFailures += 1;
       }
+      continue;
     }
+    openQuestions += 1;
   }
-  if (retryableFailuresPending > 0) {
+  if (openQuestions > 0 || retryableFailuresPending > 0) {
     return { status: "extracting", completedQuestions, failedQuestions: terminalFailures };
   }
   if (completedQuestions === 0 && terminalFailures === results.length) {
