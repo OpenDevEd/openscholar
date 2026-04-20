@@ -78,4 +78,28 @@ describe("startAbortPoller", () => {
     expect(onAbort).not.toHaveBeenCalled();
     stop();
   });
+
+  it("defaults intervalMs to 500", async () => {
+    const readFlag = vi.fn(async () => false);
+    const stop = startAbortPoller({ readFlag, onAbort: () => {} });
+    await vi.advanceTimersByTimeAsync(499);
+    expect(readFlag).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(readFlag).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it("honors a custom intervalMs", async () => {
+    const readFlag = vi.fn(async () => false);
+    const stop = startAbortPoller({
+      readFlag,
+      onAbort: () => {},
+      intervalMs: 1_000,
+    });
+    await vi.advanceTimersByTimeAsync(999);
+    expect(readFlag).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(readFlag).toHaveBeenCalledTimes(1);
+    stop();
+  });
 });
