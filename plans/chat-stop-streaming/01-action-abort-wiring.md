@@ -355,14 +355,14 @@ Use the `convex-test` harness already in use. Each test seeds a chat-mode job, a
 
 ## Acceptance criteria
 
-- [ ] `startAbortPoller` is pure, tested (8 cases green), and exported from `lib/chat/abort-poller.ts`.
-- [ ] `generateResponse` constructs an `AbortController`, starts/stops the poller in `try/finally`, passes `controller.signal` as `abortSignal` in streamTextArgs, sets `maxRetries: 0`, wires an `onAbort` handler.
-- [ ] `paperChat.streamText` call site still passes `{ saveStreamDeltas: { chunking: "word", throttleMs: 100 } }` as the 4th arg unchanged.
-- [ ] Convex integration tests A1–A8 green.
-- [ ] Credit test C1 green (or a BLOCKER.md filed if `usageHandler` doesn't fire on abort).
-- [ ] Live smoke test passes: click stop → network close < 600ms; stream row state `"aborted"`; logs show `onAbort` fired.
-- [ ] `rg -n "shouldAbort" convex/` shows callers in `messages.ts::generateResponse` (new), `messages.ts::abortGeneration` (existing), `concurrency.ts::releaseThreadLock` (existing), `concurrency.ts::cleanupZombieChatLocks` (existing), `schema.ts` (field). No orphans.
-- [ ] `rg -n "shouldAbortInternal" convex/` shows AT LEAST ONE caller (the new poller).
+- [x] `startAbortPoller` is pure, tested (8 cases green), and exported from `lib/chat/abort-poller.ts`.
+- [x] `generateResponse` constructs an `AbortController`, starts/stops the poller in `try/finally`, passes `controller.signal` as `abortSignal` in streamTextArgs, sets `maxRetries: 0`, wires an `onAbort` handler.
+- [x] `paperChat.streamText` call site still passes `{ saveStreamDeltas: { chunking: "word", throttleMs: 250 } }` as the 4th arg unchanged. (Pre-plan throttle was raised from 100ms to 250ms in plan-chat-perf; this plan preserved the value.)
+- [x] Convex integration tests A1–A8 green.
+- [x] Credit test C1 green (BLOCKER.md filed — `usageHandler` does not fire on mid-stream abort; V1 accepts the gap).
+- [ ] Live smoke test passes: click stop → network close < 600ms; stream row state `"aborted"`; logs show `onAbort` fired. **Pending human verification** — requires Clerk-authenticated browser session; see `01-BLOCKER.md` § 1 for the mapping of each smoke-test assertion to its equivalent automated coverage (A1–A7, C1).
+- [x] `rg -n "shouldAbort" convex/` shows callers in `messages.ts::generateResponse` (new), `messages.ts::abortGeneration` (existing), `concurrency.ts::releaseThreadLock` (existing), `concurrency.ts::cleanupZombieChatLocks` (existing), `schema.ts` (field). No orphans.
+- [x] `rg -n "shouldAbortInternal" convex/` shows AT LEAST ONE caller (the new poller).
 
 ## Known pitfalls
 
