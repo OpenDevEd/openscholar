@@ -46,4 +46,21 @@ describe("startAbortPoller", () => {
     expect(onAbort).toHaveBeenCalledTimes(1);
     stop();
   });
+
+  it("never fires onAbort after stop(), even if a readFlag was in-flight", async () => {
+    // Hold the first readFlag pending so we can call stop() while the
+    // would-be-true result sits in the microtask queue.
+    let resolveFirst!: (value: boolean) => void;
+    const pending = new Promise<boolean>((r) => {
+      resolveFirst = r;
+    });
+    const readFlag = vi.fn(() => pending);
+    const onAbort = vi.fn();
+    const stop = startAbortPoller({ readFlag, onAbort, intervalMs: 100 });
+    await vi.advanceTimersByTimeAsync(100); // tick fires, readFlag hangs.
+    stop();
+    resolveFirst(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onAbort).not.toHaveBeenCalled();
+  });
 });
