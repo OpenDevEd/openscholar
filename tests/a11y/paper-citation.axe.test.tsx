@@ -24,6 +24,7 @@ import { PaperCitation } from "@/components/extraction/chat/paper-citation";
 import { PapersContext } from "@/components/extraction/chat/papers-context";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import type { Id } from "@/convex/_generated/dataModel";
+import { fakePapersContext } from "@/tests/helpers/papers-context-fixture";
 
 function renderCitation({
   index,
@@ -38,15 +39,7 @@ function renderCitation({
   if (paper) papersByPosition.set(index, paper);
   return render(
     <PapersContext.Provider
-      value={{
-        jobId,
-        rows: [],
-        rowsById: new Map(),
-        papersByPosition,
-        totalCount: 0,
-        includedCount: 0,
-        isLoading: false,
-      }}
+      value={fakePapersContext({ jobId, papersByPosition })}
     >
       <PaperCitation index={index} />
     </PapersContext.Provider>,

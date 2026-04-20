@@ -27,6 +27,7 @@ import {
 import { PapersContext } from "@/components/extraction/chat/papers-context";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import type { Id } from "@/convex/_generated/dataModel";
+import { fakePapersContext } from "@/tests/helpers/papers-context-fixture";
 
 vi.mock("convex/react", () => ({
   useMutation: () => {
@@ -64,15 +65,7 @@ function renderAssistantMarkdown(text: string, papers: ResolvedPaper[]) {
   for (const p of papers) papersByPosition.set(p.position, p);
   return render(
     <PapersContext.Provider
-      value={{
-        jobId: JOB_ID,
-        rows: [],
-        rowsById: new Map(),
-        papersByPosition,
-        totalCount: 0,
-        includedCount: 0,
-        isLoading: false,
-      }}
+      value={fakePapersContext({ jobId: JOB_ID, papersByPosition })}
     >
       <MessageResponse components={components}>{text}</MessageResponse>
     </PapersContext.Provider>,
