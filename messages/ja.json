@@ -382,7 +382,23 @@
       },
       "actions": {
         "openJob": "ジョブを開く"
-      }
+      },
+      "group": {
+        "today": "今日",
+        "yesterday": "昨日",
+        "thisWeek": "今週",
+        "lastWeek": "先週"
+      },
+      "summary": {
+        "net": "差引",
+        "shown": "{n}件表示",
+        "aria": "{count}件のトランザクションを表示。受取{inAmount}、支出{outAmount}、差引{net}。"
+      },
+      "export": {
+        "label": "エクスポート"
+      },
+      "loadingMore": "読み込み中…",
+      "exhausted": "履歴の最後"
     },
     "billingAndPlans": "請求とプラン",
     "manageSubscription": "サブスクリプションと使用量を管理",

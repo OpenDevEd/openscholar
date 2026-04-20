@@ -382,7 +382,23 @@
       },
       "actions": {
         "openJob": "打开作业"
-      }
+      },
+      "group": {
+        "today": "今天",
+        "yesterday": "昨天",
+        "thisWeek": "本周",
+        "lastWeek": "上周"
+      },
+      "summary": {
+        "net": "净额",
+        "shown": "显示 {n} 条",
+        "aria": "已显示 {count} 条交易。收入 {inAmount}，支出 {outAmount}，净额 {net}。"
+      },
+      "export": {
+        "label": "导出"
+      },
+      "loadingMore": "加载中…",
+      "exhausted": "已到底部"
     },
     "billingAndPlans": "账单和计划",
     "manageSubscription": "管理您的订阅和使用情况。",

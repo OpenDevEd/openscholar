@@ -382,7 +382,23 @@
       },
       "actions": {
         "openJob": "कार्य खोलें"
-      }
+      },
+      "group": {
+        "today": "आज",
+        "yesterday": "कल",
+        "thisWeek": "इस हफ़्ते",
+        "lastWeek": "पिछले हफ़्ते"
+      },
+      "summary": {
+        "net": "शुद्ध",
+        "shown": "{n} दिखाए जा रहे हैं",
+        "aria": "{count} लेन-देन दिखाए गए। {inAmount} प्राप्त, {outAmount} खर्च, शुद्ध {net}।"
+      },
+      "export": {
+        "label": "निर्यात"
+      },
+      "loadingMore": "लोड हो रहा है…",
+      "exhausted": "इतिहास का अंत"
     },
     "billingAndPlans": "बिलिंग और प्लान्स",
     "manageSubscription": "अपनी सदस्यता और उपयोग प्रबंधित करें।",

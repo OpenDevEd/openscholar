@@ -382,7 +382,23 @@
       },
       "actions": {
         "openJob": "Open job"
-      }
+      },
+      "group": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This week",
+        "lastWeek": "Last week"
+      },
+      "summary": {
+        "net": "Net",
+        "shown": "Showing {n}",
+        "aria": "{count} transactions shown. {inAmount} in, {outAmount} out, net {net}."
+      },
+      "export": {
+        "label": "Export"
+      },
+      "loadingMore": "Loading more…",
+      "exhausted": "End of history"
     },
     "billingAndPlans": "Billing & Plans",
     "manageSubscription": "Manage your subscription and usage.",

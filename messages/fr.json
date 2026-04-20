@@ -382,7 +382,23 @@
       },
       "actions": {
         "openJob": "Ouvrir la tâche"
-      }
+      },
+      "group": {
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "thisWeek": "Cette semaine",
+        "lastWeek": "La semaine dernière"
+      },
+      "summary": {
+        "net": "Net",
+        "shown": "Affichage de {n}",
+        "aria": "{count} transactions affichées. {inAmount} reçus, {outAmount} dépensés, solde net {net}."
+      },
+      "export": {
+        "label": "Exporter"
+      },
+      "loadingMore": "Chargement…",
+      "exhausted": "Fin de l'historique"
     },
     "billingAndPlans": "Facturation et forfaits",
     "manageSubscription": "Gérez votre abonnement et votre utilisation.",
