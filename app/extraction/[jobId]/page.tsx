@@ -13,6 +13,8 @@ import {
   Trash2,
   XCircle,
   ChevronLeft,
+  Pause,
+  Play,
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "motion/react";
@@ -48,6 +50,7 @@ import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
 import { CompletionToastObserver } from "@/components/extraction/completion-toast-observer";
 import { CostBadge } from "@/components/extraction/cost-badge";
 import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
+import { JobStatusBanner } from "@/components/extraction/job-status-banner";
 import { RetrySummary } from "@/components/extraction/retry-summary";
 import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
@@ -154,6 +157,10 @@ export default function JobDetailPage() {
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
   const duplicateJob = useMutation(
     api.extraction.mutations.duplicateJob,
+  );
+  const pauseJob = useMutation(api.extraction.mutations.pause.pauseExtraction);
+  const resumeJob = useMutation(
+    api.extraction.mutations.resume.resumeExtraction,
   );
 
   const jobDetailsQuery = useProtectedQuery(api.extraction.queries.getJobDetails, {
@@ -328,6 +335,24 @@ export default function JobDetailPage() {
       await cancelJob({ jobId });
     } catch (error) {
       toast.job.cancelFailed();
+    }
+  };
+
+  const handlePause = async () => {
+    try {
+      await pauseJob({ jobId });
+    } catch (error) {
+      toast.job.pauseFailed();
+    }
+  };
+
+  const handleResume = async () => {
+    try {
+      await resumeJob({ jobId });
+    } catch (error) {
+      // resumeFailed carries through INSUFFICIENT_CREDITS context so the
+      // user gets the "buy credits" CTA.
+      toast.job.resumeFailed(error);
     }
   };
 
@@ -633,6 +658,30 @@ export default function JobDetailPage() {
                 </Button>
 
                 {isProcessing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-action="pause"
+                    onClick={handlePause}
+                  >
+                    <Pause className="w-4 h-4 mr-2" />
+                    {tExtraction('pause.button')}
+                  </Button>
+                )}
+
+                {job.status === "paused" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-action="resume"
+                    onClick={handleResume}
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    {tExtraction('paused.resume')}
+                  </Button>
+                )}
+
+                {isProcessing && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -699,11 +748,28 @@ export default function JobDetailPage() {
 
           {/* Plan-03: credit-exhausted CTA. Banner lives above the stats
               section so it's the first thing the user sees on returning
-              to a paused job. Resume button is deliberately unwired here
-              — plan 06 adds the mutation + onResume prop. */}
+              to a paused job. Plan-06 wires onResume. */}
           {job.status === "creditsExhausted" && (
             <div className="px-4 md:px-6 pt-4">
-              <CreditsExhaustedBanner onCancelRemaining={handleCancel} />
+              <CreditsExhaustedBanner
+                onResume={handleResume}
+                onCancelRemaining={handleCancel}
+              />
+            </div>
+          )}
+
+          {/* Plan-06: user-initiated pause banner. role="status" +
+              aria-live="polite" inside JobStatusBanner announces the
+              pause without interrupting the user's screen reader flow. */}
+          {job.status === "paused" && (
+            <div className="px-4 md:px-6 pt-4">
+              <JobStatusBanner
+                variant="paused"
+                processedPapers={job.processedPapers}
+                totalPapers={job.totalPapers}
+                onResume={handleResume}
+                onCancelRemaining={handleCancel}
+              />
             </div>
           )}
 
