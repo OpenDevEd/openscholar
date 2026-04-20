@@ -33,20 +33,32 @@ export function summarizeRetryable(
   results: ReadonlyArray<RetryableResultInput>,
 ): RetrySummary {
   let retryableCount = 0;
-  const permanentBreakdown: Record<string, number> = {};
+  const counts = new Map<string, number>();
 
   for (const r of results) {
     if (r.status !== "failed") continue;
     const code = r.lastError?.code;
     if (code && isRetryable[code] === false) {
-      permanentBreakdown[code] = (permanentBreakdown[code] ?? 0) + 1;
+      counts.set(code, (counts.get(code) ?? 0) + 1);
     } else {
       retryableCount += 1;
     }
   }
 
+  // Insert into the returned object in count-desc, code-asc order so
+  // Object.keys/entries iterate in the UI's render order. Modern JS
+  // preserves string-key insertion order on plain objects.
+  const sorted = [...counts.entries()].sort(([codeA, countA], [codeB, countB]) => {
+    if (countB !== countA) return countB - countA;
+    return codeA < codeB ? -1 : codeA > codeB ? 1 : 0;
+  });
+
+  const permanentBreakdown: Record<string, number> = {};
   let permanentCount = 0;
-  for (const n of Object.values(permanentBreakdown)) permanentCount += n;
+  for (const [code, count] of sorted) {
+    permanentBreakdown[code] = count;
+    permanentCount += count;
+  }
 
   return { retryableCount, permanentCount, permanentBreakdown };
 }

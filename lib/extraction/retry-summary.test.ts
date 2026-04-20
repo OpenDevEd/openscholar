@@ -62,4 +62,32 @@ describe("summarizeRetryable", () => {
       permanentBreakdown: { pdf_invalid: 1, moderation: 1 },
     });
   });
+
+  it("R6: permanentBreakdown iterates count-desc, then code-asc on ties", () => {
+    // Encounter order intentionally scrambled; sort must override it.
+    const results: RetryableResultInput[] = [
+      { status: "failed", lastError: { code: "schema_validation" } }, // 1, tie with moderation
+      { status: "failed", lastError: { code: "moderation" } }, // 1
+      { status: "failed", lastError: { code: "pdf_invalid" } },
+      { status: "failed", lastError: { code: "pdf_invalid" } },
+      { status: "failed", lastError: { code: "pdf_invalid" } }, // 3 → first
+      { status: "failed", lastError: { code: "auth" } },
+      { status: "failed", lastError: { code: "auth" } }, // 2 → second
+    ];
+    const { permanentBreakdown } = summarizeRetryable(results);
+    // Object.keys() iterates in insertion order; summarizer must insert
+    // in the contract's sort order.
+    expect(Object.keys(permanentBreakdown)).toEqual([
+      "pdf_invalid", // count 3
+      "auth", // count 2
+      "moderation", // count 1, "moderation" < "schema_validation" lexicographically
+      "schema_validation", // count 1
+    ]);
+    expect(permanentBreakdown).toEqual({
+      pdf_invalid: 3,
+      auth: 2,
+      moderation: 1,
+      schema_validation: 1,
+    });
+  });
 });
