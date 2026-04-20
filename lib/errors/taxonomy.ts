@@ -5,6 +5,8 @@
  * can render a specific code instead of a generic "Something went wrong".
  */
 
+import { ConvexError } from "convex/values";
+
 export const ERROR_CODES = [
   // chat + extraction shared
   "insufficient_credits",
@@ -88,6 +90,77 @@ export function requiresUserEdit(envelope: ChatErrorEnvelope): boolean {
 
 export function requiresAdminAction(envelope: ChatErrorEnvelope): boolean {
   return REQUIRES_ATTENTION.has(envelope.class);
+}
+
+/* ─────────────────── classifyUnknownError + ClassifiedError ─────────────────── */
+
+export type ClassifiedError = {
+  code: ErrorCode;
+  message: string;
+  retryable: boolean;
+  httpStatus?: number;
+  providerName?: string;
+  context?: unknown;
+};
+
+/** Maps an upstream error string code to its taxonomy entry. */
+const CODE_TO_TAXONOMY: Record<string, ErrorCode> = {
+  INSUFFICIENT_CREDITS: "insufficient_credits",
+  AI_INSUFFICIENT_CREDITS: "insufficient_credits",
+};
+
+/**
+ * Universal error → taxonomy classifier. Accepts anything thrown at a
+ * Convex action / mutation / Next.js route boundary and returns a
+ * structured ClassifiedError. Designed to be safe against arbitrary
+ * shapes; never throws.
+ */
+export function classifyUnknownError(err: unknown): ClassifiedError {
+  const data = extractData(err);
+  const message = extractClassifiableMessage(err, data);
+
+  // 1. Explicit code match against ConvexError.data.code or err.code.
+  const explicitCode = typeof data?.code === "string" ? data.code : undefined;
+  if (explicitCode && CODE_TO_TAXONOMY[explicitCode]) {
+    return finalize(CODE_TO_TAXONOMY[explicitCode], message);
+  }
+
+  // 2. Prefix-message fallback: "INSUFFICIENT_CREDITS: …" → insufficient_credits.
+  const prefixMatch = /^([A-Z][A-Z0-9_]+):/.exec(message);
+  if (prefixMatch && CODE_TO_TAXONOMY[prefixMatch[1]]) {
+    return finalize(CODE_TO_TAXONOMY[prefixMatch[1]], message);
+  }
+
+  return finalize("unknown", message);
+}
+
+function extractData(err: unknown): Record<string, unknown> | undefined {
+  if (err instanceof ConvexError) {
+    return err.data && typeof err.data === "object"
+      ? (err.data as Record<string, unknown>)
+      : undefined;
+  }
+  if (err && typeof err === "object") return err as Record<string, unknown>;
+  return undefined;
+}
+
+function extractClassifiableMessage(
+  err: unknown,
+  data: Record<string, unknown> | undefined,
+): string {
+  const fromData = typeof data?.message === "string" ? data.message : undefined;
+  if (fromData && fromData.length > 0) return fromData;
+  if (err instanceof Error && err.message.length > 0) return err.message;
+  if (typeof err === "string" && err.length > 0) return err;
+  return "Unknown error";
+}
+
+function finalize(code: ErrorCode, message: string): ClassifiedError {
+  return {
+    code,
+    message: truncate(message, 500),
+    retryable: isRetryable[code],
+  };
 }
 
 const ENVELOPE_PREFIX = "__chat_err_v1__:";

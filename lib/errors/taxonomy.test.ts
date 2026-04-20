@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { ConvexError } from "convex/values";
 import {
   classifyChatError,
+  classifyUnknownError,
   ERROR_CODES,
   isRetryable,
   parseChatError,
@@ -64,6 +66,34 @@ describe("isRetryable record", () => {
     for (const code of ERROR_CODES) {
       expect(typeof isRetryable[code]).toBe("boolean");
     }
+  });
+});
+
+describe("classifyUnknownError — ConvexError fingerprints", () => {
+  it("R5: ConvexError carrying data.code INSUFFICIENT_CREDITS → insufficient_credits", () => {
+    const err = new ConvexError({
+      code: "INSUFFICIENT_CREDITS",
+      message: "Wallet balance is 12, need 50",
+    });
+    const result = classifyUnknownError(err);
+    expect(result.code).toBe("insufficient_credits");
+    expect(result.message).toContain("Wallet balance");
+    expect(result.retryable).toBe(true);
+  });
+
+  it("R5: ConvexError carrying data.code AI_INSUFFICIENT_CREDITS → insufficient_credits", () => {
+    const err = new ConvexError({
+      code: "AI_INSUFFICIENT_CREDITS",
+      message: "Insufficient credits for AI operation",
+    });
+    expect(classifyUnknownError(err).code).toBe("insufficient_credits");
+  });
+
+  it("R6: ConvexError with INSUFFICIENT_CREDITS: prefix in data.message → insufficient_credits", () => {
+    const err = new ConvexError({ message: "INSUFFICIENT_CREDITS: need 50" });
+    const result = classifyUnknownError(err);
+    expect(result.code).toBe("insufficient_credits");
+    expect(result.message).toContain("need 50");
   });
 });
 
