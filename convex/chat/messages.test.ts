@@ -144,6 +144,11 @@ async function waitFor(
 async function seedModelAndCredits(
   t: ReturnType<typeof convexTest>,
   userId: Id<"users">,
+  opts: {
+    inputPricePerMillion?: number;
+    outputPricePerMillion?: number;
+    freeBalance?: number;
+  } = {},
 ): Promise<{ modelId: Id<"models"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
@@ -151,8 +156,8 @@ async function seedModelAndCredits(
       modelId: "mock/model",
       name: "Mock Model",
       provider: "openrouter",
-      inputPricePerMillion: 0,
-      outputPricePerMillion: 0,
+      inputPricePerMillion: opts.inputPricePerMillion ?? 0,
+      outputPricePerMillion: opts.outputPricePerMillion ?? 0,
       costMarkup: 1,
       isServed: true,
       sortOrder: 0,
@@ -162,7 +167,7 @@ async function seedModelAndCredits(
     });
     await ctx.db.insert("credits", {
       userId,
-      freeBalance: 10_000,
+      freeBalance: opts.freeBalance ?? 10_000,
       paidBalance: 0,
       lifetimeUsed: 0,
       lastUpdatedAt: now,
@@ -632,6 +637,63 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const job = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(job?.isGenerating).toBe(false);
     expect(job?.shouldAbort).toBeUndefined();
+  });
+
+  it("C1 — usageHandler does NOT fire when abort lands before a step finishes (library limitation)", async () => {
+    // Empirical contract test documenting a known library gap — not a
+    // celebration.
+    //
+    // @convex-dev/agent wires usageHandler inside the library's `save()`
+    // function, which runs only when a step finishes (see
+    // node_modules/@convex-dev/agent/src/client/start.ts:314-324). AI SDK
+    // v6's onAbort fires with recordedSteps = completed steps up to the
+    // abort; if the current in-flight step was mid-stream (no finish
+    // chunk yet), it is NOT in recordedSteps, no usage is emitted, and
+    // usageHandler is not called.
+    //
+    // Net effect on our billing: credits are deducted only for turns
+    // whose first step completed before the user hit stop. Mid-stream
+    // aborts of a still-in-flight step are FREE to the user.
+    //
+    // This is acceptable for V1 (stepCountIs(1), rare in practice, small
+    // per-event cost). The /plans/chat-stop-streaming/01-BLOCKER.md file
+    // captures the behavior for future billing-completeness work.
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId, {
+      inputPricePerMillion: 1_000,
+      outputPricePerMillion: 2_000,
+      freeBalance: 10_000,
+    });
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    mockDoStream.mockImplementation(
+      partialDeltasThenHangDoStream(["hello ", "world"]),
+    );
+
+    const actionPromise = t.action(
+      internal.chat.messages.generateResponse,
+      { threadId, promptMessageId },
+    );
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    // Let the library flush at least one delta batch before we abort.
+    await new Promise((r) => setTimeout(r, 400));
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+    await actionPromise;
+
+    const balance = await t.run(async (ctx) =>
+      ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
+    );
+    // Current library behavior: no usage surfaced on abort → no credits
+    // deducted. Asserting `lifetimeUsed === 0` locks the observed
+    // behavior and makes any future library upgrade that DOES surface
+    // partial usage appear as a test regression (forcing us to notice
+    // and re-evaluate the billing contract).
+    expect(balance?.lifetimeUsed).toBe(0);
+    expect(balance?.total).toBe(10_000);
   });
 
   it("A8 — maxRetries:0 — a retryable doStream failure is NOT retried", async () => {
