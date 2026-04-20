@@ -17,8 +17,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { ChatHeader } from "@/components/extraction/chat/chat-header";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { fakePapersContext } from "@/tests/helpers/papers-context-fixture";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -89,7 +91,11 @@ function makeJob(over: Partial<Doc<"extractionJobs">> = {}): Doc<"extractionJobs
 }
 
 function withProviders(ui: React.ReactElement) {
-  return <TooltipProvider>{ui}</TooltipProvider>;
+  return (
+    <PapersContext.Provider value={fakePapersContext()}>
+      <TooltipProvider>{ui}</TooltipProvider>
+    </PapersContext.Provider>
+  );
 }
 
 // Radix Dropdown/Tooltip primitives use Pointer Events + ResizeObserver
