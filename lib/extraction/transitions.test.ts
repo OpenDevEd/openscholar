@@ -95,4 +95,18 @@ describe("validateResumeTransition", () => {
       available: 10,
     });
   });
+
+  it("R10: from 'paused' with insufficient balance still resumes (user-pause doesn't gate on credits)", () => {
+    // Paused-by-user is not a credit state. The user should be able to
+    // resume even when they would immediately hit creditsExhausted mid-run
+    // — that path is handled by plan 03's mid-run detection.
+    expect(
+      validateResumeTransition({
+        currentStatus: "paused",
+        pausedFromStatus: "extracting",
+        availableCredits: 10,
+        remainingEstimate: 50,
+      }),
+    ).toEqual({ ok: true, nextStatus: "extracting" });
+  });
 });
