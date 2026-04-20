@@ -371,8 +371,9 @@ export default defineSchema({
     // Per-thread concurrency lock — one in-flight generation per chat.
     isGenerating: v.optional(v.boolean()),
     generatingStartedAt: v.optional(v.number()),
-    // Mid-stream abort flag — flipped by abortGeneration, polled by the
-    // streaming action to break out of streamText.
+    // Mid-stream abort flag. Set by abortGeneration, polled every
+    // 500ms by generateResponse's AbortController-poll loop, cleared
+    // by releaseThreadLock in the action's finally.
     shouldAbort: v.optional(v.boolean()),
 
     // ─── Shared metadata ──────────────────────────────────────────
