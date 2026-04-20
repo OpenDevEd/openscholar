@@ -175,7 +175,7 @@ export const generateResponse = internalAction({
               if (patched) envelopePatchedFromOnError = true;
             },
           },
-          { saveStreamDeltas: { chunking: "word", throttleMs: 100 } },
+          { saveStreamDeltas: { chunking: "word", throttleMs: 250 } },
         );
       } catch (err) {
         // The agent's `streamText` wrapper re-throws stream errors
