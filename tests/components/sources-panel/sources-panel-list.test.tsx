@@ -15,11 +15,21 @@
  *
  * No CSS assertions per project doctrine.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { SourcesPanelList } from "@/components/extraction/chat/sources-panel/sources-panel-list";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";
+
+import { installJsdomVirtualizerStubs } from "@/tests/helpers/jsdom-virtualizer";
+
+let restoreLayoutStubs: () => void;
+beforeEach(() => {
+  restoreLayoutStubs = installJsdomVirtualizerStubs();
+});
+afterEach(() => {
+  restoreLayoutStubs();
+});
 
 const toggleSpy = vi.fn();
 const bulkSpy = vi.fn();

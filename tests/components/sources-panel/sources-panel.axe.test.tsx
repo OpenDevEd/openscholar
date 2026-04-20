@@ -12,12 +12,13 @@
  * No CSS-class assertions (this is an axe pass; the per-component
  * behavior tests live in their own files).
  */
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { SourcesPanelInner } from "@/components/extraction/chat/sources-panel/sources-panel";
 import { PapersContext } from "@/components/extraction/chat/papers-context";
 import { fakePapersContext } from "@/tests/helpers/papers-context-fixture";
+import { installJsdomVirtualizerStubs } from "@/tests/helpers/jsdom-virtualizer";
 import type { Id } from "@/convex/_generated/dataModel";
 
 expect.extend(toHaveNoViolations);
@@ -99,6 +100,14 @@ vi.mock("nuqs", async () => {
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
 }));
+
+let restoreLayoutStubs: () => void;
+beforeEach(() => {
+  restoreLayoutStubs = installJsdomVirtualizerStubs();
+});
+afterEach(() => {
+  restoreLayoutStubs();
+});
 
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {

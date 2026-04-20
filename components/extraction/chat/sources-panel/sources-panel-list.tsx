@@ -1,10 +1,15 @@
+// React Compiler opt-out for this file only. TanStack Virtual #736 / #1119:
+// the Compiler over-memoizes `useVirtualizer`'s return value, leaving
+// `getVirtualItems()` stale. Revisit when upstream ships a Compiler-safe
+// implementation. Scope is intentionally this file — every other file in
+// the app keeps Compiler-on.
+"use no memo";
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CheckIcon } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { api } from "@/convex/_generated/api";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -13,7 +18,6 @@ import {
   buildBulkPatch,
 } from "@/lib/chat/chat-papers-selection";
 import type { SearchMatch } from "@/lib/chat/search/source-scorer";
-import { cn } from "@/lib/utils";
 import { SourceRow } from "./source-row";
 
 interface SourcesPanelListProps {
@@ -25,26 +29,25 @@ interface SourcesPanelListProps {
   emptyState: React.ReactNode;
 }
 
+const ROW_HEIGHT_ESTIMATE = 76;
+const OVERSCAN = 8;
+
 /**
- * The Sources panel listbox surface.
+ * Virtualized Sources listbox surface.
  *
- * Implements the WAI-ARIA APG listbox pattern directly (not via the
- * <SelectableList> primitive) because that primitive's role="button" +
- * tabindex=0 outer wrapper raises an axe nested-interactive violation
- * once focusable descendants like Checkbox or anchors live inside the
- * row. Plan rule 8 still applies — we reuse SelectableList's *logic*
- * via the shift-click anchor + lib/chat/chat-papers-selection helpers
- * — but the JSX is built fresh so the semantic ownership stays
- * unambiguous (listbox owns selection, options carry aria-selected).
+ * Renders only the viewport + overscan window of rows via
+ * `@tanstack/react-virtual` — at N=1000 the DOM holds ≤ ~(viewport+16)
+ * `role="option"` elements instead of 1000. The `<SourceRow>` absorbs
+ * the `data-selectable-row` click contract and the checkbox pop
+ * (per-interaction, not per-row).
  *
+ * Semantics preserved from the non-virtualized implementation:
  * - Container: role="listbox", aria-multiselectable, aria-activedescendant
- * - Each row: role="option" (id from <SourceRow>), no tabindex (single
- *   tab stop on the parent panel; keyboard nav lives in
- *   useSourcesPanelKeyboard).
- * - Visual checkmark is a span (aria-hidden) — selection truth is on
- *   the option's aria-selected. Clicking the row anywhere toggles.
- *   Inner OpenAlex/DOI links stay interactive without nested-interactive
- *   warnings because option is not in axe's interactive-roles list.
+ * - Option ids: src-row-{chatPaperId} (anchored by useSourcesPanelKeyboard)
+ * - aria-posinset / aria-setsize on every rendered row for SR navigation
+ *   across the virtualized viewport.
+ * - Keyboard nav follows the scroll via `scrollToIndex(activeIndex, 'auto')`
+ *   so the focused option is always mounted + visible.
  */
 export function SourcesPanelList({
   jobId,
@@ -55,8 +58,8 @@ export function SourcesPanelList({
   emptyState,
 }: SourcesPanelListProps) {
   const t = useTranslations("sourcesPanel");
+  const scrollParentRef = useRef<HTMLDivElement>(null);
   const lastIndexRef = useRef<number | null>(null);
-  const reduceMotion = useReducedMotion();
 
   const toggleChatPaper = useMutation(
     api.chat.chatPapers.toggleChatPaper,
@@ -92,42 +95,81 @@ export function SourcesPanelList({
     );
   });
 
-  function handleSingleToggle(row: ChatSourceRow) {
-    void toggleChatPaper({
-      chatPaperId: row.chatPaperId,
-      included: !row.included,
-    });
-  }
+  const handleSingleToggle = useCallback(
+    (row: ChatSourceRow) => {
+      void toggleChatPaper({
+        chatPaperId: row.chatPaperId,
+        included: !row.included,
+      });
+    },
+    [toggleChatPaper],
+  );
 
-  function handleRangeToggle(
-    fromIndex: number,
-    toIndex: number,
-    targetIncluded: boolean,
-  ) {
-    const [from, to] =
-      fromIndex < toIndex ? [fromIndex, toIndex] : [toIndex, fromIndex];
-    const batch = rows
-      .slice(from, to + 1)
-      .filter((r) => r.included !== targetIncluded);
-    if (batch.length === 0) return;
-    void bulkSetChatPapers({
-      jobId,
-      sourceIds: batch.map((r) => r.sourceId),
-      included: targetIncluded,
-    });
-  }
+  const handleRangeToggle = useCallback(
+    (fromIndex: number, toIndex: number, targetIncluded: boolean) => {
+      const [from, to] =
+        fromIndex < toIndex ? [fromIndex, toIndex] : [toIndex, fromIndex];
+      const batch = rows
+        .slice(from, to + 1)
+        .filter((r) => r.included !== targetIncluded);
+      if (batch.length === 0) return;
+      void bulkSetChatPapers({
+        jobId,
+        sourceIds: batch.map((r) => r.sourceId),
+        included: targetIncluded,
+      });
+    },
+    [bulkSetChatPapers, jobId, rows],
+  );
 
-  function handleRowActivate(index: number, shiftKey: boolean) {
-    const current = rows[index];
-    if (!current) return;
-    const last = lastIndexRef.current;
-    if (shiftKey && last !== null && last !== index) {
-      handleRangeToggle(last, index, !current.included);
-    } else {
-      handleSingleToggle(current);
+  const handleRowActivate = useCallback(
+    (index: number, shiftKey: boolean) => {
+      const current = rows[index];
+      if (!current) return;
+      const last = lastIndexRef.current;
+      if (shiftKey && last !== null && last !== index) {
+        handleRangeToggle(last, index, !current.included);
+      } else {
+        handleSingleToggle(current);
+      }
+      lastIndexRef.current = index;
+    },
+    [handleRangeToggle, handleSingleToggle, rows],
+  );
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: () => ROW_HEIGHT_ESTIMATE,
+    overscan: OVERSCAN,
+    getItemKey: (index) => rows[index]!.chatPaperId,
+  });
+
+  const activeIndex = useMemo(() => {
+    if (!activeDescendantId) return -1;
+    return rows.findIndex(
+      (r) => `src-row-${r.chatPaperId}` === activeDescendantId,
+    );
+  }, [rows, activeDescendantId]);
+
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    rowVirtualizer.scrollToIndex(activeIndex, { align: "auto" });
+  }, [activeIndex, rowVirtualizer]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    const el = scrollParentRef.current;
+    if (el && el.clientHeight === 0 && rows.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "SourcesPanelList: scroll parent has clientHeight 0 — virtualization requires a bounded parent height.",
+      );
     }
-    lastIndexRef.current = index;
-  }
+  }, [rows.length]);
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
 
   if (rows.length === 0) {
     return <>{emptyState}</>;
@@ -135,78 +177,57 @@ export function SourcesPanelList({
 
   return (
     <div
+      ref={scrollParentRef}
       role="listbox"
       aria-multiselectable="true"
       aria-label={t("listLabel")}
       aria-activedescendant={activeDescendantId ?? undefined}
       data-sources-panel-list
-      className="divide-y divide-border/40"
+      data-virtualized="true"
+      data-visible-rows={virtualItems.length}
+      data-total-rows={rows.length}
+      className="relative h-full w-full overflow-auto"
     >
-      <AnimatePresence initial={false}>
-        {rows.map((row, index) => {
-          const selected = row.included;
+      <div
+        style={{
+          height: `${totalSize}px`,
+          width: "100%",
+          position: "relative",
+        }}
+      >
+        {virtualItems.map((virtualItem) => {
+          const row = rows[virtualItem.index]!;
+          const match = matches.get(row.chatPaperId);
+          const activeDescendant =
+            `src-row-${row.chatPaperId}` === activeDescendantId;
           return (
-            <motion.div
-              key={row.chatPaperId}
-              layout={reduceMotion ? false : "position"}
-              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 4 }}
-              transition={
-                reduceMotion
-                  ? { duration: 0 }
-                  : { duration: 0.15, ease: "easeOut" }
-              }
-              data-selectable-row
-              data-paper-included={selected}
-              data-paper-source={row.sourceType}
-              data-chat-paper-id={row.chatPaperId}
-              onClick={(e) => handleRowActivate(index, e.shiftKey)}
-              className={cn(
-                "flex items-start gap-2.5 cursor-pointer border-l-2 px-3 py-2.5 transition-colors",
-                selected
-                  ? "border-l-primary bg-primary/[0.06] hover:bg-primary/[0.09]"
-                  : "border-l-transparent hover:bg-muted/40",
-              )}
+            <div
+              key={virtualItem.key}
+              data-index={virtualItem.index}
+              ref={rowVirtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
             >
-              <motion.span
-                aria-hidden="true"
-                className={cn(
-                  "mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded border",
-                  selected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-input bg-background",
-                )}
-                data-checkbox-state={selected ? "checked" : "unchecked"}
-                animate={
-                  reduceMotion
-                    ? { scale: 1 }
-                    : selected
-                      ? { scale: [1, 1.18, 1] }
-                      : { scale: 1 }
+              <SourceRow
+                row={row}
+                match={match}
+                query={query}
+                isActiveDescendant={activeDescendant}
+                posInSet={virtualItem.index + 1}
+                setSize={rows.length}
+                onActivate={(shiftKey) =>
+                  handleRowActivate(virtualItem.index, shiftKey)
                 }
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { duration: 0.18, ease: "easeOut" }
-                }
-              >
-                {selected ? <CheckIcon className="size-3" /> : null}
-              </motion.span>
-              <div className="flex-1 min-w-0">
-                <SourceRow
-                  row={row}
-                  match={matches.get(row.chatPaperId)}
-                  query={query}
-                  isActiveDescendant={
-                    `src-row-${row.chatPaperId}` === activeDescendantId
-                  }
-                />
-              </div>
-            </motion.div>
+              />
+            </div>
           );
         })}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
