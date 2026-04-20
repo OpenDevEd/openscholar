@@ -40,6 +40,10 @@ import {
   type BucketItemInput,
 } from "../jobSources";
 import { cloneChatPapersForDuplicate } from "../../chat/chatPapersDuplicate";
+import {
+  estimateExtractionCredits,
+  type ExtractionCostEstimate,
+} from "../../../lib/extraction/cost-estimate";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -89,6 +93,7 @@ export const startJob = mutation({
 
     // Extraction-mode question validation happens after bucket validation
     // so an empty bucket throws first (consistent with the old path).
+    let estimate: ExtractionCostEstimate | undefined;
     if (args.mode === "extraction") {
       const qs = args.questions ?? [];
       if (qs.length > MAX_QUESTIONS_PER_JOB) {
@@ -102,6 +107,33 @@ export const startJob = mutation({
           throw createError(
             "VALIDATION_ERROR",
             `question text exceeds maximum length of ${MAX_QUESTION_TEXT_LENGTH}`,
+          );
+        }
+      }
+
+      // Pre-flight credit check. Block against the high end of the estimate
+      // — better to block at submission than fail mid-run. Mirrors the
+      // screening pattern at convex/screening/mutations.ts:93-108 (reads
+      // the credits row directly — avoids a sub-transaction round-trip).
+      const usePdfs = args.usePdfs ?? false;
+      estimate = estimateExtractionCredits({
+        papers: deduped.length,
+        questions: qs.length,
+        usePdfs,
+        avgPaperKind: usePdfs ? "pdf" : "abstract",
+      });
+
+      if (estimate.high > 0) {
+        const credits = await ctx.db
+          .query("credits")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .unique();
+        const totalAvailable =
+          (credits?.freeBalance ?? 0) + (credits?.paidBalance ?? 0);
+        if (totalAvailable < estimate.high) {
+          throw createError(
+            "INSUFFICIENT_CREDITS",
+            `Need ~${estimate.mid} credits (up to ${estimate.high}) for ${deduped.length} papers × ${qs.length} questions but only have ${totalAvailable}`,
           );
         }
       }
@@ -122,6 +154,7 @@ export const startJob = mutation({
             processedPapers: 0,
             failedPapers: 0,
             usePdfs: args.usePdfs ?? false,
+            ...(estimate !== undefined && { estimatedCredits: estimate }),
           }
         : {
             messageCount: 0,

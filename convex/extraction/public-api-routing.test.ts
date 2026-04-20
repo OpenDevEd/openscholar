@@ -167,6 +167,15 @@ async function seedUserAndFlags(
       minimumTier: 0,
       updatedAt: now,
     });
+    // Seed a large credit balance so plan-03's preflight gate in
+    // startJob does not block these routing tests.
+    await ctx.db.insert("credits", {
+      userId,
+      freeBalance: 0,
+      paidBalance: 100_000,
+      lifetimeUsed: 0,
+      lastUpdatedAt: now,
+    });
     return { userId };
   });
 }
