@@ -197,12 +197,22 @@ Queries, components, indexes, ARIA wiring — test-after. ARIA coverage is a smo
 
 ## Acceptance criteria
 
-- [ ] Job detail page shows which paper is being processed right now (Option A). Question-level granularity is deferred to Option B once Plan 02 delivers `status` + `startedAt` on `extractionResults`.
-- [ ] Each paper row shows per-question progress bar + counts.
-- [ ] Failed questions have an expandable error history sourced from `extractionPaperErrors`.
-- [ ] Screen-reader announcement of pause/resume/credit-exhaustion transitions via `aria-live`.
-- [ ] Tests assert on `data-*` and ARIA attributes, not CSS classes.
-- [ ] Mixed-success jobs show a breakdown of failure codes with counts.
+- [x] Job detail page shows which paper is being processed right now (Option A). *(`components/extraction/now-processing.tsx` subscribes to `api.extraction.queries.nowProcessing.getNowProcessing`, which sources the in-flight paper via the existing `extractionPapers.by_job_status` index and picks the earliest `startedAt` when multiple papers are in-flight. Mounted unconditionally on `app/extraction/[jobId]/page.tsx`; self-hides when no paper is extracting. Question-level granularity is deferred to Option B once Plan 02 delivers `status` + `startedAt` on `extractionResults`.)*
+- [x] Each paper row shows per-question progress bar + counts. *(`components/extraction/paper-question-progress.tsx` is mounted in `components/extraction/results-views/table-view.tsx` inside the paper-info cell, rendering "N/M · K retrying · J failed" with `data-paper-status` and `data-question-progress` on the row itself. Counts derive from `paper.results`.)*
+- [x] Failed questions have an expandable error history sourced from `extractionPaperErrors`. *(`components/extraction/error-history.tsx` wraps a Radix Accordion around a paginated `listPaperErrors` query; each row exposes `data-error-code` and `data-attempt-number`. Mounted inline in `table-view.tsx`; self-hides on clean papers. Covered by `tests/components/error-history.test.tsx`.)*
+- [x] Screen-reader announcement of pause/resume/credit-exhaustion transitions via `aria-live`. *(`<JobStatusBanner>` already provides `role="status"` + `aria-live="polite"` for the paused variant (Plan 06) and `role="alert"` + `aria-live="polite"` for creditsExhausted (Plan 03). Plan 07 adds the same treatment on the now-processing banner (`role="status"` + `aria-live="polite"` + `aria-atomic="true"`) and `aria-label` on every status dot / stripe in `components/extraction/job-list-item.tsx`.)*
+- [x] Tests assert on `data-*` and ARIA attributes, not CSS classes. *(All new unit tests — `tests/components/{now-processing,paper-question-progress,error-history,mixed-success-summary,job-progress-bar,job-list-item}.test.tsx` and `convex/extraction/queries/{nowProcessing,errorHistory,mixedSuccessSummary}.test.ts` plus `lib/extraction/failures-summary.test.ts` — assert on roles (`getByRole`), `data-*` attributes, and aria contracts. No `className.toMatch` or CSS-utility assertions.)*
+- [x] Mixed-success jobs show a breakdown of failure codes with counts. *(`components/extraction/mixed-success-summary.tsx` consumes `api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary`, which returns `{total, byCode, answeredTotal, totalQuestions}` from a single job-scoped read. Grouping + sort (count desc, code asc) come from the pure `lib/extraction/failures-summary.ts` (Phase-A TDD target — 8 red-green-commit cycles). Mounted on the job-detail page for completed jobs; self-hides when zero failures.)*
+
+**Live smoke handed off to human.** The plan's Playwright integration
+scenario (seed an extraction job, watch the now-processing banner
+update live during execution, then expand the error-history panel
+after a forced failure) requires the live Convex dev deployment —
+`convex-test` does not register the workflow / workpool / rag /
+ai-model components, and `tests/e2e/` has no fixture for seeding an
+extraction that actually runs. The behavioural contracts above are
+covered unit-test-level; the end-to-end walkthrough on the live dev
+db happens outside CI, mirroring the Plan-06 handoff stance.
 
 ## Known pitfalls
 
