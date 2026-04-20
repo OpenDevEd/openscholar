@@ -25,4 +25,5 @@ export function setupAggregates<
   registerAggregate(ht, "resultStatusAgg");
   registerAggregate(ht, "resultAnsweredAgg");
   registerAggregate(ht, "resultConfidenceAgg");
+  registerAggregate(ht, "creditsAgg");
 }
