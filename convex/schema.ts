@@ -351,6 +351,10 @@ export default defineSchema({
         v.literal("downloading_pdfs"),
         v.literal("indexing"),
         v.literal("extracting"),
+        // Non-terminal: the user can top up credits and resume (plan 06).
+        // Deliberately diverges from screening where creditsExhausted is
+        // terminal.
+        v.literal("creditsExhausted"),
         v.literal("completed"),
         v.literal("failed"),
         v.literal("cancelled")
@@ -363,6 +367,16 @@ export default defineSchema({
     // Per-job PDF opt-in. Replaces the old global `extraction.pdf` flag
     // as the *default*; the flag remains as an admin capability gate.
     usePdfs: v.optional(v.boolean()),
+    // Pre-flight credit estimate persisted at startJob time. Consumed
+    // by the UI to size remaining-work banners and by plan 06's Resume
+    // button gate.
+    estimatedCredits: v.optional(
+      v.object({
+        low: v.number(),
+        mid: v.number(),
+        high: v.number(),
+      })
+    ),
 
     // ─── Chat-only fields ─────────────────────────────────────────
     // @convex-dev/agent thread id (component-owned).

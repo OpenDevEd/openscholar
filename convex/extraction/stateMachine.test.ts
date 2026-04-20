@@ -47,6 +47,34 @@ describe("assertValidJobTransition", () => {
       );
     },
   );
+
+  it("creditsExhausted is non-terminal (resumable by plan 06)", () => {
+    // Incoming edges: any active phase can run out of credits.
+    for (const from of [
+      "pending",
+      "downloading_pdfs",
+      "indexing",
+      "extracting",
+    ] as const) {
+      expect(() =>
+        assertValidJobTransition(from, "creditsExhausted"),
+      ).not.toThrow();
+    }
+    // Outgoing edges: resume back to extracting, or move to terminal.
+    for (const to of ["extracting", "completed", "cancelled", "failed"] as const) {
+      expect(() =>
+        assertValidJobTransition("creditsExhausted", to),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects creditsExhausted → illegal phases", () => {
+    for (const to of ["pending", "downloading_pdfs", "indexing"] as const) {
+      expect(() =>
+        assertValidJobTransition("creditsExhausted", to),
+      ).toThrow(/invalid job status transition/);
+    }
+  });
 });
 
 describe("assertValidPaperTransition", () => {

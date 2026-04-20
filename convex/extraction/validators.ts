@@ -62,6 +62,9 @@ export const jobStatusValidator = v.union(
   v.literal("downloading_pdfs"),
   v.literal("indexing"),
   v.literal("extracting"),
+  // Non-terminal: user can top up credits and resume (plan 06 lands
+  // the resume mutation; plan 03 persists the status transition).
+  v.literal("creditsExhausted"),
   v.literal("completed"),
   v.literal("failed"),
   v.literal("cancelled")
@@ -192,6 +195,13 @@ export const extractionJobValidator = v.object({
   failedPapers: v.optional(v.number()),
   workflowId: v.optional(v.string()),
   usePdfs: v.optional(v.boolean()),
+  estimatedCredits: v.optional(
+    v.object({
+      low: v.number(),
+      mid: v.number(),
+      high: v.number(),
+    })
+  ),
   chatThreadId: v.optional(v.string()),
   chatModelId: v.optional(v.id("models")),
   lastMessageAt: v.optional(v.number()),

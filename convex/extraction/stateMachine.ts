@@ -19,6 +19,10 @@ export const JOB_STATUSES = [
   "downloading_pdfs",
   "indexing",
   "extracting",
+  // Non-terminal (plan 03). The per-question worker detects insufficient
+  // credits mid-run, transitions the job here, and stops dispatching.
+  // Plan 06 adds the resume mutation that transitions back to `extracting`.
+  "creditsExhausted",
   "completed",
   "failed",
   "cancelled",
@@ -40,13 +44,32 @@ const VALID_JOB_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
     "downloading_pdfs",
     "indexing",
     "extracting",
+    "creditsExhausted",
     "completed",
     "failed",
     "cancelled",
   ],
-  downloading_pdfs: ["indexing", "extracting", "completed", "failed", "cancelled"],
-  indexing: ["extracting", "completed", "failed", "cancelled"],
-  extracting: ["completed", "failed", "cancelled"],
+  downloading_pdfs: [
+    "indexing",
+    "extracting",
+    "creditsExhausted",
+    "completed",
+    "failed",
+    "cancelled",
+  ],
+  indexing: [
+    "extracting",
+    "creditsExhausted",
+    "completed",
+    "failed",
+    "cancelled",
+  ],
+  extracting: ["creditsExhausted", "completed", "failed", "cancelled"],
+  // Non-terminal. Outgoing edges are the only legal exits: back to
+  // `extracting` via plan 06's resume, or any terminal state (cancel,
+  // fail permanently, or final completion if the user cancels remaining
+  // and the already-completed papers roll up).
+  creditsExhausted: ["extracting", "completed", "cancelled", "failed"],
   // Terminal states: once a job is in one of these, it stays there.
   completed: [],
   failed: [],
