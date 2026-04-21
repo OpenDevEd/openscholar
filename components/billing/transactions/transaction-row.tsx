@@ -44,6 +44,7 @@ function TransactionRowImpl({
     <div
       role="listitem"
       id={`txn-row-${row.id}`}
+      tabIndex={-1}
       data-txn-row=""
       data-txn-id={row.id}
       data-txn-type={row.type}
