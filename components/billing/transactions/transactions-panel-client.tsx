@@ -1,9 +1,19 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useConvex } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -34,11 +44,28 @@ import { TransactionsGroupHeader } from "./transactions-group-header";
 import { TransactionsListSkeleton } from "./transactions-list-skeleton";
 import { TransactionsPanelTabs } from "./transactions-panel-tabs";
 import { TransactionsPanelToolbar } from "./transactions-panel-toolbar";
+import { TransactionsExportMenu } from "./transactions-export-menu";
 import { useTransactionsLoadMore } from "./use-transactions-load-more";
 import {
   useTransactionsState,
   type Density,
 } from "./use-transactions-state";
+
+// Dynamic import keeps the drawer (shadcn Sheet + 3 drawer sections + clipboard
+// hook) out of the initial billing-panel chunk. Loads on the first row click.
+const TransactionDetailDrawer = dynamic(
+  () =>
+    import("./transaction-detail-drawer").then(
+      (m) => m.TransactionDetailDrawer,
+    ),
+  { ssr: false },
+);
+
+const EXPORT_PAGE_SIZE = 500;
+
+type ListTransactionsPage = FunctionReturnType<
+  typeof api.credits.queries.listTransactionsPaginated
+>;
 
 interface Props {
   jobId?: Id<"extractionJobs">;
@@ -61,14 +88,21 @@ function bumpCount(target: Record<string, number>, key: string) {
 function RowList({
   rows,
   density,
+  onRowClick,
 }: {
   rows: readonly TransactionViewModel[];
   density: Density;
+  onRowClick: (row: TransactionViewModel) => void;
 }) {
   return (
     <div role="list" className="divide-y divide-border/40">
       {rows.map((row) => (
-        <TransactionRow key={row.id} row={row} density={density} />
+        <TransactionRow
+          key={row.id}
+          row={row}
+          density={density}
+          onClick={onRowClick}
+        />
       ))}
     </div>
   );
@@ -77,9 +111,11 @@ function RowList({
 function GroupedRowList({
   groups,
   density,
+  onRowClick,
 }: {
   groups: ReadonlyArray<readonly [GroupKey, readonly TransactionViewModel[]]>;
   density: Density;
+  onRowClick: (row: TransactionViewModel) => void;
 }) {
   return (
     <>
@@ -90,7 +126,7 @@ function GroupedRowList({
           aria-label={groupKey}
         >
           <TransactionsGroupHeader groupKey={groupKey} />
-          <RowList rows={groupRows} density={density} />
+          <RowList rows={groupRows} density={density} onRowClick={onRowClick} />
         </section>
       ))}
     </>
@@ -101,10 +137,56 @@ export function TransactionsPanelClient({ jobId }: Props) {
   const t = useTranslations("billingPage.transactions");
   const router = useRouter();
   const urlSearchParams = useSearchParams();
+  const convex = useConvex();
   const [state] = useTransactionsState();
 
   const deferredQuery = useDeferredValue(state.q);
   const isSearchStale = deferredQuery !== state.q;
+
+  const [detailRow, setDetailRow] = useState<TransactionViewModel | null>(null);
+  const triggerIdRef = useRef<string | null>(null);
+
+  const handleRowClick = useCallback((row: TransactionViewModel) => {
+    triggerIdRef.current = row.id;
+    setDetailRow(row);
+  }, []);
+
+  const handleDrawerOpenChange = useCallback((open: boolean) => {
+    if (open) return;
+    setDetailRow(null);
+    const id = triggerIdRef.current;
+    triggerIdRef.current = null;
+    if (!id) return;
+    // Wait one microtask for Sheet to finish its focus unwind before we
+    // restore focus to the originating row. Without this, Radix's own focus
+    // restoration races with ours and wins.
+    queueMicrotask(() => {
+      const el = document.getElementById(`txn-row-${id}`);
+      el?.focus();
+    });
+  }, []);
+
+  const fetchAll = useCallback(async (): Promise<TransactionViewModel[]> => {
+    const collected: TransactionViewModel[] = [];
+    let cursor: string | null = null;
+    // Drain every page — "All time" ignores the filter state by design.
+    // The per-page cap of EXPORT_PAGE_SIZE matches the Convex paginator's
+    // practical ceiling; bigger pages risk function-execution-time limits.
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const page: ListTransactionsPage = await convex.query(
+        api.credits.queries.listTransactionsPaginated,
+        {
+          paginationOpts: { numItems: EXPORT_PAGE_SIZE, cursor },
+          jobId,
+        },
+      );
+      for (const doc of page.page) collected.push(toViewModel(doc));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    return collected;
+  }, [convex, jobId]);
 
   const paginated = useProtectedPaginatedQuery(
     api.credits.queries.listTransactionsPaginated,
@@ -215,7 +297,16 @@ export function TransactionsPanelClient({ jobId }: Props) {
       data-transactions-density={state.density}
       className="flex h-full flex-col rounded-xl border border-border/40 bg-card/90 shadow-sm"
     >
-      <TransactionsPanelHeader shownCount={rows.length} summary={summary} />
+      <TransactionsPanelHeader
+        shownCount={rows.length}
+        summary={summary}
+        exportSlot={
+          <TransactionsExportMenu
+            currentView={rows}
+            fetchAll={fetchAll}
+          />
+        }
+      />
       <TransactionsPanelTabs />
       <TransactionsPanelToolbar counts={counts} />
 
@@ -273,9 +364,17 @@ export function TransactionsPanelClient({ jobId }: Props) {
             {jobId ? t("emptyForJob") : t("empty")}
           </p>
         ) : renderGroups && partitioned ? (
-          <GroupedRowList groups={partitioned} density={state.density} />
+          <GroupedRowList
+            groups={partitioned}
+            density={state.density}
+            onRowClick={handleRowClick}
+          />
         ) : (
-          <RowList rows={rows} density={state.density} />
+          <RowList
+            rows={rows}
+            density={state.density}
+            onRowClick={handleRowClick}
+          />
         )}
         <div
           ref={sentinelRef}
@@ -299,6 +398,11 @@ export function TransactionsPanelClient({ jobId }: Props) {
           </p>
         )}
       </div>
+
+      <TransactionDetailDrawer
+        row={detailRow}
+        onOpenChange={handleDrawerOpenChange}
+      />
     </section>
   );
 }
