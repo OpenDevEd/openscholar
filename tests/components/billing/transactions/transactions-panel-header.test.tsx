@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { TransactionsPanelHeader } from "@/components/billing/transactions/transactions-panel-header";
 
 vi.mock("next-intl", () => ({
@@ -15,17 +15,18 @@ vi.mock("next-intl", () => ({
 }));
 
 describe("TransactionsPanelHeader", () => {
-  it("renders a single role=status aria-live=polite region for the summary", () => {
+  it("does not own a live region — the panel-level aria-live is the only announcement source", () => {
     const { container } = render(
       <TransactionsPanelHeader
         shownCount={10}
         summary={{ in: 150, out: 30, net: 120 }}
       />,
     );
-    const statusRegions = container.querySelectorAll('[role="status"]');
-    expect(statusRegions.length).toBe(1);
-    expect(statusRegions[0].getAttribute("aria-live")).toBe("polite");
-    expect(statusRegions[0].getAttribute("aria-atomic")).toBe("true");
+    expect(container.querySelectorAll("[aria-live]").length).toBe(0);
+    expect(container.querySelectorAll('[role="status"]').length).toBe(0);
+    const summary = container.querySelector("[data-transactions-summary]");
+    expect(summary).toBeTruthy();
+    expect(summary?.getAttribute("aria-label")).toBeTruthy();
   });
 
   it("exposes the in/out/net/shown counts as stable data attributes", () => {
@@ -43,26 +44,26 @@ describe("TransactionsPanelHeader", () => {
   });
 
   it("renders +in · −out · Net +N for a net-positive summary", () => {
-    render(
+    const { container } = render(
       <TransactionsPanelHeader
         shownCount={3}
         summary={{ in: 150, out: 30, net: 120 }}
       />,
     );
-    const region = screen.getByRole("status");
+    const region = container.querySelector("[data-transactions-summary]")!;
     expect(region.textContent).toContain("+150");
     expect(region.textContent).toContain("−30");
     expect(region.textContent).toContain("+120");
   });
 
   it("surfaces negative net via the data attribute and signed display text", () => {
-    render(
+    const { container } = render(
       <TransactionsPanelHeader
         shownCount={2}
         summary={{ in: 0, out: 40, net: -40 }}
       />,
     );
-    const region = screen.getByRole("status");
+    const region = container.querySelector("[data-transactions-summary]")!;
     expect(region.getAttribute("data-transactions-net")).toBe("-40");
     expect(region.textContent).toContain("−40");
     expect(region.textContent).not.toContain("+40");

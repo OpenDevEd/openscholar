@@ -29,10 +29,20 @@ export default function BillingPage() {
   const format = useFormatter();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const txnSearchParams = React.useMemo(
-    () => ({ jobId: searchParams.get("jobId") ?? undefined }),
-    [searchParams],
-  );
+  const txnSearchParams = React.useMemo(() => {
+    const obj: Record<string, string | string[] | undefined> = {};
+    searchParams.forEach((value, key) => {
+      const existing = obj[key];
+      if (existing === undefined) {
+        obj[key] = value;
+      } else if (Array.isArray(existing)) {
+        obj[key] = [...existing, value];
+      } else {
+        obj[key] = [existing, value];
+      }
+    });
+    return obj;
+  }, [searchParams]);
   const creditsEnabled = useFeatureFlag("credits.enabled");
   const topupsEnabled = useFeatureFlag("credits.topups");
   const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");

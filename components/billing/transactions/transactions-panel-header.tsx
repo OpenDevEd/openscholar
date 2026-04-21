@@ -40,9 +40,6 @@ export function TransactionsPanelHeader({ shownCount, summary }: Props) {
         </h2>
         <div className="flex items-center gap-3">
           <span
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
             aria-label={t("summary.aria", {
               inAmount: summary.in,
               outAmount: summary.out,

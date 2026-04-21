@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+
+function withNuqs(node: React.ReactNode, searchParams: string = "") {
+  return <NuqsTestingAdapter searchParams={searchParams}>{node}</NuqsTestingAdapter>;
+}
 
 // next/intl ----------------------------------------------------------------
 vi.mock("next-intl", () => ({
@@ -131,7 +136,7 @@ describe("TransactionsPanelClient", () => {
       hasLoadedFirstPage: false,
       isSettled: false,
     });
-    const { container } = render(<TransactionsPanelClient />);
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
     expect(
       container.querySelector("[data-transactions-skeleton]"),
     ).toBeInTheDocument();
@@ -142,7 +147,7 @@ describe("TransactionsPanelClient", () => {
 
   it("reflects the paginated status via data-transactions-status", () => {
     setResult({ status: "CanLoadMore", results: [mkDoc(0)] });
-    const { container } = render(<TransactionsPanelClient />);
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
     expect(
       container
         .querySelector("[data-transactions-panel]")!
@@ -152,7 +157,7 @@ describe("TransactionsPanelClient", () => {
 
   it("renders the empty state when settled with zero rows", () => {
     setResult({ status: "Exhausted", results: [], isSettled: true });
-    const { container } = render(<TransactionsPanelClient />);
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
     expect(
       container
         .querySelector("[data-transactions-empty]")!
@@ -165,14 +170,14 @@ describe("TransactionsPanelClient", () => {
 
   it("renders a jobId-scoped empty state when settled with a jobId filter", () => {
     setResult({ status: "Exhausted", results: [], isSettled: true });
-    render(<TransactionsPanelClient jobId={"job-123" as never} />);
+    render(withNuqs(<TransactionsPanelClient jobId={"job-123" as never} />));
     expect(screen.getByText("emptyForJob")).toBeInTheDocument();
   });
 
   it("reflects the jobId filter via data-transactions-filter", () => {
     setResult({ status: "Exhausted", results: [mkDoc(0)] });
     const { container } = render(
-      <TransactionsPanelClient jobId={"job-xyz" as never} />,
+      withNuqs(<TransactionsPanelClient jobId={"job-xyz" as never} />),
     );
     expect(
       container
@@ -194,7 +199,7 @@ describe("TransactionsPanelClient", () => {
         mkDoc(2, { createdAt: olderMs }),
       ],
     });
-    const { container } = render(<TransactionsPanelClient />);
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
     const keys = [
       ...container.querySelectorAll("[data-transactions-group-header]"),
     ].map((el) => el.getAttribute("data-transactions-group-header"));
@@ -208,7 +213,7 @@ describe("TransactionsPanelClient", () => {
       status: "LoadingMore",
       results: [mkDoc(0)],
     });
-    const { container, rerender } = render(<TransactionsPanelClient />);
+    const { container, rerender } = render(withNuqs(<TransactionsPanelClient />));
     expect(
       container.querySelector("[data-transactions-loading-more]"),
     ).toBeInTheDocument();
@@ -217,7 +222,7 @@ describe("TransactionsPanelClient", () => {
       status: "CanLoadMore",
       results: [mkDoc(0)],
     });
-    rerender(<TransactionsPanelClient />);
+    rerender(withNuqs(<TransactionsPanelClient />));
     expect(
       container.querySelector("[data-transactions-loading-more]"),
     ).toBeNull();
@@ -225,7 +230,7 @@ describe("TransactionsPanelClient", () => {
 
   it("renders the exhausted footer only when Exhausted AND rows exist", () => {
     setResult({ status: "Exhausted", results: [mkDoc(0)] });
-    const { container, rerender } = render(<TransactionsPanelClient />);
+    const { container, rerender } = render(withNuqs(<TransactionsPanelClient />));
     expect(
       container
         .querySelector("[data-transactions-exhausted]")!
@@ -233,7 +238,7 @@ describe("TransactionsPanelClient", () => {
     ).toBe("true");
 
     setResult({ status: "Exhausted", results: [] });
-    rerender(<TransactionsPanelClient />);
+    rerender(withNuqs(<TransactionsPanelClient />));
     expect(
       container.querySelector("[data-transactions-exhausted]"),
     ).toBeNull();
@@ -241,7 +246,7 @@ describe("TransactionsPanelClient", () => {
 
   it("always renders a single IntersectionObserver sentinel with aria-hidden", () => {
     setResult({ status: "CanLoadMore", results: [mkDoc(0)] });
-    const { container } = render(<TransactionsPanelClient />);
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
     const sentinel = container.querySelector("[data-transactions-sentinel]")!;
     expect(sentinel.getAttribute("aria-hidden")).toBe("true");
   });
@@ -255,7 +260,7 @@ describe("TransactionsPanelClient", () => {
         mkDoc(2, { amount: -30, type: "usage" }),
       ],
     });
-    const { container } = render(<TransactionsPanelClient />);
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
     const summary = container.querySelector("[data-transactions-summary]")!;
     expect(summary.getAttribute("data-transactions-in")).toBe("150");
     expect(summary.getAttribute("data-transactions-out")).toBe("30");
@@ -267,7 +272,7 @@ describe("TransactionsPanelClient", () => {
       status: "LoadingMore",
       results: [mkDoc(0)],
     });
-    const { container } = render(<TransactionsPanelClient />);
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
     const liveRegions = container.querySelectorAll('[aria-live]');
     expect(liveRegions.length).toBe(1);
     expect(liveRegions[0].getAttribute("aria-live")).toBe("polite");
