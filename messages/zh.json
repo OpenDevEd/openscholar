@@ -387,7 +387,10 @@
         "extraction_llm": "提取",
         "embedding": "索引",
         "screening": "筛选",
-        "chat": "聊天"
+        "chat": "聊天",
+        "search": "搜索",
+        "translation": "翻译",
+        "wallet_api": "钱包 API"
       },
       "status": {
         "pending": "处理中",
@@ -410,7 +413,8 @@
       },
       "export": {
         "label": "导出",
-        "current": "当前视图 ({count})",
+        "current": "当前页面 ({count})",
+        "filtered": "已筛选 (所有页面)",
         "all": "全部历史"
       },
       "drawer": {
@@ -488,6 +492,35 @@
       },
       "live": {
         "summary": "显示 {total} 条交易中的 {shown} 条"
+      },
+      "titles": {
+        "paidCredits": "{amount, number} 付费点数",
+        "freeCredits": "{amount, number} 免费点数",
+        "freeCreditsExpired": "{amount, number} 免费点数过期",
+        "refund": "退款 · {amount, number} 点数",
+        "chatMessage": "聊天消息",
+        "extraction": "论文抽取",
+        "indexing": "论文索引",
+        "screening": "论文筛选",
+        "paperRef": "论文 {ref}",
+        "search": "搜索增强",
+        "translation": "翻译",
+        "walletApi": "{model} · 钱包 API",
+        "walletApiGeneric": "钱包 API"
+      },
+      "secondary": {
+        "topup": "充值",
+        "stripe": "Stripe",
+        "stripeRefund": "Stripe 退款",
+        "expired": "免费额度"
+      },
+      "amount": {
+        "balance": "余额 {balance}"
+      },
+      "aria": {
+        "credit": "入账",
+        "debit": "出账",
+        "balanceAfter": "余额 {balance}"
       }
     },
     "billingAndPlans": "账单和计划",
@@ -767,7 +800,7 @@
         "chat": "聊天",
         "other": "其他"
       },
-      "viewTransactions": "查看交易"
+      "viewTransactionsAria": "查看交易 ({amount, plural, other {# 积分}})"
     },
     "nowProcessing": {
       "prefix": "正在提取：",

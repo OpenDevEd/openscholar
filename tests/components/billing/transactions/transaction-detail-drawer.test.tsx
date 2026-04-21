@@ -59,6 +59,11 @@ function makeRow(
     stripeCheckoutSessionId: null,
     metadata: {},
     hasStripe: false,
+    paperTitle: null,
+    jobName: null,
+    openalexRef: null,
+    modelLabel: null,
+    tokenSummary: null,
     ...overrides,
   };
 }
@@ -80,18 +85,66 @@ describe("TransactionDetailDrawer", () => {
     expect(drawer?.getAttribute("data-transaction-id")).toBe("tx-1");
   });
 
-  it("falls back to the type label when description is null", () => {
+  it("title goes through resolveTitle — grant packs amount into titles.freeCredits", () => {
     render(
       <TransactionDetailDrawer
-        row={makeRow({ description: null, type: "grant" })}
+        row={makeRow({ description: null, type: "grant", amount: 500 })}
         onOpenChange={vi.fn()}
       />,
     );
-    // The title falls through to t(`type.${row.type}`); the mock stringifies to
-    // the key. The same "grant" string appears again as the type badge, so we
-    // target the accessible name of the dialog title specifically.
     const title = screen.getByRole("heading", { level: 2 });
-    expect(title.textContent).toBe("grant");
+    expect(title.textContent).toBe("titles.freeCredits:amount=500");
+  });
+
+  it("title prefers paperTitle for usage:screening rows (NOT the description)", () => {
+    render(
+      <TransactionDetailDrawer
+        row={makeRow({
+          type: "usage",
+          billingType: "screening",
+          description: "Bulk screening",
+          paperTitle: "Attention Is All You Need",
+        })}
+        onOpenChange={vi.fn()}
+      />,
+    );
+    const title = screen.getByRole("heading", { level: 2 });
+    expect(title.textContent).toBe("Attention Is All You Need");
+  });
+
+  it("title falls back to service label when billingType is typed but no titles are known", () => {
+    render(
+      <TransactionDetailDrawer
+        row={makeRow({
+          type: "usage",
+          billingType: "search",
+          description: "AI: Enhance search query",
+          paperTitle: null,
+          jobName: null,
+          openalexRef: null,
+        })}
+        onOpenChange={vi.fn()}
+      />,
+    );
+    const title = screen.getByRole("heading", { level: 2 });
+    // Service-fallback, NOT the "AI: Enhance search query" description.
+    expect(title.textContent).toBe("titles.search");
+  });
+
+  it("title uses wallet_api model-packed key when modelLabel is present", () => {
+    render(
+      <TransactionDetailDrawer
+        row={makeRow({
+          type: "usage",
+          billingType: "wallet_api",
+          description: "Wallet API: GPT 4o Mini",
+          modelLabel: "GPT 4o Mini",
+        })}
+        onOpenChange={vi.fn()}
+      />,
+    );
+    const title = screen.getByRole("heading", { level: 2 });
+    expect(title.textContent).toBe("titles.walletApi:model=GPT 4o Mini");
   });
 
   it("renders the signed amount with + for credits and balanceAfter below", () => {

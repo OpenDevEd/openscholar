@@ -211,6 +211,8 @@ export const extractionJobValidator = v.object({
   failedPapers: v.optional(v.number()),
   workflowId: v.optional(v.string()),
   usePdfs: v.optional(v.boolean()),
+  pausedAt: v.optional(v.number()),
+  pausedFromStatus: v.optional(pausedFromStatusValidator),
   estimatedCredits: v.optional(
     v.object({
       low: v.number(),

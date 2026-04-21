@@ -387,7 +387,10 @@
         "extraction_llm": "Extraction",
         "embedding": "Indexing",
         "screening": "Screening",
-        "chat": "Chat"
+        "chat": "Chat",
+        "search": "Search",
+        "translation": "Translation",
+        "wallet_api": "Wallet API"
       },
       "status": {
         "pending": "Pending",
@@ -410,7 +413,8 @@
       },
       "export": {
         "label": "Export",
-        "current": "Current view ({count})",
+        "current": "Current page ({count})",
+        "filtered": "Filtered (all pages)",
         "all": "All time"
       },
       "drawer": {
@@ -488,6 +492,35 @@
       },
       "live": {
         "summary": "Showing {shown} of {total} transactions"
+      },
+      "titles": {
+        "paidCredits": "{amount, number} paid credits",
+        "freeCredits": "{amount, number} free credits",
+        "freeCreditsExpired": "{amount, number} free credits expired",
+        "refund": "Refund · {amount, number} credits",
+        "chatMessage": "Chat message",
+        "extraction": "Paper extraction",
+        "indexing": "Paper indexing",
+        "screening": "Paper screening",
+        "paperRef": "Paper {ref}",
+        "search": "Search enhancement",
+        "translation": "Translation",
+        "walletApi": "{model} · Wallet API",
+        "walletApiGeneric": "Wallet API"
+      },
+      "secondary": {
+        "topup": "Top-up",
+        "stripe": "Stripe",
+        "stripeRefund": "Stripe refund",
+        "expired": "Free pool"
+      },
+      "amount": {
+        "balance": "Bal {balance}"
+      },
+      "aria": {
+        "credit": "Credit",
+        "debit": "Debit",
+        "balanceAfter": "Balance after {balance}"
       }
     },
     "billingAndPlans": "Billing & Plans",
@@ -784,7 +817,7 @@
         "chat": "Chat",
         "other": "Other"
       },
-      "viewTransactions": "View transactions"
+      "viewTransactionsAria": "View transactions ({amount, plural, one {# credit} other {# credits}})"
     },
     "nowProcessing": {
       "prefix": "Currently extracting:",

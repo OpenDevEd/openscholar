@@ -52,7 +52,14 @@ vi.mock(
 );
 
 vi.mock("@/convex/_generated/api", () => ({
-  api: { credits: { queries: { listTransactionsPaginated: "stub" as const } } },
+  api: {
+    credits: {
+      queries: {
+        listTransactionsPaginated: "stub" as const,
+        getTransactionFacetCounts: "stub-counts" as const,
+      },
+    },
+  },
 }));
 
 type Doc = {
@@ -111,6 +118,26 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     hasLoadedFirstPage: true,
     isSettled: true,
     loadMore: vi.fn(),
+  }),
+  useProtectedQuery: () => ({
+    data: {
+      type: { purchase: 3, usage: 3, grant: 2, refund: 2, expiry: 0 },
+      creditPool: { free: 5, paid: 5 },
+      billingType: {
+        extraction_llm: 0,
+        embedding: 0,
+        screening: 0,
+        chat: 0,
+        search: 0,
+        translation: 0,
+        wallet_api: 0,
+      },
+    },
+    phase: "authenticated",
+    isDeferred: false,
+    isReady: true,
+    isAnonymous: false,
+    settlement: "ready",
   }),
 }));
 

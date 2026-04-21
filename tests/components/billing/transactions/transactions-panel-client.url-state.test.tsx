@@ -74,10 +74,37 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     queryArgsLog.push(args);
     return mockResult;
   },
+  useProtectedQuery: () => ({
+    data: {
+      type: { purchase: 0, usage: 0, grant: 0, refund: 0, expiry: 0 },
+      creditPool: { free: 0, paid: 0 },
+      billingType: {
+        extraction_llm: 0,
+        embedding: 0,
+        screening: 0,
+        chat: 0,
+        search: 0,
+        translation: 0,
+        wallet_api: 0,
+      },
+    },
+    phase: "authenticated",
+    isDeferred: false,
+    isReady: true,
+    isAnonymous: false,
+    settlement: "ready",
+  }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
-  api: { credits: { queries: { listTransactionsPaginated: "stub" as const } } },
+  api: {
+    credits: {
+      queries: {
+        listTransactionsPaginated: "stub" as const,
+        getTransactionFacetCounts: "stub-counts" as const,
+      },
+    },
+  },
 }));
 
 import { TransactionsPanelClient } from "@/components/billing/transactions/transactions-panel-client";

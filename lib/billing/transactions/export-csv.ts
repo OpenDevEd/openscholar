@@ -19,7 +19,7 @@ export const CSV_COLUMNS = [
   "resultId",
 ] as const satisfies readonly (keyof TransactionViewModel)[];
 
-export type CsvColumn = (typeof CSV_COLUMNS)[number];
+type CsvColumn = (typeof CSV_COLUMNS)[number];
 
 const SPECIAL = /[",\n\r]/;
 

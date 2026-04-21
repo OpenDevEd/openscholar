@@ -5,7 +5,7 @@ export type GroupKey =
   | "last-week"
   | `month-${number}-${string}`;
 
-export interface GroupLabel {
+interface GroupLabel {
   i18nKey: string;
   params?: Record<string, string | number>;
 }

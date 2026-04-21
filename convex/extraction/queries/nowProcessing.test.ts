@@ -135,6 +135,35 @@ describe("getNowProcessing", () => {
     expect(result?.startedAt).toBe(now - 1000);
   });
 
+  it.each([
+    ["paused"],
+    ["creditsExhausted"],
+    ["cancelled"],
+    ["completed"],
+    ["failed"],
+  ] as const)(
+    "returns null when job.status is %s even if a paper row lingers in extracting",
+    async (status) => {
+      const t = convexTest(schema);
+      const { jobId, now } = await seedJob(t);
+      await t.run(async (ctx) => {
+        await ctx.db.patch(jobId, { status });
+        await ctx.db.insert("extractionPapers", {
+          jobId,
+          openalexId: "oa:lingering",
+          title: "LLM call still in-flight post-pause",
+          status: "extracting" as const,
+          startedAt: now,
+        });
+      });
+
+      const result = await t
+        .withIdentity(OWNER_IDENTITY)
+        .query(api.extraction.queries.nowProcessing.getNowProcessing, { jobId });
+      expect(result).toBeNull();
+    },
+  );
+
   it("returns null for an unowned job (caller-safe; no existence leak)", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJob(t);

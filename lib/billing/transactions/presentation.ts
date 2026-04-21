@@ -3,28 +3,39 @@ import {
   CreditCard,
   Gift,
   Hourglass,
+  Languages,
   ListChecks,
   MessageSquare,
   Network,
+  Search,
   Sparkles,
   Undo2,
+  Wallet,
   Zap,
 } from "lucide-react";
 
-export type TransactionType =
-  | "purchase"
-  | "usage"
-  | "grant"
-  | "refund"
-  | "expiry";
+export const TRANSACTION_TYPES = [
+  "purchase",
+  "usage",
+  "grant",
+  "refund",
+  "expiry",
+] as const;
+export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
-export type CreditType = "free" | "paid";
+export const CREDIT_TYPES = ["free", "paid"] as const;
+export type CreditType = (typeof CREDIT_TYPES)[number];
 
-export type BillingType =
-  | "extraction_llm"
-  | "embedding"
-  | "screening"
-  | "chat";
+export const BILLING_TYPES = [
+  "extraction_llm",
+  "embedding",
+  "screening",
+  "chat",
+  "search",
+  "translation",
+  "wallet_api",
+] as const;
+export type BillingType = (typeof BILLING_TYPES)[number];
 
 export type CssVar =
   | "--chart-1"
@@ -35,7 +46,7 @@ export type CssVar =
   | "--muted-foreground"
   | "--destructive";
 
-export interface TypePresentation {
+interface TypePresentation {
   icon: LucideIcon;
   colorVar: CssVar;
   i18nKey: string;
@@ -80,6 +91,9 @@ export const BILLING_TYPE_ICON: Readonly<Record<BillingType, LucideIcon>> = {
   embedding: Network,
   screening: ListChecks,
   chat: MessageSquare,
+  search: Search,
+  translation: Languages,
+  wallet_api: Wallet,
 };
 
 export function presentationFor(type: TransactionType): TypePresentation {

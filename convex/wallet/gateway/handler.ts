@@ -271,8 +271,8 @@ function makeDeductFn(
       userId: keyResult.userId,
       amount: credits,
       description: `Wallet API: ${walletModel.name}`,
+      billingType: "wallet_api",
       metadata: {
-        source: "wallet_api",
         appName: keyResult.appName,
         model: walletModel.modelId,
         provider: walletModel.provider,

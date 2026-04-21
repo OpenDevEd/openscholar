@@ -1,6 +1,7 @@
 "use client";
 
 import { Coins } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
@@ -18,6 +19,13 @@ export interface CostBadgeProps {
    * full chip rendering used in the job-detail header.
    */
   compact?: boolean;
+  /**
+   * When provided, the badge renders as a navigation link — no more
+   * "View transactions" twin button next to it. Accessible name is
+   * overridden to "View transactions ({amount})" so the link target is
+   * unambiguous to screen readers.
+   */
+  href?: string;
 }
 
 /**
@@ -33,8 +41,11 @@ export interface CostBadgeProps {
  *   Tooltip breakdown     — indexing vs extraction split from the
  *                           creditTransactions ledger, keyed to the
  *                           billingType taxonomy.
+ *   href (optional)       — wraps the chip in a <Link>. Renders an
+ *                           anchor the whole badge becomes clickable;
+ *                           aria-label carries the navigation intent.
  */
-export function CostBadge({ jobId, compact = false }: CostBadgeProps) {
+export function CostBadge({ jobId, compact = false, href }: CostBadgeProps) {
   const t = useTranslations("extraction.cost");
 
   const { data, settlement } = useProtectedQuery(
@@ -66,23 +77,38 @@ export function CostBadge({ jobId, compact = false }: CostBadgeProps) {
     ? "inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-0.5 text-xs"
     : "inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2.5 py-1 text-xs";
 
+  const chipBody = (
+    <>
+      <Coins className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+      <span className="font-semibold tabular-nums">
+        {t("credits", { amount: total })}
+      </span>
+    </>
+  );
+
+  const trigger = href ? (
+    <Link
+      href={href}
+      data-credits-total={String(total)}
+      data-transactions-link="view"
+      aria-label={t("viewTransactionsAria", { amount: total })}
+      className={`${chipClasses} transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+    >
+      {chipBody}
+    </Link>
+  ) : (
+    <span
+      role="status"
+      data-credits-total={String(total)}
+      className={`${chipClasses} cursor-help`}
+    >
+      {chipBody}
+    </span>
+  );
+
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          role="status"
-          data-credits-total={String(total)}
-          className={`${chipClasses} cursor-help`}
-        >
-          <Coins
-            className="h-3 w-3 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <span className="font-semibold tabular-nums">
-            {t("credits", { amount: total })}
-          </span>
-        </span>
-      </TooltipTrigger>
+      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-xs">
         {hasBreakdown ? (
           <ul className="space-y-0.5 text-xs">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type Ref } from "react";
+import { useEffect, useRef, useState, type Ref } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -16,7 +16,10 @@ import type { TransactionViewModel } from "@/lib/billing/transactions/transactio
 
 interface Props {
   currentView: readonly TransactionViewModel[];
-  fetchAll: () => Promise<readonly TransactionViewModel[]>;
+  fetchAll: (opts?: {
+    signal?: AbortSignal;
+    applyCurrentFilters?: boolean;
+  }) => Promise<readonly TransactionViewModel[]>;
   /** Imperative handle so Cmd/Ctrl+E can click the trigger. */
   triggerRef?: Ref<HTMLButtonElement>;
 }
@@ -32,27 +35,49 @@ export function TransactionsExportMenu({
 }: Props) {
   const t = useTranslations("billingPage.transactions.export");
   const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+    },
+    [],
+  );
 
   const exportCurrent = () => {
     if (currentView.length === 0) return;
     downloadCsv(toCsv(currentView), `transactions-${isoDate()}.csv`);
   };
 
-  const exportAll = () => {
+  const runDrain = (
+    mode: "filtered" | "all",
+    applyCurrentFilters: boolean,
+  ) => {
     if (loading) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
-    // Fire-and-forget so DropdownMenuItem.onSelect never returns a rejected
-    // promise (Radix would surface it as an unhandled rejection). The caller
-    // does not own error reporting for plan-05; loading state is restored on
-    // both resolution and rejection.
-    fetchAll()
-      .then((all) =>
-        downloadCsv(toCsv(all), `transactions-all-${isoDate()}.csv`),
-      )
-      .catch(() => {
-        /* swallow — network errors don't need drawer-level surfacing here */
+
+    fetchAll({ signal: controller.signal, applyCurrentFilters })
+      .then((all) => {
+        if (controller.signal.aborted) return;
+        downloadCsv(
+          toCsv(all),
+          `transactions-${mode}-${isoDate()}.csv`,
+        );
       })
-      .finally(() => setLoading(false));
+      .catch((err: unknown) => {
+        const name =
+          err && typeof err === "object" && "name" in err
+            ? (err as { name: unknown }).name
+            : undefined;
+        if (name === "AbortError") return;
+        // Swallow — network errors don't need drawer-level surfacing here.
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
   };
 
   return (
@@ -87,7 +112,15 @@ export function TransactionsExportMenu({
           {t("current", { count: currentView.length })}
         </DropdownMenuItem>
         <DropdownMenuItem
-          onSelect={exportAll}
+          onSelect={() => runDrain("filtered", true)}
+          disabled={loading}
+          data-export-mode="filtered"
+          className="text-xs"
+        >
+          {t("filtered")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => runDrain("all", false)}
           disabled={loading}
           data-export-mode="all"
           className="text-xs"

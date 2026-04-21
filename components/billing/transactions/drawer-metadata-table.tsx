@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -51,17 +51,20 @@ export function DrawerMetadataTable({ metadata }: Props) {
       {open && (
         <dl
           id="drawer-metadata-body"
-          className="flex flex-col gap-1 px-3 pb-3 text-[11px]"
+          className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 px-3 pb-3 text-[11px]"
         >
           {entries.map(([key, value]) => (
-            <div key={key} className="flex gap-2" data-metadata-key={key}>
-              <dt className="w-28 shrink-0 font-mono text-muted-foreground">
+            <Fragment key={key}>
+              <dt
+                data-metadata-key={key}
+                className="whitespace-nowrap font-mono text-muted-foreground"
+              >
                 {key}
               </dt>
               <dd className="truncate font-mono" title={value}>
                 {value}
               </dd>
-            </div>
+            </Fragment>
           ))}
         </dl>
       )}

@@ -27,5 +27,15 @@ app.use(aggregate, { name: "resultConfidenceAgg" });
 // (extraction_llm per-result + embedding per-paper). Cleared on cascade
 // delete via admin.clearJobCredits.
 app.use(aggregate, { name: "creditsAgg" });
+// Three @convex-dev/aggregate instances back the billing-transactions
+// faceted-count badges (plans/billing-transactions-perf/01). Each is
+// namespaced by credits._id so users never OCC-contend with each other.
+// Key carries [dimensionValue, createdAt] so date-range counts are O(log n)
+// via compound bounds. Populated by recordTransactionCounters at every
+// creditTransactions insert site; drained for reads by
+// readTransactionFacetCounts in convex/credits/aggregates.ts.
+app.use(aggregate, { name: "txnTypeAgg" });
+app.use(aggregate, { name: "txnCreditPoolAgg" });
+app.use(aggregate, { name: "txnBillingTypeAgg" });
 
 export default app;

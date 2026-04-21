@@ -387,7 +387,10 @@
         "extraction_llm": "抽出",
         "embedding": "インデックス",
         "screening": "スクリーニング",
-        "chat": "チャット"
+        "chat": "チャット",
+        "search": "検索",
+        "translation": "翻訳",
+        "wallet_api": "Wallet API"
       },
       "status": {
         "pending": "処理中",
@@ -410,7 +413,8 @@
       },
       "export": {
         "label": "エクスポート",
-        "current": "現在の表示 ({count})",
+        "current": "現在のページ ({count})",
+        "filtered": "フィルタ済み (全ページ)",
         "all": "全期間"
       },
       "drawer": {
@@ -488,6 +492,35 @@
       },
       "live": {
         "summary": "{total}件中{shown}件の取引を表示"
+      },
+      "titles": {
+        "paidCredits": "{amount, number} 有償クレジット",
+        "freeCredits": "{amount, number} 無償クレジット",
+        "freeCreditsExpired": "{amount, number} 無償クレジット失効",
+        "refund": "返金 · {amount, number} クレジット",
+        "chatMessage": "チャットメッセージ",
+        "extraction": "論文抽出",
+        "indexing": "論文インデックス",
+        "screening": "論文スクリーニング",
+        "paperRef": "論文 {ref}",
+        "search": "検索の拡張",
+        "translation": "翻訳",
+        "walletApi": "{model} · Wallet API",
+        "walletApiGeneric": "Wallet API"
+      },
+      "secondary": {
+        "topup": "チャージ",
+        "stripe": "Stripe",
+        "stripeRefund": "Stripe返金",
+        "expired": "無償プール"
+      },
+      "amount": {
+        "balance": "残高 {balance}"
+      },
+      "aria": {
+        "credit": "クレジット",
+        "debit": "デビット",
+        "balanceAfter": "残高 {balance}"
       }
     },
     "billingAndPlans": "請求とプラン",
@@ -767,7 +800,7 @@
         "chat": "チャット",
         "other": "その他"
       },
-      "viewTransactions": "取引を表示"
+      "viewTransactionsAria": "取引を表示 ({amount, plural, other {#クレジット}})"
     },
     "nowProcessing": {
       "prefix": "現在抽出中:",

@@ -24,6 +24,7 @@ import {
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
+import { extractOpenalexId } from "../../lib/billing/transactions/openalex-id";
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -39,7 +40,8 @@ export const enhanceSearchQuery = createAIAction(
   (output) => ({
     enhancedQuery: output.enhancedQuery,
     explanation: "",
-  })
+  }),
+  { billingType: "search" },
 );
 
 export const generateScreeningQuestions = createAIAction(
@@ -55,7 +57,8 @@ export const generateScreeningQuestions = createAIAction(
   getScreeningQuestionsConfig,
   (output) => ({
     questions: output.questions,
-  })
+  }),
+  { billingType: "screening" },
 );
 
 export const generateExtractionQuestions = createAIAction(
@@ -74,7 +77,8 @@ export const generateExtractionQuestions = createAIAction(
   }),
   "Generate extraction questions",
   getExtractionQuestionsConfig,
-  (output) => ({ questions: output.questions })
+  (output) => ({ questions: output.questions }),
+  { billingType: "extraction_llm" },
 );
 
 export const translateQuery = createAIAction(
@@ -90,6 +94,7 @@ export const translateQuery = createAIAction(
   (output) => ({
     translatedQuery: output.translatedQuery,
   }),
+  { billingType: "translation" },
 );
 
 export const translatePaperContent = createAIAction(
@@ -110,6 +115,7 @@ export const translatePaperContent = createAIAction(
     translatedAbstract: output.translatedAbstract,
     noTranslationNeeded: false,
   }),
+  { billingType: "translation" },
 );
 
 export const generateScreeningResponses = createAIAction(
@@ -130,7 +136,8 @@ export const generateScreeningResponses = createAIAction(
       output.responses as Record<string, boolean | null>
     ),
     confidence: output.confidence,
-  })
+  }),
+  { billingType: "screening" },
 );
 
 /**
@@ -184,14 +191,14 @@ export const generateBatchTranslations = action({
         });
 
         const usageBreakdown = Object.entries(usageByItemId).map(
-          ([paperId, usage]) => {
+          ([paperRef, usage]) => {
             const amount = calculateServerCreditsToDeduct(usage, pricing);
+            const openalexId = extractOpenalexId(paperRef) ?? paperRef;
             return {
               usage,
-              description: `AI: Batch translation (${paperId})`,
+              billingType: "translation" as const,
               metadata: {
-                billingType: "batch_translation",
-                paperId,
+                openalexId,
                 chargedCredits: String(amount),
               },
             };
@@ -288,15 +295,14 @@ export const generateBatchScreeningResponses = action({
         );
 
         const usageBreakdown = Object.entries(usageByItemId).map(
-          ([paperId, usage]) => {
+          ([paperRef, usage]) => {
             const amount = calculateServerCreditsToDeduct(usage, pricing);
+            const openalexId = extractOpenalexId(paperRef) ?? paperRef;
             return {
               usage,
-              // Preserve itemized ledger visibility per screened paper.
-              description: `AI: Batch screening (${paperId})`,
+              billingType: "screening" as const,
               metadata: {
-                billingType: "batch_screening",
-                paperId,
+                openalexId,
                 chargedCredits: String(amount),
               },
             };

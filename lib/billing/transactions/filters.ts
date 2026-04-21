@@ -55,6 +55,9 @@ export function buildFilterPredicate(
 
 export interface ServerFilterArgs {
   types?: readonly TransactionType[];
+  creditPools?: readonly CreditType[];
+  billingTypes?: readonly BillingType[];
+  q?: string;
   from?: number;
   to?: number;
 }
@@ -62,6 +65,10 @@ export interface ServerFilterArgs {
 export function toServerFilterArgs(state: FilterState): ServerFilterArgs {
   const args: ServerFilterArgs = {};
   if (state.types.length > 0) args.types = state.types;
+  if (state.creditPools.length > 0) args.creditPools = state.creditPools;
+  if (state.billingTypes.length > 0) args.billingTypes = state.billingTypes;
+  const trimmedSearch = state.search.trim();
+  if (trimmedSearch.length > 0) args.q = trimmedSearch;
   if (state.dateRange) {
     args.from = state.dateRange.from;
     args.to = state.dateRange.to;

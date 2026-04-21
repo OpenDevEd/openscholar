@@ -117,7 +117,11 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useProtectedPaginatedQuery } from "@/lib/auth/use-auth-query";
+import {
+  useProtectedPaginatedQuery,
+  useProtectedQuery,
+} from "@/lib/auth/use-auth-query";
+import { createEnrichmentCache } from "@/lib/billing/transactions/enrichment-cache";
 import { buildFilterPredicate, isFilterActive } from "@/lib/billing/transactions/filters";
 import {
   partitionByGroup,
@@ -163,6 +167,9 @@ const EXPORT_PAGE_SIZE = 500;
 type ListTransactionsPage = FunctionReturnType<
   typeof api.credits.queries.listTransactionsPaginated
 >;
+type ListTransactionsRawPage = FunctionReturnType<
+  typeof api.credits.queries.listTransactionsPaginatedRaw
+>;
 
 interface Props {
   jobId?: Id<"extractionJobs">;
@@ -178,8 +185,15 @@ function summarize(rows: readonly TransactionViewModel[]): TransactionsSummary {
   return { in: inAmount, out: outAmount, net: inAmount - outAmount };
 }
 
-function bumpCount(target: Record<string, number>, key: string) {
-  target[key] = (target[key] ?? 0) + 1;
+function foldFacetCounts(
+  facet: { type: Record<string, number>; creditPool: Record<string, number>; billingType: Record<string, number> } | null | undefined,
+): Record<string, number> {
+  if (!facet) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(facet.type)) out[`type:${k}`] = v;
+  for (const [k, v] of Object.entries(facet.creditPool)) out[`creditPool:${k}`] = v;
+  for (const [k, v] of Object.entries(facet.billingType)) out[`billingType:${k}`] = v;
+  return out;
 }
 
 function RowList({
@@ -278,30 +292,117 @@ function TransactionsPanelClientInner({ jobId }: Props) {
     });
   }, []);
 
-  const fetchAll = useCallback(async (): Promise<TransactionViewModel[]> => {
-    const collected: TransactionViewModel[] = [];
-    let cursor: string | null = null;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const page: ListTransactionsPage = await convex.query(
-        api.credits.queries.listTransactionsPaginated,
-        {
-          paginationOpts: { numItems: EXPORT_PAGE_SIZE, cursor },
-          jobId,
-        },
-      );
-      for (const doc of page.page) collected.push(toViewModel(doc));
-      if (page.isDone) break;
-      cursor = page.continueCursor;
-    }
-    return collected;
-  }, [convex, jobId]);
+  const fetchAll = useCallback(
+    async (opts?: {
+      signal?: AbortSignal;
+      applyCurrentFilters?: boolean;
+    }): Promise<TransactionViewModel[]> => {
+      const cache = createEnrichmentCache();
+      const collected: TransactionViewModel[] = [];
+      const applyFilters = opts?.applyCurrentFilters ?? false;
+      const filterArgs = applyFilters
+        ? {
+            jobId,
+            types: state.types.length > 0 ? state.types : undefined,
+            creditPools:
+              state.creditPools.length > 0 ? state.creditPools : undefined,
+            billingTypes:
+              state.billingTypes.length > 0 ? state.billingTypes : undefined,
+            q: deferredQuery.trim().length > 0 ? deferredQuery.trim() : undefined,
+            from: state.from ? state.from.getTime() : undefined,
+            to: state.to ? state.to.getTime() : undefined,
+          }
+        : { jobId };
+
+      let cursor: string | null = null;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        if (opts?.signal?.aborted) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+        const page: ListTransactionsRawPage = await convex.query(
+          api.credits.queries.listTransactionsPaginatedRaw,
+          {
+            paginationOpts: { numItems: EXPORT_PAGE_SIZE, cursor },
+            ...filterArgs,
+          },
+        );
+
+        // Pull out ids we haven't resolved yet on this run.
+        const paperIdsOnPage = new Set<Id<"extractionPapers">>();
+        const openalexIdsOnPage = new Set<string>();
+        const jobIdsOnPage = new Set<Id<"extractionJobs">>();
+        for (const row of page.page) {
+          if (row.paperId) paperIdsOnPage.add(row.paperId);
+          else {
+            const openalexId = row.metadata?.openalexId;
+            if (openalexId) openalexIdsOnPage.add(openalexId);
+          }
+          if (row.jobId) jobIdsOnPage.add(row.jobId);
+        }
+        const unresolved = cache.selectUnresolved({
+          paperIds: paperIdsOnPage,
+          openalexIds: openalexIdsOnPage,
+          jobIds: jobIdsOnPage,
+        });
+
+        if (
+          unresolved.paperIds.length > 0 ||
+          unresolved.openalexIds.length > 0 ||
+          unresolved.jobIds.length > 0
+        ) {
+          if (opts?.signal?.aborted) {
+            throw new DOMException("Aborted", "AbortError");
+          }
+          const resolved = await convex.query(
+            api.credits.queries.resolveTransactionEnrichments,
+            unresolved,
+          );
+          for (const id of unresolved.paperIds) {
+            const title = resolved.paperTitleById[id];
+            if (title !== undefined) cache.recordPaperResolved(id, title);
+            else cache.recordPaperNotFound(id);
+          }
+          for (const oid of unresolved.openalexIds) {
+            const title = resolved.paperTitleByOpenalex[oid];
+            if (title !== undefined)
+              cache.recordPaperByOpenalexResolved(oid, title);
+            else cache.recordPaperByOpenalexNotFound(oid);
+          }
+          for (const id of unresolved.jobIds) {
+            const name = resolved.jobNameById[id];
+            if (name !== undefined) cache.recordJobResolved(id, name);
+            else cache.recordJobNotFound(id);
+          }
+        }
+
+        for (const doc of page.page) {
+          const paperTitle =
+            (doc.paperId ? cache.getPaperTitle(doc.paperId) : null) ??
+            (doc.metadata?.openalexId
+              ? cache.getPaperTitleByOpenalex(doc.metadata.openalexId)
+              : null) ??
+            null;
+          const jobName = doc.jobId ? (cache.getJobName(doc.jobId) ?? null) : null;
+          collected.push(toViewModel({ ...doc, paperTitle, jobName }));
+        }
+
+        if (page.isDone) break;
+        cursor = page.continueCursor;
+      }
+      return collected;
+    },
+    [convex, jobId, state, deferredQuery],
+  );
 
   const paginated = useProtectedPaginatedQuery(
     api.credits.queries.listTransactionsPaginated,
     {
       jobId,
       types: state.types.length > 0 ? state.types : undefined,
+      creditPools: state.creditPools.length > 0 ? state.creditPools : undefined,
+      billingTypes: state.billingTypes.length > 0 ? state.billingTypes : undefined,
+      q: deferredQuery.trim().length > 0 ? deferredQuery.trim() : undefined,
       from: state.from ? state.from.getTime() : undefined,
       to: state.to ? state.to.getTime() : undefined,
     },
@@ -313,15 +414,18 @@ function TransactionsPanelClientInner({ jobId }: Props) {
     [paginated.results],
   );
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const row of baseRows) {
-      bumpCount(c, `type:${row.type}`);
-      bumpCount(c, `creditPool:${row.creditType}`);
-      if (row.billingType) bumpCount(c, `billingType:${row.billingType}`);
-    }
-    return c;
-  }, [baseRows]);
+  const facetCounts = useProtectedQuery(
+    api.credits.queries.getTransactionFacetCounts,
+    {
+      from: state.from ? state.from.getTime() : undefined,
+      to: state.to ? state.to.getTime() : undefined,
+    },
+  );
+
+  const counts = useMemo(
+    () => foldFacetCounts(facetCounts.data),
+    [facetCounts.data],
+  );
 
   const filteredRows = useMemo(() => {
     const predicate = buildFilterPredicate({

@@ -100,7 +100,7 @@ export const screenPaperAction = internalAction({
       const screeningResult: ScreeningResultData = await withUserCreditsBatch<ScreeningResultData>(
         ctx,
         job.userId as Id<"users">,
-        `Bulk screening (paper ${result.openalexId})`,
+        `Bulk screening`,
         async (_pricing) => {
           const model = await getModel();
           const paperId = String(args.resultId);
@@ -154,7 +154,11 @@ export const screenPaperAction = internalAction({
             totalUsage,
             trackingEntries,
           };
-        }
+        },
+        {
+          billingType: "screening",
+          metadata: { openalexId: result.openalexId },
+        },
       );
 
       // 6. Encode responses for Convex storage (ASCII-safe keys)

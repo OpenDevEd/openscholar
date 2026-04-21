@@ -26,4 +26,11 @@ export function setupAggregates<
   registerAggregate(ht, "resultAnsweredAgg");
   registerAggregate(ht, "resultConfidenceAgg");
   registerAggregate(ht, "creditsAgg");
+  // Billing-txn facet-count aggregates (plans/billing-transactions-perf/01).
+  // Registered here because every extraction mutation transitively invokes
+  // deductCredits, which writes to creditTransactions and therefore
+  // triggers recordTransactionCounters.
+  registerAggregate(ht, "txnTypeAgg");
+  registerAggregate(ht, "txnCreditPoolAgg");
+  registerAggregate(ht, "txnBillingTypeAgg");
 }

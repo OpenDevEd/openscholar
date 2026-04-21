@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
+import { setupTransactionAggregates } from "../../credits/aggregates.test-support";
 
 import { parseAndValidateRequest, convertToAISdkParams, normalizeSchemaForStrictMode } from "./parseRequest";
 import {
@@ -1710,6 +1711,7 @@ describe("buildReasoningProviderOptions", () => {
 describe("gateway integration (data layer)", () => {
   it("full pipeline: key lookup → balance check → model lookup → credit deduction", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId, creditsId } = await seedUserWithCredits(t, 500, 200);
     await seedWalletKey(t, userId, { hashedKey: "gw_pipeline_hash", appName: "PipelineApp" });
     await seedModel(t, {
@@ -1774,6 +1776,7 @@ describe("gateway integration (data layer)", () => {
 
   it("rejects deduction when balance is insufficient", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId } = await seedUserWithCredits(t, 5, 0);
     await seedWalletKey(t, userId, { hashedKey: "gw_insufficient" });
 
@@ -1795,6 +1798,7 @@ describe("gateway integration (data layer)", () => {
 
   it("revoked key cannot proceed through pipeline", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUser(t);
     const walletKeyId = await seedWalletKey(t, userId, { hashedKey: "gw_revoked_hash" });
 
@@ -1813,6 +1817,7 @@ describe("gateway integration (data layer)", () => {
 
   it("non-served model is rejected", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     await seedModel(t, { modelId: "openai/deprecated-model", isServed: false });
 
     const model = await t.query(internal.models.queries.getServedByModelId, {
@@ -1823,6 +1828,7 @@ describe("gateway integration (data layer)", () => {
 
   it("deduction with reasoning token metadata records correctly", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId, creditsId } = await seedUserWithCredits(t, 1000, 0);
 
     await t.mutation(internal.credits.internal.deductCredits, {

@@ -23,6 +23,8 @@ import {
   convertCreditsToAmountCents,
   getCreditsPerUsd,
 } from "../lib/creditTopups";
+import { recordTransactionCounters } from "./aggregates";
+import { computeSearchableText } from "../../lib/billing/transactions/search-text";
 
 
 type GrantMutationOutcome =
@@ -788,14 +790,26 @@ export const grantMonthlyCredits = internalMutation({
       lastUpdatedAt: now,
     });
 
-    await ctx.db.insert("creditTransactions", {
+    const monthlyGrantDescription = `Monthly credit grant (${subscription.plan} plan) - ${actualGranted}/${subscription.creditsPerMonth} credits granted`;
+    const monthlyGrantTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       type: "grant",
       creditType: "free",
       amount: actualGranted,
       balanceAfter: newFreeBalance,
-      description: `Monthly credit grant (${subscription.plan} plan) - ${actualGranted}/${subscription.creditsPerMonth} credits granted`,
+      description: monthlyGrantDescription,
       stripeInvoiceId: args.stripeInvoiceId,
+      createdAt: now,
+      searchableText: computeSearchableText({
+        description: monthlyGrantDescription,
+        type: "grant",
+      }),
+    });
+    await recordTransactionCounters(ctx, {
+      _id: monthlyGrantTxId,
+      creditsId: credits._id,
+      type: "grant",
+      creditType: "free",
       createdAt: now,
     });
 
@@ -936,20 +950,32 @@ export const grantUpgradeProRataCredits = internalMutation({
       lastUpdatedAt: now,
     });
 
-    await ctx.db.insert("creditTransactions", {
+    const prorataGrantDescription = `Upgrade pro-rata credit grant (${args.fromPlan} → ${args.toPlan}) - ${actualGranted} credits`;
+    const prorataGrantTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       userId: args.userId,
       type: "grant",
       creditType: "free",
       amount: actualGranted,
       balanceAfter: cappedGrant.newFreeBalance,
-      description: `Upgrade pro-rata credit grant (${args.fromPlan} → ${args.toPlan}) - ${actualGranted} credits`,
+      description: prorataGrantDescription,
       metadata: {
         grantType: "upgrade_prorate",
         fromPlan: args.fromPlan,
         toPlan: args.toPlan,
         stripeSubscriptionId: args.stripeSubscriptionId,
       },
+      createdAt: now,
+      searchableText: computeSearchableText({
+        description: prorataGrantDescription,
+        type: "grant",
+      }),
+    });
+    await recordTransactionCounters(ctx, {
+      _id: prorataGrantTxId,
+      creditsId: credits._id,
+      type: "grant",
+      creditType: "free",
       createdAt: now,
     });
 
@@ -1114,17 +1140,30 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
       appliedCreditsPerUsd: String(metadataCreditsPerUsd),
     };
 
-    await ctx.db.insert("creditTransactions", {
+    const purchaseFromIntentDescription = `Credit top-up purchase (${creditsToGrant} credits)`;
+    const purchaseFromIntentTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       userId,
       type: "purchase",
       creditType: "paid",
       amount: creditsToGrant,
       balanceAfter: newPaidBalance,
-      description: `Credit top-up purchase (${creditsToGrant} credits)`,
+      description: purchaseFromIntentDescription,
       metadata: transactionMetadata,
       stripePaymentIntentId: args.stripePaymentIntentId,
       stripeChargeId: args.stripeChargeId,
+      createdAt: now,
+      searchableText: computeSearchableText({
+        description: purchaseFromIntentDescription,
+        metadata: transactionMetadata,
+        type: "purchase",
+      }),
+    });
+    await recordTransactionCounters(ctx, {
+      _id: purchaseFromIntentTxId,
+      creditsId: credits._id,
+      type: "purchase",
+      creditType: "paid",
       createdAt: now,
     });
 
@@ -1257,19 +1296,32 @@ export const grantPurchasedCreditsFromCheckout = internalMutation({
       ...(isNoCost ? { noCostOrder: "true" } : {}),
     };
 
-    await ctx.db.insert("creditTransactions", {
+    const purchaseFromCheckoutDescription = isNoCost
+      ? `Credit top-up (${creditsToGrant} credits, no-cost order)`
+      : `Credit top-up purchase (${creditsToGrant} credits)`;
+    const purchaseFromCheckoutTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       userId,
       type: "purchase",
       creditType: "paid",
       amount: creditsToGrant,
       balanceAfter: newPaidBalance,
-      description: isNoCost
-        ? `Credit top-up (${creditsToGrant} credits, no-cost order)`
-        : `Credit top-up purchase (${creditsToGrant} credits)`,
+      description: purchaseFromCheckoutDescription,
       metadata: transactionMetadata,
       stripeCheckoutSessionId: args.stripeCheckoutSessionId,
       stripePaymentIntentId: args.stripePaymentIntentId,
+      createdAt: now,
+      searchableText: computeSearchableText({
+        description: purchaseFromCheckoutDescription,
+        metadata: transactionMetadata,
+        type: "purchase",
+      }),
+    });
+    await recordTransactionCounters(ctx, {
+      _id: purchaseFromCheckoutTxId,
+      creditsId: credits._id,
+      type: "purchase",
+      creditType: "paid",
       createdAt: now,
     });
 
@@ -1365,22 +1417,36 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
       lastUpdatedAt: now,
     });
 
-    await ctx.db.insert("creditTransactions", {
+    const refundReversalDescription = `Credit top-up refund reversal (${reversalDelta} credits)`;
+    const refundReversalMetadata = {
+      refundedAmountCents: String(refundedAmountCents),
+      purchaseAmountCents: String(purchaseAmountCents),
+      targetReversedCredits: String(targetReversedCredits),
+      alreadyReversedCredits: String(alreadyReversedCredits),
+    };
+    const refundReversalTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       userId: purchase.userId,
       type: "refund",
       creditType: "paid",
       amount: -reversalDelta,
       balanceAfter: newPaidBalance,
-      description: `Credit top-up refund reversal (${reversalDelta} credits)`,
-      metadata: {
-        refundedAmountCents: String(refundedAmountCents),
-        purchaseAmountCents: String(purchaseAmountCents),
-        targetReversedCredits: String(targetReversedCredits),
-        alreadyReversedCredits: String(alreadyReversedCredits),
-      },
+      description: refundReversalDescription,
+      metadata: refundReversalMetadata,
       stripePaymentIntentId: args.stripePaymentIntentId,
       stripeChargeId: args.stripeChargeId,
+      createdAt: now,
+      searchableText: computeSearchableText({
+        description: refundReversalDescription,
+        metadata: refundReversalMetadata,
+        type: "refund",
+      }),
+    });
+    await recordTransactionCounters(ctx, {
+      _id: refundReversalTxId,
+      creditsId: credits._id,
+      type: "refund",
+      creditType: "paid",
       createdAt: now,
     });
 
@@ -1439,6 +1505,9 @@ const billingTypeValidator = v.union(
   v.literal("embedding"),
   v.literal("screening"),
   v.literal("chat"),
+  v.literal("search"),
+  v.literal("translation"),
+  v.literal("wallet_api"),
 );
 
 export const deductCredits = internalMutation({
@@ -1493,10 +1562,17 @@ export const deductCredits = internalMutation({
       billingType: args.billingType,
     };
 
+    const usageSearchableText = computeSearchableText({
+      description: args.description,
+      metadata: args.metadata,
+      billingType: args.billingType,
+      type: "usage",
+    });
+
     if (newFreeBalance >= amountToDeduct) {
       newFreeBalance -= amountToDeduct;
 
-      await ctx.db.insert("creditTransactions", {
+      const freeOnlyTxId = await ctx.db.insert("creditTransactions", {
         creditsId: credits._id,
         userId: args.userId,
         type: "usage",
@@ -1507,13 +1583,22 @@ export const deductCredits = internalMutation({
         metadata: args.metadata,
         ...scope,
         createdAt: now,
+        searchableText: usageSearchableText,
+      });
+      await recordTransactionCounters(ctx, {
+        _id: freeOnlyTxId,
+        creditsId: credits._id,
+        type: "usage",
+        creditType: "free",
+        billingType: args.billingType,
+        createdAt: now,
       });
     } else {
       const freeUsed = newFreeBalance;
       newFreeBalance = 0;
 
       if (freeUsed > 0) {
-        await ctx.db.insert("creditTransactions", {
+        const freeSpilloverTxId = await ctx.db.insert("creditTransactions", {
           creditsId: credits._id,
           userId: args.userId,
           type: "usage",
@@ -1524,13 +1609,22 @@ export const deductCredits = internalMutation({
           metadata: args.metadata,
           ...scope,
           createdAt: now,
+          searchableText: usageSearchableText,
+        });
+        await recordTransactionCounters(ctx, {
+          _id: freeSpilloverTxId,
+          creditsId: credits._id,
+          type: "usage",
+          creditType: "free",
+          billingType: args.billingType,
+          createdAt: now,
         });
       }
 
       const paidNeeded = amountToDeduct - freeUsed;
       newPaidBalance -= paidNeeded;
 
-      await ctx.db.insert("creditTransactions", {
+      const paidSpilloverTxId = await ctx.db.insert("creditTransactions", {
         creditsId: credits._id,
         userId: args.userId,
         type: "usage",
@@ -1540,6 +1634,15 @@ export const deductCredits = internalMutation({
         description: args.description,
         metadata: args.metadata,
         ...scope,
+        createdAt: now,
+        searchableText: usageSearchableText,
+      });
+      await recordTransactionCounters(ctx, {
+        _id: paidSpilloverTxId,
+        creditsId: credits._id,
+        type: "usage",
+        creditType: "paid",
+        billingType: args.billingType,
         createdAt: now,
       });
     }
@@ -1611,13 +1714,24 @@ export const addCredits = internalMutation({
       lastUpdatedAt: now,
     });
 
-    await ctx.db.insert("creditTransactions", {
+    const addCreditsTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       type: args.type,
       creditType: args.creditType,
       amount: actualAdded,
       balanceAfter: args.creditType === "free" ? newFreeBalance : newPaidBalance,
       description: args.description,
+      createdAt: now,
+      searchableText: computeSearchableText({
+        description: args.description,
+        type: args.type,
+      }),
+    });
+    await recordTransactionCounters(ctx, {
+      _id: addCreditsTxId,
+      creditsId: credits._id,
+      type: args.type,
+      creditType: args.creditType,
       createdAt: now,
     });
 

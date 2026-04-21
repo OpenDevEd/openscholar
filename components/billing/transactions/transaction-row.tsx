@@ -1,11 +1,19 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, type ReactNode } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { TransactionViewModel } from "@/lib/billing/transactions/transaction-view-model";
-import type { BillingType } from "@/lib/billing/transactions/presentation";
+import {
+  renderTitle,
+  resolveTitle,
+  type Translator,
+} from "@/lib/billing/transactions/row-title";
+import {
+  resolveSecondaryParts,
+  type SecondaryPart,
+} from "@/lib/billing/transactions/row-secondary";
 import { TransactionIcon } from "./transaction-icon";
 import { TransactionAmount } from "./transaction-amount";
 import { TransactionStatusPill } from "./transaction-status-pill";
@@ -28,15 +36,15 @@ function TransactionRowImpl({
   isActive = false,
   onClick,
 }: TransactionRowProps) {
-  const t = useTranslations("billingPage.transactions");
-  const tType = useTranslations("billingPage.transactions.type");
-  const tBilling = useTranslations("extraction.cost.breakdown");
+  const tRaw = useTranslations("billingPage.transactions");
+  const t = tRaw as unknown as Translator;
   const format = useFormatter();
 
   const status = resolveStatus(row);
-  const title = row.description ?? tType(row.type);
-  const billingLabel = row.billingType ? tBilling(billingKey(row.billingType)) : null;
-  const secondary = buildSecondaryLine(row, format, billingLabel);
+  const titleResolution = resolveTitle(row);
+  const title = renderTitle(titleResolution, t);
+  const secondaryParts = resolveSecondaryParts(row);
+  const secondaryText = buildSecondaryText(row, secondaryParts, format, t);
 
   const handleClick = useCallback(() => onClick?.(row), [onClick, row]);
 
@@ -53,31 +61,38 @@ function TransactionRowImpl({
       data-txn-billing-type={row.billingType ?? "none"}
       data-txn-status={status}
       data-txn-density={density}
+      data-txn-title-source={titleResolution.source}
       data-txn-active={isActive || undefined}
       onClick={handleClick}
       className={cn(
         "group relative flex cursor-pointer items-center gap-3 border-l-2 px-3 transition-colors",
         density === "compact" && "py-2",
         density === "comfortable" && "py-2.5",
-        density === "spacious" && "py-3",
+        density === "spacious" && "py-3.5",
         status === "failed" && "border-l-destructive",
         status === "expired" && "border-l-muted-foreground/40",
         status === "pending" && "border-l-primary/60",
         status === "routine" && "border-l-transparent",
-        "hover:bg-muted/40",
-        isActive && "bg-muted/60 ring-1 ring-ring ring-inset",
+        "hover:bg-muted/30",
+        isActive && "bg-muted/50 ring-1 ring-ring ring-inset",
       )}
-      aria-label={buildAriaLabel(row, format)}
+      aria-label={buildAriaLabel(row, title, format, t)}
     >
       <TransactionIcon type={row.type} billingType={row.billingType} />
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="line-clamp-1 text-[13px] font-semibold leading-snug text-foreground">
+        <p
+          className="line-clamp-1 text-[13px] font-semibold leading-snug text-foreground"
+          data-txn-title=""
+        >
           {title}
         </p>
         {density !== "compact" && (
-          <p className="truncate text-[11px] text-muted-foreground">
-            {secondary}
+          <p
+            className="truncate text-[11px] leading-snug text-muted-foreground"
+            data-txn-secondary=""
+          >
+            {secondaryText}
           </p>
         )}
       </div>
@@ -92,13 +107,13 @@ function TransactionRowImpl({
         balanceAfter={row.balanceAfter}
       />
 
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <div className="flex shrink-0 items-center gap-0.5 text-muted-foreground/50 opacity-60 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
         {row.jobId && (
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-            aria-label={t("actions.openJob")}
+            className="h-6 w-6 p-0 hover:text-foreground"
+            aria-label={tRaw("actions.openJob")}
             asChild
             onClick={(e) => e.stopPropagation()}
           >
@@ -126,36 +141,37 @@ function resolveStatus(row: TransactionViewModel): RowStatus {
   return "routine";
 }
 
-type BillingLabelKey = "indexing" | "extraction" | "screening" | "chat";
-
-function buildSecondaryLine(
-  row: TransactionViewModel,
-  format: ReturnType<typeof useFormatter>,
-  billingLabel: string | null,
-): string {
-  const parts: string[] = [];
-  if (billingLabel) parts.push(billingLabel);
-  parts.push(
-    format.dateTime(new Date(row.createdAt), {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }),
-  );
-  return parts.join(" · ");
+function renderSecondaryPart(part: SecondaryPart, t: Translator): string {
+  if (part.kind === "literal") return part.text;
+  return t(part.key, part.values);
 }
 
-function billingKey(billingType: BillingType): BillingLabelKey {
-  if (billingType === "embedding") return "indexing";
-  if (billingType === "extraction_llm") return "extraction";
-  return billingType;
+function buildSecondaryText(
+  row: TransactionViewModel,
+  parts: readonly SecondaryPart[],
+  format: ReturnType<typeof useFormatter>,
+  t: Translator,
+): ReactNode {
+  const pieces: string[] = parts
+    .map((p) => renderSecondaryPart(p, t).trim())
+    .filter((s) => s.length > 0);
+  const when = format.dateTime(new Date(row.createdAt), {
+    day: "numeric",
+    month: "short",
+  });
+  if (when && when.length > 0) pieces.push(when);
+  return pieces.join(" · ");
 }
 
 function buildAriaLabel(
   row: TransactionViewModel,
+  title: string,
   format: ReturnType<typeof useFormatter>,
+  t: Translator,
 ): string {
-  const sign = row.direction === "in" ? "credit" : "debit";
+  const sign = row.direction === "in" ? t("aria.credit") : t("aria.debit");
   const amt = format.number(row.amount);
   const date = format.dateTime(new Date(row.createdAt), { dateStyle: "medium" });
-  return `${row.type} ${sign} ${amt} credits, ${date}`;
+  const bal = format.number(row.balanceAfter);
+  return `${title}. ${sign} ${amt}. ${t("aria.balanceAfter", { balance: bal })}. ${date}.`;
 }

@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { setupTransactionAggregates } from "../credits/aggregates.test-support";
 
 /**
  * Plan-03 mid-run credits-exhaustion behaviour. Focuses on the
@@ -59,6 +60,7 @@ async function seedJob(
 describe("updateJobStatus — creditsExhausted transition", () => {
   it("flips an extracting job to creditsExhausted and stamps the structured error", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { jobId } = await seedJob(t, "extracting");
 
     await t.mutation(internal.extraction.mutations.results.updateJobStatus, {
@@ -80,6 +82,7 @@ describe("updateJobStatus — creditsExhausted transition", () => {
 
   it("is idempotent: a second creditsExhausted transition is a no-op (OCC race tolerated)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { jobId } = await seedJob(t, "extracting");
 
     await t.mutation(internal.extraction.mutations.results.updateJobStatus, {
@@ -113,6 +116,7 @@ describe("updateJobStatus — creditsExhausted transition", () => {
 
   it("allows resume back to extracting from creditsExhausted (plan-06 precondition)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { jobId } = await seedJob(t, "creditsExhausted");
 
     await t.mutation(internal.extraction.mutations.results.updateJobStatus, {
@@ -126,6 +130,7 @@ describe("updateJobStatus — creditsExhausted transition", () => {
 
   it("rejects illegal resume: creditsExhausted → downloading_pdfs is not a valid transition", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { jobId } = await seedJob(t, "creditsExhausted");
 
     await expect(
@@ -138,6 +143,7 @@ describe("updateJobStatus — creditsExhausted transition", () => {
 
   it("treats a terminal job as sticky — creditsExhausted cannot roll back a completed job", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { jobId } = await seedJob(t, "completed");
 
     await t.mutation(internal.extraction.mutations.results.updateJobStatus, {

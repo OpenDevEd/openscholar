@@ -31,6 +31,11 @@ function row(
     stripeCheckoutSessionId: partial.stripeCheckoutSessionId ?? null,
     metadata: partial.metadata ?? {},
     hasStripe: partial.hasStripe ?? false,
+    paperTitle: partial.paperTitle ?? null,
+    jobName: partial.jobName ?? null,
+    openalexRef: partial.openalexRef ?? null,
+    modelLabel: partial.modelLabel ?? null,
+    tokenSummary: partial.tokenSummary ?? null,
   };
 }
 

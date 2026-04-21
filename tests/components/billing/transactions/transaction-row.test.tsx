@@ -4,7 +4,12 @@ import { TransactionRow } from "@/components/billing/transactions/transaction-ro
 import type { TransactionViewModel } from "@/lib/billing/transactions/transaction-view-model";
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () =>
+    (key: string, values?: Record<string, string | number>) => {
+      if (!values) return key;
+      const suffix = Object.values(values).join(",");
+      return `${key}|${suffix}`;
+    },
   useFormatter: () => ({
     number: (n: number) => String(n),
     dateTime: (d: Date) => d.toISOString().slice(0, 10),
@@ -47,6 +52,11 @@ function makeRow(overrides: Partial<TransactionViewModel> = {}): TransactionView
     stripeCheckoutSessionId: null,
     metadata: {},
     hasStripe: false,
+    paperTitle: null,
+    jobName: null,
+    openalexRef: null,
+    modelLabel: null,
+    tokenSummary: null,
     ...overrides,
   };
 }
@@ -83,33 +93,84 @@ describe("TransactionRow", () => {
     expect(screen.getByRole("listitem").id).toBe("txn-row-tx-abc");
   });
 
-  it("carries an aria-label summarizing the transaction", () => {
+  it("carries an aria-label summarizing amount, direction, balance-after, and date", () => {
     render(<TransactionRow row={makeRow({ type: "purchase", direction: "in" })} density="comfortable" />);
     const label = screen.getByRole("listitem").getAttribute("aria-label");
-    expect(label).toMatch(/purchase/);
-    expect(label).toMatch(/credit/);
+    // mocked t() returns "aria.credit" for direction='in' and "aria.balanceAfter|5000"
+    expect(label).toMatch(/aria\.credit/);
     expect(label).toMatch(/1240/);
+    expect(label).toMatch(/aria\.balanceAfter/);
+    expect(label).toMatch(/5000/);
+  });
+
+  it("exposes data-txn-title-source so tests can pin the title branch without reading CSS", () => {
+    const { rerender } = render(
+      <TransactionRow
+        row={makeRow({
+          type: "usage",
+          billingType: "screening",
+          paperTitle: "Attention Is All You Need",
+        })}
+        density="comfortable"
+      />,
+    );
+    expect(screen.getByRole("listitem").getAttribute("data-txn-title-source")).toBe(
+      "paper-title",
+    );
+    rerender(
+      <TransactionRow
+        row={makeRow({ type: "purchase", direction: "in" })}
+        density="comfortable"
+      />,
+    );
+    expect(screen.getByRole("listitem").getAttribute("data-txn-title-source")).toBe(
+      "purchase-packed",
+    );
+  });
+
+  it("renders the paperTitle as the primary title when present (screening usage)", () => {
+    const row = makeRow({
+      type: "usage",
+      billingType: "screening",
+      paperTitle: "Attention Is All You Need",
+    });
+    const { container } = render(<TransactionRow row={row} density="comfortable" />);
+    expect(container.querySelector("[data-txn-title]")?.textContent).toBe(
+      "Attention Is All You Need",
+    );
+  });
+
+  it("falls back to the packed type title when description / paperTitle are absent", () => {
+    const row = makeRow({
+      type: "purchase",
+      direction: "in",
+      description: null,
+      paperTitle: null,
+    });
+    const { container } = render(<TransactionRow row={row} density="comfortable" />);
+    expect(container.querySelector("[data-txn-title]")?.textContent).toMatch(
+      /titles\.paidCredits/,
+    );
   });
 
   it("omits the secondary line at density='compact'", () => {
     const row = makeRow({
       type: "usage",
       billingType: "embedding",
-      description: "Paper indexing",
     });
     const { container } = render(<TransactionRow row={row} density="compact" />);
-    expect(container.textContent).toContain("Paper indexing");
-    expect(container.textContent).not.toContain("indexing ·");
+    expect(container.querySelector("[data-txn-secondary]")).toBeNull();
   });
 
   it("renders the secondary line at density='comfortable'", () => {
     const row = makeRow({
       type: "usage",
       billingType: "embedding",
-      description: "Paper indexing",
     });
     const { container } = render(<TransactionRow row={row} density="comfortable" />);
-    expect(container.textContent).toContain("indexing");
+    const sec = container.querySelector("[data-txn-secondary]");
+    expect(sec).not.toBeNull();
+    expect(sec?.textContent).toMatch(/billingType\.embedding/);
   });
 
   it("fires onClick with the row when the user clicks the row", () => {

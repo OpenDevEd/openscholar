@@ -20,22 +20,13 @@ import {
   extractionJobValidator,
   extractionPaperValidator,
   extractionQuestionValidator,
+  jobStatusValidator,
   searchFiltersValidator,
 } from "../validators";
 
 export const getMyJobs = query({
   args: {
-    status: v.optional(
-      v.union(
-        v.literal("pending"),
-        v.literal("downloading_pdfs"),
-        v.literal("indexing"),
-        v.literal("extracting"),
-        v.literal("completed"),
-        v.literal("failed"),
-        v.literal("cancelled"),
-      ),
-    ),
+    status: v.optional(jobStatusValidator),
     mode: v.optional(
       v.union(v.literal("extraction"), v.literal("chat")),
     ),

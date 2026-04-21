@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
+import { setupTransactionAggregates } from "./aggregates.test-support";
 
 /**
  * Seed a user with a credits record at the specified balances.
@@ -42,6 +43,7 @@ describe("deductCredits", () => {
   describe("single deduction", () => {
     it("deducts from free balance first", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 100, 50);
 
       const newBalance = await t.mutation(
@@ -74,6 +76,7 @@ describe("deductCredits", () => {
 
     it("splits deduction across free and paid when free < amount", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 20, 80);
 
       const newBalance = await t.mutation(
@@ -111,6 +114,7 @@ describe("deductCredits", () => {
 
     it("throws INSUFFICIENT_CREDITS when balance is insufficient", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId } = await seedUserWithCredits(t, 10, 5);
 
       await expect(
@@ -124,6 +128,7 @@ describe("deductCredits", () => {
 
     it("deducts exact total balance leaving zero", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 30, 70);
 
       const newBalance = await t.mutation(
@@ -148,6 +153,7 @@ describe("deductCredits", () => {
 
     it("two sequential deductions leave correct remaining balance", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 100, 0);
 
       // First deduction: 60 from 100 free
@@ -173,6 +179,7 @@ describe("deductCredits", () => {
 
     it("second deduction fails when first exhausts balance", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 50, 0);
 
       // First deduction: takes all 50
@@ -206,6 +213,7 @@ describe("deductCredits", () => {
 
     it("OCC prevents negative balances under concurrent deductions", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 100, 0);
 
       // Fire 8 concurrent deductions of 30 each (total requested: 240, available: 100)
@@ -245,6 +253,7 @@ describe("deductCredits", () => {
 
     it("all deductions fail when each exceeds total balance", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 50, 0);
 
       // Fire 8 concurrent deductions of 60 each -- none can succeed (50 < 60)
@@ -269,6 +278,7 @@ describe("deductCredits", () => {
 
     it("concurrent deductions drain to zero without going negative", async () => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 100, 0);
 
       // Fire 10 concurrent deductions of 10 each -- exactly 10 should succeed

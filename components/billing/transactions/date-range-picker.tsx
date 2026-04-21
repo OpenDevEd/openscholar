@@ -93,7 +93,7 @@ export function DateRangePicker({ from, to, onChange }: Props) {
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-3">
         <div
-          className="flex flex-wrap gap-1 pb-2"
+          className="grid grid-cols-2 gap-1 pb-2"
           data-transactions-date-presets
         >
           {PRESETS.map((p) => (
@@ -101,7 +101,7 @@ export function DateRangePicker({ from, to, onChange }: Props) {
               key={p}
               variant="ghost"
               size="sm"
-              className="h-7 text-xs"
+              className="h-7 justify-start px-2 text-xs"
               onClick={() => applyPreset(p)}
               data-date-preset={p}
             >

@@ -78,6 +78,11 @@ const representative: TransactionViewModel = {
     reconciled: "true",
   },
   hasStripe: true,
+  paperTitle: null,
+  jobName: null,
+  openalexRef: null,
+  modelLabel: null,
+  tokenSummary: null,
 };
 
 const AXE_OPTIONS = {

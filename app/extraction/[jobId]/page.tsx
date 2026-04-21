@@ -6,6 +6,12 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Loader2,
   FileText,
@@ -656,120 +662,147 @@ export default function JobDetailPage() {
 
                     <span className="w-1 h-1 rounded-full bg-border" />
 
-                    <CostBadge jobId={jobId} compact />
-
-                    <Link
+                    <CostBadge
+                      jobId={jobId}
+                      compact
                       href={`/settings/billing?jobId=${jobId}`}
-                      className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                      data-transactions-link="view"
-                    >
-                      {tExtraction("cost.viewTransactions")}
-                    </Link>
+                    />
                   </motion.div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action buttons — icon-only inside a shadcn ButtonGroup.
+                  Accessible names live on aria-label + Tooltip so the
+                  interface stays scannable without giving up screen-reader
+                  clarity. Destructive actions keep the alert-dialog
+                  confirmation step. */}
               <motion.div
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
-                className="flex items-center gap-2 shrink-0"
+                className="shrink-0"
               >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDuplicate}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  {tJob('restart')}
-                </Button>
-
-                {isProcessing && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    data-action="pause"
-                    onClick={handlePause}
-                  >
-                    <Pause className="w-4 h-4 mr-2" />
-                    {tExtraction('pause.button')}
-                  </Button>
-                )}
-
-                {job.status === "paused" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    data-action="resume"
-                    onClick={handleResume}
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    {tExtraction('paused.resume')}
-                  </Button>
-                )}
-
-                {isProcessing && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                <ButtonGroup>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        size="icon-sm"
+                        onClick={handleDuplicate}
+                        aria-label={tJob('restart')}
                       >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        {tc('cancel')}
+                        <RefreshCw className="w-4 h-4" />
                       </Button>
-                    </AlertDialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{tJob('restart')}</TooltipContent>
+                  </Tooltip>
+
+                  {isProcessing && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          data-action="pause"
+                          onClick={handlePause}
+                          aria-label={tExtraction('pause.button')}
+                        >
+                          <Pause className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{tExtraction('pause.button')}</TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  {job.status === "paused" && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          data-action="resume"
+                          onClick={handleResume}
+                          aria-label={tExtraction('paused.resume')}
+                        >
+                          <Play className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{tExtraction('paused.resume')}</TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  {isProcessing && (
+                    <AlertDialog>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon-sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              aria-label={tc('cancel')}
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>{tc('cancel')}</TooltipContent>
+                      </Tooltip>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {tConfirm('cancelJobDescription')}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleCancel}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            {tConfirm('yesCancel')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+
+                  <AlertDialog>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            aria-label={tc('delete')}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>{tc('delete')}</TooltipContent>
+                    </Tooltip>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                        <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {tConfirm('cancelJobDescription')}
+                          {tConfirm('deleteJobDescription')}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                        <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={handleCancel}
+                          onClick={handleDelete}
                           className="bg-destructive hover:bg-destructive/90"
                         >
-                          {tConfirm('yesCancel')}
+                          {tConfirm('yesDelete')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                )}
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      {tc('delete')}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {tConfirm('deleteJobDescription')}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDelete}
-                        className="bg-destructive hover:bg-destructive/90"
-                      >
-                        {tConfirm('yesDelete')}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                </ButtonGroup>
               </motion.div>
             </div>
           </div>

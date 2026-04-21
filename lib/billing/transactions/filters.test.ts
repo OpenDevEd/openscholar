@@ -29,6 +29,11 @@ function makeRow(overrides: Partial<TransactionViewModel> = {}): TransactionView
     stripeCheckoutSessionId: null,
     metadata: {},
     hasStripe: false,
+    paperTitle: null,
+    jobName: null,
+    openalexRef: null,
+    modelLabel: null,
+    tokenSummary: null,
     ...overrides,
   };
 }
@@ -198,13 +203,28 @@ describe("toServerFilterArgs", () => {
     });
   });
 
-  it("skips client-only axes (creditPools, billingTypes, search) — those are post-filtered", () => {
+  it("projects creditPools, billingTypes, and search onto server args (plan-perf-02 widening)", () => {
     const state: FilterState = {
       types: [],
       creditPools: ["free"],
       billingTypes: ["screening"],
       dateRange: null,
       search: "hello",
+    };
+    expect(toServerFilterArgs(state)).toEqual({
+      creditPools: ["free"],
+      billingTypes: ["screening"],
+      q: "hello",
+    });
+  });
+
+  it("trims whitespace-only search to empty, omits from args", () => {
+    const state: FilterState = {
+      types: [],
+      creditPools: [],
+      billingTypes: [],
+      dateRange: null,
+      search: "   ",
     };
     expect(toServerFilterArgs(state)).toEqual({});
   });

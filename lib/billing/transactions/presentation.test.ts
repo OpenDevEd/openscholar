@@ -3,15 +3,20 @@ import {
   CreditCard,
   Gift,
   Hourglass,
+  Languages,
   ListChecks,
   MessageSquare,
   Network,
+  Search,
   Sparkles,
   Undo2,
+  Wallet,
   Zap,
 } from "lucide-react";
 import {
+  BILLING_TYPES,
   BILLING_TYPE_ICON,
+  TRANSACTION_TYPES,
   TYPE_PRESENTATION,
   presentationFor,
 } from "./presentation";
@@ -80,5 +85,47 @@ describe("BILLING_TYPE_ICON", () => {
 
   it("chat → MessageSquare", () => {
     expect(BILLING_TYPE_ICON.chat).toBe(MessageSquare);
+  });
+
+  it("search → Search", () => {
+    expect(BILLING_TYPE_ICON.search).toBe(Search);
+  });
+
+  it("translation → Languages", () => {
+    expect(BILLING_TYPE_ICON.translation).toBe(Languages);
+  });
+
+  it("wallet_api → Wallet", () => {
+    expect(BILLING_TYPE_ICON.wallet_api).toBe(Wallet);
+  });
+
+  it("BILLING_TYPE_ICON covers every BILLING_TYPES literal exactly once", () => {
+    expect(Object.keys(BILLING_TYPE_ICON).sort()).toEqual(
+      [...BILLING_TYPES].sort(),
+    );
+  });
+});
+
+describe("constant arrays", () => {
+  it("TRANSACTION_TYPES is the canonical 5-element list", () => {
+    expect([...TRANSACTION_TYPES].sort()).toEqual([
+      "expiry",
+      "grant",
+      "purchase",
+      "refund",
+      "usage",
+    ]);
+  });
+
+  it("BILLING_TYPES includes every ledger literal the schema accepts", () => {
+    expect([...BILLING_TYPES].sort()).toEqual([
+      "chat",
+      "embedding",
+      "extraction_llm",
+      "screening",
+      "search",
+      "translation",
+      "wallet_api",
+    ]);
   });
 });

@@ -7,21 +7,20 @@ import {
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
+import {
+  BILLING_TYPES,
+  CREDIT_TYPES,
+  TRANSACTION_TYPES,
+  type BillingType,
+  type CreditType,
+  type TransactionType,
+} from "@/lib/billing/transactions/presentation";
 
-export const TRANSACTION_TYPES = [
-  "purchase",
-  "usage",
-  "grant",
-  "refund",
-  "expiry",
-] as const;
-export const CREDIT_POOLS = ["free", "paid"] as const;
-export const BILLING_TYPES = [
-  "extraction_llm",
-  "embedding",
-  "screening",
-  "chat",
-] as const;
+export { BILLING_TYPES, CREDIT_TYPES as CREDIT_POOLS, TRANSACTION_TYPES };
+export type TransactionTypeParam = TransactionType;
+export type CreditPoolParam = CreditType;
+export type BillingTypeParam = BillingType;
+
 export const SORT_FIELDS = ["date", "amount", "type"] as const;
 export const SORT_DIRECTIONS = ["asc", "desc"] as const;
 export const DENSITIES = ["compact", "comfortable", "spacious"] as const;
@@ -33,9 +32,6 @@ export const VIEW_TABS = [
   "failed",
 ] as const;
 
-export type TransactionTypeParam = (typeof TRANSACTION_TYPES)[number];
-export type CreditPoolParam = (typeof CREDIT_POOLS)[number];
-export type BillingTypeParam = (typeof BILLING_TYPES)[number];
 export type SortField = (typeof SORT_FIELDS)[number];
 export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 export type Density = (typeof DENSITIES)[number];
@@ -47,7 +43,7 @@ export const transactionsStateSchema = {
   q: parseAsString.withDefault(""),
 
   types: parseAsArrayOf(parseAsStringLiteral(TRANSACTION_TYPES)).withDefault([]),
-  creditPools: parseAsArrayOf(parseAsStringLiteral(CREDIT_POOLS)).withDefault([]),
+  creditPools: parseAsArrayOf(parseAsStringLiteral(CREDIT_TYPES)).withDefault([]),
   billingTypes: parseAsArrayOf(parseAsStringLiteral(BILLING_TYPES)).withDefault([]),
   from: parseAsIsoDateTime,
   to: parseAsIsoDateTime,

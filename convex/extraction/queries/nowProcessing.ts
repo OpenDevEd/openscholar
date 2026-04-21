@@ -8,6 +8,14 @@
  * on every tick. Indexed via `extractionPapers.by_job_status` — no
  * per-query table scan.
  *
+ * Gated on the parent job's status: when the job is paused,
+ * credits-exhausted, cancelled, or terminal, the banner must stay
+ * silent even if individual paper rows still linger at
+ * `status: "extracting"`. Plan-06's pause contract lets the in-flight
+ * LLM finish cleanly, so those paper rows briefly outlive the
+ * job-level pause — and the UI would otherwise show a spinning
+ * "currently extracting" while the job is visibly paused.
+ *
  * Caller-safe: returns null for unowned / missing jobs, matching the
  * `queries/costs.ts` caller-safe pattern so no existence leaks reach
  * the client through the query channel.
@@ -16,6 +24,7 @@
 import { query } from "../../_generated/server";
 import { v } from "convex/values";
 import { resolveOwnedJob } from "../access";
+import { RUNNING_JOB_STATUSES } from "../stateMachine";
 
 const nowProcessingResultValidator = v.union(
   v.null(),
@@ -32,6 +41,10 @@ export const getNowProcessing = query({
   handler: async (ctx, { jobId }) => {
     const owned = await resolveOwnedJob(ctx, jobId);
     if (owned.status !== "ok") return null;
+
+    if (!owned.job.status || !RUNNING_JOB_STATUSES.has(owned.job.status)) {
+      return null;
+    }
 
     const inFlight = await ctx.db
       .query("extractionPapers")

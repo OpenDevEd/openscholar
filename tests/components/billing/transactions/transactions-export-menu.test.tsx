@@ -39,6 +39,11 @@ function row(
     stripeCheckoutSessionId: null,
     metadata: {},
     hasStripe: false,
+    paperTitle: null,
+    jobName: null,
+    openalexRef: null,
+    modelLabel: null,
+    tokenSummary: null,
     ...overrides,
   };
 }

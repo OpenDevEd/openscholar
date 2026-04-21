@@ -13,6 +13,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  resolveAndRenderTitle,
+  type Translator,
+} from "@/lib/billing/transactions/row-title";
 import type { TransactionViewModel } from "@/lib/billing/transactions/transaction-view-model";
 import { cn } from "@/lib/utils";
 
@@ -28,12 +32,15 @@ interface Props {
 
 export function TransactionDetailDrawer({ row, onOpenChange }: Props) {
   const t = useTranslations("billingPage.transactions.drawer");
+  const tTitleRaw = useTranslations("billingPage.transactions");
+  const tTitle = tTitleRaw as unknown as Translator;
   const tType = useTranslations("billingPage.transactions.type");
   const tBilling = useTranslations("billingPage.transactions.billingType");
   const tCreditPool = useTranslations(
     "billingPage.transactions.filters.creditPoolValues",
   );
   const format = useFormatter();
+  const title = row ? resolveAndRenderTitle(row, tTitle) : "";
 
   return (
     <Sheet open={row != null} onOpenChange={onOpenChange}>
@@ -54,7 +61,7 @@ export function TransactionDetailDrawer({ row, onOpenChange }: Props) {
                 />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <SheetTitle className="truncate text-sm font-semibold">
-                    {row.description ?? tType(row.type)}
+                    {title}
                   </SheetTitle>
                   <SheetDescription
                     asChild

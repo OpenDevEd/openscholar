@@ -6,6 +6,12 @@ vi.mock("next-intl", () => ({
   useFormatter: () => ({
     number: (n: number) => String(n),
   }),
+  useTranslations: () => (key: string, values?: Record<string, string | number>) => {
+    if (key === "amount.balance" && values && values.balance !== undefined) {
+      return `Bal ${values.balance}`;
+    }
+    return key;
+  },
 }));
 
 describe("TransactionAmount", () => {
@@ -71,11 +77,12 @@ describe("TransactionAmount", () => {
         balanceAfter={420}
       />,
     );
-    expect(container.textContent).toContain("bal");
-    expect(container.textContent).toContain("420");
+    const bal = container.querySelector("[data-txn-balance]");
+    expect(bal).not.toBeNull();
+    expect(bal?.textContent).toContain("420");
   });
 
-  it("omits the balance-after sub-line at density='comfortable' even when balanceAfter is provided", () => {
+  it("reveals the balance-after sub-line at density='comfortable' when balanceAfter is provided", () => {
     const { container } = render(
       <TransactionAmount
         direction="in"
@@ -85,10 +92,25 @@ describe("TransactionAmount", () => {
         balanceAfter={420}
       />,
     );
-    expect(container.textContent).not.toContain("bal");
+    const bal = container.querySelector("[data-txn-balance]");
+    expect(bal).not.toBeNull();
+    expect(bal?.textContent).toContain("420");
   });
 
-  it("omits the balance-after sub-line when balanceAfter is undefined even at spacious density", () => {
+  it("omits the balance-after sub-line at density='compact' even when balanceAfter is provided", () => {
+    const { container } = render(
+      <TransactionAmount
+        direction="in"
+        amount={100}
+        status="routine"
+        density="compact"
+        balanceAfter={420}
+      />,
+    );
+    expect(container.querySelector("[data-txn-balance]")).toBeNull();
+  });
+
+  it("omits the balance-after sub-line when balanceAfter is undefined", () => {
     const { container } = render(
       <TransactionAmount
         direction="in"
@@ -97,6 +119,6 @@ describe("TransactionAmount", () => {
         density="spacious"
       />,
     );
-    expect(container.textContent).not.toContain("bal");
+    expect(container.querySelector("[data-txn-balance]")).toBeNull();
   });
 });

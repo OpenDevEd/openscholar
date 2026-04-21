@@ -387,7 +387,10 @@
         "extraction_llm": "निष्कर्षण",
         "embedding": "इंडेक्सिंग",
         "screening": "स्क्रीनिंग",
-        "chat": "चैट"
+        "chat": "चैट",
+        "search": "खोज",
+        "translation": "अनुवाद",
+        "wallet_api": "Wallet API"
       },
       "status": {
         "pending": "लंबित",
@@ -410,7 +413,8 @@
       },
       "export": {
         "label": "निर्यात",
-        "current": "वर्तमान दृश्य ({count})",
+        "current": "वर्तमान पृष्ठ ({count})",
+        "filtered": "फ़िल्टर्ड (सभी पृष्ठ)",
         "all": "सम्पूर्ण इतिहास"
       },
       "drawer": {
@@ -488,6 +492,35 @@
       },
       "live": {
         "summary": "{total} लेन-देनों में से {shown} दिखाए जा रहे हैं"
+      },
+      "titles": {
+        "paidCredits": "{amount, number} भुगतान किए गए क्रेडिट",
+        "freeCredits": "{amount, number} मुफ़्त क्रेडिट",
+        "freeCreditsExpired": "{amount, number} मुफ़्त क्रेडिट समाप्त",
+        "refund": "रिफ़ंड · {amount, number} क्रेडिट",
+        "chatMessage": "चैट संदेश",
+        "extraction": "पेपर एक्सट्रैक्शन",
+        "indexing": "पेपर इंडेक्सिंग",
+        "screening": "पेपर स्क्रीनिंग",
+        "paperRef": "पेपर {ref}",
+        "search": "खोज सुधार",
+        "translation": "अनुवाद",
+        "walletApi": "{model} · Wallet API",
+        "walletApiGeneric": "Wallet API"
+      },
+      "secondary": {
+        "topup": "टॉप-अप",
+        "stripe": "Stripe",
+        "stripeRefund": "Stripe रिफ़ंड",
+        "expired": "मुफ़्त पूल"
+      },
+      "amount": {
+        "balance": "शेष {balance}"
+      },
+      "aria": {
+        "credit": "क्रेडिट",
+        "debit": "डेबिट",
+        "balanceAfter": "लेन-देन के बाद शेष {balance}"
       }
     },
     "billingAndPlans": "बिलिंग और प्लान्स",
@@ -767,7 +800,7 @@
         "chat": "चैट",
         "other": "अन्य"
       },
-      "viewTransactions": "लेन-देन देखें"
+      "viewTransactionsAria": "लेन-देन देखें ({amount, plural, one {# क्रेडिट} other {# क्रेडिट}})"
     },
     "nowProcessing": {
       "prefix": "वर्तमान में निष्कर्षण हो रहा है:",

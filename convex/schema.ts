@@ -150,6 +150,9 @@ export default defineSchema({
         v.literal("embedding"),
         v.literal("screening"),
         v.literal("chat"),
+        v.literal("search"),
+        v.literal("translation"),
+        v.literal("wallet_api"),
       ),
     ),
     metadata: v.optional(v.record(v.string(), v.string())),
@@ -158,6 +161,13 @@ export default defineSchema({
     stripeChargeId: v.optional(v.string()),
     stripeCheckoutSessionId: v.optional(v.string()),
     createdAt: v.number(),
+    // billing-txn-perf plan-02: precomputed search string — description +
+    // metadata.model + metadata.openalexId + billingType + type, lowercased
+    // and space-separated. Populated by `computeSearchableText` at every
+    // insert site; backed by the `search_transactions` search index below.
+    // Optional during rollout; backfilled by
+    // `migrations/backfillSearchableText.ts` on every historical row.
+    searchableText: v.optional(v.string()),
   })
     .index("by_credits", ["creditsId"])
     .index("by_stripe_invoice", ["stripeInvoiceId"])
@@ -169,7 +179,20 @@ export default defineSchema({
     // plan-04: per-job transaction ledger + breakdown queries.
     .index("by_job", ["jobId"])
     // billing-txn plan-01: user-scoped type filter for paginated ledger.
-    .index("by_credits_type", ["creditsId", "type"]),
+    .index("by_credits_type", ["creditsId", "type"])
+    // billing-txn-perf plan-02: server-side narrowing for the filter
+    // dropdowns. Trailing createdAt lets each index also satisfy the
+    // date-range clause in one traversal.
+    .index("by_credits_creditType", ["creditsId", "creditType", "createdAt"])
+    .index("by_credits_billingType", ["creditsId", "billingType", "createdAt"])
+    .index("by_credits_createdAt", ["creditsId", "createdAt"])
+    // billing-txn-perf plan-02: full-text search across searchableText,
+    // filter-narrowed by creditsId + the facet dimensions so the search
+    // path stays user-scoped. Replaces the client-side substring scan.
+    .searchIndex("search_transactions", {
+      searchField: "searchableText",
+      filterFields: ["creditsId", "type", "billingType", "creditType"],
+    }),
 
   // ═══════════════════════════════════════════════════════════════
   // SUBSCRIPTIONS - Stripe billing integration ready

@@ -387,7 +387,10 @@
         "extraction_llm": "Extraction",
         "embedding": "Indexation",
         "screening": "Filtrage",
-        "chat": "Chat"
+        "chat": "Chat",
+        "search": "Recherche",
+        "translation": "Traduction",
+        "wallet_api": "API Wallet"
       },
       "status": {
         "pending": "En attente",
@@ -410,7 +413,8 @@
       },
       "export": {
         "label": "Exporter",
-        "current": "Vue actuelle ({count})",
+        "current": "Page actuelle ({count})",
+        "filtered": "Filtré (toutes les pages)",
         "all": "Tout l'historique"
       },
       "drawer": {
@@ -488,6 +492,35 @@
       },
       "live": {
         "summary": "Affichage de {shown} sur {total} transactions"
+      },
+      "titles": {
+        "paidCredits": "{amount, number} crédits payants",
+        "freeCredits": "{amount, number} crédits offerts",
+        "freeCreditsExpired": "{amount, number} crédits offerts expirés",
+        "refund": "Remboursement · {amount, number} crédits",
+        "chatMessage": "Message de discussion",
+        "extraction": "Extraction d’article",
+        "indexing": "Indexation d’article",
+        "screening": "Tri d’articles",
+        "paperRef": "Article {ref}",
+        "search": "Amélioration de la recherche",
+        "translation": "Traduction",
+        "walletApi": "{model} · API Wallet",
+        "walletApiGeneric": "API Wallet"
+      },
+      "secondary": {
+        "topup": "Recharge",
+        "stripe": "Stripe",
+        "stripeRefund": "Remboursement Stripe",
+        "expired": "Offre gratuite"
+      },
+      "amount": {
+        "balance": "Solde {balance}"
+      },
+      "aria": {
+        "credit": "Crédit",
+        "debit": "Débit",
+        "balanceAfter": "Solde après {balance}"
       }
     },
     "billingAndPlans": "Facturation et forfaits",
@@ -767,7 +800,7 @@
         "chat": "Chat",
         "other": "Autre"
       },
-      "viewTransactions": "Voir les transactions"
+      "viewTransactionsAria": "Voir les transactions ({amount, plural, one {# crédit} other {# crédits}})"
     },
     "nowProcessing": {
       "prefix": "Extraction en cours :",

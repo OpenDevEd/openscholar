@@ -5,7 +5,7 @@ import { useAction } from "convex/react";
 import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
+import { Loader2, CreditCard, Calendar, AlertCircle, Receipt } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useAppToast } from "@/lib/toast";
@@ -597,7 +597,15 @@ export default function BillingPage() {
             </div>
           )}
 
-        {creditsEnabled && <TransactionsPanel searchParams={txnSearchParams} />}
+        {creditsEnabled && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              <Receipt className="w-4 h-4" />
+              <span>{t("transactions.title")}</span>
+            </div>
+            <TransactionsPanel searchParams={txnSearchParams} />
+          </div>
+        )}
 
         {/* {grantDiagnostics && (
           <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm">

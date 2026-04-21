@@ -198,6 +198,23 @@ export type UsageBreakdownEntry = {
   usage: Usage;
   description?: string;
   metadata?: Record<string, string>;
+  /**
+   * Typed billing-type column. Prefer this over `metadata.billingType` so
+   * the ledger's typed `billingType` validator catches taxonomy drift at
+   * write time and downstream queries can filter by index instead of by
+   * metadata introspection.
+   */
+  billingType?:
+    | "extraction_llm"
+    | "embedding"
+    | "screening"
+    | "chat"
+    | "search"
+    | "translation"
+    | "wallet_api";
+  jobId?: Id<"extractionJobs">;
+  paperId?: Id<"extractionPapers">;
+  resultId?: Id<"extractionResults">;
 };
 
 /**
@@ -294,8 +311,12 @@ export async function withAuthAndCreditsBatch<T>(
         await ctx.runMutation(internal.credits.internal.deductCredits, {
           userId: user._id,
           amount,
-          description: entry.description ?? `AI: ${operation}`,
+          description: entry.description,
           metadata: entry.metadata,
+          billingType: entry.billingType,
+          jobId: entry.jobId,
+          paperId: entry.paperId,
+          resultId: entry.resultId,
         });
       }
     } else {
@@ -322,6 +343,7 @@ export async function withUserCreditsBatch<T>(
   userId: Id<"users">,
   operation: string,
   handler: (pricing: Pricing) => Promise<{ result: T; totalUsage: Usage; trackingEntries?: AITrackingEntry[] }>,
+  options?: DeductCreditsHints,
 ): Promise<T> {
   try {
     // Get user by ID (no auth check needed - we trust the userId passed from the parent action)
@@ -393,6 +415,11 @@ export async function withUserCreditsBatch<T>(
       userId,
       amount: creditsToDeduct,
       description: `AI: ${operation}`,
+      billingType: options?.billingType,
+      jobId: options?.jobId,
+      paperId: options?.paperId,
+      resultId: options?.resultId,
+      metadata: options?.metadata,
     });
 
     return result;
@@ -418,6 +445,29 @@ export type CreditContext = {
   lifetimeCreditsUsed: number;
 };
 
+/**
+ * Opt-in ledger-column hints. Callers that can classify their AI action
+ * against the canonical billingType enum set `options.billingType`; the
+ * row then carries a typed column instead of falling through to the
+ * generic "Usage" bucket. `metadata` is an escape hatch for keys that
+ * don't have a promoted column (e.g. `openalexId` when the paper isn't
+ * yet in `extractionPapers`).
+ */
+export type DeductCreditsHints = {
+  billingType?:
+    | "extraction_llm"
+    | "embedding"
+    | "screening"
+    | "chat"
+    | "search"
+    | "translation"
+    | "wallet_api";
+  jobId?: Id<"extractionJobs">;
+  paperId?: Id<"extractionPapers">;
+  resultId?: Id<"extractionResults">;
+  metadata?: Record<string, string>;
+};
+
 export async function withAuthAndCredits<T>(
   ctx: ActionCtx,
   operation: string,
@@ -425,6 +475,7 @@ export async function withAuthAndCredits<T>(
     user: Doc<"users">,
     buildCreditContext: (usage: Usage) => CreditContext,
   ) => Promise<{ result: T; usage: Usage }>,
+  options?: DeductCreditsHints,
 ): Promise<T> {
   try {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
@@ -465,6 +516,11 @@ export async function withAuthAndCredits<T>(
       userId: user._id,
       amount: creditsToDeduct,
       description: `AI: ${operation}`,
+      billingType: options?.billingType,
+      jobId: options?.jobId,
+      paperId: options?.paperId,
+      resultId: options?.resultId,
+      metadata: options?.metadata,
     });
 
     return result;
@@ -485,6 +541,7 @@ export function createAIAction<
     args: ObjectType<Args>,
   ) => OperationConfig<ObjectType<Args>, AIOutput>,
   formatOutput: (output: AIOutput, args: ObjectType<Args>) => Output,
+  options?: DeductCreditsHints,
 ) {
   return action({
     args: argsValidator,
@@ -546,7 +603,7 @@ export function createAIAction<
           });
           throwStructuredAIError(error);
         }
-      });
+      }, options);
     },
   });
 }
