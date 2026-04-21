@@ -283,4 +283,75 @@ describe("TransactionsPanelClient", () => {
     expect(liveRegions.length).toBe(1);
     expect(liveRegions[0].getAttribute("aria-live")).toBe("polite");
   });
+
+  it("never sets aria-live on the list container or any row", () => {
+    setResult({
+      status: "Exhausted",
+      results: [mkDoc(0), mkDoc(1)],
+    });
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
+    expect(
+      container
+        .querySelector("[data-transactions-list]")
+        ?.hasAttribute("aria-live"),
+    ).toBe(false);
+    container.querySelectorAll("[data-txn-row]").forEach((row) => {
+      expect(row.hasAttribute("aria-live")).toBe(false);
+    });
+  });
+
+  it("exposes aria-activedescendant on the list and flips data-txn-active on ArrowDown", async () => {
+    setResult({
+      status: "Exhausted",
+      results: [mkDoc(0), mkDoc(1)],
+    });
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
+    const list = container.querySelector("[data-transactions-list]") as HTMLElement;
+    expect(list).toBeInTheDocument();
+    expect(list.getAttribute("aria-activedescendant")).toBeNull();
+    list.focus();
+    const { act } = await import("@testing-library/react");
+    act(() => {
+      list.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      );
+    });
+    expect(list.getAttribute("aria-activedescendant")).toMatch(/^txn-row-/);
+    const activeRow = container.querySelector('[data-txn-active="true"]');
+    expect(activeRow).not.toBeNull();
+  });
+
+  it("renders the no-matches empty state with a clear button when filters drop everything", () => {
+    setResult({ status: "Exhausted", results: [mkDoc(0, { type: "purchase" })] });
+    const { container } = render(
+      withNuqs(<TransactionsPanelClient />, "types=usage"),
+    );
+    const empty = container.querySelector("[data-transactions-empty]")!;
+    expect(empty.getAttribute("data-transactions-empty")).toBe("no-matches");
+    expect(
+      container.querySelector("[data-transactions-empty-clear]"),
+    ).toBeInTheDocument();
+  });
+
+  it("surfaces the inline error banner when the inner client throws on mount", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const original = mockResult;
+    Object.defineProperty(mockResult, "results", {
+      get() {
+        throw new Error("boom");
+      },
+    });
+    try {
+      const { container } = render(withNuqs(<TransactionsPanelClient />));
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert).toBeInTheDocument();
+      expect(alert?.hasAttribute("data-transactions-error")).toBe(true);
+      expect(
+        container.querySelector("[data-transactions-error-retry]"),
+      ).toBeInTheDocument();
+    } finally {
+      mockResult = original;
+      spy.mockRestore();
+    }
+  });
 });

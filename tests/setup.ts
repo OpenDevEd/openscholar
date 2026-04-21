@@ -12,6 +12,20 @@ process.env.OPENROUTER_API_KEY ??= "sk-or-test-key-for-vitest";
 
 import { afterEach } from "vitest";
 
+// JSDOM lacks Element#scrollIntoView; the keyboard navigation hook
+// (use-transactions-keyboard) calls it after every arrow keypress.
+// Polyfill once globally so tests don't have to spy per-element.
+if (typeof globalThis.Element !== "undefined") {
+  const proto = globalThis.Element.prototype as Element & {
+    scrollIntoView?: (arg?: boolean | ScrollIntoViewOptions) => void;
+  };
+  if (typeof proto.scrollIntoView !== "function") {
+    proto.scrollIntoView = function scrollIntoViewPolyfill() {
+      // no-op — JSDOM has no layout engine
+    };
+  }
+}
+
 // Cleanup React Testing Library renders after each test
 // Only runs when a DOM environment is active (jsdom)
 afterEach(async () => {
