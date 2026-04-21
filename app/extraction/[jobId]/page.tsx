@@ -186,6 +186,22 @@ export default function JobDetailPage() {
   );
   const jobProgress = jobProgressQuery.data;
 
+  const serializedResultsFilters = useMemo(
+    () => ({
+      searchQuery: debouncedFilters.searchQuery,
+      confidenceRange: debouncedFilters.confidenceRange,
+      statusFilters: Array.from(debouncedFilters.statusFilters),
+      questionFilters: Array.from(
+        debouncedFilters.questionFilters,
+        ([questionKey, value]) => ({
+          questionKey,
+          value,
+        }),
+      ),
+    }),
+    [debouncedFilters],
+  );
+
   const resultsPageArgs = useMemo(
     () =>
       isExtractionJob
@@ -193,28 +209,47 @@ export default function JobDetailPage() {
             jobId,
             page: currentPage,
             pageSize,
-            filters: {
-              searchQuery: debouncedFilters.searchQuery,
-              confidenceRange: debouncedFilters.confidenceRange,
-              statusFilters: Array.from(debouncedFilters.statusFilters),
-              questionFilters: Array.from(
-                debouncedFilters.questionFilters,
-                ([questionKey, value]) => ({
-                  questionKey,
-                  value,
-                }),
-              ),
-            },
+            filters: serializedResultsFilters,
             sortBy: resultsSortBy,
           }
         : "skip",
-    [currentPage, debouncedFilters, isExtractionJob, jobId, pageSize, resultsSortBy],
+    [
+      currentPage,
+      isExtractionJob,
+      jobId,
+      pageSize,
+      serializedResultsFilters,
+      resultsSortBy,
+    ],
   );
   const resultsPageQuery = useProtectedQuery(
     api.extraction.queries.getJobResultsPage,
     resultsPageArgs,
   );
   const resultsPage = resultsPageQuery.data;
+
+  const exportResultsArgs = useMemo(
+    () =>
+      isExtractionJob && exportDialogOpen && exportMode === "all"
+        ? {
+            jobId,
+            filters: serializedResultsFilters,
+            sortBy: resultsSortBy,
+          }
+        : "skip",
+    [
+      exportDialogOpen,
+      exportMode,
+      isExtractionJob,
+      jobId,
+      serializedResultsFilters,
+      resultsSortBy,
+    ],
+  );
+  const exportResultsQuery = useProtectedQuery(
+    api.extraction.queries.getJobResultsForExport,
+    exportResultsArgs,
+  );
 
   const questions: Question[] = useMemo(() => {
     if (jobDetails?.status !== "ok") return [];
@@ -278,6 +313,19 @@ export default function JobDetailPage() {
     () => papersWithResults.filter(p => selectedIds.has(p._id)),
     [papersWithResults, selectedIds]
   );
+  const exportAllPapers = useMemo(
+    () =>
+      exportResultsQuery.data?.status === "ok"
+        ? (exportResultsQuery.data.items as PaperWithResults[])
+        : [],
+    [exportResultsQuery.data],
+  );
+  const exportDialogPapers =
+    exportMode === "all" ? exportAllPapers : selectedPapers;
+  const exportDialogLoading =
+    exportMode === "all" &&
+    exportResultsArgs !== "skip" &&
+    (exportResultsQuery.isDeferred || exportResultsQuery.data === undefined);
 
   const handleTableSelectionChange = useCallback((newIds: Set<string>) => {
     setSelection(newIds);
@@ -1073,7 +1121,7 @@ export default function JobDetailPage() {
                   )}
                 </div>
 
-                {authoritativeFilteredPapers > 0 && viewMode !== 'split' && (
+                {authoritativeFilteredPapers > 0 && (
                   <SmartPagination
                     currentPage={currentPage}
                     totalPages={totalPages}
@@ -1101,13 +1149,14 @@ export default function JobDetailPage() {
                 <ExportDialog
                   open={exportDialogOpen}
                   onOpenChange={setExportDialogOpen}
-                  papers={exportMode === 'all' ? displayedPapers : selectedPapers}
+                  papers={exportDialogPapers}
                   questions={questions}
+                  isLoading={exportDialogLoading}
                   label={
                     exportMode === 'all'
-                      ? displayedPapers.length === 1
-                        ? tView('filteredPapersCount', { count: displayedPapers.length })
-                        : tView('filteredPapersCountPlural', { count: displayedPapers.length })
+                      ? authoritativeFilteredPapers === 1
+                        ? tView('filteredPapersCount', { count: authoritativeFilteredPapers })
+                        : tView('filteredPapersCountPlural', { count: authoritativeFilteredPapers })
                       : selectedIds.size === 1
                         ? tView('selectedPapersCount', { count: selectedIds.size })
                         : tView('selectedPapersCountPlural', { count: selectedIds.size })

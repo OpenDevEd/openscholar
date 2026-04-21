@@ -41,6 +41,7 @@ function resolve(root: unknown, segments: string[]): unknown {
 const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
   ["internal.admin", "deleteExtractionInternal"],
   ["internal.admin", "cleanupFailedPaperStorage"],
+  ["internal.admin", "rebuildJobListProjection"],
   ["internal.admin", "cleanupOldPdfs"],
   ["internal.lifecycle", "maybeFinalizeJob"],
   ["internal.lifecycle", "createJobDirect"],

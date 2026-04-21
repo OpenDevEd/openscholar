@@ -18,7 +18,7 @@ export {
   getJobSources,
 } from "./queries/jobs";
 
-export { getJobResults, getJobResultsPage } from "./queries/results";
+export { getJobResultsForExport, getJobResultsPage } from "./queries/results";
 
 export {
   getJobInsights,

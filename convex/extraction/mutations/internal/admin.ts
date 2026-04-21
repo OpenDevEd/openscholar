@@ -13,6 +13,33 @@ import { PAPER_LIMIT_MAX } from "../../bucket/limits";
 import { clearJobAggregates, clearJobCredits } from "../../aggregates";
 import { recomputePaperListProjection } from "../../listProjection";
 
+const PROJECTION_REPAIR_BATCH_SIZE = 25;
+
+function paperNeedsListProjectionRepair(paper: {
+  sortTitle?: string;
+  avgConfidence?: number;
+  reviewedCount?: number;
+  needsFollowupCount?: number;
+  hasErrors?: boolean;
+  hasPdfSource?: boolean;
+  questionAnswerTokens?: string[];
+  searchText?: string;
+}) {
+  return (
+    typeof paper.sortTitle !== "string" ||
+    typeof paper.avgConfidence !== "number" ||
+    !Number.isFinite(paper.avgConfidence) ||
+    typeof paper.reviewedCount !== "number" ||
+    !Number.isFinite(paper.reviewedCount) ||
+    typeof paper.needsFollowupCount !== "number" ||
+    !Number.isFinite(paper.needsFollowupCount) ||
+    typeof paper.hasErrors !== "boolean" ||
+    typeof paper.hasPdfSource !== "boolean" ||
+    !Array.isArray(paper.questionAnswerTokens) ||
+    typeof paper.searchText !== "string"
+  );
+}
+
 export const deleteExtractionInternal = internalMutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
@@ -164,6 +191,46 @@ export const cleanupFailedPaperStorage = internalMutation({
     }
 
     return { cleaned };
+  },
+});
+
+export const rebuildJobListProjection = internalMutation({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.object({
+    scanned: v.number(),
+    rebuilt: v.number(),
+    remaining: v.number(),
+    scheduled: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(PAPER_LIMIT_MAX);
+
+    const missingProjectionPapers = papers.filter(paperNeedsListProjectionRepair);
+    const batch = missingProjectionPapers.slice(0, PROJECTION_REPAIR_BATCH_SIZE);
+
+    for (const paper of batch) {
+      await recomputePaperListProjection(ctx, paper._id);
+    }
+
+    const remaining = Math.max(0, missingProjectionPapers.length - batch.length);
+    const scheduled = remaining > 0;
+    if (scheduled) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.extraction.mutations.internal.admin.rebuildJobListProjection,
+        { jobId: args.jobId },
+      );
+    }
+
+    return {
+      scanned: papers.length,
+      rebuilt: batch.length,
+      remaining,
+      scheduled,
+    };
   },
 });
 

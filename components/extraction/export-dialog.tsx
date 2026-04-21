@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileSpreadsheet, FileJson } from "lucide-react";
+import { FileSpreadsheet, FileJson, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +24,7 @@ interface ExportDialogProps {
   papers: PaperWithResults[];
   questions: Question[];
   label?: string;
+  isLoading?: boolean;
 }
 
 export function ExportDialog({
@@ -32,6 +33,7 @@ export function ExportDialog({
   papers,
   questions,
   label,
+  isLoading = false,
 }: ExportDialogProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
@@ -43,6 +45,8 @@ export function ExportDialog({
   const [includeCitations, setIncludeCitations] = useState(false);
 
   const handleExport = async () => {
+    if (isLoading || papers.length === 0) return;
+
     const options = {
       includeMetadata,
       includeConfidence,
@@ -186,7 +190,16 @@ export function ExportDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {tc("cancel")}
           </Button>
-          <Button onClick={handleExport}>{t("exportButton", { label: displayLabel })}</Button>
+          <Button disabled={isLoading || papers.length === 0} onClick={handleExport}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {tc("loading")}
+              </>
+            ) : (
+              t("exportButton", { label: displayLabel })
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

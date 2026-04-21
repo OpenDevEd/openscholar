@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, test, expect } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { seedFullJobGraph, SEED_IDENTITY } from "./tests/seed";
 import { setupAggregates } from "./aggregates.test-support";
@@ -12,7 +12,7 @@ import { setupAggregates } from "./aggregates.test-support";
  * DB reads → response shaping correctly. If the barrel split silently sends
  * a caller to the wrong handler, the headline assertion goes red.
  *
- * Covers: getJobDetails, getJobResultsPage, getJobInsights,
+ * Covers: getJobDetails, getJobResultsForExport, getJobResultsPage, getJobInsights,
  * getQuestionInsights, getQuestionDisagreements, getReviewQueue,
  * subscribeToJobProgress, getSavedViews, getWorkflowTemplates,
  * getReportSnapshots, getRunDiff.
@@ -43,6 +43,10 @@ async function seedAndAuth() {
       });
     }
   });
+  await t.mutation(
+    internal.extraction.mutations.internal.admin.rebuildJobListProjection,
+    { jobId: ids.jobId },
+  );
   const auth = t.withIdentity(SEED_IDENTITY);
   return { t, auth, ids };
 }
@@ -66,6 +70,21 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
       jobId: ids.jobId,
       page: 1,
       pageSize: 200,
+      filters: {
+        searchQuery: "",
+        confidenceRange: [0, 100],
+        statusFilters: [],
+        questionFilters: [],
+      },
+      sortBy: "default",
+    });
+    expect(res.status).toBe("ok");
+  });
+
+  test("getJobResultsForExport reaches handler", async () => {
+    const { auth, ids } = await seedAndAuth();
+    const res = await auth.query(api.extraction.queries.getJobResultsForExport, {
+      jobId: ids.jobId,
       filters: {
         searchQuery: "",
         confidenceRange: [0, 100],

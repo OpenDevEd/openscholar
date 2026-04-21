@@ -135,6 +135,21 @@ async function getResultsPage(
   });
 }
 
+async function getResultsExport(
+  auth: ReturnType<ReturnType<typeof convexTest>["withIdentity"]>,
+  jobId: string,
+  overrides?: Partial<{
+    filters: typeof DEFAULT_FILTERS;
+    sortBy: "default" | "title-asc" | "title-desc" | "confidence-high" | "confidence-low";
+  }>,
+) {
+  return await auth.query(api.extraction.queries.getJobResultsForExport, {
+    jobId: jobId as never,
+    filters: overrides?.filters ?? DEFAULT_FILTERS,
+    sortBy: overrides?.sortBy ?? "default",
+  });
+}
+
 describe("getJobResultsPage", () => {
   it("filters search over the full bounded corpus before slicing page 1", async () => {
     const t = convexTest(schema);
@@ -291,6 +306,37 @@ describe("getJobResultsPage", () => {
         answer: "Target answer",
         reviewState: "accepted",
       }),
+    ]);
+  });
+
+  it("returns the full filtered corpus for export with a count equal to totalFiltered", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const filters = {
+      ...DEFAULT_FILTERS,
+      statusFilters: ["reviewed"],
+    };
+
+    const pageResult = await getResultsPage(auth, jobId, {
+      filters,
+      pageSize: 1,
+    });
+    const exportResult = await getResultsExport(auth, jobId, {
+      filters,
+    });
+
+    expect(pageResult.status).toBe("ok");
+    expect(exportResult.status).toBe("ok");
+    if (pageResult.status !== "ok" || exportResult.status !== "ok") {
+      throw new Error("unreachable");
+    }
+    expect(exportResult.totalFiltered).toBe(pageResult.totalFiltered);
+    expect(exportResult.items).toHaveLength(pageResult.totalFiltered);
+    expect(exportResult.items.map((paper) => paper.title)).toEqual([
+      "Rare Search Match",
+      "Reviewed Only",
+      "Needs Followup",
     ]);
   });
 });

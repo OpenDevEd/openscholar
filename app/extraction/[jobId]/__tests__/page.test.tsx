@@ -10,7 +10,7 @@ const {
   currentJobIdMock,
   resultsToolbarSpy,
   smartPaginationSpy,
-  paginatedQuerySpy,
+  exportDialogSpy,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   currentJobIdMock: { value: "job_1" },
@@ -19,6 +19,7 @@ const {
       totalCount,
       filteredCount,
       onFiltersChange,
+      onExportAll,
     }: {
       totalCount: number;
       filteredCount: number;
@@ -44,6 +45,7 @@ const {
               questionFilters: Map<string, string>;
             }),
       ) => void;
+      onExportAll: () => void;
     }) => (
       <div
         data-testid="results-toolbar"
@@ -61,6 +63,9 @@ const {
           }
         >
           filter to Paper 250
+        </button>
+        <button type="button" onClick={onExportAll}>
+          export all
         </button>
       </div>
     ),
@@ -103,7 +108,21 @@ const {
       </div>
     ),
   ),
-  paginatedQuerySpy: vi.fn(),
+  exportDialogSpy: vi.fn(
+    ({
+      papers = [],
+      isLoading,
+    }: {
+      papers?: Array<{ _id: string }>;
+      isLoading?: boolean;
+    }) => (
+      <div
+        data-testid="export-dialog"
+        data-papers-count={String(papers.length)}
+        data-loading={String(Boolean(isLoading))}
+      />
+    ),
+  ),
 }));
 
 type MockJobDetailsData = {
@@ -182,21 +201,6 @@ const mockSkippedQueryResult = {
 
 type MockSkippedQueryResult = typeof mockSkippedQueryResult;
 type MockProtectedQueryHookResult = MockQueryResult | MockSkippedQueryResult;
-
-const mockPaginatedResult = {
-  results: [],
-  status: "Deferred" as const,
-  isLoading: false,
-  loadMore: vi.fn(),
-  isInitialLoading: false,
-  hasLoadedFirstPage: true,
-  isSettled: true,
-  phase: "authenticated" as const,
-  isDeferred: false,
-  isReady: true,
-  isAnonymous: false,
-  settlement: "ready" as const,
-};
 
 function buildPageRows(start: number, count: number) {
   return Array.from({ length: count }, (_, index) => {
@@ -301,10 +305,34 @@ const extractionResultsPageQueryResult = {
   },
 } as const;
 
+const extractionResultsExportQueryResult = {
+  "": {
+    status: "ok" as const,
+    totalAll: 293,
+    totalFiltered: 293,
+    items: buildPageRows(1, 293),
+  },
+  "Paper 250": {
+    status: "ok" as const,
+    totalAll: 293,
+    totalFiltered: 1,
+    items: buildPageRows(250, 1),
+  },
+} as const;
+
 type MockResultsPageData =
   (typeof extractionResultsPageQueryResult)[keyof typeof extractionResultsPageQueryResult];
+type MockResultsExportData =
+  (typeof extractionResultsExportQueryResult)[keyof typeof extractionResultsExportQueryResult];
 
 function buildResultsPageHookResult(data: MockResultsPageData) {
+  return {
+    ...mockQueryResult,
+    data,
+  } as unknown as MockProtectedQueryHookResult;
+}
+
+function buildResultsExportHookResult(data: MockResultsExportData) {
   return {
     ...mockQueryResult,
     data,
@@ -397,7 +425,7 @@ vi.mock("@/components/extraction/bulk-actions-bar", () => ({
 }));
 
 vi.mock("@/components/extraction/export-dialog", () => ({
-  ExportDialog: () => <div>export dialog</div>,
+  ExportDialog: exportDialogSpy,
 }));
 
 vi.mock("@/components/extraction/insights-overview", () => ({
@@ -535,7 +563,6 @@ vi.mock("@/lib/auth/list-render-state", () => ({
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: vi.fn(),
-  useProtectedPaginatedQuery: vi.fn(),
 }));
 
 describe("JobDetailPage", () => {
@@ -544,10 +571,7 @@ describe("JobDetailPage", () => {
     currentJobIdMock.value = "job_1";
     resultsToolbarSpy.mockClear();
     smartPaginationSpy.mockClear();
-    paginatedQuerySpy.mockClear();
-    mockPaginatedResult.loadMore.mockReset();
-    mockPaginatedResult.results = [];
-    mockPaginatedResult.status = "Deferred";
+    exportDialogSpy.mockClear();
 
     (
       authQuery.useProtectedQuery as unknown as {
@@ -561,17 +585,6 @@ describe("JobDetailPage", () => {
     ).mockImplementation((_query, args) => {
       return args === "skip" ? mockSkippedQueryResult : mockQueryResult;
     });
-
-    (
-      authQuery.useProtectedPaginatedQuery as unknown as {
-        mockImplementation: (
-          fn: (...args: unknown[]) => typeof mockPaginatedResult,
-        ) => void;
-      }
-    ).mockImplementation((...args: unknown[]) => {
-        paginatedQuerySpy(...args);
-        return mockPaginatedResult;
-      });
   });
 
   it("renders the chat job view without ever mounting extraction-only UI", () => {
@@ -589,7 +602,6 @@ describe("JobDetailPage", () => {
     expect(screen.queryByText("insights")).toBeNull();
     expect(screen.queryByText("reviewQueue")).toBeNull();
     expect(screen.queryByText("reportBuilder")).toBeNull();
-    expect(paginatedQuerySpy).not.toHaveBeenCalled();
   });
 
   it("keeps showing the shared loading spinner while stale job details do not match the route", () => {
@@ -629,7 +641,6 @@ describe("JobDetailPage", () => {
     expect(document.querySelector('[data-job-mode="chat"]')).toBeNull();
     expect(document.querySelector('[data-job-mode="extraction"]')).toBeNull();
     expect(resultsToolbarSpy).not.toHaveBeenCalled();
-    expect(paginatedQuerySpy).not.toHaveBeenCalled();
   });
 
   it("uses the shared spinner loading state while a chat thread is preparing", () => {
@@ -718,7 +729,6 @@ describe("JobDetailPage", () => {
       "aria-valuemax",
       "293",
     );
-    expect(authQuery.useProtectedPaginatedQuery).not.toHaveBeenCalled();
   });
 
   it("navigates to page 2 and renders rows 201-293 from the server page query", () => {
@@ -780,7 +790,6 @@ describe("JobDetailPage", () => {
       }),
       undefined,
     );
-    expect(authQuery.useProtectedPaginatedQuery).not.toHaveBeenCalled();
   });
 
   it("keeps full-corpus counts truthful after switching to page size 25 and filtering on the server", () => {
@@ -848,5 +857,73 @@ describe("JobDetailPage", () => {
     expect(
       document.querySelector('[data-filtered-papers="1"]'),
     ).not.toBeNull();
+  });
+
+  it("opens export-all with the full filtered corpus instead of the current page rows", () => {
+    (
+      authQuery.useProtectedQuery as unknown as {
+        mockImplementation: (
+          fn: (
+            query: unknown,
+            args: unknown,
+          ) => MockProtectedQueryHookResult,
+        ) => void;
+      }
+    ).mockImplementation((_query, args) => {
+      if (args === "skip") return mockSkippedQueryResult;
+      if (
+        typeof args === "object" &&
+        args !== null &&
+        "filters" in args &&
+        !("page" in args) &&
+        !("pageSize" in args)
+      ) {
+        const { filters } = args as {
+          filters: { searchQuery?: string };
+        };
+        return buildResultsExportHookResult(
+          extractionResultsExportQueryResult[
+            `${filters.searchQuery ?? ""}` as keyof typeof extractionResultsExportQueryResult
+          ],
+        );
+      }
+      if (
+        typeof args === "object" &&
+        args !== null &&
+        "page" in args &&
+        "pageSize" in args &&
+        "filters" in args
+      ) {
+        const {
+          page,
+          pageSize,
+          filters,
+        } = args as {
+          page: number;
+          pageSize: number;
+          filters: { searchQuery?: string };
+        };
+        return buildResultsPageHookResult(
+          extractionResultsPageQueryResult[
+            `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
+          ],
+        );
+      }
+      return extractionSharedProtectedQueryResult;
+    });
+
+    render(<JobDetailPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "set page size 25" }));
+    fireEvent.click(screen.getByRole("button", { name: "export all" }));
+
+    expect(screen.getByTestId("export-dialog")).toHaveAttribute(
+      "data-papers-count",
+      "293",
+    );
+    expect(screen.getByTestId("smart-pagination")).toHaveAttribute(
+      "data-displayed-count",
+      "25",
+    );
   });
 });
