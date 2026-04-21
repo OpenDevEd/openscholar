@@ -395,7 +395,34 @@
         "aria": "{count} transactions shown. {inAmount} in, {outAmount} out, net {net}."
       },
       "export": {
-        "label": "Export"
+        "label": "Export",
+        "current": "Current view ({count})",
+        "all": "All time"
+      },
+      "drawer": {
+        "close": "Close details",
+        "balanceAfter": "Balance after · {balance}",
+        "stripe": {
+          "heading": "Stripe",
+          "invoice": "Invoice",
+          "paymentIntent": "Payment intent",
+          "charge": "Charge",
+          "checkoutSession": "Checkout session",
+          "copy": "Copy to clipboard",
+          "openInStripe": "Open in Stripe dashboard",
+          "downloadReceipt": "Download receipt"
+        },
+        "links": {
+          "heading": "Linked",
+          "job": "Extraction job",
+          "paper": "Paper",
+          "result": "Result",
+          "paperComingSoon": "Paper detail (coming soon)",
+          "resultComingSoon": "Result detail (coming soon)"
+        },
+        "metadata": {
+          "heading": "Metadata"
+        }
       },
       "loadingMore": "Loading more…",
       "exhausted": "End of history",

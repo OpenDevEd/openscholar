@@ -395,7 +395,34 @@
         "aria": "已显示 {count} 条交易。收入 {inAmount}，支出 {outAmount}，净额 {net}。"
       },
       "export": {
-        "label": "导出"
+        "label": "导出",
+        "current": "当前视图 ({count})",
+        "all": "全部历史"
+      },
+      "drawer": {
+        "close": "关闭详情",
+        "balanceAfter": "余额 · {balance}",
+        "stripe": {
+          "heading": "Stripe",
+          "invoice": "发票",
+          "paymentIntent": "付款意图",
+          "charge": "扣款",
+          "checkoutSession": "结账会话",
+          "copy": "复制到剪贴板",
+          "openInStripe": "在 Stripe 控制台中打开",
+          "downloadReceipt": "下载收据"
+        },
+        "links": {
+          "heading": "关联",
+          "job": "抽取任务",
+          "paper": "论文",
+          "result": "结果",
+          "paperComingSoon": "论文详情 (即将推出)",
+          "resultComingSoon": "结果详情 (即将推出)"
+        },
+        "metadata": {
+          "heading": "元数据"
+        }
       },
       "loadingMore": "加载中…",
       "exhausted": "已到底部",

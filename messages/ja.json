@@ -395,7 +395,34 @@
         "aria": "{count}件のトランザクションを表示。受取{inAmount}、支出{outAmount}、差引{net}。"
       },
       "export": {
-        "label": "エクスポート"
+        "label": "エクスポート",
+        "current": "現在の表示 ({count})",
+        "all": "全期間"
+      },
+      "drawer": {
+        "close": "詳細を閉じる",
+        "balanceAfter": "残高 · {balance}",
+        "stripe": {
+          "heading": "Stripe",
+          "invoice": "請求書",
+          "paymentIntent": "ペイメントインテント",
+          "charge": "請求",
+          "checkoutSession": "チェックアウトセッション",
+          "copy": "クリップボードにコピー",
+          "openInStripe": "Stripe ダッシュボードで開く",
+          "downloadReceipt": "領収書をダウンロード"
+        },
+        "links": {
+          "heading": "関連",
+          "job": "抽出ジョブ",
+          "paper": "論文",
+          "result": "結果",
+          "paperComingSoon": "論文詳細 (近日公開)",
+          "resultComingSoon": "結果詳細 (近日公開)"
+        },
+        "metadata": {
+          "heading": "メタデータ"
+        }
       },
       "loadingMore": "読み込み中…",
       "exhausted": "履歴の最後",

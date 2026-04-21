@@ -395,7 +395,34 @@
         "aria": "{count} transactions affichées. {inAmount} reçus, {outAmount} dépensés, solde net {net}."
       },
       "export": {
-        "label": "Exporter"
+        "label": "Exporter",
+        "current": "Vue actuelle ({count})",
+        "all": "Tout l'historique"
+      },
+      "drawer": {
+        "close": "Fermer les détails",
+        "balanceAfter": "Solde après · {balance}",
+        "stripe": {
+          "heading": "Stripe",
+          "invoice": "Facture",
+          "paymentIntent": "Intention de paiement",
+          "charge": "Paiement",
+          "checkoutSession": "Session de paiement",
+          "copy": "Copier dans le presse-papiers",
+          "openInStripe": "Ouvrir dans le tableau de bord Stripe",
+          "downloadReceipt": "Télécharger le reçu"
+        },
+        "links": {
+          "heading": "Liens",
+          "job": "Extraction",
+          "paper": "Article",
+          "result": "Résultat",
+          "paperComingSoon": "Détail de l'article (bientôt disponible)",
+          "resultComingSoon": "Détail du résultat (bientôt disponible)"
+        },
+        "metadata": {
+          "heading": "Métadonnées"
+        }
       },
       "loadingMore": "Chargement…",
       "exhausted": "Fin de l'historique",

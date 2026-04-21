@@ -395,7 +395,34 @@
         "aria": "{count} लेन-देन दिखाए गए। {inAmount} प्राप्त, {outAmount} खर्च, शुद्ध {net}।"
       },
       "export": {
-        "label": "निर्यात"
+        "label": "निर्यात",
+        "current": "वर्तमान दृश्य ({count})",
+        "all": "सम्पूर्ण इतिहास"
+      },
+      "drawer": {
+        "close": "विवरण बंद करें",
+        "balanceAfter": "शेष राशि · {balance}",
+        "stripe": {
+          "heading": "Stripe",
+          "invoice": "इनवॉइस",
+          "paymentIntent": "पेमेंट इंटेंट",
+          "charge": "चार्ज",
+          "checkoutSession": "चेकआउट सेशन",
+          "copy": "क्लिपबोर्ड पर कॉपी करें",
+          "openInStripe": "Stripe डैशबोर्ड में खोलें",
+          "downloadReceipt": "रसीद डाउनलोड करें"
+        },
+        "links": {
+          "heading": "लिंक",
+          "job": "एक्सट्रैक्शन जॉब",
+          "paper": "पेपर",
+          "result": "परिणाम",
+          "paperComingSoon": "पेपर विवरण (जल्द आ रहा है)",
+          "resultComingSoon": "परिणाम विवरण (जल्द आ रहा है)"
+        },
+        "metadata": {
+          "heading": "मेटाडेटा"
+        }
       },
       "loadingMore": "लोड हो रहा है…",
       "exhausted": "इतिहास का अंत",
