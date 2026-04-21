@@ -199,6 +199,16 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
         .collect(),
     );
     expect(results).toHaveLength(1);
+    const paperAfterRetry = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
+    expect(paperAfterRetry?.creditsUsed).toBe(5);
+    const extractionCharges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(extractionCharges).toHaveLength(1);
+    expect(extractionCharges[0]?.billingType).toBe("extraction_llm");
   });
 
   it("result.billed gate blocks re-bill even if job+paper are reset to active", async () => {

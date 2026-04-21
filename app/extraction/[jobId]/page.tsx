@@ -819,23 +819,20 @@ export default function JobDetailPage() {
             </div>
           </div>
 
-          {/* Plan-03: credit-exhausted CTA. Banner lives above the stats
-              section so it's the first thing the user sees on returning
-              to a paused job. Plan-06 wires onResume. */}
-          {job.status === "creditsExhausted" && (
-            <div className="px-4 md:px-6 pt-4">
+          {/* Status banner stack. Each child self-hides (returns null)
+              when it has nothing to show; `space-y-4` only emits gaps
+              between real DOM siblings, and `empty:hidden` collapses
+              the whole strip when every banner is null — so no phantom
+              padding remains on clean completed / idle jobs. */}
+          <div className="space-y-4 px-4 pt-4 empty:hidden md:px-6">
+            {job.status === "creditsExhausted" && (
               <CreditsExhaustedBanner
                 onResume={handleResume}
                 onCancelRemaining={handleCancel}
               />
-            </div>
-          )}
+            )}
 
-          {/* Plan-06: user-initiated pause banner. role="status" +
-              aria-live="polite" inside JobStatusBanner announces the
-              pause without interrupting the user's screen reader flow. */}
-          {job.status === "paused" && (
-            <div className="px-4 md:px-6 pt-4">
+            {job.status === "paused" && (
               <JobStatusBanner
                 variant="paused"
                 processedPapers={job.processedPapers}
@@ -843,37 +840,18 @@ export default function JobDetailPage() {
                 onResume={handleResume}
                 onCancelRemaining={handleCancel}
               />
-            </div>
-          )}
+            )}
 
-          {/* Plan-05: retry-failed CTA. Sits beside (not replacing) the
-              Duplicate button; self-hides when there's nothing to retry
-              or flag. Visible for completed / failed / creditsExhausted. */}
-          {(job.status === "completed" ||
-            job.status === "failed" ||
-            job.status === "creditsExhausted") && (
-            <div className="px-4 md:px-6 pt-4">
-              <RetrySummary
-                jobId={jobId}
-                usePdfs={job.usePdfs ?? false}
-              />
-            </div>
-          )}
+            {(job.status === "completed" ||
+              job.status === "failed" ||
+              job.status === "creditsExhausted") && (
+              <RetrySummary jobId={jobId} usePdfs={job.usePdfs ?? false} />
+            )}
 
-          {/* Plan-07: mixed-success narrative callout. Self-hides on
-              clean completions (zero classified failures) so it only
-              appears when there's something substantive to say. */}
-          {job.status === "completed" && (
-            <div className="px-4 md:px-6 pt-4">
+            {job.status === "completed" && (
               <MixedSuccessSummary jobId={jobId} />
-            </div>
-          )}
+            )}
 
-          {/* Plan-07: live "currently extracting" banner. Mounts for
-              every job; self-hides when no paper is in-flight
-              (idle / completed / failed). role=status + aria-live
-              announces paper transitions to screen readers. */}
-          <div className="px-4 md:px-6 pt-4">
             <NowProcessing jobId={jobId} />
           </div>
 

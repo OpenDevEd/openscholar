@@ -48,12 +48,33 @@ import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { estimateRetryCredits } from "../../../lib/extraction/cost-estimate";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
+import { refreshPaperListProjection } from "../listProjection";
 
 const ALLOWED_RETRY_STATUSES: readonly JobStatus[] = [
   "completed",
   "failed",
   "creditsExhausted",
 ];
+
+async function listRetryableFailures(
+  ctx: MutationCtx,
+  jobId: Id<"extractionJobs">,
+): Promise<Doc<"extractionResults">[]> {
+  const failedResults = await ctx.db
+    .query("extractionResults")
+    .withIndex("by_job_status", (q) =>
+      q.eq("jobId", jobId).eq("status", "failed"),
+    )
+    .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB);
+
+  return failedResults.filter((result) => {
+    if (result.billed === true) return false;
+    return isResultRetryableFailure({
+      status: result.status,
+      lastError: result.lastError,
+    });
+  });
+}
 
 /**
  * Reset retryable failed results on a job, flip the containing papers
@@ -68,19 +89,7 @@ export async function applyRetryResetTx(
   ctx: MutationCtx,
   job: Doc<"extractionJobs">,
 ): Promise<number> {
-  const allResults = await ctx.db
-    .query("extractionResults")
-    .withIndex("by_job", (q) => q.eq("jobId", job._id))
-    .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB);
-
-  const retryable = allResults.filter((r) => {
-    if (r.status !== "failed") return false;
-    if (r.billed === true) return false;
-    return isResultRetryableFailure({
-      status: r.status,
-      lastError: r.lastError,
-    });
-  });
+  const retryable = await listRetryableFailures(ctx, job._id);
 
   if (retryable.length === 0) return 0;
 
@@ -104,6 +113,7 @@ export async function applyRetryResetTx(
         status: "extracting" as const,
         completedAt: undefined,
       });
+      await refreshPaperListProjection(ctx, paperId);
     }
   }
 
@@ -165,18 +175,7 @@ export const retryFailedQuestions = mutation({
     // Count retryable rows (for the preflight estimate). We re-scan
     // inside `applyRetryResetTx` — same tx, so the read is cheap and
     // keeps the preflight value source-of-truth aligned with the reset.
-    const allResults = await ctx.db
-      .query("extractionResults")
-      .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB);
-    const retryableCount = allResults.filter((r) => {
-      if (r.status !== "failed") return false;
-      if (r.billed === true) return false;
-      return isResultRetryableFailure({
-        status: r.status,
-        lastError: r.lastError,
-      });
-    }).length;
+    const retryableCount = (await listRetryableFailures(ctx, jobId)).length;
 
     if (retryableCount === 0) {
       throw createError("VALIDATION_ERROR", "No retryable failures to retry");

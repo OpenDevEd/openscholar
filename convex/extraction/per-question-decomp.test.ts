@@ -127,10 +127,9 @@ describe("plan-02 per-question decomposition", () => {
           },
         );
       }
-      await t.mutation(
-        internal.extraction.mutations.results.finalizePaper,
-        { paperId },
-      );
+      await t.mutation(internal.extraction.mutations.results.finalizePaper, {
+        paperId,
+      });
     }
 
     // 15 extractionResults rows — one per (paper, question).
@@ -175,21 +174,18 @@ describe("plan-02 per-question decomposition", () => {
 
     // q1, q2 complete successfully.
     for (const key of ["q1", "q2"]) {
-      await t.mutation(
-        internal.extraction.mutations.results.recordOneAnswer,
-        {
-          paperId,
-          questionKey: key,
-          result: {
-            answer: "A",
-            confidence: 0.9,
-            reasoning: "r",
-            citations: [],
-            citationStatus: "grounded" as const,
-          },
-          creditsUsed: 1,
+      await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+        paperId,
+        questionKey: key,
+        result: {
+          answer: "A",
+          confidence: 0.9,
+          reasoning: "r",
+          citations: [],
+          citationStatus: "grounded" as const,
         },
-      );
+        creditsUsed: 1,
+      });
     }
 
     // q3 permanently fails (pdf_invalid is non-retryable).
@@ -206,10 +202,9 @@ describe("plan-02 per-question decomposition", () => {
       },
     );
 
-    await t.mutation(
-      internal.extraction.mutations.results.finalizePaper,
-      { paperId },
-    );
+    await t.mutation(internal.extraction.mutations.results.finalizePaper, {
+      paperId,
+    });
 
     // Paper finalizes as completed with one failed question.
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
@@ -238,30 +233,69 @@ describe("plan-02 per-question decomposition", () => {
     const [paperId] = paperIds;
 
     // Only q1 resolves; q2 has no row yet.
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: {
-          answer: "A",
-          confidence: 0.9,
-          reasoning: "r",
-          citations: [],
-          citationStatus: "grounded" as const,
-        },
-        creditsUsed: 1,
+    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+      paperId,
+      questionKey: "q1",
+      result: {
+        answer: "A",
+        confidence: 0.9,
+        reasoning: "r",
+        citations: [],
+        citationStatus: "grounded" as const,
       },
-    );
+      creditsUsed: 1,
+    });
 
-    await t.mutation(
-      internal.extraction.mutations.results.finalizePaper,
-      { paperId },
-    );
+    await t.mutation(internal.extraction.mutations.results.finalizePaper, {
+      paperId,
+    });
 
     // Paper still extracting — rollup saw a pending question.
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.status).toBe("extracting");
+  });
+
+  it("finalizePaper completes after concurrent question completions land", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const questionKeys = ["q1", "q2"];
+    const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
+      t,
+      { paperCount: 1, questionKeys, startingCredits: 25 },
+    );
+    const [paperId] = paperIds;
+
+    await Promise.all(
+      questionKeys.map((questionKey) =>
+        t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+          paperId,
+          questionKey,
+          result: {
+            answer: `A-${questionKey}`,
+            confidence: 0.9,
+            reasoning: "r",
+            citations: [],
+            citationStatus: "grounded" as const,
+          },
+          creditsUsed: 3,
+        }),
+      ),
+    );
+
+    await t.mutation(internal.extraction.mutations.results.finalizePaper, {
+      paperId,
+    });
+
+    const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
+    expect(paper?.status).toBe("completed");
+    expect(paper?.creditsUsed).toBe(6);
+
+    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    expect(job?.status).toBe("completed");
+    expect(job?.processedPapers).toBe(1);
+    expect(job?.failedPapers).toBe(0);
+
+    expect(await readBalance(t, creditsId)).toBe(25 - 6);
   });
 
   it("recordOneAnswer is idempotent under workpool retry — one debit, one aggregate row", async () => {
@@ -312,6 +346,45 @@ describe("plan-02 per-question decomposition", () => {
     expect(counters.groundedCount).toBe(1);
   });
 
+  it("recordOneAnswer skips stale-epoch persists and billing", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
+      t,
+      { paperCount: 1, questionKeys: ["q1"], startingCredits: 100 },
+    );
+    const [paperId] = paperIds;
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionJobs", jobId, { runEpoch: 3 });
+    });
+
+    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+      paperId,
+      questionKey: "q1",
+      result: {
+        answer: "A",
+        confidence: 0.9,
+        reasoning: "r",
+        citations: [],
+        citationStatus: "grounded" as const,
+      },
+      creditsUsed: 7,
+      expectedEpoch: 2,
+    });
+
+    const rows = await t.run((ctx) =>
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper_question", (q) =>
+          q.eq("paperId", paperId).eq("questionKey", "q1"),
+        )
+        .collect(),
+    );
+    expect(rows).toEqual([]);
+    expect(await readBalance(t, creditsId)).toBe(100);
+  });
+
   it("retryable failure → subsequent success upgrades the same row without double-counting the aggregate", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
@@ -344,21 +417,18 @@ describe("plan-02 per-question decomposition", () => {
 
     // Second pass: user retry (plan 05) re-runs the action and this
     // time it succeeds — recordOneAnswer upgrades the same row.
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: {
-          answer: "A",
-          confidence: 0.9,
-          reasoning: "r",
-          citations: [],
-          citationStatus: "grounded" as const,
-        },
-        creditsUsed: 1,
+    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+      paperId,
+      questionKey: "q1",
+      result: {
+        answer: "A",
+        confidence: 0.9,
+        reasoning: "r",
+        citations: [],
+        citationStatus: "grounded" as const,
       },
-    );
+      creditsUsed: 1,
+    });
 
     const afterSuccess = await t.run((ctx) =>
       readAggregateCounters(ctx, jobId, "q1"),
@@ -407,10 +477,9 @@ describe("plan-02 per-question decomposition", () => {
       );
     }
 
-    await t.mutation(
-      internal.extraction.mutations.results.finalizePaper,
-      { paperId },
-    );
+    await t.mutation(internal.extraction.mutations.results.finalizePaper, {
+      paperId,
+    });
 
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.status).toBe("failed");

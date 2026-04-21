@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { runPapersInBatches } from "./workflow";
+import { runBoundedBatches } from "./workflow";
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -45,7 +45,7 @@ describe("convex/extraction/workflow batching", () => {
         runEpoch: 8,
       }));
 
-    const running = runPapersInBatches({
+    const running = runBoundedBatches({
       items: ["paper-1", "paper-2", "paper-3"],
       batchSize: 2,
       waitForNextBatch,
@@ -85,7 +85,7 @@ describe("convex/extraction/workflow batching", () => {
       }))
       .mockImplementationOnce(async () => secondBatchGate.promise);
 
-    const running = runPapersInBatches({
+    const running = runBoundedBatches({
       items: ["paper-1", "paper-2", "paper-3"],
       batchSize: 2,
       waitForNextBatch,
@@ -111,7 +111,7 @@ describe("convex/extraction/workflow batching", () => {
   it("does not start another batch after a paper halts the current batch", async () => {
     const started: string[] = [];
 
-    const result = await runPapersInBatches({
+    const result = await runBoundedBatches({
       items: ["paper-1", "paper-2", "paper-3"],
       batchSize: 2,
       waitForNextBatch: async () => ({
@@ -126,5 +126,41 @@ describe("convex/extraction/workflow batching", () => {
 
     expect(result).toBe("halted");
     expect(started).toEqual(["paper-1", "paper-2"]);
+  });
+
+  it("keeps multiple questions in flight within a paper-sized batch", async () => {
+    const first = deferred<"completed" | "halted">();
+    const second = deferred<"completed" | "halted">();
+    const third = deferred<"completed" | "halted">();
+    const workByQuestion = new Map([
+      ["q1", first],
+      ["q2", second],
+      ["q3", third],
+    ]);
+    const started: string[] = [];
+
+    const running = runBoundedBatches({
+      items: ["q1", "q2", "q3"],
+      batchSize: 2,
+      waitForNextBatch: async () => ({
+        status: "extracting",
+        runEpoch: 11,
+      }),
+      runItem: async (question, control) => {
+        started.push(`${question}:${control.runEpoch}`);
+        return await workByQuestion.get(question)!.promise;
+      },
+    });
+
+    await flushPromises();
+    expect(started).toEqual(["q1:11", "q2:11"]);
+
+    first.resolve("completed");
+    second.resolve("completed");
+    await flushPromises();
+    expect(started).toEqual(["q1:11", "q2:11", "q3:11"]);
+
+    third.resolve("completed");
+    await expect(running).resolves.toBe("completed");
   });
 });

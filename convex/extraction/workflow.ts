@@ -23,6 +23,7 @@ import { classifyUnknownError } from "@/lib/errors/taxonomy";
 import type { WorkflowCtx } from "@convex-dev/workflow";
 
 const EXTRACTION_PAPER_CONCURRENCY_INFRA_CLAMP = 5;
+const EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP = 5;
 
 type ExtractionWorkflowStep = Pick<
   WorkflowCtx,
@@ -39,22 +40,31 @@ type PaperPipelineResult = "completed" | "halted";
 type ExtractionPaper = Doc<"extractionPapers">;
 type ExtractionQuestion = Doc<"extractionQuestions">;
 
-async function getEffectivePaperConcurrency(
+async function getEffectiveExecutionConcurrency(
   step: ExtractionWorkflowStep,
   userId: Id<"users">,
-): Promise<number> {
+): Promise<{
+  paperConcurrency: number;
+  questionConcurrency: number;
+}> {
   const executionLimits = await step.runQuery(
     internal.extraction.bucket.limits.getExtractionExecutionLimitsForUser,
     { userId },
   );
 
-  return resolveBoundedConcurrency(
-    executionLimits.paperConcurrency,
-    EXTRACTION_PAPER_CONCURRENCY_INFRA_CLAMP,
-  );
+  return {
+    paperConcurrency: resolveBoundedConcurrency(
+      executionLimits.paperConcurrency,
+      EXTRACTION_PAPER_CONCURRENCY_INFRA_CLAMP,
+    ),
+    questionConcurrency: resolveBoundedConcurrency(
+      executionLimits.questionConcurrencyPerPaper,
+      EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
+    ),
+  };
 }
 
-export async function runPapersInBatches<TItem>({
+export async function runBoundedBatches<TItem>({
   items,
   batchSize,
   waitForNextBatch,
@@ -83,18 +93,137 @@ export async function runPapersInBatches<TItem>({
   return "completed";
 }
 
+async function runQuestionStep(
+  step: ExtractionWorkflowStep,
+  {
+    jobId,
+    paperId,
+    questionId,
+    questionKey,
+    expectedEpoch,
+    retryLabelPrefix,
+    logPrefix,
+  }: {
+    jobId: Id<"extractionJobs">;
+    paperId: Id<"extractionPapers">;
+    questionId: Id<"extractionQuestions">;
+    questionKey: string;
+    expectedEpoch: number;
+    retryLabelPrefix: "q" | "retry";
+    logPrefix: "Workflow" | "RetryWorkflow";
+  },
+): Promise<PaperPipelineResult> {
+  try {
+    const questionResult = await step.runAction(
+      internal.extraction.workpoolActions.extractOneQuestion,
+      {
+        paperId,
+        jobId,
+        questionId,
+        expectedEpoch,
+      },
+      {
+        retry: true,
+        name: `${retryLabelPrefix}:${paperId}:${questionKey}`,
+      },
+    );
+    if (
+      questionResult.status === "skipped" &&
+      questionResult.reason !== "already_billed"
+    ) {
+      console.log(
+        `[${logPrefix}] Halting ${paperId}:${questionKey}; worker skipped with ${questionResult.reason}`,
+      );
+      return "halted";
+    }
+  } catch (error) {
+    const classified = classifyUnknownError(error);
+    await step.runMutation(
+      internal.extraction.mutations.results.recordOneAnswerFailure,
+      {
+        paperId,
+        questionKey,
+        expectedEpoch,
+        error: {
+          code: classified.code,
+          message: classified.message,
+          retryable: classified.retryable,
+          ...(classified.httpStatus !== undefined
+            ? { httpStatus: classified.httpStatus }
+            : {}),
+          ...(classified.providerName !== undefined
+            ? { providerName: classified.providerName }
+            : {}),
+        },
+      },
+      { name: `${retryLabelPrefix}fail:${paperId}:${questionKey}` },
+    );
+  }
+
+  return "completed";
+}
+
+async function runQuestionBatches(
+  step: ExtractionWorkflowStep,
+  {
+    jobId,
+    paperId,
+    items,
+    questionConcurrency,
+    retryLabelPrefix,
+    haltedLogPrefix,
+  }: {
+    jobId: Id<"extractionJobs">;
+    paperId: Id<"extractionPapers">;
+    items: ReadonlyArray<{
+      questionId: Id<"extractionQuestions">;
+      questionKey: string;
+    }>;
+    questionConcurrency: number;
+    retryLabelPrefix: "q" | "retry";
+    haltedLogPrefix: "Workflow" | "RetryWorkflow";
+  },
+): Promise<PaperPipelineResult> {
+  return await runBoundedBatches({
+    items,
+    batchSize: questionConcurrency,
+    waitForNextBatch: async () => {
+      const control = await waitWhilePausedOrCancelled(step, jobId);
+      if (control.status === "cancelled") {
+        console.log(
+          `[${haltedLogPrefix}] Cancelled before next question batch for paper ${paperId}; halting`,
+        );
+        return null;
+      }
+      return control;
+    },
+    runItem: async ({ questionId, questionKey }, control) =>
+      runQuestionStep(step, {
+        jobId,
+        paperId,
+        questionId,
+        questionKey,
+        expectedEpoch: control.runEpoch,
+        retryLabelPrefix,
+        logPrefix: haltedLogPrefix,
+      }),
+  });
+}
+
 async function runPaperPipeline(
   step: ExtractionWorkflowStep,
   {
     jobId,
     paper,
     questionIds,
+    questionConcurrency,
     pdfEnabled,
     expectedEpoch,
   }: {
     jobId: Id<"extractionJobs">;
     paper: ExtractionPaper;
     questionIds: ReadonlyArray<ExtractionQuestion>;
+    questionConcurrency: number;
     pdfEnabled: boolean;
     expectedEpoch: number;
   },
@@ -184,50 +313,20 @@ async function runPaperPipeline(
     { name: `mark-ex:${paper._id}` },
   );
 
-  for (const q of questionIds) {
-    try {
-      const questionResult = await step.runAction(
-        internal.extraction.workpoolActions.extractOneQuestion,
-        {
-          paperId: paper._id,
-          jobId,
-          questionId: q._id,
-          expectedEpoch,
-        },
-        { retry: true, name: `q:${paper._id}:${q.key}` },
-      );
-      if (
-        questionResult.status === "skipped" &&
-        questionResult.reason !== "already_billed"
-      ) {
-        console.log(
-          `[Workflow] Halting ${paper._id}:${q.key}; worker skipped with ${questionResult.reason}`,
-        );
-        return "halted";
-      }
-    } catch (error) {
-      const classified = classifyUnknownError(error);
-      await step.runMutation(
-        internal.extraction.mutations.results.recordOneAnswerFailure,
-        {
-          paperId: paper._id,
-          questionKey: q.key,
-          expectedEpoch,
-          error: {
-            code: classified.code,
-            message: classified.message,
-            retryable: classified.retryable,
-            ...(classified.httpStatus !== undefined
-              ? { httpStatus: classified.httpStatus }
-              : {}),
-            ...(classified.providerName !== undefined
-              ? { providerName: classified.providerName }
-              : {}),
-          },
-        },
-        { name: `qfail:${paper._id}:${q.key}` },
-      );
-    }
+  const questionBatchResult = await runQuestionBatches(step, {
+    jobId,
+    paperId: paper._id,
+    items: questionIds.map((question) => ({
+      questionId: question._id,
+      questionKey: question.key,
+    })),
+    questionConcurrency,
+    retryLabelPrefix: "q",
+    haltedLogPrefix: "Workflow",
+  });
+
+  if (questionBatchResult === "halted") {
+    return "halted";
   }
 
   await step.runMutation(
@@ -246,59 +345,31 @@ async function runRetryPaperPipeline(
     paperId,
     questionKeys,
     keyToId,
+    questionConcurrency,
     expectedEpoch,
   }: {
     jobId: Id<"extractionJobs">;
     paperId: Id<"extractionPapers">;
     questionKeys: ReadonlyArray<string>;
     keyToId: ReadonlyMap<string, Id<"extractionQuestions">>;
+    questionConcurrency: number;
     expectedEpoch: number;
   },
 ): Promise<PaperPipelineResult> {
-  for (const questionKey of questionKeys) {
-    const questionId = keyToId.get(questionKey);
-    if (!questionId) {
-      continue;
-    }
+  const questionBatchResult = await runQuestionBatches(step, {
+    jobId,
+    paperId,
+    items: questionKeys.flatMap((questionKey) => {
+      const questionId = keyToId.get(questionKey);
+      return questionId ? [{ questionId, questionKey }] : [];
+    }),
+    questionConcurrency,
+    retryLabelPrefix: "retry",
+    haltedLogPrefix: "RetryWorkflow",
+  });
 
-    try {
-      const questionResult = await step.runAction(
-        internal.extraction.workpoolActions.extractOneQuestion,
-        { paperId, jobId, questionId, expectedEpoch },
-        { retry: true, name: `retry:${paperId}:${questionKey}` },
-      );
-      if (
-        questionResult.status === "skipped" &&
-        questionResult.reason !== "already_billed"
-      ) {
-        console.log(
-          `[RetryWorkflow] Halting ${paperId}:${questionKey}; worker skipped with ${questionResult.reason}`,
-        );
-        return "halted";
-      }
-    } catch (error) {
-      const classified = classifyUnknownError(error);
-      await step.runMutation(
-        internal.extraction.mutations.results.recordOneAnswerFailure,
-        {
-          paperId,
-          questionKey,
-          expectedEpoch,
-          error: {
-            code: classified.code,
-            message: classified.message,
-            retryable: classified.retryable,
-            ...(classified.httpStatus !== undefined
-              ? { httpStatus: classified.httpStatus }
-              : {}),
-            ...(classified.providerName !== undefined
-              ? { providerName: classified.providerName }
-              : {}),
-          },
-        },
-        { name: `qfail-retry:${paperId}:${questionKey}` },
-      );
-    }
+  if (questionBatchResult === "halted") {
+    return "halted";
   }
 
   await step.runMutation(
@@ -317,22 +388,25 @@ export const runExtractionWorkflow = workflow.define({
   handler: async (step, { jobId }) => {
     console.log(`[Workflow] Starting extraction for job ${jobId}`);
 
-    const job = await step.runQuery(internal.extraction.queries.internal.getJobInternal, {
-      jobId,
-    });
+    const job = await step.runQuery(
+      internal.extraction.queries.internal.getJobInternal,
+      {
+        jobId,
+      },
+    );
 
     if (!job) {
       throw createError("NOT_FOUND", "Job not found");
     }
     let expectedEpoch = job.runEpoch ?? 0;
-    const effectivePaperConcurrency = await getEffectivePaperConcurrency(
-      step,
-      job.userId,
-    );
+    const {
+      paperConcurrency: effectivePaperConcurrency,
+      questionConcurrency: effectiveQuestionConcurrency,
+    } = await getEffectiveExecutionConcurrency(step, job.userId);
 
     const questionIds = await step.runQuery(
       internal.extraction.queries.internal.getQuestionsInternal,
-      { jobId }
+      { jobId },
     );
 
     console.log(`[Workflow] Loaded ${questionIds.length} questions`);
@@ -341,12 +415,15 @@ export const runExtractionWorkflow = workflow.define({
       internal.extraction.queries.internal.getJobAndFlagsInternal,
       { jobId },
     );
-    await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
-      jobId,
-      expectedEpoch,
-      status: pdfEnabledEarly ? "downloading_pdfs" : "indexing",
-      totalPapers: 0,
-    });
+    await step.runMutation(
+      internal.extraction.mutations.results.updateJobStatus,
+      {
+        jobId,
+        expectedEpoch,
+        status: pdfEnabledEarly ? "downloading_pdfs" : "indexing",
+        totalPapers: 0,
+      },
+    );
 
     const bucketItems = await step.runQuery(
       internal.extraction.queries.internal.getJobSourcesInternal,
@@ -422,20 +499,23 @@ export const runExtractionWorkflow = workflow.define({
     }
     expectedEpoch = controlAfterExpansion.runEpoch;
 
-    await step.runMutation(internal.extraction.mutations.papers.createPaperRecords, {
-      jobId,
-      papers: dedupedPapers.map((p) => ({
-        ...p,
-        storageId: p.storageId as Id<"_storage"> | undefined,
-      })),
-    });
+    await step.runMutation(
+      internal.extraction.mutations.papers.createPaperRecords,
+      {
+        jobId,
+        papers: dedupedPapers.map((p) => ({
+          ...p,
+          storageId: p.storageId as Id<"_storage"> | undefined,
+        })),
+      },
+    );
 
     const paperIds = await step.runQuery(
       internal.extraction.queries.papers.byOpenAlexIds,
       {
         jobId,
         openalexIds: dedupedPapers.map((p) => p.openalexId),
-      }
+      },
     );
 
     const processableCount = paperIds.filter(
@@ -447,12 +527,15 @@ export const runExtractionWorkflow = workflow.define({
       { jobId },
     );
 
-    await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
-      jobId,
-      expectedEpoch,
-      status: pdfEnabled ? "downloading_pdfs" : "indexing",
-      totalPapers: processableCount,
-    });
+    await step.runMutation(
+      internal.extraction.mutations.results.updateJobStatus,
+      {
+        jobId,
+        expectedEpoch,
+        status: pdfEnabled ? "downloading_pdfs" : "indexing",
+        totalPapers: processableCount,
+      },
+    );
 
     // Without this, maybeFinalizeJob never fires for a zero-paper run and the job strands in `extracting`.
     if (paperIds.length === 0) {
@@ -468,17 +551,20 @@ export const runExtractionWorkflow = workflow.define({
     // enqueue loop. The handler now awaits the per-paper pipeline
     // synchronously, so we flip upfront — otherwise the UI would sit
     // in "indexing" for the whole run.
-    await step.runMutation(internal.extraction.mutations.results.updateJobStatus, {
-      jobId,
-      expectedEpoch,
-      status: "extracting",
-    });
-
-    console.log(
-      `[Workflow] Fanning out ${paperIds.length} papers × ${questionIds.length} questions in batches of ${effectivePaperConcurrency}`,
+    await step.runMutation(
+      internal.extraction.mutations.results.updateJobStatus,
+      {
+        jobId,
+        expectedEpoch,
+        status: "extracting",
+      },
     );
 
-    const paperBatchResult = await runPapersInBatches({
+    console.log(
+      `[Workflow] Fanning out ${paperIds.length} papers × ${questionIds.length} questions in paper batches of ${effectivePaperConcurrency} and question batches of ${effectiveQuestionConcurrency}`,
+    );
+
+    const paperBatchResult = await runBoundedBatches({
       items: paperIds,
       batchSize: effectivePaperConcurrency,
       waitForNextBatch: async () => {
@@ -494,6 +580,7 @@ export const runExtractionWorkflow = workflow.define({
           jobId,
           paper,
           questionIds,
+          questionConcurrency: effectiveQuestionConcurrency,
           pdfEnabled,
           expectedEpoch: control.runEpoch,
         }),
@@ -526,10 +613,7 @@ async function waitWhilePausedOrCancelled(
     internal.extraction.queries.internal.getJobStatusInternal,
     { jobId },
   );
-  while (
-    control.status === "paused" ||
-    control.status === "creditsExhausted"
-  ) {
+  while (control.status === "paused" || control.status === "creditsExhausted") {
     await step.awaitEvent({ name: `resume:${jobId}` });
     control = await step.runQuery(
       internal.extraction.queries.internal.getJobStatusInternal,
@@ -564,23 +648,24 @@ export const runRetryWorkflow = workflow.define({
   },
   handler: async (step, { jobId }) => {
     console.log(`[RetryWorkflow] Starting retry for job ${jobId}`);
-    const jobControl = (
-      await step.runQuery(
-        internal.extraction.queries.internal.getJobStatusInternal,
-        { jobId },
-      )
+    const jobControl = await step.runQuery(
+      internal.extraction.queries.internal.getJobStatusInternal,
+      { jobId },
     );
     let expectedEpoch = jobControl.runEpoch;
-    const job = await step.runQuery(internal.extraction.queries.internal.getJobInternal, {
-      jobId,
-    });
+    const job = await step.runQuery(
+      internal.extraction.queries.internal.getJobInternal,
+      {
+        jobId,
+      },
+    );
     if (!job) {
       throw createError("NOT_FOUND", "Job not found");
     }
-    const effectivePaperConcurrency = await getEffectivePaperConcurrency(
-      step,
-      job.userId,
-    );
+    const {
+      paperConcurrency: effectivePaperConcurrency,
+      questionConcurrency: effectiveQuestionConcurrency,
+    } = await getEffectiveExecutionConcurrency(step, job.userId);
 
     const questionList = await step.runQuery(
       internal.extraction.queries.internal.getQuestionsInternal,
@@ -620,13 +705,15 @@ export const runRetryWorkflow = workflow.define({
       `[RetryWorkflow] Re-dispatching ${pending.length} question(s) across ${byPaper.size} paper(s) in batches of ${effectivePaperConcurrency}`,
     );
 
-    const retryBatchResult = await runPapersInBatches({
+    const retryBatchResult = await runBoundedBatches({
       items: Array.from(byPaper.entries()),
       batchSize: effectivePaperConcurrency,
       waitForNextBatch: async () => {
         const control = await waitWhilePausedOrCancelled(step, jobId);
         if (control.status === "cancelled") {
-          console.log(`[RetryWorkflow] Cancelled before next paper batch; halting`);
+          console.log(
+            `[RetryWorkflow] Cancelled before next paper batch; halting`,
+          );
           return null;
         }
         return control;
@@ -637,6 +724,7 @@ export const runRetryWorkflow = workflow.define({
           paperId,
           questionKeys,
           keyToId,
+          questionConcurrency: effectiveQuestionConcurrency,
           expectedEpoch: control.runEpoch,
         }),
     });

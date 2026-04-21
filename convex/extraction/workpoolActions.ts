@@ -16,7 +16,10 @@ import {
   getModel,
 } from "../ai/helpers";
 import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
-import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
+import {
+  truncateForTracking,
+  type AITrackingEntry,
+} from "../../lib/posthog-ai-shared";
 import {
   captureAIGenerationBatchServer,
   captureAIGenerationServer,
@@ -35,7 +38,10 @@ import {
   type ErrorCode,
 } from "@/lib/errors/taxonomy";
 import { MIN_ABSTRACT_LENGTH } from "./content";
-import { buildEnhancedExtractionPrompt, type ExtractionQuestion } from "./prompts";
+import {
+  buildEnhancedExtractionPrompt,
+  type ExtractionQuestion,
+} from "./prompts";
 import {
   buildChunkedEvidenceUnitsFromPdfPages,
   reciprocalRankFuse,
@@ -92,7 +98,10 @@ const RRF_CONSTANT = 30;
 const FUSED_TOP_N = 48;
 const EVIDENCE_POOL_N = 16;
 const DEFAULT_EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS = 0.02;
-function parsePositiveFloat(input: string | undefined, fallback: number): number {
+function parsePositiveFloat(
+  input: string | undefined,
+  fallback: number,
+): number {
   if (!input) return fallback;
   const parsed = Number.parseFloat(input);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
@@ -126,7 +135,8 @@ function toClassifiedError(
       ...result,
       code: fallbackCode,
       retryable: isRetryable[fallbackCode],
-      message: result.message === "Unknown error" ? fallbackMessage : result.message,
+      message:
+        result.message === "Unknown error" ? fallbackMessage : result.message,
     };
   }
   return result;
@@ -140,7 +150,9 @@ function mkError(code: ErrorCode, message: string): ClassifiedError {
   return { code, message, retryable: isRetryable[code] };
 }
 
-function toTupleRange(charRange: number[] | [number, number]): [number, number] {
+function toTupleRange(
+  charRange: number[] | [number, number],
+): [number, number] {
   const start = Number(charRange?.[0] ?? 0);
   const end = Number(charRange?.[1] ?? start);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
@@ -171,11 +183,13 @@ function buildAnswerSchema(type: string) {
   });
 }
 
-function parseDenseScores(results: Array<{
-  score?: number;
-  content?: Array<{ metadata?: { evidenceId?: string } }>;
-  metadata?: { evidenceId?: string };
-}>): RankedEvidenceScore[] {
+function parseDenseScores(
+  results: Array<{
+    score?: number;
+    content?: Array<{ metadata?: { evidenceId?: string } }>;
+    metadata?: { evidenceId?: string };
+  }>,
+): RankedEvidenceScore[] {
   const byEvidence = new Map<string, number>();
 
   for (const result of results) {
@@ -221,7 +235,7 @@ async function runDenseSearch(
   ctx: ActionCtx,
   namespace: string,
   paperId: string,
-  question: string
+  question: string,
 ): Promise<RankedEvidenceScore[]> {
   try {
     const search = await rag.search(ctx, {
@@ -283,7 +297,10 @@ async function extractQuestionAnswer(params: {
   };
   abstract?: string;
   evidencePool: RetrievalCandidate[];
-  diagnosticsSeed: Omit<RetrievalDiagnostics, "validatedCitations" | "strictNull">;
+  diagnosticsSeed: Omit<
+    RetrievalDiagnostics,
+    "validatedCitations" | "strictNull"
+  >;
 }): Promise<ExtractionWithUsage> {
   const { model, question, abstract, evidencePool, diagnosticsSeed } = params;
 
@@ -291,7 +308,7 @@ async function extractQuestionAnswer(params: {
     const prompt = buildEnhancedExtractionPrompt(
       question as ExtractionQuestion,
       abstract,
-      toEvidenceContext(evidencePool)
+      toEvidenceContext(evidencePool),
     );
 
     const { output: object, usage } = await generateText({
@@ -299,16 +316,18 @@ async function extractQuestionAnswer(params: {
       output: Output.object({ schema: buildAnswerSchema(question.type) }),
       prompt,
       temperature: 0,
-      providerOptions: STANDARD_PROVIDER_OPTIONS as Parameters<typeof generateText>[0]["providerOptions"],
+      providerOptions: STANDARD_PROVIDER_OPTIONS as Parameters<
+        typeof generateText
+      >[0]["providerOptions"],
     });
 
     const extracted = normalizeExtractionOutputForQuestion(
       question.type,
-      object as StrictExtractionOutput
+      object as StrictExtractionOutput,
     );
     const validated = validateSupportEvidenceIds(
       extracted.supportEvidenceIds || [],
-      evidencePool
+      evidencePool,
     );
     const policy = applyEvidencePolicy({
       extracted,
@@ -379,7 +398,7 @@ async function extractQuestionAnswerFromAbstract(params: {
     const prompt = buildEnhancedExtractionPrompt(
       question as ExtractionQuestion,
       abstract,
-      []
+      [],
     );
 
     const { output: object, usage } = await generateText({
@@ -387,14 +406,19 @@ async function extractQuestionAnswerFromAbstract(params: {
       output: Output.object({ schema: buildAnswerSchema(question.type) }),
       prompt,
       temperature: 0,
-      providerOptions: STANDARD_PROVIDER_OPTIONS as Parameters<typeof generateText>[0]["providerOptions"],
+      providerOptions: STANDARD_PROVIDER_OPTIONS as Parameters<
+        typeof generateText
+      >[0]["providerOptions"],
     });
 
     const extracted = normalizeExtractionOutputForQuestion(
       question.type,
-      object as StrictExtractionOutput
+      object as StrictExtractionOutput,
     );
-    const policy = applyAbstractOnlyPolicy({ extracted, pdfEnabled: params.pdfEnabled });
+    const policy = applyAbstractOnlyPolicy({
+      extracted,
+      pdfEnabled: params.pdfEnabled,
+    });
     const reasoningPrefix =
       policy.answer === null
         ? "Abstract-only mode: no direct support found in the abstract."
@@ -470,7 +494,7 @@ async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
       maxChars: 900,
       overlapChars: 120,
       source: "pdfjs_chunks",
-    }
+    },
   );
 
   if (units.length === 0) {
@@ -501,11 +525,11 @@ async function resolvePdfBlob(
     return { pdfBlob: null, error: "No PDF URL provided" };
   }
 
-    const zoteroConnection = job
-      ? await ctx.runQuery(internal.zotero.internal.getConnection, {
-          userId: job.userId,
-        })
-      : null;
+  const zoteroConnection = job
+    ? await ctx.runQuery(internal.zotero.internal.getConnection, {
+        userId: job.userId,
+      })
+    : null;
 
   // Decrypt the Zotero API key
   let zoteroApiKey: string | undefined;
@@ -514,10 +538,14 @@ async function resolvePdfBlob(
     if (!encryptionKey) {
       throw new Error("ENCRYPTION_KEY not configured");
     }
-    zoteroApiKey = decryptApiKey(zoteroConnection.encryptedApiKey, encryptionKey, {
-      userId: job?.userId ? String(job.userId) : "system",
-      purpose: "zotero-pdf-download",
-    });
+    zoteroApiKey = decryptApiKey(
+      zoteroConnection.encryptedApiKey,
+      encryptionKey,
+      {
+        userId: job?.userId ? String(job.userId) : "system",
+        purpose: "zotero-pdf-download",
+      },
+    );
     await ctx.runMutation(internal.lib.audit.writeAuditLog, {
       action: "KEY_DECRYPT",
       userId: job?.userId ? String(job.userId) : "system",
@@ -759,11 +787,14 @@ export const downloadAndIndexPdfAction = internalAction({
       let storedId = resolved.storageId;
       if (!storedId) {
         storedId = await ctx.storage.store(resolved.pdfBlob);
-        await ctx.runMutation(internal.extraction.mutations.papers.setPaperStorage, {
-          paperId: args.paperId,
-          storageId: storedId,
-          expectedEpoch: args.expectedEpoch,
-        });
+        await ctx.runMutation(
+          internal.extraction.mutations.papers.setPaperStorage,
+          {
+            paperId: args.paperId,
+            storageId: storedId,
+            expectedEpoch: args.expectedEpoch,
+          },
+        );
       }
 
       await ctx.runMutation(
@@ -815,7 +846,8 @@ export const downloadAndIndexPdfAction = internalAction({
         });
 
         const embeddingTokens = ragResult.usage?.tokens ?? 0;
-        const embeddingCostDollars = estimateEmbeddingCostDollars(embeddingTokens);
+        const embeddingCostDollars =
+          estimateEmbeddingCostDollars(embeddingTokens);
         const embeddingCreditsToDeduct =
           convertServerCostDollarsToCredits(embeddingCostDollars);
 
@@ -838,19 +870,22 @@ export const downloadAndIndexPdfAction = internalAction({
         const shouldBill =
           freshControl.status !== "cancelled" && embeddingCreditsToDeduct > 0;
 
-        await ctx.runMutation(internal.extraction.mutations.papers.markPaperIndexed, {
-          paperId: args.paperId,
-          expectedEpoch: args.expectedEpoch,
-          ragEntryId: ragResult.entryId,
-          billing: shouldBill
-            ? {
-                userId: job.userId,
-                jobId: args.jobId,
-                creditsToDeduct: embeddingCreditsToDeduct,
-                embeddingTokens,
-              }
-            : undefined,
-        });
+        await ctx.runMutation(
+          internal.extraction.mutations.papers.markPaperIndexed,
+          {
+            paperId: args.paperId,
+            expectedEpoch: args.expectedEpoch,
+            ragEntryId: ragResult.entryId,
+            billing: shouldBill
+              ? {
+                  userId: job.userId,
+                  jobId: args.jobId,
+                  creditsToDeduct: embeddingCreditsToDeduct,
+                  embeddingTokens,
+                }
+              : undefined,
+          },
+        );
       }
 
       return {
@@ -870,7 +905,6 @@ export const downloadAndIndexPdfAction = internalAction({
     }
   },
 });
-
 
 // ──────────────────────────────────────────────────────────────────────
 // Plan-02 per-question action
@@ -923,12 +957,14 @@ async function runOneQuestionExtraction(params: {
   if (units.length === 0) {
     if (abstractText) {
       const qStart = Date.now();
-      const { result, usage, prompt } = await extractQuestionAnswerFromAbstract({
-        model,
-        question,
-        abstract: abstractText,
-        pdfEnabled,
-      });
+      const { result, usage, prompt } = await extractQuestionAnswerFromAbstract(
+        {
+          model,
+          question,
+          abstract: abstractText,
+          pdfEnabled,
+        },
+      );
       const qLatency = Date.now() - qStart;
       console.info(
         "[extractOneQuestion] question diagnostics",
@@ -1000,18 +1036,22 @@ async function runOneQuestionExtraction(params: {
     };
   }
 
-  const denseScores = await runDenseSearch(
-    ctx,
-    `extraction:${jobId}`,
-    paperId,
-    question.question,
+  const [denseScores, lexicalScores] = await Promise.all([
+    runDenseSearch(ctx, `extraction:${jobId}`, paperId, question.question),
+    scoreLexicalEvidence(
+      question.question,
+      units.map((unit) => ({
+        evidenceId: unit.evidenceId,
+        tokens: unit.tokens,
+      })),
+      DENSE_LIMIT,
+    ),
+  ]);
+  const fusedScores = reciprocalRankFuse(
+    denseScores,
+    lexicalScores,
+    RRF_CONSTANT,
   );
-  const lexicalScores = scoreLexicalEvidence(
-    question.question,
-    units.map((unit) => ({ evidenceId: unit.evidenceId, tokens: unit.tokens })),
-    DENSE_LIMIT,
-  );
-  const fusedScores = reciprocalRankFuse(denseScores, lexicalScores, RRF_CONSTANT);
   const byEvidenceId = new Map(units.map((unit) => [unit.evidenceId, unit]));
   const fusedCandidates: RetrievalCandidate[] = [];
   for (const row of fusedScores.slice(0, FUSED_TOP_N)) {
@@ -1126,11 +1166,15 @@ export const extractOneQuestion = internalAction({
       ctx.runQuery(internal.extraction.queries.papers.byId, {
         paperId: args.paperId,
       }),
-      ctx.runQuery(internal.extraction.queries.internal.getJobAndFlagsInternal, {
-        jobId: args.jobId,
-      }),
       ctx.runQuery(
-        internal.extraction.queries.internal.getResultByPaperAndQuestionInternal,
+        internal.extraction.queries.internal.getJobAndFlagsInternal,
+        {
+          jobId: args.jobId,
+        },
+      ),
+      ctx.runQuery(
+        internal.extraction.queries.internal
+          .getResultByPaperAndQuestionInternal,
         { paperId: args.paperId, questionKey: question.key },
       ),
     ]);
@@ -1162,10 +1206,22 @@ export const extractOneQuestion = internalAction({
     }
 
     const operation = `Extraction (1 question)`;
-    const billingUser = await ctx.runQuery(
-      internal.users.internal.getUserById,
-      { userId: job.userId },
-    );
+    const [billingUser, balance, unitsRaw, model, pricing] = await Promise.all([
+      ctx.runQuery(internal.users.internal.getUserById, {
+        userId: job.userId,
+      }),
+      ctx.runQuery(internal.credits.internal.getBalanceByUserId, {
+        userId: job.userId,
+      }),
+      ctx.runQuery(
+        internal.extraction.queries.internal.getEvidenceUnitsInternal,
+        {
+          paperId: args.paperId,
+        },
+      ),
+      getModel(),
+      fetchServerPricing(ctx),
+    ]);
     if (!billingUser) {
       throw createError(
         "AI_UNAUTHENTICATED",
@@ -1217,10 +1273,6 @@ export const extractOneQuestion = internalAction({
       throw error;
     };
 
-    const balance = await ctx.runQuery(
-      internal.credits.internal.getBalanceByUserId,
-      { userId: job.userId },
-    );
     if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
       await captureServerEvent(billingUser.clerkId, "credits_insufficient", {
         required_credits: ESTIMATED_CREDITS_PER_QUERY,
@@ -1243,10 +1295,6 @@ export const extractOneQuestion = internalAction({
       );
     }
 
-    const unitsRaw = await ctx.runQuery(
-      internal.extraction.queries.internal.getEvidenceUnitsInternal,
-      { paperId: args.paperId },
-    );
     const units: EvidenceUnitDoc[] = (unitsRaw || []).map((unit) => ({
       evidenceId: unit.evidenceId,
       page: unit.page,
@@ -1260,8 +1308,6 @@ export const extractOneQuestion = internalAction({
 
     const abstractPresent = isUsableAbstract(paper.abstract);
     const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
-    const model = await getModel();
-    const pricing = await fetchServerPricing(ctx);
 
     const startedAt = Date.now();
     const outcome = await runOneQuestionExtraction({

@@ -10,6 +10,19 @@ type ProjectionAnswer =
   | Doc<"extractionResults">["answer"]
   | Doc<"extractionResultReviews">["correctedAnswer"];
 
+type ProjectionQuestionState = {
+  questionKey: string;
+  token?: string;
+  searchPart?: string;
+};
+
+type ProjectionState = {
+  resultCount: number;
+  confidenceSum: number;
+  questionStates: ProjectionQuestionState[];
+  errorQuestionKeys: string[];
+};
+
 export function normalizeProjectionText(value: string | null | undefined): string {
   if (typeof value !== "string") return "";
   return value
@@ -28,6 +41,13 @@ function answerTextForSearch(answer: ProjectionAnswer): string {
   if (typeof answer === "number") return String(Number(answer));
   if (Array.isArray(answer)) return answer.join(" ");
   return String(answer);
+}
+
+function buildSearchPart(answer: ProjectionAnswer): string | undefined {
+  const normalized = normalizeProjectionText(answerTextForSearch(answer))
+    .slice(0, SEARCH_TEXT_DEFAULT_PART_MAX)
+    .trim();
+  return normalized || undefined;
 }
 
 function normalizeAnswerForQuestionFilter(answer: ProjectionAnswer): string | null {
@@ -61,10 +81,9 @@ export function buildQuestionAnswerToken(
 
 function buildSearchText(args: {
   paper: Doc<"extractionPapers">;
-  results: Doc<"extractionResults">[];
-  reviewByResultId: Map<Id<"extractionResults">, Doc<"extractionResultReviews">>;
+  questionStates: ProjectionQuestionState[];
 }): string {
-  const { paper, results, reviewByResultId } = args;
+  const { paper, questionStates } = args;
   const seen = new Set<string>();
   const parts: string[] = [];
   let totalChars = 0;
@@ -102,82 +121,197 @@ function buildSearchText(args: {
   }
   pushPart(paper.abstract, SEARCH_TEXT_ABSTRACT_MAX);
 
-  for (const result of [...results].sort((a, b) =>
+  for (const state of [...questionStates].sort((a, b) =>
     a.questionKey.localeCompare(b.questionKey),
   )) {
-    const review = reviewByResultId.get(result._id);
-    pushPart(answerTextForSearch(review?.correctedAnswer ?? result.answer));
+    pushPart(state.searchPart, SEARCH_TEXT_DEFAULT_PART_MAX);
   }
 
   return parts.join(" ");
 }
 
-function buildProjection(args: {
+function sortQuestionStates(
+  questionStates: ProjectionQuestionState[],
+): ProjectionQuestionState[] {
+  return [...questionStates].sort((a, b) => a.questionKey.localeCompare(b.questionKey));
+}
+
+function isErrorResult(
+  result: Pick<
+    Doc<"extractionResults">,
+    "status" | "citationStatus" | "lastError"
+  >,
+): boolean {
+  return (
+    result.status === "failed" ||
+    result.citationStatus === "extraction_error" ||
+    result.lastError !== undefined
+  );
+}
+
+function readProjectionState(paper: Doc<"extractionPapers">): ProjectionState {
+  return {
+    resultCount:
+      typeof paper.projectionResultCount === "number" &&
+      Number.isFinite(paper.projectionResultCount)
+        ? paper.projectionResultCount
+        : 0,
+    confidenceSum:
+      typeof paper.projectionConfidenceSum === "number" &&
+      Number.isFinite(paper.projectionConfidenceSum)
+        ? paper.projectionConfidenceSum
+        : 0,
+    questionStates: Array.isArray(paper.projectionQuestionStates)
+      ? paper.projectionQuestionStates
+      : [],
+    errorQuestionKeys: Array.isArray(paper.projectionErrorQuestionKeys)
+      ? paper.projectionErrorQuestionKeys
+      : [],
+  };
+}
+
+function buildProjectionPatch(args: {
   paper: Doc<"extractionPapers">;
-  results: Doc<"extractionResults">[];
-  reviews: Doc<"extractionResultReviews">[];
+  state: ProjectionState;
+  reviewedCount: number;
+  needsFollowupCount: number;
 }): Partial<Doc<"extractionPapers">> {
-  const { paper, results, reviews } = args;
-  const reviewByResultId = new Map<Id<"extractionResults">, Doc<"extractionResultReviews">>();
-  for (const review of reviews) {
-    reviewByResultId.set(review.resultId, review);
-  }
-
-  const questionAnswerTokens = [...results]
-    .sort((a, b) => a.questionKey.localeCompare(b.questionKey))
-    .flatMap((result) => {
-      const review = reviewByResultId.get(result._id);
-      const token = buildQuestionAnswerToken(
-        result.questionKey,
-        review?.correctedAnswer ?? result.answer,
-      );
-      return token ? [token] : [];
-    });
-
-  const reviewedCount = reviews.filter(
-    (review) =>
-      review.state === "accepted" ||
-      review.state === "rejected" ||
-      review.state === "needs_followup",
-  ).length;
-  const needsFollowupCount = reviews.filter(
-    (review) => review.state === "needs_followup",
-  ).length;
+  const { paper, state, reviewedCount, needsFollowupCount } = args;
+  const questionStates = sortQuestionStates(state.questionStates);
+  const questionAnswerTokens = questionStates.flatMap((entry) =>
+    entry.token ? [entry.token] : [],
+  );
   const avgConfidence =
-    results.length > 0
-      ? results.reduce((sum, result) => {
-          const confidence =
-            typeof result.confidence === "number" && Number.isFinite(result.confidence)
-              ? result.confidence
-              : 0;
-          return sum + confidence;
-        }, 0) / results.length
-      : 0;
+    state.resultCount > 0 ? state.confidenceSum / state.resultCount : 0;
 
   const hasPaperError =
     paper.status === "download_failed" ||
     paper.status === "indexing_failed" ||
     paper.status === "failed" ||
     paper.lastError !== undefined;
-  const hasResultError = results.some(
-    (result) =>
-      result.status === "failed" ||
-      result.citationStatus === "extraction_error" ||
-      result.lastError !== undefined,
-  );
 
   return {
     sortTitle: normalizeProjectionText(paper.title),
     avgConfidence,
     reviewedCount,
     needsFollowupCount,
-    hasErrors: hasPaperError || hasResultError,
+    hasErrors: hasPaperError || state.errorQuestionKeys.length > 0,
     hasPdfSource: Boolean(
       paper.pdfUrl || paper.storageId || paper.ragEntryId || paper.isIndexed,
     ),
     questionAnswerTokens,
-    searchText: buildSearchText({ paper, results, reviewByResultId }),
+    searchText: buildSearchText({ paper, questionStates }),
+    projectionResultCount: state.resultCount,
+    projectionConfidenceSum: state.confidenceSum,
+    projectionQuestionStates: questionStates,
+    projectionErrorQuestionKeys: [...new Set(state.errorQuestionKeys)].sort(),
   };
+}
+
+function upsertQuestionState(
+  questionStates: ProjectionQuestionState[],
+  nextState: ProjectionQuestionState | null,
+): ProjectionQuestionState[] {
+  const withoutCurrent = questionStates.filter(
+    (entry) => entry.questionKey !== nextState?.questionKey,
+  );
+  if (!nextState || (!nextState.token && !nextState.searchPart)) {
+    return withoutCurrent;
+  }
+  return [...withoutCurrent, nextState];
+}
+
+function setErrorQuestion(
+  errorQuestionKeys: string[],
+  questionKey: string,
+  hasError: boolean,
+): string[] {
+  const withoutCurrent = errorQuestionKeys.filter((key) => key !== questionKey);
+  return hasError ? [...withoutCurrent, questionKey] : withoutCurrent;
+}
+
+function confidenceContribution(confidence: number | undefined): number {
+  return typeof confidence === "number" && Number.isFinite(confidence)
+    ? confidence
+    : 0;
+}
+
+function toQuestionState(
+  questionKey: string,
+  answer: ProjectionAnswer,
+): ProjectionQuestionState | null {
+  const token = buildQuestionAnswerToken(questionKey, answer) ?? undefined;
+  const searchPart = buildSearchPart(answer);
+  if (!token && !searchPart) return null;
+  return { questionKey, token, searchPart };
+}
+
+export async function refreshPaperListProjection(
+  ctx: MutationCtx,
+  paperId: Id<"extractionPapers">,
+): Promise<void> {
+  const paper = await ctx.db.get("extractionPapers", paperId);
+  if (!paper) return;
+
+  const state = readProjectionState(paper);
+  await ctx.db.patch("extractionPapers", paperId, buildProjectionPatch({
+    paper,
+    state,
+    reviewedCount: paper.reviewedCount ?? 0,
+    needsFollowupCount: paper.needsFollowupCount ?? 0,
+  }));
+}
+
+export async function applyResultProjectionWrite(
+  ctx: MutationCtx,
+  args: {
+    paper: Doc<"extractionPapers">;
+    paperId: Id<"extractionPapers">;
+    questionKey: string;
+    previousResult: Pick<
+      Doc<"extractionResults">,
+      "confidence" | "status" | "citationStatus" | "lastError" | "answer"
+    > | null;
+    nextResult: Pick<
+      Doc<"extractionResults">,
+      "confidence" | "status" | "citationStatus" | "lastError" | "answer"
+    >;
+    creditsUsedDelta?: number;
+  },
+): Promise<void> {
+  const { paper, previousResult, nextResult } = args;
+  const state = readProjectionState(paper);
+  const hadPrevious = previousResult !== null;
+  const previousContribution = hadPrevious
+    ? confidenceContribution(previousResult.confidence)
+    : 0;
+  const nextContribution = confidenceContribution(nextResult.confidence);
+  const nextState = toQuestionState(args.questionKey, nextResult.answer);
+
+  const nextProjectionState: ProjectionState = {
+    resultCount: hadPrevious ? Math.max(state.resultCount, 1) : state.resultCount + 1,
+    confidenceSum:
+      state.confidenceSum - previousContribution + nextContribution,
+    questionStates: upsertQuestionState(state.questionStates, nextState),
+    errorQuestionKeys: setErrorQuestion(
+      state.errorQuestionKeys,
+      args.questionKey,
+      isErrorResult(nextResult),
+    ),
+  };
+
+  const patch = buildProjectionPatch({
+    paper,
+    state: nextProjectionState,
+    reviewedCount: paper.reviewedCount ?? 0,
+    needsFollowupCount: paper.needsFollowupCount ?? 0,
+  });
+
+  if ((args.creditsUsedDelta ?? 0) > 0) {
+    patch.creditsUsed = (paper.creditsUsed ?? 0) + (args.creditsUsedDelta ?? 0);
+  }
+
+  await ctx.db.patch("extractionPapers", args.paperId, patch);
 }
 
 export async function recomputePaperListProjection(
@@ -198,9 +332,44 @@ export async function recomputePaperListProjection(
       .collect(),
   ]);
 
-  await ctx.db.patch("extractionPapers", paperId, buildProjection({
+  const reviewByResultId = new Map<Id<"extractionResults">, Doc<"extractionResultReviews">>();
+  for (const review of reviews) {
+    reviewByResultId.set(review.resultId, review);
+  }
+
+  const questionStates = results.flatMap((result) => {
+    const review = reviewByResultId.get(result._id);
+    const state = toQuestionState(
+      result.questionKey,
+      review?.correctedAnswer ?? result.answer,
+    );
+    return state ? [state] : [];
+  });
+  const reviewedCount = reviews.filter(
+    (review) =>
+      review.state === "accepted" ||
+      review.state === "rejected" ||
+      review.state === "needs_followup",
+  ).length;
+  const needsFollowupCount = reviews.filter(
+    (review) => review.state === "needs_followup",
+  ).length;
+  const state: ProjectionState = {
+    resultCount: results.length,
+    confidenceSum: results.reduce(
+      (sum, result) => sum + confidenceContribution(result.confidence),
+      0,
+    ),
+    questionStates,
+    errorQuestionKeys: results.flatMap((result) =>
+      isErrorResult(result) ? [result.questionKey] : [],
+    ),
+  };
+
+  await ctx.db.patch("extractionPapers", paperId, buildProjectionPatch({
     paper,
-    results,
-    reviews,
+    state,
+    reviewedCount,
+    needsFollowupCount,
   }));
 }

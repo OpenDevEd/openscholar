@@ -627,6 +627,20 @@ export default defineSchema({
     hasPdfSource: v.optional(v.boolean()),
     questionAnswerTokens: v.optional(v.array(v.string())),
     searchText: v.optional(v.string()),
+    // Internal write-path state so per-question completions can patch the
+    // visible projection without rereading every child row.
+    projectionResultCount: v.optional(v.number()),
+    projectionConfidenceSum: v.optional(v.number()),
+    projectionQuestionStates: v.optional(
+      v.array(
+        v.object({
+          questionKey: v.string(),
+          token: v.optional(v.string()),
+          searchPart: v.optional(v.string()),
+        }),
+      ),
+    ),
+    projectionErrorQuestionKeys: v.optional(v.array(v.string())),
   })
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
@@ -767,6 +781,7 @@ export default defineSchema({
     .index("by_paper", ["paperId"])
     .index("by_paper_question", ["paperId", "questionKey"])
     .index("by_job", ["jobId"])
+    .index("by_job_status", ["jobId", "status"])
     .index("by_job_question", ["jobId", "questionKey"]),
 
   // ═══════════════════════════════════════════════════════════════

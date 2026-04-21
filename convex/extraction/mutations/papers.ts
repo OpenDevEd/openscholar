@@ -19,7 +19,7 @@ import { errorCodeValidator, paperSourceTypeValidator } from "../validators";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
 import { recordCreditSpend } from "../aggregates";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
-import { recomputePaperListProjection } from "../listProjection";
+import { refreshPaperListProjection } from "../listProjection";
 
 function matchesExpectedEpoch(
   job: { runEpoch?: number } | null | undefined,
@@ -82,7 +82,7 @@ export const createPaperRecords = internalMutation({
         processable,
         status: "pending",
       });
-      await recomputePaperListProjection(ctx, paperId);
+      await refreshPaperListProjection(ctx, paperId);
     }
     return null;
   },
@@ -147,7 +147,7 @@ export const updatePaperStatus = internalMutation({
     }
 
     await ctx.db.patch("extractionPapers", args.paperId, updates);
-    await recomputePaperListProjection(ctx, args.paperId);
+    await refreshPaperListProjection(ctx, args.paperId);
     return null;
   },
 });
@@ -162,7 +162,7 @@ export const updatePaperProcessable = internalMutation({
     await ctx.db.patch("extractionPapers", args.paperId, {
       processable: args.processable,
     });
-    await recomputePaperListProjection(ctx, args.paperId);
+    await refreshPaperListProjection(ctx, args.paperId);
     return null;
   },
 });
@@ -191,7 +191,7 @@ export const setPaperStorage = internalMutation({
       storageId: args.storageId,
       processable,
     });
-    await recomputePaperListProjection(ctx, args.paperId);
+    await refreshPaperListProjection(ctx, args.paperId);
     return null;
   },
 });
@@ -260,7 +260,7 @@ export const markPaperIndexed = internalMutation({
     }
 
     await ctx.db.patch("extractionPapers", args.paperId, updates);
-    await recomputePaperListProjection(ctx, args.paperId);
+    await refreshPaperListProjection(ctx, args.paperId);
     return null;
   },
 });

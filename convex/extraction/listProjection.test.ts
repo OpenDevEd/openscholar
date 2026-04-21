@@ -195,4 +195,64 @@ describe("paper list projection write maintenance", () => {
     expect(paper?.reviewedCount).toBe(1);
     expect(paper?.needsFollowupCount).toBe(0);
   });
+
+  it("preserves reviewed answers when a later question completion patches the same paper", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { paperId } = await seedProjectionFixture(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+
+    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+      paperId,
+      questionKey: "q1",
+      result: {
+        answer: "Original outcome",
+        confidence: 0.9,
+        reasoning: "Reasoning",
+        citations: [],
+        citationStatus: "grounded" as const,
+      },
+      creditsUsed: 1,
+    });
+
+    const firstResult = await t.run((ctx) =>
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper_question", (q) =>
+          q.eq("paperId", paperId).eq("questionKey", "q1"),
+        )
+        .unique(),
+    );
+    if (!firstResult) throw new Error("expected q1 result row");
+
+    await auth.mutation(api.extraction.mutations.setResultReviewState, {
+      resultId: firstResult._id,
+      state: "needs_followup",
+      correctedAnswer: "Corrected outcome",
+    });
+
+    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+      paperId,
+      questionKey: "q2",
+      result: {
+        answer: "Secondary outcome",
+        confidence: 0.4,
+        reasoning: "Reasoning",
+        citations: [],
+        citationStatus: "best_effort" as const,
+      },
+      creditsUsed: 1,
+    });
+
+    const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
+    expect(paper?.reviewedCount).toBe(1);
+    expect(paper?.needsFollowupCount).toBe(1);
+    expect(paper?.avgConfidence).toBeCloseTo(0.65);
+    expect(paper?.questionAnswerTokens).toEqual([
+      "q1::corrected outcome",
+      "q2::secondary outcome",
+    ]);
+    expect(paper?.searchText).toContain("corrected outcome");
+    expect(paper?.searchText).toContain("secondary outcome");
+  });
 });

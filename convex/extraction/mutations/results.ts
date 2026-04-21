@@ -40,7 +40,10 @@ import {
 } from "../validators";
 import { aggregatePaperStatus } from "@/lib/extraction/paper-status";
 import type { ErrorCode } from "@/lib/errors/taxonomy";
-import { recomputePaperListProjection } from "../listProjection";
+import {
+  applyResultProjectionWrite,
+  recomputePaperListProjection,
+} from "../listProjection";
 
 export const setResultReviewState = mutation({
   args: {
@@ -327,14 +330,6 @@ export const recordOneAnswer = internalMutation({
       resultId = await ctx.db.insert("extractionResults", fields);
     }
 
-    // Accumulate per-paper credits so finalizePaper can surface a total
-    // without recomputing from result rows.
-    if (args.creditsUsed > 0) {
-      await ctx.db.patch(args.paperId, {
-        creditsUsed: (paper.creditsUsed ?? 0) + args.creditsUsed,
-      });
-    }
-
     if (args.creditsUsed > 0 && job) {
       await ctx.runMutation(internal.credits.internal.deductCredits, {
         userId: job.userId,
@@ -367,7 +362,28 @@ export const recordOneAnswer = internalMutation({
       citationStatus: fields.citationStatus,
     });
 
-    await recomputePaperListProjection(ctx, args.paperId);
+    await applyResultProjectionWrite(ctx, {
+      paper,
+      paperId: args.paperId,
+      questionKey: args.questionKey,
+      previousResult: existing
+        ? {
+            answer: existing.answer,
+            confidence: existing.confidence,
+            status: existing.status,
+            citationStatus: existing.citationStatus,
+            lastError: existing.lastError,
+          }
+        : null,
+      nextResult: {
+        answer: fields.answer,
+        confidence: fields.confidence,
+        status: fields.status,
+        citationStatus: fields.citationStatus,
+        lastError: undefined,
+      },
+      creditsUsedDelta: args.creditsUsed,
+    });
 
     return null;
   },
@@ -465,7 +481,27 @@ export const recordOneAnswerFailure = internalMutation({
       citationStatus: "extraction_error",
     });
 
-    await recomputePaperListProjection(ctx, args.paperId);
+    await applyResultProjectionWrite(ctx, {
+      paper,
+      paperId: args.paperId,
+      questionKey: args.questionKey,
+      previousResult: existing
+        ? {
+            answer: existing.answer,
+            confidence: existing.confidence,
+            status: existing.status,
+            citationStatus: existing.citationStatus,
+            lastError: existing.lastError,
+          }
+        : null,
+      nextResult: {
+        answer: fields.answer,
+        confidence: fields.confidence,
+        status: fields.status,
+        citationStatus: fields.citationStatus,
+        lastError: fields.lastError,
+      },
+    });
 
     return null;
   },

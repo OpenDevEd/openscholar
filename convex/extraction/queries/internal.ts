@@ -153,11 +153,12 @@ export const getPendingResultsInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.array(extractionResultValidator),
   handler: async (ctx, args) => {
-    const rows = await ctx.db
+    return await ctx.db
       .query("extractionResults")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .withIndex("by_job_status", (q) =>
+        q.eq("jobId", args.jobId).eq("status", "pending"),
+      )
       .collect();
-    return rows.filter((r) => r.status === "pending");
   },
 });
 

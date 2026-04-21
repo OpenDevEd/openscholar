@@ -80,12 +80,30 @@ export const resumeExtraction = mutation({
       // Count remaining work inline — resume is a single-row-trigger
       // operation so one round of scans is cheaper than a dedicated
       // internal query + cross-mutation call.
-      const results = await ctx.db
-        .query("extractionResults")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB);
-      const remainingQuestions = results.filter(
-        (r) => r.status !== "completed" && r.billed !== true,
+      const unresolvedResults = (
+        await Promise.all([
+          ctx.db
+            .query("extractionResults")
+            .withIndex("by_job_status", (q) =>
+              q.eq("jobId", jobId).eq("status", "pending"),
+            )
+            .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
+          ctx.db
+            .query("extractionResults")
+            .withIndex("by_job_status", (q) =>
+              q.eq("jobId", jobId).eq("status", "extracting"),
+            )
+            .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
+          ctx.db
+            .query("extractionResults")
+            .withIndex("by_job_status", (q) =>
+              q.eq("jobId", jobId).eq("status", "failed"),
+            )
+            .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
+        ])
+      ).flat();
+      const remainingQuestions = unresolvedResults.filter(
+        (result) => result.billed !== true,
       ).length;
 
       const papers = await ctx.db
