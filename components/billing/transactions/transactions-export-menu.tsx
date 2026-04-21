@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type Ref } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -17,13 +17,19 @@ import type { TransactionViewModel } from "@/lib/billing/transactions/transactio
 interface Props {
   currentView: readonly TransactionViewModel[];
   fetchAll: () => Promise<readonly TransactionViewModel[]>;
+  /** Imperative handle so Cmd/Ctrl+E can click the trigger. */
+  triggerRef?: Ref<HTMLButtonElement>;
 }
 
 function isoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function TransactionsExportMenu({ currentView, fetchAll }: Props) {
+export function TransactionsExportMenu({
+  currentView,
+  fetchAll,
+  triggerRef,
+}: Props) {
   const t = useTranslations("billingPage.transactions.export");
   const [loading, setLoading] = useState(false);
 
@@ -53,6 +59,7 @@ export function TransactionsExportMenu({ currentView, fetchAll }: Props) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          ref={triggerRef}
           type="button"
           variant="ghost"
           size="sm"

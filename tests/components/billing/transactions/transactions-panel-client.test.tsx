@@ -155,23 +155,29 @@ describe("TransactionsPanelClient", () => {
     ).toBe("CanLoadMore");
   });
 
-  it("renders the empty state when settled with zero rows", () => {
+  it("renders the no-data empty state when settled with zero rows and no filters", () => {
     setResult({ status: "Exhausted", results: [], isSettled: true });
     const { container } = render(withNuqs(<TransactionsPanelClient />));
     expect(
       container
         .querySelector("[data-transactions-empty]")!
         .getAttribute("data-transactions-empty"),
-    ).toBe("true");
+    ).toBe("no-data");
     expect(
       container.querySelector("[data-transactions-skeleton]"),
     ).toBeNull();
   });
 
-  it("renders a jobId-scoped empty state when settled with a jobId filter", () => {
+  it("renders a no-matches empty state when a jobId scope is active and zero rows", () => {
     setResult({ status: "Exhausted", results: [], isSettled: true });
-    render(withNuqs(<TransactionsPanelClient jobId={"job-123" as never} />));
-    expect(screen.getByText("emptyForJob")).toBeInTheDocument();
+    const { container } = render(
+      withNuqs(<TransactionsPanelClient jobId={"job-123" as never} />),
+    );
+    const empty = container.querySelector("[data-transactions-empty]")!;
+    expect(empty.getAttribute("data-transactions-empty")).toBe("no-matches");
+    expect(
+      container.querySelector("[data-transactions-empty-clear]"),
+    ).toBeInTheDocument();
   });
 
   it("reflects the jobId filter via data-transactions-filter", () => {
