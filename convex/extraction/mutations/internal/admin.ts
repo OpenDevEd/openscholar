@@ -11,6 +11,7 @@ import { internal } from "../../../_generated/api";
 import { batchDeleteByIndex } from "../../../lib/cascade";
 import { PAPER_LIMIT_MAX } from "../../bucket/limits";
 import { clearJobAggregates, clearJobCredits } from "../../aggregates";
+import { recomputePaperListProjection } from "../../listProjection";
 
 export const deleteExtractionInternal = internalMutation({
   args: { jobId: v.id("extractionJobs") },
@@ -155,6 +156,7 @@ export const cleanupFailedPaperStorage = internalMutation({
         await ctx.db.patch("extractionPapers", paper._id, {
           storageId: undefined,
         });
+        await recomputePaperListProjection(ctx, paper._id);
         cleaned++;
       } catch (e) {
         console.error(`Failed to delete storage for paper ${paper._id}:`, e);
@@ -188,6 +190,7 @@ export const cleanupOldPdfs = internalMutation({
           await ctx.db.patch("extractionPapers", paper._id, {
             storageId: undefined,
           });
+          await recomputePaperListProjection(ctx, paper._id);
         } catch (error) {
           console.error(`Failed to delete PDF for paper ${paper._id}:`, error);
         }

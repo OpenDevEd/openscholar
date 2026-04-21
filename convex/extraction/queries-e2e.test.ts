@@ -12,7 +12,7 @@ import { setupAggregates } from "./aggregates.test-support";
  * DB reads → response shaping correctly. If the barrel split silently sends
  * a caller to the wrong handler, the headline assertion goes red.
  *
- * Covers: getJobDetails, getJobResultsPaginated, getJobInsights,
+ * Covers: getJobDetails, getJobResultsPage, getJobInsights,
  * getQuestionInsights, getQuestionDisagreements, getReviewQueue,
  * subscribeToJobProgress, getSavedViews, getWorkflowTemplates,
  * getReportSnapshots, getRunDiff.
@@ -60,12 +60,20 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
     expect(res.papers).toHaveLength(1);
   });
 
-  test("getJobResultsPaginated reaches handler", async () => {
+  test("getJobResultsPage reaches handler", async () => {
     const { auth, ids } = await seedAndAuth();
-    const res = await auth.query(
-      api.extraction.queries.getJobResultsPaginated,
-      { jobId: ids.jobId, paginationOpts: { numItems: 10, cursor: null } }
-    );
+    const res = await auth.query(api.extraction.queries.getJobResultsPage, {
+      jobId: ids.jobId,
+      page: 1,
+      pageSize: 200,
+      filters: {
+        searchQuery: "",
+        confidenceRange: [0, 100],
+        statusFilters: [],
+        questionFilters: [],
+      },
+      sortBy: "default",
+    });
     expect(res.status).toBe("ok");
   });
 

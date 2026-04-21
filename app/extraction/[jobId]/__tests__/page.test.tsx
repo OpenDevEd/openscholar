@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { ComponentProps, ReactNode } from "react";
+import { api } from "@/convex/_generated/api";
 import JobDetailPage from "../page";
 import * as authQuery from "@/lib/auth/use-auth-query";
 
@@ -8,13 +9,100 @@ const {
   pushMock,
   currentJobIdMock,
   resultsToolbarSpy,
+  smartPaginationSpy,
   paginatedQuerySpy,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   currentJobIdMock: { value: "job_1" },
-  resultsToolbarSpy: vi.fn(() => (
-    <div data-testid="results-toolbar">results toolbar</div>
-  )),
+  resultsToolbarSpy: vi.fn(
+    ({
+      totalCount,
+      filteredCount,
+      onFiltersChange,
+    }: {
+      totalCount: number;
+      filteredCount: number;
+      onFiltersChange: (
+        next:
+          | {
+              searchQuery: string;
+              confidenceRange: [number, number];
+              statusFilters: Set<string>;
+              questionFilters: Map<string, string>;
+            }
+          | ((
+              prev: {
+                searchQuery: string;
+                confidenceRange: [number, number];
+                statusFilters: Set<string>;
+                questionFilters: Map<string, string>;
+              },
+            ) => {
+              searchQuery: string;
+              confidenceRange: [number, number];
+              statusFilters: Set<string>;
+              questionFilters: Map<string, string>;
+            }),
+      ) => void;
+    }) => (
+      <div
+        data-testid="results-toolbar"
+        data-total-count={String(totalCount)}
+        data-filtered-count={String(filteredCount)}
+      >
+        {filteredCount} of {totalCount} papers
+        <button
+          type="button"
+          onClick={() =>
+            onFiltersChange((prev) => ({
+              ...prev,
+              searchQuery: "Paper 250",
+            }))
+          }
+        >
+          filter to Paper 250
+        </button>
+      </div>
+    ),
+  ),
+  smartPaginationSpy: vi.fn(
+    ({
+      currentPage,
+      totalPages,
+      pageSize,
+      totalCount,
+      filteredCount,
+      displayedCount,
+      onPageChange,
+      onPageSizeChange,
+    }: {
+      currentPage: number;
+      totalPages: number;
+      pageSize: number;
+      totalCount: number;
+      filteredCount: number;
+      displayedCount: number;
+      onPageChange: (page: number) => void;
+      onPageSizeChange: (pageSize: number) => void;
+    }) => (
+      <div
+        data-testid="smart-pagination"
+        data-current-page={String(currentPage)}
+        data-total-pages={String(totalPages)}
+        data-page-size={String(pageSize)}
+        data-total-count={String(totalCount)}
+        data-filtered-count={String(filteredCount)}
+        data-displayed-count={String(displayedCount)}
+      >
+        <button type="button" onClick={() => onPageChange(2)}>
+          go to page 2
+        </button>
+        <button type="button" onClick={() => onPageSizeChange(25)}>
+          set page size 25
+        </button>
+      </div>
+    ),
+  ),
   paginatedQuerySpy: vi.fn(),
 }));
 
@@ -27,6 +115,11 @@ type MockJobDetailsData = {
     name: string;
     sourceType: string;
     messageCount: number;
+    status?: "pending" | "extracting" | "completed";
+    totalPapers?: number;
+    processedPapers?: number;
+    failedPapers?: number;
+    usePdfs?: boolean;
     createdAt: number;
     updatedAt: number;
   };
@@ -105,6 +198,119 @@ const mockPaginatedResult = {
   settlement: "ready" as const,
 };
 
+function buildPageRows(start: number, count: number) {
+  return Array.from({ length: count }, (_, index) => {
+    const n = start + index;
+    return {
+      _id: `paper_${n}`,
+      _creationTime: n,
+      jobId: "job_1",
+      openalexId: `oa:${n}`,
+      title: `Paper ${n}`,
+      status: "completed" as const,
+      processable: true,
+      results: [],
+    };
+  });
+}
+
+const extractionJobQueryResult: MockQueryResult = {
+  ...mockQueryResult,
+  data: {
+    status: "ok",
+    job: {
+      _id: "job_1",
+      mode: "extraction",
+      name: "Extraction job",
+      sourceType: "history",
+      messageCount: 0,
+      status: "completed",
+      totalPapers: 293,
+      processedPapers: 200,
+      failedPapers: 0,
+      usePdfs: false,
+      createdAt: 0,
+      updatedAt: 0,
+    },
+    questions: [],
+    papers: [],
+    progress: {
+      total: 293,
+      processed: 200,
+      failed: 0,
+      percentage: 68,
+    },
+  },
+};
+
+const extractionSharedProtectedQueryResult = {
+  ...mockQueryResult,
+  data: {
+    ...extractionJobQueryResult.data,
+    totalPapers: 293,
+    processedPapers: 200,
+    failedPapers: 0,
+  },
+} as unknown as MockProtectedQueryHookResult;
+
+const extractionResultsPageQueryResult = {
+  "1:200:": {
+    status: "ok" as const,
+    totalAll: 293,
+    totalFiltered: 293,
+    totalPages: 2,
+    page: 1,
+    pageSize: 200,
+    items: buildPageRows(1, 200),
+  },
+  "2:200:": {
+    status: "ok" as const,
+    totalAll: 293,
+    totalFiltered: 293,
+    totalPages: 2,
+    page: 2,
+    pageSize: 200,
+    items: buildPageRows(201, 93),
+  },
+  "1:25:": {
+    status: "ok" as const,
+    totalAll: 293,
+    totalFiltered: 293,
+    totalPages: 12,
+    page: 1,
+    pageSize: 25,
+    items: buildPageRows(1, 25),
+  },
+  "1:200:Paper 250": {
+    status: "ok" as const,
+    totalAll: 293,
+    totalFiltered: 1,
+    totalPages: 1,
+    page: 1,
+    pageSize: 200,
+    items: buildPageRows(250, 1),
+  },
+  "1:25:Paper 250": {
+    status: "ok" as const,
+    totalAll: 293,
+    totalFiltered: 1,
+    totalPages: 1,
+    page: 1,
+    pageSize: 25,
+    items: buildPageRows(250, 1),
+  },
+} as const;
+
+type MockResultsPageData =
+  (typeof extractionResultsPageQueryResult)[keyof typeof extractionResultsPageQueryResult];
+
+function buildResultsPageHookResult(data: MockResultsPageData) {
+  return {
+    ...mockQueryResult,
+    data,
+  } as unknown as MockProtectedQueryHookResult;
+}
+
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
   useLocale: () => "en",
@@ -141,6 +347,12 @@ vi.mock("@/components/PageWrapper", () => ({
   PageWrapper: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+vi.mock("@/components/ui/tooltip", () => ({
+  Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  TooltipTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+
 vi.mock("@/components/command-center", () => ({
   CommandCenterContainer: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
@@ -161,13 +373,23 @@ vi.mock("@/components/extraction/results-toolbar", () => ({
 }));
 
 vi.mock("@/components/extraction/results-views", () => ({
-  TableView: () => <div>table view</div>,
+  TableView: ({
+    papers,
+  }: {
+    papers: Array<{ _id: string; title: string }>;
+  }) => (
+    <div data-testid="table-view">
+      {papers.map((paper) => (
+        <div key={paper._id}>{paper.title}</div>
+      ))}
+    </div>
+  ),
   CardView: () => <div>card view</div>,
   SplitView: () => <div>split view</div>,
 }));
 
 vi.mock("@/components/extraction/smart-pagination", () => ({
-  SmartPagination: () => <div>pagination</div>,
+  SmartPagination: smartPaginationSpy,
 }));
 
 vi.mock("@/components/extraction/bulk-actions-bar", () => ({
@@ -210,6 +432,34 @@ vi.mock("@/components/extraction/chat/chat-job-view", () => ({
   }: {
     threadId: string;
   }) => <div data-testid="chat-job-view" data-thread-id={threadId} />,
+}));
+
+vi.mock("@/components/extraction/completion-toast-observer", () => ({
+  CompletionToastObserver: () => null,
+}));
+
+vi.mock("@/components/extraction/cost-badge", () => ({
+  CostBadge: () => <div>cost badge</div>,
+}));
+
+vi.mock("@/components/extraction/credits-exhausted-banner", () => ({
+  CreditsExhaustedBanner: () => null,
+}));
+
+vi.mock("@/components/extraction/job-status-banner", () => ({
+  JobStatusBanner: () => null,
+}));
+
+vi.mock("@/components/extraction/now-processing", () => ({
+  NowProcessing: () => null,
+}));
+
+vi.mock("@/components/extraction/mixed-success-summary", () => ({
+  MixedSuccessSummary: () => null,
+}));
+
+vi.mock("@/components/extraction/retry-summary", () => ({
+  RetrySummary: () => null,
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
@@ -277,8 +527,6 @@ vi.mock("@/lib/extraction/filtering", () => ({
     statusFilters: new Set<string>(),
     questionFilters: new Map<string, string>(),
   },
-  filterPapers: (papers: unknown[]) => papers,
-  preprocessPapers: () => ({}),
 }));
 
 vi.mock("@/lib/auth/list-render-state", () => ({
@@ -295,13 +543,17 @@ describe("JobDetailPage", () => {
     pushMock.mockReset();
     currentJobIdMock.value = "job_1";
     resultsToolbarSpy.mockClear();
+    smartPaginationSpy.mockClear();
     paginatedQuerySpy.mockClear();
+    mockPaginatedResult.loadMore.mockReset();
+    mockPaginatedResult.results = [];
+    mockPaginatedResult.status = "Deferred";
 
     (
       authQuery.useProtectedQuery as unknown as {
         mockImplementation: (
           fn: (
-            query: unknown,
+            query: typeof api.extraction.queries.getJobDetails,
             args: unknown,
           ) => MockProtectedQueryHookResult,
         ) => void;
@@ -337,11 +589,7 @@ describe("JobDetailPage", () => {
     expect(screen.queryByText("insights")).toBeNull();
     expect(screen.queryByText("reviewQueue")).toBeNull();
     expect(screen.queryByText("reportBuilder")).toBeNull();
-    expect(paginatedQuerySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      "skip",
-      expect.anything(),
-    );
+    expect(paginatedQuerySpy).not.toHaveBeenCalled();
   });
 
   it("keeps showing the shared loading spinner while stale job details do not match the route", () => {
@@ -381,11 +629,7 @@ describe("JobDetailPage", () => {
     expect(document.querySelector('[data-job-mode="chat"]')).toBeNull();
     expect(document.querySelector('[data-job-mode="extraction"]')).toBeNull();
     expect(resultsToolbarSpy).not.toHaveBeenCalled();
-    expect(paginatedQuerySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      "skip",
-      expect.anything(),
-    );
+    expect(paginatedQuerySpy).not.toHaveBeenCalled();
   });
 
   it("uses the shared spinner loading state while a chat thread is preparing", () => {
@@ -424,5 +668,185 @@ describe("JobDetailPage", () => {
       "chatPreparing",
     );
     expect(resultsToolbarSpy).not.toHaveBeenCalled();
+  });
+
+  it("shows the full server filtered count while keeping the progress bar total authoritative", () => {
+    (
+      authQuery.useProtectedQuery as unknown as {
+        mockImplementation: (
+          fn: (
+            query: unknown,
+            args: unknown,
+          ) => MockProtectedQueryHookResult,
+        ) => void;
+      }
+    ).mockImplementation((_query, args) => {
+      if (args === "skip") return mockSkippedQueryResult;
+      if (
+        typeof args === "object" &&
+        args !== null &&
+        "page" in args &&
+        "pageSize" in args &&
+        "filters" in args
+      ) {
+        const {
+          page,
+          pageSize,
+          filters,
+        } = args as {
+          page: number;
+          pageSize: number;
+          filters: { searchQuery?: string };
+        };
+        return {
+          ...buildResultsPageHookResult(
+            extractionResultsPageQueryResult[
+              `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
+            ],
+          ),
+        };
+      }
+      return extractionSharedProtectedQueryResult;
+    });
+
+    render(<JobDetailPage />);
+
+    expect(screen.getByTestId("results-toolbar")).toHaveTextContent(
+      "293 of 293 papers",
+    );
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuemax",
+      "293",
+    );
+    expect(authQuery.useProtectedPaginatedQuery).not.toHaveBeenCalled();
+  });
+
+  it("navigates to page 2 and renders rows 201-293 from the server page query", () => {
+    (
+      authQuery.useProtectedQuery as unknown as {
+        mockImplementation: (
+          fn: (
+            query: unknown,
+            args: unknown,
+          ) => MockProtectedQueryHookResult,
+        ) => void;
+      }
+    ).mockImplementation((_query, args) => {
+      if (args === "skip") return mockSkippedQueryResult;
+      if (
+        typeof args === "object" &&
+        args !== null &&
+        "page" in args &&
+        "pageSize" in args &&
+        "filters" in args
+      ) {
+        const {
+          page,
+          pageSize,
+          filters,
+        } = args as {
+          page: number;
+          pageSize: number;
+          filters: { searchQuery?: string };
+        };
+        return {
+          ...buildResultsPageHookResult(
+            extractionResultsPageQueryResult[
+              `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
+            ],
+          ),
+        };
+      }
+      return extractionSharedProtectedQueryResult;
+    });
+
+    render(<JobDetailPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "go to page 2" }));
+
+    expect(resultsToolbarSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        totalCount: 293,
+        filteredCount: 293,
+      }),
+      undefined,
+    );
+    expect(smartPaginationSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        currentPage: 2,
+        totalPages: 2,
+        displayedCount: 93,
+        filteredCount: 293,
+      }),
+      undefined,
+    );
+    expect(authQuery.useProtectedPaginatedQuery).not.toHaveBeenCalled();
+  });
+
+  it("keeps full-corpus counts truthful after switching to page size 25 and filtering on the server", () => {
+    (
+      authQuery.useProtectedQuery as unknown as {
+        mockImplementation: (
+          fn: (
+            query: unknown,
+            args: unknown,
+          ) => MockProtectedQueryHookResult,
+        ) => void;
+      }
+    ).mockImplementation((_query, args) => {
+      if (args === "skip") return mockSkippedQueryResult;
+      if (
+        typeof args === "object" &&
+        args !== null &&
+        "page" in args &&
+        "pageSize" in args &&
+        "filters" in args
+      ) {
+        const {
+          page,
+          pageSize,
+          filters,
+        } = args as {
+          page: number;
+          pageSize: number;
+          filters: { searchQuery?: string };
+        };
+        return {
+          ...buildResultsPageHookResult(
+            extractionResultsPageQueryResult[
+              `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
+            ],
+          ),
+        };
+      }
+      return extractionSharedProtectedQueryResult;
+    });
+
+    render(<JobDetailPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "set page size 25" }));
+    fireEvent.click(screen.getByRole("button", { name: "filter to Paper 250" }));
+
+    expect(resultsToolbarSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        totalCount: 293,
+        filteredCount: 1,
+      }),
+      undefined,
+    );
+    expect(smartPaginationSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pageSize: 25,
+        filteredCount: 1,
+        displayedCount: 1,
+      }),
+      undefined,
+    );
+    expect(
+      document.querySelector('[data-results-scope="full"]'),
+    ).not.toBeNull();
+    expect(
+      document.querySelector('[data-filtered-papers="1"]'),
+    ).not.toBeNull();
   });
 });

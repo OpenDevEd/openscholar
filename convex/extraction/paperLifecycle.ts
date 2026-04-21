@@ -11,6 +11,7 @@ import {
   assertValidPaperTransition,
   type PaperStatus,
 } from "./stateMachine";
+import { recomputePaperListProjection } from "./listProjection";
 
 /**
  * Terminal paper statuses. Any transition into one of these is
@@ -111,6 +112,7 @@ export async function markPaperTerminalTx(
   }
 
   await ctx.db.patch("extractionPapers", paperId, patch);
+  await recomputePaperListProjection(ctx, paperId);
 
   if (paper.processable !== false) {
     const job = await ctx.db.get("extractionJobs", paper.jobId);

@@ -61,7 +61,7 @@ const PUBLIC_QUERIES: ReadonlyArray<readonly [string, string]> = [
   ["papers", "results"],
   ["papers", "pdfUrl"],
   ["", "getJobResults"],
-  ["", "getJobResultsPaginated"],
+  ["", "getJobResultsPage"],
   ["", "getJobInsights"],
   ["", "getQuestionInsights"],
   ["", "getQuestionDisagreements"],

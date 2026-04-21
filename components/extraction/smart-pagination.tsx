@@ -31,10 +31,14 @@ export function SmartPagination({
   onPageSizeChange,
   totalCount,
   filteredCount,
+  displayedCount,
 }: SmartPaginationProps) {
   const t = useTranslations('pagination');
   const startIdx = (currentPage - 1) * pageSize + 1;
-  const endIdx = Math.min(currentPage * pageSize, filteredCount);
+  const endIdx =
+    displayedCount === 0
+      ? 0
+      : Math.min(startIdx + displayedCount - 1, filteredCount);
 
   if (filteredCount === 0) {
     return null;

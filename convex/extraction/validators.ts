@@ -333,6 +333,14 @@ export const extractionPaperValidator = v.object({
   attemptCount: v.optional(v.number()),
   creditsUsed: v.optional(v.number()),
   pdfContentUsed: v.optional(v.boolean()),
+  sortTitle: v.optional(v.string()),
+  avgConfidence: v.optional(v.number()),
+  reviewedCount: v.optional(v.number()),
+  needsFollowupCount: v.optional(v.number()),
+  hasErrors: v.optional(v.boolean()),
+  hasPdfSource: v.optional(v.boolean()),
+  questionAnswerTokens: v.optional(v.array(v.string())),
+  searchText: v.optional(v.string()),
 });
 
 /**
@@ -449,8 +457,28 @@ export const extractionResultWithReviewValidator = v.object({
   reviewedBy: v.optional(v.id("users")),
 });
 
-// ---- Typed pagination item validator for extraction results ----
-// Used by getJobResultsPaginated to replace paginationResultValidator(v.any())
+export const resultsSortByValidator = v.union(
+  v.literal("default"),
+  v.literal("title-asc"),
+  v.literal("title-desc"),
+  v.literal("confidence-high"),
+  v.literal("confidence-low"),
+);
+
+export const resultsQuestionFilterValidator = v.object({
+  questionKey: v.string(),
+  value: answerValidator,
+});
+
+export const resultsPageFiltersValidator = v.object({
+  searchQuery: v.string(),
+  confidenceRange: v.array(v.number()),
+  statusFilters: v.array(v.string()),
+  questionFilters: v.array(resultsQuestionFilterValidator),
+});
+
+// ---- Typed page item validator for extraction results ----
+// Shared by the results queries that return paper rows with attached results.
 export const paginatedPaperWithResultsValidator = v.object({
   ...extractionPaperValidator.fields,
   results: v.array(extractionResultWithReviewValidator),

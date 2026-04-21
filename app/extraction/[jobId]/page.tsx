@@ -40,7 +40,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useAppToast } from "@/lib/toast";
 import { ResultsToolbar, type ResultsSortBy } from "@/components/extraction/results-toolbar";
 import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
@@ -73,13 +73,10 @@ import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { useExtractionCitationPanelStore } from "@/lib/store";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import {
-  useProtectedPaginatedQuery,
   useProtectedQuery,
 } from "@/lib/auth/use-auth-query";
 import {
   defaultFilters,
-  filterPapers,
-  preprocessPapers,
   type FilterState,
   type PaperWithResults,
   type Question,
@@ -105,7 +102,6 @@ export default function JobDetailPage() {
   const isMobile = useIsMobile();
   const jobId = params.jobId as Id<"extractionJobs">;
 
-  const pdfEnabled = useFeatureFlag("extraction.pdf");
   const insightsEnabled = useFeatureFlag("extraction.insights");
   const reviewQueueEnabled = useFeatureFlag("extraction.reviewQueue");
   const reportBuilderEnabled = useFeatureFlag("extraction.reportBuilder");
@@ -143,7 +139,7 @@ export default function JobDetailPage() {
   const debouncedFilters = useDebouncedValue(filters, 150);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(200);
 
   const [activeTab, setActiveTab] = useState<
     "results" | "insights" | "review" | "report" | "overview"
@@ -190,37 +186,35 @@ export default function JobDetailPage() {
   );
   const jobProgress = jobProgressQuery.data;
 
-  const {
-    results: allPapers,
-    status: paginationStatus,
-    loadMore,
-    isDeferred: isResultsDeferred,
-    settlement: resultsSettlement,
-    hasLoadedFirstPage,
-  } = useProtectedPaginatedQuery(
-    api.extraction.queries.getJobResultsPaginated,
-    isExtractionJob ? { jobId } : "skip",
-    { initialNumItems: 200 },
+  const resultsPageArgs = useMemo(
+    () =>
+      isExtractionJob
+        ? {
+            jobId,
+            page: currentPage,
+            pageSize,
+            filters: {
+              searchQuery: debouncedFilters.searchQuery,
+              confidenceRange: debouncedFilters.confidenceRange,
+              statusFilters: Array.from(debouncedFilters.statusFilters),
+              questionFilters: Array.from(
+                debouncedFilters.questionFilters,
+                ([questionKey, value]) => ({
+                  questionKey,
+                  value,
+                }),
+              ),
+            },
+            sortBy: resultsSortBy,
+          }
+        : "skip",
+    [currentPage, debouncedFilters, isExtractionJob, jobId, pageSize, resultsSortBy],
   );
-
-  const isLoadingRef = useRef(false);
-  const hasAttemptedLoadRef = useRef(false);
-  useEffect(() => {
-    if (paginationStatus !== "LoadingMore") {
-      isLoadingRef.current = false;
-    }
-  }, [paginationStatus]);
-
-  useEffect(() => {
-    if (!canReadJob) return;
-    if (paginationStatus !== "CanLoadMore") return;
-    if (allPapers.length >= 200) return;
-    if (isLoadingRef.current || hasAttemptedLoadRef.current) return;
-
-    isLoadingRef.current = true;
-    hasAttemptedLoadRef.current = true;
-    loadMore(200);
-  }, [canReadJob, paginationStatus, allPapers.length, loadMore]);
+  const resultsPageQuery = useProtectedQuery(
+    api.extraction.queries.getJobResultsPage,
+    resultsPageArgs,
+  );
+  const resultsPage = resultsPageQuery.data;
 
   const questions: Question[] = useMemo(() => {
     if (jobDetails?.status !== "ok") return [];
@@ -238,46 +232,12 @@ export default function JobDetailPage() {
       : questions[0]?.key;
 
   const papersWithResults = useMemo(
-    () => allPapers as PaperWithResults[],
-    [allPapers]
+    () =>
+      resultsPage?.status === "ok"
+        ? (resultsPage.items as PaperWithResults[])
+        : [],
+    [resultsPage]
   );
-
-  const preprocessedData = useMemo(
-    () => preprocessPapers(papersWithResults),
-    [papersWithResults]
-  );
-
-  const filteredPapers = useMemo(
-    () => filterPapers(papersWithResults, debouncedFilters, questions, preprocessedData, pdfEnabled),
-    [papersWithResults, debouncedFilters, questions, preprocessedData, pdfEnabled]
-  );
-
-  const sortedPapers = useMemo(() => {
-    if (resultsSortBy === 'default') return filteredPapers;
-    const sorted = [...filteredPapers];
-    switch (resultsSortBy) {
-      case 'title-asc':
-        return sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-      case 'title-desc':
-        return sorted.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
-      case 'confidence-high': {
-        const avgConf = (p: PaperWithResults) => {
-          if (!p.results.length) return 0;
-          return p.results.reduce((sum, r) => sum + (r.confidence || 0), 0) / p.results.length;
-        };
-        return sorted.sort((a, b) => avgConf(b) - avgConf(a));
-      }
-      case 'confidence-low': {
-        const avgConf = (p: PaperWithResults) => {
-          if (!p.results.length) return 0;
-          return p.results.reduce((sum, r) => sum + (r.confidence || 0), 0) / p.results.length;
-        };
-        return sorted.sort((a, b) => avgConf(a) - avgConf(b));
-      }
-      default:
-        return sorted;
-    }
-  }, [filteredPapers, resultsSortBy]);
 
   const hasActiveResultFilters = useMemo(
     () =>
@@ -294,20 +254,13 @@ export default function JobDetailPage() {
     ],
   );
   const resultsRenderState = getAuthSensitiveListRenderState({
-    settlement: resultsSettlement,
-    hasLoadedFirstPage,
-    visibleCount: sortedPapers.length,
+    settlement: resultsPageQuery.settlement,
+    hasLoadedFirstPage: resultsPageQuery.isReady,
+    visibleCount: papersWithResults.length,
     hasActiveFilter: hasActiveResultFilters,
   });
 
-  const totalPages = Math.ceil(sortedPapers.length / pageSize);
-  const displayedPapers = useMemo(
-    () => sortedPapers.slice(
-      (currentPage - 1) * pageSize,
-      currentPage * pageSize
-    ),
-    [sortedPapers, currentPage, pageSize]
-  );
+  const displayedPapers = papersWithResults;
 
 
   const paperIds = useMemo(
@@ -435,7 +388,7 @@ export default function JobDetailPage() {
     jobDetailsQuery.isDeferred ||
     jobDetails === undefined ||
     !hasCurrentJobDetails ||
-    (isExtractionJob && isResultsDeferred)
+    (isExtractionJob && resultsPageQuery.isDeferred)
   ) {
     return (
       <PageWrapper>
@@ -498,6 +451,17 @@ export default function JobDetailPage() {
             : 0,
       }
     : progress;
+  const authoritativeTotalPapers =
+    resultsPage?.status === "ok"
+      ? resultsPage.totalAll
+      : resolvedProgress.total;
+  const authoritativeFilteredPapers =
+    resultsPage?.status === "ok"
+      ? resultsPage.totalFiltered
+      : resolvedProgress.total;
+  const resultsScope = "full";
+  const totalPages =
+    resultsPage?.status === "ok" ? resultsPage.totalPages : 0;
 
   const isProcessing =
     job.status === "pending" ||
@@ -1015,8 +979,8 @@ export default function JobDetailPage() {
                   }}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
-                  totalCount={papersWithResults.length}
-                  filteredCount={sortedPapers.length}
+                  totalCount={authoritativeTotalPapers}
+                  filteredCount={authoritativeFilteredPapers}
                   questions={questions}
                   sortBy={resultsSortBy}
                   onSortChange={setResultsSortBy}
@@ -1028,7 +992,12 @@ export default function JobDetailPage() {
                   onShowCreditsChange={setShowCreditsColumn}
                 />
 
-                <div className="min-h-[600px] min-w-0">
+                <div
+                  className="min-h-[600px] min-w-0"
+                  data-results-scope={resultsScope}
+                  data-total-papers={authoritativeTotalPapers}
+                  data-filtered-papers={authoritativeFilteredPapers}
+                >
                   {resultsRenderState === "loading" ? (
                     <div className="my-6 flex min-h-[420px] items-center justify-center rounded-xl border border-border bg-muted/30 py-24 text-center">
                       <div className="flex flex-col items-center gap-3">
@@ -1095,7 +1064,7 @@ export default function JobDetailPage() {
                       )}
                       {viewMode === 'split' && (
                         <SplitView
-                          papers={sortedPapers}
+                          papers={displayedPapers}
                           questions={questions}
                           onOpenCitationPanel={openCitationPanel}
                         />
@@ -1104,15 +1073,18 @@ export default function JobDetailPage() {
                   )}
                 </div>
 
-                {sortedPapers.length > 0 && viewMode !== 'split' && (
+                {authoritativeFilteredPapers > 0 && viewMode !== 'split' && (
                   <SmartPagination
                     currentPage={currentPage}
                     totalPages={totalPages}
                     pageSize={pageSize}
                     onPageChange={setCurrentPage}
-                    onPageSizeChange={setPageSize}
-                    totalCount={papersWithResults.length}
-                    filteredCount={sortedPapers.length}
+                    onPageSizeChange={(nextPageSize) => {
+                      setPageSize(nextPageSize);
+                      setCurrentPage(1);
+                    }}
+                    totalCount={authoritativeTotalPapers}
+                    filteredCount={authoritativeFilteredPapers}
                     displayedCount={displayedPapers.length}
                   />
                 )}
@@ -1129,13 +1101,13 @@ export default function JobDetailPage() {
                 <ExportDialog
                   open={exportDialogOpen}
                   onOpenChange={setExportDialogOpen}
-                  papers={exportMode === 'all' ? sortedPapers : selectedPapers}
+                  papers={exportMode === 'all' ? displayedPapers : selectedPapers}
                   questions={questions}
                   label={
                     exportMode === 'all'
-                      ? sortedPapers.length === 1
-                        ? tView('filteredPapersCount', { count: sortedPapers.length })
-                        : tView('filteredPapersCountPlural', { count: sortedPapers.length })
+                      ? displayedPapers.length === 1
+                        ? tView('filteredPapersCount', { count: displayedPapers.length })
+                        : tView('filteredPapersCountPlural', { count: displayedPapers.length })
                       : selectedIds.size === 1
                         ? tView('selectedPapersCount', { count: selectedIds.size })
                         : tView('selectedPapersCountPlural', { count: selectedIds.size })

@@ -615,6 +615,17 @@ export default defineSchema({
 
     // Content usage tracking
     pdfContentUsed: v.optional(v.boolean()), // true if PDF content was actually used for extraction (any question)
+
+    // Paper-list projection (results-scale plan 02). Maintained on writes
+    // so full-corpus filters/sorts/search do not reread every child row.
+    sortTitle: v.optional(v.string()),
+    avgConfidence: v.optional(v.number()),
+    reviewedCount: v.optional(v.number()),
+    needsFollowupCount: v.optional(v.number()),
+    hasErrors: v.optional(v.boolean()),
+    hasPdfSource: v.optional(v.boolean()),
+    questionAnswerTokens: v.optional(v.array(v.string())),
+    searchText: v.optional(v.string()),
   })
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
@@ -622,7 +633,11 @@ export default defineSchema({
     .index("by_openalex", ["openalexId"])
     .index("by_work", ["workId"])
     .index("by_status_completedAt", ["status", "completedAt"])
-    .index("by_ragEntryId_isIndexed", ["ragEntryId", "isIndexed"]),
+    .index("by_ragEntryId_isIndexed", ["ragEntryId", "isIndexed"])
+    .searchIndex("search_by_job_text", {
+      searchField: "searchText",
+      filterFields: ["jobId", "processable"],
+    }),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION PAPER ERRORS - Append-only failure history per paper

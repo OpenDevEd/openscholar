@@ -5,7 +5,8 @@
  *  - Pure type guards: toReviewState, toCitationStatus.
  *  - Doc shape helpers: hasUsableAbstract, hasUsablePdfSource, applyReviewMetadata.
  *  - ctx.db loaders: attachReviewMetadata, loadReviewsByJob, loadResultsByJob,
- *    buildQuestionInfoByKey, loadJobPapersAndResults.
+ *    loadReviewsByPaperIds, loadResultsByPaperIds, buildQuestionInfoByKey,
+ *    loadJobPapersAndResults.
  *
  * Nothing here is publicly exported as a Convex function — this file only
  * defines TS helpers for the neighbouring query submodules. The
@@ -116,6 +117,27 @@ export async function loadReviewsByJob(
 }
 
 /**
+ * Load reviews only for the visible page papers. Still keyed by resultId so
+ * applyReviewMetadata can reuse the same overlay path as whole-job loaders.
+ */
+export async function loadReviewsByPaperIds(
+  ctx: QueryCtx,
+  paperIds: ReadonlyArray<Id<"extractionPapers">>,
+) {
+  const reviewGroups = await Promise.all(
+    paperIds.map((paperId) =>
+      ctx.db
+        .query("extractionResultReviews")
+        .withIndex("by_paper", (q) => q.eq("paperId", paperId))
+        .collect(),
+    ),
+  );
+  return new Map<string, Doc<"extractionResultReviews">>(
+    reviewGroups.flat().map((review) => [review.resultId, review]),
+  );
+}
+
+/**
  * Apply pre-loaded review metadata to results synchronously (no database calls).
  * Use with loadReviewsByJob for batch processing of multiple papers.
  */
@@ -176,6 +198,29 @@ export async function loadResultsByJob(
     else byPaper.set(row.paperId, [row]);
   }
   return byPaper;
+}
+
+/**
+ * Load result rows only for the visible page papers, preserving a paperId →
+ * rows map so the page query can stitch full rows back onto the sliced papers.
+ */
+export async function loadResultsByPaperIds(
+  ctx: QueryCtx,
+  paperIds: ReadonlyArray<Id<"extractionPapers">>,
+): Promise<Map<string, Doc<"extractionResults">[]>> {
+  const resultGroups = await Promise.all(
+    paperIds.map(async (paperId) => [
+      paperId,
+      await ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q) => q.eq("paperId", paperId))
+        .collect(),
+    ] as const),
+  );
+
+  return new Map<string, Doc<"extractionResults">[]>(
+    resultGroups.map(([paperId, results]) => [paperId, results]),
+  );
 }
 
 export async function loadJobPapersAndResults(

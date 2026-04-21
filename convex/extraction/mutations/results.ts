@@ -40,6 +40,7 @@ import {
 } from "../validators";
 import { aggregatePaperStatus } from "@/lib/extraction/paper-status";
 import type { ErrorCode } from "@/lib/errors/taxonomy";
+import { recomputePaperListProjection } from "../listProjection";
 
 export const setResultReviewState = mutation({
   args: {
@@ -98,6 +99,7 @@ export const setResultReviewState = mutation({
     if (args.state === "unreviewed" && !note && !hasCorrection) {
       if (existing) {
         await ctx.db.delete("extractionResultReviews", existing._id);
+        await recomputePaperListProjection(ctx, paper._id);
       }
       return { cleared: true, state: "unreviewed" as const };
     }
@@ -113,6 +115,7 @@ export const setResultReviewState = mutation({
 
     if (existing) {
       await ctx.db.patch("extractionResultReviews", existing._id, patchData);
+      await recomputePaperListProjection(ctx, paper._id);
       return { reviewId: existing._id, state: args.state };
     }
 
@@ -124,6 +127,8 @@ export const setResultReviewState = mutation({
       ...patchData,
       createdAt: Date.now(),
     });
+
+    await recomputePaperListProjection(ctx, paper._id);
 
     return { reviewId, state: args.state };
   },
@@ -344,6 +349,8 @@ export const recordOneAnswer = internalMutation({
       citationStatus: fields.citationStatus,
     });
 
+    await recomputePaperListProjection(ctx, args.paperId);
+
     return null;
   },
 });
@@ -436,6 +443,8 @@ export const recordOneAnswerFailure = internalMutation({
       confidence: 0,
       citationStatus: "extraction_error",
     });
+
+    await recomputePaperListProjection(ctx, args.paperId);
 
     return null;
   },
