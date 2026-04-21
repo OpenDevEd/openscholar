@@ -13,6 +13,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { axe, toHaveNoViolations } from "jest-axe";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -126,7 +127,11 @@ const AXE_OPTIONS = {
 
 describe("transactions-panel axe", () => {
   it("has zero axe violations with 10 grouped rows and a sticky header", async () => {
-    const { container } = render(<TransactionsPanelClient />);
+    const { container } = render(
+      <NuqsTestingAdapter>
+        <TransactionsPanelClient />
+      </NuqsTestingAdapter>,
+    );
     expect(await axe(container, AXE_OPTIONS)).toHaveNoViolations();
   });
 });

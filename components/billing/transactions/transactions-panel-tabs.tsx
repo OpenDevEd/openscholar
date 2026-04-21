@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
   presetForView,
@@ -37,6 +37,9 @@ export function TransactionsPanelTabs() {
           </TabsTrigger>
         ))}
       </TabsList>
+      {VIEW_TABS.map((tab) => (
+        <TabsContent key={tab} value={tab} className="sr-only" />
+      ))}
     </Tabs>
   );
 }
