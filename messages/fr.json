@@ -358,10 +358,25 @@
     "transactions": {
       "title": "Transactions",
       "loading": "Chargement des transactions…",
-      "empty": "Aucune transaction pour l'instant.",
-      "emptyForJob": "Aucune transaction pour cette tâche.",
       "filteredByJob": "Filtré par tâche",
       "clearFilter": "Effacer le filtre",
+      "error": {
+        "title": "Impossible de charger les transactions",
+        "message": "Une erreur est survenue lors de la récupération de votre historique. Veuillez réessayer dans un instant.",
+        "retry": "Réessayer"
+      },
+      "empty": {
+        "no-data": {
+          "title": "Aucune transaction pour l'instant",
+          "description": "Les achats, crédits offerts et consommations apparaîtront ici dès que vous utiliserez vos crédits.",
+          "cta": "Acheter des crédits"
+        },
+        "no-matches": {
+          "title": "Aucun résultat",
+          "description": "Aucune transaction ne correspond à vos filtres. Essayez de les effacer ou d'élargir la plage de dates.",
+          "cta": "Effacer les filtres"
+        }
+      },
       "type": {
         "purchase": "Achat de crédits",
         "grant": "Crédits gratuits offerts",

@@ -358,10 +358,25 @@
     "transactions": {
       "title": "交易记录",
       "loading": "加载交易中…",
-      "empty": "暂无交易。",
-      "emptyForJob": "此作业暂无交易。",
       "filteredByJob": "按作业筛选",
       "clearFilter": "清除筛选",
+      "error": {
+        "title": "无法加载交易记录",
+        "message": "获取账单历史时出现问题,请稍后重试。",
+        "retry": "重试"
+      },
+      "empty": {
+        "no-data": {
+          "title": "暂无交易",
+          "description": "开始使用积分后,购买、赠送与使用记录将显示在此处。",
+          "cta": "购买积分"
+        },
+        "no-matches": {
+          "title": "无匹配结果",
+          "description": "没有交易符合当前筛选条件。请清除筛选或扩大日期范围。",
+          "cta": "清除筛选"
+        }
+      },
       "type": {
         "purchase": "购买积分",
         "grant": "免费积分",

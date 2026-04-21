@@ -358,10 +358,25 @@
     "transactions": {
       "title": "Transactions",
       "loading": "Loading transactions…",
-      "empty": "No transactions yet.",
-      "emptyForJob": "No transactions for this job.",
       "filteredByJob": "Filtered by job",
       "clearFilter": "Clear filter",
+      "error": {
+        "title": "Couldn't load transactions",
+        "message": "Something went wrong while fetching your billing history. Try again in a moment.",
+        "retry": "Retry"
+      },
+      "empty": {
+        "no-data": {
+          "title": "No transactions yet",
+          "description": "Purchases, grants and usage charges will appear here once you start using credits.",
+          "cta": "Buy credits"
+        },
+        "no-matches": {
+          "title": "No matches",
+          "description": "No transactions match your current filters. Try clearing them or widening the date range.",
+          "cta": "Clear filters"
+        }
+      },
       "type": {
         "purchase": "Credit purchase",
         "grant": "Free credit grant",
