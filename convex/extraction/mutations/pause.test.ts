@@ -47,6 +47,7 @@ async function seedJob(
     | "completed"
     | "failed"
     | "cancelled",
+  runEpoch = 0,
 ): Promise<Id<"extractionJobs">> {
   return await t.run(async (ctx) => {
     const now = Date.now();
@@ -59,6 +60,7 @@ async function seedJob(
       totalPapers: 10,
       processedPapers: 2,
       failedPapers: 0,
+      runEpoch,
       usePdfs: false,
       createdAt: now,
       updatedAt: now,
@@ -83,6 +85,7 @@ describe("pauseExtraction — happy path", () => {
     expect(job?.status).toBe("paused");
     expect(job?.pausedFromStatus).toBe("extracting");
     expect(typeof job?.pausedAt).toBe("number");
+    expect(job?.runEpoch).toBe(1);
   });
 
   it.each([
@@ -106,6 +109,7 @@ describe("pauseExtraction — happy path", () => {
       const job = await t.run((ctx) => ctx.db.get(jobId));
       expect(job?.status).toBe("paused");
       expect(job?.pausedFromStatus).toBe(status);
+      expect(job?.runEpoch).toBe(1);
     },
   );
 });
@@ -133,6 +137,7 @@ describe("pauseExtraction — idempotency + refusals", () => {
     const firstJob = await t.run((ctx) => ctx.db.get(jobId));
     const pausedAtAfter = firstJob?.pausedAt;
     expect(pausedAtAfter).toBeTypeOf("number");
+    expect(firstJob?.runEpoch).toBe(1);
   });
 
   it.each(["completed", "failed", "cancelled"] as const)(

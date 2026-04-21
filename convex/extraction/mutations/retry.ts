@@ -110,8 +110,11 @@ export async function applyRetryResetTx(
   assertValidJobTransition(job.status as JobStatus, "extracting");
   await ctx.db.patch(job._id, {
     status: "extracting" as const,
+    runEpoch: (job.runEpoch ?? 0) + 1,
     error: undefined,
     completedAt: undefined,
+    pausedAt: undefined,
+    pausedFromStatus: undefined,
     updatedAt: now,
   });
 

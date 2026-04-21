@@ -28,11 +28,18 @@ import {
 export const maybeFinalizeJob = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
+    expectedEpoch: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
     const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) return null;
+    if (
+      args.expectedEpoch !== undefined &&
+      (job.runEpoch ?? 0) !== args.expectedEpoch
+    ) {
+      return null;
+    }
 
     if (
       job.status === "cancelled" ||
@@ -100,6 +107,7 @@ export const createJobDirect = internalMutation({
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
+      runEpoch: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -144,4 +152,3 @@ export const setJobWorkflowId = internalMutation({
     return null;
   },
 });
-

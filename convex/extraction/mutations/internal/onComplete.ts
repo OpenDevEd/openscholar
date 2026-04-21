@@ -46,17 +46,21 @@ export const handleExtractionJobComplete = internalMutation({
     context: v.object({ jobId: v.id("extractionJobs") }),
   },
   returns: v.null(),
-  handler: async (ctx, { result, context: { jobId } }) => {
+  handler: async (ctx, { workflowId, result, context: { jobId } }) => {
     if (result.kind !== "failed") return null;
 
     const job = await ctx.db.get(jobId);
     if (!job) return null;
+    if (job.workflowId && job.workflowId !== workflowId) return null;
 
     const isTerminal =
       job.status === "completed" ||
       job.status === "failed" ||
       job.status === "cancelled";
     if (isTerminal) return null;
+    if (job.status === "paused" || job.status === "creditsExhausted") {
+      return null;
+    }
 
     const classified = classifyUnknownError(new Error(result.error));
     const at = Date.now();

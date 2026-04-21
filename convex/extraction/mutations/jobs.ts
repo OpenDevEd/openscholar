@@ -153,6 +153,7 @@ export const startJob = mutation({
             totalPapers: 0,
             processedPapers: 0,
             failedPapers: 0,
+            runEpoch: 0,
             usePdfs: args.usePdfs ?? false,
             ...(estimate !== undefined && { estimatedCredits: estimate }),
           }
@@ -326,6 +327,7 @@ export const duplicateJob = mutation({
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
+      runEpoch: 0,
       usePdfs: oldJob.usePdfs ?? false,
       createdAt: now,
       updatedAt: now,
@@ -404,6 +406,7 @@ export const startJobFromTemplate = mutation({
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
+      runEpoch: 0,
       usePdfs: false,
       createdAt: now,
       updatedAt: now,

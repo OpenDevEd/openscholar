@@ -81,6 +81,7 @@ export const createTestJob = internalMutation({
       totalPapers: 0,
       processedPapers: 0,
       failedPapers: 0,
+      runEpoch: 0,
       createdAt: now,
       updatedAt: now,
     });

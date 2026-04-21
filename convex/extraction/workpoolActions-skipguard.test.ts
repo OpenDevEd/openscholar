@@ -30,6 +30,7 @@ async function seedJobAndQuestion(
     | "creditsExhausted"
     | "cancelled"
     | "completed",
+  runEpoch = 0,
 ): Promise<{
   jobId: Id<"extractionJobs">;
   paperId: Id<"extractionPapers">;
@@ -53,6 +54,7 @@ async function seedJobAndQuestion(
       totalPapers: 1,
       processedPapers: 0,
       failedPapers: 0,
+      runEpoch,
       usePdfs: false,
       createdAt: now,
       updatedAt: now,
@@ -88,7 +90,7 @@ describe("extractOneQuestion skip-guard", () => {
 
     const result = await t.action(
       internal.extraction.workpoolActions.extractOneQuestion,
-      { jobId, paperId, questionId },
+      { jobId, paperId, questionId, expectedEpoch: 0 },
     );
     expect(result).toEqual({ status: "skipped", reason: "paused" });
 
@@ -111,7 +113,7 @@ describe("extractOneQuestion skip-guard", () => {
     );
     const result = await t.action(
       internal.extraction.workpoolActions.extractOneQuestion,
-      { jobId, paperId, questionId },
+      { jobId, paperId, questionId, expectedEpoch: 0 },
     );
     expect(result).toEqual({
       status: "skipped",
@@ -127,7 +129,7 @@ describe("extractOneQuestion skip-guard", () => {
     );
     const result = await t.action(
       internal.extraction.workpoolActions.extractOneQuestion,
-      { jobId, paperId, questionId },
+      { jobId, paperId, questionId, expectedEpoch: 0 },
     );
     expect(result).toEqual({ status: "skipped", reason: "cancelled" });
   });
@@ -140,7 +142,7 @@ describe("extractOneQuestion skip-guard", () => {
     );
     const result = await t.action(
       internal.extraction.workpoolActions.extractOneQuestion,
-      { jobId, paperId, questionId },
+      { jobId, paperId, questionId, expectedEpoch: 0 },
     );
     expect(result).toEqual({ status: "skipped", reason: "job_terminal" });
   });
@@ -168,8 +170,56 @@ describe("extractOneQuestion skip-guard", () => {
     });
     const result = await t.action(
       internal.extraction.workpoolActions.extractOneQuestion,
-      { jobId, paperId, questionId },
+      { jobId, paperId, questionId, expectedEpoch: 0 },
     );
     expect(result).toEqual({ status: "skipped", reason: "already_billed" });
+  });
+
+  it("short-circuits on a stale epoch before any result write", async () => {
+    const t = convexTest(schema);
+    const { jobId, paperId, questionId } = await seedJobAndQuestion(
+      t,
+      "extracting",
+      2,
+    );
+
+    const result = await t.action(
+      internal.extraction.workpoolActions.extractOneQuestion,
+      { jobId, paperId, questionId, expectedEpoch: 1 },
+    );
+    expect(result).toEqual({ status: "skipped", reason: "stale_epoch" });
+
+    const rows = await t.run((ctx) =>
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q) => q.eq("paperId", paperId))
+        .collect(),
+    );
+    expect(rows).toEqual([]);
+  });
+
+  it("short-circuits stale indexing work before evidence mutations", async () => {
+    const t = convexTest(schema);
+    const { jobId, paperId } = await seedJobAndQuestion(t, "extracting", 3);
+
+    const result = await t.action(
+      internal.extraction.workpoolActions.downloadAndIndexPdfAction,
+      {
+        jobId,
+        paperId,
+        expectedEpoch: 2,
+        pdfUrl: "https://example.com/paper.pdf",
+        title: "Skip Paper",
+      },
+    );
+    expect(result).toEqual({ status: "skipped", reason: "stale_epoch" });
+
+    const evidence = await t.run((ctx) =>
+      ctx.db
+        .query("extractionEvidenceUnits")
+        .withIndex("by_paper", (q) => q.eq("paperId", paperId))
+        .collect(),
+    );
+    expect(evidence).toEqual([]);
   });
 });

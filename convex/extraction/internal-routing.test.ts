@@ -66,6 +66,7 @@ const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
 // commits peel it off.
 const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
   ["internal", "getJobInternal"],
+  ["internal", "getJobStatusInternal"],
   ["internal", "debugRecentPapers"],
   ["internal", "getQuestionsInternal"],
   ["internal", "getJobSourcesInternal"],

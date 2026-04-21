@@ -21,6 +21,14 @@ import { recordCreditSpend } from "../aggregates";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
 import { recomputePaperListProjection } from "../listProjection";
 
+function matchesExpectedEpoch(
+  job: { runEpoch?: number } | null | undefined,
+  expectedEpoch?: number,
+): boolean {
+  if (expectedEpoch === undefined) return true;
+  return (job?.runEpoch ?? 0) === expectedEpoch;
+}
+
 export const createPaperRecords = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
@@ -101,9 +109,15 @@ export const updatePaperStatus = internalMutation({
     ),
     completedAt: v.optional(v.number()),
     creditsUsed: v.optional(v.number()),
+    expectedEpoch: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    const paper = await ctx.db.get("extractionPapers", args.paperId);
+    if (!paper) return null;
+    const job = await ctx.db.get("extractionJobs", paper.jobId);
+    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
+
     const classified: ClassifiedError | undefined = args.error
       ? {
           code: args.error.code,
@@ -157,11 +171,14 @@ export const setPaperStorage = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
     storageId: v.id("_storage"),
+    expectedEpoch: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
     const paper = await ctx.db.get("extractionPapers", args.paperId);
     if (!paper) return null;
+    const job = await ctx.db.get("extractionJobs", paper.jobId);
+    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
     const pdfFlag = await getFlag(ctx, "extraction.pdf");
     const pdfEnabled = pdfFlag?.enabled ?? true;
     const { processable } = getProcessableFlags({
@@ -183,6 +200,7 @@ export const markPaperIndexed = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
     ragEntryId: v.optional(v.string()),
+    expectedEpoch: v.optional(v.number()),
     // When provided, the embedding credits are deducted atomically with the
     // isIndexed flip. Gated on indexingBilled so a workpool retry that
     // replays the entire indexing action cannot re-charge the user.
@@ -199,6 +217,8 @@ export const markPaperIndexed = internalMutation({
   handler: async (ctx, args): Promise<null> => {
     const paper = await ctx.db.get("extractionPapers", args.paperId);
     if (!paper) return null;
+    const job = await ctx.db.get("extractionJobs", paper.jobId);
+    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
 
     const updates: Partial<Doc<"extractionPapers">> = {
       isIndexed: true,

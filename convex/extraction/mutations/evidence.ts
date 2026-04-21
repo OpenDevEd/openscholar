@@ -12,6 +12,7 @@ import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
 export const replacePaperEvidenceUnits = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
+    expectedEpoch: v.optional(v.number()),
     units: v.array(
       v.object({
         evidenceId: v.string(),
@@ -29,6 +30,13 @@ export const replacePaperEvidenceUnits = internalMutation({
   handler: async (ctx, args): Promise<null> => {
     const paper = await ctx.db.get("extractionPapers", args.paperId);
     if (!paper) return null;
+    const job = await ctx.db.get("extractionJobs", paper.jobId);
+    if (
+      args.expectedEpoch !== undefined &&
+      (job?.runEpoch ?? 0) !== args.expectedEpoch
+    ) {
+      return null;
+    }
 
     const existing = await ctx.db
       .query("extractionEvidenceUnits")

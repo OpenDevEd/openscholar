@@ -126,6 +126,32 @@ describe("maybeFinalizeJob terminal-state guard", () => {
     expect(after?.processedPapers).toBe(1);
   });
 
+  it("ignores stale maybeFinalizeJob calls from an older epoch", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { jobId, paperId } = await seedJob(t, "extracting");
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionPapers", paperId, {
+        status: "completed",
+        completedAt: Date.now(),
+      });
+      await ctx.db.patch("extractionJobs", jobId, {
+        processedPapers: 1,
+        runEpoch: 3,
+      });
+    });
+
+    await t.mutation(
+      internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
+      { jobId, expectedEpoch: 2 },
+    );
+
+    const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+    expect(after?.status).toBe("extracting");
+    expect(after?.completedAt).toBeUndefined();
+  });
+
   it("fails a job with totalPapers=0 (all sources non-processable)", async () => {
     const t = convexTest(schema);
     setupAggregates(t);

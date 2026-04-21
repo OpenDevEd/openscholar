@@ -39,6 +39,7 @@ import type * as debug_papers from "../debug_papers.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
 import type * as extraction_aggregates from "../extraction/aggregates.js";
+import type * as extraction_batching from "../extraction/batching.js";
 import type * as extraction_bucket_limits from "../extraction/bucket/limits.js";
 import type * as extraction_bucket_queries from "../extraction/bucket/queries.js";
 import type * as extraction_content from "../extraction/content.js";
@@ -216,6 +217,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
   "extraction/aggregates": typeof extraction_aggregates;
+  "extraction/batching": typeof extraction_batching;
   "extraction/bucket/limits": typeof extraction_bucket_limits;
   "extraction/bucket/queries": typeof extraction_bucket_queries;
   "extraction/content": typeof extraction_content;

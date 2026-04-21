@@ -63,6 +63,7 @@ export const pauseExtraction = mutation({
     assertValidJobTransition(job.status as JobStatus, decision.nextStatus);
     await ctx.db.patch(jobId, {
       status: decision.nextStatus,
+      runEpoch: (job.runEpoch ?? 0) + 1,
       pausedAt: Date.now(),
       pausedFromStatus: decision.pausedFrom,
       updatedAt: Date.now(),

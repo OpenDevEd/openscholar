@@ -64,6 +64,7 @@ type ResumeSeedOpts = {
   remainingQuestions?: number;
   /** Whether seeded papers count as "unindexed" (indexingBilled !== true). */
   unindexedPapers?: number;
+  runEpoch?: number;
 };
 
 async function seedJob(
@@ -82,6 +83,7 @@ async function seedJob(
       totalPapers: 10,
       processedPapers: 2,
       failedPapers: 0,
+      runEpoch: opts.runEpoch ?? 1,
       usePdfs: opts.usePdfs ?? false,
       pausedFromStatus: opts.pausedFromStatus,
       pausedAt: opts.jobStatus === "paused" ? now : undefined,
@@ -150,6 +152,7 @@ describe("resumeExtraction — happy paths", () => {
     expect(job?.pausedAt).toBeUndefined();
     expect(job?.pausedFromStatus).toBeUndefined();
     expect(job?.error).toBeUndefined();
+    expect(job?.runEpoch).toBe(2);
   });
 
   it("falls back to 'extracting' when pausedFromStatus is missing", async () => {
@@ -169,6 +172,7 @@ describe("resumeExtraction — happy paths", () => {
 
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("extracting");
+    expect(job?.runEpoch).toBe(2);
   });
 
   it("resumes 'creditsExhausted' to 'extracting' when balance covers the estimate", async () => {
@@ -189,6 +193,7 @@ describe("resumeExtraction — happy paths", () => {
 
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("extracting");
+    expect(job?.runEpoch).toBe(2);
   });
 });
 

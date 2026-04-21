@@ -68,6 +68,7 @@ type SeedOptions = {
     | "extracting"
     | "pending";
   paperStatus?: "completed" | "failed" | "extracting";
+  runEpoch?: number;
   /** Shape: a list of failure codes to seed; each gets its own result row.
    *  `completed` entries produce billed completed rows. `billedRetryable`
    *  produces a failed row with billed=true (should NEVER be reset). */
@@ -103,6 +104,7 @@ async function seedJob(
       totalPapers: 1,
       processedPapers: 1,
       failedPapers: 0,
+      runEpoch: opts.runEpoch ?? 0,
       usePdfs: false,
       createdAt: now,
       updatedAt: now,
@@ -240,6 +242,7 @@ describe("applyRetryResetTx — state changes", () => {
     // Job un-terminaled, error cleared.
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("extracting");
+    expect(job?.runEpoch).toBe(1);
     expect(job?.error).toBeUndefined();
     expect(job?.completedAt).toBeUndefined();
   });
@@ -291,6 +294,7 @@ describe("applyRetryResetTx — state changes", () => {
     expect(count).toBe(1);
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("extracting");
+    expect(job?.runEpoch).toBe(1);
   });
 });
 

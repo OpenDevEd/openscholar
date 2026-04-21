@@ -148,6 +148,7 @@ export const updateJobStatus = internalMutation({
       v.literal("cancelled"),
     ),
     totalPapers: v.optional(v.number()),
+    expectedEpoch: v.optional(v.number()),
     // Optional structured error stamped on the job when we transition
     // to a failure-ish state (e.g. creditsExhausted). Lets the UI pick
     // a localized title/body without parsing the message.
@@ -157,6 +158,12 @@ export const updateJobStatus = internalMutation({
   handler: async (ctx, args): Promise<null> => {
     const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) return null;
+    if (
+      args.expectedEpoch !== undefined &&
+      (job.runEpoch ?? 0) !== args.expectedEpoch
+    ) {
+      return null;
+    }
 
     // Terminal states are sticky. A late workflow step (e.g. the unconditional
     // `extracting` update at the end of runExtractionWorkflow) must not roll
@@ -220,6 +227,14 @@ function isJobTerminal(
   );
 }
 
+function matchesExpectedEpoch(
+  job: { runEpoch?: number } | null | undefined,
+  expectedEpoch?: number,
+): boolean {
+  if (expectedEpoch === undefined) return true;
+  return (job?.runEpoch ?? 0) === expectedEpoch;
+}
+
 const oneAnswerBody = v.object({
   answer: answerValidator,
   confidence: v.optional(v.number()),
@@ -236,6 +251,7 @@ export const recordOneAnswer = internalMutation({
     questionKey: v.string(),
     result: oneAnswerBody,
     creditsUsed: v.number(),
+    expectedEpoch: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
@@ -243,12 +259,14 @@ export const recordOneAnswer = internalMutation({
     if (!paper) return null;
 
     const job = await ctx.db.get("extractionJobs", paper.jobId);
+    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
     if (isJobTerminal(job)) {
       console.log(
         `[recordOneAnswer] Skipping ${args.paperId}:${args.questionKey}; job ${paper.jobId} terminal`,
       );
       return null;
     }
+    if (job?.status !== "extracting") return null;
 
     const existing = await ctx.db
       .query("extractionResults")
@@ -360,6 +378,7 @@ export const recordOneAnswerFailure = internalMutation({
     paperId: v.id("extractionPapers"),
     questionKey: v.string(),
     error: classifiedErrorValidator,
+    expectedEpoch: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
@@ -367,12 +386,14 @@ export const recordOneAnswerFailure = internalMutation({
     if (!paper) return null;
 
     const job = await ctx.db.get("extractionJobs", paper.jobId);
+    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
     if (isJobTerminal(job)) {
       console.log(
         `[recordOneAnswerFailure] Skipping ${args.paperId}:${args.questionKey}; job ${paper.jobId} terminal`,
       );
       return null;
     }
+    if (job?.status !== "extracting") return null;
 
     const existing = await ctx.db
       .query("extractionResults")
@@ -457,7 +478,10 @@ export const recordOneAnswerFailure = internalMutation({
  * running on an already-terminal paper is a no-op.
  */
 export const finalizePaper = internalMutation({
-  args: { paperId: v.id("extractionPapers") },
+  args: {
+    paperId: v.id("extractionPapers"),
+    expectedEpoch: v.optional(v.number()),
+  },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
     const paper = await ctx.db.get("extractionPapers", args.paperId);
@@ -465,7 +489,9 @@ export const finalizePaper = internalMutation({
     if (isTerminalPaperStatus(paper.status)) return null;
 
     const job = await ctx.db.get("extractionJobs", paper.jobId);
+    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
     if (isJobTerminal(job)) return null;
+    if (job?.status !== "extracting") return null;
 
     const [resultsForPaper, questions] = await Promise.all([
       ctx.db
@@ -516,7 +542,7 @@ export const finalizePaper = internalMutation({
 
     await ctx.runMutation(
       internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
-      { jobId: paper.jobId },
+      { jobId: paper.jobId, expectedEpoch: args.expectedEpoch },
     );
 
     console.log(

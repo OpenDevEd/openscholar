@@ -38,17 +38,22 @@ export const getJobInternal = internalQuery({
 });
 
 /**
- * Plan-06 — lean status read used by the workflow gate + the per-action
- * skip-guard. Returns just the status (or null for a missing job) so
- * repeated checks are cheap; the workflow calls this before every paper
- * and every question dispatch, and extractOneQuestion calls it at entry.
+ * Lean control-plane read used by workflow gates and worker stale-run
+ * guards. Returning just `{ status, runEpoch }` keeps the freshness read
+ * cheap enough to repeat before dispatch and before persistence.
  */
 export const getJobStatusInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.union(v.null(), jobStatusValidator),
+  returns: v.object({
+    status: v.union(v.null(), jobStatusValidator),
+    runEpoch: v.number(),
+  }),
   handler: async (ctx, args) => {
     const job = await ctx.db.get("extractionJobs", args.jobId);
-    return job?.status ?? null;
+    return {
+      status: job?.status ?? null,
+      runEpoch: job?.runEpoch ?? 0,
+    };
   },
 });
 

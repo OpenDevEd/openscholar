@@ -81,6 +81,31 @@ export const CHAT_CONCURRENCY_LIMIT_MAX = Math.max(
   ...Object.values(CHAT_CONCURRENCY_LIMIT_BY_PLAN),
 );
 
+export const EXTRACTION_PAPER_CONCURRENCY_BY_PLAN: Record<
+  SubscriptionPlan,
+  number
+> = {
+  free: 5,
+  go: 5,
+  pro: 5,
+  enterprise: 5,
+};
+
+export const EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN: Record<
+  SubscriptionPlan,
+  number
+> = {
+  free: 5,
+  go: 5,
+  pro: 5,
+  enterprise: 5,
+};
+
+export type ExtractionExecutionLimits = {
+  paperConcurrency: number;
+  questionConcurrencyPerPaper: number;
+};
+
 async function resolvePlan(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
@@ -157,11 +182,50 @@ export async function getChatConcurrencyLimit(
   return CHAT_CONCURRENCY_LIMIT_BY_PLAN[plan];
 }
 
+export async function getExtractionPaperConcurrency(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+): Promise<number> {
+  const plan = await resolvePlan(ctx, userId);
+  return EXTRACTION_PAPER_CONCURRENCY_BY_PLAN[plan];
+}
+
+export async function getExtractionQuestionConcurrencyPerPaper(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+): Promise<number> {
+  const plan = await resolvePlan(ctx, userId);
+  return EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN[plan];
+}
+
+export async function getExtractionExecutionLimits(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+): Promise<ExtractionExecutionLimits> {
+  const plan = await resolvePlan(ctx, userId);
+  return {
+    paperConcurrency: EXTRACTION_PAPER_CONCURRENCY_BY_PLAN[plan],
+    questionConcurrencyPerPaper:
+      EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN[plan],
+  };
+}
+
 export const getChatConcurrencyLimitForUser = internalQuery({
   args: { userId: v.id("users") },
   returns: v.number(),
   handler: async (ctx, args): Promise<number> => {
     return await getChatConcurrencyLimit(ctx, args.userId);
+  },
+});
+
+export const getExtractionExecutionLimitsForUser = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.object({
+    paperConcurrency: v.number(),
+    questionConcurrencyPerPaper: v.number(),
+  }),
+  handler: async (ctx, args): Promise<ExtractionExecutionLimits> => {
+    return await getExtractionExecutionLimits(ctx, args.userId);
   },
 });
 

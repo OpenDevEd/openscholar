@@ -410,6 +410,7 @@ export default defineSchema({
     processedPapers: v.optional(v.number()),
     failedPapers: v.optional(v.number()),
     workflowId: v.optional(v.string()),
+    runEpoch: v.optional(v.number()),
     // Per-job PDF opt-in. Replaces the old global `extraction.pdf` flag
     // as the *default*; the flag remains as an admin capability gate.
     usePdfs: v.optional(v.boolean()),

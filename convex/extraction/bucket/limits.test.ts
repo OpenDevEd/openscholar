@@ -4,6 +4,8 @@ import { internal } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
 import {
+  EXTRACTION_PAPER_CONCURRENCY_BY_PLAN,
+  EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN,
   PAPER_LIMIT_BY_PLAN,
   PAPER_LIMIT_MAX,
   assertBucketWithinLimits,
@@ -109,6 +111,29 @@ describe("convex/extraction/bucket/limits", () => {
       { userId: pastDueUserId },
     );
     expect(pastDueLimit).toBe(PAPER_LIMIT_BY_PLAN.enterprise);
+  });
+
+  it("resolves extraction execution limits to plan-derived concurrency knobs", async () => {
+    const t = convexTest(schema);
+    for (const plan of ["free", "go", "pro", "enterprise"] as const) {
+      const userId = await seedUser(t, `clerk_${plan}_limits`);
+      if (plan !== "free") {
+        await seedSubscription(t, userId, plan, "active");
+      }
+
+      const limits = await t.query(
+        internal.extraction.bucket.limits.getExtractionExecutionLimitsForUser,
+        { userId },
+      );
+      expect(limits.paperConcurrency).toBe(
+        EXTRACTION_PAPER_CONCURRENCY_BY_PLAN[plan],
+      );
+      expect(limits.questionConcurrencyPerPaper).toBe(
+        EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN[plan],
+      );
+      expect(limits.paperConcurrency).toBe(5);
+      expect(limits.questionConcurrencyPerPaper).toBe(5);
+    }
   });
 });
 

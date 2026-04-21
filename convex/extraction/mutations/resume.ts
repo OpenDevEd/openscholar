@@ -130,6 +130,7 @@ export const resumeExtraction = mutation({
     assertValidJobTransition(job.status as JobStatus, decision.nextStatus);
     await ctx.db.patch(jobId, {
       status: decision.nextStatus,
+      runEpoch: (job.runEpoch ?? 0) + 1,
       pausedAt: undefined,
       pausedFromStatus: undefined,
       // Clear any stale creditsExhausted error so the UI doesn't show it

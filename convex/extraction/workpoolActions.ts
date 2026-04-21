@@ -538,39 +538,90 @@ async function resolvePdfBlob(
       error: downloaded.error || "PDF download failed",
     };
   }
-
-  const storedId = await ctx.storage.store(downloaded.pdfBlob);
-  await ctx.runMutation(internal.extraction.mutations.papers.setPaperStorage, {
-    paperId: args.paperId,
-    storageId: storedId,
-  });
-
-  return { pdfBlob: downloaded.pdfBlob, storageId: storedId };
+  return { pdfBlob: downloaded.pdfBlob };
 }
 
-type IndexResult = {
-  success: boolean;
-  storageId?: string;
-  chunksCount?: number;
-  error?: ClassifiedError;
+type WorkerSkipReason =
+  | "cancelled"
+  | "job_terminal"
+  | "credits_exhausted"
+  | "paused"
+  | "stale_epoch";
+
+type JobControlState = {
+  status: string | null;
+  runEpoch: number;
 };
+
+function getWorkerSkipReason(
+  control: JobControlState,
+  expectedEpoch: number,
+): WorkerSkipReason | null {
+  if (control.runEpoch !== expectedEpoch) {
+    return "stale_epoch";
+  }
+  switch (control.status) {
+    case "cancelled":
+      return "cancelled";
+    case "completed":
+    case "failed":
+      return "job_terminal";
+    case "creditsExhausted":
+      return "credits_exhausted";
+    case "paused":
+      return "paused";
+    default:
+      return null;
+  }
+}
+
+type IndexResult =
+  | {
+      status: "completed";
+      storageId?: string;
+      chunksCount?: number;
+    }
+  | {
+      status: "skipped";
+      reason: WorkerSkipReason;
+    }
+  | {
+      status: "failed";
+      error?: ClassifiedError;
+    };
 
 export const downloadAndIndexPdfAction = internalAction({
   args: {
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
+    expectedEpoch: v.number(),
     pdfUrl: v.string(),
     storageId: v.optional(v.id("_storage")),
     title: v.string(),
     abstract: v.optional(v.string()),
     doi: v.optional(v.string()),
   },
-  returns: v.object({
-    success: v.boolean(),
-    storageId: v.optional(v.string()),
-    chunksCount: v.optional(v.number()),
-    error: v.optional(classifiedErrorValidator),
-  }),
+  returns: v.union(
+    v.object({
+      status: v.literal("completed"),
+      storageId: v.optional(v.string()),
+      chunksCount: v.optional(v.number()),
+    }),
+    v.object({
+      status: v.literal("skipped"),
+      reason: v.union(
+        v.literal("cancelled"),
+        v.literal("job_terminal"),
+        v.literal("credits_exhausted"),
+        v.literal("paused"),
+        v.literal("stale_epoch"),
+      ),
+    }),
+    v.object({
+      status: v.literal("failed"),
+      error: v.optional(classifiedErrorValidator),
+    }),
+  ),
   handler: async (ctx, args): Promise<IndexResult> => {
     try {
       // One round trip for job + pdf-flag instead of two.
@@ -580,9 +631,20 @@ export const downloadAndIndexPdfAction = internalAction({
       );
       if (!job) {
         return {
-          success: false,
+          status: "failed",
           error: mkError("paper_not_found", "Job not found"),
         };
+      }
+
+      const initialSkipReason = getWorkerSkipReason(
+        {
+          status: job.status ?? null,
+          runEpoch: job.runEpoch ?? 0,
+        },
+        args.expectedEpoch,
+      );
+      if (initialSkipReason) {
+        return { status: "skipped", reason: initialSkipReason };
       }
 
       // Idempotency gate: a workpool retry that lands here after the paper
@@ -596,24 +658,28 @@ export const downloadAndIndexPdfAction = internalAction({
           `[downloadAndIndexPdfAction] paper ${args.paperId} already indexed/billed; skipping`,
         );
         return {
-          success: true,
+          status: "completed",
           chunksCount: 0,
           storageId: existingPaper.storageId ?? undefined,
         };
       }
       if (!pdfEnabled) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
-          await ctx.runMutation(internal.extraction.mutations.evidence.replacePaperEvidenceUnits, {
-            paperId: args.paperId,
-            units: [],
-          });
+          await ctx.runMutation(
+            internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
+            {
+              paperId: args.paperId,
+              expectedEpoch: args.expectedEpoch,
+              units: [],
+            },
+          );
           return {
-            success: true,
+            status: "completed",
             chunksCount: 0,
           };
         }
         return {
-          success: false,
+          status: "failed",
           error: mkError(
             "pdf_invalid",
             "PDF processing is disabled and no usable abstract is available.",
@@ -632,18 +698,30 @@ export const downloadAndIndexPdfAction = internalAction({
       // Keep pipeline alive for abstract-only papers by leaving evidence empty.
       if (!resolved.pdfBlob) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
-          await ctx.runMutation(internal.extraction.mutations.evidence.replacePaperEvidenceUnits, {
-            paperId: args.paperId,
-            units: [],
-          });
+          const control = await ctx.runQuery(
+            internal.extraction.queries.internal.getJobStatusInternal,
+            { jobId: args.jobId },
+          );
+          const skipReason = getWorkerSkipReason(control, args.expectedEpoch);
+          if (skipReason) {
+            return { status: "skipped", reason: skipReason };
+          }
+          await ctx.runMutation(
+            internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
+            {
+              paperId: args.paperId,
+              expectedEpoch: args.expectedEpoch,
+              units: [],
+            },
+          );
           return {
-            success: true,
+            status: "completed",
             chunksCount: 0,
             storageId: resolved.storageId,
           };
         }
         return {
-          success: false,
+          status: "failed",
           error: mkError(
             "pdf_download_failed",
             resolved.error || "No PDF available",
@@ -651,24 +729,74 @@ export const downloadAndIndexPdfAction = internalAction({
         };
       }
 
+      const beforeParse = await ctx.runQuery(
+        internal.extraction.queries.internal.getJobStatusInternal,
+        { jobId: args.jobId },
+      );
+      const beforeParseSkipReason = getWorkerSkipReason(
+        beforeParse,
+        args.expectedEpoch,
+      );
+      if (beforeParseSkipReason) {
+        return { status: "skipped", reason: beforeParseSkipReason };
+      }
+
       const pdfBuffer = await resolved.pdfBlob.arrayBuffer();
       const units = await buildEvidenceUnitsFromPdf(pdfBuffer);
 
-      await ctx.runMutation(internal.extraction.mutations.evidence.replacePaperEvidenceUnits, {
-        paperId: args.paperId,
-        units: units.map((unit) => ({
-          evidenceId: unit.evidenceId,
-          page: unit.page,
-          charRange: unit.charRange,
-          text: unit.text,
-          section: unit.section,
-          tokens: unit.tokens,
-          anchorConfidence: unit.anchorConfidence,
-          source: unit.source,
-        })),
-      });
+      const beforePersist = await ctx.runQuery(
+        internal.extraction.queries.internal.getJobStatusInternal,
+        { jobId: args.jobId },
+      );
+      const beforePersistSkipReason = getWorkerSkipReason(
+        beforePersist,
+        args.expectedEpoch,
+      );
+      if (beforePersistSkipReason) {
+        return { status: "skipped", reason: beforePersistSkipReason };
+      }
+
+      let storedId = resolved.storageId;
+      if (!storedId) {
+        storedId = await ctx.storage.store(resolved.pdfBlob);
+        await ctx.runMutation(internal.extraction.mutations.papers.setPaperStorage, {
+          paperId: args.paperId,
+          storageId: storedId,
+          expectedEpoch: args.expectedEpoch,
+        });
+      }
+
+      await ctx.runMutation(
+        internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
+        {
+          paperId: args.paperId,
+          expectedEpoch: args.expectedEpoch,
+          units: units.map((unit) => ({
+            evidenceId: unit.evidenceId,
+            page: unit.page,
+            charRange: unit.charRange,
+            text: unit.text,
+            section: unit.section,
+            tokens: unit.tokens,
+            anchorConfidence: unit.anchorConfidence,
+            source: unit.source,
+          })),
+        },
+      );
 
       if (units.length > 0) {
+        const beforeRag = await ctx.runQuery(
+          internal.extraction.queries.internal.getJobStatusInternal,
+          { jobId: args.jobId },
+        );
+        const beforeRagSkipReason = getWorkerSkipReason(
+          beforeRag,
+          args.expectedEpoch,
+        );
+        if (beforeRagSkipReason) {
+          return { status: "skipped", reason: beforeRagSkipReason };
+        }
+
         const ragResult = await rag.add(ctx, {
           namespace: `extraction:${args.jobId}`,
           key: `${args.paperId}:evidence-v3`,
@@ -696,21 +824,23 @@ export const downloadAndIndexPdfAction = internalAction({
         // job is free. If not cancelled, billing is done atomically with the
         // isIndexed flip inside markPaperIndexed, gated on indexingBilled so
         // workpool retries are safe.
-        const freshJobForCredits = await ctx.runQuery(
-          internal.extraction.queries.internal.getJobInternal,
+        const freshControl = await ctx.runQuery(
+          internal.extraction.queries.internal.getJobStatusInternal,
           { jobId: args.jobId },
         );
-        const shouldBill =
-          freshJobForCredits?.status !== "cancelled" &&
-          embeddingCreditsToDeduct > 0;
-        if (freshJobForCredits?.status === "cancelled") {
-          console.log(
-            `[creditGuard] Skipping embedding credit deduction - job ${args.jobId} cancelled`,
-          );
+        const freshSkipReason = getWorkerSkipReason(
+          freshControl,
+          args.expectedEpoch,
+        );
+        if (freshSkipReason) {
+          return { status: "skipped", reason: freshSkipReason };
         }
+        const shouldBill =
+          freshControl.status !== "cancelled" && embeddingCreditsToDeduct > 0;
 
         await ctx.runMutation(internal.extraction.mutations.papers.markPaperIndexed, {
           paperId: args.paperId,
+          expectedEpoch: args.expectedEpoch,
           ragEntryId: ragResult.entryId,
           billing: shouldBill
             ? {
@@ -724,13 +854,13 @@ export const downloadAndIndexPdfAction = internalAction({
       }
 
       return {
-        success: true,
+        status: "completed",
         chunksCount: units.length,
-        storageId: resolved.storageId,
+        storageId: storedId,
       };
     } catch (error) {
       return {
-        success: false,
+        status: "failed",
         error: toClassifiedError(
           error,
           "indexing_failed",
@@ -949,6 +1079,7 @@ export const extractOneQuestion = internalAction({
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
     questionId: v.id("extractionQuestions"),
+    expectedEpoch: v.number(),
   },
   returns: v.union(
     v.object({ status: v.literal("completed") }),
@@ -963,6 +1094,7 @@ export const extractOneQuestion = internalAction({
         // pause. The workflow gate stops NEW dispatches; this guard
         // handles the ones already in flight.
         v.literal("paused"),
+        v.literal("stale_epoch"),
       ),
     }),
   ),
@@ -978,7 +1110,8 @@ export const extractOneQuestion = internalAction({
           | "cancelled"
           | "job_terminal"
           | "credits_exhausted"
-          | "paused";
+          | "paused"
+          | "stale_epoch";
       }
   > => {
     const question = await ctx.runQuery(
@@ -1017,39 +1150,15 @@ export const extractOneQuestion = internalAction({
       );
       return { status: "skipped", reason: "already_billed" };
     }
-
-    // Cancellation guard — signalling "completed" here would cause
-    // the workflow to continue and potentially resurrect a cancelled
-    // job. "skipped" leaves the result row absent so finalizePaper
-    // treats the question as pending (the job will finalize via its
-    // cancelled path, not via per-question rollup).
-    if (job.status === "cancelled") {
-      console.log(
-        `[extractOneQuestion] Skipping ${args.paperId}:${question.key}; job cancelled`,
-      );
-      return { status: "skipped", reason: "cancelled" };
-    }
-    if (
-      job.status === "completed" ||
-      job.status === "failed"
-    ) {
-      return { status: "skipped", reason: "job_terminal" };
-    }
-    // Plan-03: credits-exhausted skip-guard. Stops the workpool's 3×
-    // retry from hammering a doomed dispatch — a catch site upstream
-    // has flipped the job and marked the transient errors for plan-06
-    // resume.
-    if (job.status === "creditsExhausted") {
-      return { status: "skipped", reason: "credits_exhausted" };
-    }
-    // Plan-06: user-initiated pause skip-guard. If a question was
-    // already in flight when the user hit Pause, the workflow gate
-    // couldn't stop it; this guard ensures it short-circuits before
-    // the LLM call and the credit charge. No bill is posted, no row is
-    // persisted — the workflow's resume-side re-dispatch re-enters
-    // this same action and bills on the retry.
-    if (job.status === "paused") {
-      return { status: "skipped", reason: "paused" };
+    const initialSkipReason = getWorkerSkipReason(
+      {
+        status: job.status ?? null,
+        runEpoch: job.runEpoch ?? 0,
+      },
+      args.expectedEpoch,
+    );
+    if (initialSkipReason) {
+      return { status: "skipped", reason: initialSkipReason };
     }
 
     const operation = `Extraction (1 question)`;
@@ -1079,6 +1188,7 @@ export const extractOneQuestion = internalAction({
             internal.extraction.mutations.results.updateJobStatus,
             {
               jobId: args.jobId,
+              expectedEpoch: args.expectedEpoch,
               status: "creditsExhausted",
               error: {
                 code: classified.code,
@@ -1174,6 +1284,18 @@ export const extractOneQuestion = internalAction({
 
     const creditsUsed = calculateServerCreditsToDeduct(outcome.usage, pricing);
 
+    const beforePersist = await ctx.runQuery(
+      internal.extraction.queries.internal.getJobStatusInternal,
+      { jobId: args.jobId },
+    );
+    const beforePersistSkipReason = getWorkerSkipReason(
+      beforePersist,
+      args.expectedEpoch,
+    );
+    if (beforePersistSkipReason) {
+      return { status: "skipped", reason: beforePersistSkipReason };
+    }
+
     // Persist + bill in one transaction. recordOneAnswer internally
     // gates on result.billed, so a late workpool retry that re-runs
     // this action after a successful persist is still a no-op.
@@ -1195,6 +1317,7 @@ export const extractOneQuestion = internalAction({
             pdfContentUsed: outcome.result.pdfContentUsed,
           },
           creditsUsed,
+          expectedEpoch: args.expectedEpoch,
         },
       );
     } catch (error) {
