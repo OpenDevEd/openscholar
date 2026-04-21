@@ -71,13 +71,27 @@ function calendarDayOrdinal(ms: number, tz: string): number {
   return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
 }
 
+// Constructing `Intl.DateTimeFormat` is the hot-path cost (~50µs each on
+// V8); caching one formatter per tz drops partitionByGroup of 500 rows
+// from ~35ms to <1ms (plan-06 perf bench).
+const FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
+
+function getFormatter(tz: string): Intl.DateTimeFormat {
+  let f = FORMATTER_CACHE.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    FORMATTER_CACHE.set(tz, f);
+  }
+  return f;
+}
+
 function calendarParts(ms: number, tz: string): { year: number; month: number; day: number } {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date(ms));
+  const parts = getFormatter(tz).formatToParts(new Date(ms));
   let year = 0;
   let month = 0;
   let day = 0;

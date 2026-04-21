@@ -10,6 +10,7 @@
     "start": "next start",
     "test": "vitest run",
     "test:perf": "vitest bench --config vitest.perf.config.ts",
+    "bench:transactions": "vitest bench --config vitest.perf.config.ts tests/perf/billing-transactions.bench.ts",
     "test:billing:preflight": "node ./scripts/billing-preflight.mjs",
     "test:billing:live": "vitest run --config vitest.live.config.ts tests/live-billing/required.test.ts",
     "test:billing:live:ci": "BILLING_LIVE_PUSH_CONVEX=true npm run test:billing:preflight -- --push-convex && npm run test:billing:live",
