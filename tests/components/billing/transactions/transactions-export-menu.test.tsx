@@ -21,7 +21,6 @@ function row(
   overrides: Partial<TransactionViewModel> & { id: string },
 ): TransactionViewModel {
   return {
-    id: overrides.id,
     type: "purchase",
     creditType: "paid",
     billingType: null,
