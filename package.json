@@ -84,6 +84,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.2",
     "@clerk/backend": "^2.32.1",
     "@clerk/testing": "^1.14.1",
     "@edge-runtime/vm": "^5.0.0",
