@@ -32,15 +32,21 @@ export function TransactionsExportMenu({ currentView, fetchAll }: Props) {
     downloadCsv(toCsv(currentView), `transactions-${isoDate()}.csv`);
   };
 
-  const exportAll = async () => {
+  const exportAll = () => {
     if (loading) return;
     setLoading(true);
-    try {
-      const all = await fetchAll();
-      downloadCsv(toCsv(all), `transactions-all-${isoDate()}.csv`);
-    } finally {
-      setLoading(false);
-    }
+    // Fire-and-forget so DropdownMenuItem.onSelect never returns a rejected
+    // promise (Radix would surface it as an unhandled rejection). The caller
+    // does not own error reporting for plan-05; loading state is restored on
+    // both resolution and rejection.
+    fetchAll()
+      .then((all) =>
+        downloadCsv(toCsv(all), `transactions-all-${isoDate()}.csv`),
+      )
+      .catch(() => {
+        /* swallow — network errors don't need drawer-level surfacing here */
+      })
+      .finally(() => setLoading(false));
   };
 
   return (

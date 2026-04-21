@@ -18,6 +18,7 @@ export function DrawerMetadataTable({ metadata }: Props) {
   return (
     <section
       data-drawer-section="metadata"
+      aria-labelledby="drawer-metadata-heading"
       className="rounded-lg border border-border/50"
     >
       <button
@@ -28,7 +29,10 @@ export function DrawerMetadataTable({ metadata }: Props) {
         data-drawer-metadata-toggle
         className="flex w-full items-center justify-between px-3 py-2 text-left"
       >
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <span
+          id="drawer-metadata-heading"
+          className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+        >
           {t("heading")}{" "}
           <span className="tabular-nums">({entries.length})</span>
         </span>
