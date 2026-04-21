@@ -68,7 +68,7 @@ export function FilterMultiSelect<T extends string>({
           />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-60 p-1">
+      <PopoverContent align="start" aria-label={label} className="w-60 p-1">
         <ul
           role="listbox"
           aria-multiselectable="true"
