@@ -1,8 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { useFormatter, useTranslations } from "next-intl";
-import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export interface TransactionsSummary {
   in: number;
@@ -13,9 +13,14 @@ export interface TransactionsSummary {
 interface Props {
   shownCount: number;
   summary: TransactionsSummary;
+  exportSlot?: ReactNode;
 }
 
-export function TransactionsPanelHeader({ shownCount, summary }: Props) {
+export function TransactionsPanelHeader({
+  shownCount,
+  summary,
+  exportSlot,
+}: Props) {
   const t = useTranslations("billingPage.transactions");
   const format = useFormatter();
 
@@ -57,7 +62,8 @@ export function TransactionsPanelHeader({ shownCount, summary }: Props) {
               +{format.number(summary.in)}
             </span>
             <span className="mx-1 text-muted-foreground/50">·</span>
-            <span>{"−"}
+            <span>
+              {"−"}
               {format.number(summary.out)}
             </span>
             <span className="mx-1 text-muted-foreground/50">·</span>
@@ -67,17 +73,7 @@ export function TransactionsPanelHeader({ shownCount, summary }: Props) {
               {t("summary.net")} {netDisplay}
             </span>
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs"
-            disabled
-            data-transactions-export
-            aria-label={t("export.label")}
-          >
-            <Download className="size-3.5" aria-hidden="true" />
-            {t("export.label")}
-          </Button>
+          {exportSlot}
         </div>
       </div>
       <div

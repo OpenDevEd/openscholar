@@ -82,16 +82,28 @@ describe("TransactionsPanelHeader", () => {
     expect(bar?.getAttribute("aria-hidden")).toBe("true");
   });
 
-  it("renders the Export button as disabled with data-transactions-export", () => {
+  it("renders nothing in the export slot when exportSlot is omitted", () => {
     const { container } = render(
       <TransactionsPanelHeader
         shownCount={5}
         summary={{ in: 0, out: 0, net: 0 }}
       />,
     );
-    const exportBtn = container.querySelector("[data-transactions-export]");
-    expect(exportBtn).toBeTruthy();
-    expect(exportBtn).toBeDisabled();
+    expect(container.querySelector("[data-export-slot]")).toBeNull();
+    expect(container.querySelector("[data-transactions-export]")).toBeNull();
+  });
+
+  it("mounts an exportSlot child next to the summary when provided", () => {
+    const { container } = render(
+      <TransactionsPanelHeader
+        shownCount={5}
+        summary={{ in: 0, out: 0, net: 0 }}
+        exportSlot={<span data-export-slot="mounted">slot</span>}
+      />,
+    );
+    const slot = container.querySelector("[data-export-slot='mounted']");
+    expect(slot).toBeTruthy();
+    expect(slot?.textContent).toBe("slot");
   });
 
   it("sets data-transactions-progress to 0 when shownCount is 0", () => {
