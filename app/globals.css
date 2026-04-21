@@ -494,8 +494,18 @@
   }
 }
 
+/* Reduced-motion audit (plan 06): strip every transactions-panel animation
+   that isn't load-bearing for comprehension. Drawer / popover / dropdown
+   animations are handled by their own shadcn media queries. */
 @media (prefers-reduced-motion: reduce) {
   .txn-pulse {
-    animation: none;
+    animation: none !important;
+  }
+  [data-transactions-progress] > div {
+    transition: none !important;
+  }
+  [data-transactions-skeleton] [data-txn-row-skeleton] *,
+  [data-txn-row-skeleton] * {
+    animation: none !important;
   }
 }
