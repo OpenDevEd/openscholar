@@ -357,7 +357,6 @@
   "billingPage": {
     "transactions": {
       "title": "Transactions",
-      "loading": "Chargement des transactions…",
       "filteredByJob": "Filtré par tâche",
       "clearFilter": "Effacer le filtre",
       "error": {
@@ -953,7 +952,7 @@
   "sourcesPanel": {
     "title": "Sources",
     "countLive": "{included, number} sur {total, number}",
-    "countZero": "0 source \u2014 le chat doit contenir au moins un article",
+    "countZero": "0 source — le chat doit contenir au moins un article",
     "searchPlaceholder": "Rechercher des sources",
     "listLabel": "Sources de la conversation",
     "emptyMatch": "Aucune source ne correspond au filtre actuel.",
@@ -996,7 +995,7 @@
     "send": "Envoyer",
     "sources": {
       "live": "{included, number} sur {total, number} sources en contexte pour le prochain message",
-      "zero": "0 source \u2014 le chat doit contenir au moins un article",
+      "zero": "0 source — le chat doit contenir au moins un article",
       "emptyBanner": "Aucune source n'est actuellement en contexte. L'envoi est désactivé.",
       "includeAll": "Tout inclure"
     }

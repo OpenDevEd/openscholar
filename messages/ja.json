@@ -357,7 +357,6 @@
   "billingPage": {
     "transactions": {
       "title": "取引履歴",
-      "loading": "取引を読み込み中…",
       "filteredByJob": "ジョブでフィルタ中",
       "clearFilter": "フィルタを解除",
       "error": {
@@ -953,7 +952,7 @@
   "sourcesPanel": {
     "title": "ソース",
     "countLive": "{total, number} 件中 {included, number} 件",
-    "countZero": "0 件のソース \u2014 チャットには少なくとも 1 件の論文が必要です",
+    "countZero": "0 件のソース — チャットには少なくとも 1 件の論文が必要です",
     "searchPlaceholder": "ソースを検索",
     "listLabel": "チャットのソース",
     "emptyMatch": "現在のフィルターに一致するソースはありません。",
@@ -996,7 +995,7 @@
     "send": "送信",
     "sources": {
       "live": "次のメッセージで使用するソース: {total, number} 件中 {included, number} 件",
-      "zero": "0 件のソース \u2014 チャットには少なくとも 1 件の論文が必要です",
+      "zero": "0 件のソース — チャットには少なくとも 1 件の論文が必要です",
       "emptyBanner": "現在コンテキストにソースがありません。送信は無効化されています。",
       "includeAll": "すべて含める"
     }

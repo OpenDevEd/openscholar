@@ -357,7 +357,6 @@
   "billingPage": {
     "transactions": {
       "title": "Transactions",
-      "loading": "Loading transactions…",
       "filteredByJob": "Filtered by job",
       "clearFilter": "Clear filter",
       "error": {
@@ -971,7 +970,7 @@
     "title": "Sources",
     "countLive": "{included, number} of {total, number}",
     "countShort": "{included, number}/{total, number}",
-    "countZero": "0 sources \u2014 chat needs at least one paper",
+    "countZero": "0 sources — chat needs at least one paper",
     "progressLabel": "{included, number} of {total, number} included",
     "searchPlaceholder": "Search sources",
     "searchClear": "Clear search",
@@ -1000,9 +999,9 @@
       "desc": "Descending"
     },
     "bulk": {
-      "include": "Include all visible (\u2318A)",
+      "include": "Include all visible (⌘A)",
       "exclude": "Exclude all visible",
-      "invert": "Invert visible (\u21e7\u2318A)"
+      "invert": "Invert visible (⇧⌘A)"
     },
     "extensionBanner": {
       "filtered": "All {filtered, number} filtered sources included.",
@@ -1019,7 +1018,7 @@
     "send": "Send",
     "sources": {
       "live": "{included, number} of {total, number} sources in context for next message",
-      "zero": "0 sources \u2014 chat needs at least one paper",
+      "zero": "0 sources — chat needs at least one paper",
       "emptyBanner": "No sources are currently in context. Send is disabled.",
       "includeAll": "Include all"
     }

@@ -357,7 +357,6 @@
   "billingPage": {
     "transactions": {
       "title": "交易记录",
-      "loading": "加载交易中…",
       "filteredByJob": "按作业筛选",
       "clearFilter": "清除筛选",
       "error": {
@@ -953,7 +952,7 @@
   "sourcesPanel": {
     "title": "来源",
     "countLive": "{total, number} 中的 {included, number} 项",
-    "countZero": "0 项来源 \u2014 对话至少需要一篇论文",
+    "countZero": "0 项来源 — 对话至少需要一篇论文",
     "searchPlaceholder": "搜索来源",
     "listLabel": "对话来源",
     "emptyMatch": "当前筛选条件下没有匹配的来源。",
@@ -996,7 +995,7 @@
     "send": "发送",
     "sources": {
       "live": "下一条消息将使用 {total, number} 中的 {included, number} 项来源",
-      "zero": "0 项来源 \u2014 对话至少需要一篇论文",
+      "zero": "0 项来源 — 对话至少需要一篇论文",
       "emptyBanner": "当前没有任何来源在上下文中。发送已禁用。",
       "includeAll": "全部包含"
     }
