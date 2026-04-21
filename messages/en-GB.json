@@ -398,7 +398,56 @@
         "label": "Export"
       },
       "loadingMore": "Loading more…",
-      "exhausted": "End of history"
+      "exhausted": "End of history",
+      "tabs": {
+        "all": "All",
+        "purchases": "Purchases",
+        "usage": "Usage",
+        "refunds-grants": "Refunds & grants",
+        "failed": "Failed"
+      },
+      "searchPlaceholder": "Search transactions…",
+      "searchClear": "Clear search",
+      "clearAll": "Clear all",
+      "filters": {
+        "type": "Type",
+        "creditPool": "Credit pool",
+        "billingType": "Billing",
+        "creditPoolValues": {
+          "free": "Free",
+          "paid": "Paid"
+        },
+        "date": {
+          "label": "Date",
+          "presets": {
+            "today": "Today",
+            "7d": "Last 7 days",
+            "30d": "Last 30 days",
+            "90d": "Last 90 days",
+            "ytd": "Year to date",
+            "all": "All time"
+          }
+        }
+      },
+      "sort": {
+        "label": "Sort",
+        "date": "Date",
+        "amount": "Amount",
+        "type": "Type",
+        "dir": {
+          "asc": "Ascending",
+          "desc": "Descending"
+        }
+      },
+      "density": {
+        "label": "Density",
+        "compact": "Compact",
+        "comfortable": "Comfortable",
+        "spacious": "Spacious"
+      },
+      "live": {
+        "summary": "Showing {shown} of {total} transactions"
+      }
     },
     "billingAndPlans": "Billing & Plans",
     "manageSubscription": "Manage your subscription and usage.",

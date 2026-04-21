@@ -398,7 +398,56 @@
         "label": "エクスポート"
       },
       "loadingMore": "読み込み中…",
-      "exhausted": "履歴の最後"
+      "exhausted": "履歴の最後",
+      "tabs": {
+        "all": "すべて",
+        "purchases": "購入",
+        "usage": "利用",
+        "refunds-grants": "返金・付与",
+        "failed": "失敗"
+      },
+      "searchPlaceholder": "取引を検索…",
+      "searchClear": "検索をクリア",
+      "clearAll": "すべてクリア",
+      "filters": {
+        "type": "種類",
+        "creditPool": "クレジット種別",
+        "billingType": "課金種別",
+        "creditPoolValues": {
+          "free": "無料",
+          "paid": "有料"
+        },
+        "date": {
+          "label": "日付",
+          "presets": {
+            "today": "今日",
+            "7d": "過去7日",
+            "30d": "過去30日",
+            "90d": "過去90日",
+            "ytd": "年初から",
+            "all": "すべての期間"
+          }
+        }
+      },
+      "sort": {
+        "label": "並べ替え",
+        "date": "日付",
+        "amount": "金額",
+        "type": "種類",
+        "dir": {
+          "asc": "昇順",
+          "desc": "降順"
+        }
+      },
+      "density": {
+        "label": "表示密度",
+        "compact": "コンパクト",
+        "comfortable": "標準",
+        "spacious": "ゆったり"
+      },
+      "live": {
+        "summary": "{total}件中{shown}件の取引を表示"
+      }
     },
     "billingAndPlans": "請求とプラン",
     "manageSubscription": "サブスクリプションと使用量を管理",

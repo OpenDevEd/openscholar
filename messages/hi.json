@@ -398,7 +398,56 @@
         "label": "निर्यात"
       },
       "loadingMore": "लोड हो रहा है…",
-      "exhausted": "इतिहास का अंत"
+      "exhausted": "इतिहास का अंत",
+      "tabs": {
+        "all": "सभी",
+        "purchases": "ख़रीद",
+        "usage": "उपयोग",
+        "refunds-grants": "धनवापसी और अनुदान",
+        "failed": "विफल"
+      },
+      "searchPlaceholder": "लेन-देन खोजें…",
+      "searchClear": "खोज साफ़ करें",
+      "clearAll": "सब साफ़ करें",
+      "filters": {
+        "type": "प्रकार",
+        "creditPool": "क्रेडिट पूल",
+        "billingType": "बिलिंग",
+        "creditPoolValues": {
+          "free": "मुफ़्त",
+          "paid": "भुगतान किया"
+        },
+        "date": {
+          "label": "तारीख़",
+          "presets": {
+            "today": "आज",
+            "7d": "पिछले 7 दिन",
+            "30d": "पिछले 30 दिन",
+            "90d": "पिछले 90 दिन",
+            "ytd": "इस वर्ष अब तक",
+            "all": "सम्पूर्ण समय"
+          }
+        }
+      },
+      "sort": {
+        "label": "क्रमबद्ध करें",
+        "date": "तारीख़",
+        "amount": "राशि",
+        "type": "प्रकार",
+        "dir": {
+          "asc": "बढ़ता हुआ",
+          "desc": "घटता हुआ"
+        }
+      },
+      "density": {
+        "label": "घनत्व",
+        "compact": "सघन",
+        "comfortable": "आरामदायक",
+        "spacious": "विशाल"
+      },
+      "live": {
+        "summary": "{total} लेन-देनों में से {shown} दिखाए जा रहे हैं"
+      }
     },
     "billingAndPlans": "बिलिंग और प्लान्स",
     "manageSubscription": "अपनी सदस्यता और उपयोग प्रबंधित करें।",

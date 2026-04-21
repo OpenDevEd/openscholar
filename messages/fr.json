@@ -398,7 +398,56 @@
         "label": "Exporter"
       },
       "loadingMore": "Chargement…",
-      "exhausted": "Fin de l'historique"
+      "exhausted": "Fin de l'historique",
+      "tabs": {
+        "all": "Tout",
+        "purchases": "Achats",
+        "usage": "Utilisation",
+        "refunds-grants": "Remboursements et offerts",
+        "failed": "Échecs"
+      },
+      "searchPlaceholder": "Rechercher des transactions…",
+      "searchClear": "Effacer la recherche",
+      "clearAll": "Tout effacer",
+      "filters": {
+        "type": "Type",
+        "creditPool": "Compte de crédits",
+        "billingType": "Facturation",
+        "creditPoolValues": {
+          "free": "Gratuit",
+          "paid": "Payant"
+        },
+        "date": {
+          "label": "Date",
+          "presets": {
+            "today": "Aujourd'hui",
+            "7d": "7 derniers jours",
+            "30d": "30 derniers jours",
+            "90d": "90 derniers jours",
+            "ytd": "Depuis le début de l'année",
+            "all": "Toute la période"
+          }
+        }
+      },
+      "sort": {
+        "label": "Trier",
+        "date": "Date",
+        "amount": "Montant",
+        "type": "Type",
+        "dir": {
+          "asc": "Croissant",
+          "desc": "Décroissant"
+        }
+      },
+      "density": {
+        "label": "Densité",
+        "compact": "Compact",
+        "comfortable": "Confortable",
+        "spacious": "Spacieux"
+      },
+      "live": {
+        "summary": "Affichage de {shown} sur {total} transactions"
+      }
     },
     "billingAndPlans": "Facturation et forfaits",
     "manageSubscription": "Gérez votre abonnement et votre utilisation.",
