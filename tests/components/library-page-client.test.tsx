@@ -48,6 +48,7 @@ const {
   exportJsonMock,
   removeItemMock,
   queryStateStore,
+  queryFixtureStore,
   setQueryStateSpy,
 } = vi.hoisted(() => ({
   browseLoadMoreMock: vi.fn(),
@@ -72,6 +73,10 @@ const {
       yt: null,
       col: null,
     } as LibraryQueryState,
+  },
+  queryFixtureStore: {
+    protected: {} as Record<string, unknown>,
+    paginated: {} as Record<string, unknown>,
   },
   setQueryStateSpy: vi.fn(),
 }));
@@ -233,12 +238,16 @@ vi.mock("@/components/library/collection-picker", () => ({
 
 vi.mock("@/components/library/library-command-center", () => ({
   LibraryCommandCenter: ({
+    rawSearch,
+    onSearchChange,
     totalCount,
     filteredCount,
     onExportCSV,
     onExportJSON,
     hasExportableResults,
   }: {
+    rawSearch: string;
+    onSearchChange: (value: string) => void;
     totalCount?: number;
     filteredCount?: number;
     onExportCSV: () => void;
@@ -251,12 +260,34 @@ vi.mock("@/components/library/library-command-center", () => ({
       data-filtered-count={String(filteredCount)}
       data-exportable={String(hasExportableResults)}
     >
-      <button type="button" onClick={() => void onExportCSV()}>
-        export csv
-      </button>
-      <button type="button" onClick={() => void onExportJSON()}>
-        export json
-      </button>
+      <p>
+        {filteredCount !== undefined &&
+        totalCount !== undefined &&
+        filteredCount !== totalCount
+          ? `${filteredCount} / ${totalCount} results`
+          : `${totalCount ?? 0} results`}
+      </p>
+      <label htmlFor="library-search-input">Library search</label>
+      <input
+        id="library-search-input"
+        value={rawSearch}
+        onChange={(event) => onSearchChange(event.target.value)}
+      />
+      {rawSearch.length > 0 && (
+        <button type="button" onClick={() => onSearchChange("")}>
+          Clear search
+        </button>
+      )}
+      {hasExportableResults && (
+        <>
+          <button type="button" onClick={() => void onExportCSV()}>
+            export csv
+          </button>
+          <button type="button" onClick={() => void onExportJSON()}>
+            export json
+          </button>
+        </>
+      )}
     </div>
   ),
 }));
@@ -279,15 +310,184 @@ vi.mock("@/components/library/library-item-skeleton", () => ({
   LibraryItemSkeleton: () => <div data-testid="library-item-skeleton" />,
 }));
 
-function buildItems(count: number) {
-  return Array.from({ length: count }, (_, index) => ({
-    _id: `library_${index}`,
-    _creationTime: index,
-    openalexId: `oa:${index}`,
-    title: `Paper ${index + 1}`,
-    rating: 3,
-    savedAt: 1000 + index,
-  }));
+type PaginatedStatus =
+  | "CanLoadMore"
+  | "LoadingMore"
+  | "Exhausted"
+  | "Deferred"
+  | "LoadingFirstPage";
+
+type PaginatedFixture = {
+  results: ReturnType<typeof buildItems>;
+  status: PaginatedStatus;
+};
+
+function buildItems(
+  count: number,
+  options: {
+    titlePrefix?: string;
+    startIndex?: number;
+  } = {},
+) {
+  const titlePrefix = options.titlePrefix ?? "Paper";
+  const startIndex = options.startIndex ?? 0;
+  return Array.from({ length: count }, (_, index) => {
+    const ordinal = startIndex + index + 1;
+    return {
+      _id: `library_${titlePrefix.toLowerCase().replace(/\s+/g, "_")}_${ordinal}`,
+      _creationTime: ordinal,
+      openalexId: `oa:${titlePrefix.toLowerCase().replace(/\s+/g, "_")}:${ordinal}`,
+      title: `${titlePrefix} ${ordinal}`,
+      rating: 3,
+      savedAt: 1000 + ordinal,
+    };
+  });
+}
+
+function resolveFixture<T>(
+  fixture: T | ((args: unknown) => T),
+  args: unknown,
+): T {
+  return typeof fixture === "function"
+    ? (fixture as (args: unknown) => T)(args)
+    : fixture;
+}
+
+function buildPaginatedResult({
+  results,
+  status,
+  loadMore,
+}: PaginatedFixture & { loadMore: (numItems: number) => void }) {
+  return {
+    results,
+    status,
+    loadMore,
+    isLoading: false,
+    isInitialLoading: false,
+    hasLoadedFirstPage: true,
+    isSettled: true,
+    phase: "authenticated" as const,
+    isDeferred: status === "Deferred",
+    isReady: status !== "Deferred",
+    isAnonymous: false,
+    settlement: "ready" as const,
+  };
+}
+
+function setProtectedQueryFixture<T>(
+  queryRef: string,
+  fixture: T | ((args: unknown) => T),
+) {
+  queryFixtureStore.protected[queryRef] = fixture;
+}
+
+function setPaginatedQueryFixture(
+  queryRef: string,
+  fixture: PaginatedFixture | ((args: unknown) => PaginatedFixture),
+) {
+  queryFixtureStore.paginated[queryRef] = fixture;
+}
+
+function resetQueryFixtures() {
+  queryFixtureStore.protected = {};
+  queryFixtureStore.paginated = {};
+
+  setProtectedQueryFixture(api.library.collections.getCollectionsWithCounts, []);
+  setProtectedQueryFixture(api.library.queries.getLibraryCount, 42);
+  setProtectedQueryFixture(
+    api.library.queries.getLibraryFilteredCount,
+    (args) => {
+      const filters = args as {
+        collectionId?: string;
+        searchText?: string;
+      };
+      if (filters.collectionId === "collection_1") {
+        return 84;
+      }
+      if (filters.searchText === "machine") {
+        return 25;
+      }
+      return 42;
+    },
+  );
+  setPaginatedQueryFixture(api.library.queries.browseLibrary, {
+    results: buildItems(20),
+    status: "CanLoadMore",
+  });
+  setPaginatedQueryFixture(api.library.queries.searchLibrary, {
+    results: [],
+    status: "Exhausted",
+  });
+}
+
+function configureProtectedQueryMocks() {
+  protectedQueryMock.mockImplementation((queryRef: unknown, args: unknown) => {
+    const fixture = queryFixtureStore.protected[String(queryRef)];
+    if (fixture === undefined) {
+      throw new Error(`Unexpected protected query: ${String(queryRef)}`);
+    }
+    return readyQueryResult(resolveFixture(fixture, args));
+  });
+}
+
+function configurePaginatedMocks() {
+  protectedPaginatedQueryMock.mockImplementation(
+    (queryRef: unknown, args: unknown) => {
+      const loadMore =
+        queryRef === api.library.queries.searchLibrary
+          ? searchLoadMoreMock
+          : browseLoadMoreMock;
+
+      if (args === "skip") {
+        return buildPaginatedResult({
+          results: [],
+          status: "Deferred",
+          loadMore,
+        });
+      }
+
+      const fixture = queryFixtureStore.paginated[String(queryRef)];
+      if (fixture === undefined) {
+        throw new Error(`Unexpected paginated query: ${String(queryRef)}`);
+      }
+
+      return buildPaginatedResult({
+        ...resolveFixture(fixture, args),
+        loadMore,
+      });
+    },
+  );
+}
+
+function seedCollectionScopedCounts() {
+  setProtectedQueryFixture(api.library.collections.getCollectionsWithCounts, [
+    { _id: "collection_1", name: "Focus set", itemCount: 84 },
+  ]);
+  setProtectedQueryFixture(api.library.queries.getLibraryCount, 86);
+  setProtectedQueryFixture(api.library.queries.getLibraryFilteredCount, 84);
+  setPaginatedQueryFixture(api.library.queries.browseLibrary, {
+    results: buildItems(20, { titlePrefix: "Focus Paper" }),
+    status: "Exhausted",
+  });
+}
+
+function seedSearchThenBrowseFixtures() {
+  setProtectedQueryFixture(api.library.queries.getLibraryCount, 42);
+  setProtectedQueryFixture(
+    api.library.queries.getLibraryFilteredCount,
+    (args) => {
+      const filters = args as { searchText?: string };
+      return filters.searchText === "machine" ? 25 : 42;
+    },
+  );
+  setPaginatedQueryFixture(api.library.queries.searchLibrary, {
+    results: buildItems(25, { titlePrefix: "Search Paper" }),
+    status: "Exhausted",
+  });
+  setPaginatedQueryFixture(api.library.queries.browseLibrary, {
+    results: buildItems(20, { titlePrefix: "Browse Paper" }),
+    status: "Exhausted",
+  });
 }
 
 function readyQueryResult<T>(data: T) {
@@ -299,69 +499,6 @@ function readyQueryResult<T>(data: T) {
     isAnonymous: false,
     settlement: "ready" as const,
   };
-}
-
-function configureProtectedQueryMocks() {
-  protectedQueryMock.mockImplementation((queryRef: unknown) => {
-    if (queryRef === api.library.collections.getCollectionsWithCounts) {
-      return readyQueryResult([]);
-    }
-    if (queryRef === api.library.queries.getLibraryCount) {
-      return readyQueryResult(42);
-    }
-    if (queryRef === api.library.queries.getLibraryFilteredCount) {
-      return readyQueryResult(20);
-    }
-    throw new Error(`Unexpected protected query: ${String(queryRef)}`);
-  });
-}
-
-function configurePaginatedMocks({
-  browseResults = buildItems(20),
-  browseStatus = "CanLoadMore",
-  searchResults = buildItems(0),
-  searchStatus = "Deferred",
-}: {
-  browseResults?: ReturnType<typeof buildItems>;
-  browseStatus?: "CanLoadMore" | "LoadingMore" | "Exhausted" | "Deferred" | "LoadingFirstPage";
-  searchResults?: ReturnType<typeof buildItems>;
-  searchStatus?: "CanLoadMore" | "LoadingMore" | "Exhausted" | "Deferred" | "LoadingFirstPage";
-} = {}) {
-  protectedPaginatedQueryMock.mockImplementation((queryRef: unknown) => {
-    if (queryRef === api.library.queries.browseLibrary) {
-      return {
-        results: browseResults,
-        status: browseStatus,
-        loadMore: browseLoadMoreMock,
-        isLoading: false,
-        isInitialLoading: false,
-        hasLoadedFirstPage: true,
-        isSettled: true,
-        phase: "authenticated" as const,
-        isDeferred: false,
-        isReady: true,
-        isAnonymous: false,
-        settlement: "ready" as const,
-      };
-    }
-    if (queryRef === api.library.queries.searchLibrary) {
-      return {
-        results: searchResults,
-        status: searchStatus,
-        loadMore: searchLoadMoreMock,
-        isLoading: false,
-        isInitialLoading: false,
-        hasLoadedFirstPage: true,
-        isSettled: true,
-        phase: "authenticated" as const,
-        isDeferred: false,
-        isReady: true,
-        isAnonymous: false,
-        settlement: "ready" as const,
-      };
-    }
-    throw new Error(`Unexpected paginated query: ${String(queryRef)}`);
-  });
 }
 
 describe("LibraryPageClient", () => {
@@ -380,6 +517,7 @@ describe("LibraryPageClient", () => {
       yt: null,
       col: null,
     };
+    resetQueryFixtures();
     configureProtectedQueryMocks();
     configurePaginatedMocks();
     convexQueryMock.mockResolvedValue(buildItems(25));
@@ -424,11 +562,9 @@ describe("LibraryPageClient", () => {
 
   it("routes active search through searchLibrary with sort args", () => {
     queryStateStore.value.q = "machine";
-    configurePaginatedMocks({
-      browseResults: buildItems(0),
-      browseStatus: "Deferred",
-      searchResults: buildItems(2),
-      searchStatus: "Exhausted",
+    setPaginatedQueryFixture(api.library.queries.searchLibrary, {
+      results: buildItems(2, { titlePrefix: "Search Paper" }),
+      status: "Exhausted",
     });
 
     render(<LibraryPageClient />);
@@ -471,42 +607,35 @@ describe("LibraryPageClient", () => {
     expect(exportCsvMock).toHaveBeenCalledWith(buildItems(25));
   });
 
-  it("uses the exact filtered count for command-center totals", () => {
+  it("renders exact collection totals and range copy", () => {
     queryStateStore.value.col = "collection_1";
+    seedCollectionScopedCounts();
 
     render(<LibraryPageClient />);
 
-    expect(screen.getByTestId("library-command-center")).toHaveAttribute(
-      "data-total-count",
-      "42",
-    );
-    expect(screen.getByTestId("library-command-center")).toHaveAttribute(
-      "data-filtered-count",
-      "20",
-    );
-  });
-
-  it("renders the exact filtered range copy for collection-scoped results", () => {
-    queryStateStore.value.col = "collection_1";
-    protectedQueryMock.mockImplementation((queryRef: unknown) => {
-      if (queryRef === api.library.collections.getCollectionsWithCounts) {
-        return readyQueryResult([
-          { _id: "collection_1", name: "Focus set", itemCount: 84 },
-        ]);
-      }
-      if (queryRef === api.library.queries.getLibraryCount) {
-        return readyQueryResult(86);
-      }
-      if (queryRef === api.library.queries.getLibraryFilteredCount) {
-        return readyQueryResult(84);
-      }
-      throw new Error(`Unexpected protected query: ${String(queryRef)}`);
-    });
-
-    render(<LibraryPageClient />);
-
+    expect(screen.getByText("84 / 86 results")).toBeInTheDocument();
     expect(
       screen.getByText("Showing 1-20 of 84 papers"),
     ).toBeInTheDocument();
+  });
+
+  it("resets from search page two back to browse page one when search is cleared", async () => {
+    queryStateStore.value.q = "machine";
+    queryStateStore.value.p = 2;
+    seedSearchThenBrowseFixtures();
+
+    render(<LibraryPageClient />);
+
+    expect(screen.getByText("Showing 21-25 of 25 papers")).toBeInTheDocument();
+    expect(screen.getByText("Search Paper 21")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Showing 1-20 of 42 papers")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Browse Paper 1")).toBeInTheDocument();
+    expect(screen.queryByText("Search Paper 21")).not.toBeInTheDocument();
+    expect(setQueryStateSpy).toHaveBeenCalledWith({ q: "", p: 1 }, undefined);
   });
 });
