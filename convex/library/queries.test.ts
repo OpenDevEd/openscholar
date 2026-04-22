@@ -614,7 +614,7 @@ describe("getLibraryCount", () => {
     expect(count).toBe(2);
   });
 
-  it("returns zero for a user without a counter until an explicit backfill runs", async () => {
+  it("returns the live item count when the stored counter is missing", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
@@ -628,7 +628,7 @@ describe("getLibraryCount", () => {
 
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
 
-    expect(count).toBe(0);
+    expect(count).toBe(2);
   });
 
   it("returns the repaired count after an explicit backfill runs", async () => {
@@ -651,6 +651,128 @@ describe("getLibraryCount", () => {
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
 
     expect(count).toBe(3);
+  });
+});
+
+describe("getLibraryFilteredCount", () => {
+  it("returns the collection item count when only collection filtering is active", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: 3,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collectionId = await asUser.mutation(
+      api.library.collections.createCollection,
+      { name: "Focus set" },
+    );
+    const otherCollectionId = await asUser.mutation(
+      api.library.collections.createCollection,
+      { name: "Other set" },
+    );
+
+    const item1 = await seedLibraryItem(t, user!._id, {
+      title: "Paper 1",
+      openalexId: "https://openalex.org/W1",
+    });
+    const item2 = await seedLibraryItem(t, user!._id, {
+      title: "Paper 2",
+      openalexId: "https://openalex.org/W2",
+    });
+    const item3 = await seedLibraryItem(t, user!._id, {
+      title: "Paper 3",
+      openalexId: "https://openalex.org/W3",
+    });
+
+    await asUser.mutation(api.library.collections.addToCollection, {
+      collectionId,
+      libraryItemId: item1!._id,
+    });
+    await asUser.mutation(api.library.collections.addToCollection, {
+      collectionId,
+      libraryItemId: item2!._id,
+    });
+    await asUser.mutation(api.library.collections.addToCollection, {
+      collectionId: otherCollectionId,
+      libraryItemId: item3!._id,
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryFilteredCount, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      collectionId,
+    });
+
+    expect(count).toBe(2);
+  });
+
+  it("returns the exact filtered count for search and numeric filters", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: 4,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Keep Alpha",
+      abstract: "machine learning methods",
+      rating: 4,
+      publicationYear: 2022,
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Keep Beta",
+      abstract: "machine learning benchmark",
+      rating: 5,
+      publicationYear: 2021,
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Wrong year",
+      abstract: "machine learning archive",
+      rating: 5,
+      publicationYear: 2018,
+      openalexId: "https://openalex.org/W3",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Wrong topic",
+      abstract: "biology only",
+      rating: 5,
+      publicationYear: 2022,
+      openalexId: "https://openalex.org/W4",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryFilteredCount, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      searchText: "machine",
+      minRating: 4,
+      yearFrom: 2020,
+    });
+
+    expect(count).toBe(2);
+  });
+
+  it("returns the live item count when no filters are active and the stored counter is missing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Paper 1",
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Paper 2",
+      openalexId: "https://openalex.org/W2",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryFilteredCount, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+    });
+
+    expect(count).toBe(2);
   });
 });
 

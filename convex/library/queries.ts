@@ -1,7 +1,7 @@
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { paginationOptsValidator, type Cursor } from "convex/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { filter } from "convex-helpers/server/filter";
 import { requireAuth } from "../lib/auth";
 import { MAX_COLLECTION_MEMBERS, MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
@@ -175,6 +175,17 @@ function hasActiveLibraryFilters(
   );
 }
 
+function hasNonCollectionLibraryFilters(args: SharedLibraryFilterArgs): boolean {
+  return (
+    args.minRating !== undefined ||
+    args.maxRating !== undefined ||
+    args.savedAfter !== undefined ||
+    args.savedBefore !== undefined ||
+    args.yearFrom !== undefined ||
+    args.yearTo !== undefined
+  );
+}
+
 async function collectLibraryItems(
   ctx: QueryCtx,
   userId: Id<"users">,
@@ -199,6 +210,35 @@ async function collectLibraryItems(
     .withIndex(SORT_INDEX_MAP[sortBy], (q) => q.eq("userId", userId))
     .order(sortOrder)
     .take(MAX_LIBRARY_BROWSE);
+}
+
+async function resolveLibraryCount(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  storedCount: number | undefined,
+): Promise<number> {
+  if (storedCount !== undefined) {
+    return storedCount;
+  }
+
+  const items = await ctx.db
+    .query("libraryItems")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .take(MAX_LIBRARY_BROWSE + 1);
+
+  if (items.length > MAX_LIBRARY_BROWSE) {
+    throw new ConvexError({
+      code: "LIBRARY_COUNT_REPAIR_REQUIRED",
+      message: "Library counter missing for a user whose library exceeds the bounded recount window.",
+    });
+  }
+
+  console.error("[library] Missing libraryItemCount; using bounded live recount", {
+    userId,
+    liveCount: items.length,
+  });
+
+  return items.length;
 }
 
 function paginateLibraryItems(
@@ -361,11 +401,66 @@ export const listLibrary = query({
   },
 });
 
+export const getLibraryFilteredCount = query({
+  args: {
+    sortBy: librarySortValidator,
+    sortOrder: librarySortOrderValidator,
+    minRating: v.optional(v.number()),
+    maxRating: v.optional(v.number()),
+    savedAfter: v.optional(v.number()),
+    savedBefore: v.optional(v.number()),
+    yearFrom: v.optional(v.number()),
+    yearTo: v.optional(v.number()),
+    collectionId: v.optional(v.id("collections")),
+    searchText: v.optional(v.string()),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const collectionItemIds = await loadCollectionItemIds(
+      ctx,
+      user._id,
+      args.collectionId,
+    );
+
+    if (args.collectionId && collectionItemIds === null) {
+      return 0;
+    }
+
+    if (collectionItemIds?.size === 0) {
+      return 0;
+    }
+
+    const normalizedSearch = args.searchText?.trim();
+    const hasSearch = Boolean(normalizedSearch);
+    const hasExtraFilters = hasNonCollectionLibraryFilters(args);
+
+    if (!hasSearch && !hasExtraFilters) {
+      if (collectionItemIds) {
+        return collectionItemIds.size;
+      }
+      return await resolveLibraryCount(ctx, user._id, user.libraryItemCount);
+    }
+
+    const items = await collectLibraryItems(
+      ctx,
+      user._id,
+      args.sortBy,
+      args.sortOrder,
+      normalizedSearch,
+    );
+
+    return items.filter((item) =>
+      matchesLibraryFilters(item, args, collectionItemIds),
+    ).length;
+  },
+});
+
 export const getLibraryCount = query({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
-    return user.libraryItemCount ?? 0;
+    return await resolveLibraryCount(ctx, user._id, user.libraryItemCount);
   },
 });
