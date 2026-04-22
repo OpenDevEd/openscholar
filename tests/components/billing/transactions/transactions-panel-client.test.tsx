@@ -284,6 +284,108 @@ describe("TransactionsPanelClient", () => {
     expect(sentinel.getAttribute("aria-hidden")).toBe("true");
   });
 
+  it("drives loadMore automatically when status is CanLoadMore with zero rows", () => {
+    // Filters that match zero rows can't rely on the IntersectionObserver
+    // sentinel (zero height + implementation-defined initial-check) to
+    // progress the filter().paginate() walk. The component must drive the
+    // walk forward itself, otherwise the skeleton shows indefinitely.
+    const loadMore = vi.fn();
+    setResult({
+      status: "CanLoadMore",
+      results: [],
+      isSettled: true,
+      hasLoadedFirstPage: true,
+      loadMore,
+    });
+    render(withNuqs(<TransactionsPanelClient />));
+    expect(loadMore).toHaveBeenCalled();
+    expect(loadMore.mock.calls[0][0]).toBeGreaterThan(25);
+  });
+
+  it("does not drive loadMore automatically when rows are already present", () => {
+    const loadMore = vi.fn();
+    setResult({
+      status: "CanLoadMore",
+      results: [mkDoc(0)],
+      isSettled: true,
+      hasLoadedFirstPage: true,
+      loadMore,
+    });
+    render(withNuqs(<TransactionsPanelClient />));
+    expect(loadMore).not.toHaveBeenCalled();
+  });
+
+  it("hides the LoadingMore banner when status is LoadingMore but rows are empty", () => {
+    // Convex's filter().paginate() walks the index and emits status
+    // LoadingMore with an empty page. That transient must not flash the
+    // "loading more" banner alongside the empty state.
+    setResult({
+      status: "LoadingMore",
+      results: [],
+      isSettled: true,
+      hasLoadedFirstPage: true,
+    });
+    const { container } = render(withNuqs(<TransactionsPanelClient />));
+    expect(
+      container.querySelector("[data-transactions-loading-more]"),
+    ).toBeNull();
+  });
+
+  it("shows the skeleton (not empty, not loading-more) while paginating through empty filtered pages", () => {
+    // Filters match zero rows but the index still needs to be walked.
+    // status=CanLoadMore with rows=[] must render as "still loading" rather
+    // than flickering between the empty state and the "loading more" banner.
+    setResult({
+      status: "CanLoadMore",
+      results: [],
+      isSettled: true,
+      hasLoadedFirstPage: true,
+    });
+    const { container, rerender } = render(
+      withNuqs(<TransactionsPanelClient />),
+    );
+    expect(
+      container.querySelector("[data-transactions-skeleton]"),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-transactions-empty]")).toBeNull();
+    expect(
+      container.querySelector("[data-transactions-loading-more]"),
+    ).toBeNull();
+
+    // Same invariant while that walk is mid-fetch.
+    setResult({
+      status: "LoadingMore",
+      results: [],
+      isSettled: true,
+      hasLoadedFirstPage: true,
+    });
+    rerender(withNuqs(<TransactionsPanelClient />));
+    expect(
+      container.querySelector("[data-transactions-skeleton]"),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-transactions-empty]")).toBeNull();
+    expect(
+      container.querySelector("[data-transactions-loading-more]"),
+    ).toBeNull();
+
+    // And once the server confirms there really is nothing, the empty
+    // state takes over without any banner.
+    setResult({
+      status: "Exhausted",
+      results: [],
+      isSettled: true,
+      hasLoadedFirstPage: true,
+    });
+    rerender(withNuqs(<TransactionsPanelClient />));
+    expect(container.querySelector("[data-transactions-skeleton]")).toBeNull();
+    expect(
+      container.querySelector("[data-transactions-empty]"),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector("[data-transactions-loading-more]"),
+    ).toBeNull();
+  });
+
   it("surfaces the summary with +in / −out / Net on the header region", () => {
     setResult({
       status: "Exhausted",

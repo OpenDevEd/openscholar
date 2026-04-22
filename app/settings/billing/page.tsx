@@ -5,13 +5,20 @@ import { useAction } from "convex/react";
 import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Loader2, CreditCard, Calendar, AlertCircle, Receipt } from "lucide-react";
+import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
-import { CreditTopupCard } from "@/components/billing/credit-topup-card";
+import { CreditTopupCard, type CreditTopupBundleCard } from "@/components/billing/credit-topup-card";
+import { cn } from "@/lib/utils";
+
+const FALLBACK_TOPUP_BUNDLES: CreditTopupBundleCard[] = [
+  { key: "credits_10000", credits: 10_000, amountCents: 100, currency: "usd" },
+  { key: "credits_50000", credits: 50_000, amountCents: 500, currency: "usd" },
+  { key: "credits_100000", credits: 100_000, amountCents: 1000, currency: "usd" },
+];
 import { TransactionsPanel } from "@/components/billing/transactions/transactions-panel";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -369,27 +376,34 @@ export default function BillingPage() {
       {/* Content - show skeleton when data is loading */}
       {subscriptionState.isSettling || creditBalanceQuery.isDeferred || creditBalance === undefined ? (
         <div className="p-6 space-y-8 max-w-2xl">
-          {/* Plan Section Skeleton */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              <CreditCard className="w-4 h-4" />
-              <span>{t("subscription")}</span>
-            </div>
-            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 space-y-3">
-              <div className="h-8 w-32 bg-muted animate-pulse rounded" />
-              <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-            </div>
+          <div className="rounded-xl border border-border/50 bg-muted/30 p-4 space-y-3">
+            <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+            <div className="h-4 w-48 bg-muted animate-pulse rounded" />
           </div>
         </div>
       ) : (
       <div className="p-6 space-y-8 max-w-2xl">
-        {/* Plan Section */}
-        {(subscriptionsEnabled || !showUpgradeCta) && <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <CreditCard className="w-4 h-4" />
-            <span>{t("subscription")}</span>
+        {creditsEnabled && topupsEnabled && (
+          <div
+            id="topup-section"
+            aria-hidden={!topupCatalog?.enabled}
+            className={cn(
+              "transition-opacity duration-300",
+              topupCatalog?.enabled && topupCatalog.bundles.length > 0
+                ? "opacity-100"
+                : "opacity-0 pointer-events-none",
+            )}
+          >
+            <CreditTopupCard
+              bundles={topupCatalog?.bundles ?? FALLBACK_TOPUP_BUNDLES}
+              loadingBundleKey={loadingTopupBundle}
+              onPurchase={handleTopupPurchase}
+              disabled={isLoading || !topupCatalog?.enabled}
+            />
           </div>
+        )}
 
+        {(subscriptionsEnabled || !showUpgradeCta) && <div className="space-y-4">
           <div className="rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
             <div className="p-4 flex items-center justify-between border-b border-border/40 min-h-[80px]">
               <div className="flex items-center gap-3">
@@ -570,8 +584,6 @@ export default function BillingPage() {
           </div>
         </div>}
 
-        {/* Credits Section */}
-
         {creditsEnabled && creditBalance && (
           <CreditBalanceCard
             freeBalance={creditBalance.free}
@@ -582,29 +594,8 @@ export default function BillingPage() {
           />
         )}
 
-        {creditsEnabled &&
-          topupsEnabled &&
-          topupCatalog?.enabled &&
-          topupCatalog.bundles.length > 0 && (
-            <div id="topup-section">
-              <CreditTopupCard
-                bundles={topupCatalog.bundles}
-                creditsPerUsd={topupCatalog.creditsPerUsd}
-                loadingBundleKey={loadingTopupBundle}
-                onPurchase={handleTopupPurchase}
-                disabled={isLoading}
-              />
-            </div>
-          )}
-
         {creditsEnabled && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              <Receipt className="w-4 h-4" />
-              <span>{t("transactions.title")}</span>
-            </div>
-            <TransactionsPanel searchParams={txnSearchParams} />
-          </div>
+          <TransactionsPanel searchParams={txnSearchParams} />
         )}
 
         {/* {grantDiagnostics && (

@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Sparkles } from "lucide-react";
+import { ArrowRight, Coins, Loader2 } from "lucide-react";
+import { motion } from "motion/react";
 import { useFormatter, useTranslations } from "next-intl";
 
 export type CreditTopupBundleCard = {
@@ -14,7 +15,6 @@ export type CreditTopupBundleCard = {
 
 type CreditTopupCardProps = {
   bundles: CreditTopupBundleCard[];
-  creditsPerUsd: number;
   loadingBundleKey: string | null;
   onPurchase: (bundleKey: string) => void;
   disabled?: boolean;
@@ -23,7 +23,6 @@ type CreditTopupCardProps = {
 
 export function CreditTopupCard({
   bundles,
-  creditsPerUsd,
   loadingBundleKey,
   onPurchase,
   disabled = false,
@@ -32,55 +31,104 @@ export function CreditTopupCard({
   const tc = useTranslations("common");
   const t = useTranslations("billingPage");
   const format = useFormatter();
+  const heroIdx = bundles.length >= 3 ? Math.floor(bundles.length / 2) : -1;
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-        <Sparkles className="w-4 h-4" />
-        <span>{t("topupTitle")}</span>
-      </div>
+    <div className={cn("grid gap-4 md:grid-cols-3", className)}>
+      {bundles.map((bundle, idx) => {
+        const isHero = idx === heroIdx;
+        const isLoading = loadingBundleKey === bundle.key;
+        const btnDisabled = disabled || Boolean(loadingBundleKey);
+        return (
+          <motion.div
+            key={bundle.key}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: idx * 0.05 }}
+            data-bundle-key={bundle.key}
+            data-hero={isHero ? "true" : undefined}
+            className={cn(
+              "group relative flex flex-col overflow-hidden rounded-2xl p-6 transition-all duration-200 hover:-translate-y-0.5",
+              isHero
+                ? "text-primary-foreground bg-[radial-gradient(120%_120%_at_0%_0%,var(--primary-400)_0%,var(--primary-600)_55%,var(--primary-700)_100%)] shadow-[var(--shadow-glow)] hover:shadow-xl"
+                : "bg-muted/25 hover:bg-muted/50 hover:shadow-md",
+            )}
+          >
+            {isHero && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/15 blur-2xl"
+              />
+            )}
 
-      <div className="rounded-xl border border-border/50 bg-muted/30 p-5 space-y-4">
-        <div className="space-y-1">
-          <p className="text-sm text-foreground">{t("topupDescription")}</p>
-          <p className="text-xs text-muted-foreground">
-            {t("topupRate", { rate: format.number(creditsPerUsd) })}
-          </p>
-        </div>
+            <span
+              aria-hidden
+              className={cn(
+                "relative flex h-10 w-10 items-center justify-center rounded-xl",
+                isHero
+                  ? "bg-white/15 ring-1 ring-white/25 backdrop-blur-sm"
+                  : "bg-primary/10 text-primary ring-1 ring-primary/15",
+              )}
+            >
+              <Coins className="h-5 w-5" />
+            </span>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {bundles.map((bundle) => {
-            const isLoading = loadingBundleKey === bundle.key;
-            const buttonDisabled = disabled || Boolean(loadingBundleKey);
-            return (
-              <div
-                key={bundle.key}
-                className="rounded-lg border border-border/50 bg-background/70 p-4 space-y-3"
-              >
-                <div className="space-y-1">
-                  <div className="text-lg font-semibold tabular-nums">
-                    {format.number(bundle.credits)} {tc("credits")}
-                  </div>
-                  <div className="text-sm text-muted-foreground tabular-nums">
-                    {format.number(bundle.amountCents / 100, {
-                      style: "currency",
-                      currency: bundle.currency.toUpperCase(),
-                    })}
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  className="w-full"
-                  disabled={buttonDisabled}
-                  onClick={() => onPurchase(bundle.key)}
-                >
-                  {isLoading ? t("topupProcessing") : t("topupBuyButton")}
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+            <div className="relative mt-6 flex items-baseline gap-1.5">
+              <span className="text-4xl font-medium tabular-nums tracking-tight">
+                {format.number(bundle.credits)}
+              </span>
+              <Coins
+                className={cn("h-4 w-4", isHero ? "text-primary-foreground/60" : "text-primary/60")}
+                aria-hidden
+              />
+            </div>
+            <span
+              className={cn(
+                "relative mt-1 text-sm",
+                isHero ? "text-primary-foreground/75" : "text-muted-foreground",
+              )}
+            >
+              {tc("credits")}
+            </span>
+
+            <div className="relative mt-5 text-2xl font-semibold tabular-nums tracking-tight">
+              {format.number(bundle.amountCents / 100, {
+                style: "currency",
+                currency: bundle.currency.toUpperCase(),
+                maximumFractionDigits: 0,
+              })}
+            </div>
+
+            <Button
+              size="sm"
+              disabled={btnDisabled}
+              onClick={() => onPurchase(bundle.key)}
+              data-loading={isLoading ? "true" : undefined}
+              className={cn(
+                "relative mt-6 h-10 w-full justify-between rounded-xl border-0 text-sm",
+                isHero
+                  ? "bg-primary-foreground text-primary shadow-sm hover:bg-primary-foreground/90"
+                  : "bg-foreground text-background hover:bg-foreground/90",
+              )}
+            >
+              <span className="inline-flex items-center gap-2">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Coins className="h-4 w-4" aria-hidden />
+                )}
+                {isLoading ? t("topupProcessing") : t("topupBuyButton")}
+              </span>
+              {!isLoading && (
+                <ArrowRight
+                  className="h-4 w-4 opacity-70 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:opacity-100"
+                  aria-hidden
+                />
+              )}
+            </Button>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }

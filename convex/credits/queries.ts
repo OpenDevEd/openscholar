@@ -2,6 +2,8 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator, type Cursor } from "convex/server";
 import { filter } from "convex-helpers/server/filter";
+import { mergedStream, stream } from "convex-helpers/server/stream";
+import schema from "../schema";
 import { getCurrentUser } from "../lib/auth";
 import { creditBalanceValidator, creditTransactionValidator } from "../lib/validators";
 import { components } from "../_generated/api";
@@ -423,6 +425,24 @@ export const listTransactionsPaginated = query({
         )
         .order("desc");
       basePage = await filter(base, matchesAllFilters).paginate(paginationOpts);
+    } else if (types && types.length > 1) {
+      // Multi-type filter (e.g. refunds+grants). Walking the generic
+      // `by_credits` index and post-filtering would read every
+      // transaction the user has. Instead, open one `by_credits_type`
+      // stream per requested type and merge them in `_creationTime`
+      // desc order — each substream reads only its own matching rows,
+      // so the cost is O(matches) per type instead of O(all rows).
+      const perTypeStreams = types.map((only) =>
+        stream(ctx.db, schema)
+          .query("creditTransactions")
+          .withIndex("by_credits_type", (ix) =>
+            ix.eq("creditsId", creditsId).eq("type", only),
+          )
+          .order("desc"),
+      );
+      basePage = await mergedStream(perTypeStreams, ["_creationTime"])
+        .filterWith(async (row) => matchesAllFilters(row))
+        .paginate(paginationOpts);
     } else if (creditPools && creditPools.length === 1) {
       const only = creditPools[0];
       const base = ctx.db
@@ -555,6 +575,20 @@ export const listTransactionsPaginatedRaw = query({
         .withIndex("by_credits_type", (ix) => ix.eq("creditsId", creditsId).eq("type", types[0]))
         .order("desc");
       basePage = await filter(base, matchesAllFilters).paginate(paginationOpts);
+    } else if (types && types.length > 1) {
+      // Mirror of the enriched query's multi-type branch — keeps the
+      // export drain on the same O(matches) path.
+      const perTypeStreams = types.map((only) =>
+        stream(ctx.db, schema)
+          .query("creditTransactions")
+          .withIndex("by_credits_type", (ix) =>
+            ix.eq("creditsId", creditsId).eq("type", only),
+          )
+          .order("desc"),
+      );
+      basePage = await mergedStream(perTypeStreams, ["_creationTime"])
+        .filterWith(async (row) => matchesAllFilters(row))
+        .paginate(paginationOpts);
     } else if (creditPools && creditPools.length === 1) {
       const base = ctx.db
         .query("creditTransactions")

@@ -221,6 +221,40 @@ describe("useTransactionsLoadMore", () => {
     expect(mockInstances).toHaveLength(1);
   });
 
+  it("does not recreate the observer when only the loadMore reference changes", () => {
+    // Convex's usePaginatedQuery hands a new loadMore function on every
+    // subscription tick. If the hook tore the observer down and rebuilt it
+    // each render, the intersection callback would fire again for any
+    // already-intersecting sentinel — the source of the "loading more"
+    // flicker on short lists. Lock in ref-stable behavior.
+    const sentinelRef = mkRef<HTMLDivElement>("div");
+    const scrollRef = mkRef<HTMLDivElement>("div");
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = renderHook(
+      ({ loadMore }: { loadMore: (n: number) => void }) =>
+        useTransactionsLoadMore({
+          sentinelRef,
+          scrollRef,
+          status: "CanLoadMore",
+          loadMore,
+        }),
+      { initialProps: { loadMore: first } },
+    );
+    expect(mockInstances).toHaveLength(1);
+    expect(mockInstances[0].disconnected).toBe(false);
+
+    rerender({ loadMore: second });
+    expect(mockInstances).toHaveLength(1);
+    expect(mockInstances[0].disconnected).toBe(false);
+
+    // The latest loadMore reference is the one that gets called.
+    mockInstances[0].trigger(true);
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledWith(25);
+  });
+
   it("honors a custom rootMargin", () => {
     const sentinelRef = mkRef<HTMLDivElement>("div");
     const scrollRef = mkRef<HTMLDivElement>("div");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 export type PaginatedStatus =
   | "LoadingFirstPage"
@@ -26,6 +26,13 @@ export function useTransactionsLoadMore({
   batchSize = 25,
   rootMargin = "0px 0px 400px 0px",
 }: UseTransactionsLoadMoreOpts): void {
+  // Convex's usePaginatedQuery returns a fresh loadMore reference on every
+  // subscription tick. Keeping it in the effect deps would tear the observer
+  // down and re-create it on every render, which re-fires the intersection
+  // callback while the sentinel is in view — the "loading more" flicker.
+  const loadMoreRef = useRef(loadMore);
+  loadMoreRef.current = loadMore;
+
   useEffect(() => {
     if (status !== "CanLoadMore") return;
     const sentinel = sentinelRef.current;
@@ -37,7 +44,7 @@ export function useTransactionsLoadMore({
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            loadMore(batchSize);
+            loadMoreRef.current(batchSize);
             return;
           }
         }
@@ -47,5 +54,5 @@ export function useTransactionsLoadMore({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [sentinelRef, scrollRef, status, loadMore, batchSize, rootMargin]);
+  }, [sentinelRef, scrollRef, status, batchSize, rootMargin]);
 }

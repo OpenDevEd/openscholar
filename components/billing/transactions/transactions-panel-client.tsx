@@ -395,17 +395,32 @@ function TransactionsPanelClientInner({ jobId }: Props) {
     [convex, jobId, state, deferredQuery],
   );
 
-  const paginated = useProtectedPaginatedQuery(
-    api.credits.queries.listTransactionsPaginated,
-    {
+  const paginatedArgs = useMemo(
+    () => ({
       jobId,
       types: state.types.length > 0 ? state.types : undefined,
-      creditPools: state.creditPools.length > 0 ? state.creditPools : undefined,
-      billingTypes: state.billingTypes.length > 0 ? state.billingTypes : undefined,
+      creditPools:
+        state.creditPools.length > 0 ? state.creditPools : undefined,
+      billingTypes:
+        state.billingTypes.length > 0 ? state.billingTypes : undefined,
       q: deferredQuery.trim().length > 0 ? deferredQuery.trim() : undefined,
       from: state.from ? state.from.getTime() : undefined,
       to: state.to ? state.to.getTime() : undefined,
-    },
+    }),
+    [
+      jobId,
+      state.types,
+      state.creditPools,
+      state.billingTypes,
+      deferredQuery,
+      state.from,
+      state.to,
+    ],
+  );
+
+  const paginated = useProtectedPaginatedQuery(
+    api.credits.queries.listTransactionsPaginated,
+    paginatedArgs,
     { initialNumItems: 25 },
   );
 
@@ -483,6 +498,20 @@ function TransactionsPanelClientInner({ jobId }: Props) {
     batchSize: 25,
   });
 
+  // Drive the walk forward when filters match zero rows. The
+  // IntersectionObserver-based trigger relies on user-scroll or an
+  // initial intersection tick, neither of which is guaranteed for an
+  // empty list; without this, a filter like "refunds + grants" on a user
+  // who has neither stalls at page 1 with Convex's filter().paginate()
+  // still reporting isDone:false. Larger batch so the walk finishes in
+  // one or two round-trips instead of dozens.
+  const paginatedLoadMore = paginated.loadMore;
+  useEffect(() => {
+    if (paginated.status !== "CanLoadMore") return;
+    if (paginated.results.length > 0) return;
+    paginatedLoadMore(100);
+  }, [paginated.status, paginated.results.length, paginatedLoadMore]);
+
   const clearAllFilters = useCallback(() => {
     void setState({
       q: "",
@@ -524,8 +553,20 @@ function TransactionsPanelClientInner({ jobId }: Props) {
     router.replace(`/settings/billing${qs ? `?${qs}` : ""}`);
   };
 
-  const showSkeleton = !paginated.isSettled || paginated.isInitialLoading;
-  const isEmpty = !showSkeleton && rows.length === 0;
+  const rowCount = rows.length;
+  const isAwaitingFirstData =
+    !paginated.isSettled || paginated.isInitialLoading;
+  // Convex's filter().paginate() returns empty pages with isDone:false while
+  // walking the index, so with zero-match filters the status ping-pongs
+  // CanLoadMore -> LoadingMore -> CanLoadMore until Exhausted. Hold the
+  // skeleton through that walk; otherwise the empty state and "loading more"
+  // banner flicker on top of each other for every empty page.
+  const isWalkingEmpty =
+    rowCount === 0 &&
+    (paginated.status === "CanLoadMore" ||
+      paginated.status === "LoadingMore");
+  const showSkeleton = isAwaitingFirstData || isWalkingEmpty;
+  const isEmpty = !showSkeleton && rowCount === 0;
   const filterActive = isFilterActive({
     types: state.types,
     creditPools: state.creditPools,
@@ -665,8 +706,9 @@ function TransactionsPanelClientInner({ jobId }: Props) {
           ref={sentinelRef}
           aria-hidden="true"
           data-transactions-sentinel=""
+          className="h-px w-full"
         />
-        {paginated.status === "LoadingMore" && (
+        {paginated.status === "LoadingMore" && rowCount > 0 && (
           <p
             className="py-3 text-center text-xs text-muted-foreground"
             data-transactions-loading-more="true"

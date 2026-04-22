@@ -1,7 +1,6 @@
 "use client";
 
 import { useTranslations, useFormatter } from "next-intl";
-import { Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -32,11 +31,6 @@ export function CreditBalanceCard({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-        <Zap className="w-4 h-4" />
-        <span>{tc("credits")}</span>
-      </div>
-
       <div className="space-y-6 rounded-xl border border-border/50 bg-muted/30 p-5">
         {/* Total Balance */}
         <div className="space-y-2">
