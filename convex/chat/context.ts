@@ -1,12 +1,14 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 import {
   filterAndPreservePositions,
   renderPaperCorpus,
-  type CorpusSource,
 } from "../../lib/chat/render-corpus";
-import { PAPER_LIMIT_MAX } from "../extraction/bucket/limits";
+import {
+  readChatSourceRows,
+  toCorpusSource,
+} from "./sourceReadModel";
 
 /**
  * Builds the chat system prompt array for a given job. Returns two
@@ -21,20 +23,6 @@ import { PAPER_LIMIT_MAX } from "../extraction/bucket/limits";
  * providerOptions.cacheControl — the provider drops them silently.
  */
 
-function toCorpusSource(row: Doc<"extractionJobSources">): CorpusSource {
-  return {
-    sourceId: row._id,
-    position: row.position,
-    openalexId: row.openalexId,
-    title: row.title,
-    authors: row.authors,
-    year: row.year,
-    abstract: row.abstract,
-    doi: row.doi,
-    pdfUrl: row.pdfUrl,
-  };
-}
-
 export const buildSystemPromptForJob = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.array(
@@ -44,29 +32,14 @@ export const buildSystemPromptForJob = internalQuery({
     }),
   ),
   handler: async (ctx, { jobId }) => {
-    const sourceRows = await ctx.db
-      .query("extractionJobSources")
-      .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT_MAX * 2);
-    const corpusSources = sourceRows.map(toCorpusSource);
-
-    // Live-read the inclusion layer. Re-evaluated at every stream-start
-    // so mid-conversation toggles take effect on the very next turn
-    // (decision D2). Rows missing from chatPapers (e.g. a chat seeded
-    // before the backfill ran) are implicitly excluded — the send-guard
-    // in messages.ts blocks sends when zero rows pass this filter.
-    const includedRows = await ctx.db
-      .query("chatPapers")
-      .withIndex("by_job_included", (q) =>
-        q.eq("jobId", jobId).eq("included", true),
-      )
-      .take(PAPER_LIMIT_MAX * 2);
-    const includedSourceIds = new Set<string>(
-      includedRows.map((r) => r.sourceId),
-    );
+    const rows = await readChatSourceRows(ctx, jobId);
     const prompted = filterAndPreservePositions(
-      corpusSources,
-      includedSourceIds,
+      rows.map(toCorpusSource),
+      new Set(
+        rows
+          .filter((row) => row.included)
+          .map((row) => String(row.sourceId)),
+      ),
     );
 
     return [

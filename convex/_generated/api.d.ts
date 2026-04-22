@@ -27,6 +27,7 @@ import type * as chat_context from "../chat/context.js";
 import type * as chat_messages from "../chat/messages.js";
 import type * as chat_model from "../chat/model.js";
 import type * as chat_provider from "../chat/provider.js";
+import type * as chat_sourceReadModel from "../chat/sourceReadModel.js";
 import type * as chat_threads from "../chat/threads.js";
 import type * as credits_actions from "../credits/actions.js";
 import type * as credits_aggregates from "../credits/aggregates.js";
@@ -206,6 +207,7 @@ declare const fullApi: ApiFromModules<{
   "chat/messages": typeof chat_messages;
   "chat/model": typeof chat_model;
   "chat/provider": typeof chat_provider;
+  "chat/sourceReadModel": typeof chat_sourceReadModel;
   "chat/threads": typeof chat_threads;
   "credits/actions": typeof credits_actions;
   "credits/aggregates": typeof credits_aggregates;
