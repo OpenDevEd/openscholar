@@ -23,6 +23,7 @@ import {
   internalAction,
   internalQuery,
   mutation,
+  type QueryCtx,
   query,
 } from "../_generated/server";
 import { v } from "convex/values";
@@ -352,6 +353,67 @@ function withThreadMessageReadCaps(paginationOpts: PaginationOptions) {
   };
 }
 
+type ThreadMessagePage = Awaited<
+  ReturnType<typeof listMessages>
+>;
+
+function countVisibleMessageGroups(rawMessages: ThreadMessagePage["page"]) {
+  let groups = 0;
+  let lastKey: string | null = null;
+  for (const message of rawMessages) {
+    const key = `${message.order}:${message.message?.role ?? "unknown"}`;
+    if (key === lastKey) continue;
+    lastKey = key;
+    groups += 1;
+  }
+  return groups;
+}
+
+async function readThreadMessagesWithVisiblePageIntegrity(
+  ctx: QueryCtx,
+  args: {
+    threadId: string;
+    paginationOpts: PaginationOptions;
+    streamArgs?: { kind: "list"; startOrder?: number };
+  },
+): Promise<ThreadMessagePage> {
+  const rawMessages: ThreadMessagePage["page"] = [];
+  let cursor = args.paginationOpts.cursor;
+  let isDone = false;
+  let continueCursor: string | null = cursor;
+
+  while (!isDone) {
+    const rawPage = await listMessages(ctx, components.agent, {
+      ...args,
+      paginationOpts: withThreadMessageReadCaps({
+        ...args.paginationOpts,
+        cursor,
+      }),
+    });
+
+    rawMessages.push(...rawPage.page);
+    isDone = rawPage.isDone;
+    continueCursor = rawPage.continueCursor;
+
+    if (
+      rawMessages.length === 0 ||
+      countVisibleMessageGroups(rawMessages) >= args.paginationOpts.numItems
+    ) {
+      break;
+    }
+    if (!continueCursor || continueCursor === cursor) {
+      break;
+    }
+    cursor = continueCursor;
+  }
+
+  return {
+    page: rawMessages,
+    isDone,
+    continueCursor,
+  };
+}
+
 export const listThreadMessages = query({
   args: {
     threadId: v.string(),
@@ -367,10 +429,7 @@ export const listThreadMessages = query({
   handler: async (ctx, args) => {
     await authorizeThreadAccess(ctx, args.threadId);
     const [rawPage, streams] = await Promise.all([
-      listMessages(ctx, components.agent, {
-        ...args,
-        paginationOpts: withThreadMessageReadCaps(args.paginationOpts),
-      }),
+      readThreadMessagesWithVisiblePageIntegrity(ctx, args),
       // includeStatuses is required for aborted stream rows to reach the
       // client — the library default is ["streaming"] only
       // (@convex-dev/agent/src/component/streams.ts:125), which silently
