@@ -2,7 +2,6 @@ import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { paginationOptsValidator, type Cursor } from "convex/server";
 import { ConvexError, v } from "convex/values";
-import { filter } from "convex-helpers/server/filter";
 import { requireAuth } from "../lib/auth";
 import { MAX_COLLECTION_MEMBERS, MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
 
@@ -298,9 +297,18 @@ export const browseLibrary = query({
       return await orderedQuery.paginate(args.paginationOpts);
     }
 
-    return await filter(orderedQuery, (item) =>
-      matchesLibraryFilters(item, args, collectionItemIds),
-    ).paginate(args.paginationOpts);
+    const items = await collectLibraryItems(
+      ctx,
+      user._id,
+      args.sortBy,
+      args.sortOrder,
+      undefined,
+    );
+
+    return paginateLibraryItems(
+      items.filter((item) => matchesLibraryFilters(item, args, collectionItemIds)),
+      args.paginationOpts,
+    );
   },
 });
 

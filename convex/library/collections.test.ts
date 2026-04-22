@@ -796,6 +796,56 @@ describe("browseLibrary with collectionId filter", () => {
     expect(result.page[0].title).toBe("In Collection");
   });
 
+  it("paginates across collection-scoped browse results on later pages", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user!._id, "Paged browse");
+    const first = await seedLibraryItem(t, user!._id, {
+      title: "First in collection",
+      openalexId: "https://openalex.org/W1",
+      savedAt: 3000,
+    });
+    const second = await seedLibraryItem(t, user!._id, {
+      title: "Second in collection",
+      openalexId: "https://openalex.org/W2",
+      savedAt: 2000,
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Outside collection",
+      openalexId: "https://openalex.org/W3",
+      savedAt: 1000,
+    });
+
+    await seedJunctionRow(t, user!._id, collection!._id, first!._id);
+    await seedJunctionRow(t, user!._id, collection!._id, second!._id);
+
+    const firstPage = await asUser.query(api.library.queries.browseLibrary, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      collectionId: collection!._id,
+      paginationOpts: { numItems: 1, cursor: null },
+    });
+
+    expect(firstPage.page.map((item) => item.title)).toEqual([
+      "First in collection",
+    ]);
+    expect(firstPage.isDone).toBe(false);
+
+    const secondPage = await asUser.query(api.library.queries.browseLibrary, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      collectionId: collection!._id,
+      paginationOpts: { numItems: 1, cursor: firstPage.continueCursor },
+    });
+
+    expect(secondPage.page.map((item) => item.title)).toEqual([
+      "Second in collection",
+    ]);
+    expect(secondPage.isDone).toBe(true);
+  });
+
   it("when collectionId is undefined, all items are returned (existing behavior)", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
@@ -869,6 +919,61 @@ describe("searchLibrary with collectionId filter", () => {
 
     expect(result.page).toHaveLength(1);
     expect(result.page[0].title).toBe("Machine Learning In Collection");
+  });
+
+  it("paginates across collection-scoped search results on later pages", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user!._id, "Paged search");
+    const alpha = await seedLibraryItem(t, user!._id, {
+      title: "Alpha machine paper",
+      searchableText: "machine alpha paper",
+      openalexId: "https://openalex.org/W1",
+      savedAt: 1000,
+    });
+    const beta = await seedLibraryItem(t, user!._id, {
+      title: "Beta machine paper",
+      searchableText: "machine beta paper",
+      openalexId: "https://openalex.org/W2",
+      savedAt: 2000,
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Outside machine paper",
+      searchableText: "machine outside paper",
+      openalexId: "https://openalex.org/W3",
+      savedAt: 3000,
+    });
+
+    await seedJunctionRow(t, user!._id, collection!._id, alpha!._id);
+    await seedJunctionRow(t, user!._id, collection!._id, beta!._id);
+
+    const firstPage = await asUser.query(api.library.queries.searchLibrary, {
+      searchText: "machine",
+      sortBy: "title",
+      sortOrder: "asc",
+      collectionId: collection!._id,
+      paginationOpts: { numItems: 1, cursor: null },
+    });
+
+    expect(firstPage.page.map((item) => item.title)).toEqual([
+      "Alpha machine paper",
+    ]);
+    expect(firstPage.isDone).toBe(false);
+
+    const secondPage = await asUser.query(api.library.queries.searchLibrary, {
+      searchText: "machine",
+      sortBy: "title",
+      sortOrder: "asc",
+      collectionId: collection!._id,
+      paginationOpts: { numItems: 1, cursor: firstPage.continueCursor },
+    });
+
+    expect(secondPage.page.map((item) => item.title)).toEqual([
+      "Beta machine paper",
+    ]);
+    expect(secondPage.isDone).toBe(true);
   });
 
   it("when collectionId is undefined, all matching items are returned", async () => {
