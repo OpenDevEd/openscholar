@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 const protectedQueryMock = vi.fn();
 const useActionMock = vi.fn(() => vi.fn());
@@ -118,7 +118,29 @@ describe("<BillingPage> mounted queries", () => {
     protectedQueryMock.mockReset();
     useActionMock.mockClear();
     routerReplaceMock.mockClear();
-    protectedQueryMock.mockReturnValue({ data: undefined });
+    protectedQueryMock.mockImplementation((queryRef: unknown) => {
+      if (queryRef === "credits:getMyBalance") {
+        return {
+          data: {
+            free: 0,
+            paid: 0,
+            total: 0,
+          },
+          isDeferred: false,
+        };
+      }
+
+      if (queryRef === "credits:getTopupCatalog") {
+        return {
+          data: {
+            enabled: false,
+            bundles: [],
+          },
+        };
+      }
+
+      return { data: undefined };
+    });
   });
 
   it("mounts balance and topup queries without grant diagnostics", () => {
@@ -128,5 +150,6 @@ describe("<BillingPage> mounted queries", () => {
     expect(mountedQueryRefs).toContain("credits:getMyBalance");
     expect(mountedQueryRefs).toContain("credits:getTopupCatalog");
     expect(mountedQueryRefs).not.toContain("credits:getLatestGrantStatus");
+    expect(screen.getByTestId("billing-manage-button")).toHaveTextContent("upgradePlan");
   });
 });
