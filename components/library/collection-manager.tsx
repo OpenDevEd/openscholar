@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,6 +37,11 @@ import { cn } from "@/lib/utils";
 interface CollectionManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  collections: Array<{
+    _id: Id<"collections">;
+    name: string;
+    itemCount: number;
+  }> | undefined;
 }
 
 const SEARCH_THRESHOLD = 8;
@@ -45,13 +49,9 @@ const SEARCH_THRESHOLD = 8;
 export function CollectionManager({
   open,
   onOpenChange,
+  collections,
 }: CollectionManagerProps) {
   const t = useTranslations("libraryPage");
-
-  const { data: collections } = useProtectedQuery(
-    api.library.collections.getCollectionsWithCounts,
-    {},
-  );
 
   const createCollection = useMutation(
     api.library.collections.createCollection,

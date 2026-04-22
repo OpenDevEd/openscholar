@@ -733,6 +733,7 @@ export function LibraryPageClient() {
               <CollectionManager
                 open={collectionManagerOpen}
                 onOpenChange={setCollectionManagerOpen}
+                collections={collectionsWithCounts}
               />
 
               {collectionPickerItemId && (
@@ -746,6 +747,7 @@ export function LibraryPageClient() {
                   libraryItemId={
                     collectionPickerItemId as Id<"libraryItems">
                   }
+                  collections={collectionsWithCounts}
                 />
               )}
             </div>

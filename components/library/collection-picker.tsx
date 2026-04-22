@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Folder } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -21,19 +20,20 @@ interface CollectionPickerProps {
   libraryItemId: Id<"libraryItems">;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  collections: Array<{
+    _id: Id<"collections">;
+    name: string;
+    itemCount: number;
+  }> | undefined;
 }
 
 export function CollectionPicker({
   libraryItemId,
   open,
   onOpenChange,
+  collections,
 }: CollectionPickerProps) {
   const t = useTranslations("libraryPage");
-
-  const { data: collections } = useProtectedQuery(
-    api.library.collections.getCollectionsWithCounts,
-    {},
-  );
 
   const { data: itemCollectionIds } = useProtectedQuery(
     api.library.collections.getItemCollections,
