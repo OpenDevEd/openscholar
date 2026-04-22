@@ -138,6 +138,7 @@ import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
 import type * as screening_lifecycle from "../screening/lifecycle.js";
 import type * as screening_mutations from "../screening/mutations.js";
+import type * as screening_progress from "../screening/progress.js";
 import type * as screening_queries from "../screening/queries.js";
 import type * as screening_scoring from "../screening/scoring.js";
 import type * as screening_validators from "../screening/validators.js";
@@ -314,6 +315,7 @@ declare const fullApi: ApiFromModules<{
   "models/sync": typeof models_sync;
   "screening/lifecycle": typeof screening_lifecycle;
   "screening/mutations": typeof screening_mutations;
+  "screening/progress": typeof screening_progress;
   "screening/queries": typeof screening_queries;
   "screening/scoring": typeof screening_scoring;
   "screening/validators": typeof screening_validators;
