@@ -22,6 +22,7 @@ import {
   recordQualifiedResult,
   recordTerminalResult,
 } from "./aggregates";
+import { deriveCompletionTransition } from "./completion";
 import { buildScreeningProgressSnapshot } from "./progress";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
@@ -320,12 +321,74 @@ export const addToCollectionInternal = internalMutation({
 });
 
 /**
- * Check if a screening job is done and finalize it.
+ * Persist a qualified screening result into the user's library and collection.
  *
- * Aggregate-backed progress is the read truth. Terminal statuses
- * (completed/cancelled/failed/creditsExhausted) are no-ops.
+ * Idempotent by result state plus the underlying library/collection helpers.
  */
-export const finalizeScreeningJobIfDone = internalMutation({
+export const persistQualifiedScreeningResult = internalMutation({
+  args: { resultId: v.id("screeningResults") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const screeningResult = await ctx.db.get(
+      "screeningResults",
+      args.resultId,
+    ) as Doc<"screeningResults"> | null;
+    if (
+      !screeningResult ||
+      screeningResult.status !== "completed" ||
+      screeningResult.qualified !== true ||
+      screeningResult.libraryItemId
+    ) {
+      return null;
+    }
+
+    const job = await ctx.db.get("screeningJobs", screeningResult.jobId) as
+      | Doc<"screeningJobs">
+      | null;
+    if (!job) {
+      return null;
+    }
+
+    const libraryItemId = await ctx.runMutation(
+      internal.screening.mutations.saveQualifiedPaperToLibrary,
+      {
+        userId: job.userId,
+        openalexId: screeningResult.openalexId,
+        rating: screeningResult.stars ?? 0,
+        title: screeningResult.title,
+        authors: screeningResult.authors?.join(", "),
+        doi: screeningResult.doi,
+        abstract: screeningResult.abstract,
+        publicationYear: screeningResult.publicationYear,
+      },
+    );
+
+    if (job.targetCollectionId) {
+      await ctx.runMutation(
+        internal.screening.mutations.addToCollectionInternal,
+        {
+          userId: job.userId,
+          collectionId: job.targetCollectionId,
+          libraryItemId,
+        },
+      );
+    }
+
+    await ctx.db.patch("screeningResults", screeningResult._id, {
+      savedToLibrary: true,
+      libraryItemId,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Check if a screening job is done and finalize it from aggregate-backed counts.
+ *
+ * Terminal statuses (completed/cancelled/failed/creditsExhausted) are no-ops.
+ */
+export const finalizeScreeningJobFromAggregates = internalMutation({
   args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -377,12 +440,8 @@ export const finalizeScreeningJobIfDone = internalMutation({
 /**
  * Workpool onComplete handler for individual paper screening.
  *
- * On success: scores the paper, saves qualifying papers to library,
- * optionally adds to collection, records aggregate state, and patches the
- * legacy job counters still present until plan 03 removes them.
- * On failure: marks result as failed, records aggregate state, and patches
- * the temporary failed counter.
- * Always calls finalizeScreeningJobIfDone at the end.
+ * Patches only the target screening result row, records aggregate state, and
+ * schedules any secondary work as follow-up mutations.
  */
 export const handleScreeningComplete = screeningPool.defineOnComplete({
   context: v.object({
@@ -390,138 +449,98 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     jobId: v.id("screeningJobs"),
   }),
   handler: async (ctx, { context, result }) => {
-    if (result.kind === "success") {
+    const job = await ctx.db.get("screeningJobs", context.jobId) as
+      | Doc<"screeningJobs">
+      | null;
+    const screeningResult = await ctx.db.get(
+      "screeningResults",
+      context.resultId,
+    ) as Doc<"screeningResults"> | null;
+    if (!job || !screeningResult) {
+      return;
+    }
+
+    let transition;
+    if (result.kind === "success" && job.status === "processing") {
       const data = result.returnValue as {
         responses: Record<string, boolean | null>;
         confidence: number;
-        usage: { inputTokens: number; outputTokens: number };
       };
-
-      // Load job fresh for current counters (OCC will retry on conflict)
-      // Cast needed: defineOnComplete ctx.db.get returns generic Value types
-      const job = await ctx.db.get("screeningJobs", context.jobId) as Doc<"screeningJobs"> | null;
-      if (!job) return;
-
-      // Skip if job is in a terminal state
-      if (isTerminalScreeningJobStatus(job.status)) {
-        return;
-      }
-
-      // Decode encoded question keys back to original text
       const decodedResponses = decodeQuestionResponseMap(data.responses);
-
-      // Map decoded responses (keyed by question text) to answers keyed by question key
       const answers: Record<string, boolean | null> = {};
       for (const q of job.questions) {
         const response = decodedResponses[q.question];
         answers[q.key] = response ?? null;
       }
 
-      // Score the paper
       const { score, stars, qualified } = scorePaper(answers, job.scoringConfig);
-      const aggregateResult = {
-        _id: context.resultId,
-        jobId: context.jobId,
-        status: "completed" as const,
-        qualified,
-      };
-
-      // Update the screening result
-      await ctx.db.patch("screeningResults", context.resultId, {
-        status: "completed",
-        answers,
-        score,
-        stars,
-        qualified,
-        aiMetadata: { confidence: data.confidence },
-        completedAt: Date.now(),
+      transition = deriveCompletionTransition({
+        currentRowStatus: screeningResult.status,
+        jobStatus: job.status,
+        resultKind: "success",
+        completedRowDetails: {
+          answers,
+          score,
+          stars,
+          qualified,
+          aiMetadata: { confidence: data.confidence },
+        },
       });
-
-      if (qualified) {
-        // Load the screening result for paper metadata
-        const screeningResult = await ctx.db.get("screeningResults", context.resultId) as Doc<"screeningResults"> | null;
-        if (screeningResult) {
-          const libraryItemId = await ctx.runMutation(
-            internal.screening.mutations.saveQualifiedPaperToLibrary,
-            {
-              userId: job.userId,
-              openalexId: screeningResult.openalexId,
-              rating: stars,
-              title: screeningResult.title,
-              authors: screeningResult.authors?.join(", "),
-              doi: screeningResult.doi,
-              abstract: screeningResult.abstract,
-              publicationYear: screeningResult.publicationYear,
-            }
-          );
-
-          // Add to target collection if configured
-          if (job.targetCollectionId) {
-            await ctx.runMutation(
-              internal.screening.mutations.addToCollectionInternal,
-              {
-                userId: job.userId,
-                collectionId: job.targetCollectionId,
-                libraryItemId,
-              }
-            );
-          }
-
-          // Also record the library item ID on the screening result
-          await ctx.db.patch("screeningResults", context.resultId, {
-            savedToLibrary: true,
-            libraryItemId,
-          });
-        }
-
-        await Promise.all([
-          recordTerminalResult(ctx, aggregateResult),
-          recordQualifiedResult(ctx, aggregateResult),
-        ]);
-
-        // Increment qualified + processed counters
-        await ctx.db.patch("screeningJobs", context.jobId, {
-          qualifiedPapers: (job.qualifiedPapers ?? 0) + 1,
-          processedPapers: (job.processedPapers ?? 0) + 1,
-          updatedAt: Date.now(),
-        });
-      } else {
-        await recordTerminalResult(ctx, aggregateResult);
-
-        // Not qualified: just increment processedPapers
-        await ctx.db.patch("screeningJobs", context.jobId, {
-          processedPapers: (job.processedPapers ?? 0) + 1,
-          updatedAt: Date.now(),
-        });
-      }
     } else {
-      // Error or canceled
-      await ctx.db.patch("screeningResults", context.resultId, {
-        status: "failed",
-        completedAt: Date.now(),
+      transition = deriveCompletionTransition({
+        currentRowStatus: screeningResult.status,
+        jobStatus: job.status,
+        resultKind: result.kind === "success" ? "success" : "failure",
       });
-
-      await recordTerminalResult(ctx, {
-        _id: context.resultId,
-        jobId: context.jobId,
-        status: "failed",
-        qualified: false,
-      });
-
-      // Load job fresh for current counters
-      const job = await ctx.db.get("screeningJobs", context.jobId) as Doc<"screeningJobs"> | null;
-      if (job) {
-        await ctx.db.patch("screeningJobs", context.jobId, {
-          failedPapers: (job.failedPapers ?? 0) + 1,
-          updatedAt: Date.now(),
-        });
-      }
     }
 
-    // Always check if job is complete
-    await ctx.runMutation(
-      internal.screening.mutations.finalizeScreeningJobIfDone,
-      { jobId: context.jobId }
-    );
+    if (transition.kind === "noop") {
+      return;
+    }
+
+    const completedAt = Date.now();
+    if (transition.rowPatch.status === "completed") {
+      await ctx.db.patch("screeningResults", context.resultId, {
+        ...transition.rowPatch,
+        completedAt,
+      });
+    } else {
+      await ctx.db.patch("screeningResults", context.resultId, {
+        ...transition.rowPatch,
+        completedAt,
+        ...(result.kind === "failed"
+          ? { errorMessage: result.error }
+          : result.kind === "canceled"
+            ? { errorMessage: "workpool_canceled" }
+            : {}),
+      });
+    }
+
+    const aggregateResult = {
+      _id: context.resultId,
+      jobId: context.jobId,
+      status: transition.aggregateStatus,
+      qualified: transition.aggregateQualified,
+    };
+    await recordTerminalResult(ctx, aggregateResult);
+    if (transition.aggregateQualified) {
+      await recordQualifiedResult(ctx, aggregateResult);
+    }
+
+    if (transition.scheduleQualifiedPersistence) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.screening.mutations.persistQualifiedScreeningResult,
+        { resultId: context.resultId },
+      );
+    }
+
+    if (transition.scheduleJobFinalization) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.screening.mutations.finalizeScreeningJobFromAggregates,
+        { jobId: context.jobId },
+      );
+    }
   },
 });
