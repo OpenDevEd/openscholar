@@ -374,13 +374,12 @@ async function readThreadMessagesWithVisiblePageIntegrity(
   args: {
     threadId: string;
     paginationOpts: PaginationOptions;
-    streamArgs?: { kind: "list"; startOrder?: number };
   },
 ): Promise<ThreadMessagePage> {
   const rawMessages: ThreadMessagePage["page"] = [];
   let cursor = args.paginationOpts.cursor;
   let isDone = false;
-  let continueCursor: string | null = cursor;
+  let continueCursor = cursor ?? "";
 
   while (!isDone) {
     const rawPage = await listMessages(ctx, components.agent, {
@@ -429,7 +428,10 @@ export const listThreadMessages = query({
   handler: async (ctx, args) => {
     await authorizeThreadAccess(ctx, args.threadId);
     const [rawPage, streams] = await Promise.all([
-      readThreadMessagesWithVisiblePageIntegrity(ctx, args),
+      readThreadMessagesWithVisiblePageIntegrity(ctx, {
+        threadId: args.threadId,
+        paginationOpts: args.paginationOpts,
+      }),
       // includeStatuses is required for aborted stream rows to reach the
       // client — the library default is ["streaming"] only
       // (@convex-dev/agent/src/component/streams.ts:125), which silently

@@ -118,8 +118,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
   return (
     <div className="space-y-1.5 pb-2">
       {jobs.map((job) => {
-        const isActive =
-          job.status === "pending" || job.status === "processing";
+        const isActive = job.status === "processing";
         const percentage =
           job.totalPapers > 0
             ? Math.round((job.processedPapers / job.totalPapers) * 100)

@@ -17,7 +17,7 @@ export type InclusionLike = {
 };
 
 export type InclusionSnapshot<R extends InclusionLike> = {
-  rows: ReadonlyArray<R>;
+  rows: R[];
   totalCount: number;
 };
 

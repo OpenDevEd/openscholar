@@ -24,13 +24,13 @@ import { cn } from "@/lib/utils";
 interface MessageComposerProps {
   job: Doc<"extractionJobs">;
   threadId: string;
-  chatModels: ChatModelRow[];
+  chatModels?: ChatModelRow[];
 }
 
 export function MessageComposer({
   job,
   threadId,
-  chatModels,
+  chatModels = [],
 }: MessageComposerProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("composer");

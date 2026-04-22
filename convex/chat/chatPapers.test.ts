@@ -112,9 +112,15 @@ describe("listChatSourcesWithInclusion", () => {
 
     expect(result.totalCount).toBe(3);
     expect(result.rows).toHaveLength(3);
-    expect(result.rows.map((r) => r.position)).toEqual([0, 1, 2]);
-    expect(result.rows.every((r) => r.included === true)).toBe(true);
-    expect(result.rows.every((r) => r.jobId === jobId)).toBe(true);
+    expect(
+      result.rows.map((r: (typeof result.rows)[number]) => r.position),
+    ).toEqual([0, 1, 2]);
+    expect(
+      result.rows.every((r: (typeof result.rows)[number]) => r.included === true),
+    ).toBe(true);
+    expect(
+      result.rows.every((r: (typeof result.rows)[number]) => r.jobId === jobId),
+    ).toBe(true);
     expect(result.rows[0].title).toBe("Paper 0");
     expect(result.rows[0].year).toBe(2020);
     expect(result.rows[0].authors).toEqual(["Author 0"]);
@@ -137,9 +143,18 @@ describe("listChatSourcesWithInclusion", () => {
       { jobId },
     );
     expect(result.totalCount).toBe(3);
-    expect(result.rows.find((r) => r.position === 1)?.included).toBe(false);
-    expect(result.rows.find((r) => r.position === 0)?.included).toBe(true);
-    expect(result.rows.find((r) => r.position === 2)?.included).toBe(true);
+    expect(
+      result.rows.find((r: (typeof result.rows)[number]) => r.position === 1)
+        ?.included,
+    ).toBe(false);
+    expect(
+      result.rows.find((r: (typeof result.rows)[number]) => r.position === 0)
+        ?.included,
+    ).toBe(true);
+    expect(
+      result.rows.find((r: (typeof result.rows)[number]) => r.position === 2)
+        ?.included,
+    ).toBe(true);
   });
 
   it("keeps totalCount authoritative while mirrored chat rows are still bootstrapping", async () => {

@@ -54,7 +54,7 @@ Optional sections such as `Context`, `Why now`, `Deviations`, or post-execution 
 
 ### Required `PROMPTS.md` contents
 
-`PROMPTS.md` contains one copy-paste execution prompt per numbered plan so another agent can execute the work without re-deriving intent from scratch. If there are standing rules for that plan set, repeat them in the PROMPTS.md preamble so each per-plan prompt inherits them.
+`PROMPTS.md` contains one copy-paste execution prompt per numbered plan so another agent can execute the work without re-deriving intent from scratch. If there are standing rules for that plan set, repeat them in the PROMPTS.md preamble so each per-plan prompt inherits them. Every per-plan prompt MUST be rendered as a single fenced Markdown code block (use an info string like `md`) so the whole prompt can be copied directly in one action. Do not leave the prompt as plain prose sections outside a fenced block.
 
 Each per-plan prompt must follow this template, in this order:
 
