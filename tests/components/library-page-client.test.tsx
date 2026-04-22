@@ -375,17 +375,17 @@ function buildPaginatedResult({
 }
 
 function setProtectedQueryFixture<T>(
-  queryRef: string,
+  queryRef: unknown,
   fixture: T | ((args: unknown) => T),
 ) {
-  queryFixtureStore.protected[queryRef] = fixture;
+  queryFixtureStore.protected[String(queryRef)] = fixture;
 }
 
 function setPaginatedQueryFixture(
-  queryRef: string,
+  queryRef: unknown,
   fixture: PaginatedFixture | ((args: unknown) => PaginatedFixture),
 ) {
-  queryFixtureStore.paginated[queryRef] = fixture;
+  queryFixtureStore.paginated[String(queryRef)] = fixture;
 }
 
 function resetQueryFixtures() {
@@ -396,7 +396,7 @@ function resetQueryFixtures() {
   setProtectedQueryFixture(api.library.queries.getLibraryCount, 42);
   setProtectedQueryFixture(
     api.library.queries.getLibraryFilteredCount,
-    (args) => {
+    (args: unknown) => {
       const filters = args as {
         collectionId?: string;
         searchText?: string;
@@ -422,7 +422,10 @@ function resetQueryFixtures() {
 
 function configureProtectedQueryMocks() {
   protectedQueryMock.mockImplementation((queryRef: unknown, args: unknown) => {
-    const fixture = queryFixtureStore.protected[String(queryRef)];
+    const fixture = queryFixtureStore.protected[String(queryRef)] as
+      | unknown
+      | ((fixtureArgs: unknown) => unknown)
+      | undefined;
     if (fixture === undefined) {
       throw new Error(`Unexpected protected query: ${String(queryRef)}`);
     }
@@ -446,7 +449,10 @@ function configurePaginatedMocks() {
         });
       }
 
-      const fixture = queryFixtureStore.paginated[String(queryRef)];
+      const fixture = queryFixtureStore.paginated[String(queryRef)] as
+        | PaginatedFixture
+        | ((fixtureArgs: unknown) => PaginatedFixture)
+        | undefined;
       if (fixture === undefined) {
         throw new Error(`Unexpected paginated query: ${String(queryRef)}`);
       }
@@ -475,7 +481,7 @@ function seedSearchThenBrowseFixtures() {
   setProtectedQueryFixture(api.library.queries.getLibraryCount, 42);
   setProtectedQueryFixture(
     api.library.queries.getLibraryFilteredCount,
-    (args) => {
+    (args: unknown) => {
       const filters = args as { searchText?: string };
       return filters.searchText === "machine" ? 25 : 42;
     },
