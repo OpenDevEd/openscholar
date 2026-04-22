@@ -154,16 +154,22 @@ export default function JobDetailPage() {
     api.extraction.mutations.resume.resumeExtraction,
   );
 
-  const jobDetailsQuery = useProtectedQuery(api.extraction.queries.getJobDetails, {
+  const jobShellQuery = useProtectedQuery(api.extraction.queries.getJobShell, {
     jobId,
   });
+  const jobShell = jobShellQuery.data;
+  const hasCurrentJobShell =
+    jobShell?.status !== "ok" || jobShell.job._id === jobId;
+  const shellJob = jobShell?.status === "ok" ? jobShell.job : undefined;
+  const isExtractionJob =
+    hasCurrentJobShell && shellJob?.mode === "extraction";
+  const jobDetailsQuery = useProtectedQuery(
+    api.extraction.queries.getJobDetails,
+    isExtractionJob ? { jobId } : "skip",
+  );
   const jobDetails = jobDetailsQuery.data;
   const hasCurrentJobDetails =
     jobDetails?.status !== "ok" || jobDetails.job._id === jobId;
-  const isExtractionJob =
-    hasCurrentJobDetails &&
-    jobDetails?.status === "ok" &&
-    jobDetails.job.mode === "extraction";
   const jobProgressQuery = useProtectedQuery(
     api.extraction.queries.subscribeToJobProgress,
     isExtractionJob ? { jobId } : "skip",
@@ -412,10 +418,14 @@ export default function JobDetailPage() {
   );
 
   if (
-    jobDetailsQuery.isDeferred ||
-    jobDetails === undefined ||
-    !hasCurrentJobDetails ||
-    (isExtractionJob && resultsPageQuery.isDeferred)
+    jobShellQuery.isDeferred ||
+    jobShell === undefined ||
+    !hasCurrentJobShell ||
+    (isExtractionJob &&
+      (jobDetailsQuery.isDeferred ||
+        jobDetails === undefined ||
+        !hasCurrentJobDetails ||
+        resultsPageQuery.isDeferred))
   ) {
     return (
       <PageWrapper>
@@ -428,7 +438,7 @@ export default function JobDetailPage() {
     );
   }
 
-  if (jobDetails.status === "unauthenticated") {
+  if (jobShell.status === "unauthenticated") {
     return (
       <PageWrapper>
         <div className="container mx-auto max-w-4xl p-6">
@@ -445,7 +455,7 @@ export default function JobDetailPage() {
     );
   }
 
-  if (jobDetails.status === "no_access") {
+  if (jobShell.status === "no_access") {
     return (
       <PageWrapper>
         <div className="container mx-auto max-w-4xl p-6">
@@ -456,6 +466,68 @@ export default function JobDetailPage() {
             primaryLabel={tError('backToJobs')}
           />
         </div>
+      </PageWrapper>
+    );
+  }
+
+  if (shellJob?.mode === "chat") {
+    if (!shellJob.chatThreadId) {
+      return (
+        <PageWrapper>
+          {shellJob.error ? (
+            <div
+              role="alert"
+              className="flex min-h-[60vh] flex-col items-center justify-center gap-2 p-8 text-center text-destructive"
+              data-chat-state="error"
+              data-error-code={shellJob.error.code}
+            >
+              <strong>
+                {tErrors(`title.${shellJob.error.code}` as never)}
+              </strong>
+              <span className="text-sm text-muted-foreground">
+                {tErrors(`body.${shellJob.error.code}` as never)}
+              </span>
+            </div>
+          ) : (
+            <div data-chat-state="preparing">
+              <AuthStatePanel
+                variant="loading"
+                layout="fullscreen"
+                loadingStyle="spinner"
+                title={tExtraction("chatPreparing")}
+              />
+            </div>
+          )}
+        </PageWrapper>
+      );
+    }
+    return (
+      <div
+        // The app shell uses `min-h-screen` + page-level scroll for every
+        // other route, so there is no definite-height anchor for a
+        // `flex-1` chat shell to resolve against — the message list just
+        // grows the column and the composer rides the page scroll down.
+        // We bind the chat surface directly to the viewport with an
+        // explicit height. On mobile the sticky MobileNavbar (`h-14` =
+        // 3.5rem) sits above this, so we subtract it; above `lg` the
+        // navbar is `lg:hidden` and the sidebar is the only sibling, so
+        // the chat takes the full dynamic viewport.
+        className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden lg:h-dvh"
+        data-job-mode="chat"
+      >
+        <ChatJobView job={shellJob} threadId={shellJob.chatThreadId} />
+      </div>
+    );
+  }
+
+  if (jobDetails?.status !== "ok" || !hasCurrentJobDetails) {
+    return (
+      <PageWrapper>
+        <AuthStatePanel
+          variant="loading"
+          layout="fullscreen"
+          loadingStyle="spinner"
+        />
       </PageWrapper>
     );
   }
@@ -494,58 +566,6 @@ export default function JobDetailPage() {
     job.status === "pending" ||
     job.status === "downloading_pdfs" ||
     job.status === "extracting";
-
-  // Chat-mode branch: completely different layout — Papers sidebar + header + messages + composer.
-  // Extraction-mode continues through the existing TwoColumnLayout below.
-  if (job.mode === "chat") {
-    if (!job.chatThreadId) {
-      return (
-        <PageWrapper>
-          {job.error ? (
-            <div
-              role="alert"
-              className="flex min-h-[60vh] flex-col items-center justify-center gap-2 p-8 text-center text-destructive"
-              data-chat-state="error"
-              data-error-code={job.error.code}
-            >
-              <strong>
-                {tErrors(`title.${job.error.code}` as never)}
-              </strong>
-              <span className="text-sm text-muted-foreground">
-                {tErrors(`body.${job.error.code}` as never)}
-              </span>
-            </div>
-          ) : (
-            <div data-chat-state="preparing">
-              <AuthStatePanel
-                variant="loading"
-                layout="fullscreen"
-                loadingStyle="spinner"
-                title={tExtraction("chatPreparing")}
-              />
-            </div>
-          )}
-        </PageWrapper>
-      );
-    }
-    return (
-      <div
-        // The app shell uses `min-h-screen` + page-level scroll for every
-        // other route, so there is no definite-height anchor for a
-        // `flex-1` chat shell to resolve against — the message list just
-        // grows the column and the composer rides the page scroll down.
-        // We bind the chat surface directly to the viewport with an
-        // explicit height. On mobile the sticky MobileNavbar (`h-14` =
-        // 3.5rem) sits above this, so we subtract it; above `lg` the
-        // navbar is `lg:hidden` and the sidebar is the only sibling, so
-        // the chat takes the full dynamic viewport.
-        className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden lg:h-dvh"
-        data-job-mode="chat"
-      >
-        <ChatJobView job={job} threadId={job.chatThreadId} />
-      </div>
-    );
-  }
 
   return (
     <div

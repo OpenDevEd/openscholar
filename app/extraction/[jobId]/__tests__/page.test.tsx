@@ -578,10 +578,22 @@ describe("JobDetailPage", () => {
   it("renders the chat job view without ever mounting extraction-only UI", () => {
     render(<JobDetailPage />);
 
+    const mountedJobDetailsCalls = (
+      authQuery.useProtectedQuery as unknown as {
+        mock: {
+          calls: Array<[unknown, unknown]>;
+        };
+      }
+    ).mock.calls.filter(
+      ([query, args]) =>
+        query === api.extraction.queries.getJobDetails && args !== "skip",
+    );
+
     expect(screen.getByTestId("chat-job-view")).toHaveAttribute(
       "data-thread-id",
       "thread_1",
     );
+    expect(mountedJobDetailsCalls).toHaveLength(0);
     expect(document.querySelector('[data-job-mode="chat"]')).not.toBeNull();
     expect(document.querySelector('[data-job-mode="extraction"]')).toBeNull();
     expect(resultsToolbarSpy).not.toHaveBeenCalled();
@@ -592,7 +604,7 @@ describe("JobDetailPage", () => {
     expect(screen.queryByText("reportBuilder")).toBeNull();
   });
 
-  it("keeps showing the shared loading spinner while stale job details do not match the route", () => {
+  it("keeps showing the shared loading spinner while stale job shell data do not match the route", () => {
     currentJobIdMock.value = "job_2";
 
     (
