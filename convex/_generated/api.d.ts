@@ -126,6 +126,7 @@ import type * as lib_workpool from "../lib/workpool.js";
 import type * as library_backfill from "../library/backfill.js";
 import type * as library_backfillMutations from "../library/backfillMutations.js";
 import type * as library_collections from "../library/collections.js";
+import type * as library_counter from "../library/counter.js";
 import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
 import type * as maintenance_internal from "../maintenance/internal.js";
@@ -306,6 +307,7 @@ declare const fullApi: ApiFromModules<{
   "library/backfill": typeof library_backfill;
   "library/backfillMutations": typeof library_backfillMutations;
   "library/collections": typeof library_collections;
+  "library/counter": typeof library_counter;
   "library/mutations": typeof library_mutations;
   "library/queries": typeof library_queries;
   "maintenance/internal": typeof maintenance_internal;
