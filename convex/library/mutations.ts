@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
+import { resolveLibraryCount } from "./counter";
 
 export const backfillLibraryCount = internalMutation({
   args: { userId: v.id("users"), count: v.number() },
@@ -78,6 +79,12 @@ export const saveToLibrary = mutation({
       return existing._id;
     }
 
+    const currentCount = await resolveLibraryCount(
+      ctx,
+      user._id,
+      user.libraryItemCount,
+    );
+
     // New save: insert full document
     const id = await ctx.db.insert("libraryItems", {
       userId: user._id,
@@ -88,7 +95,6 @@ export const saveToLibrary = mutation({
     });
 
     // Increment denormalized counter
-    const currentCount = user.libraryItemCount ?? 0;
     await ctx.db.patch("users", user._id, { libraryItemCount: currentCount + 1 });
 
     return id;
@@ -110,6 +116,12 @@ export const removeFromLibraryByOpenalexId = mutation({
       .unique();
 
     if (item) {
+      const currentCount = await resolveLibraryCount(
+        ctx,
+        user._id,
+        user.libraryItemCount,
+      );
+
       // Unbounded: cascade delete of single item's collection memberships (safe: bounded by collections per user, ~50 max)
       const memberships = await ctx.db
         .query("libraryItemCollections")
@@ -126,8 +138,9 @@ export const removeFromLibraryByOpenalexId = mutation({
       await ctx.db.delete("libraryItems", item._id);
 
       // Decrement denormalized counter
-      const currentCount = user.libraryItemCount ?? 0;
-      await ctx.db.patch("users", user._id, { libraryItemCount: Math.max(0, currentCount - 1) });
+      await ctx.db.patch("users", user._id, {
+        libraryItemCount: Math.max(0, currentCount - 1),
+      });
     }
     return null;
   },
@@ -149,6 +162,12 @@ export const removeFromLibrary = mutation({
       throw createError("FORBIDDEN", "Not your library item");
     }
 
+    const currentCount = await resolveLibraryCount(
+      ctx,
+      user._id,
+      user.libraryItemCount,
+    );
+
     // Unbounded: cascade delete of single item's collection memberships (safe: bounded by collections per user, ~50 max)
     const memberships = await ctx.db
       .query("libraryItemCollections")
@@ -166,8 +185,9 @@ export const removeFromLibrary = mutation({
     await ctx.db.delete("libraryItems", args.itemId);
 
     // Decrement denormalized counter
-    const currentCount = user.libraryItemCount ?? 0;
-    await ctx.db.patch("users", user._id, { libraryItemCount: Math.max(0, currentCount - 1) });
+    await ctx.db.patch("users", user._id, {
+      libraryItemCount: Math.max(0, currentCount - 1),
+    });
 
     return null;
   },

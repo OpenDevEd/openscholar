@@ -1,9 +1,10 @@
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { paginationOptsValidator, type Cursor } from "convex/server";
-import { ConvexError, v } from "convex/values";
+import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { MAX_COLLECTION_MEMBERS, MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
+import { resolveLibraryCount } from "./counter";
 
 const librarySortValidator = v.union(
   v.literal("savedAt"),
@@ -209,35 +210,6 @@ async function collectLibraryItems(
     .withIndex(SORT_INDEX_MAP[sortBy], (q) => q.eq("userId", userId))
     .order(sortOrder)
     .take(MAX_LIBRARY_BROWSE);
-}
-
-async function resolveLibraryCount(
-  ctx: QueryCtx,
-  userId: Id<"users">,
-  storedCount: number | undefined,
-): Promise<number> {
-  if (storedCount !== undefined) {
-    return storedCount;
-  }
-
-  const items = await ctx.db
-    .query("libraryItems")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .take(MAX_LIBRARY_BROWSE + 1);
-
-  if (items.length > MAX_LIBRARY_BROWSE) {
-    throw new ConvexError({
-      code: "LIBRARY_COUNT_REPAIR_REQUIRED",
-      message: "Library counter missing for a user whose library exceeds the bounded recount window.",
-    });
-  }
-
-  console.error("[library] Missing libraryItemCount; using bounded live recount", {
-    userId,
-    liveCount: items.length,
-  });
-
-  return items.length;
 }
 
 function paginateLibraryItems(

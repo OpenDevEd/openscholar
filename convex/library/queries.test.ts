@@ -943,6 +943,70 @@ describe("library counter", () => {
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
     expect(count).toBe(2);
   });
+
+  it("saveToLibrary repairs a missing counter before incrementing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-existing",
+      title: "Existing paper",
+    });
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W-new",
+      rating: 4,
+      title: "New paper",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(2);
+  });
+
+  it("removeFromLibrary repairs a missing counter before decrementing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const itemId = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-remove",
+      title: "Remove me",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-keep",
+      title: "Keep me",
+    });
+
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
+      itemId: itemId!._id,
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(1);
+  });
+
+  it("removeFromLibraryByOpenalexId repairs a missing counter before decrementing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-remove",
+      title: "Remove me",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-keep",
+      title: "Keep me",
+    });
+
+    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+      openalexId: "https://openalex.org/W-remove",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(1);
+  });
 });
 
 describe("removeFromLibrary", () => {
