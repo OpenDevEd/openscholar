@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const convexQueryMock = vi.fn();
 const useQueryMock = vi.fn();
@@ -119,5 +119,26 @@ describe("<AISettingsPage> model catalog loading", () => {
       ([queryRef]) => queryRef === "models:list",
     );
     expect(liveModelQueries).toHaveLength(0);
+  });
+
+  it("renders an explicit failure state with retry when the catalog read rejects", async () => {
+    convexQueryMock
+      .mockRejectedValueOnce(new Error("catalog offline"))
+      .mockResolvedValueOnce([]);
+
+    render(<AISettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "somethingWentWrong",
+      );
+    });
+
+    const callsBeforeRetry = convexQueryMock.mock.calls.length;
+    fireEvent.click(screen.getByText("retry"));
+
+    await waitFor(() => {
+      expect(convexQueryMock.mock.calls.length).toBeGreaterThan(callsBeforeRetry);
+    });
   });
 });

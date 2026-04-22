@@ -90,11 +90,14 @@ export default function AISettingsPage() {
   const queryProvider = provider === "openrouter" ? undefined : provider;
   const [rawModels, setRawModels] = useState<ModelCatalogOption[] | null>(null);
   const [loadingModels, setLoadingModels] = useState(true);
+  const [modelCatalogFailed, setModelCatalogFailed] = useState(false);
+  const [modelCatalogRequestKey, setModelCatalogRequestKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setRawModels(null);
     setLoadingModels(true);
+    setModelCatalogFailed(false);
 
     void convex
       .query(api.models.queries.listCatalogOptions, { provider: queryProvider })
@@ -105,6 +108,7 @@ export default function AISettingsPage() {
       .catch((error) => {
         console.error("[AISettingsPage] Failed to load model catalog", error);
         if (cancelled) return;
+        setModelCatalogFailed(true);
         setRawModels([]);
       })
       .finally(() => {
@@ -115,7 +119,7 @@ export default function AISettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [convex, queryProvider]);
+  }, [convex, modelCatalogRequestKey, queryProvider]);
 
   // Map DB models to the shape the UI expects
   const models = useMemo(() => {
@@ -153,6 +157,10 @@ export default function AISettingsPage() {
     setModel(newModel);
     setModelSectionExpanded(false);
     setModelSearch("");
+  };
+
+  const handleRetryModelCatalog = () => {
+    setModelCatalogRequestKey((current) => current + 1);
   };
 
   const handleSaveApiKey = () => {
@@ -567,6 +575,31 @@ export default function AISettingsPage() {
                 <ChevronDown className="w-5 h-5 text-muted-foreground" />
               )}
             </button>
+
+            {modelCatalogFailed && !loadingModels && (
+              <div
+                role="alert"
+                className="rounded-xl border border-destructive/20 bg-destructive/5 p-3"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-4 w-4 text-destructive" />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">
+                      {tc("somethingWentWrong")}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetryModelCatalog}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      {tc("retry")}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Expandable Model List */}
             <AnimatePresence>
