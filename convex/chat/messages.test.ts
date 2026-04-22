@@ -756,6 +756,50 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(realError.aborted).toBeUndefined();
   });
 
+  it("M2 — listThreadMessages returns active stream sync alongside the persisted page", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+    const caller = asCaller(t, "c_msg");
+
+    mockDoStream.mockImplementation(
+      partialDeltasThenHangDoStream(["hello ", "world"]),
+    );
+
+    const actionPromise = t.action(
+      internal.chat.messages.generateResponse,
+      { threadId, promptMessageId },
+    );
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    await new Promise((r) => setTimeout(r, 400));
+
+    const result = await caller.query(api.chat.messages.listThreadMessages, {
+      threadId,
+      paginationOpts: { numItems: 10, cursor: null },
+      streamArgs: { kind: "list", startOrder: 0 },
+    });
+
+    expect(
+      result.page.some(
+        (m: { role?: string; text?: string }) =>
+          m.role === "user" && m.text === "ping",
+      ),
+    ).toBe(true);
+    expect(result.streams).toMatchObject({
+      kind: "list",
+      messages: expect.arrayContaining([
+        expect.objectContaining({ status: "streaming" }),
+      ]),
+    });
+
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+    await actionPromise;
+  });
+
   it("A8 — maxRetries:0 — a retryable doStream failure is NOT retried", async () => {
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {

@@ -26,11 +26,14 @@ import {
   query,
 } from "../_generated/server";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import {
+  paginationOptsValidator,
+  type PaginationOptions,
+} from "convex/server";
 import {
   listMessages,
-  listUIMessages,
   syncStreams,
+  toUIMessages,
   vStreamArgs,
 } from "@convex-dev/agent";
 import { components, internal } from "../_generated/api";
@@ -335,6 +338,20 @@ async function saveStandaloneErrorMessage(
 /*                        Reactive message list                       */
 /* ────────────────────────────────────────────────────────────────── */
 
+const THREAD_MESSAGE_ROWS_READ_MULTIPLIER = 8;
+const THREAD_MESSAGE_MAX_BYTES_READ = 256 * 1024;
+
+function withThreadMessageReadCaps(paginationOpts: PaginationOptions) {
+  return {
+    ...paginationOpts,
+    maximumRowsRead:
+      paginationOpts.maximumRowsRead ??
+      paginationOpts.numItems * THREAD_MESSAGE_ROWS_READ_MULTIPLIER,
+    maximumBytesRead:
+      paginationOpts.maximumBytesRead ?? THREAD_MESSAGE_MAX_BYTES_READ,
+  };
+}
+
 export const listThreadMessages = query({
   args: {
     threadId: v.string(),
@@ -349,9 +366,11 @@ export const listThreadMessages = query({
   }),
   handler: async (ctx, args) => {
     await authorizeThreadAccess(ctx, args.threadId);
-    const [paginated, rawPage, streams] = await Promise.all([
-      listUIMessages(ctx, components.agent, args),
-      listMessages(ctx, components.agent, args),
+    const [rawPage, streams] = await Promise.all([
+      listMessages(ctx, components.agent, {
+        ...args,
+        paginationOpts: withThreadMessageReadCaps(args.paginationOpts),
+      }),
       // includeStatuses is required for aborted stream rows to reach the
       // client — the library default is ["streaming"] only
       // (@convex-dev/agent/src/component/streams.ts:125), which silently
@@ -362,7 +381,11 @@ export const listThreadMessages = query({
         includeStatuses: ["streaming", "finished", "aborted"],
       }),
     ]);
-    // `listUIMessages` drops the `error` field during the doc→UI
+    const paginated = {
+      ...rawPage,
+      page: toUIMessages(rawPage.page),
+    };
+    // `toUIMessages` drops the `error` field during the doc→UI
     // conversion. Attach it back by id so the client's failure Alert
     // can classify and render without a second query.
     // Aborted messages are a special case: the library's call.fail path
