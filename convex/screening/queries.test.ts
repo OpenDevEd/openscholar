@@ -3,6 +3,17 @@ import { describe, it, expect } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import {
+  recordQualifiedResult,
+  recordTerminalResult,
+} from "./aggregates";
+import { setupScreeningAggregates } from "./aggregates.test-support";
+
+function createScreeningTest() {
+  const t = convexTest(schema);
+  setupScreeningAggregates(t);
+  return t;
+}
 
 // Helper: create a user directly in the mock DB
 async function seedUser(
@@ -43,9 +54,9 @@ async function seedScreeningJob(
       userId,
       status: overrides.status ?? "processing",
       totalPapers: overrides.totalPapers ?? 10,
-      processedPapers: overrides.processedPapers ?? 3,
-      failedPapers: overrides.failedPapers ?? 1,
-      qualifiedPapers: overrides.qualifiedPapers ?? 2,
+      processedPapers: overrides.processedPapers ?? 0,
+      failedPapers: overrides.failedPapers ?? 0,
+      qualifiedPapers: overrides.qualifiedPapers ?? 0,
       questions: [{ key: "q1", question: "Is this relevant?" }],
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
@@ -73,29 +84,77 @@ async function seedScreeningResult(
     authors: string[];
     publicationYear: number;
     doi: string;
+    recordAggregate: boolean;
   }> = {}
 ) {
   return await t.run(async (ctx) => {
-    return await ctx.db.insert("screeningResults", {
+    const resultId = await ctx.db.insert("screeningResults", {
       jobId,
       openalexId: overrides.openalexId ?? "https://openalex.org/W123",
       title: overrides.title ?? "Test Paper",
       status: overrides.status ?? "completed",
-      answers: overrides.answers ?? { q1: true },
-      score: overrides.score ?? 1,
-      stars: overrides.stars ?? 3,
-      qualified: overrides.qualified ?? true,
-      authors: overrides.authors,
-      publicationYear: overrides.publicationYear,
-      doi: overrides.doi,
+      ...(overrides.answers !== undefined
+        ? { answers: overrides.answers }
+        : { answers: { q1: true } }),
+      ...(overrides.score !== undefined ? { score: overrides.score } : { score: 1 }),
+      ...(overrides.stars !== undefined ? { stars: overrides.stars } : { stars: 3 }),
+      ...(overrides.qualified !== undefined
+        ? { qualified: overrides.qualified }
+        : { qualified: true }),
+      ...(overrides.authors !== undefined ? { authors: overrides.authors } : {}),
+      ...(overrides.publicationYear !== undefined
+        ? { publicationYear: overrides.publicationYear }
+        : {}),
+      ...(overrides.doi !== undefined ? { doi: overrides.doi } : {}),
       createdAt: Date.now(),
     });
+    const result = (await ctx.db.get("screeningResults", resultId))!;
+    if (overrides.recordAggregate ?? true) {
+      await recordTerminalResult(ctx, result);
+      await recordQualifiedResult(ctx, result);
+    }
+    return result;
   });
+}
+
+async function seedAggregateProgress(
+  t: ReturnType<typeof convexTest>,
+  jobId: Id<"screeningJobs">,
+  counts: {
+    completedCount: number;
+    skippedCount?: number;
+    failedCount: number;
+    qualifiedCount: number;
+  },
+) {
+  for (let i = 0; i < counts.completedCount; i++) {
+    await seedScreeningResult(t, jobId, {
+      status: "completed",
+      qualified: i < counts.qualifiedCount,
+      openalexId: `https://openalex.org/WC${i}`,
+    });
+  }
+
+  for (let i = 0; i < (counts.skippedCount ?? 0); i++) {
+    await seedScreeningResult(t, jobId, {
+      status: "skipped",
+      qualified: false,
+      openalexId: `https://openalex.org/WS${i}`,
+    });
+  }
+
+  for (let i = 0; i < counts.failedCount; i++) {
+    await seedScreeningResult(t, jobId, {
+      status: "failed",
+      qualified: false,
+      openalexId: `https://openalex.org/WF${i}`,
+    });
+  }
 }
 
 describe("getScreeningResultsForExport", () => {
   it("returns null for unauthenticated calls", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_exp1", "exp1@test.com");
     const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
     await seedScreeningResult(t, jobId);
@@ -106,7 +165,7 @@ describe("getScreeningResultsForExport", () => {
   });
 
   it("returns null for non-owner", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user1 = await seedUser(t, "clerk_exp2", "exp2@test.com");
     const user2 = await seedUser(t, "clerk_exp3", "exp3@test.com");
     const jobId = await seedScreeningJob(t, user1._id, { status: "completed" });
@@ -118,9 +177,12 @@ describe("getScreeningResultsForExport", () => {
   });
 
   it("returns job metadata and results for authenticated owner", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_exp4", "exp4@test.com");
-    const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
+    const jobId = await seedScreeningJob(t, user._id, {
+      status: "completed",
+      qualifiedPapers: 99,
+    });
 
     // Seed two results: one fully populated, one minimal
     await seedScreeningResult(t, jobId, {
@@ -155,7 +217,7 @@ describe("getScreeningResultsForExport", () => {
     expect(result!.job.questions).toHaveLength(1);
     expect(result!.job.scoringConfig).toBeDefined();
     expect(result!.job.totalPapers).toBeDefined();
-    expect(result!.job.qualifiedPapers).toBeDefined();
+    expect(result!.job.qualifiedPapers).toBe(1);
     expect(result!.job.createdAt).toBeDefined();
 
     // Results
@@ -174,7 +236,7 @@ describe("getScreeningResultsForExport", () => {
   });
 
   it("includes failed results with undefined answers", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_exp5", "exp5@test.com");
     const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
 
@@ -206,7 +268,7 @@ describe("getScreeningResultsForExport", () => {
 
 describe("getScreeningProgress", () => {
   it("returns null for unauthenticated calls", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog1", "prog1@test.com");
     const jobId = await seedScreeningJob(t, user._id);
 
@@ -216,7 +278,7 @@ describe("getScreeningProgress", () => {
   });
 
   it("returns null for non-existent jobId", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog2", "prog2@test.com");
     const asUser = t.withIdentity({ subject: "clerk_prog2" });
 
@@ -231,7 +293,7 @@ describe("getScreeningProgress", () => {
   });
 
   it("returns null for another user's job (user isolation)", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user1 = await seedUser(t, "clerk_prog3", "prog3@test.com");
     const user2 = await seedUser(t, "clerk_prog4", "prog4@test.com");
     const jobId = await seedScreeningJob(t, user1._id);
@@ -242,14 +304,20 @@ describe("getScreeningProgress", () => {
   });
 
   it("returns correct progress object", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog5", "prog5@test.com");
     const jobId = await seedScreeningJob(t, user._id, {
       status: "processing",
       totalPapers: 10,
-      processedPapers: 3,
-      failedPapers: 1,
-      qualifiedPapers: 2,
+      processedPapers: 90,
+      failedPapers: 80,
+      qualifiedPapers: 70,
+    });
+    await seedAggregateProgress(t, jobId, {
+      completedCount: 2,
+      skippedCount: 1,
+      failedCount: 1,
+      qualifiedCount: 2,
     });
 
     const asUser = t.withIdentity({ subject: "clerk_prog5" });
@@ -261,11 +329,11 @@ describe("getScreeningProgress", () => {
     expect(result!.processedPapers).toBe(3);
     expect(result!.failedPapers).toBe(1);
     expect(result!.qualifiedPapers).toBe(2);
-    expect(result!.percentComplete).toBe(40); // floor((3+1)/10 * 100) = 40 (includes failedPapers)
+    expect(result!.percentComplete).toBe(40); // (2 completed + 1 skipped + 1 failed) / 10
   });
 
   it("percentComplete is 0 when totalPapers is 0", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog6", "prog6@test.com");
     const jobId = await seedScreeningJob(t, user._id, {
       totalPapers: 0,
@@ -282,13 +350,18 @@ describe("getScreeningProgress", () => {
   });
 
   it("percentComplete floors correctly (e.g., 3/7 papers -> 42%)", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog7", "prog7@test.com");
     const jobId = await seedScreeningJob(t, user._id, {
       totalPapers: 7,
-      processedPapers: 3,
-      failedPapers: 0,
-      qualifiedPapers: 1,
+      processedPapers: 30,
+      failedPapers: 20,
+      qualifiedPapers: 10,
+    });
+    await seedAggregateProgress(t, jobId, {
+      completedCount: 3,
+      failedCount: 0,
+      qualifiedCount: 1,
     });
 
     const asUser = t.withIdentity({ subject: "clerk_prog7" });
@@ -299,15 +372,20 @@ describe("getScreeningProgress", () => {
   });
 
   it("percentComplete capped at 99% while job is still processing", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog8", "prog8@test.com");
     // 199/200 = 99.5% — old Math.round would show 100%
     const jobId = await seedScreeningJob(t, user._id, {
       status: "processing",
       totalPapers: 200,
-      processedPapers: 199,
-      failedPapers: 0,
-      qualifiedPapers: 100,
+      processedPapers: 1,
+      failedPapers: 1,
+      qualifiedPapers: 1,
+    });
+    await seedAggregateProgress(t, jobId, {
+      completedCount: 199,
+      failedCount: 0,
+      qualifiedCount: 100,
     });
 
     const asUser = t.withIdentity({ subject: "clerk_prog8" });
@@ -318,14 +396,19 @@ describe("getScreeningProgress", () => {
   });
 
   it("percentComplete is 100% when job is in a terminal state", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog9", "prog9@test.com");
     const jobId = await seedScreeningJob(t, user._id, {
       status: "completed",
       totalPapers: 10,
-      processedPapers: 8,
-      failedPapers: 2,
-      qualifiedPapers: 5,
+      processedPapers: 0,
+      failedPapers: 0,
+      qualifiedPapers: 0,
+    });
+    await seedAggregateProgress(t, jobId, {
+      completedCount: 8,
+      failedCount: 2,
+      qualifiedCount: 5,
     });
 
     const asUser = t.withIdentity({ subject: "clerk_prog9" });
@@ -339,12 +422,19 @@ describe("getScreeningProgress", () => {
 
 describe("getScreeningJob", () => {
   it("returns full job record for owner", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_job1", "job1@test.com");
     const jobId = await seedScreeningJob(t, user._id, {
       status: "processing",
       totalPapers: 5,
-      processedPapers: 2,
+      processedPapers: 55,
+      failedPapers: 44,
+      qualifiedPapers: 33,
+    });
+    await seedAggregateProgress(t, jobId, {
+      completedCount: 2,
+      failedCount: 1,
+      qualifiedCount: 1,
     });
 
     const asUser = t.withIdentity({ subject: "clerk_job1" });
@@ -354,12 +444,14 @@ describe("getScreeningJob", () => {
     expect(result!.status).toBe("processing");
     expect(result!.totalPapers).toBe(5);
     expect(result!.processedPapers).toBe(2);
+    expect(result!.failedPapers).toBe(1);
+    expect(result!.qualifiedPapers).toBe(1);
     expect(result!.questions).toHaveLength(1);
     expect(result!.userId).toBeDefined();
   });
 
   it("returns null for non-owner", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user1 = await seedUser(t, "clerk_job2", "job2@test.com");
     const user2 = await seedUser(t, "clerk_job3", "job3@test.com");
     const jobId = await seedScreeningJob(t, user1._id);
@@ -372,7 +464,7 @@ describe("getScreeningJob", () => {
 
 describe("listUserScreeningJobs", () => {
   it("returns empty array when no jobs exist for user", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     await seedUser(t, "clerk_list1", "list1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_list1" });
 
@@ -381,7 +473,7 @@ describe("listUserScreeningJobs", () => {
   });
 
   it("returns jobs ordered by creation time descending (newest first)", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_list2", "list2@test.com");
 
     // Create three jobs with different statuses
@@ -399,8 +491,32 @@ describe("listUserScreeningJobs", () => {
     expect(result[2]._id).toBe(job1);
   });
 
+  it("uses aggregate-backed counts in job summaries", async () => {
+    const t = createScreeningTest();
+    const user = await seedUser(t, "clerk_list_counts", "list-counts@test.com");
+    const jobId = await seedScreeningJob(t, user._id, {
+      status: "processing",
+      totalPapers: 6,
+      processedPapers: 99,
+      qualifiedPapers: 88,
+    });
+    await seedAggregateProgress(t, jobId, {
+      completedCount: 2,
+      skippedCount: 1,
+      failedCount: 0,
+      qualifiedCount: 1,
+    });
+
+    const asUser = t.withIdentity({ subject: "clerk_list_counts" });
+    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, {});
+
+    expect(result).toHaveLength(1);
+    expect(result[0].processedPapers).toBe(3);
+    expect(result[0].qualifiedPapers).toBe(1);
+  });
+
   it("respects limit parameter (default 20)", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_list3", "list3@test.com");
 
     // Create 3 jobs, request limit of 2
@@ -415,7 +531,7 @@ describe("listUserScreeningJobs", () => {
   });
 
   it("returns only jobs belonging to authenticated user (user isolation)", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user1 = await seedUser(t, "clerk_list4", "list4@test.com");
     const user2 = await seedUser(t, "clerk_list5", "list5@test.com");
 
@@ -434,7 +550,7 @@ describe("listUserScreeningJobs", () => {
   });
 
   it("returns empty array for unauthenticated users", async () => {
-    const t = convexTest(schema);
+    const t = createScreeningTest();
     const user = await seedUser(t, "clerk_list6", "list6@test.com");
     await seedScreeningJob(t, user._id);
 

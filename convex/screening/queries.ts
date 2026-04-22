@@ -1,5 +1,6 @@
-import { query, internalQuery } from "../_generated/server";
+import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 import {
   screeningJobStatusValidator,
   screeningQuestionValidator,
@@ -8,7 +9,20 @@ import {
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
-import { isTerminalScreeningJobStatus } from "./lifecycle";
+import { readScreeningProgressCounts } from "./aggregates";
+import { buildScreeningProgressSnapshot } from "./progress";
+
+async function readJobProgressSnapshot(
+  ctx: Pick<QueryCtx, "runQuery">,
+  job: Pick<Doc<"screeningJobs">, "_id" | "status" | "totalPapers">,
+) {
+  const counts = await readScreeningProgressCounts(ctx, job._id);
+  return buildScreeningProgressSnapshot({
+    status: job.status,
+    totalPapers: job.totalPapers,
+    ...counts,
+  });
+}
 
 /**
  * Get real-time progress of a screening job.
@@ -37,28 +51,7 @@ export const getScreeningProgress = query({
 
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
-
-    const isTerminal = isTerminalScreeningJobStatus(job.status);
-    const handled = job.processedPapers + job.failedPapers;
-
-    const rawPercent =
-      job.totalPapers === 0
-        ? 0
-        : Math.floor((handled / job.totalPapers) * 100);
-
-    // Never show 100% while the job is still active — avoids the
-    // Math.round(99.5)→100 rounding bug and the transaction-gap
-    // window between counter increment and status finalization.
-    const percentComplete = isTerminal ? 100 : Math.min(rawPercent, 99);
-
-    return {
-      status: job.status,
-      totalPapers: job.totalPapers,
-      processedPapers: job.processedPapers,
-      failedPapers: job.failedPapers,
-      qualifiedPapers: job.qualifiedPapers,
-      percentComplete,
-    };
+    return await readJobProgressSnapshot(ctx, job);
   },
 });
 
@@ -112,6 +105,7 @@ export const getScreeningJob = query({
 
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
+    const progress = await readJobProgressSnapshot(ctx, job);
 
     return {
       _id: job._id,
@@ -119,9 +113,9 @@ export const getScreeningJob = query({
       userId: job.userId,
       status: job.status,
       totalPapers: job.totalPapers,
-      processedPapers: job.processedPapers,
-      failedPapers: job.failedPapers,
-      qualifiedPapers: job.qualifiedPapers,
+      processedPapers: progress.processedPapers,
+      failedPapers: progress.failedPapers,
+      qualifiedPapers: progress.qualifiedPapers,
       questions: job.questions,
       scoringConfig: job.scoringConfig,
       targetCollectionId: job.targetCollectionId,
@@ -166,21 +160,28 @@ export const listUserScreeningJobs = query({
       .take(args.limit ?? 20);
 
     return Promise.all(
-      jobs.map(async (j) => ({
-        _id: j._id,
-        _creationTime: j._creationTime,
-        status: j.status,
-        totalPapers: j.totalPapers,
-        processedPapers: j.processedPapers,
-        qualifiedPapers: j.qualifiedPapers,
-        createdAt: j.createdAt,
-        completedAt: j.completedAt,
-        questions: j.questions,
-        targetCollectionId: j.targetCollectionId,
-        targetCollectionName: j.targetCollectionId
-          ? (await ctx.db.get("collections", j.targetCollectionId))?.name
-          : undefined,
-      }))
+      jobs.map(async (job) => {
+        const [progress, targetCollection] = await Promise.all([
+          readJobProgressSnapshot(ctx, job),
+          job.targetCollectionId
+            ? ctx.db.get("collections", job.targetCollectionId)
+            : Promise.resolve(null),
+        ]);
+
+        return {
+          _id: job._id,
+          _creationTime: job._creationTime,
+          status: job.status,
+          totalPapers: job.totalPapers,
+          processedPapers: progress.processedPapers,
+          qualifiedPapers: progress.qualifiedPapers,
+          createdAt: job.createdAt,
+          completedAt: job.completedAt,
+          questions: job.questions,
+          targetCollectionId: job.targetCollectionId,
+          targetCollectionName: targetCollection?.name,
+        };
+      }),
     );
   },
 });
@@ -232,6 +233,7 @@ export const getScreeningResultsForExport = query({
 
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
+    const progress = await readJobProgressSnapshot(ctx, job);
 
     const results = await ctx.db
       .query("screeningResults")
@@ -245,7 +247,7 @@ export const getScreeningResultsForExport = query({
         questions: job.questions,
         scoringConfig: job.scoringConfig,
         totalPapers: job.totalPapers,
-        qualifiedPapers: job.qualifiedPapers,
+        qualifiedPapers: progress.qualifiedPapers,
         createdAt: job.createdAt,
         completedAt: job.completedAt,
       },
@@ -297,15 +299,16 @@ export const getJobInternal = internalQuery({
   handler: async (ctx, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job) return null;
+    const progress = await readJobProgressSnapshot(ctx, job);
 
     return {
       _id: job._id,
       userId: job.userId,
       status: job.status,
       totalPapers: job.totalPapers,
-      processedPapers: job.processedPapers,
-      failedPapers: job.failedPapers,
-      qualifiedPapers: job.qualifiedPapers,
+      processedPapers: progress.processedPapers,
+      failedPapers: progress.failedPapers,
+      qualifiedPapers: progress.qualifiedPapers,
       questions: job.questions,
       scoringConfig: job.scoringConfig,
       targetCollectionId: job.targetCollectionId,
