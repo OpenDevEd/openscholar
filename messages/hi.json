@@ -1934,6 +1934,7 @@
     "exportAsCSV": "CSV के रूप में डाउनलोड करें",
     "exportAsJSON": "JSON के रूप में डाउनलोड करें",
     "exportSuccess": "लाइब्रेरी सफलतापूर्वक निर्यात की गई",
+    "exportError": "लाइब्रेरी निर्यात करने में विफल",
     "removedFromLibrary": "लाइब्रेरी से हटाया गया",
     "removeFromLibraryError": "आइटम हटाने में विफल",
     "deleteCollectionError": "संग्रह हटाने में विफल",

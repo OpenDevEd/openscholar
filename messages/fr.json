@@ -1934,6 +1934,7 @@
     "exportAsCSV": "Télécharger en CSV",
     "exportAsJSON": "Télécharger en JSON",
     "exportSuccess": "Bibliothèque exportée avec succès",
+    "exportError": "Échec de l'export de la bibliothèque",
     "removedFromLibrary": "Retiré de la bibliothèque",
     "removeFromLibraryError": "Échec de la suppression",
     "deleteCollectionError": "Échec de la suppression de la collection",

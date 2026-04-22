@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import {
+  useProtectedPaginatedQuery,
+  useProtectedQuery,
+} from "@/lib/auth/use-auth-query";
 import { showConfirmation } from "@/lib/confirmation";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
@@ -65,6 +68,7 @@ export function LibraryPageClient() {
   const t = useTranslations("libraryPage");
   const tf = useTranslations("searchFilters");
   const format = useFormatter();
+  const convex = useConvex();
   const [params, setParams] = useQueryStates(librarySearchParams);
 
   const [rawSearch, setRawSearch] = useState(params.q);
@@ -125,9 +129,8 @@ export function LibraryPageClient() {
     [params.sort],
   );
 
-  const { data: filteredItems } = useProtectedQuery(
-    api.library.queries.listLibrary,
-    {
+  const libraryFilters = useMemo(
+    () => ({
       sortBy: resolvedSortBy,
       sortOrder: resolvedSortOrder,
       minRating: params.rmin ?? undefined,
@@ -137,14 +140,137 @@ export function LibraryPageClient() {
       yearFrom: params.yf ?? undefined,
       yearTo: params.yt ?? undefined,
       collectionId: (params.col ?? undefined) as Id<"collections"> | undefined,
-      searchText: queryText || undefined,
-    },
+    }),
+    [
+      params.col,
+      params.rmax,
+      params.rmin,
+      params.yf,
+      params.yt,
+      resolvedSortBy,
+      resolvedSortOrder,
+      savedAfter,
+      savedBefore,
+    ],
   );
+
+  const browseItems = useProtectedPaginatedQuery(
+    api.library.queries.browseLibrary,
+    queryText ? "skip" : libraryFilters,
+    { initialNumItems: PAGE_SIZE },
+  );
+  const searchItems = useProtectedPaginatedQuery(
+    api.library.queries.searchLibrary,
+    queryText
+      ? {
+          ...libraryFilters,
+          searchText: queryText,
+        }
+      : "skip",
+    { initialNumItems: PAGE_SIZE },
+  );
+  const paginatedItems = queryText ? searchItems : browseItems;
+
+  useEffect(() => {
+    if (paginatedItems.status !== "CanLoadMore") return;
+    if (paginatedItems.results.length > 0) return;
+    paginatedItems.loadMore(PAGE_SIZE * 5);
+  }, [
+    paginatedItems.loadMore,
+    paginatedItems.results.length,
+    paginatedItems.status,
+  ]);
+
+  useEffect(() => {
+    const requiredItems = params.p * PAGE_SIZE;
+    if (paginatedItems.results.length >= requiredItems) return;
+    if (paginatedItems.status !== "CanLoadMore") return;
+    paginatedItems.loadMore(
+      Math.max(PAGE_SIZE, requiredItems - paginatedItems.results.length),
+    );
+  }, [
+    paginatedItems.loadMore,
+    paginatedItems.results.length,
+    paginatedItems.status,
+    params.p,
+  ]);
+
+  const exportQueryArgs = useMemo(
+    () => ({
+      ...libraryFilters,
+      searchText: queryText || undefined,
+    }),
+    [libraryFilters, queryText],
+  );
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const fetchExportItems = useCallback(async () => {
+    return await convex.query(api.library.queries.listLibrary, exportQueryArgs);
+  }, [convex, exportQueryArgs]);
+
+  const handleExportCSV = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const exportItems = await fetchExportItems();
+      if (exportItems.length === 0) return;
+      exportLibraryAsCSV(exportItems);
+      toast.success(t("exportSuccess"));
+    } catch (error) {
+      console.error("[Library] Failed to export CSV:", error);
+      toast.error(t("exportError"));
+    } finally {
+      setIsExporting(false);
+    }
+  }, [fetchExportItems, isExporting, t]);
+
+  const handleExportJSON = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const exportItems = await fetchExportItems();
+      if (exportItems.length === 0) return;
+      exportLibraryAsJSON(exportItems);
+      toast.success(t("exportSuccess"));
+    } catch (error) {
+      console.error("[Library] Failed to export JSON:", error);
+      toast.error(t("exportError"));
+    } finally {
+      setIsExporting(false);
+    }
+  }, [fetchExportItems, isExporting, t]);
+
+  const filteredItems = paginatedItems.results;
 
   const removeItem = useMutation(api.library.mutations.removeFromLibrary);
   const { setRating } = useRatingsStore();
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
+
+  const loadedPageCount = Math.max(
+    1,
+    Math.ceil(filteredItems.length / PAGE_SIZE),
+  );
+  const effectivePage =
+    paginatedItems.status === "Exhausted"
+      ? Math.min(params.p, loadedPageCount)
+      : params.p;
+
+  useEffect(() => {
+    if (paginatedItems.status !== "Exhausted") return;
+    if (params.p <= loadedPageCount) return;
+    setParams({ p: loadedPageCount });
+  }, [loadedPageCount, paginatedItems.status, params.p, setParams]);
+
+  const isWalkingEmpty =
+    filteredItems.length === 0 &&
+    (paginatedItems.status === "CanLoadMore" ||
+      paginatedItems.status === "LoadingMore");
+  const isPageLoading =
+    filteredItems.length < effectivePage * PAGE_SIZE &&
+    paginatedItems.status !== "Exhausted";
+  const isLoading = paginatedItems.isInitialLoading || isWalkingEmpty || isPageLoading;
 
   // Force list-detail on mobile
   const effectiveViewMode: ViewMode = isMobile
@@ -214,20 +340,6 @@ export function LibraryPageClient() {
     [],
   );
 
-  const handleExportCSV = useCallback(() => {
-    if (filteredItems && filteredItems.length > 0) {
-      exportLibraryAsCSV(filteredItems);
-      toast.success(t("exportSuccess"));
-    }
-  }, [filteredItems, t]);
-
-  const handleExportJSON = useCallback(() => {
-    if (filteredItems && filteredItems.length > 0) {
-      exportLibraryAsJSON(filteredItems);
-      toast.success(t("exportSuccess"));
-    }
-  }, [filteredItems, t]);
-
   const clearSidebarFilters = useCallback(() => {
     setParams({
       rmin: null,
@@ -258,17 +370,6 @@ export function LibraryPageClient() {
     });
   }, [setParams]);
 
-  const items = filteredItems ?? [];
-  const filteredTotal = items.length;
-  const totalPages = Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
-  const effectivePage = Math.min(params.p, totalPages);
-
-  useEffect(() => {
-    if (params.p !== effectivePage) {
-      setParams({ p: effectivePage });
-    }
-  }, [effectivePage, params.p, setParams]);
-
   const pageResults = useMemo(
     () =>
       paperResults.slice(
@@ -279,17 +380,26 @@ export function LibraryPageClient() {
   );
 
   const rangeStart =
-    filteredTotal > 0 ? (effectivePage - 1) * PAGE_SIZE + 1 : 0;
-  const rangeEnd = Math.min(effectivePage * PAGE_SIZE, filteredTotal);
+    pageResults.length > 0 ? (effectivePage - 1) * PAGE_SIZE + 1 : 0;
+  const rangeEnd = rangeStart + pageResults.length - 1;
+  const filteredTotal =
+    paginatedItems.status === "Exhausted"
+      ? filteredItems.length
+      : undefined;
+  const totalPages =
+    filteredTotal === undefined
+      ? undefined
+      : Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
+  const canGoNext =
+    filteredItems.length > effectivePage * PAGE_SIZE ||
+    paginatedItems.status === "CanLoadMore" ||
+    paginatedItems.status === "LoadingMore";
 
   const setPageParam = useCallback(
     (page: number) => {
-      setParams(
-        { p: Math.max(1, Math.min(page, totalPages)) },
-        { scroll: true },
-      );
+      setParams({ p: Math.max(1, page) }, { scroll: true });
     },
-    [setParams, totalPages],
+    [setParams],
   );
 
   const selectedCollection = useMemo(
@@ -416,14 +526,13 @@ export function LibraryPageClient() {
     params.yt !== null ||
     params.col !== null;
 
-  const isLoading = filteredItems === undefined;
   const isEmptyLibrary =
     !isLoading &&
-    filteredTotal === 0 &&
+    filteredItems.length === 0 &&
     !hasNarrowingCriteria &&
     totalCount === 0;
   const isNoResults =
-    !isLoading && filteredTotal === 0 && hasNarrowingCriteria;
+    !isLoading && filteredItems.length === 0 && hasNarrowingCriteria;
 
   return (
     <TranslationContext.Provider value={{}}>
@@ -489,9 +598,7 @@ export function LibraryPageClient() {
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
                   totalCount={totalCount}
-                  filteredCount={
-                    filteredItems ? filteredTotal : undefined
-                  }
+                  filteredCount={filteredTotal}
                   activeFilterLabels={activeFilterLabels}
                   viewMode={params.view}
                   onViewModeChange={(mode) =>
@@ -499,7 +606,12 @@ export function LibraryPageClient() {
                   }
                   onExportCSV={handleExportCSV}
                   onExportJSON={handleExportJSON}
-                  hasExportableResults={filteredTotal > 0}
+                  hasExportableResults={
+                    !isExporting &&
+                    !isEmptyLibrary &&
+                    !isNoResults &&
+                    totalCount !== 0
+                  }
                 />
 
                 {isLoading && (
@@ -567,11 +679,14 @@ export function LibraryPageClient() {
                           {t("showingRange", {
                             start: rangeStart,
                             end: rangeEnd,
-                            total: filteredTotal,
+                            total:
+                              filteredTotal === undefined
+                                ? `${filteredItems.length}+`
+                                : filteredTotal,
                           })}
                         </p>
 
-                        {totalPages > 1 && (
+                        {(canGoNext || effectivePage > 1) && (
                           <div className="flex items-center gap-2">
                             <Button
                               type="button"
@@ -588,8 +703,10 @@ export function LibraryPageClient() {
                             </Button>
 
                             <span className="min-w-[110px] text-center text-sm text-muted-foreground">
-                              {format.number(effectivePage)} /{" "}
-                              {format.number(totalPages)}
+                              {format.number(effectivePage)}
+                              {totalPages === undefined
+                                ? ` / ${format.number(loadedPageCount)}+`
+                                : ` / ${format.number(totalPages)}`}
                             </span>
 
                             <Button
@@ -599,7 +716,7 @@ export function LibraryPageClient() {
                               onClick={() =>
                                 setPageParam(effectivePage + 1)
                               }
-                              disabled={effectivePage >= totalPages}
+                              disabled={!canGoNext}
                               className="rounded-xl"
                             >
                               {t("nextPage")}

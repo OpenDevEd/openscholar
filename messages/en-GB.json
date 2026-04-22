@@ -1959,6 +1959,7 @@
     "exportAsCSV": "Download as CSV",
     "exportAsJSON": "Download as JSON",
     "exportSuccess": "Library exported successfully",
+    "exportError": "Failed to export library",
     "removedFromLibrary": "Removed from library",
     "removeFromLibraryError": "Failed to remove item",
     "deleteCollectionError": "Failed to delete collection",

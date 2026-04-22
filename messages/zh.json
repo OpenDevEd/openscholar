@@ -1934,6 +1934,7 @@
     "exportAsCSV": "下载为CSV",
     "exportAsJSON": "下载为JSON",
     "exportSuccess": "图书馆导出成功",
+    "exportError": "导出图书馆失败",
     "removedFromLibrary": "已从图书馆移除",
     "removeFromLibraryError": "移除项目失败",
     "deleteCollectionError": "删除收藏夹失败",
