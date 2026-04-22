@@ -27,6 +27,11 @@ app.use(aggregate, { name: "resultConfidenceAgg" });
 // (extraction_llm per-result + embedding per-paper). Cleared on cascade
 // delete via admin.clearJobCredits.
 app.use(aggregate, { name: "creditsAgg" });
+// Screening progress aggregates (plan-02). Both are namespaced by jobId:
+// - screeningResultStatusAgg: counts terminal result states by status
+// - screeningQualifiedAgg: counts completed qualified results
+app.use(aggregate, { name: "screeningResultStatusAgg" });
+app.use(aggregate, { name: "screeningQualifiedAgg" });
 // Three @convex-dev/aggregate instances back the billing-transactions
 // faceted-count badges (plans/billing-transactions-perf/01). Each is
 // namespaced by credits._id so users never OCC-contend with each other.

@@ -136,6 +136,7 @@ import type * as migrations_setExistingJobsToExtractionMode from "../migrations/
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
+import type * as screening_aggregates from "../screening/aggregates.js";
 import type * as screening_lifecycle from "../screening/lifecycle.js";
 import type * as screening_mutations from "../screening/mutations.js";
 import type * as screening_progress from "../screening/progress.js";
@@ -313,6 +314,7 @@ declare const fullApi: ApiFromModules<{
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;
   "models/sync": typeof models_sync;
+  "screening/aggregates": typeof screening_aggregates;
   "screening/lifecycle": typeof screening_lifecycle;
   "screening/mutations": typeof screening_mutations;
   "screening/progress": typeof screening_progress;
@@ -393,6 +395,8 @@ export declare const components: {
   resultAnsweredAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultAnsweredAgg">;
   resultConfidenceAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultConfidenceAgg">;
   creditsAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"creditsAgg">;
+  screeningResultStatusAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningResultStatusAgg">;
+  screeningQualifiedAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningQualifiedAgg">;
   txnTypeAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"txnTypeAgg">;
   txnCreditPoolAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"txnCreditPoolAgg">;
   txnBillingTypeAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"txnBillingTypeAgg">;
