@@ -10,6 +10,8 @@ import { describe, expect, it, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SuggestionChips } from "@/components/extraction/chat/suggestion-chips";
+import { PapersContext } from "@/components/extraction/chat/papers-context";
+import { fakePapersContext } from "../helpers/papers-context-fixture";
 
 const sendMessageMock = vi.fn().mockResolvedValue(undefined);
 
@@ -28,7 +30,6 @@ vi.mock("convex/react", () => ({
       () => fn;
     return fn;
   },
-  useQuery: () => undefined,
 }));
 
 vi.mock("@convex-dev/agent/react", () => ({
@@ -42,9 +43,6 @@ vi.mock("@/convex/_generated/api", () => ({
         sendMessage: "sendMessage",
         listThreadMessages: "listThreadMessages",
       },
-    },
-    extraction: {
-      queries: { getJobSources: "getJobSources" },
     },
   },
 }));
@@ -63,14 +61,23 @@ beforeAll(() => {
   }
 });
 
+function renderSuggestionChips(totalCount = 3) {
+  return render(
+    <PapersContext.Provider value={fakePapersContext({ totalCount })}>
+      <SuggestionChips threadId="t_1" />
+    </PapersContext.Provider>,
+  );
+}
+
 describe("<SuggestionChips>", () => {
   it("renders the empty-state hero with the headline", () => {
-    render(<SuggestionChips threadId="t_1" />);
+    renderSuggestionChips();
     expect(screen.getByRole("heading")).toHaveTextContent("chatEmptyHeadline");
+    expect(screen.getByText("Grounded on 3 papers")).toBeInTheDocument();
   });
 
   it("renders all 4 suggestion cards as a list", () => {
-    render(<SuggestionChips threadId="t_1" />);
+    renderSuggestionChips();
     const items = screen.getAllByRole("listitem");
     expect(items).toHaveLength(4);
     const keys = items.map((el) => el.getAttribute("data-suggestion-key"));
@@ -85,7 +92,11 @@ describe("<SuggestionChips>", () => {
   it("clicking a suggestion sends its prompt via sendMessage", async () => {
     const user = userEvent.setup();
     sendMessageMock.mockClear();
-    render(<SuggestionChips threadId="t_xyz" />);
+    render(
+      <PapersContext.Provider value={fakePapersContext({ totalCount: 3 })}>
+        <SuggestionChips threadId="t_xyz" />
+      </PapersContext.Provider>,
+    );
     const summarise = screen
       .getAllByRole("listitem")
       .find((el) => el.getAttribute("data-suggestion-key") === "suggestionSummarise");

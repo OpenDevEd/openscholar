@@ -348,7 +348,7 @@ export function MessageList({
         className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
         data-message-list="empty"
       >
-        <SuggestionChips threadId={threadId} jobId={jobId} />
+        <SuggestionChips threadId={threadId} />
       </div>
     );
   }

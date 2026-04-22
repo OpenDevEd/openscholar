@@ -1,19 +1,18 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowRightIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useAppToast } from "@/lib/toast";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
 import { cn } from "@/lib/utils";
+import { usePapersContext } from "./papers-context";
 
 interface SuggestionChipsProps {
   threadId: string;
-  jobId?: Id<"extractionJobs">;
 }
 
 const SUGGESTION_KEYS = [
@@ -23,23 +22,17 @@ const SUGGESTION_KEYS = [
   "suggestionCompare",
 ] as const;
 
-export function SuggestionChips({ threadId, jobId }: SuggestionChipsProps) {
+export function SuggestionChips({ threadId }: SuggestionChipsProps) {
   const t = useTranslations("extraction");
   const toast = useAppToast();
   const reduceMotion = useReducedMotion();
+  const { totalCount: paperCount } = usePapersContext();
 
   const sendMessage = useMutation(
     api.chat.messages.sendMessage,
   ).withOptimisticUpdate(
     optimisticallySendMessage(api.chat.messages.listThreadMessages),
   );
-
-  const sources = useQuery(
-    api.extraction.queries.getJobSources,
-    jobId ? { jobId } : "skip",
-  );
-  const paperCount =
-    sources && sources.status === "ok" ? sources.sources.length : null;
 
   const suggestions = useMemo(
     () => SUGGESTION_KEYS.map((key) => ({ key, text: t(key) })),
@@ -67,7 +60,7 @@ export function SuggestionChips({ threadId, jobId }: SuggestionChipsProps) {
         transition={{ duration: 0.28, ease: "easeOut" }}
         className="flex flex-col gap-3"
       >
-        {paperCount !== null && paperCount > 0 ? (
+        {paperCount > 0 ? (
           <div
             className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
             data-paper-context="true"
