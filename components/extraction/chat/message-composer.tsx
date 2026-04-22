@@ -8,6 +8,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ComposerModelPicker } from "./composer-model-picker";
+import type { ChatModelRow } from "./chat-model-types";
 import { usePapersContext } from "./papers-context";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -23,9 +24,14 @@ import { cn } from "@/lib/utils";
 interface MessageComposerProps {
   job: Doc<"extractionJobs">;
   threadId: string;
+  chatModels: ChatModelRow[];
 }
 
-export function MessageComposer({ job, threadId }: MessageComposerProps) {
+export function MessageComposer({
+  job,
+  threadId,
+  chatModels,
+}: MessageComposerProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("composer");
   const appToast = useAppToast();
@@ -249,6 +255,7 @@ export function MessageComposer({ job, threadId }: MessageComposerProps) {
             value={job.chatModelId ?? null}
             onChange={handleModelChange}
             disabled={jobIsGenerating}
+            models={chatModels}
           />
 
           <div className="flex items-center gap-2">

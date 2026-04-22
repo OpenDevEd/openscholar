@@ -30,6 +30,7 @@ import { PaperCitation } from "./paper-citation";
 import { SuggestionChips } from "./suggestion-chips";
 import { StreamingCursor } from "./streaming-cursor";
 import { TypingDots } from "./typing-dots";
+import type { ChatModelRow } from "./chat-model-types";
 import {
   resolvePaperReferences,
   type ResolvablePaper,
@@ -40,6 +41,7 @@ interface MessageListProps {
   threadId: string;
   jobId: Id<"extractionJobs">;
   chatModelId: Id<"models"> | null;
+  chatModels: ChatModelRow[];
 }
 
 export type ResolvedPaper = ResolvablePaper;
@@ -187,6 +189,7 @@ interface MessageRowProps {
   isFirstInGroup: boolean;
   threadId: string;
   chatModelId: Id<"models"> | null;
+  chatModels: ChatModelRow[];
   onRetry: () => void;
   reduceMotion: boolean;
 }
@@ -197,6 +200,7 @@ export const MessageRow = memo(function MessageRow({
   isFirstInGroup,
   threadId,
   chatModelId,
+  chatModels,
   onRetry,
   reduceMotion,
 }: MessageRowProps) {
@@ -272,6 +276,7 @@ export const MessageRow = memo(function MessageRow({
               isLastAssistant={isLastAssistant}
               threadId={threadId}
               chatModelId={chatModelId}
+              models={chatModels}
             />
           ) : null}
           {isAborted ? <AbortedPill /> : null}
@@ -283,6 +288,7 @@ export const MessageRow = memo(function MessageRow({
           rawError={rawError}
           onRetry={onRetry}
           chatModelId={chatModelId}
+          models={chatModels}
         />
       ) : null}
     </motion.li>
@@ -293,6 +299,7 @@ export function MessageList({
   threadId,
   jobId,
   chatModelId,
+  chatModels,
 }: MessageListProps) {
   const t = useTranslations("extraction");
   const reduceMotion = useReducedMotion() ?? false;
@@ -379,11 +386,12 @@ export function MessageList({
                     message={message as ChatUIMessage}
                     isLastAssistant={message.id === lastAssistantId}
                     isFirstInGroup={isFirstInGroup}
-                    threadId={threadId}
-                    chatModelId={chatModelId}
-                    onRetry={handleRetry}
-                    reduceMotion={reduceMotion}
-                  />
+                  threadId={threadId}
+                  chatModelId={chatModelId}
+                  chatModels={chatModels}
+                  onRetry={handleRetry}
+                  reduceMotion={reduceMotion}
+                />
                 </Fragment>
               );
             })}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import {
   AlertCircleIcon,
@@ -31,6 +30,7 @@ import {
   type ChatErrorClass,
   type ChatErrorEnvelope,
 } from "@/lib/errors/taxonomy";
+import type { ChatModelRow } from "./chat-model-types";
 
 interface ChatErrorAlertProps {
   rawError: string;
@@ -42,6 +42,7 @@ interface ChatErrorAlertProps {
    * they're about to hit again.
    */
   chatModelId?: Id<"models"> | null;
+  models: ChatModelRow[];
 }
 
 const ICONS: Partial<Record<ChatErrorClass, LucideIcon>> = {
@@ -73,14 +74,11 @@ export function ChatErrorAlert({
   rawError,
   onRetry,
   chatModelId,
+  models,
 }: ChatErrorAlertProps) {
   const t = useTranslations("extraction");
   const tErrors = useTranslations("errors");
   const envelope = parseChatError(rawError);
-
-  // Dedup'd with the composer's model picker & MessageActions —
-  // Convex shares the subscription.
-  const models = useQuery(api.chat.model.listChatModels, {});
   const activeModel = useMemo<ActiveModel | null>(() => {
     if (!chatModelId || !models) return null;
     const found = models.find((m) => m._id === chatModelId);

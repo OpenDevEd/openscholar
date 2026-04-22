@@ -41,7 +41,7 @@ describe("<ChatErrorAlert> — plan-01 taxonomy surface", () => {
       message: "429 upstream",
     });
     const { container } = render(
-      <ChatErrorAlert rawError={wire} onRetry={() => {}} />,
+      <ChatErrorAlert rawError={wire} onRetry={() => {}} models={[]} />,
     );
 
     const alert = container.querySelector("[data-message-error='true']");
@@ -55,7 +55,7 @@ describe("<ChatErrorAlert> — plan-01 taxonomy surface", () => {
       class: "insufficient_credits",
       message: "top up",
     });
-    render(<ChatErrorAlert rawError={wire} onRetry={() => {}} />);
+    render(<ChatErrorAlert rawError={wire} onRetry={() => {}} models={[]} />);
 
     // The mocked useTranslations returns "<namespace>:<key>" so this
     // test proves the component looked up "errors.title.<code>" (not
@@ -78,6 +78,7 @@ describe("<ChatErrorAlert> — plan-01 taxonomy surface", () => {
           message: "oops",
         })}
         onRetry={() => {}}
+        models={[]}
       />,
     );
     expect(screen.getByRole("alert")).toBeInTheDocument();
@@ -91,6 +92,7 @@ describe("<ChatErrorAlert> — plan-01 taxonomy surface", () => {
           message: "user stopped",
         })}
         onRetry={() => {}}
+        models={[]}
       />,
     );
     expect(screen.getByRole("status")).toBeInTheDocument();
@@ -98,7 +100,7 @@ describe("<ChatErrorAlert> — plan-01 taxonomy surface", () => {
 
   it("returns null when the raw error can't be parsed into an envelope", () => {
     const { container } = render(
-      <ChatErrorAlert rawError="" onRetry={() => {}} />,
+      <ChatErrorAlert rawError="" onRetry={() => {}} models={[]} />,
     );
     expect(container.firstChild).toBeNull();
   });

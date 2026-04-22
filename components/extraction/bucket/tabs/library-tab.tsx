@@ -43,7 +43,7 @@ type ViewId = "all" | "unfiled" | Id<"collections">;
 
 type CollectionRow = Doc<"collections"> & { itemCount: number };
 
-export function LibraryTab() {
+export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
   const collections = useQuery(
     api.library.collections.getCollectionsWithCounts,
     {},
@@ -64,7 +64,11 @@ export function LibraryTab() {
   );
 
   const convex = useConvex();
-  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const liveLimit = useQuery(
+    api.extraction.bucket.queries.getMyPaperLimit,
+    paperLimit === undefined ? {} : "skip",
+  );
+  const limit = paperLimit ?? liveLimit ?? 1000;
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);

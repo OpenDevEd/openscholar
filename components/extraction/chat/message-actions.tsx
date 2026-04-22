@@ -19,6 +19,7 @@ import { getProviderIcon } from "@/components/icons/provider-icons";
 import type { AIProvider } from "@/lib/types/ai.types";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "@convex-dev/agent/react";
+import type { ChatModelRow } from "./chat-model-types";
 
 interface ChatUIMessage {
   status: UIMessage["status"];
@@ -33,6 +34,7 @@ interface MessageActionsProps {
   threadId: string;
   /** Currently-selected chat model. Used to label the regenerate button. */
   chatModelId: Id<"models"> | null;
+  models: ChatModelRow[];
   /** When false, actions are hidden until the parent <article> is hovered/focused. */
   alwaysVisible?: boolean;
 }
@@ -91,14 +93,12 @@ export function MessageActions({
   isLastAssistant,
   threadId,
   chatModelId,
+  models,
   alwaysVisible = false,
 }: MessageActionsProps) {
   const t = useTranslations("extraction");
   const appToast = useAppToast();
   const regenerate = useMutation(api.chat.messages.regenerateLastAssistant);
-  // Convex dedupes identical query subscriptions, so this shares state
-  // with the composer's model picker — no extra network round-trip.
-  const models = useQuery(api.chat.model.listChatModels, {});
 
   const isStreaming = message.status === "streaming";
   const isFailed = message.status === "failed";

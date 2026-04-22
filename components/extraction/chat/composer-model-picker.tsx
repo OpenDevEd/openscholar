@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import {
@@ -19,17 +18,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { getProviderIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import type { AIProvider } from "@/lib/types/ai.types";
+import type { ChatModelRow } from "./chat-model-types";
 
 interface ComposerModelPickerProps {
   value: Id<"models"> | null;
   onChange: (id: Id<"models">) => void;
   disabled?: boolean;
+  models: ChatModelRow[];
 }
 
 // Display labels keep editorial casing (OpenAI, DeepSeek) instead of the
@@ -77,15 +77,11 @@ export function ComposerModelPicker({
   value,
   onChange,
   disabled,
+  models,
 }: ComposerModelPickerProps) {
   const t = useTranslations("extraction");
   const [open, setOpen] = useState(false);
-  const models = useQuery(api.chat.model.listChatModels, {});
-
-  const sortedModels = useMemo(() => {
-    if (!models) return [];
-    return [...models].sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [models]);
+  const sortedModels = useMemo(() => models, [models]);
 
   useEffect(() => {
     if (value === null && sortedModels.length > 0) {

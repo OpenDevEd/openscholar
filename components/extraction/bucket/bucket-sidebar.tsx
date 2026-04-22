@@ -201,13 +201,17 @@ function BucketFooter() {
   );
 }
 
-export function BucketSidebar() {
+export function BucketSidebar({ paperLimit }: { paperLimit?: number }) {
   const isMobile = useIsMobile();
   const hasHydrated = useBucketSidebarStore((s) => s._hasHydrated);
   const isCollapsed = useBucketSidebarStore((s) => s.isCollapsed);
   const toggle = useBucketSidebarStore((s) => s.toggle);
   const readyCount = useReadyCount();
-  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const liveLimit = useQuery(
+    api.extraction.bucket.queries.getMyPaperLimit,
+    paperLimit === undefined ? {} : "skip",
+  );
+  const limit = paperLimit ?? liveLimit ?? 1000;
 
   const state = capacityState(readyCount, limit);
   const tint = CAPACITY_TINT[state];

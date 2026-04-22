@@ -57,7 +57,7 @@ type ZoteroItem = {
   hasPdfChild: boolean;
 };
 
-export function ZoteroSelector() {
+export function ZoteroSelector({ paperLimit }: { paperLimit?: number }) {
   const toast = useAppToast();
   const t = useTranslations('zotero');
   const tToast = useTranslations("toast");
@@ -69,8 +69,11 @@ export function ZoteroSelector() {
   const bucketKeys = useMemo(() => new Set(bucketOrder), [bucketOrder]);
   const dedupeKeys = useBucketStore((s) => s.dedupeKeys);
   const dedupeKeyToSource = useBucketStore((s) => s.dedupeKeyToSource);
-  const paperLimit =
-    useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const livePaperLimit = useQuery(
+    api.extraction.bucket.queries.getMyPaperLimit,
+    paperLimit === undefined ? {} : "skip",
+  );
+  const resolvedPaperLimit = paperLimit ?? livePaperLimit ?? 1000;
   const meQuery = useProtectedQuery(api.users.queries.me, {});
   const me = meQuery.data;
   const connectionStatusQuery = useProtectedQuery(
@@ -168,7 +171,7 @@ export function ZoteroSelector() {
       ),
     );
   const addItems = (items: ZoteroItem[], silent = false) => {
-    bucketAdded(bucketAdd(toBucketItems(items), paperLimit), { silent });
+    bucketAdded(bucketAdd(toBucketItems(items), resolvedPaperLimit), { silent });
   };
   const removeItems = (items: ZoteroItem[]) => {
     bucketRemoveMany(toBucketItems(items).map((b) => b.bucketKey));
@@ -183,12 +186,12 @@ export function ZoteroSelector() {
     const result = await collectAllPages({
       initialPages: items.data ?? [],
       fetchNext: (size) => items.setSize(size),
-      cap: paperLimit,
+      cap: resolvedPaperLimit,
       isCancelled: () => cancelAllAcrossRef.current,
     });
     if (result.cancelled) return;
     const all = result.pages.flatMap((p) => p.items ?? []);
-    const added = bucketAdd(toBucketItems(all), paperLimit);
+    const added = bucketAdd(toBucketItems(all), resolvedPaperLimit);
     bucketAdded({ ...added, truncated: result.truncated });
   };
   const cancelSelectAllAcross = () => {

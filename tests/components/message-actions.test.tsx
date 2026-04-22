@@ -58,6 +58,7 @@ function renderActions(
         isLastAssistant={isLastAssistant}
         threadId="t_1"
         chatModelId={null as unknown as Id<"models">}
+        models={[]}
         alwaysVisible
       />
     </TooltipProvider>,

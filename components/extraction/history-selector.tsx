@@ -49,13 +49,17 @@ function HistoryRowChip({
   );
 }
 
-export function HistorySelector() {
+export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
   const format = useFormatter();
   const now = useNow();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
-  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const liveLimit = useQuery(
+    api.extraction.bucket.queries.getMyPaperLimit,
+    paperLimit === undefined ? {} : "skip",
+  );
+  const limit = paperLimit ?? liveLimit ?? 1000;
   const pullCap =
     useQuery(api.extraction.bucket.queries.getMyPaperPullCap) ?? 200;
   const pullDefault =

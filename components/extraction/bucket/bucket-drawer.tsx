@@ -27,6 +27,7 @@ export function BucketDrawer({
   open,
   onOpenChange,
   onClearReturnFocus,
+  paperLimit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,8 +37,13 @@ export function BucketDrawer({
    * screen-reader reset that's easy to miss.
    */
   onClearReturnFocus?: () => void;
+  paperLimit?: number;
 }) {
-  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const liveLimit = useQuery(
+    api.extraction.bucket.queries.getMyPaperLimit,
+    paperLimit === undefined ? {} : "skip",
+  );
+  const limit = paperLimit ?? liveLimit ?? 1000;
   const order = useBucketStore((s) => s.order);
   const itemsMap = useBucketStore((s) => s.items);
   const remove = useBucketStore((s) => s.remove);

@@ -1,5 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { ChatHeader } from "./chat-header";
@@ -8,6 +11,7 @@ import { MessageComposer } from "./message-composer";
 import { MessageList } from "./message-list";
 import { SourcesPanel } from "./sources-panel";
 import { useChatShortcuts } from "./use-chat-shortcuts";
+import { sortChatModels } from "./chat-model-types";
 
 interface ChatJobViewProps {
   job: Doc<"extractionJobs">;
@@ -16,6 +20,11 @@ interface ChatJobViewProps {
 
 export function ChatJobView({ job, threadId }: ChatJobViewProps) {
   useChatShortcuts();
+  const rawChatModels = useQuery(api.chat.model.listChatModels, {});
+  const chatModels = useMemo(
+    () => (rawChatModels ? sortChatModels(rawChatModels) : []),
+    [rawChatModels],
+  );
 
   return (
     <ChatPapersProvider jobId={job._id}>
@@ -39,8 +48,13 @@ export function ChatJobView({ job, threadId }: ChatJobViewProps) {
               threadId={threadId}
               jobId={job._id}
               chatModelId={job.chatModelId ?? null}
+              chatModels={chatModels}
             />
-            <MessageComposer job={job} threadId={threadId} />
+            <MessageComposer
+              job={job}
+              threadId={threadId}
+              chatModels={chatModels}
+            />
           </div>
         }
       />

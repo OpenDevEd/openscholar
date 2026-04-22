@@ -85,6 +85,7 @@ function renderRow(msg: ChatUIMessage) {
       isFirstInGroup={true}
       threadId="t_1"
       chatModelId={null as unknown as Id<"models">}
+      chatModels={[]}
       onRetry={() => {}}
       reduceMotion={true}
     />,

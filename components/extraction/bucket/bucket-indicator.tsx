@@ -12,11 +12,17 @@ import { AnimatedCount } from "./animated-count";
 export function BucketIndicator({
   ref,
   onClick,
+  paperLimit,
 }: {
   ref?: Ref<HTMLButtonElement>;
   onClick: () => void;
+  paperLimit?: number;
 }) {
-  const limit = useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const liveLimit = useQuery(
+    api.extraction.bucket.queries.getMyPaperLimit,
+    paperLimit === undefined ? {} : "skip",
+  );
+  const limit = paperLimit ?? liveLimit ?? 1000;
   // Sum `paperCount` (default 1) rather than row count — a staged
   // saved-search entry contributes its expansion size, not 1.
   const readyCount = useBucketStore((s) =>

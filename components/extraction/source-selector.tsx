@@ -19,7 +19,7 @@ const SOURCE_TABS = [
 ] as const;
 type SourceTab = (typeof SOURCE_TABS)[number];
 
-export function SourceSelector() {
+export function SourceSelector({ paperLimit }: { paperLimit: number }) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const [tab, setTab] = useQueryState(
@@ -49,17 +49,17 @@ export function SourceSelector() {
         {uploadEnabled && <TabsTrigger value="upload">Upload</TabsTrigger>}
       </TabsList>
       <TabsContent value="history">
-        <HistorySelector />
+        <HistorySelector paperLimit={paperLimit} />
       </TabsContent>
       <TabsContent value="library">
-        <LibraryTab />
+        <LibraryTab paperLimit={paperLimit} />
       </TabsContent>
       <TabsContent value="zotero">
-        <ZoteroSelector />
+        <ZoteroSelector paperLimit={paperLimit} />
       </TabsContent>
       {uploadEnabled && (
         <TabsContent value="upload">
-          <BulkPdfUpload />
+          <BulkPdfUpload paperLimit={paperLimit} />
         </TabsContent>
       )}
     </Tabs>

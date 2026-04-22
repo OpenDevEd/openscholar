@@ -58,7 +58,7 @@ const stepVariants = {
   }),
 };
 
-export function JobCreator() {
+export function JobCreator({ paperLimit }: { paperLimit: number }) {
   const router = useRouter();
   const toast = useAppToast();
   const t = useTranslations("extraction");
@@ -241,6 +241,7 @@ export function JobCreator() {
             <BucketIndicator
               ref={bucketIndicatorRef}
               onClick={() => setBucketOpen(true)}
+              paperLimit={paperLimit}
             />
           )}
           <div className="text-sm text-muted-foreground">
@@ -254,6 +255,7 @@ export function JobCreator() {
           open={bucketOpen}
           onOpenChange={setBucketOpen}
           onClearReturnFocus={() => bucketIndicatorRef.current?.focus()}
+          paperLimit={paperLimit}
         />
       )}
 
@@ -416,7 +418,7 @@ export function JobCreator() {
                 </motion.div>
 
                  {effectiveMode === "chat" && <AbstractMissingBanner />}
-                 <SourceSelector />
+                  <SourceSelector paperLimit={paperLimit} />
               </div>
             )}
 

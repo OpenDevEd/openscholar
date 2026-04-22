@@ -36,11 +36,14 @@ function makeUploadId(): string {
   return `up_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function BulkPdfUpload() {
+export function BulkPdfUpload({ paperLimit }: { paperLimit?: number }) {
   const toast = useAppToast();
   const pdfEnabled = useFeatureFlag("extraction.pdf");
-  const paperLimit =
-    useQuery(api.extraction.bucket.queries.getMyPaperLimit) ?? 1000;
+  const livePaperLimit = useQuery(
+    api.extraction.bucket.queries.getMyPaperLimit,
+    paperLimit === undefined ? {} : "skip",
+  );
+  const resolvedPaperLimit = paperLimit ?? livePaperLimit ?? 1000;
   const bucketAdd = useBucketStore((s) => s.addMany);
   const bucketRemove = useBucketStore((s) => s.remove);
 
@@ -89,7 +92,7 @@ export function BulkPdfUpload() {
           storageId,
           status: "ready",
         });
-        const result = bucketAdd([item], paperLimit);
+        const result = bucketAdd([item], resolvedPaperLimit);
         if (result.capped > 0) {
           patch(row.uploadId, {
             status: "failed",
@@ -108,7 +111,7 @@ export function BulkPdfUpload() {
         patch(row.uploadId, { status: "failed", error: message });
       }
     },
-    [bucketAdd, paperLimit, generateUploadUrl, recordUploadedFile, patch],
+    [bucketAdd, resolvedPaperLimit, generateUploadUrl, recordUploadedFile, patch],
   );
 
   const schedule = useCallback(
