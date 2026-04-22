@@ -99,9 +99,6 @@ export const createScreeningJob = mutation({
       userId: user._id,
       status: "processing",
       totalPapers: args.papers.length,
-      processedPapers: 0,
-      failedPapers: 0,
-      qualifiedPapers: 0,
       questions: args.questions,
       scoringConfig: args.scoringConfig,
       targetCollectionId: args.targetCollectionId,
@@ -191,17 +188,21 @@ export const cancelScreeningJob = mutation({
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Update a screening job's status from background context (no auth).
+ * Marks a screening job as credits exhausted from background context.
+ *
+ * No-op when the job is already terminal or missing.
  */
-export const updateJobStatus = internalMutation({
-  args: {
-    jobId: v.id("screeningJobs"),
-    status: screeningJobStatusValidator,
-  },
+export const markScreeningJobCreditsExhausted = internalMutation({
+  args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const job = await ctx.db.get("screeningJobs", args.jobId);
+    if (!job || isTerminalScreeningJobStatus(job.status)) {
+      return null;
+    }
+
     await ctx.db.patch("screeningJobs", args.jobId, {
-      status: args.status,
+      status: "creditsExhausted",
       updatedAt: Date.now(),
     });
     return null;

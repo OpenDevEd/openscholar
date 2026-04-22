@@ -33,9 +33,6 @@ async function seedScreeningJob(
   overrides: Partial<{
     status: "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted";
     totalPapers: number;
-    processedPapers: number;
-    failedPapers: number;
-    qualifiedPapers: number;
   }> = {}
 ) {
   return await t.run(async (ctx) => {
@@ -44,9 +41,6 @@ async function seedScreeningJob(
       userId,
       status: overrides.status ?? "processing",
       totalPapers: overrides.totalPapers ?? 5,
-      processedPapers: overrides.processedPapers ?? 0,
-      failedPapers: overrides.failedPapers ?? 0,
-      qualifiedPapers: overrides.qualifiedPapers ?? 0,
       questions: [{ key: "q1", question: "Is this relevant?" }],
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
@@ -211,8 +205,6 @@ describe("cancelScreeningJob", () => {
     const jobId = await seedScreeningJob(t, user._id, {
       status: "processing",
       totalPapers: 3,
-      processedPapers: 2,
-      qualifiedPapers: 1,
     });
 
     // Seed some completed results

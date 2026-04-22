@@ -32,9 +32,6 @@ async function seedJob(t: Ctx): Promise<Id<"screeningJobs">> {
       userId,
       status: "processing",
       totalPapers: 10,
-      processedPapers: 0,
-      failedPapers: 0,
-      qualifiedPapers: 0,
       questions: [{ key: "q1", question: "Relevant?" }],
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],

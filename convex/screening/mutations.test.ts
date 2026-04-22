@@ -64,9 +64,6 @@ async function seedScreeningJob(
       userId,
       status,
       totalPapers: 10,
-      processedPapers: 0,
-      failedPapers: 0,
-      qualifiedPapers: 0,
       questions: [{ key: "q1", question: "Is this relevant?" }],
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
@@ -87,6 +84,12 @@ async function seedScreeningResult(
     qualified: boolean;
     openalexId: string;
     title: string;
+    score: number;
+    stars: number;
+    answers: Record<string, boolean | null>;
+    authors: string[];
+    publicationYear: number;
+    doi: string;
   }> = {},
 ) {
   return await t.run(async (ctx) => {
@@ -95,6 +98,14 @@ async function seedScreeningResult(
       openalexId: overrides.openalexId ?? `https://openalex.org/W${Date.now()}`,
       title: overrides.title ?? "Screening Result",
       status: overrides.status ?? "processing",
+      ...(overrides.answers !== undefined ? { answers: overrides.answers } : {}),
+      ...(overrides.score !== undefined ? { score: overrides.score } : {}),
+      ...(overrides.stars !== undefined ? { stars: overrides.stars } : {}),
+      ...(overrides.authors !== undefined ? { authors: overrides.authors } : {}),
+      ...(overrides.publicationYear !== undefined
+        ? { publicationYear: overrides.publicationYear }
+        : {}),
+      ...(overrides.doi !== undefined ? { doi: overrides.doi } : {}),
       ...(overrides.qualified !== undefined
         ? { qualified: overrides.qualified }
         : {}),
@@ -322,14 +333,10 @@ describe("createScreeningJob", () => {
     expect(job!.userId).toBe(user._id);
     expect(job!.status).toBe("processing");
     expect(job!.totalPapers).toBe(10);
-    expect(job!.processedPapers).toBe(0);
-    expect(job!.failedPapers).toBe(0);
-    expect(job!.qualifiedPapers).toBe(0);
     expect(job!.questions).toEqual(questions);
     expect(job!.scoringConfig).toEqual(scoringConfig);
     expect(job!.createdAt).toBeGreaterThan(0);
     expect(job!.updatedAt).toBeGreaterThan(0);
-    expect("workflowId" in job!).toBe(false);
   });
 
   it("creates one processing screeningResults record per paper with work ids", async () => {
@@ -488,7 +495,7 @@ describe("persistQualifiedScreeningResult", () => {
 });
 
 describe("finalizeScreeningJobFromAggregates", () => {
-  it("finalizes from aggregate counts even when legacy counters are stale", async () => {
+  it("finalizes from aggregate counts only", async () => {
     const t = convexTest(schema);
     setupScreeningAggregates(t);
     setupScreeningWorkpool(t);
@@ -511,12 +518,7 @@ describe("finalizeScreeningJobFromAggregates", () => {
     });
 
     await t.run(async (ctx) => {
-      await ctx.db.patch("screeningJobs", job._id, {
-        totalPapers: 3,
-        processedPapers: 0,
-        failedPapers: 0,
-        qualifiedPapers: 0,
-      });
+      await ctx.db.patch("screeningJobs", job._id, { totalPapers: 3 });
       await recordTerminalResult(ctx, completedQualified);
       await recordQualifiedResult(ctx, completedQualified);
       await recordTerminalResult(ctx, completed);
@@ -537,9 +539,6 @@ describe("finalizeScreeningJobFromAggregates", () => {
       expect(finalized).not.toBeNull();
       expect(finalized!.status).toBe("completed");
       expect(finalized!.completedAt).toBeGreaterThan(0);
-      expect(finalized!.processedPapers).toBe(0);
-      expect(finalized!.failedPapers).toBe(0);
-      expect(finalized!.qualifiedPapers).toBe(0);
       expect(
         scheduledFunctions.some((sf) => sf.name.includes("captureEvent")),
       ).toBe(true);
@@ -629,9 +628,6 @@ describe("handleScreeningComplete", () => {
         expect(updatedResult?.savedToLibrary).toBe(true);
         expect(updatedResult?.libraryItemId).toBeDefined();
         expect(updatedJob?.status).toBe("completed");
-        expect(updatedJob?.processedPapers).toBe(0);
-        expect(updatedJob?.failedPapers).toBe(0);
-        expect(updatedJob?.qualifiedPapers).toBe(0);
         expect(libraryItems).toHaveLength(1);
         expect(links).toHaveLength(1);
         expect(counts).toEqual({

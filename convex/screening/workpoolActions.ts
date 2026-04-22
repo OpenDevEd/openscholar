@@ -33,8 +33,8 @@ type ScreeningActionResult = {
  * 4. Encodes question-text keys for safe Convex storage
  * 5. Returns encoded responses + confidence for onComplete handler
  *
- * If credits are exhausted mid-job, updates job status to "creditsExhausted"
- * and re-throws so the workpool marks this item as failed.
+ * If credits are exhausted mid-job, marks the job as credits exhausted and
+ * re-throws so the workpool marks this item as failed.
  */
 export const screenPaperAction = internalAction({
   args: {
@@ -185,8 +185,8 @@ export const screenPaperAction = internalAction({
           `[screenPaperAction] Credits exhausted for job ${args.jobId}`
         );
         await ctx.runMutation(
-          internal.screening.mutations.updateJobStatus,
-          { jobId: args.jobId, status: "creditsExhausted" }
+          internal.screening.mutations.markScreeningJobCreditsExhausted,
+          { jobId: args.jobId }
         );
 
         // Track credits exhaustion for screening job

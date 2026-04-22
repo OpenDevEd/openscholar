@@ -955,9 +955,6 @@ export default defineSchema({
       v.literal("creditsExhausted")
     ),
     totalPapers: v.number(),
-    processedPapers: v.number(),
-    failedPapers: v.number(),
-    qualifiedPapers: v.number(),
     questions: v.array(
       v.object({ key: v.string(), question: v.string() })
     ),

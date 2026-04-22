@@ -7,7 +7,7 @@ import {
 } from "./lifecycle";
 
 describe("screening lifecycle helper", () => {
-  it("treats only processing jobs as active after pending removal", () => {
+  it("treats only processing jobs as active", () => {
     expect(SCREENING_ACTIVE_JOB_STATUSES).toEqual(["processing"]);
   });
 

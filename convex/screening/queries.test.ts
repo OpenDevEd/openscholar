@@ -43,9 +43,6 @@ async function seedScreeningJob(
   overrides: Partial<{
     status: "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted";
     totalPapers: number;
-    processedPapers: number;
-    failedPapers: number;
-    qualifiedPapers: number;
   }> = {}
 ) {
   return await t.run(async (ctx) => {
@@ -54,9 +51,6 @@ async function seedScreeningJob(
       userId,
       status: overrides.status ?? "processing",
       totalPapers: overrides.totalPapers ?? 10,
-      processedPapers: overrides.processedPapers ?? 0,
-      failedPapers: overrides.failedPapers ?? 0,
-      qualifiedPapers: overrides.qualifiedPapers ?? 0,
       questions: [{ key: "q1", question: "Is this relevant?" }],
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
@@ -179,10 +173,7 @@ describe("getScreeningResultsForExport", () => {
   it("returns job metadata and results for authenticated owner", async () => {
     const t = createScreeningTest();
     const user = await seedUser(t, "clerk_exp4", "exp4@test.com");
-    const jobId = await seedScreeningJob(t, user._id, {
-      status: "completed",
-      qualifiedPapers: 99,
-    });
+    const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
 
     // Seed two results: one fully populated, one minimal
     await seedScreeningResult(t, jobId, {
@@ -309,9 +300,6 @@ describe("getScreeningProgress", () => {
     const jobId = await seedScreeningJob(t, user._id, {
       status: "processing",
       totalPapers: 10,
-      processedPapers: 90,
-      failedPapers: 80,
-      qualifiedPapers: 70,
     });
     await seedAggregateProgress(t, jobId, {
       completedCount: 2,
@@ -335,12 +323,7 @@ describe("getScreeningProgress", () => {
   it("percentComplete is 0 when totalPapers is 0", async () => {
     const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog6", "prog6@test.com");
-    const jobId = await seedScreeningJob(t, user._id, {
-      totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
-      qualifiedPapers: 0,
-    });
+    const jobId = await seedScreeningJob(t, user._id, { totalPapers: 0 });
 
     const asUser = t.withIdentity({ subject: "clerk_prog6" });
     const result = await asUser.query(api.screening.queries.getScreeningProgress, { jobId });
@@ -352,12 +335,7 @@ describe("getScreeningProgress", () => {
   it("percentComplete floors correctly (e.g., 3/7 papers -> 42%)", async () => {
     const t = createScreeningTest();
     const user = await seedUser(t, "clerk_prog7", "prog7@test.com");
-    const jobId = await seedScreeningJob(t, user._id, {
-      totalPapers: 7,
-      processedPapers: 30,
-      failedPapers: 20,
-      qualifiedPapers: 10,
-    });
+    const jobId = await seedScreeningJob(t, user._id, { totalPapers: 7 });
     await seedAggregateProgress(t, jobId, {
       completedCount: 3,
       failedCount: 0,
@@ -378,9 +356,6 @@ describe("getScreeningProgress", () => {
     const jobId = await seedScreeningJob(t, user._id, {
       status: "processing",
       totalPapers: 200,
-      processedPapers: 1,
-      failedPapers: 1,
-      qualifiedPapers: 1,
     });
     await seedAggregateProgress(t, jobId, {
       completedCount: 199,
@@ -401,9 +376,6 @@ describe("getScreeningProgress", () => {
     const jobId = await seedScreeningJob(t, user._id, {
       status: "completed",
       totalPapers: 10,
-      processedPapers: 0,
-      failedPapers: 0,
-      qualifiedPapers: 0,
     });
     await seedAggregateProgress(t, jobId, {
       completedCount: 8,
@@ -427,9 +399,6 @@ describe("getScreeningJob", () => {
     const jobId = await seedScreeningJob(t, user._id, {
       status: "processing",
       totalPapers: 5,
-      processedPapers: 55,
-      failedPapers: 44,
-      qualifiedPapers: 33,
     });
     await seedAggregateProgress(t, jobId, {
       completedCount: 2,
@@ -497,8 +466,6 @@ describe("listUserScreeningJobs", () => {
     const jobId = await seedScreeningJob(t, user._id, {
       status: "processing",
       totalPapers: 6,
-      processedPapers: 99,
-      qualifiedPapers: 88,
     });
     await seedAggregateProgress(t, jobId, {
       completedCount: 2,
