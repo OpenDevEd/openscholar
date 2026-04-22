@@ -1,6 +1,19 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
+const catalogOptionValidator = v.object({
+  modelId: v.string(),
+  name: v.string(),
+  provider: v.string(),
+  description: v.optional(v.string()),
+  contextLength: v.optional(v.number()),
+  inputPricePerMillion: v.number(),
+  outputPricePerMillion: v.number(),
+  category: v.optional(v.string()),
+  modality: v.optional(v.string()),
+  tokenizer: v.optional(v.string()),
+});
+
 /**
  * Public query: list models filtered by provider.
  * If provider is omitted, returns all models.
@@ -16,6 +29,36 @@ export const list = query({
         .collect();
     }
     return await ctx.db.query("models").collect();
+  },
+});
+
+/**
+ * Public query: compact catalog options for the settings UI.
+ * Returns only the fields the page renders and avoids a live whole-row shape.
+ */
+export const listCatalogOptions = query({
+  args: { provider: v.optional(v.string()) },
+  returns: v.array(catalogOptionValidator),
+  handler: async (ctx, { provider }) => {
+    const rows = provider
+      ? await ctx.db
+          .query("models")
+          .withIndex("by_provider", (q) => q.eq("provider", provider))
+          .take(500)
+      : await ctx.db.query("models").take(1000);
+
+    return rows.map((model) => ({
+      modelId: model.modelId,
+      name: model.name,
+      provider: model.provider,
+      description: model.description,
+      contextLength: model.contextLength,
+      inputPricePerMillion: model.inputPricePerMillion,
+      outputPricePerMillion: model.outputPricePerMillion,
+      category: model.category,
+      modality: model.modality,
+      tokenizer: model.tokenizer,
+    }));
   },
 });
 

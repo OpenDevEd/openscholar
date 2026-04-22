@@ -24,6 +24,7 @@ async function seedModel(
     supportedParameters: string[];
     knowledgeCutoff: string;
     expirationDate: string;
+    description: string;
   }>,
 ) {
   return await t.run(async (ctx) => {
@@ -34,6 +35,7 @@ async function seedModel(
       provider: overrides?.provider ?? "openai",
       inputPricePerMillion: overrides?.inputPricePerMillion ?? 1.0,
       outputPricePerMillion: overrides?.outputPricePerMillion ?? 5.0,
+      description: overrides?.description,
       costMarkup: overrides?.costMarkup ?? 1.3,
       isServed: overrides?.isServed ?? false,
       sortOrder: overrides?.sortOrder ?? 100,
@@ -117,6 +119,68 @@ describe("models.queries.list", () => {
     expect(m.supportedParameters).toEqual(["tools", "reasoning", "temperature"]);
     expect(m.knowledgeCutoff).toBe("2025-09-01");
     expect(m.category).toBe("flagship");
+  });
+});
+
+describe("models.queries.listCatalogOptions", () => {
+  it("returns a compact settings catalog shape for a provider", async () => {
+    const t = convexTest(schema);
+    await seedModel(t, {
+      modelId: "anthropic/claude-sonnet-4-5",
+      name: "Claude Sonnet 4.5",
+      provider: "anthropic",
+      inputPricePerMillion: 3.0,
+      outputPricePerMillion: 15.0,
+      description: "Balanced reasoning model" as never,
+      contextLength: 200000,
+      category: "flagship",
+      modality: "text+image->text",
+      tokenizer: "Claude",
+      costMarkup: 1.9,
+      sortOrder: 1,
+    });
+
+    const models = await t.query(api.models.queries.listCatalogOptions, {
+      provider: "anthropic",
+    });
+    expect(models).toHaveLength(1);
+
+    expect(models[0]).toEqual({
+      modelId: "anthropic/claude-sonnet-4-5",
+      name: "Claude Sonnet 4.5",
+      provider: "anthropic",
+      description: "Balanced reasoning model",
+      contextLength: 200000,
+      inputPricePerMillion: 3.0,
+      outputPricePerMillion: 15.0,
+      category: "flagship",
+      modality: "text+image->text",
+      tokenizer: "Claude",
+    });
+  });
+
+  it("omits catalog fields the settings page does not use", async () => {
+    const t = convexTest(schema);
+    await seedModel(t, {
+      modelId: "openai/gpt-4o",
+      provider: "openai",
+      name: "GPT-4o",
+      costMarkup: 2.1,
+      sortOrder: 5,
+      isServed: true,
+      supportedParameters: ["tools"],
+    });
+
+    const models = await t.query(api.models.queries.listCatalogOptions, {
+      provider: "openai",
+    });
+
+    expect(models).toHaveLength(1);
+    expect(models[0]).not.toHaveProperty("_id");
+    expect(models[0]).not.toHaveProperty("costMarkup");
+    expect(models[0]).not.toHaveProperty("sortOrder");
+    expect(models[0]).not.toHaveProperty("isServed");
+    expect(models[0]).not.toHaveProperty("supportedParameters");
   });
 });
 
