@@ -57,13 +57,8 @@ export default function BillingPage() {
   const subscription = subscriptionState.subscription;
   const creditBalanceQuery = useProtectedQuery(api.credits.queries.getMyBalance, {});
   const topupCatalogQuery = useProtectedQuery(api.credits.queries.getTopupCatalog, {});
-  const grantDiagnosticsQuery = useProtectedQuery(
-    (api).credits.queries.getLatestGrantStatus,
-    {},
-  );
   const creditBalance = creditBalanceQuery.data;
   const topupCatalog = topupCatalogQuery.data;
-  const grantDiagnostics = grantDiagnosticsQuery.data;
   const createPortalSession = useAction(
     api.subscriptions.actions.createPortalSession,
   );
@@ -597,39 +592,6 @@ export default function BillingPage() {
         {creditsEnabled && (
           <TransactionsPanel searchParams={txnSearchParams} />
         )}
-
-        {/* {grantDiagnostics && (
-          <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm">
-            <div className="font-medium mb-1">Last credit grant status</div>
-            <div className="text-muted-foreground">
-              Event status:{" "}
-              <span className="font-medium text-foreground">
-                {grantDiagnostics.latestEventStatus ?? "unknown"}
-              </span>
-              {grantDiagnostics.latestEventClassification
-                ? ` (${grantDiagnostics.latestEventClassification})`
-                : ""}
-            </div>
-            {grantDiagnostics.lastGrantAt ? (
-              <div className="text-muted-foreground">
-                Last successful grant:{" "}
-                {format.dateTime(new Date(grantDiagnostics.lastGrantAt), {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </div>
-            ) : (
-              <div className="text-muted-foreground">No successful grant recorded yet.</div>
-            )}
-            {grantDiagnostics.latestEventError && (
-              <div className="text-red-600 mt-1">{grantDiagnostics.latestEventError}</div>
-            )}
-          </div>
-        )} */}
-
       </div>
       )}
     </div>
