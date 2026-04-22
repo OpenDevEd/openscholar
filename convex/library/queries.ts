@@ -38,6 +38,11 @@ type SharedLibraryListArgs = SharedLibraryFilterArgs & {
   collectionId?: Id<"collections">;
 };
 
+type ManualPaginationOptions = {
+  numItems: number;
+  cursor: string | null;
+};
+
 async function loadCollectionItemIds(
   ctx: QueryCtx,
   userId: Id<"users">,
@@ -196,6 +201,25 @@ async function collectLibraryItems(
     .take(MAX_LIBRARY_BROWSE);
 }
 
+function paginateLibraryItems(
+  items: LibraryItem[],
+  paginationOpts: ManualPaginationOptions,
+): { page: LibraryItem[]; isDone: boolean; continueCursor: Cursor } {
+  const start =
+    paginationOpts.cursor === null
+      ? 0
+      : Math.max(0, Number.parseInt(paginationOpts.cursor, 10) || 0);
+  const page = items.slice(start, start + paginationOpts.numItems);
+  const nextOffset = start + page.length;
+  const isDone = nextOffset >= items.length;
+
+  return {
+    page,
+    isDone,
+    continueCursor: (isDone ? "" : String(nextOffset)) as Cursor,
+  };
+}
+
 export const browseLibrary = query({
   args: {
     sortBy: librarySortValidator,
@@ -243,6 +267,8 @@ export const browseLibrary = query({
 export const searchLibrary = query({
   args: {
     searchText: v.string(),
+    sortBy: v.optional(librarySortValidator),
+    sortOrder: v.optional(librarySortOrderValidator),
     minRating: v.optional(v.number()),
     maxRating: v.optional(v.number()),
     savedAfter: v.optional(v.number()),
@@ -267,20 +293,26 @@ export const searchLibrary = query({
     if (collectionItemIds?.size === 0) {
       return { page: [], isDone: true, continueCursor: "" as Cursor };
     }
+    const sortBy = args.sortBy ?? "savedAt";
+    const sortOrder = args.sortOrder ?? "desc";
+    const items = await collectLibraryItems(
+      ctx,
+      user._id,
+      sortBy,
+      sortOrder,
+      args.searchText,
+    );
 
-    const searchQuery = ctx.db
-      .query("libraryItems")
-      .withSearchIndex("search_library", (q) =>
-        q.search("searchableText", args.searchText.trim()).eq("userId", user._id),
-      );
-
-    if (!hasActiveLibraryFilters(args, collectionItemIds)) {
-      return await searchQuery.paginate(args.paginationOpts);
-    }
-
-    return await filter(searchQuery, (item) =>
-      matchesLibraryFilters(item, args, collectionItemIds),
-    ).paginate(args.paginationOpts);
+    return paginateLibraryItems(
+      sortLibraryItems(
+        items.filter((item) =>
+          matchesLibraryFilters(item, args, collectionItemIds),
+        ),
+        sortBy,
+        sortOrder,
+      ),
+      args.paginationOpts,
+    );
   },
 });
 
@@ -334,21 +366,6 @@ export const getLibraryCount = query({
   returns: v.number(),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
-
-    // O(1) path: read denormalized counter directly
-    if (user.libraryItemCount !== undefined) {
-      return user.libraryItemCount;
-    }
-
-    // Lazy backfill path: scan items for users who don't have the counter yet.
-    // The counter will be initialized on the next save/remove mutation.
-    // Note: ctx.scheduler is not available in query context, so we cannot
-    // schedule a backfill from here. The counter gets set on the first
-    // mutation (save or remove) for this user.
-    const items = await ctx.db
-      .query("libraryItems")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .take(MAX_LIBRARY_BROWSE);
-    return items.length;
+    return user.libraryItemCount ?? 0;
   },
 });

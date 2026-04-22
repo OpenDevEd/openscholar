@@ -2,14 +2,17 @@ import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
   t: ReturnType<typeof convexTest>,
   clerkId: string,
-  email: string
+  email: string,
+  overrides: Partial<{
+    libraryItemCount: number;
+  }> = {},
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
@@ -21,6 +24,7 @@ async function seedUser(
       createdAt: Date.now(),
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
+      libraryItemCount: overrides.libraryItemCount,
     });
     return await ctx.db.get("users", userId);
   });
@@ -321,6 +325,56 @@ describe("browseLibrary", () => {
 });
 
 describe("searchLibrary", () => {
+  it("sorts searched items using the requested sort order across pages", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Gamma machine paper",
+      searchableText: "machine gamma paper",
+      savedAt: 3000,
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Alpha machine paper",
+      searchableText: "machine alpha paper",
+      savedAt: 1000,
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Beta machine paper",
+      searchableText: "machine beta paper",
+      savedAt: 2000,
+      openalexId: "https://openalex.org/W3",
+    });
+
+    const firstPage = await asUser.query(api.library.queries.searchLibrary, {
+      searchText: "machine",
+      sortBy: "title",
+      sortOrder: "asc",
+      paginationOpts: { numItems: 2, cursor: null },
+    });
+
+    expect(firstPage.page.map((item) => item.title)).toEqual([
+      "Alpha machine paper",
+      "Beta machine paper",
+    ]);
+    expect(firstPage.isDone).toBe(false);
+
+    const secondPage = await asUser.query(api.library.queries.searchLibrary, {
+      searchText: "machine",
+      sortBy: "title",
+      sortOrder: "asc",
+      paginationOpts: { numItems: 2, cursor: firstPage.continueCursor },
+    });
+
+    expect(secondPage.page.map((item) => item.title)).toEqual([
+      "Gamma machine paper",
+    ]);
+    expect(secondPage.isDone).toBe(true);
+  });
+
   it("returns results matching search text against searchableText field", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
@@ -513,9 +567,11 @@ describe("getLibraryCount", () => {
     expect(count).toBe(0);
   });
 
-  it("returns correct count for user with multiple items", async () => {
+  it("returns the stored counter for user with multiple items", async () => {
     const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: 3,
+    });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await seedLibraryItem(t, user!._id, {
@@ -535,8 +591,12 @@ describe("getLibraryCount", () => {
 
   it("does NOT count items belonging to other users", async () => {
     const t = convexTest(schema);
-    const user1 = await seedUser(t, "clerk_user1", "user1@test.com");
-    const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
+    const user1 = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: 2,
+    });
+    const user2 = await seedUser(t, "clerk_user2", "user2@test.com", {
+      libraryItemCount: 1,
+    });
     const asUser1 = t.withIdentity({ subject: "clerk_user1" });
 
     await seedLibraryItem(t, user1!._id, {
@@ -552,6 +612,45 @@ describe("getLibraryCount", () => {
     const count = await asUser1.query(api.library.queries.getLibraryCount, {});
 
     expect(count).toBe(2);
+  });
+
+  it("returns zero for a user without a counter until an explicit backfill runs", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+
+    expect(count).toBe(0);
+  });
+
+  it("returns the repaired count after an explicit backfill runs", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W3",
+    });
+
+    await t.mutation(internal.library.mutations.backfillAllLibraryCounts, {});
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+
+    expect(count).toBe(3);
   });
 });
 
@@ -662,26 +761,6 @@ describe("library counter", () => {
 
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
     expect(count).toBe(1);
-  });
-
-  it("lazy backfill returns correct count for user with no counter field", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    // Seed items directly (bypassing mutations) so no counter gets set
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W3",
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-    expect(count).toBe(3);
   });
 
   it("counter does not go below zero", async () => {
