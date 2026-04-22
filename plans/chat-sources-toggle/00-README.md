@@ -71,7 +71,7 @@ These plans lean hard on primitives the codebase already ships. Primary donors:
 - **`cmdk@1.1.1`** — already a dep. Plan 04 uses it for the weighted fuzzy search; no Fuse.js added.
 - **`nuqs`** — already used in `components/extraction/source-selector.tsx` for URL-persisted filter state. Plan 04 follows the same pattern for sort/chip/search params.
 - **`convex/extraction/mutations/jobs.ts::deleteExtraction`** — existing batched cascade via `ctx.scheduler.runAfter`. Plan 01 adds `chatPapers` as one more step in that cascade.
-- **`components/extraction/review-queue.tsx`** — `.withOptimisticUpdate` pattern for patching a row inside a cached query payload. Plans 03/04 follow the same pattern verbatim.
+- **`components/extraction/chat/sources-panel/sources-panel.tsx`** — `.withOptimisticUpdate` pattern for patching cached chat-source payloads. Plans 03/04 follow the same pattern verbatim.
 - **`components/extraction/chat/paper-citation.tsx`** — existing pill + hover-card structure. Plan 05 extends with tri-state semantics, not rewrites.
 - **`lib/chat/render-corpus.ts`** — existing `<papers>` XML renderer. Plan 02 adds a filter step while preserving positional IDs (currently position is stable; we just need to honor gaps).
 - **`lib/chat/resolve-paper.ts`** — existing `[P3]` parser. Plan 05 extends the `ResolvablePaper` shape; parser untouched.
@@ -158,7 +158,7 @@ If the main session accumulates many tool calls and you feel quality drifting, *
 ## Convex patterns referenced across plans
 
 - **`@convex-dev/aggregate`** — NOT used by this plan set. The 500-paper cap makes a direct index scan plenty fast; aggregate overhead isn't justified.
-- **`useMutation(...).withOptimisticUpdate`** — the `localStore.setQuery` pattern from `components/extraction/review-queue.tsx` is the template for every toggle mutation in plans 03/04.
+- **`useMutation(...).withOptimisticUpdate`** — the `localStore.setQuery` pattern from `components/extraction/chat/sources-panel/sources-panel.tsx` is the template for every toggle mutation in plans 03/04.
 - **`ctx.scheduler.runAfter(0, internal.foo.continue, { cursor })`** — guidelines.md:245 pattern. Used by plan 01's cascade-delete addition.
 - **`ctx.db.patch` batching** — Convex allows ~16k writes per mutation (guidelines.md). 500-row bulk toggle fits in a single transaction; no scheduler chaining needed.
 

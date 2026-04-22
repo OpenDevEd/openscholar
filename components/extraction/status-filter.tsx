@@ -8,8 +8,6 @@ import {
   AlertCircle,
   TrendingUp,
   TrendingDown,
-  CheckCircle2,
-  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -52,10 +50,7 @@ export function StatusFilter({ selected, onChange }: StatusFilterProps) {
     if (id === "low-confidence") {
       return { id, label: t("lowConfidence"), icon: TrendingDown };
     }
-    if (id === "reviewed") {
-      return { id, label: t("reviewed"), icon: CheckCircle2 };
-    }
-    return { id, label: t("needsFollowUp"), icon: AlertTriangle };
+    return { id, label: t("lowConfidence"), icon: TrendingDown };
   });
 
   useEffect(() => {

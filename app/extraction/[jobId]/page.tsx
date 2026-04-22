@@ -47,9 +47,6 @@ import { TableView, CardView, SplitView } from "@/components/extraction/results-
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
-import { InsightsOverview } from "@/components/extraction/insights-overview";
-import { InsightsQuestionPanel } from "@/components/extraction/insights-question-panel";
-import { ReviewQueue } from "@/components/extraction/review-queue";
 import { ReportBuilder } from "@/components/extraction/report-builder";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
@@ -102,8 +99,6 @@ export default function JobDetailPage() {
   const isMobile = useIsMobile();
   const jobId = params.jobId as Id<"extractionJobs">;
 
-  const insightsEnabled = useFeatureFlag("extraction.insights");
-  const reviewQueueEnabled = useFeatureFlag("extraction.reviewQueue");
   const reportBuilderEnabled = useFeatureFlag("extraction.reportBuilder");
   const templatesEnabled = useFeatureFlag("extraction.templates");
 
@@ -141,23 +136,13 @@ export default function JobDetailPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(200);
 
-  const [activeTab, setActiveTab] = useState<
-    "results" | "insights" | "review" | "report" | "overview"
-  >("results");
-  const [selectedInsightsQuestion, setSelectedInsightsQuestion] = useState<string | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<"results" | "report">("results");
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
   const [citationPanelPayload, setCitationPanelPayload] = useState<CitationPanelPayload | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
   const { expand: expandCitationPanel } = useExtractionCitationPanelStore();
-
-  const questionTypeLabels = useMemo(() => ({
-    boolean: tExtraction('typeYesNo'),
-    string: tExtraction('typeText'),
-    number: tExtraction('typeNumber'),
-    array: tExtraction('typeList'),
-  }), [tExtraction]);
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
@@ -175,7 +160,6 @@ export default function JobDetailPage() {
   const jobDetails = jobDetailsQuery.data;
   const hasCurrentJobDetails =
     jobDetails?.status !== "ok" || jobDetails.job._id === jobId;
-  const canReadJob = hasCurrentJobDetails && jobDetails?.status === "ok";
   const isExtractionJob =
     hasCurrentJobDetails &&
     jobDetails?.status === "ok" &&
@@ -260,11 +244,6 @@ export default function JobDetailPage() {
       description: q.description,
     }));
   }, [jobDetails]);
-
-  const effectiveSelectedInsightsQuestion =
-    selectedInsightsQuestion && questions.some((q) => q.key === selectedInsightsQuestion)
-      ? selectedInsightsQuestion
-      : questions[0]?.key;
 
   const papersWithResults = useMemo(
     () =>
@@ -914,72 +893,34 @@ export default function JobDetailPage() {
             />
           </motion.div>
 
-          {/* Tab Navigation */}
-          <div className="px-4 md:px-6 border-b border-border/40">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setActiveTab('results')}
-                className={cn(
-                  "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
-                  activeTab === 'results'
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {tView('extractionResults')}
-              </button>
-              {insightsEnabled && (
+          {reportBuilderEnabled && (
+            <div className="border-b border-border/40 px-4 md:px-6">
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setActiveTab("insights")}
+                  onClick={() => setActiveTab("results")}
                   className={cn(
-                    "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
-                    activeTab === "insights"
+                    "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+                    activeTab === "results"
                       ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {tView('insights')}
+                  {tView("extractionResults")}
                 </button>
-              )}
-              {reviewQueueEnabled && (
-                <button
-                  onClick={() => setActiveTab("review")}
-                  className={cn(
-                    "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
-                    activeTab === "review"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {tView('reviewQueue')}
-                </button>
-              )}
-              {reportBuilderEnabled && (
                 <button
                   onClick={() => setActiveTab("report")}
                   className={cn(
-                    "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                    "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
                     activeTab === "report"
                       ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {tView('reportBuilder')}
+                  {tView("reportBuilder")}
                 </button>
-              )}
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={cn(
-                  "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
-                  activeTab === 'overview'
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {tView('overviewQuestions')}
-              </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Content Section */}
           <div className="overflow-x-hidden p-4 md:p-6">
@@ -1019,7 +960,7 @@ export default function JobDetailPage() {
                 />
 
                 <div
-                  className="min-h-[600px] min-w-0"
+                  className="min-h-[500px] min-w-0"
                   data-results-scope={resultsScope}
                   data-total-papers={authoritativeTotalPapers}
                   data-filtered-papers={authoritativeFilteredPapers}
@@ -1142,58 +1083,7 @@ export default function JobDetailPage() {
                 />
               </ExtractionResultsShell>
             </motion.div>
-          ) : activeTab === "insights" ? (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-6"
-            >
-              <InsightsOverview
-                jobId={jobId}
-                selectedQuestionKey={effectiveSelectedInsightsQuestion}
-                onSelectQuestion={setSelectedInsightsQuestion}
-                onRerun={handleDuplicate}
-                enabled={canReadJob}
-              />
-              <InsightsQuestionPanel
-                key={effectiveSelectedInsightsQuestion}
-                jobId={jobId}
-                questionKey={effectiveSelectedInsightsQuestion}
-                enabled={canReadJob}
-                onJumpToPaper={(paperId) => {
-                  const target = papersWithResults.find((paper) => paper._id === paperId);
-                  if (!target) return;
-                  setFilters((prev) => ({
-                    ...prev,
-                    searchQuery: target.title,
-                  }));
-                  setActiveTab("results");
-                  setCurrentPage(1);
-                }}
-              />
-            </motion.div>
-          ) : activeTab === "review" ? (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="min-w-0 overflow-x-hidden"
-            >
-              <ExtractionResultsShell
-                panelPayload={citationPanelPayload}
-                mobilePane={mobilePane}
-                onMobilePaneChange={setMobilePane}
-                primaryLabel={tView('review')}
-              >
-                <ReviewQueue
-                  jobId={jobId}
-                  enabled={canReadJob}
-                  onOpenCitationPanel={openCitationPanel}
-                />
-              </ExtractionResultsShell>
-            </motion.div>
-          ) : activeTab === "report" ? (
+          ) : (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1209,48 +1099,6 @@ export default function JobDetailPage() {
                 canUseTemplates={templatesEnabled}
                 canUseRunDiff={reportBuilderEnabled}
               />
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-8"
-            >
-              {/* Questions Section */}
-              <div className="bg-card rounded-xl border border-border overflow-hidden">
-                <div className="px-6 py-4 border-b border-border bg-muted/50">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {tView('extractionQuestions')}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tView('schemaDefinedDescription')}
-                  </p>
-                </div>
-                <div className="divide-y divide-border">
-                  {questions.map((q, idx) => (
-                    <motion.div
-                      key={q.key}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: idx * 0.05 }}
-                      className="px-6 py-4 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{q.question}</p>
-                          {q.description && (
-                            <p className="text-sm text-muted-foreground mt-1">{q.description}</p>
-                          )}
-                        </div>
-                        <span className="px-3 py-1 bg-muted text-muted-foreground text-xs font-medium uppercase rounded-full">
-                          {questionTypeLabels[q.type] ?? q.type}
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
             </motion.div>
           )}
               </div>

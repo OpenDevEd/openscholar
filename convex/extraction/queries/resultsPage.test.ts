@@ -60,11 +60,7 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
             ? "Mike Result"
             : i === 52
               ? "Rare Search Match"
-              : i === 53
-                ? "Reviewed Only"
-                : i === 54
-                  ? "Needs Followup"
-                  : `Paper ${i}`;
+              : `Paper ${i}`;
 
       const paperId = await ctx.db.insert("extractionPapers", {
         jobId,
@@ -76,9 +72,7 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
         isOpenAccess: i === 52,
         sortTitle: title.toLowerCase(),
         avgConfidence:
-          i === 30 ? 0.15 : i === 40 ? 0.75 : i === 52 ? 0.95 : i === 53 ? 0.61 : 0.58,
-        reviewedCount: i === 52 || i === 53 || i === 54 ? 1 : 0,
-        needsFollowupCount: i === 52 || i === 54 ? 1 : 0,
+          i === 30 ? 0.15 : i === 40 ? 0.75 : i === 52 ? 0.95 : 0.58,
         hasErrors: false,
         hasPdfSource: i === 52,
         questionAnswerTokens: i === 52 ? ["q1::yes"] : [],
@@ -99,15 +93,6 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
           confidence: 0.95,
           status: "completed" as const,
           processedAt: now,
-        });
-        await ctx.db.insert("extractionResultReviews", {
-          jobId,
-          paperId,
-          resultId,
-          questionKey: "q1",
-          state: "accepted" as const,
-          createdAt: now,
-          updatedAt: now,
         });
       }
     }
@@ -173,9 +158,9 @@ describe("getJobResultsPage", () => {
     expect(result.items[0]?.results).toEqual([
       expect.objectContaining({
         answer: "Target answer",
-        reviewState: "accepted",
       }),
     ]);
+    expect(result.items[0]?.results[0]).not.toHaveProperty("reviewState");
   });
 
   it("applies confidence range filters over late papers outside the first raw page", async () => {
@@ -196,39 +181,36 @@ describe("getJobResultsPage", () => {
     expect(result.items.map((paper) => paper.title)).toEqual(["Rare Search Match"]);
   });
 
-  it("supports reviewed and needs-followup status filters from projection counts", async () => {
+  it("supports has-pdf and open-access status filters from projection fields", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithProjectionCorpus(t);
     const auth = t.withIdentity(OWNER_IDENTITY);
 
-    const reviewed = await getResultsPage(auth, jobId, {
+    const hasPdf = await getResultsPage(auth, jobId, {
       filters: {
         ...DEFAULT_FILTERS,
-        statusFilters: ["reviewed"],
+        statusFilters: ["has-pdf"],
       },
     });
-    const followup = await getResultsPage(auth, jobId, {
+    const openAccess = await getResultsPage(auth, jobId, {
       filters: {
         ...DEFAULT_FILTERS,
-        statusFilters: ["needs-followup"],
+        statusFilters: ["open-access"],
       },
     });
 
-    expect(reviewed.status).toBe("ok");
-    expect(followup.status).toBe("ok");
-    if (reviewed.status !== "ok" || followup.status !== "ok") {
+    expect(hasPdf.status).toBe("ok");
+    expect(openAccess.status).toBe("ok");
+    if (hasPdf.status !== "ok" || openAccess.status !== "ok") {
       throw new Error("unreachable");
     }
-    expect(reviewed.totalFiltered).toBe(3);
-    expect(reviewed.items.map((paper) => paper.title)).toEqual([
+    expect(hasPdf.totalFiltered).toBe(1);
+    expect(hasPdf.items.map((paper) => paper.title)).toEqual([
       "Rare Search Match",
-      "Reviewed Only",
-      "Needs Followup",
     ]);
-    expect(followup.totalFiltered).toBe(2);
-    expect(followup.items.map((paper) => paper.title)).toEqual([
+    expect(openAccess.totalFiltered).toBe(1);
+    expect(openAccess.items.map((paper) => paper.title)).toEqual([
       "Rare Search Match",
-      "Needs Followup",
     ]);
   });
 
@@ -304,9 +286,9 @@ describe("getJobResultsPage", () => {
     expect(pageThree.items[1]?.results).toEqual([
       expect.objectContaining({
         answer: "Target answer",
-        reviewState: "accepted",
       }),
     ]);
+    expect(pageThree.items[1]?.results[0]).not.toHaveProperty("reviewState");
   });
 
   it("returns the full filtered corpus for export with a count equal to totalFiltered", async () => {
@@ -315,7 +297,7 @@ describe("getJobResultsPage", () => {
     const auth = t.withIdentity(OWNER_IDENTITY);
     const filters = {
       ...DEFAULT_FILTERS,
-      statusFilters: ["reviewed"],
+      statusFilters: ["has-pdf"],
     };
 
     const pageResult = await getResultsPage(auth, jobId, {
@@ -335,8 +317,7 @@ describe("getJobResultsPage", () => {
     expect(exportResult.items).toHaveLength(pageResult.totalFiltered);
     expect(exportResult.items.map((paper) => paper.title)).toEqual([
       "Rare Search Match",
-      "Reviewed Only",
-      "Needs Followup",
     ]);
+    expect(exportResult.items[0]?.results[0]).not.toHaveProperty("reviewState");
   });
 });

@@ -16,7 +16,6 @@ import {
 import type { CitationLocation } from "@/lib/extraction/citations";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { getReviewLabel, getReviewState, isReviewed } from "@/lib/extraction/reviews";
 
 interface SplitViewProps {
   papers: PaperWithResults[];
@@ -41,8 +40,6 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenCita
             {papers.map(paper => {
               const avgConfidence = getAvgConfidence(paper);
               const isSelected = selectedPaperId === paper._id;
-              const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
-
               return (
                 <div
                   key={paper._id}
@@ -70,14 +67,6 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenCita
                       </span>
                     )}
                     <ConfidenceBadge value={avgConfidence} size="sm" />
-                    {reviewedCount > 0 ? (
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
-                      >
-                        {t("reviewed", { count: reviewedCount, total: paper.results.length })}
-                      </Badge>
-                    ) : null}
                   </div>
                 </div>
               );
@@ -184,14 +173,11 @@ function ConfidenceBadge({ value, size = "md", className }: { value: number; siz
 }
 
 function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type: string }) {
-  const t = useTranslations("extraction");
   const tc = useTranslations("common");
   if (!result) return <span className="text-muted-foreground/50 text-sm">{tc("noResultsFound")}</span>;
 
   const { answer } = result;
   const citationStatus = getCitationStatus(result);
-  const reviewState = getReviewState(result);
-  const reviewLabel = getReviewLabel(reviewState);
 
   return (
     <div className="text-sm space-y-1">
@@ -234,11 +220,6 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
       {citationStatus === "extraction_error" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
           {tc("extractionError")}
-        </Badge>
-      ) : null}
-      {reviewLabel && reviewState !== "unreviewed" ? (
-        <Badge variant="outline" className="text-[10px] font-medium">
-          {t(reviewLabel)}
         </Badge>
       ) : null}
     </div>

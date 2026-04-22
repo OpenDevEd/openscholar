@@ -242,10 +242,9 @@ export type Counters = {
 };
 
 /**
- * Slim per-question summary used by `getJobInsights` and
- * `createExtractionReportSnapshot`. Shape matches the fields those
- * callers read off the legacy `extractionJobStats` row, so swapping
- * reads requires no downstream change.
+ * Slim per-question summary used by `createExtractionReportSnapshot`.
+ * Shape matches the fields that report generation reads off the legacy
+ * `extractionJobStats` row, so swapping reads requires no downstream change.
  */
 export type AggregateQuestionSummary = {
   questionKey: string;
@@ -323,14 +322,12 @@ export async function readAggregateCounters(
 /**
  * Read the 4-field summary (totalPapers / totalAnswered / groundedCount /
  * bestEffortCount) for every question on a job in one batched call per
- * aggregate. Used by getJobInsights and createExtractionReportSnapshot,
- * which consume the same shape the legacy `extractionJobStats` table
- * returned.
+ * aggregate. `createExtractionReportSnapshot` consumes the same shape the
+ * legacy `extractionJobStats` table returned.
  *
  * Questions with zero activity still surface as rows (all zeros), so the
  * returned length always equals `questionKeys.length` — this matches the
- * legacy `jobStats.length === questions.length` gating condition callers
- * use to decide whether to use the pre-aggregated path.
+ * report builder's gating condition for using the pre-aggregated path.
  */
 export async function readAggregateSummariesByQuestion(
   ctx: RunQueryCtx,

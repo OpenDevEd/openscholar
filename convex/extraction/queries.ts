@@ -19,14 +19,6 @@ export {
 } from "./queries/jobs";
 
 export { getJobResultsForExport, getJobResultsPage } from "./queries/results";
-
-export {
-  getJobInsights,
-  getQuestionInsights,
-  getQuestionDisagreements,
-} from "./queries/insights";
-
-export { getReviewQueue } from "./queries/reviews";
 export { getSavedViews } from "./queries/views";
 export { getWorkflowTemplates } from "./queries/templates";
 export { getReportSnapshots, getRunDiff } from "./queries/reports";

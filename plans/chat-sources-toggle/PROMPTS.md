@@ -179,7 +179,7 @@ Additional rules for this plan:
 8. REUSE THE SELECTABLE-LIST PRIMITIVE — components/extraction/bucket/selectable-list.tsx already has shift-click range, indeterminate checkbox, and "select across pages" banner. Adapt it in an adapter layer; DO NOT rewrite.
 9. REUSE CMDK — it's installed (v1.1.1). Use its `filter` prop with the weighted scorer; do not install Fuse.js.
 10. REUSE NUQS — components/extraction/source-selector.tsx already uses nuqs for URL state. Match that pattern.
-11. REUSE OPTIMISTIC PATTERN — components/extraction/review-queue.tsx has the .withOptimisticUpdate template. Copy the shape.
+11. REUSE OPTIMISTIC PATTERN — components/extraction/chat/sources-panel/sources-panel.tsx has the `.withOptimisticUpdate` template. Copy the shape.
 
 EXECUTION RHYTHM
 Phase A (TDD — pure logic only):

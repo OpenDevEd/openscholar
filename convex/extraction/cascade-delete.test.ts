@@ -26,7 +26,7 @@ describe("deleteExtractionInternal cascade", () => {
     await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
     vi.useRealTimers();
 
-    // Verify zero orphaned rows in ALL 9 child tables
+    // Verify zero orphaned rows in every child table.
     await t.run(async (ctx) => {
       // 1. Evidence units
       const evidenceUnits = await ctx.db
@@ -35,56 +35,49 @@ describe("deleteExtractionInternal cascade", () => {
         .collect();
       expect(evidenceUnits).toHaveLength(0);
 
-      // 2. Result reviews
-      const reviews = await ctx.db
-        .query("extractionResultReviews")
-        .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
-        .collect();
-      expect(reviews).toHaveLength(0);
-
-      // 3. Results
+      // 2. Results
       const results = await ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
         .collect();
       expect(results).toHaveLength(0);
 
-      // 4. Papers
+      // 3. Papers
       const papers = await ctx.db
         .query("extractionPapers")
         .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
         .collect();
       expect(papers).toHaveLength(0);
 
-      // 5. Questions
+      // 4. Questions
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
         .collect();
       expect(questions).toHaveLength(0);
 
-      // 6. Saved views
+      // 5. Saved views
       const savedViews = await ctx.db
         .query("extractionSavedViews")
         .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
         .collect();
       expect(savedViews).toHaveLength(0);
 
-      // 7. Report snapshots
+      // 6. Report snapshots
       const snapshots = await ctx.db
         .query("extractionReportSnapshots")
         .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
         .collect();
       expect(snapshots).toHaveLength(0);
 
-      // 8. Run diffs
+      // 7. Run diffs
       const runDiffs = await ctx.db
         .query("extractionRunDiffs")
         .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
         .collect();
       expect(runDiffs).toHaveLength(0);
 
-      // 9. The job itself
+      // 8. The job itself
       const job = await ctx.db.get("extractionJobs", ids.jobId);
       expect(job).toBeNull();
 
@@ -236,16 +229,16 @@ describe("deleteExtractionInternal cascade", () => {
           .collect();
         expect(units).toHaveLength(0);
 
-        // Reviews should still exist
-        const reviews = await ctx.db
-          .query("extractionResultReviews")
+        // Results should still exist
+        const results = await ctx.db
+          .query("extractionResults")
           .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
           .collect();
-        expect(reviews.length).toBeGreaterThan(0);
+        expect(results.length).toBeGreaterThan(0);
       });
 
       // Now re-invoke deleteExtractionInternal -- it should skip step 1
-      // (no evidence units) and proceed through steps 2-9
+      // (no evidence units) and proceed through the remaining steps.
       vi.useFakeTimers();
       await t.mutation(
         internal.extraction.mutations.internal.admin.deleteExtractionInternal,
@@ -256,12 +249,6 @@ describe("deleteExtractionInternal cascade", () => {
 
       // Verify ALL child tables are empty for this job
       await t.run(async (ctx) => {
-        const reviews = await ctx.db
-          .query("extractionResultReviews")
-          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
-          .collect();
-        expect(reviews).toHaveLength(0);
-
         const results = await ctx.db
           .query("extractionResults")
           .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
@@ -328,12 +315,6 @@ describe("deleteExtractionInternal cascade", () => {
           .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
           .collect();
         expect(evidenceUnits).toHaveLength(0);
-
-        const reviews = await ctx.db
-          .query("extractionResultReviews")
-          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
-          .collect();
-        expect(reviews).toHaveLength(0);
 
         const results = await ctx.db
           .query("extractionResults")

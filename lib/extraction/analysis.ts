@@ -4,12 +4,6 @@ export type CitationStatus =
   | "insufficient_evidence"
   | "extraction_error";
 
-export type ReviewState =
-  | "unreviewed"
-  | "accepted"
-  | "rejected"
-  | "needs_followup";
-
 export type ExtractionAnswer = string | boolean | number | string[] | null | undefined;
 
 export type QuestionType = "string" | "boolean" | "number" | "array";
@@ -25,7 +19,6 @@ export type InsightEntry = {
   confidence?: number;
   citationStatus?: CitationStatus;
   pdfContentUsed?: boolean;
-  reviewState?: ReviewState;
 };
 
 export type AnswerBucket = {
@@ -70,12 +63,6 @@ export type QuestionInsightAggregate = {
   topAnswers: AnswerBucket[];
   entityDistribution: EntityDistributionBucket[];
   insightMode: InsightMode;
-  reviewed: {
-    accepted: number;
-    rejected: number;
-    needsFollowup: number;
-    unreviewed: number;
-  };
 };
 
 export type DisagreementCluster = {
@@ -307,12 +294,6 @@ export function aggregateQuestionInsights(
   >();
   const confidenceBuckets: ConfidenceBuckets = { ...EMPTY_CONFIDENCE_BUCKETS };
   const citationStatusMix: CitationStatusMix = { ...EMPTY_STATUS_MIX };
-  const reviewed = {
-    accepted: 0,
-    rejected: 0,
-    needsFollowup: 0,
-    unreviewed: 0,
-  };
 
   let answered = 0;
   let grounded = 0;
@@ -371,11 +352,6 @@ export function aggregateQuestionInsights(
 
     if (entry.citationStatus === "grounded") grounded += 1;
     addCitationStatus(citationStatusMix, entry.citationStatus);
-
-    if (entry.reviewState === "accepted") reviewed.accepted += 1;
-    else if (entry.reviewState === "rejected") reviewed.rejected += 1;
-    else if (entry.reviewState === "needs_followup") reviewed.needsFollowup += 1;
-    else reviewed.unreviewed += 1;
   }
 
   const topAnswers: AnswerBucket[] = Array.from(answerMap.entries())
@@ -421,7 +397,6 @@ export function aggregateQuestionInsights(
     topAnswers,
     entityDistribution,
     insightMode: questionType === "array" ? "array" : "scalar",
-    reviewed,
   };
 }
 

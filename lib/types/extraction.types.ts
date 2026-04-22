@@ -78,11 +78,6 @@ export interface ExtractionResult {
     | "best_effort"
     | "insufficient_evidence"
     | "extraction_error";
-  reviewState?: "unreviewed" | "accepted" | "rejected" | "needs_followup";
-  reviewNote?: string;
-  correctedAnswer?: string | boolean | number | string[] | null;
-  reviewedAt?: number;
-  reviewedBy?: string;
   retrievalDiagnostics?: {
     denseCandidates: number;
     lexicalCandidates: number;

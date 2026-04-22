@@ -10,7 +10,7 @@
 import {
   isGenericArrayEntity,
   splitArrayFragments,
-} from "./insights";
+} from "./analysis";
 
 export type CitationStatus =
   | "grounded"

@@ -5,8 +5,6 @@ export function getStatusFilterOptionIds(pdfEnabled: boolean): string[] {
     "has-errors",
     "high-confidence",
     "low-confidence",
-    "reviewed",
-    "needs-followup",
   ];
   return pdfEnabled ? ["has-pdf", ...baseOptions] : baseOptions;
 }

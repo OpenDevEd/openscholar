@@ -4,7 +4,7 @@ import { assertNonProd } from "../lib/assertNonProd";
 import {
   isGenericArrayEntity,
   splitArrayFragments,
-} from "../../lib/extraction/insights";
+} from "../../lib/extraction/analysis";
 
 const EFFECTIVE_CONFIDENCE_MULTIPLIER: Record<string, number> = {
   grounded: 1,

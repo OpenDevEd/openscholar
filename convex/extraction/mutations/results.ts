@@ -2,8 +2,6 @@
  * Extraction result mutations — the write-side of the result/review
  * domain, plus the job-status primitive used by the workflow.
  *
- * setResultReviewState is the public review-workflow entrypoint.
- *
  * Per-question lifecycle (plan-02):
  *   - recordOneAnswer: upsert one extractionResults row with the answer
  *     + deduct one question's credits atomically. Gated on result.billed
@@ -16,14 +14,11 @@
  *     already terminal is a no-op.
  */
 
-import { mutation, internalMutation } from "../../_generated/server";
+import { internalMutation } from "../../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
-import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
-import { createError } from "../../lib/errors";
-import { assertJobOwnership } from "../access";
 import {
   assertValidJobTransition,
   type JobStatus,
@@ -40,102 +35,7 @@ import {
 } from "../validators";
 import { aggregatePaperStatus } from "@/lib/extraction/paper-status";
 import type { ErrorCode } from "@/lib/errors/taxonomy";
-import {
-  applyResultProjectionWrite,
-  recomputePaperListProjection,
-} from "../listProjection";
-
-export const setResultReviewState = mutation({
-  args: {
-    resultId: v.id("extractionResults"),
-    state: v.union(
-      v.literal("unreviewed"),
-      v.literal("accepted"),
-      v.literal("rejected"),
-      v.literal("needs_followup"),
-    ),
-    note: v.optional(v.string()),
-    correctedAnswer: v.optional(
-      v.union(
-        v.string(),
-        v.boolean(),
-        v.number(),
-        v.array(v.string()),
-        v.null(),
-      ),
-    ),
-  },
-  returns: v.union(
-    v.object({
-      cleared: v.boolean(),
-      state: v.literal("unreviewed"),
-    }),
-    v.object({
-      reviewId: v.id("extractionResultReviews"),
-      state: v.union(
-        v.literal("unreviewed"),
-        v.literal("accepted"),
-        v.literal("rejected"),
-        v.literal("needs_followup"),
-      ),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
-    await requireFeature(ctx, "extraction.reviewQueue", user._id);
-    const result = await ctx.db.get("extractionResults", args.resultId);
-    if (!result) throw createError("NOT_FOUND", "Result not found");
-
-    const paper = await ctx.db.get("extractionPapers", result.paperId);
-    if (!paper) throw createError("NOT_FOUND", "Paper not found");
-
-    const job = await assertJobOwnership(ctx, user._id, paper.jobId);
-    const existing = await ctx.db
-      .query("extractionResultReviews")
-      .withIndex("by_result", (q) => q.eq("resultId", args.resultId))
-      .first();
-
-    const note = args.note?.trim() || undefined;
-    const hasCorrection = args.correctedAnswer !== undefined;
-
-    if (args.state === "unreviewed" && !note && !hasCorrection) {
-      if (existing) {
-        await ctx.db.delete("extractionResultReviews", existing._id);
-        await recomputePaperListProjection(ctx, paper._id);
-      }
-      return { cleared: true, state: "unreviewed" as const };
-    }
-
-    const patchData = {
-      state: args.state,
-      note,
-      correctedAnswer: args.correctedAnswer,
-      reviewedBy: user._id,
-      reviewedAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    if (existing) {
-      await ctx.db.patch("extractionResultReviews", existing._id, patchData);
-      await recomputePaperListProjection(ctx, paper._id);
-      return { reviewId: existing._id, state: args.state };
-    }
-
-    const reviewId = await ctx.db.insert("extractionResultReviews", {
-      jobId: job._id,
-      paperId: paper._id,
-      resultId: result._id,
-      questionKey: result.questionKey,
-      ...patchData,
-      createdAt: Date.now(),
-    });
-
-    await recomputePaperListProjection(ctx, paper._id);
-
-    return { reviewId, state: args.state };
-  },
-});
+import { applyResultProjectionWrite } from "../listProjection";
 
 export const updateJobStatus = internalMutation({
   args: {

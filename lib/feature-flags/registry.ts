@@ -17,8 +17,6 @@ export const FLAG_REGISTRY = {
   "extraction.enabled": { enabled: true, minimumTier: 0, description: "Master switch for the extraction feature" },
   "extraction.pdf": { enabled: true, minimumTier: 0, description: "PDF processing capability gate (per-job toggle visibility)" },
   "extraction.chat": { enabled: false, minimumTier: 0, description: "Chat mode for job creation (paper Q&A)" },
-  "extraction.insights": { enabled: true, minimumTier: 20, description: "AI-powered insights panel in extraction results" },
-  "extraction.reviewQueue": { enabled: false, minimumTier: 20, description: "Manual review queue for extraction results" },
   "extraction.reportBuilder": { enabled: false, minimumTier: 20, description: "Report builder for extraction jobs" },
   "extraction.start": { enabled: true, minimumTier: 20, description: "Start new extraction jobs (Pro+)" },
   "extraction.templates": { enabled: true, minimumTier: 20, description: "Workflow template management (Pro+)" },

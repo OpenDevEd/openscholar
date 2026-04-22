@@ -76,7 +76,6 @@ const mockPapers: PaperWithResults[] = [
         reasoning: "High relevance",
         citations: [{ id: "c1" }],
         citationStatus: "grounded",
-        reviewState: "approved",
       },
       {
         questionKey: "q2",
@@ -142,24 +141,10 @@ describe("exportToCSV", () => {
     expect(csv).toContain("80%");
   });
 
-  it("uses correctedAnswer over answer when available", () => {
-    const papersWithCorrection = [
-      {
-        ...mockPapers[0],
-        results: [
-          {
-            questionKey: "q1",
-            answer: true,
-            correctedAnswer: false,
-            confidence: 0.9,
-          },
-          { questionKey: "q2", answer: 42, confidence: 0.8 },
-        ],
-      },
-    ] as unknown as PaperWithResults[];
-    exportToCSV(papersWithCorrection, mockQuestions);
+  it("uses the persisted answer for CSV output", () => {
+    exportToCSV(mockPapers, mockQuestions);
     const csv = capturedBlobContent[0];
-    expect(csv).toContain("No");
+    expect(csv).toContain("Yes");
   });
 });
 
@@ -171,7 +156,6 @@ describe("exportToJSON", () => {
     expect(firstResult.reasoning).toBe("High relevance");
     expect(firstResult.citations).toBeDefined();
     expect(firstResult.citationStatus).toBe("grounded");
-    expect(firstResult.reviewState).toBe("approved");
   });
 
   it("includeReasoning: false excludes reasoning", () => {
@@ -187,7 +171,6 @@ describe("exportToJSON", () => {
     const firstResult = json.papers[0].results[0];
     expect(firstResult).not.toHaveProperty("citations");
     expect(firstResult).not.toHaveProperty("citationStatus");
-    expect(firstResult).not.toHaveProperty("reviewState");
   });
 
   it("both false produces minimal result fields", () => {
@@ -217,22 +200,9 @@ describe("exportToJSON", () => {
     expect(json.papers[0].pdfUsed).toBe(false);
   });
 
-  it("uses correctedAnswer over answer when available", () => {
-    const papersWithCorrection = [
-      {
-        ...mockPapers[0],
-        results: [
-          {
-            questionKey: "q1",
-            answer: true,
-            correctedAnswer: false,
-            confidence: 0.9,
-          },
-        ],
-      },
-    ] as unknown as PaperWithResults[];
-    exportToJSON(papersWithCorrection, mockQuestions);
+  it("uses the persisted answer for JSON output", () => {
+    exportToJSON(mockPapers, mockQuestions);
     const json = JSON.parse(capturedBlobContent[0]);
-    expect(json.papers[0].results[0].answer).toBe(false);
+    expect(json.papers[0].results[0].answer).toBe(true);
   });
 });

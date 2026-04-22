@@ -119,13 +119,6 @@ export const citationStatusValidator = v.union(
   v.literal("extraction_error")
 );
 
-export const reviewStateValidator = v.union(
-  v.literal("unreviewed"),
-  v.literal("accepted"),
-  v.literal("rejected"),
-  v.literal("needs_followup")
-);
-
 export const sourceTypeValidator = v.union(
   v.literal("history"),
   v.literal("zotero"),
@@ -336,12 +329,22 @@ export const extractionPaperValidator = v.object({
   pdfContentUsed: v.optional(v.boolean()),
   sortTitle: v.optional(v.string()),
   avgConfidence: v.optional(v.number()),
-  reviewedCount: v.optional(v.number()),
-  needsFollowupCount: v.optional(v.number()),
   hasErrors: v.optional(v.boolean()),
   hasPdfSource: v.optional(v.boolean()),
   questionAnswerTokens: v.optional(v.array(v.string())),
   searchText: v.optional(v.string()),
+  projectionResultCount: v.optional(v.number()),
+  projectionConfidenceSum: v.optional(v.number()),
+  projectionQuestionStates: v.optional(
+    v.array(
+      v.object({
+        questionKey: v.string(),
+        token: v.optional(v.string()),
+        searchPart: v.optional(v.string()),
+      }),
+    ),
+  ),
+  projectionErrorQuestionKeys: v.optional(v.array(v.string())),
 });
 
 /**
@@ -414,50 +417,6 @@ export const extractionEvidenceUnitValidator = v.object({
  */
 export const jobSourcesReadValidator = v.array(bucketItemInputValidator);
 
-export const extractionResultReviewValidator = v.object({
-  _id: v.id("extractionResultReviews"),
-  _creationTime: v.number(),
-  jobId: v.id("extractionJobs"),
-  paperId: v.id("extractionPapers"),
-  resultId: v.id("extractionResults"),
-  questionKey: v.string(),
-  state: reviewStateValidator,
-  note: v.optional(v.string()),
-  correctedAnswer: v.optional(answerValidator),
-  reviewedBy: v.optional(v.id("users")),
-  reviewedAt: v.optional(v.number()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-});
-
-export const extractionResultWithReviewValidator = v.object({
-  _id: v.id("extractionResults"),
-  _creationTime: v.number(),
-  jobId: v.id("extractionJobs"),
-  paperId: v.id("extractionPapers"),
-  questionKey: v.string(),
-  answer: answerValidator,
-  confidence: v.optional(v.number()),
-  reasoning: v.optional(v.string()),
-  citations: v.array(citationValidator),
-  citationStatus: citationStatusValidator,
-  retrievalDiagnostics: v.optional(retrievalDiagnosticsValidator),
-  status: v.optional(resultStatusValidator),
-  billed: v.optional(v.boolean()),
-  attemptCount: v.optional(v.number()),
-  lastError: v.optional(structuredErrorValidator),
-  model: v.optional(v.string()),
-  provider: v.optional(v.string()),
-  pdfContentUsed: v.optional(v.boolean()),
-  processedAt: v.number(),
-  // Review overlay fields
-  reviewState: v.optional(reviewStateValidator),
-  reviewNote: v.optional(v.string()),
-  correctedAnswer: v.optional(answerValidator),
-  reviewedAt: v.optional(v.number()),
-  reviewedBy: v.optional(v.id("users")),
-});
-
 export const resultsSortByValidator = v.union(
   v.literal("default"),
   v.literal("title-asc"),
@@ -482,7 +441,7 @@ export const resultsPageFiltersValidator = v.object({
 // Shared by the results queries that return paper rows with attached results.
 export const paginatedPaperWithResultsValidator = v.object({
   ...extractionPaperValidator.fields,
-  results: v.array(extractionResultWithReviewValidator),
+  results: v.array(extractionResultValidator),
 });
 
 export const extractionSavedViewValidator = v.object({

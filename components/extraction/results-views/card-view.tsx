@@ -25,7 +25,6 @@ import {
 } from "@/lib/extraction/citations";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { getReviewLabel, getReviewState, isReviewed } from "@/lib/extraction/reviews";
 
 interface CardViewProps {
   papers: PaperWithResults[];
@@ -70,8 +69,6 @@ export const CardView = memo(function CardView({
             !!paper.isIndexed;
           const showNoContent =
             paper.status === "download_failed" && !hasAbstract;
-          const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
-
           return (
             <Card
               key={paper._id}
@@ -149,14 +146,6 @@ export const CardView = memo(function CardView({
                             {tc("pdfUsed")}
                           </Badge>
                         ) : null}
-                        {reviewedCount > 0 ? (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
-                          >
-                            {t("reviewed", { count: reviewedCount, total: paper.results.length })}
-                          </Badge>
-                        ) : null}
                       </div>
                     </CardDescription>
                   </div>
@@ -212,7 +201,6 @@ export const CardView = memo(function CardView({
 });
 
 function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type: string }) {
-  const t = useTranslations("extraction");
   const tc = useTranslations("common");
   if (!result) {
     return <span className="text-muted-foreground/30 text-xs">—</span>;
@@ -220,8 +208,6 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
 
   const { answer, confidence } = result;
   const citationStatus = getCitationStatus(result);
-  const reviewState = getReviewState(result);
-  const reviewLabel = getReviewLabel(reviewState);
 
   const getConfidenceColor = (conf?: number) => {
     if (!conf) return "bg-gray-500/10 text-gray-500 border-gray-200";
@@ -298,11 +284,6 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
       {citationStatus === "extraction_error" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
           {tc("extractionError")}
-        </Badge>
-      ) : null}
-      {reviewLabel && reviewState !== "unreviewed" ? (
-        <Badge variant="outline" className="text-[10px] font-medium">
-          {t(reviewLabel)}
         </Badge>
       ) : null}
     </div>

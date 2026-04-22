@@ -17,7 +17,7 @@ import { requireFeature } from "../../featureFlags/guard";
 import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { assertJobOwnership } from "../access";
-import { buildRunDiff } from "../../../lib/extraction/insights";
+import { buildRunDiff } from "../../../lib/extraction/analysis";
 import {
   buildDiffRecords,
   buildReportSnapshot,
@@ -29,9 +29,7 @@ async function loadJobDataForReporting(
   ctx: MutationCtx,
   jobId: Id<"extractionJobs">,
 ) {
-  // Four indexed job-scoped reads replace the previous per-paper fan-out
-  // (which was O(papers) separate result queries + O(papers) review queries).
-  const [questions, papers, allResults, allReviews] = await Promise.all([
+  const [questions, papers, allResults] = await Promise.all([
     ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
@@ -45,18 +43,9 @@ async function loadJobDataForReporting(
       .query("extractionResults")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
-    ctx.db
-      .query("extractionResultReviews")
-      .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
   ]);
 
-  const { resultsByPaper, reviewsByResult } = buildResultMaps(
-    allResults,
-    allReviews,
-  );
-
-  return { questions, papers, resultsByPaper, reviewsByResult };
+  return { questions, papers, resultsByPaper: buildResultMaps(allResults) };
 }
 
 export const createExtractionReportSnapshot = mutation({
@@ -77,7 +66,7 @@ export const createExtractionReportSnapshot = mutation({
     const user = await requireAuth(ctx);
     await requireFeature(ctx, "extraction.reportBuilder", user._id);
     const job = await assertJobOwnership(ctx, user._id, args.jobId);
-    const { questions, papers, resultsByPaper, reviewsByResult } =
+    const { questions, papers, resultsByPaper } =
       await loadJobDataForReporting(ctx, args.jobId);
 
     // T11.3: per-question summaries come from @convex-dev/aggregate now.
@@ -93,7 +82,6 @@ export const createExtractionReportSnapshot = mutation({
       questions,
       papers,
       resultsByPaper,
-      reviewsByResult,
       jobStats,
       scope: args.scope,
     });

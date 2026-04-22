@@ -21,7 +21,22 @@ describe("extraction result page helpers", () => {
   });
 
   it("removes has-pdf from the status options when the PDF feature is disabled", () => {
-    expect(getStatusFilterOptionIds(false)).not.toContain("has-pdf");
-    expect(getStatusFilterOptionIds(true)).toContain("has-pdf");
+    expect(getStatusFilterOptionIds(false)).toEqual([
+      "abstract-only",
+      "open-access",
+      "has-errors",
+      "high-confidence",
+      "low-confidence",
+    ]);
+    expect(getStatusFilterOptionIds(true)).toEqual([
+      "has-pdf",
+      "abstract-only",
+      "open-access",
+      "has-errors",
+      "high-confidence",
+      "low-confidence",
+    ]);
+    expect(getStatusFilterOptionIds(true)).not.toContain("reviewed");
+    expect(getStatusFilterOptionIds(true)).not.toContain("needs-followup");
   });
 });

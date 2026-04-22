@@ -9,7 +9,7 @@ Kill the two user-visible bugs first:
 1. the table must no longer stop at 200 papers,
 2. the toolbar/pagination total must stop lying.
 
-This plan also lays the new data-flow foundation by replacing the results hook with a page query that can address **any page** of the job while only loading full result/review rows for the visible page.
+This plan also lays the new data-flow foundation by replacing the results hook with a page query that can address **any page** of the job while only loading full result rows for the visible page.
 
 ## Scope
 
@@ -58,10 +58,10 @@ Returns:
 1. Resolve/access-check the job.
 2. Read all processable papers for the job via `by_job_processable.take(limit)`.
 3. Slice the requested page in memory.
-4. Load `extractionResults.by_paper` and `extractionResultReviews.by_paper` only for the sliced paper IDs.
+4. Load `extractionResults.by_paper` only for the sliced paper IDs.
 5. Return rich page rows.
 
-This is already a major improvement over the current query, because it removes whole-job result/review fan-out from the read set for the page query.
+This is already a major improvement over the current query, because it removes whole-job result fan-out from the read set for the page query.
 
 ### 3. UI contract
 
@@ -107,5 +107,4 @@ Convex query test:
 1. No `loadMore(200)` effect remains in `page.tsx`.
 2. No results surface uses the loaded-array length as the authoritative total.
 3. The page can render rows beyond 200.
-4. The query no longer calls `loadResultsByJob` / `loadReviewsByJob` for the page surface.
-
+4. The query no longer calls whole-job result loaders for the page surface.

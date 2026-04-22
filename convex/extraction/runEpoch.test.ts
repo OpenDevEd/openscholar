@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import type { WorkflowId } from "@convex-dev/workflow";
 import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -72,7 +73,7 @@ describe("handleExtractionJobComplete freshness guard", () => {
       internal.extraction.mutations.internal.onComplete
         .handleExtractionJobComplete,
       {
-        workflowId: "wf_stale",
+        workflowId: "wf_stale" as WorkflowId,
         result: { kind: "failed", error: "boom" },
         context: { jobId },
       },

@@ -18,8 +18,6 @@ const PROJECTION_REPAIR_BATCH_SIZE = 25;
 function paperNeedsListProjectionRepair(paper: {
   sortTitle?: string;
   avgConfidence?: number;
-  reviewedCount?: number;
-  needsFollowupCount?: number;
   hasErrors?: boolean;
   hasPdfSource?: boolean;
   questionAnswerTokens?: string[];
@@ -29,10 +27,6 @@ function paperNeedsListProjectionRepair(paper: {
     typeof paper.sortTitle !== "string" ||
     typeof paper.avgConfidence !== "number" ||
     !Number.isFinite(paper.avgConfidence) ||
-    typeof paper.reviewedCount !== "number" ||
-    !Number.isFinite(paper.reviewedCount) ||
-    typeof paper.needsFollowupCount !== "number" ||
-    !Number.isFinite(paper.needsFollowupCount) ||
     typeof paper.hasErrors !== "boolean" ||
     typeof paper.hasPdfSource !== "boolean" ||
     !Array.isArray(paper.questionAnswerTokens) ||
@@ -56,8 +50,8 @@ export const deleteExtractionInternal = internalMutation({
       return null;
     };
 
-    // Steps 1-3: delete extractionPapers' children (evidence units, reviews,
-    // results) — these hang off paperId, not jobId, so iterate the papers we
+    // Steps 1-3: delete extractionPapers' children (evidence units, results)
+    // — these hang off paperId, not jobId, so iterate the papers we
     // have. Each inner drain shares the helper.
     const papers = await ctx.db
       .query("extractionPapers")
@@ -65,7 +59,6 @@ export const deleteExtractionInternal = internalMutation({
       .take(PAPER_LIMIT_MAX);
     const perPaperChildTables: Array<[string, string]> = [
       ["extractionEvidenceUnits", "by_paper"],
-      ["extractionResultReviews", "by_paper"],
       ["extractionResults", "by_paper"],
     ];
     for (const [table, indexName] of perPaperChildTables) {

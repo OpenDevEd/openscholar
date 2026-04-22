@@ -20,8 +20,11 @@ import {
 } from "@/components/ui/popover";
 import { Info, Maximize2, Quote, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
-import type { ExtractionResultWithReview } from "@/lib/extraction/types";
+import type {
+  ExtractionResultRecord,
+  PaperWithResults,
+  Question,
+} from "@/lib/extraction/filtering";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import {
   getAllCitationLocations,
@@ -29,7 +32,6 @@ import {
 } from "@/lib/extraction/citations";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { getReviewLabel, getReviewState, isReviewed } from "@/lib/extraction/reviews";
 import { HighlightedText } from "./highlighted-text";
 import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
 import { ErrorHistory } from "@/components/extraction/error-history";
@@ -148,8 +150,6 @@ export const TableView = memo(function TableView({
                     : tc("abstract");
                 const showNoContent =
                   paper.status === "download_failed" && !hasAbstract;
-                const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
-
                 const completedCount = paper.results.filter(
                   (r) => r.status === "completed",
                 ).length;
@@ -248,14 +248,6 @@ export const TableView = memo(function TableView({
                               className="h-4 px-1 text-[9px] text-muted-foreground border-border"
                             >
                               {abstractLabel}
-                            </Badge>
-                          ) : null}
-                          {reviewedCount > 0 ? (
-                            <Badge
-                              variant="outline"
-                              className="h-4 px-1 text-[9px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
-                            >
-                              {t("reviewed", { count: reviewedCount, total: paper.results.length })}
                             </Badge>
                           ) : null}
                         </div>
@@ -357,12 +349,11 @@ const ResultCell = memo(function ResultCell({
   searchQuery,
   onCite,
 }: {
-  result?: ExtractionResultWithReview;
+  result?: ExtractionResultRecord;
   type: string;
   searchQuery?: string;
   onCite?: () => void;
 }) {
-  const t = useTranslations("extraction");
   const tc = useTranslations("common");
   if (!result) {
     return <span className="text-muted-foreground/30 text-xs">—</span>;
@@ -371,8 +362,6 @@ const ResultCell = memo(function ResultCell({
   const { answer, confidence, reasoning } = result;
   const citations = getAllCitationLocations(result);
   const citationStatus = getCitationStatus(result);
-  const reviewState = getReviewState(result);
-  const reviewLabel = getReviewLabel(reviewState);
 
   const getConfidenceColor = (conf?: number) => {
     if (!conf) return "bg-gray-500/10 text-gray-500";
@@ -474,12 +463,6 @@ const ResultCell = memo(function ResultCell({
             {tc("extractionError")}
           </Badge>
         ) : null}
-        {reviewLabel && reviewState !== "unreviewed" ? (
-          <Badge variant="outline" className="text-[10px] font-medium">
-            {t(reviewLabel)}
-          </Badge>
-        ) : null}
-
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {reasoning && (
             <Popover>

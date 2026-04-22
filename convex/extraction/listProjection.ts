@@ -6,9 +6,7 @@ const SEARCH_TEXT_DEFAULT_PART_MAX = 240;
 const SEARCH_TEXT_ABSTRACT_MAX = 1200;
 const QUESTION_ANSWER_TOKEN_DELIMITER = "::";
 
-type ProjectionAnswer =
-  | Doc<"extractionResults">["answer"]
-  | Doc<"extractionResultReviews">["correctedAnswer"];
+type ProjectionAnswer = Doc<"extractionResults">["answer"];
 
 type ProjectionQuestionState = {
   questionKey: string;
@@ -173,10 +171,8 @@ function readProjectionState(paper: Doc<"extractionPapers">): ProjectionState {
 function buildProjectionPatch(args: {
   paper: Doc<"extractionPapers">;
   state: ProjectionState;
-  reviewedCount: number;
-  needsFollowupCount: number;
 }): Partial<Doc<"extractionPapers">> {
-  const { paper, state, reviewedCount, needsFollowupCount } = args;
+  const { paper, state } = args;
   const questionStates = sortQuestionStates(state.questionStates);
   const questionAnswerTokens = questionStates.flatMap((entry) =>
     entry.token ? [entry.token] : [],
@@ -193,8 +189,6 @@ function buildProjectionPatch(args: {
   return {
     sortTitle: normalizeProjectionText(paper.title),
     avgConfidence,
-    reviewedCount,
-    needsFollowupCount,
     hasErrors: hasPaperError || state.errorQuestionKeys.length > 0,
     hasPdfSource: Boolean(
       paper.pdfUrl || paper.storageId || paper.ragEntryId || paper.isIndexed,
@@ -257,8 +251,6 @@ export async function refreshPaperListProjection(
   await ctx.db.patch("extractionPapers", paperId, buildProjectionPatch({
     paper,
     state,
-    reviewedCount: paper.reviewedCount ?? 0,
-    needsFollowupCount: paper.needsFollowupCount ?? 0,
   }));
 }
 
@@ -303,8 +295,6 @@ export async function applyResultProjectionWrite(
   const patch = buildProjectionPatch({
     paper,
     state: nextProjectionState,
-    reviewedCount: paper.reviewedCount ?? 0,
-    needsFollowupCount: paper.needsFollowupCount ?? 0,
   });
 
   if ((args.creditsUsedDelta ?? 0) > 0) {
@@ -321,39 +311,15 @@ export async function recomputePaperListProjection(
   const paper = await ctx.db.get("extractionPapers", paperId);
   if (!paper) return;
 
-  const [results, reviews] = await Promise.all([
-    ctx.db
-      .query("extractionResults")
-      .withIndex("by_paper", (q) => q.eq("paperId", paperId))
-      .collect(),
-    ctx.db
-      .query("extractionResultReviews")
-      .withIndex("by_paper", (q) => q.eq("paperId", paperId))
-      .collect(),
-  ]);
-
-  const reviewByResultId = new Map<Id<"extractionResults">, Doc<"extractionResultReviews">>();
-  for (const review of reviews) {
-    reviewByResultId.set(review.resultId, review);
-  }
+  const results = await ctx.db
+    .query("extractionResults")
+    .withIndex("by_paper", (q) => q.eq("paperId", paperId))
+    .collect();
 
   const questionStates = results.flatMap((result) => {
-    const review = reviewByResultId.get(result._id);
-    const state = toQuestionState(
-      result.questionKey,
-      review?.correctedAnswer ?? result.answer,
-    );
+    const state = toQuestionState(result.questionKey, result.answer);
     return state ? [state] : [];
   });
-  const reviewedCount = reviews.filter(
-    (review) =>
-      review.state === "accepted" ||
-      review.state === "rejected" ||
-      review.state === "needs_followup",
-  ).length;
-  const needsFollowupCount = reviews.filter(
-    (review) => review.state === "needs_followup",
-  ).length;
   const state: ProjectionState = {
     resultCount: results.length,
     confidenceSum: results.reduce(
@@ -369,7 +335,5 @@ export async function recomputePaperListProjection(
   await ctx.db.patch("extractionPapers", paperId, buildProjectionPatch({
     paper,
     state,
-    reviewedCount,
-    needsFollowupCount,
   }));
 }

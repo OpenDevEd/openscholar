@@ -17,9 +17,8 @@ import {
   type InsightEntry,
   type QuestionInsightAggregate,
   type QuestionType,
-  type ReviewState,
   type RunDiffRecord,
-} from "./insights";
+} from "./analysis";
 
 export type ReportPaper = {
   _id: string;
@@ -42,12 +41,6 @@ export type ReportResult = {
   confidence?: number;
   citationStatus?: CitationStatus;
   pdfContentUsed?: boolean;
-};
-
-export type ReportReview = {
-  resultId: string;
-  correctedAnswer?: ExtractionAnswer;
-  state?: ReviewState;
 };
 
 export type ReportJobStats = {
@@ -84,55 +77,43 @@ export type BuildReportSnapshotInputs = {
   questions: ReportQuestion[];
   papers: ReportPaper[];
   resultsByPaper: Map<string, ReportResult[]>;
-  reviewsByResult: Map<string, ReportReview>;
   jobStats: ReportJobStats[];
   scope?: ReportSnapshotScope;
 };
 
-export function buildResultMaps<
-  R extends { _id: string; paperId: string },
-  V extends { resultId: string },
->(
+export function buildResultMaps<R extends { _id: string; paperId: string }>(
   allResults: R[],
-  allReviews: V[],
-): { resultsByPaper: Map<string, R[]>; reviewsByResult: Map<string, V> } {
+): Map<string, R[]> {
   const resultsByPaper = new Map<string, R[]>();
   for (const row of allResults) {
     const bucket = resultsByPaper.get(row.paperId);
     if (bucket) bucket.push(row);
     else resultsByPaper.set(row.paperId, [row]);
   }
-  const reviewsByResult = new Map<string, V>();
-  for (const review of allReviews) {
-    reviewsByResult.set(review.resultId, review);
-  }
-  return { resultsByPaper, reviewsByResult };
+  return resultsByPaper;
 }
 
 export function toInsightEntry(
   paper: ReportPaper,
   questionKey: string,
   result: ReportResult | undefined,
-  review?: ReportReview,
 ): InsightEntry {
   return {
     paperId: paper._id,
     title: paper.title,
     openalexId: paper.openalexId,
     questionKey,
-    answer: review?.correctedAnswer ?? result?.answer ?? null,
+    answer: result?.answer ?? null,
     confidence: result?.confidence,
     citationStatus: result?.citationStatus,
     pdfContentUsed: Boolean(result?.pdfContentUsed),
-    reviewState: review?.state ?? "unreviewed",
   };
 }
 
 export function buildReportSnapshot(
   inputs: BuildReportSnapshotInputs,
 ): ReportSnapshotBody {
-  const { questions, papers, resultsByPaper, reviewsByResult, jobStats, scope } =
-    inputs;
+  const { questions, papers, resultsByPaper, jobStats, scope } = inputs;
 
   const filteredPaperIds = new Set(
     scope?.filteredPaperIds ?? papers.map((p) => p._id),
@@ -155,8 +136,7 @@ export function buildReportSnapshot(
       const result = (resultsByPaper.get(paper._id) ?? []).find(
         (row) => row.questionKey === question.key,
       );
-      const review = result ? reviewsByResult.get(result._id) : undefined;
-      return toInsightEntry(paper, question.key, result, review);
+      return toInsightEntry(paper, question.key, result);
     });
     return {
       question,

@@ -15,7 +15,7 @@ Empirical state of the extraction results surface as of this plan set (verified 
 
 1. **Hard 200-row ceiling.** `app/extraction/[jobId]/page.tsx:200-223` mounts `useProtectedPaginatedQuery(..., { initialNumItems: 200 })` and then refuses to call `loadMore` once `allPapers.length >= 200`. A 293-paper job never loads page 2.
 2. **Toolbar denominator lies.** `page.tsx:1018` passes `papersWithResults.length` into `<ResultsToolbar>`, and `components/extraction/results-toolbar.tsx:234-235` renders it as the total. The progress bar is correct because it uses job counters from `subscribeToJobProgress`.
-3. **The "paginated" Convex query still reads the whole job's child rows.** `convex/extraction/queries/results.ts:121-146` paginates `extractionPapers`, then immediately calls `loadReviewsByJob` and `loadResultsByJob` from `convex/extraction/queries/_shared.ts`. Those helpers read up to **50k reviews** and **50k results** for the job.
+3. **The "paginated" Convex query still reads the whole job's child rows.** `convex/extraction/queries/results.ts:121-146` paginates `extractionPapers`, then immediately fans out into whole-job result loading from `convex/extraction/queries/_shared.ts`. That can still read up to **50k results** for a job.
 4. **Client filters/sorts are only as correct as the loaded array.** `page.tsx:240-280` preprocesses, filters, and sorts the loaded rows in the browser. That is fundamentally incompatible with the product requirement that filters/export must work against the whole job all the time.
 5. **"Export all" is also tied to the loaded client rows.** `page.tsx:1132` passes `sortedPapers` into `<ExportDialog>` for export-all. That is wrong as soon as the browser does not own the full filtered corpus.
 
@@ -26,8 +26,8 @@ Empirical state of the extraction results surface as of this plan set (verified 
 | **D1** | **Split summary reactivity from list reactivity.** Keep `getJobDetails` / `subscribeToJobProgress` for header/progress/counts. | The job row is cheap and already authoritative. |
 | **D2** | **Replace the results hook with a server page query.** The page stops using `useProtectedPaginatedQuery` for results. | Cursor-loading 200-paper chunks in the browser is the root of the lie. |
 | **D3** | **Add additive per-paper projection fields on `extractionPapers`.** | Full-corpus filter/sort must not depend on rereading 50k child rows. |
-| **D4** | **Projection maintenance happens on writes, not reads.** `recordOneAnswer`, `recordOneAnswerFailure`, `setResultReviewState`, and paper-status writes keep the projection current. | Reactivity cost is determined by the query read set. |
-| **D5** | **`getJobResultsPage` scans bounded paper projections, then loads full result/review rows only for the visible page.** | This shrinks the read set from whole-job results to visible-page results. |
+| **D4** | **Projection maintenance happens on writes, not reads.** `recordOneAnswer`, `recordOneAnswerFailure`, and paper-status writes keep the projection current. | Reactivity cost is determined by the query read set. |
+| **D5** | **`getJobResultsPage` scans bounded paper projections, then loads full result rows only for the visible page.** | This shrinks the read set from whole-job results to visible-page results. |
 | **D6** | **Export-all moves server-side.** Client export helpers stay, but the full filtered dataset is fetched from Convex first. | Full-corpus correctness. |
 | **D7** | **No virtualization in this plan set.** Server paging keeps the mounted row count bounded. | Virtualization would treat the symptom, not the Convex read set. |
 
@@ -96,4 +96,3 @@ Follow the project testing rules:
   - `https://docs.convex.dev/functions/query-functions`
   - `https://docs.convex.dev/components`
   - `https://docs.convex.dev/understanding/best-practices`
-

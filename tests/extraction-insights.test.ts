@@ -4,8 +4,8 @@ import {
   buildArrayAnswerProfileClusters,
   buildDisagreementClusters,
   buildRunDiff,
-} from "../lib/extraction/insights";
-import type { CitationStatus, InsightEntry, RunDiffRecord } from "../lib/extraction/insights";
+} from "../lib/extraction/analysis";
+import type { CitationStatus, InsightEntry, RunDiffRecord } from "../lib/extraction/analysis";
 
 describe("aggregateQuestionInsights", () => {
   it("computes coverage, confidence, and citation status mix", () => {
@@ -19,7 +19,6 @@ describe("aggregateQuestionInsights", () => {
           answer: "273 studies",
           confidence: 0.92,
           citationStatus: "grounded",
-          reviewState: "accepted",
         },
         {
           paperId: "p2",
@@ -29,7 +28,6 @@ describe("aggregateQuestionInsights", () => {
           answer: null,
           confidence: 0.21,
           citationStatus: "insufficient_evidence",
-          reviewState: "unreviewed",
         },
         {
           paperId: "p3",
@@ -39,7 +37,6 @@ describe("aggregateQuestionInsights", () => {
           answer: "270 studies",
           confidence: 0.55,
           citationStatus: "best_effort",
-          reviewState: "needs_followup",
         },
       ],
       "string"
@@ -54,8 +51,6 @@ describe("aggregateQuestionInsights", () => {
     expect(aggregate.topAnswers.length).toBeGreaterThan(0);
     expect(aggregate.avgEffectiveConfidence).toBeGreaterThan(0);
     expect(aggregate.avgEffectiveConfidence).toBeLessThan(aggregate.avgConfidence);
-    expect(aggregate.reviewed.accepted).toBe(1);
-    expect(aggregate.reviewed.needsFollowup).toBe(1);
   });
 
   it("builds entity distribution for array questions with canonicalized values", () => {
@@ -268,12 +263,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       best_effort: 0,
       insufficient_evidence: 0,
       extraction_error: 0,
-    });
-    expect(aggregate.reviewed).toEqual({
-      accepted: 0,
-      rejected: 0,
-      needsFollowup: 0,
-      unreviewed: 0,
     });
   });
 

@@ -3,10 +3,8 @@
  * status. Consumed by `convex/extraction/mutations/results.ts::finalizePaper`
  * once every per-question workflow step returns.
  *
- * Not related to `./question-status.ts`, which is a UI helper for
- * progress-bar status dots. This module is backend-only: it decides
- * whether a paper has reached a terminal state after per-question
- * fan-out.
+ * This module is backend-only: it decides whether a paper has reached
+ * a terminal state after per-question fan-out.
  *
  * Plan 02 § "TDD sequence".
  */

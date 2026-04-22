@@ -75,7 +75,7 @@ export const submitButtonTextVariants = {
 
 /**
  * Card entrance animation — slide-up fade for panels, cards, and sections.
- * Used across extraction insights and anywhere cards enter the viewport.
+ * Used across extraction surfaces and anywhere cards enter the viewport.
  */
 export const cardEntrance = {
   initial: { opacity: 0, y: 10 },

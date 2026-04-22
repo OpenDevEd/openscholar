@@ -1,7 +1,6 @@
 /**
  * Unit tests for the threshold -> color role mapping.
  *
- * These replace the removed className assertions in summary-cards.test.tsx.
  * The component is responsible for applying whatever CSS corresponds to
  * a color role; the threshold logic is a pure function and belongs here.
  */

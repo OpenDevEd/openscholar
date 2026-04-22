@@ -16,9 +16,7 @@ import {
   resultsSortByValidator,
 } from "../validators";
 import {
-  applyReviewMetadata,
   loadResultsByPaperIds,
-  loadReviewsByPaperIds,
 } from "./_shared";
 import {
   buildQuestionAnswerToken,
@@ -104,15 +102,6 @@ function getMissingProjectionFields(paper: Doc<"extractionPapers">) {
   if (typeof paper.avgConfidence !== "number" || !Number.isFinite(paper.avgConfidence)) {
     missing.push("avgConfidence");
   }
-  if (typeof paper.reviewedCount !== "number" || !Number.isFinite(paper.reviewedCount)) {
-    missing.push("reviewedCount");
-  }
-  if (
-    typeof paper.needsFollowupCount !== "number" ||
-    !Number.isFinite(paper.needsFollowupCount)
-  ) {
-    missing.push("needsFollowupCount");
-  }
   if (typeof paper.hasErrors !== "boolean") missing.push("hasErrors");
   if (typeof paper.hasPdfSource !== "boolean") missing.push("hasPdfSource");
   if (!Array.isArray(paper.questionAnswerTokens)) {
@@ -147,14 +136,6 @@ function getPaperHasErrors(paper: Doc<"extractionPapers">) {
   return paper.hasErrors as boolean;
 }
 
-function getPaperReviewedCount(paper: Doc<"extractionPapers">) {
-  return paper.reviewedCount as number;
-}
-
-function getPaperNeedsFollowupCount(paper: Doc<"extractionPapers">) {
-  return paper.needsFollowupCount as number;
-}
-
 function getPaperSortTitle(paper: Doc<"extractionPapers">) {
   return paper.sortTitle as string;
 }
@@ -173,10 +154,6 @@ function matchesStatusFilters(
     if (statusFilter === "has-errors") return getPaperHasErrors(paper);
     if (statusFilter === "high-confidence") return avgConfidence >= 0.8;
     if (statusFilter === "low-confidence") return avgConfidence < 0.5;
-    if (statusFilter === "reviewed") return getPaperReviewedCount(paper) > 0;
-    if (statusFilter === "needs-followup") {
-      return getPaperNeedsFollowupCount(paper) > 0;
-    }
     return false;
   });
 }
@@ -257,16 +234,12 @@ async function loadPaginatedPaperResults(
   papers: ReadonlyArray<Doc<"extractionPapers">>,
 ) {
   const paperIds = papers.map((paper) => paper._id as Id<"extractionPapers">);
-  const [reviewMap, resultsByPaper] = await Promise.all([
-    loadReviewsByPaperIds(ctx, paperIds),
-    loadResultsByPaperIds(ctx, paperIds),
-  ]);
+  const resultsByPaper = await loadResultsByPaperIds(ctx, paperIds);
 
   return papers.map((paper) => {
-    const rawResults = resultsByPaper.get(paper._id) ?? [];
     return {
       ...paper,
-      results: applyReviewMetadata(rawResults, reviewMap),
+      results: resultsByPaper.get(paper._id) ?? [],
     };
   });
 }

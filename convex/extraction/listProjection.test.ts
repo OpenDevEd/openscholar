@@ -1,15 +1,11 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api, internal } from "../_generated/api";
+import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
 
 const CLERK_OWNER = "clerk_list_projection";
-const OWNER_IDENTITY = {
-  tokenIdentifier: `${CLERK_OWNER}|test`,
-  subject: CLERK_OWNER,
-};
 
 async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<{
   userId: Id<"users">;
@@ -29,7 +25,7 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
       lastLoginAt: now,
     });
 
-    for (const key of ["extraction.enabled", "extraction.reviewQueue"] as const) {
+    for (const key of ["extraction.enabled"] as const) {
       await ctx.db.insert("featureFlags", {
         key,
         enabled: true,
@@ -144,7 +140,7 @@ describe("paper list projection write maintenance", () => {
     expect(after?.hasErrors).toBe(true);
   });
 
-  it("setResultReviewState updates reviewedCount and needsFollowupCount", async () => {
+  it("preserves existing answers when a later question completion patches the same paper", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
@@ -160,75 +156,6 @@ describe("paper list projection write maintenance", () => {
         citationStatus: "grounded" as const,
       },
       creditsUsed: 1,
-    });
-
-    const result = await t.run((ctx) =>
-      ctx.db
-        .query("extractionResults")
-        .withIndex("by_paper_question", (q) =>
-          q.eq("paperId", paperId).eq("questionKey", "q1"),
-        )
-        .unique(),
-    );
-    if (!result) throw new Error("expected result row");
-
-    const auth = t.withIdentity(OWNER_IDENTITY);
-
-    await auth.mutation(api.extraction.mutations.setResultReviewState, {
-      resultId: result._id,
-      state: "needs_followup",
-      note: "Needs a manual check",
-      correctedAnswer: "Corrected outcome",
-    });
-
-    let paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
-    expect(paper?.reviewedCount).toBe(1);
-    expect(paper?.needsFollowupCount).toBe(1);
-    expect(paper?.questionAnswerTokens).toEqual(["q1::corrected outcome"]);
-
-    await auth.mutation(api.extraction.mutations.setResultReviewState, {
-      resultId: result._id,
-      state: "accepted",
-    });
-
-    paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
-    expect(paper?.reviewedCount).toBe(1);
-    expect(paper?.needsFollowupCount).toBe(0);
-  });
-
-  it("preserves reviewed answers when a later question completion patches the same paper", async () => {
-    const t = convexTest(schema);
-    setupAggregates(t);
-    const { paperId } = await seedProjectionFixture(t);
-    const auth = t.withIdentity(OWNER_IDENTITY);
-
-    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
-      paperId,
-      questionKey: "q1",
-      result: {
-        answer: "Original outcome",
-        confidence: 0.9,
-        reasoning: "Reasoning",
-        citations: [],
-        citationStatus: "grounded" as const,
-      },
-      creditsUsed: 1,
-    });
-
-    const firstResult = await t.run((ctx) =>
-      ctx.db
-        .query("extractionResults")
-        .withIndex("by_paper_question", (q) =>
-          q.eq("paperId", paperId).eq("questionKey", "q1"),
-        )
-        .unique(),
-    );
-    if (!firstResult) throw new Error("expected q1 result row");
-
-    await auth.mutation(api.extraction.mutations.setResultReviewState, {
-      resultId: firstResult._id,
-      state: "needs_followup",
-      correctedAnswer: "Corrected outcome",
     });
 
     await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
@@ -245,14 +172,12 @@ describe("paper list projection write maintenance", () => {
     });
 
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
-    expect(paper?.reviewedCount).toBe(1);
-    expect(paper?.needsFollowupCount).toBe(1);
     expect(paper?.avgConfidence).toBeCloseTo(0.65);
     expect(paper?.questionAnswerTokens).toEqual([
-      "q1::corrected outcome",
+      "q1::original outcome",
       "q2::secondary outcome",
     ]);
-    expect(paper?.searchText).toContain("corrected outcome");
+    expect(paper?.searchText).toContain("original outcome");
     expect(paper?.searchText).toContain("secondary outcome");
   });
 });

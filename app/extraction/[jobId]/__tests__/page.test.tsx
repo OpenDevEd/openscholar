@@ -428,18 +428,6 @@ vi.mock("@/components/extraction/export-dialog", () => ({
   ExportDialog: exportDialogSpy,
 }));
 
-vi.mock("@/components/extraction/insights-overview", () => ({
-  InsightsOverview: () => <div>insights overview</div>,
-}));
-
-vi.mock("@/components/extraction/insights-question-panel", () => ({
-  InsightsQuestionPanel: () => <div>insights question panel</div>,
-}));
-
-vi.mock("@/components/extraction/review-queue", () => ({
-  ReviewQueue: () => <div>review queue</div>,
-}));
-
 vi.mock("@/components/extraction/report-builder", () => ({
   ReportBuilder: () => <div>report builder</div>,
 }));
@@ -725,6 +713,9 @@ describe("JobDetailPage", () => {
     expect(screen.getByTestId("results-toolbar")).toHaveTextContent(
       "293 of 293 papers",
     );
+    expect(screen.queryByText("overviewQuestions")).toBeNull();
+    expect(screen.queryByText("insights")).toBeNull();
+    expect(screen.queryByText("reviewQueue")).toBeNull();
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuemax",
       "293",

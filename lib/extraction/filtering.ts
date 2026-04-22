@@ -1,5 +1,6 @@
 import type { Doc } from "@/convex/_generated/dataModel";
-import type { ExtractionResultWithReview } from "./types";
+import type { Infer } from "convex/values";
+import { extractionResultValidator } from "@/convex/extraction/validators";
 
 export interface FilterState {
   searchQuery: string;
@@ -15,8 +16,10 @@ export const defaultFilters: FilterState = {
   questionFilters: new Map(),
 };
 
+export type ExtractionResultRecord = Infer<typeof extractionResultValidator>;
+
 export interface PaperWithResults extends Doc<"extractionPapers"> {
-  results: Array<ExtractionResultWithReview>;
+  results: Array<ExtractionResultRecord>;
 }
 
 export interface Question {

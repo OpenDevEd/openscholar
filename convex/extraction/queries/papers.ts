@@ -16,15 +16,13 @@ import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import {
   extractionPaperValidator,
   extractionResultValidator,
-  extractionResultWithReviewValidator,
 } from "../validators";
-import { attachReviewMetadata } from "./_shared";
 
 export const results = query({
   args: { paperId: v.id("extractionPapers") },
   returns: statusResultValidator({
     paper: extractionPaperValidator,
-    results: v.array(extractionResultWithReviewValidator),
+    results: v.array(extractionResultValidator),
   }),
   handler: async (ctx, args) => {
     const access = await resolveOwnedPaper(ctx, args.paperId);
@@ -37,8 +35,7 @@ export const results = query({
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
       .collect();
 
-    const withReviews = await attachReviewMetadata(ctx, args.paperId, rows);
-    return ok({ paper, results: withReviews });
+    return ok({ paper, results: rows });
   },
 });
 

@@ -4,7 +4,7 @@
 
 ## Goal
 
-Add a compact, queryable paper-level projection on `extractionPapers` so full-corpus filters and sorts can operate without rereading the whole job’s `extractionResults` / `extractionResultReviews` set.
+Add a compact, queryable paper-level projection on `extractionPapers` so full-corpus filters and sorts can operate without rereading the whole job’s `extractionResults` set.
 
 ## Scope
 
@@ -13,7 +13,7 @@ Add a compact, queryable paper-level projection on `extractionPapers` so full-co
 - Additive optional fields on `extractionPapers`.
 - One search index on `extractionPapers.searchText`.
 - Shared helper `recomputePaperListProjection(ctx, paperId)`.
-- Wire the helper into every result/review/paper-status mutation that changes list semantics.
+- Wire the helper into every result/paper-status mutation that changes list semantics.
 
 **Out of scope**
 
@@ -28,8 +28,6 @@ Add optional fields to `extractionPapers`:
 
 - `sortTitle: string`
 - `avgConfidence: number`
-- `reviewedCount: number`
-- `needsFollowupCount: number`
 - `hasErrors: boolean`
 - `hasPdfSource: boolean`
 - `questionAnswerTokens: string[]`
@@ -47,13 +45,7 @@ Create a helper module, e.g. `convex/extraction/listProjection.ts`, with:
 - deterministic/capped `searchText` construction,
 - `recomputePaperListProjection(ctx, paperId)`.
 
-The helper reads:
-
-1. one paper row,
-2. that paper’s results,
-3. that paper’s reviews,
-
-then patches the projection fields onto the same paper row.
+The helper reads one paper row plus that paper's results, then patches the projection fields onto the same paper row.
 
 ### 3. Write hooks
 
@@ -61,7 +53,6 @@ Call `recomputePaperListProjection` from:
 
 - `recordOneAnswer`
 - `recordOneAnswerFailure`
-- `setResultReviewState`
 - `markPaperTerminalTx` / paper mutation paths that alter status, PDF/source availability, or error state
 
 Why patch the paper row instead of creating a second summary table:
@@ -87,14 +78,14 @@ Add focused mutation-level tests proving:
 
 1. successful answer updates `avgConfidence`, `questionAnswerTokens`, `searchText`
 2. failed answer flips `hasErrors`
-3. review-state changes update `reviewedCount` / `needsFollowupCount`
+3. paper-status changes update the derived projection fields
 
 ### Test-after
 
 Schema/index smoke:
 
 1. search index compiles and deploys
-2. write paths still pass existing result/review tests
+2. write paths still pass existing extraction write-path tests
 
 ## Acceptance criteria
 
@@ -102,4 +93,3 @@ Schema/index smoke:
 2. No projection value is computed lazily inside a read query.
 3. Existing write-side tests remain green.
 4. The projection fields are strictly additive.
-

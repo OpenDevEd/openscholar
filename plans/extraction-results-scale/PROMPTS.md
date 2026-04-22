@@ -35,7 +35,6 @@ Order:
 3. Wire it into:
    - `recordOneAnswer`
    - `recordOneAnswerFailure`
-   - `setResultReviewState`
    - paper lifecycle / paper status mutations
 4. Add focused tests proving projection maintenance works.
 
@@ -52,7 +51,7 @@ Execute `plans/extraction-results-scale/03-server-filters-sort-and-page-ui.md`.
 Order:
 1. Expand `getJobResultsPage` to take `filters` and `sortBy`.
 2. Implement full-corpus filtering/sorting over the bounded paper projections.
-3. Load full result/review rows only for the visible page.
+3. Load full result rows only for the visible page.
 4. Delete the old client full-corpus filter/sort pipeline from `app/extraction/[jobId]/page.tsx`.
 5. Update page/query tests.
 
@@ -75,4 +74,3 @@ Order:
 
 Do not keep any legacy runtime fallback path after cleanup.
 ```
-

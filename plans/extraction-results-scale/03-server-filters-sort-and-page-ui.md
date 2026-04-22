@@ -16,7 +16,7 @@ This is the plan that satisfies the product requirement:
 
 - Expand `getJobResultsPage` to accept `filters` and `sortBy`.
 - Implement full-corpus filter/sort over the bounded paper projection rows.
-- Load full `results` / `reviews` only for the visible page slice.
+- Load full `results` only for the visible page slice.
 - Delete the old client full-corpus preprocessing/filter/sort pipeline from `page.tsx`.
 - Keep page-number pagination in the UI.
 
@@ -62,14 +62,13 @@ This is a deliberate public API change. Co-migrate every caller immediately.
 2. Filter over bounded paper projections:
    - confidence range via `avgConfidence`
    - status flags via projection booleans + existing paper fields
-   - reviewed / needs-followup via projection counts
    - question equality via `questionAnswerTokens`
 3. Sort:
    - default corpus order
    - title asc/desc via `sortTitle`
    - confidence high/low via `avgConfidence`
 4. Slice requested page.
-5. Load full result/review rows only for the sliced paper IDs.
+5. Load full result rows only for the sliced paper IDs.
 
 ### 3. UI cutover
 
@@ -107,10 +106,9 @@ New query tests for:
 
 1. search
 2. confidence range
-3. reviewed / needs-followup
-4. question equality filters
-5. title sort
-6. confidence sort
+3. question equality filters
+4. title sort
+5. confidence sort
 
 ### Test-after
 
@@ -127,4 +125,3 @@ Page-level behavior tests:
 2. The page no longer recomputes full-corpus preprocessing/filter/sort in the browser.
 3. The results query’s child-row reads are limited to the visible page.
 4. Query signature changes are fully co-migrated.
-

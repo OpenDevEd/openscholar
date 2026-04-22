@@ -113,7 +113,7 @@ export function exportToCSV(
     // Add answers
     questions.forEach(q => {
       const result = paper.results.find(r => r.questionKey === q.key);
-      const answer = result?.correctedAnswer ?? result?.answer;
+      const answer = result?.answer;
       row.push(formatAnswerForCSV(answer, q.type));
     });
 
@@ -167,13 +167,12 @@ export function exportToJSON(
       pdfUsed: paper.pdfContentUsed,
       results: paper.results.map(r => ({
         questionKey: r.questionKey,
-        answer: r.correctedAnswer ?? r.answer,
+        answer: r.answer,
         confidence: r.confidence,
         ...(includeReasoning && { reasoning: r.reasoning }),
         ...(includeCitations && {
           citations: r.citations ?? [],
           citationStatus: r.citationStatus,
-          reviewState: r.reviewState,
         }),
       })),
     })),
@@ -239,7 +238,7 @@ export async function exportToExcel(
 
     questions.forEach(q => {
       const result = paper.results.find(r => r.questionKey === q.key);
-      const answer = result?.correctedAnswer ?? result?.answer;
+      const answer = result?.answer;
       row.push(formatAnswerForExcel(answer, q.type));
 
       if (includeConfidence) {

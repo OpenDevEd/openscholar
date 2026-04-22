@@ -54,7 +54,7 @@ import {
   isGenericArrayEntity,
   normalizeArrayEntity,
   splitArrayFragments,
-} from "../../lib/extraction/insights";
+} from "../../lib/extraction/analysis";
 import {
   applyAbstractOnlyPolicy,
   applyEvidencePolicy,
@@ -510,10 +510,10 @@ async function resolvePdfBlob(
     paperId: Id<"extractionPapers">;
     jobId: Id<"extractionJobs">;
     pdfUrl: string;
-    storageId?: string;
+    storageId?: Id<"_storage">;
     doi?: string;
   },
-): Promise<{ pdfBlob: Blob | null; storageId?: string; error?: string }> {
+): Promise<{ pdfBlob: Blob | null; storageId?: Id<"_storage">; error?: string }> {
   if (args.storageId) {
     const stored = await ctx.storage.get(args.storageId);
     if (stored) {
@@ -606,7 +606,7 @@ function getWorkerSkipReason(
 type IndexResult =
   | {
       status: "completed";
-      storageId?: string;
+      storageId?: Id<"_storage">;
       chunksCount?: number;
     }
   | {
@@ -632,7 +632,7 @@ export const downloadAndIndexPdfAction = internalAction({
   returns: v.union(
     v.object({
       status: v.literal("completed"),
-      storageId: v.optional(v.string()),
+      storageId: v.optional(v.id("_storage")),
       chunksCount: v.optional(v.number()),
     }),
     v.object({

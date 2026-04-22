@@ -621,8 +621,6 @@ export default defineSchema({
     // so full-corpus filters/sorts/search do not reread every child row.
     sortTitle: v.optional(v.string()),
     avgConfidence: v.optional(v.number()),
-    reviewedCount: v.optional(v.number()),
-    needsFollowupCount: v.optional(v.number()),
     hasErrors: v.optional(v.boolean()),
     hasPdfSource: v.optional(v.boolean()),
     questionAnswerTokens: v.optional(v.array(v.string())),
@@ -783,34 +781,6 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_job_status", ["jobId", "status"])
     .index("by_job_question", ["jobId", "questionKey"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // EXTRACTION RESULT REVIEWS - Human QA state and corrections
-  // ═══════════════════════════════════════════════════════════════
-  extractionResultReviews: defineTable({
-    jobId: v.id("extractionJobs"),
-    paperId: v.id("extractionPapers"),
-    resultId: v.id("extractionResults"),
-    questionKey: v.string(),
-    state: v.union(
-      v.literal("unreviewed"),
-      v.literal("accepted"),
-      v.literal("rejected"),
-      v.literal("needs_followup")
-    ),
-    note: v.optional(v.string()),
-    correctedAnswer: v.optional(
-      v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null())
-    ),
-    reviewedBy: v.optional(v.id("users")),
-    reviewedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_result", ["resultId"])
-    .index("by_paper", ["paperId"])
-    .index("by_job", ["jobId"])
-    .index("by_job_state", ["jobId", "state"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION SAVED VIEWS - Persisted filtering and sorting presets

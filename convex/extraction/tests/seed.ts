@@ -87,16 +87,6 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
       processedAt: now,
     });
 
-    const reviewId = await ctx.db.insert("extractionResultReviews", {
-      jobId,
-      paperId,
-      resultId,
-      questionKey: "q1",
-      state: "unreviewed" as const,
-      createdAt: now,
-      updatedAt: now,
-    });
-
     const evidenceUnitId = await ctx.db.insert("extractionEvidenceUnits", {
       jobId,
       paperId,
@@ -163,7 +153,6 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
       paperId,
       questionId,
       resultId,
-      reviewId,
       evidenceUnitId,
       savedViewId,
       snapshotId,

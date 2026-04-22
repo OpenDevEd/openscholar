@@ -12,8 +12,7 @@ import { setupAggregates } from "./aggregates.test-support";
  * DB reads → response shaping correctly. If the barrel split silently sends
  * a caller to the wrong handler, the headline assertion goes red.
  *
- * Covers: getJobDetails, getJobResultsForExport, getJobResultsPage, getJobInsights,
- * getQuestionInsights, getQuestionDisagreements, getReviewQueue,
+ * Covers: getJobDetails, getJobResultsForExport, getJobResultsPage,
  * subscribeToJobProgress, getSavedViews, getWorkflowTemplates,
  * getReportSnapshots, getRunDiff.
  */
@@ -22,13 +21,11 @@ async function seedAndAuth() {
   const t = convexTest(schema);
   setupAggregates(t);
   const ids = await seedFullJobGraph(t);
-  // Queries gate on the extraction.enabled master switch plus the tier
-  // flags (insights, reviewQueue, reportBuilder, templates). Enable each
-  // with zero tier for the pin-test so routing reaches the real handler.
+  // Queries gate on the extraction.enabled master switch plus the
+  // reportBuilder/templates feature flags. Enable each with zero tier for
+  // the pin-test so routing reaches the real handler.
   const FLAG_KEYS = [
     "extraction.enabled",
-    "extraction.insights",
-    "extraction.reviewQueue",
     "extraction.reportBuilder",
     "extraction.templates",
   ] as const;
@@ -94,48 +91,6 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
       sortBy: "default",
     });
     expect(res.status).toBe("ok");
-  });
-
-  test("getJobInsights returns ok with totalPapers=1", async () => {
-    const { auth, ids } = await seedAndAuth();
-    const res = await auth.query(api.extraction.queries.getJobInsights, {
-      jobId: ids.jobId,
-    });
-    expect(res.status).toBe("ok");
-    if (res.status !== "ok") throw new Error("unreachable");
-    expect(res.summary.totalPapers).toBe(1);
-  });
-
-  test("getQuestionInsights returns ok for seeded questionKey q1", async () => {
-    const { auth, ids } = await seedAndAuth();
-    const res = await auth.query(api.extraction.queries.getQuestionInsights, {
-      jobId: ids.jobId,
-      questionKey: "q1",
-    });
-    expect(res.status).toBe("ok");
-    if (res.status !== "ok") throw new Error("unreachable");
-    expect(res.question.key).toBe("q1");
-  });
-
-  test("getQuestionDisagreements returns ok for seeded questionKey q1", async () => {
-    const { auth, ids } = await seedAndAuth();
-    const res = await auth.query(
-      api.extraction.queries.getQuestionDisagreements,
-      { jobId: ids.jobId, questionKey: "q1" }
-    );
-    expect(res.status).toBe("ok");
-    if (res.status !== "ok") throw new Error("unreachable");
-    expect(res.question.key).toBe("q1");
-  });
-
-  test("getReviewQueue returns ok with the seeded review counted", async () => {
-    const { auth, ids } = await seedAndAuth();
-    const res = await auth.query(api.extraction.queries.getReviewQueue, {
-      jobId: ids.jobId,
-    });
-    expect(res.status).toBe("ok");
-    if (res.status !== "ok") throw new Error("unreachable");
-    expect(res.counts.total).toBeGreaterThanOrEqual(1);
   });
 
   test("subscribeToJobProgress returns ok with seeded totals", async () => {

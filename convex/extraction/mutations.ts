@@ -19,8 +19,6 @@ export {
   deleteExtraction,
 } from "./mutations/jobs";
 
-export { setResultReviewState } from "./mutations/results";
-
 export {
   saveWorkflowTemplate,
   saveWorkflowTemplateFromJob,

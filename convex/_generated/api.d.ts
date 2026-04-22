@@ -76,7 +76,6 @@ import type * as extraction_queries from "../extraction/queries.js";
 import type * as extraction_queries__shared from "../extraction/queries/_shared.js";
 import type * as extraction_queries_costs from "../extraction/queries/costs.js";
 import type * as extraction_queries_errorHistory from "../extraction/queries/errorHistory.js";
-import type * as extraction_queries_insights from "../extraction/queries/insights.js";
 import type * as extraction_queries_internal from "../extraction/queries/internal.js";
 import type * as extraction_queries_jobs from "../extraction/queries/jobs.js";
 import type * as extraction_queries_mixedSuccessSummary from "../extraction/queries/mixedSuccessSummary.js";
@@ -85,7 +84,6 @@ import type * as extraction_queries_papers from "../extraction/queries/papers.js
 import type * as extraction_queries_reports from "../extraction/queries/reports.js";
 import type * as extraction_queries_results from "../extraction/queries/results.js";
 import type * as extraction_queries_retry from "../extraction/queries/retry.js";
-import type * as extraction_queries_reviews from "../extraction/queries/reviews.js";
 import type * as extraction_queries_templates from "../extraction/queries/templates.js";
 import type * as extraction_queries_views from "../extraction/queries/views.js";
 import type * as extraction_sources_library from "../extraction/sources/library.js";
@@ -254,7 +252,6 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries/_shared": typeof extraction_queries__shared;
   "extraction/queries/costs": typeof extraction_queries_costs;
   "extraction/queries/errorHistory": typeof extraction_queries_errorHistory;
-  "extraction/queries/insights": typeof extraction_queries_insights;
   "extraction/queries/internal": typeof extraction_queries_internal;
   "extraction/queries/jobs": typeof extraction_queries_jobs;
   "extraction/queries/mixedSuccessSummary": typeof extraction_queries_mixedSuccessSummary;
@@ -263,7 +260,6 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries/reports": typeof extraction_queries_reports;
   "extraction/queries/results": typeof extraction_queries_results;
   "extraction/queries/retry": typeof extraction_queries_retry;
-  "extraction/queries/reviews": typeof extraction_queries_reviews;
   "extraction/queries/templates": typeof extraction_queries_templates;
   "extraction/queries/views": typeof extraction_queries_views;
   "extraction/sources/library": typeof extraction_sources_library;
