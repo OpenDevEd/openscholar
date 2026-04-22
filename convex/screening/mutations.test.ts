@@ -1,9 +1,9 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { setupScreeningWorkpool } from "./workpool.test-support";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,7 +50,7 @@ async function seedCredits(
 async function seedScreeningJob(
   t: ReturnType<typeof convexTest>,
   userId: Id<"users">,
-  status: "pending" | "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted"
+  status: "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted"
 ) {
   return await t.run(async (ctx) => {
     const id = await ctx.db.insert("screeningJobs", {
@@ -100,6 +100,7 @@ const defaultScoringConfig = {
 describe("createScreeningJob", () => {
   it("rejects unauthenticated calls", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     await expect(
       t.mutation(api.screening.mutations.createScreeningJob, {
         papers: makePapers(5),
@@ -111,6 +112,7 @@ describe("createScreeningJob", () => {
 
   it("rejects when papers array is empty", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
@@ -126,6 +128,7 @@ describe("createScreeningJob", () => {
 
   it("rejects when papers exceed MAX_SCREENING_PAPERS_PER_JOB (201 papers)", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 1000, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
@@ -141,6 +144,7 @@ describe("createScreeningJob", () => {
 
   it("rejects when user has insufficient credits", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 5, 5); // 10 total, but wants 50 papers
     const asUser = t.withIdentity({ subject: "clerk_test" });
@@ -154,24 +158,9 @@ describe("createScreeningJob", () => {
     ).rejects.toThrow("INSUFFICIENT_CREDITS");
   });
 
-  it("rejects when user has a pending screening job", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_test");
-    await seedCredits(t, user._id, 100, 0);
-    await seedScreeningJob(t, user._id, "pending");
-    const asUser = t.withIdentity({ subject: "clerk_test" });
-
-    await expect(
-      asUser.mutation(api.screening.mutations.createScreeningJob, {
-        papers: makePapers(5),
-        questions: defaultQuestions,
-        scoringConfig: defaultScoringConfig,
-      })
-    ).rejects.toThrow("SCREENING_JOB_ALREADY_ACTIVE");
-  });
-
   it("rejects when user has a processing screening job", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     await seedScreeningJob(t, user._id, "processing");
@@ -188,6 +177,7 @@ describe("createScreeningJob", () => {
 
   it("succeeds when user has a completed job (not blocking)", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     await seedScreeningJob(t, user._id, "completed");
@@ -206,6 +196,7 @@ describe("createScreeningJob", () => {
 
   it("succeeds when user has a cancelled job (not blocking)", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     await seedScreeningJob(t, user._id, "cancelled");
@@ -224,6 +215,7 @@ describe("createScreeningJob", () => {
 
   it("succeeds when user has a failed job (not blocking)", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     await seedScreeningJob(t, user._id, "failed");
@@ -240,8 +232,9 @@ describe("createScreeningJob", () => {
     expect(result.jobId).toBeDefined();
   });
 
-  it("creates screeningJobs record with correct fields", async () => {
+  it("creates a processing screening job record with correct fields", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
@@ -278,7 +271,7 @@ describe("createScreeningJob", () => {
 
     expect(job).not.toBeNull();
     expect(job!.userId).toBe(user._id);
-    expect(job!.status).toBe("pending");
+    expect(job!.status).toBe("processing");
     expect(job!.totalPapers).toBe(10);
     expect(job!.processedPapers).toBe(0);
     expect(job!.failedPapers).toBe(0);
@@ -287,10 +280,12 @@ describe("createScreeningJob", () => {
     expect(job!.scoringConfig).toEqual(scoringConfig);
     expect(job!.createdAt).toBeGreaterThan(0);
     expect(job!.updatedAt).toBeGreaterThan(0);
+    expect("workflowId" in job!).toBe(false);
   });
 
-  it("creates one screeningResults record per paper with status=pending", async () => {
+  it("creates one processing screeningResults record per paper with work ids", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
@@ -315,8 +310,9 @@ describe("createScreeningJob", () => {
 
     expect(results).toHaveLength(5);
     for (const r of results) {
-      expect(r.status).toBe("pending");
+      expect(r.status).toBe("processing");
       expect(r.jobId).toBe(result.jobId);
+      expect(typeof r.workId).toBe("string");
       expect(r.createdAt).toBeGreaterThan(0);
     }
 
@@ -328,6 +324,7 @@ describe("createScreeningJob", () => {
 
   it("returns { jobId } pointing to created job", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
@@ -348,6 +345,7 @@ describe("createScreeningJob", () => {
 
   it("accepts exactly 200 papers (boundary test)", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     // 200 papers * ESTIMATED_CREDITS_PER_PAPER (4.5) = 900 credits needed
     await seedCredits(t, user._id, 900, 0);
@@ -366,6 +364,7 @@ describe("createScreeningJob", () => {
 
   it("credit check uses freeBalance + paidBalance (125 free + 100 paid = 225 total)", async () => {
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
     // 50 papers * ESTIMATED_CREDITS_PER_PAPER (4.5) = 225 credits needed
     await seedCredits(t, user._id, 125, 100); // 225 total

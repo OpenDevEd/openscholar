@@ -3,7 +3,7 @@
  *
  * Converts AI screening responses into numerical scores, star ratings,
  * and qualification decisions. Zero Convex dependencies -- these are
- * pure functions consumed by the screening workflow (Phase 77).
+ * pure functions consumed by the screening pipeline.
  */
 
 // ---------------------------------------------------------------------------

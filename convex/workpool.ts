@@ -13,7 +13,7 @@ export const pdfProcessingPool = new Workpool(components.workpool, {
   },
 });
 
-// For bulk screening - separate from extraction to avoid cross-cancellation on cancelAll()
+// Separate screening work from extraction so bulk jobs do not compete on the same pool.
 export const screeningPool = new Workpool(components.screeningWorkpool, {
   maxParallelism: 5,
   retryActionsByDefault: true,

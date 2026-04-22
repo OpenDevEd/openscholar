@@ -8,6 +8,7 @@ import {
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { isTerminalScreeningJobStatus } from "./lifecycle";
 
 /**
  * Get real-time progress of a screening job.
@@ -37,8 +38,7 @@ export const getScreeningProgress = query({
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
 
-    const TERMINAL_STATUSES = ["completed", "cancelled", "failed", "creditsExhausted"];
-    const isTerminal = TERMINAL_STATUSES.includes(job.status);
+    const isTerminal = isTerminalScreeningJobStatus(job.status);
     const handled = job.processedPapers + job.failedPapers;
 
     const rawPercent =
@@ -101,7 +101,6 @@ export const getScreeningJob = query({
         minimumScore: v.optional(v.number()),
       }),
       targetCollectionId: v.optional(v.id("collections")),
-      workflowId: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
       completedAt: v.optional(v.number()),
@@ -126,7 +125,6 @@ export const getScreeningJob = query({
       questions: job.questions,
       scoringConfig: job.scoringConfig,
       targetCollectionId: job.targetCollectionId,
-      workflowId: job.workflowId,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
       completedAt: job.completedAt,
@@ -268,13 +266,13 @@ export const getScreeningResultsForExport = query({
 });
 
 // ═══════════════════════════════════════════════════════════════
-// INTERNAL QUERIES (for workflow/workpool background context)
+// INTERNAL QUERIES (for workpool/background context)
 // ═══════════════════════════════════════════════════════════════
 
 /**
  * Load a screening job by ID from background context (no auth).
  *
- * Used by the screening workflow and onComplete handlers where
+ * Used by workpool actions and onComplete handlers where
  * there is no user identity available.
  */
 export const getJobInternal = internalQuery({
@@ -292,7 +290,6 @@ export const getJobInternal = internalQuery({
       questions: v.array(screeningQuestionValidator),
       scoringConfig: screeningScoringConfigValidator,
       targetCollectionId: v.optional(v.id("collections")),
-      workflowId: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -312,51 +309,9 @@ export const getJobInternal = internalQuery({
       questions: job.questions,
       scoringConfig: job.scoringConfig,
       targetCollectionId: job.targetCollectionId,
-      workflowId: job.workflowId,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     };
-  },
-});
-
-/**
- * Load pending screening results for a job from background context (no auth).
- *
- * Returns up to MAX_SCREENING_PAPERS_PER_JOB pending results for
- * the workflow to enqueue into the workpool.
- */
-export const getPendingResults = internalQuery({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.array(
-    v.object({
-      _id: v.id("screeningResults"),
-      openalexId: v.string(),
-      title: v.string(),
-      abstract: v.optional(v.string()),
-      authors: v.optional(v.array(v.string())),
-      publicationYear: v.optional(v.number()),
-      doi: v.optional(v.string()),
-      status: screeningResultStatusValidator,
-    })
-  ),
-  handler: async (ctx, args) => {
-    const results = await ctx.db
-      .query("screeningResults")
-      .withIndex("by_job_status", (q) =>
-        q.eq("jobId", args.jobId).eq("status", "pending")
-      )
-      .take(MAX_SCREENING_PAPERS_PER_JOB);
-
-    return results.map((r) => ({
-      _id: r._id,
-      openalexId: r.openalexId,
-      title: r.title,
-      abstract: r.abstract,
-      authors: r.authors,
-      publicationYear: r.publicationYear,
-      doi: r.doi,
-      status: r.status,
-    }));
   },
 });
 

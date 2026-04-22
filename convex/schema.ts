@@ -948,7 +948,6 @@ export default defineSchema({
   screeningJobs: defineTable({
     userId: v.id("users"),
     status: v.union(
-      v.literal("pending"),
       v.literal("processing"),
       v.literal("completed"),
       v.literal("cancelled"),
@@ -980,14 +979,12 @@ export default defineSchema({
       minimumScore: v.optional(v.number()),
     }),
     targetCollectionId: v.optional(v.id("collections")),
-    workflowId: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"])
-    .index("by_workflow", ["workflowId"]),
+    .index("by_user_status", ["userId", "status"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SCREENING RESULTS - individual paper screening outcomes
@@ -1001,7 +998,6 @@ export default defineSchema({
     publicationYear: v.optional(v.number()),
     doi: v.optional(v.string()),
     status: v.union(
-      v.literal("pending"),
       v.literal("processing"),
       v.literal("completed"),
       v.literal("failed"),
@@ -1024,6 +1020,7 @@ export default defineSchema({
     creditsUsed: v.optional(v.number()),
     savedToLibrary: v.optional(v.boolean()),
     libraryItemId: v.optional(v.id("libraryItems")),
+    workId: v.optional(v.string()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
     errorMessage: v.optional(v.string()),

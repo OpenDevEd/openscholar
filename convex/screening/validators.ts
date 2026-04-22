@@ -51,7 +51,6 @@ export const screeningPaperInputValidator = v.object({
  * Screening job lifecycle statuses.
  */
 export const screeningJobStatusValidator = v.union(
-  v.literal("pending"),
   v.literal("processing"),
   v.literal("completed"),
   v.literal("cancelled"),
@@ -63,7 +62,6 @@ export const screeningJobStatusValidator = v.union(
  * Individual screening result statuses.
  */
 export const screeningResultStatusValidator = v.union(
-  v.literal("pending"),
   v.literal("processing"),
   v.literal("completed"),
   v.literal("failed"),

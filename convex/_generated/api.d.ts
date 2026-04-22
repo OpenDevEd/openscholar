@@ -136,11 +136,11 @@ import type * as migrations_setExistingJobsToExtractionMode from "../migrations/
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
+import type * as screening_lifecycle from "../screening/lifecycle.js";
 import type * as screening_mutations from "../screening/mutations.js";
 import type * as screening_queries from "../screening/queries.js";
 import type * as screening_scoring from "../screening/scoring.js";
 import type * as screening_validators from "../screening/validators.js";
-import type * as screening_workflow from "../screening/workflow.js";
 import type * as screening_workpoolActions from "../screening/workpoolActions.js";
 import type * as stripe from "../stripe.js";
 import type * as subscriptions_actions from "../subscriptions/actions.js";
@@ -312,11 +312,11 @@ declare const fullApi: ApiFromModules<{
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;
   "models/sync": typeof models_sync;
+  "screening/lifecycle": typeof screening_lifecycle;
   "screening/mutations": typeof screening_mutations;
   "screening/queries": typeof screening_queries;
   "screening/scoring": typeof screening_scoring;
   "screening/validators": typeof screening_validators;
-  "screening/workflow": typeof screening_workflow;
   "screening/workpoolActions": typeof screening_workpoolActions;
   stripe: typeof stripe;
   "subscriptions/actions": typeof subscriptions_actions;

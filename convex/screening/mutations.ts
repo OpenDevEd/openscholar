@@ -1,7 +1,6 @@
 import { mutation, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import type { WorkflowId } from "@convex-dev/workflow";
 import type { Doc } from "../_generated/dataModel";
 import {
   screeningPaperInputValidator,
@@ -13,26 +12,21 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
-import { workflow } from "../workflow";
 import { screeningPool } from "../workpool";
+import {
+  getCancelableScreeningWorkIds,
+  isTerminalScreeningJobStatus,
+} from "./lifecycle";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
-
-const TERMINAL_STATUSES = [
-  "completed",
-  "cancelled",
-  "failed",
-  "creditsExhausted",
-] as const;
 
 /**
  * Create a bulk screening job.
  *
  * Validates paper count, checks credits, guards against concurrent active jobs,
- * creates the job record with embedded questions/scoring config, and inserts
- * pending result records for each paper.
- *
- * Starts screening workflow for background processing.
+ * creates the job record with embedded questions/scoring config, inserts
+ * processing result records for each paper, and enqueues each paper directly
+ * into the screening workpool.
  */
 export const createScreeningJob = mutation({
   args: {
@@ -60,30 +54,15 @@ export const createScreeningJob = mutation({
       );
     }
 
-    // 3. Check for active jobs (pending or processing)
-    // Two separate queries per Pitfall 3 in RESEARCH.md (Convex cannot OR on index values)
-    const pendingJob = await ctx.db
-      .query("screeningJobs")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "pending")
-      )
-      .first();
-
-    if (pendingJob) {
-      throw createError(
-        "SCREENING_JOB_ALREADY_ACTIVE",
-        "You already have an active screening job"
-      );
-    }
-
-    const processingJob = await ctx.db
+    // 3. Check for active jobs
+    const activeJob = await ctx.db
       .query("screeningJobs")
       .withIndex("by_user_status", (q) =>
         q.eq("userId", user._id).eq("status", "processing")
       )
       .first();
 
-    if (processingJob) {
+    if (activeJob) {
       throw createError(
         "SCREENING_JOB_ALREADY_ACTIVE",
         "You already have an active screening job"
@@ -111,7 +90,7 @@ export const createScreeningJob = mutation({
     const now = Date.now();
     const jobId = await ctx.db.insert("screeningJobs", {
       userId: user._id,
-      status: "pending",
+      status: "processing",
       totalPapers: args.papers.length,
       processedPapers: 0,
       failedPapers: 0,
@@ -123,9 +102,9 @@ export const createScreeningJob = mutation({
       updatedAt: now,
     });
 
-    // 6. Insert pending screening result records for each paper
+    // 6. Insert processing result records and enqueue their work items
     for (const paper of args.papers) {
-      await ctx.db.insert("screeningResults", {
+      const resultId = await ctx.db.insert("screeningResults", {
         jobId,
         openalexId: paper.openalexId,
         title: paper.title,
@@ -133,26 +112,24 @@ export const createScreeningJob = mutation({
         authors: paper.authors,
         publicationYear: paper.publicationYear,
         doi: paper.doi,
-        status: "pending",
+        status: "processing",
         createdAt: now,
       });
-    }
 
-    // 7. Start screening workflow for background processing
-    try {
-      const workflowId = await workflow.start(
+      const workId = await screeningPool.enqueueAction(
         ctx,
-        internal.screening.workflow.runScreeningWorkflow,
-        { jobId }
+        internal.screening.workpoolActions.screenPaperAction,
+        { resultId, jobId },
+        {
+          onComplete: internal.screening.mutations.handleScreeningComplete,
+          context: { resultId, jobId },
+        }
       );
-      await ctx.db.patch("screeningJobs", jobId, { workflowId: String(workflowId) });
-    } catch (e) {
-      // Workflow component may not be available in test environments.
-      // In production, the component is always registered.
-      console.error(`[createScreeningJob] Failed to start workflow: ${e}`);
+
+      await ctx.db.patch("screeningResults", resultId, { workId });
     }
 
-    // 8. Return job ID
+    // 7. Return job ID
     return { jobId };
   },
 });
@@ -164,7 +141,7 @@ export const createScreeningJob = mutation({
  * - Idempotent: terminal statuses (completed, cancelled, failed, creditsExhausted)
  *   are no-ops (no error, no state change)
  * - Preserves existing screening results
- * - Cancels workflow and workpool items if present (forward-compatible with Phase 77)
+ * - Cancels only this job's outstanding workpool items
  */
 export const cancelScreeningJob = mutation({
   args: { jobId: v.id("screeningJobs") },
@@ -179,11 +156,7 @@ export const cancelScreeningJob = mutation({
     }
 
     // Terminal states are idempotent no-ops
-    if (
-      TERMINAL_STATUSES.includes(
-        job.status as (typeof TERMINAL_STATUSES)[number]
-      )
-    ) {
+    if (isTerminalScreeningJobStatus(job.status)) {
       return null;
     }
 
@@ -193,20 +166,13 @@ export const cancelScreeningJob = mutation({
       updatedAt: Date.now(),
     });
 
-    // Cancel workflow if running (forward-compatible with Phase 77)
-    if (job.workflowId) {
-      try {
-        await workflow.cancel(ctx, job.workflowId as WorkflowId);
-      } catch (e) {
-        console.warn(`[cancelScreeningJob] Failed to cancel workflow: ${e}`);
-      }
-    }
+    const results = await ctx.db
+      .query("screeningResults")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(MAX_SCREENING_PAPERS_PER_JOB);
 
-    // Cancel all pending workpool items for screening
-    try {
-      await screeningPool.cancelAll(ctx);
-    } catch (e) {
-      console.warn(`[cancelScreeningJob] Failed to cancel workpool items: ${e}`);
+    for (const workId of getCancelableScreeningWorkIds(results)) {
+      await screeningPool.cancel(ctx, workId);
     }
 
     return null;
@@ -214,7 +180,7 @@ export const cancelScreeningJob = mutation({
 });
 
 // ═══════════════════════════════════════════════════════════════
-// INTERNAL MUTATIONS (for workflow/workpool background context)
+// INTERNAL MUTATIONS (for workpool/background context)
 // ═══════════════════════════════════════════════════════════════
 
 /**
@@ -231,35 +197,6 @@ export const updateJobStatus = internalMutation({
       status: args.status,
       updatedAt: Date.now(),
     });
-    return null;
-  },
-});
-
-/**
- * Enqueue a single paper for AI screening via the workpool.
- *
- * Marks the result as "processing" and enqueues the screening action
- * with the onComplete handler for post-processing.
- */
-export const enqueueScreeningPaper = internalMutation({
-  args: {
-    resultId: v.id("screeningResults"),
-    jobId: v.id("screeningJobs"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch("screeningResults", args.resultId, { status: "processing" });
-
-    await screeningPool.enqueueAction(
-      ctx,
-      internal.screening.workpoolActions.screenPaperAction,
-      { resultId: args.resultId, jobId: args.jobId },
-      {
-        onComplete: internal.screening.mutations.handleScreeningComplete,
-        context: { resultId: args.resultId, jobId: args.jobId },
-      }
-    );
-
     return null;
   },
 });
@@ -390,11 +327,7 @@ export const finalizeScreeningJobIfDone = internalMutation({
     if (!job) return null;
 
     // Terminal states are no-ops
-    if (
-      TERMINAL_STATUSES.includes(
-        job.status as (typeof TERMINAL_STATUSES)[number]
-      )
-    ) {
+    if (isTerminalScreeningJobStatus(job.status)) {
       return null;
     }
 
@@ -430,21 +363,6 @@ export const finalizeScreeningJobIfDone = internalMutation({
 });
 
 /**
- * Store the workflow ID on a screening job for cancellation support.
- */
-export const setJobWorkflowId = internalMutation({
-  args: {
-    jobId: v.id("screeningJobs"),
-    workflowId: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch("screeningJobs", args.jobId, { workflowId: args.workflowId });
-    return null;
-  },
-});
-
-/**
  * Workpool onComplete handler for individual paper screening.
  *
  * On success: scores the paper, saves qualifying papers to library,
@@ -471,11 +389,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       if (!job) return;
 
       // Skip if job is in a terminal state
-      if (
-        TERMINAL_STATUSES.includes(
-          job.status as (typeof TERMINAL_STATUSES)[number]
-        )
-      ) {
+      if (isTerminalScreeningJobStatus(job.status)) {
         return;
       }
 

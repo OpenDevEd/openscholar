@@ -30,7 +30,7 @@ async function seedScreeningJob(
   t: ReturnType<typeof convexTest>,
   userId: Id<"users">,
   overrides: Partial<{
-    status: "pending" | "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted";
+    status: "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted";
     totalPapers: number;
     processedPapers: number;
     failedPapers: number;
@@ -65,7 +65,7 @@ async function seedScreeningResult(
   overrides: Partial<{
     openalexId: string;
     title: string;
-    status: "pending" | "processing" | "completed" | "failed" | "skipped";
+    status: "processing" | "completed" | "failed" | "skipped";
     answers: Record<string, boolean | null>;
     score: number;
     stars: number;
@@ -387,7 +387,7 @@ describe("listUserScreeningJobs", () => {
     // Create three jobs with different statuses
     const job1 = await seedScreeningJob(t, user._id, { status: "completed" });
     const job2 = await seedScreeningJob(t, user._id, { status: "processing" });
-    const job3 = await seedScreeningJob(t, user._id, { status: "pending" });
+    const job3 = await seedScreeningJob(t, user._id, { status: "cancelled" });
 
     const asUser = t.withIdentity({ subject: "clerk_list2" });
     const result = await asUser.query(api.screening.queries.listUserScreeningJobs, {});
@@ -406,7 +406,7 @@ describe("listUserScreeningJobs", () => {
     // Create 3 jobs, request limit of 2
     await seedScreeningJob(t, user._id, { status: "completed" });
     await seedScreeningJob(t, user._id, { status: "processing" });
-    await seedScreeningJob(t, user._id, { status: "pending" });
+    await seedScreeningJob(t, user._id, { status: "cancelled" });
 
     const asUser = t.withIdentity({ subject: "clerk_list3" });
     const result = await asUser.query(api.screening.queries.listUserScreeningJobs, { limit: 2 });
@@ -422,7 +422,7 @@ describe("listUserScreeningJobs", () => {
     // User1 has 2 jobs, User2 has 1 job
     await seedScreeningJob(t, user1._id, { status: "completed" });
     await seedScreeningJob(t, user1._id, { status: "processing" });
-    await seedScreeningJob(t, user2._id, { status: "pending" });
+    await seedScreeningJob(t, user2._id, { status: "cancelled" });
 
     const asUser1 = t.withIdentity({ subject: "clerk_list4" });
     const result1 = await asUser1.query(api.screening.queries.listUserScreeningJobs, {});

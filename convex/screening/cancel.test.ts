@@ -1,9 +1,9 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { setupScreeningWorkpool } from "./workpool.test-support";
 
 // Helper: create a user directly in the mock DB
 async function seedUser(
@@ -31,7 +31,7 @@ async function seedScreeningJob(
   t: ReturnType<typeof convexTest>,
   userId: Id<"users">,
   overrides: Partial<{
-    status: "pending" | "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted";
+    status: "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted";
     totalPapers: number;
     processedPapers: number;
     failedPapers: number;
@@ -42,7 +42,7 @@ async function seedScreeningJob(
     const now = Date.now();
     const jobId = await ctx.db.insert("screeningJobs", {
       userId,
-      status: overrides.status ?? "pending",
+      status: overrides.status ?? "processing",
       totalPapers: overrides.totalPapers ?? 5,
       processedPapers: overrides.processedPapers ?? 0,
       failedPapers: overrides.failedPapers ?? 0,
@@ -59,6 +59,24 @@ async function seedScreeningJob(
   });
 }
 
+async function seedCredits(
+  t: ReturnType<typeof convexTest>,
+  userId: Id<"users">,
+  freeBalance: number,
+  paidBalance: number
+) {
+  return await t.run(async (ctx) => {
+    const id = await ctx.db.insert("credits", {
+      userId,
+      freeBalance,
+      paidBalance,
+      lifetimeUsed: 0,
+      lastUpdatedAt: Date.now(),
+    });
+    return (await ctx.db.get("credits", id))!;
+  });
+}
+
 // Helper: seed a screening result linked to a job
 async function seedScreeningResult(
   t: ReturnType<typeof convexTest>,
@@ -66,26 +84,29 @@ async function seedScreeningResult(
   overrides: Partial<{
     openalexId: string;
     title: string;
-    status: "pending" | "processing" | "completed" | "failed" | "skipped";
+    status: "processing" | "completed" | "failed" | "skipped";
     answers: Record<string, boolean | null>;
     score: number;
     stars: number;
     qualified: boolean;
+    workId: string;
   }> = {}
 ) {
   return await t.run(async (ctx) => {
     const now = Date.now();
+    const status = overrides.status ?? "completed";
     return await ctx.db.insert("screeningResults", {
       jobId,
       openalexId: overrides.openalexId ?? "oa:test1",
       title: overrides.title ?? "Test Paper",
-      status: overrides.status ?? "completed",
+      status,
       ...(overrides.answers !== undefined ? { answers: overrides.answers } : {}),
       ...(overrides.score !== undefined ? { score: overrides.score } : {}),
       ...(overrides.stars !== undefined ? { stars: overrides.stars } : {}),
       ...(overrides.qualified !== undefined ? { qualified: overrides.qualified } : {}),
+      ...(overrides.workId !== undefined ? { workId: overrides.workId } : {}),
       createdAt: now,
-      completedAt: now,
+      ...(status !== "processing" ? { completedAt: now } : {}),
     });
   });
 }
@@ -129,19 +150,6 @@ describe("cancelScreeningJob", () => {
     await expect(
       asUser2.mutation(api.screening.mutations.cancelScreeningJob, { jobId })
     ).rejects.toThrow();
-  });
-
-  it("cancels a pending job", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_cancel5", "cancel5@test.com");
-    const jobId = await seedScreeningJob(t, user._id, { status: "pending" });
-
-    const asUser = t.withIdentity({ subject: "clerk_cancel5" });
-    await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
-
-    const job = await t.run(async (ctx) => ctx.db.get("screeningJobs", jobId));
-    expect(job!.status).toBe("cancelled");
-    expect(job!.updatedAt).toBeGreaterThan(0);
   });
 
   it("cancels a processing job", async () => {
@@ -236,5 +244,72 @@ describe("cancelScreeningJob", () => {
     expect(results).toHaveLength(2);
     expect(results[0].status).toBe("completed");
     expect(results[1].status).toBe("completed");
+  });
+
+  it("cancels only the targeted job lifecycle when another job is active", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const userA = await seedUser(t, "clerk_cancel11a", "cancel11a@test.com");
+    const userB = await seedUser(t, "clerk_cancel11b", "cancel11b@test.com");
+    await seedCredits(t, userA._id, 100, 0);
+    await seedCredits(t, userB._id, 100, 0);
+
+    const userATest = t.withIdentity({ subject: "clerk_cancel11a" });
+    const userBTest = t.withIdentity({ subject: "clerk_cancel11b" });
+
+    const targetJob = await userATest.mutation(
+      api.screening.mutations.createScreeningJob,
+      {
+        papers: [
+          {
+            openalexId: "oa:target",
+            title: "Target Paper",
+          },
+        ],
+        questions: [{ key: "q1", question: "Is this relevant?" }],
+        scoringConfig: {
+          rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
+          starThresholds: [{ minScore: 0, stars: 1 }],
+        },
+      }
+    );
+    const otherJob = await userBTest.mutation(
+      api.screening.mutations.createScreeningJob,
+      {
+        papers: [
+          {
+            openalexId: "oa:other",
+            title: "Other Paper",
+          },
+        ],
+        questions: [{ key: "q1", question: "Is this relevant?" }],
+        scoringConfig: {
+          rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
+          starThresholds: [{ minScore: 0, stars: 1 }],
+        },
+      }
+    );
+
+    await userATest.mutation(api.screening.mutations.cancelScreeningJob, {
+      jobId: targetJob.jobId,
+    });
+
+    await t.run(async (ctx) => {
+      const targetJobDoc = await ctx.db.get("screeningJobs", targetJob.jobId);
+      const otherJobDoc = await ctx.db.get("screeningJobs", otherJob.jobId);
+      const [targetResult] = await ctx.db
+        .query("screeningResults")
+        .withIndex("by_job", (q) => q.eq("jobId", targetJob.jobId))
+        .take(1);
+      const [otherResult] = await ctx.db
+        .query("screeningResults")
+        .withIndex("by_job", (q) => q.eq("jobId", otherJob.jobId))
+        .take(1);
+
+      expect(targetJobDoc?.status).toBe("cancelled");
+      expect(otherJobDoc?.status).toBe("processing");
+      expect(typeof targetResult?.workId).toBe("string");
+      expect(typeof otherResult?.workId).toBe("string");
+    });
   });
 });
