@@ -1,14 +1,16 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import {
+  readScreeningProgressCounts,
   recordQualifiedResult,
   recordTerminalResult,
 } from "./aggregates";
 import { setupScreeningAggregates } from "./aggregates.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,6 +101,23 @@ async function seedScreeningResult(
       createdAt: Date.now(),
     });
     return (await ctx.db.get("screeningResults", resultId))!;
+  });
+}
+
+async function seedCollection(
+  t: ReturnType<typeof convexTest>,
+  userId: Id<"users">,
+) {
+  return await t.run(async (ctx) => {
+    const now = Date.now();
+    const collectionId = await ctx.db.insert("collections", {
+      userId,
+      name: "Screening Target",
+      itemCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return (await ctx.db.get("collections", collectionId))!;
   });
 }
 
@@ -412,7 +431,63 @@ describe("createScreeningJob", () => {
   });
 });
 
-describe("finalizeScreeningJobIfDone", () => {
+describe("persistQualifiedScreeningResult", () => {
+  it("is idempotent across retries and only creates one collection link", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_persist");
+    const collection = await seedCollection(t, user._id);
+    const job = await seedScreeningJob(t, user._id, "processing");
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("screeningJobs", job._id, {
+        targetCollectionId: collection._id,
+      });
+    });
+
+    const result = await seedScreeningResult(t, job._id, {
+      status: "completed",
+      openalexId: "https://openalex.org/Wpersist",
+      title: "Persisted Paper",
+      score: 4,
+      stars: 3,
+      qualified: true,
+    });
+
+    await t.mutation(
+      internal.screening.mutations.persistQualifiedScreeningResult,
+      { resultId: result._id },
+    );
+    await t.mutation(
+      internal.screening.mutations.persistQualifiedScreeningResult,
+      { resultId: result._id },
+    );
+
+    await t.run(async (ctx) => {
+      const updatedResult = await ctx.db.get("screeningResults", result._id);
+      const libraryItems = await ctx.db
+        .query("libraryItems")
+        .withIndex("by_user_openalexId", (q) =>
+          q.eq("userId", user._id).eq("openalexId", "https://openalex.org/Wpersist"),
+        )
+        .collect();
+      const links = await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_collection_item", (q) =>
+          q
+            .eq("collectionId", collection._id)
+            .eq("libraryItemId", libraryItems[0]!._id),
+        )
+        .collect();
+
+      expect(updatedResult?.savedToLibrary).toBe(true);
+      expect(updatedResult?.libraryItemId).toBeDefined();
+      expect(libraryItems).toHaveLength(1);
+      expect(links).toHaveLength(1);
+    });
+  });
+});
+
+describe("finalizeScreeningJobFromAggregates", () => {
   it("finalizes from aggregate counts even when legacy counters are stale", async () => {
     const t = convexTest(schema);
     setupScreeningAggregates(t);
@@ -449,18 +524,238 @@ describe("finalizeScreeningJobIfDone", () => {
     });
 
     await t.mutation(
-      internal.screening.mutations.finalizeScreeningJobIfDone,
+      internal.screening.mutations.finalizeScreeningJobFromAggregates,
       { jobId: job._id },
     );
 
-    const finalized = await t.run(async (ctx) =>
-      ctx.db.get("screeningJobs", job._id),
-    );
-    expect(finalized).not.toBeNull();
-    expect(finalized!.status).toBe("completed");
-    expect(finalized!.completedAt).toBeGreaterThan(0);
-    expect(finalized!.processedPapers).toBe(0);
-    expect(finalized!.failedPapers).toBe(0);
-    expect(finalized!.qualifiedPapers).toBe(0);
+    await t.run(async (ctx) => {
+      const finalized = await ctx.db.get("screeningJobs", job._id);
+      const scheduledFunctions = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+
+      expect(finalized).not.toBeNull();
+      expect(finalized!.status).toBe("completed");
+      expect(finalized!.completedAt).toBeGreaterThan(0);
+      expect(finalized!.processedPapers).toBe(0);
+      expect(finalized!.failedPapers).toBe(0);
+      expect(finalized!.qualifiedPapers).toBe(0);
+      expect(
+        scheduledFunctions.some((sf) => sf.name.includes("captureEvent")),
+      ).toBe(true);
+    });
   });
+});
+
+describe("handleScreeningComplete", () => {
+  it("keeps qualified completion row-local until scheduled follow-ups run", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      setupScreeningAggregates(t);
+      const user = await seedUser(t, "clerk_complete_success");
+      const collection = await seedCollection(t, user._id);
+      const job = await seedScreeningJob(t, user._id, "processing");
+
+      await t.run(async (ctx) => {
+        await ctx.db.patch("screeningJobs", job._id, {
+          totalPapers: 1,
+          targetCollectionId: collection._id,
+        });
+      });
+
+      const result = await seedScreeningResult(t, job._id, {
+        status: "processing",
+        openalexId: "https://openalex.org/Wsuccess",
+        title: "Qualified Paper",
+      });
+
+      await t.mutation(internal.screening.mutations.handleScreeningComplete, {
+        workId: "work_success",
+        context: { jobId: job._id, resultId: result._id },
+        result: {
+          kind: "success",
+          returnValue: {
+            responses: encodeQuestionResponseMap({
+              "Is this relevant?": true,
+            }),
+            confidence: 0.91,
+          },
+        },
+      });
+
+      await t.run(async (ctx) => {
+        const updatedResult = await ctx.db.get("screeningResults", result._id);
+        const updatedJob = await ctx.db.get("screeningJobs", job._id);
+        const libraryItems = await ctx.db
+          .query("libraryItems")
+          .withIndex("by_user_openalexId", (q) =>
+            q.eq("userId", user._id).eq("openalexId", "https://openalex.org/Wsuccess"),
+          )
+          .collect();
+        const scheduledFunctions = await ctx.db.system
+          .query("_scheduled_functions")
+          .collect();
+
+        expect(updatedResult?.status).toBe("completed");
+        expect(updatedResult?.answers).toEqual({ q1: true });
+        expect(updatedResult?.savedToLibrary).toBeUndefined();
+        expect(updatedJob?.status).toBe("processing");
+        expect(libraryItems).toHaveLength(0);
+        expect(scheduledFunctions).toHaveLength(2);
+      });
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+
+      await t.run(async (ctx) => {
+        const updatedResult = await ctx.db.get("screeningResults", result._id);
+        const updatedJob = await ctx.db.get("screeningJobs", job._id);
+        const libraryItems = await ctx.db
+          .query("libraryItems")
+          .withIndex("by_user_openalexId", (q) =>
+            q.eq("userId", user._id).eq("openalexId", "https://openalex.org/Wsuccess"),
+          )
+          .collect();
+        const links = await ctx.db
+          .query("libraryItemCollections")
+          .withIndex("by_collection_item", (q) =>
+            q
+              .eq("collectionId", collection._id)
+              .eq("libraryItemId", updatedResult!.libraryItemId!),
+          )
+          .collect();
+        const counts = await readScreeningProgressCounts(ctx, job._id);
+
+        expect(updatedResult?.savedToLibrary).toBe(true);
+        expect(updatedResult?.libraryItemId).toBeDefined();
+        expect(updatedJob?.status).toBe("completed");
+        expect(updatedJob?.processedPapers).toBe(0);
+        expect(updatedJob?.failedPapers).toBe(0);
+        expect(updatedJob?.qualifiedPapers).toBe(0);
+        expect(libraryItems).toHaveLength(1);
+        expect(links).toHaveLength(1);
+        expect(counts).toEqual({
+          completedCount: 1,
+          skippedCount: 0,
+          failedCount: 0,
+          qualifiedCount: 1,
+        });
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("marks failed work rows terminal and defers job completion to the finalizer", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      setupScreeningAggregates(t);
+      const user = await seedUser(t, "clerk_complete_failed");
+      const job = await seedScreeningJob(t, user._id, "processing");
+
+      await t.run(async (ctx) => {
+        await ctx.db.patch("screeningJobs", job._id, { totalPapers: 1 });
+      });
+
+      const result = await seedScreeningResult(t, job._id, {
+        status: "processing",
+        openalexId: "https://openalex.org/Wfailed",
+      });
+
+      await t.mutation(internal.screening.mutations.handleScreeningComplete, {
+        workId: "work_failed",
+        context: { jobId: job._id, resultId: result._id },
+        result: {
+          kind: "failed",
+          error: "screening exploded",
+        },
+      });
+
+      await t.run(async (ctx) => {
+        const updatedResult = await ctx.db.get("screeningResults", result._id);
+        const updatedJob = await ctx.db.get("screeningJobs", job._id);
+
+        expect(updatedResult?.status).toBe("failed");
+        expect(updatedResult?.errorMessage).toBe("screening exploded");
+        expect(updatedJob?.status).toBe("processing");
+      });
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+
+      await t.run(async (ctx) => {
+        const updatedJob = await ctx.db.get("screeningJobs", job._id);
+        const counts = await readScreeningProgressCounts(ctx, job._id);
+
+        expect(updatedJob?.status).toBe("completed");
+        expect(counts).toEqual({
+          completedCount: 0,
+          skippedCount: 0,
+          failedCount: 1,
+          qualifiedCount: 0,
+        });
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(["cancelled", "creditsExhausted"] as const)(
+    "marks rows skipped with no side effects when the job is %s",
+    async (status) => {
+      vi.useFakeTimers();
+      try {
+        const t = convexTest(schema);
+        setupScreeningAggregates(t);
+        const user = await seedUser(t, `clerk_${status}`);
+        const job = await seedScreeningJob(t, user._id, status);
+        const result = await seedScreeningResult(t, job._id, {
+          status: "processing",
+          openalexId: `https://openalex.org/W${status}`,
+        });
+
+        await t.mutation(internal.screening.mutations.handleScreeningComplete, {
+          workId: `work_${status}`,
+          context: { jobId: job._id, resultId: result._id },
+          result: {
+            kind: "success",
+            returnValue: {
+              responses: encodeQuestionResponseMap({
+                "Is this relevant?": true,
+              }),
+              confidence: 0.5,
+            },
+          },
+        });
+
+        await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+
+        await t.run(async (ctx) => {
+          const updatedResult = await ctx.db.get("screeningResults", result._id);
+          const updatedJob = await ctx.db.get("screeningJobs", job._id);
+          const libraryItems = await ctx.db
+            .query("libraryItems")
+            .withIndex("by_user_openalexId", (q) =>
+              q.eq("userId", user._id).eq("openalexId", `https://openalex.org/W${status}`),
+            )
+            .collect();
+          const counts = await readScreeningProgressCounts(ctx, job._id);
+
+          expect(updatedResult?.status).toBe("skipped");
+          expect(updatedResult?.savedToLibrary).toBeUndefined();
+          expect(updatedResult?.libraryItemId).toBeUndefined();
+          expect(updatedJob?.status).toBe(status);
+          expect(libraryItems).toHaveLength(0);
+          expect(counts).toEqual({
+            completedCount: 0,
+            skippedCount: 1,
+            failedCount: 0,
+            qualifiedCount: 0,
+          });
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 });
