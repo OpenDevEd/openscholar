@@ -94,27 +94,21 @@ vi.mock("@/lib/store", () => ({
 vi.mock("motion/react", async () => {
   const ReactModule = await import("react");
   const makeMotionTag = (tag: keyof React.JSX.IntrinsicElements) =>
-    ReactModule.forwardRef<HTMLElement, React.JSX.IntrinsicElements[typeof tag]>(
-      ({ children, ...props }, ref) => {
-        const {
-          animate: _animate,
-          exit: _exit,
-          initial: _initial,
-          transition: _transition,
-          whileHover: _whileHover,
-          whileTap: _whileTap,
-          ...domProps
-        } = props as React.JSX.IntrinsicElements[typeof tag] & {
-          animate?: unknown;
-          exit?: unknown;
-          initial?: unknown;
-          transition?: unknown;
-          whileHover?: unknown;
-          whileTap?: unknown;
-        };
-        return ReactModule.createElement(tag, { ...domProps, ref }, children);
-      },
-    );
+    ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) => {
+      const {
+        animate: _animate,
+        exit: _exit,
+        initial: _initial,
+        transition: _transition,
+        whileHover: _whileHover,
+        whileTap: _whileTap,
+        ...domProps
+      } = props;
+      return ReactModule.createElement(tag, domProps, children);
+    };
 
   return {
     motion: new Proxy(
@@ -208,6 +202,25 @@ describe("<AppSidebar> screening mount", () => {
     const mountedQueryRefs = protectedQueryMock.mock.calls.map(([queryRef]) => queryRef);
     expect(mountedQueryRefs).toContain("screening:getActiveScreeningJobProgress");
     expect(mountedQueryRefs).not.toContain("screening:listUserScreeningJobs");
-    expect(screen.getByText("40%")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
+  });
+
+  it("renders the query-supplied percent for near-complete active jobs", () => {
+    protectedQueryMock.mockReturnValue({
+      data: {
+        jobId: "job_999",
+        status: "processing",
+        totalPapers: 100,
+        processedPapers: 100,
+        failedPapers: 0,
+        qualifiedPapers: 80,
+        percentComplete: 99,
+      },
+    });
+
+    render(<AppSidebar />);
+
+    expect(screen.getByText("99%")).toBeInTheDocument();
+    expect(screen.queryByText("100%")).not.toBeInTheDocument();
   });
 });

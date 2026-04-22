@@ -391,12 +391,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     api.screening.queries.getActiveScreeningJobProgress,
     {},
   );
-  const progressPercent =
-    activeJob
-      ? activeJob.totalPapers > 0
-        ? (activeJob.processedPapers / activeJob.totalPapers) * 100
-        : 0
-      : null;
+  const progressPercent = activeJob?.percentComplete ?? null;
 
   // Determine active query - now uses store for real-time updates on all pages
   // Fallback to URL params if store is empty (shouldn't happen but safety first)
