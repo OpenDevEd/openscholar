@@ -1,8 +1,13 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import type { Id } from "../_generated/dataModel";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import {
+  recordQualifiedResult,
+  recordTerminalResult,
+} from "./aggregates";
+import { setupScreeningAggregates } from "./aggregates.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 
 // ---------------------------------------------------------------------------
@@ -69,6 +74,31 @@ async function seedScreeningJob(
       updatedAt: Date.now(),
     });
     return (await ctx.db.get("screeningJobs", id))!;
+  });
+}
+
+async function seedScreeningResult(
+  t: ReturnType<typeof convexTest>,
+  jobId: Id<"screeningJobs">,
+  overrides: Partial<{
+    status: "processing" | "completed" | "failed" | "skipped";
+    qualified: boolean;
+    openalexId: string;
+    title: string;
+  }> = {},
+) {
+  return await t.run(async (ctx) => {
+    const resultId = await ctx.db.insert("screeningResults", {
+      jobId,
+      openalexId: overrides.openalexId ?? `https://openalex.org/W${Date.now()}`,
+      title: overrides.title ?? "Screening Result",
+      status: overrides.status ?? "processing",
+      ...(overrides.qualified !== undefined
+        ? { qualified: overrides.qualified }
+        : {}),
+      createdAt: Date.now(),
+    });
+    return (await ctx.db.get("screeningResults", resultId))!;
   });
 }
 
@@ -379,5 +409,58 @@ describe("createScreeningJob", () => {
       }
     );
     expect(result.jobId).toBeDefined();
+  });
+});
+
+describe("finalizeScreeningJobIfDone", () => {
+  it("finalizes from aggregate counts even when legacy counters are stale", async () => {
+    const t = convexTest(schema);
+    setupScreeningAggregates(t);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_finalize");
+    const job = await seedScreeningJob(t, user._id, "processing");
+
+    const completedQualified = await seedScreeningResult(t, job._id, {
+      status: "completed",
+      qualified: true,
+      openalexId: "https://openalex.org/W1",
+    });
+    const completed = await seedScreeningResult(t, job._id, {
+      status: "completed",
+      qualified: false,
+      openalexId: "https://openalex.org/W2",
+    });
+    const failed = await seedScreeningResult(t, job._id, {
+      status: "failed",
+      openalexId: "https://openalex.org/W3",
+    });
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("screeningJobs", job._id, {
+        totalPapers: 3,
+        processedPapers: 0,
+        failedPapers: 0,
+        qualifiedPapers: 0,
+      });
+      await recordTerminalResult(ctx, completedQualified);
+      await recordQualifiedResult(ctx, completedQualified);
+      await recordTerminalResult(ctx, completed);
+      await recordTerminalResult(ctx, failed);
+    });
+
+    await t.mutation(
+      internal.screening.mutations.finalizeScreeningJobIfDone,
+      { jobId: job._id },
+    );
+
+    const finalized = await t.run(async (ctx) =>
+      ctx.db.get("screeningJobs", job._id),
+    );
+    expect(finalized).not.toBeNull();
+    expect(finalized!.status).toBe("completed");
+    expect(finalized!.completedAt).toBeGreaterThan(0);
+    expect(finalized!.processedPapers).toBe(0);
+    expect(finalized!.failedPapers).toBe(0);
+    expect(finalized!.qualifiedPapers).toBe(0);
   });
 });

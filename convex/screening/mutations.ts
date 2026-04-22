@@ -17,6 +17,12 @@ import {
   getCancelableScreeningWorkIds,
   isTerminalScreeningJobStatus,
 } from "./lifecycle";
+import {
+  readScreeningProgressCounts,
+  recordQualifiedResult,
+  recordTerminalResult,
+} from "./aggregates";
+import { buildScreeningProgressSnapshot } from "./progress";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 
@@ -316,8 +322,8 @@ export const addToCollectionInternal = internalMutation({
 /**
  * Check if a screening job is done and finalize it.
  *
- * A job is done when processedPapers + failedPapers >= totalPapers.
- * Terminal statuses (completed/cancelled/failed/creditsExhausted) are no-ops.
+ * Aggregate-backed progress is the read truth. Terminal statuses
+ * (completed/cancelled/failed/creditsExhausted) are no-ops.
  */
 export const finalizeScreeningJobIfDone = internalMutation({
   args: { jobId: v.id("screeningJobs") },
@@ -331,8 +337,14 @@ export const finalizeScreeningJobIfDone = internalMutation({
       return null;
     }
 
-    // Check if all papers are processed
-    if (job.processedPapers + job.failedPapers >= job.totalPapers) {
+    const counts = await readScreeningProgressCounts(ctx, args.jobId);
+    const progress = buildScreeningProgressSnapshot({
+      status: job.status,
+      totalPapers: job.totalPapers,
+      ...counts,
+    });
+
+    if (progress.processedPapers + progress.failedPapers >= job.totalPapers) {
       const now = Date.now();
       await ctx.db.patch("screeningJobs", args.jobId, {
         status: "completed",
@@ -348,9 +360,9 @@ export const finalizeScreeningJobIfDone = internalMutation({
           event: "screening_job_completed",
           properties: {
             total_papers: job.totalPapers,
-            processed_papers: job.processedPapers,
-            failed_papers: job.failedPapers,
-            qualified_papers: job.qualifiedPapers ?? 0,
+            processed_papers: progress.processedPapers,
+            failed_papers: progress.failedPapers,
+            qualified_papers: progress.qualifiedPapers,
             question_count: job.questions.length,
             duration_ms: job.createdAt ? now - job.createdAt : 0,
           },
@@ -366,8 +378,10 @@ export const finalizeScreeningJobIfDone = internalMutation({
  * Workpool onComplete handler for individual paper screening.
  *
  * On success: scores the paper, saves qualifying papers to library,
- * optionally adds to collection, and increments job counters.
- * On failure: marks result as failed and increments failedPapers.
+ * optionally adds to collection, records aggregate state, and patches the
+ * legacy job counters still present until plan 03 removes them.
+ * On failure: marks result as failed, records aggregate state, and patches
+ * the temporary failed counter.
  * Always calls finalizeScreeningJobIfDone at the end.
  */
 export const handleScreeningComplete = screeningPool.defineOnComplete({
@@ -405,6 +419,12 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
 
       // Score the paper
       const { score, stars, qualified } = scorePaper(answers, job.scoringConfig);
+      const aggregateResult = {
+        _id: context.resultId,
+        jobId: context.jobId,
+        status: "completed" as const,
+        qualified,
+      };
 
       // Update the screening result
       await ctx.db.patch("screeningResults", context.resultId, {
@@ -454,6 +474,11 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
           });
         }
 
+        await Promise.all([
+          recordTerminalResult(ctx, aggregateResult),
+          recordQualifiedResult(ctx, aggregateResult),
+        ]);
+
         // Increment qualified + processed counters
         await ctx.db.patch("screeningJobs", context.jobId, {
           qualifiedPapers: (job.qualifiedPapers ?? 0) + 1,
@@ -461,6 +486,8 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
           updatedAt: Date.now(),
         });
       } else {
+        await recordTerminalResult(ctx, aggregateResult);
+
         // Not qualified: just increment processedPapers
         await ctx.db.patch("screeningJobs", context.jobId, {
           processedPapers: (job.processedPapers ?? 0) + 1,
@@ -472,6 +499,13 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       await ctx.db.patch("screeningResults", context.resultId, {
         status: "failed",
         completedAt: Date.now(),
+      });
+
+      await recordTerminalResult(ctx, {
+        _id: context.resultId,
+        jobId: context.jobId,
+        status: "failed",
+        qualified: false,
       });
 
       // Load job fresh for current counters
