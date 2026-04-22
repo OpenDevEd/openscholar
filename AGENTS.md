@@ -60,7 +60,21 @@ Optional sections such as `Context`, `Why now`, `Deviations`, or post-execution 
 
 ### Required `PROMPTS.md` contents
 
-`PROMPTS.md` must contain copy-paste execution prompts for each numbered plan so another agent can execute the work without re-deriving intent from scratch. If there are standing rules for that plan set, repeat them there explicitly.
+`PROMPTS.md` contains one copy-paste execution prompt per numbered plan so another agent can execute the work without re-deriving intent from scratch. If there are standing rules for that plan set, repeat them in the PROMPTS.md preamble so each per-plan prompt inherits them.
+
+Each per-plan prompt must follow this template, in this order:
+
+1. **Header** — plan file path, context README path, any plan-dependency call-out ("Depends on plan 0N being merged").
+2. **Autonomy framing** — one paragraph naming the expected duration and the autonomy contract. Example: "Long-running autonomous task. Expect X–Y hours. Do not stop mid-plan to ask for confirmation. When the plan is ambiguous, pick the option most consistent with existing code patterns and document the choice in the commit message."
+3. **`STANDING RULES` block** — numbered rules. At minimum: DRY with named donors, no legacy, Convex guidelines override training, testing doctrine, research before guessing, delegate to subagents. Add plan-specific rules (auth reuse, package reuse, i18n, etc.) as additional numbered entries.
+4. **`EXECUTION RHYTHM` block** — split into Phase A (TDD, pure logic only, with module path and "commit per green") and Phase B (test-after, numbered units, "commit per logical unit").
+5. **`COMMIT DISCIPLINE` block** — see § Commit discipline.
+6. **`WHEN TO STOP` block** — explicit stop criteria and explicit "You may NOT stop for: ambiguity resolvable by re-reading the plan, worry about token usage, impulse to check with the user".
+7. **`DEVIATIONS` block** — the deviation protocol (see § Blocker and deviation protocols).
+8. **`START NOW` block** — numbered boot steps (read plan, read README, read Convex guidelines, `git status` check, begin R1 / first unit).
+9. Close with `Go.` on its own line.
+
+The prompts must be self-contained: a fresh `/clear`'d session consuming only the prompt plus the files it references must be able to execute the plan without the prior conversation.
 
 ### Grounding is mandatory
 
@@ -87,6 +101,91 @@ TDD is not optional. Neither is a green test run.
 6. If the implementation changes behavior, update or add tests in the same slice of work rather than deferring them.
 
 Passing tests are part of the deliverable, not follow-up polish.
+
+### Commit discipline
+
+Atomic commits are non-negotiable. Every plan execution uses this cadence:
+
+1. Conventional-commit prefix: `feat`, `fix`, `refactor`, `test`, `chore`, `docs`, `perf`, `style`.
+2. Scope every plan-related commit with `[plan-NN]`. Example: `feat(chat): [plan-04] add sources panel keyboard hook`.
+3. **One commit per TDD green.** Red → Green → Refactor → Commit. Do not batch multiple tests into a single commit.
+4. **One commit per logical unit in Phase B.** Schema change, consuming mutation, its test, locale keys — each is a separate commit. One concern per commit.
+5. Never commit with tests red. If a pre-commit hook fails, fix the underlying issue. Never use `--no-verify`, `--no-gpg-sign`, or any hook-bypass flag.
+6. Do not push to remote unless the user explicitly asks.
+7. Plan-file edits (deviations, resume notes) ship as their own commits under `docs: [plan-NN] revise <section> — <reason>` and must land BEFORE any code change that depends on them.
+
+### Blocker and deviation protocols
+
+**Blocker** — when a required API truly does not exist, or a pre-existing bug blocks further progress:
+
+1. Commit all in-progress work cleanly, even if partial.
+2. Write `plans/<topic>/NN-BLOCKER.md` describing what is stuck, what was tried, and what would unblock.
+3. Stop. Do not improvise a workaround that masks the blocker.
+
+**Deviation** — when the plan itself is wrong or incomplete and a better approach is clear:
+
+1. Commit any in-progress work first.
+2. Edit the numbered plan file with the new approach and its rationale.
+3. Commit the plan edit under `docs: [plan-NN] revise <section> — <reason>`.
+4. Proceed against the revised plan.
+
+Never silently depart from the plan. The plan is the source of truth; if it is wrong, fix the plan in git first, then execute against it.
+
+### Delegation policy — protect the main session's context
+
+Context rot is the silent enemy of long-running plans. Every file read, grep, and tool output pollutes the main session; after enough accumulation, quality degrades. Subagents absorb that pollution in their own context and return synthesized summaries.
+
+**Rule of thumb: any investigation needing more than ~3 file reads or ~3 greps → spawn a subagent.**
+
+#### Agent types
+
+- **`Explore`** — fast codebase exploration: "where is X defined?", "map all callers of Y", "find every importer of Z". Always specify thoroughness: `"quick"`, `"medium"`, or `"very thorough"`.
+- **`general-purpose`** — multi-step research, web doc reading, library-source inspection, skill discovery, cross-library synthesis.
+- **`Plan`** — subsidiary planning for a non-trivial sub-problem.
+
+#### What to delegate
+
+- "Map every caller / importer / consumer of X."
+- Reading a library's source or README to extract a contract.
+- Cross-file synthesis ("read these 5 files and explain the data flow").
+- External research on API behavior, current library versions, open issues.
+- Isolated module implementation after its contract is locked.
+
+#### What to keep in the main session
+
+- The TDD red → green → refactor cycle — needs tight test-runner feedback.
+- Commits — main session owns discipline.
+- Plan-file edits (deviations, resume notes).
+- Final acceptance-criteria verification.
+- Trivial one-shot lookups where grep is faster than spawning an agent.
+
+#### Parallelism
+
+When spawning multiple subagents for **independent** questions, put them in a **single message with multiple Agent tool calls**. The harness runs them concurrently.
+
+#### Prompting subagents
+
+A subagent starts with **zero context**. Give it enough to succeed unattended:
+
+- Repo root path.
+- What has been tried / ruled out.
+- The exact shape of the answer expected ("bulleted list, under 500 words, `file_path:line` citations").
+- Whether it should write code or only research.
+
+#### When the session grows stale
+
+If the main session accumulates many tool calls and quality drifts, pause, commit progress, write a one-paragraph resume-note at the bottom of the plan file, `/clear` the session, and re-paste the plan's prompt from PROMPTS.md. Plans are designed to be resumable from any acceptance-criteria checkpoint.
+
+### Migration stance — dev data is disposable
+
+This project is pre-testing. The Convex deployment is a dev database with no production data to preserve. Every schema change is **breaking by default**.
+
+1. Do not widen-then-narrow. Do not keep old fields as optional "just in case". Do not add compatibility shims, feature-flag fallbacks, or legacy read paths.
+2. If the schema validator rejects existing rows after a change, wipe the affected tables via the Convex dashboard or a dev-gated admin helper mutation.
+3. Do NOT write `@convex-dev/migrations` scripts. Do NOT write backfill scripts. Do NOT preserve old rows.
+4. If a production deployment ever exists, re-open every plan's schema-change section and write a proper migration then. Until that day, go fast.
+
+A specific plan's `Migration stance` section may narrow this (e.g. "none — additive only" when the plan ships no schema changes), but the project default is destructive.
 
 ## Testing philosophy — assert on behavior, not on source
 
