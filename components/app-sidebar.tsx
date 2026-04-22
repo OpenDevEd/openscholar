@@ -387,12 +387,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const effectiveSearchId = useEffectiveSearchId();
 
   // Screening job progress for footer button
-  const { data: screeningJobs } = useProtectedQuery(
-    api.screening.queries.listUserScreeningJobs,
-    { limit: 1 },
-  );
-  const activeJob = screeningJobs?.find(
-    (j) => j.status === "pending" || j.status === "processing",
+  const { data: activeJob } = useProtectedQuery(
+    api.screening.queries.getActiveScreeningJobProgress,
+    {},
   );
   const progressPercent =
     activeJob
