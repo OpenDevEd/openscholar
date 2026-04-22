@@ -2,6 +2,7 @@
 "use no memo"; // try/finally in handlers
 
 import { useState, useMemo } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,7 @@ import {
   getProviderConfig,
   getDefaultModelForProvider,
 } from "@/lib/ai-models";
-import { useQuery } from "convex/react";
+import { useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useTranslations } from "next-intl";
 import { useAppToast } from "@/lib/toast";
@@ -41,8 +42,14 @@ import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
-import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import {
+  useSharedSubscriptionState,
+} from "@/lib/auth/use-subscription-state";
+import { useFeatureFlagForResolvedTier } from "@/lib/feature-flags/hook";
 import type { AIProvider } from "@/lib/types/ai.types";
+
+type ModelCatalogOption =
+  (typeof api.models.queries.listCatalogOptions)["_returnType"][number];
 
 export default function AISettingsPage() {
   const {
@@ -58,8 +65,10 @@ export default function AISettingsPage() {
 
   const { phase } = useAuthReadiness();
   const isSignedIn = phase === "authenticated";
+  const convex = useConvex();
   const router = useRouter();
   const goToSignIn = useSignInRedirect();
+  const subscriptionState = useSharedSubscriptionState();
   const [showApiKeyConfig, setShowApiKeyConfig] = useState(false);
 
   // Per-provider draft keys — only entries that differ from the store are present
@@ -76,10 +85,37 @@ export default function AISettingsPage() {
 
   const providerConfig = getProviderConfig(provider);
 
-  // Models from Convex — for OpenRouter show all, otherwise filter by provider
+  // Settings only needs a point-in-time catalog read. Avoid a live
+  // subscription for a low-freshness settings surface.
   const queryProvider = provider === "openrouter" ? undefined : provider;
-  const rawModels = useQuery(api.models.queries.list, { provider: queryProvider });
-  const loadingModels = rawModels === undefined;
+  const [rawModels, setRawModels] = useState<ModelCatalogOption[] | null>(null);
+  const [loadingModels, setLoadingModels] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRawModels(null);
+    setLoadingModels(true);
+
+    void convex
+      .query(api.models.queries.listCatalogOptions, { provider: queryProvider })
+      .then((models) => {
+        if (cancelled) return;
+        setRawModels(models);
+      })
+      .catch((error) => {
+        console.error("[AISettingsPage] Failed to load model catalog", error);
+        if (cancelled) return;
+        setRawModels([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingModels(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [convex, queryProvider]);
 
   // Map DB models to the shape the UI expects
   const models = useMemo(() => {
@@ -202,7 +238,10 @@ export default function AISettingsPage() {
     },
   ];
 
-  const creditsEnabled = useFeatureFlag("credits.enabled");
+  const creditsEnabled = useFeatureFlagForResolvedTier(
+    "credits.enabled",
+    subscriptionState.resolvedTier,
+  );
   const isCreditsModeLocked = !creditsEnabled;
   const isDisabled = apiKeyMode === "credits";
 
