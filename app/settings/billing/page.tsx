@@ -22,9 +22,9 @@ const FALLBACK_TOPUP_BUNDLES: CreditTopupBundleCard[] = [
 import { TransactionsPanel } from "@/components/billing/transactions/transactions-panel";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { isEntitledStatus } from "@/lib/billing/entitlements";
-import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { useFeatureFlagForResolvedTier } from "@/lib/feature-flags/hook";
 import { getToastMessageKeyForErrorCode } from "@/lib/toast/error-resolver";
 import { getFreeCreditCapForPlan } from "@/convex/lib/constants";
 
@@ -50,10 +50,19 @@ export default function BillingPage() {
     });
     return obj;
   }, [searchParams]);
-  const creditsEnabled = useFeatureFlag("credits.enabled");
-  const topupsEnabled = useFeatureFlag("credits.topups");
-  const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
-  const subscriptionState = useSubscriptionState();
+  const subscriptionState = useSharedSubscriptionState();
+  const creditsEnabled = useFeatureFlagForResolvedTier(
+    "credits.enabled",
+    subscriptionState.resolvedTier,
+  );
+  const topupsEnabled = useFeatureFlagForResolvedTier(
+    "credits.topups",
+    subscriptionState.resolvedTier,
+  );
+  const subscriptionsEnabled = useFeatureFlagForResolvedTier(
+    "subscriptions.enabled",
+    subscriptionState.resolvedTier,
+  );
   const subscription = subscriptionState.subscription;
   const creditBalanceQuery = useProtectedQuery(api.credits.queries.getMyBalance, {});
   const topupCatalogQuery = useProtectedQuery(api.credits.queries.getTopupCatalog, {});

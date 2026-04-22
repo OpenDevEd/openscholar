@@ -59,8 +59,9 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 }));
 
 vi.mock("@/lib/auth/use-subscription-state", () => ({
-  useSubscriptionState: () => ({
+  useSharedSubscriptionState: () => ({
     subscription: null,
+    resolvedTier: 0,
     resolvedPlan: "free",
     isEntitled: false,
     isSettling: false,
@@ -68,7 +69,7 @@ vi.mock("@/lib/auth/use-subscription-state", () => ({
 }));
 
 vi.mock("@/lib/feature-flags/hook", () => ({
-  useFeatureFlag: () => true,
+  useFeatureFlagForResolvedTier: () => true,
 }));
 
 vi.mock("@/lib/toast", () => ({

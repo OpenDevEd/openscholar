@@ -7,8 +7,11 @@ import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { Settings, Bot, CreditCard, Settings2, Plug } from "lucide-react";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
-import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
-import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import {
+  SubscriptionStateProvider,
+  useSharedSubscriptionState,
+} from "@/lib/auth/use-subscription-state";
+import { useFeatureFlagForResolvedTier } from "@/lib/feature-flags/hook";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 export default function SettingsLayout({
@@ -16,13 +19,31 @@ export default function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <SubscriptionStateProvider>
+      <SettingsLayoutContent>{children}</SettingsLayoutContent>
+    </SubscriptionStateProvider>
+  );
+}
+
+function SettingsLayoutContent({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const tc = useTranslations("common");
   const { phase } = useAuthReadiness();
   const isSignedIn = phase === "authenticated";
-  const subscriptionState = useSubscriptionState();
+  const subscriptionState = useSharedSubscriptionState();
   const subscription = subscriptionState.subscription;
-  const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
-  const creditsEnabled = useFeatureFlag("credits.enabled");
+  const subscriptionsEnabled = useFeatureFlagForResolvedTier(
+    "subscriptions.enabled",
+    subscriptionState.resolvedTier,
+  );
+  const creditsEnabled = useFeatureFlagForResolvedTier(
+    "credits.enabled",
+    subscriptionState.resolvedTier,
+  );
   const hasBillingLink = Boolean(
     subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
   );
