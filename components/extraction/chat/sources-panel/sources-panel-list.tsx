@@ -14,7 +14,7 @@ import { api } from "@/convex/_generated/api";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
-  applyInclusionPatch,
+  applyInclusionPatchToSnapshot,
   buildBulkPatch,
 } from "@/lib/chat/chat-papers-selection";
 import type { SearchMatch } from "@/lib/chat/search/source-scorer";
@@ -77,7 +77,7 @@ export function SourcesPanelList({
     localStore.setQuery(
       api.chat.chatPapers.listChatSourcesWithInclusion,
       { jobId },
-      applyInclusionPatch(
+      applyInclusionPatchToSnapshot(
         current,
         new Map([[args.chatPaperId, args.included]]),
       ),
@@ -92,11 +92,11 @@ export function SourcesPanelList({
       { jobId },
     );
     if (!current) return;
-    const patch = buildBulkPatch(current, args.sourceIds, args.included);
+    const patch = buildBulkPatch(current.rows, args.sourceIds, args.included);
     localStore.setQuery(
       api.chat.chatPapers.listChatSourcesWithInclusion,
       { jobId },
-      applyInclusionPatch(current, patch),
+      applyInclusionPatchToSnapshot(current, patch),
     );
   });
 

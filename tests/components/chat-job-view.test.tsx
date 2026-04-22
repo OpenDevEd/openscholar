@@ -19,6 +19,9 @@ const useQuerySpy = vi.fn();
 vi.mock("convex/react", () => ({
   useQuery: (fn: unknown, args: unknown) => {
     useQuerySpy(fn, args);
+    if (fn === "stub:listChatSourcesWithInclusion") {
+      return { rows: [], totalCount: 0 };
+    }
     return [];
   },
   useMutation: () => {
@@ -31,6 +34,9 @@ vi.mock("convex/react", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     chat: {
+      model: {
+        listChatModels: "stub:listChatModels",
+      },
       chatPapers: {
         listChatSourcesWithInclusion: "stub:listChatSourcesWithInclusion",
       },

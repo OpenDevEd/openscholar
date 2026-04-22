@@ -105,19 +105,20 @@ describe("listChatSourcesWithInclusion", () => {
     await seedSources(t, jobId, 3);
 
     const auth = t.withIdentity(IDENTITY_A);
-    const rows = await auth.query(
+    const result = await auth.query(
       api.chat.chatPapers.listChatSourcesWithInclusion,
       { jobId },
     );
 
-    expect(rows).toHaveLength(3);
-    expect(rows.map((r) => r.position)).toEqual([0, 1, 2]);
-    expect(rows.every((r) => r.included === true)).toBe(true);
-    expect(rows.every((r) => r.jobId === jobId)).toBe(true);
-    expect(rows[0].title).toBe("Paper 0");
-    expect(rows[0].year).toBe(2020);
-    expect(rows[0].authors).toEqual(["Author 0"]);
-    expect(rows[0].sourceType).toBe("openalex");
+    expect(result.totalCount).toBe(3);
+    expect(result.rows).toHaveLength(3);
+    expect(result.rows.map((r) => r.position)).toEqual([0, 1, 2]);
+    expect(result.rows.every((r) => r.included === true)).toBe(true);
+    expect(result.rows.every((r) => r.jobId === jobId)).toBe(true);
+    expect(result.rows[0].title).toBe("Paper 0");
+    expect(result.rows[0].year).toBe(2020);
+    expect(result.rows[0].authors).toEqual(["Author 0"]);
+    expect(result.rows[0].sourceType).toBe("openalex");
   });
 
   it("reflects live included=false after a direct patch", async () => {
@@ -131,13 +132,60 @@ describe("listChatSourcesWithInclusion", () => {
     });
 
     const auth = t.withIdentity(IDENTITY_A);
-    const rows = await auth.query(
+    const result = await auth.query(
       api.chat.chatPapers.listChatSourcesWithInclusion,
       { jobId },
     );
-    expect(rows.find((r) => r.position === 1)?.included).toBe(false);
-    expect(rows.find((r) => r.position === 0)?.included).toBe(true);
-    expect(rows.find((r) => r.position === 2)?.included).toBe(true);
+    expect(result.totalCount).toBe(3);
+    expect(result.rows.find((r) => r.position === 1)?.included).toBe(false);
+    expect(result.rows.find((r) => r.position === 0)?.included).toBe(true);
+    expect(result.rows.find((r) => r.position === 2)?.included).toBe(true);
+  });
+
+  it("keeps totalCount authoritative while mirrored chat rows are still bootstrapping", async () => {
+    const t = convexTest(schema);
+    const userA = await seedUser(t, "clerk_owner_a");
+    const jobId = await seedChatJob(t, userA);
+
+    await t.run(async (ctx) => {
+      const sourceOne = await ctx.db.insert("extractionJobSources", {
+        jobId,
+        position: 0,
+        bucketKey: "history:W0",
+        source: "library" as const,
+        sourceRefId: "W0",
+        title: "Paper 0",
+        authors: ["Author 0"],
+        openalexId: "W0",
+        year: 2020,
+      });
+      await ctx.db.insert("extractionJobSources", {
+        jobId,
+        position: 1,
+        bucketKey: "history:W1",
+        source: "library" as const,
+        sourceRefId: "W1",
+        title: "Paper 1",
+        authors: ["Author 1"],
+        openalexId: "W1",
+        year: 2021,
+      });
+      await ctx.db.insert("chatPapers", {
+        jobId,
+        sourceId: sourceOne,
+        included: true,
+      });
+    });
+
+    const auth = t.withIdentity(IDENTITY_A);
+    const result = await auth.query(
+      api.chat.chatPapers.listChatSourcesWithInclusion,
+      { jobId },
+    );
+
+    expect(result.totalCount).toBe(2);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]?.title).toBe("Paper 0");
   });
 
   it("denies a non-owner reading another user's chat sources", async () => {

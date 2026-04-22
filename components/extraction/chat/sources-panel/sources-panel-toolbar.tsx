@@ -40,7 +40,7 @@ import { api } from "@/convex/_generated/api";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
-  applyInclusionPatch,
+  applyInclusionPatchToSnapshot,
   buildBulkPatch,
 } from "@/lib/chat/chat-papers-selection";
 import {
@@ -103,11 +103,11 @@ export function SourcesPanelToolbar({
       { jobId },
     );
     if (!current) return;
-    const patch = buildBulkPatch(current, args.sourceIds, args.included);
+    const patch = buildBulkPatch(current.rows, args.sourceIds, args.included);
     localStore.setQuery(
       api.chat.chatPapers.listChatSourcesWithInclusion,
       { jobId },
-      applyInclusionPatch(current, patch),
+      applyInclusionPatchToSnapshot(current, patch),
     );
   });
 

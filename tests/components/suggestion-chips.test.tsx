@@ -10,10 +10,23 @@ import { describe, expect, it, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SuggestionChips } from "@/components/extraction/chat/suggestion-chips";
-import { PapersContext } from "@/components/extraction/chat/papers-context";
-import { fakePapersContext } from "../helpers/papers-context-fixture";
+import {
+  ChatPapersProvider,
+  PapersContext,
+} from "@/components/extraction/chat/papers-context";
+import {
+  fakePapersContext,
+  mkChatSourceRow,
+} from "../helpers/papers-context-fixture";
+import type { Id } from "@/convex/_generated/dataModel";
 
 const sendMessageMock = vi.fn().mockResolvedValue(undefined);
+let currentChatSourcesQueryResult:
+  | undefined
+  | {
+      rows: ReturnType<typeof mkChatSourceRow>[];
+      totalCount: number;
+    };
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: { count?: number }) => {
@@ -24,6 +37,12 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("convex/react", () => ({
+  useQuery: (query: unknown) => {
+    if (query === "listChatSourcesWithInclusion") {
+      return currentChatSourcesQueryResult;
+    }
+    return undefined;
+  },
   useMutation: () => {
     const fn = sendMessageMock;
     (fn as unknown as { withOptimisticUpdate: () => typeof fn }).withOptimisticUpdate =
@@ -39,6 +58,9 @@ vi.mock("@convex-dev/agent/react", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     chat: {
+      chatPapers: {
+        listChatSourcesWithInclusion: "listChatSourcesWithInclusion",
+      },
       messages: {
         sendMessage: "sendMessage",
         listThreadMessages: "listThreadMessages",
@@ -106,5 +128,28 @@ describe("<SuggestionChips>", () => {
       threadId: "t_xyz",
       prompt: "suggestionSummarise",
     });
+  });
+
+  it("keeps the paper-count badge authoritative while chat bootstrap is still missing mirrored rows", () => {
+    currentChatSourcesQueryResult = {
+      rows: [
+        mkChatSourceRow({
+          chatPaperId: "cp_bootstrap_1" as Id<"chatPapers">,
+          sourceId: "src_bootstrap_1" as Id<"extractionJobSources">,
+          position: 1,
+        }),
+      ],
+      totalCount: 2,
+    };
+
+    render(
+      <ChatPapersProvider jobId={"job_bootstrap" as Id<"extractionJobs">}>
+        <SuggestionChips threadId="thread_bootstrap" />
+      </ChatPapersProvider>,
+    );
+
+    expect(
+      screen.getByText("Grounded on 2 papers"),
+    ).toBeInTheDocument();
   });
 });

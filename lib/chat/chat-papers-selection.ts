@@ -16,6 +16,11 @@ export type InclusionLike = {
   included: boolean;
 };
 
+export type InclusionSnapshot<R extends InclusionLike> = {
+  rows: ReadonlyArray<R>;
+  totalCount: number;
+};
+
 export function applyInclusionPatch<R extends InclusionLike>(
   rows: ReadonlyArray<R>,
   patch: ReadonlyMap<Id<"chatPapers">, boolean>,
@@ -40,4 +45,14 @@ export function buildBulkPatch<R extends InclusionLike>(
     }
   }
   return patch;
+}
+
+export function applyInclusionPatchToSnapshot<R extends InclusionLike>(
+  snapshot: InclusionSnapshot<R>,
+  patch: ReadonlyMap<Id<"chatPapers">, boolean>,
+): InclusionSnapshot<R> {
+  return {
+    ...snapshot,
+    rows: applyInclusionPatch(snapshot.rows, patch),
+  };
 }

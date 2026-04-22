@@ -22,9 +22,13 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { mkChatSourceRow } from "@/tests/helpers/papers-context-fixture";
 
 let currentRows: ChatSourceRow[] | undefined = undefined;
+let currentTotalCount: number | undefined = undefined;
 
 vi.mock("convex/react", () => ({
-  useQuery: () => currentRows,
+  useQuery: () => ({
+    rows: currentRows ?? [],
+    totalCount: currentTotalCount ?? currentRows?.length ?? 0,
+  }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
@@ -70,6 +74,7 @@ describe("<ChatPapersProvider> identity contract", () => {
       }),
     ];
     currentRows = rowsA;
+    currentTotalCount = rowsA.length;
 
     const { rerender } = render(
       <ChatPapersProvider jobId={JOB_ID}>
@@ -81,6 +86,7 @@ describe("<ChatPapersProvider> identity contract", () => {
     expect(firstRowsSnapshot).toHaveLength(2);
 
     currentRows = rowsA.map((r) => ({ ...r }));
+    currentTotalCount = rowsA.length;
     rerender(
       <ChatPapersProvider jobId={JOB_ID}>
         <RowsProbe />
@@ -116,6 +122,7 @@ describe("<ChatPapersProvider> identity contract", () => {
       }),
     ];
     currentRows = rowsA;
+    currentTotalCount = rowsA.length;
 
     const { rerender } = render(
       <ChatPapersProvider jobId={JOB_ID}>
@@ -128,6 +135,7 @@ describe("<ChatPapersProvider> identity contract", () => {
     currentRows = rowsA.map((r, i) =>
       i === 1 ? { ...r, included: !r.included } : { ...r },
     );
+    currentTotalCount = rowsA.length;
     rerender(
       <ChatPapersProvider jobId={JOB_ID}>
         <RowsProbe />
@@ -160,6 +168,7 @@ describe("<ChatPapersProvider> identity contract", () => {
         included: true,
       }),
     ];
+    currentTotalCount = currentRows.length;
 
     const { container } = render(
       <ChatPapersProvider jobId={JOB_ID}>
@@ -170,5 +179,26 @@ describe("<ChatPapersProvider> identity contract", () => {
     const probe = container.querySelector("[data-testid='rows-probe']");
     expect(probe?.getAttribute("data-total")).toBe("3");
     expect(probe?.getAttribute("data-included")).toBe("2");
+  });
+
+  it("keeps totalCount authoritative even while bootstrap rows are still incomplete", () => {
+    observedRows.length = 0;
+    currentRows = [
+      mkChatSourceRow({
+        chatPaperId: "cp1" as Id<"chatPapers">,
+        position: 1,
+      }),
+    ];
+    currentTotalCount = 2;
+
+    const { container } = render(
+      <ChatPapersProvider jobId={JOB_ID}>
+        <RowsProbe />
+      </ChatPapersProvider>,
+    );
+
+    const probe = container.querySelector("[data-testid='rows-probe']");
+    expect(probe?.getAttribute("data-total")).toBe("2");
+    expect(probe?.getAttribute("data-rows-length")).toBe("1");
   });
 });

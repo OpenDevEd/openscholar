@@ -25,6 +25,11 @@ export type ChatSourceRow = {
   sourceType: ChatSourceType;
 };
 
+export type ChatSourcesSnapshot = {
+  rows: ChatSourceRow[];
+  totalCount: number;
+};
+
 const sourceTypeValidator = v.union(
   v.literal("openalex"),
   v.literal("zotero"),
@@ -46,6 +51,11 @@ export const chatSourceRowValidator = v.object({
   openalexId: v.union(v.string(), v.null()),
   bucketKey: v.string(),
   sourceType: sourceTypeValidator,
+});
+
+export const chatSourcesSnapshotValidator = v.object({
+  rows: v.array(chatSourceRowValidator),
+  totalCount: v.number(),
 });
 
 function toChatSourceRow(
@@ -109,6 +119,13 @@ export async function readChatSourceRows(
   ctx: QueryCtx,
   jobId: Id<"extractionJobs">,
 ): Promise<ChatSourceRow[]> {
+  return (await readChatSourcesSnapshot(ctx, jobId)).rows;
+}
+
+export async function readChatSourcesSnapshot(
+  ctx: QueryCtx,
+  jobId: Id<"extractionJobs">,
+): Promise<ChatSourcesSnapshot> {
   const [sources, chatPapers] = await Promise.all([
     ctx.db
       .query("extractionJobSources")
@@ -120,5 +137,8 @@ export async function readChatSourceRows(
       .take(PAPER_LIMIT_MAX),
   ]);
 
-  return joinChatSourceRows(sources, chatPapers);
+  return {
+    rows: joinChatSourceRows(sources, chatPapers),
+    totalCount: sources.length,
+  };
 }

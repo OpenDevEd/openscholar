@@ -21,18 +21,18 @@ import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { assertCallerOwnsJob } from "./auth";
 import {
-  chatSourceRowValidator,
-  readChatSourceRows,
+  chatSourcesSnapshotValidator,
+  readChatSourcesSnapshot,
 } from "./sourceReadModel";
 
 export type { ChatSourceRow } from "./sourceReadModel";
 
 export const listChatSourcesWithInclusion = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.array(chatSourceRowValidator),
+  returns: chatSourcesSnapshotValidator,
   handler: async (ctx, { jobId }) => {
     await assertCallerOwnsJob(ctx, jobId);
-    return await readChatSourceRows(ctx, jobId);
+    return await readChatSourcesSnapshot(ctx, jobId);
   },
 });
 

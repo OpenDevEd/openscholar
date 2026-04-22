@@ -62,12 +62,14 @@ export function ChatPapersProvider({
 
   const skipArgs = useSkipWhenHidden({ jobId });
   const raw = useQuery(api.chat.chatPapers.listChatSourcesWithInclusion, skipArgs);
+  const lastTotalCountRef = useRef(0);
 
   const prevRef = useRef<ChatSourceRow[] | undefined>(undefined);
   const rows = useMemo<ReadonlyArray<ChatSourceRow>>(() => {
     if (raw === undefined) return prevRef.current ?? [];
-    const stable = stabilizeRowsById(prevRef.current, raw);
+    const stable = stabilizeRowsById(prevRef.current, raw.rows);
     prevRef.current = stable;
+    lastTotalCountRef.current = raw.totalCount;
     return stable;
   }, [raw]);
 
@@ -89,7 +91,8 @@ export function ChatPapersProvider({
     return map;
   }, [rows]);
 
-  const totalCount = rows.length;
+  const totalCount =
+    raw?.totalCount ?? lastTotalCountRef.current ?? rows.length;
   const includedCount = useMemo(
     () => rows.reduce((n, r) => n + (r.included ? 1 : 0), 0),
     [rows],

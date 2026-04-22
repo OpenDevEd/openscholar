@@ -18,7 +18,7 @@ import {
   classifyCitationState,
   type CitationState,
 } from "@/lib/chat/citation-state";
-import { applyInclusionPatch } from "@/lib/chat/chat-papers-selection";
+import { applyInclusionPatchToSnapshot } from "@/lib/chat/chat-papers-selection";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import { cn } from "@/lib/utils";
 import { usePapersContext } from "./papers-context";
@@ -117,7 +117,7 @@ export function PaperCitation({ index }: PaperCitationProps) {
     localStore.setQuery(
       api.chat.chatPapers.listChatSourcesWithInclusion,
       { jobId },
-      applyInclusionPatch(
+      applyInclusionPatchToSnapshot(
         current,
         new Map([[args.chatPaperId, args.included]]),
       ),

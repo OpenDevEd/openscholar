@@ -5,6 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import schema from "../schema";
 import {
+  readChatSourcesSnapshot,
   readChatSourceRows,
   toCorpusSource,
 } from "./sourceReadModel";
@@ -91,14 +92,15 @@ describe("readChatSourceRows", () => {
       // defensive "skip until the reactive next tick" behavior.
     });
 
-    const rows = await t.run(async (ctx) =>
-      readChatSourceRows(ctx as QueryCtx, jobId),
+    const snapshot = await t.run(async (ctx) =>
+      readChatSourcesSnapshot(ctx as QueryCtx, jobId),
     );
 
-    expect(rows).toHaveLength(2);
-    expect(rows.map((row) => row.position)).toEqual([1, 2]);
-    expect(rows.map((row) => row.title)).toEqual(["Alpha", "Beta"]);
-    expect(rows.map((row) => row.included)).toEqual([true, false]);
+    expect(snapshot.totalCount).toBe(3);
+    expect(snapshot.rows).toHaveLength(2);
+    expect(snapshot.rows.map((row) => row.position)).toEqual([1, 2]);
+    expect(snapshot.rows.map((row) => row.title)).toEqual(["Alpha", "Beta"]);
+    expect(snapshot.rows.map((row) => row.included)).toEqual([true, false]);
   });
 
   it("produces the same included corpus that buildSystemPromptForJob renders", async () => {

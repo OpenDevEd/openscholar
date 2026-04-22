@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
-  applyInclusionPatch,
+  applyInclusionPatchToSnapshot,
   buildBulkPatch,
 } from "@/lib/chat/chat-papers-selection";
 
@@ -40,11 +40,11 @@ export function SourcesPanelExtensionBanner({
       { jobId },
     );
     if (!current) return;
-    const patch = buildBulkPatch(current, args.sourceIds, args.included);
+    const patch = buildBulkPatch(current.rows, args.sourceIds, args.included);
     localStore.setQuery(
       api.chat.chatPapers.listChatSourcesWithInclusion,
       { jobId },
-      applyInclusionPatch(current, patch),
+      applyInclusionPatchToSnapshot(current, patch),
     );
   });
 
