@@ -8,12 +8,12 @@
  * transition instead of replaying the full paper set to every tab.
  */
 
-import { query } from "../../_generated/server";
+import { query, type QueryCtx } from "../../_generated/server";
 import { v } from "convex/values";
-import type { Doc } from "../../_generated/dataModel";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { getCurrentUser } from "../../lib/auth";
 import { ok, statusResultValidator } from "../../lib/query_states";
-import { resolveOwnedJob } from "../access";
+import { resolveOwnedJob, type OwnedJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { getPaperLimit, PAPER_LIMIT_MAX } from "../bucket/limits";
 import {
@@ -23,6 +23,16 @@ import {
   jobStatusValidator,
   searchFiltersValidator,
 } from "../validators";
+
+async function resolveReadableJob(
+  ctx: QueryCtx,
+  jobId: Id<"extractionJobs">,
+): Promise<OwnedJobResolution> {
+  const access = await resolveOwnedJob(ctx, jobId);
+  if (access.status !== "ok") return access;
+  await requireFeature(ctx, "extraction.enabled");
+  return access;
+}
 
 export const getMyJobs = query({
   args: {
@@ -79,10 +89,9 @@ export const getJobDetails = query({
     }),
   }),
   handler: async (ctx, args) => {
-    const access = await resolveOwnedJob(ctx, args.jobId);
+    const access = await resolveReadableJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { job, user } = access;
-    await requireFeature(ctx, "extraction.enabled");
 
     const questions = await ctx.db
       .query("extractionQuestions")
@@ -127,6 +136,18 @@ export const getJobDetails = query({
   },
 });
 
+export const getJobShell = query({
+  args: { jobId: v.id("extractionJobs") },
+  returns: statusResultValidator({
+    job: extractionJobValidator,
+  }),
+  handler: async (ctx, args) => {
+    const access = await resolveReadableJob(ctx, args.jobId);
+    if (access.status !== "ok") return access;
+    return ok({ job: access.job });
+  },
+});
+
 export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
   returns: statusResultValidator({
@@ -136,10 +157,9 @@ export const subscribeToJobProgress = query({
     failedPapers: v.number(),
   }),
   handler: async (ctx, args) => {
-    const access = await resolveOwnedJob(ctx, args.jobId);
+    const access = await resolveReadableJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { job } = access;
-    await requireFeature(ctx, "extraction.enabled");
 
     return ok({
       job,
@@ -203,7 +223,7 @@ export const getJobSources = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const access = await resolveOwnedJob(ctx, args.jobId);
+    const access = await resolveReadableJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
 
     const sources = await ctx.db

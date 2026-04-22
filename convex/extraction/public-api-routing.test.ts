@@ -56,6 +56,7 @@ const PUBLIC_MUTATIONS: ReadonlyArray<string> = [
 // `queries.papers.<fn>`.
 const PUBLIC_QUERIES: ReadonlyArray<readonly [string, string]> = [
   ["", "getMyJobs"],
+  ["", "getJobShell"],
   ["", "getJobDetails"],
   ["papers", "results"],
   ["papers", "pdfUrl"],

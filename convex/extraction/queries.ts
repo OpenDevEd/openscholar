@@ -13,6 +13,7 @@
 
 export {
   getMyJobs,
+  getJobShell,
   getJobDetails,
   subscribeToJobProgress,
   getJobSources,
