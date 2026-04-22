@@ -4,6 +4,20 @@ import type { ReactNode } from "react";
 import { api } from "@/convex/_generated/api";
 import { LibraryPageClient } from "@/components/library/library-page-client";
 
+type LibraryQueryState = {
+  q: string;
+  p: number;
+  sort: string;
+  view: string;
+  rmin: number | null;
+  rmax: number | null;
+  sf: string | null;
+  st: string | null;
+  yf: number | null;
+  yt: number | null;
+  col: string | null;
+};
+
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     library: {
@@ -57,7 +71,7 @@ const {
       yf: null,
       yt: null,
       col: null,
-    },
+    } as LibraryQueryState,
   },
   setQueryStateSpy: vi.fn(),
 }));

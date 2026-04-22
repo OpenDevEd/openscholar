@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Folder } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
