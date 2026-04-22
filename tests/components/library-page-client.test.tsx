@@ -1,7 +1,28 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
+import { api } from "@/convex/_generated/api";
 import { LibraryPageClient } from "@/components/library/library-page-client";
+
+vi.mock("@/convex/_generated/api", () => ({
+  api: {
+    library: {
+      collections: {
+        getCollectionsWithCounts: "library:getCollectionsWithCounts",
+      },
+      queries: {
+        getLibraryCount: "library:getLibraryCount",
+        getLibraryFilteredCount: "library:getLibraryFilteredCount",
+        browseLibrary: "library:browseLibrary",
+        searchLibrary: "library:searchLibrary",
+        listLibrary: "library:listLibrary",
+      },
+      mutations: {
+        removeFromLibrary: "library:removeFromLibrary",
+      },
+    },
+  },
+}));
 
 const {
   browseLoadMoreMock,
@@ -12,8 +33,6 @@ const {
   exportCsvMock,
   exportJsonMock,
   removeItemMock,
-  protectedQueryCallIndex,
-  protectedPaginatedCallIndex,
   queryStateStore,
   setQueryStateSpy,
 } = vi.hoisted(() => ({
@@ -25,8 +44,6 @@ const {
   exportCsvMock: vi.fn(),
   exportJsonMock: vi.fn(),
   removeItemMock: vi.fn(),
-  protectedQueryCallIndex: { value: 0 },
-  protectedPaginatedCallIndex: { value: 0 },
   queryStateStore: {
     value: {
       q: "",
@@ -74,6 +91,11 @@ vi.mock("nuqs", async () => {
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, values?: Record<string, string | number>) => {
+    if (key === "showingRange" && values) {
+      return `Showing ${values.start}-${values.end} of ${values.total} papers`;
+    }
+    if (key === "previousPage") return "Previous page";
+    if (key === "nextPage") return "Next page";
     if (!values) return key;
     return Object.entries(values).reduce(
       (message, [name, value]) => message.replace(`{${name}}`, String(value)),
@@ -266,10 +288,17 @@ function readyQueryResult<T>(data: T) {
 }
 
 function configureProtectedQueryMocks() {
-  protectedQueryMock.mockImplementation(() => {
-    const callIndex = protectedQueryCallIndex.value % 2;
-    protectedQueryCallIndex.value += 1;
-    return callIndex === 0 ? readyQueryResult([]) : readyQueryResult(42);
+  protectedQueryMock.mockImplementation((queryRef: unknown) => {
+    if (queryRef === api.library.collections.getCollectionsWithCounts) {
+      return readyQueryResult([]);
+    }
+    if (queryRef === api.library.queries.getLibraryCount) {
+      return readyQueryResult(42);
+    }
+    if (queryRef === api.library.queries.getLibraryFilteredCount) {
+      return readyQueryResult(20);
+    }
+    throw new Error(`Unexpected protected query: ${String(queryRef)}`);
   });
 }
 
@@ -284,10 +313,8 @@ function configurePaginatedMocks({
   searchResults?: ReturnType<typeof buildItems>;
   searchStatus?: "CanLoadMore" | "LoadingMore" | "Exhausted" | "Deferred" | "LoadingFirstPage";
 } = {}) {
-  protectedPaginatedQueryMock.mockImplementation(() => {
-    const callIndex = protectedPaginatedCallIndex.value % 2;
-    protectedPaginatedCallIndex.value += 1;
-    if (callIndex === 0) {
+  protectedPaginatedQueryMock.mockImplementation((queryRef: unknown) => {
+    if (queryRef === api.library.queries.browseLibrary) {
       return {
         results: browseResults,
         status: browseStatus,
@@ -303,28 +330,29 @@ function configurePaginatedMocks({
         settlement: "ready" as const,
       };
     }
-    return {
-      results: searchResults,
-      status: searchStatus,
-      loadMore: searchLoadMoreMock,
-      isLoading: false,
-      isInitialLoading: false,
-      hasLoadedFirstPage: true,
-      isSettled: true,
-      phase: "authenticated" as const,
-      isDeferred: false,
-      isReady: true,
-      isAnonymous: false,
-      settlement: "ready" as const,
-    };
+    if (queryRef === api.library.queries.searchLibrary) {
+      return {
+        results: searchResults,
+        status: searchStatus,
+        loadMore: searchLoadMoreMock,
+        isLoading: false,
+        isInitialLoading: false,
+        hasLoadedFirstPage: true,
+        isSettled: true,
+        phase: "authenticated" as const,
+        isDeferred: false,
+        isReady: true,
+        isAnonymous: false,
+        settlement: "ready" as const,
+      };
+    }
+    throw new Error(`Unexpected paginated query: ${String(queryRef)}`);
   });
 }
 
 describe("LibraryPageClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    protectedQueryCallIndex.value = 0;
-    protectedPaginatedCallIndex.value = 0;
     queryStateStore.value = {
       q: "",
       p: 1,
@@ -346,24 +374,30 @@ describe("LibraryPageClient", () => {
   it("mounts browseLibrary through the protected paginated wrapper instead of listLibrary", () => {
     render(<LibraryPageClient />);
 
-    expect(protectedQueryMock).toHaveBeenCalledTimes(2);
+    expect(protectedQueryMock).toHaveBeenCalledTimes(3);
     expect(protectedPaginatedQueryMock).toHaveBeenCalledTimes(2);
-    expect(protectedPaginatedQueryMock.mock.calls[0][1]).toEqual(
+    const browseCall = protectedPaginatedQueryMock.mock.calls.find(
+      ([queryRef]) => queryRef === api.library.queries.browseLibrary,
+    );
+    expect(browseCall?.[1]).toEqual(
       expect.objectContaining({
         sortBy: "savedAt",
         sortOrder: "desc",
       }),
     );
-    expect(protectedPaginatedQueryMock.mock.calls[0][2]).toEqual({
+    expect(browseCall?.[2]).toEqual({
       initialNumItems: 20,
     });
-    expect(protectedPaginatedQueryMock.mock.calls[1][1]).toBe("skip");
+    const searchCall = protectedPaginatedQueryMock.mock.calls.find(
+      ([queryRef]) => queryRef === api.library.queries.searchLibrary,
+    );
+    expect(searchCall?.[1]).toBe("skip");
   });
 
   it("loads the next paginated page when the user advances past loaded results", async () => {
     render(<LibraryPageClient />);
 
-    fireEvent.click(screen.getByRole("button", { name: "nextPage" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
 
     await waitFor(() => {
       expect(browseLoadMoreMock).toHaveBeenCalledWith(20);
@@ -385,15 +419,21 @@ describe("LibraryPageClient", () => {
 
     render(<LibraryPageClient />);
 
-    expect(protectedPaginatedQueryMock.mock.calls[0][1]).toBe("skip");
-    expect(protectedPaginatedQueryMock.mock.calls[1][1]).toEqual(
+    const browseCall = protectedPaginatedQueryMock.mock.calls.find(
+      ([queryRef]) => queryRef === api.library.queries.browseLibrary,
+    );
+    expect(browseCall?.[1]).toBe("skip");
+    const searchCall = protectedPaginatedQueryMock.mock.calls.find(
+      ([queryRef]) => queryRef === api.library.queries.searchLibrary,
+    );
+    expect(searchCall?.[1]).toEqual(
       expect.objectContaining({
         searchText: "machine",
         sortBy: "savedAt",
         sortOrder: "desc",
       }),
     );
-    expect(protectedPaginatedQueryMock.mock.calls[1][2]).toEqual({
+    expect(searchCall?.[2]).toEqual({
       initialNumItems: 20,
     });
   });
@@ -415,5 +455,44 @@ describe("LibraryPageClient", () => {
       }),
     );
     expect(exportCsvMock).toHaveBeenCalledWith(buildItems(25));
+  });
+
+  it("uses the exact filtered count for command-center totals", () => {
+    queryStateStore.value.col = "collection_1";
+
+    render(<LibraryPageClient />);
+
+    expect(screen.getByTestId("library-command-center")).toHaveAttribute(
+      "data-total-count",
+      "42",
+    );
+    expect(screen.getByTestId("library-command-center")).toHaveAttribute(
+      "data-filtered-count",
+      "20",
+    );
+  });
+
+  it("renders the exact filtered range copy for collection-scoped results", () => {
+    queryStateStore.value.col = "collection_1";
+    protectedQueryMock.mockImplementation((queryRef: unknown) => {
+      if (queryRef === api.library.collections.getCollectionsWithCounts) {
+        return readyQueryResult([
+          { _id: "collection_1", name: "Focus set", itemCount: 84 },
+        ]);
+      }
+      if (queryRef === api.library.queries.getLibraryCount) {
+        return readyQueryResult(86);
+      }
+      if (queryRef === api.library.queries.getLibraryFilteredCount) {
+        return readyQueryResult(84);
+      }
+      throw new Error(`Unexpected protected query: ${String(queryRef)}`);
+    });
+
+    render(<LibraryPageClient />);
+
+    expect(
+      screen.getByText("Showing 1-20 of 84 papers"),
+    ).toBeInTheDocument();
   });
 });

@@ -153,6 +153,17 @@ export function LibraryPageClient() {
       savedBefore,
     ],
   );
+  const filteredCountQueryArgs = useMemo(
+    () => ({
+      ...libraryFilters,
+      searchText: queryText || undefined,
+    }),
+    [libraryFilters, queryText],
+  );
+  const { data: filteredTotalCount } = useProtectedQuery(
+    api.library.queries.getLibraryFilteredCount,
+    filteredCountQueryArgs,
+  );
 
   const browseItems = useProtectedPaginatedQuery(
     api.library.queries.browseLibrary,
@@ -195,19 +206,14 @@ export function LibraryPageClient() {
     params.p,
   ]);
 
-  const exportQueryArgs = useMemo(
-    () => ({
-      ...libraryFilters,
-      searchText: queryText || undefined,
-    }),
-    [libraryFilters, queryText],
-  );
-
   const [isExporting, setIsExporting] = useState(false);
 
   const fetchExportItems = useCallback(async () => {
-    return await convex.query(api.library.queries.listLibrary, exportQueryArgs);
-  }, [convex, exportQueryArgs]);
+    return await convex.query(
+      api.library.queries.listLibrary,
+      filteredCountQueryArgs,
+    );
+  }, [convex, filteredCountQueryArgs]);
 
   const handleExportCSV = useCallback(async () => {
     if (isExporting) return;
@@ -383,14 +389,14 @@ export function LibraryPageClient() {
     pageResults.length > 0 ? (effectivePage - 1) * PAGE_SIZE + 1 : 0;
   const rangeEnd = rangeStart + pageResults.length - 1;
   const filteredTotal =
-    paginatedItems.status === "Exhausted"
-      ? filteredItems.length
-      : undefined;
+    filteredTotalCount ??
+    (paginatedItems.status === "Exhausted" ? filteredItems.length : undefined);
   const totalPages =
     filteredTotal === undefined
       ? undefined
       : Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
   const canGoNext =
+    (filteredTotal !== undefined && effectivePage * PAGE_SIZE < filteredTotal) ||
     filteredItems.length > effectivePage * PAGE_SIZE ||
     paginatedItems.status === "CanLoadMore" ||
     paginatedItems.status === "LoadingMore";
@@ -610,7 +616,7 @@ export function LibraryPageClient() {
                     !isExporting &&
                     !isEmptyLibrary &&
                     !isNoResults &&
-                    totalCount !== 0
+                    (filteredTotal ?? 0) !== 0
                   }
                 />
 
