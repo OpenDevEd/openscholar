@@ -127,6 +127,53 @@ export const getScreeningJob = query({
 });
 
 /**
+ * Get the latest active screening job progress for the authenticated user.
+ *
+ * Returns the newest processing job with aggregate-backed progress for shell UI,
+ * or null when the user is unauthenticated or has no active job.
+ */
+export const getActiveScreeningJobProgress = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      jobId: v.id("screeningJobs"),
+      status: screeningJobStatusValidator,
+      totalPapers: v.number(),
+      processedPapers: v.number(),
+      failedPapers: v.number(),
+      qualifiedPapers: v.number(),
+      percentComplete: v.number(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const activeJob = await ctx.db
+      .query("screeningJobs")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "processing"),
+      )
+      .order("desc")
+      .first();
+
+    if (!activeJob) return null;
+
+    const progress = await readJobProgressSnapshot(ctx, activeJob);
+    return {
+      jobId: activeJob._id,
+      status: activeJob.status,
+      totalPapers: activeJob.totalPapers,
+      processedPapers: progress.processedPapers,
+      failedPapers: progress.failedPapers,
+      qualifiedPapers: progress.qualifiedPapers,
+      percentComplete: progress.percentComplete,
+    };
+  },
+});
+
+/**
  * List screening jobs for the authenticated user, newest first.
  *
  * Returns a paginated list of job summaries (default limit 20).

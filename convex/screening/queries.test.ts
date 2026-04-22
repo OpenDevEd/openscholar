@@ -526,3 +526,91 @@ describe("listUserScreeningJobs", () => {
     expect(result).toEqual([]);
   });
 });
+
+describe("getActiveScreeningJobProgress", () => {
+  it("returns null when the user has no active screening job", async () => {
+    const t = createScreeningTest();
+    const user = await seedUser(t, "clerk_active1", "active1@test.com");
+    await seedScreeningJob(t, user._id, { status: "completed" });
+
+    const asUser = t.withIdentity({ subject: "clerk_active1" });
+    const result = await asUser.query(
+      api.screening.queries.getActiveScreeningJobProgress,
+      {},
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it("returns aggregate-backed progress for the user's active screening job", async () => {
+    const t = createScreeningTest();
+    const user = await seedUser(t, "clerk_active2", "active2@test.com");
+    const jobId = await seedScreeningJob(t, user._id, {
+      status: "processing",
+      totalPapers: 8,
+    });
+    await seedAggregateProgress(t, jobId, {
+      completedCount: 2,
+      skippedCount: 1,
+      failedCount: 1,
+      qualifiedCount: 2,
+    });
+
+    const asUser = t.withIdentity({ subject: "clerk_active2" });
+    const result = await asUser.query(
+      api.screening.queries.getActiveScreeningJobProgress,
+      {},
+    );
+
+    expect(result).not.toBeNull();
+    expect(result).toMatchObject({
+      jobId,
+      status: "processing",
+      totalPapers: 8,
+      processedPapers: 3,
+      failedPapers: 1,
+      qualifiedPapers: 2,
+      percentComplete: 50,
+    });
+  });
+
+  it("returns the newest active screening job when multiple active jobs exist", async () => {
+    const t = createScreeningTest();
+    const user = await seedUser(t, "clerk_active3", "active3@test.com");
+    const olderJobId = await seedScreeningJob(t, user._id, {
+      status: "processing",
+      totalPapers: 4,
+    });
+    await seedAggregateProgress(t, olderJobId, {
+      completedCount: 1,
+      failedCount: 0,
+      qualifiedCount: 1,
+    });
+    const newerJobId = await seedScreeningJob(t, user._id, {
+      status: "processing",
+      totalPapers: 10,
+    });
+    await seedAggregateProgress(t, newerJobId, {
+      completedCount: 2,
+      skippedCount: 1,
+      failedCount: 0,
+      qualifiedCount: 2,
+    });
+
+    const asUser = t.withIdentity({ subject: "clerk_active3" });
+    const result = await asUser.query(
+      api.screening.queries.getActiveScreeningJobProgress,
+      {},
+    );
+
+    expect(result).not.toBeNull();
+    expect(result).toMatchObject({
+      jobId: newerJobId,
+      totalPapers: 10,
+      processedPapers: 3,
+      failedPapers: 0,
+      qualifiedPapers: 2,
+      percentComplete: 30,
+    });
+  });
+});
