@@ -434,7 +434,7 @@ vi.mock("@/components/extraction/report-builder", () => ({
 
 vi.mock("@/components/extraction/extraction-results-shell", () => ({
   ExtractionResultsShell: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
+    <div data-testid="extraction-results-shell">{children}</div>
   ),
 }));
 
@@ -602,6 +602,56 @@ describe("JobDetailPage", () => {
     expect(screen.queryByText("insights")).toBeNull();
     expect(screen.queryByText("reviewQueue")).toBeNull();
     expect(screen.queryByText("reportBuilder")).toBeNull();
+  });
+
+  it("renders the extraction route without mounting the chat shell", () => {
+    (
+      authQuery.useProtectedQuery as unknown as {
+        mockImplementation: (
+          fn: (
+            query: unknown,
+            args: unknown,
+          ) => MockProtectedQueryHookResult,
+        ) => void;
+      }
+    ).mockImplementation((_query, args) => {
+      if (args === "skip") return mockSkippedQueryResult;
+      if (
+        typeof args === "object" &&
+        args !== null &&
+        "page" in args &&
+        "pageSize" in args &&
+        "filters" in args
+      ) {
+        const {
+          page,
+          pageSize,
+          filters,
+        } = args as {
+          page: number;
+          pageSize: number;
+          filters: { searchQuery?: string };
+        };
+        return {
+          ...buildResultsPageHookResult(
+            extractionResultsPageQueryResult[
+              `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
+            ],
+          ),
+        };
+      }
+      return extractionSharedProtectedQueryResult;
+    });
+
+    render(<JobDetailPage />);
+
+    expect(document.querySelector('[data-job-mode="chat"]')).toBeNull();
+    expect(document.querySelector('[data-job-mode="extraction"]')).not.toBeNull();
+    expect(screen.getByTestId("extraction-results-shell")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-job-view")).toBeNull();
+    expect(screen.getByTestId("results-toolbar")).toHaveTextContent(
+      "293 of 293 papers",
+    );
   });
 
   it("keeps showing the shared loading spinner while stale job shell data do not match the route", () => {
