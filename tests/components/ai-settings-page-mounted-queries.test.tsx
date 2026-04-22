@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const convexQueryMock = vi.fn();
 const useQueryMock = vi.fn();
@@ -122,20 +122,16 @@ describe("<AISettingsPage> model catalog loading", () => {
   });
 
   it("renders an explicit failure state with retry when the catalog read rejects", async () => {
-    convexQueryMock
-      .mockRejectedValueOnce(new Error("catalog offline"))
-      .mockResolvedValueOnce([]);
+    convexQueryMock.mockRejectedValue(new Error("catalog offline"));
 
     render(<AISettingsPage />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(
-        "somethingWentWrong",
-      );
-    });
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("somethingWentWrong");
 
     const callsBeforeRetry = convexQueryMock.mock.calls.length;
-    fireEvent.click(screen.getByText("retry"));
+    convexQueryMock.mockResolvedValueOnce([]);
+    fireEvent.click(within(alert).getByRole("button", { name: "retry" }));
 
     await waitFor(() => {
       expect(convexQueryMock.mock.calls.length).toBeGreaterThan(callsBeforeRetry);
