@@ -1,8 +1,8 @@
 /**
  * Thin helper around the shared getProviderModel — the chat pipeline
  * routes every call through OpenRouter (same helper extraction uses)
- * and returns the pricing row alongside so usageHandler's math stays
- * in one place.
+ * and returns the pricing row alongside so generateResponse can bill
+ * completed turns immediately after the stream settles.
  */
 
 import type { ActionCtx } from "../_generated/server";
