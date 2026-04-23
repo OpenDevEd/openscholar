@@ -14,12 +14,25 @@
  * close enough (typically ≤ 10% off) and avoids pulling in a
  * model-specific tokenizer per provider.
  *
- * Caveat: input tokens here only cover the user's latest prompt
- * message, NOT the full context (thread history + system prompt +
- * included paper abstracts). That means aborted turns are
- * systematically under-charged relative to happy-path turns. That is
- * acceptable policy — the user was cut off mid-response.
+ * Billing policy: aborted turns are multiplied by
+ * {@link ABORT_TOKEN_SURCHARGE_MULTIPLIER} before being written. For
+ * providers OpenRouter cannot cancel (our case with Google/Gemini)
+ * the upstream model keeps generating to completion and OpenRouter
+ * charges us for the full response; the tokens the user saw are a
+ * lower bound, not an accurate reflection of provider cost. Doubling
+ * the user-visible estimate gives us a rough inner margin against
+ * that waste while keeping the charge proportional to how much of
+ * the stream was consumed before the stop.
  */
+
+/**
+ * Multiplier applied to the tokenized input+output estimate when
+ * billing an aborted chat turn. Set to 2× so the user pays more than
+ * the fraction they saw on screen — this compensates for OpenRouter's
+ * provider-routing gap where cancelled streams on non-whitelisted
+ * providers keep running and billing server-side.
+ */
+export const ABORT_TOKEN_SURCHARGE_MULTIPLIER = 2;
 
 import { encode } from "gpt-tokenizer";
 

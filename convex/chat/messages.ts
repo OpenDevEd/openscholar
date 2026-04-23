@@ -58,6 +58,7 @@ import {
   estimateTokenCount,
   extractMessageText,
   errorToLogString,
+  ABORT_TOKEN_SURCHARGE_MULTIPLIER,
 } from "./abortTokenEstimate";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
@@ -323,18 +324,21 @@ export const generateResponse = internalAction({
               // Local estimate billing for the cancel path. Provider-
               // routing gap means OpenRouter's /api/v1/generation does
               // not publish cancelled records for non-whitelisted
-              // providers (Google/Groq/Mistral/…). Without an
-              // authoritative source we bill from what the user saw:
-              // tokenize the streamed text (output) and the user's
-              // prompt message (input). This undercharges relative to
-              // OpenRouter's internal accounting — system prompt and
-              // thread context are excluded — which is the policy we
-              // want: aborts charge less than a full turn.
+              // providers (Google/Groq/Mistral/…) — the upstream model
+              // keeps generating to completion and OpenRouter bills us
+              // for the full response anyway. Tokens the user actually
+              // saw are a LOWER bound, so we scale by
+              // ABORT_TOKEN_SURCHARGE_MULTIPLIER to charge them more
+              // than the fraction they read before the stop. This is
+              // intentionally a blunt instrument: a user who stops
+              // early pays roughly double the text they saw in tokens,
+              // which trades precision for a meaningful disincentive
+              // to spam-stop on providers we cannot truly cancel.
               if (!capturedGenerationId) return;
               if (accumulatedOutput.length === 0) return;
 
-              const outputTokens = estimateTokenCount(accumulatedOutput);
-              let inputTokens = 0;
+              const rawOutputTokens = estimateTokenCount(accumulatedOutput);
+              let rawInputTokens = 0;
               try {
                 // promptMessageId is the agent component's opaque id —
                 // it lives in the component's own schema, not our root
@@ -346,7 +350,7 @@ export const generateResponse = internalAction({
                 );
                 const promptMessage = messageDocs[0];
                 const promptText = extractMessageText(promptMessage);
-                inputTokens = estimateTokenCount(promptText);
+                rawInputTokens = estimateTokenCount(promptText);
               } catch (err) {
                 console.warn(
                   "[chat] abort billing: failed to read prompt text for token estimate",
@@ -354,7 +358,12 @@ export const generateResponse = internalAction({
                 );
               }
 
-              if (inputTokens === 0 && outputTokens === 0) return;
+              if (rawInputTokens === 0 && rawOutputTokens === 0) return;
+
+              const inputTokens =
+                rawInputTokens * ABORT_TOKEN_SURCHARGE_MULTIPLIER;
+              const outputTokens =
+                rawOutputTokens * ABORT_TOKEN_SURCHARGE_MULTIPLIER;
 
               await ctx.runMutation(
                 internal.chat.billing.captureGenerationFromResponse,

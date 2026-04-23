@@ -944,6 +944,17 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
       expect(ledger?.billedCredits ?? 0).toBeGreaterThan(0);
       expect(ledger?.promptTokens ?? 0).toBeGreaterThan(0);
       expect(ledger?.completionTokens ?? 0).toBeGreaterThan(0);
+
+      // Policy: aborts pay more than the fraction actually streamed.
+      // The mock produced "hello world" (~2 tokens) — doubled to >=4.
+      // We can't assert exact equality because gpt-tokenizer encodes
+      // "ping" + "hello world" to model-specific BPE counts, but both
+      // numbers MUST be even (× 2 from the rawInput/rawOutput path)
+      // and the output side MUST be at least 2× what a naive char/4
+      // heuristic on "hello world" would produce.
+      expect((ledger?.promptTokens ?? 0) % 2).toBe(0);
+      expect((ledger?.completionTokens ?? 0) % 2).toBe(0);
+      expect(ledger?.completionTokens ?? 0).toBeGreaterThanOrEqual(4);
     });
 
     // The credit transaction landed. The fetch wrapper's /api/v1/
