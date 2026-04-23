@@ -13,8 +13,8 @@ describe("resolveLatestAssistantTurn", () => {
             message: { role: "assistant" },
           },
           {
-            _id: "user-3",
-            order: 3,
+            _id: "user-4-step-0",
+            order: 4,
             message: { role: "user" },
           },
           {
@@ -27,7 +27,7 @@ describe("resolveLatestAssistantTurn", () => {
       }),
     ).toEqual({
       assistantOrder: 4,
-      promptMessageId: "user-3",
+      promptMessageId: "user-4-step-0",
       assistantMessageIds: ["assistant-4-step-1"],
       streamIds: [],
     });
@@ -43,8 +43,8 @@ describe("resolveLatestAssistantTurn", () => {
             message: { role: "assistant" },
           },
           {
-            _id: "user-5",
-            order: 5,
+            _id: "user-6-step-0",
+            order: 6,
             message: { role: "user" },
           },
         ],
@@ -55,7 +55,7 @@ describe("resolveLatestAssistantTurn", () => {
       }),
     ).toEqual({
       assistantOrder: 6,
-      promptMessageId: "user-5",
+      promptMessageId: "user-6-step-0",
       assistantMessageIds: ["assistant-6-step-1"],
       streamIds: ["stream-6-a", "stream-6-b"],
     });
@@ -66,31 +66,8 @@ describe("resolveLatestAssistantTurn", () => {
       resolveLatestAssistantTurn({
         messages: [
           {
-            _id: "user-8",
-            order: 8,
-            message: { role: "user" },
-          },
-          {
-            _id: "assistant-7",
-            order: 7,
-            message: { role: "assistant" },
-          },
-          {
-            _id: "user-5",
-            order: 5,
-            message: { role: "user" },
-          },
-        ],
-        streams: [{ streamId: "stream-6", order: 6 }],
-      }),
-    ).toBeNull();
-
-    expect(
-      resolveLatestAssistantTurn({
-        messages: [
-          {
-            _id: "user-5",
-            order: 5,
+            _id: "user-6-step-0",
+            order: 6,
             message: { role: "user" },
           },
           {
@@ -103,7 +80,7 @@ describe("resolveLatestAssistantTurn", () => {
       }),
     ).toEqual({
       assistantOrder: 6,
-      promptMessageId: "user-5",
+      promptMessageId: "user-6-step-0",
       assistantMessageIds: [],
       streamIds: ["stream-6"],
     });
@@ -119,9 +96,14 @@ describe("resolveLatestAssistantTurn", () => {
             message: { role: "user" },
           },
           {
-            _id: "assistant-3",
-            order: 3,
+            _id: "assistant-2",
+            order: 2,
             message: { role: "assistant" },
+          },
+          {
+            _id: "user-2",
+            order: 2,
+            message: { role: "user" },
           },
         ],
         streams: [],

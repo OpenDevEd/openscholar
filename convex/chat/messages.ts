@@ -18,7 +18,7 @@
  *   regenerateLastAssistant / clearThread / swapModel: affordances.
  */
 
-import type { ActionCtx } from "../_generated/server";
+import type { ActionCtx, MutationCtx } from "../_generated/server";
 import {
   internalAction,
   internalQuery,
@@ -53,6 +53,7 @@ import {
   ABORT_REASON_USER_STOPPED,
   ABORT_ERROR_STRING,
 } from "../../lib/chat/abort-signal";
+import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
 
@@ -358,6 +359,9 @@ function withThreadMessageReadCaps(paginationOpts: PaginationOptions) {
 type ThreadMessagePage = Awaited<
   ReturnType<typeof listMessages>
 >;
+type RecentThreadMessagesPage = Awaited<
+  ReturnType<typeof paperChat.listMessages>
+>;
 type ListThreadMessagesStreamArgs = {
   kind: "list";
   startOrder?: number;
@@ -424,6 +428,72 @@ async function readThreadMessagesWithVisiblePageIntegrity(
     splitCursor,
     pageStatus,
   };
+}
+
+type ThreadStreamArtifact = {
+  streamId: Id<"streamingMessages">;
+  order: number;
+};
+
+async function listRecentThreadArtifacts(
+  ctx: MutationCtx,
+  threadId: string,
+): Promise<{
+  messages: RecentThreadMessagesPage["page"];
+  streams: ThreadStreamArtifact[];
+}> {
+  const messages = await paperChat.listMessages(ctx, {
+    threadId,
+    paginationOpts: { numItems: 20, cursor: null },
+  });
+  const streams = await ctx.runQuery(components.agent.streams.list, {
+    threadId: threadId as Id<"threads">,
+    statuses: ["streaming", "finished", "aborted"],
+  });
+  return { messages: messages.page, streams };
+}
+
+async function deleteStreamArtifacts(
+  ctx: MutationCtx,
+  streamIds: Id<"streamingMessages">[],
+) {
+  for (const streamId of streamIds) {
+    await ctx.runMutation(components.agent.streams.deleteStreamSync, {
+      streamId,
+    });
+  }
+}
+
+async function purgeAssistantTurnArtifacts(
+  ctx: MutationCtx,
+  args: {
+    assistantMessageIds: Id<"messages">[];
+    streamIds: Id<"streamingMessages">[];
+  },
+) {
+  if (args.assistantMessageIds.length > 0) {
+    await ctx.runMutation(components.agent.messages.deleteByIds, {
+      messageIds: args.assistantMessageIds,
+    });
+  }
+  await deleteStreamArtifacts(ctx, args.streamIds);
+}
+
+async function clearThreadStreams(ctx: MutationCtx, threadId: string) {
+  // Query the latest page repeatedly; each pass removes those rows, so the
+  // next query exposes the next batch without touching the thread row.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const streams = await ctx.runQuery(components.agent.streams.list, {
+      threadId: threadId as Id<"threads">,
+      statuses: ["streaming", "finished", "aborted"],
+    });
+    if (streams.length === 0) break;
+    await deleteStreamArtifacts(
+      ctx,
+      streams.map((stream) => stream.streamId),
+    );
+  }
 }
 
 export const listThreadMessages = query({
@@ -500,21 +570,14 @@ export const regenerateLastAssistant = mutation({
       );
     }
 
-    const page = await paperChat.listMessages(ctx, {
-      threadId,
-      paginationOpts: { numItems: 4, cursor: null },
-    });
-    // paperChat.listMessages returns newest-first (order: "desc" inside
-    // the agent component), so msgs[0] is the latest message and msgs[1]
-    // is the one before it. We need the last assistant and its prior user.
-    const msgs = page.page;
-    if (msgs.length < 2) return null;
-    const last = msgs[0];
-    const prev = msgs[1];
-    if (last.message?.role !== "assistant") return null;
-    if (prev.message?.role !== "user") return null;
+    const { messages, streams } = await listRecentThreadArtifacts(ctx, threadId);
+    const latestTurn = resolveLatestAssistantTurn({ messages, streams });
+    if (!latestTurn) return null;
 
-    await paperChat.deleteMessage(ctx, { messageId: last._id });
+    await purgeAssistantTurnArtifacts(ctx, {
+      assistantMessageIds: latestTurn.assistantMessageIds as Id<"messages">[],
+      streamIds: latestTurn.streamIds as Id<"streamingMessages">[],
+    });
 
     const now = Date.now();
     await ctx.db.patch(job._id, {
@@ -526,7 +589,7 @@ export const regenerateLastAssistant = mutation({
     await ctx.scheduler.runAfter(
       0,
       internal.chat.messages.generateResponse,
-      { threadId, promptMessageId: prev._id },
+      { threadId, promptMessageId: latestTurn.promptMessageId },
     );
     return null;
   },
@@ -558,7 +621,12 @@ export const clearThread = mutation({
       startOrder = r.lastOrder;
     }
 
+    await clearThreadStreams(ctx, threadId);
+
     await ctx.db.patch(job._id, {
+      isGenerating: false,
+      generatingStartedAt: undefined,
+      shouldAbort: undefined,
       messageCount: 0,
       lastMessageAt: undefined,
       updatedAt: Date.now(),

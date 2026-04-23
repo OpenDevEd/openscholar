@@ -37,11 +37,6 @@ export function resolveLatestAssistantTurn(args: {
   const highestOrderMessages = messages.filter(
     (message) => message.order === highestOrder,
   );
-  const hasUserAtHighestOrder = highestOrderMessages.some(
-    (message) => message.message?.role === "user",
-  );
-  if (hasUserAtHighestOrder) return null;
-
   const assistantMessageIds = highestOrderMessages
     .filter((message) => message.message?.role === "assistant")
     .map((message) => message._id);
@@ -53,9 +48,8 @@ export function resolveLatestAssistantTurn(args: {
     return null;
   }
 
-  const promptMessage = messages.find(
-    (message) =>
-      message.order < highestOrder && message.message?.role === "user",
+  const promptMessage = highestOrderMessages.find(
+    (message) => message.message?.role === "user",
   );
   if (!promptMessage) return null;
 

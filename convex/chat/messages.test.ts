@@ -203,6 +203,110 @@ async function seedUserMessage(
   });
 }
 
+async function listPersistedMessages(
+  t: ReturnType<typeof convexTest>,
+  threadId: string,
+) {
+  return await t.run(async (ctx) => {
+    const { page } = await paperChat.listMessages(ctx, {
+      threadId,
+      paginationOpts: { numItems: 20, cursor: null },
+    });
+    return page.map((message) => ({
+      _id: message._id,
+      order: message.order,
+      stepOrder: message.stepOrder,
+      status: message.status,
+      error: message.error,
+      role: message.message?.role,
+      text:
+        typeof message.message?.content === "string"
+          ? message.message.content
+          : undefined,
+    }));
+  });
+}
+
+async function listAllStreams(
+  t: ReturnType<typeof convexTest>,
+  threadId: string,
+) {
+  return await t.run(async (ctx) =>
+    ctx.runQuery(components.agent.streams.list, {
+      threadId: threadId as never,
+      statuses: ["streaming", "finished", "aborted"],
+    }),
+  );
+}
+
+async function listDeltasForStreamIds(
+  t: ReturnType<typeof convexTest>,
+  threadId: string,
+  streamIds: string[],
+) {
+  if (streamIds.length === 0) return [];
+  return await t.run(async (ctx) =>
+    ctx.runQuery(components.agent.streams.listDeltas, {
+      threadId: threadId as never,
+      cursors: streamIds.map((streamId) => ({
+        streamId: streamId as never,
+        cursor: 0,
+      })),
+    }),
+  );
+}
+
+async function createStoppedAssistantTurn(
+  t: ReturnType<typeof convexTest>,
+  opts: { prompt?: string } = {},
+) {
+  const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+    isGenerating: true,
+  });
+  const { modelId } = await seedModelAndCredits(t, userId);
+  await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+  const promptMessageId = await seedUserMessage(
+    t,
+    threadId,
+    opts.prompt ?? "ping",
+  );
+
+  mockDoStream.mockImplementation(
+    partialDeltasThenHangDoStream(["partial ", "reply"]),
+  );
+
+  const actionPromise = t.action(internal.chat.messages.generateResponse, {
+    threadId,
+    promptMessageId,
+  });
+  await waitFor(() => doStreamArgsSeen.length > 0);
+  await new Promise((r) => setTimeout(r, 400));
+  await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+  await actionPromise;
+
+  const messages = await listPersistedMessages(t, threadId);
+  const streams = await listAllStreams(t, threadId);
+  const stoppedAssistant = messages.find((message) => message.role === "assistant");
+  const stoppedStream = streams.find((stream) => stream.status === "aborted");
+  expect(stoppedAssistant).toBeDefined();
+  expect(stoppedStream).toBeDefined();
+
+  return {
+    userId,
+    jobId,
+    threadId,
+    modelId,
+    promptMessageId,
+    stoppedOrder: stoppedAssistant!.order,
+    stoppedAssistantIds: messages
+      .filter((message) => message.role === "assistant" && message.order === stoppedAssistant!.order)
+      .map((message) => message._id),
+    stoppedStreamIds: streams
+      .filter((stream) => stream.order === stoppedAssistant!.order)
+      .map((stream) => stream.streamId),
+  };
+}
+
 function createTestConvex() {
   const t = convexTest(schema);
   registerAgentComponent(t);
@@ -867,5 +971,58 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     // Lock still released even on the error path.
     const job = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(job?.isGenerating).toBe(false);
+  });
+
+  it("A9 — regenerate after stop purges same-order artifacts before rerun", async () => {
+    const t = createTestConvex();
+    const stopped = await createStoppedAssistantTurn(t);
+    const caller = asCaller(t, "c_msg");
+
+    await caller.mutation(api.chat.messages.regenerateLastAssistant, {
+      threadId: stopped.threadId,
+    });
+
+    const messagesAfterPurge = await listPersistedMessages(t, stopped.threadId);
+    const streamsAfterPurge = await listAllStreams(t, stopped.threadId);
+    const deltasAfterPurge = await listDeltasForStreamIds(
+      t,
+      stopped.threadId,
+      stopped.stoppedStreamIds,
+    );
+    const jobAfterPurge = await t.run(async (ctx) => ctx.db.get(stopped.jobId));
+
+    expect(
+      messagesAfterPurge.some((message) =>
+        stopped.stoppedAssistantIds.includes(message._id),
+      ),
+    ).toBe(false);
+    expect(
+      streamsAfterPurge.some((stream) =>
+        stopped.stoppedStreamIds.includes(stream.streamId),
+      ),
+    ).toBe(false);
+    expect(deltasAfterPurge).toHaveLength(0);
+    expect(jobAfterPurge?.isGenerating).toBe(true);
+
+    mockDoStream.mockImplementation(finishingDoStream(["regenerated reply"]));
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId: stopped.threadId,
+      promptMessageId: stopped.promptMessageId,
+    });
+
+    const finalMessages = await listPersistedMessages(t, stopped.threadId);
+    const finalStreams = await listAllStreams(t, stopped.threadId);
+    const assistantMessagesAtOrder = finalMessages.filter(
+      (message) =>
+        message.role === "assistant" && message.order === stopped.stoppedOrder,
+    );
+    const streamRowsAtOrder = finalStreams.filter(
+      (stream) => stream.order === stopped.stoppedOrder,
+    );
+
+    expect(assistantMessagesAtOrder.length).toBeGreaterThanOrEqual(1);
+    expect(streamRowsAtOrder).toHaveLength(1);
+    expect(streamRowsAtOrder[0]?.status).toBe("finished");
   });
 });
