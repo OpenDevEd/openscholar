@@ -2,7 +2,13 @@
  * Thin helper around the shared getProviderModel — the chat pipeline
  * routes every call through OpenRouter (same helper extraction uses)
  * and returns the pricing row alongside so generateResponse can bill
- * completed turns immediately after the stream settles.
+ * every completed turn from the OpenRouter generation record after the
+ * stream settles, regardless of whether it finished normally or was
+ * user-stopped.
+ *
+ * When a GenerationIdSink is provided the helper wraps createOpenRouter's
+ * fetch so the `X-Generation-Id` response header is captured abort-
+ * safely — see convex/chat/openrouterFetch.ts.
  */
 
 import type { ActionCtx } from "../_generated/server";
@@ -12,6 +18,10 @@ import { getProviderModel } from "../../lib/ai/server/providers";
 import { SERVER_AI_CONFIG } from "../ai/config";
 import { createError } from "../lib/errors";
 import type { LanguageModel } from "ai";
+import {
+  withGenerationIdCapture,
+  type GenerationIdSink,
+} from "./openrouterFetch";
 
 export type Pricing = { input: number; output: number };
 
@@ -34,6 +44,7 @@ export type ResolvedChatModel = {
 export async function resolveOpenRouterModel(
   ctx: ActionCtx,
   modelId: Id<"models"> | null,
+  options?: { generationIdSink?: GenerationIdSink },
 ): Promise<ResolvedChatModel> {
   let modelSlug: string;
   let pricing: Pricing;
@@ -69,6 +80,9 @@ export async function resolveOpenRouterModel(
   const model = await getProviderModel("openrouter", undefined, modelSlug, {
     openrouterProviderOrder: SERVER_AI_CONFIG.openrouterProviderOrder,
     openrouterAllowFallbacks: SERVER_AI_CONFIG.openrouterAllowFallbacks,
+    ...(options?.generationIdSink
+      ? { fetch: withGenerationIdCapture(options.generationIdSink) }
+      : {}),
   });
 
   return { model, modelSlug, pricing };

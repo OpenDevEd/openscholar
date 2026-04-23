@@ -4,6 +4,14 @@ export interface ProviderOptions {
   apiKey?: string
   openrouterProviderOrder?: string
   openrouterAllowFallbacks?: boolean
+  /**
+   * Optional fetch override. Wired through to providers that accept a
+   * custom fetch (OpenRouter does). Used by chat billing to capture
+   * X-Generation-Id from the initial HTTP response headers so stopped
+   * streams can still reconcile against OpenRouter's generation API —
+   * see convex/chat/openrouterFetch.ts.
+   */
+  fetch?: typeof globalThis.fetch
 }
 
 export async function getProviderModel(
@@ -50,6 +58,7 @@ export async function getProviderModel(
       const openRouterOptions = {
         ...baseOptions,
         ...(Object.keys(extraBody).length > 0 && { extraBody }),
+        ...(options?.fetch ? { fetch: options.fetch } : {}),
       }
 
       return createOpenRouter(openRouterOptions)(modelId)
