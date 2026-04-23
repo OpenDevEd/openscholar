@@ -115,6 +115,10 @@ export function LibraryPageClient() {
   );
 
   const queryText = debouncedSearch.trim();
+  const { sortBy: resolvedSortBy, sortOrder: resolvedSortOrder } = useMemo(
+    () => parseLibrarySort(params.sort),
+    [params.sort],
+  );
   const savedAfter = useMemo(
     () => startOfDayTimestampFromParam(params.sf),
     [params.sf],
@@ -122,11 +126,6 @@ export function LibraryPageClient() {
   const savedBefore = useMemo(
     () => endOfDayTimestampFromParam(params.st),
     [params.st],
-  );
-
-  const { sortBy: resolvedSortBy, sortOrder: resolvedSortOrder } = useMemo(
-    () => parseLibrarySort(params.sort),
-    [params.sort],
   );
 
   const libraryFilters = useMemo(
