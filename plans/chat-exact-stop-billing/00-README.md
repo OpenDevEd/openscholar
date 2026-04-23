@@ -73,7 +73,7 @@ Primary donors that must be reused instead of re-invented:
 - Current credit ledger path: [convex/credits/internal.ts](../../convex/credits/internal.ts), [convex/schema.ts](../../convex/schema.ts).
 - Current stop/abort contract tests: [convex/chat/messages.test.ts](../../convex/chat/messages.test.ts).
 - Current provider resolution path: [lib/ai/server/providers](../../lib/ai/server/providers), [convex/chat/provider.ts](../../convex/chat/provider.ts).
-- Current stopped-turn UI / runtime work: [components/extraction/chat/message-list.tsx](../../components/extraction/chat/message-list.tsx), [lib/chat/use-chat-ui-messages.ts](../../lib/chat/use-chat-ui-messages.ts).
+- Current stopped-turn UI / runtime work: [components/extraction/chat/message-list.tsx](../../components/extraction/chat/message-list.tsx), driven by the library hook [@convex-dev/agent/react `useUIMessages`](../../node_modules/@convex-dev/agent/src/react/useUIMessages.ts).
 
 Do **not** introduce:
 

@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
-import type { UIMessage } from "@convex-dev/agent/react";
+import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMutation } from "convex/react";
 import {
@@ -35,7 +35,6 @@ import {
   resolvePaperReferences,
   type ResolvablePaper,
 } from "@/lib/chat/resolve-paper";
-import { useChatUIMessages } from "@/lib/chat/use-chat-ui-messages";
 import { cn } from "@/lib/utils";
 
 interface MessageListProps {
@@ -306,7 +305,11 @@ export function MessageList({
   const reduceMotion = useReducedMotion() ?? false;
   const regenerate = useMutation(api.chat.messages.regenerateLastAssistant);
 
-  const { results, status } = useChatUIMessages(threadId);
+  const { results, status } = useUIMessages(
+    api.chat.messages.listThreadMessages,
+    { threadId },
+    { initialNumItems: 20, stream: true },
+  );
 
   const isLoadingFirstPage =
     status === "LoadingFirstPage" && results.length === 0;

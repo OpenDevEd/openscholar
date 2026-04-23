@@ -49,12 +49,18 @@ vi.mock("convex/react", () => ({
   },
 }));
 
-vi.mock("@/lib/chat/use-chat-ui-messages", () => ({
-  useChatUIMessages: () => ({
-    results: currentMessages,
-    status: currentStatus,
-  }),
-}));
+vi.mock("@convex-dev/agent/react", async () => {
+  const actual = await vi.importActual<typeof import("@convex-dev/agent/react")>(
+    "@convex-dev/agent/react",
+  );
+  return {
+    ...actual,
+    useUIMessages: () => ({
+      results: currentMessages,
+      status: currentStatus,
+    }),
+  };
+});
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
