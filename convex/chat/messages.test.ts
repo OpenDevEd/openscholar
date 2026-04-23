@@ -10,14 +10,27 @@ import { APICallError } from "@ai-sdk/provider";
 import { paperChat } from "./agent";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
 import { STOP_ABORT_POLL_INTERVAL_MS } from "./messages";
+import { setupTransactionAggregates } from "../credits/aggregates.test-support";
 
 // Capture the composed abortSignal the library hands to doStream so
 // tests can assert it transitioned to aborted after we flip
-// job.shouldAbort. Populated on each mock doStream call.
-const { mockDoStream, doStreamArgsSeen } = vi.hoisted(() => ({
-  mockDoStream: vi.fn(),
-  doStreamArgsSeen: [] as Array<{ abortSignal?: AbortSignal }>,
-}));
+// job.shouldAbort. `providerState.emitGenerationId` lets tests simulate
+// the OpenRouter X-Generation-Id fetch capture without an actual HTTP
+// round trip — the mocked resolveOpenRouterModel invokes the sink as
+// soon as doStream starts, which is exactly when createOpenRouter's
+// fetch wrapper would fire in production.
+const { mockDoStream, doStreamArgsSeen, providerState, fetchMock } =
+  vi.hoisted(() => ({
+    mockDoStream: vi.fn(),
+    doStreamArgsSeen: [] as Array<{ abortSignal?: AbortSignal }>,
+    providerState: {
+      emitGenerationId: undefined as string | undefined,
+      modelSlug: "mock/model" as string,
+    },
+    fetchMock: vi.fn(),
+  }));
+
+vi.stubGlobal("fetch", fetchMock);
 
 // vi.mock replaces ./provider for every importer in this test file —
 // including generateResponse's own import. The factory is async so it
@@ -25,14 +38,25 @@ const { mockDoStream, doStreamArgsSeen } = vi.hoisted(() => ({
 vi.mock("./provider", async () => {
   const { MockLanguageModelV3 } = await import("ai/test");
   return {
-    resolveOpenRouterModel: async () => ({
+    resolveOpenRouterModel: async (
+      _ctx: unknown,
+      _modelId: unknown,
+      options?: { generationIdSink?: (id: string) => void },
+    ) => ({
       model: new MockLanguageModelV3({
-        doStream: async (options) => {
-          doStreamArgsSeen.push({ abortSignal: options.abortSignal });
-          return mockDoStream(options);
+        doStream: async (doStreamOpts) => {
+          doStreamArgsSeen.push({ abortSignal: doStreamOpts.abortSignal });
+          // Simulate OpenRouter returning X-Generation-Id on the
+          // initial HTTP response — the real fetch wrapper fires the
+          // sink before any streamed body lands, i.e. before a client
+          // abort can race the header read.
+          if (providerState.emitGenerationId && options?.generationIdSink) {
+            options.generationIdSink(providerState.emitGenerationId);
+          }
+          return mockDoStream(doStreamOpts);
         },
       }),
-      modelSlug: "mock/model",
+      modelSlug: providerState.modelSlug,
       pricing: { input: 0, output: 0 },
     }),
   };
@@ -50,6 +74,9 @@ vi.mock("../../lib/chat/abort-poller", async (importOriginal) => {
 beforeEach(() => {
   mockDoStream.mockReset();
   doStreamArgsSeen.length = 0;
+  fetchMock.mockReset();
+  providerState.emitGenerationId = undefined;
+  providerState.modelSlug = "mock/model";
   vi.mocked(startAbortPoller).mockClear();
 });
 
@@ -310,6 +337,11 @@ async function createStoppedAssistantTurn(
 function createTestConvex() {
   const t = convexTest(schema);
   registerAgentComponent(t);
+  // Required by convex/credits/internal.ts so deductCredits can write
+  // its aggregate counters. Chat billing calls deductCreditsTransaction
+  // after reconciliation, so every chat test that exercises billing
+  // needs these aggregates registered.
+  setupTransactionAggregates(t);
   return t;
 }
 
@@ -777,17 +809,12 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(job?.shouldAbort).toBeUndefined();
   });
 
-  it("C1 — usageHandler does NOT fire when abort lands before a step finishes (library limitation)", async () => {
-    // Empirical contract test documenting a known library gap — not a
-    // celebration. See plans/chat-stop-streaming/01-BLOCKER.md for the
-    // full rationale, library-version cites, and the decision to accept
-    // the gap for V1.
-    //
-    // Summary: the agent library invokes usageHandler only when a step
-    // finishes. AI SDK v6 onAbort fires with completed steps only. With
-    // stepCountIs(1) a mid-stream abort leaves the single in-flight
-    // step incomplete → no usage surfaced → usageHandler not called →
-    // no credits deducted for the partial tokens.
+  it("C1a — no billing when OpenRouter never returned a generation id (defence-in-depth)", async () => {
+    // If the fetch wrapper never captured an X-Generation-Id (e.g. the
+    // upstream POST failed before headers arrived, or the provider
+    // changed its contract), generateResponse must NOT bill. The chat
+    // ledger is keyed by generation id; billing without one would leave
+    // a row that cannot be reconciled or refunded.
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
@@ -800,6 +827,8 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
     const promptMessageId = await seedUserMessage(t, threadId, "ping");
 
+    // providerState.emitGenerationId is undefined by default — simulating
+    // a run where OpenRouter did not return X-Generation-Id.
     mockDoStream.mockImplementation(
       partialDeltasThenHangDoStream(["hello ", "world"]),
     );
@@ -809,7 +838,6 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
       { threadId, promptMessageId },
     );
     await waitFor(() => doStreamArgsSeen.length > 0);
-    // Let the library flush at least one delta batch before we abort.
     await new Promise((r) => setTimeout(r, 400));
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
     await actionPromise;
@@ -817,13 +845,164 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    // Current library behavior: no usage surfaced on abort → no credits
-    // deducted. Asserting `lifetimeUsed === 0` locks the observed
-    // behavior and makes any future library upgrade that DOES surface
-    // partial usage appear as a test regression (forcing us to notice
-    // and re-evaluate the billing contract).
     expect(balance?.lifetimeUsed).toBe(0);
     expect(balance?.total).toBe(10_000);
+
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query("chatGenerationUsages").collect();
+      expect(rows).toHaveLength(0);
+    });
+  });
+
+  it("C1b — happy-path finish captures a chatGenerationUsages row keyed by the fetch-header generation id", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId, {
+      inputPricePerMillion: 1_000,
+      outputPricePerMillion: 2_000,
+      freeBalance: 10_000,
+    });
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+    const generationId = "gen_happy_1";
+    providerState.emitGenerationId = generationId;
+
+    mockDoStream.mockImplementation(finishingDoStream(["hi"]));
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    await t.run(async (ctx) => {
+      const ledger = await ctx.db
+        .query("chatGenerationUsages")
+        .withIndex("by_generation_id", (q) =>
+          q.eq("generationId", generationId),
+        )
+        .unique();
+      expect(ledger?.status).toBe("captured");
+      expect(ledger?.jobId).toBe(jobId);
+      expect(ledger?.userId).toBe(userId);
+      expect(ledger?.requestedModel).toBe("mock/model");
+      expect(ledger?.billedAt ?? null).toBeNull();
+    });
+  });
+
+  it("C1c — user-stop STILL captures a chatGenerationUsages row for later reconciliation", async () => {
+    // The critical regression test for plan-01's Deviation note. In
+    // AI SDK v5, streamText.onFinish does not fire on abort and
+    // providerMetadata.openrouter.responseId is body-derived (undefined
+    // on abort). The fetch wrapper captures X-Generation-Id from the
+    // initial HTTP response headers — which arrive before any
+    // AbortSignal can race the read — so user-stopped turns MUST still
+    // produce a chatGenerationUsages row. That row is what reconcile
+    // then bills against OpenRouter's authoritative /api/v1/generation
+    // payload (the cancelled=true branch is covered end-to-end in
+    // billing.integration.test.ts).
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId, {
+      inputPricePerMillion: 1_000,
+      outputPricePerMillion: 2_000,
+      freeBalance: 10_000,
+    });
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+    const generationId = "gen_stopped_1";
+    providerState.emitGenerationId = generationId;
+
+    mockDoStream.mockImplementation(
+      partialDeltasThenHangDoStream(["hello ", "world"]),
+    );
+
+    const actionPromise = t.action(
+      internal.chat.messages.generateResponse,
+      { threadId, promptMessageId },
+    );
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    await new Promise((r) => setTimeout(r, 400));
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+    await actionPromise;
+
+    // The capture ran despite the abort — this is the regression guard.
+    await t.run(async (ctx) => {
+      const ledger = await ctx.db
+        .query("chatGenerationUsages")
+        .withIndex("by_generation_id", (q) =>
+          q.eq("generationId", generationId),
+        )
+        .unique();
+      expect(ledger).not.toBeNull();
+      expect(ledger?.status).toBe("captured");
+      expect(ledger?.jobId).toBe(jobId);
+      expect(ledger?.userId).toBe(userId);
+      expect(ledger?.billedAt ?? null).toBeNull();
+    });
+
+    // Now run reconcile directly against a mocked cancelled-generation
+    // OpenRouter payload. This is the same settleGenerationUsage code
+    // path that fires from the scheduler in production — exercised
+    // here synchronously so the assertion on the credit transaction is
+    // deterministic regardless of stream-internal scheduled cleanups.
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            id: generationId,
+            model: "mock/model",
+            provider_name: "mock",
+            cancelled: true,
+            finish_reason: "stop",
+            native_finish_reason: "USER_ABORT",
+            native_tokens_prompt: 8,
+            native_tokens_completion: 2,
+            total_cost: 0.04,
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    await t.action(internal.chat.billing.reconcileGenerationUsage, {
+      generationId,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(generationId),
+      expect.any(Object),
+    );
+
+    const balance = await t.run(async (ctx) =>
+      ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
+    );
+    expect(balance?.lifetimeUsed).toBeGreaterThan(0);
+    expect(balance?.total).toBeLessThan(10_000);
+
+    await t.run(async (ctx) => {
+      const ledger = await ctx.db
+        .query("chatGenerationUsages")
+        .withIndex("by_generation_id", (q) =>
+          q.eq("generationId", generationId),
+        )
+        .unique();
+      expect(ledger?.status).toBe("billed");
+      expect(ledger?.cancelled).toBe(true);
+      expect(ledger?.billedCredits ?? 0).toBeGreaterThan(0);
+
+      const txs = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      expect(txs).toHaveLength(1);
+      expect(txs[0]?.metadata?.generationId).toBe(generationId);
+      expect(txs[0]?.metadata?.cancelled).toBe("true");
+      expect(txs[0]?.metadata?.billingSource).toBe(
+        "openrouter_generation_api",
+      );
+    });
   });
 
   it("M1 — listThreadMessages enriches aborted messages with aborted:true and drops the sentinel error", async () => {
