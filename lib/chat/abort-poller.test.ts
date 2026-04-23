@@ -79,6 +79,25 @@ describe("startAbortPoller", () => {
     stop();
   });
 
+  it("does not start a second read while the prior read is still pending", async () => {
+    let resolveRead!: (value: boolean) => void;
+    const pendingRead = new Promise<boolean>((resolve) => {
+      resolveRead = resolve;
+    });
+    const readFlag = vi.fn(() => pendingRead);
+    const onAbort = vi.fn();
+    const stop = startAbortPoller({ readFlag, onAbort, intervalMs: 100 });
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(readFlag).toHaveBeenCalledTimes(1);
+
+    resolveRead(false);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(readFlag).toHaveBeenCalledTimes(2);
+    expect(onAbort).not.toHaveBeenCalled();
+    stop();
+  });
+
   it("defaults intervalMs to 500", async () => {
     const readFlag = vi.fn(async () => false);
     const stop = startAbortPoller({ readFlag, onAbort: () => {} });

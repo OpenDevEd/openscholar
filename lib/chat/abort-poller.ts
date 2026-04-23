@@ -13,9 +13,11 @@ export function startAbortPoller({
 }: StartAbortPollerArgs): StopPoller {
   let fired = false;
   let stopped = false;
+  let reading = false;
 
   const handle = setInterval(() => {
-    if (fired || stopped) return;
+    if (fired || stopped || reading) return;
+    reading = true;
     readFlag()
       .then((flag) => {
         if (flag && !fired && !stopped) {
@@ -26,6 +28,9 @@ export function startAbortPoller({
       .catch(() => {
         // readFlag failures shouldn't abort the stream. The outer finally
         // + concurrency.cleanupZombieChatLocks sweep handles stale state.
+      })
+      .finally(() => {
+        reading = false;
       });
   }, intervalMs);
 
