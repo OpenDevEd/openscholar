@@ -54,6 +54,8 @@ import {
   ABORT_ERROR_STRING,
 } from "../../lib/chat/abort-signal";
 
+export const STOP_ABORT_POLL_INTERVAL_MS = 500;
+
 /* ────────────────────────────────────────────────────────────────── */
 /*                      User → Assistant turn                         */
 /* ────────────────────────────────────────────────────────────────── */
@@ -159,7 +161,7 @@ export const generateResponse = internalAction({
           );
         }
       },
-      intervalMs: 500,
+      intervalMs: STOP_ABORT_POLL_INTERVAL_MS,
     });
 
     // True once `onError` has patched the pending message with a

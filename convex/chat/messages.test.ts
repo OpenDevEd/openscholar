@@ -8,6 +8,8 @@ import schema from "../schema";
 import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import { APICallError } from "@ai-sdk/provider";
 import { paperChat } from "./agent";
+import { startAbortPoller } from "../../lib/chat/abort-poller";
+import { STOP_ABORT_POLL_INTERVAL_MS } from "./messages";
 
 // Capture the composed abortSignal the library hands to doStream so
 // tests can assert it transitioned to aborted after we flip
@@ -36,9 +38,19 @@ vi.mock("./provider", async () => {
   };
 });
 
+vi.mock("../../lib/chat/abort-poller", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../lib/chat/abort-poller")>();
+  return {
+    ...actual,
+    startAbortPoller: vi.fn(actual.startAbortPoller),
+  };
+});
+
 beforeEach(() => {
   mockDoStream.mockReset();
   doStreamArgsSeen.length = 0;
+  vi.mocked(startAbortPoller).mockClear();
 });
 
 afterEach(() => {
@@ -379,6 +391,29 @@ describe("chat.messages — auth + mode gating", () => {
 });
 
 describe("chat.messages.generateResponse — stop-streaming wiring", () => {
+  it("A0 — generateResponse uses the explicit stop poll cadence", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+
+    mockDoStream.mockImplementation(finishingDoStream(["hi"]));
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    expect(startAbortPoller).toHaveBeenCalledWith(
+      expect.objectContaining({
+        intervalMs: STOP_ABORT_POLL_INTERVAL_MS,
+      }),
+    );
+  });
+
   it("A1 — poller fires controller.abort() when shouldAbort flips true", async () => {
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
