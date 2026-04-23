@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { runBoundedBatches } from "./workflow";
+import { classifyWorkerSkip, runBoundedBatches } from "./workflow";
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -241,6 +241,19 @@ describe("convex/extraction/workflow batching", () => {
     expect(result).toBe("halted");
     expect(startedSequence).toEqual(["a", "b"]);
     expect(waitForNextBatch).toHaveBeenCalledTimes(1);
+  });
+
+  describe("classifyWorkerSkip", () => {
+    it.each([
+      ["already_billed", "completed"],
+      ["cancelled", "halted"],
+      ["job_terminal", "halted"],
+      ["paused", "park"],
+      ["credits_exhausted", "park"],
+      ["stale_epoch", "park"],
+    ] as const)("routes %s to %s", (reason, expected) => {
+      expect(classifyWorkerSkip(reason)).toBe(expected);
+    });
   });
 
   it("halts when the gate refuses to reopen during a park retry", async () => {

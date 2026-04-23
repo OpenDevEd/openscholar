@@ -37,6 +37,36 @@ type JobControl = {
 
 type PaperPipelineResult = "completed" | "halted" | "park";
 
+type ExtractionWorkerSkipReason =
+  | "already_billed"
+  | "cancelled"
+  | "job_terminal"
+  | "credits_exhausted"
+  | "paused"
+  | "stale_epoch";
+
+export function classifyWorkerSkip(
+  reason: ExtractionWorkerSkipReason,
+): PaperPipelineResult {
+  switch (reason) {
+    case "already_billed":
+      return "completed";
+    case "cancelled":
+    case "job_terminal":
+      return "halted";
+    case "paused":
+    case "credits_exhausted":
+    case "stale_epoch":
+      return "park";
+    default: {
+      const _exhaustive: never = reason;
+      throw new Error(
+        `Unhandled worker skip reason: ${String(_exhaustive)}`,
+      );
+    }
+  }
+}
+
 type ExtractionPaper = Doc<"extractionPapers">;
 type ExtractionQuestion = Doc<"extractionQuestions">;
 
