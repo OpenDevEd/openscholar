@@ -26,11 +26,8 @@
  *   [data-search-deferred = "true" | "false"]
  *   aria-activedescendant = "txn-row-<id>"    (keyboard-active row)
  *
- * ── Header + summary ──────────────────────────────────────────────
+ * ── Header ────────────────────────────────────────────────────────
  *   [data-transactions-header]
- *   [data-transactions-summary]
- *   [data-transactions-shown]  [data-transactions-in]
- *   [data-transactions-out]    [data-transactions-net]
  *   [data-transactions-progress = 0–100]
  *
  * ── Tabs / toolbar ────────────────────────────────────────────────
@@ -136,10 +133,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { TransactionRow } from "./transaction-row";
-import {
-  TransactionsPanelHeader,
-  type TransactionsSummary,
-} from "./transactions-panel-header";
+import { TransactionsPanelHeader } from "./transactions-panel-header";
 import { TransactionsGroupHeader } from "./transactions-group-header";
 import { TransactionsListSkeleton } from "./transactions-list-skeleton";
 import { TransactionsPanelTabs } from "./transactions-panel-tabs";
@@ -173,16 +167,6 @@ type ListTransactionsRawPage = FunctionReturnType<
 
 interface Props {
   jobId?: Id<"extractionJobs">;
-}
-
-function summarize(rows: readonly TransactionViewModel[]): TransactionsSummary {
-  let inAmount = 0;
-  let outAmount = 0;
-  for (const row of rows) {
-    if (row.direction === "in") inAmount += row.amount;
-    else outAmount += row.amount;
-  }
-  return { in: inAmount, out: outAmount, net: inAmount - outAmount };
 }
 
 function foldFacetCounts(
@@ -482,8 +466,6 @@ function TransactionsPanelClientInner({ jobId }: Props) {
     () => (renderGroups ? partitionByGroup(rows, now, tz) : null),
     [renderGroups, rows, now, tz],
   );
-  const summary = useMemo(() => summarize(rows), [rows]);
-
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -612,7 +594,6 @@ function TransactionsPanelClientInner({ jobId }: Props) {
     >
       <TransactionsPanelHeader
         shownCount={rows.length}
-        summary={summary}
         exportSlot={
           <TransactionsExportMenu
             currentView={rows}

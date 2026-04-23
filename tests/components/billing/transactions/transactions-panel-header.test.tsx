@@ -9,73 +9,18 @@ vi.mock("next-intl", () => ({
           .map(([k, v]) => `${k}=${String(v)}`)
           .join(",")}`
       : key,
-  useFormatter: () => ({
-    number: (n: number) => String(n),
-  }),
 }));
 
 describe("TransactionsPanelHeader", () => {
   it("does not own a live region — the panel-level aria-live is the only announcement source", () => {
-    const { container } = render(
-      <TransactionsPanelHeader
-        shownCount={10}
-        summary={{ in: 150, out: 30, net: 120 }}
-      />,
-    );
+    const { container } = render(<TransactionsPanelHeader shownCount={10} />);
     expect(container.querySelectorAll("[aria-live]").length).toBe(0);
     expect(container.querySelectorAll('[role="status"]').length).toBe(0);
-    const summary = container.querySelector("[data-transactions-summary]");
-    expect(summary).toBeTruthy();
-    expect(summary?.getAttribute("aria-label")).toBeTruthy();
-  });
-
-  it("exposes the in/out/net/shown counts as stable data attributes", () => {
-    const { container } = render(
-      <TransactionsPanelHeader
-        shownCount={10}
-        summary={{ in: 150, out: 30, net: 120 }}
-      />,
-    );
-    const region = container.querySelector("[data-transactions-summary]")!;
-    expect(region.getAttribute("data-transactions-shown")).toBe("10");
-    expect(region.getAttribute("data-transactions-in")).toBe("150");
-    expect(region.getAttribute("data-transactions-out")).toBe("30");
-    expect(region.getAttribute("data-transactions-net")).toBe("120");
-  });
-
-  it("renders +in · −out · Net +N for a net-positive summary", () => {
-    const { container } = render(
-      <TransactionsPanelHeader
-        shownCount={3}
-        summary={{ in: 150, out: 30, net: 120 }}
-      />,
-    );
-    const region = container.querySelector("[data-transactions-summary]")!;
-    expect(region.textContent).toContain("+150");
-    expect(region.textContent).toContain("−30");
-    expect(region.textContent).toContain("+120");
-  });
-
-  it("surfaces negative net via the data attribute and signed display text", () => {
-    const { container } = render(
-      <TransactionsPanelHeader
-        shownCount={2}
-        summary={{ in: 0, out: 40, net: -40 }}
-      />,
-    );
-    const region = container.querySelector("[data-transactions-summary]")!;
-    expect(region.getAttribute("data-transactions-net")).toBe("-40");
-    expect(region.textContent).toContain("−40");
-    expect(region.textContent).not.toContain("+40");
+    expect(container.querySelector("[data-transactions-summary]")).toBeNull();
   });
 
   it("renders a progress indicator with role=presentation and aria-hidden", () => {
-    const { container } = render(
-      <TransactionsPanelHeader
-        shownCount={5}
-        summary={{ in: 0, out: 0, net: 0 }}
-      />,
-    );
+    const { container } = render(<TransactionsPanelHeader shownCount={5} />);
     const bar = container.querySelector("[data-transactions-progress]");
     expect(bar).toBeTruthy();
     expect(bar?.getAttribute("role")).toBe("presentation");
@@ -83,21 +28,15 @@ describe("TransactionsPanelHeader", () => {
   });
 
   it("renders nothing in the export slot when exportSlot is omitted", () => {
-    const { container } = render(
-      <TransactionsPanelHeader
-        shownCount={5}
-        summary={{ in: 0, out: 0, net: 0 }}
-      />,
-    );
+    const { container } = render(<TransactionsPanelHeader shownCount={5} />);
     expect(container.querySelector("[data-export-slot]")).toBeNull();
     expect(container.querySelector("[data-transactions-export]")).toBeNull();
   });
 
-  it("mounts an exportSlot child next to the summary when provided", () => {
+  it("mounts an exportSlot child in the header when provided", () => {
     const { container } = render(
       <TransactionsPanelHeader
         shownCount={5}
-        summary={{ in: 0, out: 0, net: 0 }}
         exportSlot={<span data-export-slot="mounted">slot</span>}
       />,
     );
@@ -107,12 +46,7 @@ describe("TransactionsPanelHeader", () => {
   });
 
   it("sets data-transactions-progress to 0 when shownCount is 0", () => {
-    const { container } = render(
-      <TransactionsPanelHeader
-        shownCount={0}
-        summary={{ in: 0, out: 0, net: 0 }}
-      />,
-    );
+    const { container } = render(<TransactionsPanelHeader shownCount={0} />);
     expect(
       container.querySelector("[data-transactions-progress]")?.getAttribute(
         "data-transactions-progress",
@@ -121,12 +55,7 @@ describe("TransactionsPanelHeader", () => {
   });
 
   it("caps data-transactions-progress at 100 once shownCount >= 25", () => {
-    const { container } = render(
-      <TransactionsPanelHeader
-        shownCount={50}
-        summary={{ in: 0, out: 0, net: 0 }}
-      />,
-    );
+    const { container } = render(<TransactionsPanelHeader shownCount={50} />);
     expect(
       container.querySelector("[data-transactions-progress]")?.getAttribute(
         "data-transactions-progress",

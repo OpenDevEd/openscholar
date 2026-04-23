@@ -30,7 +30,7 @@ if (
   process.env.CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 }
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const defaultWebServerCommand = "npm run build && npm run start -- --port 3000";
 const webServerCommand =
   process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ?? defaultWebServerCommand;

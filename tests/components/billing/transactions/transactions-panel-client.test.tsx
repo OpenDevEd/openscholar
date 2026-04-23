@@ -386,7 +386,7 @@ describe("TransactionsPanelClient", () => {
     ).toBeNull();
   });
 
-  it("surfaces the summary with +in / −out / Net on the header region", () => {
+  it("does not render the removed in/out/net header summary", () => {
     setResult({
       status: "Exhausted",
       results: [
@@ -396,10 +396,7 @@ describe("TransactionsPanelClient", () => {
       ],
     });
     const { container } = render(withNuqs(<TransactionsPanelClient />));
-    const summary = container.querySelector("[data-transactions-summary]")!;
-    expect(summary.getAttribute("data-transactions-in")).toBe("150");
-    expect(summary.getAttribute("data-transactions-out")).toBe("30");
-    expect(summary.getAttribute("data-transactions-net")).toBe("120");
+    expect(container.querySelector("[data-transactions-summary]")).toBeNull();
   });
 
   it("keeps exactly one aria-live region in the panel", () => {

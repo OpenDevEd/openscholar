@@ -406,11 +406,6 @@
         "thisWeek": "Cette semaine",
         "lastWeek": "La semaine dernière"
       },
-      "summary": {
-        "net": "Net",
-        "shown": "Affichage de {n}",
-        "aria": "{count} transactions affichées. {inAmount} reçus, {outAmount} dépensés, solde net {net}."
-      },
       "export": {
         "label": "Exporter",
         "current": "Page actuelle ({count})",

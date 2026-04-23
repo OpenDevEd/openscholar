@@ -23,6 +23,7 @@ export async function createUserWithDefaults(
   const userId = await ctx.db.insert("users", {
     ...userData,
     state: "active",
+    libraryItemCount: 0,
     lastLoginAt: now,
     createdAt: now,
     updatedAt: now,

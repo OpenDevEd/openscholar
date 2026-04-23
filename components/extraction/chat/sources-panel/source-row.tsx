@@ -150,22 +150,22 @@ function SourceRowImpl({
                 aria-label="Open in OpenAlex"
                 data-source-action="openalex"
                 asChild
-              >
-                <a
-                  href={openAlexUrl(row.openalexId)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
                 >
-                  <ExternalLink className="size-3" />
-                </a>
+                  <a
+                    href={openAlexUrl(row.openalexId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ExternalLink className="size-3" />
+                  </a>
               </Button>
             )}
             {row.doi && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                className="h-6 gap-1 px-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground"
                 aria-label="Open DOI"
                 data-source-action="doi"
                 asChild
@@ -176,7 +176,7 @@ function SourceRowImpl({
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <ExternalLink className="size-3" />
+                  <span>DOI</span>
                 </a>
               </Button>
             )}

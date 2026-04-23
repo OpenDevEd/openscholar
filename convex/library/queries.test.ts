@@ -24,7 +24,8 @@ async function seedUser(
       createdAt: Date.now(),
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
-      libraryItemCount: overrides.libraryItemCount,
+      libraryItemCount:
+        "libraryItemCount" in overrides ? overrides.libraryItemCount : 0,
     });
     return await ctx.db.get("users", userId);
   });
@@ -616,7 +617,9 @@ describe("getLibraryCount", () => {
 
   it("returns the live item count when the stored counter is missing", async () => {
     const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await seedLibraryItem(t, user!._id, {
@@ -633,7 +636,9 @@ describe("getLibraryCount", () => {
 
   it("returns the repaired count after an explicit backfill runs", async () => {
     const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await seedLibraryItem(t, user!._id, {
@@ -755,7 +760,9 @@ describe("getLibraryFilteredCount", () => {
 
   it("returns the live item count when no filters are active and the stored counter is missing", async () => {
     const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await seedLibraryItem(t, user!._id, {
@@ -777,6 +784,21 @@ describe("getLibraryFilteredCount", () => {
 });
 
 describe("library counter", () => {
+  it("ensureUser initializes libraryItemCount for fresh users", async () => {
+    const t = convexTest(schema);
+    const asUser = t.withIdentity({
+      subject: "clerk_user1",
+      email: "user1@test.com",
+      givenName: "Test",
+      familyName: "User",
+    });
+
+    const userId = await asUser.mutation(api.users.mutations.ensureUser, {});
+    const user = await t.run(async (ctx) => await ctx.db.get("users", userId));
+
+    expect(user?.libraryItemCount).toBe(0);
+  });
+
   it("saveToLibrary increments counter for new items", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
@@ -946,7 +968,9 @@ describe("library counter", () => {
 
   it("saveToLibrary repairs a missing counter before incrementing", async () => {
     const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await seedLibraryItem(t, user!._id, {
@@ -966,7 +990,9 @@ describe("library counter", () => {
 
   it("removeFromLibrary repairs a missing counter before decrementing", async () => {
     const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     const itemId = await seedLibraryItem(t, user!._id, {
@@ -988,7 +1014,9 @@ describe("library counter", () => {
 
   it("removeFromLibraryByOpenalexId repairs a missing counter before decrementing", async () => {
     const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await seedLibraryItem(t, user!._id, {

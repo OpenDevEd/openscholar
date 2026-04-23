@@ -406,11 +406,6 @@
         "thisWeek": "今週",
         "lastWeek": "先週"
       },
-      "summary": {
-        "net": "差引",
-        "shown": "{n}件表示",
-        "aria": "{count}件のトランザクションを表示。受取{inAmount}、支出{outAmount}、差引{net}。"
-      },
       "export": {
         "label": "エクスポート",
         "current": "現在のページ ({count})",

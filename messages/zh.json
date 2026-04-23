@@ -406,11 +406,6 @@
         "thisWeek": "本周",
         "lastWeek": "上周"
       },
-      "summary": {
-        "net": "净额",
-        "shown": "显示 {n} 条",
-        "aria": "已显示 {count} 条交易。收入 {inAmount}，支出 {outAmount}，净额 {net}。"
-      },
       "export": {
         "label": "导出",
         "current": "当前页面 ({count})",

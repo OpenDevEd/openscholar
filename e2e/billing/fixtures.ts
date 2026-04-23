@@ -1,11 +1,14 @@
 import { test as base, expect } from "@playwright/test";
-import { createClerkClient } from "@clerk/backend";
 import { clerk } from "@clerk/testing/playwright";
 import type Stripe from "stripe";
 import { createStripeClient, cleanupStripeCustomer } from "./stripe-helpers";
 import { WebhookWaiter } from "./webhook-waiter";
 import { BillingPage } from "./pages/billing-page";
 import { PricingPage } from "./pages/pricing-page";
+import {
+  createDisposableClerkUser,
+  deleteClerkUser,
+} from "../clerk-test-user";
 
 /**
  * Shape of the Clerk test user created by the fixture.
@@ -48,24 +51,12 @@ export const test = base.extend<BillingFixtures>({
   // --- clerkUser fixture ---
   // Creates a fresh Clerk user per test, signs in, and cleans up on teardown.
   clerkUser: async ({ page }, use) => {
-    const secretKey = process.env.CLERK_SECRET_KEY;
-    if (!secretKey) {
+    if (!process.env.CLERK_SECRET_KEY) {
       throw new Error("Missing CLERK_SECRET_KEY for billing E2E tests");
     }
 
-    const clerkClient = createClerkClient({ secretKey });
-
-    // Generate unique email per test to ensure isolation
-    const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const email = `billing-e2e-${uniqueId}@test.example.com`;
-    const password = `E2EBilling${uniqueId}!`;
-
-    // Create the Clerk user
-    const user = await clerkClient.users.createUser({
-      emailAddress: [email],
-      password,
-      skipPasswordChecks: true,
-      skipPasswordRequirement: true,
+    const user = await createDisposableClerkUser({
+      prefix: "billing-e2e",
       firstName: "E2E",
       lastName: "Billing",
     });
@@ -75,7 +66,7 @@ export const test = base.extend<BillingFixtures>({
     await clerk.loaded({ page });
     await clerk.signIn({
       page,
-      emailAddress: email,
+      emailAddress: user.email,
     });
 
     // Navigate to a protected page to trigger ensureUser in Convex
@@ -84,7 +75,7 @@ export const test = base.extend<BillingFixtures>({
     // Wait for the page to finish loading (subscription state settles)
     await page.waitForLoadState("networkidle");
 
-    await use({ id: user.id, email });
+    await use({ id: user.id, email: user.email });
 
     // Teardown: sign out and delete the Clerk user
     try {
@@ -92,7 +83,7 @@ export const test = base.extend<BillingFixtures>({
     } catch {
       // Best-effort -- page may have navigated away
     }
-    await clerkClient.users.deleteUser(user.id);
+    await deleteClerkUser(user.id);
   },
 
   // --- stripeClient fixture ---

@@ -3,6 +3,11 @@ import { clerk } from "@clerk/testing/playwright";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
+import {
+  createDisposableClerkUser,
+  deleteClerkUser,
+  type ClerkTestUser,
+} from "./clerk-test-user";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -12,16 +17,12 @@ function requireEnv(name: string): string {
   return value;
 }
 
-function getSharedE2EUserEmail(): string {
-  return requireEnv("E2E_CLERK_USER_EMAIL");
-}
-
-async function signIn(page: Page) {
+async function signIn(page: Page, emailAddress: string) {
   await page.goto("/");
   await clerk.loaded({ page });
   await clerk.signIn({
     page,
-    emailAddress: getSharedE2EUserEmail(),
+    emailAddress,
   });
   await page.waitForFunction(() => Boolean(window.Clerk?.session));
 }
@@ -118,19 +119,34 @@ test.describe("library smoke", () => {
   }) => {
     test.slow();
 
-    await signIn(page);
+    const clerkUser: ClerkTestUser = await createDisposableClerkUser({
+      prefix: "library-e2e",
+      firstName: "E2E",
+      lastName: "Library",
+    });
 
-    const token = await getConvexToken(page);
-    const seedId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const fixture = await seedLibrarySmokeFixture({ token, seedId });
+    try {
+      await signIn(page, clerkUser.email);
 
-    await page.goto(`/library?col=${fixture.collectionId}`);
+      const token = await getConvexToken(page);
+      const seedId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const fixture = await seedLibrarySmokeFixture({ token, seedId });
 
-    await expect(
-      page.getByText(`${fixture.filteredCount} / ${fixture.totalCount} results`),
-    ).toBeVisible({ timeout: 60_000 });
-    await expect(
-      page.getByText(`Showing 1-20 of ${fixture.filteredCount} papers`),
-    ).toBeVisible({ timeout: 60_000 });
+      await page.goto(`/library?col=${fixture.collectionId}`);
+
+      await expect(
+        page.getByText(
+          new RegExp(
+            `^${fixture.filteredCount}\\s*/\\s*${fixture.totalCount}\\s+Results$`,
+            "i",
+          ),
+        ),
+      ).toBeVisible({ timeout: 60_000 });
+      await expect(
+        page.getByText(`1-20 of ${fixture.filteredCount} papers`),
+      ).toBeVisible({ timeout: 60_000 });
+    } finally {
+      await deleteClerkUser(clerkUser.id);
+    }
   });
 });

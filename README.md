@@ -157,7 +157,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
   - `NEXT_PUBLIC_CONVEX_URL`
   - `E2E_CLERK_USER_EMAIL`
   - `E2E_CLERK_USER_PASSWORD`
-  - Optional: `E2E_BASE_URL` (defaults to `http://127.0.0.1:3000`)
+  - Optional: `E2E_BASE_URL` (defaults to `http://localhost:3000`)
 
 - CI workflow:
   - `.github/workflows/ci.yml` runs:
