@@ -185,3 +185,112 @@ describe("MessageRow — aborted vs. failed branches", () => {
     expect(row).not.toHaveAttribute("data-message-state");
   });
 });
+
+describe("MessageRow — streaming cursor transitions", () => {
+  // Behavioral contract: <StreamingCursor /> is only mounted while the
+  // message is actively streaming AND has partial text. It must
+  // disappear the moment the status flips to aborted, success, or
+  // failed. Regression guard for the bug where a hand-rolled read
+  // hook stopped clearing stream state, keeping the cursor mounted
+  // until a full page refresh — see the plan-ui revert commit.
+
+  it("B6a — streaming assistant message with partial text mounts the streaming cursor", () => {
+    const msg = makeMessage({
+      status: "streaming",
+      text: "Partial reply…",
+      parts: [{ type: "text", text: "Partial reply…" }],
+    });
+    renderRow(msg);
+
+    expect(screen.getByTestId("streaming-cursor")).toBeInTheDocument();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("data-streaming", "true");
+    expect(row).toHaveAttribute("data-status", "streaming");
+  });
+
+  it("B6b — aborted assistant message does NOT mount the streaming cursor", () => {
+    // This is the exact visual contract the user reported as broken
+    // on April 23, 2026: after clicking Stop, the cursor kept
+    // blinking next to the partial reply until page refresh. The row
+    // must flip data-streaming to false and unmount the cursor.
+    const msg = makeMessage({
+      status: "failed",
+      aborted: true,
+      text: "Partial reply before stop",
+      parts: [{ type: "text", text: "Partial reply before stop" }],
+    });
+    renderRow(msg);
+
+    expect(screen.queryByTestId("streaming-cursor")).toBeNull();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("data-streaming", "false");
+    expect(row).toHaveAttribute("data-message-state", "aborted");
+  });
+
+  it("B6c — finished assistant message does NOT mount the streaming cursor", () => {
+    const msg = makeMessage({
+      status: "success",
+      text: "Completed reply.",
+      parts: [{ type: "text", text: "Completed reply." }],
+    });
+    renderRow(msg);
+
+    expect(screen.queryByTestId("streaming-cursor")).toBeNull();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("data-streaming", "false");
+    expect(row).toHaveAttribute("data-status", "success");
+  });
+
+  it("B6d — failed (real-error) assistant message does NOT mount the streaming cursor", () => {
+    const msg = makeMessage({
+      status: "failed",
+      error: '{"kind":"rate_limit","message":"…"}',
+      text: "",
+      parts: [{ type: "text", text: "" }],
+    });
+    renderRow(msg);
+
+    expect(screen.queryByTestId("streaming-cursor")).toBeNull();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("data-streaming", "false");
+    expect(row).toHaveAttribute("data-status", "failed");
+  });
+
+  it("B6e — a cursor-mounted streaming message unmounts the cursor when it flips to aborted between renders", () => {
+    // Guards the specific regression mode: the message flips from
+    // status="streaming" to { status: "failed", aborted: true } and
+    // the cursor must go with it. A rerender is the smallest possible
+    // simulation of a reactive query update landing new status/parts.
+    const streaming = makeMessage({
+      status: "streaming",
+      text: "Partial reply…",
+      parts: [{ type: "text", text: "Partial reply…" }],
+    });
+    const { rerender } = renderRow(streaming);
+    expect(screen.getByTestId("streaming-cursor")).toBeInTheDocument();
+
+    const stopped = makeMessage({
+      status: "failed",
+      aborted: true,
+      text: "Partial reply…",
+      parts: [{ type: "text", text: "Partial reply…" }],
+    });
+    rerender(
+      <MessageRow
+        message={stopped}
+        isLastAssistant={true}
+        isFirstInGroup={true}
+        threadId="t_1"
+        chatModelId={null as unknown as Id<"models">}
+        chatModels={[]}
+        onRetry={() => {}}
+        reduceMotion={true}
+      />,
+    );
+
+    expect(screen.queryByTestId("streaming-cursor")).toBeNull();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("data-streaming", "false");
+    expect(row).toHaveAttribute("data-message-state", "aborted");
+  });
+});
