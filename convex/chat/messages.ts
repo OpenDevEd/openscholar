@@ -431,7 +431,7 @@ async function readThreadMessagesWithVisiblePageIntegrity(
 }
 
 type ThreadStreamArtifact = {
-  streamId: Id<"streamingMessages">;
+  streamId: string;
   order: number;
 };
 
@@ -447,7 +447,7 @@ async function listRecentThreadArtifacts(
     paginationOpts: { numItems: 20, cursor: null },
   });
   const streams = await ctx.runQuery(components.agent.streams.list, {
-    threadId: threadId as Id<"threads">,
+    threadId,
     statuses: ["streaming", "finished", "aborted"],
   });
   return { messages: messages.page, streams };
@@ -455,7 +455,7 @@ async function listRecentThreadArtifacts(
 
 async function deleteStreamArtifacts(
   ctx: MutationCtx,
-  streamIds: Id<"streamingMessages">[],
+  streamIds: string[],
 ) {
   for (const streamId of streamIds) {
     await ctx.runMutation(components.agent.streams.deleteStreamSync, {
@@ -467,8 +467,8 @@ async function deleteStreamArtifacts(
 async function purgeAssistantTurnArtifacts(
   ctx: MutationCtx,
   args: {
-    assistantMessageIds: Id<"messages">[];
-    streamIds: Id<"streamingMessages">[];
+    assistantMessageIds: string[];
+    streamIds: string[];
   },
 ) {
   if (args.assistantMessageIds.length > 0) {
@@ -485,7 +485,7 @@ async function clearThreadStreams(ctx: MutationCtx, threadId: string) {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const streams = await ctx.runQuery(components.agent.streams.list, {
-      threadId: threadId as Id<"threads">,
+      threadId,
       statuses: ["streaming", "finished", "aborted"],
     });
     if (streams.length === 0) break;
@@ -575,8 +575,8 @@ export const regenerateLastAssistant = mutation({
     if (!latestTurn) return null;
 
     await purgeAssistantTurnArtifacts(ctx, {
-      assistantMessageIds: latestTurn.assistantMessageIds as Id<"messages">[],
-      streamIds: latestTurn.streamIds as Id<"streamingMessages">[],
+      assistantMessageIds: latestTurn.assistantMessageIds,
+      streamIds: latestTurn.streamIds,
     });
 
     const now = Date.now();

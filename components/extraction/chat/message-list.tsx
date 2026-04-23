@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
-import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
+import type { UIMessage } from "@convex-dev/agent/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMutation } from "convex/react";
 import {
@@ -35,6 +35,7 @@ import {
   resolvePaperReferences,
   type ResolvablePaper,
 } from "@/lib/chat/resolve-paper";
+import { useChatUIMessages } from "@/lib/chat/use-chat-ui-messages";
 import { cn } from "@/lib/utils";
 
 interface MessageListProps {
@@ -47,12 +48,12 @@ interface MessageListProps {
 export type ResolvedPaper = ResolvablePaper;
 
 /**
- * Our `listThreadMessages` query enriches each UIMessage with an
- * `error` string (a serialized ChatErrorEnvelope) — @convex-dev/agent's
- * own UIMessage type strips that field, so we widen it here.
- * `aborted: true` appears when the server detected the plan-01 abort
- * sentinel (ABORT_ERROR_STRING) on the MessageDoc; a message with
- * `aborted: true` never carries `error`, and vice versa.
+ * Our chat read model widens the agent UIMessage with app-level
+ * `error` / `aborted` discriminators.
+ * `aborted: true` can come from either:
+ * 1. a persisted assistant message carrying the abort sentinel, or
+ * 2. a stream-backed assistant row whose underlying stream status is
+ *    already `aborted`.
  */
 type ChatUIMessage = UIMessage & { error?: string; aborted?: boolean };
 
@@ -270,7 +271,8 @@ export const MessageRow = memo(function MessageRow({
 
       {!isUser && (!isEmpty || isAborted) ? (
         <div className="mt-1 flex items-center gap-2">
-          {!isEmpty ? (
+          {isAborted ? <AbortedPill /> : null}
+          {!isEmpty || isAborted ? (
             <MessageActions
               message={message}
               isLastAssistant={isLastAssistant}
@@ -279,7 +281,6 @@ export const MessageRow = memo(function MessageRow({
               models={chatModels}
             />
           ) : null}
-          {isAborted ? <AbortedPill /> : null}
         </div>
       ) : null}
 
@@ -305,11 +306,7 @@ export function MessageList({
   const reduceMotion = useReducedMotion() ?? false;
   const regenerate = useMutation(api.chat.messages.regenerateLastAssistant);
 
-  const { results, status } = useUIMessages(
-    api.chat.messages.listThreadMessages,
-    { threadId },
-    { initialNumItems: 20, stream: true },
-  );
+  const { results, status } = useChatUIMessages(threadId);
 
   const isLoadingFirstPage =
     status === "LoadingFirstPage" && results.length === 0;

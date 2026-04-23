@@ -103,6 +103,8 @@ export function MessageActions({
   const isStreaming = message.status === "streaming";
   const isFailed = message.status === "failed";
   const showRetry = isLastAssistant || isFailed;
+  const copyText = extractText(message);
+  const canCopy = copyText.trim().length > 0;
 
   const activeModel = useMemo(() => {
     if (!chatModelId || !models) return null;
@@ -139,17 +141,16 @@ export function MessageActions({
     );
 
   const handleCopy = useCallback(() => {
-    const text = extractText(message);
-    if (!text) return;
+    if (!canCopy) return;
     void navigator.clipboard
-      .writeText(text)
+      .writeText(copyText)
       .then(() => {
         toast.success(t("chatCopied"));
       })
       .catch(() => {
         appToast.clipboard.copyFailed(t("chatCopyMessage"));
       });
-  }, [message, appToast, t]);
+  }, [appToast, canCopy, copyText, t]);
 
   const handleRetry = useCallback(() => {
     void regenerate({ threadId }).catch((err) => {
@@ -169,15 +170,17 @@ export function MessageActions({
           : "opacity-0 group-hover/message:opacity-100 group-focus-within/message:opacity-100",
       )}
     >
-      <ActionButton
-        ariaLabel={t("chatCopyMessage")}
-        tooltip={t("chatCopyMessage")}
-        onClick={handleCopy}
-        disabled={isStreaming}
-        dataAction="copy"
-      >
-        <CopyIcon className="size-3.5" />
-      </ActionButton>
+      {canCopy ? (
+        <ActionButton
+          ariaLabel={t("chatCopyMessage")}
+          tooltip={t("chatCopyMessage")}
+          onClick={handleCopy}
+          disabled={isStreaming}
+          dataAction="copy"
+        >
+          <CopyIcon className="size-3.5" />
+        </ActionButton>
+      ) : null}
       {showRetry && (
         <ActionButton
           ariaLabel={retryLabel}

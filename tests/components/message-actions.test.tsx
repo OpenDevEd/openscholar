@@ -45,6 +45,7 @@ vi.mock("@/lib/toast", () => ({
 function renderActions(
   status: "streaming" | "failed" | "success",
   isLastAssistant: boolean,
+  text = "Some assistant reply",
 ) {
   return render(
     <TooltipProvider>
@@ -52,8 +53,8 @@ function renderActions(
         message={{
           role: "assistant",
           status,
-          text: "Some assistant reply",
-          parts: [{ type: "text", text: "Some assistant reply" }],
+          text,
+          parts: [{ type: "text", text }],
         }}
         isLastAssistant={isLastAssistant}
         threadId="t_1"
@@ -76,6 +77,16 @@ describe("<MessageActions> retry enablement", () => {
     renderActions("success", true);
     const retry = screen.getByRole("button", { name: /regenerate/i });
     expect(retry).toBeEnabled();
+  });
+
+  it("B5c — an empty stopped/failed message still offers regenerate but not copy", () => {
+    renderActions("failed", true, "");
+    expect(
+      screen.getByRole("button", { name: /regenerate/i }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: /copy message/i }),
+    ).toBeNull();
   });
 
   it("B6 — retry is not clickable while the message is streaming", () => {

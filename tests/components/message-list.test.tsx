@@ -55,9 +55,14 @@ vi.mock("@/components/extraction/chat/paper-citation", () => ({
 }));
 
 // MessageActions pulls in Radix tooltips and its own Convex subscriptions —
-// out of scope for this row-layout suite. Swap for a probe we can assert on.
+// out of scope for this row-layout suite. Swap for a probe that still exposes
+// the retry affordance contract the row is responsible for mounting.
 vi.mock("@/components/extraction/chat/message-actions", () => ({
-  MessageActions: () => <div data-testid="message-actions" />,
+  MessageActions: () => (
+    <div data-testid="message-actions">
+      <button type="button">Regenerate response</button>
+    </div>
+  ),
 }));
 
 type ChatUIMessage = UIMessage & { error?: string; aborted?: boolean };
@@ -132,6 +137,20 @@ describe("MessageRow — aborted vs. failed branches", () => {
       "data-message-state",
       "aborted",
     );
+  });
+
+  it("B4b2 — aborted assistant message with no partial text still exposes regenerate", () => {
+    const msg = makeMessage({
+      status: "failed",
+      aborted: true,
+      text: "",
+      parts: [{ type: "text", text: "" }],
+    });
+    renderRow(msg);
+
+    expect(
+      screen.getByRole("button", { name: /regenerate response/i }),
+    ).toBeInTheDocument();
   });
 
   it("B4c — real-error (failed + error envelope) assistant message renders ChatErrorAlert, NOT the pill", () => {

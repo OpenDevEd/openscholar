@@ -1047,7 +1047,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     );
     const preserved = await t.run(async (ctx) => {
       const thread = await ctx.runQuery(components.agent.threads.getThread, {
-        threadId: stopped.threadId as never,
+        threadId: stopped.threadId,
       });
       const job = await ctx.db.get(stopped.jobId);
       const chatPapers = await ctx.db
