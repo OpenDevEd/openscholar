@@ -367,8 +367,8 @@ async function runPaperPipeline(
     expectedEpoch,
   });
 
-  if (questionBatchResult === "halted") {
-    return "halted";
+  if (questionBatchResult !== "completed") {
+    return questionBatchResult;
   }
 
   await step.runMutation(
@@ -411,8 +411,8 @@ async function runRetryPaperPipeline(
     expectedEpoch,
   });
 
-  if (questionBatchResult === "halted") {
-    return "halted";
+  if (questionBatchResult !== "completed") {
+    return questionBatchResult;
   }
 
   await step.runMutation(
