@@ -12,7 +12,15 @@ import {
 import { deductCreditsTransaction } from "../credits/internal";
 
 const OPENROUTER_GENERATION_URL = "https://openrouter.ai/api/v1/generation";
-const CHAT_GENERATION_RETRY_DELAYS_MS = [500, 1_000, 2_000, 5_000, 10_000] as const;
+// Back-off schedule for /api/v1/generation lookups. OpenRouter takes a
+// while to publish the generation record — especially for cancelled
+// streams, which are written after the upstream provider settles. The
+// old 0.5s→10s schedule gave up after ~18.5s, leaving aborted turns
+// permanently stuck with lastError "Generation not found". Extend to
+// ~2.5 minutes total wait so cancelled records have time to land.
+const CHAT_GENERATION_RETRY_DELAYS_MS = [
+  1_000, 2_000, 5_000, 10_000, 20_000, 40_000, 60_000,
+] as const;
 
 export type NormalizedOpenRouterGeneration = {
   generationId: string;

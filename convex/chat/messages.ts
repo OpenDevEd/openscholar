@@ -182,6 +182,12 @@ export const generateResponse = internalAction({
     // /api/v1/generation endpoint via billing.reconcileGenerationUsage.
     let capturedGenerationId: string | undefined;
     let capturedModelSlug: string | undefined;
+    // Flipped by onFinish once the happy-path SDK-usage billing has
+    // committed. The post-stream reconcile block checks this flag and
+    // skips scheduling reconcile when the fast path already wrote the
+    // deduction — prevents OpenRouter's /api/v1/generation lookup from
+    // double-billing a turn that finished cleanly.
+    let onFinishBilled = false;
 
     try {
       const balance = await ctx.runQuery(
@@ -195,7 +201,7 @@ export const generateResponse = internalAction({
         );
       }
 
-      const { model, modelSlug } = await resolveOpenRouterModel(
+      const { model, modelSlug, pricing } = await resolveOpenRouterModel(
         ctx,
         chatModelId,
         {
@@ -219,6 +225,70 @@ export const generateResponse = internalAction({
             // abort over a ~2s wait for a retry that mid-stream can't
             // salvage anyway.
             maxRetries: 0,
+            onFinish: async ({ usage }) => {
+              // Fast path for successful turns. AI SDK v6's onFinish
+              // fires with aggregated usage once every step has
+              // completed — for V1 (stepCountIs(1)) this is equivalent
+              // to onStepFinish. It does NOT fire on abort, which is
+              // exactly what we want: aborts fall through to the
+              // post-stream reconcile block below, which resolves cost
+              // against OpenRouter's /api/v1/generation endpoint.
+              const inputTokens = usage?.inputTokens ?? 0;
+              const outputTokens = usage?.outputTokens ?? 0;
+              if (inputTokens === 0 && outputTokens === 0) return;
+
+              const reasoningTokens =
+                usage?.outputTokenDetails?.reasoningTokens ??
+                usage?.reasoningTokens ??
+                0;
+              const cachedPromptTokens =
+                usage?.inputTokenDetails?.cacheReadTokens ??
+                usage?.cachedInputTokens ??
+                0;
+
+              if (capturedGenerationId) {
+                // Prefer ledger-backed billing keyed on generation id
+                // so duplicate invocations (e.g. on retry) no-op via
+                // the billedAt guard inside billGenerationFromSdkUsage.
+                await ctx.runMutation(
+                  internal.chat.billing.captureGenerationFromResponse,
+                  {
+                    threadId,
+                    generationId: capturedGenerationId,
+                    requestedModel: modelSlug,
+                  },
+                );
+                await ctx.runMutation(
+                  internal.chat.billing.billGenerationFromSdkUsage,
+                  {
+                    generationId: capturedGenerationId,
+                    model: modelSlug,
+                    pricing,
+                    promptTokens: inputTokens,
+                    completionTokens: outputTokens,
+                    reasoningTokens,
+                    cachedPromptTokens,
+                  },
+                );
+              } else {
+                // Defence-in-depth: fetch wrapper missed the header
+                // but the stream still finished. Bill via the thread-
+                // keyed path so the user isn't undercharged.
+                await ctx.runMutation(
+                  internal.chat.billing.billThreadUsageFromSdk,
+                  {
+                    threadId,
+                    model: modelSlug,
+                    pricing,
+                    promptTokens: inputTokens,
+                    completionTokens: outputTokens,
+                    reasoningTokens,
+                    cachedPromptTokens,
+                  },
+                );
+              }
+              onFinishBilled = true;
+            },
             onAbort: async ({ steps }) => {
               // Observability only. Billing reconciles against
               // OpenRouter's generation API after the action settles —
@@ -279,15 +349,14 @@ export const generateResponse = internalAction({
         }
       }
 
-      // Authoritative billing. Every turn that produced an OpenRouter
-      // generation id — finished, aborted, or errored after the upstream
-      // POST returned — gets captured into chatGenerationUsages and then
-      // reconciled against OpenRouter's /api/v1/generation endpoint. The
-      // reconcile action writes the credit deduction using the provider's
-      // authoritative total_cost, including for cancelled generations.
-      // Rows are keyed by generation id, so duplicate invocations are a
-      // no-op and idempotent.
-      if (capturedGenerationId) {
+      // Reconcile path for turns onFinish did NOT settle — aborts and
+      // stream errors that still produced an OpenRouter generation id.
+      // captureGenerationFromResponse is idempotent (unique index on
+      // generationId) so it's safe to invoke here even when onFinish
+      // already inserted the row; we just skip scheduling reconcile
+      // when the fast path already wrote the deduction, otherwise the
+      // /api/v1/generation lookup would double-bill on happy paths.
+      if (capturedGenerationId && !onFinishBilled) {
         await ctx.runMutation(
           internal.chat.billing.captureGenerationFromResponse,
           {

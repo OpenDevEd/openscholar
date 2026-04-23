@@ -58,8 +58,8 @@ describe("chat billing helpers", () => {
   });
 
   it("stops retrying after the configured retry budget", () => {
-    expect(getChatGenerationRetryDelayMs(0)).toBe(500);
-    expect(getChatGenerationRetryDelayMs(4)).toBe(10_000);
-    expect(getChatGenerationRetryDelayMs(5)).toBeNull();
+    expect(getChatGenerationRetryDelayMs(0)).toBe(1_000);
+    expect(getChatGenerationRetryDelayMs(6)).toBe(60_000);
+    expect(getChatGenerationRetryDelayMs(7)).toBeNull();
   });
 });
