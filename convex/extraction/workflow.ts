@@ -209,6 +209,7 @@ async function runQuestionBatches(
     questionConcurrency,
     retryLabelPrefix,
     haltedLogPrefix,
+    expectedEpoch,
   }: {
     jobId: Id<"extractionJobs">;
     paperId: Id<"extractionPapers">;
@@ -219,32 +220,35 @@ async function runQuestionBatches(
     questionConcurrency: number;
     retryLabelPrefix: "q" | "retry";
     haltedLogPrefix: "Workflow" | "RetryWorkflow";
+    expectedEpoch: number;
   },
 ): Promise<PaperPipelineResult> {
-  return await runBoundedBatches({
-    items,
-    batchSize: questionConcurrency,
-    waitForNextBatch: async () => {
-      const control = await waitWhilePausedOrCancelled(step, jobId);
-      if (control.status === "cancelled") {
-        console.log(
-          `[${haltedLogPrefix}] Cancelled before next question batch for paper ${paperId}; halting`,
-        );
-        return null;
-      }
-      return control;
-    },
-    runItem: async ({ questionId, questionKey }, control) =>
-      runQuestionStep(step, {
-        jobId,
-        paperId,
-        questionId,
-        questionKey,
-        expectedEpoch: control.runEpoch,
-        retryLabelPrefix,
-        logPrefix: haltedLogPrefix,
-      }),
-  });
+  // No inner await on `resume:<jobId>` — multiple papers run in parallel
+  // through the outer paper batch, and `step.awaitEvent` is a 1:1
+  // producer-consumer per the @convex-dev/workflow event semantics.
+  // Park propagates up to the outer paper batch (single park point).
+  for (const batch of chunk(items, questionConcurrency)) {
+    const results = await Promise.all(
+      batch.map(({ questionId, questionKey }) =>
+        runQuestionStep(step, {
+          jobId,
+          paperId,
+          questionId,
+          questionKey,
+          expectedEpoch,
+          retryLabelPrefix,
+          logPrefix: haltedLogPrefix,
+        }),
+      ),
+    );
+    if (results.some((result) => result === "halted")) {
+      return "halted";
+    }
+    if (results.some((result) => result === "park")) {
+      return "park";
+    }
+  }
+  return "completed";
 }
 
 async function runPaperPipeline(
@@ -360,6 +364,7 @@ async function runPaperPipeline(
     questionConcurrency,
     retryLabelPrefix: "q",
     haltedLogPrefix: "Workflow",
+    expectedEpoch,
   });
 
   if (questionBatchResult === "halted") {
@@ -403,6 +408,7 @@ async function runRetryPaperPipeline(
     questionConcurrency,
     retryLabelPrefix: "retry",
     haltedLogPrefix: "RetryWorkflow",
+    expectedEpoch,
   });
 
   if (questionBatchResult === "halted") {
