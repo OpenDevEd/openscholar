@@ -1025,4 +1025,49 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(streamRowsAtOrder).toHaveLength(1);
     expect(streamRowsAtOrder[0]?.status).toBe("finished");
   });
+
+  it("A10 — clear after stop removes messages and stream artifacts but keeps the thread", async () => {
+    const t = createTestConvex();
+    const stopped = await createStoppedAssistantTurn(t, {
+      prompt: "clear me",
+    });
+    await seedChatPapers(t, stopped.jobId, [true, false, true]);
+    const caller = asCaller(t, "c_msg");
+
+    await caller.mutation(api.chat.messages.clearThread, {
+      threadId: stopped.threadId,
+    });
+
+    const messagesAfterClear = await listPersistedMessages(t, stopped.threadId);
+    const streamsAfterClear = await listAllStreams(t, stopped.threadId);
+    const deltasAfterClear = await listDeltasForStreamIds(
+      t,
+      stopped.threadId,
+      stopped.stoppedStreamIds,
+    );
+    const preserved = await t.run(async (ctx) => {
+      const thread = await ctx.runQuery(components.agent.threads.getThread, {
+        threadId: stopped.threadId as never,
+      });
+      const job = await ctx.db.get(stopped.jobId);
+      const chatPapers = await ctx.db
+        .query("chatPapers")
+        .withIndex("by_job", (q) => q.eq("jobId", stopped.jobId))
+        .collect();
+      return {
+        thread,
+        job,
+        chatPapers: chatPapers.map((row) => row.included),
+      };
+    });
+
+    expect(messagesAfterClear).toHaveLength(0);
+    expect(streamsAfterClear).toHaveLength(0);
+    expect(deltasAfterClear).toHaveLength(0);
+    expect(preserved.thread).not.toBeNull();
+    expect(preserved.job?.chatModelId).toBe(stopped.modelId);
+    expect(preserved.job?.messageCount).toBe(0);
+    expect(preserved.job?.lastMessageAt).toBeUndefined();
+    expect(preserved.chatPapers).toEqual([true, false, true]);
+  });
 });
