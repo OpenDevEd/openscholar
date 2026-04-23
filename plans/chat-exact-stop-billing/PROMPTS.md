@@ -6,7 +6,7 @@ One fenced prompt per numbered plan. Each prompt is self-contained and assumes a
 Plan file: plans/chat-exact-stop-billing/01-authoritative-usage-source.md
 Context README: plans/chat-exact-stop-billing/00-README.md
 
-Long-running autonomous task. Expect 2-4 hours. Do not stop mid-plan to ask for confirmation. When the plan is ambiguous, choose the option most consistent with exact provider-authoritative billing and document the choice in the commit message.
+Long-running autonomous task. Expect 2-4 hours. Do not stop mid-plan to ask for confirmation. When the plan is ambiguous, choose the option most consistent with exact provider-authoritative billing and the already-grounded `X-Generation-Id` capture path, and document the choice in the commit message.
 
 STANDING RULES
 1. DRY with named donors: `convex/chat/agent.ts`, `convex/chat/messages.ts`, `convex/chat/provider.ts`, `convex/ai/lib/creditBilling.ts`, `convex/chat/messages.test.ts`, and `node_modules/@convex-dev/agent/src/client/start.ts`.
@@ -16,14 +16,15 @@ STANDING RULES
 5. Zero type errors is non-negotiable. If Convex/TypeScript compilation is red, the task is not complete.
 6. Use PM2 logs when runtime behavior needs confirmation.
 7. Delegate to subagents for bounded investigation beyond trivial file reads.
-8. If exact cancelled-generation usage cannot be sourced reliably, write `plans/chat-exact-stop-billing/01-BLOCKER.md` and stop. Do not invent an approximation.
+8. Use the already-grounded donor contract: `rawRequestResponseHandler` exposes raw response data, AI SDK responses expose headers, and OpenRouter documents `X-Generation-Id` plus `/api/v1/generation`. Implement against those facts; do not re-open them as speculative research.
 
 EXECUTION RHYTHM
 Phase A: TDD the pure normalization / validation helper for provider-authoritative generation stats. Commit per green.
 Phase B:
-1. Prove the real capture point for OpenRouter generation ids in the current chat runtime.
-2. Add a focused integration or dev-proof path for cancelled-generation reconciliation.
-3. Update tests and document the locked capture contract.
+1. Implement the real capture point for OpenRouter generation ids in the current chat runtime.
+2. Add the provider helper for generation-stats retrieval and normalization.
+3. Add a focused integration or dev-proof path for cancelled-generation reconciliation.
+4. Update tests and document the locked capture contract.
 Commit per logical unit.
 
 COMMIT DISCIPLINE
@@ -35,7 +36,7 @@ COMMIT DISCIPLINE
 - Do not push unless the user explicitly asks.
 
 WHEN TO STOP
-Stop only when the acceptance criteria in the plan file are satisfied or an explicit blocker has been written and committed.
+Stop only when the acceptance criteria in the plan file are satisfied.
 You may NOT stop for: ambiguity resolvable by re-reading the plan, token anxiety, or a desire to ask the user about an already-specified exactness requirement.
 
 DEVIATIONS
