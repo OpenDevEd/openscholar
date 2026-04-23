@@ -27,6 +27,7 @@ import type * as chat_concurrency from "../chat/concurrency.js";
 import type * as chat_context from "../chat/context.js";
 import type * as chat_messages from "../chat/messages.js";
 import type * as chat_model from "../chat/model.js";
+import type * as chat_openrouterFetch from "../chat/openrouterFetch.js";
 import type * as chat_provider from "../chat/provider.js";
 import type * as chat_sourceReadModel from "../chat/sourceReadModel.js";
 import type * as chat_threads from "../chat/threads.js";
@@ -209,6 +210,7 @@ declare const fullApi: ApiFromModules<{
   "chat/context": typeof chat_context;
   "chat/messages": typeof chat_messages;
   "chat/model": typeof chat_model;
+  "chat/openrouterFetch": typeof chat_openrouterFetch;
   "chat/provider": typeof chat_provider;
   "chat/sourceReadModel": typeof chat_sourceReadModel;
   "chat/threads": typeof chat_threads;
