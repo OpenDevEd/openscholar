@@ -15,6 +15,7 @@ import type * as ai_lib_creditBilling from "../ai/lib/creditBilling.js";
 import type * as apiKeys_actions from "../apiKeys/actions.js";
 import type * as apiKeys_mutations from "../apiKeys/mutations.js";
 import type * as apiKeys_queries from "../apiKeys/queries.js";
+import type * as chat_abortTokenEstimate from "../chat/abortTokenEstimate.js";
 import type * as chat_adminBackfill from "../chat/adminBackfill.js";
 import type * as chat_adminPerfSeed from "../chat/adminPerfSeed.js";
 import type * as chat_agent from "../chat/agent.js";
@@ -198,6 +199,7 @@ declare const fullApi: ApiFromModules<{
   "apiKeys/actions": typeof apiKeys_actions;
   "apiKeys/mutations": typeof apiKeys_mutations;
   "apiKeys/queries": typeof apiKeys_queries;
+  "chat/abortTokenEstimate": typeof chat_abortTokenEstimate;
   "chat/adminBackfill": typeof chat_adminBackfill;
   "chat/adminPerfSeed": typeof chat_adminPerfSeed;
   "chat/agent": typeof chat_agent;

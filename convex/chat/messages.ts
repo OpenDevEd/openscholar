@@ -54,6 +54,11 @@ import {
   ABORT_ERROR_STRING,
 } from "../../lib/chat/abort-signal";
 import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn";
+import {
+  estimateTokenCount,
+  extractMessageText,
+  errorToLogString,
+} from "./abortTokenEstimate";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
 
@@ -182,12 +187,21 @@ export const generateResponse = internalAction({
     // /api/v1/generation endpoint via billing.reconcileGenerationUsage.
     let capturedGenerationId: string | undefined;
     let capturedModelSlug: string | undefined;
-    // Flipped by onFinish once the happy-path SDK-usage billing has
-    // committed. The post-stream reconcile block checks this flag and
-    // skips scheduling reconcile when the fast path already wrote the
-    // deduction — prevents OpenRouter's /api/v1/generation lookup from
-    // double-billing a turn that finished cleanly.
+    // Flipped by onFinish (happy path) OR onAbort (cancelled path) once
+    // local billing has committed. The post-stream reconcile block
+    // checks this flag and skips scheduling reconcile when either fast
+    // path already wrote the deduction — prevents OpenRouter's
+    // /api/v1/generation lookup from double-billing, and avoids
+    // scheduling a reconcile that would 404 forever anyway for
+    // cancelled streams on non-whitelisted providers (Google, Groq,
+    // Mistral, …). See plans/chat-exact-stop-billing/01 for the
+    // provider-dependence analysis.
     let onFinishBilled = false;
+    // Accumulates streamed text deltas so onAbort can tokenize what
+    // the user actually received and bill from an estimate when
+    // OpenRouter's generation lookup is unavailable for the cancel
+    // path (see abortTokenEstimate.ts for the heuristic's caveats).
+    let accumulatedOutput = "";
 
     try {
       const balance = await ctx.runQuery(
@@ -225,6 +239,15 @@ export const generateResponse = internalAction({
             // abort over a ~2s wait for a retry that mid-stream can't
             // salvage anyway.
             maxRetries: 0,
+            onChunk: async ({ chunk }) => {
+              // Accumulate the text the user actually saw — on abort we
+              // tokenize this to bill from an estimate. Only text-delta
+              // counts: reasoning chunks ship via a separate detail
+              // channel and are priced differently by most providers.
+              if (chunk.type === "text-delta") {
+                accumulatedOutput += chunk.text ?? "";
+              }
+            },
             onFinish: async ({ usage }) => {
               // Fast path for successful turns. AI SDK v6's onFinish
               // fires with aggregated usage once every step has
@@ -290,18 +313,70 @@ export const generateResponse = internalAction({
               onFinishBilled = true;
             },
             onAbort: async ({ steps }) => {
-              // Observability only. Billing reconciles against
-              // OpenRouter's generation API after the action settles —
-              // see the post-stream block below — so we do NOT depend
-              // on onFinish (which never fires on abort) or on onAbort
-              // exposing partial usage. DeltaStreamer's own signal
-              // listener patches the stream row to state:{kind:"aborted"}
-              // and preserves already-written deltas.
               console.info("[chat] stream aborted by user", {
                 jobId,
                 threadId,
                 stepCount: steps.length,
+                accumulatedChars: accumulatedOutput.length,
               });
+
+              // Local estimate billing for the cancel path. Provider-
+              // routing gap means OpenRouter's /api/v1/generation does
+              // not publish cancelled records for non-whitelisted
+              // providers (Google/Groq/Mistral/…). Without an
+              // authoritative source we bill from what the user saw:
+              // tokenize the streamed text (output) and the user's
+              // prompt message (input). This undercharges relative to
+              // OpenRouter's internal accounting — system prompt and
+              // thread context are excluded — which is the policy we
+              // want: aborts charge less than a full turn.
+              if (!capturedGenerationId) return;
+              if (accumulatedOutput.length === 0) return;
+
+              const outputTokens = estimateTokenCount(accumulatedOutput);
+              let inputTokens = 0;
+              try {
+                // promptMessageId is the agent component's opaque id —
+                // it lives in the component's own schema, not our root
+                // schema, so we can't name it with our Id<"messages">
+                // brand. Convex validates the value at the boundary.
+                const messageDocs = await ctx.runQuery(
+                  components.agent.messages.getMessagesByIds,
+                  { messageIds: [promptMessageId as never] },
+                );
+                const promptMessage = messageDocs[0];
+                const promptText = extractMessageText(promptMessage);
+                inputTokens = estimateTokenCount(promptText);
+              } catch (err) {
+                console.warn(
+                  "[chat] abort billing: failed to read prompt text for token estimate",
+                  { jobId, threadId, err: errorToLogString(err) },
+                );
+              }
+
+              if (inputTokens === 0 && outputTokens === 0) return;
+
+              await ctx.runMutation(
+                internal.chat.billing.captureGenerationFromResponse,
+                {
+                  threadId,
+                  generationId: capturedGenerationId,
+                  requestedModel: modelSlug,
+                },
+              );
+              await ctx.runMutation(
+                internal.chat.billing.billGenerationFromSdkUsage,
+                {
+                  generationId: capturedGenerationId,
+                  model: modelSlug,
+                  pricing,
+                  promptTokens: inputTokens,
+                  completionTokens: outputTokens,
+                  reasoningTokens: 0,
+                  cachedPromptTokens: 0,
+                },
+              );
+              onFinishBilled = true;
             },
             onError: async ({ error }) => {
               // This runs with the ORIGINAL provider error (429 w/

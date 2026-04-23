@@ -890,17 +890,15 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     });
   });
 
-  it("C1c — user-stop STILL captures a chatGenerationUsages row for later reconciliation", async () => {
-    // The critical regression test for plan-01's Deviation note. In
-    // AI SDK v5, streamText.onFinish does not fire on abort and
-    // providerMetadata.openrouter.responseId is body-derived (undefined
-    // on abort). The fetch wrapper captures X-Generation-Id from the
-    // initial HTTP response headers — which arrive before any
-    // AbortSignal can race the read — so user-stopped turns MUST still
-    // produce a chatGenerationUsages row. That row is what reconcile
-    // then bills against OpenRouter's authoritative /api/v1/generation
-    // payload (the cancelled=true branch is covered end-to-end in
-    // billing.integration.test.ts).
+  it("C1c — user-stop bills immediately from a tokenized estimate of what streamed", async () => {
+    // Provider-routing gap: OpenRouter's /api/v1/generation lookup
+    // never publishes cancelled records for non-whitelisted providers
+    // (Google, Groq, Mistral, …), so we cannot rely on reconcile for
+    // those paths. Instead onAbort tokenizes the accumulated output
+    // plus the user prompt and bills via billGenerationFromSdkUsage
+    // before the action settles. The post-stream reconcile block
+    // gates on !onFinishBilled so this fast-path write isn't
+    // double-billed against a later /api/v1/generation fetch.
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
@@ -928,7 +926,8 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
     await actionPromise;
 
-    // The capture ran despite the abort — this is the regression guard.
+    // Ledger row was captured AND billed in the same action — no
+    // scheduled reconcile needed for this path.
     await t.run(async (ctx) => {
       const ledger = await ctx.db
         .query("chatGenerationUsages")
@@ -937,44 +936,19 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
         )
         .unique();
       expect(ledger).not.toBeNull();
-      expect(ledger?.status).toBe("captured");
+      expect(ledger?.status).toBe("billed");
+      expect(ledger?.source).toBe("sdk_usage");
       expect(ledger?.jobId).toBe(jobId);
       expect(ledger?.userId).toBe(userId);
-      expect(ledger?.billedAt ?? null).toBeNull();
+      expect(ledger?.billedAt ?? null).not.toBeNull();
+      expect(ledger?.billedCredits ?? 0).toBeGreaterThan(0);
+      expect(ledger?.promptTokens ?? 0).toBeGreaterThan(0);
+      expect(ledger?.completionTokens ?? 0).toBeGreaterThan(0);
     });
 
-    // Now run reconcile directly against a mocked cancelled-generation
-    // OpenRouter payload. This is the same settleGenerationUsage code
-    // path that fires from the scheduler in production — exercised
-    // here synchronously so the assertion on the credit transaction is
-    // deterministic regardless of stream-internal scheduled cleanups.
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          data: {
-            id: generationId,
-            model: "mock/model",
-            provider_name: "mock",
-            cancelled: true,
-            finish_reason: "stop",
-            native_finish_reason: "USER_ABORT",
-            native_tokens_prompt: 8,
-            native_tokens_completion: 2,
-            total_cost: 0.04,
-          },
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      ),
-    );
-    await t.action(internal.chat.billing.reconcileGenerationUsage, {
-      generationId,
-    });
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining(generationId),
-      expect.any(Object),
-    );
-
+    // The credit transaction landed. The fetch wrapper's /api/v1/
+    // generation endpoint was NOT called for this path because
+    // onFinishBilled short-circuits the reconcile scheduler.
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
@@ -982,27 +956,21 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(balance?.total).toBeLessThan(10_000);
 
     await t.run(async (ctx) => {
-      const ledger = await ctx.db
-        .query("chatGenerationUsages")
-        .withIndex("by_generation_id", (q) =>
-          q.eq("generationId", generationId),
-        )
-        .unique();
-      expect(ledger?.status).toBe("billed");
-      expect(ledger?.cancelled).toBe(true);
-      expect(ledger?.billedCredits ?? 0).toBeGreaterThan(0);
-
       const txs = await ctx.db
         .query("creditTransactions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
         .collect();
       expect(txs).toHaveLength(1);
       expect(txs[0]?.metadata?.generationId).toBe(generationId);
-      expect(txs[0]?.metadata?.cancelled).toBe("true");
-      expect(txs[0]?.metadata?.billingSource).toBe(
-        "openrouter_generation_api",
-      );
+      expect(txs[0]?.metadata?.billingSource).toBe("sdk_usage");
     });
+
+    // /api/v1/generation was not called for this abort path.
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0] ?? "").includes("api/v1/generation"),
+      ),
+    ).toBe(false);
   });
 
   it("M1 — listThreadMessages enriches aborted messages with aborted:true and drops the sentinel error", async () => {
