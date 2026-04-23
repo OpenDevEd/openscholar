@@ -325,10 +325,17 @@ async function runPaperPipeline(
   );
 
   if (indexed.status === "skipped") {
-    console.log(
-      `[Workflow] Halting paper ${paper._id}; worker skipped with ${indexed.reason}`,
-    );
-    return "halted";
+    const decision = classifyWorkerSkip(indexed.reason);
+    if (decision === "halted") {
+      console.log(
+        `[Workflow] Halting paper ${paper._id}; worker skipped with ${indexed.reason}`,
+      );
+    } else if (decision === "park") {
+      console.log(
+        `[Workflow] Parking paper ${paper._id}; worker skipped with ${indexed.reason}`,
+      );
+    }
+    return decision;
   }
 
   if (indexed.status === "failed") {
