@@ -164,14 +164,18 @@ async function runQuestionStep(
         name: `${retryLabelPrefix}:${paperId}:${questionKey}`,
       },
     );
-    if (
-      questionResult.status === "skipped" &&
-      questionResult.reason !== "already_billed"
-    ) {
-      console.log(
-        `[${logPrefix}] Halting ${paperId}:${questionKey}; worker skipped with ${questionResult.reason}`,
-      );
-      return "halted";
+    if (questionResult.status === "skipped") {
+      const decision = classifyWorkerSkip(questionResult.reason);
+      if (decision === "halted") {
+        console.log(
+          `[${logPrefix}] Halting ${paperId}:${questionKey}; worker skipped with ${questionResult.reason}`,
+        );
+      } else if (decision === "park") {
+        console.log(
+          `[${logPrefix}] Parking ${paperId}:${questionKey}; worker skipped with ${questionResult.reason}`,
+        );
+      }
+      return decision;
     }
   } catch (error) {
     const classified = classifyUnknownError(error);
