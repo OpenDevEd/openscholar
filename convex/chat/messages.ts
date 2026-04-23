@@ -174,6 +174,15 @@ export const generateResponse = internalAction({
     // envelope from `rate_limit` to `provider_5xx` / `unknown`.
     let envelopePatchedFromOnError = false;
 
+    // Captured from OpenRouter's X-Generation-Id response header via
+    // the provider's fetch wrapper (see convex/chat/openrouterFetch.ts).
+    // The header lands on the initial HTTP response frame, so this ref
+    // is populated even when the client aborts the stream mid-flight.
+    // That is what lets stopped turns bill against OpenRouter's
+    // /api/v1/generation endpoint via billing.reconcileGenerationUsage.
+    let capturedGenerationId: string | undefined;
+    let capturedModelSlug: string | undefined;
+
     try {
       const balance = await ctx.runQuery(
         internal.credits.internal.getBalanceByUserId,
@@ -186,7 +195,16 @@ export const generateResponse = internalAction({
         );
       }
 
-      const { model } = await resolveOpenRouterModel(ctx, chatModelId);
+      const { model, modelSlug } = await resolveOpenRouterModel(
+        ctx,
+        chatModelId,
+        {
+          generationIdSink: (id) => {
+            capturedGenerationId = id;
+          },
+        },
+      );
+      capturedModelSlug = modelSlug;
 
       try {
         await paperChat.streamText(
@@ -202,11 +220,13 @@ export const generateResponse = internalAction({
             // salvage anyway.
             maxRetries: 0,
             onAbort: async ({ steps }) => {
-              // Observability only. DeltaStreamer's own signal listener
-              // patches the stream row to state:{kind:"aborted"} and
-              // preserves already-written deltas; usageHandler (see
-              // convex/chat/agent.ts) receives the partial usage via
-              // the library's usage accumulator.
+              // Observability only. Billing reconciles against
+              // OpenRouter's generation API after the action settles —
+              // see the post-stream block below — so we do NOT depend
+              // on onFinish (which never fires on abort) or on onAbort
+              // exposing partial usage. DeltaStreamer's own signal
+              // listener patches the stream row to state:{kind:"aborted"}
+              // and preserves already-written deltas.
               console.info("[chat] stream aborted by user", {
                 jobId,
                 threadId,
@@ -257,6 +277,30 @@ export const generateResponse = internalAction({
             );
           }
         }
+      }
+
+      // Authoritative billing. Every turn that produced an OpenRouter
+      // generation id — finished, aborted, or errored after the upstream
+      // POST returned — gets captured into chatGenerationUsages and then
+      // reconciled against OpenRouter's /api/v1/generation endpoint. The
+      // reconcile action writes the credit deduction using the provider's
+      // authoritative total_cost, including for cancelled generations.
+      // Rows are keyed by generation id, so duplicate invocations are a
+      // no-op and idempotent.
+      if (capturedGenerationId) {
+        await ctx.runMutation(
+          internal.chat.billing.captureGenerationFromResponse,
+          {
+            threadId,
+            generationId: capturedGenerationId,
+            requestedModel: capturedModelSlug,
+          },
+        );
+        await ctx.scheduler.runAfter(
+          0,
+          internal.chat.billing.reconcileGenerationUsage,
+          { generationId: capturedGenerationId },
+        );
       }
     } catch (err) {
       // Genuine pre-stream failures only: credit guard, thread/model
