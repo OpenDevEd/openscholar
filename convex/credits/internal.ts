@@ -1510,6 +1510,147 @@ const billingTypeValidator = v.union(
   v.literal("wallet_api"),
 );
 
+type DeductCreditsArgs = {
+  userId: Id<"users">;
+  amount: number;
+  description?: string;
+  jobId?: Id<"extractionJobs">;
+  paperId?: Id<"extractionPapers">;
+  resultId?: Id<"extractionResults">;
+  billingType?: Doc<"creditTransactions">["billingType"];
+  metadata?: Record<string, string>;
+};
+
+export async function deductCreditsTransaction(
+  ctx: MutationCtx,
+  args: DeductCreditsArgs,
+): Promise<number> {
+  if (args.amount <= 0) {
+    throw new ConvexError({ code: "INVALID_AMOUNT", message: "Deduction amount must be positive" });
+  }
+
+  const credits = await ctx.db
+    .query("credits")
+    .withIndex("by_user", (q) => q.eq("userId", args.userId))
+    .unique();
+
+  if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });
+
+  const totalAvailable = credits.freeBalance + credits.paidBalance;
+  if (totalAvailable < args.amount) {
+    throw new ConvexError({
+      code: "INSUFFICIENT_CREDITS",
+      message: `Insufficient credits: need ${args.amount}, have ${totalAvailable}`,
+    });
+  }
+
+  const now = Date.now();
+  let amountToDeduct = args.amount;
+  let newFreeBalance = credits.freeBalance;
+  let newPaidBalance = credits.paidBalance;
+
+  const scope = {
+    jobId: args.jobId,
+    paperId: args.paperId,
+    resultId: args.resultId,
+    billingType: args.billingType,
+  };
+
+  const usageSearchableText = computeSearchableText({
+    description: args.description,
+    metadata: args.metadata,
+    billingType: args.billingType,
+    type: "usage",
+  });
+
+  if (newFreeBalance >= amountToDeduct) {
+    newFreeBalance -= amountToDeduct;
+
+    const freeOnlyTxId = await ctx.db.insert("creditTransactions", {
+      creditsId: credits._id,
+      userId: args.userId,
+      type: "usage",
+      creditType: "free",
+      amount: -amountToDeduct,
+      balanceAfter: newFreeBalance,
+      description: args.description,
+      metadata: args.metadata,
+      ...scope,
+      createdAt: now,
+      searchableText: usageSearchableText,
+    });
+    await recordTransactionCounters(ctx, {
+      _id: freeOnlyTxId,
+      creditsId: credits._id,
+      type: "usage",
+      creditType: "free",
+      billingType: args.billingType,
+      createdAt: now,
+    });
+  } else {
+    const freeUsed = newFreeBalance;
+    newFreeBalance = 0;
+
+    if (freeUsed > 0) {
+      const freeSpilloverTxId = await ctx.db.insert("creditTransactions", {
+        creditsId: credits._id,
+        userId: args.userId,
+        type: "usage",
+        creditType: "free",
+        amount: -freeUsed,
+        balanceAfter: 0,
+        description: args.description,
+        metadata: args.metadata,
+        ...scope,
+        createdAt: now,
+        searchableText: usageSearchableText,
+      });
+      await recordTransactionCounters(ctx, {
+        _id: freeSpilloverTxId,
+        creditsId: credits._id,
+        type: "usage",
+        creditType: "free",
+        billingType: args.billingType,
+        createdAt: now,
+      });
+    }
+
+    const paidNeeded = amountToDeduct - freeUsed;
+    newPaidBalance -= paidNeeded;
+
+    const paidSpilloverTxId = await ctx.db.insert("creditTransactions", {
+      creditsId: credits._id,
+      userId: args.userId,
+      type: "usage",
+      creditType: "paid",
+      amount: -paidNeeded,
+      balanceAfter: newPaidBalance,
+      description: args.description,
+      metadata: args.metadata,
+      ...scope,
+      createdAt: now,
+      searchableText: usageSearchableText,
+    });
+    await recordTransactionCounters(ctx, {
+      _id: paidSpilloverTxId,
+      creditsId: credits._id,
+      type: "usage",
+      creditType: "paid",
+      billingType: args.billingType,
+      createdAt: now,
+    });
+  }
+
+  await ctx.db.patch("credits", credits._id, {
+    freeBalance: newFreeBalance,
+    paidBalance: newPaidBalance,
+    lifetimeUsed: credits.lifetimeUsed + args.amount,
+    lastUpdatedAt: now,
+  });
+
+  return totalAvailable - args.amount;
+}
+
 export const deductCredits = internalMutation({
   args: {
     userId: v.id("users"),
@@ -1531,130 +1672,7 @@ export const deductCredits = internalMutation({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    if (args.amount <= 0) {
-      throw new ConvexError({ code: "INVALID_AMOUNT", message: "Deduction amount must be positive" });
-    }
-
-    const credits = await ctx.db
-      .query("credits")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .unique();
-
-    if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });
-
-    const totalAvailable = credits.freeBalance + credits.paidBalance;
-    if (totalAvailable < args.amount) {
-      throw new ConvexError({
-        code: "INSUFFICIENT_CREDITS",
-        message: `Insufficient credits: need ${args.amount}, have ${totalAvailable}`,
-      });
-    }
-
-    const now = Date.now();
-    let amountToDeduct = args.amount;
-    let newFreeBalance = credits.freeBalance;
-    let newPaidBalance = credits.paidBalance;
-
-    const scope = {
-      jobId: args.jobId,
-      paperId: args.paperId,
-      resultId: args.resultId,
-      billingType: args.billingType,
-    };
-
-    const usageSearchableText = computeSearchableText({
-      description: args.description,
-      metadata: args.metadata,
-      billingType: args.billingType,
-      type: "usage",
-    });
-
-    if (newFreeBalance >= amountToDeduct) {
-      newFreeBalance -= amountToDeduct;
-
-      const freeOnlyTxId = await ctx.db.insert("creditTransactions", {
-        creditsId: credits._id,
-        userId: args.userId,
-        type: "usage",
-        creditType: "free",
-        amount: -amountToDeduct,
-        balanceAfter: newFreeBalance,
-        description: args.description,
-        metadata: args.metadata,
-        ...scope,
-        createdAt: now,
-        searchableText: usageSearchableText,
-      });
-      await recordTransactionCounters(ctx, {
-        _id: freeOnlyTxId,
-        creditsId: credits._id,
-        type: "usage",
-        creditType: "free",
-        billingType: args.billingType,
-        createdAt: now,
-      });
-    } else {
-      const freeUsed = newFreeBalance;
-      newFreeBalance = 0;
-
-      if (freeUsed > 0) {
-        const freeSpilloverTxId = await ctx.db.insert("creditTransactions", {
-          creditsId: credits._id,
-          userId: args.userId,
-          type: "usage",
-          creditType: "free",
-          amount: -freeUsed,
-          balanceAfter: 0,
-          description: args.description,
-          metadata: args.metadata,
-          ...scope,
-          createdAt: now,
-          searchableText: usageSearchableText,
-        });
-        await recordTransactionCounters(ctx, {
-          _id: freeSpilloverTxId,
-          creditsId: credits._id,
-          type: "usage",
-          creditType: "free",
-          billingType: args.billingType,
-          createdAt: now,
-        });
-      }
-
-      const paidNeeded = amountToDeduct - freeUsed;
-      newPaidBalance -= paidNeeded;
-
-      const paidSpilloverTxId = await ctx.db.insert("creditTransactions", {
-        creditsId: credits._id,
-        userId: args.userId,
-        type: "usage",
-        creditType: "paid",
-        amount: -paidNeeded,
-        balanceAfter: newPaidBalance,
-        description: args.description,
-        metadata: args.metadata,
-        ...scope,
-        createdAt: now,
-        searchableText: usageSearchableText,
-      });
-      await recordTransactionCounters(ctx, {
-        _id: paidSpilloverTxId,
-        creditsId: credits._id,
-        type: "usage",
-        creditType: "paid",
-        billingType: args.billingType,
-        createdAt: now,
-      });
-    }
-
-    await ctx.db.patch("credits", credits._id, {
-      freeBalance: newFreeBalance,
-      paidBalance: newPaidBalance,
-      lifetimeUsed: credits.lifetimeUsed + args.amount,
-      lastUpdatedAt: now,
-    });
-
-    return totalAvailable - args.amount;
+    return await deductCreditsTransaction(ctx, args);
   },
 });
 
