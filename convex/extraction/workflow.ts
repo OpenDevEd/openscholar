@@ -35,7 +35,7 @@ type JobControl = {
   runEpoch: number;
 };
 
-type PaperPipelineResult = "completed" | "halted";
+type PaperPipelineResult = "completed" | "halted" | "park";
 
 type ExtractionPaper = Doc<"extractionPapers">;
 type ExtractionQuestion = Doc<"extractionQuestions">;
@@ -76,17 +76,24 @@ export async function runBoundedBatches<TItem>({
   runItem: (item: TItem, control: JobControl) => Promise<PaperPipelineResult>;
 }): Promise<PaperPipelineResult> {
   for (const batch of chunk(items, batchSize)) {
-    const control = await waitForNextBatch();
-    if (control === null) {
-      return "halted";
-    }
+    let pendingItems: ReadonlyArray<TItem> = batch;
+    while (pendingItems.length > 0) {
+      const control = await waitForNextBatch();
+      if (control === null) {
+        return "halted";
+      }
 
-    const batchResults = await Promise.all(
-      batch.map((item) => runItem(item, control)),
-    );
+      const batchResults = await Promise.all(
+        pendingItems.map((item) => runItem(item, control)),
+      );
 
-    if (batchResults.some((result) => result === "halted")) {
-      return "halted";
+      if (batchResults.some((result) => result === "halted")) {
+        return "halted";
+      }
+
+      pendingItems = pendingItems.filter(
+        (_, index) => batchResults[index] === "park",
+      );
     }
   }
 
