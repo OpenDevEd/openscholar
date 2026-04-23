@@ -1026,7 +1026,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
         message: { role: "assistant", content: "Partial text before stop" },
         metadata: {
           status: "failed",
-          error: "AbortError: user_stopped",
+          // Mirror what the agent library actually writes: it stringifies
+          // DOMException via Error#message, so the sentinel landing in the
+          // doc is the bare reason — see lib/chat/abort-signal.ts.
+          error: "user_stopped",
         },
         skipEmbeddings: true,
       });

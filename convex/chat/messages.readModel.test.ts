@@ -56,7 +56,7 @@ describe("chat.messages.listThreadMessages read model", () => {
           message: { role: "assistant" },
           order: 2,
           stepOrder: 0,
-          error: "AbortError: user_stopped",
+          error: "user_stopped",
         },
         {
           _id: "m_fail",
@@ -129,7 +129,7 @@ describe("chat.messages.listThreadMessages read model", () => {
         message: { role: "assistant" },
         order: 2,
         stepOrder: 0,
-        error: "AbortError: user_stopped",
+        error: "user_stopped",
       },
       {
         _id: "m_fail",
