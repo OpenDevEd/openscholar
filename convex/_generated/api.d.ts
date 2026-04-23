@@ -19,6 +19,7 @@ import type * as chat_adminBackfill from "../chat/adminBackfill.js";
 import type * as chat_adminPerfSeed from "../chat/adminPerfSeed.js";
 import type * as chat_agent from "../chat/agent.js";
 import type * as chat_auth from "../chat/auth.js";
+import type * as chat_billing from "../chat/billing.js";
 import type * as chat_chatPapers from "../chat/chatPapers.js";
 import type * as chat_chatPapersDuplicate from "../chat/chatPapersDuplicate.js";
 import type * as chat_chatPapersSeed from "../chat/chatPapersSeed.js";
@@ -200,6 +201,7 @@ declare const fullApi: ApiFromModules<{
   "chat/adminPerfSeed": typeof chat_adminPerfSeed;
   "chat/agent": typeof chat_agent;
   "chat/auth": typeof chat_auth;
+  "chat/billing": typeof chat_billing;
   "chat/chatPapers": typeof chat_chatPapers;
   "chat/chatPapersDuplicate": typeof chat_chatPapersDuplicate;
   "chat/chatPapersSeed": typeof chat_chatPapersSeed;

@@ -478,6 +478,52 @@ export default defineSchema({
     .index("by_workflow", ["workflowId"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // CHAT GENERATION USAGE - Provider-authoritative chat billing ledger
+  // ═══════════════════════════════════════════════════════════════
+  chatGenerationUsages: defineTable({
+    generationId: v.string(),
+    jobId: v.id("extractionJobs"),
+    threadId: v.string(),
+    userId: v.id("users"),
+    requestedModel: v.optional(v.string()),
+    authoritativeModel: v.optional(v.string()),
+    providerName: v.optional(v.string()),
+    source: v.union(
+      v.literal("openrouter_response_id"),
+      v.literal("sdk_usage"),
+      v.literal("openrouter_generation_api"),
+    ),
+    status: v.union(
+      v.literal("captured"),
+      v.literal("retrying"),
+      v.literal("billed"),
+      v.literal("failed"),
+    ),
+    cancelled: v.optional(v.boolean()),
+    finishReason: v.optional(v.string()),
+    nativeFinishReason: v.optional(v.string()),
+    promptTokens: v.optional(v.number()),
+    completionTokens: v.optional(v.number()),
+    reasoningTokens: v.optional(v.number()),
+    cachedPromptTokens: v.optional(v.number()),
+    totalCostUsd: v.optional(v.number()),
+    billedCredits: v.optional(v.number()),
+    attemptCount: v.number(),
+    lastAttemptAt: v.optional(v.number()),
+    nextRetryAt: v.optional(v.number()),
+    authoritativeAt: v.optional(v.number()),
+    billedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_generation_id", ["generationId"])
+    .index("by_job", ["jobId"])
+    .index("by_thread", ["threadId"])
+    .index("by_status_and_next_retry", ["status", "nextRetryAt"])
+    .index("by_user_and_createdAt", ["userId", "createdAt"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // EXTRACTION JOB SOURCES - one row per bucket item
   // Stores a frozen copy of the BucketItem that produced each paper,
   // so a job's inputs can be reconstructed exactly after submission.
