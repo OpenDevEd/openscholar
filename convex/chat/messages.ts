@@ -356,6 +356,10 @@ function withThreadMessageReadCaps(paginationOpts: PaginationOptions) {
 type ThreadMessagePage = Awaited<
   ReturnType<typeof listMessages>
 >;
+type ListThreadMessagesStreamArgs = {
+  kind: "list";
+  startOrder?: number;
+};
 
 function countVisibleMessageGroups(rawMessages: ThreadMessagePage["page"]) {
   let groups = 0;
@@ -374,12 +378,15 @@ async function readThreadMessagesWithVisiblePageIntegrity(
   args: {
     threadId: string;
     paginationOpts: PaginationOptions;
+    streamArgs?: ListThreadMessagesStreamArgs;
   },
 ): Promise<ThreadMessagePage> {
   const rawMessages: ThreadMessagePage["page"] = [];
   let cursor = args.paginationOpts.cursor;
   let isDone = false;
-  let continueCursor = cursor ?? "";
+  let continueCursor: ThreadMessagePage["continueCursor"] = "";
+  let splitCursor: ThreadMessagePage["splitCursor"];
+  let pageStatus: ThreadMessagePage["pageStatus"];
 
   while (!isDone) {
     const rawPage = await listMessages(ctx, components.agent, {
@@ -393,6 +400,8 @@ async function readThreadMessagesWithVisiblePageIntegrity(
     rawMessages.push(...rawPage.page);
     isDone = rawPage.isDone;
     continueCursor = rawPage.continueCursor;
+    splitCursor = rawPage.splitCursor;
+    pageStatus = rawPage.pageStatus;
 
     if (
       rawMessages.length === 0 ||
@@ -410,6 +419,8 @@ async function readThreadMessagesWithVisiblePageIntegrity(
     page: rawMessages,
     isDone,
     continueCursor,
+    splitCursor,
+    pageStatus,
   };
 }
 
@@ -427,10 +438,13 @@ export const listThreadMessages = query({
   }),
   handler: async (ctx, args) => {
     await authorizeThreadAccess(ctx, args.threadId);
+    const listModeStreamArgs =
+      args.streamArgs?.kind === "list" ? args.streamArgs : undefined;
     const [rawPage, streams] = await Promise.all([
       readThreadMessagesWithVisiblePageIntegrity(ctx, {
         threadId: args.threadId,
         paginationOpts: args.paginationOpts,
+        streamArgs: listModeStreamArgs,
       }),
       // includeStatuses is required for aborted stream rows to reach the
       // client — the library default is ["streaming"] only
