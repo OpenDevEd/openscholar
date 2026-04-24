@@ -328,12 +328,15 @@ export const generateResponse = internalAction({
               // keeps generating to completion and OpenRouter bills us
               // for the full response anyway. Tokens the user actually
               // saw are a LOWER bound, so we scale by
-              // ABORT_TOKEN_SURCHARGE_MULTIPLIER to charge them more
-              // than the fraction they read before the stop. This is
+              // ABORT_TOKEN_SURCHARGE_MULTIPLIER to charge them well
+              // above the fraction they read before the stop. This is
               // intentionally a blunt instrument: a user who stops
-              // early pays roughly double the text they saw in tokens,
-              // which trades precision for a meaningful disincentive
-              // to spam-stop on providers we cannot truly cancel.
+              // early pays several multiples of the text they saw in
+              // tokens, which trades precision for a strong
+              // disincentive to spam-stop on providers we cannot
+              // truly cancel. It also covers the context tokens
+              // (system prompt + thread history + paper abstracts)
+              // that the local estimator does not tokenize.
               if (!capturedGenerationId) return;
               if (accumulatedOutput.length === 0) return;
 

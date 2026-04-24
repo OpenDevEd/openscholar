@@ -27,12 +27,15 @@
 
 /**
  * Multiplier applied to the tokenized input+output estimate when
- * billing an aborted chat turn. Set to 2× so the user pays more than
- * the fraction they saw on screen — this compensates for OpenRouter's
- * provider-routing gap where cancelled streams on non-whitelisted
- * providers keep running and billing server-side.
+ * billing an aborted chat turn. Set to 6× so the user pays well
+ * above the fraction they saw on screen — this compensates for
+ * OpenRouter's provider-routing gap where cancelled streams on
+ * non-whitelisted providers (Google/Groq/Mistral/…) keep running
+ * server-side and bill us the full response, and also covers the
+ * context (system prompt + thread history + paper abstracts) that
+ * the local estimator does not see.
  */
-export const ABORT_TOKEN_SURCHARGE_MULTIPLIER = 2;
+export const ABORT_TOKEN_SURCHARGE_MULTIPLIER = 6;
 
 import { encode } from "gpt-tokenizer";
 
