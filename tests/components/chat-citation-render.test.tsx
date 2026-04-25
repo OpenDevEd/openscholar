@@ -21,9 +21,11 @@ import { render, screen } from "@testing-library/react";
 
 import { MessageResponse } from "@/components/ai-elements/message";
 import {
+  CHAT_MARKDOWN_ALLOWED_TAGS,
   buildStreamdownComponents,
   type ResolvedPaper,
 } from "@/components/extraction/chat/message-list";
+import { normalizeChatMarkdownForRender } from "@/lib/chat/markdown-render";
 import { PapersContext } from "@/components/extraction/chat/papers-context";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -67,7 +69,14 @@ function renderAssistantMarkdown(text: string, papers: ResolvedPaper[]) {
     <PapersContext.Provider
       value={fakePapersContext({ jobId: JOB_ID, papersByPosition })}
     >
-      <MessageResponse components={components}>{text}</MessageResponse>
+      <MessageResponse
+        allowedTags={CHAT_MARKDOWN_ALLOWED_TAGS}
+        components={components}
+        mode="static"
+        parseIncompleteMarkdown={false}
+      >
+        {normalizeChatMarkdownForRender(text)}
+      </MessageResponse>
     </PapersContext.Provider>,
   );
 }
@@ -156,6 +165,26 @@ describe("chat citation rendering end-to-end (Streamdown + CitationAwareParagrap
     expect(links.map((l) => l.textContent)).toEqual(["1", "2"]);
   });
 
+  it("uses chat markdown list components so numbered lists are not flattened by Tailwind preflight", () => {
+    renderAssistantMarkdown(
+      "1. **Information Security:** UCON<sub>ABC</sub> usage control [P1]\n2. **Clinical Education:** K-ABC assessment [P2]",
+      [P1, P2, P3],
+    );
+
+    const list = screen.getByRole("list");
+    expect(list).toHaveAttribute("data-chat-markdown", "ordered-list");
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveAttribute("data-chat-markdown", "list-item");
+    expect(items[0]).toHaveTextContent("Information Security");
+    expect(items[0].querySelector("strong")).not.toBeNull();
+    expect(items[0].querySelector("sub")).toHaveTextContent("ABC");
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "1",
+      "2",
+    ]);
+  });
+
   it("resolves a citation inside bold emphasis inside a bullet", () => {
     renderAssistantMarkdown(
       "- **Important finding:** this has been shown [P1, P2].",
@@ -202,6 +231,95 @@ describe("chat citation rendering end-to-end (Streamdown + CitationAwareParagrap
       "https://openalex.org/W167",
       "https://openalex.org/W197",
     ]);
+  });
+
+  it("renders safe scholarly inline HTML such as subscript without allowing attributes", () => {
+    const { container } = renderAssistantMarkdown(
+      "The UCON<sub onclick=\"alert(1)\">ABC</sub> model and H<sup>+</sup> transport are cited [P1].",
+      [P1],
+    );
+
+    const subscript = container.querySelector("sub");
+    const superscript = container.querySelector("sup");
+    expect(subscript).not.toBeNull();
+    expect(subscript).toHaveTextContent("ABC");
+    expect(subscript).not.toHaveAttribute("onclick");
+    expect(superscript).not.toBeNull();
+    expect(superscript).toHaveTextContent("+");
+    expect(screen.getByRole("link")).toHaveTextContent("1");
+  });
+
+  it("normalizes escaped safe scholarly tags before rendering markdown", () => {
+    const { container } = renderAssistantMarkdown(
+      "The UCON&lt;sub&gt;ABC&lt;/sub&gt; model is cited [P1].",
+      [P1],
+    );
+
+    expect(container.textContent).not.toContain("<sub");
+    const subscript = container.querySelector("sub");
+    expect(subscript).not.toBeNull();
+    expect(subscript).toHaveTextContent("ABC");
+    expect(screen.getByRole("link")).toHaveTextContent("1");
+  });
+
+  it("normalizes the exact backslash-escaped subscript tags persisted by Gemini", () => {
+    const { container } = renderAssistantMarkdown(
+      "The UCON<sub\\>ABC</sub\\> usage control model is cited [P1].",
+      [P1],
+    );
+
+    expect(container.textContent).not.toContain("<sub");
+    expect(container.textContent).not.toContain("</sub");
+    const subscript = container.querySelector("sub");
+    expect(subscript).not.toBeNull();
+    expect(subscript).toHaveTextContent("ABC");
+    expect(screen.getByRole("link")).toHaveTextContent("1");
+  });
+
+  it("renders standalone thematic breaks instead of leaking literal asterisks", () => {
+    const { container } = renderAssistantMarkdown(
+      "First section.\n\n***\n\n**Second section.**",
+      [P1],
+    );
+
+    expect(container.textContent).not.toContain("***");
+    expect(container.querySelector("hr")).not.toBeNull();
+    expect(container.querySelector("hr")).toHaveAttribute(
+      "data-chat-markdown",
+      "thematic-break",
+    );
+  });
+
+  it("renders the exact persisted Gemini snippet without raw tags or literal thematic-break text", () => {
+    const { container } = renderAssistantMarkdown(
+      "**Title:** *The UCON<sub\\>ABC</sub\\> usage control model* [P37]\n\n" +
+        "Authorizations refer to traditional rights based on attributes.\n\n" +
+        "***\n\n" +
+        "**We are really covering ground now.**",
+      [mkPaper({ position: 37, title: "The UCONABC usage control model" })],
+    );
+
+    expect(container.textContent).not.toContain("<sub");
+    expect(container.textContent).not.toContain("</sub");
+    expect(container.textContent).not.toContain("***");
+    expect(container.textContent).not.toContain("*");
+    expect(container.querySelector("sub")).toHaveTextContent("ABC");
+    expect(container.querySelector("hr")).toHaveAttribute(
+      "data-chat-markdown",
+      "thematic-break",
+    );
+    expect(screen.getByRole("link")).toHaveTextContent("37");
+  });
+
+  it("removes dangling terminal emphasis markers from model output", () => {
+    const { container } = renderAssistantMarkdown(
+      "Where to next? Just say the word!***",
+      [P1],
+    );
+
+    expect(container.textContent).toContain("Where to next?");
+    expect(container.textContent).toContain("Just say the word!");
+    expect(container.textContent).not.toContain("***");
   });
 
   describe("position-based resolution (tri-state integration)", () => {

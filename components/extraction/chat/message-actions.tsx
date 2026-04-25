@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import type { UIMessage } from "@convex-dev/agent/react";
 import type { ChatModelRow } from "./chat-model-types";
 import { getChatMessageText } from "@/lib/chat/message-text";
+import { normalizeChatMarkdownForClipboard } from "@/lib/chat/markdown-render";
 
 interface ChatUIMessage {
   status: UIMessage["status"];
@@ -89,7 +90,9 @@ export function MessageActions({
   const isGenerating =
     message.status === "pending" || message.status === "streaming";
   const showRetry = isLastAssistant;
-  const copyText = getChatMessageText(message);
+  const copyText = normalizeChatMarkdownForClipboard(
+    getChatMessageText(message),
+  );
   const canCopy = copyText.trim().length > 0;
 
   const activeModel = useMemo(() => {

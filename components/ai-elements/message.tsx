@@ -321,20 +321,36 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 const streamdownPlugins = { cjk, code };
 
+function getRendererSignature({
+  allowedTags,
+  components,
+}: Pick<MessageResponseProps, "allowedTags" | "components">) {
+  const allowedTagSignature = allowedTags
+    ? Object.entries(allowedTags)
+        .map(([tag, attrs]) => `${tag}:${attrs.join(",")}`)
+        .sort()
+        .join("|")
+    : "";
+  const componentSignature = components
+    ? Object.keys(components).sort().join(",")
+    : "";
+  return `${allowedTagSignature}::${componentSignature}`;
+}
+
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
+  ({ allowedTags, className, components, ...props }: MessageResponseProps) => (
     <Streamdown
+      key={getRendererSignature({ allowedTags, components })}
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
+      allowedTags={allowedTags}
+      components={components}
       plugins={streamdownPlugins}
       {...props}
     />
-  ),
-  (prevProps, nextProps) =>
-    prevProps.children === nextProps.children &&
-    prevProps.isAnimating === nextProps.isAnimating
+  )
 );
 
 MessageResponse.displayName = "MessageResponse";

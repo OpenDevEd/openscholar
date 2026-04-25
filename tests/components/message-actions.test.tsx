@@ -6,10 +6,14 @@
  * visible for the latest assistant message and is disabled while that row is
  * pending or streaming.
  */
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MessageActions } from "@/components/extraction/chat/message-actions";
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: { model?: string }) => {
@@ -33,6 +37,15 @@ vi.mock("@/convex/_generated/api", () => ({
 vi.mock("@/lib/toast", () => ({
   useAppToast: () => ({ error: vi.fn(), clipboard: { copyFailed: vi.fn() } }),
 }));
+
+function installClipboard() {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  return writeText;
+}
 
 function renderActions(
   status: "pending" | "streaming" | "failed" | "success",
@@ -60,6 +73,10 @@ function renderActions(
 }
 
 describe("<MessageActions> retry enablement", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("B5 — retry is present and ENABLED for a status=failed assistant (aborted surfaces here)", () => {
     renderActions("failed", true);
     const retry = screen.getByRole("button", { name: /regenerate/i });
@@ -105,5 +122,20 @@ describe("<MessageActions> retry enablement", () => {
     screen.getByRole("button", { name: /regenerate/i }).click();
 
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("copies the same normalized text that the chat renderer shows", async () => {
+    const writeText = installClipboard();
+    renderActions(
+      "success",
+      true,
+      "Before UCON<sub\\>ABC</sub\\>.\n\n***\n\nAfter.",
+    );
+
+    screen.getByRole("button", { name: /copy message/i }).click();
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith("Before UCONABC.\n\nAfter.");
+    });
   });
 });

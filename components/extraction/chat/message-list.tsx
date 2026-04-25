@@ -41,6 +41,7 @@ import {
 } from "@/lib/chat/resolve-paper";
 import { normalizeChatUIMessage } from "@/lib/chat/message-state";
 import { getChatMessageText } from "@/lib/chat/message-text";
+import { normalizeChatMarkdownForRender } from "@/lib/chat/markdown-render";
 import {
   getLatestAssistantForRegenerate,
   hasServerRegenerateReplacement,
@@ -193,6 +194,9 @@ function renderWithCitations(node: ReactNode): ReactNode {
  */
 const CITATION_TAGS = [
   "p",
+  "hr",
+  "ol",
+  "ul",
   "li",
   "h1",
   "h2",
@@ -207,7 +211,95 @@ const CITATION_TAGS = [
   "em",
   "del",
   "span",
+  "sub",
+  "sup",
 ] as const;
+
+const CHAT_MARKDOWN_STYLES: Record<
+  (typeof CITATION_TAGS)[number],
+  { className?: string; marker: string }
+> = {
+  p: {
+    className: "my-3 first:mt-0 last:mb-0 leading-relaxed",
+    marker: "paragraph",
+  },
+  hr: {
+    className: "my-5 border-border",
+    marker: "thematic-break",
+  },
+  ol: {
+    className: "my-3 list-decimal space-y-2 pl-6",
+    marker: "ordered-list",
+  },
+  ul: {
+    className: "my-3 list-disc space-y-2 pl-6",
+    marker: "unordered-list",
+  },
+  li: {
+    className: "pl-1 marker:text-muted-foreground",
+    marker: "list-item",
+  },
+  h1: {
+    className: "mt-5 mb-2 text-lg font-semibold leading-tight text-foreground",
+    marker: "heading",
+  },
+  h2: {
+    className: "mt-5 mb-2 text-base font-semibold leading-tight text-foreground",
+    marker: "heading",
+  },
+  h3: {
+    className: "mt-4 mb-2 text-sm font-semibold leading-tight text-foreground",
+    marker: "heading",
+  },
+  h4: {
+    className: "mt-4 mb-2 text-sm font-semibold leading-tight text-foreground",
+    marker: "heading",
+  },
+  h5: {
+    className: "mt-3 mb-1.5 text-sm font-semibold leading-tight text-foreground",
+    marker: "heading",
+  },
+  h6: {
+    className:
+      "mt-3 mb-1.5 text-xs font-semibold uppercase leading-tight tracking-wide text-muted-foreground",
+    marker: "heading",
+  },
+  blockquote: {
+    className: "my-3 border-l-2 border-border pl-4 text-muted-foreground",
+    marker: "blockquote",
+  },
+  td: {
+    className: "px-3 py-2 align-top",
+    marker: "table-cell",
+  },
+  th: {
+    className: "px-3 py-2 text-left align-top font-semibold text-foreground",
+    marker: "table-header",
+  },
+  strong: {
+    className: "font-semibold text-foreground",
+    marker: "strong",
+  },
+  em: {
+    className: "italic",
+    marker: "emphasis",
+  },
+  del: {
+    className: "line-through",
+    marker: "deleted",
+  },
+  span: {
+    marker: "span",
+  },
+  sub: {
+    className: "align-sub text-[0.75em] leading-none",
+    marker: "subscript",
+  },
+  sup: {
+    className: "align-super text-[0.75em] leading-none",
+    marker: "superscript",
+  },
+};
 
 /**
  * Build the Streamdown tag → component map. Pure: no closure over
@@ -224,16 +316,28 @@ export function buildStreamdownComponents() {
   > = {};
   for (const tag of CITATION_TAGS) {
     components[tag] = (props: { children?: ReactNode }) => {
+      const style = CHAT_MARKDOWN_STYLES[tag];
+      const componentProps = {
+        className: style.className,
+        "data-chat-markdown": style.marker,
+      };
+      if (tag === "hr") {
+        return createElement(tag, componentProps);
+      }
       const rendered = Children.toArray(props.children).map((child, i) => (
         <Fragment key={i}>{renderWithCitations(child)}</Fragment>
       ));
-      return createElement(tag, null, rendered);
+      return createElement(tag, componentProps, rendered);
     };
   }
   return components;
 }
 
 const STREAMDOWN_COMPONENTS = buildStreamdownComponents();
+export const CHAT_MARKDOWN_ALLOWED_TAGS = {
+  sub: [],
+  sup: [],
+};
 const LOCAL_REGENERATE_FAILED_ERROR = serializeChatError({
   version: 1,
   class: "regenerate_failed",
@@ -288,6 +392,7 @@ export const MessageRow = memo(function MessageRow({
 }: MessageRowProps) {
   const normalizedMessage = normalizeChatUIMessage(message);
   const text = getChatMessageText(normalizedMessage);
+  const renderText = normalizeChatMarkdownForRender(text);
   const isStreamingStatus = normalizedMessage.status === "streaming";
   const isPendingStatus = normalizedMessage.status === "pending";
   const isAborted = normalizedMessage.aborted === true;
@@ -311,6 +416,7 @@ export const MessageRow = memo(function MessageRow({
     (normalizedMessage.status === "failed" || isStalePending) &&
     !isAborted;
   const isEmpty = text.length === 0;
+  const parseIncompleteMarkdown = isGenerating || isAborted || isFailed;
 
   const rawError = normalizedMessage.error;
   const displayError =
@@ -368,8 +474,13 @@ export const MessageRow = memo(function MessageRow({
           <TypingDots />
         ) : (
           <div className="min-w-0">
-            <MessageResponse components={STREAMDOWN_COMPONENTS}>
-              {text}
+            <MessageResponse
+              allowedTags={CHAT_MARKDOWN_ALLOWED_TAGS}
+              components={STREAMDOWN_COMPONENTS}
+              mode={parseIncompleteMarkdown ? "streaming" : "static"}
+              parseIncompleteMarkdown={parseIncompleteMarkdown}
+            >
+              {renderText}
             </MessageResponse>
             {isGenerating && !isEmpty ? <StreamingCursor /> : null}
           </div>
