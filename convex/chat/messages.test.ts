@@ -12,6 +12,7 @@ import { startAbortPoller } from "../../lib/chat/abort-poller";
 import { STOP_ABORT_POLL_INTERVAL_MS } from "./messages";
 import { ABORT_TOKEN_SURCHARGE_MULTIPLIER } from "./abortTokenEstimate";
 import { setupTransactionAggregates } from "../credits/aggregates.test-support";
+import { parseChatError } from "../../lib/errors/taxonomy";
 
 // Capture the composed abortSignal the library hands to doStream so
 // tests can assert it transitioned to aborted after we flip
@@ -20,16 +21,18 @@ import { setupTransactionAggregates } from "../credits/aggregates.test-support";
 // round trip — the mocked resolveOpenRouterModel invokes the sink as
 // soon as doStream starts, which is exactly when createOpenRouter's
 // fetch wrapper would fire in production.
-const { mockDoStream, doStreamArgsSeen, providerState, fetchMock } =
-  vi.hoisted(() => ({
+const { mockDoStream, doStreamArgsSeen, providerState, fetchMock } = vi.hoisted(
+  () => ({
     mockDoStream: vi.fn(),
     doStreamArgsSeen: [] as Array<{ abortSignal?: AbortSignal }>,
-    providerState: {
-      emitGenerationId: undefined as string | undefined,
-      modelSlug: "mock/model" as string,
-    },
+      providerState: {
+        emitGenerationId: undefined as string | undefined,
+        modelSlug: "mock/model" as string,
+        modelIdsSeen: [] as unknown[],
+      },
     fetchMock: vi.fn(),
-  }));
+  }),
+);
 
 vi.stubGlobal("fetch", fetchMock);
 
@@ -41,25 +44,28 @@ vi.mock("./provider", async () => {
   return {
     resolveOpenRouterModel: async (
       _ctx: unknown,
-      _modelId: unknown,
+      modelId: unknown,
       options?: { generationIdSink?: (id: string) => void },
-    ) => ({
-      model: new MockLanguageModelV3({
-        doStream: async (doStreamOpts) => {
-          doStreamArgsSeen.push({ abortSignal: doStreamOpts.abortSignal });
-          // Simulate OpenRouter returning X-Generation-Id on the
-          // initial HTTP response — the real fetch wrapper fires the
-          // sink before any streamed body lands, i.e. before a client
-          // abort can race the header read.
-          if (providerState.emitGenerationId && options?.generationIdSink) {
-            options.generationIdSink(providerState.emitGenerationId);
-          }
-          return mockDoStream(doStreamOpts);
-        },
-      }),
-      modelSlug: providerState.modelSlug,
-      pricing: { input: 0, output: 0 },
-    }),
+    ) => {
+      providerState.modelIdsSeen.push(modelId);
+      return {
+        model: new MockLanguageModelV3({
+          doStream: async (doStreamOpts) => {
+            doStreamArgsSeen.push({ abortSignal: doStreamOpts.abortSignal });
+            // Simulate OpenRouter returning X-Generation-Id on the
+            // initial HTTP response — the real fetch wrapper fires the
+            // sink before any streamed body lands, i.e. before a client
+            // abort can race the header read.
+            if (providerState.emitGenerationId && options?.generationIdSink) {
+              options.generationIdSink(providerState.emitGenerationId);
+            }
+            return mockDoStream(doStreamOpts);
+          },
+        }),
+        modelSlug: providerState.modelSlug,
+        pricing: { input: 0, output: 0 },
+      };
+    },
   };
 });
 
@@ -78,6 +84,7 @@ beforeEach(() => {
   fetchMock.mockReset();
   providerState.emitGenerationId = undefined;
   providerState.modelSlug = "mock/model";
+  providerState.modelIdsSeen = [];
   vi.mocked(startAbortPoller).mockClear();
 });
 
@@ -246,6 +253,8 @@ async function listPersistedMessages(
       stepOrder: message.stepOrder,
       status: message.status,
       error: message.error,
+      model: message.model,
+      provider: message.provider,
       role: message.message?.role,
       text:
         typeof message.message?.content === "string"
@@ -314,7 +323,9 @@ async function createStoppedAssistantTurn(
 
   const messages = await listPersistedMessages(t, threadId);
   const streams = await listAllStreams(t, threadId);
-  const stoppedAssistant = messages.find((message) => message.role === "assistant");
+  const stoppedAssistant = messages.find(
+    (message) => message.role === "assistant",
+  );
   const stoppedStream = streams.find((stream) => stream.status === "aborted");
   expect(stoppedAssistant).toBeDefined();
   expect(stoppedStream).toBeDefined();
@@ -327,7 +338,11 @@ async function createStoppedAssistantTurn(
     promptMessageId,
     stoppedOrder: stoppedAssistant!.order,
     stoppedAssistantIds: messages
-      .filter((message) => message.role === "assistant" && message.order === stoppedAssistant!.order)
+      .filter(
+        (message) =>
+          message.role === "assistant" &&
+          message.order === stoppedAssistant!.order,
+      )
       .map((message) => message._id),
     stoppedStreamIds: streams
       .filter((stream) => stream.order === stoppedAssistant!.order)
@@ -348,7 +363,11 @@ function createTestConvex() {
 
 async function seedUserAndChatJob(
   t: ReturnType<typeof convexTest>,
-  opts: { isGenerating?: boolean; threadId?: string } = {},
+  opts: {
+    isGenerating?: boolean;
+    threadId?: string;
+    generationAttemptId?: string;
+  } = {},
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
@@ -373,17 +392,20 @@ async function seedUserAndChatJob(
       createdAt: 0,
       updatedAt: 0,
       ...(opts.isGenerating != null
-        ? { isGenerating: opts.isGenerating, generatingStartedAt: Date.now() }
+        ? {
+            isGenerating: opts.isGenerating,
+            generatingStartedAt: Date.now(),
+            ...(opts.generationAttemptId
+              ? { chatGenerationAttemptId: opts.generationAttemptId }
+              : {}),
+          }
         : {}),
     });
     return { userId, jobId, threadId };
   });
 }
 
-function asCaller(
-  t: ReturnType<typeof convexTest>,
-  clerkId: string,
-) {
+function asCaller(t: ReturnType<typeof convexTest>, clerkId: string) {
   return t.withIdentity({
     subject: clerkId,
     tokenIdentifier: `https://test.clerk.local|${clerkId}`,
@@ -414,6 +436,28 @@ async function seedChatPapers(
         jobId,
         sourceId,
         included: includedMask[i],
+      });
+    }
+  });
+}
+
+async function seedInFlightChatJobs(
+  t: ReturnType<typeof convexTest>,
+  userId: Id<"users">,
+  count: number,
+) {
+  await t.run(async (ctx) => {
+    for (let i = 0; i < count; i++) {
+      await ctx.db.insert("extractionJobs", {
+        userId,
+        mode: "chat",
+        sourceType: "history",
+        name: `in-flight ${i}`,
+        messageCount: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        isGenerating: true,
+        generatingStartedAt: Date.now(),
       });
     }
   });
@@ -453,19 +497,45 @@ describe("chat.messages — auth + mode gating", () => {
     const t = createTestConvex();
     const { jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
+      generationAttemptId: "attempt_current",
     });
     const caller = asCaller(t, "c_msg");
-    await caller.mutation(api.chat.messages.abortGeneration, { threadId });
+    const result = await caller.mutation(api.chat.messages.abortGeneration, {
+      threadId,
+      generationAttemptId: "attempt_current",
+    });
     const after = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(result).toEqual({ stopped: true });
     expect(after?.shouldAbort).toBe(true);
+  });
+
+  it("abortGeneration ignores a stale attempt id from an older stop click", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+      generationAttemptId: "attempt_current",
+    });
+    const caller = asCaller(t, "c_msg");
+    const result = await caller.mutation(api.chat.messages.abortGeneration, {
+      threadId,
+      generationAttemptId: "attempt_old",
+    });
+
+    const after = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(result).toEqual({ stopped: false });
+    expect(after?.shouldAbort).toBeUndefined();
   });
 
   it("abortGeneration no-ops when nothing is in flight", async () => {
     const t = createTestConvex();
     const { jobId, threadId } = await seedUserAndChatJob(t);
     const caller = asCaller(t, "c_msg");
-    await caller.mutation(api.chat.messages.abortGeneration, { threadId });
+    const result = await caller.mutation(api.chat.messages.abortGeneration, {
+      threadId,
+      generationAttemptId: "attempt_current",
+    });
     const after = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(result).toEqual({ stopped: false });
     expect(after?.shouldAbort).toBeUndefined();
   });
 
@@ -480,9 +550,10 @@ describe("chat.messages — auth + mode gating", () => {
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ConvexError);
     // convex-test serializes .data to a JSON string on the caught error.
-    const envelope = JSON.parse(
-      (err as ConvexError<string>).data,
-    ) as { code: string; message?: string };
+    const envelope = JSON.parse((err as ConvexError<string>).data) as {
+      code: string;
+      message?: string;
+    };
     expect(envelope.code).toBe("NO_SOURCES_INCLUDED");
 
     // Guard short-circuits before any saveMessage / job.patch runs.
@@ -506,6 +577,21 @@ describe("chat.messages — auth + mode gating", () => {
     const job = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(job?.messageCount).toBe(1);
     expect(job?.isGenerating).toBe(true);
+  });
+
+  it("sendMessage rejects when the user is already at the chat concurrency cap", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t);
+    await seedChatPapers(t, jobId, [true]);
+    await seedInFlightChatJobs(t, userId, 3);
+
+    const caller = asCaller(t, "c_msg");
+    await expect(
+      caller.mutation(api.chat.messages.sendMessage, {
+        threadId,
+        prompt: "hi",
+      }),
+    ).rejects.toThrow(/concurrent chats/i);
   });
 
   it("listThreadMessages resolves on an empty thread when streamArgs is omitted", async () => {
@@ -562,10 +648,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     mockDoStream.mockImplementation(hangingDoStream());
 
-    const actionPromise = t.action(
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId },
-    );
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
 
     await waitFor(() => doStreamArgsSeen.length > 0);
     // Sanity: the composed signal exists and is not yet aborted.
@@ -591,10 +677,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     try {
-      const actionPromise = t.action(
-        internal.chat.messages.generateResponse,
-        { threadId, promptMessageId },
-      );
+      const actionPromise = t.action(internal.chat.messages.generateResponse, {
+        threadId,
+        promptMessageId,
+      });
       await waitFor(() => doStreamArgsSeen.length > 0);
       await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
       await actionPromise;
@@ -629,10 +715,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     mockDoStream.mockImplementation(hangingDoStream());
 
-    const actionPromise = t.action(
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId },
-    );
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
     await waitFor(() => doStreamArgsSeen.length > 0);
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
     await actionPromise;
@@ -660,10 +746,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
       partialDeltasThenHangDoStream(["hello ", "world", "!"]),
     );
 
-    const actionPromise = t.action(
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId },
-    );
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
     await waitFor(() => doStreamArgsSeen.length > 0);
     // Give DeltaStreamer's 250ms throttle (convex/chat/messages.ts:178)
     // time to flush at least one batch before abort fires.
@@ -680,13 +766,13 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(allStreams.length).toBeGreaterThanOrEqual(1);
     const streamId = allStreams[0]!.streamId;
 
-    const deltas: Array<{ streamId: string; parts: unknown[] }> =
-      await t.run(async (ctx) =>
+    const deltas: Array<{ streamId: string; parts: unknown[] }> = await t.run(
+      async (ctx) =>
         ctx.runQuery(components.agent.streams.listDeltas, {
           threadId: threadId as never,
           cursors: [{ streamId: streamId as never, cursor: 0 }],
         }),
-      );
+    );
     // At least one delta batch should have flushed pre-abort.
     expect(deltas.length).toBeGreaterThanOrEqual(1);
     const totalParts = deltas.reduce(
@@ -707,10 +793,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     mockDoStream.mockImplementation(hangingDoStream());
 
-    const actionPromise = t.action(
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId },
-    );
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
     await waitFor(() => doStreamArgsSeen.length > 0);
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
     await actionPromise;
@@ -774,6 +860,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
+      generationAttemptId: "attempt_current",
     });
     const { modelId } = await seedModelAndCredits(t, userId);
     await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
@@ -782,17 +869,23 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     mockDoStream.mockImplementation(hangingDoStream());
 
-    const actionPromise = t.action(
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId },
-    );
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
     await waitFor(() => doStreamArgsSeen.length > 0);
 
     // Double-click stop — both should resolve without throwing. Second
     // call either flips shouldAbort (idempotent patch) or no-ops via
     // the !job.isGenerating guard depending on who races whom.
-    await caller.mutation(api.chat.messages.abortGeneration, { threadId });
-    await caller.mutation(api.chat.messages.abortGeneration, { threadId });
+    await caller.mutation(api.chat.messages.abortGeneration, {
+      threadId,
+      generationAttemptId: "attempt_current",
+    });
+    await caller.mutation(api.chat.messages.abortGeneration, {
+      threadId,
+      generationAttemptId: "attempt_current",
+    });
 
     await actionPromise;
 
@@ -834,10 +927,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
       partialDeltasThenHangDoStream(["hello ", "world"]),
     );
 
-    const actionPromise = t.action(
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId },
-    );
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
     await waitFor(() => doStreamArgsSeen.length > 0);
     await new Promise((r) => setTimeout(r, 400));
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
@@ -918,10 +1011,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
       partialDeltasThenHangDoStream(["hello ", "world"]),
     );
 
-    const actionPromise = t.action(
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId },
-    );
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
     await waitFor(() => doStreamArgsSeen.length > 0);
     await new Promise((r) => setTimeout(r, 400));
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
@@ -1012,10 +1105,23 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
         message: { role: "assistant", content: "Partial text before stop" },
         metadata: {
           status: "failed",
-          // Mirror what the agent library actually writes: it stringifies
-          // DOMException via Error#message, so the sentinel landing in the
-          // doc is the bare reason — see lib/chat/abort-signal.ts.
-          error: "user_stopped",
+          // Mirror what the installed agent library writes: it stringifies
+          // DOMException via toString(), so the persisted value includes the
+          // error name — see lib/chat/abort-signal.ts.
+          error: "AbortError: user_stopped",
+        },
+        skipEmbeddings: true,
+      });
+      await paperChat.saveMessage(ctx, {
+        threadId,
+        message: {
+          role: "assistant",
+          content: "Partial text before update conflict",
+        },
+        metadata: {
+          status: "failed",
+          error:
+            "Trying to update a message that failed: ks7fm4y0axy6ad5g8pfdmtq00x85f2m5, error: AbortError: user_stopped",
         },
         skipEmbeddings: true,
       });
@@ -1040,10 +1146,12 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(result.page.length).toBeGreaterThanOrEqual(3);
 
     const byText = Object.fromEntries(
-      result.page.map((m: { text?: string; aborted?: boolean; error?: string }) => [
-        m.text ?? "",
-        m,
-      ]),
+      result.page.map(
+        (m: { text?: string; aborted?: boolean; error?: string }) => [
+          m.text ?? "",
+          m,
+        ],
+      ),
     ) as Record<string, { aborted?: boolean; error?: string }>;
 
     const regular = byText["All done."];
@@ -1056,6 +1164,11 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(aborted.aborted).toBe(true);
     // Critical: the raw sentinel string never reaches the client.
     expect(aborted.error).toBeUndefined();
+
+    const abortUpdateConflict = byText["Partial text before update conflict"];
+    expect(abortUpdateConflict).toBeDefined();
+    expect(abortUpdateConflict.aborted).toBe(true);
+    expect(abortUpdateConflict.error).toBeUndefined();
 
     const realError = byText[""];
     expect(realError).toBeDefined();
@@ -1077,10 +1190,10 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
       partialDeltasThenHangDoStream(["hello ", "world"]),
     );
 
-    const actionPromise = t.action(
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId },
-    );
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
     await waitFor(() => doStreamArgsSeen.length > 0);
     await new Promise((r) => setTimeout(r, 400));
 
@@ -1146,9 +1259,12 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const stopped = await createStoppedAssistantTurn(t);
     const caller = asCaller(t, "c_msg");
 
-    await caller.mutation(api.chat.messages.regenerateLastAssistant, {
-      threadId: stopped.threadId,
-    });
+    const result = await caller.mutation(
+      api.chat.messages.regenerateLastAssistant,
+      {
+        threadId: stopped.threadId,
+      },
+    );
 
     const messagesAfterPurge = await listPersistedMessages(t, stopped.threadId);
     const streamsAfterPurge = await listAllStreams(t, stopped.threadId);
@@ -1159,6 +1275,8 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     );
     const jobAfterPurge = await t.run(async (ctx) => ctx.db.get(stopped.jobId));
 
+    expect(result.started).toBe(true);
+    expect(typeof result.generationAttemptId).toBe("string");
     expect(
       messagesAfterPurge.some((message) =>
         stopped.stoppedAssistantIds.includes(message._id),
@@ -1192,6 +1310,253 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(assistantMessagesAtOrder.length).toBeGreaterThanOrEqual(1);
     expect(streamRowsAtOrder).toHaveLength(1);
     expect(streamRowsAtOrder[0]?.status).toBe("finished");
+  });
+
+  it("A9.1 — scheduled generation uses the model snapshot passed by the mutation", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId: firstModelId } = await seedModelAndCredits(t, userId);
+    const secondModelId = await t.run(async (ctx) => {
+      const now = Date.now();
+      return await ctx.db.insert("models", {
+        modelId: "mock/other-model",
+        name: "Other Model",
+        provider: "openrouter",
+        inputPricePerMillion: 0,
+        outputPricePerMillion: 0,
+        costMarkup: 1,
+        isServed: true,
+        sortOrder: 1,
+        syncedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+    await t.run(async (ctx) =>
+      ctx.db.patch(jobId, { chatModelId: secondModelId }),
+    );
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+    mockDoStream.mockImplementation(finishingDoStream(["reply"]));
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+      chatModelId: firstModelId,
+    });
+
+    expect(providerState.modelIdsSeen[0]).toBe(firstModelId);
+  });
+
+  it("A9a — regenerate reports the backend reason when no assistant turn can be resolved", async () => {
+    const t = createTestConvex();
+    const { threadId } = await seedUserAndChatJob(t);
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.mutation(
+      api.chat.messages.regenerateLastAssistant,
+      {
+        threadId,
+      },
+    );
+
+    expect(result.started).toBe(false);
+    expect(result.error).toMatchObject({
+      code: "regenerate_failed",
+      message:
+        "Regenerate did not start because this thread has no persisted chat messages or stream artifacts.",
+    });
+  });
+
+  it("A9a.0 — regenerate explains a latest user-only turn instead of inventing a provider error", async () => {
+    const t = createTestConvex();
+    const { threadId } = await seedUserAndChatJob(t);
+    await seedUserMessage(t, threadId, "orphaned prompt");
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.mutation(
+      api.chat.messages.regenerateLastAssistant,
+      {
+        threadId,
+      },
+    );
+
+    expect(result.started).toBe(false);
+    expect(result.error?.code).toBe("regenerate_failed");
+    expect(result.error?.message).toContain(
+      "latest persisted turn at order 0 has no assistant message or stream artifact",
+    );
+    expect(result.error?.message).toContain("messages=[user:success]");
+    expect(result.error?.message).toContain("streams=0");
+  });
+
+  it("A9a.1 — regenerate preserves the recorded provider error when no assistant artifact remains", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch(jobId, {
+        error: {
+          code: "context_too_long",
+          message:
+            "This endpoint's maximum context length is 200000 tokens. However, you requested about 216917 tokens.",
+          httpStatus: 400,
+          at: 123,
+        },
+      });
+    });
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.mutation(
+      api.chat.messages.regenerateLastAssistant,
+      {
+        threadId,
+      },
+    );
+
+    expect(result).toEqual({
+      started: false,
+      error: {
+        code: "context_too_long",
+        message:
+          "This endpoint's maximum context length is 200000 tokens. However, you requested about 216917 tokens.",
+        httpStatus: 400,
+        at: 123,
+      },
+    });
+  });
+
+  it("A9a.2 — regenerate keeps the previous backend error until the replacement stream succeeds", async () => {
+    const t = createTestConvex();
+    const stopped = await createStoppedAssistantTurn(t);
+    const caller = asCaller(t, "c_msg");
+    await t.run(async (ctx) => {
+      await ctx.db.patch(stopped.jobId, {
+        error: {
+          code: "context_too_long",
+          message:
+            "This endpoint's maximum context length is 200000 tokens. However, you requested about 216917 tokens.",
+          httpStatus: 400,
+          at: 123,
+        },
+      });
+    });
+
+    await caller.mutation(api.chat.messages.regenerateLastAssistant, {
+      threadId: stopped.threadId,
+    });
+
+    const jobAfterStart = await t.run((ctx) => ctx.db.get(stopped.jobId));
+    expect(jobAfterStart?.error?.code).toBe("context_too_long");
+
+    mockDoStream.mockImplementation(finishingDoStream(["regenerated reply"]));
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId: stopped.threadId,
+      promptMessageId: stopped.promptMessageId,
+      generationAttemptId: jobAfterStart?.chatGenerationAttemptId,
+    });
+
+    const jobAfterSuccess = await t.run((ctx) => ctx.db.get(stopped.jobId));
+    expect(jobAfterSuccess?.error).toBeUndefined();
+  });
+
+  it("A9b — regenerate rejects when the user is already at the chat concurrency cap", async () => {
+    const t = createTestConvex();
+    const stopped = await createStoppedAssistantTurn(t);
+    await seedInFlightChatJobs(t, stopped.userId, 3);
+    const caller = asCaller(t, "c_msg");
+
+    await expect(
+      caller.mutation(api.chat.messages.regenerateLastAssistant, {
+        threadId: stopped.threadId,
+      }),
+    ).rejects.toThrow(/concurrent chats/i);
+  });
+
+  it("A9c — regenerate provider failure persists a failed assistant error on the rerun", async () => {
+    const t = createTestConvex();
+    const stopped = await createStoppedAssistantTurn(t);
+    const caller = asCaller(t, "c_msg");
+
+    await caller.mutation(api.chat.messages.regenerateLastAssistant, {
+      threadId: stopped.threadId,
+    });
+
+    mockDoStream.mockImplementation(async () => {
+      throw new APICallError({
+        message:
+          "This endpoint's maximum context length is 200000 tokens. However, you requested about 216917 tokens.",
+        url: "https://mock/provider",
+        requestBodyValues: {},
+        statusCode: 400,
+        isRetryable: false,
+      });
+    });
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId: stopped.threadId,
+      promptMessageId: stopped.promptMessageId,
+    });
+
+    const result = await caller.query(api.chat.messages.listThreadMessages, {
+      threadId: stopped.threadId,
+      paginationOpts: { numItems: 5, cursor: null },
+      streamArgs: { kind: "list" },
+    });
+    const failedAssistant = result.page.find(
+      (message: { role?: string; status?: string; error?: string }) =>
+        message.role === "assistant" && message.status === "failed",
+    );
+    const jobAfterFailure = await t.run((ctx) => ctx.db.get(stopped.jobId));
+
+    expect(failedAssistant).toBeDefined();
+    expect(failedAssistant?.order).toBe(stopped.stoppedOrder);
+    expect(parseChatError(failedAssistant?.error)?.class).toBe(
+      "context_too_long",
+    );
+    expect(failedAssistant?.model).toBe("mock/model");
+    expect(failedAssistant?.provider).toBe("openrouter");
+    expect(jobAfterFailure?.isGenerating).toBe(false);
+    expect(jobAfterFailure?.error?.code).toBe("context_too_long");
+    expect(jobAfterFailure?.error?.message).toContain(
+      "maximum context length is 200000 tokens",
+    );
+    expect(jobAfterFailure?.error?.httpStatus).toBe(400);
+  });
+
+  it("A9d — pre-stream credit failure persists a standalone failed assistant row", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const promptMessageId = await seedUserMessage(t, threadId, "hello");
+    const caller = asCaller(t, "c_msg");
+
+    await expect(
+      t.action(internal.chat.messages.generateResponse, {
+        threadId,
+        promptMessageId,
+      }),
+    ).rejects.toThrow(/Not enough credits/);
+
+    const result = await caller.query(api.chat.messages.listThreadMessages, {
+      threadId,
+      paginationOpts: { numItems: 5, cursor: null },
+      streamArgs: { kind: "list" },
+    });
+    const failedAssistant = result.page.find(
+      (message: { role?: string; status?: string; error?: string }) =>
+        message.role === "assistant" && message.status === "failed",
+    );
+    const jobAfterFailure = await t.run((ctx) => ctx.db.get(jobId));
+
+    expect(failedAssistant).toBeDefined();
+    expect(parseChatError(failedAssistant?.error)?.class).toBe(
+      "insufficient_credits",
+    );
+    expect(jobAfterFailure?.isGenerating).toBe(false);
+    expect(jobAfterFailure?.error?.code).toBe("insufficient_credits");
   });
 
   it("A10 — clear after stop removes messages and stream artifacts but keeps the thread", async () => {

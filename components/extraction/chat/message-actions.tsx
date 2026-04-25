@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CopyIcon, RefreshCwIcon } from "lucide-react";
@@ -11,7 +10,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAppToast } from "@/lib/toast";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
@@ -31,12 +29,12 @@ interface ChatUIMessage {
 interface MessageActionsProps {
   message: ChatUIMessage;
   isLastAssistant: boolean;
-  threadId: string;
   /** Currently-selected chat model. Used to label the regenerate button. */
   chatModelId: Id<"models"> | null;
   models: ChatModelRow[];
   /** When false, actions are hidden until the parent <article> is hovered/focused. */
   alwaysVisible?: boolean;
+  onRetry: () => void;
 }
 
 function extractText(message: ChatUIMessage): string {
@@ -91,18 +89,17 @@ function ActionButton({
 export function MessageActions({
   message,
   isLastAssistant,
-  threadId,
   chatModelId,
   models,
   alwaysVisible = false,
+  onRetry,
 }: MessageActionsProps) {
   const t = useTranslations("extraction");
   const appToast = useAppToast();
-  const regenerate = useMutation(api.chat.messages.regenerateLastAssistant);
 
-  const isStreaming = message.status === "streaming";
-  const isFailed = message.status === "failed";
-  const showRetry = isLastAssistant || isFailed;
+  const isGenerating =
+    message.status === "pending" || message.status === "streaming";
+  const showRetry = isLastAssistant;
   const copyText = extractText(message);
   const canCopy = copyText.trim().length > 0;
 
@@ -153,15 +150,12 @@ export function MessageActions({
   }, [appToast, canCopy, copyText, t]);
 
   const handleRetry = useCallback(() => {
-    void regenerate({ threadId }).catch((err) => {
-      appToast.error(t("chatFailedMessage"));
-      console.error("retry failed", err);
-    });
-  }, [regenerate, threadId, appToast, t]);
+    onRetry();
+  }, [onRetry]);
 
   return (
     <div
-      data-streaming={isStreaming}
+      data-streaming={isGenerating}
       data-active-model={activeModel?.provider ?? ""}
       className={cn(
         "flex items-center gap-0.5 transition-opacity duration-150",
@@ -175,7 +169,7 @@ export function MessageActions({
           ariaLabel={t("chatCopyMessage")}
           tooltip={t("chatCopyMessage")}
           onClick={handleCopy}
-          disabled={isStreaming}
+          disabled={isGenerating}
           dataAction="copy"
         >
           <CopyIcon className="size-3.5" />
@@ -186,7 +180,7 @@ export function MessageActions({
           ariaLabel={retryLabel}
           tooltip={retryTooltip}
           onClick={handleRetry}
-          disabled={isStreaming}
+          disabled={isGenerating}
           dataAction="retry"
         >
           <RefreshCwIcon className="size-3.5" />

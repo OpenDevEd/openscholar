@@ -24,39 +24,40 @@ export function resolveLatestAssistantTurn(args: {
 }): LatestAssistantTurnResolution | null {
   const { messages, streams } = args;
 
-  let highestOrder = Number.NEGATIVE_INFINITY;
+  const orders = new Set<number>();
   for (const message of messages) {
-    if (message.order > highestOrder) highestOrder = message.order;
+    orders.add(message.order);
   }
   for (const stream of streams) {
-    if (stream.order > highestOrder) highestOrder = stream.order;
+    orders.add(stream.order);
   }
 
-  if (!Number.isFinite(highestOrder)) return null;
+  const ordered = [...orders].sort((a, b) => b - a);
+  for (const order of ordered) {
+    const turnMessages = messages.filter((message) => message.order === order);
+    const promptMessage = turnMessages.find(
+      (message) => message.message?.role === "user",
+    );
+    const assistantMessageIds = turnMessages
+      .filter((message) => message.message?.role === "assistant")
+      .map((message) => message._id);
+    const streamIds = streams
+      .filter((stream) => stream.order === order)
+      .map((stream) => stream.streamId);
+    const hasAssistantArtifact =
+      assistantMessageIds.length > 0 || streamIds.length > 0;
 
-  const highestOrderMessages = messages.filter(
-    (message) => message.order === highestOrder,
-  );
-  const assistantMessageIds = highestOrderMessages
-    .filter((message) => message.message?.role === "assistant")
-    .map((message) => message._id);
-  const streamIds = streams
-    .filter((stream) => stream.order === highestOrder)
-    .map((stream) => stream.streamId);
+    if (promptMessage && hasAssistantArtifact) {
+      return {
+        assistantOrder: order,
+        promptMessageId: promptMessage._id,
+        assistantMessageIds,
+        streamIds,
+      };
+    }
 
-  if (assistantMessageIds.length === 0 && streamIds.length === 0) {
-    return null;
+    if (promptMessage && !hasAssistantArtifact) return null;
   }
 
-  const promptMessage = highestOrderMessages.find(
-    (message) => message.message?.role === "user",
-  );
-  if (!promptMessage) return null;
-
-  return {
-    assistantOrder: highestOrder,
-    promptMessageId: promptMessage._id,
-    assistantMessageIds,
-    streamIds,
-  };
+  return null;
 }

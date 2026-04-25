@@ -35,6 +35,7 @@ import type { ChatModelRow } from "./chat-model-types";
 interface ChatErrorAlertProps {
   rawError: string;
   onRetry: () => void;
+  canRetry?: boolean;
   /**
    * Active chat model. When provided, the retry button surfaces the
    * provider glyph + model name — matching the hover-tooltip on the
@@ -54,6 +55,7 @@ const ICONS: Partial<Record<ChatErrorClass, LucideIcon>> = {
   context_too_long: BanIcon,
   network: WifiOffIcon,
   provider_5xx: AlertCircleIcon,
+  regenerate_failed: RefreshCwIcon,
   aborted: SquareIcon,
   unknown: AlertCircleIcon,
 };
@@ -73,6 +75,7 @@ type ActiveModel = {
 export function ChatErrorAlert({
   rawError,
   onRetry,
+  canRetry = true,
   chatModelId,
   models,
 }: ChatErrorAlertProps) {
@@ -92,8 +95,13 @@ export function ChatErrorAlert({
   if (!envelope) return null;
 
   const Icon = ICONS[envelope.class] ?? AlertCircleIcon;
-  const variant = NON_DESTRUCTIVE.has(envelope.class) ? "default" : "destructive";
+  const variant = NON_DESTRUCTIVE.has(envelope.class)
+    ? "default"
+    : "destructive";
   const role = variant === "destructive" ? "alert" : "status";
+  const showTechnicalDetails =
+    envelope.class !== "aborted" && envelope.message.length > 0;
+  const backendReason = backendReasonFor(envelope, t);
 
   return (
     <Alert
@@ -108,17 +116,32 @@ export function ChatErrorAlert({
       <AlertTitle>{titleFor(envelope, tErrors)}</AlertTitle>
       <AlertDescription>
         <span className="mb-2 block">{bodyFor(envelope, tErrors)}</span>
+        {backendReason ? (
+          <span
+            className="mb-2 block text-xs text-muted-foreground"
+            data-error-backend-reason
+          >
+            <span className="font-medium">
+              {t("chatErrorBackendReasonLabel")}
+            </span>{" "}
+            {backendReason}
+          </span>
+        ) : null}
         <ActionRow
           envelope={envelope}
           onRetry={onRetry}
+          canRetry={canRetry}
           activeModel={activeModel}
         />
-        {envelope.message && envelope.class === "unknown" ? (
-          <details className="mt-2">
+        {showTechnicalDetails ? (
+          <details className="mt-2" data-error-technical-details>
             <summary className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline">
               {t("chatErrorShowDetails")}
             </summary>
-            <pre className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+            <pre
+              className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground"
+              data-error-technical-message
+            >
               {envelope.message}
             </pre>
           </details>
@@ -131,10 +154,12 @@ export function ChatErrorAlert({
 function ActionRow({
   envelope,
   onRetry,
+  canRetry,
   activeModel,
 }: {
   envelope: ChatErrorEnvelope;
   onRetry: () => void;
+  canRetry: boolean;
   activeModel: ActiveModel | null;
 }) {
   const t = useTranslations("extraction");
@@ -156,6 +181,9 @@ function ActionRow({
   // Aborts are taxonomy-retryable but the user explicitly stopped — don't
   // surface a one-click retry that contradicts their intent.
   if (envelope.class === "aborted" || !isRetryable[envelope.class]) {
+    return null;
+  }
+  if (!canRetry) {
     return null;
   }
   return (
@@ -180,7 +208,9 @@ function RetryButton({
   const remaining = useCountdown(envelope.retryAfterMs);
   const disabled = remaining !== null && remaining > 0;
 
-  const ProviderIcon = activeModel ? getProviderIcon(activeModel.provider) : null;
+  const ProviderIcon = activeModel
+    ? getProviderIcon(activeModel.provider)
+    : null;
   const ariaLabel = activeModel
     ? t("chatRetryResponseWith", { model: activeModel.label })
     : t("chatRetryResponse");
@@ -244,4 +274,16 @@ function bodyFor(
   t: ReturnType<typeof useTranslations<"errors">>,
 ): string {
   return t(`body.${envelope.class}` as never);
+}
+
+function backendReasonFor(
+  envelope: ChatErrorEnvelope,
+  t: ReturnType<typeof useTranslations<"extraction">>,
+): string | null {
+  if (envelope.class === "aborted") return null;
+  if (!envelope.message) return null;
+  if (/^(response failed|unknown error)$/i.test(envelope.message.trim())) {
+    return t("chatErrorNoBackendReason");
+  }
+  return envelope.message;
 }

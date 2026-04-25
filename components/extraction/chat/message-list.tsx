@@ -7,6 +7,10 @@ import {
   createElement,
   isValidElement,
   memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
   useMemo,
   type ReactNode,
 } from "react";
@@ -35,6 +39,19 @@ import {
   resolvePaperReferences,
   type ResolvablePaper,
 } from "@/lib/chat/resolve-paper";
+import { normalizeChatUIMessage } from "@/lib/chat/message-state";
+import {
+  getLatestAssistantForRegenerate,
+  hasServerRegenerateReplacement,
+  isChatGenerationActive,
+  mergeLocalRegenerateMessage,
+  type LocalRegenerateState,
+} from "@/lib/chat/regenerate-ui-state";
+import {
+  classifyChatError,
+  serializeChatError,
+  type ChatErrorClass,
+} from "@/lib/errors/taxonomy";
 import { cn } from "@/lib/utils";
 
 interface MessageListProps {
@@ -42,9 +59,33 @@ interface MessageListProps {
   jobId: Id<"extractionJobs">;
   chatModelId: Id<"models"> | null;
   chatModels: ChatModelRow[];
+  isJobGenerating?: boolean;
+  jobError?: MessageListJobError | null;
+  onGenerationActivityChange?: (
+    active: boolean,
+    generationAttemptId?: string,
+  ) => void;
 }
 
 export type ResolvedPaper = ResolvablePaper;
+type MessageListJobError = {
+  code: ChatErrorClass;
+  message: string;
+  httpStatus?: number;
+  providerName?: string;
+};
+
+function serializeMessageListJobError(error: MessageListJobError): string {
+  return serializeChatError({
+    version: 1,
+    class: error.code,
+    message: error.message,
+    ...(error.httpStatus !== undefined ? { httpStatus: error.httpStatus } : {}),
+    ...(error.providerName !== undefined
+      ? { providerName: error.providerName }
+      : {}),
+  });
+}
 
 /**
  * Our chat read model widens the agent UIMessage with app-level
@@ -54,7 +95,12 @@ export type ResolvedPaper = ResolvablePaper;
  * 2. a stream-backed assistant row whose underlying stream status is
  *    already `aborted`.
  */
-type ChatUIMessage = UIMessage & { error?: string; aborted?: boolean };
+type ChatUIMessage = UIMessage & {
+  error?: string;
+  aborted?: boolean;
+  model?: string;
+  provider?: string;
+};
 
 /**
  * Parse `[Pn]` / `[Pn, Pm, …]` tokens in a string and emit text chunks
@@ -171,6 +217,36 @@ export function buildStreamdownComponents() {
 }
 
 const STREAMDOWN_COMPONENTS = buildStreamdownComponents();
+const LOCAL_REGENERATE_FAILED_ERROR = serializeChatError({
+  version: 1,
+  class: "regenerate_failed",
+  message:
+    "Regenerate did not start because the latest chat turn has no assistant message or stream artifact to replace.",
+});
+const MESSAGE_FAILED_WITHOUT_ERROR = serializeChatError({
+  version: 1,
+  class: "unknown",
+  message: "Assistant message failed without an error payload.",
+});
+const MESSAGE_LEFT_PENDING_WITHOUT_JOB = serializeChatError({
+  version: 1,
+  class: "unknown",
+  message:
+    "Assistant response was left pending after the backend generation lock ended. No provider error was recorded for this message.",
+});
+
+function markLocalRegenerateFailed(
+  state: LocalRegenerateState,
+  error: string,
+): LocalRegenerateState {
+  return {
+    ...state,
+    backendStarted: false,
+    generationAttemptId: undefined,
+    status: "failed",
+    error,
+  };
+}
 
 function getMessageText(message: UIMessage): string {
   if (message.text) return message.text;
@@ -192,6 +268,7 @@ interface MessageRowProps {
   chatModels: ChatModelRow[];
   onRetry: () => void;
   reduceMotion: boolean;
+  isJobGenerating?: boolean;
 }
 
 export const MessageRow = memo(function MessageRow({
@@ -203,30 +280,53 @@ export const MessageRow = memo(function MessageRow({
   chatModels,
   onRetry,
   reduceMotion,
+  isJobGenerating = true,
 }: MessageRowProps) {
-  const text = getMessageText(message);
-  const isStreaming = message.status === "streaming";
-  const isAborted = message.aborted === true;
+  const normalizedMessage = normalizeChatUIMessage(message);
+  const text = getMessageText(normalizedMessage);
+  const isStreamingStatus = normalizedMessage.status === "streaming";
+  const isPendingStatus = normalizedMessage.status === "pending";
+  const isAborted = normalizedMessage.aborted === true;
+  const isLocalRegenerate = normalizedMessage.id.startsWith("local-regenerate:");
+  const isStalePending =
+    !isJobGenerating &&
+    !isLocalRegenerate &&
+    !isAborted &&
+    (isStreamingStatus || isPendingStatus);
+  const isGenerating =
+    (isStreamingStatus || isPendingStatus) && !isStalePending;
   // Aborted messages surface to the client as status:"failed" (the library
   // maps stream aborted → "failed" internally — see
   // node_modules/@convex-dev/agent/src/deltas.ts statusFromStreamStatus).
   // The `aborted` flag discriminates: real failure vs. user stop.
-  const isFailed = message.status === "failed" && !isAborted;
+  const isFailed =
+    (normalizedMessage.status === "failed" || isStalePending) && !isAborted;
   const isEmpty = text.length === 0;
-  const isUser = message.role === "user";
+  const isUser = normalizedMessage.role === "user";
 
-  const rawError = message.error;
+  const rawError = normalizedMessage.error;
+  const displayError =
+    rawError ??
+    (isStalePending
+      ? MESSAGE_LEFT_PENDING_WITHOUT_JOB
+      : isFailed
+        ? MESSAGE_FAILED_WITHOUT_ERROR
+        : null);
 
   return (
     <motion.li
-      data-role={message.role}
-      data-status={isAborted ? "aborted" : message.status}
-      data-streaming={isStreaming}
+      data-role={normalizedMessage.role}
+      data-status={
+        isAborted ? "aborted" : isStalePending ? "failed" : normalizedMessage.status
+      }
+      data-streaming={isGenerating}
       data-error={isFailed}
       data-message-state={isAborted ? "aborted" : undefined}
-      data-message-id={message.id}
+      data-message-id={normalizedMessage.id}
+      data-message-model={normalizedMessage.model}
+      data-message-provider={normalizedMessage.provider}
       data-first-in-group={isFirstInGroup ? "true" : undefined}
-      aria-busy={isStreaming}
+      aria-busy={isGenerating}
       initial={reduceMotion ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
@@ -256,14 +356,14 @@ export const MessageRow = memo(function MessageRow({
       >
         {isUser ? (
           <div className="whitespace-pre-wrap break-words">{text}</div>
-        ) : isStreaming && isEmpty ? (
+        ) : isGenerating && isEmpty ? (
           <TypingDots />
         ) : (
           <div className="min-w-0">
             <MessageResponse components={STREAMDOWN_COMPONENTS}>
               {text}
             </MessageResponse>
-            {isStreaming && !isEmpty ? <StreamingCursor /> : null}
+            {isGenerating && !isEmpty ? <StreamingCursor /> : null}
           </div>
         )}
       </div>
@@ -273,20 +373,21 @@ export const MessageRow = memo(function MessageRow({
           {isAborted ? <AbortedPill /> : null}
           {!isEmpty || isAborted ? (
             <MessageActions
-              message={message}
+              message={normalizedMessage}
               isLastAssistant={isLastAssistant}
-              threadId={threadId}
               chatModelId={chatModelId}
               models={chatModels}
+              onRetry={onRetry}
             />
           ) : null}
         </div>
       ) : null}
 
-      {isFailed && rawError ? (
+      {isFailed && displayError ? (
         <ChatErrorAlert
-          rawError={rawError}
+          rawError={displayError}
           onRetry={onRetry}
+          canRetry={isLastAssistant}
           chatModelId={chatModelId}
           models={chatModels}
         />
@@ -300,34 +401,177 @@ export function MessageList({
   jobId,
   chatModelId,
   chatModels,
+  isJobGenerating = false,
+  jobError = null,
+  onGenerationActivityChange,
 }: MessageListProps) {
   const t = useTranslations("extraction");
   const reduceMotion = useReducedMotion() ?? false;
   const regenerate = useMutation(api.chat.messages.regenerateLastAssistant);
+  const [localRegenerate, setLocalRegenerate] =
+    useState<LocalRegenerateState | null>(null);
+  const localRegenerateRef = useRef<LocalRegenerateState | null>(null);
+  const localRegenerateRequestSeq = useRef(0);
 
   const { results, status } = useUIMessages(
     api.chat.messages.listThreadMessages,
     { threadId },
     { initialNumItems: 20, stream: true },
   );
+  const serverRegenerateReplacementVisible =
+    localRegenerate !== null &&
+    hasServerRegenerateReplacement(results as ChatUIMessage[], localRegenerate);
+  const jobErrorWire = useMemo(() => {
+    if (!jobError) return null;
+    return serializeMessageListJobError(jobError);
+  }, [jobError]);
+
+  useEffect(() => {
+    localRegenerateRef.current = localRegenerate;
+  }, [localRegenerate]);
+
+  useEffect(() => {
+    if (serverRegenerateReplacementVisible) {
+      localRegenerateRef.current = null;
+      setLocalRegenerate(null);
+    }
+  }, [serverRegenerateReplacementVisible]);
+
+  useEffect(() => {
+    if (!localRegenerate?.backendStarted) return;
+    if (serverRegenerateReplacementVisible) return;
+    if (isJobGenerating) return;
+    if (!jobErrorWire) return;
+
+    setLocalRegenerate((current) => {
+      if (current?.requestId !== localRegenerate.requestId) return current;
+      const failed = markLocalRegenerateFailed(current, jobErrorWire);
+      localRegenerateRef.current = failed;
+      return failed;
+    });
+  }, [
+    isJobGenerating,
+    jobErrorWire,
+    localRegenerate,
+    serverRegenerateReplacementVisible,
+  ]);
+
+  const renderResults = useMemo(
+    () =>
+      mergeLocalRegenerateMessage(
+        results as ChatUIMessage[],
+        serverRegenerateReplacementVisible ? null : localRegenerate,
+      ) as ChatUIMessage[],
+    [results, localRegenerate, serverRegenerateReplacementVisible],
+  );
+
+  const generationActive = isChatGenerationActive(
+    renderResults,
+    serverRegenerateReplacementVisible ? null : localRegenerate,
+    { isJobGenerating },
+  );
+
+  useEffect(() => {
+    if (generationActive && localRegenerate?.generationAttemptId) {
+      onGenerationActivityChange?.(true, localRegenerate.generationAttemptId);
+      return;
+    }
+    onGenerationActivityChange?.(generationActive);
+  }, [
+    generationActive,
+    localRegenerate?.generationAttemptId,
+    onGenerationActivityChange,
+  ]);
 
   const isLoadingFirstPage =
-    status === "LoadingFirstPage" && results.length === 0;
+    status === "LoadingFirstPage" && renderResults.length === 0;
 
   const lastAssistantId = useMemo(() => {
-    for (let i = results.length - 1; i >= 0; i--) {
-      if (results[i].role === "assistant") return results[i].id;
+    for (let i = renderResults.length - 1; i >= 0; i--) {
+      if (renderResults[i].role === "assistant") return renderResults[i].id;
     }
     return null;
-  }, [results]);
+  }, [renderResults]);
 
-  const handleRetry = () => {
-    void regenerate({ threadId }).catch((err) => {
-      console.error("retry failed", err);
-    });
-  };
+  const handleRetry = useCallback(() => {
+    const latestAssistant = getLatestAssistantForRegenerate(
+      results as ChatUIMessage[],
+    );
+    if (!latestAssistant) {
+      const lastMessage = (results as ChatUIMessage[]).at(-1);
+      const fallbackState: LocalRegenerateState = markLocalRegenerateFailed(
+        {
+          replacedAssistantId: `missing:${Date.now()}`,
+          replacedAssistantIds: [],
+          order: lastMessage?.order ?? 0,
+          stepOrder: (lastMessage?.stepOrder ?? -1) + 1,
+          requestId: `missing:${Date.now()}:${++localRegenerateRequestSeq.current}`,
+          startedAt: Date.now(),
+        },
+        LOCAL_REGENERATE_FAILED_ERROR,
+      );
+      localRegenerateRef.current = fallbackState;
+      setLocalRegenerate(fallbackState);
+      return;
+    }
 
-  if (results.length === 0) {
+    const nextState: LocalRegenerateState = {
+      replacedAssistantId: latestAssistant.id,
+      replacedAssistantIds: (results as ChatUIMessage[])
+        .filter(
+          (message) =>
+            message.role === "assistant" &&
+            message.order === latestAssistant.order,
+        )
+        .map((message) => message.id),
+      order: latestAssistant.order,
+      stepOrder: latestAssistant.stepOrder,
+      requestId: `${latestAssistant.id}:${Date.now()}:${++localRegenerateRequestSeq.current}`,
+      startedAt: Date.now(),
+    };
+    localRegenerateRef.current = nextState;
+    setLocalRegenerate(nextState);
+
+    void Promise.resolve(regenerate({ threadId }))
+      .then((result) => {
+        if (result?.started !== true) {
+          if (localRegenerateRef.current?.requestId === nextState.requestId) {
+            const failed = markLocalRegenerateFailed(
+              nextState,
+              result?.error
+                ? serializeMessageListJobError(result.error)
+                : (jobErrorWire ?? LOCAL_REGENERATE_FAILED_ERROR),
+            );
+            localRegenerateRef.current = failed;
+            setLocalRegenerate(failed);
+          }
+          return;
+        }
+        const current = localRegenerateRef.current;
+        if (current?.requestId === nextState.requestId) {
+          const backendStartedState = {
+            ...current,
+            backendStarted: true,
+            generationAttemptId: result.generationAttemptId,
+          };
+          localRegenerateRef.current = backendStartedState;
+          setLocalRegenerate(backendStartedState);
+        }
+      })
+      .catch((err) => {
+        if (localRegenerateRef.current?.requestId === nextState.requestId) {
+          const failed = markLocalRegenerateFailed(
+            nextState,
+            serializeChatError(classifyChatError(err)),
+          );
+          localRegenerateRef.current = failed;
+          setLocalRegenerate(failed);
+        }
+        console.error("retry failed", err);
+      });
+  }, [jobErrorWire, regenerate, results, threadId]);
+
+  if (renderResults.length === 0) {
     if (isLoadingFirstPage) {
       return (
         <motion.div
@@ -377,8 +621,8 @@ export function MessageList({
           className="mx-auto flex w-full max-w-3xl flex-col gap-2"
         >
           <AnimatePresence initial={false}>
-            {results.map((message, i) => {
-              const prev = results[i - 1];
+            {renderResults.map((message, i) => {
+              const prev = renderResults[i - 1];
               const isFirstInGroup = !prev || prev.role !== message.role;
               return (
                 <Fragment key={message.id}>
@@ -386,19 +630,20 @@ export function MessageList({
                     message={message as ChatUIMessage}
                     isLastAssistant={message.id === lastAssistantId}
                     isFirstInGroup={isFirstInGroup}
-                  threadId={threadId}
-                  chatModelId={chatModelId}
-                  chatModels={chatModels}
-                  onRetry={handleRetry}
-                  reduceMotion={reduceMotion}
-                />
+                    threadId={threadId}
+                    chatModelId={chatModelId}
+                    chatModels={chatModels}
+                    onRetry={handleRetry}
+                    reduceMotion={reduceMotion}
+                    isJobGenerating={isJobGenerating}
+                  />
                 </Fragment>
               );
             })}
           </AnimatePresence>
         </ol>
       </ConversationContent>
-      <JumpToLatestPill messageCount={results.length} />
+      <JumpToLatestPill messageCount={renderResults.length} />
     </Conversation>
   );
 }

@@ -36,10 +36,12 @@ export function MessageComposer({
   const tc = useTranslations("composer");
   const appToast = useAppToast();
   const [text, setText] = useState("");
+  const [stopPending, setStopPending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isComposingRef = useRef(false);
   const reduceMotion = useReducedMotion();
   const jobIsGenerating = job.isGenerating ?? false;
+  const generationAttemptId = job.chatGenerationAttemptId ?? null;
 
   const {
     totalCount: totalSources,
@@ -89,19 +91,16 @@ export function MessageComposer({
   }, [text, jobIsGenerating, sendMessage, threadId, appToast, t]);
 
   const handleStop = useCallback(() => {
-    void abortGeneration({ threadId })
-      .then(() => {
-        // Fired on mutation resolve (within ~50ms) rather than after the
-        // stream actually cuts (can lag up to the poller interval + the
-        // throttleMs window). The mutation IS the "I heard your click"
-        // acknowledgement; users get instant feedback.
-        toast.success(t("chatStopToast"));
-      })
+    if (!generationAttemptId || stopPending) return;
+    setStopPending(true);
+    void abortGeneration({ threadId, generationAttemptId })
       .catch((err) => {
         console.error("abort failed", err);
-        toast.error(t("chatStopToastFailure"));
+      })
+      .finally(() => {
+        setStopPending(false);
       });
-  }, [abortGeneration, threadId, t]);
+  }, [abortGeneration, generationAttemptId, stopPending, threadId]);
 
   const handleModelChange = useCallback(
     (modelId: Id<"models">) => {
@@ -210,7 +209,7 @@ export function MessageComposer({
           className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive-foreground"
         >
           <span className="text-foreground">{tc("sources.emptyBanner")}</span>
-          <Button
+	                  <Button
             type="button"
             size="sm"
             variant="outline"
@@ -285,6 +284,7 @@ export function MessageComposer({
                     size="icon"
                     variant="outline"
                     onClick={handleStop}
+                    disabled={!generationAttemptId || stopPending}
                     aria-label={t("chatStop")}
                     data-action="stop"
                     className="size-8 rounded-full"

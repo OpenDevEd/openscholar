@@ -44,6 +44,20 @@ async function countUserInFlightChats(
   return chatJobs.filter((j) => j.isGenerating === true).length;
 }
 
+export async function assertChatConcurrencyAvailable(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+) {
+  const limit = await getChatConcurrencyLimit(ctx, userId);
+  const inFlight = await countUserInFlightChats(ctx, userId);
+  if (inFlight >= limit) {
+    throw createError(
+      "CONFLICT",
+      `You have reached the limit of ${limit} concurrent chats. Wait for one to finish.`,
+    );
+  }
+}
+
 /**
  * Internal mutation — called from sendMessage to atomically claim the
  * thread lock. Throws CONFLICT if:
@@ -71,14 +85,7 @@ export const acquireThreadLock = internalMutation({
       );
     }
 
-    const limit = await getChatConcurrencyLimit(ctx, job.userId);
-    const inFlight = await countUserInFlightChats(ctx, job.userId);
-    if (inFlight >= limit) {
-      throw createError(
-        "CONFLICT",
-        `You have reached the limit of ${limit} concurrent chats. Wait for one to finish.`,
-      );
-    }
+    await assertChatConcurrencyAvailable(ctx, job.userId);
 
     await ctx.db.patch(jobId, {
       isGenerating: true,
@@ -95,15 +102,25 @@ export const acquireThreadLock = internalMutation({
  * or AI_INSUFFICIENT_CREDITS throw).
  */
 export const releaseThreadLock = internalMutation({
-  args: { jobId: v.id("extractionJobs") },
+  args: {
+    jobId: v.id("extractionJobs"),
+    generationAttemptId: v.optional(v.string()),
+  },
   returns: v.null(),
-  handler: async (ctx, { jobId }) => {
+  handler: async (ctx, { jobId, generationAttemptId }) => {
     const job = await ctx.db.get(jobId);
     if (!job) return null;
     if (!job.isGenerating) return null;
+    if (
+      generationAttemptId !== undefined &&
+      job.chatGenerationAttemptId !== generationAttemptId
+    ) {
+      return null;
+    }
     await ctx.db.patch(jobId, {
       isGenerating: false,
       generatingStartedAt: undefined,
+      chatGenerationAttemptId: undefined,
       shouldAbort: undefined,
       updatedAt: Date.now(),
     });
@@ -133,6 +150,7 @@ export const cleanupZombieChatLocks = internalMutation({
       await ctx.db.patch(row._id, {
         isGenerating: false,
         generatingStartedAt: undefined,
+        chatGenerationAttemptId: undefined,
         shouldAbort: undefined,
         updatedAt: Date.now(),
       });

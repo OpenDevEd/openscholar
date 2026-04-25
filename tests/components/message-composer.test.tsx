@@ -34,7 +34,7 @@ import {
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 
 const sendMessageMock = vi.fn().mockResolvedValue(undefined);
-const abortMock = vi.fn().mockResolvedValue(undefined);
+const abortMock = vi.fn().mockResolvedValue({ stopped: true });
 const swapMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("next-intl", () => ({
@@ -206,58 +206,107 @@ describe("<MessageComposer>", () => {
 
   it("Stop button replaces Send while the job is generating", () => {
     renderWithSources(
-      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_1" />,
+      <MessageComposer
+        job={makeJob({
+          isGenerating: true,
+          chatGenerationAttemptId: "attempt_1",
+        })}
+        threadId="t_1"
+      />,
     );
     expect(screen.getByRole("button", { name: /chatStop/i })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /chatSend/i })).toBeNull();
   });
 
-  it("Stop button calls abortGeneration with the threadId", async () => {
+  it("Stop button calls abortGeneration with the threadId and current attempt id", async () => {
     const user = userEvent.setup();
     abortMock.mockClear();
     renderWithSources(
-      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_xyz" />,
+      <MessageComposer
+        job={makeJob({
+          isGenerating: true,
+          chatGenerationAttemptId: "attempt_current",
+        })}
+        threadId="t_xyz"
+      />,
     );
     await user.click(screen.getByRole("button", { name: /chatStop/i }));
-    expect(abortMock).toHaveBeenCalledWith({ threadId: "t_xyz" });
-  });
-
-  it("B1 — Stop click fires toast.success with the localized chatStopToast key", async () => {
-    const user = userEvent.setup();
-    abortMock.mockClear();
-    abortMock.mockResolvedValueOnce(undefined);
-    (toast.success as ReturnType<typeof vi.fn>).mockClear();
-    renderWithSources(
-      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_xyz" />,
-    );
-    await user.click(screen.getByRole("button", { name: /chatStop/i }));
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("chatStopToast");
+    expect(abortMock).toHaveBeenCalledWith({
+      threadId: "t_xyz",
+      generationAttemptId: "attempt_current",
     });
   });
 
-  it("B2 — Stop click on a failing mutation fires toast.error and logs", async () => {
+  it("Stop button is disabled until the current attempt id is known", () => {
+    renderWithSources(
+      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_xyz" />,
+    );
+
+    expect(screen.getByRole("button", { name: /chatStop/i })).toBeDisabled();
+  });
+
+  it("Stop click does not show a toast; the stopped message state is the feedback", async () => {
+    const user = userEvent.setup();
+    abortMock.mockClear();
+    abortMock.mockResolvedValueOnce({ stopped: true });
+    (toast.success as ReturnType<typeof vi.fn>).mockClear();
+    (toast.error as ReturnType<typeof vi.fn>).mockClear();
+    renderWithSources(
+      <MessageComposer
+        job={makeJob({
+          isGenerating: true,
+          chatGenerationAttemptId: "attempt_current",
+        })}
+        threadId="t_xyz"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /chatStop/i }));
+    await waitFor(() => {
+      expect(abortMock).toHaveBeenCalledWith({
+        threadId: "t_xyz",
+        generationAttemptId: "attempt_current",
+      });
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("Stop click on a failing mutation logs without showing a toast", async () => {
     const user = userEvent.setup();
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
     abortMock.mockClear();
     abortMock.mockRejectedValueOnce(new Error("network"));
+    (toast.success as ReturnType<typeof vi.fn>).mockClear();
     (toast.error as ReturnType<typeof vi.fn>).mockClear();
     renderWithSources(
-      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_xyz" />,
+      <MessageComposer
+        job={makeJob({
+          isGenerating: true,
+          chatGenerationAttemptId: "attempt_current",
+        })}
+        threadId="t_xyz"
+      />,
     );
     await user.click(screen.getByRole("button", { name: /chatStop/i }));
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("chatStopToastFailure");
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
 
   it("B7 — Stop disappears once the job stops generating; Send returns", async () => {
     const { rerender } = renderWithSources(
-      <MessageComposer job={makeJob({ isGenerating: true })} threadId="t_1" />,
+      <MessageComposer
+        job={makeJob({
+          isGenerating: true,
+          chatGenerationAttemptId: "attempt_current",
+        })}
+        threadId="t_1"
+      />,
     );
     expect(screen.getByRole("button", { name: /chatStop/i })).toBeTruthy();
 

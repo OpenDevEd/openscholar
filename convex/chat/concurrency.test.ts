@@ -120,6 +120,37 @@ describe("acquireThreadLock / releaseThreadLock", () => {
     const second = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(second?.isGenerating).toBe(false);
   });
+
+  it("releaseThreadLock does not clear a newer generation attempt", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedChatJob(t, { isGenerating: true });
+    await t.run(async (ctx) =>
+      ctx.db.patch(jobId, {
+        chatGenerationAttemptId: "new-attempt",
+        shouldAbort: true,
+      }),
+    );
+
+    await t.mutation(internal.chat.concurrency.releaseThreadLock, {
+      jobId,
+      generationAttemptId: "old-attempt",
+    });
+
+    const afterStaleRelease = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(afterStaleRelease?.isGenerating).toBe(true);
+    expect(afterStaleRelease?.chatGenerationAttemptId).toBe("new-attempt");
+    expect(afterStaleRelease?.shouldAbort).toBe(true);
+
+    await t.mutation(internal.chat.concurrency.releaseThreadLock, {
+      jobId,
+      generationAttemptId: "new-attempt",
+    });
+
+    const afterMatchingRelease = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(afterMatchingRelease?.isGenerating).toBe(false);
+    expect(afterMatchingRelease?.chatGenerationAttemptId).toBeUndefined();
+    expect(afterMatchingRelease?.shouldAbort).toBeUndefined();
+  });
 });
 
 describe("cleanupZombieChatLocks", () => {

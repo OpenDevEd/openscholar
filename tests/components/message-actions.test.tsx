@@ -2,11 +2,9 @@
  * @vitest-environment jsdom
  *
  * B5 + B6 — <MessageActions> retry affordance across message states.
- * Aborted messages surface to the client as status:"failed" (the agent
- * library maps stream "aborted" → "failed" at the React layer); the
- * existing retry predicate (showRetry = isLastAssistant || isFailed;
- * disabled = isStreaming) covers aborted naturally — this test locks
- * that contract so a future refactor doesn't regress it.
+ * Regenerate is a latest-turn operation, so the compact action is only
+ * visible for the latest assistant message and is disabled while that row is
+ * pending or streaming.
  */
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -24,11 +22,6 @@ vi.mock("next-intl", () => ({
   },
 }));
 
-vi.mock("convex/react", () => ({
-  useMutation: () => vi.fn(),
-  useQuery: () => null,
-}));
-
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     chat: {
@@ -43,9 +36,10 @@ vi.mock("@/lib/toast", () => ({
 }));
 
 function renderActions(
-  status: "streaming" | "failed" | "success",
+  status: "pending" | "streaming" | "failed" | "success",
   isLastAssistant: boolean,
   text = "Some assistant reply",
+  onRetry = vi.fn(),
 ) {
   return render(
     <TooltipProvider>
@@ -57,10 +51,10 @@ function renderActions(
           parts: [{ type: "text", text }],
         }}
         isLastAssistant={isLastAssistant}
-        threadId="t_1"
         chatModelId={null as unknown as Id<"models">}
         models={[]}
         alwaysVisible
+        onRetry={onRetry}
       />
     </TooltipProvider>,
   );
@@ -71,6 +65,12 @@ describe("<MessageActions> retry enablement", () => {
     renderActions("failed", true);
     const retry = screen.getByRole("button", { name: /regenerate/i });
     expect(retry).toBeEnabled();
+  });
+
+  it("B5a — retry is hidden for older failed assistants because regenerate targets the latest turn", () => {
+    renderActions("failed", false);
+
+    expect(screen.queryByRole("button", { name: /regenerate/i })).toBeNull();
   });
 
   it("B5b — retry is ENABLED for a finished last assistant message (regression guard)", () => {
@@ -99,5 +99,24 @@ describe("<MessageActions> retry enablement", () => {
     } else {
       expect(retry).toBeNull();
     }
+  });
+
+  it("B6a — retry is not clickable while the message is pending", () => {
+    renderActions("pending", true);
+    const retry = screen.queryByRole("button", { name: /regenerate/i });
+    if (retry) {
+      expect(retry).toBeDisabled();
+    } else {
+      expect(retry).toBeNull();
+    }
+  });
+
+  it("B7 — clicking retry delegates to the parent regenerate handler", async () => {
+    const onRetry = vi.fn();
+    renderActions("success", true, "Some assistant reply", onRetry);
+
+    screen.getByRole("button", { name: /regenerate/i }).click();
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

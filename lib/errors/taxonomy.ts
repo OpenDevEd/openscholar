@@ -6,6 +6,7 @@
  */
 
 import { ConvexError, v } from "convex/values";
+import { isAbortErrorString } from "@/lib/chat/abort-signal";
 
 export const ERROR_CODES = [
   // chat + extraction shared
@@ -17,6 +18,7 @@ export const ERROR_CODES = [
   "context_too_long",
   "network",
   "provider_5xx",
+  "regenerate_failed",
   "aborted",
   "unknown",
   // extraction-only
@@ -46,6 +48,7 @@ export const errorCodeValidator = v.union(
   v.literal("context_too_long"),
   v.literal("network"),
   v.literal("provider_5xx"),
+  v.literal("regenerate_failed"),
   v.literal("aborted"),
   v.literal("unknown"),
   v.literal("action_timeout"),
@@ -89,6 +92,7 @@ export const isRetryable: Record<ErrorCode, boolean> = {
   context_too_long: false,
   network: true,
   provider_5xx: true,
+  regenerate_failed: true,
   aborted: true,
   unknown: true,
   action_timeout: true,
@@ -188,7 +192,8 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
   // 5. HTTP status fingerprints (AI SDK uses statusCode, fetch Response uses status).
   const httpStatus = extractHttpStatus(data);
   if (typeof httpStatus === "number") {
-    if (httpStatus === 429) return finalize("rate_limit", message, { httpStatus, context });
+    if (httpStatus === 429)
+      return finalize("rate_limit", message, { httpStatus, context });
     if (httpStatus === 402) {
       return finalize("insufficient_credits", message, { httpStatus, context });
     }
@@ -211,13 +216,23 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
 }
 
 /** Pattern → taxonomy code, evaluated in order. First match wins. */
-const MESSAGE_FINGERPRINTS: ReadonlyArray<{ pattern: RegExp; code: ErrorCode }> = [
-  { pattern: /content filter|moderation|safety classifier/i, code: "moderation" },
+const MESSAGE_FINGERPRINTS: ReadonlyArray<{
+  pattern: RegExp;
+  code: ErrorCode;
+}> = [
   {
-    pattern: /context length|context_length|token limit|too long for|maximum context/i,
+    pattern: /content filter|moderation|safety classifier/i,
+    code: "moderation",
+  },
+  {
+    pattern:
+      /context length|context_length|token limit|too long for|maximum context/i,
     code: "context_too_long",
   },
-  { pattern: /timed out|deadline (?:exceeded|reached)/i, code: "action_timeout" },
+  {
+    pattern: /timed out|deadline (?:exceeded|reached)/i,
+    code: "action_timeout",
+  },
 ];
 
 function extractHttpStatus(
@@ -225,7 +240,12 @@ function extractHttpStatus(
 ): number | undefined {
   if (!data) return undefined;
   const raw = data.statusCode ?? data.status;
-  if (typeof raw === "number" && Number.isInteger(raw) && raw >= 100 && raw < 600) {
+  if (
+    typeof raw === "number" &&
+    Number.isInteger(raw) &&
+    raw >= 100 &&
+    raw < 600
+  ) {
     return raw;
   }
   return undefined;
@@ -272,9 +292,7 @@ const ALREADY_EXTRACTED_FIELDS = new Set([
  * serialised size at 4 KB so a pathological context can't bloat a Convex
  * doc past the 1 MB row limit.
  */
-function captureContext(
-  source: Record<string, unknown> | undefined,
-): unknown {
+function captureContext(source: Record<string, unknown> | undefined): unknown {
   if (!source) return undefined;
   const ownProps: Record<string, unknown> = {};
   for (const key of Object.keys(source)) {
@@ -311,7 +329,11 @@ function extractClassifiableMessage(
 function finalize(
   code: ErrorCode,
   message: string,
-  extras: { httpStatus?: number; providerName?: string; context?: unknown } = {},
+  extras: {
+    httpStatus?: number;
+    providerName?: string;
+    context?: unknown;
+  } = {},
 ): ClassifiedError {
   const { httpStatus, providerName, context } = extras;
   return {
@@ -340,6 +362,9 @@ export function parseChatError(
   raw: string | undefined | null,
 ): ChatErrorEnvelope | null {
   if (!raw) return null;
+  if (isAbortErrorString(raw)) {
+    return { version: 1, class: "aborted", message: raw };
+  }
   if (raw.startsWith(ENVELOPE_PREFIX)) {
     try {
       const parsed = JSON.parse(raw.slice(ENVELOPE_PREFIX.length));
@@ -354,7 +379,11 @@ export function parseChatError(
 function isEnvelope(value: unknown): value is ChatErrorEnvelope {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
-  return v.version === 1 && typeof v.class === "string" && typeof v.message === "string";
+  return (
+    v.version === 1 &&
+    typeof v.class === "string" &&
+    typeof v.message === "string"
+  );
 }
 
 export function classifyChatError(error: unknown): ChatErrorEnvelope {
@@ -371,13 +400,23 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
   }
 
   // Explicit credit guard we throw in generateResponse pre-flight.
-  if (rec.code === "AI_INSUFFICIENT_CREDITS" || /insufficient credits/i.test(message)) {
-    return envelope("insufficient_credits", message, { httpStatus, providerName });
+  if (
+    rec.code === "AI_INSUFFICIENT_CREDITS" ||
+    /insufficient credits/i.test(message)
+  ) {
+    return envelope("insufficient_credits", message, {
+      httpStatus,
+      providerName,
+    });
   }
 
   if (typeof httpStatus === "number") {
     if (httpStatus === 429) {
-      return envelope("rate_limit", message, { httpStatus, providerName, retryAfterMs });
+      return envelope("rate_limit", message, {
+        httpStatus,
+        providerName,
+        retryAfterMs,
+      });
     }
     if (httpStatus === 401 || httpStatus === 403) {
       // OpenRouter / providers return 403 for moderation with a flagged
@@ -388,10 +427,16 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
       return envelope("auth", message, { httpStatus, providerName });
     }
     if (httpStatus === 402) {
-      return envelope("insufficient_credits", message, { httpStatus, providerName });
+      return envelope("insufficient_credits", message, {
+        httpStatus,
+        providerName,
+      });
     }
     if (httpStatus === 400 && isContextTooLong(message)) {
-      return envelope("context_too_long", message, { httpStatus, providerName });
+      return envelope("context_too_long", message, {
+        httpStatus,
+        providerName,
+      });
     }
     if (httpStatus === 400) {
       // Some providers return 400 for moderation/policy.
@@ -403,7 +448,10 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
       return envelope("unknown", message, { httpStatus, providerName });
     }
     if (httpStatus === 404 || httpStatus === 502 || httpStatus === 503) {
-      return envelope("model_unavailable", message, { httpStatus, providerName });
+      return envelope("model_unavailable", message, {
+        httpStatus,
+        providerName,
+      });
     }
     if (httpStatus === 408) {
       return envelope("network", message, { httpStatus, providerName });
@@ -458,6 +506,19 @@ function truncate(s: string, n: number): string {
 }
 
 function toRecord(err: unknown): Record<string, unknown> {
+  if (err instanceof ConvexError) {
+    const data =
+      err.data && typeof err.data === "object"
+        ? (err.data as Record<string, unknown>)
+        : {};
+    return {
+      ...data,
+      message:
+        typeof data.message === "string" && data.message.length > 0
+          ? data.message
+          : err.message,
+    };
+  }
   if (err && typeof err === "object") return err as Record<string, unknown>;
   return { message: typeof err === "string" ? err : String(err) };
 }
@@ -465,7 +526,8 @@ function toRecord(err: unknown): Record<string, unknown> {
 function extractStatus(rec: Record<string, unknown>): number | undefined {
   // AI SDK APICallError: `statusCode`. Plain fetch Response: `status`.
   const s = rec.statusCode ?? rec.status;
-  if (typeof s === "number" && Number.isInteger(s) && s >= 100 && s < 600) return s;
+  if (typeof s === "number" && Number.isInteger(s) && s >= 100 && s < 600)
+    return s;
   // OpenRouter nests: { error: { code: 429 } } — serialized at the `body` level.
   const body = parseJsonIfString(rec.body ?? rec.data$);
   const nested = body?.error;
@@ -517,13 +579,16 @@ function extractRetryAfterMs(rec: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-function parseJsonIfString(value: unknown): Record<string, unknown> | undefined {
+function parseJsonIfString(
+  value: unknown,
+): Record<string, unknown> | undefined {
   if (!value) return undefined;
   if (typeof value === "object") return value as Record<string, unknown>;
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value);
-      if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
+      if (parsed && typeof parsed === "object")
+        return parsed as Record<string, unknown>;
     } catch {
       return undefined;
     }
@@ -558,7 +623,8 @@ function isModerationError(rec: Record<string, unknown>): boolean {
   const md = nested?.metadata as Record<string, unknown> | undefined;
   if (md && typeof md === "object") {
     if (md.reasons !== undefined || md.flagged_input !== undefined) return true;
-    if (typeof md.raw === "string" && /moderat|flagg|policy/i.test(md.raw)) return true;
+    if (typeof md.raw === "string" && /moderat|flagg|policy/i.test(md.raw))
+      return true;
   }
   const msg = typeof rec.message === "string" ? rec.message : "";
   return /moderat|content policy|flagged/i.test(msg);

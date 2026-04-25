@@ -12,9 +12,10 @@ import {
   serializeChatError,
   type ChatErrorEnvelope,
 } from "@/lib/errors/taxonomy";
+import { ABORT_ERROR_STRING } from "@/lib/chat/abort-signal";
 
 describe("ERROR_CODES taxonomy", () => {
-  it("is an 18-entry tuple covering chat + extraction codes", () => {
+  it("is a 19-entry tuple covering chat + extraction codes", () => {
     expect(ERROR_CODES).toEqual([
       "insufficient_credits",
       "rate_limit",
@@ -24,6 +25,7 @@ describe("ERROR_CODES taxonomy", () => {
       "context_too_long",
       "network",
       "provider_5xx",
+      "regenerate_failed",
       "aborted",
       "unknown",
       "action_timeout",
@@ -35,7 +37,7 @@ describe("ERROR_CODES taxonomy", () => {
       "schema_validation",
       "cancelled",
     ]);
-    expect(ERROR_CODES).toHaveLength(18);
+    expect(ERROR_CODES).toHaveLength(19);
   });
 });
 
@@ -49,6 +51,7 @@ describe("isRetryable record", () => {
     ["context_too_long", false],
     ["network", true],
     ["provider_5xx", true],
+    ["regenerate_failed", true],
     ["aborted", true],
     ["unknown", true],
     ["action_timeout", true],
@@ -119,9 +122,15 @@ describe("classifyUnknownError — fingerprint cascade", () => {
   });
 
   it("R8: Error with /network|socket hang up|ENOTFOUND/i message → network", () => {
-    expect(classifyUnknownError(new Error("network request failed")).code).toBe("network");
-    expect(classifyUnknownError(new Error("socket hang up")).code).toBe("network");
-    expect(classifyUnknownError(new Error("getaddrinfo ENOTFOUND api.foo")).code).toBe("network");
+    expect(classifyUnknownError(new Error("network request failed")).code).toBe(
+      "network",
+    );
+    expect(classifyUnknownError(new Error("socket hang up")).code).toBe(
+      "network",
+    );
+    expect(
+      classifyUnknownError(new Error("getaddrinfo ENOTFOUND api.foo")).code,
+    ).toBe("network");
   });
 
   it("R9: httpStatus 429 → rate_limit", () => {
@@ -134,7 +143,9 @@ describe("classifyUnknownError — fingerprint cascade", () => {
 
   it("R9: 'status' field also picked up (fetch Response style)", () => {
     expect(
-      classifyUnknownError(Object.assign(new Error("Too many"), { status: 429 })).code,
+      classifyUnknownError(
+        Object.assign(new Error("Too many"), { status: 429 }),
+      ).code,
     ).toBe("rate_limit");
   });
 
@@ -149,7 +160,9 @@ describe("classifyUnknownError — fingerprint cascade", () => {
   it("R10: httpStatus 500 / 502 / 504 → provider_5xx", () => {
     for (const s of [500, 502, 504] as const) {
       expect(
-        classifyUnknownError(Object.assign(new Error("oops"), { statusCode: s })).code,
+        classifyUnknownError(
+          Object.assign(new Error("oops"), { statusCode: s }),
+        ).code,
       ).toBe("provider_5xx");
     }
   });
@@ -164,39 +177,53 @@ describe("classifyUnknownError — fingerprint cascade", () => {
 
   it("R11: httpStatus 403 → auth", () => {
     expect(
-      classifyUnknownError(Object.assign(new Error("Forbidden"), { statusCode: 403 })).code,
+      classifyUnknownError(
+        Object.assign(new Error("Forbidden"), { statusCode: 403 }),
+      ).code,
     ).toBe("auth");
   });
 
   it("R11: httpStatus 402 → insufficient_credits", () => {
     expect(
-      classifyUnknownError(Object.assign(new Error("Payment required"), { statusCode: 402 })).code,
+      classifyUnknownError(
+        Object.assign(new Error("Payment required"), { statusCode: 402 }),
+      ).code,
     ).toBe("insufficient_credits");
   });
 
   it("R12: message /content filter|moderation|safety/i → moderation", () => {
-    expect(classifyUnknownError(new Error("flagged by content filter")).code).toBe("moderation");
-    expect(classifyUnknownError(new Error("Output blocked by moderation policy")).code).toBe(
-      "moderation",
-    );
-    expect(classifyUnknownError(new Error("Safety classifier triggered")).code).toBe("moderation");
+    expect(
+      classifyUnknownError(new Error("flagged by content filter")).code,
+    ).toBe("moderation");
+    expect(
+      classifyUnknownError(new Error("Output blocked by moderation policy"))
+        .code,
+    ).toBe("moderation");
+    expect(
+      classifyUnknownError(new Error("Safety classifier triggered")).code,
+    ).toBe("moderation");
   });
 
   it("R13: message /context length|token limit|too long/i → context_too_long", () => {
     expect(
-      classifyUnknownError(new Error("Maximum context length is 32k tokens")).code,
+      classifyUnknownError(new Error("Maximum context length is 32k tokens"))
+        .code,
     ).toBe("context_too_long");
-    expect(classifyUnknownError(new Error("Token limit exceeded")).code).toBe("context_too_long");
-    expect(classifyUnknownError(new Error("Input is too long for this model")).code).toBe(
+    expect(classifyUnknownError(new Error("Token limit exceeded")).code).toBe(
       "context_too_long",
     );
+    expect(
+      classifyUnknownError(new Error("Input is too long for this model")).code,
+    ).toBe("context_too_long");
   });
 
   it("R14: message /timed out|deadline/i → action_timeout", () => {
-    expect(classifyUnknownError(new Error("Request timed out after 600s")).code).toBe(
+    expect(
+      classifyUnknownError(new Error("Request timed out after 600s")).code,
+    ).toBe("action_timeout");
+    expect(classifyUnknownError(new Error("Deadline exceeded")).code).toBe(
       "action_timeout",
     );
-    expect(classifyUnknownError(new Error("Deadline exceeded")).code).toBe("action_timeout");
   });
 
   it("R15: unrecognised shapes fall through to unknown / retryable:true", () => {
@@ -251,7 +278,10 @@ describe("classifyUnknownError — context bounds", () => {
 
 describe("errorCodeValidator", () => {
   it("R17: is a v.union of literals covering every ERROR_CODES entry", () => {
-    type UnionLike = { kind: string; members?: Array<{ kind: string; value?: unknown }> };
+    type UnionLike = {
+      kind: string;
+      members?: Array<{ kind: string; value?: unknown }>;
+    };
     const v = errorCodeValidator as unknown as UnionLike;
     expect(v.kind).toBe("union");
     expect(v.members).toBeDefined();
@@ -272,6 +302,26 @@ describe("errorCodeValidator", () => {
 });
 
 describe("classifyChatError", () => {
+  it("parses the current chat abort sentinel as aborted", () => {
+    const envelope = parseChatError(ABORT_ERROR_STRING);
+
+    expect(envelope).toEqual({
+      version: 1,
+      class: "aborted",
+      message: ABORT_ERROR_STRING,
+    });
+  });
+
+  it("parses the current agent failed-message update wrapper as aborted", () => {
+    const raw = `Trying to update a message that failed: ks7fm4y0axy6ad5g8pfdmtq00x85f2m5, error: ${ABORT_ERROR_STRING}`;
+
+    expect(parseChatError(raw)).toEqual({
+      version: 1,
+      class: "aborted",
+      message: raw,
+    });
+  });
+
   it("maps HTTP 429 with OpenRouter body to rate_limit + retryAfter", () => {
     const envelope = classifyChatError({
       name: "TooManyRequestsResponseError",
@@ -324,21 +374,32 @@ describe("classifyChatError", () => {
   });
 
   it("maps 402 and our custom AI_INSUFFICIENT_CREDITS to insufficient_credits", () => {
-    expect(classifyChatError({ statusCode: 402, message: "No credits" }).class).toBe(
-      "insufficient_credits",
-    );
     expect(
-      classifyChatError({ code: "AI_INSUFFICIENT_CREDITS", message: "Not enough credits for this chat message." }).class,
+      classifyChatError({ statusCode: 402, message: "No credits" }).class,
+    ).toBe("insufficient_credits");
+    expect(
+      classifyChatError({
+        code: "AI_INSUFFICIENT_CREDITS",
+        message: "Not enough credits for this chat message.",
+      }).class,
+    ).toBe("insufficient_credits");
+    expect(
+      classifyChatError(
+        new ConvexError({
+          code: "AI_INSUFFICIENT_CREDITS",
+          message: "Not enough credits for this chat message.",
+        }),
+      ).class,
     ).toBe("insufficient_credits");
   });
 
   it("maps 503/502 to model_unavailable", () => {
-    expect(classifyChatError({ statusCode: 503, message: "no provider" }).class).toBe(
-      "model_unavailable",
-    );
-    expect(classifyChatError({ statusCode: 502, message: "bad gateway" }).class).toBe(
-      "model_unavailable",
-    );
+    expect(
+      classifyChatError({ statusCode: 503, message: "no provider" }).class,
+    ).toBe("model_unavailable");
+    expect(
+      classifyChatError({ statusCode: 502, message: "bad gateway" }).class,
+    ).toBe("model_unavailable");
   });
 
   it("maps 400 with context-length cue to context_too_long", () => {
@@ -355,8 +416,12 @@ describe("classifyChatError", () => {
   });
 
   it("detects network errors by fetch-failure message patterns", () => {
-    expect(classifyChatError({ message: "fetch failed" }).class).toBe("network");
-    expect(classifyChatError({ message: "socket hang up" }).class).toBe("network");
+    expect(classifyChatError({ message: "fetch failed" }).class).toBe(
+      "network",
+    );
+    expect(classifyChatError({ message: "socket hang up" }).class).toBe(
+      "network",
+    );
   });
 
   it("detects aborts by AbortError name", () => {
@@ -425,6 +490,7 @@ describe("envelope-bound chat helpers", () => {
     ["model_unavailable", false, false],
     ["network", false, false],
     ["provider_5xx", false, false],
+    ["regenerate_failed", false, false],
     ["unknown", false, false],
     ["aborted", false, false],
     ["moderation", true, false],

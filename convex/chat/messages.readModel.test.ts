@@ -50,18 +50,28 @@ describe("chat.messages.listThreadMessages read model", () => {
           message: { role: "assistant" },
           order: 3,
           stepOrder: 0,
+          model: "google/gemini-3.1-flash-lite-preview",
+          provider: "openrouter",
         },
         {
           _id: "m_abort",
           message: { role: "assistant" },
           order: 2,
           stepOrder: 0,
-          error: "user_stopped",
+          error: "AbortError: user_stopped",
+        },
+        {
+          _id: "m_abort_update",
+          message: { role: "assistant" },
+          order: 1,
+          stepOrder: 0,
+          error:
+            "Trying to update a message that failed: ks7fm4y0axy6ad5g8pfdmtq00x85f2m5, error: AbortError: user_stopped",
         },
         {
           _id: "m_fail",
           message: { role: "assistant" },
-          order: 1,
+          order: 0,
           stepOrder: 0,
           error: '{"kind":"rate_limit","message":"busy"}',
         },
@@ -72,6 +82,11 @@ describe("chat.messages.listThreadMessages read model", () => {
     toUIMessages.mockReturnValue([
       { id: "m_success", text: "All done.", status: "success" },
       { id: "m_abort", text: "Partial text before stop", status: "failed" },
+      {
+        id: "m_abort_update",
+        text: "Partial text before update conflict",
+        status: "failed",
+      },
       { id: "m_fail", text: "", status: "failed" },
     ]);
     syncStreams.mockResolvedValue({
@@ -92,7 +107,7 @@ describe("chat.messages.listThreadMessages read model", () => {
       {} as never,
       {
         threadId: "thread_1",
-        paginationOpts: { cursor: null, numItems: 3 },
+        paginationOpts: { cursor: null, numItems: 4 },
         streamArgs: { kind: "list", startOrder: 0 },
       },
     );
@@ -109,8 +124,8 @@ describe("chat.messages.listThreadMessages read model", () => {
         threadId: "thread_1",
         paginationOpts: {
           cursor: null,
-          numItems: 3,
-          maximumRowsRead: 24,
+          numItems: 4,
+          maximumRowsRead: 32,
           maximumBytesRead: 262144,
         },
         streamArgs: { kind: "list", startOrder: 0 },
@@ -123,18 +138,28 @@ describe("chat.messages.listThreadMessages read model", () => {
         message: { role: "assistant" },
         order: 3,
         stepOrder: 0,
+        model: "google/gemini-3.1-flash-lite-preview",
+        provider: "openrouter",
       },
       {
         _id: "m_abort",
         message: { role: "assistant" },
         order: 2,
         stepOrder: 0,
-        error: "user_stopped",
+        error: "AbortError: user_stopped",
+      },
+      {
+        _id: "m_abort_update",
+        message: { role: "assistant" },
+        order: 1,
+        stepOrder: 0,
+        error:
+          "Trying to update a message that failed: ks7fm4y0axy6ad5g8pfdmtq00x85f2m5, error: AbortError: user_stopped",
       },
       {
         _id: "m_fail",
         message: { role: "assistant" },
-        order: 1,
+        order: 0,
         stepOrder: 0,
         error: '{"kind":"rate_limit","message":"busy"}',
       },
@@ -144,17 +169,29 @@ describe("chat.messages.listThreadMessages read model", () => {
       expect.anything(),
       {
         threadId: "thread_1",
-        paginationOpts: { cursor: null, numItems: 3 },
+        paginationOpts: { cursor: null, numItems: 4 },
         streamArgs: { kind: "list", startOrder: 0 },
         includeStatuses: ["streaming", "finished", "aborted"],
       },
     );
     expect(result).toEqual({
       page: [
-        { id: "m_success", text: "All done.", status: "success" },
+        {
+          id: "m_success",
+          text: "All done.",
+          status: "success",
+          model: "google/gemini-3.1-flash-lite-preview",
+          provider: "openrouter",
+        },
         {
           id: "m_abort",
           text: "Partial text before stop",
+          status: "failed",
+          aborted: true,
+        },
+        {
+          id: "m_abort_update",
+          text: "Partial text before update conflict",
           status: "failed",
           aborted: true,
         },
@@ -170,6 +207,113 @@ describe("chat.messages.listThreadMessages read model", () => {
       streams: {
         kind: "list",
         messages: [{ streamId: "stream_1", status: "streaming", order: 2 }],
+      },
+    });
+  });
+
+  it("enriches a grouped assistant UI message when the abort error is on a sibling raw row", async () => {
+    const { listThreadMessages } = await import("./messages");
+
+    listMessages.mockResolvedValue({
+      page: [
+        {
+          _id: "m_assistant_first",
+          message: { role: "assistant" },
+          order: 10,
+          stepOrder: 0,
+        },
+        {
+          _id: "m_assistant_abort",
+          message: { role: "assistant" },
+          order: 10,
+          stepOrder: 1,
+          error:
+            "Trying to update a message that failed: ks7fm4y0axy6ad5g8pfdmtq00x85f2m5, error: AbortError: user_stopped",
+        },
+        {
+          _id: "m_real_error_first",
+          message: { role: "assistant" },
+          order: 9,
+          stepOrder: 0,
+        },
+        {
+          _id: "m_real_error_last",
+          message: { role: "assistant" },
+          order: 9,
+          stepOrder: 1,
+          error: '{"kind":"rate_limit","message":"busy"}',
+        },
+      ],
+      isDone: true,
+      continueCursor: "cursor:done",
+    });
+    toUIMessages.mockReturnValue([
+      {
+        id: "m_assistant_first",
+        role: "assistant",
+        order: 10,
+        stepOrder: 0,
+        text: "Partial grouped text",
+        status: "failed",
+      },
+      {
+        id: "m_real_error_first",
+        role: "assistant",
+        order: 9,
+        stepOrder: 0,
+        text: "",
+        status: "failed",
+      },
+    ]);
+    syncStreams.mockResolvedValue({
+      kind: "list",
+      messages: [],
+    });
+
+    const result = await (listThreadMessages as typeof listThreadMessages & {
+      _handler: (
+        ctx: unknown,
+        args: {
+          threadId: string;
+          paginationOpts: { cursor: string | null; numItems: number };
+          streamArgs?: { kind: "list"; startOrder?: number };
+        },
+      ) => Promise<unknown>;
+    })._handler(
+      {} as never,
+      {
+        threadId: "thread_grouped",
+        paginationOpts: { cursor: null, numItems: 2 },
+        streamArgs: { kind: "list", startOrder: 0 },
+      },
+    );
+
+    expect(result).toEqual({
+      page: [
+        {
+          id: "m_assistant_first",
+          role: "assistant",
+          order: 10,
+          stepOrder: 0,
+          text: "Partial grouped text",
+          status: "failed",
+          aborted: true,
+        },
+        {
+          id: "m_real_error_first",
+          role: "assistant",
+          order: 9,
+          stepOrder: 0,
+          text: "",
+          status: "failed",
+          error: '{"kind":"rate_limit","message":"busy"}',
+        },
+      ],
+      isDone: true,
+      continueCursor: "cursor:done",
+      streams: {
+        kind: "list",
+        messages: [],
       },
     });
   });

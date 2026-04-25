@@ -10,11 +10,13 @@ import { render, screen } from "@testing-library/react";
 import type { UIMessage } from "@convex-dev/agent/react";
 import { MessageRow } from "@/components/extraction/chat/message-list";
 import type { Id } from "@/convex/_generated/dataModel";
+import { ABORT_ERROR_STRING } from "@/lib/chat/abort-signal";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => {
     if (key === "chatAbortedPillLabel") return "Stopped by user";
-    if (key === "chatAbortedPillAria") return "This response was stopped by the user";
+    if (key === "chatAbortedPillAria")
+      return "This response was stopped by the user";
     return key;
   },
 }));
@@ -43,11 +45,25 @@ vi.mock("@/components/ai-elements/message", () => ({
 
 // ChatErrorAlert is a dep we want to observe — stub with a recognizable
 // test-id so we can assert its presence/absence per branch.
-vi.mock("@/components/extraction/chat/chat-error-alert", () => ({
-  ChatErrorAlert: ({ rawError }: { rawError: string }) => (
-    <div data-testid="chat-error-alert" data-raw-error={rawError} />
-  ),
-}));
+vi.mock("@/components/extraction/chat/chat-error-alert", async () => {
+  const { parseChatError } = await vi.importActual<
+    typeof import("@/lib/errors/taxonomy")
+  >("@/lib/errors/taxonomy");
+  return {
+    ChatErrorAlert: ({ rawError }: { rawError: string }) => {
+      const envelope = parseChatError(rawError);
+      return (
+        <div
+          data-testid="chat-error-alert"
+          data-raw-error={rawError}
+          data-error-code={envelope?.class}
+        >
+          {envelope?.message}
+        </div>
+      );
+    },
+  };
+});
 
 // Paper-citation rewriting is irrelevant for this suite.
 vi.mock("@/components/extraction/chat/paper-citation", () => ({
@@ -82,7 +98,10 @@ function makeMessage(over: Partial<ChatUIMessage>): ChatUIMessage {
   } as ChatUIMessage;
 }
 
-function renderRow(msg: ChatUIMessage) {
+function renderRow(
+  msg: ChatUIMessage,
+  options: { isJobGenerating?: boolean } = {},
+) {
   return render(
     <MessageRow
       message={msg}
@@ -93,6 +112,7 @@ function renderRow(msg: ChatUIMessage) {
       chatModels={[]}
       onRetry={() => {}}
       reduceMotion={true}
+      isJobGenerating={options.isJobGenerating}
     />,
   );
 }
@@ -170,6 +190,93 @@ describe("MessageRow — aborted vs. failed branches", () => {
     expect(row).not.toHaveAttribute("data-message-state");
   });
 
+  it("B4c1 — failed assistant without an error still renders structured error feedback", () => {
+    const msg = makeMessage({
+      status: "failed",
+      text: "",
+      parts: [{ type: "text", text: "" }],
+    });
+    renderRow(msg);
+
+    expect(screen.getByTestId("chat-error-alert")).toHaveAttribute(
+      "data-error-code",
+      "unknown",
+    );
+    expect(screen.getByTestId("chat-error-alert")).toHaveTextContent(
+      "Assistant message failed without an error payload.",
+    );
+    expect(screen.getByTestId("chat-error-alert")).not.toHaveAttribute(
+      "data-raw-error",
+      "chatFailedMessage",
+    );
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("data-status", "failed");
+    expect(row).toHaveAttribute("data-error", "true");
+  });
+
+  it("B4c1b — stale pending assistant renders an inline error instead of infinite generating state", () => {
+    const msg = makeMessage({
+      status: "pending",
+      text: "",
+      parts: [{ type: "text", text: "" }],
+    });
+    renderRow(msg, { isJobGenerating: false });
+
+    expect(screen.getByTestId("chat-error-alert")).toHaveAttribute(
+      "data-error-code",
+      "unknown",
+    );
+    expect(screen.getByTestId("chat-error-alert")).toHaveTextContent(
+      "Assistant response was left pending after the backend generation lock ended.",
+    );
+    expect(screen.queryByTestId("typing-dots")).toBeNull();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("aria-busy", "false");
+    expect(row).toHaveAttribute("data-streaming", "false");
+    expect(row).toHaveAttribute("data-status", "failed");
+    expect(row).toHaveAttribute("data-error", "true");
+  });
+
+  it("B4c2 — raw abort sentinel on a failed assistant message renders the pill, not ChatErrorAlert", () => {
+    const msg = makeMessage({
+      status: "failed",
+      error: ABORT_ERROR_STRING,
+      text: "Partial text before stop",
+      parts: [{ type: "text", text: "Partial text before stop" }],
+    });
+    renderRow(msg);
+
+    expect(screen.getByRole("status")).toHaveAttribute(
+      "data-message-state",
+      "aborted",
+    );
+    expect(screen.queryByTestId("chat-error-alert")).toBeNull();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("data-message-state", "aborted");
+    expect(row).toHaveAttribute("data-error", "false");
+  });
+
+  it("B4c3 — stream-backed failed assistant message renders the stopped pill", () => {
+    const msg = makeMessage({
+      id: "stream:stream_1",
+      status: "failed",
+      text: "Partial stream text before stop",
+      parts: [{ type: "text", text: "Partial stream text before stop" }],
+    });
+    renderRow(msg);
+
+    expect(screen.getByRole("status")).toHaveAttribute(
+      "data-message-state",
+      "aborted",
+    );
+    expect(screen.getByText(/stopped by user/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-error-alert")).toBeNull();
+    const row = document.querySelector('[data-message-id="stream:stream_1"]');
+    expect(row).toHaveAttribute("data-message-state", "aborted");
+    expect(row).toHaveAttribute("data-status", "aborted");
+    expect(row).toHaveAttribute("data-error", "false");
+  });
+
   it("B4d — a finished assistant message renders neither the pill nor the error alert", () => {
     const msg = makeMessage({
       status: "success",
@@ -206,6 +313,36 @@ describe("MessageRow — streaming cursor transitions", () => {
     const row = document.querySelector('[data-message-id="m_1"]');
     expect(row).toHaveAttribute("data-streaming", "true");
     expect(row).toHaveAttribute("data-status", "streaming");
+  });
+
+  it("B6a2 — pending empty assistant message renders typing dots and busy state", () => {
+    const msg = makeMessage({
+      status: "pending",
+      text: "",
+      parts: [{ type: "text", text: "" }],
+    });
+    renderRow(msg);
+
+    expect(screen.getByTestId("typing-dots")).toBeInTheDocument();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("aria-busy", "true");
+    expect(row).toHaveAttribute("data-streaming", "true");
+    expect(row).toHaveAttribute("data-status", "pending");
+  });
+
+  it("B6a3 — pending assistant with partial text still shows active generation feedback", () => {
+    const msg = makeMessage({
+      status: "pending",
+      text: "Partial pending text",
+      parts: [{ type: "text", text: "Partial pending text" }],
+    });
+    renderRow(msg);
+
+    expect(screen.getByTestId("streaming-cursor")).toBeInTheDocument();
+    const row = document.querySelector('[data-message-id="m_1"]');
+    expect(row).toHaveAttribute("aria-busy", "true");
+    expect(row).toHaveAttribute("data-streaming", "true");
+    expect(row).toHaveAttribute("data-status", "pending");
   });
 
   it("B6b — aborted assistant message does NOT mount the streaming cursor", () => {

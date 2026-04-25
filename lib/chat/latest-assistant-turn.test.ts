@@ -86,6 +86,56 @@ describe("resolveLatestAssistantTurn", () => {
     });
   });
 
+  it("ignores orphan stream-only orders that have no same-order user prompt", () => {
+    expect(
+      resolveLatestAssistantTurn({
+        messages: [
+          {
+            _id: "assistant-5",
+            order: 5,
+            message: { role: "assistant" },
+          },
+          {
+            _id: "user-5",
+            order: 5,
+            message: { role: "user" },
+          },
+        ],
+        streams: [{ streamId: "orphan-stream-8", order: 8 }],
+      }),
+    ).toEqual({
+      assistantOrder: 5,
+      promptMessageId: "user-5",
+      assistantMessageIds: ["assistant-5"],
+      streamIds: [],
+    });
+  });
+
+  it("does not skip a latest user-only turn to regenerate an older assistant", () => {
+    expect(
+      resolveLatestAssistantTurn({
+        messages: [
+          {
+            _id: "user-6",
+            order: 6,
+            message: { role: "user" },
+          },
+          {
+            _id: "assistant-5",
+            order: 5,
+            message: { role: "assistant" },
+          },
+          {
+            _id: "user-5",
+            order: 5,
+            message: { role: "user" },
+          },
+        ],
+        streams: [],
+      }),
+    ).toBeNull();
+  });
+
   it("returns null when the newest turn is not an assistant turn", () => {
     expect(
       resolveLatestAssistantTurn({

@@ -21,16 +21,14 @@
 import type { ActionCtx, MutationCtx } from "../_generated/server";
 import {
   internalAction,
+  internalMutation,
   internalQuery,
   mutation,
   type QueryCtx,
   query,
 } from "../_generated/server";
 import { v } from "convex/values";
-import {
-  paginationOptsValidator,
-  type PaginationOptions,
-} from "convex/server";
+import { paginationOptsValidator, type PaginationOptions } from "convex/server";
 import {
   listMessages,
   syncStreams,
@@ -46,13 +44,16 @@ import { resolveOpenRouterModel } from "./provider";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {
   classifyChatError,
+  errorCodeValidator,
   serializeChatError,
+  type ErrorCode,
 } from "../../lib/errors/taxonomy";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
+import { ABORT_REASON_USER_STOPPED } from "../../lib/chat/abort-signal";
 import {
-  ABORT_REASON_USER_STOPPED,
-  ABORT_ERROR_STRING,
-} from "../../lib/chat/abort-signal";
+  normalizeChatUIMessage,
+  selectChatMessageError,
+} from "../../lib/chat/message-state";
 import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn";
 import {
   estimateTokenCount,
@@ -60,8 +61,132 @@ import {
   errorToLogString,
   ABORT_TOKEN_SURCHARGE_MULTIPLIER,
 } from "./abortTokenEstimate";
+import { assertChatConcurrencyAvailable } from "./concurrency";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
+
+const chatGenerationJobErrorValidator = v.object({
+  code: errorCodeValidator,
+  message: v.string(),
+  httpStatus: v.optional(v.number()),
+  providerName: v.optional(v.string()),
+  at: v.number(),
+});
+
+type ChatGenerationJobError = {
+  code: ErrorCode;
+  message: string;
+  httpStatus?: number;
+  providerName?: string;
+  at: number;
+};
+
+function newChatGenerationAttemptId(now: number): string {
+  return `${now}:${Math.random().toString(36).slice(2)}`;
+}
+
+function toChatGenerationJobError(rawError: unknown) {
+  const envelope = classifyChatError(rawError);
+  return {
+    code: envelope.class,
+    message: envelope.message,
+    ...(envelope.httpStatus !== undefined
+      ? { httpStatus: envelope.httpStatus }
+      : {}),
+    ...(envelope.providerName !== undefined
+      ? { providerName: envelope.providerName }
+      : {}),
+    at: Date.now(),
+  };
+}
+
+function regenerateUnavailableError(
+  jobError: ChatGenerationJobError | undefined,
+  diagnostic: string,
+): ChatGenerationJobError {
+  if (jobError) {
+    return {
+      code: jobError.code,
+      message: jobError.message,
+      ...(jobError.httpStatus !== undefined
+        ? { httpStatus: jobError.httpStatus }
+        : {}),
+      ...(jobError.providerName !== undefined
+        ? { providerName: jobError.providerName }
+        : {}),
+      at: jobError.at,
+    };
+  }
+  return {
+    code: "regenerate_failed",
+    message: diagnostic,
+    at: Date.now(),
+  };
+}
+
+export const recordGenerationError = internalMutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    generationAttemptId: v.optional(v.string()),
+    error: chatGenerationJobErrorValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, { jobId, generationAttemptId, error }) => {
+    const job = await ctx.db.get(jobId);
+    if (!job) return null;
+    if (
+      generationAttemptId !== undefined &&
+      job.chatGenerationAttemptId !== generationAttemptId
+    ) {
+      return null;
+    }
+    await ctx.db.patch(jobId, {
+      error,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const clearGenerationError = internalMutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    generationAttemptId: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, { jobId, generationAttemptId }) => {
+    const job = await ctx.db.get(jobId);
+    if (!job) return null;
+    if (
+      generationAttemptId !== undefined &&
+      job.chatGenerationAttemptId !== generationAttemptId
+    ) {
+      return null;
+    }
+    await ctx.db.patch(jobId, {
+      error: undefined,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+async function recordGenerationErrorFromAction(
+  ctx: ActionCtx,
+  args: {
+    jobId: Id<"extractionJobs">;
+    generationAttemptId?: string;
+    error: unknown;
+  },
+) {
+  const error = toChatGenerationJobError(args.error);
+  if (error.code === "aborted") return;
+  await ctx.runMutation(internal.chat.messages.recordGenerationError, {
+    jobId: args.jobId,
+    generationAttemptId: args.generationAttemptId,
+    error,
+  });
+}
 
 /* ────────────────────────────────────────────────────────────────── */
 /*                      User → Assistant turn                         */
@@ -81,14 +206,15 @@ export const sendMessage = mutation({
     // subscription, but a race between client-side click and server-side
     // handler entry could slip through. Short-circuit read: .take(1) is
     // O(1); we only need to know whether *any* included row exists.
-    const hasIncluded = (
-      await ctx.db
-        .query("chatPapers")
-        .withIndex("by_job_included", (q) =>
-          q.eq("jobId", job._id).eq("included", true),
-        )
-        .take(1)
-    ).length > 0;
+    const hasIncluded =
+      (
+        await ctx.db
+          .query("chatPapers")
+          .withIndex("by_job_included", (q) =>
+            q.eq("jobId", job._id).eq("included", true),
+          )
+          .take(1)
+      ).length > 0;
     if (!hasIncluded) {
       throw createError(
         "NO_SOURCES_INCLUDED",
@@ -106,6 +232,7 @@ export const sendMessage = mutation({
         "A response is already being generated for this chat.",
       );
     }
+    await assertChatConcurrencyAvailable(ctx, job.userId);
 
     const { messageId } = await paperChat.saveMessage(ctx, {
       threadId,
@@ -114,19 +241,23 @@ export const sendMessage = mutation({
     });
 
     const now = Date.now();
+    const generationAttemptId = newChatGenerationAttemptId(now);
     await ctx.db.patch(job._id, {
       isGenerating: true,
       generatingStartedAt: now,
+      chatGenerationAttemptId: generationAttemptId,
+      error: undefined,
       lastMessageAt: now,
       messageCount: (job.messageCount ?? 0) + 1,
       updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId: messageId },
-    );
+    await ctx.scheduler.runAfter(0, internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId: messageId,
+      generationAttemptId,
+      chatModelId: job.chatModelId ?? null,
+    });
 
     return null;
   },
@@ -136,17 +267,23 @@ export const generateResponse = internalAction({
   args: {
     threadId: v.string(),
     promptMessageId: v.string(),
+    generationAttemptId: v.optional(v.string()),
+    chatModelId: v.optional(v.union(v.id("models"), v.null())),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, promptMessageId }) => {
-    const meta = await ctx.runQuery(
-      internal.chat.threads.getModelForThread,
-      { threadId },
-    );
+  handler: async (
+    ctx,
+    { threadId, promptMessageId, generationAttemptId, chatModelId },
+  ) => {
+    const meta = await ctx.runQuery(internal.chat.threads.getModelForThread, {
+      threadId,
+    });
     if (!meta) {
       throw createError("NOT_FOUND", "Thread not found");
     }
-    const { jobId, userId, chatModelId } = meta;
+    const { jobId, userId } = meta;
+    const requestedChatModelId =
+      chatModelId !== undefined ? chatModelId : meta.chatModelId;
 
     // Abort wiring (plans/chat-stop-streaming/01-action-abort-wiring.md).
     // Poll job.shouldAbort every 500ms; when flipped, abort the signal
@@ -157,7 +294,7 @@ export const generateResponse = internalAction({
       readFlag: async () => {
         const flag: boolean = await ctx.runQuery(
           internal.chat.messages.shouldAbortInternal,
-          { jobId },
+          { jobId, generationAttemptId },
         );
         return flag;
       },
@@ -179,6 +316,7 @@ export const generateResponse = internalAction({
     // wrapper ("Provider returned error") and would downgrade our
     // envelope from `rate_limit` to `provider_5xx` / `unknown`.
     let envelopePatchedFromOnError = false;
+    let generationErrorRecordedFromOnError = false;
 
     // Captured from OpenRouter's X-Generation-Id response header via
     // the provider's fetch wrapper (see convex/chat/openrouterFetch.ts).
@@ -188,6 +326,9 @@ export const generateResponse = internalAction({
     // /api/v1/generation endpoint via billing.reconcileGenerationUsage.
     let capturedGenerationId: string | undefined;
     let capturedModelSlug: string | undefined;
+    let streamErrored = false;
+    let streamAbortedByUser = false;
+    let streamReturned = false;
     // Flipped by onFinish (happy path) OR onAbort (cancelled path) once
     // local billing has committed. The post-stream reconcile block
     // checks this flag and skips scheduling reconcile when either fast
@@ -218,7 +359,7 @@ export const generateResponse = internalAction({
 
       const { model, modelSlug, pricing } = await resolveOpenRouterModel(
         ctx,
-        chatModelId,
+        requestedChatModelId,
         {
           generationIdSink: (id) => {
             capturedGenerationId = id;
@@ -314,6 +455,7 @@ export const generateResponse = internalAction({
               onFinishBilled = true;
             },
             onAbort: async ({ steps }) => {
+              streamAbortedByUser = true;
               console.info("[chat] stream aborted by user", {
                 jobId,
                 threadId,
@@ -391,23 +533,43 @@ export const generateResponse = internalAction({
               onFinishBilled = true;
             },
             onError: async ({ error }) => {
+              streamErrored = true;
               // This runs with the ORIGINAL provider error (429 w/
               // retry-after, etc.) but only if the agent's own
               // `call.fail` → `finalizeMessage` path did not throw.
               // When finalizeMessage DOES throw (stream-had-error-
               // chunks case), this never runs and we fall back to the
               // inner catch below.
+              await recordGenerationErrorFromAction(ctx, {
+                jobId,
+                generationAttemptId,
+                error,
+              })
+                .then(() => {
+                  generationErrorRecordedFromOnError = true;
+                })
+                .catch((err) => {
+                  console.error("[chat] failed to record generation error", {
+                    jobId,
+                    threadId,
+                    err: errorToLogString(err),
+                  });
+                });
               const patched = await patchLastAssistantAsFailed(
                 ctx,
                 threadId,
+                promptMessageId,
                 error,
+                { model: capturedModelSlug, provider: "openrouter" },
               ).catch(() => false);
               if (patched) envelopePatchedFromOnError = true;
             },
           },
           { saveStreamDeltas: { chunking: "word", throttleMs: 250 } },
         );
+        streamReturned = true;
       } catch (err) {
+        streamErrored = true;
         // The agent's `streamText` wrapper re-throws stream errors
         // (node_modules/@convex-dev/agent/src/client/streamText.ts:180).
         // We land here for every stream-time failure — and sometimes
@@ -420,20 +582,67 @@ export const generateResponse = internalAction({
         // .streamText returns normally on abort and this catch never
         // fires for user-stop.
         if (!envelopePatchedFromOnError) {
+          if (!generationErrorRecordedFromOnError) {
+            await recordGenerationErrorFromAction(ctx, {
+              jobId,
+              generationAttemptId,
+              error: err,
+            }).catch((recordErr) => {
+              console.error("[chat] failed to record generation error", {
+                jobId,
+                threadId,
+                err: errorToLogString(recordErr),
+              });
+            });
+          }
           const patched = await patchLastAssistantAsFailed(
             ctx,
             threadId,
+            promptMessageId,
             err,
-          ).catch(() => false);
+            { model: capturedModelSlug, provider: "openrouter" },
+          ).catch((patchErr) => {
+            console.error("[chat] failed to patch assistant error", {
+              jobId,
+              threadId,
+              err: errorToLogString(patchErr),
+            });
+            return false;
+          });
           // startGeneration failed before a pending assistant could be
           // saved — persist a standalone one so the thread still shows
           // the error.
           if (!patched) {
-            await saveStandaloneErrorMessage(ctx, threadId, err).catch(
-              () => {},
-            );
+            await saveStandaloneErrorMessage(
+              ctx,
+              threadId,
+              promptMessageId,
+              err,
+              { model: capturedModelSlug, provider: "openrouter" },
+            ).catch((saveErr) => {
+              console.error("[chat] failed to save standalone chat error", {
+                jobId,
+                threadId,
+                err: errorToLogString(saveErr),
+              });
+            });
           }
         }
+      }
+
+      if (streamReturned && !streamErrored && !streamAbortedByUser) {
+        await ctx
+          .runMutation(internal.chat.messages.clearGenerationError, {
+            jobId,
+            generationAttemptId,
+          })
+          .catch((err) => {
+            console.error("[chat] failed to clear generation error", {
+              jobId,
+              threadId,
+              err: errorToLogString(err),
+            });
+          });
       }
 
       // Reconcile path for turns onFinish did NOT settle — aborts and
@@ -462,7 +671,32 @@ export const generateResponse = internalAction({
       // Genuine pre-stream failures only: credit guard, thread/model
       // lookup, provider construction. No pending assistant message
       // exists yet, so persist a standalone one inline.
-      await saveStandaloneErrorMessage(ctx, threadId, err).catch(() => {});
+      await recordGenerationErrorFromAction(ctx, {
+        jobId,
+        generationAttemptId,
+        error: err,
+      }).catch((recordErr) => {
+        console.error("[chat] failed to record generation error", {
+          jobId,
+          threadId,
+          err: errorToLogString(recordErr),
+        });
+      });
+      await saveStandaloneErrorMessage(
+        ctx,
+        threadId,
+        promptMessageId,
+        err,
+        capturedModelSlug
+          ? { model: capturedModelSlug, provider: "openrouter" }
+          : undefined,
+      ).catch((saveErr) => {
+        console.error("[chat] failed to save standalone chat error", {
+          jobId,
+          threadId,
+          err: errorToLogString(saveErr),
+        });
+      });
       throw err;
     } finally {
       // Stop the poller BEFORE releasing the lock. releaseThreadLock
@@ -471,10 +705,10 @@ export const generateResponse = internalAction({
       // turn (impossible under the current per-thread lock, but
       // defence in depth). See plan § 3 placement notes.
       stopAbortPoller();
-      await ctx.runMutation(
-        internal.chat.concurrency.releaseThreadLock,
-        { jobId },
-      );
+      await ctx.runMutation(internal.chat.concurrency.releaseThreadLock, {
+        jobId,
+        generationAttemptId,
+      });
     }
     return null;
   },
@@ -498,21 +732,36 @@ export const generateResponse = internalAction({
 async function patchLastAssistantAsFailed(
   ctx: ActionCtx,
   threadId: string,
+  promptMessageId: string,
   rawError: unknown,
+  metadata?: { model?: string; provider?: string },
 ): Promise<boolean> {
   const envelope = classifyChatError(rawError);
   const serialized = serializeChatError(envelope);
+  const promptMessages = await ctx.runQuery(
+    components.agent.messages.getMessagesByIds,
+    { messageIds: [promptMessageId as never] },
+  );
+  const promptOrder = promptMessages[0]?.order;
   const { page } = await listMessages(ctx, components.agent, {
     threadId,
-    paginationOpts: { numItems: 1, cursor: null },
+    paginationOpts: { numItems: 20, cursor: null },
     statuses: ["pending", "failed"],
   });
-  const last = page[0];
+  const last = page.find(
+    (message) =>
+      message.message?.role === "assistant" &&
+      (promptOrder === undefined || message.order === promptOrder),
+  );
   if (!last) return false;
-  if (last.message?.role !== "assistant") return false;
   await ctx.runMutation(components.agent.messages.updateMessage, {
     messageId: last._id,
-    patch: { status: "failed", error: serialized },
+    patch: {
+      status: "failed",
+      error: serialized,
+      ...(metadata?.model ? { model: metadata.model } : {}),
+      ...(metadata?.provider ? { provider: metadata.provider } : {}),
+    },
   });
   return true;
 }
@@ -526,14 +775,22 @@ async function patchLastAssistantAsFailed(
 async function saveStandaloneErrorMessage(
   ctx: ActionCtx,
   threadId: string,
+  promptMessageId: string,
   rawError: unknown,
+  metadata?: { model?: string; provider?: string },
 ) {
   const envelope = classifyChatError(rawError);
   const serialized = serializeChatError(envelope);
   await paperChat.saveMessage(ctx, {
     threadId,
+    promptMessageId,
     message: { role: "assistant", content: "" },
-    metadata: { status: "failed", error: serialized },
+    metadata: {
+      status: "failed",
+      error: serialized,
+      ...(metadata?.model ? { model: metadata.model } : {}),
+      ...(metadata?.provider ? { provider: metadata.provider } : {}),
+    },
     skipEmbeddings: true,
   });
 }
@@ -556,15 +813,25 @@ function withThreadMessageReadCaps(paginationOpts: PaginationOptions) {
   };
 }
 
-type ThreadMessagePage = Awaited<
-  ReturnType<typeof listMessages>
->;
+type ThreadMessagePage = Awaited<ReturnType<typeof listMessages>>;
 type RecentThreadMessagesPage = Awaited<
   ReturnType<typeof paperChat.listMessages>
 >;
 type ListThreadMessagesStreamArgs = {
   kind: "list";
   startOrder?: number;
+};
+
+type ThreadUIMessage = ReturnType<typeof toUIMessages>[number] & {
+  error?: string;
+  aborted?: boolean;
+  model?: string;
+  provider?: string;
+};
+
+type ThreadMessageModelMetadata = {
+  model?: string;
+  provider?: string;
 };
 
 function countVisibleMessageGroups(rawMessages: ThreadMessagePage["page"]) {
@@ -577,6 +844,140 @@ function countVisibleMessageGroups(rawMessages: ThreadMessagePage["page"]) {
     groups += 1;
   }
   return groups;
+}
+
+function rawMessageRole(message: ThreadMessagePage["page"][number]) {
+  return message.message?.role;
+}
+
+function isAssistantLikeRawMessage(message: ThreadMessagePage["page"][number]) {
+  const role = rawMessageRole(message);
+  return role === "assistant" || role === "tool";
+}
+
+function buildThreadMessageErrorIndexes(
+  rawMessages: ThreadMessagePage["page"],
+) {
+  const errorById = new Map<string, string>();
+  const modelById = new Map<string, ThreadMessageModelMetadata>();
+  const sortedRawMessages = [...rawMessages].sort(
+    (a, b) => a.order - b.order || a.stepOrder - b.stepOrder,
+  );
+
+  for (const message of sortedRawMessages) {
+    if (message.error) errorById.set(message._id, message.error);
+    if (message.model || message.provider) {
+      modelById.set(message._id, {
+        ...(message.model ? { model: message.model } : {}),
+        ...(message.provider ? { provider: message.provider } : {}),
+      });
+    }
+  }
+
+  return { errorById, modelById, sortedRawMessages };
+}
+
+function assistantGroupErrorForUIMessage(
+  message: ThreadUIMessage,
+  uiMessages: ThreadUIMessage[],
+  rawMessages: ThreadMessagePage["page"],
+) {
+  if (message.role !== "assistant") return undefined;
+  if (typeof message.order !== "number") return undefined;
+  if (typeof message.stepOrder !== "number") return undefined;
+
+  // `toUIMessages` can collapse multiple assistant/tool rows into one UI row.
+  // Use the next assistant UI row with the same order as the boundary so an
+  // abort/error on a later sibling does not bleed into an unrelated message.
+  const nextStepOrder = uiMessages
+    .filter(
+      (candidate) =>
+        candidate !== message &&
+        candidate.role === "assistant" &&
+        candidate.order === message.order &&
+        typeof candidate.stepOrder === "number" &&
+        candidate.stepOrder > message.stepOrder,
+    )
+    .reduce<
+      number | undefined
+    >((next, candidate) => (next == null || candidate.stepOrder < next ? candidate.stepOrder : next), undefined);
+
+  const errors = rawMessages
+    .filter((raw) => {
+      if (!raw.error) return false;
+      if (!isAssistantLikeRawMessage(raw)) return false;
+      if (raw.order !== message.order) return false;
+      if (raw.stepOrder < message.stepOrder) return false;
+      return nextStepOrder == null || raw.stepOrder < nextStepOrder;
+    })
+    .map((raw) => raw.error);
+
+  return selectChatMessageError(errors);
+}
+
+function assistantGroupModelForUIMessage(
+  message: ThreadUIMessage,
+  uiMessages: ThreadUIMessage[],
+  rawMessages: ThreadMessagePage["page"],
+): ThreadMessageModelMetadata | undefined {
+  if (message.role !== "assistant") return undefined;
+  if (typeof message.order !== "number") return undefined;
+  if (typeof message.stepOrder !== "number") return undefined;
+
+  const nextStepOrder = uiMessages
+    .filter(
+      (candidate) =>
+        candidate !== message &&
+        candidate.role === "assistant" &&
+        candidate.order === message.order &&
+        typeof candidate.stepOrder === "number" &&
+        candidate.stepOrder > message.stepOrder,
+    )
+    .reduce<
+      number | undefined
+    >((next, candidate) => (next == null || candidate.stepOrder < next ? candidate.stepOrder : next), undefined);
+
+  const candidates = rawMessages.filter((raw) => {
+    if (!isAssistantLikeRawMessage(raw)) return false;
+    if (raw.order !== message.order) return false;
+    if (raw.stepOrder < message.stepOrder) return false;
+    return nextStepOrder == null || raw.stepOrder < nextStepOrder;
+  });
+
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    const candidate = candidates[i];
+    if (candidate.model || candidate.provider) {
+      return {
+        ...(candidate.model ? { model: candidate.model } : {}),
+        ...(candidate.provider ? { provider: candidate.provider } : {}),
+      };
+    }
+  }
+  return undefined;
+}
+
+function normalizeThreadUIMessages(
+  rawMessages: ThreadMessagePage["page"],
+  uiMessages: ThreadUIMessage[],
+) {
+  const { errorById, modelById, sortedRawMessages } =
+    buildThreadMessageErrorIndexes(rawMessages);
+
+  return uiMessages.map((message) => {
+    const error = selectChatMessageError([
+      errorById.get(message.id),
+      assistantGroupErrorForUIMessage(message, uiMessages, sortedRawMessages),
+    ]);
+    const modelMetadata =
+      modelById.get(message.id) ??
+      assistantGroupModelForUIMessage(message, uiMessages, sortedRawMessages);
+    return normalizeChatUIMessage({
+      ...message,
+      ...(error ? { error } : {}),
+      ...(modelMetadata?.model ? { model: modelMetadata.model } : {}),
+      ...(modelMetadata?.provider ? { provider: modelMetadata.provider } : {}),
+    });
+  });
 }
 
 async function readThreadMessagesWithVisiblePageIntegrity(
@@ -635,6 +1036,39 @@ type ThreadStreamArtifact = {
   order: number;
 };
 
+function describeRegenerateUnavailable(args: {
+  messages: RecentThreadMessagesPage["page"];
+  streams: ThreadStreamArtifact[];
+}) {
+  const highestMessageOrder = args.messages.reduce(
+    (highest, message) => Math.max(highest, message.order),
+    Number.NEGATIVE_INFINITY,
+  );
+  const highestStreamOrder = args.streams.reduce(
+    (highest, stream) => Math.max(highest, stream.order),
+    Number.NEGATIVE_INFINITY,
+  );
+  const highestOrder = Math.max(highestMessageOrder, highestStreamOrder);
+
+  if (!Number.isFinite(highestOrder)) {
+    return "Regenerate did not start because this thread has no persisted chat messages or stream artifacts.";
+  }
+
+  const roles = args.messages
+    .filter((message) => message.order === highestOrder)
+    .map((message) => `${message.message?.role ?? "unknown"}:${message.status}`)
+    .join(", ");
+  const streamCount = args.streams.filter(
+    (stream) => stream.order === highestOrder,
+  ).length;
+  const artifactSummary = [
+    roles.length > 0 ? `messages=[${roles}]` : "messages=[]",
+    `streams=${streamCount}`,
+  ].join(", ");
+
+  return `Regenerate did not start because the latest persisted turn at order ${highestOrder} has no assistant message or stream artifact to replace (${artifactSummary}). The previous generation did not persist a recoverable assistant artifact for that turn.`;
+}
+
 async function listRecentThreadArtifacts(
   ctx: MutationCtx,
   threadId: string,
@@ -653,10 +1087,7 @@ async function listRecentThreadArtifacts(
   return { messages: messages.page, streams };
 }
 
-async function deleteStreamArtifacts(
-  ctx: MutationCtx,
-  streamIds: string[],
-) {
+async function deleteStreamArtifacts(ctx: MutationCtx, streamIds: string[]) {
   for (const streamId of streamIds) {
     await ctx.runMutation(components.agent.streams.deleteStreamSync, {
       streamId,
@@ -730,26 +1161,18 @@ export const listThreadMessages = query({
     ]);
     const paginated = {
       ...rawPage,
-      page: toUIMessages(rawPage.page),
+      page: toUIMessages(rawPage.page) as ThreadUIMessage[],
     };
     // `toUIMessages` drops the `error` field during the doc→UI
-    // conversion. Attach it back by id so the client's failure Alert
-    // can classify and render without a second query.
-    // Aborted messages are a special case: the library's call.fail path
-    // persists them as {status:"failed", error: ABORT_ERROR_STRING}. We
-    // translate that sentinel into a clean `aborted: true` boolean and
-    // drop the envelope so the client branches cleanly without parsing
-    // an error string.
-    const errorById = new Map<string, string>();
-    for (const doc of rawPage.page) {
-      if (doc.error) errorById.set(doc._id, doc.error);
-    }
-    const page = paginated.page.map((m) => {
-      const err = errorById.get(m.id);
-      if (!err) return m;
-      if (err === ABORT_ERROR_STRING) return { ...m, aborted: true };
-      return { ...m, error: err };
-    });
+    // conversion and may collapse assistant/tool siblings into one UI
+    // message. Attach the relevant raw error back to each UI row so the
+    // client can classify and render without a second query.
+    // Aborted messages are a special case: the library can persist either
+    // the direct abort sentinel or its "Trying to update a message that
+    // failed" wrapper when a late stream save races the abort. Both are
+    // stop states, not errors; translate them into a clean `aborted: true`
+    // boolean so the client renders the stopped pill.
+    const page = normalizeThreadUIMessages(rawPage.page, paginated.page);
     return { ...paginated, page, streams };
   },
 });
@@ -760,7 +1183,11 @@ export const listThreadMessages = query({
 
 export const regenerateLastAssistant = mutation({
   args: { threadId: v.string() },
-  returns: v.null(),
+  returns: v.object({
+    started: v.boolean(),
+    generationAttemptId: v.optional(v.string()),
+    error: v.optional(chatGenerationJobErrorValidator),
+  }),
   handler: async (ctx, { threadId }) => {
     const { job } = await authorizeThreadAccess(ctx, threadId);
     if (job.isGenerating) {
@@ -770,9 +1197,21 @@ export const regenerateLastAssistant = mutation({
       );
     }
 
-    const { messages, streams } = await listRecentThreadArtifacts(ctx, threadId);
+    const { messages, streams } = await listRecentThreadArtifacts(
+      ctx,
+      threadId,
+    );
     const latestTurn = resolveLatestAssistantTurn({ messages, streams });
-    if (!latestTurn) return null;
+    if (!latestTurn) {
+      return {
+        started: false,
+        error: regenerateUnavailableError(
+          job.error,
+          describeRegenerateUnavailable({ messages, streams }),
+        ),
+      };
+    }
+    await assertChatConcurrencyAvailable(ctx, job.userId);
 
     await purgeAssistantTurnArtifacts(ctx, {
       assistantMessageIds: latestTurn.assistantMessageIds,
@@ -780,18 +1219,21 @@ export const regenerateLastAssistant = mutation({
     });
 
     const now = Date.now();
+    const generationAttemptId = newChatGenerationAttemptId(now);
     await ctx.db.patch(job._id, {
       isGenerating: true,
       generatingStartedAt: now,
+      chatGenerationAttemptId: generationAttemptId,
       updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.chat.messages.generateResponse,
-      { threadId, promptMessageId: latestTurn.promptMessageId },
-    );
-    return null;
+    await ctx.scheduler.runAfter(0, internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId: latestTurn.promptMessageId,
+      generationAttemptId,
+      chatModelId: job.chatModelId ?? null,
+    });
+    return { started: true, generationAttemptId };
   },
 });
 
@@ -826,6 +1268,7 @@ export const clearThread = mutation({
     await ctx.db.patch(job._id, {
       isGenerating: false,
       generatingStartedAt: undefined,
+      chatGenerationAttemptId: undefined,
       shouldAbort: undefined,
       messageCount: 0,
       lastMessageAt: undefined,
@@ -856,24 +1299,39 @@ export const swapModel = mutation({
 /* ────────────────────────────────────────────────────────────────── */
 
 export const abortGeneration = mutation({
-  args: { threadId: v.string() },
-  returns: v.null(),
-  handler: async (ctx, { threadId }) => {
+  args: {
+    threadId: v.string(),
+    generationAttemptId: v.string(),
+  },
+  returns: v.object({ stopped: v.boolean() }),
+  handler: async (ctx, { threadId, generationAttemptId }) => {
     const { job } = await authorizeThreadAccess(ctx, threadId);
-    if (!job.isGenerating) return null;
+    if (!job.isGenerating) return { stopped: false };
+    if (job.chatGenerationAttemptId !== generationAttemptId) {
+      return { stopped: false };
+    }
     await ctx.db.patch(job._id, {
       shouldAbort: true,
       updatedAt: Date.now(),
     });
-    return null;
+    return { stopped: true };
   },
 });
 
 export const shouldAbortInternal = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
+  args: {
+    jobId: v.id("extractionJobs"),
+    generationAttemptId: v.optional(v.string()),
+  },
   returns: v.boolean(),
-  handler: async (ctx, { jobId }) => {
+  handler: async (ctx, { jobId, generationAttemptId }) => {
     const job = await ctx.db.get(jobId);
+    if (
+      generationAttemptId !== undefined &&
+      job?.chatGenerationAttemptId !== generationAttemptId
+    ) {
+      return false;
+    }
     return job?.shouldAbort === true;
   },
 });

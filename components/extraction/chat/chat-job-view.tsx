@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
@@ -20,10 +20,42 @@ interface ChatJobViewProps {
 
 export function ChatJobView({ job, threadId }: ChatJobViewProps) {
   useChatShortcuts();
+  const [messageGenerationActive, setMessageGenerationActive] = useState<{
+    active: boolean;
+    generationAttemptId?: string;
+  }>({ active: false });
   const rawChatModels = useQuery(api.chat.model.listChatModels, {});
   const chatModels = useMemo(
     () => (rawChatModels ? sortChatModels(rawChatModels) : []),
     [rawChatModels],
+  );
+  const effectiveJob = useMemo(
+    () =>
+      messageGenerationActive.active && job.isGenerating !== true
+        ? {
+            ...job,
+            isGenerating: true,
+            chatGenerationAttemptId:
+              messageGenerationActive.generationAttemptId ??
+              job.chatGenerationAttemptId,
+          }
+        : job,
+    [
+      job,
+      messageGenerationActive.active,
+      messageGenerationActive.generationAttemptId,
+    ],
+  );
+  const handleGenerationActivityChange = useCallback(
+    (active: boolean, generationAttemptId?: string) => {
+      setMessageGenerationActive((current) =>
+        current.active === active &&
+        current.generationAttemptId === generationAttemptId
+          ? current
+          : { active, generationAttemptId },
+      );
+    },
+    [],
   );
 
   return (
@@ -43,15 +75,18 @@ export function ChatJobView({ job, threadId }: ChatJobViewProps) {
             data-mode="chat"
             data-job-id={job._id}
           >
-            <ChatHeader job={job} threadId={threadId} />
+            <ChatHeader job={effectiveJob} threadId={threadId} />
             <MessageList
               threadId={threadId}
-              jobId={job._id}
-              chatModelId={job.chatModelId ?? null}
+              jobId={effectiveJob._id}
+              chatModelId={effectiveJob.chatModelId ?? null}
               chatModels={chatModels}
+              isJobGenerating={job.isGenerating === true}
+              jobError={job.error ?? null}
+              onGenerationActivityChange={handleGenerationActivityChange}
             />
             <MessageComposer
-              job={job}
+              job={effectiveJob}
               threadId={threadId}
               chatModels={chatModels}
             />
