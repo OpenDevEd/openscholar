@@ -6,7 +6,10 @@
  */
 
 import { ConvexError, v } from "convex/values";
-import { isAbortErrorString } from "@/lib/chat/abort-signal";
+import {
+  ABORT_REASON_USER_STOPPED,
+  isAbortErrorString,
+} from "@/lib/chat/abort-signal";
 
 export const ERROR_CODES = [
   // chat + extraction shared
@@ -598,9 +601,9 @@ function parseJsonIfString(
 
 function isAbort(rec: Record<string, unknown>): boolean {
   const name = typeof rec.name === "string" ? rec.name : "";
-  if (name === "AbortError") return true;
-  const msg = typeof rec.message === "string" ? rec.message.toLowerCase() : "";
-  return msg.includes("aborted") || msg.includes("abortsignal");
+  const msg = typeof rec.message === "string" ? rec.message : "";
+  if (isAbortErrorString(msg)) return true;
+  return name === "AbortError" && msg === ABORT_REASON_USER_STOPPED;
 }
 
 function isNetworkError(rec: Record<string, unknown>): boolean {

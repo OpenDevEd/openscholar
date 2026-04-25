@@ -1426,7 +1426,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     });
   });
 
-  it("A9a.2 — regenerate keeps the previous backend error until the replacement stream succeeds", async () => {
+  it("A9a.2 — regenerate clears the previous backend error before the replacement stream runs", async () => {
     const t = createTestConvex();
     const stopped = await createStoppedAssistantTurn(t);
     const caller = asCaller(t, "c_msg");
@@ -1447,7 +1447,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     });
 
     const jobAfterStart = await t.run((ctx) => ctx.db.get(stopped.jobId));
-    expect(jobAfterStart?.error?.code).toBe("context_too_long");
+    expect(jobAfterStart?.error).toBeUndefined();
 
     mockDoStream.mockImplementation(finishingDoStream(["regenerated reply"]));
 
@@ -1459,6 +1459,36 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
 
     const jobAfterSuccess = await t.run((ctx) => ctx.db.get(stopped.jobId));
     expect(jobAfterSuccess?.error).toBeUndefined();
+  });
+
+  it("A9a.3 — regenerate resolves a valid turn when many same-order assistant artifacts hide the prompt from the first page", async () => {
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t);
+    const { modelId } = await seedModelAndCredits(t, userId);
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "wide turn");
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 25; i++) {
+        await paperChat.saveMessage(ctx, {
+          threadId,
+          promptMessageId,
+          message: { role: "assistant", content: `assistant artifact ${i}` },
+          metadata: { status: "success" },
+          skipEmbeddings: true,
+        });
+      }
+    });
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.mutation(
+      api.chat.messages.regenerateLastAssistant,
+      { threadId },
+    );
+
+    const messagesAfterPurge = await listPersistedMessages(t, threadId);
+    expect(result.started).toBe(true);
+    expect(messagesAfterPurge.some((message) => message.role === "assistant"))
+      .toBe(false);
   });
 
   it("A9b — regenerate rejects when the user is already at the chat concurrency cap", async () => {

@@ -78,7 +78,6 @@ export function ChatJobView({ job, threadId }: ChatJobViewProps) {
             <ChatHeader job={effectiveJob} threadId={threadId} />
             <MessageList
               threadId={threadId}
-              jobId={effectiveJob._id}
               chatModelId={effectiveJob.chatModelId ?? null}
               chatModels={chatModels}
               isJobGenerating={job.isGenerating === true}

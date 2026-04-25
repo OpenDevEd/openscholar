@@ -20,6 +20,8 @@ import { useAppToast } from "@/lib/toast";
 import { toast } from "sonner";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
 import { cn } from "@/lib/utils";
+import { ChatErrorAlert } from "./chat-error-alert";
+import { classifyChatError, serializeChatError } from "@/lib/errors/taxonomy";
 
 interface MessageComposerProps {
   job: Doc<"extractionJobs">;
@@ -36,9 +38,11 @@ export function MessageComposer({
   const tc = useTranslations("composer");
   const appToast = useAppToast();
   const [text, setText] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
   const [stopPending, setStopPending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isComposingRef = useRef(false);
+  const sendRequestSeq = useRef(0);
   const reduceMotion = useReducedMotion();
   const jobIsGenerating = job.isGenerating ?? false;
   const generationAttemptId = job.chatGenerationAttemptId ?? null;
@@ -76,6 +80,8 @@ export function MessageComposer({
   const handleSubmit = useCallback(async () => {
     const prompt = text.trim();
     if (!prompt || jobIsGenerating) return;
+    const requestId = ++sendRequestSeq.current;
+    setSendError(null);
     setText("");
     try {
       await sendMessage({ threadId, prompt });
@@ -83,12 +89,13 @@ export function MessageComposer({
       // straight back to typing — no mouse round-trip.
       requestAnimationFrame(() => textareaRef.current?.focus());
     } catch (err) {
+      if (sendRequestSeq.current !== requestId) return;
       // Restore the text so the user doesn't lose their typing.
       setText(prompt);
-      appToast.error(t("chatFailedMessage"));
+      setSendError(serializeChatError(classifyChatError(err)));
       console.error("send message failed", err);
     }
-  }, [text, jobIsGenerating, sendMessage, threadId, appToast, t]);
+  }, [text, jobIsGenerating, sendMessage, threadId]);
 
   const handleStop = useCallback(() => {
     if (!generationAttemptId || stopPending) return;
@@ -209,7 +216,7 @@ export function MessageComposer({
           className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive-foreground"
         >
           <span className="text-foreground">{tc("sources.emptyBanner")}</span>
-	                  <Button
+          <Button
             type="button"
             size="sm"
             variant="outline"
@@ -224,6 +231,18 @@ export function MessageComposer({
         </div>
       )}
 
+      {sendError ? (
+        <ChatErrorAlert
+          rawError={sendError}
+          onRetry={() => {
+            void handleSubmit();
+          }}
+          canRetry={!jobIsGenerating && !hasNoSourcesIncluded}
+          chatModelId={job.chatModelId ?? null}
+          models={chatModels}
+        />
+      ) : null}
+
       <motion.div
         layout={reduceMotion ? false : "size"}
         transition={{ duration: 0.18, ease: "easeOut" }}
@@ -236,7 +255,10 @@ export function MessageComposer({
           ref={textareaRef}
           name="message"
           value={text}
-          onChange={(e) => setText(e.currentTarget.value)}
+          onChange={(e) => {
+            setText(e.currentTarget.value);
+            if (sendError) setSendError(null);
+          }}
           onKeyDown={handleKeyDown}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}

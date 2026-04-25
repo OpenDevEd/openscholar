@@ -40,6 +40,7 @@ import {
   type ResolvablePaper,
 } from "@/lib/chat/resolve-paper";
 import { normalizeChatUIMessage } from "@/lib/chat/message-state";
+import { getChatMessageText } from "@/lib/chat/message-text";
 import {
   getLatestAssistantForRegenerate,
   hasServerRegenerateReplacement,
@@ -56,7 +57,6 @@ import { cn } from "@/lib/utils";
 
 interface MessageListProps {
   threadId: string;
-  jobId: Id<"extractionJobs">;
   chatModelId: Id<"models"> | null;
   chatModels: ChatModelRow[];
   isJobGenerating?: boolean;
@@ -72,7 +72,9 @@ type MessageListJobError = {
   code: ChatErrorClass;
   message: string;
   httpStatus?: number;
+  retryAfterMs?: number;
   providerName?: string;
+  at?: number;
 };
 
 function serializeMessageListJobError(error: MessageListJobError): string {
@@ -81,9 +83,24 @@ function serializeMessageListJobError(error: MessageListJobError): string {
     class: error.code,
     message: error.message,
     ...(error.httpStatus !== undefined ? { httpStatus: error.httpStatus } : {}),
+    ...(error.retryAfterMs !== undefined
+      ? { retryAfterMs: error.retryAfterMs }
+      : {}),
     ...(error.providerName !== undefined
       ? { providerName: error.providerName }
       : {}),
+  });
+}
+
+function messageListJobErrorKey(error: MessageListJobError | null): string | null {
+  if (!error) return null;
+  return JSON.stringify({
+    code: error.code,
+    message: error.message,
+    httpStatus: error.httpStatus ?? null,
+    retryAfterMs: error.retryAfterMs ?? null,
+    providerName: error.providerName ?? null,
+    at: error.at ?? null,
   });
 }
 
@@ -248,22 +265,10 @@ function markLocalRegenerateFailed(
   };
 }
 
-function getMessageText(message: UIMessage): string {
-  if (message.text) return message.text;
-  return message.parts
-    .filter(
-      (p): p is Extract<UIMessage["parts"][number], { type: "text" }> =>
-        p.type === "text",
-    )
-    .map((p) => p.text)
-    .join("");
-}
-
 interface MessageRowProps {
   message: ChatUIMessage;
   isLastAssistant: boolean;
   isFirstInGroup: boolean;
-  threadId: string;
   chatModelId: Id<"models"> | null;
   chatModels: ChatModelRow[];
   onRetry: () => void;
@@ -275,7 +280,6 @@ export const MessageRow = memo(function MessageRow({
   message,
   isLastAssistant,
   isFirstInGroup,
-  threadId,
   chatModelId,
   chatModels,
   onRetry,
@@ -283,26 +287,30 @@ export const MessageRow = memo(function MessageRow({
   isJobGenerating = true,
 }: MessageRowProps) {
   const normalizedMessage = normalizeChatUIMessage(message);
-  const text = getMessageText(normalizedMessage);
+  const text = getChatMessageText(normalizedMessage);
   const isStreamingStatus = normalizedMessage.status === "streaming";
   const isPendingStatus = normalizedMessage.status === "pending";
   const isAborted = normalizedMessage.aborted === true;
+  const isUser = normalizedMessage.role === "user";
+  const isAssistant = normalizedMessage.role === "assistant";
   const isLocalRegenerate = normalizedMessage.id.startsWith("local-regenerate:");
   const isStalePending =
+    isAssistant &&
     !isJobGenerating &&
     !isLocalRegenerate &&
     !isAborted &&
     (isStreamingStatus || isPendingStatus);
   const isGenerating =
-    (isStreamingStatus || isPendingStatus) && !isStalePending;
+    isAssistant && (isStreamingStatus || isPendingStatus) && !isStalePending;
   // Aborted messages surface to the client as status:"failed" (the library
   // maps stream aborted → "failed" internally — see
   // node_modules/@convex-dev/agent/src/deltas.ts statusFromStreamStatus).
   // The `aborted` flag discriminates: real failure vs. user stop.
   const isFailed =
-    (normalizedMessage.status === "failed" || isStalePending) && !isAborted;
+    isAssistant &&
+    (normalizedMessage.status === "failed" || isStalePending) &&
+    !isAborted;
   const isEmpty = text.length === 0;
-  const isUser = normalizedMessage.role === "user";
 
   const rawError = normalizedMessage.error;
   const displayError =
@@ -398,7 +406,6 @@ export const MessageRow = memo(function MessageRow({
 
 export function MessageList({
   threadId,
-  jobId,
   chatModelId,
   chatModels,
   isJobGenerating = false,
@@ -421,6 +428,7 @@ export function MessageList({
   const serverRegenerateReplacementVisible =
     localRegenerate !== null &&
     hasServerRegenerateReplacement(results as ChatUIMessage[], localRegenerate);
+  const jobErrorKey = useMemo(() => messageListJobErrorKey(jobError), [jobError]);
   const jobErrorWire = useMemo(() => {
     if (!jobError) return null;
     return serializeMessageListJobError(jobError);
@@ -442,6 +450,7 @@ export function MessageList({
     if (serverRegenerateReplacementVisible) return;
     if (isJobGenerating) return;
     if (!jobErrorWire) return;
+    if (localRegenerate.startedWithJobErrorKey === jobErrorKey) return;
 
     setLocalRegenerate((current) => {
       if (current?.requestId !== localRegenerate.requestId) return current;
@@ -451,6 +460,7 @@ export function MessageList({
     });
   }, [
     isJobGenerating,
+    jobErrorKey,
     jobErrorWire,
     localRegenerate,
     serverRegenerateReplacementVisible,
@@ -507,6 +517,7 @@ export function MessageList({
           stepOrder: (lastMessage?.stepOrder ?? -1) + 1,
           requestId: `missing:${Date.now()}:${++localRegenerateRequestSeq.current}`,
           startedAt: Date.now(),
+          startedWithJobErrorKey: jobErrorKey,
         },
         LOCAL_REGENERATE_FAILED_ERROR,
       );
@@ -528,6 +539,7 @@ export function MessageList({
       stepOrder: latestAssistant.stepOrder,
       requestId: `${latestAssistant.id}:${Date.now()}:${++localRegenerateRequestSeq.current}`,
       startedAt: Date.now(),
+      startedWithJobErrorKey: jobErrorKey,
     };
     localRegenerateRef.current = nextState;
     setLocalRegenerate(nextState);
@@ -569,7 +581,7 @@ export function MessageList({
         }
         console.error("retry failed", err);
       });
-  }, [jobErrorWire, regenerate, results, threadId]);
+  }, [jobErrorKey, jobErrorWire, regenerate, results, threadId]);
 
   if (renderResults.length === 0) {
     if (isLoadingFirstPage) {
@@ -630,7 +642,6 @@ export function MessageList({
                     message={message as ChatUIMessage}
                     isLastAssistant={message.id === lastAssistantId}
                     isFirstInGroup={isFirstInGroup}
-                    threadId={threadId}
                     chatModelId={chatModelId}
                     chatModels={chatModels}
                     onRetry={handleRetry}

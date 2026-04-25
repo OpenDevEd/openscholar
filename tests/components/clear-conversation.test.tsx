@@ -14,7 +14,6 @@ import userEvent from "@testing-library/user-event";
 import type { UIMessage } from "@convex-dev/agent/react";
 import { ClearConversationDialog } from "@/components/extraction/chat/clear-conversation";
 import { MessageList } from "@/components/extraction/chat/message-list";
-import type { Id } from "@/convex/_generated/dataModel";
 
 type ChatUIMessage = UIMessage & { error?: string; aborted?: boolean };
 
@@ -252,7 +251,6 @@ function ClearConversationHarness() {
       </div>
       <MessageList
         threadId="thread_1"
-        jobId={"job_1" as Id<"extractionJobs">}
         chatModelId={null}
         chatModels={[]}
       />

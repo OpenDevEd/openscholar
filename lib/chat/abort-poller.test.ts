@@ -10,19 +10,19 @@ afterEach(() => {
 });
 
 describe("startAbortPoller", () => {
-  it("returns a function", () => {
+  it("returns a function", async () => {
     const stop = startAbortPoller({
       readFlag: async () => false,
       onAbort: () => {},
     });
     expect(typeof stop).toBe("function");
-    stop();
+    await stop();
   });
 
   it("stop() clears the interval — readFlag never called after stop", async () => {
     const readFlag = vi.fn(async () => false);
     const stop = startAbortPoller({ readFlag, onAbort: () => {} });
-    stop();
+    await stop();
     await vi.advanceTimersByTimeAsync(10_000);
     expect(readFlag).not.toHaveBeenCalled();
   });
@@ -35,7 +35,7 @@ describe("startAbortPoller", () => {
     const stop = startAbortPoller({ readFlag, onAbort, intervalMs: 100 });
     await vi.advanceTimersByTimeAsync(300);
     expect(onAbort).toHaveBeenCalledTimes(1);
-    stop();
+    await stop();
   });
 
   it("fires onAbort at most once even when readFlag stays true", async () => {
@@ -44,7 +44,7 @@ describe("startAbortPoller", () => {
     const stop = startAbortPoller({ readFlag, onAbort, intervalMs: 100 });
     await vi.advanceTimersByTimeAsync(1_000);
     expect(onAbort).toHaveBeenCalledTimes(1);
-    stop();
+    await stop();
   });
 
   it("never fires onAbort after stop(), even if a readFlag was in-flight", async () => {
@@ -58,8 +58,9 @@ describe("startAbortPoller", () => {
     const onAbort = vi.fn();
     const stop = startAbortPoller({ readFlag, onAbort, intervalMs: 100 });
     await vi.advanceTimersByTimeAsync(100); // tick fires, readFlag hangs.
-    stop();
+    const stopPromise = stop();
     resolveFirst(true);
+    await stopPromise;
     await vi.advanceTimersByTimeAsync(0);
     expect(onAbort).not.toHaveBeenCalled();
   });
@@ -76,7 +77,7 @@ describe("startAbortPoller", () => {
     await vi.advanceTimersByTimeAsync(500);
     expect(readFlag.mock.calls.length).toBeGreaterThanOrEqual(3);
     expect(onAbort).not.toHaveBeenCalled();
-    stop();
+    await stop();
   });
 
   it("does not start a second read while the prior read is still pending", async () => {
@@ -95,7 +96,7 @@ describe("startAbortPoller", () => {
     await vi.advanceTimersByTimeAsync(100);
     expect(readFlag).toHaveBeenCalledTimes(2);
     expect(onAbort).not.toHaveBeenCalled();
-    stop();
+    await stop();
   });
 
   it("defaults intervalMs to 500", async () => {
@@ -105,7 +106,7 @@ describe("startAbortPoller", () => {
     expect(readFlag).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(readFlag).toHaveBeenCalledTimes(1);
-    stop();
+    await stop();
   });
 
   it("honors a custom intervalMs", async () => {
@@ -119,6 +120,31 @@ describe("startAbortPoller", () => {
     expect(readFlag).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(readFlag).toHaveBeenCalledTimes(1);
-    stop();
+    await stop();
+  });
+
+  it("stop() waits for an in-flight readFlag before resolving", async () => {
+    let resolveRead!: (value: boolean) => void;
+    const pendingRead = new Promise<boolean>((resolve) => {
+      resolveRead = resolve;
+    });
+    const readFlag = vi.fn(() => pendingRead);
+    const stop = startAbortPoller({
+      readFlag,
+      onAbort: () => {},
+      intervalMs: 100,
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+    let stopped = false;
+    const stopPromise = stop().then(() => {
+      stopped = true;
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopped).toBe(false);
+
+    resolveRead(false);
+    await stopPromise;
+    expect(stopped).toBe(true);
   });
 });

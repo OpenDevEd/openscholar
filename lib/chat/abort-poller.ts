@@ -1,4 +1,4 @@
-export type StopPoller = () => void;
+export type StopPoller = () => Promise<void>;
 
 export type StartAbortPollerArgs = {
   readFlag: () => Promise<boolean>;
@@ -14,11 +14,12 @@ export function startAbortPoller({
   let fired = false;
   let stopped = false;
   let reading = false;
+  let inFlight: Promise<void> | null = null;
 
   const handle = setInterval(() => {
     if (fired || stopped || reading) return;
     reading = true;
-    readFlag()
+    inFlight = readFlag()
       .then((flag) => {
         if (flag && !fired && !stopped) {
           fired = true;
@@ -31,11 +32,13 @@ export function startAbortPoller({
       })
       .finally(() => {
         reading = false;
+        inFlight = null;
       });
   }, intervalMs);
 
-  return () => {
+  return async () => {
     stopped = true;
     clearInterval(handle);
+    await inFlight;
   };
 }

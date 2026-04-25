@@ -69,6 +69,7 @@ const chatGenerationJobErrorValidator = v.object({
   code: errorCodeValidator,
   message: v.string(),
   httpStatus: v.optional(v.number()),
+  retryAfterMs: v.optional(v.number()),
   providerName: v.optional(v.string()),
   at: v.number(),
 });
@@ -77,6 +78,7 @@ type ChatGenerationJobError = {
   code: ErrorCode;
   message: string;
   httpStatus?: number;
+  retryAfterMs?: number;
   providerName?: string;
   at: number;
 };
@@ -92,6 +94,9 @@ function toChatGenerationJobError(rawError: unknown) {
     message: envelope.message,
     ...(envelope.httpStatus !== undefined
       ? { httpStatus: envelope.httpStatus }
+      : {}),
+    ...(envelope.retryAfterMs !== undefined
+      ? { retryAfterMs: envelope.retryAfterMs }
       : {}),
     ...(envelope.providerName !== undefined
       ? { providerName: envelope.providerName }
@@ -110,6 +115,9 @@ function regenerateUnavailableError(
       message: jobError.message,
       ...(jobError.httpStatus !== undefined
         ? { httpStatus: jobError.httpStatus }
+        : {}),
+      ...(jobError.retryAfterMs !== undefined
+        ? { retryAfterMs: jobError.retryAfterMs }
         : {}),
       ...(jobError.providerName !== undefined
         ? { providerName: jobError.providerName }
@@ -704,7 +712,7 @@ export const generateResponse = internalAction({
       // clear we could — in theory — spuriously abort the very next
       // turn (impossible under the current per-thread lock, but
       // defence in depth). See plan § 3 placement notes.
-      stopAbortPoller();
+      await stopAbortPoller();
       await ctx.runMutation(internal.chat.concurrency.releaseThreadLock, {
         jobId,
         generationAttemptId,
@@ -1036,6 +1044,9 @@ type ThreadStreamArtifact = {
   order: number;
 };
 
+const REGENERATE_ARTIFACT_PAGE_SIZE = 50;
+const REGENERATE_ARTIFACT_MAX_PAGES = 10;
+
 function describeRegenerateUnavailable(args: {
   messages: RecentThreadMessagesPage["page"];
   streams: ThreadStreamArtifact[];
@@ -1076,15 +1087,31 @@ async function listRecentThreadArtifacts(
   messages: RecentThreadMessagesPage["page"];
   streams: ThreadStreamArtifact[];
 }> {
-  const messages = await paperChat.listMessages(ctx, {
-    threadId,
-    paginationOpts: { numItems: 20, cursor: null },
-  });
   const streams = await ctx.runQuery(components.agent.streams.list, {
     threadId,
     statuses: ["streaming", "finished", "aborted"],
   });
-  return { messages: messages.page, streams };
+  const messages: RecentThreadMessagesPage["page"] = [];
+  let cursor: string | null = null;
+  for (
+    let pageIndex = 0;
+    pageIndex < REGENERATE_ARTIFACT_MAX_PAGES;
+    pageIndex++
+  ) {
+    const page = await paperChat.listMessages(ctx, {
+      threadId,
+      paginationOpts: {
+        numItems: REGENERATE_ARTIFACT_PAGE_SIZE,
+        cursor,
+      },
+    });
+    messages.push(...page.page);
+    if (resolveLatestAssistantTurn({ messages, streams })) break;
+    if (page.isDone) break;
+    if (!page.continueCursor || page.continueCursor === cursor) break;
+    cursor = page.continueCursor;
+  }
+  return { messages, streams };
 }
 
 async function deleteStreamArtifacts(ctx: MutationCtx, streamIds: string[]) {
@@ -1224,6 +1251,7 @@ export const regenerateLastAssistant = mutation({
       isGenerating: true,
       generatingStartedAt: now,
       chatGenerationAttemptId: generationAttemptId,
+      error: undefined,
       updatedAt: now,
     });
 
@@ -1335,7 +1363,3 @@ export const shouldAbortInternal = internalQuery({
     return job?.shouldAbort === true;
   },
 });
-
-// Export unused helper so TypeScript keeps the Id import alive — helps
-// any future caller that wants to type a modelId locally.
-export type ChatMessageJobId = Id<"extractionJobs">;

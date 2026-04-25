@@ -23,10 +23,7 @@ import { getProviderIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import type { AIProvider } from "@/lib/types/ai.types";
 import {
-  isRetryable,
   parseChatError,
-  requiresAdminAction,
-  requiresUserEdit,
   type ChatErrorClass,
   type ChatErrorEnvelope,
 } from "@/lib/errors/taxonomy";
@@ -162,25 +159,10 @@ function ActionRow({
   canRetry: boolean;
   activeModel: ActiveModel | null;
 }) {
-  const t = useTranslations("extraction");
-
-  if (requiresUserEdit(envelope)) {
-    return (
-      <span className="text-xs text-muted-foreground">
-        {t("chatErrorActionEditPrompt")}
-      </span>
-    );
-  }
-  if (requiresAdminAction(envelope)) {
-    return (
-      <span className="text-xs text-muted-foreground">
-        {t("chatErrorActionContactAdmin")}
-      </span>
-    );
-  }
-  // Aborts are taxonomy-retryable but the user explicitly stopped — don't
-  // surface a one-click retry that contradicts their intent.
-  if (envelope.class === "aborted" || !isRetryable[envelope.class]) {
+  // Stopped responses are a successful user action, not a failed response to
+  // replay. Every other inline chat error exposes retry when the parent says
+  // the target message is retryable.
+  if (envelope.class === "aborted") {
     return null;
   }
   if (!canRetry) {
@@ -217,6 +199,7 @@ function RetryButton({
 
   return (
     <Button
+      type="button"
       size="sm"
       variant="outline"
       onClick={onRetry}
@@ -249,12 +232,14 @@ function CountdownLabel({ remaining }: { remaining: number }) {
 }
 
 function useCountdown(retryAfterMs: number | undefined): number | null {
-  const [target] = useState<number | null>(() =>
-    retryAfterMs ? Date.now() + retryAfterMs : null,
+  const target = useMemo(
+    () => (retryAfterMs ? Date.now() + retryAfterMs : null),
+    [retryAfterMs],
   );
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (target === null) return;
+    setNow(Date.now());
     const id = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(id);
   }, [target]);

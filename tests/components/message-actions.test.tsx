@@ -10,7 +10,6 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MessageActions } from "@/components/extraction/chat/message-actions";
-import type { Id } from "@/convex/_generated/dataModel";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: { model?: string }) => {
@@ -51,7 +50,7 @@ function renderActions(
           parts: [{ type: "text", text }],
         }}
         isLastAssistant={isLastAssistant}
-        chatModelId={null as unknown as Id<"models">}
+        chatModelId={null}
         models={[]}
         alwaysVisible
         onRetry={onRetry}
@@ -91,24 +90,12 @@ describe("<MessageActions> retry enablement", () => {
 
   it("B6 — retry is not clickable while the message is streaming", () => {
     renderActions("streaming", true);
-    // Current gate: showRetry=true while streaming (isLastAssistant), but
-    // disabled=true. Either way the user cannot trigger a regenerate.
-    const retry = screen.queryByRole("button", { name: /regenerate/i });
-    if (retry) {
-      expect(retry).toBeDisabled();
-    } else {
-      expect(retry).toBeNull();
-    }
+    expect(screen.getByRole("button", { name: /regenerate/i })).toBeDisabled();
   });
 
   it("B6a — retry is not clickable while the message is pending", () => {
     renderActions("pending", true);
-    const retry = screen.queryByRole("button", { name: /regenerate/i });
-    if (retry) {
-      expect(retry).toBeDisabled();
-    } else {
-      expect(retry).toBeNull();
-    }
+    expect(screen.getByRole("button", { name: /regenerate/i })).toBeDisabled();
   });
 
   it("B7 — clicking retry delegates to the parent regenerate handler", async () => {

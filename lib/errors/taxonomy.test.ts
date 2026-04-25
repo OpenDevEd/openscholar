@@ -278,24 +278,16 @@ describe("classifyUnknownError — context bounds", () => {
 
 describe("errorCodeValidator", () => {
   it("R17: is a v.union of literals covering every ERROR_CODES entry", () => {
-    type UnionLike = {
-      kind: string;
-      members?: Array<{ kind: string; value?: unknown }>;
-    };
-    const v = errorCodeValidator as unknown as UnionLike;
-    expect(v.kind).toBe("union");
-    expect(v.members).toBeDefined();
-    expect(v.members).toHaveLength(ERROR_CODES.length);
-    const literalValues = (v.members ?? []).map((m) => m.value);
+    expect(errorCodeValidator.kind).toBe("union");
+    expect(errorCodeValidator.members).toHaveLength(ERROR_CODES.length);
+    const literalValues = errorCodeValidator.members.map((m) => m.value);
     for (const code of ERROR_CODES) {
       expect(literalValues).toContain(code);
     }
   });
 
   it("R17: members are all literal validators", () => {
-    type UnionLike = { kind: string; members?: Array<{ kind: string }> };
-    const members = (errorCodeValidator as unknown as UnionLike).members ?? [];
-    for (const m of members) {
+    for (const m of errorCodeValidator.members) {
       expect(m.kind).toBe("literal");
     }
   });
@@ -424,16 +416,25 @@ describe("classifyChatError", () => {
     );
   });
 
-  it("detects aborts by AbortError name", () => {
+  it("detects only the user-stop AbortError sentinel as aborted", () => {
     const envelope = classifyChatError({
       name: "AbortError",
-      message: "The operation was aborted.",
+      message: "user_stopped",
     });
     expect(envelope.class).toBe("aborted");
     // Aborts are retryable in the unified taxonomy — the request itself
     // is not broken, the user just stopped it. UI consumers that want to
     // suppress an automatic retry button on abort should gate separately.
     expect(isRetryable[envelope.class]).toBe(true);
+  });
+
+  it("does not swallow provider AbortError failures as user-stopped turns", () => {
+    const envelope = classifyChatError({
+      name: "AbortError",
+      message: "upstream request aborted before response headers",
+    });
+    expect(envelope.class).toBe("unknown");
+    expect(envelope.message).toContain("upstream request aborted");
   });
 
   it("falls back to unknown for unrecognised shapes", () => {

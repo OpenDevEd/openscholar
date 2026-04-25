@@ -723,8 +723,6 @@
     "chatErrorShowDetails": "技術的な詳細を表示",
     "chatErrorBackendReasonLabel": "バックエンドの理由:",
     "chatErrorNoBackendReason": "この失敗したアシスタントメッセージにはバックエンドエラーが記録されていません。",
-    "chatErrorActionEditPrompt": "メッセージを編集して再送信してください。",
-    "chatErrorActionContactAdmin": "ワークスペース管理者に連絡してください。",
     "chatErrorRetryIn": "{seconds}秒後に再試行",
     "chatWaitForResponse": "応答の完了をお待ちください",
     "chatPreparing": "チャットを準備中…",

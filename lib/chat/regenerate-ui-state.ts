@@ -20,6 +20,7 @@ export type LocalRegenerateState = {
   stepOrder: number;
   requestId: string;
   startedAt: number;
+  startedWithJobErrorKey?: string | null;
   backendStarted?: boolean;
   generationAttemptId?: string;
   status?: LocalRegenerateStatus;

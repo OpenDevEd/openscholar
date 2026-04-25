@@ -21,12 +21,17 @@ import {
 import type { Id } from "@/convex/_generated/dataModel";
 
 const sendMessageMock = vi.fn().mockResolvedValue(undefined);
+const appToastErrorMock = vi.hoisted(() => vi.fn());
 let currentChatSourcesQueryResult:
   | undefined
   | {
       rows: ReturnType<typeof mkChatSourceRow>[];
       totalCount: number;
     };
+
+function withOptimisticUpdateMock<T extends ReturnType<typeof vi.fn>>(fn: T) {
+  return Object.assign(fn, { withOptimisticUpdate: () => fn });
+}
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, params?: { count?: number }) => {
@@ -44,10 +49,7 @@ vi.mock("convex/react", () => ({
     return undefined;
   },
   useMutation: () => {
-    const fn = sendMessageMock;
-    (fn as unknown as { withOptimisticUpdate: () => typeof fn }).withOptimisticUpdate =
-      () => fn;
-    return fn;
+    return withOptimisticUpdateMock(sendMessageMock);
   },
 }));
 
@@ -70,7 +72,7 @@ vi.mock("@/convex/_generated/api", () => ({
 }));
 
 vi.mock("@/lib/toast", () => ({
-  useAppToast: () => ({ error: vi.fn() }),
+  useAppToast: () => ({ error: appToastErrorMock }),
 }));
 
 beforeAll(() => {
@@ -128,6 +130,43 @@ describe("<SuggestionChips>", () => {
       threadId: "t_xyz",
       prompt: "suggestionSummarise",
     });
+  });
+
+  it("suggestion send failure surfaces an inline retry and does not toast", async () => {
+    const user = userEvent.setup();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    sendMessageMock.mockReset();
+    sendMessageMock
+      .mockRejectedValueOnce(new Error("suggestion backend down"))
+      .mockResolvedValueOnce(undefined);
+    appToastErrorMock.mockClear();
+
+    try {
+      const { container } = renderSuggestionChips();
+      await user.click(
+        screen
+          .getAllByRole("listitem")
+          .find(
+            (el) =>
+              el.getAttribute("data-suggestion-key") === "suggestionSummarise",
+          )!,
+      );
+
+      expect(container.querySelector("[data-message-error='true']")).not.toBeNull();
+      expect(container.querySelector("[data-error-backend-reason]")).toHaveTextContent(
+        "suggestion backend down",
+      );
+      expect(appToastErrorMock).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("button", { name: /chatRetryResponse/i }));
+
+      expect(sendMessageMock).toHaveBeenCalledTimes(2);
+      expect(container.querySelector("[data-message-error='true']")).toBeNull();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it("keeps the paper-count badge authoritative while chat bootstrap is still missing mirrored rows", () => {

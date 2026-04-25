@@ -723,8 +723,6 @@
     "chatErrorShowDetails": "显示技术详情",
     "chatErrorBackendReasonLabel": "后端原因：",
     "chatErrorNoBackendReason": "没有为这条失败的助手消息记录后端错误。",
-    "chatErrorActionEditPrompt": "编辑您的消息并重新发送。",
-    "chatErrorActionContactAdmin": "联系您的工作区管理员。",
     "chatErrorRetryIn": "{seconds}秒后重试",
     "chatWaitForResponse": "请等待响应完成",
     "chatPreparing": "正在准备对话…",

@@ -12,12 +12,10 @@ import {
 import userEvent from "@testing-library/user-event";
 import type { UIMessage } from "@convex-dev/agent/react";
 import { MessageList } from "@/components/extraction/chat/message-list";
-import type { Id } from "@/convex/_generated/dataModel";
 
 let uiMessages: UIMessage[] = [];
 const regenerateMock = vi.fn();
 const activityMock = vi.fn();
-const appToastErrorMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => {
@@ -49,10 +47,6 @@ vi.mock("@/convex/_generated/api", () => ({
       },
     },
   },
-}));
-
-vi.mock("@/lib/toast", () => ({
-  useAppToast: () => ({ error: appToastErrorMock }),
 }));
 
 vi.mock("@/components/ai-elements/message", () => ({
@@ -143,7 +137,6 @@ function renderList({
   return render(
     <MessageList
       threadId="t_1"
-      jobId={"job_1" as Id<"extractionJobs">}
       chatModelId={null}
       chatModels={[]}
       isJobGenerating={isJobGenerating}
@@ -181,7 +174,6 @@ beforeEach(() => {
     generationAttemptId: "attempt_regenerate",
   });
   activityMock.mockReset();
-  appToastErrorMock.mockReset();
 });
 
 describe("<MessageList> regenerate state", () => {
@@ -239,7 +231,6 @@ describe("<MessageList> regenerate state", () => {
       "Response failed",
     );
     expect(activityMock).toHaveBeenLastCalledWith(false);
-    expect(appToastErrorMock).not.toHaveBeenCalled();
   });
 
   it("uses the recorded provider error when regenerate cannot start after a failed turn", async () => {
@@ -271,7 +262,6 @@ describe("<MessageList> regenerate state", () => {
     expect(screen.getByTestId("chat-error-alert")).not.toHaveTextContent(
       "Regenerate could not start",
     );
-    expect(appToastErrorMock).not.toHaveBeenCalled();
   });
 
   it("does not clear a backend-started placeholder before the job lock has been observed", async () => {
@@ -337,7 +327,43 @@ describe("<MessageList> regenerate state", () => {
       ).toHaveAttribute("data-status", "streaming");
       expect(screen.queryByTestId("chat-error-alert")).toBeNull();
       expect(activityMock).toHaveBeenLastCalledWith(true, "attempt_regenerate");
-      expect(appToastErrorMock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not fail a fresh regenerate from the stale job error that existed before the retry click", async () => {
+    vi.useFakeTimers();
+    try {
+      renderList({
+        isJobGenerating: false,
+        jobError: {
+          code: "context_too_long",
+          message:
+            "This endpoint's maximum context length is 200000 tokens. However, you requested about 216917 tokens.",
+          httpStatus: 400,
+        },
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", { name: /regenerate response/i }),
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250);
+      });
+
+      expect(
+        document.querySelector(
+          '[data-message-id="local-regenerate:m_assistant_old"]',
+        ),
+      ).toHaveAttribute("data-status", "streaming");
+      expect(screen.queryByTestId("chat-error-alert")).toBeNull();
+      expect(activityMock).toHaveBeenLastCalledWith(true, "attempt_regenerate");
     } finally {
       vi.useRealTimers();
     }
@@ -361,7 +387,6 @@ describe("<MessageList> regenerate state", () => {
       rerender(
         <MessageList
           threadId="t_1"
-          jobId={"job_1" as Id<"extractionJobs">}
           chatModelId={null}
           chatModels={[]}
           isJobGenerating={false}
@@ -394,7 +419,6 @@ describe("<MessageList> regenerate state", () => {
         "Response failed",
       );
       expect(activityMock).toHaveBeenLastCalledWith(false);
-      expect(appToastErrorMock).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
@@ -429,7 +453,6 @@ describe("<MessageList> regenerate state", () => {
       "Response failed",
     );
     expect(activityMock).toHaveBeenLastCalledWith(false);
-    expect(appToastErrorMock).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
 
@@ -465,7 +488,6 @@ describe("<MessageList> regenerate state", () => {
     rerender(
       <MessageList
         threadId="t_1"
-        jobId={"job_1" as Id<"extractionJobs">}
         chatModelId={null}
         chatModels={[]}
         onGenerationActivityChange={activityMock}
@@ -480,6 +502,51 @@ describe("<MessageList> regenerate state", () => {
     expect(screen.getByTestId("chat-error-alert")).toHaveTextContent(
       "provider failed",
     );
+    expect(activityMock).toHaveBeenLastCalledWith(false);
+  });
+
+  it("removes the local placeholder and renders the successful server replacement", async () => {
+    const { rerender } = renderList();
+    await userEvent.click(
+      screen.getByRole("button", { name: /regenerate response/i }),
+    );
+
+    uiMessages = [
+      makeMessage({
+        id: "m_user",
+        key: "m_user",
+        role: "user",
+        order: 1,
+        stepOrder: 0,
+        text: "question",
+        parts: [{ type: "text", text: "question" }],
+      }),
+      makeMessage({
+        id: "m_assistant_success",
+        key: "m_assistant_success",
+        role: "assistant",
+        status: "success",
+        order: 1,
+        stepOrder: 1,
+        text: "fresh answer",
+        parts: [{ type: "text", text: "fresh answer" }],
+      }),
+    ];
+
+    rerender(
+      <MessageList
+        threadId="t_1"
+        chatModelId={null}
+        chatModels={[]}
+        onGenerationActivityChange={activityMock}
+      />,
+    );
+
+    expect(
+      document.querySelector('[data-message-id="local-regenerate:m_assistant_old"]'),
+    ).toBeNull();
+    expect(screen.getByText("fresh answer")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-error-alert")).toBeNull();
     expect(activityMock).toHaveBeenLastCalledWith(false);
   });
 });

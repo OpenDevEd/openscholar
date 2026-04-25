@@ -723,8 +723,6 @@
     "chatErrorShowDetails": "तकनीकी विवरण दिखाएँ",
     "chatErrorBackendReasonLabel": "बैकएंड कारण:",
     "chatErrorNoBackendReason": "इस विफल असिस्टेंट संदेश के लिए कोई बैकएंड त्रुटि दर्ज नहीं की गई.",
-    "chatErrorActionEditPrompt": "अपना संदेश संपादित करें और फिर से भेजें।",
-    "chatErrorActionContactAdmin": "अपने कार्यक्षेत्र व्यवस्थापक से संपर्क करें।",
     "chatErrorRetryIn": "{seconds}s में पुनः प्रयास करें",
     "chatWaitForResponse": "प्रतिक्रिया समाप्त होने तक प्रतीक्षा करें",
     "chatPreparing": "चैट तैयार हो रही है…",

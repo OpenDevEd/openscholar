@@ -36,6 +36,11 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 const sendMessageMock = vi.fn().mockResolvedValue(undefined);
 const abortMock = vi.fn().mockResolvedValue({ stopped: true });
 const swapMock = vi.fn().mockResolvedValue(undefined);
+const appToastErrorMock = vi.hoisted(() => vi.fn());
+
+function withOptimisticUpdateMock<T extends ReturnType<typeof vi.fn>>(fn: T) {
+  return Object.assign(fn, { withOptimisticUpdate: () => fn });
+}
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -44,19 +49,15 @@ vi.mock("next-intl", () => ({
 vi.mock("convex/react", () => ({
   useMutation: (fnRef: unknown) => {
     if (fnRef === "sendMessage") {
-      const fn = sendMessageMock;
-      (fn as unknown as { withOptimisticUpdate: () => typeof fn }).withOptimisticUpdate =
-        () => fn;
-      return fn;
+      return withOptimisticUpdateMock(sendMessageMock);
     }
     if (fnRef === "abortGeneration") return abortMock;
     if (fnRef === "swapModel") return swapMock;
     if (fnRef === "listChatModels") return vi.fn();
     if (fnRef === "bulkSetChatPapers") {
-      const fn = vi.fn().mockResolvedValue({ changedCount: 0 });
-      (fn as unknown as { withOptimisticUpdate: () => typeof fn }).withOptimisticUpdate =
-        () => fn;
-      return fn;
+      return withOptimisticUpdateMock(
+        vi.fn().mockResolvedValue({ changedCount: 0 }),
+      );
     }
     return vi.fn();
   },
@@ -87,7 +88,7 @@ vi.mock("@/convex/_generated/api", () => ({
 }));
 
 vi.mock("@/lib/toast", () => ({
-  useAppToast: () => ({ error: vi.fn() }),
+  useAppToast: () => ({ error: appToastErrorMock }),
 }));
 
 vi.mock("sonner", () => ({
@@ -175,6 +176,45 @@ describe("<MessageComposer>", () => {
       threadId: "t_1",
       prompt: "hello",
     });
+  });
+
+  it("send failure restores the prompt, surfaces an inline retry, and does not toast", async () => {
+    const user = userEvent.setup();
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    sendMessageMock.mockReset();
+    sendMessageMock
+      .mockRejectedValueOnce(new Error("backend down"))
+      .mockResolvedValueOnce(undefined);
+    appToastErrorMock.mockClear();
+
+    try {
+      const { container } = renderWithSources(
+        <MessageComposer job={makeJob()} threadId="t_1" />,
+      );
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+      await user.type(textarea, "hello");
+      await user.click(screen.getByRole("button", { name: /chatSend/i }));
+
+      await waitFor(() => {
+        expect(container.querySelector("[data-message-error='true']")).not.toBeNull();
+      });
+      expect(textarea.value).toBe("hello");
+      expect(container.querySelector("[data-error-backend-reason]")).toHaveTextContent(
+        "backend down",
+      );
+      expect(appToastErrorMock).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("button", { name: /chatRetryResponse/i }));
+
+      await waitFor(() => {
+        expect(sendMessageMock).toHaveBeenCalledTimes(2);
+      });
+      expect(container.querySelector("[data-message-error='true']")).toBeNull();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it("Shift+Enter inserts a newline and does NOT submit", async () => {

@@ -7,7 +7,7 @@
  * doctrine — never on Tailwind class strings.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { ChatErrorAlert } from "@/components/extraction/chat/chat-error-alert";
 import { serializeChatError } from "@/lib/errors/taxonomy";
 import { ABORT_ERROR_STRING } from "@/lib/chat/abort-signal";
@@ -153,6 +153,52 @@ describe("<ChatErrorAlert> — plan-01 taxonomy surface", () => {
     expect(container.querySelector("[data-action='retry-inline']")).toBeNull();
   });
 
+  it("renders retry for every non-aborted chat error when the message can retry", () => {
+    const retryableInChat = [
+      "context_too_long",
+      "moderation",
+      "auth",
+      "insufficient_credits",
+      "provider_5xx",
+    ] as const;
+
+    for (const cls of retryableInChat) {
+      const { container, unmount } = render(
+        <ChatErrorAlert
+          rawError={serializeChatError({
+            version: 1,
+            class: cls,
+            message: `${cls} backend reason`,
+          })}
+          onRetry={() => {}}
+          models={[]}
+        />,
+      );
+
+      expect(container.querySelector("[data-action='retry-inline']")).not.toBeNull();
+      unmount();
+    }
+  });
+
+  it("renders the inline retry control as a plain button so it is safe inside forms", () => {
+    const { container } = render(
+      <ChatErrorAlert
+        rawError={serializeChatError({
+          version: 1,
+          class: "unknown",
+          message: "backend down",
+        })}
+        onRetry={() => {}}
+        models={[]}
+      />,
+    );
+
+    expect(container.querySelector("[data-action='retry-inline']")).toHaveAttribute(
+      "type",
+      "button",
+    );
+  });
+
   it("renders local regenerate failures with technical details", () => {
     const wire = serializeChatError({
       version: 1,
@@ -216,5 +262,47 @@ describe("<ChatErrorAlert> — plan-01 taxonomy surface", () => {
       "extraction:chatErrorNoBackendReason",
     );
     expect(inlineReason).not.toHaveTextContent("Response failed");
+  });
+
+  it("resets the retry countdown when a new retry-after error replaces the old one", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    try {
+      const first = serializeChatError({
+        version: 1,
+        class: "rate_limit",
+        message: "first limit",
+        retryAfterMs: 1_000,
+      });
+      const second = serializeChatError({
+        version: 1,
+        class: "rate_limit",
+        message: "second limit",
+        retryAfterMs: 5_000,
+      });
+      const { rerender } = render(
+        <ChatErrorAlert rawError={first} onRetry={() => {}} models={[]} />,
+      );
+
+      expect(screen.getByRole("button", { name: /retry/i })).toBeDisabled();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_100);
+      });
+      expect(screen.getByRole("button", { name: /retry/i })).toBeEnabled();
+
+      rerender(
+        <ChatErrorAlert rawError={second} onRetry={() => {}} models={[]} />,
+      );
+
+      expect(screen.getByRole("button", { name: /retry/i })).toBeDisabled();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_100);
+      });
+      expect(screen.getByRole("button", { name: /retry/i })).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

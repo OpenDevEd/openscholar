@@ -2,14 +2,15 @@
 
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowRightIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
-import { useAppToast } from "@/lib/toast";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
 import { cn } from "@/lib/utils";
 import { usePapersContext } from "./papers-context";
+import { ChatErrorAlert } from "./chat-error-alert";
+import { classifyChatError, serializeChatError } from "@/lib/errors/taxonomy";
 
 interface SuggestionChipsProps {
   threadId: string;
@@ -24,9 +25,11 @@ const SUGGESTION_KEYS = [
 
 export function SuggestionChips({ threadId }: SuggestionChipsProps) {
   const t = useTranslations("extraction");
-  const toast = useAppToast();
   const reduceMotion = useReducedMotion();
   const { totalCount: paperCount } = usePapersContext();
+  const [lastPrompt, setLastPrompt] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const sendRequestSeq = useRef(0);
 
   const sendMessage = useMutation(
     api.chat.messages.sendMessage,
@@ -41,12 +44,16 @@ export function SuggestionChips({ threadId }: SuggestionChipsProps) {
 
   const handleSelect = useCallback(
     (prompt: string) => {
+      const requestId = ++sendRequestSeq.current;
+      setLastPrompt(prompt);
+      setSendError(null);
       void sendMessage({ threadId, prompt }).catch((err) => {
-        toast.error(t("chatFailedMessage"), undefined);
+        if (sendRequestSeq.current !== requestId) return;
+        setSendError(serializeChatError(classifyChatError(err)));
         console.error("suggestion send failed", err);
       });
     },
-    [sendMessage, threadId, toast, t],
+    [sendMessage, threadId],
   );
 
   return (
@@ -123,6 +130,17 @@ export function SuggestionChips({ threadId }: SuggestionChipsProps) {
           </button>
         ))}
       </motion.div>
+
+      {sendError ? (
+        <ChatErrorAlert
+          rawError={sendError}
+          onRetry={() => {
+            if (lastPrompt) handleSelect(lastPrompt);
+          }}
+          canRetry={lastPrompt !== null}
+          models={[]}
+        />
+      ) : null}
 
       <p
         className="hidden text-[11px] text-muted-foreground sm:block"

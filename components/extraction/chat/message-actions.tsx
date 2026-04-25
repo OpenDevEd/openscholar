@@ -18,6 +18,7 @@ import type { AIProvider } from "@/lib/types/ai.types";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "@convex-dev/agent/react";
 import type { ChatModelRow } from "./chat-model-types";
+import { getChatMessageText } from "@/lib/chat/message-text";
 
 interface ChatUIMessage {
   status: UIMessage["status"];
@@ -35,18 +36,6 @@ interface MessageActionsProps {
   /** When false, actions are hidden until the parent <article> is hovered/focused. */
   alwaysVisible?: boolean;
   onRetry: () => void;
-}
-
-function extractText(message: ChatUIMessage): string {
-  if (message.text) return message.text;
-  if (!message.parts) return "";
-  return message.parts
-    .filter(
-      (p): p is Extract<UIMessage["parts"][number], { type: "text" }> =>
-        p.type === "text",
-    )
-    .map((p) => p.text)
-    .join("\n");
 }
 
 function ActionButton({
@@ -100,7 +89,7 @@ export function MessageActions({
   const isGenerating =
     message.status === "pending" || message.status === "streaming";
   const showRetry = isLastAssistant;
-  const copyText = extractText(message);
+  const copyText = getChatMessageText(message);
   const canCopy = copyText.trim().length > 0;
 
   const activeModel = useMemo(() => {

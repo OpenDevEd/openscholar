@@ -740,8 +740,6 @@
     "chatErrorShowDetails": "Show technical details",
     "chatErrorBackendReasonLabel": "Backend reason:",
     "chatErrorNoBackendReason": "No backend error was recorded for this failed assistant message.",
-    "chatErrorActionEditPrompt": "Edit your message and send it again.",
-    "chatErrorActionContactAdmin": "Contact your workspace administrator.",
     "chatErrorRetryIn": "Retry in {seconds}s",
     "chatWaitForResponse": "Wait for the response to finish",
     "chatPreparing": "Preparing chat…",

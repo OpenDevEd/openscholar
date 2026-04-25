@@ -9,7 +9,6 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { UIMessage } from "@convex-dev/agent/react";
 import { MessageRow } from "@/components/extraction/chat/message-list";
-import type { Id } from "@/convex/_generated/dataModel";
 import { ABORT_ERROR_STRING } from "@/lib/chat/abort-signal";
 
 vi.mock("next-intl", () => ({
@@ -107,8 +106,7 @@ function renderRow(
       message={msg}
       isLastAssistant={true}
       isFirstInGroup={true}
-      threadId="t_1"
-      chatModelId={null as unknown as Id<"models">}
+      chatModelId={null}
       chatModels={[]}
       onRetry={() => {}}
       reduceMotion={true}
@@ -235,6 +233,24 @@ describe("MessageRow — aborted vs. failed branches", () => {
     expect(row).toHaveAttribute("data-streaming", "false");
     expect(row).toHaveAttribute("data-status", "failed");
     expect(row).toHaveAttribute("data-error", "true");
+  });
+
+  it("B4c1c — optimistic pending user message does not flash a stale-response error", () => {
+    const msg = makeMessage({
+      id: "optimistic-user",
+      role: "user",
+      status: "pending",
+      text: "hello",
+      parts: [{ type: "text", text: "hello" }],
+    });
+    renderRow(msg, { isJobGenerating: false });
+
+    expect(screen.getByText("hello")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-error-alert")).toBeNull();
+    const row = document.querySelector('[data-message-id="optimistic-user"]');
+    expect(row).toHaveAttribute("data-status", "pending");
+    expect(row).toHaveAttribute("data-error", "false");
+    expect(row).toHaveAttribute("data-streaming", "false");
   });
 
   it("B4c2 — raw abort sentinel on a failed assistant message renders the pill, not ChatErrorAlert", () => {
@@ -417,8 +433,7 @@ describe("MessageRow — streaming cursor transitions", () => {
         message={stopped}
         isLastAssistant={true}
         isFirstInGroup={true}
-        threadId="t_1"
-        chatModelId={null as unknown as Id<"models">}
+        chatModelId={null}
         chatModels={[]}
         onRetry={() => {}}
         reduceMotion={true}

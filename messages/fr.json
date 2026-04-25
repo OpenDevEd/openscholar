@@ -723,8 +723,6 @@
     "chatErrorShowDetails": "Afficher les détails techniques",
     "chatErrorBackendReasonLabel": "Raison backend :",
     "chatErrorNoBackendReason": "Aucune erreur backend n'a été enregistrée pour ce message assistant échoué.",
-    "chatErrorActionEditPrompt": "Modifiez votre message et renvoyez-le.",
-    "chatErrorActionContactAdmin": "Contactez l'administrateur de votre espace de travail.",
     "chatErrorRetryIn": "Réessayer dans {seconds}s",
     "chatWaitForResponse": "Attendez la fin de la réponse",
     "chatPreparing": "Préparation de la conversation…",
