@@ -28,6 +28,13 @@ type ExecutionRoutingInput = ModeRoutingInput & {
   creditsAvailability: CreditsAvailability;
 };
 
+type CreditsAvailabilityInput = {
+  isAuthenticated: boolean;
+  settlement: string;
+  totalCredits: number | undefined;
+  requiredCredits: number;
+};
+
 type ErrorRecord = Record<string, unknown>;
 
 const SMART_FALLBACK_ERROR_CODES = new Set<string>([
@@ -61,6 +68,21 @@ export function resolveModeConfigurability({
     return true;
   }
   return hasApiKey || (creditsEnabled && isAuthenticated);
+}
+
+export function resolveCreditsAvailability({
+  isAuthenticated,
+  settlement,
+  totalCredits,
+  requiredCredits,
+}: CreditsAvailabilityInput): CreditsAvailability {
+  if (!isAuthenticated) {
+    return "unavailable";
+  }
+  if (settlement !== "ready") {
+    return "unknown";
+  }
+  return (totalCredits ?? 0) >= requiredCredits ? "available" : "unavailable";
 }
 
 export function resolveExecutionDecision({

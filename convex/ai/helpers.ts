@@ -13,6 +13,7 @@ import {
   AIValidationError,
   AIProviderError,
   AIMaxRetriesExceededError,
+  applyUnpaidBatchItemErrors,
   executeAIOperation,
   type Usage,
 } from "../../lib/ai/core";
@@ -48,6 +49,11 @@ function hasStructuredConvexCode(error: unknown): boolean {
       "code" in data &&
       typeof (data as { code?: unknown }).code === "string",
   );
+}
+
+function isInsufficientCreditsError(error: unknown): boolean {
+  const code = extractErrorCode(error);
+  return code === "INSUFFICIENT_CREDITS" || code === "AI_INSUFFICIENT_CREDITS";
 }
 
 function isApiKeyMissingMessage(message: string): boolean {
@@ -200,6 +206,19 @@ export type UsageBreakdownEntry = {
   metadata?: Record<string, string>;
 };
 
+function collectBillableItemIds(
+  entries: UsageBreakdownEntry[],
+  pricing: Pricing,
+): string[] {
+  return entries.flatMap((entry) => {
+    if (calculateServerCreditsToDeduct(entry.usage, pricing) <= 0) {
+      return [];
+    }
+    const itemId = entry.metadata?.paperId;
+    return itemId ? [itemId] : [];
+  });
+}
+
 /**
  * Batch-aware auth and credits wrapper.
  * Checks auth/credits once, runs the batch handler, then deducts credits based on total usage.
@@ -288,23 +307,48 @@ export async function withAuthAndCreditsBatch<T>(
     }
 
     if (usageBreakdown && usageBreakdown.length > 0) {
-      for (const entry of usageBreakdown) {
+      for (let index = 0; index < usageBreakdown.length; index += 1) {
+        const entry = usageBreakdown[index];
         const amount = calculateServerCreditsToDeduct(entry.usage, pricing);
         if (amount <= 0) continue;
-        await ctx.runMutation(internal.credits.internal.deductCredits, {
-          userId: user._id,
-          amount,
-          description: entry.description ?? `AI: ${operation}`,
-          metadata: entry.metadata,
-        });
+        try {
+          await ctx.runMutation(internal.credits.internal.deductCredits, {
+            userId: user._id,
+            amount,
+            description: entry.description ?? `AI: ${operation}`,
+            metadata: entry.metadata,
+          });
+        } catch (error) {
+          if (!isInsufficientCreditsError(error)) {
+            throw error;
+          }
+
+          const unpaidItemIds = collectBillableItemIds(
+            usageBreakdown.slice(index),
+            pricing,
+          );
+          if (unpaidItemIds.length === 0) {
+            throw error;
+          }
+
+          await captureServerEvent(user.clerkId, "credits_exhausted_mid_batch", {
+            feature: operation,
+            unpaid_item_count: unpaidItemIds.length,
+            first_unpaid_item_id: unpaidItemIds[0],
+          });
+
+          return applyUnpaidBatchItemErrors(result, unpaidItemIds);
+        }
       }
     } else {
       const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);
-      await ctx.runMutation(internal.credits.internal.deductCredits, {
-        userId: user._id,
-        amount: creditsToDeduct,
-        description: `AI: ${operation}`,
-      });
+      if (creditsToDeduct > 0) {
+        await ctx.runMutation(internal.credits.internal.deductCredits, {
+          userId: user._id,
+          amount: creditsToDeduct,
+          description: `AI: ${operation}`,
+        });
+      }
     }
 
     return result;
@@ -389,11 +433,13 @@ export async function withUserCreditsBatch<T>(
       });
     }
 
-    await ctx.runMutation(internal.credits.internal.deductCredits, {
-      userId,
-      amount: creditsToDeduct,
-      description: `AI: ${operation}`,
-    });
+    if (creditsToDeduct > 0) {
+      await ctx.runMutation(internal.credits.internal.deductCredits, {
+        userId,
+        amount: creditsToDeduct,
+        description: `AI: ${operation}`,
+      });
+    }
 
     return result;
   } catch (error) {

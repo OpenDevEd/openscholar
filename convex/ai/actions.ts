@@ -2,6 +2,7 @@
 
 import { v } from "convex/values";
 import { action } from "../_generated/server";
+import { internal } from "../_generated/api";
 import {
   getEnhanceQueryConfig,
   getScreeningQuestionsConfig,
@@ -24,6 +25,9 @@ import {
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
+import { createError } from "../lib/errors";
+
+const BATCH_SCREENING_LOCK_TTL_MS = 10 * 60 * 1000;
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -265,69 +269,93 @@ export const generateBatchScreeningResponses = action({
       return { results: {}, errors: [] };
     }
 
-    return withAuthAndCreditsBatch(
-      ctx,
-      `Batch screening (${papers.length} papers)`,
-      async (_user, pricing) => {
-        const model = await getModel();
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    if (!user) {
+      throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
+    }
 
-        const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
-          model,
-          papers,
-          questions,
-        });
+    await ctx.runMutation(internal.lib.rateLimit.consume, {
+      name: "batch-screening",
+      key: user._id,
+    });
 
-        const encodedResults = Object.fromEntries(
-          Object.entries(results).map(([paperId, result]) => [
-            paperId,
-            {
-              ...result,
-              responses: encodeQuestionResponseMap(result.responses),
-            },
-          ])
-        );
-
-        const usageBreakdown = Object.entries(usageByItemId).map(
-          ([paperId, usage]) => {
-            const amount = calculateServerCreditsToDeduct(usage, pricing);
-            return {
-              usage,
-              // Preserve itemized ledger visibility per screened paper.
-              description: `AI: Batch screening (${paperId})`,
-              metadata: {
-                billingType: "batch_screening",
-                paperId,
-                chargedCredits: String(amount),
-              },
-            };
-          },
-        );
-
-        const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
-          ([itemId, tracking]) => {
-            const usage = usageByItemId[itemId];
-            return {
-              feature: `batch_screening`,
-              usage: {
-                inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
-                outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
-              },
-              latencyMs: tracking.latencyMs,
-              input: truncateForTracking(tracking.input),
-              output: truncateForTracking(tracking.output),
-              temperature: tracking.temperature,
-            };
-          },
-        );
-
-        return {
-          result: { results: encodedResults, errors },
-          totalUsage: aggregateUsage(usages),
-          usageBreakdown,
-          trackingEntries,
-        };
+    const { lockId } = await ctx.runMutation(
+      internal.ai.batchLocks.acquireBatchScreeningLock,
+      {
+        userId: user._id,
+        ttlMs: BATCH_SCREENING_LOCK_TTL_MS,
       },
-      Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
     );
+
+    try {
+      return await withAuthAndCreditsBatch(
+        ctx,
+        `Batch screening (${papers.length} papers)`,
+        async (_user, pricing) => {
+          const model = await getModel();
+          const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
+            model,
+            papers,
+            questions,
+          });
+
+          const encodedResults = Object.fromEntries(
+            Object.entries(results).map(([paperId, result]) => [
+              paperId,
+              {
+                ...result,
+                responses: encodeQuestionResponseMap(result.responses),
+              },
+            ])
+          );
+
+          const usageBreakdown = Object.entries(usageByItemId).map(
+            ([paperId, usage]) => {
+              const amount = calculateServerCreditsToDeduct(usage, pricing);
+              return {
+                usage,
+                // Preserve itemized ledger visibility per screened paper.
+                description: `AI: Batch screening (${paperId})`,
+                metadata: {
+                  billingType: "batch_screening",
+                  paperId,
+                  chargedCredits: String(amount),
+                },
+              };
+            },
+          );
+
+          const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
+            ([itemId, tracking]) => {
+              const usage = usageByItemId[itemId];
+              return {
+                feature: `batch_screening`,
+                usage: {
+                  inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
+                  outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
+                },
+                latencyMs: tracking.latencyMs,
+                input: truncateForTracking(tracking.input),
+                output: truncateForTracking(tracking.output),
+                temperature: tracking.temperature,
+              };
+            },
+          );
+
+          return {
+            result: { results: encodedResults, errors },
+            totalUsage: aggregateUsage(usages),
+            usageBreakdown,
+            trackingEntries,
+          };
+        },
+        Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
+      );
+    } finally {
+      await ctx.runMutation(
+        internal.ai.batchLocks.releaseBatchScreeningLock,
+        { lockId },
+      );
+    }
   },
 });

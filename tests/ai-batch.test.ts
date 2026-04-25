@@ -11,6 +11,10 @@ import {
   processScreeningBatch,
   processTranslationBatch,
 } from "../lib/ai/core/batch";
+import {
+  BATCH_ITEM_INSUFFICIENT_CREDITS_ERROR,
+  applyUnpaidBatchItemErrors,
+} from "../lib/ai/core/batch-partial";
 import type { BatchPaper } from "../lib/ai/core/batch-types";
 import type { Usage } from "../lib/ai/core/types";
 import type { LanguageModel } from "ai";
@@ -129,6 +133,47 @@ describe("processBatch", () => {
     expect(result.usageByItemId["p1"]).toEqual(usage1);
     expect(result.usageByItemId["p3"]).toEqual(usage3);
     expect(result.usageByItemId["p2"]).toBeUndefined();
+  });
+});
+
+describe("applyUnpaidBatchItemErrors", () => {
+  it("returns paid results and marks unpaid items as errors", () => {
+    const result = {
+      results: {
+        p1: { value: "paid" },
+        p2: { value: "unpaid" },
+        p3: { value: "also unpaid" },
+      },
+      errors: [{ paperId: "p4", error: "provider failed" }],
+    };
+
+    expect(applyUnpaidBatchItemErrors(result, ["p2", "p3"])).toEqual({
+      results: {
+        p1: { value: "paid" },
+      },
+      errors: [
+        { paperId: "p4", error: "provider failed" },
+        { paperId: "p2", error: BATCH_ITEM_INSUFFICIENT_CREDITS_ERROR },
+        { paperId: "p3", error: BATCH_ITEM_INSUFFICIENT_CREDITS_ERROR },
+      ],
+    });
+  });
+
+  it("does not duplicate existing errors for unpaid item ids", () => {
+    const result = {
+      results: {
+        p1: { value: "paid" },
+        p2: { value: "unpaid" },
+      },
+      errors: [{ paperId: "p2", error: "provider failed" }],
+    };
+
+    expect(applyUnpaidBatchItemErrors(result, ["p2"])).toEqual({
+      results: {
+        p1: { value: "paid" },
+      },
+      errors: [{ paperId: "p2", error: "provider failed" }],
+    });
   });
 });
 

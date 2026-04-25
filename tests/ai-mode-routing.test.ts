@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveCreditsAvailability,
   resolveErrorCode,
   resolveExecutionDecision,
   resolveModeConfigurability,
@@ -7,6 +8,39 @@ import {
 } from "../lib/ai/client/mode-routing";
 
 describe("ai mode routing", () => {
+  describe("resolveCreditsAvailability", () => {
+    it("compares balance against the required credit estimate", () => {
+      expect(
+        resolveCreditsAvailability({
+          isAuthenticated: true,
+          settlement: "ready",
+          totalCredits: 1,
+          requiredCredits: 2,
+        }),
+      ).toBe("unavailable");
+
+      expect(
+        resolveCreditsAvailability({
+          isAuthenticated: true,
+          settlement: "ready",
+          totalCredits: 2,
+          requiredCredits: 2,
+        }),
+      ).toBe("available");
+    });
+
+    it("keeps unsettled balances unknown instead of guessing from zero", () => {
+      expect(
+        resolveCreditsAvailability({
+          isAuthenticated: true,
+          settlement: "loading",
+          totalCredits: undefined,
+          requiredCredits: 2,
+        }),
+      ).toBe("unknown");
+    });
+  });
+
   describe("resolveModeConfigurability", () => {
     it("requires key for local mode", () => {
       expect(

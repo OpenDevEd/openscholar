@@ -9,6 +9,7 @@
  */
 
 import type * as ai_actions from "../ai/actions.js";
+import type * as ai_batchLocks from "../ai/batchLocks.js";
 import type * as ai_config from "../ai/config.js";
 import type * as ai_helpers from "../ai/helpers.js";
 import type * as ai_lib_creditBilling from "../ai/lib/creditBilling.js";
@@ -135,6 +136,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "ai/actions": typeof ai_actions;
+  "ai/batchLocks": typeof ai_batchLocks;
   "ai/config": typeof ai_config;
   "ai/helpers": typeof ai_helpers;
   "ai/lib/creditBilling": typeof ai_lib_creditBilling;

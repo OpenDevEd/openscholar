@@ -189,6 +189,7 @@ export function ScreeningResponses({
     myExistingResponses,
     myLoadingQuestions,
     myMissingResponses,
+    isScreeningPanelOpen,
   } = useScreening(data);
 
   const showExpandedView = useUIStore((state) => state.expandedScreeningDetails[data.id] || false);
@@ -212,7 +213,7 @@ export function ScreeningResponses({
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [expandShortcut, data.id, showExpandedView, setScreeningDetailExpanded]);
 
-  if (screeningQuestions.length === 0) return null;
+  if (!isScreeningPanelOpen || screeningQuestions.length === 0) return null;
 
   // Icons-only variant for compact layouts
   if (variant === "icons-only") {

@@ -8,6 +8,7 @@ import { useAuthReadiness } from '@/components/providers/convex-provider'
 import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
 import { useFeatureFlag } from '@/lib/feature-flags/hook'
+import { ESTIMATED_CREDITS_PER_QUERY } from '@/convex/lib/constants'
 import {
   AIApiKeyRequiredError,
   AICreditsDisabledError,
@@ -16,8 +17,8 @@ import {
 import type { AIConfig } from './executor'
 import {
   type AIExecutionErrorReason,
-  type CreditsAvailability,
   resolveErrorCode,
+  resolveCreditsAvailability,
   resolveExecutionDecision,
   resolveModeConfigurability,
   shouldRetrySmartWithLocalFallback,
@@ -30,6 +31,11 @@ export interface AIHookResult<TParams, TResult> {
   isConfigured: boolean
 }
 
+interface AIHookOptions<TParams> {
+  allowSmartLocalFallback?: boolean
+  estimateCredits?: (params: TParams) => number
+}
+
 function mapExecutionError(reason: AIExecutionErrorReason): Error {
   if (reason === 'api_key_required') {
     return new AIApiKeyRequiredError()
@@ -38,24 +44,6 @@ function mapExecutionError(reason: AIExecutionErrorReason): Error {
     return new AIInsufficientCreditsError()
   }
   return new AICreditsDisabledError()
-}
-
-function resolveCreditsAvailability({
-  isAuthenticated,
-  settlement,
-  totalCredits,
-}: {
-  isAuthenticated: boolean
-  settlement: string
-  totalCredits: number | undefined
-}): CreditsAvailability {
-  if (!isAuthenticated) {
-    return 'unavailable'
-  }
-  if (settlement !== 'ready') {
-    return 'unknown'
-  }
-  return (totalCredits ?? 0) > 0 ? 'available' : 'unavailable'
 }
 
 function useLocalConfig(): AIConfig {
@@ -70,6 +58,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
   actionRef: FunctionReference<'action', 'public', TParams, TResult>,
   executorFn: (params: TParams, config: AIConfig) => Promise<TResult>,
   transformCreditsResult?: (result: TResult, params: TParams) => TResult,
+  options: AIHookOptions<TParams> = {},
 ): () => AIHookResult<TParams, TResult> {
   return function useAIOperation() {
     const [isLoading, setIsLoading] = useState(false)
@@ -82,15 +71,6 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
     const isAuthenticated = phase === 'authenticated'
     const creditsEnabled = useFeatureFlag("credits.enabled")
     const creditsQuery = useOptionalAuthQuery(api.credits.queries.getMyBalance, {})
-    const creditsAvailability = useMemo(
-      () =>
-        resolveCreditsAvailability({
-          isAuthenticated,
-          settlement: creditsQuery.settlement,
-          totalCredits: creditsQuery.data?.total,
-        }),
-      [creditsQuery.data?.total, creditsQuery.settlement, isAuthenticated]
-    )
     const isConfigured = useMemo(
       () =>
         resolveModeConfigurability({
@@ -109,6 +89,19 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
         setError(null)
 
         try {
+          const requiredCredits = Math.ceil(
+            Math.max(
+              0,
+              options.estimateCredits?.(params) ?? ESTIMATED_CREDITS_PER_QUERY
+            )
+          )
+          const creditsAvailability = resolveCreditsAvailability({
+            isAuthenticated,
+            settlement: creditsQuery.settlement,
+            totalCredits: creditsQuery.data?.total,
+            requiredCredits,
+          })
+
           const decision = resolveExecutionDecision({
             mode: apiKeyMode,
             hasApiKey,
@@ -142,6 +135,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
           } catch (creditsError) {
             const fallbackCode = resolveErrorCode(creditsError)
             if (
+              options.allowSmartLocalFallback !== false &&
               shouldRetrySmartWithLocalFallback({
                 mode: apiKeyMode,
                 hasApiKey,
@@ -163,12 +157,15 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
       [
         apiKeyMode,
         convexAction,
-        creditsAvailability,
+        creditsQuery.data?.total,
+        creditsQuery.settlement,
         creditsEnabled,
         executorFn,
         hasApiKey,
         isAuthenticated,
         localConfig,
+        options.allowSmartLocalFallback,
+        options.estimateCredits,
         transformCreditsResult,
       ]
     )
