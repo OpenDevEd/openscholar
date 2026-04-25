@@ -291,13 +291,18 @@ export function ResultsList({
   const effectiveViewMode: ViewMode = isMobile ? "list-detail" : viewMode;
 
   useEffect(() => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setCanStartScreening(true);
     }, 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Get the current search ID from the URL
   const searchId = getEffectiveSearchId(pathname, undefined);
+  const screenStateKey = searchId || "__active";
+  const isScreeningPanelOpen = useUIStore(
+    (state) => state.screeningPanelOpenBySearchId[screenStateKey] || false
+  );
 
   // Get the current search result
   const currentSearchResult = useSearchHistoryStore((state) =>
@@ -319,7 +324,7 @@ export function ResultsList({
   const urlQuery = search.params.q;
 
   // Filter results based on rating filter
-  const filteredResults = results.filter((result) => {
+  const filteredResults = useMemo(() => results.filter((result) => {
     // Rating filter
     if (isRatingFilterActive(ratingRange, onlyRatedPapers)) {
       const paperRating = ratings[result.id];
@@ -334,7 +339,7 @@ export function ResultsList({
     }
 
     return true;
-  });
+  }), [results, ratingRange, onlyRatedPapers, ratings]);
 
   const totalPages = useMemo(
     () => Math.ceil(filteredResults.length / ITEMS_PER_PAGE),
@@ -373,6 +378,13 @@ export function ResultsList({
     currentSearchResult?.screeningQuestions,
     currentSearchResult?.screeningResponses,
   ]);
+  const screeningQuestionSetKey = useMemo(
+    () =>
+      (currentSearchResult?.screeningQuestions || [])
+        .map((entry, index) => `${index}:${entry.question}`)
+        .join("|"),
+    [currentSearchResult?.screeningQuestions]
+  );
 
   // Stable callback for batch screening results
   const handleBatchResults = useCallback(
@@ -389,7 +401,8 @@ export function ResultsList({
     searchId: searchId || "",
     papers: papersForBatchScreening,
     missingResponses,
-    canStart: canStartScreening && !!searchId,
+    questionSetKey: screeningQuestionSetKey,
+    canStart: canStartScreening && !!searchId && isScreeningPanelOpen,
     onResults: handleBatchResults,
   });
 
@@ -454,7 +467,8 @@ export function ResultsList({
         setScreeningResponses: (paperId, responses) => {
           setScreeningResponses(searchId || "", paperId, responses);
         },
-        canStartScreening,
+        canStartScreening: canStartScreening && isScreeningPanelOpen,
+        isScreeningPanelOpen,
       }}
     >
       <FocusMode

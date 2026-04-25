@@ -45,6 +45,8 @@ interface UseBatchOperationConfig<TInput, TResult, TContext> {
     papersNeedingProcessing: Paper[];
     context: TContext;
   }) => boolean | void;
+  /** Whether item-level failures should automatically form a follow-up batch */
+  retryFailedItems?: boolean;
 }
 
 interface UseBatchOperationReturn<TLoadingState> {
@@ -78,6 +80,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   canStart,
   papers,
   beforeExecute,
+  retryFailedItems = false,
   createLoadingState,
   clearLoadingState,
 }: UseBatchOperationConfig<TInput, TResult, TContext> & {
@@ -88,6 +91,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
 }): UseBatchOperationReturn<TLoadingState> {
   const [loadingState, setLoadingState] = useState<TLoadingState>(() => clearLoadingState());
   const [errors, setErrors] = useState<BatchError[]>([]);
+  const [settledBatchVersion, setSettledBatchVersion] = useState(0);
   const fetchedKeysRef = useRef<Set<string>>(new Set());
   const isFetchingRef = useRef(false);
   const contextIdAtFetchRef = useRef<string | null>(null);
@@ -127,7 +131,13 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   useEffect(() => {
     // Guard conditions
     if (!canStart || !isConfigured) return;
-    if (isFetchingRef.current) return;
+    if (!batchKey) return;
+    if (fetchedKeysRef.current.has(batchKey)) return;
+    if (papersNeedingProcessing.length === 0) return;
+    if (isFetchingRef.current) {
+      setLoadingState(createLoadingState(papersNeedingProcessing));
+      return;
+    }
 
     const continueExecution = beforeExecute?.({
       batchKey,
@@ -135,10 +145,6 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
       context,
     });
     if (continueExecution === false) return;
-
-    if (!batchKey) return;
-    if (fetchedKeysRef.current.has(batchKey)) return;
-    if (papersNeedingProcessing.length === 0) return;
 
     // Capture the contextId at fetch time to detect race conditions
     const contextIdAtFetch = contextId;
@@ -167,12 +173,24 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
 
         // Store errors for UI feedback
         if (batchErrors.length > 0) {
+          if (!retryFailedItems) {
+            const failedPaperIds = new Set(
+              batchErrors
+                .map((batchError) => batchError.paperId)
+                .filter((paperId) => paperId !== "batch")
+            );
+            const failedPapers = papersNeedingProcessing.filter((paper) =>
+              failedPaperIds.has(paper.id)
+            );
+            const failedBatchKey = computeBatchKey(failedPapers, context);
+            if (failedBatchKey) {
+              fetchedKeysRef.current.add(failedBatchKey);
+            }
+          }
           setErrors(batchErrors);
         }
       })
       .catch((error) => {
-        // Remove from fetched so it can be retried
-        fetchedKeysRef.current.delete(batchKey);
         setErrors([{ paperId: "batch", error: error.message || String(error) }]);
       })
       .finally(() => {
@@ -182,6 +200,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
         if (contextIdAtFetchRef.current === contextIdAtFetch) {
           isFetchingRef.current = false;
           setLoadingState(clearLoadingState());
+          setSettledBatchVersion((version) => version + 1);
         }
       });
   }, [
@@ -194,9 +213,12 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     context,
     contextId,
     buildExecuteInput,
+    computeBatchKey,
     createLoadingState,
     clearLoadingState,
     beforeExecute,
+    retryFailedItems,
+    settledBatchVersion,
   ]);
 
   return { loadingState, errors, isConfigured };

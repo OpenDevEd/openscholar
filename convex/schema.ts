@@ -8,6 +8,18 @@ export default defineSchema({
   ...rateLimitTables,
 
   // ═══════════════════════════════════════════════════════════════
+  // AI BATCH LOCKS - per-user concurrency guard for credit-backed batches
+  // ═══════════════════════════════════════════════════════════════
+  aiBatchLocks: defineTable({
+    userId: v.id("users"),
+    kind: v.union(v.literal("batch_screening")),
+    acquiredAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_user_kind", ["userId", "kind"])
+    .index("by_user_kind_expires", ["userId", "kind", "expiresAt"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // MODELS - Unified AI model catalog, auto-synced from OpenRouter
   // ═══════════════════════════════════════════════════════════════
   models: defineTable({

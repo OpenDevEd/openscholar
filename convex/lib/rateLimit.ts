@@ -45,6 +45,12 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
     period: MINUTE,
     capacity: 3,
   },
+  "batch-screening": {
+    kind: "token bucket",
+    rate: 15,
+    period: MINUTE,
+    capacity: 15,
+  },
 });
 
 /**
@@ -59,7 +65,8 @@ export const consume = internalMutation({
       v.literal("api-key-save"),
       v.literal("checkout-session"),
       v.literal("wallet-generate"),
-      v.literal("wallet-connect")
+      v.literal("wallet-connect"),
+      v.literal("batch-screening")
     ),
     key: v.string(),
     count: v.optional(v.number()),

@@ -12,6 +12,7 @@ export interface ScreeningContextValue {
   setScreeningResponse?: (paperId: string, question: string, response: boolean) => void;
   setScreeningResponses?: (paperId: string, responses: Record<string, boolean | null>) => void;
   canStartScreening?: boolean;
+  isScreeningPanelOpen?: boolean;
 }
 
 export interface TranslationContextValue {
