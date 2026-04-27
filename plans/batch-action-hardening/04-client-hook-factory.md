@@ -47,34 +47,79 @@ const requiredCredits = Math.max(
   0,
   Math.ceil(options.estimateCredits?.(params) ?? ESTIMATED_CREDITS_PER_QUERY),
 )
+const settlement: CreditsSettlement =
+  creditsQuery.settlement === "ready" ? "settled" : "loading"
 const creditsAvailability = resolveCreditsAvailability({
   totalCredits: creditsQuery.data?.total,
   requiredCredits,
-  settlement: creditsQuery.settlement,
+  settlement,
   isAuthenticated,
 })
 ```
 
 Add `options.estimateCredits` and `options.allowSmartLocalFallback` to the `useCallback` dependency array.
 
-Import `ESTIMATED_CREDITS_PER_QUERY` from `@/convex/lib/constants` (the constant at `convex/lib/constants.ts:25`, value `2`). Import `resolveCreditsAvailability` from `@/lib/credits/availability` (slice 01).
+Import `ESTIMATED_CREDITS_PER_QUERY` from `@/convex/lib/constants` (the constant at `convex/lib/constants.ts:25`, value `2`). Import `resolveCreditsAvailability` and `CreditsSettlement` from `@/lib/credits/availability` (slice 01) — re-exported through `lib/ai/client/mode-routing.ts` for grouped imports.
+
+#### Settlement adapter — DEVIATION 04-A
+
+Slice 01's `CreditsSettlement` type is the abstract `"loading" | "settled" | "error"` union (`lib/credits/availability.ts:12`). The actual `creditsQuery.settlement` value comes from `useOptionalAuthQuery` and is the auth-aware union `AuthQuerySettlement = "auth_loading" | "anonymous" | "query_loading" | "ready"` (`lib/auth/use-auth-query.ts:18`). Passing `creditsQuery.settlement` directly into `resolveCreditsAvailability` does **not** typecheck and would always return `"unknown"` (every auth-query value is `!== "settled"`).
+
+The hook-factory is the integration boundary between auth-query and credit-availability domains, so the mapping lives at the call site. Mapping rule:
+
+- `"ready"` → `"settled"` (query has loaded)
+- everything else (`"auth_loading"`, `"anonymous"`, `"query_loading"`) → `"loading"`
+
+The `"anonymous"` case is functionally irrelevant because `resolveCreditsAvailability` short-circuits to `"unknown"` when `!isAuthenticated`, and `resolveExecutionDecision` short-circuits to its own unauth branch before consulting availability. Mapping `"anonymous"` to `"loading"` is therefore safe.
+
+**Why not widen slice 01's `CreditsSettlement` type?** The slice-01 plan locked the abstract `"loading" | "settled" | "error"` union deliberately. Widening it here would either reach into slice 01 (out of scope for plan 04) or duplicate the type. The adapter is the minimal, scoped fix.
 
 ### Smart-local fallback gate
 
-The catch block currently runs the local executor on recognized error codes (`AI_UNAUTHENTICATED`, `AI_INSUFFICIENT_CREDITS`, etc.) when mode is `smart` and a local key exists. Wrap the entire fallback branch with:
+The catch block currently runs the local executor on recognized error codes (`AI_UNAUTHENTICATED`, `AI_INSUFFICIENT_CREDITS`, etc.) when mode is `smart` and a local key exists. The reference inlines the gate as `options.allowSmartLocalFallback !== false && shouldRetrySmartWithLocalFallback({...})` (reference at `/tmp/openalex-main-inspect/lib/ai/client/hook-factory.ts:138`).
+
+#### Pure-helper extraction — DEVIATION 04-B
+
+Per CLAUDE.md testing philosophy ("Push pure logic out of the render tree and unit-test it directly"), the gated decision is extracted into a new pure helper in `lib/ai/client/mode-routing.ts`:
 
 ```text
-if (options.allowSmartLocalFallback !== false && /* existing conditions */) {
-  return runLocal(params)
+export function resolveFallbackToLocal({
+  allowSmartLocalFallback,
+  mode,
+  hasApiKey,
+  errorCode,
+}: {
+  allowSmartLocalFallback?: boolean
+  mode: AIKeyMode
+  hasApiKey: boolean
+  errorCode?: string
+}): boolean {
+  if (allowSmartLocalFallback === false) return false
+  return shouldRetrySmartWithLocalFallback({ mode, hasApiKey, errorCode })
 }
-throw error  // re-throw if fallback denied
 ```
 
-Reference at `/tmp/openalex-main-inspect/lib/ai/client/hook-factory.ts:138`.
+Hook-factory then calls:
 
-### Cleanup — remove `AIPlanEntitlementError` residue
+```text
+if (
+  resolveFallbackToLocal({
+    allowSmartLocalFallback: options.allowSmartLocalFallback,
+    mode: apiKeyMode,
+    hasApiKey,
+    errorCode: fallbackCode,
+  })
+) {
+  return await runLocal()
+}
+throw creditsError
+```
 
-The dev branch removed plan-tier checks from the AI op critical path but leaves `AIPlanEntitlementError` import at `lib/ai/client/hook-factory.ts:12` and a reference at `:85`. Reference (post-Apr-25) removed both. Delete in this slice.
+This satisfies the plan's intent ("`runLocal` is not invoked when the option is false") without needing to mock `runLocal` inside a `renderHook` setup — when `resolveFallbackToLocal` returns `false`, the catch block re-throws and the local executor is unreachable by construction.
+
+### Cleanup — remove `AIPlanEntitlementError` residue — DEVIATION 04-C (already done)
+
+The dev branch removed plan-tier checks from the AI op critical path but the plan author believed `AIPlanEntitlementError` import remained at `lib/ai/client/hook-factory.ts:12` and a reference at `:85`. Verified during plan-04 execution: **the residue is already gone** from `hook-factory.ts` (only `AIApiKeyRequiredError`, `AICreditsDisabledError`, `AIInsufficientCreditsError` are imported now). The class itself (`lib/ai/core/errors.ts:40`) is still consumed by `convex/ai/helpers.ts:12,90` (server-side helper) and `lib/toast/error-resolver.ts:72`, both out of scope for plan 04. No-op for this slice; documented for the audit trail.
 
 ### Router options wiring — `lib/ai/client/router.ts`
 
@@ -128,17 +173,17 @@ Phase A — pure logic, write tests first, commit per green:
 
 Phase B — factory + router integration, commit per logical unit:
 
-3. Add `AIHookOptions<TParams>` interface to `lib/ai/client/hook-factory.ts`. Add the options parameter to `createAIHook`. Remove the `useMemo` for `creditsAvailability` and move the call inside `execute()`. Remove `AIPlanEntitlementError` residue. Run existing tests in `tests/ai-mode-routing.test.ts` and `tests/ai-credit-preflight.test.ts`. **Commit:** `refactor(ai-hook): [plan-04] move credits check inside execute and add options`.
-4. Gate the smart-mode local fallback with `options.allowSmartLocalFallback !== false`. Add a focused unit test for this branch (mock `runLocal` and assert it's not called when the option is false and the catch path triggers). **Commit:** `feat(ai-hook): [plan-04] honor allowSmartLocalFallback option`.
+3. Add `AIHookOptions<TParams>` interface to `lib/ai/client/hook-factory.ts`. Add the options parameter to `createAIHook`. Remove the `useMemo` for `creditsAvailability` and move the call inside `execute()` with the settlement adapter (DEVIATION 04-A). `AIPlanEntitlementError` residue is already absent (DEVIATION 04-C); verify and skip. Run existing tests in `tests/ai-mode-routing.test.ts`, `tests/ai-credit-preflight.test.ts`, and `tests/credits-availability.test.ts`. **Commit:** `refactor(ai-hook): [plan-04] move credits check inside execute and add options`.
+4. Add the pure helper `resolveFallbackToLocal` to `lib/ai/client/mode-routing.ts` and one focused unit test in `tests/ai-mode-routing.test.ts` asserting it returns `false` when `allowSmartLocalFallback === false` even with smart-eligible inputs (DEVIATION 04-B). Replace the inline gate in the hook-factory catch block with a call to this helper. **Commit:** `feat(ai-hook): [plan-04] honor allowSmartLocalFallback option`.
 5. Wire options into all 9 `createAIHook` calls in `lib/ai/client/router.ts`. Import constants from `@/convex/lib/constants`. **Commit:** `feat(ai-router): [plan-04] thread estimate options through all hooks`.
 6. Verify the full `vitest run` is green. Verify pm2 next.js logs show no compile errors. **Commit if any cleanup needed.**
 
 ## Files Touched
 
-- [lib/ai/client/hook-factory.ts](../../lib/ai/client/hook-factory.ts) — add options interface and parameter, move credit check, remove `AIPlanEntitlementError`, add fallback gate.
+- [lib/ai/client/hook-factory.ts](../../lib/ai/client/hook-factory.ts) — add options interface and parameter, move credit check inside `execute()` with settlement adapter, gate fallback via `resolveFallbackToLocal`. (`AIPlanEntitlementError` cleanup is already done — see DEVIATION 04-C.)
 - [lib/ai/client/router.ts](../../lib/ai/client/router.ts) — wire options on all 9 hooks; import constants.
-- [lib/ai/client/mode-routing.ts](../../lib/ai/client/mode-routing.ts) — re-export `resolveCreditsAvailability` from `lib/credits/availability`.
-- [tests/ai-mode-routing.test.ts](../../tests/ai-mode-routing.test.ts) — add 2 cases for `resolveCreditsAvailability`.
+- [lib/ai/client/mode-routing.ts](../../lib/ai/client/mode-routing.ts) — re-export `resolveCreditsAvailability` and `CreditsSettlement` from `lib/credits/availability`; add new pure helper `resolveFallbackToLocal`.
+- [tests/ai-mode-routing.test.ts](../../tests/ai-mode-routing.test.ts) — add 2 cases for `resolveCreditsAvailability` (re-export contract) and 1 case for `resolveFallbackToLocal`.
 
 ## Migration Stance
 
@@ -146,9 +191,10 @@ None. Pure client refactor; no schema changes; no wire changes server-side.
 
 ## Test Plan
 
-- Unit: 2 new cases in `tests/ai-mode-routing.test.ts`.
-- Unit: 1 new case for `allowSmartLocalFallback: false` blocking the fallback path.
+- Unit: 2 new cases in `tests/ai-mode-routing.test.ts` for `resolveCreditsAvailability` (covers re-export contract).
+- Unit: 1 new case in `tests/ai-mode-routing.test.ts` for `resolveFallbackToLocal` asserting `allowSmartLocalFallback === false` short-circuits to `false` even with otherwise-eligible smart inputs (DEVIATION 04-B replaces the runLocal-mock approach).
 - Existing tests in `tests/ai-mode-routing.test.ts` for `resolveModeConfigurability`, `resolveExecutionDecision`, smart fallback, and `resolveErrorCode` continue to pass.
+- Existing tests in `tests/credits-availability.test.ts` (slice 01) continue to pass.
 - Existing tests in `tests/ai-credit-preflight.test.ts` continue to pass.
 - `tsc` and Next.js compilation green.
 - pm2 next.js logs clean after restart.
