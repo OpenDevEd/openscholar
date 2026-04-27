@@ -39,12 +39,6 @@ interface UseBatchOperationConfig<TInput, TResult, TContext> {
   canStart: boolean;
   /** The papers to process */
   papers: Paper[];
-  /** Optional callback before execution guards are finalized */
-  beforeExecute?: (params: {
-    batchKey: string | null;
-    papersNeedingProcessing: Paper[];
-    context: TContext;
-  }) => boolean | void;
 }
 
 interface UseBatchOperationReturn<TLoadingState> {
@@ -77,7 +71,6 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   context,
   canStart,
   papers,
-  beforeExecute,
   createLoadingState,
   clearLoadingState,
 }: UseBatchOperationConfig<TInput, TResult, TContext> & {
@@ -128,13 +121,6 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     // Guard conditions
     if (!canStart || !isConfigured) return;
     if (isFetchingRef.current) return;
-
-    const continueExecution = beforeExecute?.({
-      batchKey,
-      papersNeedingProcessing,
-      context,
-    });
-    if (continueExecution === false) return;
 
     if (!batchKey) return;
     if (fetchedKeysRef.current.has(batchKey)) return;
@@ -196,7 +182,6 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     buildExecuteInput,
     createLoadingState,
     clearLoadingState,
-    beforeExecute,
   ]);
 
   return { loadingState, errors, isConfigured };

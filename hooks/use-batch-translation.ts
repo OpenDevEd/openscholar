@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useBatchTranslations } from "@/lib/ai/client/router";
 import { useTranslationStore } from "@/lib/store";
 import { useBatchOperation } from "./use-batch-operation";
@@ -97,15 +97,20 @@ export function useBatchTranslation({
     []
   );
 
-  // Handle results
+  // Handle results — also consumes the manual-run request id when work
+  // actually happens (replaces the deleted `beforeExecute` site that ran
+  // before the in-flight guard and wedged on contention).
   const handleResult = useCallback(
     (paperId: string, translation: TranslationData, context: BatchTranslationContext) => {
       if (context.targetLanguage === targetLanguage) {
         setTranslation(paperId, { ...translation, targetLanguage: context.targetLanguage });
         setShowTranslated(paperId, true);
       }
+      if (!autoTranslateResults) {
+        lastConsumedManualRunRequestIdRef.current = manualRunRequestId;
+      }
     },
-    [setTranslation, setShowTranslated, targetLanguage]
+    [setTranslation, setShowTranslated, targetLanguage, autoTranslateResults, manualRunRequestId]
   );
 
   // Create loading state
@@ -131,11 +136,25 @@ export function useBatchTranslation({
     !isSearchLoading &&
     (autoTranslateResults || hasPendingManualRun);
 
-  const beforeExecute = useCallback(() => {
-    if (!autoTranslateResults) {
+  // All-cached path: when the user clicked "Translate" but every visible
+  // paper already has a translation cached, no batch fires and
+  // `handleResult` never runs. This effect consumes the manual-run id in
+  // that case so a subsequent unrelated render with the same request id
+  // doesn't keep `hasPendingManualRun=true` indefinitely.
+  const papersNeedingTranslation = useMemo(
+    () => papers.filter((paper) => !getTranslation(paper.id, targetLanguage)),
+    [papers, getTranslation, targetLanguage]
+  );
+
+  useEffect(() => {
+    if (
+      hasPendingManualRun &&
+      papersNeedingTranslation.length === 0 &&
+      effectiveCanStart
+    ) {
       lastConsumedManualRunRequestIdRef.current = manualRunRequestId;
     }
-  }, [autoTranslateResults, manualRunRequestId]);
+  }, [hasPendingManualRun, papersNeedingTranslation.length, effectiveCanStart, manualRunRequestId]);
 
   // Reactive count of papers already translated for the current target language.
   // Uses a store selector so it re-renders when new translations land.
@@ -165,7 +184,6 @@ export function useBatchTranslation({
     context,
     canStart: effectiveCanStart,
     papers,
-    beforeExecute,
     createLoadingState,
     clearLoadingState,
   });
