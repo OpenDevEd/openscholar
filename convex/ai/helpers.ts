@@ -37,6 +37,7 @@ import {
   calculateRawCreditCost,
   convertUsdCostToCredits,
 } from "./lib/creditBilling";
+export { collectBillableItemIds } from "./lib/collectBillableItemIds";
 
 type Pricing = { input: number; output: number };
 
@@ -216,6 +217,16 @@ export type UsageBreakdownEntry = {
   jobId?: Id<"extractionJobs">;
   paperId?: Id<"extractionPapers">;
   resultId?: Id<"extractionResults">;
+  /**
+   * Typed input batch item identifier. Populated for batch flows whose
+   * inputs are external paper references (openalex ids, BatchPaper.id
+   * strings) rather than ids of rows in the extraction-pipeline tables
+   * (extractionPapers / extractionResults). Keys back into
+   * `BatchResult.results` and `BatchResult.errors[].paperId` so the
+   * mid-batch credit-exhaustion salvage path can identify unpaid items
+   * without reading from `metadata`.
+   */
+  itemId?: string;
 };
 
 /**
