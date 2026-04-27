@@ -181,62 +181,83 @@ export const generateBatchTranslations = action({
       return { results: {}, errors: [] };
     }
 
-    return withAuthAndCreditsBatch(
-      ctx,
-      `Batch translation (${papers.length} papers)`,
-      async (_user, pricing) => {
-        const model = await getModel();
+    // Auth → rate-limit → lock → run → finally release. Same shape
+    // as generateBatchScreeningResponses with the translation kind
+    // and bucket. Rate-limit before lock for cheap fast-fail.
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    if (!user) {
+      throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
+    }
+    await ctx.runMutation(internal.lib.rateLimit.consume, {
+      name: "batch-translation",
+      key: user._id,
+    });
+    const lockId = await ctx.runMutation(internal.lib.locks.acquireBatchLock, {
+      userId: user._id,
+      kind: "batch_translation",
+      ttlMs: BATCH_LOCK_TTL_MS,
+    });
 
-        const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
-          model,
-          papers,
-          targetLanguage,
-        });
+    try {
+      return await withAuthAndCreditsBatch(
+        ctx,
+        `Batch translation (${papers.length} papers)`,
+        async (_user, pricing) => {
+          const model = await getModel();
 
-        const usageBreakdown = Object.entries(usageByItemId).map(
-          ([paperRef, usage]) => {
-            const amount = calculateServerCreditsToDeduct(usage, pricing);
-            const openalexId = extractOpenalexId(paperRef) ?? paperRef;
-            return {
-              usage,
-              billingType: "translation" as const,
-              // `itemId` keys back into BatchResult.results — required
-              // for the mid-batch salvage path to identify unpaid items.
-              itemId: paperRef,
-              metadata: {
-                openalexId,
-                chargedCredits: String(amount),
-              },
-            };
-          },
-        );
+          const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
+            model,
+            papers,
+            targetLanguage,
+          });
 
-        const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
-          ([itemId, tracking]) => {
-            const usage = usageByItemId[itemId];
-            return {
-              feature: `batch_translation`,
-              usage: {
-                inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
-                outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
-              },
-              latencyMs: tracking.latencyMs,
-              input: truncateForTracking(tracking.input),
-              output: truncateForTracking(tracking.output),
-              temperature: tracking.temperature,
-            };
-          },
-        );
+          const usageBreakdown = Object.entries(usageByItemId).map(
+            ([paperRef, usage]) => {
+              const amount = calculateServerCreditsToDeduct(usage, pricing);
+              const openalexId = extractOpenalexId(paperRef) ?? paperRef;
+              return {
+                usage,
+                billingType: "translation" as const,
+                // `itemId` keys back into BatchResult.results — required
+                // for the mid-batch salvage path to identify unpaid items.
+                itemId: paperRef,
+                metadata: {
+                  openalexId,
+                  chargedCredits: String(amount),
+                },
+              };
+            },
+          );
 
-        return {
-          result: { results, errors },
-          totalUsage: aggregateUsage(usages),
-          usageBreakdown,
-          trackingEntries,
-        };
-      },
-      Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
-    );
+          const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
+            ([itemId, tracking]) => {
+              const usage = usageByItemId[itemId];
+              return {
+                feature: `batch_translation`,
+                usage: {
+                  inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
+                  outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
+                },
+                latencyMs: tracking.latencyMs,
+                input: truncateForTracking(tracking.input),
+                output: truncateForTracking(tracking.output),
+                temperature: tracking.temperature,
+              };
+            },
+          );
+
+          return {
+            result: { results, errors },
+            totalUsage: aggregateUsage(usages),
+            usageBreakdown,
+            trackingEntries,
+          };
+        },
+        Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
+      );
+    } finally {
+      await ctx.runMutation(internal.lib.locks.releaseBatchLock, { lockId });
+    }
   },
 });
 
