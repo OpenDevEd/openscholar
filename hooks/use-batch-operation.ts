@@ -81,9 +81,11 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
 }): UseBatchOperationReturn<TLoadingState> {
   const [loadingState, setLoadingState] = useState<TLoadingState>(() => clearLoadingState());
   const [errors, setErrors] = useState<BatchError[]>([]);
+  const [settledBatchVersion, setSettledBatchVersion] = useState(0);
   const fetchedKeysRef = useRef<Set<string>>(new Set());
   const isFetchingRef = useRef(false);
   const contextIdAtFetchRef = useRef<string | null>(null);
+  const queuedLoadingBatchKeyRef = useRef<string | null>(null);
 
   // Get papers that need processing
   const papersNeedingProcessing = useMemo(
@@ -114,17 +116,30 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     setErrors([]);
     contextIdAtFetchRef.current = null;
     isFetchingRef.current = false;
+    queuedLoadingBatchKeyRef.current = null;
   }, [contextId, clearLoadingState]);
 
   // Main effect to trigger batch operation
   useEffect(() => {
     // Guard conditions
     if (!canStart || !isConfigured) return;
-    if (isFetchingRef.current) return;
 
     if (!batchKey) return;
     if (fetchedKeysRef.current.has(batchKey)) return;
     if (papersNeedingProcessing.length === 0) return;
+
+    // A different batch (K2) showed up while K1 is in-flight: surface a
+    // loading indicator for K2's papers immediately, but don't fire the
+    // request — wait for the in-flight batch to settle and let
+    // settledBatchVersion bump trigger a re-run. Dedup the loading-state
+    // write so a re-render with the same queued K2 doesn't churn React.
+    if (isFetchingRef.current) {
+      if (queuedLoadingBatchKeyRef.current !== batchKey) {
+        queuedLoadingBatchKeyRef.current = batchKey;
+        setLoadingState(createLoadingState(papersNeedingProcessing));
+      }
+      return;
+    }
 
     // Capture the contextId at fetch time to detect race conditions
     const contextIdAtFetch = contextId;
@@ -133,6 +148,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     // Mark as fetching
     fetchedKeysRef.current.add(batchKey);
     isFetchingRef.current = true;
+    queuedLoadingBatchKeyRef.current = null;
     setErrors([]);
     setLoadingState(createLoadingState(papersNeedingProcessing));
 
@@ -167,7 +183,11 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
         // and a new fetch may be in progress — don't disturb it.
         if (contextIdAtFetchRef.current === contextIdAtFetch) {
           isFetchingRef.current = false;
+          queuedLoadingBatchKeyRef.current = null;
           setLoadingState(clearLoadingState());
+          // Bump the settled-version so the effect re-runs and any
+          // queued K2 picks up the slot freed by K1.
+          setSettledBatchVersion((version) => version + 1);
         }
       });
   }, [
@@ -182,6 +202,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     buildExecuteInput,
     createLoadingState,
     clearLoadingState,
+    settledBatchVersion,
   ]);
 
   return { loadingState, errors, isConfigured };
