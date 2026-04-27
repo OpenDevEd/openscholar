@@ -11,6 +11,10 @@ import {
   processScreeningBatch,
   processTranslationBatch,
 } from "../lib/ai/core/batch";
+import {
+  applyUnpaidBatchItemErrors,
+  BATCH_ITEM_INSUFFICIENT_CREDITS_ERROR,
+} from "../lib/ai/core/batch-partial";
 import type { BatchPaper } from "../lib/ai/core/batch-types";
 import type { Usage } from "../lib/ai/core/types";
 import type { LanguageModel } from "ai";
@@ -231,5 +235,29 @@ describe("processTranslationBatch", () => {
     expect(mockExecute).toHaveBeenCalledOnce();
     const callArgs = mockExecute.mock.calls[0][0] as unknown as Record<string, unknown>;
     expect(callArgs.input).not.toHaveProperty("targetLanguage");
+  });
+});
+
+describe("applyUnpaidBatchItemErrors", () => {
+  it("returns paid results and marks unpaid items as errors", () => {
+    const result = {
+      results: {
+        p1: { value: "paid" },
+        p2: { value: "unpaid" },
+        p3: { value: "also unpaid" },
+      },
+      errors: [{ paperId: "p4", error: "provider failed" }],
+    };
+
+    expect(applyUnpaidBatchItemErrors(result, ["p2", "p3"])).toEqual({
+      results: {
+        p1: { value: "paid" },
+      },
+      errors: [
+        { paperId: "p4", error: "provider failed" },
+        { paperId: "p2", error: BATCH_ITEM_INSUFFICIENT_CREDITS_ERROR },
+        { paperId: "p3", error: BATCH_ITEM_INSUFFICIENT_CREDITS_ERROR },
+      ],
+    });
   });
 });
