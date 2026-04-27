@@ -45,6 +45,23 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
     period: MINUTE,
     capacity: 3,
   },
+  // Per-user request-frequency cap for interactive batch AI actions.
+  // 15/min with a full burst capacity matches the screening reference
+  // contract and is permissive enough for paginated dashboards that
+  // legitimately fire one batch per page settle, while still gating
+  // auto-fire storms (manual-run wedge, language switch loops).
+  "batch-screening": {
+    kind: "token bucket",
+    rate: 15,
+    period: MINUTE,
+    capacity: 15,
+  },
+  "batch-translation": {
+    kind: "token bucket",
+    rate: 15,
+    period: MINUTE,
+    capacity: 15,
+  },
 });
 
 /**
@@ -59,7 +76,9 @@ export const consume = internalMutation({
       v.literal("api-key-save"),
       v.literal("checkout-session"),
       v.literal("wallet-generate"),
-      v.literal("wallet-connect")
+      v.literal("wallet-connect"),
+      v.literal("batch-screening"),
+      v.literal("batch-translation")
     ),
     key: v.string(),
     count: v.optional(v.number()),
