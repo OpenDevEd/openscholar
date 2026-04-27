@@ -1139,6 +1139,81 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     });
   });
 
+  it("C1e — user-stop persists ABORT_ERROR_STRING on the pending assistant so listThreadMessages enriches aborted:true", async () => {
+    // The agent library registers a fire-and-forget abort-signal
+    // listener in start.ts:170-178 that's supposed to finalize the
+    // pending assistant message as failed with the abort sentinel.
+    // But that listener's `await fail()` is a dangling promise from
+    // the action's perspective — Convex warns about it and may not
+    // run it reliably. Observed in pm2 logs: "[chat] stream aborted
+    // by user … 2 unawaited operations: [mutation, query]" followed
+    // by the pending assistant staying status="pending" with empty
+    // content five minutes later.
+    //
+    // Result without our defensive patch: the UI sees
+    //   { status: "pending", text: "" }
+    // instead of an aborted bubble — the chat renders "error" via
+    // the stale-pending fallback.
+    //
+    // Fix: at the end of onAbort, after billing, we explicitly run
+    // ctx.runMutation(components.agent.messages.updateMessage, {
+    //   messageId, patch: { status: "failed", error: ABORT_ERROR_STRING }
+    // }) ourselves. listThreadMessages then sees isAbortErrorString
+    // on the message error and surfaces aborted:true.
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, await t.run(async (ctx) => {
+      const job = await ctx.db.get(jobId);
+      return job!.userId;
+    }), {
+      inputPricePerMillion: 1_000,
+      outputPricePerMillion: 2_000,
+      freeBalance: 10_000,
+    });
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+    providerState.emitGenerationId = "gen_aborted_finalize_1";
+
+    mockDoStream.mockImplementation(
+      partialDeltasThenHangDoStream(["partial ", "reply"]),
+    );
+
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    await new Promise((r) => setTimeout(r, 400));
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+    await actionPromise;
+
+    // Persisted state: assistant row patched to failed with the wire
+    // sentinel. listThreadMessages strips the sentinel and surfaces
+    // aborted:true (already covered by M1 against seeded data — this
+    // test pins the same enrichment against the live abort path).
+    const caller = asCaller(t, "c_msg");
+    const result = await caller.query(api.chat.messages.listThreadMessages, {
+      threadId,
+      paginationOpts: { numItems: 10, cursor: null },
+      streamArgs: undefined,
+    });
+    const assistant = result.page.find(
+      (m: { role?: string }) => m.role === "assistant",
+    ) as
+      | {
+          status?: string;
+          aborted?: boolean;
+          error?: string;
+        }
+      | undefined;
+    expect(assistant).toBeDefined();
+    expect(assistant!.status).toBe("failed");
+    expect(assistant!.aborted).toBe(true);
+    expect(assistant!.error).toBeUndefined();
+  });
+
   it("M1 — listThreadMessages enriches aborted messages with aborted:true and drops the sentinel error", async () => {
     const t = createTestConvex();
     const { threadId } = await seedUserAndChatJob(t);

@@ -49,7 +49,10 @@ import {
   type ErrorCode,
 } from "../../lib/errors/taxonomy";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
-import { ABORT_REASON_USER_STOPPED } from "../../lib/chat/abort-signal";
+import {
+  ABORT_ERROR_STRING,
+  ABORT_REASON_USER_STOPPED,
+} from "../../lib/chat/abort-signal";
 import {
   normalizeChatUIMessage,
   selectChatMessageError,
@@ -653,6 +656,30 @@ export const generateResponse = internalAction({
           });
       }
 
+      // Defensively persist the abort sentinel from the action body so
+      // it is properly awaited. The agent library registers a fire-and-
+      // forget abort listener in start.ts:170-178 that should call
+      // finalizeMessage on the pending assistant — but that listener's
+      // mutation is a dangling promise and was observed live (jobId
+      // k576p992sf7kq812yta72kqh2x85jamf) failing to run, leaving the
+      // pending row stuck and the UI rendering an error instead of
+      // the stopped pill. Idempotent under the agent listener winning
+      // the race because both paths write the same DOMException
+      // toString() value.
+      if (streamAbortedByUser) {
+        await persistAssistantAbortSentinel(
+          ctx,
+          threadId,
+          promptMessageId,
+        ).catch((err) => {
+          console.error("[chat] failed to persist abort sentinel", {
+            jobId,
+            threadId,
+            err: errorToLogString(err),
+          });
+        });
+      }
+
       // Reconcile path for stream errors that still produced an
       // OpenRouter generation id. captureGenerationFromResponse is
       // idempotent (unique index on generationId) so it's safe to
@@ -775,6 +802,61 @@ async function patchLastAssistantAsFailed(
       error: serialized,
       ...(metadata?.model ? { model: metadata.model } : {}),
       ...(metadata?.provider ? { provider: metadata.provider } : {}),
+    },
+  });
+  return true;
+}
+
+/**
+ * Force-transition the newest pending/failed assistant message to
+ * `status:"failed"` with the agent's wire abort sentinel as `error`.
+ *
+ * Why we need this: the agent library registers a fire-and-forget
+ * abort listener in start.ts:170-178 that's supposed to call
+ * `finalizeMessage` when our AbortController signals. But that
+ * listener's `await fail()` is a dangling promise from the action's
+ * perspective — Convex warns ("N unawaited operations") and may not
+ * run it. Observed live (jobId k576p992sf7kq812yta72kqh2x85jamf):
+ * pending assistant stuck at status="pending" with empty content
+ * five minutes after abort, accumulated 2221 chars in stream deltas
+ * but the message row never finalized. UI then renders an error
+ * alert instead of the stopped pill because listThreadMessages's
+ * isAbortErrorString detection has nothing to fire on.
+ *
+ * Writes the literal `ABORT_ERROR_STRING` (not a serialized envelope)
+ * because that's what listThreadMessages's `isAbortErrorString(error)`
+ * detection looks for to set `aborted: true` and drop the error from
+ * the UI page. Idempotent under the agent listener winning the race —
+ * `abortSignal.reason?.toString()` produces the same exact string for
+ * the DOMException we abort with at messages.ts:312, so duplicate
+ * patches write identical values.
+ */
+async function persistAssistantAbortSentinel(
+  ctx: ActionCtx,
+  threadId: string,
+  promptMessageId: string,
+): Promise<boolean> {
+  const promptMessages = await ctx.runQuery(
+    components.agent.messages.getMessagesByIds,
+    { messageIds: [promptMessageId as never] },
+  );
+  const promptOrder = promptMessages[0]?.order;
+  const { page } = await listMessages(ctx, components.agent, {
+    threadId,
+    paginationOpts: { numItems: 20, cursor: null },
+    statuses: ["pending", "failed"],
+  });
+  const last = page.find(
+    (message) =>
+      message.message?.role === "assistant" &&
+      (promptOrder === undefined || message.order === promptOrder),
+  );
+  if (!last) return false;
+  await ctx.runMutation(components.agent.messages.updateMessage, {
+    messageId: last._id,
+    patch: {
+      status: "failed",
+      error: ABORT_ERROR_STRING,
     },
   });
   return true;
