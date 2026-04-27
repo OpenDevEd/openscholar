@@ -607,12 +607,10 @@ export function MessageList({
   const isLoadingFirstPage =
     status === "LoadingFirstPage" && renderResults.length === 0;
 
-  const lastAssistantId = useMemo(() => {
-    for (let i = renderResults.length - 1; i >= 0; i--) {
-      if (renderResults[i].role === "assistant") return renderResults[i].id;
-    }
-    return null;
-  }, [renderResults]);
+  const lastAssistantId = useMemo(
+    () => getLatestAssistantForRegenerate(renderResults)?.id ?? null,
+    [renderResults],
+  );
 
   const handleRetry = useCallback(() => {
     const latestAssistant = getLatestAssistantForRegenerate(
