@@ -405,13 +405,20 @@ export function ResultsList({
     [searchId, setScreeningResponses]
   );
 
-  // Use batch screening hook
+  // Primitive selector — returns a boolean so re-renders only happen
+  // when the slice actually flips, not on every store mutation.
+  const isScreeningPanelOpen = useUIStore((s) =>
+    searchId ? s.screeningPanelOpenBySearchId[searchId] ?? false : false,
+  );
+
+  // Use batch screening hook. Gated on the panel being open so the
+  // batch action does not fire while the user has the panel collapsed.
   const { loadingQuestions, errors: screeningErrors } = useBatchScreening({
     searchId: searchId || "",
     papers: papersForBatchScreening,
     missingResponses,
     questionSetKey,
-    canStart: canStartScreening && !!searchId,
+    canStart: canStartScreening && !!searchId && isScreeningPanelOpen,
     onResults: handleBatchResults,
   });
 
@@ -419,12 +426,6 @@ export function ResultsList({
   const handleRetryScreening = useCallback(() => {
     setScreeningRetryVersion((v) => v + 1);
   }, []);
-
-  // Primitive selector — returns a boolean so re-renders only happen
-  // when the slice actually flips, not on every store mutation.
-  const isScreeningPanelOpen = useUIStore((s) =>
-    searchId ? s.screeningPanelOpenBySearchId[searchId] ?? false : false,
-  );
 
   const papersForBatchTranslation = paginatedResults;
 
