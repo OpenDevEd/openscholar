@@ -30,6 +30,7 @@ import {
 } from "../../lib/posthog-ai-shared";
 import { AI_COST_MARKUP, ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
+import { hasEnoughCredits } from "../../lib/credits/availability";
 
 import {
   calculateCreditsToDeductFromUsage,
@@ -244,7 +245,7 @@ export async function withAuthAndCreditsBatch<T>(
       internal.credits.internal.getBalanceByUserId,
       { userId: user._id },
     );
-    if (!balance || balance.total < minimumRequired) {
+    if (!hasEnoughCredits({ balance, required: minimumRequired })) {
       await captureServerEvent(user.clerkId, "credits_insufficient", {
         required_credits: minimumRequired,
         available_credits: balance?.total ?? 0,
@@ -271,8 +272,8 @@ export async function withAuthAndCreditsBatch<T>(
     const creditContext = {
       creditsDeducted: totalCreditsDeducted,
       creditsRawCost: totalRawCost,
-      creditsRemaining: Math.max(0, balance.total - totalCreditsDeducted),
-      lifetimeCreditsUsed: balance.lifetimeUsed + totalCreditsDeducted,
+      creditsRemaining: Math.max(0, balance!.total - totalCreditsDeducted),
+      lifetimeCreditsUsed: balance!.lifetimeUsed + totalCreditsDeducted,
     };
 
     // Per-item tracking when entries provided; single aggregated event otherwise
