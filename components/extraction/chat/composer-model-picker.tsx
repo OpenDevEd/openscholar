@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import {
@@ -82,12 +82,6 @@ export function ComposerModelPicker({
   const t = useTranslations("extraction");
   const [open, setOpen] = useState(false);
   const sortedModels = useMemo(() => models, [models]);
-
-  useEffect(() => {
-    if (value === null && sortedModels.length > 0) {
-      onChange(sortedModels[0]._id);
-    }
-  }, [value, sortedModels, onChange]);
 
   const groups = useMemo(() => {
     const byProvider = new Map<string, typeof sortedModels>();

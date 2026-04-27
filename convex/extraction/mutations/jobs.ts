@@ -139,6 +139,16 @@ export const startJob = mutation({
       }
     }
 
+    // Pre-resolve so the composer's controlled value is never null and never has to auto-default on the client.
+    let resolvedChatModelId: Id<"models"> | undefined = args.chatModelId;
+    if (args.mode === "chat" && resolvedChatModelId === undefined) {
+      const firstServed = await ctx.db
+        .query("models")
+        .withIndex("by_served_sort", (q) => q.eq("isServed", true))
+        .first();
+      resolvedChatModelId = firstServed?._id;
+    }
+
     const now = Date.now();
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
       userId: user._id,
@@ -159,7 +169,7 @@ export const startJob = mutation({
           }
         : {
             messageCount: 0,
-            chatModelId: args.chatModelId,
+            chatModelId: resolvedChatModelId,
           }),
     });
 
