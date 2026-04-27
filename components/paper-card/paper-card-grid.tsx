@@ -50,6 +50,7 @@ export function PaperCardGrid({
     myExistingResponses,
     myLoadingQuestions,
     myMissingResponses,
+    isScreeningPanelOpen,
   } = useScreening(result);
 
   const displayTitle = showTranslated && translatedContent
@@ -144,8 +145,10 @@ export function PaperCardGrid({
             </div>
           )}
 
-          {/* Screening badges - icon only */}
-          {screeningQuestions.length > 0 && (
+          {/* Screening badges - icon only. Hidden when the screening
+              panel is collapsed so the badges don't dangle as
+              orphaned UI when there's no panel context. */}
+          {isScreeningPanelOpen && screeningQuestions.length > 0 && (
             <div
               role="group"
               className="flex items-center gap-1 flex-wrap mb-2"
