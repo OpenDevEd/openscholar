@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { useBatchScreeningResponses } from "@/lib/ai/client/router";
 import { useTransientScreeningStore } from "@/lib/store";
+import { buildScreeningBatchKey } from "@/lib/screening-utils";
 import { useBatchOperation } from "./use-batch-operation";
 
 interface Paper {
@@ -40,19 +41,8 @@ export function useBatchScreening({
 
   // Compute batch key for deduplication
   const computeBatchKey = useCallback(
-    (papersToProcess: Paper[], _context: { searchId: string }) => {
-      const paperIds = Object.keys(missingResponses).sort();
-      if (paperIds.length === 0) return null;
-
-      const keyParts = paperIds.map((id) => {
-        const questions = missingResponses[id] || [];
-        const questionsWithIndex = questions
-          .map((q) => `${q}#${testIndexPerQuestion[q] || 0}`)
-          .sort();
-        return `${id}:${questionsWithIndex.join(",")}`;
-      });
-      return keyParts.join("|");
-    },
+    (papersToProcess: Paper[], _context: { searchId: string }) =>
+      buildScreeningBatchKey(papersToProcess, missingResponses, testIndexPerQuestion),
     [missingResponses, testIndexPerQuestion]
   );
 
