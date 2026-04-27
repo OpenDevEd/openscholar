@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveCreditsAvailability,
   resolveErrorCode,
   resolveExecutionDecision,
   resolveModeConfigurability,
@@ -202,6 +203,48 @@ describe("ai mode routing", () => {
           errorCode: "AI_PROVIDER_ERROR",
         }),
       ).toBe(false);
+    });
+  });
+
+  describe("resolveCreditsAvailability", () => {
+    it("compares balance against the required credit estimate", () => {
+      expect(
+        resolveCreditsAvailability({
+          isAuthenticated: true,
+          settlement: "settled",
+          totalCredits: 5,
+          requiredCredits: 10,
+        }),
+      ).toBe("unavailable");
+
+      expect(
+        resolveCreditsAvailability({
+          isAuthenticated: true,
+          settlement: "settled",
+          totalCredits: 100,
+          requiredCredits: 10,
+        }),
+      ).toBe("available");
+    });
+
+    it("keeps unsettled balances unknown instead of guessing from zero", () => {
+      expect(
+        resolveCreditsAvailability({
+          isAuthenticated: true,
+          settlement: "loading",
+          totalCredits: 0,
+          requiredCredits: 10,
+        }),
+      ).toBe("unknown");
+
+      expect(
+        resolveCreditsAvailability({
+          isAuthenticated: true,
+          settlement: "loading",
+          totalCredits: 100,
+          requiredCredits: 10,
+        }),
+      ).toBe("unknown");
     });
   });
 
