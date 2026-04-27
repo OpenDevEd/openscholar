@@ -20,10 +20,13 @@ export function applyUnpaidBatchItemErrors<T extends BatchResultLike>(
     delete paidResults[itemId]
   }
 
-  const unpaidErrors = uniqueUnpaidIds.map((paperId) => ({
-    paperId,
-    error: BATCH_ITEM_INSUFFICIENT_CREDITS_ERROR,
-  }))
+  const existingErrorIds = new Set(result.errors.map((error) => error.paperId))
+  const unpaidErrors = uniqueUnpaidIds
+    .filter((paperId) => !existingErrorIds.has(paperId))
+    .map((paperId) => ({
+      paperId,
+      error: BATCH_ITEM_INSUFFICIENT_CREDITS_ERROR,
+    }))
 
   return {
     ...result,

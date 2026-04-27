@@ -260,4 +260,21 @@ describe("applyUnpaidBatchItemErrors", () => {
       ],
     });
   });
+
+  it("does not duplicate existing errors for unpaid item ids", () => {
+    const result = {
+      results: {
+        p1: { value: "paid" },
+        p2: { value: "unpaid" },
+      },
+      errors: [{ paperId: "p2", error: "provider failed" }],
+    };
+
+    expect(applyUnpaidBatchItemErrors(result, ["p2"])).toEqual({
+      results: {
+        p1: { value: "paid" },
+      },
+      errors: [{ paperId: "p2", error: "provider failed" }],
+    });
+  });
 });
