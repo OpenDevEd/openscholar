@@ -12,7 +12,7 @@ In scope:
 
 - `lib/ai/client/hook-factory.ts` (~179 lines) — add `AIHookOptions<TParams>` to the factory signature; remove the local `resolveCreditsAvailability`; move the credit availability call inside `execute()` so it sees actual params; gate the smart-mode local fallback with `options.allowSmartLocalFallback !== false`; remove `AIPlanEntitlementError` residue.
 - `lib/ai/client/mode-routing.ts` — re-point its `resolveCreditsAvailability` re-export at the slice-01 primitive in `lib/credits/availability.ts`. Other resolvers (`resolveExecutionDecision`, `shouldRetrySmartWithLocalFallback`, `resolveModeConfigurability`, `resolveErrorCode`) are unchanged.
-- `lib/ai/client/router.ts` (~120 lines) — add options arg to all 9 `createAIHook(...)` calls. Single ops get fixed `estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY`. The two batch hooks (`useBatchScreeningResponses`, `useBatchTranslations`) get dynamic `estimateCredits: (params) => Math.ceil(params.papers.length * ESTIMATED_CREDITS_PER_PAPER)` and `useBatchScreeningResponses` additionally sets `allowSmartLocalFallback: false`.
+- `lib/ai/client/router.ts` (~120 lines) — add options arg to all 8 `createAIHook(...)` calls (6 single-op + 2 batch; the plan originally said 9, corrected to actual count). Single ops get fixed `estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY`. The two batch hooks (`useBatchScreeningResponses`, `useBatchTranslations`) get dynamic `estimateCredits: (params) => Math.ceil(params.papers.length * ESTIMATED_CREDITS_PER_PAPER)` and `useBatchScreeningResponses` additionally sets `allowSmartLocalFallback: false`.
 - `tests/ai-mode-routing.test.ts` — add the two missing `resolveCreditsAvailability` cases.
 
 Out of scope:
@@ -129,7 +129,7 @@ Import constants:
 import { ESTIMATED_CREDITS_PER_PAPER, ESTIMATED_CREDITS_PER_QUERY } from "@/convex/lib/constants"
 ```
 
-For each of the 7 single-op hooks (lines 40-72):
+For each of the 6 single-op hooks (lines 40-72):
 
 ```text
 { estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY }
@@ -175,7 +175,7 @@ Phase B — factory + router integration, commit per logical unit:
 
 3. Add `AIHookOptions<TParams>` interface to `lib/ai/client/hook-factory.ts`. Add the options parameter to `createAIHook`. Remove the `useMemo` for `creditsAvailability` and move the call inside `execute()` with the settlement adapter (DEVIATION 04-A). `AIPlanEntitlementError` residue is already absent (DEVIATION 04-C); verify and skip. Run existing tests in `tests/ai-mode-routing.test.ts`, `tests/ai-credit-preflight.test.ts`, and `tests/credits-availability.test.ts`. **Commit:** `refactor(ai-hook): [plan-04] move credits check inside execute and add options`.
 4. Add the pure helper `resolveFallbackToLocal` to `lib/ai/client/mode-routing.ts` and one focused unit test in `tests/ai-mode-routing.test.ts` asserting it returns `false` when `allowSmartLocalFallback === false` even with smart-eligible inputs (DEVIATION 04-B). Replace the inline gate in the hook-factory catch block with a call to this helper. **Commit:** `feat(ai-hook): [plan-04] honor allowSmartLocalFallback option`.
-5. Wire options into all 9 `createAIHook` calls in `lib/ai/client/router.ts`. Import constants from `@/convex/lib/constants`. **Commit:** `feat(ai-router): [plan-04] thread estimate options through all hooks`.
+5. Wire options into all 8 `createAIHook` calls in `lib/ai/client/router.ts`. Import constants from `@/convex/lib/constants`. **Commit:** `feat(ai-router): [plan-04] thread estimate options through all hooks`.
 6. Verify the full `vitest run` is green. Verify pm2 next.js logs show no compile errors. **Commit if any cleanup needed.**
 
 ## Files Touched
@@ -205,7 +205,7 @@ None. Pure client refactor; no schema changes; no wire changes server-side.
 - The credit availability check fires inside `execute(params)` with the actual `params`.
 - `options.estimateCredits` is called per execute; defaults to `() => ESTIMATED_CREDITS_PER_QUERY`.
 - `options.allowSmartLocalFallback` defaults to allowed; setting `false` blocks the catch-block fallback.
-- All 9 hook call sites in `router.ts` pass options. The two batch hooks compute estimate from `params.papers.length`.
+- All 8 hook call sites in `router.ts` pass options. The two batch hooks compute estimate from `params.papers.length`.
 - `useBatchScreeningResponses` sets `allowSmartLocalFallback: false`.
 - `tests/ai-mode-routing.test.ts` is green with 4 (was 2) `resolveCreditsAvailability` assertions.
 - No `AIPlanEntitlementError` references remain in `hook-factory.ts`.
