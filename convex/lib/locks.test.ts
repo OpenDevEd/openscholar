@@ -138,3 +138,61 @@ describe("acquireBatchLock", () => {
     expect(userBRow?.kind).toBe("batch_screening");
   });
 });
+
+describe("releaseBatchLock", () => {
+  it("deletes the lock row by id", async () => {
+    const t = convexTest(schema);
+    const userId = await seedUser(t);
+
+    const lockId = await t.mutation(internal.lib.locks.acquireBatchLock, {
+      userId,
+      kind: "batch_screening",
+      ttlMs: BATCH_LOCK_TTL_MS,
+    });
+
+    await t.mutation(internal.lib.locks.releaseBatchLock, { lockId });
+
+    const row = await t.run(async (ctx) => ctx.db.get(lockId));
+    expect(row).toBeNull();
+  });
+
+  it("is idempotent — calling twice does not throw", async () => {
+    const t = convexTest(schema);
+    const userId = await seedUser(t);
+
+    const lockId = await t.mutation(internal.lib.locks.acquireBatchLock, {
+      userId,
+      kind: "batch_translation",
+      ttlMs: BATCH_LOCK_TTL_MS,
+    });
+
+    await t.mutation(internal.lib.locks.releaseBatchLock, { lockId });
+    // Second call must be a clean no-op, not throw.
+    await expect(
+      t.mutation(internal.lib.locks.releaseBatchLock, { lockId }),
+    ).resolves.toBeNull();
+  });
+
+  it("allows re-acquisition for the same (userId, kind) after release", async () => {
+    const t = convexTest(schema);
+    const userId = await seedUser(t);
+
+    const firstLockId = await t.mutation(
+      internal.lib.locks.acquireBatchLock,
+      { userId, kind: "batch_screening", ttlMs: BATCH_LOCK_TTL_MS },
+    );
+    await t.mutation(internal.lib.locks.releaseBatchLock, {
+      lockId: firstLockId,
+    });
+
+    const secondLockId = await t.mutation(
+      internal.lib.locks.acquireBatchLock,
+      { userId, kind: "batch_screening", ttlMs: BATCH_LOCK_TTL_MS },
+    );
+
+    expect(secondLockId).not.toBe(firstLockId);
+    const secondRow = await t.run(async (ctx) => ctx.db.get(secondLockId));
+    expect(secondRow?.userId).toBe(userId);
+    expect(secondRow?.kind).toBe("batch_screening");
+  });
+});

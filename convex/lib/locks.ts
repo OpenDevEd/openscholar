@@ -1,10 +1,16 @@
 /**
  * Per-user resource locks for interactive batch AI actions.
  *
- * `acquireBatchLock`, parameterised by `kind`: throws
- * BATCH_ACTION_ALREADY_RUNNING if an active row exists for
- * `(userId, kind)`; GCs expired rows for the same `(userId, kind)`
- * ad-hoc; inserts a fresh row with a TTL.
+ * Two primitives, parameterised by `kind`:
+ *   - `acquireBatchLock`: throws BATCH_ACTION_ALREADY_RUNNING if an active
+ *     row exists for `(userId, kind)`; GCs expired rows for the same
+ *     `(userId, kind)` ad-hoc; inserts a fresh row with a TTL.
+ *   - `releaseBatchLock`: idempotent delete by id.
+ *
+ * The release MUST run in `finally`. The action wrapper composes
+ *   auth → rate-limit consume → acquire → try { handler } finally { release }
+ * so a thrown handler still releases the lock and the rate-limit token is
+ * consumed first (cheap fast-fail).
  *
  * Lock kind discriminator uses the underscore form (`"batch_screening"`)
  * to match the rest of the schema's literal-union convention; the
@@ -79,3 +85,18 @@ export const acquireBatchLock = internalMutation({
   },
 });
 
+/**
+ * Internal mutation — idempotent release. The action wrapper calls
+ * this in `finally`, so the lock id may already have been deleted by
+ * a prior partial-failure path; no-op in that case.
+ */
+export const releaseBatchLock = internalMutation({
+  args: { lockId: v.id("userResourceLocks") },
+  returns: v.null(),
+  handler: async (ctx, { lockId }) => {
+    const existing = await ctx.db.get(lockId);
+    if (!existing) return null;
+    await ctx.db.delete(lockId);
+    return null;
+  },
+});
