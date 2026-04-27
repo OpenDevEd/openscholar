@@ -149,6 +149,55 @@ function partialDeltasThenHangDoStream(
   });
 }
 
+/** A doStream that paces text-delta chunks with `delayMs` between
+ *  them, then hangs until abortSignal fires. Required for tests that
+ *  need DeltaStreamer's throttled flush to actually persist multiple
+ *  delta batches to the streamDeltas table — `partialDeltasThenHang
+ *  DoStream` enqueues all chunks synchronously, so DeltaStreamer
+ *  flushes the first batch and then has no further `addParts` calls
+ *  to retrigger the throttle window, leaving subsequent text-deltas
+ *  buffered in memory and never written. */
+function pacedDeltasThenHangDoStream(
+  deltas: string[],
+  delayMs: number,
+): (options: {
+  abortSignal?: AbortSignal;
+}) => Promise<{ stream: ReadableStream<unknown> }> {
+  return async (options) => ({
+    stream: new ReadableStream({
+      start(controller) {
+        controller.enqueue({ type: "stream-start", warnings: [] });
+        controller.enqueue({ type: "text-start", id: "0" });
+        let i = 0;
+        const interval = setInterval(() => {
+          if (i >= deltas.length) {
+            clearInterval(interval);
+            return;
+          }
+          try {
+            controller.enqueue({
+              type: "text-delta",
+              id: "0",
+              delta: deltas[i]!,
+            });
+          } catch {
+            clearInterval(interval);
+          }
+          i++;
+        }, delayMs);
+        options.abortSignal?.addEventListener("abort", () => {
+          clearInterval(interval);
+          try {
+            controller.close();
+          } catch {
+            // already closed
+          }
+        });
+      },
+    }),
+  });
+}
+
 /** A doStream that emits a complete `deltas → finish` stream
  *  synchronously, so paperChat.streamText resolves the happy path. */
 function finishingDoStream(
@@ -1176,8 +1225,15 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const promptMessageId = await seedUserMessage(t, threadId, "ping");
     providerState.emitGenerationId = "gen_aborted_finalize_1";
 
+    // Pace the deltas with 300ms between them so DeltaStreamer's
+    // 250ms throttle has time to flush each batch separately. With
+    // synchronous enqueue (partialDeltasThenHangDoStream) the throttle
+    // window only fires once and subsequent text-delta chunks stay
+    // buffered in memory unwritten — that's a test-environment
+    // artifact, but it would also fail to exercise the consolidation
+    // path we're trying to verify.
     mockDoStream.mockImplementation(
-      partialDeltasThenHangDoStream(["partial ", "reply"]),
+      pacedDeltasThenHangDoStream(["partial ", "reply"], 300),
     );
 
     const actionPromise = t.action(internal.chat.messages.generateResponse, {
@@ -1185,7 +1241,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
       promptMessageId,
     });
     await waitFor(() => doStreamArgsSeen.length > 0);
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 900));
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
     await actionPromise;
 
@@ -1206,12 +1262,27 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
           status?: string;
           aborted?: boolean;
           error?: string;
+          text?: string;
         }
       | undefined;
     expect(assistant).toBeDefined();
     expect(assistant!.status).toBe("failed");
     expect(assistant!.aborted).toBe(true);
     expect(assistant!.error).toBeUndefined();
+    // Partial streamed text MUST survive — the user saw text before
+    // clicking stop and the stopped bubble has to show whatever
+    // content the agent had time to flush, not an empty failed
+    // message. This is the production regression from using
+    // updateMessage (locks empty content because finalizeMessage
+    // early-returns once status !== pending) instead of finalize
+    // Message (consolidates stream deltas via getStreamingMessages
+    // WithMetadata → addMessagesHandler before marking failed).
+    //
+    // Substring match — exact text fragmentation is timing-dependent
+    // (DeltaStreamer's 250ms throttle vs the 300ms inter-delta pace
+    // in the mock means the second flush may not complete before
+    // abort fires), so we just assert the first delta survived.
+    expect(assistant!.text).toContain("partial");
   });
 
   it("M1 — listThreadMessages enriches aborted messages with aborted:true and drops the sentinel error", async () => {

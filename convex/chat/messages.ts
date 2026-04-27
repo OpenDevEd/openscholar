@@ -877,12 +877,20 @@ async function persistAssistantAbortSentinel(
     promptMessageId,
   );
   if (!target) return false;
-  await ctx.runMutation(components.agent.messages.updateMessage, {
-    messageId: target._id,
-    patch: {
-      status: "failed",
-      error: ABORT_ERROR_STRING,
-    },
+  // Use finalizeMessage, NOT updateMessage. finalizeMessage detects
+  // empty message content and consolidates the stream deltas into it
+  // BEFORE marking failed (component/messages.ts:388-405 →
+  // getStreamingMessagesWithMetadata → addMessagesHandler with
+  // pendingMessageId, which db.replace's the pending row with the
+  // delta-derived content + our { status: failed, error } metadata).
+  // updateMessage would flip status to failed first and lock in the
+  // empty content because finalizeMessage early-returns when status
+  // is no longer "pending" (component/messages.ts:380-385). Idempotent
+  // vs. the agent library's own listener: whichever fires second
+  // sees status !== pending and no-ops.
+  await ctx.runMutation(components.agent.messages.finalizeMessage, {
+    messageId: target._id as never,
+    result: { status: "failed", error: ABORT_ERROR_STRING },
   });
   return true;
 }
