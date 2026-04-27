@@ -27,6 +27,21 @@ export type LocalRegenerateState = {
   error?: string;
 };
 
+/**
+ * UI-side tail-scan for the assistant message the retry button is
+ * about to replace. Walks `messages` from the end and returns the
+ * first `role === "assistant"` element — the bubble currently shown
+ * as the trailing assistant in render order.
+ *
+ * Distinct from backend `resolveLatestAssistantTurn` in
+ * lib/chat/latest-assistant-turn.ts, which is stream-aware, requires
+ * a same-order user prompt, and refuses to act on user-only tails.
+ * This UI helper has none of that — if the user has typed a follow-up
+ * but no assistant has streamed yet, this still returns the previous
+ * assistant. That's correct for "what is the user looking at?" but
+ * wrong for "is there a regeneratable turn at the latest order?", so
+ * the two helpers are not interchangeable.
+ */
 export function getLatestAssistantForRegenerate<
   T extends ChatRegenerateMessage,
 >(messages: readonly T[]): T | null {

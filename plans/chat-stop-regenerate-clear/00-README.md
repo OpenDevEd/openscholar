@@ -30,6 +30,7 @@ All decisions below are locked as of **April 23, 2026** unless a later numbered 
 5. **Clear contract:** clear-history keeps the chat thread itself alive. It deletes message docs plus all stream rows/deltas for that thread. Do **not** call helpers that delete the thread row.
 6. **No schema expansion by default:** prefer existing thread id, message order, and stream tables over adding compatibility fields. If a new schema field becomes necessary during execution, the plan must be revised in git first.
 7. **Behavior-first verification:** tests assert on observable behavior, ARIA, and `data-*` contracts. Never on CSS classes or Tailwind literals.
+8. **Use `@convex-dev/agent/react`'s `useUIMessages`, NOT AI SDK's `useChat`.** AI SDK's `useChat` ships a `DefaultChatTransport` that talks to a Next.js HTTP route handler returning a UI message stream. Our generation runs in a Convex `internalAction` (`convex/chat/messages.ts:generateResponse`) and the reactive read path comes from a Convex query subscription, not an HTTP route. `useUIMessages` is the Convex-native equivalent that subscribes to `listThreadMessages` and merges in the agent component's stream sync. Re-routing through `useChat` would require writing a custom `Transport` that ultimately just round-trips through Convex anyway — net loss. This decision is locked: any future "should we move to useChat?" discussion needs to start by replacing the Convex-action backend, not the React hook.
 
 ## Plan-File Inventory
 

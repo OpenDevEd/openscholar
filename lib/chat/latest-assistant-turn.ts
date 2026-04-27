@@ -18,6 +18,29 @@ export type LatestAssistantTurnResolution = {
   streamIds: string[];
 };
 
+/**
+ * Backend, **stream-aware** "latest assistant turn" resolver.
+ *
+ * Used by `regenerateLastAssistant` to gate the regenerate mutation:
+ * walks order classes from the highest down and returns the bundle of
+ * `{user prompt, assistant message rows, stream rows}` belonging to the
+ * latest turn that has BOTH a same-order user prompt AND at least one
+ * assistant artifact (message row or stream row). Returns `null` when
+ * the latest turn lacks an assistant artifact — that intentionally
+ * refuses to regenerate "user-only" tails.
+ *
+ * **Orphan stream:** a `streams` row whose `order` has no same-order
+ * user prompt in `messages`. Happens when an aborted stream artifact
+ * survives but its parent user prompt was never persisted (or was
+ * cleared). The walk skips orphan-only orders entirely so they cannot
+ * trick regenerate into running with no real user prompt.
+ *
+ * NOT to be confused with `getLatestAssistantForRegenerate` in
+ * lib/chat/regenerate-ui-state.ts — that one is a UI-side tail-scan
+ * over render order, has no stream awareness, and happily walks past
+ * trailing user-only messages. The two answer different questions on
+ * different inputs and must remain distinct.
+ */
 export function resolveLatestAssistantTurn(args: {
   messages: LatestAssistantTurnMessage[];
   streams: LatestAssistantTurnStream[];
