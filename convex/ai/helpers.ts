@@ -360,7 +360,7 @@ export async function withUserCreditsBatch<T>(
       internal.credits.internal.getBalanceByUserId,
       { userId },
     );
-    if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
+    if (!hasEnoughCredits({ balance, required: ESTIMATED_CREDITS_PER_QUERY })) {
       await captureServerEvent(user.clerkId, "credits_insufficient", {
         required_credits: ESTIMATED_CREDITS_PER_QUERY,
         available_credits: balance?.total ?? 0,
@@ -379,8 +379,8 @@ export async function withUserCreditsBatch<T>(
     const creditContext = {
       creditsDeducted: creditsToDeduct,
       creditsRawCost: calculateServerRawCreditCost(totalUsage, pricing),
-      creditsRemaining: Math.max(0, balance.total - creditsToDeduct),
-      lifetimeCreditsUsed: balance.lifetimeUsed + creditsToDeduct,
+      creditsRemaining: Math.max(0, balance!.total - creditsToDeduct),
+      lifetimeCreditsUsed: balance!.lifetimeUsed + creditsToDeduct,
     };
 
     // Per-item tracking when entries provided; single aggregated event otherwise
