@@ -116,6 +116,25 @@ describe("classifyUnknownError — fingerprint cascade", () => {
     expect(classifyUnknownError(err).code).toBe("aborted");
   });
 
+  it("R7b: rehydrated `new Error(serializedAbortSentinel)` → aborted (the extraction onComplete shape)", () => {
+    // convex/extraction/mutations/internal/onComplete.ts wraps stored
+    // error strings into Error instances before classifying. When the
+    // stored string is the agent's persisted abort sentinel, the
+    // resulting Error has name "Error" — not "AbortError" — and the
+    // sentinel only as message. The R7 name-only check used to miss
+    // this and the job was misclassified as "unknown".
+    expect(
+      classifyUnknownError(new Error(`${ABORT_ERROR_STRING}`)).code,
+    ).toBe("aborted");
+    expect(
+      classifyUnknownError(
+        new Error(
+          `Trying to update a message that failed: msg_42, error: ${ABORT_ERROR_STRING}`,
+        ),
+      ).code,
+    ).toBe("aborted");
+  });
+
   it("R8: TypeError with 'fetch failed' message → network", () => {
     const err = new TypeError("fetch failed");
     expect(classifyUnknownError(err).code).toBe("network");

@@ -9,6 +9,7 @@ import { ConvexError, v } from "convex/values";
 import {
   ABORT_REASON_USER_STOPPED,
   isAbortErrorString,
+  isAbortLike,
 } from "@/lib/chat/abort-signal";
 
 export const ERROR_CODES = [
@@ -174,11 +175,14 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
     return finalize(CODE_TO_TAXONOMY[prefixMatch[1]], message, { context });
   }
 
-  // 3. AbortError / AbortSignal — user-initiated stop.
-  const errName = err instanceof Error ? err.name : "";
-  if (errName === "AbortError") {
+  // 3. AbortError / AbortSignal — user-initiated stop. isAbortLike
+  // covers DOMException-style instances AND `new Error(persistedSentinel)`
+  // (extraction's onComplete hands us the latter when it rehydrates a
+  // stored chat error string).
+  if (isAbortLike(err)) {
     return finalize("aborted", message, { context });
   }
+  const errName = err instanceof Error ? err.name : "";
 
   // 4. Network failures: TypeError "fetch failed" + node-style transport errors.
   if (errName === "TypeError" && /fetch failed/i.test(message)) {

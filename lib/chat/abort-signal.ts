@@ -28,3 +28,40 @@ export function isAbortErrorString(error: string): boolean {
       error.endsWith(ABORT_UPDATE_FAILED_SUFFIX))
   );
 }
+
+/**
+ * Single decision rule for "this value represents a user-initiated abort".
+ * Accepts the three shapes our pipeline observes:
+ *
+ *   1. In-memory DOMException — `{ name: "AbortError", message: <anything> }`.
+ *      Matches AI SDK's AbortError instances and the agent's pre-serialized
+ *      DOMException. Permissive on message to keep parity with the existing
+ *      classifyUnknownError R7 contract.
+ *   2. `new Error(persistedSentinel)` — name "Error", message
+ *      "AbortError: user_stopped" (or the agent's "Trying to update a
+ *      message that failed: …, error: AbortError: user_stopped" wrapper).
+ *      This is the shape extraction's onComplete handler hands to
+ *      classifyUnknownError when it rehydrates a stored error string.
+ *   3. Plain Record `{ name?, message? }` or the bare sentinel string —
+ *      lets callers pass parsed-JSON envelopes or raw payload strings
+ *      without first wrapping in Error.
+ */
+export function isAbortLike(input: unknown): boolean {
+  if (input == null) return false;
+  let name = "";
+  let message = "";
+  if (input instanceof Error) {
+    name = input.name;
+    message = input.message;
+  } else if (typeof input === "object") {
+    const rec = input as Record<string, unknown>;
+    if (typeof rec.name === "string") name = rec.name;
+    if (typeof rec.message === "string") message = rec.message;
+  } else if (typeof input === "string") {
+    message = input;
+  } else {
+    return false;
+  }
+  if (name === "AbortError") return true;
+  return isAbortErrorString(message);
+}
