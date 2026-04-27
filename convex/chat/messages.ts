@@ -465,7 +465,13 @@ export const generateResponse = internalAction({
               }
               onFinishBilled = true;
             },
-            onAbort: async ({ steps }) => {
+            onAbort: ({ steps }) => {
+              // AI SDK calls onAbort fire-and-forget at stream-text.ts:1206
+              // — any await inside this body becomes a dangling promise
+              // from the action's perspective. We restrict ourselves to
+              // synchronous side-effects and surface the abort to the
+              // action body via streamAbortedByUser; the action body
+              // does the awaited billing in the post-stream block below.
               streamAbortedByUser = true;
               console.info("[chat] stream aborted by user", {
                 jobId,
@@ -473,75 +479,6 @@ export const generateResponse = internalAction({
                 stepCount: steps.length,
                 accumulatedChars: accumulatedOutput.length,
               });
-
-              // Local estimate billing for the cancel path. Provider-
-              // routing gap means OpenRouter's /api/v1/generation does
-              // not publish cancelled records for non-whitelisted
-              // providers (Google/Groq/Mistral/…) — the upstream model
-              // keeps generating to completion and OpenRouter bills us
-              // for the full response anyway. Tokens the user actually
-              // saw are a LOWER bound, so we scale by
-              // ABORT_TOKEN_SURCHARGE_MULTIPLIER to charge them well
-              // above the fraction they read before the stop. This is
-              // intentionally a blunt instrument: a user who stops
-              // early pays several multiples of the text they saw in
-              // tokens, which trades precision for a strong
-              // disincentive to spam-stop on providers we cannot
-              // truly cancel. It also covers the context tokens
-              // (system prompt + thread history + paper abstracts)
-              // that the local estimator does not tokenize.
-              if (!capturedGenerationId) return;
-              if (accumulatedOutput.length === 0) return;
-
-              const rawOutputTokens = estimateTokenCount(accumulatedOutput);
-              let rawInputTokens = 0;
-              try {
-                // promptMessageId is the agent component's opaque id —
-                // it lives in the component's own schema, not our root
-                // schema, so we can't name it with our Id<"messages">
-                // brand. Convex validates the value at the boundary.
-                const messageDocs = await ctx.runQuery(
-                  components.agent.messages.getMessagesByIds,
-                  { messageIds: [promptMessageId as never] },
-                );
-                const promptMessage = messageDocs[0];
-                const promptText = extractMessageText(promptMessage);
-                rawInputTokens = estimateTokenCount(promptText);
-              } catch (err) {
-                console.warn(
-                  "[chat] abort billing: failed to read prompt text for token estimate",
-                  { jobId, threadId, err: errorToLogString(err) },
-                );
-              }
-
-              if (rawInputTokens === 0 && rawOutputTokens === 0) return;
-
-              const inputTokens =
-                rawInputTokens * ABORT_TOKEN_SURCHARGE_MULTIPLIER;
-              const outputTokens =
-                rawOutputTokens * ABORT_TOKEN_SURCHARGE_MULTIPLIER;
-
-              await ctx.runMutation(
-                internal.chat.billing.captureGenerationFromResponse,
-                {
-                  threadId,
-                  generationId: capturedGenerationId,
-                  requestedModel: modelSlug,
-                },
-              );
-              await ctx.runMutation(
-                internal.chat.billing.billGenerationFromSdkUsage,
-                {
-                  generationId: capturedGenerationId,
-                  model: modelSlug,
-                  pricing,
-                  promptTokens: inputTokens,
-                  completionTokens: outputTokens,
-                  reasoningTokens: 0,
-                  cachedPromptTokens: 0,
-                },
-              );
-              onFinishBilled = true;
             },
             onError: async ({ error }) => {
               streamErrored = true;
@@ -656,17 +593,22 @@ export const generateResponse = internalAction({
           });
       }
 
-      // Defensively persist the abort sentinel from the action body so
-      // it is properly awaited. The agent library registers a fire-and-
-      // forget abort listener in start.ts:170-178 that should call
-      // finalizeMessage on the pending assistant — but that listener's
-      // mutation is a dangling promise and was observed live (jobId
-      // k576p992sf7kq812yta72kqh2x85jamf) failing to run, leaving the
-      // pending row stuck and the UI rendering an error instead of
-      // the stopped pill. Idempotent under the agent listener winning
-      // the race because both paths write the same DOMException
-      // toString() value.
+      // Abort path runs everything that needs to happen for a
+      // user-stopped turn from the action body, properly awaited.
+      // The previous version put both the sentinel persistence and
+      // the surcharge billing inside onAbort, but AI SDK calls
+      // onAbort fire-and-forget at stream-text.ts:1206 so any awaits
+      // inside it become dangling promises that Convex may not run
+      // to completion (observed live — see commit 9db67c63). Now
+      // onAbort only flips streamAbortedByUser synchronously and we
+      // do the work here.
       if (streamAbortedByUser) {
+        // (1) Persist the wire abort sentinel on the pending
+        // assistant row so listThreadMessages's isAbortErrorString
+        // detection enriches aborted:true and drops the error from
+        // the UI page. Idempotent vs. the agent library's own
+        // start.ts:170-178 listener — both paths write identical
+        // values (same DOMException toString result).
         await persistAssistantAbortSentinel(
           ctx,
           threadId,
@@ -678,6 +620,70 @@ export const generateResponse = internalAction({
             err: errorToLogString(err),
           });
         });
+
+        // (2) Bill the cancel path from a tokenized estimate of what
+        // streamed plus the user prompt, scaled by
+        // ABORT_TOKEN_SURCHARGE_MULTIPLIER. Provider-routing gap:
+        // OpenRouter's /api/v1/generation does not publish cancelled
+        // records for non-whitelisted providers (Google, Groq,
+        // Mistral, …) — the upstream model keeps generating to
+        // completion and OpenRouter bills us for the full response
+        // anyway. Tokens the user actually saw are a LOWER bound,
+        // so the multiplier charges them above the visible fraction
+        // to deter spam-stop and approximately cover the unseen
+        // context (system prompt + thread history + paper abstracts)
+        // the local estimator does not tokenize.
+        if (capturedGenerationId && accumulatedOutput.length > 0) {
+          const rawOutputTokens = estimateTokenCount(accumulatedOutput);
+          let rawInputTokens = 0;
+          try {
+            // promptMessageId is the agent component's opaque id —
+            // it lives in the component's own schema, not our root
+            // schema, so we can't name it with our Id<"messages">
+            // brand. Convex validates the value at the boundary.
+            const messageDocs = await ctx.runQuery(
+              components.agent.messages.getMessagesByIds,
+              { messageIds: [promptMessageId as never] },
+            );
+            const promptMessage = messageDocs[0];
+            const promptText = extractMessageText(promptMessage);
+            rawInputTokens = estimateTokenCount(promptText);
+          } catch (err) {
+            console.warn(
+              "[chat] abort billing: failed to read prompt text for token estimate",
+              { jobId, threadId, err: errorToLogString(err) },
+            );
+          }
+
+          if (rawInputTokens > 0 || rawOutputTokens > 0) {
+            const inputTokens =
+              rawInputTokens * ABORT_TOKEN_SURCHARGE_MULTIPLIER;
+            const outputTokens =
+              rawOutputTokens * ABORT_TOKEN_SURCHARGE_MULTIPLIER;
+
+            await ctx.runMutation(
+              internal.chat.billing.captureGenerationFromResponse,
+              {
+                threadId,
+                generationId: capturedGenerationId,
+                requestedModel: modelSlug,
+              },
+            );
+            await ctx.runMutation(
+              internal.chat.billing.billGenerationFromSdkUsage,
+              {
+                generationId: capturedGenerationId,
+                model: modelSlug,
+                pricing,
+                promptTokens: inputTokens,
+                completionTokens: outputTokens,
+                reasoningTokens: 0,
+                cachedPromptTokens: 0,
+              },
+            );
+            onFinishBilled = true;
+          }
+        }
       }
 
       // Reconcile path for stream errors that still produced an
@@ -686,13 +692,11 @@ export const generateResponse = internalAction({
       // invoke here even when onFinish already inserted the row; we
       // skip scheduling reconcile when the fast path already wrote
       // the deduction, otherwise the /api/v1/generation lookup would
-      // double-bill on happy paths. Aborts also skip — onAbort runs
-      // its own bill-from-tokenized-estimate path, but AI SDK calls
-      // onAbort fire-and-forget (stream-text.ts:1206) so its three
-      // awaits race the gate here. Without the streamAbortedByUser
-      // check we'd schedule reconcile in parallel with onAbort and,
-      // when reconcile lands first, lose the surcharge to the
-      // billGenerationFromSdkUsage `already_billed` short-circuit.
+      // double-bill on happy paths. Aborts skip too because the
+      // user-stop branch above bills locally from the tokenized
+      // estimate — scheduling reconcile would either 404 forever on
+      // non-whitelisted providers or, if the record does land, race
+      // the local surcharge into the `already_billed` short-circuit.
       if (capturedGenerationId && !onFinishBilled && !streamAbortedByUser) {
         await ctx.runMutation(
           internal.chat.billing.captureGenerationFromResponse,
