@@ -401,8 +401,14 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
   const retryAfterMs = extractRetryAfterMs(rec);
 
   // Detect user-initiated aborts first — they come through as DOMException
-  // or AbortError, not AI SDK APICallError.
-  if (isAbort(rec)) {
+  // or AbortError, not AI SDK APICallError. Strict: only OUR user_stopped
+  // sentinel counts; other AbortError shapes (e.g. provider-side aborts on
+  // upstream timeouts) classify as "unknown" so the user sees the real
+  // failure. Contrast `isAbortLike` from lib/chat/abort-signal.ts which
+  // is permissive on AbortError name — it's used by classifyUnknownError
+  // (extraction onComplete) where we don't have provider context to
+  // distinguish ours from theirs.
+  if (isUserStopAbort(rec)) {
     return envelope("aborted", message, { providerName });
   }
 
@@ -603,7 +609,24 @@ function parseJsonIfString(
   return undefined;
 }
 
-function isAbort(rec: Record<string, unknown>): boolean {
+/**
+ * Strict abort detector for `classifyChatError` — recognises ONLY OUR
+ * user_stopped sentinel:
+ *   - Wire string `"AbortError: user_stopped"` (or the agent's
+ *     "Trying to update a message that failed: …" wrapper).
+ *   - In-memory DOMException with name "AbortError" AND message exactly
+ *     "user_stopped" (the literal we abort with at messages.ts).
+ *
+ * Deliberately stricter than `isAbortLike` from lib/chat/abort-signal.ts:
+ * `isAbortLike` accepts ANY AbortError name regardless of message and is
+ * used by `classifyUnknownError` (extraction onComplete path) where we
+ * receive a rehydrated string with no provider context. Here in chat we
+ * need to distinguish our stop from upstream provider-side AbortErrors
+ * (timeout aborts, etc.) so the user sees the real failure — see test
+ * `lib/errors/taxonomy.test.ts:431` "does not swallow provider AbortError
+ * failures as user-stopped turns".
+ */
+function isUserStopAbort(rec: Record<string, unknown>): boolean {
   const name = typeof rec.name === "string" ? rec.name : "";
   const msg = typeof rec.message === "string" ? rec.message : "";
   if (isAbortErrorString(msg)) return true;
