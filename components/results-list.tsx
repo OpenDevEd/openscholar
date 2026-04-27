@@ -37,6 +37,7 @@ import { FocusMode } from "./ui/focus-mode";
 import { useIsTablet } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
+import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
 
 interface PapersListProps {
   results: PaperResult[];
@@ -374,15 +375,24 @@ export function ResultsList({
     currentSearchResult?.screeningResponses,
   ]);
 
+  // Manual-retry trigger for the screening alert. Bumping it appends a
+  // new token to questionSetKey, which changes the batch-screening
+  // contextId — that clears the dedup ref (via useBatchOperation's
+  // contextId-change effect) and lets the failed batch refire.
+  const [screeningRetryVersion, setScreeningRetryVersion] = useState(0);
+
   // Stable identifier for the active question set — folded into the
   // batch-screening contextId so a question-set edit invalidates the
   // dedup ref and surfaces a fresh batch.
   const questionSetKey = useMemo(
     () =>
-      (currentSearchResult?.screeningQuestions ?? [])
-        .map((q) => q.question)
-        .join("|"),
-    [currentSearchResult?.screeningQuestions]
+      [
+        ...(currentSearchResult?.screeningQuestions ?? []).map(
+          (q) => q.question,
+        ),
+        `retry:${screeningRetryVersion}`,
+      ].join("|"),
+    [currentSearchResult?.screeningQuestions, screeningRetryVersion]
   );
 
   // Stable callback for batch screening results
@@ -404,6 +414,11 @@ export function ResultsList({
     canStart: canStartScreening && !!searchId,
     onResults: handleBatchResults,
   });
+
+  const isScreeningInFlight = Object.keys(loadingQuestions).length > 0;
+  const handleRetryScreening = useCallback(() => {
+    setScreeningRetryVersion((v) => v + 1);
+  }, []);
 
   const papersForBatchTranslation = paginatedResults;
 
@@ -492,6 +507,19 @@ export function ResultsList({
             onDownloadAllEssentialCSV={onDownloadAllEssentialCSV}
           />
         </div>
+
+        {/* Inline alert for batch-screening errors. Sits above the
+            results area so the user sees it whether the screening panel
+            is open or collapsed. */}
+        {screeningErrors.length > 0 && (
+          <div className="mb-4">
+            <ScreeningErrorAlert
+              errors={screeningErrors}
+              onRetry={handleRetryScreening}
+              canRetry={!isScreeningInFlight}
+            />
+          </div>
+        )}
 
         {/* Single results area – loading, no-results, and papers all rendered here */}
         {(() => {
