@@ -8,6 +8,7 @@ import { useAuthReadiness } from '@/components/providers/convex-provider'
 import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
 import { useFeatureFlag } from '@/lib/feature-flags/hook'
+import { ESTIMATED_CREDITS_PER_QUERY } from '@/convex/lib/constants'
 import {
   AIApiKeyRequiredError,
   AICreditsDisabledError,
@@ -16,7 +17,8 @@ import {
 import type { AIConfig } from './executor'
 import {
   type AIExecutionErrorReason,
-  type CreditsAvailability,
+  type CreditsSettlement,
+  resolveCreditsAvailability,
   resolveErrorCode,
   resolveExecutionDecision,
   resolveModeConfigurability,
@@ -30,6 +32,11 @@ export interface AIHookResult<TParams, TResult> {
   isConfigured: boolean
 }
 
+export interface AIHookOptions<TParams> {
+  estimateCredits?: (params: TParams) => number
+  allowSmartLocalFallback?: boolean
+}
+
 function mapExecutionError(reason: AIExecutionErrorReason): Error {
   if (reason === 'api_key_required') {
     return new AIApiKeyRequiredError()
@@ -38,24 +45,6 @@ function mapExecutionError(reason: AIExecutionErrorReason): Error {
     return new AIInsufficientCreditsError()
   }
   return new AICreditsDisabledError()
-}
-
-function resolveCreditsAvailability({
-  isAuthenticated,
-  settlement,
-  totalCredits,
-}: {
-  isAuthenticated: boolean
-  settlement: string
-  totalCredits: number | undefined
-}): CreditsAvailability {
-  if (!isAuthenticated) {
-    return 'unavailable'
-  }
-  if (settlement !== 'ready') {
-    return 'unknown'
-  }
-  return (totalCredits ?? 0) > 0 ? 'available' : 'unavailable'
 }
 
 function useLocalConfig(): AIConfig {
@@ -70,6 +59,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
   actionRef: FunctionReference<'action', 'public', TParams, TResult>,
   executorFn: (params: TParams, config: AIConfig) => Promise<TResult>,
   transformCreditsResult?: (result: TResult, params: TParams) => TResult,
+  options: AIHookOptions<TParams> = {},
 ): () => AIHookResult<TParams, TResult> {
   return function useAIOperation() {
     const [isLoading, setIsLoading] = useState(false)
@@ -82,15 +72,6 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
     const isAuthenticated = phase === 'authenticated'
     const creditsEnabled = useFeatureFlag("credits.enabled")
     const creditsQuery = useOptionalAuthQuery(api.credits.queries.getMyBalance, {})
-    const creditsAvailability = useMemo(
-      () =>
-        resolveCreditsAvailability({
-          isAuthenticated,
-          settlement: creditsQuery.settlement,
-          totalCredits: creditsQuery.data?.total,
-        }),
-      [creditsQuery.data?.total, creditsQuery.settlement, isAuthenticated]
-    )
     const isConfigured = useMemo(
       () =>
         resolveModeConfigurability({
@@ -109,6 +90,24 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
         setError(null)
 
         try {
+          const requiredCredits = Math.max(
+            0,
+            Math.ceil(
+              options.estimateCredits?.(params) ?? ESTIMATED_CREDITS_PER_QUERY
+            )
+          )
+          // Adapter: useOptionalAuthQuery's settlement union doesn't match the
+          // CreditsSettlement union. "ready" is the only "settled" state; every
+          // other auth/query phase reads as "loading" for the credit check.
+          const settlement: CreditsSettlement =
+            creditsQuery.settlement === 'ready' ? 'settled' : 'loading'
+          const creditsAvailability = resolveCreditsAvailability({
+            isAuthenticated,
+            settlement,
+            totalCredits: creditsQuery.data?.total,
+            requiredCredits,
+          })
+
           const decision = resolveExecutionDecision({
             mode: apiKeyMode,
             hasApiKey,
@@ -126,7 +125,6 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
           }
 
           const runCredits = async () => {
-            // Server-side path: server enforces the plan gate
             const result = await convexAction(params as never) as TResult
             return transformCreditsResult
               ? transformCreditsResult(result, params)
@@ -163,12 +161,14 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
       [
         apiKeyMode,
         convexAction,
-        creditsAvailability,
         creditsEnabled,
+        creditsQuery.data?.total,
+        creditsQuery.settlement,
         executorFn,
         hasApiKey,
         isAuthenticated,
         localConfig,
+        options.estimateCredits,
         transformCreditsResult,
       ]
     )

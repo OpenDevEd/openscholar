@@ -1,10 +1,15 @@
 import type { AIKeyMode } from "@/lib/types";
+import {
+  resolveCreditsAvailability,
+  type CreditsAvailability,
+  type CreditsSettlement,
+} from "@/lib/credits/availability";
 
 export {
   resolveCreditsAvailability,
   type CreditsAvailability,
   type CreditsSettlement,
-} from "@/lib/credits/availability";
+};
 export type AIExecutionTarget = "local" | "credits";
 export type AIExecutionErrorReason =
   | "api_key_required"
