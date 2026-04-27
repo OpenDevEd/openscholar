@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -96,8 +96,11 @@ export default function JobDetailPage() {
   
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const jobId = params.jobId as Id<"extractionJobs">;
+  // Wizard hands off `?mode=chat` so the destination shows "Preparing chat…" copy from frame zero instead of the generic spinner that flips to the chat label once the shell resolves.
+  const modeHint = searchParams.get("mode");
 
   const reportBuilderEnabled = useFeatureFlag("extraction.reportBuilder");
   const templatesEnabled = useFeatureFlag("extraction.templates");
@@ -427,12 +430,14 @@ export default function JobDetailPage() {
         !hasCurrentJobDetails ||
         resultsPageQuery.isDeferred))
   ) {
+    const showChatPreparingHint = modeHint === "chat" && jobShell === undefined;
     return (
       <PageWrapper>
         <AuthStatePanel
           variant="loading"
           layout="fullscreen"
           loadingStyle="spinner"
+          title={showChatPreparingHint ? tExtraction("chatPreparing") : undefined}
         />
       </PageWrapper>
     );

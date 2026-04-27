@@ -199,7 +199,11 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
             });
 
       shouldClearOnExit.current = true;
-      router.push(`/extraction/${result.jobId}`);
+      router.push(
+        effectiveMode === "chat"
+          ? `/extraction/${result.jobId}?mode=chat`
+          : `/extraction/${result.jobId}`,
+      );
     } catch (error) {
       toast.job.createFailed(error);
     } finally {
@@ -239,6 +243,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
           variant="ghost"
           size="sm"
           onClick={() => router.push("/extraction")}
+          disabled={isSubmitting}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           {tc("cancel")}

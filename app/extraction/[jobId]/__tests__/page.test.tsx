@@ -352,6 +352,7 @@ vi.mock("next-intl", () => ({
 vi.mock("next/navigation", () => ({
   useParams: () => ({ jobId: currentJobIdMock.value }),
   useRouter: () => ({ push: pushMock }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("convex/react", () => ({
