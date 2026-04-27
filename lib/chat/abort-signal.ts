@@ -1,20 +1,27 @@
 /**
- * Sentinel strings that travel between the streaming action's AbortController
- * and the chat message query. generateResponse aborts with
- * `new DOMException(ABORT_REASON_USER_STOPPED, "AbortError")`; the library's
- * call.fail handler persists the MessageDoc as
- * `{ status: "failed", error: ABORT_ERROR_STRING }`. A late stream save can
- * also wrap that sentinel in the agent's "Trying to update a message that
- * failed" text. listThreadMessages recognizes both current wire strings and
- * surfaces an `aborted: true` flag instead of leaking them to the client.
+ * Bare reason fragment used by the strict abort detector in
+ * lib/errors/taxonomy.ts to recognise the in-memory DOMException shape
+ * `{ name: "AbortError", message: "user_stopped" }`. NOT used as the
+ * runtime abort reason itself anymore — generateResponse passes the
+ * full ABORT_ERROR_STRING below directly to abortController.abort.
  */
 export const ABORT_REASON_USER_STOPPED = "user_stopped";
 
 /**
- * @convex-dev/agent persists aborts from `start()` via
- * `abortSignal.reason?.toString()` (node_modules/@convex-dev/agent/src/client/
- * start.ts:170-176). DOMException#toString includes the name and message, so
- * the runtime wire value is `"AbortError: user_stopped"`.
+ * Wire string for user-initiated aborts. generateResponse calls
+ * `abortController.abort(ABORT_ERROR_STRING)` so this string IS the
+ * abort reason — `signal.reason` is the literal string itself, not a
+ * DOMException. The agent library serializes via
+ * `abortSignal.reason?.toString()` (node_modules/@convex-dev/agent/src/
+ * client/start.ts:170-176); String#toString returns the string itself,
+ * so MessageDoc.error gets ABORT_ERROR_STRING verbatim. Our defensive
+ * persistAssistantAbortSentinel writes the same value, so the two
+ * paths are trivially equal — no longer dependent on the runtime
+ * format of `new DOMException(reason, name).toString()`.
+ *
+ * A late stream save can also wrap this sentinel in the agent's
+ * "Trying to update a message that failed: …" text; isAbortErrorString
+ * recognises both shapes.
  */
 export const ABORT_ERROR_STRING = `AbortError: ${ABORT_REASON_USER_STOPPED}`;
 

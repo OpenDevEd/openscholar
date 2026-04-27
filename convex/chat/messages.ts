@@ -51,7 +51,6 @@ import {
 import { startAbortPoller } from "../../lib/chat/abort-poller";
 import {
   ABORT_ERROR_STRING,
-  ABORT_REASON_USER_STOPPED,
 } from "../../lib/chat/abort-signal";
 import {
   normalizeChatUIMessage,
@@ -311,9 +310,15 @@ export const generateResponse = internalAction({
       },
       onAbort: () => {
         if (!abortController.signal.aborted) {
-          abortController.abort(
-            new DOMException(ABORT_REASON_USER_STOPPED, "AbortError"),
-          );
+          // Pass the wire string directly as the abort reason. The agent
+          // library serializes via `abortSignal.reason?.toString()` at
+          // start.ts:175, and String#toString returns the string itself,
+          // so the persisted MessageDoc.error becomes ABORT_ERROR_STRING
+          // verbatim — same value our defensive persistAssistantAbort
+          // Sentinel writes. Avoids the prior dependency on
+          // `new DOMException(reason, name).toString()` happening to
+          // format as "AbortError: user_stopped" at runtime.
+          abortController.abort(ABORT_ERROR_STRING);
         }
       },
       intervalMs: STOP_ABORT_POLL_INTERVAL_MS,
@@ -856,9 +861,10 @@ async function patchLastAssistantAsFailed(
  * because that's what listThreadMessages's `isAbortErrorString(error)`
  * detection looks for to set `aborted: true` and drop the error from
  * the UI page. Idempotent under the agent listener winning the race —
- * `abortSignal.reason?.toString()` produces the same exact string for
- * the DOMException we abort with at messages.ts:312, so duplicate
- * patches write identical values.
+ * we call `abortController.abort(ABORT_ERROR_STRING)` so
+ * `abortSignal.reason` is already the wire string, and the agent's
+ * `reason?.toString()` returns the string itself. Duplicate patches
+ * write identical values.
  */
 async function persistAssistantAbortSentinel(
   ctx: ActionCtx,
