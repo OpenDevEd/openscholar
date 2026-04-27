@@ -31,13 +31,16 @@ import {
 import { AI_COST_MARKUP, ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
 import { hasEnoughCredits } from "../../lib/credits/availability";
+import type { BatchError } from "../../lib/ai/core/batch-types";
+import { applyBatchItemDeductions } from "./lib/applyBatchItemDeductions";
 
 import {
   calculateCreditsToDeductFromUsage,
   calculateRawCreditCost,
   convertUsdCostToCredits,
 } from "./lib/creditBilling";
-export { collectBillableItemIds } from "./lib/collectBillableItemIds";
+import { collectBillableItemIds } from "./lib/collectBillableItemIds";
+export { collectBillableItemIds };
 
 type Pricing = { input: number; output: number };
 
@@ -231,11 +234,18 @@ export type UsageBreakdownEntry = {
 
 /**
  * Batch-aware auth and credits wrapper.
- * Checks auth/credits once, runs the batch handler, then deducts credits based on total usage.
- * @param minimumRequired - Minimum credits required before starting.
- *                          Use `papers.length * ESTIMATED_CREDITS_PER_PAPER` for batch operations.
+ * Checks auth/credits once, runs the batch handler, then deducts credits per item.
+ * On mid-batch credit exhaustion, salvages already-paid items as results and
+ * returns the unpaid items as structured errors via `applyUnpaidBatchItemErrors`.
+ * @param minimumRequired - Pre-flight floor (estimate). Use
+ *                          `papers.length * ESTIMATED_CREDITS_PER_PAPER` for batch operations.
  */
-export async function withAuthAndCreditsBatch<T>(
+type BatchShapedResult = {
+  results: Record<string, unknown>;
+  errors: BatchError[];
+};
+
+export async function withAuthAndCreditsBatch<T extends BatchShapedResult>(
   ctx: ActionCtx,
   operation: string,
   handler: (user: Doc<"users">, pricing: Pricing) => Promise<{
@@ -317,20 +327,20 @@ export async function withAuthAndCreditsBatch<T>(
     }
 
     if (usageBreakdown && usageBreakdown.length > 0) {
-      for (const entry of usageBreakdown) {
-        const amount = calculateServerCreditsToDeduct(entry.usage, pricing);
-        if (amount <= 0) continue;
-        await ctx.runMutation(internal.credits.internal.deductCredits, {
-          userId: user._id,
-          amount,
-          description: entry.description,
-          metadata: entry.metadata,
-          billingType: entry.billingType,
-          jobId: entry.jobId,
-          paperId: entry.paperId,
-          resultId: entry.resultId,
-        });
-      }
+      return await applyBatchItemDeductions({
+        result,
+        usageBreakdown,
+        pricing,
+        clerkId: user.clerkId,
+        operation,
+        availableCreditsAtStart: balance?.total ?? 0,
+        deductCredits: (deductArgs) =>
+          ctx.runMutation(internal.credits.internal.deductCredits, {
+            userId: user._id,
+            ...deductArgs,
+          }),
+        captureServerEvent,
+      });
     } else {
       const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);
       await ctx.runMutation(internal.credits.internal.deductCredits, {

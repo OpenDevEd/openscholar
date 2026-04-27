@@ -197,6 +197,9 @@ export const generateBatchTranslations = action({
             return {
               usage,
               billingType: "translation" as const,
+              // `itemId` keys back into BatchResult.results — required
+              // for the mid-batch salvage path to identify unpaid items.
+              itemId: paperRef,
               metadata: {
                 openalexId,
                 chargedCredits: String(amount),
@@ -301,6 +304,9 @@ export const generateBatchScreeningResponses = action({
             return {
               usage,
               billingType: "screening" as const,
+              // `itemId` keys back into BatchResult.results — required
+              // for the mid-batch salvage path to identify unpaid items.
+              itemId: paperRef,
               metadata: {
                 openalexId,
                 chargedCredits: String(amount),
