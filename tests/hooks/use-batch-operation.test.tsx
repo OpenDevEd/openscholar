@@ -51,9 +51,10 @@ const STABLE_CONTEXT: Ctx = { id: "ctx" };
 interface HarnessProps {
   papers: Paper[];
   execute: ReturnType<typeof vi.fn>;
+  retryFailedItems?: boolean;
 }
 
-function useHarness({ papers, execute }: HarnessProps) {
+function useHarness({ papers, execute, retryFailedItems }: HarnessProps) {
   return useBatchOperation<{ ids: string[] }, Result, Ctx, Set<string>>({
     execute,
     isConfigured: true,
@@ -65,6 +66,7 @@ function useHarness({ papers, execute }: HarnessProps) {
     context: STABLE_CONTEXT,
     canStart: true,
     papers,
+    retryFailedItems,
     createLoadingState,
     clearLoadingState,
   });
@@ -157,5 +159,120 @@ describe("useBatchOperation — queued loading + settledBatchVersion", () => {
       k2.resolve({ results: {}, errors: [] });
       await Promise.resolve();
     });
+  });
+});
+
+describe("useBatchOperation — retryFailedItems opt-in", () => {
+  it("when false, a same-batch refire of just the failed papers does not re-execute", async () => {
+    const execute = vi.fn().mockResolvedValue({
+      results: { p3: { value: "ok" } },
+      errors: [
+        { paperId: "p1", error: "insufficient_credits" },
+        { paperId: "p2", error: "insufficient_credits" },
+      ],
+    });
+
+    const { rerender } = renderHook((p) => useHarness(p), {
+      initialProps: {
+        papers: [{ id: "p1" }, { id: "p2" }, { id: "p3" }],
+        execute,
+        retryFailedItems: false,
+      } as HarnessProps,
+    });
+
+    await waitFor(() => {
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+    // Let the .then run.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Re-render with only the failed papers (mimics the next render after
+    // p3 has been "processed" and filterItemsNeedingProcessing narrows).
+    rerender({
+      papers: [{ id: "p1" }, { id: "p2" }],
+      execute,
+      retryFailedItems: false,
+    } as HarnessProps);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // The failed sub-batch key "p1,p2" was preemptively added to the
+    // dedup ref, so no re-fire happens.
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("when true (default), the same narrowed batch DOES re-execute (translation behavior)", async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      results: { p3: { value: "ok" } },
+      errors: [
+        { paperId: "p1", error: "transient" },
+        { paperId: "p2", error: "transient" },
+      ],
+    }).mockResolvedValueOnce({
+      results: { p1: { value: "ok" }, p2: { value: "ok" } },
+      errors: [],
+    });
+
+    const { rerender } = renderHook((p) => useHarness(p), {
+      initialProps: {
+        papers: [{ id: "p1" }, { id: "p2" }, { id: "p3" }],
+        execute,
+        // omit retryFailedItems → defaults to true
+      } as HarnessProps,
+    });
+
+    await waitFor(() => {
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // The narrowed sub-batch [p1, p2] has a NEW batchKey not in the
+    // dedup ref (because we didn't pre-stamp it), so it refires.
+    rerender({
+      papers: [{ id: "p1" }, { id: "p2" }],
+      execute,
+    } as HarnessProps);
+
+    await waitFor(() => {
+      expect(execute).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("when false, a transport-level rejection keeps the batchKey in the dedup ref", async () => {
+    const execute = vi.fn().mockRejectedValue(new Error("network down"));
+
+    const { rerender } = renderHook((p) => useHarness(p), {
+      initialProps: {
+        papers: [{ id: "p1" }, { id: "p2" }],
+        execute,
+        retryFailedItems: false,
+      } as HarnessProps,
+    });
+
+    await waitFor(() => {
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Re-render with the same papers — without the preserved dedup ref,
+    // the rejection cleanup (delete from fetchedKeysRef) would let the
+    // batch refire. With retryFailedItems=false, it stays put.
+    rerender({
+      papers: [{ id: "p1" }, { id: "p2" }],
+      execute,
+      retryFailedItems: false,
+    } as HarnessProps);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(execute).toHaveBeenCalledTimes(1);
   });
 });

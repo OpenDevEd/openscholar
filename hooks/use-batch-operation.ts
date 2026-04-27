@@ -39,6 +39,19 @@ interface UseBatchOperationConfig<TInput, TResult, TContext> {
   canStart: boolean;
   /** The papers to process */
   papers: Paper[];
+  /**
+   * When `true` (default) and the batch fully fails (rejected promise),
+   * the batchKey is removed from the dedup ref so the next render will
+   * retry the same set of papers — appropriate for transient failures
+   * like translation, where re-firing on a transient blip is desired.
+   *
+   * When `false`, failed batchKeys (both transport-level rejection and
+   * per-item errors in a successful response) are retained in the dedup
+   * ref so the failed batch is not re-queued. Used by screening, where
+   * a per-item insufficient_credits error is permanent until the user
+   * tops up — re-firing would loop forever.
+   */
+  retryFailedItems?: boolean;
 }
 
 interface UseBatchOperationReturn<TLoadingState> {
@@ -71,6 +84,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   context,
   canStart,
   papers,
+  retryFailedItems = true,
   createLoadingState,
   clearLoadingState,
 }: UseBatchOperationConfig<TInput, TResult, TContext> & {
@@ -167,14 +181,38 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
           handleResults(paperId, data, contextIdAtFetch);
         });
 
-        // Store errors for UI feedback
+        // Store errors for UI feedback. When retryFailedItems is false,
+        // also pre-stamp the failed sub-batch's key into the dedup ref
+        // so that a subsequent render — where filterItemsNeedingProcessing
+        // narrows to just the failed papers — does not refire the same
+        // failed batch. Without this, persistent per-item errors (e.g.
+        // insufficient_credits) loop forever.
         if (batchErrors.length > 0) {
+          if (retryFailedItems === false) {
+            const failedPaperIds = new Set(
+              batchErrors
+                .map((e) => e.paperId)
+                .filter((id) => id !== "batch")
+            );
+            const failedPapers = papersNeedingProcessing.filter((p) =>
+              failedPaperIds.has(p.id)
+            );
+            const failedBatchKey = computeBatchKey(failedPapers, context);
+            if (failedBatchKey) {
+              fetchedKeysRef.current.add(failedBatchKey);
+            }
+          }
           setErrors(batchErrors);
         }
       })
       .catch((error) => {
-        // Remove from fetched so it can be retried
-        fetchedKeysRef.current.delete(batchKey);
+        // On transport-level failure: when retryFailedItems is true
+        // (default), allow the next render to retry by removing the
+        // batchKey. When false, keep it so the failed batch is not
+        // re-queued.
+        if (retryFailedItems !== false) {
+          fetchedKeysRef.current.delete(batchKey);
+        }
         setErrors([{ paperId: "batch", error: error.message || String(error) }]);
       })
       .finally(() => {
@@ -200,8 +238,10 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     context,
     contextId,
     buildExecuteInput,
+    computeBatchKey,
     createLoadingState,
     clearLoadingState,
+    retryFailedItems,
     settledBatchVersion,
   ]);
 
