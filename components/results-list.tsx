@@ -481,7 +481,6 @@ export function ResultsList({
         missingResponses,
         loadingQuestions,
         existingResponses: currentSearchResult?.screeningResponses || {},
-        errors: screeningErrors,
         setScreeningResponse: (paperId, question, response) => {
           setScreeningResponse(searchId || "", paperId, question, response);
         },
