@@ -120,13 +120,8 @@ export function TransactionsPanelToolbar({ counts }: Props) {
           />
           <Input
             type="search"
-            value={state.q}
-            onChange={(e) => {
-              const next = e.target.value;
-              startFilterTransition(() => {
-                void setState({ q: next });
-              });
-            }}
+            defaultValue={state.q}
+            onChange={(e) => void setState({ q: e.target.value })}
             placeholder={t("searchPlaceholder")}
             aria-label={t("searchPlaceholder")}
             data-transactions-search
