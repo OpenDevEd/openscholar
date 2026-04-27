@@ -21,6 +21,13 @@ interface UseBatchScreeningOptions {
   searchId: string;
   papers: Paper[];
   missingResponses: Record<string, string[]>;
+  /**
+   * Stable identifier for the active question set. Changes whenever the
+   * questions themselves change, so a question-set edit invalidates the
+   * dedup ref and surfaces a new batch. Independent of testRunKey, which
+   * folds in per-question test indices.
+   */
+  questionSetKey: string;
   canStart: boolean;
   onResults: (paperId: string, responses: Record<string, boolean | null>) => void;
 }
@@ -33,6 +40,7 @@ export function useBatchScreening({
   searchId,
   papers,
   missingResponses,
+  questionSetKey,
   canStart,
   onResults,
 }: UseBatchScreeningOptions) {
@@ -105,8 +113,26 @@ export function useBatchScreening({
 
   const context = useMemo(() => ({ searchId }), [searchId]);
 
-  // Stable context ID for O(1) comparison in batch operation
-  const contextId = searchId;
+  // testRunKey collapses the per-question test indices into a single
+  // string. A "Test" click on a question bumps its index, which
+  // invalidates the contextId and forces a fresh batch.
+  const testRunKey = useMemo(
+    () =>
+      Object.entries(testIndexPerQuestion)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([question, testIndex]) => `${question}:${testIndex}`)
+        .join("|"),
+    [testIndexPerQuestion]
+  );
+
+  // Stable context ID for O(1) comparison in batch operation. Combines
+  // searchId, questionSetKey, and testRunKey so any of: switching
+  // searches, editing the question set, or toggling a test run, will
+  // clear the dedup ref and force a fresh batch.
+  const contextId = useMemo(
+    () => [searchId, questionSetKey, testRunKey].join("::"),
+    [searchId, questionSetKey, testRunKey]
+  );
 
   const { loadingState, errors } = useBatchOperation<
     { papers: { id: string; title: string; abstract: string }[]; questions: string[] },
@@ -124,6 +150,7 @@ export function useBatchScreening({
     context,
     canStart,
     papers,
+    retryFailedItems: false,
     createLoadingState,
     clearLoadingState,
   });

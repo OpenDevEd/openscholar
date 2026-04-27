@@ -374,6 +374,17 @@ export function ResultsList({
     currentSearchResult?.screeningResponses,
   ]);
 
+  // Stable identifier for the active question set — folded into the
+  // batch-screening contextId so a question-set edit invalidates the
+  // dedup ref and surfaces a fresh batch.
+  const questionSetKey = useMemo(
+    () =>
+      (currentSearchResult?.screeningQuestions ?? [])
+        .map((q) => q.question)
+        .join("|"),
+    [currentSearchResult?.screeningQuestions]
+  );
+
   // Stable callback for batch screening results
   const handleBatchResults = useCallback(
     (paperId: string, responses: Record<string, boolean | null>) => {
@@ -389,6 +400,7 @@ export function ResultsList({
     searchId: searchId || "",
     papers: papersForBatchScreening,
     missingResponses,
+    questionSetKey,
     canStart: canStartScreening && !!searchId,
     onResults: handleBatchResults,
   });
