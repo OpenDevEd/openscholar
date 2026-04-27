@@ -149,3 +149,18 @@ export function shouldRetrySmartWithLocalFallback({
   }
   return SMART_FALLBACK_ERROR_CODES.has(errorCode);
 }
+
+export function resolveFallbackToLocal({
+  allowSmartLocalFallback,
+  mode,
+  hasApiKey,
+  errorCode,
+}: {
+  allowSmartLocalFallback?: boolean;
+  mode: AIKeyMode;
+  hasApiKey: boolean;
+  errorCode?: string;
+}): boolean {
+  if (allowSmartLocalFallback === false) return false;
+  return shouldRetrySmartWithLocalFallback({ mode, hasApiKey, errorCode });
+}

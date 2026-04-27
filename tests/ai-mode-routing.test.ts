@@ -3,6 +3,7 @@ import {
   resolveCreditsAvailability,
   resolveErrorCode,
   resolveExecutionDecision,
+  resolveFallbackToLocal,
   resolveModeConfigurability,
   shouldRetrySmartWithLocalFallback,
 } from "../lib/ai/client/mode-routing";
@@ -201,6 +202,19 @@ describe("ai mode routing", () => {
           mode: "smart",
           hasApiKey: true,
           errorCode: "AI_PROVIDER_ERROR",
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe("resolveFallbackToLocal", () => {
+    it("blocks the local fallback when allowSmartLocalFallback is false even with otherwise-eligible smart inputs", () => {
+      expect(
+        resolveFallbackToLocal({
+          allowSmartLocalFallback: false,
+          mode: "smart",
+          hasApiKey: true,
+          errorCode: "AI_INSUFFICIENT_CREDITS",
         }),
       ).toBe(false);
     });

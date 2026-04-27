@@ -21,8 +21,8 @@ import {
   resolveCreditsAvailability,
   resolveErrorCode,
   resolveExecutionDecision,
+  resolveFallbackToLocal,
   resolveModeConfigurability,
-  shouldRetrySmartWithLocalFallback,
 } from './mode-routing'
 
 export interface AIHookResult<TParams, TResult> {
@@ -140,7 +140,8 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
           } catch (creditsError) {
             const fallbackCode = resolveErrorCode(creditsError)
             if (
-              shouldRetrySmartWithLocalFallback({
+              resolveFallbackToLocal({
+                allowSmartLocalFallback: options.allowSmartLocalFallback,
                 mode: apiKeyMode,
                 hasApiKey,
                 errorCode: fallbackCode,
@@ -168,6 +169,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
         hasApiKey,
         isAuthenticated,
         localConfig,
+        options.allowSmartLocalFallback,
         options.estimateCredits,
         transformCreditsResult,
       ]
