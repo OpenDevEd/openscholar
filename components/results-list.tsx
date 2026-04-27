@@ -420,6 +420,12 @@ export function ResultsList({
     setScreeningRetryVersion((v) => v + 1);
   }, []);
 
+  // Primitive selector — returns a boolean so re-renders only happen
+  // when the slice actually flips, not on every store mutation.
+  const isScreeningPanelOpen = useUIStore((s) =>
+    searchId ? s.screeningPanelOpenBySearchId[searchId] ?? false : false,
+  );
+
   const papersForBatchTranslation = paginatedResults;
 
   // Use batch translation hook
@@ -482,6 +488,7 @@ export function ResultsList({
           setScreeningResponses(searchId || "", paperId, responses);
         },
         canStartScreening,
+        isScreeningPanelOpen,
       }}
     >
       <FocusMode

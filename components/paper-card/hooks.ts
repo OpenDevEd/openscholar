@@ -113,6 +113,7 @@ export function useScreening(data: {
     missingResponses,
     existingResponses,
     loadingQuestions,
+    isScreeningPanelOpen,
   } = useContext(ScreeningContext);
 
   const myExistingResponses = existingResponses?.[data.id] || {};
@@ -129,6 +130,7 @@ export function useScreening(data: {
     myExistingResponses,
     myLoadingQuestions,
     myMissingResponses,
+    isScreeningPanelOpen: isScreeningPanelOpen ?? false,
   };
 }
 

@@ -12,6 +12,15 @@ export interface ScreeningContextValue {
   setScreeningResponse?: (paperId: string, question: string, response: boolean) => void;
   setScreeningResponses?: (paperId: string, responses: Record<string, boolean | null>) => void;
   canStartScreening?: boolean;
+  /**
+   * Whether the screening panel is currently open for the active
+   * search. Sourced from `useUIStore.screeningPanelOpenBySearchId`.
+   * When false, the per-paper screening UI hides itself and the batch
+   * action does not fire. Threaded through the context so paper-cards
+   * read it via `useScreening` rather than each subscribing to the
+   * Zustand store directly.
+   */
+  isScreeningPanelOpen?: boolean;
 }
 
 export interface TranslationContextValue {
