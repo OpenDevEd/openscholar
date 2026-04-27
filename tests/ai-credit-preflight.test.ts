@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ConvexError } from "convex/values";
 
+import { hasEnoughCredits } from "@/lib/credits/availability";
+
 /**
  * Tests for the three credit-guard fixes:
  *
@@ -73,15 +75,13 @@ describe("credit guard fixes", () => {
   });
 
   describe("batch pre-flight check (fix #1)", () => {
-    /**
-     * Simulates the pre-flight logic in withAuthAndCreditsBatch:
-     *   if (!balance || balance.total < minimumRequired) -> reject
-     */
+    // Contract test: the AI helper trio's gate composes hasEnoughCredits
+    // from lib/credits/availability. wouldRejectBatch === !hasEnoughCredits.
     function wouldRejectBatch(
       balance: { total: number } | null,
       minimumRequired: number,
     ): boolean {
-      return !balance || balance.total < minimumRequired;
+      return !hasEnoughCredits({ balance, required: minimumRequired });
     }
 
     it("rejects when balance is less than papers.length", () => {
