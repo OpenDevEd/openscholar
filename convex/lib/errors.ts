@@ -51,6 +51,8 @@ export type ErrorCode =
   | "SCREENING_JOB_ALREADY_ACTIVE"
   | "SCREENING_JOB_NOT_FOUND"
   | "SCREENING_JOB_NOT_CANCELLABLE"
+  // Batch AI actions (interactive batch lock)
+  | "BATCH_ACTION_ALREADY_RUNNING"
   // Chat
   | "NO_SOURCES_INCLUDED"
   // Wallet API
@@ -71,10 +73,11 @@ export type ErrorData = { code: ErrorCode; message?: string };
 
 export function createError(
   code: ErrorCode,
-  message?: string
+  message?: string,
+  extra?: Record<string, unknown>,
 ): ConvexError<ErrorData> {
-  if (message) {
-    return new ConvexError({ code, message });
-  }
-  return new ConvexError({ code });
+  const data: Record<string, unknown> = { code };
+  if (message) data.message = message;
+  if (extra) Object.assign(data, extra);
+  return new ConvexError(data as ErrorData);
 }

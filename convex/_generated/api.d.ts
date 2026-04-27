@@ -117,6 +117,7 @@ import type * as lib_envValidation from "../lib/envValidation.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_featureFlags from "../lib/featureFlags.js";
 import type * as lib_freeCredits from "../lib/freeCredits.js";
+import type * as lib_locks from "../lib/locks.js";
 import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -301,6 +302,7 @@ declare const fullApi: ApiFromModules<{
   "lib/errors": typeof lib_errors;
   "lib/featureFlags": typeof lib_featureFlags;
   "lib/freeCredits": typeof lib_freeCredits;
+  "lib/locks": typeof lib_locks;
   "lib/queryBounds": typeof lib_queryBounds;
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;

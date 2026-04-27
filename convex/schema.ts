@@ -1131,4 +1131,26 @@ export default defineSchema({
     .index("by_item", ["libraryItemId"])
     .index("by_collection_item", ["collectionId", "libraryItemId"])
     .index("by_user", ["userId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // USER RESOURCE LOCKS - Per-user concurrency gate for interactive
+  // batch AI actions (batch screening, batch translation). One row
+  // per active acquisition; deleted on release; GC'd ad-hoc on the
+  // next acquire of the same (userId, kind). TTL is 10 minutes —
+  // long enough for the longest realistic batch, short enough that a
+  // hung action self-recovers within a session. The `kind`
+  // discriminator ships as a closed two-literal union from day one:
+  // future kinds widen the union explicitly, never via v.string().
+  // ═══════════════════════════════════════════════════════════════
+  userResourceLocks: defineTable({
+    userId: v.id("users"),
+    kind: v.union(
+      v.literal("batch_screening"),
+      v.literal("batch_translation"),
+    ),
+    acquiredAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_user_kind", ["userId", "kind"])
+    .index("by_user_kind_expires", ["userId", "kind", "expiresAt"]),
 });

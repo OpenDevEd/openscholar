@@ -1,0 +1,81 @@
+/**
+ * Per-user resource locks for interactive batch AI actions.
+ *
+ * `acquireBatchLock`, parameterised by `kind`: throws
+ * BATCH_ACTION_ALREADY_RUNNING if an active row exists for
+ * `(userId, kind)`; GCs expired rows for the same `(userId, kind)`
+ * ad-hoc; inserts a fresh row with a TTL.
+ *
+ * Lock kind discriminator uses the underscore form (`"batch_screening"`)
+ * to match the rest of the schema's literal-union convention; the
+ * paired rate-limit bucket name uses the hyphen form
+ * (`"batch-screening"`) to match the existing rate-limit bucket
+ * convention. The asymmetry is intentional.
+ */
+
+import { internalMutation } from "../_generated/server";
+import { v } from "convex/values";
+import { createError } from "./errors";
+
+export const BATCH_LOCK_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+export type BatchLockKind = "batch_screening" | "batch_translation";
+
+const batchLockKindValidator = v.union(
+  v.literal("batch_screening"),
+  v.literal("batch_translation"),
+);
+
+/**
+ * Internal mutation — acquire an exclusive lock on `(userId, kind)`.
+ * Throws BATCH_ACTION_ALREADY_RUNNING with `kind` in the payload when
+ * an active (non-expired) lock exists. Garbage-collects expired rows
+ * for the same key before inserting; no separate cron is needed
+ * because the table is sparse and per-acquire cost is O(few).
+ */
+export const acquireBatchLock = internalMutation({
+  args: {
+    userId: v.id("users"),
+    kind: batchLockKindValidator,
+    ttlMs: v.number(),
+  },
+  returns: v.id("userResourceLocks"),
+  handler: async (ctx, { userId, kind, ttlMs }) => {
+    const now = Date.now();
+
+    const existingActive = await ctx.db
+      .query("userResourceLocks")
+      .withIndex("by_user_kind_expires", (q) =>
+        q.eq("userId", userId).eq("kind", kind).gt("expiresAt", now),
+      )
+      .first();
+
+    if (existingActive) {
+      throw createError(
+        "BATCH_ACTION_ALREADY_RUNNING",
+        `A ${kind} batch is already running for this user. Wait for it to finish or try again shortly.`,
+        { kind },
+      );
+    }
+
+    const expired = await ctx.db
+      .query("userResourceLocks")
+      .withIndex("by_user_kind", (q) =>
+        q.eq("userId", userId).eq("kind", kind),
+      )
+      .collect();
+    for (const row of expired) {
+      if (row.expiresAt <= now) {
+        await ctx.db.delete(row._id);
+      }
+    }
+
+    return await ctx.db.insert("userResourceLocks", {
+      userId,
+      kind,
+      acquiredAt: now,
+      expiresAt: now + ttlMs,
+    });
+  },
+});
+
