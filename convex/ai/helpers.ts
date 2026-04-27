@@ -488,7 +488,7 @@ export async function withAuthAndCredits<T>(
       internal.credits.internal.getBalanceByUserId,
       { userId: user._id },
     );
-    if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
+    if (!hasEnoughCredits({ balance, required: ESTIMATED_CREDITS_PER_QUERY })) {
       await captureServerEvent(user.clerkId, "credits_insufficient", {
         required_credits: ESTIMATED_CREDITS_PER_QUERY,
         available_credits: balance?.total ?? 0,
@@ -504,8 +504,8 @@ export async function withAuthAndCredits<T>(
       return {
         creditsDeducted: deducted,
         creditsRawCost: calculateServerRawCreditCost(usage, pricing),
-        creditsRemaining: Math.max(0, balance.total - deducted),
-        lifetimeCreditsUsed: balance.lifetimeUsed + deducted,
+        creditsRemaining: Math.max(0, balance!.total - deducted),
+        lifetimeCreditsUsed: balance!.lifetimeUsed + deducted,
       };
     };
 
