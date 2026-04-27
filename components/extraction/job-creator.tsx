@@ -1,7 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import { useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
@@ -71,6 +71,8 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bucketOpen, setBucketOpen] = useState(false);
   const bucketIndicatorRef = useRef<HTMLButtonElement>(null);
+  // Cleared on unmount post-submit so a Zustand mutation can't force a blocking re-render against the wizard's other-mode step-3 branch.
+  const shouldClearOnExit = useRef(false);
   const isMobile = useIsMobile();
 
   const validStep = Math.min(3, Math.max(1, stepRaw)) as 1 | 2 | 3;
@@ -88,6 +90,13 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
   const startJob = useMutation(api.extraction.mutations.startJob);
   const pdfCapabilityEnabled = useFeatureFlag("extraction.pdf");
   const chatFlagEnabled = useFeatureFlag("extraction.chat");
+
+  useEffect(() => () => {
+    if (shouldClearOnExit.current) {
+      clearDraftJob();
+      clearBucket();
+    }
+  }, [clearDraftJob, clearBucket]);
 
   // Persisted `mode: "chat"` would strand a user behind a hidden selector if the flag flipped off after they picked it.
   const effectiveMode: JobMode = chatFlagEnabled ? draftJob.mode : "extraction";
@@ -189,8 +198,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
               chatModelId: draftJob.chatModelId ?? undefined,
             });
 
-      clearDraftJob();
-      clearBucket();
+      shouldClearOnExit.current = true;
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
       toast.job.createFailed(error);
