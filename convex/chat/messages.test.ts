@@ -1084,6 +1084,61 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     ).toBe(false);
   });
 
+  it("C1d — user-stop never schedules reconcileGenerationUsage even when onAbort hasn't yet flipped onFinishBilled", async () => {
+    // Race the abort path was masking: AI SDK calls onAbort fire-and-
+    // forget, the agent wrapper does not await it, and `await stream`
+    // resolves the moment the abort chunk closes the controller. The
+    // post-stream reconcile gate at messages.ts therefore evaluates
+    // before onAbort's three awaits (read prompt → capture → bill)
+    // have completed, so onFinishBilled is still false. A gate that
+    // checks only !onFinishBilled would schedule reconcile in parallel
+    // with the still-in-flight onAbort — wasted compute on the happy
+    // abort path and a real possibility of the reconcile racing past
+    // onAbort to insert the row first, causing the surcharge to be
+    // silently lost when onAbort then sees `already_billed`.
+    //
+    // The fix gates on !onFinishBilled AND !streamAbortedByUser so
+    // user-stops never schedule reconcile. This test asserts the
+    // negative directly via _scheduled_functions, not via fetchMock —
+    // OPENROUTER_API_KEY is unset in the test env so a scheduled
+    // reconcile would short-circuit before fetch and leave fetchMock
+    // untouched, masking the bug exactly as the original C1c did.
+    const t = createTestConvex();
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
+      isGenerating: true,
+    });
+    const { modelId } = await seedModelAndCredits(t, userId, {
+      inputPricePerMillion: 1_000,
+      outputPricePerMillion: 2_000,
+      freeBalance: 10_000,
+    });
+    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+    providerState.emitGenerationId = "gen_no_reconcile_1";
+
+    mockDoStream.mockImplementation(
+      partialDeltasThenHangDoStream(["hello ", "world"]),
+    );
+
+    const actionPromise = t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+    await waitFor(() => doStreamArgsSeen.length > 0);
+    await new Promise((r) => setTimeout(r, 400));
+    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
+    await actionPromise;
+
+    await t.run(async (ctx) => {
+      const scheduled = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+      expect(
+        scheduled.some((sf) => sf.name.includes("reconcileGenerationUsage")),
+      ).toBe(false);
+    });
+  });
+
   it("M1 — listThreadMessages enriches aborted messages with aborted:true and drops the sentinel error", async () => {
     const t = createTestConvex();
     const { threadId } = await seedUserAndChatJob(t);

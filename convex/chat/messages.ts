@@ -653,14 +653,20 @@ export const generateResponse = internalAction({
           });
       }
 
-      // Reconcile path for turns onFinish did NOT settle — aborts and
-      // stream errors that still produced an OpenRouter generation id.
-      // captureGenerationFromResponse is idempotent (unique index on
-      // generationId) so it's safe to invoke here even when onFinish
-      // already inserted the row; we just skip scheduling reconcile
-      // when the fast path already wrote the deduction, otherwise the
-      // /api/v1/generation lookup would double-bill on happy paths.
-      if (capturedGenerationId && !onFinishBilled) {
+      // Reconcile path for stream errors that still produced an
+      // OpenRouter generation id. captureGenerationFromResponse is
+      // idempotent (unique index on generationId) so it's safe to
+      // invoke here even when onFinish already inserted the row; we
+      // skip scheduling reconcile when the fast path already wrote
+      // the deduction, otherwise the /api/v1/generation lookup would
+      // double-bill on happy paths. Aborts also skip — onAbort runs
+      // its own bill-from-tokenized-estimate path, but AI SDK calls
+      // onAbort fire-and-forget (stream-text.ts:1206) so its three
+      // awaits race the gate here. Without the streamAbortedByUser
+      // check we'd schedule reconcile in parallel with onAbort and,
+      // when reconcile lands first, lose the surcharge to the
+      // billGenerationFromSdkUsage `already_billed` short-circuit.
+      if (capturedGenerationId && !onFinishBilled && !streamAbortedByUser) {
         await ctx.runMutation(
           internal.chat.billing.captureGenerationFromResponse,
           {
