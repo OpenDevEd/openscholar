@@ -1,7 +1,6 @@
 "use client";
-"use no memo"; // try/finally in handlers
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
@@ -68,7 +67,10 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
     parseAsInteger.withDefault(1).withOptions({ history: "replace" }),
   );
   const [direction, setDirection] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  // ai-chatbot pattern: a sticky success flag covers the seam between the transition ending and the route unmount, so the spinner never blinks back to the resting button.
+  const [hasSucceeded, setHasSucceeded] = useState(false);
+  const isSubmitting = isPending || hasSucceeded;
   const [bucketOpen, setBucketOpen] = useState(false);
   const bucketIndicatorRef = useRef<HTMLButtonElement>(null);
   // Cleared on unmount post-submit so a Zustand mutation can't force a blocking re-render against the wizard's other-mode step-3 branch.
@@ -162,7 +164,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
     preflightBalance !== undefined &&
     (preflightBalance === null || !preflightBalance.hasEnough);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (readyBucketItems.length === 0) {
       toast.validation.failed(t("pleaseSelectSource"));
       return;
@@ -172,43 +174,43 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const bucketItems = readyBucketItems.map(
-        (item) => bucketItemToServerInput(item) as never,
-      );
-      const result =
-        effectiveMode === "extraction"
-          ? await startJob({
-              name: draftJob.name || t("untitledJob"),
-              mode: "extraction",
-              bucketItems,
-              questions: draftJob.questions.map((q, i) => ({
-                key: q.key || `q_${i}`,
-                question: q.question,
-                type: q.type,
-                description: q.description,
-              })),
-              usePdfs: draftJob.usePdfs,
-            })
-          : await startJob({
-              name: draftJob.name || t("untitledJob"),
-              mode: "chat",
-              bucketItems,
-              chatModelId: draftJob.chatModelId ?? undefined,
-            });
+    startTransition(async () => {
+      try {
+        const bucketItems = readyBucketItems.map(
+          (item) => bucketItemToServerInput(item) as never,
+        );
+        const result =
+          effectiveMode === "extraction"
+            ? await startJob({
+                name: draftJob.name || t("untitledJob"),
+                mode: "extraction",
+                bucketItems,
+                questions: draftJob.questions.map((q, i) => ({
+                  key: q.key || `q_${i}`,
+                  question: q.question,
+                  type: q.type,
+                  description: q.description,
+                })),
+                usePdfs: draftJob.usePdfs,
+              })
+            : await startJob({
+                name: draftJob.name || t("untitledJob"),
+                mode: "chat",
+                bucketItems,
+                chatModelId: draftJob.chatModelId ?? undefined,
+              });
 
-      shouldClearOnExit.current = true;
-      router.push(
-        effectiveMode === "chat"
-          ? `/extraction/${result.jobId}?mode=chat`
-          : `/extraction/${result.jobId}`,
-      );
-    } catch (error) {
-      toast.job.createFailed(error);
-    } finally {
-      setIsSubmitting(false);
-    }
+        setHasSucceeded(true);
+        shouldClearOnExit.current = true;
+        router.push(
+          effectiveMode === "chat"
+            ? `/extraction/${result.jobId}?mode=chat`
+            : `/extraction/${result.jobId}`,
+        );
+      } catch (error) {
+        toast.job.createFailed(error);
+      }
+    });
   };
 
   const canProceed = () => {
