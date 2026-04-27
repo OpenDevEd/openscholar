@@ -25,6 +25,9 @@ import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec"
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 import { extractOpenalexId } from "../../lib/billing/transactions/openalex-id";
+import { internal } from "../_generated/api";
+import { BATCH_LOCK_TTL_MS } from "../lib/locks";
+import { createError } from "../lib/errors";
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -275,71 +278,93 @@ export const generateBatchScreeningResponses = action({
       return { results: {}, errors: [] };
     }
 
-    return withAuthAndCreditsBatch(
-      ctx,
-      `Batch screening (${papers.length} papers)`,
-      async (_user, pricing) => {
-        const model = await getModel();
+    // Auth → rate-limit → lock → run → finally release.
+    // The rate-limit consume happens BEFORE the lock acquire so a
+    // spam-clicker hits the cheap rate-limit fail rather than the
+    // expensive auth + lock contention path.
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    if (!user) {
+      throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
+    }
+    await ctx.runMutation(internal.lib.rateLimit.consume, {
+      name: "batch-screening",
+      key: user._id,
+    });
+    const lockId = await ctx.runMutation(internal.lib.locks.acquireBatchLock, {
+      userId: user._id,
+      kind: "batch_screening",
+      ttlMs: BATCH_LOCK_TTL_MS,
+    });
 
-        const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
-          model,
-          papers,
-          questions,
-        });
+    try {
+      return await withAuthAndCreditsBatch(
+        ctx,
+        `Batch screening (${papers.length} papers)`,
+        async (_user, pricing) => {
+          const model = await getModel();
 
-        const encodedResults = Object.fromEntries(
-          Object.entries(results).map(([paperId, result]) => [
-            paperId,
-            {
-              ...result,
-              responses: encodeQuestionResponseMap(result.responses),
+          const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
+            model,
+            papers,
+            questions,
+          });
+
+          const encodedResults = Object.fromEntries(
+            Object.entries(results).map(([paperId, result]) => [
+              paperId,
+              {
+                ...result,
+                responses: encodeQuestionResponseMap(result.responses),
+              },
+            ])
+          );
+
+          const usageBreakdown = Object.entries(usageByItemId).map(
+            ([paperRef, usage]) => {
+              const amount = calculateServerCreditsToDeduct(usage, pricing);
+              const openalexId = extractOpenalexId(paperRef) ?? paperRef;
+              return {
+                usage,
+                billingType: "screening" as const,
+                // `itemId` keys back into BatchResult.results — required
+                // for the mid-batch salvage path to identify unpaid items.
+                itemId: paperRef,
+                metadata: {
+                  openalexId,
+                  chargedCredits: String(amount),
+                },
+              };
             },
-          ])
-        );
+          );
 
-        const usageBreakdown = Object.entries(usageByItemId).map(
-          ([paperRef, usage]) => {
-            const amount = calculateServerCreditsToDeduct(usage, pricing);
-            const openalexId = extractOpenalexId(paperRef) ?? paperRef;
-            return {
-              usage,
-              billingType: "screening" as const,
-              // `itemId` keys back into BatchResult.results — required
-              // for the mid-batch salvage path to identify unpaid items.
-              itemId: paperRef,
-              metadata: {
-                openalexId,
-                chargedCredits: String(amount),
-              },
-            };
-          },
-        );
+          const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
+            ([itemId, tracking]) => {
+              const usage = usageByItemId[itemId];
+              return {
+                feature: `batch_screening`,
+                usage: {
+                  inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
+                  outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
+                },
+                latencyMs: tracking.latencyMs,
+                input: truncateForTracking(tracking.input),
+                output: truncateForTracking(tracking.output),
+                temperature: tracking.temperature,
+              };
+            },
+          );
 
-        const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
-          ([itemId, tracking]) => {
-            const usage = usageByItemId[itemId];
-            return {
-              feature: `batch_screening`,
-              usage: {
-                inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
-                outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
-              },
-              latencyMs: tracking.latencyMs,
-              input: truncateForTracking(tracking.input),
-              output: truncateForTracking(tracking.output),
-              temperature: tracking.temperature,
-            };
-          },
-        );
-
-        return {
-          result: { results: encodedResults, errors },
-          totalUsage: aggregateUsage(usages),
-          usageBreakdown,
-          trackingEntries,
-        };
-      },
-      Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
-    );
+          return {
+            result: { results: encodedResults, errors },
+            totalUsage: aggregateUsage(usages),
+            usageBreakdown,
+            trackingEntries,
+          };
+        },
+        Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
+      );
+    } finally {
+      await ctx.runMutation(internal.lib.locks.releaseBatchLock, { lockId });
+    }
   },
 });
