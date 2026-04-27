@@ -770,15 +770,22 @@ export const generateResponse = internalAction({
  * Returns true if a patch was made (so callers can know whether they
  * still need to save a standalone error message).
  */
-async function patchLastAssistantAsFailed(
+/**
+ * Locate the pending-or-failed assistant message row for a given user
+ * prompt. Shared lookup used by `patchLastAssistantAsFailed` (error
+ * paths) and `persistAssistantAbortSentinel` (abort path); both want
+ * the same row but write different patch payloads, so the lookup is
+ * extracted while the two outer functions stay separate.
+ *
+ * Returns `null` if the prompt has no associated pending/failed
+ * assistant row (e.g. pre-stream credit failure where the agent never
+ * created one — callers fall back to `saveStandaloneErrorMessage`).
+ */
+async function findPendingAssistantForPrompt(
   ctx: ActionCtx,
   threadId: string,
   promptMessageId: string,
-  rawError: unknown,
-  metadata?: { model?: string; provider?: string },
-): Promise<boolean> {
-  const envelope = classifyChatError(rawError);
-  const serialized = serializeChatError(envelope);
+): Promise<{ _id: string } | null> {
   const promptMessages = await ctx.runQuery(
     components.agent.messages.getMessagesByIds,
     { messageIds: [promptMessageId as never] },
@@ -789,14 +796,32 @@ async function patchLastAssistantAsFailed(
     paginationOpts: { numItems: 20, cursor: null },
     statuses: ["pending", "failed"],
   });
-  const last = page.find(
-    (message) =>
-      message.message?.role === "assistant" &&
-      (promptOrder === undefined || message.order === promptOrder),
+  return (
+    page.find(
+      (message) =>
+        message.message?.role === "assistant" &&
+        (promptOrder === undefined || message.order === promptOrder),
+    ) ?? null
   );
-  if (!last) return false;
+}
+
+async function patchLastAssistantAsFailed(
+  ctx: ActionCtx,
+  threadId: string,
+  promptMessageId: string,
+  rawError: unknown,
+  metadata?: { model?: string; provider?: string },
+): Promise<boolean> {
+  const target = await findPendingAssistantForPrompt(
+    ctx,
+    threadId,
+    promptMessageId,
+  );
+  if (!target) return false;
+  const envelope = classifyChatError(rawError);
+  const serialized = serializeChatError(envelope);
   await ctx.runMutation(components.agent.messages.updateMessage, {
-    messageId: last._id,
+    messageId: target._id,
     patch: {
       status: "failed",
       error: serialized,
@@ -836,24 +861,14 @@ async function persistAssistantAbortSentinel(
   threadId: string,
   promptMessageId: string,
 ): Promise<boolean> {
-  const promptMessages = await ctx.runQuery(
-    components.agent.messages.getMessagesByIds,
-    { messageIds: [promptMessageId as never] },
-  );
-  const promptOrder = promptMessages[0]?.order;
-  const { page } = await listMessages(ctx, components.agent, {
+  const target = await findPendingAssistantForPrompt(
+    ctx,
     threadId,
-    paginationOpts: { numItems: 20, cursor: null },
-    statuses: ["pending", "failed"],
-  });
-  const last = page.find(
-    (message) =>
-      message.message?.role === "assistant" &&
-      (promptOrder === undefined || message.order === promptOrder),
+    promptMessageId,
   );
-  if (!last) return false;
+  if (!target) return false;
   await ctx.runMutation(components.agent.messages.updateMessage, {
-    messageId: last._id,
+    messageId: target._id,
     patch: {
       status: "failed",
       error: ABORT_ERROR_STRING,
