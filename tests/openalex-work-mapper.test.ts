@@ -126,3 +126,91 @@ describe("mapOpenAlexWorkToPaperData — simple passthrough fields", () => {
     expect(paper.publicationYear).toBeUndefined();
   });
 });
+
+describe("mapOpenAlexWorkToPaperData — citation count", () => {
+  it("extracts cited_by_count when present", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+      cited_by_count: 42,
+    });
+    expect(paper.citedByCount).toBe(42);
+  });
+
+  // OpenAlex returns 0 for never-cited papers and that is real signal,
+  // not noise — the chat prompt should still render it. This locks the
+  // distinction between `?? undefined` (preserves 0) and `|| undefined`
+  // (drops 0).
+  it("preserves cited_by_count of 0 (never-cited paper, not 'unknown')", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+      cited_by_count: 0,
+    });
+    expect(paper.citedByCount).toBe(0);
+  });
+
+  it("leaves citedByCount undefined when cited_by_count is missing", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+    });
+    expect(paper.citedByCount).toBeUndefined();
+  });
+});
+
+describe("mapOpenAlexWorkToPaperData — venue name", () => {
+  it("extracts venueName from primary_location.source.display_name", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+      primary_location: { source: { display_name: "Nature" } },
+    });
+    expect(paper.venueName).toBe("Nature");
+  });
+
+  it("leaves venueName undefined when primary_location is missing", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+    });
+    expect(paper.venueName).toBeUndefined();
+  });
+
+  it("leaves venueName undefined when source is missing on primary_location", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+      primary_location: {},
+    });
+    expect(paper.venueName).toBeUndefined();
+  });
+
+  it("leaves venueName undefined when display_name is missing on source", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+      primary_location: { source: {} },
+    });
+    expect(paper.venueName).toBeUndefined();
+  });
+});
+
+describe("mapOpenAlexWorkToPaperData — work type", () => {
+  it("extracts workType from the OpenAlex `type` field", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+      type: "review",
+    });
+    expect(paper.workType).toBe("review");
+  });
+
+  it("leaves workType undefined when type is missing", () => {
+    const paper = mapOpenAlexWorkToPaperData({
+      id: "https://openalex.org/W1",
+      display_name: "T",
+    });
+    expect(paper.workType).toBeUndefined();
+  });
+});

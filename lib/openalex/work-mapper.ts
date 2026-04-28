@@ -18,6 +18,9 @@ export type OpenAlexWork = {
   abstract_inverted_index?: Record<string, number[]>;
   authorships?: Array<{ author?: { display_name?: string } }>;
   open_access?: { oa_url?: string; is_oa?: boolean };
+  cited_by_count?: number;
+  primary_location?: { source?: { display_name?: string } };
+  type?: string;
 };
 
 export type PaperDataOut = {
@@ -29,6 +32,9 @@ export type PaperDataOut = {
   authors?: string[];
   pdfUrl?: string;
   isOpenAccess?: boolean;
+  citedByCount?: number;
+  venueName?: string;
+  workType?: string;
 };
 
 const OPENALEX_ID_PREFIX = "https://openalex.org/";
@@ -43,6 +49,10 @@ export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
     ? reconstructAbstract(work.abstract_inverted_index)
     : undefined;
 
+  // 0 is meaningful for `cited_by_count` (uncited paper), so use ?? not ||.
+  const citedByCount =
+    typeof work.cited_by_count === "number" ? work.cited_by_count : undefined;
+
   return {
     openalexId: work.id?.replace(OPENALEX_ID_PREFIX, "") || "",
     title: work.display_name || "Untitled",
@@ -52,5 +62,8 @@ export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
     authors,
     pdfUrl: work.open_access?.oa_url || undefined,
     isOpenAccess: work.open_access?.is_oa || false,
+    citedByCount,
+    venueName: work.primary_location?.source?.display_name || undefined,
+    workType: work.type || undefined,
   };
 }
