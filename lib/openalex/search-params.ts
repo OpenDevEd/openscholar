@@ -37,6 +37,27 @@ const OPENALEX_MAX_PER_PAGE = 200;
 
 const OPENALEX_ID_PREFIX = "https://openalex.org/";
 
+/**
+ * Exact list of top-level OpenAlex Work fields that
+ * `mapOpenAlexWorkToPaperData` reads. Threaded into every Works-search
+ * request as `select=` so OpenAlex sends back ~10 KB per work instead
+ * of ~80 KB. Adding a new field to the mapper requires adding it here
+ * too, otherwise OpenAlex strips it from the response and the mapper
+ * silently sees `undefined`.
+ */
+export const OPENALEX_WORK_SELECT_FIELDS = [
+  "id",
+  "display_name",
+  "doi",
+  "publication_year",
+  "abstract_inverted_index",
+  "authorships",
+  "open_access",
+  "cited_by_count",
+  "primary_location",
+  "type",
+] as const;
+
 function qualifyOpenAlexId(id: string): string {
   return id.startsWith(OPENALEX_ID_PREFIX) ? id : `${OPENALEX_ID_PREFIX}${id}`;
 }
@@ -139,6 +160,8 @@ export function buildOpenAlexSearchParams(
       ? Math.min(OPENALEX_MAX_PER_PAGE, Math.floor(filters.limit))
       : OPENALEX_MAX_PER_PAGE;
   params.set("per-page", String(perPage));
+
+  params.set("select", OPENALEX_WORK_SELECT_FIELDS.join(","));
 
   return params;
 }

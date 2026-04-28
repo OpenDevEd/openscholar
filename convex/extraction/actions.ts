@@ -29,6 +29,9 @@ export const fetchPapersFromHistory = internalAction({
       authors: v.optional(v.array(v.string())),
       pdfUrl: v.optional(v.string()),
       isOpenAccess: v.optional(v.boolean()),
+      citedByCount: v.optional(v.number()),
+      venueName: v.optional(v.string()),
+      workType: v.optional(v.string()),
     }),
   ),
   handler: async (_ctx, args): Promise<PaperData[]> => {

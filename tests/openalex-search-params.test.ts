@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { buildOpenAlexSearchParams } from "../lib/openalex/search-params";
+import {
+  OPENALEX_WORK_SELECT_FIELDS,
+  buildOpenAlexSearchParams,
+} from "../lib/openalex/search-params";
 
 /**
  * Pure tests for buildOpenAlexSearchParams — the query-string builder
@@ -170,6 +173,37 @@ describe("buildOpenAlexSearchParams — sort + pagination", () => {
   it("honors limit=1 as the minimum valid page size", () => {
     const p = buildOpenAlexSearchParams({ query: "q", limit: 1 });
     expect(p.get("per-page")).toBe("1");
+  });
+});
+
+describe("buildOpenAlexSearchParams — select= field allowlist", () => {
+  it("emits a select param so OpenAlex returns only fields the mapper reads", () => {
+    const p = buildOpenAlexSearchParams({ query: "q" });
+    const select = p.get("select");
+    expect(select).not.toBeNull();
+    const fields = (select ?? "").split(",");
+    // Every field the work-mapper reads must be in the allowlist —
+    // otherwise OpenAlex strips it from the response and the chat
+    // prompt loses citation count / venue / type silently.
+    for (const required of [
+      "id",
+      "display_name",
+      "doi",
+      "publication_year",
+      "abstract_inverted_index",
+      "authorships",
+      "open_access",
+      "cited_by_count",
+      "primary_location",
+      "type",
+    ]) {
+      expect(fields).toContain(required);
+    }
+  });
+
+  it("OPENALEX_WORK_SELECT_FIELDS is the source of truth for the select= value", () => {
+    const p = buildOpenAlexSearchParams({ query: "q" });
+    expect(p.get("select")).toBe(OPENALEX_WORK_SELECT_FIELDS.join(","));
   });
 });
 
