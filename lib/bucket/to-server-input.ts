@@ -27,6 +27,9 @@ export type BucketItemServerInput = {
   abstract?: string;
   storageId?: BucketItem["storageId"];
   pdfUrl?: string;
+  citedByCount?: number;
+  venueName?: string;
+  workType?: string;
   searchFilters?: Record<string, unknown>;
   libraryType?: "user" | "group";
   groupId?: string;
@@ -60,6 +63,9 @@ export function bucketItemToServerInput(
     abstract: item.abstract,
     storageId: item.storageId,
     pdfUrl: item.pdfUrl,
+    citedByCount: item.citedByCount,
+    venueName: item.venueName,
+    workType: item.workType,
     searchFilters,
     libraryType:
       item.source === "zotero"

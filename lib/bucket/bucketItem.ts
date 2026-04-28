@@ -28,6 +28,11 @@ export type BucketItem = {
   abstract?: string;
   storageId?: Id<"_storage">;
   pdfUrl?: string;
+  // Per-paper signals threaded into the chat-mode AI context. Optional —
+  // zotero/upload sources cannot populate them.
+  citedByCount?: number;
+  venueName?: string;
+  workType?: string;
   addedAt: number;
   status: BucketItemStatus;
   /**

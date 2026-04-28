@@ -37,6 +37,9 @@ export type BucketItemInput = {
   abstract?: string;
   pdfUrl?: string;
   storageId?: Id<"_storage">;
+  citedByCount?: number;
+  venueName?: string;
+  workType?: string;
   searchFilters?: JobSourceSearchFilters;
   libraryType?: "user" | "group";
   groupId?: string;
@@ -64,6 +67,9 @@ export function rowFromBucketItem(
     abstract: item.abstract,
     pdfUrl: item.pdfUrl,
     storageId: item.storageId,
+    citedByCount: item.citedByCount,
+    venueName: item.venueName,
+    workType: item.workType,
     searchFilters: item.searchFilters,
     libraryType: item.libraryType,
     groupId: item.groupId,
@@ -86,6 +92,9 @@ function bucketItemFromRow(row: Doc<"extractionJobSources">): BucketItemInput {
     abstract: row.abstract,
     pdfUrl: row.pdfUrl,
     storageId: row.storageId,
+    citedByCount: row.citedByCount,
+    venueName: row.venueName,
+    workType: row.workType,
     searchFilters: row.searchFilters,
     libraryType: row.libraryType,
     groupId: row.groupId,
