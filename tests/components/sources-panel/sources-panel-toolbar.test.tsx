@@ -72,6 +72,9 @@ function row(n: number, included = true): ChatSourceRow {
     doi: null,
     pdfUrl: null,
     openalexId: `W${n}`,
+    citedByCount: null,
+    venueName: null,
+    workType: null,
     bucketKey: `openalex:W${n}`,
     sourceType: "openalex",
   };

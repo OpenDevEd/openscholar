@@ -138,6 +138,9 @@ export function makeFakeRows(n: number, seed = 0xC0FFEE): ChatSourceRow[] {
       doi: hasDoi ? `10.1234/fake.${i}` : null,
       pdfUrl: hasPdf ? `https://example.com/pdf/${i}.pdf` : null,
       openalexId: hasOpenalex ? `W${2000000000 + i}` : null,
+      citedByCount: null,
+      venueName: null,
+      workType: null,
       bucketKey:
         sourceType === "openalex"
           ? `openalex:W${2000000000 + i}`

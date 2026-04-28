@@ -21,6 +21,9 @@ export type ChatSourceRow = {
   doi: string | null;
   pdfUrl: string | null;
   openalexId: string | null;
+  citedByCount: number | null;
+  venueName: string | null;
+  workType: string | null;
   bucketKey: string;
   sourceType: ChatSourceType;
 };
@@ -49,6 +52,9 @@ export const chatSourceRowValidator = v.object({
   doi: v.union(v.string(), v.null()),
   pdfUrl: v.union(v.string(), v.null()),
   openalexId: v.union(v.string(), v.null()),
+  citedByCount: v.union(v.number(), v.null()),
+  venueName: v.union(v.string(), v.null()),
+  workType: v.union(v.string(), v.null()),
   bucketKey: v.string(),
   sourceType: sourceTypeValidator,
 });
@@ -75,6 +81,9 @@ function toChatSourceRow(
     doi: source.doi ?? null,
     pdfUrl: source.pdfUrl ?? null,
     openalexId: source.openalexId ?? null,
+    citedByCount: source.citedByCount ?? null,
+    venueName: source.venueName ?? null,
+    workType: source.workType ?? null,
     bucketKey: source.bucketKey,
     sourceType: classifySourceType(source),
   };
@@ -91,6 +100,9 @@ export function toCorpusSource(row: ChatSourceRow): CorpusSource {
     abstract: row.abstract ?? undefined,
     doi: row.doi ?? undefined,
     pdfUrl: row.pdfUrl ?? undefined,
+    citedByCount: row.citedByCount ?? undefined,
+    venueName: row.venueName ?? undefined,
+    workType: row.workType ?? undefined,
   };
 }
 

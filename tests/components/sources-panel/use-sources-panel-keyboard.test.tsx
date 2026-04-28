@@ -40,6 +40,9 @@ function row(n: number, included = true): ChatSourceRow {
     doi: null,
     pdfUrl: null,
     openalexId: null,
+    citedByCount: null,
+    venueName: null,
+    workType: null,
     bucketKey: `k${n}`,
     sourceType: "openalex",
   };
