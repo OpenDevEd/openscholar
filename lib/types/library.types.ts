@@ -7,6 +7,7 @@ export interface TrimmedPaperData {
   publicationYear: number | undefined;
   journal: string | undefined;
   citedByCount: number | undefined;
+  workType: string | undefined;
   isOpenAccess: boolean | undefined;
   oaStatus: string | undefined;
 }

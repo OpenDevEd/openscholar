@@ -18,6 +18,9 @@ function libraryDoc(overrides: {
   doi?: string;
   publicationYear?: number;
   abstract?: string;
+  journal?: string;
+  citedByCount?: number;
+  workType?: string;
 } = {}) {
   return {
     _id: (overrides._id ?? "lib_1") as Id<"libraryItems">,
@@ -30,6 +33,9 @@ function libraryDoc(overrides: {
     doi: overrides.doi,
     abstract: overrides.abstract,
     publicationYear: overrides.publicationYear,
+    journal: overrides.journal,
+    citedByCount: overrides.citedByCount,
+    workType: overrides.workType,
     searchableText: "",
     savedAt: 0,
     updatedAt: 0,
@@ -78,6 +84,19 @@ describe("lib/bucket/bucketItem normalizers", () => {
   test("fromLibraryItem handles empty authors", () => {
     const item = fromLibraryItem(libraryDoc({ authors: undefined }));
     expect(item.authors).toEqual([]);
+  });
+
+  test("fromLibraryItem forwards citedByCount, journal-as-venueName, and workType to the bucket item", () => {
+    const item = fromLibraryItem(
+      libraryDoc({
+        citedByCount: 88,
+        journal: "Cell",
+        workType: "review",
+      }),
+    );
+    expect(item.citedByCount).toBe(88);
+    expect(item.venueName).toBe("Cell");
+    expect(item.workType).toBe("review");
   });
 
   test("fromCollectionItem matches library shape plus collection source + meta", () => {

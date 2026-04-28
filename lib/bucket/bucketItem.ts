@@ -148,6 +148,7 @@ export function fromLibraryItem(
     abstract: item.abstract,
     citedByCount: item.citedByCount,
     venueName: item.journal,
+    workType: item.workType,
     addedAt: now,
     status: "ready",
   };

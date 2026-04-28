@@ -1092,6 +1092,7 @@ export default defineSchema({
     publicationYear: v.optional(v.number()),
     journal: v.optional(v.string()), // primary_location.source.display_name
     citedByCount: v.optional(v.number()),
+    workType: v.optional(v.string()), // OpenAlex `type` — "article" | "review" | "book-chapter" | ...
     isOpenAccess: v.optional(v.boolean()),
     oaStatus: v.optional(v.string()), // "gold" | "green" | "bronze" | "hybrid" | "closed"
     paperData: v.optional(v.string()), // Full PaperResult JSON for rich card rendering

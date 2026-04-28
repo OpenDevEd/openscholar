@@ -26,8 +26,8 @@ describe("trimPaperData", () => {
     },
   };
 
-  it("extracts all 10 fields from a full Work object", () => {
-    const result = trimPaperData(fullWork);
+  it("extracts all metadata fields from a full Work object", () => {
+    const result = trimPaperData({ ...fullWork, type: "review" });
 
     expect(result.openalexId).toBe("https://openalex.org/W1234567890");
     expect(result.title).toBe("Machine Learning for Climate Science");
@@ -39,6 +39,7 @@ describe("trimPaperData", () => {
     expect(result.publicationYear).toBe(2024);
     expect(result.journal).toBe("Nature Climate Change");
     expect(result.citedByCount).toBe(42);
+    expect(result.workType).toBe("review");
     expect(result.isOpenAccess).toBe(true);
     expect(result.oaStatus).toBe("gold");
   });
@@ -59,6 +60,7 @@ describe("trimPaperData", () => {
     expect(result.publicationYear).toBeUndefined();
     expect(result.journal).toBeUndefined();
     expect(result.citedByCount).toBeUndefined();
+    expect(result.workType).toBeUndefined();
     expect(result.isOpenAccess).toBeUndefined();
     expect(result.oaStatus).toBeUndefined();
   });

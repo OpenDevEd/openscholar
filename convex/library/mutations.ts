@@ -48,6 +48,7 @@ export const saveToLibrary = mutation({
     publicationYear: v.optional(v.number()),
     journal: v.optional(v.string()),
     citedByCount: v.optional(v.number()),
+    workType: v.optional(v.string()),
     isOpenAccess: v.optional(v.boolean()),
     oaStatus: v.optional(v.string()),
     paperData: v.optional(v.string()),
