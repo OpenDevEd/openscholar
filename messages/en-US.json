@@ -1569,6 +1569,11 @@
     "questionGeneration": "Question generation",
     "screenAll": "Screen All",
     "screenAllCredits": "Credits",
+    "creditsTooltip": "These actions use credits to run.",
+    "startChat": "Start Chat",
+    "continueChat": "Continue Chat",
+    "untitledChat": "Untitled chat",
+    "startChatFailed": "Failed to start chat",
     "placeholder": {
       "researchQuestion": "What are the effects of mindfulness on anxiety?",
       "keywords": "mindfulness AND (anxiety OR stress)",

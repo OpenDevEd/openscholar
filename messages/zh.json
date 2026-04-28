@@ -1543,6 +1543,11 @@
     "questionGeneration": "问题生成",
     "screenAll": "全部筛选",
     "screenAllCredits": "积分",
+    "creditsTooltip": "这些操作会消耗积分。",
+    "startChat": "开始聊天",
+    "continueChat": "继续聊天",
+    "untitledChat": "无标题对话",
+    "startChatFailed": "无法开始聊天",
     "placeholder": {
       "researchQuestion": "冥想对焦虑有什么影响？",
       "keywords": "mindfulness AND (anxiety OR stress)",

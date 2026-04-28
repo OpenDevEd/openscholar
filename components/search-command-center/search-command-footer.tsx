@@ -1,17 +1,33 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Expand, Minimize2, Loader2, Eye, ChevronDown, ListChecks, Coins } from "lucide-react";
+import {
+  Expand,
+  Minimize2,
+  Loader2,
+  Eye,
+  ChevronDown,
+  ListChecks,
+  Coins,
+  MessageSquare,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AnimatedCount } from "./components/animated-count";
 import { useSearchOptional } from "@/lib/search";
-import { useCurrentQuestionStore } from "@/lib/store";
+import { useCurrentQuestionStore, useSearchHistoryStore } from "@/lib/store";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
@@ -21,6 +37,13 @@ import { ResultsTranslationControl } from "./components/results-translation-cont
 import { ScreeningDialog } from "@/components/screening/screening-dialog";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { fromSavedSearchQuery } from "@/lib/bucket/bucketItem";
+import { bucketItemToServerInput } from "@/lib/bucket/to-server-input";
+import { deriveChatName } from "@/lib/chat/chat-name";
+import { paramsToBucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
+import { deriveStartChatButtonState } from "@/lib/chat/start-chat-button-state";
+import { api } from "@/convex/_generated/api";
 
 interface SearchCommandFooterProps {
   totalCount: number;
@@ -56,10 +79,29 @@ export function SearchCommandFooter({
 
   const { phase } = useAuthReadiness();
   const goToSignIn = useSignInRedirect();
+  const router = useRouter();
 
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);
   const [isScreeningDialogOpen, setIsScreeningDialogOpen] = useState(false);
+  const [isStartingChat, startChatTransition] = useTransition();
+
+  const startJob = useMutation(api.extraction.mutations.startJob);
+  const pullCap =
+    useQuery(api.extraction.bucket.queries.getMyPaperPullCap) ?? 200;
+  const pullDefault =
+    useQuery(api.extraction.bucket.queries.getMyPaperPullDefault) ?? 200;
+  const chatFlagEnabled = useFeatureFlag("extraction.chat");
+
+  const linkedChatJobId = useSearchHistoryStore((state) =>
+    state.searchHistory.find((item) => item.id === searchId)?.chatJobId,
+  );
+  const updateSearchResult = useSearchHistoryStore(
+    (state) => state.updateSearchResult,
+  );
+  const chatButtonState = deriveStartChatButtonState({
+    chatJobId: linkedChatJobId,
+  });
 
   // Use the new router hook
   const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
@@ -192,6 +234,72 @@ Return a more targeted version of this query.`;
     }
   };
 
+  const handleStartChat = () => {
+    if (phase !== "authenticated") {
+      goToSignIn();
+      return;
+    }
+
+    if (chatButtonState.mode === "continue") {
+      posthog.capture("chat_continued_from_results", {
+        search_id: searchId,
+        job_id: chatButtonState.jobId,
+      });
+      router.push(`/extraction/${chatButtonState.jobId}?mode=chat`);
+      return;
+    }
+
+    if (!search) return;
+    if (!effectiveQuery.trim()) {
+      toast.validation.failed(tv("noQueryToBroaden"));
+      return;
+    }
+
+    const initialCount = Math.min(
+      pullCap,
+      Math.max(0, totalCount ?? pullDefault),
+    );
+    const params = search.params;
+
+    const placeholder = fromSavedSearchQuery({
+      id: searchId,
+      query: params.q ?? "",
+      count: initialCount,
+      searchFilters: paramsToBucketSearchFilters(params),
+    });
+
+    const name = deriveChatName({
+      currentQuestion,
+      query: params.q,
+      fallback: tsc("untitledChat"),
+    });
+
+    startChatTransition(async () => {
+      try {
+        const result = await startJob({
+          name,
+          mode: "chat",
+          bucketItems: [bucketItemToServerInput(placeholder) as never],
+        });
+
+        updateSearchResult(searchId, { chatJobId: result.jobId });
+
+        posthog.capture("chat_started_from_results", {
+          search_id: searchId,
+          total_count: totalCount,
+          pulled_count: initialCount,
+        });
+
+        router.push(`/extraction/${result.jobId}?mode=chat`);
+      } catch (error) {
+        toast.error(
+          tsc("startChatFailed"),
+          getErrorMessage(error, te("unexpectedErrorRetry")),
+        );
+      }
+    });
+  };
+
   return (
     <div
       className={cn(
@@ -288,25 +396,77 @@ Return a more targeted version of this query.`;
           />
 
           <div className="mx-1 h-6 w-px bg-border/70" />
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
-            disabled={Boolean(isLoading)}
-            title={tsc("screenAll")}
-            aria-label={tsc("screenAll")}
-            className="h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+
+          {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
+          <div
+            className="inline-flex items-center gap-0.5 rounded-xl bg-accent pr-1.5"
+            data-group="ai-actions"
           >
-            <ListChecks className="h-3.5 w-3.5" />
-            <span className="hidden text-sm font-medium sm:inline">
-              {tsc("screenAll")}
-            </span>
-            <span className="hidden items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary sm:inline-flex">
-              <Coins className="h-2.5 w-2.5" />
-              {tsc("screenAllCredits")}
-            </span>
-          </Button>
+            {chatFlagEnabled && (
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={handleStartChat}
+                disabled={Boolean(isLoading) || isStartingChat}
+                title={
+                  chatButtonState.mode === "continue"
+                    ? tsc("continueChat")
+                    : tsc("startChat")
+                }
+                aria-label={
+                  chatButtonState.mode === "continue"
+                    ? tsc("continueChat")
+                    : tsc("startChat")
+                }
+                data-chat-button-mode={chatButtonState.mode}
+                className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+              >
+                {isStartingChat ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <MessageSquare className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden text-sm font-medium sm:inline">
+                  {chatButtonState.mode === "continue"
+                    ? tsc("continueChat")
+                    : tsc("startChat")}
+                </span>
+              </Button>
+            )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
+              disabled={Boolean(isLoading)}
+              title={tsc("screenAll")}
+              aria-label={tsc("screenAll")}
+              className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              <span className="hidden text-sm font-medium sm:inline">
+                {tsc("screenAll")}
+              </span>
+            </Button>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={tsc("screenAllCredits")}
+                  className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <Coins className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[220px] text-center">
+                <p className="font-semibold">{tsc("screenAllCredits")}</p>
+                <p className="text-xs opacity-90">{tsc("creditsTooltip")}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
 
           <div className="mx-1 h-6 w-px bg-border/70" />
 

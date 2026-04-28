@@ -1543,6 +1543,11 @@
     "questionGeneration": "質問生成",
     "screenAll": "すべてスクリーニング",
     "screenAllCredits": "クレジット",
+    "creditsTooltip": "これらの操作にはクレジットが必要です。",
+    "startChat": "チャットを開始",
+    "continueChat": "チャットを再開",
+    "untitledChat": "無題のチャット",
+    "startChatFailed": "チャットの開始に失敗しました",
     "placeholder": {
       "researchQuestion": "マインドフルネスが不安に与える影響は？",
       "keywords": "mindfulness AND (anxiety OR stress)",
