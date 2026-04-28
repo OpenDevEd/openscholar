@@ -146,6 +146,8 @@ export function fromLibraryItem(
     doi: item.doi,
     openalexId: item.openalexId || undefined,
     abstract: item.abstract,
+    citedByCount: item.citedByCount,
+    venueName: item.journal,
     addedAt: now,
     status: "ready",
   };

@@ -40,6 +40,9 @@ export interface PaperData {
   pdfUrl?: string;
   storageId?: string;
   isOpenAccess?: boolean;
+  citedByCount?: number;
+  venueName?: string;
+  workType?: string;
 }
 
 export interface ExtractionResult {
