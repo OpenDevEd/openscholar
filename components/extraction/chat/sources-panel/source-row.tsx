@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { CheckIcon, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
@@ -11,6 +12,7 @@ import type { SearchMatch } from "@/lib/chat/search/source-scorer";
 import {
   CHAT_SOURCE_COLOR_VAR,
   CHAT_SOURCE_ICON,
+  buildRowMetaSegments,
 } from "@/lib/chat/source-presentation";
 
 const SOURCE_LABEL: Record<ChatSourceRow["sourceType"], string> = {
@@ -39,6 +41,15 @@ function SourceRowImpl({
   onActivate,
 }: SourceRowProps) {
   const reduceMotion = useReducedMotion();
+  const tMeta = useTranslations("sourcesPanel.meta");
+  const metaSegments = buildRowMetaSegments(
+    {
+      venueName: row.venueName,
+      workType: row.workType,
+      citedByCount: row.citedByCount,
+    },
+    (count) => tMeta("cites", { count }),
+  );
 
   const matchedNonChromeField =
     match &&
@@ -182,6 +193,14 @@ function SourceRowImpl({
             )}
           </div>
         </div>
+        {metaSegments.length > 0 && (
+          <p
+            className="truncate text-[11px] text-muted-foreground/80"
+            data-paper-meta
+          >
+            {metaSegments.join(" · ")}
+          </p>
+        )}
         {snippet && matchedNonChromeField && (
           <p
             className="mt-0.5 text-[11px] italic text-muted-foreground"

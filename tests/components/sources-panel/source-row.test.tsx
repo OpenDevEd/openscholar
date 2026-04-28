@@ -27,7 +27,18 @@ import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () =>
+    (key: string, values?: Record<string, unknown>) => {
+      // Just enough ICU shape so the plural cite-count case in
+      // sourcesPanel.meta.cites renders the same string the row
+      // formatter would emit at runtime — keeps the component test
+      // user-centric without pulling in a full message catalogue.
+      if (key === "cites" && typeof values?.count === "number") {
+        const count = values.count as number;
+        return count === 1 ? "1 cite" : `${count} cites`;
+      }
+      return key;
+    },
 }));
 
 const cp = (n: number) => `cp${n}` as unknown as Id<"chatPapers">;
@@ -150,5 +161,34 @@ describe("<SourceRow>", () => {
       new MouseEvent("click", { bubbles: true, shiftKey: true }),
     );
     expect(onActivate).toHaveBeenCalledWith(true);
+  });
+
+  it("renders the metadata strip with venue, work type, and citation count when the row has them", () => {
+    renderRow({
+      row: row({
+        venueName: "Nature",
+        workType: "review",
+        citedByCount: 137,
+      }),
+    });
+    const meta = document.querySelector("[data-paper-meta]");
+    expect(meta).not.toBeNull();
+    expect(meta!.textContent).toContain("Nature");
+    expect(meta!.textContent).toContain("review");
+    expect(meta!.textContent).toContain("137 cites");
+  });
+
+  it("preserves citedByCount=0 in the strip — never-cited papers are real signal, not 'unknown'", () => {
+    renderRow({
+      row: row({ venueName: null, workType: null, citedByCount: 0 }),
+    });
+    const meta = document.querySelector("[data-paper-meta]");
+    expect(meta).not.toBeNull();
+    expect(meta!.textContent).toContain("0 cites");
+  });
+
+  it("omits the metadata strip entirely when venueName, workType, and citedByCount are all absent", () => {
+    renderRow({ row: row() });
+    expect(document.querySelector("[data-paper-meta]")).toBeNull();
   });
 });

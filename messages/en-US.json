@@ -975,6 +975,9 @@
     "emptyMatch": "No sources match the current filter.",
     "mobileTrigger": "Sources ({included, number} of {total, number})",
     "mobileTriggerShort": "{included, number}/{total, number}",
+    "meta": {
+      "cites": "{count, plural, one {# cite} other {# cites}}"
+    },
     "source": {
       "filterLabel": "Filter by source type",
       "placeholder": "All sources",
