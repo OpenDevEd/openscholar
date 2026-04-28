@@ -549,6 +549,11 @@ export default defineSchema({
     abstract: v.optional(v.string()),
     pdfUrl: v.optional(v.string()),
     storageId: v.optional(v.id("_storage")),
+    // Per-paper signals surfaced to the chat-mode AI context. Optional
+    // because non-OpenAlex sources (zotero/upload) cannot populate them.
+    citedByCount: v.optional(v.number()),
+    venueName: v.optional(v.string()), // primary_location.source.display_name
+    workType: v.optional(v.string()),
     // history: saved-search placeholder that expands at workflow time
     searchFilters: v.optional(searchFiltersValidator),
     // zotero context (libraryType/groupId resolve the OAuth target at workflow time)
