@@ -175,6 +175,85 @@ describe("buildSystemPromptForJob", () => {
     expect(prompt[1].content).toBe('<papers count="0"></papers>');
   });
 
+  it("surfaces citedByCount, venueName, and workType for OpenAlex-sourced papers", async () => {
+    const t = convexTest(schema);
+    const jobId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        clerkId: "c_metrics",
+        email: "metrics@t",
+        state: "active",
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      const newJobId = await ctx.db.insert("extractionJobs", {
+        userId,
+        mode: "chat",
+        sourceType: "history",
+        name: "metrics-test",
+        messageCount: 0,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      const richSourceId = await ctx.db.insert("extractionJobSources", {
+        jobId: newJobId,
+        position: 1,
+        bucketKey: "openalex:W42",
+        source: "history",
+        sourceRefId: "W42",
+        openalexId: "W42",
+        title: "On the kinetics of citations",
+        authors: ["Doe"],
+        year: 2024,
+        abstract: "abs",
+        citedByCount: 137,
+        venueName: "Nature",
+        workType: "review",
+      });
+      const bareSourceId = await ctx.db.insert("extractionJobSources", {
+        jobId: newJobId,
+        position: 2,
+        bucketKey: "zotero:abc",
+        source: "zotero",
+        sourceRefId: "abc",
+        title: "Untagged Zotero entry",
+        authors: ["Roe"],
+        year: 2023,
+        abstract: "abs",
+        // citedByCount / venueName / workType intentionally absent —
+        // non-OpenAlex sources should not surface empty placeholders.
+      });
+      await ctx.db.insert("chatPapers", {
+        jobId: newJobId,
+        sourceId: richSourceId,
+        included: true,
+      });
+      await ctx.db.insert("chatPapers", {
+        jobId: newJobId,
+        sourceId: bareSourceId,
+        included: true,
+      });
+      return newJobId;
+    });
+
+    const prompt = await t.query(
+      internal.chat.context.buildSystemPromptForJob,
+      { jobId },
+    );
+    const papers = prompt[1].content;
+
+    // Rich (OpenAlex) row carries every metric.
+    expect(papers).toContain("<citedBy>137</citedBy>");
+    expect(papers).toContain("<venue>Nature</venue>");
+    expect(papers).toContain("<type>review</type>");
+
+    // Bare (Zotero) row is rendered without empty/Unknown metric tags.
+    // Tags must only attach to the rich paper, never to the bare one.
+    const barePaperBlock = papers.slice(papers.indexOf('id="P2"'));
+    expect(barePaperBlock).not.toContain("<citedBy");
+    expect(barePaperBlock).not.toContain("<venue");
+    expect(barePaperBlock).not.toContain("<type");
+  });
+
   it("preserves positional ids across successive toggles (D1)", async () => {
     const t = convexTest(schema);
     const { jobId, sources } = await seedJobWithSources(
