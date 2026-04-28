@@ -14,6 +14,65 @@ Convex agent skills for common tasks can be installed by running `npx convex ai-
 
 The convex and next development servers are running in pm2: you can and SHOULD consistently check the logs there.
 
+## `useEffect` is banned by default
+
+`useEffect` is a code-review blocker in this repository. It is banned for every form of application-state work. The default presumption is that any new `useEffect` you reach for is wrong, and the burden of proof is on the author to show it is one of the narrow allowed cases below. The ban applies identically to `useLayoutEffect` and `useInsertionEffect`.
+
+### Hard-forbidden — never ship these
+
+These uses are rejected on sight, regardless of how clean the diff is, how short the effect is, or how confident the author feels:
+
+- Synchronizing local state to the URL, query string, route params, or pathname.
+- Synchronizing URL/query/route values back into local state.
+- Mirroring props into local state. Derive on render or lift state.
+- Deriving one piece of state from another piece of state. Compute it during render.
+- Fetching application data after render. Use Convex queries, Server Components, or route loaders.
+- Firing mutations because state, props, URL, or Convex data changed. Handle it in the event handler that caused the change.
+- Mirroring form state into another store, store data into local state, or Convex data into local state.
+- Initializing app state from props, server data, Convex data, or `nuqs`. Read directly.
+- "Make it reactive" effect chains, "after-render fixups", "observable bridges", or anything whose only job is to keep two pieces of state in sync.
+- Reaching for `useEffect` to coordinate a query, filter, tab, pagination, sort order, modal open/close, drawer state, or month/date window. That state belongs in `nuqs` or a parent.
+- Toast/analytics/telemetry firing on state change. Fire it in the handler that triggered the change.
+- Subscribing to a ref, a Convex query result, or a derived value. None of these need an effect.
+
+If your `useEffect` is doing any of the above, delete it. There is always a non-effect solution in this stack — derived values during render, event handlers, Convex subscriptions, `nuqs`, Server Components, route loaders, Suspense, or React 19 `use()`.
+
+### Narrowly allowed — only true external side effects
+
+`useEffect` is permitted **only** for genuine outside-React side effects with setup/teardown that React cannot model declaratively:
+
+- Browser-only subscriptions that require explicit `addEventListener` / `removeEventListener` pairing, and only when no higher-level abstraction or library hook already exists.
+- Imperative third-party DOM integrations (charts, maps, editors, video players) that own a DOM node lifecycle React does not control.
+- Timers, `IntersectionObserver`, `ResizeObserver`, `MutationObserver`, and similar platform APIs that are inherently side-effectful.
+- Low-level focus, scroll restoration, or selection management with no declarative equivalent.
+
+Even when allowed, the effect MUST:
+
+1. Have a complete, correct cleanup function. No exceptions, including for "one-shot" subscriptions.
+2. Have an exhaustive dependency array. **Never** add `// eslint-disable-next-line react-hooks/exhaustive-deps` or any equivalent suppression.
+3. Live in the smallest leaf component or a dedicated custom hook — never in a page, layout, route segment, or feature root.
+4. Carry a one-line comment naming the external system it is bridging and why no declarative alternative exists.
+5. Not call a Convex mutation, a `nuqs` setter, a router push, or a setState that mirrors another reactive value.
+
+### Review and enforcement
+
+- Adding a new `useEffect` is a structural change. Justify it in the commit/PR body, name the external system being bridged, and cite the doc or library issue that proves no declarative alternative exists.
+- Any `useEffect` a reviewer cannot map to one of the allowed external systems above is rejected. "Refactor is hard", "this is how the old code did it", "we'll clean it up later", and "it works" are not justifications. This project carries no legacy.
+- Existing `useEffect` calls encountered during work in a file are fair game — and expected — to be removed in the same commit when they fall under the forbidden list. Do not preserve them out of caution.
+- Plans must not prescribe `useEffect` for any of the forbidden cases. A plan that does is itself a deviation and must be revised in git before execution proceeds.
+
+### What to use instead
+
+- URL-backed filters, tabs, pagination, month windows, modal open/close, sort orders, anything shareable: **`nuqs`**.
+- Anything derivable from props, server data, Convex data, or URL state: **derive it during render**. No effect, no `useMemo` unless measured.
+- Reactive backend state: **Convex `useQuery`** subscriptions.
+- Data loading: **Server Components**, **route loaders**, **Convex `useQuery`**, or React 19 **`use()`**.
+- "After click" or "after submit" work: handle it in the **event handler** that triggered it, not in an effect that watches state change.
+- Cross-component coordination: **lift state**, use **context**, or use a **Convex** mutation/query — never a `useEffect` watching a piece of state.
+- Animations driven by state: CSS transitions, view transitions, or `useTransition` / `useDeferredValue` — not `useEffect` poking `requestAnimationFrame`.
+
+If you cannot map your need to one of the answers above, stop and ask before writing the effect.
+
 ## Planning doctrine — exact structure, grounded execution, no guesswork
 
 When work is large enough to justify a plan, create it under `plans/<kebab-case-topic>/` and make it match the repo's established structure exactly.
