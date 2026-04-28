@@ -91,6 +91,7 @@ type ZoteroItemResponse = {
     }>;
     date?: string;
     DOI?: string;
+    publicationTitle?: string;
     collections?: string[];
     itemType: string;
     contentType?: string;
@@ -746,6 +747,7 @@ type ZoteroItem = {
   year?: number;
   doi?: string;
   itemType: string;
+  venueName?: string;
   numChildren?: number;
 };
 
@@ -767,6 +769,7 @@ export const fetchItems = action({
         year: v.optional(v.number()),
         doi: v.optional(v.string()),
         itemType: v.string(),
+        venueName: v.optional(v.string()),
         numChildren: v.optional(v.number()),
         hasPdfChild: v.boolean(),
       })
@@ -955,6 +958,7 @@ export const fetchItems = action({
           year: d.date ? parseInt(d.date.match(/\d{4}/)?.[0] || "", 10) || undefined : undefined,
           doi: d.DOI || undefined,
           itemType: d.itemType,
+          venueName: d.publicationTitle || undefined,
           numChildren: item.meta?.numChildren,
           hasPdfChild,
         };

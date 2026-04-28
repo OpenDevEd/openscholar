@@ -53,6 +53,7 @@ type ZoteroItem = {
   year?: number;
   doi?: string;
   itemType: string;
+  venueName?: string;
   numChildren?: number;
   hasPdfChild: boolean;
 };
@@ -166,6 +167,8 @@ export function ZoteroSelector({ paperLimit }: { paperLimit?: number }) {
           year: item.year,
           doi: item.doi,
           abstract: item.abstract,
+          venueName: item.venueName,
+          workType: item.itemType,
         },
         zoteroContext,
       ),

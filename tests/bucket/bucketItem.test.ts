@@ -110,6 +110,32 @@ describe("lib/bucket/bucketItem normalizers", () => {
     });
   });
 
+  test("fromZoteroItem threads venueName and workType onto the bucket item for the chat prompt", () => {
+    const item = fromZoteroItem(
+      {
+        itemKey: "ZOT3",
+        title: "Z Paper",
+        authors: ["A"],
+        doi: "10.1/zot",
+        year: 2023,
+        venueName: "Journal of Examples",
+        workType: "journalArticle",
+      },
+      { libraryType: "user" },
+    );
+    expect(item.venueName).toBe("Journal of Examples");
+    expect(item.workType).toBe("journalArticle");
+  });
+
+  test("fromZoteroItem leaves venueName/workType undefined when input omits them", () => {
+    const item = fromZoteroItem(
+      { itemKey: "ZOT4", title: "Bare", authors: [], year: 2024 },
+      { libraryType: "user" },
+    );
+    expect(item.venueName).toBeUndefined();
+    expect(item.workType).toBeUndefined();
+  });
+
   test("fromZoteroItem falls back to title+year key when no DOI", () => {
     const item = fromZoteroItem(
       { itemKey: "ZOT2", title: "Untitled", authors: [], year: 2024 },

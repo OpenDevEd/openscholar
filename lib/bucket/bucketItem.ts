@@ -173,6 +173,8 @@ export type ZoteroItemInput = {
   year?: number;
   doi?: string;
   abstract?: string;
+  venueName?: string;
+  workType?: string;
 };
 
 export type ZoteroContext = {
@@ -227,6 +229,8 @@ export function fromZoteroItem(
     year: item.year,
     doi: item.doi,
     abstract: item.abstract,
+    venueName: item.venueName,
+    workType: item.workType,
     addedAt: now,
     status: "ready",
   };
