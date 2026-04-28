@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { CheckIcon, ExternalLink } from "lucide-react";
+import { CheckIcon, ExternalLink, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,6 @@ import type { SearchMatch } from "@/lib/chat/search/source-scorer";
 import {
   CHAT_SOURCE_COLOR_VAR,
   CHAT_SOURCE_ICON,
-  buildRowMetaSegments,
 } from "@/lib/chat/source-presentation";
 
 const SOURCE_LABEL: Record<ChatSourceRow["sourceType"], string> = {
@@ -42,14 +41,10 @@ function SourceRowImpl({
 }: SourceRowProps) {
   const reduceMotion = useReducedMotion();
   const tMeta = useTranslations("sourcesPanel.meta");
-  const metaSegments = buildRowMetaSegments(
-    {
-      venueName: row.venueName,
-      workType: row.workType,
-      citedByCount: row.citedByCount,
-    },
-    (count) => tMeta("cites", { count }),
-  );
+  const hasMeta =
+    Boolean(row.venueName?.trim()) ||
+    Boolean(row.workType?.trim()) ||
+    typeof row.citedByCount === "number";
 
   const matchedNonChromeField =
     match &&
@@ -193,13 +188,41 @@ function SourceRowImpl({
             )}
           </div>
         </div>
-        {metaSegments.length > 0 && (
-          <p
-            className="truncate text-[11px] text-muted-foreground/80"
+        {hasMeta && (
+          <div
+            className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]"
             data-paper-meta
           >
-            {metaSegments.join(" · ")}
-          </p>
+            {row.venueName?.trim() && (
+              <span
+                className="truncate italic text-foreground/85"
+                data-paper-venue
+                title={row.venueName}
+              >
+                {row.venueName}
+              </span>
+            )}
+            {row.workType?.trim() && (
+              <span
+                className="rounded bg-muted/70 px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground"
+                data-paper-work-type
+              >
+                {row.workType}
+              </span>
+            )}
+            {typeof row.citedByCount === "number" && (
+              <span
+                className="inline-flex items-center gap-0.5 tabular-nums text-muted-foreground"
+                data-paper-cited-by
+              >
+                <Quote
+                  className="size-2.5 fill-current opacity-60"
+                  aria-hidden="true"
+                />
+                {tMeta("cites", { count: row.citedByCount })}
+              </span>
+            )}
+          </div>
         )}
         {snippet && matchedNonChromeField && (
           <p
