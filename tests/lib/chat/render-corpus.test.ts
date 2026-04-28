@@ -63,6 +63,66 @@ describe("renderPaperCorpus", () => {
   });
 });
 
+describe("renderPaperCorpus — optional metric tags", () => {
+  it("emits <citedBy> with the number when citedByCount is set", () => {
+    const out = renderPaperCorpus([prompted(1, { citedByCount: 42 })]);
+    expect(out).toContain("<citedBy>42</citedBy>");
+  });
+
+  // 0 is meaningful (uncited paper), not 'unknown' — must still render.
+  it("emits <citedBy>0</citedBy> for never-cited papers", () => {
+    const out = renderPaperCorpus([prompted(1, { citedByCount: 0 })]);
+    expect(out).toContain("<citedBy>0</citedBy>");
+  });
+
+  it("omits <citedBy> entirely when citedByCount is undefined", () => {
+    const out = renderPaperCorpus([prompted(1, { citedByCount: undefined })]);
+    expect(out).not.toContain("<citedBy");
+  });
+
+  it("emits <venue> when venueName is a non-empty string", () => {
+    const out = renderPaperCorpus([prompted(1, { venueName: "Nature" })]);
+    expect(out).toContain("<venue>Nature</venue>");
+  });
+
+  it("escapes XML-special characters inside <venue>", () => {
+    const out = renderPaperCorpus([
+      prompted(1, { venueName: 'Sci & "Tech"' }),
+    ]);
+    expect(out).toContain("<venue>Sci &amp; &quot;Tech&quot;</venue>");
+  });
+
+  it("omits <venue> when venueName is undefined or whitespace-only", () => {
+    const a = renderPaperCorpus([prompted(1, { venueName: undefined })]);
+    const b = renderPaperCorpus([prompted(2, { venueName: "   " })]);
+    expect(a).not.toContain("<venue");
+    expect(b).not.toContain("<venue");
+  });
+
+  it("emits <type> with the work type when present", () => {
+    const out = renderPaperCorpus([prompted(1, { workType: "review" })]);
+    expect(out).toContain("<type>review</type>");
+  });
+
+  it("omits <type> entirely when workType is undefined", () => {
+    const out = renderPaperCorpus([prompted(1, { workType: undefined })]);
+    expect(out).not.toContain("<type");
+  });
+
+  it("emits all three tags together for a fully-populated paper", () => {
+    const out = renderPaperCorpus([
+      prompted(1, {
+        citedByCount: 17,
+        venueName: "Nature",
+        workType: "article",
+      }),
+    ]);
+    expect(out).toContain("<citedBy>17</citedBy>");
+    expect(out).toContain("<venue>Nature</venue>");
+    expect(out).toContain("<type>article</type>");
+  });
+});
+
 const cs = (
   sourceId: string,
   position: number,

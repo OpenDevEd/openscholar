@@ -19,6 +19,9 @@ export type CorpusSource = {
   abstract?: string;
   doi?: string;
   pdfUrl?: string;
+  citedByCount?: number;
+  venueName?: string;
+  workType?: string;
 };
 
 export type CorpusSourceForPrompt = CorpusSource & {
@@ -65,11 +68,30 @@ export function renderPaperCorpus(
       p.abstract && p.abstract.trim().length > 0
         ? xmlEscape(p.abstract.trim())
         : "(no abstract available)";
+    // Optional metric tags. Omitted entirely (not rendered as "Unknown")
+    // when the upstream source has no value, so non-OpenAlex papers do
+    // not pollute the prompt with empty signals.
+    const venueTag =
+      p.venueName && p.venueName.trim().length > 0
+        ? `<venue>${xmlEscape(p.venueName.trim())}</venue>\n`
+        : "";
+    const typeTag =
+      p.workType && p.workType.trim().length > 0
+        ? `<type>${xmlEscape(p.workType.trim())}</type>\n`
+        : "";
+    // 0 is meaningful for citedByCount — render it as-is.
+    const citedByTag =
+      typeof p.citedByCount === "number"
+        ? `<citedBy>${p.citedByCount}</citedBy>\n`
+        : "";
     return (
       `<paper id="${p.promptId}"${oa ? ` openalex="${oa}"` : ""}>\n` +
       `<title>${title}</title>\n` +
       `<year>${year}</year>\n` +
       `<authors>${authors}</authors>\n` +
+      venueTag +
+      typeTag +
+      citedByTag +
       `<abstract>${abstract}</abstract>\n` +
       `</paper>`
     );
