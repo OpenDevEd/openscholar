@@ -342,3 +342,57 @@ describe("WEB_SEARCH_SYSTEM_INSTRUCTION", () => {
     );
   });
 });
+
+describe("buildSystemPromptForJob — webSearchEnabled flag", () => {
+  it("returns the existing two messages when webSearchEnabled is false (no regression)", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithSources(t, ["Alpha"]);
+
+    const prompt = await t.query(
+      internal.chat.context.buildSystemPromptForJob,
+      { jobId, webSearchEnabled: false },
+    );
+
+    expect(prompt).toHaveLength(2);
+  });
+
+  it("returns the existing two messages when webSearchEnabled is omitted (default behavior preserved)", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithSources(t, ["Alpha"]);
+
+    const prompt = await t.query(
+      internal.chat.context.buildSystemPromptForJob,
+      { jobId },
+    );
+
+    expect(prompt).toHaveLength(2);
+  });
+
+  it("appends the WEB_SEARCH_SYSTEM_INSTRUCTION as a third system message when webSearchEnabled is true", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithSources(t, ["Alpha"]);
+
+    const prompt = await t.query(
+      internal.chat.context.buildSystemPromptForJob,
+      { jobId, webSearchEnabled: true },
+    );
+
+    expect(prompt).toHaveLength(3);
+    expect(prompt[2].role).toBe("system");
+    expect(prompt[2].content).toBe(WEB_SEARCH_SYSTEM_INSTRUCTION);
+  });
+
+  it("preserves the rules + corpus order when the third message is appended", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithSources(t, ["Alpha", "Beta"]);
+
+    const prompt = await t.query(
+      internal.chat.context.buildSystemPromptForJob,
+      { jobId, webSearchEnabled: true },
+    );
+
+    expect(prompt[0].content.toLowerCase()).toContain("citation rules");
+    expect(prompt[1].content).toMatch(/<papers count="2">/);
+    expect(prompt[2].content).toBe(WEB_SEARCH_SYSTEM_INSTRUCTION);
+  });
+});

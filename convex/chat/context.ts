@@ -45,14 +45,17 @@ export const WEB_SEARCH_SYSTEM_INSTRUCTION = [
 ].join("\n");
 
 export const buildSystemPromptForJob = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
+  args: {
+    jobId: v.id("extractionJobs"),
+    webSearchEnabled: v.optional(v.boolean()),
+  },
   returns: v.array(
     v.object({
       role: v.literal("system"),
       content: v.string(),
     }),
   ),
-  handler: async (ctx, { jobId }) => {
+  handler: async (ctx, { jobId, webSearchEnabled }) => {
     const rows = await readChatSourceRows(ctx, jobId);
     const prompted = filterAndPreservePositions(
       rows.map(toCorpusSource),
@@ -63,7 +66,7 @@ export const buildSystemPromptForJob = internalQuery({
       ),
     );
 
-    return [
+    const messages = [
       {
         role: "system" as const,
         content:
@@ -86,6 +89,15 @@ export const buildSystemPromptForJob = internalQuery({
         content: renderPaperCorpus(prompted),
       },
     ];
+
+    if (webSearchEnabled === true) {
+      messages.push({
+        role: "system" as const,
+        content: WEB_SEARCH_SYSTEM_INSTRUCTION,
+      });
+    }
+
+    return messages;
   },
 });
 
