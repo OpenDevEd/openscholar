@@ -995,6 +995,14 @@
       "zero": "0 source — le chat doit contenir au moins un article",
       "emptyBanner": "Aucune source n'est actuellement en contexte. L'envoi est désactivé.",
       "includeAll": "Tout inclure"
+    },
+    "webSearch": {
+      "label": "Web",
+      "ariaEnable": "Activer la recherche web",
+      "ariaDisable": "Désactiver la recherche web",
+      "tooltipUnsupported": "Le modèle sélectionné ne prend pas en charge la recherche web.",
+      "tooltipOn": "Recherche web activée. Cliquez pour désactiver.",
+      "tooltipOff": "Rechercher des informations actuelles sur le web (~0,02 $ par recherche)."
     }
   },
   "toast": {

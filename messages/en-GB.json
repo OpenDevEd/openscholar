@@ -1018,6 +1018,14 @@
       "zero": "0 sources — chat needs at least one paper",
       "emptyBanner": "No sources are currently in context. Send is disabled.",
       "includeAll": "Include all"
+    },
+    "webSearch": {
+      "label": "Web",
+      "ariaEnable": "Enable web search",
+      "ariaDisable": "Disable web search",
+      "tooltipUnsupported": "Selected model does not support web search.",
+      "tooltipOn": "Web search on. Click to disable.",
+      "tooltipOff": "Search the web for current info (~$0.02 per search)."
     }
   },
   "toast": {

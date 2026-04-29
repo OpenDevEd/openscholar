@@ -995,6 +995,14 @@
       "zero": "0 项来源 — 对话至少需要一篇论文",
       "emptyBanner": "当前没有任何来源在上下文中。发送已禁用。",
       "includeAll": "全部包含"
+    },
+    "webSearch": {
+      "label": "网络",
+      "ariaEnable": "启用网络搜索",
+      "ariaDisable": "禁用网络搜索",
+      "tooltipUnsupported": "所选模型不支持网络搜索。",
+      "tooltipOn": "网络搜索已开启。点击禁用。",
+      "tooltipOff": "在网络上搜索最新信息（每次约 $0.02）。"
     }
   },
   "toast": {
