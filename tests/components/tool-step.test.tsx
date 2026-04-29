@@ -109,11 +109,40 @@ describe("<ToolStep>", () => {
     expect(screen.getByTestId("tool-step")).toHaveTextContent("3 credits");
   });
 
-  it("falls back to the cost estimate when no creditsUsed is on the output", () => {
-    render(<ToolStep part={makeAvailable("q")} />);
-    expect(screen.getByTestId("tool-step")).toHaveTextContent(
-      "~$0.02 / ~3 credits",
+  it("renders the Tavily-basic credit estimate during input-available when webSearchSource=tavily-basic", () => {
+    render(
+      <ToolStep part={makeAvailable("q")} webSearchSource="tavily-basic" />,
     );
+    expect(screen.getByTestId("tool-step")).toHaveTextContent(/~104 credits/);
+  });
+
+  it("renders the OpenRouter-server-tool credit estimate when webSearchSource=openrouter-server-tool", () => {
+    render(
+      <ToolStep
+        part={makeAvailable("q")}
+        webSearchSource="openrouter-server-tool"
+      />,
+    );
+    expect(screen.getByTestId("tool-step")).toHaveTextContent(/~260 credits/);
+  });
+
+  it("renders the OpenRouter-native credit estimate from modelWebSearchPriceUsd when webSearchSource=openrouter-native", () => {
+    render(
+      <ToolStep
+        part={makeAvailable("q")}
+        webSearchSource="openrouter-native"
+        modelWebSearchPriceUsd={0.01}
+      />,
+    );
+    // 0.01 × 1.3 × 10_000 = 130 credits.
+    expect(screen.getByTestId("tool-step")).toHaveTextContent(/~130 credits/);
+  });
+
+  it("renders an empty cost label when webSearchSource is unsupported / omitted", () => {
+    render(<ToolStep part={makeAvailable("q")} />);
+    const region = screen.getByTestId("tool-step");
+    expect(region).not.toHaveTextContent(/credits/);
+    expect(region).not.toHaveTextContent(/\$/);
   });
 
   it("renders error variant with role=alert text and data-tool-state=output-error", () => {

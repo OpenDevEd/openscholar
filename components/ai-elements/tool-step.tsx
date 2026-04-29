@@ -4,12 +4,12 @@ import type { ToolUIPart } from "ai";
 import { AlertCircle, Check, CircleSlash, Globe } from "lucide-react";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { formatSearchCostLabel } from "@/lib/chat/format-search-cost";
+import {
+  pickWebSearchPricing,
+  type WebSearchPath,
+  type WebSearchPricing,
+} from "@/lib/pricing";
 import { cn } from "@/lib/utils";
-
-const SEARCH_COST_DEFAULTS = {
-  creditsPerSearchEstimate: 3,
-  costUsdEstimate: 0.02,
-} as const;
 
 export interface ToolStepProps {
   part: ToolUIPart;
@@ -17,6 +17,14 @@ export interface ToolStepProps {
    * still in flight, the chip flips to a muted "aborted" variant. */
   messageStatus?: "pending" | "streaming" | "success" | "failed";
   aborted?: boolean;
+  /** The active web-search path so we can render the real credit cost
+   *  estimate while the call is in flight. Resolved server-side by
+   *  `getChatWebSearchPricing` and threaded through by `MessageRow`.
+   *  Omitted means "we don't know" → no estimate is shown. */
+  webSearchSource?: WebSearchPricing["source"];
+  /** Native web-search USD price for the active model. Used only when
+   *  `webSearchSource === "openrouter-native"`. */
+  modelWebSearchPriceUsd?: number | null;
 }
 
 type DisplayState =
@@ -84,6 +92,19 @@ function readErrorText(part: ToolUIPart): string | null {
   if (part.state !== "output-error") return null;
   const e = (part as { errorText?: unknown }).errorText;
   return typeof e === "string" ? e : null;
+}
+
+function sourceToPath(
+  source: WebSearchPricing["source"] | undefined,
+): WebSearchPath {
+  if (source === "tavily-basic") return "tavily";
+  if (
+    source === "openrouter-native" ||
+    source === "openrouter-server-tool"
+  ) {
+    return "openrouter";
+  }
+  return null;
 }
 
 function StateIcon({
@@ -173,7 +194,12 @@ function StateLabel({
   }
 }
 
-export function ToolStep({ part, aborted }: ToolStepProps) {
+export function ToolStep({
+  part,
+  aborted,
+  webSearchSource,
+  modelWebSearchPriceUsd,
+}: ToolStepProps) {
   const display = getDisplayState(part, aborted);
   const toolName = getToolName(part);
   const query = readQuery(part);
@@ -182,6 +208,17 @@ export function ToolStep({ part, aborted }: ToolStepProps) {
   const errorText = readErrorText(part);
   const inFlight =
     display === "input-streaming" || display === "input-available";
+  const pricing = pickWebSearchPricing({
+    path: sourceToPath(webSearchSource),
+    modelWebSearchPriceUsd: modelWebSearchPriceUsd ?? null,
+  });
+  const costLabel = formatSearchCostLabel({
+    creditsUsed,
+    estimate: {
+      source: pricing.source,
+      creditsPerCall: pricing.creditsPerCall,
+    },
+  });
 
   return (
     <div
@@ -208,10 +245,7 @@ export function ToolStep({ part, aborted }: ToolStepProps) {
           />
         </span>
         <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-          {formatSearchCostLabel({
-            creditsUsed,
-            ...SEARCH_COST_DEFAULTS,
-          })}
+          {costLabel}
         </span>
       </div>
       {display === "output-error" && errorText ? (
