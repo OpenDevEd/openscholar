@@ -57,6 +57,7 @@ import {
   selectChatMessageError,
 } from "../../lib/chat/message-state";
 import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn";
+import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
 import {
   estimateTokenCount,
   extractMessageText,
@@ -406,7 +407,7 @@ export const generateResponse = internalAction({
                 accumulatedOutput += chunk.text ?? "";
               }
             },
-            onFinish: async ({ usage }) => {
+            onFinish: async ({ usage, providerMetadata }) => {
               // Fast path for successful turns. AI SDK v6's onFinish
               // fires with aggregated usage once every step has
               // completed — for V1 (stepCountIs(1)) this is equivalent
@@ -426,6 +427,11 @@ export const generateResponse = internalAction({
                 usage?.inputTokenDetails?.cacheReadTokens ??
                 usage?.cachedInputTokens ??
                 0;
+              // OpenRouter's all-in USD cost (token cost + any provider-
+              // side tool cost such as server web search). Surfaced when
+              // the chat factory was built with `usage: { include: true }`
+              // — see convex/chat/provider.ts and lib/chat/pick-provider-cost.ts.
+              const providerCostUsd = pickProviderCostUsd(providerMetadata);
 
               if (capturedGenerationId) {
                 // Prefer ledger-backed billing keyed on generation id
@@ -449,6 +455,9 @@ export const generateResponse = internalAction({
                     completionTokens: outputTokens,
                     reasoningTokens,
                     cachedPromptTokens,
+                    ...(providerCostUsd !== null
+                      ? { totalCostUsd: providerCostUsd }
+                      : {}),
                   },
                 );
               } else {
@@ -465,6 +474,9 @@ export const generateResponse = internalAction({
                     completionTokens: outputTokens,
                     reasoningTokens,
                     cachedPromptTokens,
+                    ...(providerCostUsd !== null
+                      ? { totalCostUsd: providerCostUsd }
+                      : {}),
                   },
                 );
               }
