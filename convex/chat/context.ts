@@ -11,17 +11,38 @@ import {
 } from "./sourceReadModel";
 
 /**
- * Builds the chat system prompt array for a given job. Returns two
- * messages:
+ * Builds the chat system prompt array for a given job. Returns two or
+ * three messages:
  *   1. persona + citation instructions
  *   2. the paper corpus (XML envelope, papers sorted by stable `position`
  *      ASC with gaps preserved when rows are excluded — see plan-02)
+ *   3. (only when `webSearchEnabled === true`) the supplementary
+ *      web-search policy — corpus is PRIMARY, web is a fill-the-gaps
+ *      tool, [Pn] is paper-only.
  *
  * The split is intentional: the corpus message is the cache-hot prefix
  * once OpenRouter's v6 provider starts forwarding cache_control through
  * the Responses API. For V1 neither branch carries
  * providerOptions.cacheControl — the provider drops them silently.
  */
+
+/**
+ * Locked policy text appended as a third system message when the user
+ * has opted into web search for the thread. Tuned for "supplement, not
+ * primary" — the corpus stays the source of truth, web search fills
+ * gaps and adds adjacent on-topic context. Citations stay [Pn] for
+ * papers; web hits get inline markdown links.
+ */
+export const WEB_SEARCH_SYSTEM_INSTRUCTION = [
+  "WEB SEARCH POLICY:",
+  "- The paper corpus above is your PRIMARY source. Always answer from the papers when possible and cite as [Pn].",
+  "- A web_search tool is available only as a SUPPLEMENT. Use it when:",
+  "  • The included papers do not cover an aspect of the user's question, OR",
+  "  • You need to add adjacent on-topic context (e.g. a definition, a related dataset, a recent development).",
+  "- Do NOT use web search for questions the corpus already answers.",
+  "- When you cite a web result, do so by URL inline (markdown link). Never reuse [Pn] for web sources.",
+  "- One short, focused web query per call. Avoid redundant searches.",
+].join("\n");
 
 export const buildSystemPromptForJob = internalQuery({
   args: { jobId: v.id("extractionJobs") },

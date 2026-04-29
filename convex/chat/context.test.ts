@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { WEB_SEARCH_SYSTEM_INSTRUCTION } from "./context";
 
 type SeededSource = {
   sourceId: Id<"extractionJobSources">;
@@ -313,5 +314,31 @@ describe("buildSystemPromptForJob", () => {
     expect(afterSecond[1].content).toContain('id="P3"');
     expect(afterSecond[1].content).not.toContain('id="P4"');
     expect(afterSecond[1].content).toContain('id="P5"');
+  });
+});
+
+describe("WEB_SEARCH_SYSTEM_INSTRUCTION", () => {
+  it("flags the corpus as the PRIMARY source (uppercase)", () => {
+    expect(WEB_SEARCH_SYSTEM_INSTRUCTION).toMatch(/PRIMARY/);
+  });
+
+  it("preserves the [Pn] paper-citation format", () => {
+    expect(WEB_SEARCH_SYSTEM_INSTRUCTION).toContain("[Pn]");
+  });
+
+  it("frames web search as a supplement, not a default action", () => {
+    expect(WEB_SEARCH_SYSTEM_INSTRUCTION).toMatch(/supplement/i);
+  });
+
+  it("never instructs the model to default to web search", () => {
+    const lowered = WEB_SEARCH_SYSTEM_INSTRUCTION.toLowerCase();
+    expect(lowered).not.toMatch(/always.*search the web/);
+    expect(lowered).not.toMatch(/start.*by.*searching the web/);
+  });
+
+  it("warns against reusing [Pn] for web sources", () => {
+    expect(WEB_SEARCH_SYSTEM_INSTRUCTION.toLowerCase()).toMatch(
+      /never.*\[pn\]/,
+    );
   });
 });
