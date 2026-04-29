@@ -702,6 +702,51 @@ describe("chat.messages.setChatWebSearchEnabled", () => {
     const after = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(after?.webSearchEnabled).toBeUndefined();
   });
+
+  it("returns outcome=noop and skips the patch when value is unchanged", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t);
+    const caller = asCaller(t, "c_msg");
+
+    // Unset (undefined) should compare equal to false → noop on first call.
+    const initialNoop = await caller.mutation(
+      api.chat.messages.setChatWebSearchEnabled,
+      { threadId, enabled: false },
+    );
+    expect(initialNoop).toEqual({ outcome: "noop" });
+    const afterInitial = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(afterInitial?.webSearchEnabled).toBeUndefined();
+    expect(afterInitial?.updatedAt).toBe(0);
+
+    // Real flip lands a patch with a fresh updatedAt.
+    const flipped = await caller.mutation(
+      api.chat.messages.setChatWebSearchEnabled,
+      { threadId, enabled: true },
+    );
+    expect(flipped).toEqual({ outcome: "updated" });
+    const afterFlip = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(afterFlip?.webSearchEnabled).toBe(true);
+    expect(afterFlip?.updatedAt).toBeGreaterThan(0);
+
+    // Re-toggle to the same value: noop, updatedAt unchanged proves the
+    // patch was skipped (the patch path always writes Date.now()).
+    const repeat = await caller.mutation(
+      api.chat.messages.setChatWebSearchEnabled,
+      { threadId, enabled: true },
+    );
+    expect(repeat).toEqual({ outcome: "noop" });
+    const afterRepeat = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(afterRepeat?.updatedAt).toBe(afterFlip?.updatedAt);
+
+    // Disable transitions back to false through the patch path.
+    const disabled = await caller.mutation(
+      api.chat.messages.setChatWebSearchEnabled,
+      { threadId, enabled: false },
+    );
+    expect(disabled).toEqual({ outcome: "updated" });
+    const afterDisable = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(afterDisable?.webSearchEnabled).toBe(false);
+  });
 });
 
 describe("chat.messages.generateResponse — stop-streaming wiring", () => {
