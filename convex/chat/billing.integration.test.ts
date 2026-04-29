@@ -257,3 +257,285 @@ describe("chat generation reconciliation", () => {
     });
   });
 });
+
+describe("billGenerationFromSdkUsage cost-source switch", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+  });
+
+  it("prefers totalCostUsd over the token-based calc when supplied", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    const { userId, jobId, threadId } = await seedChatBillingState(t);
+    const generationId = "gen_cost_supplied_1";
+
+    await t.mutation(internal.chat.billing.captureGenerationFromResponse, {
+      threadId,
+      generationId,
+      requestedModel: "google/gemini-3.1-flash-lite-preview",
+    });
+
+    const result = await t.mutation(
+      internal.chat.billing.billGenerationFromSdkUsage,
+      {
+        generationId,
+        model: "google/gemini-3.1-flash-lite-preview",
+        // Token math at this pricing+usage would charge 45 credits;
+        // the cost-supplied path must ignore those and charge 650
+        // (0.05 USD * 1.3 markup * 10_000 credits/USD = 650 credits).
+        pricing: { input: 0.1, output: 0.4 },
+        promptTokens: 30_000,
+        completionTokens: 1_000,
+        reasoningTokens: 0,
+        cachedPromptTokens: 0,
+        totalCostUsd: 0.05,
+      },
+    );
+
+    expect(result.outcome).toBe("billed");
+    expect(result.billedCredits).toBe(650);
+
+    await t.run(async (ctx) => {
+      const ledger = await ctx.db
+        .query("chatGenerationUsages")
+        .withIndex("by_generation_id", (q) =>
+          q.eq("generationId", generationId),
+        )
+        .unique();
+      expect(ledger?.billedCredits).toBe(650);
+      expect(ledger?.totalCostUsd).toBe(0.05);
+
+      const txs = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      expect(txs).toHaveLength(1);
+      expect(txs[0]?.amount).toBe(650);
+      expect(txs[0]?.metadata?.billingSource).toBe("sdk_usage_cost");
+      expect(txs[0]?.metadata?.totalCostUsd).toBe("0.05");
+      expect(txs[0]?.metadata?.generationId).toBe(generationId);
+    });
+
+    const balance = await t.run(async (ctx) =>
+      ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
+    );
+    expect(balance?.lifetimeUsed).toBe(650);
+  });
+
+  it("falls back to the token-based calc when totalCostUsd is omitted", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    const { jobId, threadId } = await seedChatBillingState(t);
+    const generationId = "gen_cost_absent_1";
+
+    await t.mutation(internal.chat.billing.captureGenerationFromResponse, {
+      threadId,
+      generationId,
+      requestedModel: "google/gemini-3.1-flash-lite-preview",
+    });
+
+    const result = await t.mutation(
+      internal.chat.billing.billGenerationFromSdkUsage,
+      {
+        generationId,
+        model: "google/gemini-3.1-flash-lite-preview",
+        pricing: { input: 0.1, output: 0.4 },
+        promptTokens: 30_000,
+        completionTokens: 1_000,
+        reasoningTokens: 0,
+        cachedPromptTokens: 0,
+      },
+    );
+
+    expect(result.outcome).toBe("billed");
+    expect(result.billedCredits).toBe(45);
+
+    await t.run(async (ctx) => {
+      const txs = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      expect(txs).toHaveLength(1);
+      expect(txs[0]?.metadata?.billingSource).toBe("sdk_usage");
+      expect(txs[0]?.metadata?.totalCostUsd).toBeUndefined();
+    });
+  });
+
+  it("creates no credit transaction when totalCostUsd is exactly zero", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    const { userId, jobId, threadId } = await seedChatBillingState(t);
+    const generationId = "gen_cost_zero_1";
+
+    await t.mutation(internal.chat.billing.captureGenerationFromResponse, {
+      threadId,
+      generationId,
+      requestedModel: "google/gemini-3.1-flash-lite-preview",
+    });
+
+    const result = await t.mutation(
+      internal.chat.billing.billGenerationFromSdkUsage,
+      {
+        generationId,
+        model: "google/gemini-3.1-flash-lite-preview",
+        // Token math would charge 13 credits at this pricing+usage.
+        // Cost-supplied path with 0 must override and charge nothing.
+        pricing: { input: 0.1, output: 0.4 },
+        promptTokens: 12_000,
+        completionTokens: 500,
+        reasoningTokens: 0,
+        cachedPromptTokens: 0,
+        totalCostUsd: 0,
+      },
+    );
+
+    expect(result.outcome).toBe("billed");
+    expect(result.billedCredits).toBe(0);
+
+    await t.run(async (ctx) => {
+      const ledger = await ctx.db
+        .query("chatGenerationUsages")
+        .withIndex("by_generation_id", (q) =>
+          q.eq("generationId", generationId),
+        )
+        .unique();
+      expect(ledger?.status).toBe("billed");
+      expect(ledger?.billedCredits).toBe(0);
+      expect(ledger?.totalCostUsd).toBe(0);
+
+      const txs = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      expect(txs).toHaveLength(0);
+    });
+
+    const balance = await t.run(async (ctx) =>
+      ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
+    );
+    expect(balance?.lifetimeUsed).toBe(0);
+  });
+
+  it("bills only once when called twice with the same generationId and totalCostUsd", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    const { userId, jobId, threadId } = await seedChatBillingState(t);
+    const generationId = "gen_cost_idempotent_1";
+
+    await t.mutation(internal.chat.billing.captureGenerationFromResponse, {
+      threadId,
+      generationId,
+      requestedModel: "google/gemini-3.1-flash-lite-preview",
+    });
+
+    const args = {
+      generationId,
+      model: "google/gemini-3.1-flash-lite-preview",
+      pricing: { input: 0.1, output: 0.4 },
+      promptTokens: 30_000,
+      completionTokens: 1_000,
+      reasoningTokens: 0,
+      cachedPromptTokens: 0,
+      totalCostUsd: 0.05,
+    };
+
+    const first = await t.mutation(
+      internal.chat.billing.billGenerationFromSdkUsage,
+      args,
+    );
+    const second = await t.mutation(
+      internal.chat.billing.billGenerationFromSdkUsage,
+      args,
+    );
+
+    expect(first.outcome).toBe("billed");
+    expect(first.billedCredits).toBe(650);
+    expect(second.outcome).toBe("already_billed");
+    expect(second.billedCredits).toBe(650);
+
+    await t.run(async (ctx) => {
+      const txs = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      expect(txs).toHaveLength(1);
+    });
+
+    const balance = await t.run(async (ctx) =>
+      ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
+    );
+    expect(balance?.lifetimeUsed).toBe(650);
+  });
+});
+
+describe("billThreadUsageFromSdk cost-source switch", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+  });
+
+  it("prefers totalCostUsd over the token-based calc when supplied", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    const { userId, jobId, threadId } = await seedChatBillingState(t);
+
+    const result = await t.mutation(
+      internal.chat.billing.billThreadUsageFromSdk,
+      {
+        threadId,
+        model: "google/gemini-3.1-flash-lite-preview",
+        pricing: { input: 0.1, output: 0.4 },
+        promptTokens: 30_000,
+        completionTokens: 1_000,
+        reasoningTokens: 0,
+        cachedPromptTokens: 0,
+        totalCostUsd: 0.05,
+      },
+    );
+
+    expect(result.outcome).toBe("billed");
+    expect(result.billedCredits).toBe(650);
+
+    await t.run(async (ctx) => {
+      const txs = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      expect(txs).toHaveLength(1);
+      expect(txs[0]?.amount).toBe(650);
+      expect(txs[0]?.metadata?.billingSource).toBe("sdk_usage_cost");
+      expect(txs[0]?.metadata?.totalCostUsd).toBe("0.05");
+      expect(txs[0]?.metadata?.generationId).toBeUndefined();
+    });
+
+    const balance = await t.run(async (ctx) =>
+      ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
+    );
+    expect(balance?.lifetimeUsed).toBe(650);
+  });
+
+  it("falls back to token math when totalCostUsd is omitted", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    const { jobId, threadId } = await seedChatBillingState(t);
+
+    await t.mutation(internal.chat.billing.billThreadUsageFromSdk, {
+      threadId,
+      model: "google/gemini-3.1-flash-lite-preview",
+      pricing: { input: 0.1, output: 0.4 },
+      promptTokens: 30_000,
+      completionTokens: 1_000,
+      reasoningTokens: 0,
+      cachedPromptTokens: 0,
+    });
+
+    await t.run(async (ctx) => {
+      const txs = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      expect(txs).toHaveLength(1);
+      expect(txs[0]?.metadata?.billingSource).toBe("sdk_usage");
+      expect(txs[0]?.metadata?.totalCostUsd).toBeUndefined();
+    });
+  });
+});
