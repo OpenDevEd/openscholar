@@ -106,8 +106,11 @@ Each numbered plan file must be execution-ready, concrete, and scoped to one coh
 5. Files touched
 6. Migration stance
 7. Test plan
-8. Acceptance criteria
-9. Known pitfalls
+8. Deployability gate
+9. Acceptance criteria
+10. Known pitfalls
+
+The **Deployability gate** section is mandatory whenever the plan touches `convex/`, `app/`, `components/`, or any other tree that pm2 actively pushes / compiles. Name the exact command and the exact log line that proves the change actually deployed — for convex changes that's `npx pm2 logs convex --lines 5 --nostream` showing `✔ Convex functions ready!`; for Next.js changes it's `npx pm2 logs next --lines 5 --nostream` showing a recent `✓ Compiled` with no `Module not found` / `Type error`. A plan that touches the backend without a deployability gate is incomplete (see § Deployability is mandatory).
 
 Optional sections such as `Context`, `Why now`, `Deviations`, or post-execution notes are fine when they add real value, but the core sections above are not optional.
 
@@ -119,12 +122,12 @@ Each per-plan prompt must follow this template, in this order:
 
 1. **Header** — plan file path, context README path, any plan-dependency call-out ("Depends on plan 0N being merged").
 2. **Autonomy framing** — one paragraph naming the expected duration and the autonomy contract. Example: "Long-running autonomous task. Expect X–Y hours. Do not stop mid-plan to ask for confirmation. When the plan is ambiguous, pick the option most consistent with existing code patterns and document the choice in the commit message."
-3. **`STANDING RULES` block** — numbered rules. At minimum: DRY with named donors, no legacy, Convex guidelines override training, testing doctrine, research before guessing, delegate to subagents. Add plan-specific rules (auth reuse, package reuse, i18n, etc.) as additional numbered entries.
+3. **`STANDING RULES` block** — numbered rules. At minimum: DRY with named donors, no legacy, Convex guidelines override training, testing doctrine, **deployability gate (pm2 logs check after every backend-touching commit — see § Deployability is mandatory)**, research before guessing, delegate to subagents. Add plan-specific rules (auth reuse, package reuse, i18n, etc.) as additional numbered entries.
 4. **`EXECUTION RHYTHM` block** — split into Phase A (TDD, pure logic only, with module path and "commit per green") and Phase B (test-after, numbered units, "commit per logical unit").
 5. **`COMMIT DISCIPLINE` block** — see § Commit discipline.
-6. **`WHEN TO STOP` block** — explicit stop criteria and explicit "You may NOT stop for: ambiguity resolvable by re-reading the plan, worry about token usage, impulse to check with the user".
+6. **`WHEN TO STOP` block** — explicit stop criteria and explicit "You may NOT stop for: ambiguity resolvable by re-reading the plan, worry about token usage, impulse to check with the user". Stop criteria MUST include "the pm2 deployability gate is green for every tree the plan touches".
 7. **`DEVIATIONS` block** — the deviation protocol (see § Blocker and deviation protocols).
-8. **`START NOW` block** — numbered boot steps (read plan, read README, read Convex guidelines, `git status` check, begin R1 / first unit).
+8. **`START NOW` block** — numbered boot steps. At minimum: read plan, read README, read Convex guidelines if convex-touching, `git status` check, **`npx pm2 logs convex --lines 5 --nostream` to confirm the dev push is healthy at boot (a stuck push from prior work blocks every later commit)**, begin R1 / first unit.
 9. Close with `Go.` on its own line.
 
 The prompts must be self-contained: a fresh `/clear`'d session consuming only the prompt plus the files it references must be able to execute the plan without the prior conversation.
@@ -138,7 +141,7 @@ Plans must be grounded in the actual codebase and current documentation, not in 
 3. If something is "likely", "probably", or "I think", stop and ground it. Use `find-skills` to see whether there is a better workflow, use `context7` or primary docs for library/framework behavior, and use web research when the information may have changed.
 4. For Next.js work, read the relevant guide in `node_modules/next/dist/docs/` before planning or coding.
 5. For Convex work, read `convex/_generated/ai/guidelines.md` before planning or coding.
-6. Check pm2 logs when they can confirm real runtime behavior.
+6. Check pm2 logs (`npx pm2 logs <convex|next> --lines 5 --nostream`) before, during, and after any change that could affect runtime behavior. The pm2 logs are the only check that proves the dev deployment is actually accepting your code — see § Deployability is mandatory.
 
 A plan that is not grounded in source, skills, and current docs is not an acceptable plan.
 
@@ -154,6 +157,40 @@ TDD is not optional. Neither is a green test run.
 6. If the implementation changes behavior, update or add tests in the same slice of work rather than deferring them.
 
 Passing tests are part of the deliverable, not follow-up polish.
+
+### Deployability is mandatory
+
+A green vitest run and a clean `tsc --noEmit` do **not** prove the dev deployment is healthy. The convex and next dev servers run in pm2 and can fail to accept your changes silently — the static checks pass, the unit tests pass, and the running app is broken. Every plan and every commit that touches a deployed tree must close the loop with the pm2 logs.
+
+#### After any commit that touches `convex/`
+
+1. Run `npx pm2 logs convex --lines 5 --nostream`.
+2. Confirm the most recent line is `✔ Convex functions ready!` (or equivalent success). If the latest lines are `- Preparing Convex functions...` repeating, the push is stuck — fix before continuing.
+3. Confirm there is no recent `✖ Error` line. Common silent failures:
+   - **File-naming rule**: Convex module paths must contain only alphanumeric characters, underscores, or periods. **Hyphens are rejected.** This repo's convex convention is camelCase (`openrouterFetch.ts`, `sourceReadModel.ts`, `chatPapers/`, `messages.ts`). Match it. Never propose a kebab-case file under `convex/` in a plan or commit.
+   - **Stale return validators**: adding a field to a returned object without adding it to the function's `returns` validator silently strips the field on every client call. The TS types still look correct because `_generated/api.d.ts` regenerates; the wire shape doesn't.
+   - **Args/return validator changes** mid-deployment: bumping a query's args while clients hold an open `useQuery` will throw on the next reconnect. Plan for it (see § Migration stance).
+4. If the convex push is broken, **stop**. Do not commit additional convex changes on top of a broken push — every later commit is a lie until the push recovers, and the failure mode compounds (one bad file blocks every later push, so the next plan inherits a stuck deployment without realising).
+
+#### After any commit that touches `app/` or `components/`
+
+1. Run `npx pm2 logs next --lines 5 --nostream`.
+2. Confirm a recent `✓ Compiled` line.
+3. Confirm there is no recent `Module not found` / `Type error in` / `Failed to compile` / unhandled-error stack.
+
+#### Plan-level rule
+
+Every plan whose `Files touched` includes `convex/`, `app/`, or `components/` must:
+
+- Define a `Deployability gate` section naming the pm2 command(s) and the success line each is checking for.
+- List the deployability check as part of `Acceptance criteria` ("`npx pm2 logs convex --lines 5 --nostream` shows `✔ Convex functions ready!` after the final commit").
+- For convex specifically: explicitly check the **deployed function spec** for any new public query/mutation — if you added a field to a `returns` validator, confirm the deployed validator includes it after push, not just the source.
+
+#### Subagent rule
+
+Any subagent (Executor, Plan, Explore) operating on `convex/` or `app/` files must close its task by running the pm2 check and reporting the result in its returned summary. "Tests pass" is not a complete report; "tests pass AND pm2 logs show `✔ Convex functions ready!` at <timestamp>" is.
+
+A plan that ships green tests on top of a stuck pm2 push is a regression, not progress.
 
 ### Commit discipline
 
