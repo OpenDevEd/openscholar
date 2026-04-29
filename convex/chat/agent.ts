@@ -21,7 +21,13 @@ const defaultModelId = SERVER_AI_CONFIG.model.includes("/")
   : `${SERVER_AI_CONFIG.provider}/${SERVER_AI_CONFIG.model}`;
 
 const openrouter = createOpenRouter();
-const defaultLanguageModel = openrouter.chat(defaultModelId);
+// `usage: { include: true }` makes OpenRouter ship the all-in USD
+// cost on providerMetadata.openrouter.usage.cost — the source-of-
+// truth that chat billing prefers when present (see plan-02 and
+// convex/chat/billing.ts).
+const defaultLanguageModel = openrouter.chat(defaultModelId, {
+  usage: { include: true },
+});
 
 async function buildChatContext(
   ctx: Parameters<NonNullable<Agent["options"]["contextHandler"]>>[0],
