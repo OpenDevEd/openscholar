@@ -24,7 +24,10 @@ import { parseChatError } from "../../lib/errors/taxonomy";
 const { mockDoStream, doStreamArgsSeen, providerState, fetchMock } = vi.hoisted(
   () => ({
     mockDoStream: vi.fn(),
-    doStreamArgsSeen: [] as Array<{ abortSignal?: AbortSignal }>,
+    doStreamArgsSeen: [] as Array<{
+      abortSignal?: AbortSignal;
+      prompt?: unknown;
+    }>,
       providerState: {
         emitGenerationId: undefined as string | undefined,
         modelSlug: "mock/model" as string,
@@ -51,7 +54,10 @@ vi.mock("./provider", async () => {
       return {
         model: new MockLanguageModelV3({
           doStream: async (doStreamOpts) => {
-            doStreamArgsSeen.push({ abortSignal: doStreamOpts.abortSignal });
+            doStreamArgsSeen.push({
+              abortSignal: doStreamOpts.abortSignal,
+              prompt: doStreamOpts.prompt,
+            });
             // Simulate OpenRouter returning X-Generation-Id on the
             // initial HTTP response — the real fetch wrapper fires the
             // sink before any streamed body lands, i.e. before a client
@@ -2111,5 +2117,61 @@ describe("chat.messages.generateResponse — web search tool wiring (plan-06)", 
 
     spy.mockRestore();
     vi.unstubAllEnvs();
+  });
+
+  it("toggle on → WEB_SEARCH_SYSTEM_INSTRUCTION reaches the model as a third system message (U4 plumbing)", async () => {
+    const t = createTestConvex();
+    mockDoStream.mockImplementation(finishingDoStream(["ok"]));
+    vi.stubEnv("TAVILY_API_KEY", "tvly-test");
+
+    const { threadId, promptMessageId } = await seedToolWiringScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: true,
+    });
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    const captured = doStreamArgsSeen.at(-1);
+    expect(captured?.prompt).toBeDefined();
+    const messages = captured!.prompt as Array<{
+      role: string;
+      content: unknown;
+    }>;
+    const systemMessages = messages.filter((m) => m.role === "system");
+    expect(systemMessages).toHaveLength(3);
+    const thirdContent = systemMessages[2]!.content;
+    const text = Array.isArray(thirdContent)
+      ? thirdContent.map((p) => (typeof p === "string" ? p : (p as { text?: string }).text ?? "")).join("")
+      : String(thirdContent);
+    expect(text).toMatch(/PRIMARY/);
+    expect(text).toMatch(/SUPPLEMENT/);
+
+    vi.unstubAllEnvs();
+  });
+
+  it("toggle off → only the persona + corpus system messages reach the model (no policy leak)", async () => {
+    const t = createTestConvex();
+    mockDoStream.mockImplementation(finishingDoStream(["ok"]));
+
+    const { threadId, promptMessageId } = await seedToolWiringScenario(t, {
+      webSearchEnabled: false,
+      modelSupportsTools: true,
+    });
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    const captured = doStreamArgsSeen.at(-1);
+    const messages = captured!.prompt as Array<{
+      role: string;
+      content: unknown;
+    }>;
+    const systemMessages = messages.filter((m) => m.role === "system");
+    expect(systemMessages).toHaveLength(2);
   });
 });
