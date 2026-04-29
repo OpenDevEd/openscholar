@@ -42,9 +42,9 @@ import { createError } from "../lib/errors";
 import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
 import { resolveOpenRouterModel } from "./provider";
-import { pickWebSearchTool } from "./tools/select-web-search-tool";
-import { buildOpenRouterWebSearchTool } from "./tools/openrouter-web-search";
-import { buildTavilyWebSearchTool } from "./tools/tavily-web-search";
+import { pickWebSearchTool } from "./tools/selectWebSearchTool";
+import { buildOpenRouterWebSearchTool } from "./tools/openrouterWebSearch";
+import { buildTavilyWebSearchTool } from "./tools/tavilyWebSearch";
 import { modelSupportsWebSearch } from "../../lib/chat/web-search-capability";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {

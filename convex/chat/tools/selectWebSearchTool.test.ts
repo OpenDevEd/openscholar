@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickWebSearchTool } from "./select-web-search-tool";
+import { pickWebSearchTool } from "./selectWebSearchTool";
 
 describe("pickWebSearchTool", () => {
   it("returns null when toggle is off", () => {

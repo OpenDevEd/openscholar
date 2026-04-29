@@ -25,7 +25,7 @@ vi.mock("../../../lib/tavily/client", () => ({
 import {
   buildTavilyWebSearchTool,
   type TavilyWebSearchOutput,
-} from "./tavily-web-search";
+} from "./tavilyWebSearch";
 
 const SAMPLE_TAVILY_RESPONSE: TavilySearchResponse = {
   query: "carbon capture",

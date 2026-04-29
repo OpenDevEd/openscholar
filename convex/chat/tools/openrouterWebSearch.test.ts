@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACADEMIC_SEARCH_PROMPT,
   buildOpenRouterWebSearchTool,
-} from "./openrouter-web-search";
+} from "./openrouterWebSearch";
 
 describe("buildOpenRouterWebSearchTool", () => {
   it("returns a provider-typed tool with the OpenRouter web_search id", () => {
