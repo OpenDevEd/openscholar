@@ -1,5 +1,30 @@
-import { describe, expect, it } from "vitest";
-import { parseResponse, toSnakeCaseBody } from "./client";
+import { describe, expect, it, vi } from "vitest";
+import { parseResponse, tavilySearch, toSnakeCaseBody } from "./client";
+
+function jsonResponse(
+  body: unknown,
+  init: { status?: number; headers?: Record<string, string> } = {},
+): Response {
+  return new Response(JSON.stringify(body), {
+    status: init.status ?? 200,
+    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+  });
+}
+
+const okBody = {
+  query: "carbon capture",
+  results: [
+    {
+      title: "Direct air capture",
+      url: "https://arxiv.org/abs/2401.00001",
+      content: "Snippet",
+      score: 0.9,
+    },
+  ],
+  response_time: 0.42,
+  request_id: "req_ok",
+  usage: { credits: 1 },
+};
 
 describe("toSnakeCaseBody", () => {
   it("snake-cases the documented camelCase fields", () => {
@@ -137,5 +162,64 @@ describe("parseResponse", () => {
         request_id: "req_partial",
       }),
     ).toThrow();
+  });
+});
+
+describe("tavilySearch", () => {
+  it("POSTs the snake_cased body to /search with bearer auth and returns parsed JSON", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(okBody));
+    const res = await tavilySearch(
+      "tvly-key-abc",
+      {
+        query: "carbon capture",
+        searchDepth: "basic",
+        maxResults: 3,
+        includeDomains: ["arxiv.org"],
+      },
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [calledUrl, calledInit] = fetchImpl.mock.calls[0]!;
+    expect(calledUrl).toBe("https://api.tavily.com/search");
+    expect(calledInit?.method).toBe("POST");
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: "Bearer tvly-key-abc",
+      "Content-Type": "application/json",
+    });
+    expect(JSON.parse(calledInit!.body as string)).toEqual({
+      query: "carbon capture",
+      search_depth: "basic",
+      max_results: 3,
+      include_domains: ["arxiv.org"],
+    });
+
+    expect(res).toEqual({
+      query: "carbon capture",
+      results: [
+        {
+          title: "Direct air capture",
+          url: "https://arxiv.org/abs/2401.00001",
+          content: "Snippet",
+          score: 0.9,
+        },
+      ],
+      responseTime: 0.42,
+      requestId: "req_ok",
+      usage: { creditsUsed: 1 },
+    });
+  });
+
+  it("forwards the abort signal to fetch when provided as the 4th argument", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(okBody));
+    const controller = new AbortController();
+    await tavilySearch(
+      "tvly-key-abc",
+      { query: "x" },
+      fetchImpl as unknown as typeof fetch,
+      controller.signal,
+    );
+    const [, calledInit] = fetchImpl.mock.calls[0]!;
+    expect(calledInit?.signal).toBe(controller.signal);
   });
 });
