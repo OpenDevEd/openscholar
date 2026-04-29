@@ -16,6 +16,7 @@ export const listChatModels = query({
       provider: v.string(),
       sortOrder: v.number(),
       contextLength: v.optional(v.number()),
+      supportedParameters: v.optional(v.array(v.string())),
     }),
   ),
   handler: async (ctx) => {
@@ -30,6 +31,7 @@ export const listChatModels = query({
       provider: m.provider,
       sortOrder: m.sortOrder,
       contextLength: m.contextLength,
+      supportedParameters: m.supportedParameters,
     }));
   },
 });

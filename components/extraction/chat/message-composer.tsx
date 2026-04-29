@@ -8,6 +8,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ComposerModelPicker } from "./composer-model-picker";
+import { WebSearchToggle } from "./web-search-toggle";
 import type { ChatModelRow } from "./chat-model-types";
 import { usePapersContext } from "./papers-context";
 import { api } from "@/convex/_generated/api";
@@ -46,6 +47,7 @@ export function MessageComposer({
   const reduceMotion = useReducedMotion();
   const jobIsGenerating = job.isGenerating ?? false;
   const generationAttemptId = job.chatGenerationAttemptId ?? null;
+  const selectedModel = chatModels.find((m) => m._id === job.chatModelId);
 
   const {
     totalCount: totalSources,
@@ -272,12 +274,20 @@ export function MessageComposer({
         />
 
         <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">
-          <ComposerModelPicker
-            value={job.chatModelId ?? null}
-            onChange={handleModelChange}
-            disabled={jobIsGenerating}
-            models={chatModels}
-          />
+          <div className="flex items-center gap-1">
+            <ComposerModelPicker
+              value={job.chatModelId ?? null}
+              onChange={handleModelChange}
+              disabled={jobIsGenerating}
+              models={chatModels}
+            />
+            <WebSearchToggle
+              threadId={threadId}
+              enabled={Boolean(job.webSearchEnabled)}
+              modelSupportedParameters={selectedModel?.supportedParameters}
+              isGenerating={jobIsGenerating}
+            />
+          </div>
 
           <div className="flex items-center gap-2">
             <span
