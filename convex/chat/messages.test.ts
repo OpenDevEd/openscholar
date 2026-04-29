@@ -2175,3 +2175,196 @@ describe("chat.messages.generateResponse — web search tool wiring (plan-06)", 
     expect(systemMessages).toHaveLength(2);
   });
 });
+
+describe("chat.messages.getChatWebSearchPricing", () => {
+  /**
+   * Plan-03 U1. Resolves the active web-search path + per-call pricing
+   * for a chat thread so the composer toggle and tool-step chip can
+   * render the REAL credit cost. Soft auth: callers who can't see the
+   * thread get the unsupported shape rather than a thrown error.
+   */
+  async function seedPricingScenario(
+    t: ReturnType<typeof convexTest>,
+    opts: {
+      webSearchEnabled?: boolean;
+      modelSupportsTools?: boolean;
+      modelWebSearchPrice?: number;
+    } = {},
+  ): Promise<{ threadId: string; jobId: Id<"extractionJobs"> }> {
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t);
+    const { modelId } = await t.run(async (ctx) => {
+      const now = Date.now();
+      const insertedModelId = await ctx.db.insert("models", {
+        modelId: "mock/model",
+        name: "Mock Model",
+        provider: "openrouter",
+        inputPricePerMillion: 0,
+        outputPricePerMillion: 0,
+        costMarkup: 1,
+        isServed: true,
+        sortOrder: 0,
+        syncedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        ...(opts.modelSupportsTools
+          ? { supportedParameters: ["tools"] }
+          : {}),
+        ...(opts.modelWebSearchPrice !== undefined
+          ? { webSearchPrice: opts.modelWebSearchPrice }
+          : {}),
+      });
+      return { modelId: insertedModelId };
+    });
+    await t.run(async (ctx) =>
+      ctx.db.patch(jobId, {
+        chatModelId: modelId,
+        ...(opts.webSearchEnabled !== undefined
+          ? { webSearchEnabled: opts.webSearchEnabled }
+          : {}),
+      }),
+    );
+    return { threadId, jobId };
+  }
+
+  it("returns unsupported when web search is disabled on the job", async () => {
+    const t = createTestConvex();
+    vi.stubEnv("TAVILY_API_KEY", "tvly-test");
+    const { threadId } = await seedPricingScenario(t, {
+      webSearchEnabled: false,
+      modelSupportsTools: true,
+      modelWebSearchPrice: 0.01,
+    });
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.query(
+      api.chat.messages.getChatWebSearchPricing,
+      { threadId },
+    );
+
+    expect(result).toEqual({
+      source: "unsupported",
+      usdPerCall: null,
+      creditsPerCall: null,
+    });
+    vi.unstubAllEnvs();
+  });
+
+  it("returns unsupported when the model lacks the tools capability", async () => {
+    const t = createTestConvex();
+    vi.stubEnv("TAVILY_API_KEY", "tvly-test");
+    const { threadId } = await seedPricingScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: false,
+      modelWebSearchPrice: 0.01,
+    });
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.query(
+      api.chat.messages.getChatWebSearchPricing,
+      { threadId },
+    );
+
+    expect(result).toEqual({
+      source: "unsupported",
+      usdPerCall: null,
+      creditsPerCall: null,
+    });
+    vi.unstubAllEnvs();
+  });
+
+  it("returns openrouter-native when web search is on, no Tavily key, and the model has webSearchPrice", async () => {
+    const t = createTestConvex();
+    vi.stubEnv("TAVILY_API_KEY", "");
+    const { threadId } = await seedPricingScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: true,
+      modelWebSearchPrice: 0.01,
+    });
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.query(
+      api.chat.messages.getChatWebSearchPricing,
+      { threadId },
+    );
+
+    // 0.01 × 1.3 × 10_000 = 130 credits.
+    expect(result).toEqual({
+      source: "openrouter-native",
+      usdPerCall: 0.01,
+      creditsPerCall: 130,
+    });
+    vi.unstubAllEnvs();
+  });
+
+  it("returns openrouter-server-tool when web search is on, no Tavily key, and the model has no webSearchPrice", async () => {
+    const t = createTestConvex();
+    vi.stubEnv("TAVILY_API_KEY", "");
+    const { threadId } = await seedPricingScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: true,
+      // modelWebSearchPrice intentionally omitted → server-tool fallback
+    });
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.query(
+      api.chat.messages.getChatWebSearchPricing,
+      { threadId },
+    );
+
+    // Server-tool fallback: 5 × $0.004 = $0.02 → 0.02 × 1.3 × 10_000 = 260 credits.
+    expect(result).toEqual({
+      source: "openrouter-server-tool",
+      usdPerCall: 0.02,
+      creditsPerCall: 260,
+    });
+    vi.unstubAllEnvs();
+  });
+
+  it("returns tavily-basic with 104 credits when TAVILY_API_KEY is set", async () => {
+    const t = createTestConvex();
+    vi.stubEnv("TAVILY_API_KEY", "tvly-test");
+    const { threadId } = await seedPricingScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: true,
+      modelWebSearchPrice: 0.01,
+    });
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.query(
+      api.chat.messages.getChatWebSearchPricing,
+      { threadId },
+    );
+
+    // Tavily basic: $0.008 × 1.3 × 10_000 = 104 credits.
+    expect(result).toEqual({
+      source: "tavily-basic",
+      usdPerCall: 0.008,
+      creditsPerCall: 104,
+    });
+    vi.unstubAllEnvs();
+  });
+
+  it("returns unsupported (does not throw) when the caller cannot see the thread", async () => {
+    const t = createTestConvex();
+    vi.stubEnv("TAVILY_API_KEY", "tvly-test");
+    const { threadId } = await seedPricingScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: true,
+      modelWebSearchPrice: 0.01,
+    });
+    // Anonymous caller — no withIdentity, so requireAuth throws inside
+    // authorizeThreadAccess. The query swallows the throw and returns
+    // the unsupported shape.
+    const result = await t.query(
+      api.chat.messages.getChatWebSearchPricing,
+      { threadId },
+    );
+
+    expect(result).toEqual({
+      source: "unsupported",
+      usdPerCall: null,
+      creditsPerCall: null,
+    });
+    vi.unstubAllEnvs();
+  });
+});

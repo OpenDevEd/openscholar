@@ -46,6 +46,7 @@ import { pickWebSearchTool } from "./tools/selectWebSearchTool";
 import { buildOpenRouterWebSearchTool } from "./tools/openrouterWebSearch";
 import { buildTavilyWebSearchTool } from "./tools/tavilyWebSearch";
 import { modelSupportsWebSearch } from "../../lib/chat/web-search-capability";
+import { pickWebSearchPricing } from "@/lib/pricing";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {
   classifyChatError,
@@ -1508,6 +1509,75 @@ export const setChatWebSearchEnabled = mutation({
       updatedAt: Date.now(),
     });
     return { outcome: "updated" as const };
+  },
+});
+
+/**
+ * Resolve the active web-search path + per-call pricing for a chat
+ * thread, so the composer toggle and tool-step chip can render the
+ * REAL credit cost of the path that will actually run instead of a
+ * static placeholder. Reads:
+ *   - job.{webSearchEnabled, chatModelId}
+ *   - models.{webSearchPrice, supportedParameters} for the active model
+ *   - process.env.TAVILY_API_KEY (server-only — UI never sees it)
+ *
+ * Auth-gate is SOFT: callers who can't see the thread (e.g. the
+ * tooltip rendering before auth resolves) get the `unsupported` shape
+ * back instead of a thrown FORBIDDEN. Surfacing a permission error
+ * via the tooltip would be confusing UX.
+ */
+const UNSUPPORTED_PRICING = {
+  source: "unsupported" as const,
+  usdPerCall: null,
+  creditsPerCall: null,
+};
+
+export const getChatWebSearchPricing = query({
+  args: { threadId: v.string() },
+  returns: v.object({
+    source: v.union(
+      v.literal("tavily-basic"),
+      v.literal("openrouter-native"),
+      v.literal("openrouter-server-tool"),
+      v.literal("unsupported"),
+    ),
+    usdPerCall: v.union(v.number(), v.null()),
+    creditsPerCall: v.union(v.number(), v.null()),
+  }),
+  handler: async (ctx, { threadId }) => {
+    let job;
+    try {
+      ({ job } = await authorizeThreadAccess(ctx, threadId));
+    } catch {
+      return UNSUPPORTED_PRICING;
+    }
+
+    let modelSupportedParameters: string[] | null = null;
+    let modelWebSearchPriceUsd: number | null = null;
+    if (job.chatModelId) {
+      const modelRow = await ctx.db.get(job.chatModelId);
+      modelSupportedParameters = modelRow?.supportedParameters ?? null;
+      modelWebSearchPriceUsd = modelRow?.webSearchPrice ?? null;
+    }
+
+    const path = pickWebSearchTool({
+      enabled: job.webSearchEnabled ?? false,
+      modelSupportsWebSearch: modelSupportsWebSearch({
+        supportedParameters: modelSupportedParameters ?? undefined,
+      }),
+      hasTavilyKey: Boolean(process.env.TAVILY_API_KEY),
+    });
+
+    const pricing = pickWebSearchPricing({
+      path,
+      modelWebSearchPriceUsd,
+    });
+
+    return {
+      source: pricing.source,
+      usdPerCall: pricing.usdPerCall,
+      creditsPerCall: pricing.creditsPerCall,
+    };
   },
 });
 
