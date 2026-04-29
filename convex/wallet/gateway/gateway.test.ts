@@ -2177,11 +2177,11 @@ describe("web search cost calculation", () => {
     expect(cost).toBeCloseTo(0.825, 5);
   });
 
-  it("ignores web search cost when webSearchPrice is undefined", () => {
+  it("falls back to OpenRouter server-tool rate per request when webSearchPrice is undefined", () => {
     const model = makeModel({
       inputPricePerMillion: 2.5,
       outputPricePerMillion: 10.0,
-      // No webSearchPrice
+      // No webSearchPrice — model has no native web search.
     });
     const usage: EnhancedUsage = {
       inputTokens: 100_000,
@@ -2193,8 +2193,10 @@ describe("web search cost calculation", () => {
     };
 
     const cost = calculateEnhancedModelCost(usage, model);
-    // Only input + output, no web search cost
-    expect(cost).toBeCloseTo(0.75, 5);
+    // input: 0.1M * 2.5 = 0.25
+    // output: 0.05M * 10 = 0.5
+    // web search: 5 * 0.02 server-tool fallback = 0.10
+    expect(cost).toBeCloseTo(0.85, 5);
   });
 
   it("handles zero web search requests", () => {
