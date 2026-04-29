@@ -662,6 +662,23 @@ describe("chat.messages — auth + mode gating", () => {
   });
 });
 
+describe("chat.messages.setChatWebSearchEnabled", () => {
+  it("flips the flag and reports outcome=updated on the happy path", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t);
+    const caller = asCaller(t, "c_msg");
+
+    const result = await caller.mutation(
+      api.chat.messages.setChatWebSearchEnabled,
+      { threadId, enabled: true },
+    );
+
+    expect(result).toEqual({ outcome: "updated" });
+    const after = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(after?.webSearchEnabled).toBe(true);
+  });
+});
+
 describe("chat.messages.generateResponse — stop-streaming wiring", () => {
   it("A0 — generateResponse uses the explicit stop poll cadence", async () => {
     const t = createTestConvex();
