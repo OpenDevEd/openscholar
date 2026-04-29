@@ -1560,8 +1560,14 @@ export const getChatWebSearchPricing = query({
       modelWebSearchPriceUsd = modelRow?.webSearchPrice ?? null;
     }
 
+    // We intentionally pass `enabled: true` here, not job.webSearchEnabled.
+    // This query powers the off-state tooltip ("if you enabled this, ~N
+    // credits per search"); reading the actual toggle state would force
+    // off-but-supported threads to render "~0 credits per search" forever.
+    // `path` falls through to null only when the model itself can't web-
+    // search — the genuine "unsupported" branch. See plan 03 § Deviations.
     const path = pickWebSearchTool({
-      enabled: job.webSearchEnabled ?? false,
+      enabled: true,
       modelSupportsWebSearch: modelSupportsWebSearch({
         supportedParameters: modelSupportedParameters ?? undefined,
       }),

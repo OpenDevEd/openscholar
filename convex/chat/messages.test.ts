@@ -2226,7 +2226,7 @@ describe("chat.messages.getChatWebSearchPricing", () => {
     return { threadId, jobId };
   }
 
-  it("returns unsupported when web search is disabled on the job", async () => {
+  it("returns concrete cost-if-enabled pricing even when the toggle is off (so the off-state tooltip can render the real credit count)", async () => {
     const t = createTestConvex();
     vi.stubEnv("TAVILY_API_KEY", "tvly-test");
     const { threadId } = await seedPricingScenario(t, {
@@ -2241,10 +2241,12 @@ describe("chat.messages.getChatWebSearchPricing", () => {
       { threadId },
     );
 
+    // Tavily key set + model has tools → tavily-basic, regardless of
+    // `webSearchEnabled` (see plan 03 § Deviations).
     expect(result).toEqual({
-      source: "unsupported",
-      usdPerCall: null,
-      creditsPerCall: null,
+      source: "tavily-basic",
+      usdPerCall: 0.008,
+      creditsPerCall: 104,
     });
     vi.unstubAllEnvs();
   });
