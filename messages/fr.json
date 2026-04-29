@@ -1002,7 +1002,8 @@
       "ariaDisable": "Désactiver la recherche web",
       "tooltipUnsupported": "Le modèle sélectionné ne prend pas en charge la recherche web.",
       "tooltipOn": "Recherche web activée. Cliquez pour désactiver.",
-      "tooltipOff": "Rechercher des informations actuelles sur le web (~0,02 $ par recherche)."
+      "tooltipOff": "Rechercher des informations actuelles sur le web (~{credits} crédits par recherche).",
+      "tooltipOffLoading": "Rechercher des informations actuelles sur le web."
     }
   },
   "toast": {

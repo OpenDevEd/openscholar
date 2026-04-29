@@ -1002,7 +1002,8 @@
       "ariaDisable": "ウェブ検索を無効にする",
       "tooltipUnsupported": "選択中のモデルはウェブ検索に対応していません。",
       "tooltipOn": "ウェブ検索はオンです。クリックで無効化。",
-      "tooltipOff": "最新情報をウェブで検索（1 回あたり約 $0.02）。"
+      "tooltipOff": "最新情報をウェブで検索（1 回あたり約 {credits} クレジット）。",
+      "tooltipOffLoading": "最新情報をウェブで検索します。"
     }
   },
   "toast": {

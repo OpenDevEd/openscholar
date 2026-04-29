@@ -1002,7 +1002,8 @@
       "ariaDisable": "禁用网络搜索",
       "tooltipUnsupported": "所选模型不支持网络搜索。",
       "tooltipOn": "网络搜索已开启。点击禁用。",
-      "tooltipOff": "在网络上搜索最新信息（每次约 $0.02）。"
+      "tooltipOff": "在网络上搜索最新信息（每次约 {credits} 积分）。",
+      "tooltipOffLoading": "在网络上搜索最新信息。"
     }
   },
   "toast": {
