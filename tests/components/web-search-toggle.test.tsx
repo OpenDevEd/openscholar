@@ -75,4 +75,45 @@ describe("<WebSearchToggle>", () => {
     expect(on).toHaveAttribute("aria-pressed", "true");
     expect(on).toHaveAttribute("data-web-search-enabled", "true");
   });
+
+  it("is disabled when the active model lacks the tools capability", () => {
+    const { rerender } = render(
+      <WebSearchToggle
+        {...baseProps}
+        modelSupportedParameters={["stream", "reasoning"]}
+      />,
+    );
+    const btn = screen.getByRole("button");
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute("data-web-search-supported", "false");
+
+    // No supported_parameters at all (e.g. legacy row, undefined field) → still gated off.
+    rerender(<WebSearchToggle {...baseProps} modelSupportedParameters={undefined} />);
+    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button")).toHaveAttribute(
+      "data-web-search-supported",
+      "false",
+    );
+
+    // Explicit null behaves the same — capability helper treats it as "no capability".
+    rerender(<WebSearchToggle {...baseProps} modelSupportedParameters={null} />);
+    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button")).toHaveAttribute(
+      "data-web-search-supported",
+      "false",
+    );
+
+    // Capable model unblocks the button.
+    rerender(
+      <WebSearchToggle
+        {...baseProps}
+        modelSupportedParameters={["tools", "stream"]}
+      />,
+    );
+    expect(screen.getByRole("button")).not.toBeDisabled();
+    expect(screen.getByRole("button")).toHaveAttribute(
+      "data-web-search-supported",
+      "true",
+    );
+  });
 });
