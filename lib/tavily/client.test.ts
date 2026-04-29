@@ -172,7 +172,9 @@ describe("parseResponse", () => {
 
 describe("tavilySearch", () => {
   it("POSTs the snake_cased body to /search with bearer auth and returns parsed JSON", async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse(okBody));
+    const fetchImpl = vi.fn(
+      (async () => jsonResponse(okBody)) as typeof fetch,
+    );
     const res = await tavilySearch(
       "tvly-key-abc",
       {
@@ -216,7 +218,9 @@ describe("tavilySearch", () => {
   });
 
   it("forwards the abort signal to fetch when provided as the 4th argument", async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse(okBody));
+    const fetchImpl = vi.fn(
+      (async () => jsonResponse(okBody)) as typeof fetch,
+    );
     const controller = new AbortController();
     await tavilySearch(
       "tvly-key-abc",
