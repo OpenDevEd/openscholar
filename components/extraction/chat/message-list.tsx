@@ -18,12 +18,16 @@ import { useTranslations } from "next-intl";
 import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMutation } from "convex/react";
+import type { TextUIPart, ToolUIPart } from "ai";
 import {
   Conversation,
   ConversationContent,
 } from "@/components/ai-elements/conversation";
 import { JumpToLatestPill } from "./jump-to-latest-pill";
 import { MessageResponse } from "@/components/ai-elements/message";
+import { StepBoundary } from "@/components/ai-elements/step-boundary";
+import { ToolStep } from "@/components/ai-elements/tool-step";
+import { WebSourceChips } from "@/components/ai-elements/web-source-chips";
 import { AbortedPill } from "./aborted-pill";
 import { ChatErrorAlert } from "./chat-error-alert";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -380,6 +384,39 @@ interface MessageRowProps {
   isJobGenerating?: boolean;
 }
 
+/**
+ * Render a single AI SDK `text` UIMessagePart through Streamdown with the
+ * chat-specific component map (citation rewrites, scholarly inline tags,
+ * thematic-break tightening). Per-part `state` (streaming/done) wins over
+ * the message-level signal — so a finalized text part inside a still-
+ * streaming assistant turn renders without `parseIncompleteMarkdown`,
+ * avoiding spurious markdown re-parsing once the model has handed off
+ * to the next step (tool call, follow-up text part, etc.).
+ */
+function AssistantTextPart({
+  part,
+  parseIncompleteMarkdown: outerParseIncomplete,
+}: {
+  part: TextUIPart;
+  parseIncompleteMarkdown: boolean;
+}) {
+  const partStreaming = part.state === "streaming";
+  const partDone = part.state === "done";
+  const parseIncompleteMarkdown =
+    partStreaming || (!partDone && outerParseIncomplete);
+  const renderText = normalizeChatMarkdownForRender(part.text);
+  return (
+    <MessageResponse
+      allowedTags={CHAT_MARKDOWN_ALLOWED_TAGS}
+      components={STREAMDOWN_COMPONENTS}
+      mode={parseIncompleteMarkdown ? "streaming" : "static"}
+      parseIncompleteMarkdown={parseIncompleteMarkdown}
+    >
+      {renderText}
+    </MessageResponse>
+  );
+}
+
 export const MessageRow = memo(function MessageRow({
   message,
   isLastAssistant,
@@ -391,8 +428,6 @@ export const MessageRow = memo(function MessageRow({
   isJobGenerating = true,
 }: MessageRowProps) {
   const normalizedMessage = normalizeChatUIMessage(message);
-  const text = getChatMessageText(normalizedMessage);
-  const renderText = normalizeChatMarkdownForRender(text);
   const isStreamingStatus = normalizedMessage.status === "streaming";
   const isPendingStatus = normalizedMessage.status === "pending";
   const isAborted = normalizedMessage.aborted === true;
@@ -415,7 +450,20 @@ export const MessageRow = memo(function MessageRow({
     isAssistant &&
     (normalizedMessage.status === "failed" || isStalePending) &&
     !isAborted;
-  const isEmpty = text.length === 0;
+  const userText = isUser ? getChatMessageText(normalizedMessage) : "";
+  const hasAssistantVisibleContent = useMemo(() => {
+    if (!isAssistant) return false;
+    return normalizedMessage.parts.some((part) => {
+      if (part.type === "text") {
+        const t = (part as TextUIPart).text;
+        return typeof t === "string" && t.length > 0;
+      }
+      return part.type.startsWith("tool-");
+    });
+  }, [isAssistant, normalizedMessage.parts]);
+  const isEmpty = isAssistant
+    ? !hasAssistantVisibleContent
+    : userText.length === 0;
   const parseIncompleteMarkdown = isGenerating || isAborted || isFailed;
 
   const rawError = normalizedMessage.error;
@@ -469,19 +517,42 @@ export const MessageRow = memo(function MessageRow({
         )}
       >
         {isUser ? (
-          <div className="whitespace-pre-wrap break-words">{text}</div>
+          <div className="whitespace-pre-wrap break-words">{userText}</div>
         ) : isGenerating && isEmpty ? (
           <TypingDots />
         ) : (
           <div className="min-w-0">
-            <MessageResponse
-              allowedTags={CHAT_MARKDOWN_ALLOWED_TAGS}
-              components={STREAMDOWN_COMPONENTS}
-              mode={parseIncompleteMarkdown ? "streaming" : "static"}
-              parseIncompleteMarkdown={parseIncompleteMarkdown}
-            >
-              {renderText}
-            </MessageResponse>
+            {normalizedMessage.parts.map((part, idx) => {
+              if (part.type === "step-start") {
+                return (
+                  <StepBoundary
+                    key={`step-${idx}`}
+                    prevPart={normalizedMessage.parts[idx - 1]}
+                    nextPart={normalizedMessage.parts[idx + 1]}
+                  />
+                );
+              }
+              if (part.type === "text") {
+                return (
+                  <AssistantTextPart
+                    key={`text-${idx}`}
+                    part={part as TextUIPart}
+                    parseIncompleteMarkdown={parseIncompleteMarkdown}
+                  />
+                );
+              }
+              if (part.type.startsWith("tool-")) {
+                return (
+                  <ToolStep
+                    key={`tool-${idx}`}
+                    part={part as ToolUIPart}
+                    aborted={isAborted}
+                  />
+                );
+              }
+              return null;
+            })}
+            <WebSourceChips parts={normalizedMessage.parts} />
             {isGenerating && !isEmpty ? <StreamingCursor /> : null}
           </div>
         )}
