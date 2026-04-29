@@ -2215,6 +2215,38 @@ describe("web search cost calculation", () => {
     const cost = calculateEnhancedModelCost(usage, model);
     expect(cost).toBeCloseTo(0.75, 5);
   });
+
+  it("falls back to OpenRouter server-tool rate when webSearchPrice is null but web search ran", () => {
+    // Many top OpenRouter models (e.g. openai/gpt-5) have no native web
+    // search and `pricing.web_search` is null. When the gateway invokes
+    // a web_search tool against such a model, OpenRouter falls back to
+    // the Exa/Parallel server tool at ~$0.02/call (5 results × $0.004).
+    // The previous code computed `webSearchRequests * (webSearchPrice ?? 0)`
+    // and silently recorded $0 — a billing leak. With pickWebSearchPricing
+    // we charge the server-tool rate so credit deductions match what
+    // OpenRouter actually bills us.
+    const model = makeModel({
+      inputPricePerMillion: 0,
+      outputPricePerMillion: 0,
+      // webSearchPrice intentionally undefined
+      costMarkup: 2.0,
+    });
+    const usage: EnhancedUsage = {
+      inputTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      webSearchRequests: 1,
+    };
+
+    const usdCost = calculateEnhancedModelCost(usage, model);
+    expect(usdCost).toBeCloseTo(0.02, 6);
+
+    const credits = creditsFromCost(usdCost, model.costMarkup);
+    // ceil(0.02 × 2.0 × 10_000) = 400
+    expect(credits).toBe(400);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
