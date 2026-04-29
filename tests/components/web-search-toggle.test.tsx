@@ -116,4 +116,12 @@ describe("<WebSearchToggle>", () => {
       "true",
     );
   });
+
+  it("is disabled while the chat is generating, even on a capable model", () => {
+    render(<WebSearchToggle {...baseProps} isGenerating={true} />);
+    const btn = screen.getByRole("button");
+    expect(btn).toBeDisabled();
+    // Capability is still true — the gate is the live generation, not the model.
+    expect(btn).toHaveAttribute("data-web-search-supported", "true");
+  });
 });
