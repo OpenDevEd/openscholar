@@ -1455,6 +1455,20 @@ export const swapModel = mutation({
   },
 });
 
+export const setChatWebSearchEnabled = mutation({
+  args: {
+    threadId: v.string(),
+    enabled: v.boolean(),
+  },
+  returns: v.object({
+    outcome: v.union(v.literal("updated"), v.literal("noop")),
+  }),
+  handler: async (ctx, { threadId, enabled: _enabled }) => {
+    await authorizeThreadAccess(ctx, threadId);
+    return { outcome: "noop" as const };
+  },
+});
+
 /* ────────────────────────────────────────────────────────────────── */
 /*                          Mid-stream abort                          */
 /* ────────────────────────────────────────────────────────────────── */
