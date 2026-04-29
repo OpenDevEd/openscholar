@@ -222,6 +222,7 @@ export const extractionJobValidator = v.object({
   generatingStartedAt: v.optional(v.number()),
   chatGenerationAttemptId: v.optional(v.string()),
   shouldAbort: v.optional(v.boolean()),
+  webSearchEnabled: v.optional(v.boolean()),
   name: v.string(),
   description: v.optional(v.string()),
   createdAt: v.number(),
