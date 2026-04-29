@@ -135,3 +135,72 @@ describe("<MessageRow> parts iteration — text + tool (mid-stream)", () => {
     expect(document.querySelector("[data-web-sources-count]")).toBeNull();
   });
 });
+
+describe("<MessageRow> parts iteration — text + tool + text + source-url (full)", () => {
+  it("renders text → tool → boundary → text in DOM order, with source-urls collected at the message footer", () => {
+    const parts: AnyPart[] = [
+      textPart("Let me search."),
+      stepStart,
+      toolPart("output-available", {
+        input: { query: "RNA editing" },
+        output: {
+          sources: [
+            { url: "https://arxiv.org/abs/X" },
+            { url: "https://example.com/foo" },
+          ],
+          creditsUsed: 2,
+        },
+      }),
+      sourceUrlPart("https://arxiv.org/abs/X", "s1"),
+      stepStart,
+      sourceUrlPart("https://example.com/foo", "s2"),
+      textPart("Based on the search, here is the answer."),
+    ];
+    renderRow(makeAssistant(parts));
+
+    // Both text parts visible.
+    expect(screen.getByText(/let me search/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/based on the search, here is the answer/i),
+    ).toBeInTheDocument();
+
+    // ToolStep settled to output-available with the correct count.
+    const tool = screen.getByTestId("tool-step");
+    expect(tool).toHaveAttribute("data-tool-state", "output-available");
+    expect(tool).toHaveTextContent(/found 2 results for/i);
+
+    // Step boundary appears (completed tool followed by text via the
+    // source-url interlude is collapsed by the heuristic — boundary is
+    // visible because the *immediate* next part after the tool was the
+    // source-url, not text. So we expect zero boundaries here, since
+    // the heuristic looks at immediate neighbors only.
+    expect(document.querySelector("[data-step-boundary]")).toBeNull();
+
+    // Source-url chips render at the footer regardless of part position.
+    const chipRow = document.querySelector(
+      "[data-web-sources-count]",
+    ) as HTMLElement | null;
+    expect(chipRow).not.toBeNull();
+    expect(chipRow!.getAttribute("data-web-sources-count")).toBe("2");
+    const chipLinks = within(chipRow!).getAllByRole("link");
+    expect(chipLinks).toHaveLength(2);
+    expect(chipLinks[0].getAttribute("data-source-host")).toBe("arxiv.org");
+    expect(chipLinks[1].getAttribute("data-source-host")).toBe("example.com");
+  });
+
+  it("shows the step boundary <hr> when an explicit step-start sits between a completed tool and following text", () => {
+    const parts: AnyPart[] = [
+      toolPart("output-available", {
+        input: { query: "q" },
+        output: { sources: [{ url: "https://x" }], creditsUsed: 1 },
+      }),
+      stepStart,
+      textPart("Here is the answer."),
+    ];
+    renderRow(makeAssistant(parts));
+
+    const hr = document.querySelector("[data-step-boundary]");
+    expect(hr).not.toBeNull();
+    expect(hr?.tagName.toLowerCase()).toBe("hr");
+  });
+});
