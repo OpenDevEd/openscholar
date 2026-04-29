@@ -10,6 +10,7 @@ import {
   convertUsdCostToCredits,
 } from "../ai/lib/creditBilling";
 import { deductCreditsTransaction } from "../credits/internal";
+import { WEB_SEARCH_PRICING } from "@/lib/pricing";
 
 const OPENROUTER_GENERATION_URL = "https://openrouter.ai/api/v1/generation";
 // Back-off schedule for /api/v1/generation lookups. OpenRouter takes a
@@ -503,8 +504,13 @@ export const billThreadUsageFromSdk = internalMutation({
  * deducted credits using the same `convertUsdCostToCredits` helper
  * model billing uses, so the AI cost markup applies symmetrically.
  *
- *   1 Tavily basic credit  = $0.008
- *   2 Tavily advanced credit = $0.016 (passed as tavilyCredits=2)
+ *   1 Tavily basic credit    = $0.008 (basic search)
+ *   2 Tavily advanced credits = $0.016 (passed as tavilyCredits=2)
+ *
+ * The per-credit rate lives in `lib/pricing/web-search.ts` —
+ * `WEB_SEARCH_PRICING.tavily.usdPerCredit` — as the single source of
+ * truth shared with the UI tooltip and the `pickWebSearchPricing`
+ * selector. Update there, not here.
  *
  * The mutation rejects non-positive `tavilyCredits` so a misconfigured
  * call site shows up loudly in tests rather than silently no-opping.
@@ -512,8 +518,6 @@ export const billThreadUsageFromSdk = internalMutation({
  * real charge, and `maxRetries: 0` on the streamText call site means
  * a logical retry of the same step cannot happen.
  */
-const TAVILY_USD_PER_CREDIT = 0.008;
-
 export const recordTavilyCost = internalMutation({
   args: {
     threadId: v.string(),
@@ -539,7 +543,7 @@ export const recordTavilyCost = internalMutation({
       );
     }
 
-    const usdCost = TAVILY_USD_PER_CREDIT * tavilyCredits;
+    const usdCost = WEB_SEARCH_PRICING.tavily.usdPerCredit * tavilyCredits;
     const billedCredits = convertUsdCostToCredits(usdCost);
 
     await deductCreditsTransaction(ctx, {
