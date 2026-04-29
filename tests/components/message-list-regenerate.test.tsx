@@ -36,6 +36,7 @@ vi.mock("@convex-dev/agent/react", async () => {
 
 vi.mock("convex/react", () => ({
   useMutation: () => regenerateMock,
+  useQuery: () => undefined,
 }));
 
 vi.mock("@/convex/_generated/api", () => ({

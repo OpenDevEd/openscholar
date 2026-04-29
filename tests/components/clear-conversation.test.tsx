@@ -46,6 +46,7 @@ vi.mock("convex/react", () => ({
     if (fnRef === "regenerateLastAssistant") return regenerateMock;
     return vi.fn();
   },
+  useQuery: () => undefined,
 }));
 
 vi.mock("@convex-dev/agent/react", async () => {

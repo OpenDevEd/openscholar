@@ -17,7 +17,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import type { TextUIPart, ToolUIPart } from "ai";
 import {
   Conversation,
@@ -27,6 +27,7 @@ import { JumpToLatestPill } from "./jump-to-latest-pill";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { StepBoundary } from "@/components/ai-elements/step-boundary";
 import { ToolStep } from "@/components/ai-elements/tool-step";
+import type { WebSearchPricing } from "@/lib/pricing";
 import { WebSourceChips } from "@/components/ai-elements/web-source-chips";
 import { AbortedPill } from "./aborted-pill";
 import { ChatErrorAlert } from "./chat-error-alert";
@@ -382,6 +383,13 @@ interface MessageRowProps {
   onRetry: () => void;
   reduceMotion: boolean;
   isJobGenerating?: boolean;
+  /** Resolved web-search source for this thread (from
+   *  `getChatWebSearchPricing`). Forwarded to each `<ToolStep>` so the
+   *  in-flight chip can render the real credit estimate. */
+  webSearchSource?: WebSearchPricing["source"];
+  /** Native model web-search USD price, populated only when
+   *  `webSearchSource === "openrouter-native"`. */
+  modelWebSearchPriceUsd?: number | null;
 }
 
 /**
@@ -426,6 +434,8 @@ export const MessageRow = memo(function MessageRow({
   onRetry,
   reduceMotion,
   isJobGenerating = true,
+  webSearchSource,
+  modelWebSearchPriceUsd,
 }: MessageRowProps) {
   const normalizedMessage = normalizeChatUIMessage(message);
   const isStreamingStatus = normalizedMessage.status === "streaming";
@@ -547,6 +557,8 @@ export const MessageRow = memo(function MessageRow({
                     key={`tool-${idx}`}
                     part={part as ToolUIPart}
                     aborted={isAborted}
+                    webSearchSource={webSearchSource}
+                    modelWebSearchPriceUsd={modelWebSearchPriceUsd}
                   />
                 );
               }
@@ -607,6 +619,23 @@ export function MessageList({
     { threadId },
     { initialNumItems: 20, stream: true },
   );
+  // Resolves the active web-search path + per-call price server-side
+  // so each in-flight `<ToolStep>` chip can render the real credit
+  // estimate. Convex deduplicates this against the toggle's own
+  // subscription on the same query — a single round trip serves both.
+  const webSearchPricing = useQuery(
+    api.chat.messages.getChatWebSearchPricing,
+    { threadId },
+  );
+  const webSearchSource = webSearchPricing?.source;
+  // The model's native USD price equals usdPerCall ONLY on the
+  // openrouter-native branch; pass it through as `null` on every
+  // other source so ToolStep doesn't mistake the server-tool flat
+  // rate for a native model price.
+  const modelWebSearchPriceUsd =
+    webSearchPricing?.source === "openrouter-native"
+      ? webSearchPricing.usdPerCall
+      : null;
   const serverRegenerateReplacementVisible =
     localRegenerate !== null &&
     hasServerRegenerateReplacement(results as ChatUIMessage[], localRegenerate);
@@ -827,6 +856,8 @@ export function MessageList({
                     onRetry={handleRetry}
                     reduceMotion={reduceMotion}
                     isJobGenerating={isJobGenerating}
+                    webSearchSource={webSearchSource}
+                    modelWebSearchPriceUsd={modelWebSearchPriceUsd}
                   />
                 </Fragment>
               );
