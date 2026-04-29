@@ -6,9 +6,11 @@ export const FREE_SIGNUP_CREDIT_GRANT = 500;
 
 /**
  * Markup multiplier applied to raw AI token costs before deducting credits.
- * Covers infrastructure overhead and sustains platform margins.
+ * Single source of truth lives in `lib/pricing/constants.ts`; re-exported
+ * here only because this file is a multi-purpose grab-bag and existing
+ * callers import it from `@/convex/lib/constants`.
  */
-export const AI_COST_MARKUP = 1.3;
+export { AI_COST_MARKUP } from "@/lib/pricing";
 
 /**
  * Estimated credit cost per paper for batch AI operations (screening, translation, extraction).
