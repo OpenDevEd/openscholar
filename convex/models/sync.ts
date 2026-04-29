@@ -62,6 +62,20 @@ function parsePerMillion(value?: string): number | null {
   return n * 1_000_000;
 }
 
+/**
+ * Parse a flat-rate pricing string (USD per request/operation) directly.
+ * Used for per-call OpenRouter fields like `pricing.web_search` whose values
+ * are literal dollars per invocation (e.g., "0.01" → $0.01/call) — NOT
+ * per-token fractions. Cross-ref openrouter.ai docs:
+ *   "web_search: string — Cost per web search operation"
+ */
+function parseDollars(value?: string): number | null {
+  if (!value) return null;
+  const n = parseFloat(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
 /** Extract provider prefix from an OpenRouter model ID. */
 function extractProvider(modelId: string): string {
   const slashIdx = modelId.indexOf("/");
@@ -71,8 +85,10 @@ function extractProvider(modelId: string): string {
 /**
  * Transform a raw OpenRouter model into the shape expected by the upsert mutation.
  * Returns null for meta/router models with dynamic pricing.
+ *
+ * Exported for unit testing. Pure function — no Convex / runtime deps.
  */
-function transformModel(raw: OpenRouterModel) {
+export function transformModel(raw: OpenRouterModel) {
   const inputPricePerMillion = parsePerMillion(raw.pricing?.prompt);
   const outputPricePerMillion = parsePerMillion(raw.pricing?.completion);
 
@@ -98,7 +114,7 @@ function transformModel(raw: OpenRouterModel) {
     cacheReadPricePerMillion: parsePerMillion(raw.pricing?.input_cache_read) ?? undefined,
     cacheWritePricePerMillion: parsePerMillion(raw.pricing?.input_cache_write) ?? undefined,
     reasoningPricePerMillion: parsePerMillion(raw.pricing?.internal_reasoning) ?? undefined,
-    webSearchPrice: parsePerMillion(raw.pricing?.web_search) ?? undefined,
+    webSearchPrice: parseDollars(raw.pricing?.web_search) ?? undefined,
     imagePricePerMillion: parsePerMillion(raw.pricing?.image) ?? undefined,
     audioPricePerMillion: parsePerMillion(raw.pricing?.audio) ?? undefined,
 
