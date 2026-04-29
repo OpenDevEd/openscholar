@@ -112,8 +112,7 @@ const tools = path === "tavily"
         costSink: async (credits) => {
           await ctx.runMutation(internal.chat.billing.recordTavilyCost, {
             threadId,
-            generationId: capturedGenerationId ?? undefined,
-            credits,
+            tavilyCredits: credits,
           });
         },
       }),
@@ -134,12 +133,16 @@ await paperChat.streamText(ctx, { threadId, userId }, {
 
 ### `recordTavilyCost` mutation
 
-Internal. Takes `{ generationId?, threadId, credits }`. Looks up the user, deducts credits via `deductCreditsTransaction(billingType: "search")`. Persists onto the `chatGenerationUsages` row's `metadata.tavilyCredits` (cumulative) so the ledger lines up with the OpenRouter happy-path row.
+Internal. Takes `{ threadId, tavilyCredits }`. Resolves the user from the chat job row indexed by thread id, then deducts credits via `deductCreditsTransaction(billingType: "search")`.
+
+**Deviation from the README:** the original design persisted onto `chatGenerationUsages.metadata.tavilyCredits` cumulatively, but `chatGenerationUsages` has no `metadata` field in the schema today. Adding one would be an additive optional schema change, but it isn't needed for the credit-deduction flow — the per-call `creditTransactions` row already carries the `tavilyCredits`/`searchEngine` provenance via its own `metadata` field, and that's what fuels the existing cost-breakdown queries (`creditTransactions` is indexed by job/billingType, `chatGenerationUsages` is not). Promoting a `chatGenerationUsages.metadata` field is therefore deferred until a concrete query needs the per-generation accumulator. For plan 06 we only deduct via `creditTransactions`.
 
 The credits-per-USD conversion:
 - 1 Tavily credit (basic) = $0.008
 - 2 Tavily credits (advanced) = $0.016
-- USD → credits via `convertUsdCostToCredits($0.008 * credits)` so the markup applies symmetrically with model billing.
+- USD → credits via `convertUsdCostToCredits($0.008 * tavilyCredits)` so the markup applies symmetrically with model billing.
+
+Each call writes its own `creditTransactions` row. There is no cross-call dedupe key inside the mutation — the costSink in plan 05 fires once per Tavily HTTP search, and a logical retry of the same step is impossible because `maxRetries: 0` is set at the streamText call site. The mutation rejects `tavilyCredits <= 0` (rather than silently no-op) so a wrong call site shows up in tests instead of being absorbed.
 
 ### `WEB_SEARCH_SYSTEM_INSTRUCTION` location
 
@@ -177,7 +180,7 @@ Phase B — call-site wiring (one commit per logical unit):
 
 U1 — Bump `stopWhen: stepCountIs(5)` in `agent.ts`. One-line commit `feat(chat): [plan-06] bump stepCountIs to 5 to enable tool loops`.
 
-U2 — Add the mutation `recordTavilyCost` in `billing.ts`. Test: deducts the right credits, idempotent on duplicate calls (uses an internal dedupe key composed of `generationId + searchIndex` if available).
+U2 — Add the mutation `recordTavilyCost` in `billing.ts`. Tests: looks up the user from the thread, converts Tavily credits → USD → deducted credits via `convertUsdCostToCredits`, writes a `creditTransactions` row with `billingType: "search"`, rejects non-positive `tavilyCredits`. Per the deviation above, no `chatGenerationUsages` accumulator.
 
 U3 — Wire the selector + tools composition in `messages.ts`. Commit `feat(chat): [plan-06] compose tools map per request based on toggle and capability`.
 
@@ -216,7 +219,7 @@ None — additive code. The `stepCountIs(5)` change is forward-only; existing si
 - [ ] When the path is `"tavily"`, `tools.web_search` is a `tool({})` with `type: "function"`, `inputSchema: { query: string }`.
 - [ ] When the path is `"openrouter"`, `tools.web_search.id === "openrouter.web_search"`.
 - [ ] When the path is `null`, no `tools` arg is passed.
-- [ ] `recordTavilyCost` deducts via `deductCreditsTransaction(billingType: "search")` and is idempotent on retry.
+- [ ] `recordTavilyCost` deducts via `deductCreditsTransaction(billingType: "search")`. (No `chatGenerationUsages` accumulator — see deviation.)
 - [ ] All tests pass; `tsc --noEmit` clean.
 
 ## Known pitfalls
