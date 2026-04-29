@@ -443,6 +443,11 @@ export default defineSchema({
     chatThreadId: v.optional(v.string()),
     // Current model choice — picker seeds from models table (isServed).
     chatModelId: v.optional(v.id("models")),
+    // Per-thread opt-in for web-search grounding. Read by the chat
+    // orchestrator (plan 06) to decide whether to register the web-search
+    // tool. Patched by setChatWebSearchEnabled (plan 03). Capability-gated
+    // in the UI by lib/chat/web-search-capability.ts.
+    webSearchEnabled: v.optional(v.boolean()),
     // Denormalised for list rendering + sort.
     lastMessageAt: v.optional(v.number()),
     messageCount: v.optional(v.number()),
