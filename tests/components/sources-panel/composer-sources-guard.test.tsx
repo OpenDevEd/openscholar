@@ -85,6 +85,12 @@ vi.mock("@/components/extraction/chat/composer-model-picker", () => ({
   ComposerModelPicker: () => <div data-testid="composer-model-picker" />,
 }));
 
+// Stub the web-search toggle — its radix Tooltip needs TooltipProvider,
+// and this audit only cares about the sources-guard wiring.
+vi.mock("@/components/extraction/chat/web-search-toggle", () => ({
+  WebSearchToggle: () => <div data-testid="web-search-toggle" />,
+}));
+
 function makeJob(): Doc<"extractionJobs"> {
   return {
     _id: "job1" as unknown as Doc<"extractionJobs">["_id"],
