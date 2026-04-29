@@ -1,3 +1,4 @@
+import type { ModelMessage, ToolExecutionOptions } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import { INCLUDE_DOMAINS_ACADEMIC } from "../../../lib/tavily/academic-domains";
@@ -21,7 +22,10 @@ vi.mock("../../../lib/tavily/client", () => ({
     mockTavilySearch(...args),
 }));
 
-import { buildTavilyWebSearchTool } from "./tavily-web-search";
+import {
+  buildTavilyWebSearchTool,
+  type TavilyWebSearchOutput,
+} from "./tavily-web-search";
 
 const SAMPLE_TAVILY_RESPONSE: TavilySearchResponse = {
   query: "carbon capture",
@@ -44,10 +48,16 @@ const SAMPLE_TAVILY_RESPONSE: TavilySearchResponse = {
   usage: { creditsUsed: 1 },
 };
 
-const dummyExecOptions = {
-  toolCallId: "call_1",
-  messages: [],
-} as const;
+function makeExecOptions(
+  abortSignal?: AbortSignal,
+): ToolExecutionOptions {
+  const opts: ToolExecutionOptions = {
+    toolCallId: "call_1",
+    messages: [] as ModelMessage[],
+  };
+  if (abortSignal) opts.abortSignal = abortSignal;
+  return opts;
+}
 
 describe("buildTavilyWebSearchTool", () => {
   beforeEach(() => {
@@ -71,10 +81,10 @@ describe("buildTavilyWebSearchTool", () => {
   it("execute calls the client and returns mapped sources + creditsUsed", async () => {
     mockTavilySearch.mockResolvedValueOnce(SAMPLE_TAVILY_RESPONSE);
     const tool = buildTavilyWebSearchTool({ apiKey: "tvly-x" });
-    const out = await tool.execute!({ query: "carbon capture" }, {
-      ...dummyExecOptions,
-      abortSignal: undefined,
-    });
+    const out = (await tool.execute!(
+      { query: "carbon capture" },
+      makeExecOptions(),
+    )) as TavilyWebSearchOutput;
     expect(out).toEqual({
       sources: [
         {
@@ -97,7 +107,7 @@ describe("buildTavilyWebSearchTool", () => {
   it("forwards apiKey and the academic include-domains list when academicBias is on", async () => {
     mockTavilySearch.mockResolvedValueOnce(SAMPLE_TAVILY_RESPONSE);
     const tool = buildTavilyWebSearchTool({ apiKey: "tvly-secret" });
-    await tool.execute!({ query: "x" }, dummyExecOptions);
+    await tool.execute!({ query: "x" }, makeExecOptions());
     expect(mockTavilySearch).toHaveBeenCalledTimes(1);
     const [apiKey, req] = mockTavilySearch.mock.calls[0]!;
     expect(apiKey).toBe("tvly-secret");
@@ -115,7 +125,7 @@ describe("buildTavilyWebSearchTool", () => {
       apiKey: "tvly-x",
       academicBias: false,
     });
-    await tool.execute!({ query: "x" }, dummyExecOptions);
+    await tool.execute!({ query: "x" }, makeExecOptions());
     const [, req] = mockTavilySearch.mock.calls[0]!;
     expect(req.includeDomains).toBeUndefined();
   });
@@ -124,7 +134,7 @@ describe("buildTavilyWebSearchTool", () => {
     mockTavilySearch.mockResolvedValueOnce(SAMPLE_TAVILY_RESPONSE);
     const costSink = vi.fn();
     const tool = buildTavilyWebSearchTool({ apiKey: "tvly-x", costSink });
-    await tool.execute!({ query: "x" }, dummyExecOptions);
+    await tool.execute!({ query: "x" }, makeExecOptions());
     expect(costSink).toHaveBeenCalledTimes(1);
     expect(costSink).toHaveBeenCalledWith(1);
   });
@@ -141,7 +151,10 @@ describe("buildTavilyWebSearchTool", () => {
       searchDepth: "advanced",
       costSink,
     });
-    const out = await tool.execute!({ query: "x" }, dummyExecOptions);
+    const out = (await tool.execute!(
+      { query: "x" },
+      makeExecOptions(),
+    )) as TavilyWebSearchOutput;
     expect(out.creditsUsed).toBe(2);
     expect(costSink).toHaveBeenCalledWith(2);
   });
@@ -154,7 +167,10 @@ describe("buildTavilyWebSearchTool", () => {
     mockTavilySearch.mockResolvedValueOnce(noUsageResponse);
     const costSink = vi.fn();
     const tool = buildTavilyWebSearchTool({ apiKey: "tvly-x", costSink });
-    const out = await tool.execute!({ query: "x" }, dummyExecOptions);
+    const out = (await tool.execute!(
+      { query: "x" },
+      makeExecOptions(),
+    )) as TavilyWebSearchOutput;
     expect(out.creditsUsed).toBe(1);
     expect(costSink).toHaveBeenCalledWith(1);
   });
@@ -163,10 +179,7 @@ describe("buildTavilyWebSearchTool", () => {
     mockTavilySearch.mockResolvedValueOnce(SAMPLE_TAVILY_RESPONSE);
     const controller = new AbortController();
     const tool = buildTavilyWebSearchTool({ apiKey: "tvly-x" });
-    await tool.execute!({ query: "x" }, {
-      ...dummyExecOptions,
-      abortSignal: controller.signal,
-    });
+    await tool.execute!({ query: "x" }, makeExecOptions(controller.signal));
     const [, , , signal] = mockTavilySearch.mock.calls[0]!;
     expect(signal).toBe(controller.signal);
   });
@@ -174,7 +187,7 @@ describe("buildTavilyWebSearchTool", () => {
   it("applies a custom maxResults", async () => {
     mockTavilySearch.mockResolvedValueOnce(SAMPLE_TAVILY_RESPONSE);
     const tool = buildTavilyWebSearchTool({ apiKey: "tvly-x", maxResults: 10 });
-    await tool.execute!({ query: "x" }, dummyExecOptions);
+    await tool.execute!({ query: "x" }, makeExecOptions());
     const [, req] = mockTavilySearch.mock.calls[0]!;
     expect(req.maxResults).toBe(10);
   });
