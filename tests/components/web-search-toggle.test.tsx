@@ -147,4 +147,42 @@ describe("<WebSearchToggle>", () => {
 
     expect(setWebSearchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("tooltip text differentiates unsupported, on, and off states", () => {
+    // Unsupported wins regardless of the enabled flag.
+    const { rerender } = render(
+      <WebSearchToggle
+        {...baseProps}
+        enabled={true}
+        modelSupportedParameters={[]}
+      />,
+    );
+    expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
+      "webSearch.tooltipUnsupported",
+    );
+
+    // Capable + on.
+    rerender(
+      <WebSearchToggle
+        {...baseProps}
+        enabled={true}
+        modelSupportedParameters={["tools"]}
+      />,
+    );
+    expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
+      "webSearch.tooltipOn",
+    );
+
+    // Capable + off.
+    rerender(
+      <WebSearchToggle
+        {...baseProps}
+        enabled={false}
+        modelSupportedParameters={["tools"]}
+      />,
+    );
+    expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
+      "webSearch.tooltipOff",
+    );
+  });
 });
