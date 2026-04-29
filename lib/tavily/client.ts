@@ -96,3 +96,25 @@ export function parseResponse(json: unknown): TavilySearchResponse {
   if (parsed.usage) response.usage = { creditsUsed: parsed.usage.credits };
   return response;
 }
+
+export const TAVILY_SEARCH_URL = "https://api.tavily.com/search";
+
+export async function tavilySearch(
+  apiKey: string,
+  req: TavilySearchRequest,
+  fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
+): Promise<TavilySearchResponse> {
+  const init: RequestInit = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(toSnakeCaseBody(req)),
+  };
+  if (signal) init.signal = signal;
+  const res = await fetchImpl(TAVILY_SEARCH_URL, init);
+  const json = (await res.json()) as unknown;
+  return parseResponse(json);
+}
