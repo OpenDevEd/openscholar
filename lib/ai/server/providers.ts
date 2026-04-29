@@ -12,6 +12,13 @@ export interface ProviderOptions {
    * see convex/chat/openrouterFetch.ts.
    */
   fetch?: typeof globalThis.fetch
+  /**
+   * When true, builds the OpenRouter chat model with `usage: { include: true }`
+   * so providerMetadata.openrouter.usage.cost is populated on the AI SDK
+   * `finish` event. Chat billing prefers this all-in cost over the
+   * pricing×tokens math — see plan-02 and convex/chat/billing.ts.
+   */
+  openrouterUsageInclude?: boolean
 }
 
 export async function getProviderModel(
@@ -61,7 +68,11 @@ export async function getProviderModel(
         ...(options?.fetch ? { fetch: options.fetch } : {}),
       }
 
-      return createOpenRouter(openRouterOptions)(modelId)
+      const modelSettings = options?.openrouterUsageInclude
+        ? { usage: { include: true } }
+        : undefined
+
+      return createOpenRouter(openRouterOptions)(modelId, modelSettings)
     }
     case 'deepseek': {
       const { createDeepSeek } = await import('@ai-sdk/deepseek')

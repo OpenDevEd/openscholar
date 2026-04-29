@@ -80,6 +80,9 @@ export async function resolveOpenRouterModel(
   const model = await getProviderModel("openrouter", undefined, modelSlug, {
     openrouterProviderOrder: SERVER_AI_CONFIG.openrouterProviderOrder,
     openrouterAllowFallbacks: SERVER_AI_CONFIG.openrouterAllowFallbacks,
+    // Bills against providerMetadata.openrouter.usage.cost when
+    // present — see convex/chat/billing.ts.
+    openrouterUsageInclude: true,
     ...(options?.generationIdSink
       ? { fetch: withGenerationIdCapture(options.generationIdSink) }
       : {}),
