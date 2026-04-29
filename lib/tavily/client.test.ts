@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { parseResponse, tavilySearch, toSnakeCaseBody } from "./client";
+import {
+  TavilyError,
+  parseResponse,
+  tavilySearch,
+  toSnakeCaseBody,
+} from "./client";
 
 function jsonResponse(
   body: unknown,
@@ -221,5 +226,69 @@ describe("tavilySearch", () => {
     );
     const [, calledInit] = fetchImpl.mock.calls[0]!;
     expect(calledInit?.signal).toBe(controller.signal);
+  });
+
+  it("throws TavilyError(401, body) on unauthorized responses", async () => {
+    const errBody = { detail: { error: "Invalid API key" } };
+    const fetchImpl = vi.fn(async () => jsonResponse(errBody, { status: 401 }));
+    await expect(
+      tavilySearch(
+        "tvly-bad",
+        { query: "x" },
+        fetchImpl as unknown as typeof fetch,
+      ),
+    ).rejects.toMatchObject({
+      name: "TavilyError",
+      status: 401,
+      body: errBody,
+    });
+  });
+
+  it("throws TavilyError(429, body) and preserves retry-after seconds on rate-limit", async () => {
+    const errBody = { detail: { error: "Rate limit exceeded" } };
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse(errBody, {
+        status: 429,
+        headers: { "Retry-After": "60" },
+      }),
+    );
+    let captured: TavilyError | undefined;
+    try {
+      await tavilySearch(
+        "tvly-key",
+        { query: "x" },
+        fetchImpl as unknown as typeof fetch,
+      );
+    } catch (err) {
+      captured = err as TavilyError;
+    }
+    expect(captured).toBeInstanceOf(TavilyError);
+    expect(captured?.status).toBe(429);
+    expect(captured?.body).toEqual(errBody);
+    expect(captured?.retryAfter).toBe(60);
+  });
+
+  it("throws TavilyError on generic 500 errors and tolerates a non-JSON body", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response("upstream boom", {
+          status: 500,
+          headers: { "Content-Type": "text/plain" },
+        }),
+    );
+    let captured: TavilyError | undefined;
+    try {
+      await tavilySearch(
+        "tvly-key",
+        { query: "x" },
+        fetchImpl as unknown as typeof fetch,
+      );
+    } catch (err) {
+      captured = err as TavilyError;
+    }
+    expect(captured).toBeInstanceOf(TavilyError);
+    expect(captured?.status).toBe(500);
+    expect(captured?.body).toBeNull();
+    expect(captured?.retryAfter).toBeUndefined();
   });
 });
