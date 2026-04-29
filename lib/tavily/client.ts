@@ -99,6 +99,26 @@ export function parseResponse(json: unknown): TavilySearchResponse {
 
 export const TAVILY_SEARCH_URL = "https://api.tavily.com/search";
 
+export class TavilyError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+  readonly retryAfter?: number;
+
+  constructor(status: number, body: unknown, retryAfter?: number) {
+    super(`Tavily ${status}`);
+    this.name = "TavilyError";
+    this.status = status;
+    this.body = body;
+    if (retryAfter !== undefined) this.retryAfter = retryAfter;
+  }
+}
+
+function parseRetryAfter(headerVal: string | null): number | undefined {
+  if (headerVal === null) return undefined;
+  const parsed = Number.parseInt(headerVal, 10);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
 export async function tavilySearch(
   apiKey: string,
   req: TavilySearchRequest,
@@ -115,6 +135,19 @@ export async function tavilySearch(
   };
   if (signal) init.signal = signal;
   const res = await fetchImpl(TAVILY_SEARCH_URL, init);
+  if (!res.ok) {
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      // leave body as null when the upstream payload isn't JSON
+    }
+    throw new TavilyError(
+      res.status,
+      body,
+      parseRetryAfter(res.headers.get("retry-after")),
+    );
+  }
   const json = (await res.json()) as unknown;
   return parseResponse(json);
 }
