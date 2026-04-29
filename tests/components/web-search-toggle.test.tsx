@@ -124,4 +124,27 @@ describe("<WebSearchToggle>", () => {
     // Capability is still true — the gate is the live generation, not the model.
     expect(btn).toHaveAttribute("data-web-search-supported", "true");
   });
+
+  it("clicking calls setChatWebSearchEnabled with the negated current value", async () => {
+    const user = userEvent.setup();
+    setWebSearchMock.mockClear();
+
+    const { rerender } = render(
+      <WebSearchToggle {...baseProps} threadId="t_abc" enabled={false} />,
+    );
+    await user.click(screen.getByRole("button"));
+    expect(setWebSearchMock).toHaveBeenLastCalledWith({
+      threadId: "t_abc",
+      enabled: true,
+    });
+
+    rerender(<WebSearchToggle {...baseProps} threadId="t_abc" enabled={true} />);
+    await user.click(screen.getByRole("button"));
+    expect(setWebSearchMock).toHaveBeenLastCalledWith({
+      threadId: "t_abc",
+      enabled: false,
+    });
+
+    expect(setWebSearchMock).toHaveBeenCalledTimes(2);
+  });
 });
