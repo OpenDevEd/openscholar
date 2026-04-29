@@ -494,6 +494,71 @@ export const billThreadUsageFromSdk = internalMutation({
   },
 });
 
+/**
+ * Tavily-per-search cost — see plan-06.
+ *
+ * Each Tavily HTTP call returns a `usage.creditsUsed` integer. Plan 05
+ * forwards that count to the orchestrator's `costSink`, which calls
+ * this mutation once per search. We convert Tavily credits → USD →
+ * deducted credits using the same `convertUsdCostToCredits` helper
+ * model billing uses, so the AI cost markup applies symmetrically.
+ *
+ *   1 Tavily basic credit  = $0.008
+ *   2 Tavily advanced credit = $0.016 (passed as tavilyCredits=2)
+ *
+ * The mutation rejects non-positive `tavilyCredits` so a misconfigured
+ * call site shows up loudly in tests rather than silently no-opping.
+ * No cross-call dedupe key is computed: each Tavily HTTP search is a
+ * real charge, and `maxRetries: 0` on the streamText call site means
+ * a logical retry of the same step cannot happen.
+ */
+const TAVILY_USD_PER_CREDIT = 0.008;
+
+export const recordTavilyCost = internalMutation({
+  args: {
+    threadId: v.string(),
+    tavilyCredits: v.number(),
+  },
+  returns: v.object({
+    billedCredits: v.number(),
+  }),
+  handler: async (ctx, { threadId, tavilyCredits }) => {
+    if (!Number.isFinite(tavilyCredits) || tavilyCredits <= 0) {
+      throw new Error(
+        `recordTavilyCost: tavilyCredits must be a positive number, got ${tavilyCredits}`,
+      );
+    }
+
+    const job = await ctx.db
+      .query("extractionJobs")
+      .withIndex("by_chatThread", (q) => q.eq("chatThreadId", threadId))
+      .unique();
+    if (!job || job.mode !== "chat") {
+      throw new Error(
+        `recordTavilyCost: missing chat job for thread ${threadId}`,
+      );
+    }
+
+    const usdCost = TAVILY_USD_PER_CREDIT * tavilyCredits;
+    const billedCredits = convertUsdCostToCredits(usdCost);
+
+    await deductCreditsTransaction(ctx, {
+      userId: job.userId,
+      amount: billedCredits,
+      description: "AI: Web search (Tavily)",
+      jobId: job._id,
+      billingType: "search",
+      metadata: {
+        searchEngine: "tavily",
+        tavilyCredits: String(tavilyCredits),
+        usdCost: String(usdCost),
+      },
+    });
+
+    return { billedCredits };
+  },
+});
+
 export const markGenerationRetry = internalMutation({
   args: {
     generationId: v.string(),
