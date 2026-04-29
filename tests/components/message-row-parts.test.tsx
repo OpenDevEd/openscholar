@@ -109,3 +109,29 @@ describe("<MessageRow> parts iteration — text-only", () => {
     ).toBeNull();
   });
 });
+
+describe("<MessageRow> parts iteration — text + tool (mid-stream)", () => {
+  it("renders the in-flight ToolStep and the prior text without a step boundary or footer chips", () => {
+    renderRow(
+      makeAssistant(
+        [
+          textPart("Let me check the literature."),
+          stepStart,
+          toolPart("input-streaming", { input: { query: "RNA editing" } }),
+        ],
+        { status: "streaming" },
+      ),
+    );
+
+    expect(screen.getByText(/let me check the literature/i)).toBeInTheDocument();
+
+    const tool = screen.getByTestId("tool-step");
+    expect(tool).toHaveAttribute("data-tool-state", "input-streaming");
+    expect(tool).toHaveAttribute("data-tool-name", "web_search");
+
+    // step-start sits between text and an in-flight tool — boundary is
+    // visible only between *completed* tool and following text.
+    expect(document.querySelector("[data-step-boundary]")).toBeNull();
+    expect(document.querySelector("[data-web-sources-count]")).toBeNull();
+  });
+});
