@@ -49,7 +49,10 @@ async function buildChatContext(
 
   const systemMessages = await ctx.runQuery(
     internal.chat.context.buildSystemPromptForJob,
-    { jobId: meta.jobId },
+    {
+      jobId: meta.jobId,
+      webSearchEnabled: meta.webSearchEnabled,
+    },
   );
   return [...systemMessages, ...args.allMessages];
 }
