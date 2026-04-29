@@ -43,14 +43,16 @@ async function seedThreadForBilling(
 }
 
 describe("recordTavilyCost", () => {
-  // The convertUsdCostToCredits helper used throughout chat billing
-  // applies AI_COST_MARKUP=1.3 then Math.ceil at 10_000 credits/USD.
-  // 1 Tavily credit  = $0.008 * 1.3 * 10_000 = 104.0…1 (FP) → ceil → 105 credits
-  // 2 Tavily credits = $0.016 * 1.3 * 10_000 = 208.0…3 (FP) → ceil → 209 credits
-  // We match the helper's actual output rather than the algebraic
-  // ideal so this stays consistent with billGenerationFromSdkUsage.
-  const EXPECTED_CREDITS_PER_BASIC_TAVILY_CALL = 105;
-  const EXPECTED_CREDITS_PER_ADVANCED_TAVILY_CALL = 209;
+  // The convertUsdCostToCredits helper (now backed by `convertUsdToCredits`
+  // in `@/lib/pricing`) applies AI_COST_MARKUP=1.3 at 10_000 credits/USD,
+  // rounding intermediate FP noise to 1e-8 before ceiling. So the
+  // algebraic value lands exactly:
+  //   1 Tavily credit  = $0.008 * 1.3 * 10_000 = 104 credits (exact)
+  //   2 Tavily credits = $0.016 * 1.3 * 10_000 = 208 credits (exact)
+  // The legacy helper double-counted FP noise and billed 105/209 — that
+  // overcharge is fixed in plan-02 alongside this rewire.
+  const EXPECTED_CREDITS_PER_BASIC_TAVILY_CALL = 104;
+  const EXPECTED_CREDITS_PER_ADVANCED_TAVILY_CALL = 208;
 
   it("deducts the markup-adjusted credit amount for 1 Tavily basic credit", async () => {
     const t = convexTest(schema);

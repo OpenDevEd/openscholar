@@ -79,10 +79,15 @@ describe("end-to-end credit calculation", () => {
       it("credits match the formula: ceil(dollars * markup * creditsPerUsd)", () => {
         const usage = { inputTokens: 100_000, outputTokens: 50_000 };
         const dollars = calculateCostInDollars(usage, pricing);
-        const expectedCredits = Math.max(
-          1,
-          Math.ceil(dollars * AI_COST_MARKUP * DEFAULT_CREDITS_PER_USD),
-        );
+        // Match `convertUsdToCredits` (lib/pricing): the intermediate
+        // product is rounded to 1e-8 BEFORE ceiling so JS FP noise (e.g.
+        // `0.025 * 1.3 = 0.032500000000000001`) does not silently
+        // overcharge by 1 credit on otherwise-integer values.
+        const raw =
+          Math.round(
+            dollars * AI_COST_MARKUP * DEFAULT_CREDITS_PER_USD * 1e8,
+          ) / 1e8;
+        const expectedCredits = Math.max(1, Math.ceil(raw));
         const actual = calculateCreditsToDeductFromUsage({
           usage,
           pricing,

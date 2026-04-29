@@ -1,6 +1,6 @@
 import { calculateCostInDollars, type Usage } from "../../../lib/ai/core";
-import { convertDollarsToCredits, getCreditsPerUsd } from "../../lib/creditTopups";
-import { AI_COST_MARKUP } from "../../lib/constants";
+import { getCreditsPerUsd } from "../../lib/creditTopups";
+import { AI_COST_MARKUP, convertUsdToCredits } from "@/lib/pricing";
 
 function hasTokenUsage(usage: Usage): boolean {
   const inputTokens = usage.inputTokens ?? usage.promptTokens ?? 0;
@@ -9,14 +9,20 @@ function hasTokenUsage(usage: Usage): boolean {
 }
 
 /**
- * Convert provider/model dollar cost into credit units.
+ * Convert provider/model dollar cost into credit units. Adapter
+ * retained so existing imports (chat billing, batch deductions, ai
+ * helpers) keep working; new code should import {@link convertUsdToCredits}
+ * directly from `@/lib/pricing`.
  */
 export function convertUsdCostToCredits(
   costDollars: number,
   markupMultiplier = AI_COST_MARKUP,
 ): number {
-  if (!Number.isFinite(costDollars) || costDollars <= 0) return 0;
-  return convertDollarsToCredits(costDollars * markupMultiplier);
+  return convertUsdToCredits({
+    usd: costDollars,
+    markup: markupMultiplier,
+    creditsPerUsd: getCreditsPerUsd(),
+  });
 }
 
 /**
