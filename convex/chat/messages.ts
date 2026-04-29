@@ -1463,9 +1463,16 @@ export const setChatWebSearchEnabled = mutation({
   returns: v.object({
     outcome: v.union(v.literal("updated"), v.literal("noop")),
   }),
-  handler: async (ctx, { threadId, enabled: _enabled }) => {
-    await authorizeThreadAccess(ctx, threadId);
-    return { outcome: "noop" as const };
+  handler: async (ctx, { threadId, enabled }) => {
+    const { job } = await authorizeThreadAccess(ctx, threadId);
+    if ((job.webSearchEnabled ?? false) === enabled) {
+      return { outcome: "noop" as const };
+    }
+    await ctx.db.patch(job._id, {
+      webSearchEnabled: enabled,
+      updatedAt: Date.now(),
+    });
+    return { outcome: "updated" as const };
   },
 });
 
