@@ -1,7 +1,7 @@
-import { convertUsdToCredits } from "@/lib/pricing";
+import { convertUsdToCredits, DEFAULT_CREDITS_PER_USD } from "@/lib/pricing";
 
 export const CREDIT_TOPUP_CURRENCY = "usd" as const;
-export const DEFAULT_CREDITS_PER_USD = 10_000;
+export { DEFAULT_CREDITS_PER_USD };
 
 export const CREDIT_TOPUP_BUNDLES = [
   { key: "credits_10000", credits: 10_000 },
