@@ -127,7 +127,7 @@ function toErrorMessage(error: unknown): string {
 }
 
 function buildChatBillingMetadata(args: {
-  billingSource: "sdk_usage" | "openrouter_generation_api";
+  billingSource: "sdk_usage" | "sdk_usage_cost" | "openrouter_generation_api";
   model: string;
   promptTokens: number;
   completionTokens: number;
@@ -342,6 +342,12 @@ export const billGenerationFromSdkUsage = internalMutation({
     completionTokens: v.number(),
     reasoningTokens: v.number(),
     cachedPromptTokens: v.number(),
+    // Optional all-in USD cost from providerMetadata.openrouter.usage.cost
+    // (set by the SDK when the chat factory is built with
+    // `usage: { include: true }`). Includes any provider-side tool cost
+    // such as OpenRouter server web search; preferred over the
+    // pricing×tokens math whenever supplied.
+    totalCostUsd: v.optional(v.number()),
   },
   returns: v.object({
     outcome: v.union(v.literal("already_billed"), v.literal("billed")),
@@ -362,13 +368,19 @@ export const billGenerationFromSdkUsage = internalMutation({
       };
     }
 
-    const billedCredits = calculateCreditsToDeductFromUsage({
-      usage: {
-        inputTokens: args.promptTokens,
-        outputTokens: args.completionTokens,
-      },
-      pricing: args.pricing,
-    });
+    const useCostReadback =
+      args.totalCostUsd !== undefined &&
+      Number.isFinite(args.totalCostUsd) &&
+      args.totalCostUsd >= 0;
+    const billedCredits = useCostReadback
+      ? convertUsdCostToCredits(args.totalCostUsd as number)
+      : calculateCreditsToDeductFromUsage({
+          usage: {
+            inputTokens: args.promptTokens,
+            outputTokens: args.completionTokens,
+          },
+          pricing: args.pricing,
+        });
     const now = Date.now();
 
     if (billedCredits > 0) {
@@ -379,13 +391,14 @@ export const billGenerationFromSdkUsage = internalMutation({
         jobId: row.jobId,
         billingType: "chat",
         metadata: buildChatBillingMetadata({
-          billingSource: "sdk_usage",
+          billingSource: useCostReadback ? "sdk_usage_cost" : "sdk_usage",
           generationId: args.generationId,
           model: args.model,
           promptTokens: args.promptTokens,
           completionTokens: args.completionTokens,
           reasoningTokens: args.reasoningTokens,
           cachedPromptTokens: args.cachedPromptTokens,
+          ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
         }),
       });
     }
@@ -399,6 +412,7 @@ export const billGenerationFromSdkUsage = internalMutation({
       completionTokens: args.completionTokens,
       reasoningTokens: args.reasoningTokens,
       cachedPromptTokens: args.cachedPromptTokens,
+      ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
       billedCredits,
       attemptCount: row.attemptCount + 1,
       lastAttemptAt: now,
@@ -424,6 +438,11 @@ export const billThreadUsageFromSdk = internalMutation({
     completionTokens: v.number(),
     reasoningTokens: v.number(),
     cachedPromptTokens: v.number(),
+    // Defence-in-depth path mirrors billGenerationFromSdkUsage: when the
+    // fetch wrapper missed the X-Generation-Id header but the SDK still
+    // surfaced an all-in cost on providerMetadata, prefer it over the
+    // pricing×tokens math.
+    totalCostUsd: v.optional(v.number()),
   },
   returns: v.object({
     outcome: v.literal("billed"),
@@ -438,13 +457,19 @@ export const billThreadUsageFromSdk = internalMutation({
       throw new Error(`Missing chat job for thread ${args.threadId}`);
     }
 
-    const billedCredits = calculateCreditsToDeductFromUsage({
-      usage: {
-        inputTokens: args.promptTokens,
-        outputTokens: args.completionTokens,
-      },
-      pricing: args.pricing,
-    });
+    const useCostReadback =
+      args.totalCostUsd !== undefined &&
+      Number.isFinite(args.totalCostUsd) &&
+      args.totalCostUsd >= 0;
+    const billedCredits = useCostReadback
+      ? convertUsdCostToCredits(args.totalCostUsd as number)
+      : calculateCreditsToDeductFromUsage({
+          usage: {
+            inputTokens: args.promptTokens,
+            outputTokens: args.completionTokens,
+          },
+          pricing: args.pricing,
+        });
 
     if (billedCredits > 0) {
       await deductCreditsTransaction(ctx, {
@@ -454,12 +479,13 @@ export const billThreadUsageFromSdk = internalMutation({
         jobId: job._id,
         billingType: "chat",
         metadata: buildChatBillingMetadata({
-          billingSource: "sdk_usage",
+          billingSource: useCostReadback ? "sdk_usage_cost" : "sdk_usage",
           model: args.model,
           promptTokens: args.promptTokens,
           completionTokens: args.completionTokens,
           reasoningTokens: args.reasoningTokens,
           cachedPromptTokens: args.cachedPromptTokens,
+          ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
         }),
       });
     }

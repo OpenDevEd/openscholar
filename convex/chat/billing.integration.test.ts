@@ -310,7 +310,7 @@ describe("billGenerationFromSdkUsage cost-source switch", () => {
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
         .collect();
       expect(txs).toHaveLength(1);
-      expect(txs[0]?.amount).toBe(650);
+      expect(txs[0]?.amount).toBe(-650);
       expect(txs[0]?.metadata?.billingSource).toBe("sdk_usage_cost");
       expect(txs[0]?.metadata?.totalCostUsd).toBe("0.05");
       expect(txs[0]?.metadata?.generationId).toBe(generationId);
@@ -501,7 +501,7 @@ describe("billThreadUsageFromSdk cost-source switch", () => {
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
         .collect();
       expect(txs).toHaveLength(1);
-      expect(txs[0]?.amount).toBe(650);
+      expect(txs[0]?.amount).toBe(-650);
       expect(txs[0]?.metadata?.billingSource).toBe("sdk_usage_cost");
       expect(txs[0]?.metadata?.totalCostUsd).toBe("0.05");
       expect(txs[0]?.metadata?.generationId).toBeUndefined();
