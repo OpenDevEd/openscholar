@@ -362,6 +362,14 @@ export const getThreadMetadataForJob = internalQuery({
 /**
  * Reverse-lookup flavour of getThreadMetadataForJob — used by
  * generateResponse after the thread is already established.
+ *
+ * Also surfaces `webSearchEnabled` (from the job row) and
+ * `modelSupportedParameters` (joined from the chosen model row, when
+ * `chatModelId` is set) in a single round-trip. Both feed the plan-06
+ * tool selector and system-prompt builder. `modelSupportedParameters`
+ * is `null` when no model is chosen yet — `modelSupportsWebSearch`
+ * treats that as "no capability", which is the conservative default
+ * for the ungated fallback path.
  */
 export const getModelForThread = internalQuery({
   args: { threadId: v.string() },
@@ -371,6 +379,8 @@ export const getModelForThread = internalQuery({
       jobId: v.id("extractionJobs"),
       userId: v.id("users"),
       chatModelId: v.union(v.id("models"), v.null()),
+      webSearchEnabled: v.boolean(),
+      modelSupportedParameters: v.union(v.array(v.string()), v.null()),
     }),
   ),
   handler: async (ctx, { threadId }) => {
@@ -379,10 +389,19 @@ export const getModelForThread = internalQuery({
       .withIndex("by_chatThread", (q) => q.eq("chatThreadId", threadId))
       .unique();
     if (!job || job.mode !== "chat") return null;
+
+    let modelSupportedParameters: string[] | null = null;
+    if (job.chatModelId) {
+      const modelRow = await ctx.db.get(job.chatModelId);
+      modelSupportedParameters = modelRow?.supportedParameters ?? null;
+    }
+
     return {
       jobId: job._id,
       userId: job.userId,
       chatModelId: job.chatModelId ?? null,
+      webSearchEnabled: job.webSearchEnabled ?? false,
+      modelSupportedParameters,
     };
   },
 });

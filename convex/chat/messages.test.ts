@@ -1945,3 +1945,171 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(preserved.chatPapers).toEqual([true, false, true]);
   });
 });
+
+describe("chat.messages.generateResponse — web search tool wiring (plan-06)", () => {
+  /**
+   * Each test seeds: a chat job, a model row (optionally with
+   * supportedParameters: ["tools"]), credits, optionally flips
+   * webSearchEnabled, optionally stubs TAVILY_API_KEY. Then runs the
+   * generateResponse action with a finishing doStream and inspects
+   * the captured tools arg on paperChat.streamText. The selector under
+   * test lives at messages.ts:388-… via pickWebSearchTool.
+   */
+
+  async function seedToolWiringScenario(
+    t: ReturnType<typeof convexTest>,
+    opts: {
+      webSearchEnabled?: boolean;
+      modelSupportsTools?: boolean;
+    },
+  ): Promise<{
+    threadId: string;
+    promptMessageId: string;
+    jobId: Id<"extractionJobs">;
+  }> {
+    const { userId, jobId, threadId } = await seedUserAndChatJob(t);
+    const { modelId } = await t.run(async (ctx) => {
+      const now = Date.now();
+      const insertedModelId = await ctx.db.insert("models", {
+        modelId: "mock/model",
+        name: "Mock Model",
+        provider: "openrouter",
+        inputPricePerMillion: 0,
+        outputPricePerMillion: 0,
+        costMarkup: 1,
+        isServed: true,
+        sortOrder: 0,
+        syncedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        ...(opts.modelSupportsTools
+          ? { supportedParameters: ["tools"] }
+          : {}),
+      });
+      await ctx.db.insert("credits", {
+        userId,
+        freeBalance: 10_000,
+        paidBalance: 0,
+        lifetimeUsed: 0,
+        lastUpdatedAt: now,
+      });
+      return { modelId: insertedModelId };
+    });
+    await t.run(async (ctx) =>
+      ctx.db.patch(jobId, {
+        chatModelId: modelId,
+        ...(opts.webSearchEnabled !== undefined
+          ? { webSearchEnabled: opts.webSearchEnabled }
+          : {}),
+      }),
+    );
+    await seedChatPapers(t, jobId, [true]);
+    const promptMessageId = await seedUserMessage(t, threadId, "ping");
+    return { threadId, promptMessageId, jobId };
+  }
+
+  it("toggle off → no tools arg passed to paperChat.streamText", async () => {
+    const t = createTestConvex();
+    mockDoStream.mockImplementation(finishingDoStream(["ok"]));
+    const spy = vi.spyOn(paperChat, "streamText");
+
+    const { threadId, promptMessageId } = await seedToolWiringScenario(t, {
+      webSearchEnabled: false,
+      modelSupportsTools: true,
+    });
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    const call = spy.mock.calls.at(-1);
+    expect(call).toBeDefined();
+    const opts = call![2] as Record<string, unknown>;
+    expect(opts).not.toHaveProperty("tools");
+
+    spy.mockRestore();
+  });
+
+  it("toggle on, capability true, Tavily key set → tools.web_search is the function-shaped Tavily tool", async () => {
+    const t = createTestConvex();
+    mockDoStream.mockImplementation(finishingDoStream(["ok"]));
+    vi.stubEnv("TAVILY_API_KEY", "tvly-test");
+    const spy = vi.spyOn(paperChat, "streamText");
+
+    const { threadId, promptMessageId } = await seedToolWiringScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: true,
+    });
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    const call = spy.mock.calls.at(-1);
+    expect(call).toBeDefined();
+    const opts = call![2] as { tools?: Record<string, { type?: string; id?: string }> };
+    expect(opts.tools).toBeDefined();
+    expect(opts.tools).toHaveProperty("web_search");
+    const tool = opts.tools!.web_search;
+    expect(tool.type ?? "function").toBe("function");
+    expect(tool).not.toHaveProperty("id");
+
+    spy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it("toggle on, capability true, no Tavily key → tools.web_search is the OpenRouter provider-defined tool", async () => {
+    const t = createTestConvex();
+    mockDoStream.mockImplementation(finishingDoStream(["ok"]));
+    vi.stubEnv("TAVILY_API_KEY", "");
+    const spy = vi.spyOn(paperChat, "streamText");
+
+    const { threadId, promptMessageId } = await seedToolWiringScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: true,
+    });
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    const call = spy.mock.calls.at(-1);
+    expect(call).toBeDefined();
+    const opts = call![2] as { tools?: Record<string, { type?: string; id?: string }> };
+    expect(opts.tools).toBeDefined();
+    const tool = opts.tools!.web_search;
+    expect(tool.type).toBe("provider");
+    expect(tool.id).toBe("openrouter.web_search");
+
+    spy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it("toggle on but capability missing → tools field is omitted (silent downgrade)", async () => {
+    const t = createTestConvex();
+    mockDoStream.mockImplementation(finishingDoStream(["ok"]));
+    vi.stubEnv("TAVILY_API_KEY", "tvly-test");
+    const spy = vi.spyOn(paperChat, "streamText");
+
+    const { threadId, promptMessageId } = await seedToolWiringScenario(t, {
+      webSearchEnabled: true,
+      modelSupportsTools: false,
+    });
+
+    await t.action(internal.chat.messages.generateResponse, {
+      threadId,
+      promptMessageId,
+    });
+
+    const call = spy.mock.calls.at(-1);
+    expect(call).toBeDefined();
+    const opts = call![2] as Record<string, unknown>;
+    expect(opts).not.toHaveProperty("tools");
+
+    spy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+});

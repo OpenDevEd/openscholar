@@ -35,12 +35,17 @@ import {
   toUIMessages,
   vStreamArgs,
 } from "@convex-dev/agent";
+import type { ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
 import { resolveOpenRouterModel } from "./provider";
+import { pickWebSearchTool } from "./tools/select-web-search-tool";
+import { buildOpenRouterWebSearchTool } from "./tools/openrouter-web-search";
+import { buildTavilyWebSearchTool } from "./tools/tavily-web-search";
+import { modelSupportsWebSearch } from "../../lib/chat/web-search-capability";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {
   classifyChatError,
@@ -385,6 +390,35 @@ export const generateResponse = internalAction({
       );
       capturedModelSlug = modelSlug;
 
+      // Plan-06: pick the web-search path based on the per-thread
+      // toggle, the model's tool-calling capability, and Tavily key
+      // presence. The selector itself stays pure — env reads happen
+      // here so a key rotation takes effect without a redeploy.
+      const tavilyApiKey = process.env.TAVILY_API_KEY;
+      const webSearchPath = pickWebSearchTool({
+        enabled: meta.webSearchEnabled,
+        modelSupportsWebSearch: modelSupportsWebSearch({
+          supportedParameters: meta.modelSupportedParameters,
+        }),
+        hasTavilyKey: Boolean(tavilyApiKey),
+      });
+      let tools: ToolSet | undefined;
+      if (webSearchPath === "tavily") {
+        tools = {
+          web_search: buildTavilyWebSearchTool({
+            apiKey: tavilyApiKey!,
+            costSink: async (credits) => {
+              await ctx.runMutation(internal.chat.billing.recordTavilyCost, {
+                threadId,
+                tavilyCredits: credits,
+              });
+            },
+          }),
+        } as ToolSet;
+      } else if (webSearchPath === "openrouter") {
+        tools = { web_search: buildOpenRouterWebSearchTool() } as ToolSet;
+      }
+
       try {
         await paperChat.streamText(
           ctx,
@@ -393,6 +427,7 @@ export const generateResponse = internalAction({
             promptMessageId,
             model,
             abortSignal: abortController.signal,
+            ...(tools ? { tools } : {}),
             // Retries serve no user when the stream is live — the user
             // is watching and would prefer a fast failure or a clean
             // abort over a ~2s wait for a retry that mid-stream can't
