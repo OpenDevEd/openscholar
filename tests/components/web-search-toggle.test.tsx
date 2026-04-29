@@ -3,29 +3,38 @@
  *
  * Behavioural tests for the chat composer's web-search toggle.
  *
- * Locks the contract laid out in plans/chat-web-search-grounding/07-composer-toggle-ui.md:
+ * Locks the contract laid out in plans/chat-web-search-grounding/07-composer-toggle-ui.md
+ * and plans/unified-pricing/03-rewire-ui-and-i18n.md:
  *  - aria-pressed mirrors the persisted server state
  *  - the button is disabled when the active model lacks the "tools" capability
  *    or when the chat is generating
  *  - clicking flips the value via setChatWebSearchEnabled
- *  - tooltip text differentiates unsupported / on / off states
+ *  - tooltip text differentiates unsupported / on / off-loading / off-with-real-credits states
+ *  - off-state tooltip is interpolated with the resolved credit count from
+ *    `getChatWebSearchPricing`
+ *  - data-web-search-source / data-web-search-credits-estimate track the
+ *    active path resolution
  *
  * Per CLAUDE.md, no Tailwind class assertions appear here. Behaviour is
- * surfaced through aria-pressed, data-web-search-enabled, data-web-search-supported,
- * the tooltip text, and the underlying mutation call.
+ * surfaced through aria-pressed, data-* attributes, and tooltip text.
  */
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { WebSearchToggle } from "@/components/extraction/chat/web-search-toggle";
 
 const setWebSearchMock = vi.fn().mockResolvedValue(undefined);
+const pricingMock = vi.fn();
 
 vi.mock("convex/react", () => ({
   useMutation: (fnRef: unknown) => {
     if (fnRef === "setChatWebSearchEnabled") return setWebSearchMock;
     return vi.fn();
+  },
+  useQuery: (fnRef: unknown) => {
+    if (fnRef === "getChatWebSearchPricing") return pricingMock();
+    return undefined;
   },
 }));
 
@@ -34,13 +43,36 @@ vi.mock("@/convex/_generated/api", () => ({
     chat: {
       messages: {
         setChatWebSearchEnabled: "setChatWebSearchEnabled",
+        getChatWebSearchPricing: "getChatWebSearchPricing",
       },
     },
   },
 }));
 
+// Inline locale templates — these mirror the en-US strings owned by
+// plan 03 U4 below. Keeps the test self-contained (no JSON load) while
+// still letting us assert on the *rendered* tooltip rather than on the
+// translation key, which is the contract real users observe.
+const composerStrings: Record<string, string> = {
+  "webSearch.label": "Web",
+  "webSearch.ariaEnable": "Enable web search",
+  "webSearch.ariaDisable": "Disable web search",
+  "webSearch.tooltipUnsupported": "Selected model does not support web search.",
+  "webSearch.tooltipOn": "Web search on. Click to disable.",
+  "webSearch.tooltipOff":
+    "Search the web for current info (~{credits} credits per search).",
+  "webSearch.tooltipOffLoading": "Search the web for current info.",
+};
+
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string, vars?: Record<string, unknown>) => {
+    const template = composerStrings[key] ?? key;
+    if (!vars) return template;
+    return Object.entries(vars).reduce(
+      (acc, [name, value]) => acc.replaceAll(`{${name}}`, String(value)),
+      template,
+    );
+  },
 }));
 
 vi.mock("@/components/ui/tooltip", () => {
@@ -63,15 +95,24 @@ const baseProps = {
   isGenerating: false,
 };
 
+beforeEach(() => {
+  pricingMock.mockReset();
+  pricingMock.mockReturnValue({
+    source: "tavily-basic",
+    usdPerCall: 0.008,
+    creditsPerCall: 104,
+  });
+});
+
 describe("<WebSearchToggle>", () => {
   it("aria-pressed reflects the enabled prop", () => {
     const { rerender } = render(<WebSearchToggle {...baseProps} enabled={false} />);
-    const off = screen.getByRole("button", { name: /webSearch\.ariaEnable/i });
+    const off = screen.getByRole("button", { name: /enable web search/i });
     expect(off).toHaveAttribute("aria-pressed", "false");
     expect(off).toHaveAttribute("data-web-search-enabled", "false");
 
     rerender(<WebSearchToggle {...baseProps} enabled={true} />);
-    const on = screen.getByRole("button", { name: /webSearch\.ariaDisable/i });
+    const on = screen.getByRole("button", { name: /disable web search/i });
     expect(on).toHaveAttribute("aria-pressed", "true");
     expect(on).toHaveAttribute("data-web-search-enabled", "true");
   });
@@ -121,7 +162,6 @@ describe("<WebSearchToggle>", () => {
     render(<WebSearchToggle {...baseProps} isGenerating={true} />);
     const btn = screen.getByRole("button");
     expect(btn).toBeDisabled();
-    // Capability is still true — the gate is the live generation, not the model.
     expect(btn).toHaveAttribute("data-web-search-supported", "true");
   });
 
@@ -148,9 +188,13 @@ describe("<WebSearchToggle>", () => {
     expect(setWebSearchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("tooltip text differentiates unsupported, on, and off states", () => {
-    // Unsupported wins regardless of the enabled flag.
-    const { rerender } = render(
+  it("renders tooltipUnsupported when the model lacks tools (regardless of pricing)", () => {
+    pricingMock.mockReturnValue({
+      source: "unsupported",
+      usdPerCall: null,
+      creditsPerCall: null,
+    });
+    render(
       <WebSearchToggle
         {...baseProps}
         enabled={true}
@@ -158,11 +202,12 @@ describe("<WebSearchToggle>", () => {
       />,
     );
     expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
-      "webSearch.tooltipUnsupported",
+      /does not support web search/i,
     );
+  });
 
-    // Capable + on.
-    rerender(
+  it("renders tooltipOn when the toggle is on", () => {
+    render(
       <WebSearchToggle
         {...baseProps}
         enabled={true}
@@ -170,11 +215,38 @@ describe("<WebSearchToggle>", () => {
       />,
     );
     expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
-      "webSearch.tooltipOn",
+      /web search on/i,
     );
+  });
 
-    // Capable + off.
-    rerender(
+  it("renders tooltipOff interpolated with the resolved Tavily-basic credit count", () => {
+    pricingMock.mockReturnValue({
+      source: "tavily-basic",
+      usdPerCall: 0.008,
+      creditsPerCall: 104,
+    });
+    render(
+      <WebSearchToggle
+        {...baseProps}
+        enabled={false}
+        modelSupportedParameters={["tools"]}
+      />,
+    );
+    const tooltip = screen.getByTestId("tooltip-content");
+    expect(tooltip).toHaveTextContent(/104 credits per search/i);
+    expect(tooltip).not.toHaveTextContent(/\{credits\}/);
+    const btn = screen.getByRole("button");
+    expect(btn).toHaveAttribute("data-web-search-source", "tavily-basic");
+    expect(btn).toHaveAttribute("data-web-search-credits-estimate", "104");
+  });
+
+  it("renders tooltipOff interpolated with the OpenRouter server-tool credit count", () => {
+    pricingMock.mockReturnValue({
+      source: "openrouter-server-tool",
+      usdPerCall: 0.02,
+      creditsPerCall: 260,
+    });
+    render(
       <WebSearchToggle
         {...baseProps}
         enabled={false}
@@ -182,7 +254,30 @@ describe("<WebSearchToggle>", () => {
       />,
     );
     expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
-      "webSearch.tooltipOff",
+      /260 credits per search/i,
     );
+    expect(screen.getByRole("button")).toHaveAttribute(
+      "data-web-search-source",
+      "openrouter-server-tool",
+    );
+  });
+
+  it("renders tooltipOffLoading while pricing resolves (no '0 credits' flash)", () => {
+    pricingMock.mockReturnValue(undefined);
+    render(
+      <WebSearchToggle
+        {...baseProps}
+        enabled={false}
+        modelSupportedParameters={["tools"]}
+      />,
+    );
+    const tooltip = screen.getByTestId("tooltip-content");
+    expect(tooltip).toHaveTextContent(/Search the web for current info\.$/);
+    expect(tooltip).not.toHaveTextContent(/0 credits per search/);
+    expect(tooltip).not.toHaveTextContent(/\$/);
+    // data attrs reflect "we don't know yet" without flashing concrete values.
+    const btn = screen.getByRole("button");
+    expect(btn).toHaveAttribute("data-web-search-source", "unsupported");
+    expect(btn).toHaveAttribute("data-web-search-credits-estimate", "0");
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { Globe } from "lucide-react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,14 @@ export function WebSearchToggle({
 }: WebSearchToggleProps) {
   const t = useTranslations("composer");
   const setWebSearch = useMutation(api.chat.messages.setChatWebSearchEnabled);
+  // Resolves the active path + per-call credit cost server-side so the
+  // off-state tooltip can show the real cost-if-enabled instead of a
+  // static placeholder. `pricing === undefined` while the subscription
+  // is still loading; we render `tooltipOffLoading` in that window so
+  // there's never a "~0 credits per search" flash.
+  const pricing = useQuery(api.chat.messages.getChatWebSearchPricing, {
+    threadId,
+  });
   const supported = modelSupportsWebSearch({
     supportedParameters: modelSupportedParameters ?? undefined,
   });
@@ -37,7 +45,11 @@ export function WebSearchToggle({
     ? t("webSearch.tooltipUnsupported")
     : enabled
       ? t("webSearch.tooltipOn")
-      : t("webSearch.tooltipOff");
+      : pricing === undefined
+        ? t("webSearch.tooltipOffLoading")
+        : t("webSearch.tooltipOff", {
+            credits: pricing.creditsPerCall ?? 0,
+          });
 
   const ariaLabel = enabled
     ? t("webSearch.ariaDisable")
@@ -56,6 +68,8 @@ export function WebSearchToggle({
           data-action="toggle-web-search"
           data-web-search-enabled={String(enabled)}
           data-web-search-supported={String(supported)}
+          data-web-search-source={pricing?.source ?? "unsupported"}
+          data-web-search-credits-estimate={String(pricing?.creditsPerCall ?? 0)}
           className={cn(
             "h-7 gap-1.5 rounded-full px-2 text-xs font-medium",
             enabled
