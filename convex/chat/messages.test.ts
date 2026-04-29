@@ -677,6 +677,31 @@ describe("chat.messages.setChatWebSearchEnabled", () => {
     const after = await t.run(async (ctx) => ctx.db.get(jobId));
     expect(after?.webSearchEnabled).toBe(true);
   });
+
+  it("rejects callers who don't own the thread", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t);
+    await t.run(async (ctx) =>
+      ctx.db.insert("users", {
+        clerkId: "c_other",
+        email: "o@t",
+        state: "active",
+        createdAt: 0,
+        updatedAt: 0,
+      }),
+    );
+    const other = asCaller(t, "c_other");
+
+    await expect(
+      other.mutation(api.chat.messages.setChatWebSearchEnabled, {
+        threadId,
+        enabled: true,
+      }),
+    ).rejects.toThrow(/access denied|forbidden/i);
+
+    const after = await t.run(async (ctx) => ctx.db.get(jobId));
+    expect(after?.webSearchEnabled).toBeUndefined();
+  });
 });
 
 describe("chat.messages.generateResponse — stop-streaming wiring", () => {
