@@ -1,3 +1,5 @@
+import { convertUsdToCredits } from "@/lib/pricing";
+
 export const CREDIT_TOPUP_CURRENCY = "usd" as const;
 export const DEFAULT_CREDITS_PER_USD = 10_000;
 
@@ -31,8 +33,11 @@ export function convertDollarsToCredits(
   dollars: number,
   creditsPerUsd = getCreditsPerUsd(),
 ): number {
-  if (!Number.isFinite(dollars) || dollars <= 0) return 0;
-  return Math.max(1, Math.ceil(dollars * creditsPerUsd));
+  // No markup at this layer — callers either pre-apply markup
+  // (`convertUsdCostToCredits` does) or are paying for a top-up bundle
+  // at the raw exchange rate. Pass `markup: 1` and delegate to the
+  // shared `convertUsdToCredits` formula in `@/lib/pricing`.
+  return convertUsdToCredits({ usd: dollars, markup: 1, creditsPerUsd });
 }
 
 export function convertCreditsToAmountCents(
