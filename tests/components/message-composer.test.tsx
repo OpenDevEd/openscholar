@@ -101,6 +101,12 @@ vi.mock("@/components/extraction/chat/composer-model-picker", () => ({
   ComposerModelPicker: () => <div data-testid="composer-model-picker" />,
 }));
 
+// Same rationale for the web-search toggle — its capability gating, mutation,
+// and tooltip provider needs are exercised in tests/components/web-search-toggle.test.tsx.
+vi.mock("@/components/extraction/chat/web-search-toggle", () => ({
+  WebSearchToggle: () => <div data-testid="web-search-toggle" />,
+}));
+
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
     Element.prototype.hasPointerCapture = () => false;
