@@ -115,6 +115,9 @@ export function transformModel(raw: OpenRouterModel) {
     cacheWritePricePerMillion: parsePerMillion(raw.pricing?.input_cache_write) ?? undefined,
     reasoningPricePerMillion: parsePerMillion(raw.pricing?.internal_reasoning) ?? undefined,
     webSearchPrice: parseDollars(raw.pricing?.web_search) ?? undefined,
+    // image/audio: per-token dollars (verified — Gemini bills images and
+    // every audio-bearing model bills audio as input tokens; raw values
+    // match each provider's published $/M token rate exactly).
     imagePricePerMillion: parsePerMillion(raw.pricing?.image) ?? undefined,
     audioPricePerMillion: parsePerMillion(raw.pricing?.audio) ?? undefined,
 
