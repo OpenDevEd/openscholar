@@ -11,7 +11,9 @@ import { SERVER_AI_CONFIG } from "../ai/config";
  *   via resolveOpenRouterModel(ctx, job.chatModelId).
  * - No embeddingModel: chat has no RAG path; answers come from abstracts
  *   embedded directly in the system prompt.
- * - stopWhen: stepCountIs(1) disables tool looping — V1 has no tools.
+ * - stopWhen: stepCountIs(5) is a CAP, not a forced step count. Single-
+ *   turn questions still terminate at step 1; the cap exists to bound
+ *   tool loops (web search → reflect → answer) at five steps total.
  * - Billing is handled in chat/messages.generateResponse after the
  *   stream settles; keep the agent callback path free of extra DB work
  *   so stop/abort transitions do not race dangling mutations.
@@ -63,5 +65,5 @@ export const paperChat: Agent = new Agent(components.agent, {
   storageOptions: {
     saveMessages: "promptAndOutput",
   },
-  stopWhen: stepCountIs(1),
+  stopWhen: stepCountIs(5),
 });
