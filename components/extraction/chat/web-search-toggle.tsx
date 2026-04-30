@@ -1,9 +1,9 @@
 "use client";
 
-import { Globe } from "lucide-react";
+import { Coins, Globe, Zap } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Tooltip,
   TooltipContent,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { modelSupportsWebSearch } from "@/lib/chat/web-search-capability";
+import { modeToggleSpring } from "@/lib/animation-config";
 import { api } from "@/convex/_generated/api";
 
 interface WebSearchToggleProps {
@@ -20,6 +21,8 @@ interface WebSearchToggleProps {
   isGenerating: boolean;
 }
 
+type ToggleState = "on" | "off" | "unsupported";
+
 export function WebSearchToggle({
   threadId,
   enabled,
@@ -27,12 +30,8 @@ export function WebSearchToggle({
   isGenerating,
 }: WebSearchToggleProps) {
   const t = useTranslations("composer");
+  const reduceMotion = useReducedMotion();
   const setWebSearch = useMutation(api.chat.messages.setChatWebSearchEnabled);
-  // Resolves the active path + per-call credit cost server-side so the
-  // off-state tooltip can show the real cost-if-enabled instead of a
-  // static placeholder. `pricing === undefined` while the subscription
-  // is still loading; we render `tooltipOffLoading` in that window so
-  // there's never a "~0 credits per search" flash.
   const pricing = useQuery(api.chat.messages.getChatWebSearchPricing, {
     threadId,
   });
@@ -40,51 +39,234 @@ export function WebSearchToggle({
     supportedParameters: modelSupportedParameters ?? undefined,
   });
   const disabled = !supported || isGenerating;
-
-  const tooltipText = !supported
-    ? t("webSearch.tooltipUnsupported")
+  const state: ToggleState = !supported
+    ? "unsupported"
     : enabled
-      ? t("webSearch.tooltipOn")
-      : pricing === undefined
-        ? t("webSearch.tooltipOffLoading")
-        : t("webSearch.tooltipOff", {
-            credits: pricing.creditsPerCall ?? 0,
-          });
+      ? "on"
+      : "off";
 
   const ariaLabel = enabled
     ? t("webSearch.ariaDisable")
     : t("webSearch.ariaEnable");
 
+  const interactive = !disabled && !reduceMotion;
+
+  const title =
+    state === "on"
+      ? t("webSearch.titleOn")
+      : state === "off"
+        ? t("webSearch.titleOff")
+        : t("webSearch.titleUnsupported");
+
+  const body =
+    state === "on"
+      ? t("webSearch.bodyOn")
+      : state === "off"
+        ? t("webSearch.bodyOff")
+        : t("webSearch.bodyUnsupported");
+
+  // Friendly provider name for the meta row. Returning `null` hides the
+  // row entirely — we never want to show the raw "tavily-basic" slug.
+  const providerLabel = (() => {
+    switch (pricing?.source) {
+      case "tavily-basic":
+        return t("webSearch.providerTavilyBasic");
+      case "openrouter-server-tool":
+        return t("webSearch.providerOpenRouter");
+      default:
+        return null;
+    }
+  })();
+
+  const showMeta = state !== "unsupported";
+  const pricingResolved = pricing !== undefined;
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
+        <motion.button
           type="button"
-          variant="ghost"
-          size="sm"
           aria-pressed={enabled}
           aria-label={ariaLabel}
           disabled={disabled}
           data-action="toggle-web-search"
+          data-web-search-state={state}
           data-web-search-enabled={String(enabled)}
           data-web-search-supported={String(supported)}
           data-web-search-source={pricing?.source ?? "unsupported"}
-          data-web-search-credits-estimate={String(pricing?.creditsPerCall ?? 0)}
-          className={cn(
-            "h-7 gap-1.5 rounded-full px-2 text-xs font-medium",
-            enabled
-              ? "bg-accent text-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          data-web-search-credits-estimate={String(
+            pricing?.creditsPerCall ?? 0,
           )}
+          whileHover={interactive ? { scale: 1.04 } : undefined}
+          whileTap={interactive ? { scale: 0.94 } : undefined}
+          transition={modeToggleSpring}
           onClick={() => {
             void setWebSearch({ threadId, enabled: !enabled });
           }}
+          className={cn(
+            "relative inline-flex h-7 select-none items-center gap-1.5 rounded-full px-2.5 text-xs font-medium",
+            "outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "transition-[background,color,box-shadow,border-color] duration-200",
+            "disabled:pointer-events-none disabled:opacity-50",
+            state === "off" &&
+              "text-muted-foreground hover:bg-accent hover:text-foreground",
+            state === "unsupported" && "text-muted-foreground/60",
+            state === "on" &&
+              "bg-gradient-to-r from-primary/15 via-primary/10 to-[oklch(0.55_0.15_293/0.12)] text-primary shadow-[inset_0_0_0_1px_oklch(0.7_0.17_54/0.30),0_0_18px_-4px_oklch(0.7_0.17_54/0.45)] hover:shadow-[inset_0_0_0_1px_oklch(0.7_0.17_54/0.45),0_0_22px_-2px_oklch(0.7_0.17_54/0.55)] dark:from-primary/20 dark:via-primary/10 dark:to-[oklch(0.65_0.15_293/0.18)]",
+          )}
         >
-          <Globe className="size-3.5" />
+          <motion.span
+            className="relative inline-flex"
+            initial={false}
+            animate={reduceMotion ? undefined : { rotate: enabled ? 360 : 0 }}
+            transition={{ duration: 0.45, ease: [0.32, 0.72, 0, 1] }}
+          >
+            <Globe className="size-3.5" aria-hidden="true" />
+            {state === "on" ? (
+              <span
+                aria-hidden="true"
+                data-web-search-pulse=""
+                className="web-search-pulse pointer-events-none absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-primary shadow-[0_0_5px_oklch(0.7_0.17_54/0.85)]"
+              />
+            ) : null}
+          </motion.span>
           <span className="hidden sm:inline">{t("webSearch.label")}</span>
-        </Button>
+        </motion.button>
       </TooltipTrigger>
-      <TooltipContent side="top">{tooltipText}</TooltipContent>
+      <TooltipContent
+        side="top"
+        sideOffset={8}
+        className="w-[260px] max-w-[260px] overflow-hidden border border-border bg-popover p-0 text-popover-foreground shadow-xl"
+        arrowClassName="bg-popover fill-popover"
+      >
+        {/* State-tinted gradient bar — instant visual signal of the state
+            even before reading the title. Two-stop gradient on the
+            on-state mirrors the pill's warm-orange → AI-violet feel. */}
+        <div
+          aria-hidden="true"
+          data-web-search-tooltip-bar={state}
+          className={cn(
+            "h-[3px] w-full",
+            state === "on" &&
+              "bg-gradient-to-r from-primary via-primary/70 to-[oklch(0.55_0.15_293)]",
+            state === "off" &&
+              "bg-gradient-to-r from-muted-foreground/35 via-muted-foreground/20 to-muted-foreground/10",
+            state === "unsupported" &&
+              "bg-gradient-to-r from-destructive/70 to-destructive/30",
+          )}
+        />
+
+        <div className="px-3 pt-2.5 pb-3">
+          {/* Title row — title text + status pill (or no pill in the
+              unsupported state, where the title alone carries it). */}
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <p
+              className="text-[12.5px] font-semibold leading-snug text-popover-foreground"
+              data-web-search-tooltip-title={state}
+            >
+              {title}
+            </p>
+            {state !== "unsupported" ? (
+              <span
+                data-web-search-status-pill={state}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                  state === "on" && "bg-primary/15 text-primary",
+                  state === "off" &&
+                    "bg-muted text-muted-foreground/80",
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    state === "on" &&
+                      "web-search-pulse bg-primary shadow-[0_0_4px_oklch(0.7_0.17_54/0.85)]",
+                    state === "off" && "bg-muted-foreground/45",
+                  )}
+                />
+                {state === "on"
+                  ? t("webSearch.statusOn")
+                  : t("webSearch.statusOff")}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Body — full sentence describing the state. */}
+          <p
+            className="text-[11.5px] leading-relaxed text-muted-foreground"
+            data-web-search-tooltip-body={state}
+          >
+            {body}
+          </p>
+
+          {/* Meta section — cost + provider. Shown in both on/off states
+              once pricing resolves so the user always knows what each
+              search costs and which provider runs it. The unsupported
+              state suppresses meta entirely (nothing to bill). */}
+          {showMeta ? (
+            <div className="mt-2.5 space-y-1.5 border-t border-border/60 pt-2">
+              {pricingResolved ? (
+                <>
+                  <div
+                    className="flex items-center gap-2 text-[11px]"
+                    data-tooltip-cost-line=""
+                  >
+                    <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted/70 text-muted-foreground">
+                      <Coins className="size-2.5" aria-hidden="true" />
+                    </span>
+                    <span className="text-muted-foreground">
+                      {t("webSearch.metaCost", {
+                        credits: pricing.creditsPerCall ?? 0,
+                      })}
+                    </span>
+                  </div>
+                  {providerLabel ? (
+                    <div
+                      className="flex items-center gap-2 text-[11px]"
+                      data-tooltip-provider-line=""
+                    >
+                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-[oklch(0.55_0.15_293/0.12)] text-[oklch(0.45_0.16_293)] dark:text-[oklch(0.78_0.12_293)]">
+                        <Zap className="size-2.5" aria-hidden="true" />
+                      </span>
+                      <span className="text-muted-foreground">
+                        {t("webSearch.metaProvider", {
+                          provider: providerLabel,
+                        })}
+                      </span>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div
+                  className="flex items-center gap-2 text-[11px]"
+                  data-tooltip-cost-loading=""
+                >
+                  <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted/40 text-muted-foreground/60">
+                    <Coins className="size-2.5" aria-hidden="true" />
+                  </span>
+                  <span className="italic text-muted-foreground/70">
+                    {t("webSearch.metaCostLoading")}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {/* Footer — micro-hint reinforcing the click affordance. Only
+              when the toggle is actionable; suppressed in unsupported. */}
+          {state !== "unsupported" ? (
+            <p
+              className="mt-2 text-[10.5px] leading-tight text-muted-foreground/60"
+              data-web-search-tooltip-hint={state}
+            >
+              {state === "on"
+                ? t("webSearch.hintDisable")
+                : t("webSearch.hintEnable")}
+            </p>
+          ) : null}
+        </div>
+      </TooltipContent>
     </Tooltip>
   );
 }

@@ -1000,10 +1000,21 @@
       "label": "ウェブ",
       "ariaEnable": "ウェブ検索を有効にする",
       "ariaDisable": "ウェブ検索を無効にする",
-      "tooltipUnsupported": "選択中のモデルはウェブ検索に対応していません。",
-      "tooltipOn": "ウェブ検索はオンです。クリックで無効化。",
-      "tooltipOff": "最新情報をウェブで検索（1 回あたり約 {credits} クレジット）。",
-      "tooltipOffLoading": "最新情報をウェブで検索します。"
+      "titleOn": "ウェブ検索: 有効",
+      "titleOff": "ウェブ検索: 待機中",
+      "titleUnsupported": "ウェブ検索: 利用不可",
+      "bodyOn": "各返信に最新のウェブソースが追加されます。",
+      "bodyOff": "クリックして、リアルタイムのウェブページで回答を裏付けます。",
+      "bodyUnsupported": "選択中のモデルはツール経由のウェブ検索に対応していません。有効化するにはモデルを変更してください。",
+      "metaCost": "1 回あたり約 {credits, number} クレジット",
+      "metaCostLoading": "料金を計算中…",
+      "metaProvider": "{provider} 経由",
+      "providerTavilyBasic": "Tavily Basic",
+      "providerOpenRouter": "OpenRouter ネイティブ",
+      "statusOn": "オン",
+      "statusOff": "オフ",
+      "hintEnable": "クリックで有効化",
+      "hintDisable": "クリックで無効化"
     }
   },
   "toast": {

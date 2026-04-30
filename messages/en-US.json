@@ -1026,10 +1026,21 @@
       "label": "Web",
       "ariaEnable": "Enable web search",
       "ariaDisable": "Disable web search",
-      "tooltipUnsupported": "Selected model does not support web search.",
-      "tooltipOn": "Web search on. Click to disable.",
-      "tooltipOff": "Search the web for current info (~{credits} credits per search).",
-      "tooltipOffLoading": "Search the web for current info."
+      "titleOn": "Web search active",
+      "titleOff": "Web search ready",
+      "titleUnsupported": "Web search unavailable",
+      "bodyOn": "Each reply will pull fresh sources from the live web.",
+      "bodyOff": "Click to ground answers in real-time pages from the live web.",
+      "bodyUnsupported": "The selected model can't run tool-based web searches. Switch models to enable.",
+      "metaCost": "~{credits, number} credits per search",
+      "metaCostLoading": "Calculating cost…",
+      "metaProvider": "via {provider}",
+      "providerTavilyBasic": "Tavily Basic",
+      "providerOpenRouter": "OpenRouter native",
+      "statusOn": "On",
+      "statusOff": "Off",
+      "hintEnable": "Click to enable",
+      "hintDisable": "Click to disable"
     }
   },
   "toast": {

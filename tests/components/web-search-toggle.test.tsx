@@ -3,20 +3,21 @@
  *
  * Behavioural tests for the chat composer's web-search toggle.
  *
- * Locks the contract laid out in plans/chat-web-search-grounding/07-composer-toggle-ui.md
- * and plans/unified-pricing/03-rewire-ui-and-i18n.md:
- *  - aria-pressed mirrors the persisted server state
- *  - the button is disabled when the active model lacks the "tools" capability
- *    or when the chat is generating
- *  - clicking flips the value via setChatWebSearchEnabled
- *  - tooltip text differentiates unsupported / on / off-loading / off-with-real-credits states
- *  - off-state tooltip is interpolated with the resolved credit count from
- *    `getChatWebSearchPricing`
- *  - data-web-search-source / data-web-search-credits-estimate track the
- *    active path resolution
+ * The toggle exposes its semantic state through aria-pressed, data-* hooks,
+ * and tooltip text. None of these tests look at class names or inline
+ * styles — per the testing doctrine in CLAUDE.md, those are round-trips
+ * that prove nothing about the user-visible behaviour.
  *
- * Per CLAUDE.md, no Tailwind class assertions appear here. Behaviour is
- * surfaced through aria-pressed, data-* attributes, and tooltip text.
+ * Contract surfaced here:
+ *  - aria-pressed mirrors the persisted server state
+ *  - the button is disabled when the active model lacks the "tools"
+ *    capability or when the chat is generating
+ *  - clicking flips the value via setChatWebSearchEnabled
+ *  - tooltip renders a richer surface: title, body, status pill, and
+ *    (when supported) cost + provider meta rows in BOTH on and off states
+ *  - data-web-search-source / data-web-search-credits-estimate /
+ *    data-web-search-state track the active path resolution
+ *  - reduced-motion safe: motion.button still renders a real <button>
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -49,19 +50,30 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
-// Inline locale templates — these mirror the en-US strings owned by
-// plan 03 U4 below. Keeps the test self-contained (no JSON load) while
-// still letting us assert on the *rendered* tooltip rather than on the
-// translation key, which is the contract real users observe.
+// Inline locale templates — mirror the en-US strings owned by this plan.
+// Keeps the test self-contained (no JSON load) while still letting us
+// assert on the *rendered* tooltip rather than on the translation key.
 const composerStrings: Record<string, string> = {
   "webSearch.label": "Web",
   "webSearch.ariaEnable": "Enable web search",
   "webSearch.ariaDisable": "Disable web search",
-  "webSearch.tooltipUnsupported": "Selected model does not support web search.",
-  "webSearch.tooltipOn": "Web search on. Click to disable.",
-  "webSearch.tooltipOff":
-    "Search the web for current info (~{credits} credits per search).",
-  "webSearch.tooltipOffLoading": "Search the web for current info.",
+  "webSearch.titleOn": "Web search active",
+  "webSearch.titleOff": "Web search ready",
+  "webSearch.titleUnsupported": "Web search unavailable",
+  "webSearch.bodyOn": "Each reply will pull fresh sources from the live web.",
+  "webSearch.bodyOff":
+    "Click to ground answers in real-time pages from the live web.",
+  "webSearch.bodyUnsupported":
+    "The selected model can't run tool-based web searches. Switch models to enable.",
+  "webSearch.metaCost": "~{credits} credits per search",
+  "webSearch.metaCostLoading": "Calculating cost…",
+  "webSearch.metaProvider": "via {provider}",
+  "webSearch.providerTavilyBasic": "Tavily Basic",
+  "webSearch.providerOpenRouter": "OpenRouter native",
+  "webSearch.statusOn": "On",
+  "webSearch.statusOff": "Off",
+  "webSearch.hintEnable": "Click to enable",
+  "webSearch.hintDisable": "Click to disable",
 };
 
 vi.mock("next-intl", () => ({
@@ -105,16 +117,20 @@ beforeEach(() => {
 });
 
 describe("<WebSearchToggle>", () => {
-  it("aria-pressed reflects the enabled prop", () => {
-    const { rerender } = render(<WebSearchToggle {...baseProps} enabled={false} />);
+  it("aria-pressed reflects the enabled prop and data-web-search-state mirrors it", () => {
+    const { rerender } = render(
+      <WebSearchToggle {...baseProps} enabled={false} />,
+    );
     const off = screen.getByRole("button", { name: /enable web search/i });
     expect(off).toHaveAttribute("aria-pressed", "false");
     expect(off).toHaveAttribute("data-web-search-enabled", "false");
+    expect(off).toHaveAttribute("data-web-search-state", "off");
 
     rerender(<WebSearchToggle {...baseProps} enabled={true} />);
     const on = screen.getByRole("button", { name: /disable web search/i });
     expect(on).toHaveAttribute("aria-pressed", "true");
     expect(on).toHaveAttribute("data-web-search-enabled", "true");
+    expect(on).toHaveAttribute("data-web-search-state", "on");
   });
 
   it("is disabled when the active model lacks the tools capability", () => {
@@ -127,24 +143,22 @@ describe("<WebSearchToggle>", () => {
     const btn = screen.getByRole("button");
     expect(btn).toBeDisabled();
     expect(btn).toHaveAttribute("data-web-search-supported", "false");
+    expect(btn).toHaveAttribute("data-web-search-state", "unsupported");
 
-    // No supported_parameters at all (e.g. legacy row, undefined field) → still gated off.
-    rerender(<WebSearchToggle {...baseProps} modelSupportedParameters={undefined} />);
+    rerender(
+      <WebSearchToggle {...baseProps} modelSupportedParameters={undefined} />,
+    );
     expect(screen.getByRole("button")).toBeDisabled();
     expect(screen.getByRole("button")).toHaveAttribute(
       "data-web-search-supported",
       "false",
     );
 
-    // Explicit null behaves the same — capability helper treats it as "no capability".
-    rerender(<WebSearchToggle {...baseProps} modelSupportedParameters={null} />);
-    expect(screen.getByRole("button")).toBeDisabled();
-    expect(screen.getByRole("button")).toHaveAttribute(
-      "data-web-search-supported",
-      "false",
+    rerender(
+      <WebSearchToggle {...baseProps} modelSupportedParameters={null} />,
     );
+    expect(screen.getByRole("button")).toBeDisabled();
 
-    // Capable model unblocks the button.
     rerender(
       <WebSearchToggle
         {...baseProps}
@@ -188,44 +202,84 @@ describe("<WebSearchToggle>", () => {
     expect(setWebSearchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("renders tooltipUnsupported when the model lacks tools (regardless of pricing)", () => {
+  it("renders the unsupported tooltip surface when the model lacks tools (regardless of pricing)", () => {
     pricingMock.mockReturnValue({
       source: "unsupported",
       usdPerCall: null,
       creditsPerCall: null,
     });
-    render(
+    const { container } = render(
       <WebSearchToggle
         {...baseProps}
         enabled={true}
         modelSupportedParameters={[]}
       />,
     );
-    expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
-      /does not support web search/i,
-    );
+    const tooltip = screen.getByTestId("tooltip-content");
+    expect(tooltip).toHaveTextContent(/Web search unavailable/);
+    expect(tooltip).toHaveTextContent(/can't run tool-based web searches/);
+    // No status pill in unsupported state.
+    expect(
+      container.querySelector("[data-web-search-status-pill]"),
+    ).toBeNull();
+    // No meta surface (cost / provider / loading) in unsupported state.
+    expect(container.querySelector("[data-tooltip-cost-line]")).toBeNull();
+    expect(container.querySelector("[data-tooltip-cost-loading]")).toBeNull();
+    expect(
+      container.querySelector("[data-tooltip-provider-line]"),
+    ).toBeNull();
+    // No click hint either — the toggle is not actionable.
+    expect(
+      container.querySelector("[data-web-search-tooltip-hint]"),
+    ).toBeNull();
   });
 
-  it("renders tooltipOn when the toggle is on", () => {
-    render(
+  it("renders the on-state tooltip with title, status pill, body, cost, and provider rows", () => {
+    pricingMock.mockReturnValue({
+      source: "tavily-basic",
+      usdPerCall: 0.008,
+      creditsPerCall: 104,
+    });
+    const { container } = render(
       <WebSearchToggle
         {...baseProps}
         enabled={true}
         modelSupportedParameters={["tools"]}
       />,
     );
-    expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
-      /web search on/i,
+    const tooltip = screen.getByTestId("tooltip-content");
+    expect(tooltip).toHaveTextContent(/Web search active/);
+    expect(tooltip).toHaveTextContent(
+      /Each reply will pull fresh sources from the live web\./,
     );
+    // Status pill announces "On" alongside the live-state dot.
+    const pill = container.querySelector("[data-web-search-status-pill]");
+    expect(pill).not.toBeNull();
+    expect(pill).toHaveAttribute("data-web-search-status-pill", "on");
+    expect(pill).toHaveTextContent(/^On$/);
+    // Cost row IS present in the on state — the user explicitly asked
+    // for cost visibility even when web search is enabled.
+    const costRow = container.querySelector("[data-tooltip-cost-line]");
+    expect(costRow).not.toBeNull();
+    expect(costRow).toHaveTextContent(/~104 credits per search/i);
+    // Provider row resolves to the friendly name, never the raw slug.
+    const providerRow = container.querySelector(
+      "[data-tooltip-provider-line]",
+    );
+    expect(providerRow).not.toBeNull();
+    expect(providerRow).toHaveTextContent(/via Tavily Basic/);
+    expect(providerRow).not.toHaveTextContent(/tavily-basic/);
+    // Click-to-disable hint reinforces affordance.
+    expect(tooltip).toHaveTextContent(/Click to disable/);
   });
 
-  it("renders tooltipOff interpolated with the resolved Tavily-basic credit count", () => {
+  it("renders the off-state tooltip with the full meta surface and click-to-enable hint", () => {
     pricingMock.mockReturnValue({
       source: "tavily-basic",
       usdPerCall: 0.008,
       creditsPerCall: 104,
     });
-    render(
+    const { container } = render(
       <WebSearchToggle
         {...baseProps}
         enabled={false}
@@ -233,38 +287,54 @@ describe("<WebSearchToggle>", () => {
       />,
     );
     const tooltip = screen.getByTestId("tooltip-content");
-    expect(tooltip).toHaveTextContent(/104 credits per search/i);
+    expect(tooltip).toHaveTextContent(/Web search ready/);
+    expect(tooltip).toHaveTextContent(
+      /Click to ground answers in real-time pages/,
+    );
+    const pill = container.querySelector("[data-web-search-status-pill]");
+    expect(pill).toHaveAttribute("data-web-search-status-pill", "off");
+    expect(pill).toHaveTextContent(/^Off$/);
+    const costRow = container.querySelector("[data-tooltip-cost-line]");
+    expect(costRow).not.toBeNull();
+    expect(costRow).toHaveTextContent(/~104 credits per search/i);
     expect(tooltip).not.toHaveTextContent(/\{credits\}/);
+    expect(
+      container.querySelector("[data-tooltip-provider-line]"),
+    ).not.toBeNull();
+    expect(tooltip).toHaveTextContent(/Click to enable/);
     const btn = screen.getByRole("button");
     expect(btn).toHaveAttribute("data-web-search-source", "tavily-basic");
     expect(btn).toHaveAttribute("data-web-search-credits-estimate", "104");
   });
 
-  it("renders tooltipOff interpolated with the OpenRouter server-tool credit count", () => {
+  it("renders the OpenRouter native provider label for the openrouter-server-tool source", () => {
     pricingMock.mockReturnValue({
       source: "openrouter-server-tool",
       usdPerCall: 0.02,
       creditsPerCall: 260,
     });
-    render(
+    const { container } = render(
       <WebSearchToggle
         {...baseProps}
         enabled={false}
         modelSupportedParameters={["tools"]}
       />,
     );
-    expect(screen.getByTestId("tooltip-content")).toHaveTextContent(
-      /260 credits per search/i,
+    const costRow = container.querySelector("[data-tooltip-cost-line]");
+    expect(costRow).toHaveTextContent(/~260 credits per search/i);
+    const providerRow = container.querySelector(
+      "[data-tooltip-provider-line]",
     );
+    expect(providerRow).toHaveTextContent(/via OpenRouter native/);
     expect(screen.getByRole("button")).toHaveAttribute(
       "data-web-search-source",
       "openrouter-server-tool",
     );
   });
 
-  it("renders tooltipOffLoading while pricing resolves (no '0 credits' flash)", () => {
+  it("shows a 'Calculating cost…' placeholder while pricing resolves and never flashes a 0-credit estimate", () => {
     pricingMock.mockReturnValue(undefined);
-    render(
+    const { container } = render(
       <WebSearchToggle
         {...baseProps}
         enabled={false}
@@ -272,12 +342,52 @@ describe("<WebSearchToggle>", () => {
       />,
     );
     const tooltip = screen.getByTestId("tooltip-content");
-    expect(tooltip).toHaveTextContent(/Search the web for current info\.$/);
-    expect(tooltip).not.toHaveTextContent(/0 credits per search/);
+    // Body still renders during the loading window — only the cost row swaps.
+    expect(tooltip).toHaveTextContent(/Click to ground answers/);
+    // The resolved cost row is structurally absent so users never see
+    // an in-progress "0 credits" estimate.
+    expect(container.querySelector("[data-tooltip-cost-line]")).toBeNull();
+    expect(tooltip).not.toHaveTextContent(/credits per search/);
     expect(tooltip).not.toHaveTextContent(/\$/);
-    // data attrs reflect "we don't know yet" without flashing concrete values.
+    // A loading placeholder takes its place so the user knows pricing is
+    // still being computed instead of seeing a phantom-empty meta row.
+    const loading = container.querySelector("[data-tooltip-cost-loading]");
+    expect(loading).not.toBeNull();
+    expect(loading).toHaveTextContent(/Calculating cost…/);
+    // Provider row is gated on a resolved source — also absent here.
+    expect(
+      container.querySelector("[data-tooltip-provider-line]"),
+    ).toBeNull();
+    // Data attributes on the button reflect "we don't know yet" without
+    // flashing concrete values.
     const btn = screen.getByRole("button");
     expect(btn).toHaveAttribute("data-web-search-source", "unsupported");
     expect(btn).toHaveAttribute("data-web-search-credits-estimate", "0");
+  });
+
+  it("hides the provider row entirely when the source slug is unrecognised", () => {
+    pricingMock.mockReturnValue({
+      source: "unknown-future-provider",
+      usdPerCall: 0.01,
+      creditsPerCall: 130,
+    });
+    const { container } = render(
+      <WebSearchToggle
+        {...baseProps}
+        enabled={false}
+        modelSupportedParameters={["tools"]}
+      />,
+    );
+    // Cost is still shown — the credits number is provider-agnostic.
+    expect(
+      container.querySelector("[data-tooltip-cost-line]"),
+    ).toHaveTextContent(/~130 credits per search/i);
+    // Provider row is suppressed rather than leaking the raw slug.
+    expect(
+      container.querySelector("[data-tooltip-provider-line]"),
+    ).toBeNull();
+    expect(screen.getByTestId("tooltip-content")).not.toHaveTextContent(
+      /unknown-future-provider/,
+    );
   });
 });

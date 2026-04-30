@@ -1000,10 +1000,21 @@
       "label": "वेब",
       "ariaEnable": "वेब खोज सक्षम करें",
       "ariaDisable": "वेब खोज अक्षम करें",
-      "tooltipUnsupported": "चुना गया मॉडल वेब खोज समर्थन नहीं करता।",
-      "tooltipOn": "वेब खोज चालू है। अक्षम करने के लिए क्लिक करें।",
-      "tooltipOff": "मौजूदा जानकारी वेब पर खोजें (~{credits} क्रेडिट प्रति खोज)।",
-      "tooltipOffLoading": "मौजूदा जानकारी वेब पर खोजें।"
+      "titleOn": "वेब खोज सक्रिय",
+      "titleOff": "वेब खोज तैयार",
+      "titleUnsupported": "वेब खोज उपलब्ध नहीं",
+      "bodyOn": "प्रत्येक उत्तर लाइव वेब से ताज़ा स्रोत खींचेगा।",
+      "bodyOff": "उत्तरों को रीयल-टाइम पेजों में आधार बनाने के लिए क्लिक करें।",
+      "bodyUnsupported": "चुना हुआ मॉडल टूल-आधारित वेब खोज नहीं कर सकता। सक्षम करने के लिए मॉडल बदलें।",
+      "metaCost": "~{credits, number} क्रेडिट प्रति खोज",
+      "metaCostLoading": "मूल्य की गणना हो रही है…",
+      "metaProvider": "{provider} के माध्यम से",
+      "providerTavilyBasic": "Tavily Basic",
+      "providerOpenRouter": "OpenRouter देशी",
+      "statusOn": "चालू",
+      "statusOff": "बंद",
+      "hintEnable": "सक्षम करने के लिए क्लिक करें",
+      "hintDisable": "अक्षम करने के लिए क्लिक करें"
     }
   },
   "toast": {
