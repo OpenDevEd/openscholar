@@ -9,7 +9,7 @@
  *   - data-source-host derived from the URL
  *   - data-icon-state="favicon" while the image loads, "fallback" once it errors
  *   - falls back to host text when title is missing
- *   - renders a favicon <img> via the Google s2 endpoint
+ *   - renders a favicon <img> via the DuckDuckGo ip3 endpoint
  *   - on image error, replaces the <img> with a letter-avatar fallback
  *   - exposes the 1-based index suffix
  */
@@ -64,14 +64,14 @@ describe("<WebSourceChip>", () => {
     expect(screen.getByRole("link")).toHaveTextContent("[3]");
   });
 
-  it("renders a favicon <img> using the Google s2 endpoint", () => {
+  it("renders a favicon <img> using the DuckDuckGo ip3 endpoint", () => {
     const { container } = render(
       <WebSourceChip url="https://arxiv.org/abs/x" title="t" idx={0} />,
     );
     const img = container.querySelector("img");
     expect(img).not.toBeNull();
     expect(img?.getAttribute("src")).toBe(
-      "https://www.google.com/s2/favicons?domain=arxiv.org&sz=32",
+      "https://icons.duckduckgo.com/ip3/arxiv.org.ico",
     );
     expect(img?.getAttribute("alt")).toBe("");
     expect(img?.getAttribute("loading")).toBe("lazy");
