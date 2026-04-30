@@ -7,12 +7,14 @@
  *   - <a> opens in a new tab with rel="noreferrer noopener"
  *   - data-source-type="web"
  *   - data-source-host derived from the URL
+ *   - data-icon-state="favicon" while the image loads, "fallback" once it errors
  *   - falls back to host text when title is missing
  *   - renders a favicon <img> via the Google s2 endpoint
+ *   - on image error, replaces the <img> with a letter-avatar fallback
  *   - exposes the 1-based index suffix
  */
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { WebSourceChip } from "@/components/ai-elements/web-source-chip";
 
 describe("<WebSourceChip>", () => {
@@ -73,5 +75,41 @@ describe("<WebSourceChip>", () => {
     );
     expect(img?.getAttribute("alt")).toBe("");
     expect(img?.getAttribute("loading")).toBe("lazy");
+  });
+
+  it("starts in the favicon icon state", () => {
+    render(<WebSourceChip url="https://arxiv.org/abs/x" idx={0} />);
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "data-icon-state",
+      "favicon",
+    );
+  });
+
+  it("swaps to a letter-avatar fallback when the favicon image errors", () => {
+    const { container } = render(
+      <WebSourceChip url="https://arxiv.org/abs/x" idx={0} />,
+    );
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    fireEvent.error(img!);
+
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "data-icon-state",
+      "fallback",
+    );
+    const fallback = container.querySelector("[data-icon-fallback='letter']");
+    expect(fallback).not.toBeNull();
+    expect(fallback?.textContent).toBe("A");
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("strips a leading www. before deriving the fallback letter", () => {
+    const { container } = render(
+      <WebSourceChip url="https://www.example.com/foo" idx={0} />,
+    );
+    fireEvent.error(container.querySelector("img")!);
+    expect(
+      container.querySelector("[data-icon-fallback='letter']")?.textContent,
+    ).toBe("E");
   });
 });
