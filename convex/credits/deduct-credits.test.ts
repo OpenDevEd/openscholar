@@ -47,13 +47,13 @@ describe("deductCredits", () => {
       setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 100, 50);
 
-      const newBalance = await t.mutation(
+      const { deducted, remaining } = await t.mutation(
         internal.credits.internal.deductCredits,
         { userId, amount: 30, description: "test deduction" }
       );
 
-      // Returns new total balance
-      expect(newBalance).toBe(120); // 100 + 50 - 30 = 120
+      expect(deducted).toBe(30);
+      expect(remaining).toBe(120); // 100 + 50 - 30 = 120
 
       // Verify credits record was updated
       const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
@@ -80,12 +80,13 @@ describe("deductCredits", () => {
       setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 20, 80);
 
-      const newBalance = await t.mutation(
+      const { deducted, remaining } = await t.mutation(
         internal.credits.internal.deductCredits,
         { userId, amount: 50, description: "split deduction" }
       );
 
-      expect(newBalance).toBe(50); // 20 + 80 - 50 = 50
+      expect(deducted).toBe(50);
+      expect(remaining).toBe(50); // 20 + 80 - 50 = 50
 
       const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(0); // all free used
@@ -132,12 +133,13 @@ describe("deductCredits", () => {
       setupTransactionAggregates(t);
       const { userId, creditsId } = await seedUserWithCredits(t, 30, 70);
 
-      const newBalance = await t.mutation(
+      const { deducted, remaining } = await t.mutation(
         internal.credits.internal.deductCredits,
         { userId, amount: 100, description: "exact deduction" }
       );
 
-      expect(newBalance).toBe(0);
+      expect(deducted).toBe(100);
+      expect(remaining).toBe(0);
 
       const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(0);
@@ -158,18 +160,18 @@ describe("deductCredits", () => {
       const { userId, creditsId } = await seedUserWithCredits(t, 100, 0);
 
       // First deduction: 60 from 100 free
-      const balance1 = await t.mutation(
+      const first = await t.mutation(
         internal.credits.internal.deductCredits,
         { userId, amount: 60, description: "first deduction" }
       );
-      expect(balance1).toBe(40);
+      expect(first.remaining).toBe(40);
 
       // Second deduction: 30 from remaining 40 free
-      const balance2 = await t.mutation(
+      const second = await t.mutation(
         internal.credits.internal.deductCredits,
         { userId, amount: 30, description: "second deduction" }
       );
-      expect(balance2).toBe(10);
+      expect(second.remaining).toBe(10);
 
       // Verify final state
       const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
@@ -184,11 +186,11 @@ describe("deductCredits", () => {
       const { userId, creditsId } = await seedUserWithCredits(t, 50, 0);
 
       // First deduction: takes all 50
-      const balance1 = await t.mutation(
+      const first = await t.mutation(
         internal.credits.internal.deductCredits,
         { userId, amount: 50, description: "exhaust balance" }
       );
-      expect(balance1).toBe(0);
+      expect(first.remaining).toBe(0);
 
       // Second deduction: should fail -- balance is 0
       await expect(
@@ -446,6 +448,52 @@ describe("deductCredits", () => {
       expect(paid.amount).toBe(-50);
       expect(free.metadata?.shortfall).toBe("50");
       expect(paid.metadata?.shortfall).toBe("50");
+    });
+  });
+
+  describe("public mutation forwards allowPartial", () => {
+    // Coverage for the public deductCredits mutation surface (wraps
+    // deductCreditsTransaction): the rest of the allowPartial behavior
+    // is tested at the transaction level above. These tests just prove
+    // the validator accepts the flag and the return shape carries
+    // {deducted, remaining}.
+
+    it("public mutation accepts allowPartial:true and caps at totalAvailable", async () => {
+      const t = convexTest(schema);
+      setupTransactionAggregates(t);
+      const { userId, creditsId } = await seedUserWithCredits(t, 100, 0);
+
+      const result = await t.mutation(
+        internal.credits.internal.deductCredits,
+        {
+          userId,
+          amount: 250,
+          description: "AI: Chat message",
+          billingType: "chat",
+          allowPartial: true,
+        }
+      );
+
+      expect(result).toEqual({ deducted: 100, remaining: 0 });
+
+      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
+      expect(credits!.freeBalance).toBe(0);
+      expect(credits!.lifetimeUsed).toBe(100);
+    });
+
+    it("public mutation without allowPartial still throws on shortfall", async () => {
+      const t = convexTest(schema);
+      setupTransactionAggregates(t);
+      const { userId } = await seedUserWithCredits(t, 100, 0);
+
+      await expect(
+        t.mutation(internal.credits.internal.deductCredits, {
+          userId,
+          amount: 250,
+          description: "AI: Chat message",
+          billingType: "chat",
+        })
+      ).rejects.toThrow("INSUFFICIENT_CREDITS");
     });
   });
 });

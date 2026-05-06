@@ -1744,7 +1744,7 @@ describe("gateway integration (data layer)", () => {
     expect(model!.supportedParameters).toContain("reasoning");
 
     // Step 4: Credit deduction (simulating a generation)
-    const remaining = await t.mutation(internal.credits.internal.deductCredits, {
+    const result = await t.mutation(internal.credits.internal.deductCredits, {
       userId: keyResult!.userId,
       amount: 25,
       description: "Wallet API: GPT-4o",
@@ -1760,7 +1760,8 @@ describe("gateway integration (data layer)", () => {
         finishReason: "stop",
       },
     });
-    expect(remaining).toBe(675);
+    expect(result.deducted).toBe(25);
+    expect(result.remaining).toBe(675);
 
     // Verify transaction
     const txns = await t.run(async (ctx) =>

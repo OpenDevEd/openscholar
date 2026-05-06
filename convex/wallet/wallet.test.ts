@@ -383,7 +383,7 @@ describe("wallet + credits integration", () => {
     expect(keyResult).not.toBeNull();
 
     // Step 2: deduct credits
-    const remaining = await t.mutation(internal.credits.internal.deductCredits, {
+    const result = await t.mutation(internal.credits.internal.deductCredits, {
       userId: keyResult!.userId,
       amount: 25,
       description: "Wallet API: gpt-4o-mini",
@@ -394,7 +394,8 @@ describe("wallet + credits integration", () => {
         provider: "openai",
       },
     });
-    expect(remaining).toBe(75);
+    expect(result.deducted).toBe(25);
+    expect(result.remaining).toBe(75);
 
     // Verify transaction recorded correctly
     const transactions = await t.run(async (ctx) =>

@@ -1698,11 +1698,20 @@ export const deductCredits = internalMutation({
     // pass jobId/paperId/resultId/billingType MUST NOT also key them
     // into metadata — keep the single source of truth in columns.
     metadata: v.optional(v.record(v.string(), v.string())),
+    // Drain-to-zero opt-in. When true, a shortfall is absorbed
+    // (deducted = totalAvailable, remaining = 0) instead of throwing
+    // INSUFFICIENT_CREDITS. The recorded transaction's metadata carries
+    // requestedCredits and shortfall so audits see the unpaid delta.
+    // The pre-flight floor (estimate) is the gate; this only handles
+    // in-flight overruns vs. the actual provider cost.
+    allowPartial: v.optional(v.boolean()),
   },
-  returns: v.number(),
+  returns: v.object({
+    deducted: v.number(),
+    remaining: v.number(),
+  }),
   handler: async (ctx, args) => {
-    const result = await deductCreditsTransaction(ctx, args);
-    return result.remaining;
+    return await deductCreditsTransaction(ctx, args);
   },
 });
 
