@@ -343,10 +343,16 @@ export async function withAuthAndCreditsBatch<T extends BatchShapedResult>(
       });
     } else {
       const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);
+      // allowPartial:true — pre-flight at line 269 was the gate; any
+      // in-flight overrun vs. provider cost drains wallet to zero rather
+      // than leaving a partial-success state with the row stuck retrying.
+      // PostHog tracking above still reports planned creditsToDeduct;
+      // ledger remains the source of truth on actual deducted.
       await ctx.runMutation(internal.credits.internal.deductCredits, {
         userId: user._id,
         amount: creditsToDeduct,
         description: `AI: ${operation}`,
+        allowPartial: true,
       });
     }
 
@@ -397,11 +403,27 @@ export async function withUserCreditsBatch<T>(
     const latencyMs = Date.now() - start;
 
     const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);
+
+    // allowPartial:true — pre-flight at line 384 was the gate; any in-flight
+    // overrun vs. provider cost drains wallet to zero rather than throwing.
+    // Deduct first so PostHog tracking below reports actual deducted.
+    const { deducted } = await ctx.runMutation(internal.credits.internal.deductCredits, {
+      userId,
+      amount: creditsToDeduct,
+      description: `AI: ${operation}`,
+      billingType: options?.billingType,
+      jobId: options?.jobId,
+      paperId: options?.paperId,
+      resultId: options?.resultId,
+      metadata: options?.metadata,
+      allowPartial: true,
+    });
+
     const creditContext = {
-      creditsDeducted: creditsToDeduct,
+      creditsDeducted: deducted,
       creditsRawCost: calculateServerRawCreditCost(totalUsage, pricing),
-      creditsRemaining: Math.max(0, balance!.total - creditsToDeduct),
-      lifetimeCreditsUsed: balance!.lifetimeUsed + creditsToDeduct,
+      creditsRemaining: Math.max(0, balance!.total - deducted),
+      lifetimeCreditsUsed: balance!.lifetimeUsed + deducted,
     };
 
     // Per-item tracking when entries provided; single aggregated event otherwise
@@ -432,17 +454,6 @@ export async function withUserCreditsBatch<T>(
         ...creditContext,
       });
     }
-
-    await ctx.runMutation(internal.credits.internal.deductCredits, {
-      userId,
-      amount: creditsToDeduct,
-      description: `AI: ${operation}`,
-      billingType: options?.billingType,
-      jobId: options?.jobId,
-      paperId: options?.paperId,
-      resultId: options?.resultId,
-      metadata: options?.metadata,
-    });
 
     return result;
   } catch (error) {
@@ -534,6 +545,8 @@ export async function withAuthAndCredits<T>(
 
     const creditsToDeduct = calculateServerCreditsToDeduct(usage, pricing);
 
+    // allowPartial:true — pre-flight at line 512 was the gate; any in-flight
+    // overrun vs. provider cost drains wallet to zero rather than throwing.
     await ctx.runMutation(internal.credits.internal.deductCredits, {
       userId: user._id,
       amount: creditsToDeduct,
@@ -543,6 +556,7 @@ export async function withAuthAndCredits<T>(
       paperId: options?.paperId,
       resultId: options?.resultId,
       metadata: options?.metadata,
+      allowPartial: true,
     });
 
     return result;
