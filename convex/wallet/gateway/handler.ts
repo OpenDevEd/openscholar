@@ -267,11 +267,15 @@ function makeDeductFn(
       creditsFromCost(costDollars, walletModel.costMarkup),
     );
 
+    // allowPartial:true — pre-flight (plan-04) is the gate; an in-flight
+    // overrun drains the wallet rather than throwing after the OpenAI
+    // response has already been streamed back to the client.
     await ctx.runMutation(internal.credits.internal.deductCredits, {
       userId: keyResult.userId,
       amount: credits,
       description: `Wallet API: ${walletModel.name}`,
       billingType: "wallet_api",
+      allowPartial: true,
       metadata: {
         appName: keyResult.appName,
         model: walletModel.modelId,
