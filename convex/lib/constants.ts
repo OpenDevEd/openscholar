@@ -45,6 +45,17 @@ export const ESTIMATED_CREDITS_PER_CHAT_MESSAGE = 200;
  */
 export const ESTIMATED_CREDITS_PER_WEB_SEARCH = 500;
 
+/**
+ * Estimated credit cost for a single wallet OpenAI-compatible gateway
+ * call (chat-completion shape). Used as the pre-flight floor in
+ * `convex/wallet/gateway/handler.ts` so a user with near-zero balance
+ * cannot trigger an LLM call that can't be paid for. When the request
+ * carries `web_search_options`, additively combine with
+ * `ESTIMATED_CREDITS_PER_WEB_SEARCH`. Drain-to-zero (plan-03) handles
+ * any in-flight overrun once a request is past this gate.
+ */
+export const ESTIMATED_CREDITS_PER_WALLET_API_CALL = 200;
+
 export const PLAN_CONFIG = {
   free: { creditsPerMonth: 0, tier: 0, freeCreditCap: FREE_SIGNUP_CREDIT_GRANT },
   go: { creditsPerMonth: 3_000, tier: 10, freeCreditCap: 6_000 },
