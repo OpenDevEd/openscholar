@@ -47,7 +47,10 @@ import { buildOpenRouterWebSearchTool } from "./tools/openrouterWebSearch";
 import { buildTavilyWebSearchTool } from "./tools/tavilyWebSearch";
 import { modelSupportsWebSearch } from "../../lib/chat/web-search-capability";
 import { pickWebSearchPricing } from "@/lib/pricing";
-import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
+import {
+  ESTIMATED_CREDITS_PER_CHAT_MESSAGE,
+  ESTIMATED_CREDITS_PER_WEB_SEARCH,
+} from "../lib/constants";
 import {
   classifyChatError,
   errorCodeValidator,
@@ -373,7 +376,14 @@ export const generateResponse = internalAction({
         internal.credits.internal.getBalanceByUserId,
         { userId },
       );
-      if (!balance || balance.total < ESTIMATED_CREDITS_PER_CHAT_MESSAGE) {
+      // Pre-flight floor: base chat estimate plus a flat web-search
+      // surcharge when the thread has web search enabled. The grounding
+      // fee billed by OpenRouter for server-side web search dwarfs the
+      // token cost on small-output models, so a single floor undercounts.
+      const requiredCredits =
+        ESTIMATED_CREDITS_PER_CHAT_MESSAGE +
+        (meta.webSearchEnabled ? ESTIMATED_CREDITS_PER_WEB_SEARCH : 0);
+      if (!balance || balance.total < requiredCredits) {
         throw createError(
           "AI_INSUFFICIENT_CREDITS",
           "Not enough credits for this chat message.",

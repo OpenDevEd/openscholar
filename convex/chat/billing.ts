@@ -384,13 +384,22 @@ export const billGenerationFromSdkUsage = internalMutation({
         });
     const now = Date.now();
 
+    // allowPartial: the chat pre-flight at messages.ts:generateResponse
+    // is the gate that keeps wallets from going negative. Once we land
+    // here the user already had a non-trivial balance; any per-turn
+    // overrun versus the constant floor is small and intentionally
+    // absorbed. Throwing here would roll back the row patch and leave
+    // chatGenerationUsages stuck in `retrying` with a misleading
+    // lastError, so we drain to zero and record the actual deduction.
+    let actualBilledCredits = 0;
     if (billedCredits > 0) {
-      await deductCreditsTransaction(ctx, {
+      const result = await deductCreditsTransaction(ctx, {
         userId: row.userId,
         amount: billedCredits,
         description: "AI: Chat message",
         jobId: row.jobId,
         billingType: "chat",
+        allowPartial: true,
         metadata: buildChatBillingMetadata({
           billingSource: useCostReadback ? "sdk_usage_cost" : "sdk_usage",
           generationId: args.generationId,
@@ -402,6 +411,7 @@ export const billGenerationFromSdkUsage = internalMutation({
           ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
         }),
       });
+      actualBilledCredits = result.deducted;
     }
 
     await ctx.db.patch(row._id, {
@@ -414,7 +424,7 @@ export const billGenerationFromSdkUsage = internalMutation({
       reasoningTokens: args.reasoningTokens,
       cachedPromptTokens: args.cachedPromptTokens,
       ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
-      billedCredits,
+      billedCredits: actualBilledCredits,
       attemptCount: row.attemptCount + 1,
       lastAttemptAt: now,
       nextRetryAt: undefined,
@@ -423,7 +433,7 @@ export const billGenerationFromSdkUsage = internalMutation({
       updatedAt: now,
     });
 
-    return { outcome: "billed" as const, billedCredits };
+    return { outcome: "billed" as const, billedCredits: actualBilledCredits };
   },
 });
 
@@ -472,13 +482,15 @@ export const billThreadUsageFromSdk = internalMutation({
           pricing: args.pricing,
         });
 
+    let actualBilledCredits = 0;
     if (billedCredits > 0) {
-      await deductCreditsTransaction(ctx, {
+      const result = await deductCreditsTransaction(ctx, {
         userId: job.userId,
         amount: billedCredits,
         description: "AI: Chat message",
         jobId: job._id,
         billingType: "chat",
+        allowPartial: true,
         metadata: buildChatBillingMetadata({
           billingSource: useCostReadback ? "sdk_usage_cost" : "sdk_usage",
           model: args.model,
@@ -489,9 +501,10 @@ export const billThreadUsageFromSdk = internalMutation({
           ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
         }),
       });
+      actualBilledCredits = result.deducted;
     }
 
-    return { outcome: "billed" as const, billedCredits };
+    return { outcome: "billed" as const, billedCredits: actualBilledCredits };
   },
 });
 
@@ -546,12 +559,13 @@ export const recordTavilyCost = internalMutation({
     const usdCost = WEB_SEARCH_PRICING.tavily.usdPerCredit * tavilyCredits;
     const billedCredits = convertUsdCostToCredits(usdCost);
 
-    await deductCreditsTransaction(ctx, {
+    const result = await deductCreditsTransaction(ctx, {
       userId: job.userId,
       amount: billedCredits,
       description: "AI: Web search (Tavily)",
       jobId: job._id,
       billingType: "search",
+      allowPartial: true,
       metadata: {
         searchEngine: "tavily",
         tavilyCredits: String(tavilyCredits),
@@ -559,7 +573,7 @@ export const recordTavilyCost = internalMutation({
       },
     });
 
-    return { billedCredits };
+    return { billedCredits: result.deducted };
   },
 });
 
@@ -633,13 +647,15 @@ export const settleGenerationUsage = internalMutation({
     const billedCredits = convertUsdCostToCredits(args.totalCostUsd);
     const now = Date.now();
 
+    let actualBilledCredits = 0;
     if (billedCredits > 0) {
-      await deductCreditsTransaction(ctx, {
+      const result = await deductCreditsTransaction(ctx, {
         userId: row.userId,
         amount: billedCredits,
         description: "AI: Chat message",
         jobId: row.jobId,
         billingType: "chat",
+        allowPartial: true,
         metadata: buildChatBillingMetadata({
           generationId: args.generationId,
           billingSource: "openrouter_generation_api",
@@ -655,6 +671,7 @@ export const settleGenerationUsage = internalMutation({
           nativeFinishReason: args.nativeFinishReason,
         }),
       });
+      actualBilledCredits = result.deducted;
     }
 
     await ctx.db.patch(row._id, {
@@ -671,7 +688,7 @@ export const settleGenerationUsage = internalMutation({
       reasoningTokens: args.reasoningTokens,
       cachedPromptTokens: args.cachedPromptTokens,
       totalCostUsd: args.totalCostUsd,
-      billedCredits,
+      billedCredits: actualBilledCredits,
       attemptCount: row.attemptCount + 1,
       lastAttemptAt: now,
       nextRetryAt: undefined,
@@ -681,7 +698,7 @@ export const settleGenerationUsage = internalMutation({
       updatedAt: now,
     });
 
-    return { outcome: "billed" as const, billedCredits };
+    return { outcome: "billed" as const, billedCredits: actualBilledCredits };
   },
 });
 

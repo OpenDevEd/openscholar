@@ -4,6 +4,14 @@ const BACKSLASH_ESCAPED_SAFE_TAG_RE = /<\s*(\/?)\s*(sub|sup)\s*\\+\s*>/gi;
 const SAFE_RENDER_TAG_RE = /<\/?(?:sub|sup)>/gi;
 const THEMATIC_BREAK_LINE_RE =
   /^[ \t]{0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/gm;
+// Gemini emits raw grounding-segment IDs like `[1.1.1]` or
+// `[1.1.1, 1.1.3, 1.1.4]` inline in the response text. They are noise:
+// the AI SDK already lifts the same sources into `source-url` parts which
+// the footer chips render, so the inline tokens add no information and
+// only require ≥1 dot per token. `[Pn]` paper citations and footnote-style
+// `[1]` brackets stay untouched.
+const GEMINI_GROUNDING_MARKER_RE =
+  /[ \t]*\[\d+(?:\.\d+)+(?:\s*,\s*\d+(?:\.\d+)+)*\]/g;
 
 function decodeEscapedSafeScholarlyTags(markdown: string): string {
   return markdown
@@ -48,9 +56,13 @@ function stripDanglingTerminalEmphasis(markdown: string): string {
   return prefix.trimEnd();
 }
 
+function stripGeminiGroundingMarkers(markdown: string): string {
+  return markdown.replace(GEMINI_GROUNDING_MARKER_RE, "");
+}
+
 export function normalizeChatMarkdownForRender(markdown: string): string {
   return stripDanglingTerminalEmphasis(
-    decodeEscapedSafeScholarlyTags(markdown),
+    stripGeminiGroundingMarkers(decodeEscapedSafeScholarlyTags(markdown)),
   );
 }
 

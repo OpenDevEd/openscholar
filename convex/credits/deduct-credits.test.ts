@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import { setupTransactionAggregates } from "./aggregates.test-support";
+import { deductCreditsTransaction } from "./internal";
 
 /**
  * Seed a user with a credits record at the specified balances.
@@ -300,6 +301,151 @@ describe("deductCredits", () => {
       expect(credits!.freeBalance).toBe(0);
       expect(credits!.paidBalance).toBe(0);
       expect(credits!.lifetimeUsed).toBe(100);
+    });
+  });
+
+  describe("allowPartial drain-to-zero", () => {
+    // Chat billing opts in to allowPartial: the pre-flight floor is the
+    // gate, so once we reach billing the user has some balance. Any
+    // shortfall versus the actual provider cost is small and gets eaten —
+    // the alternative (throw + roll back the row patch) leaves the
+    // chatGenerationUsages ledger lying about whether billing happened.
+
+    it("caps deduction at totalAvailable, returns deducted+remaining", async () => {
+      const t = convexTest(schema);
+      setupTransactionAggregates(t);
+      const { userId, creditsId } = await seedUserWithCredits(t, 313, 0);
+
+      const result = await t.run((ctx) =>
+        deductCreditsTransaction(ctx, {
+          userId,
+          amount: 550,
+          description: "AI: Chat message",
+          billingType: "chat",
+          allowPartial: true,
+        }),
+      );
+
+      expect(result).toEqual({ deducted: 313, remaining: 0 });
+
+      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
+      expect(credits!.freeBalance).toBe(0);
+      expect(credits!.paidBalance).toBe(0);
+      expect(credits!.lifetimeUsed).toBe(313);
+
+      const transactions = await t.run((ctx) =>
+        ctx.db
+          .query("creditTransactions")
+          .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .collect(),
+      );
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0].amount).toBe(-313);
+      expect(transactions[0].balanceAfter).toBe(0);
+      expect(transactions[0].metadata?.requestedCredits).toBe("550");
+      expect(transactions[0].metadata?.shortfall).toBe("237");
+    });
+
+    it("returns {0,0} and writes nothing when balance is exactly zero", async () => {
+      const t = convexTest(schema);
+      setupTransactionAggregates(t);
+      const { userId, creditsId } = await seedUserWithCredits(t, 0, 0);
+
+      const result = await t.run((ctx) =>
+        deductCreditsTransaction(ctx, {
+          userId,
+          amount: 100,
+          description: "AI: Chat message",
+          billingType: "chat",
+          allowPartial: true,
+        }),
+      );
+
+      expect(result).toEqual({ deducted: 0, remaining: 0 });
+
+      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
+      expect(credits!.lifetimeUsed).toBe(0);
+      expect(credits!.lastUpdatedAt).toBe(
+        // Untouched: the seed timestamp is the only write.
+        (await t.run((ctx) => ctx.db.get("credits", creditsId)))!.lastUpdatedAt,
+      );
+
+      const transactions = await t.run((ctx) =>
+        ctx.db
+          .query("creditTransactions")
+          .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .collect(),
+      );
+      expect(transactions).toHaveLength(0);
+    });
+
+    it("behaves identically to the non-partial path when balance covers amount", async () => {
+      const t = convexTest(schema);
+      setupTransactionAggregates(t);
+      const { userId, creditsId } = await seedUserWithCredits(t, 1000, 0);
+
+      const result = await t.run((ctx) =>
+        deductCreditsTransaction(ctx, {
+          userId,
+          amount: 250,
+          description: "AI: Chat message",
+          billingType: "chat",
+          allowPartial: true,
+        }),
+      );
+
+      expect(result).toEqual({ deducted: 250, remaining: 750 });
+
+      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
+      expect(credits!.freeBalance).toBe(750);
+      expect(credits!.lifetimeUsed).toBe(250);
+
+      const transactions = await t.run((ctx) =>
+        ctx.db
+          .query("creditTransactions")
+          .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .collect(),
+      );
+      // No shortfall metadata when there was no shortfall.
+      expect(transactions[0].metadata?.requestedCredits).toBeUndefined();
+      expect(transactions[0].metadata?.shortfall).toBeUndefined();
+    });
+
+    it("drains across free then paid pools when both are partially needed", async () => {
+      const t = convexTest(schema);
+      setupTransactionAggregates(t);
+      const { userId, creditsId } = await seedUserWithCredits(t, 100, 50);
+
+      const result = await t.run((ctx) =>
+        deductCreditsTransaction(ctx, {
+          userId,
+          amount: 200,
+          description: "AI: Chat message",
+          billingType: "chat",
+          allowPartial: true,
+        }),
+      );
+
+      expect(result).toEqual({ deducted: 150, remaining: 0 });
+
+      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
+      expect(credits!.freeBalance).toBe(0);
+      expect(credits!.paidBalance).toBe(0);
+      expect(credits!.lifetimeUsed).toBe(150);
+
+      const transactions = await t.run((ctx) =>
+        ctx.db
+          .query("creditTransactions")
+          .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .collect(),
+      );
+      expect(transactions).toHaveLength(2);
+      const free = transactions.find((tx) => tx.creditType === "free")!;
+      const paid = transactions.find((tx) => tx.creditType === "paid")!;
+      expect(free.amount).toBe(-100);
+      expect(paid.amount).toBe(-50);
+      expect(free.metadata?.shortfall).toBe("50");
+      expect(paid.metadata?.shortfall).toBe("50");
     });
   });
 });

@@ -1007,6 +1007,7 @@
       "bodyOff": "उत्तरों को रीयल-टाइम पेजों में आधार बनाने के लिए क्लिक करें।",
       "bodyUnsupported": "चुना हुआ मॉडल टूल-आधारित वेब खोज नहीं कर सकता। सक्षम करने के लिए मॉडल बदलें।",
       "metaCost": "~{credits, number} क्रेडिट प्रति खोज",
+      "metaCostNote": "एक उत्तर में कई खोजें शामिल हो सकती हैं।",
       "metaCostLoading": "मूल्य की गणना हो रही है…",
       "metaProvider": "{provider} के माध्यम से",
       "providerTavilyBasic": "Tavily Basic",

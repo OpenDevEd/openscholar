@@ -66,6 +66,7 @@ const composerStrings: Record<string, string> = {
   "webSearch.bodyUnsupported":
     "The selected model can't run tool-based web searches. Switch models to enable.",
   "webSearch.metaCost": "~{credits} credits per search",
+  "webSearch.metaCostNote": "One reply may include several searches.",
   "webSearch.metaCostLoading": "Calculating cost…",
   "webSearch.metaProvider": "via {provider}",
   "webSearch.providerTavilyBasic": "Tavily Basic",

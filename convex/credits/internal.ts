@@ -1519,12 +1519,24 @@ type DeductCreditsArgs = {
   resultId?: Id<"extractionResults">;
   billingType?: Doc<"creditTransactions">["billingType"];
   metadata?: Record<string, string>;
+  // When true, drain the wallet to zero instead of throwing
+  // INSUFFICIENT_CREDITS. Used by chat billing where the pre-flight
+  // floor is the gate and any per-turn overrun is small and
+  // intentionally absorbed rather than left as a stuck retry row.
+  // The recorded transaction's metadata carries `requestedCredits`
+  // and `shortfall` so audits can see the unpaid delta.
+  allowPartial?: boolean;
+};
+
+export type DeductCreditsResult = {
+  deducted: number;
+  remaining: number;
 };
 
 export async function deductCreditsTransaction(
   ctx: MutationCtx,
   args: DeductCreditsArgs,
-): Promise<number> {
+): Promise<DeductCreditsResult> {
   if (args.amount <= 0) {
     throw new ConvexError({ code: "INVALID_AMOUNT", message: "Deduction amount must be positive" });
   }
@@ -1537,15 +1549,29 @@ export async function deductCreditsTransaction(
   if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });
 
   const totalAvailable = credits.freeBalance + credits.paidBalance;
-  if (totalAvailable < args.amount) {
+  if (totalAvailable < args.amount && !args.allowPartial) {
     throw new ConvexError({
       code: "INSUFFICIENT_CREDITS",
       message: `Insufficient credits: need ${args.amount}, have ${totalAvailable}`,
     });
   }
 
+  const amountToDeduct = Math.min(args.amount, totalAvailable);
+  if (amountToDeduct === 0) {
+    return { deducted: 0, remaining: 0 };
+  }
+
+  const shortfall = args.amount - amountToDeduct;
+  const txMetadata: Record<string, string> | undefined =
+    shortfall > 0
+      ? {
+          ...(args.metadata ?? {}),
+          requestedCredits: String(args.amount),
+          shortfall: String(shortfall),
+        }
+      : args.metadata;
+
   const now = Date.now();
-  let amountToDeduct = args.amount;
   let newFreeBalance = credits.freeBalance;
   let newPaidBalance = credits.paidBalance;
 
@@ -1558,7 +1584,7 @@ export async function deductCreditsTransaction(
 
   const usageSearchableText = computeSearchableText({
     description: args.description,
-    metadata: args.metadata,
+    metadata: txMetadata,
     billingType: args.billingType,
     type: "usage",
   });
@@ -1574,7 +1600,7 @@ export async function deductCreditsTransaction(
       amount: -amountToDeduct,
       balanceAfter: newFreeBalance,
       description: args.description,
-      metadata: args.metadata,
+      metadata: txMetadata,
       ...scope,
       createdAt: now,
       searchableText: usageSearchableText,
@@ -1600,7 +1626,7 @@ export async function deductCreditsTransaction(
         amount: -freeUsed,
         balanceAfter: 0,
         description: args.description,
-        metadata: args.metadata,
+        metadata: txMetadata,
         ...scope,
         createdAt: now,
         searchableText: usageSearchableText,
@@ -1626,7 +1652,7 @@ export async function deductCreditsTransaction(
       amount: -paidNeeded,
       balanceAfter: newPaidBalance,
       description: args.description,
-      metadata: args.metadata,
+      metadata: txMetadata,
       ...scope,
       createdAt: now,
       searchableText: usageSearchableText,
@@ -1644,11 +1670,14 @@ export async function deductCreditsTransaction(
   await ctx.db.patch("credits", credits._id, {
     freeBalance: newFreeBalance,
     paidBalance: newPaidBalance,
-    lifetimeUsed: credits.lifetimeUsed + args.amount,
+    lifetimeUsed: credits.lifetimeUsed + amountToDeduct,
     lastUpdatedAt: now,
   });
 
-  return totalAvailable - args.amount;
+  return {
+    deducted: amountToDeduct,
+    remaining: newFreeBalance + newPaidBalance,
+  };
 }
 
 export const deductCredits = internalMutation({
@@ -1672,7 +1701,8 @@ export const deductCredits = internalMutation({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    return await deductCreditsTransaction(ctx, args);
+    const result = await deductCreditsTransaction(ctx, args);
+    return result.remaining;
   },
 });
 

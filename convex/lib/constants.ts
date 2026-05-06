@@ -35,6 +35,16 @@ export const ESTIMATED_CREDITS_PER_QUERY = 2;
  */
 export const ESTIMATED_CREDITS_PER_CHAT_MESSAGE = 200;
 
+/**
+ * Additive pre-flight floor when the chat thread has web-search enabled.
+ * Web-search turns carry a flat per-call grounding fee from the provider
+ * (OpenRouter surfaces it on `providerMetadata.openrouter.usage.cost`),
+ * which dwarfs the token cost on small-output models like Gemini Flash.
+ * Empirically observed at ~$0.04 per call ≈ ~480 credits; rounded up to
+ * 500 so a typical web-search turn does not overrun the pre-flight gate.
+ */
+export const ESTIMATED_CREDITS_PER_WEB_SEARCH = 500;
+
 export const PLAN_CONFIG = {
   free: { creditsPerMonth: 0, tier: 0, freeCreditCap: FREE_SIGNUP_CREDIT_GRANT },
   go: { creditsPerMonth: 3_000, tier: 10, freeCreditCap: 6_000 },

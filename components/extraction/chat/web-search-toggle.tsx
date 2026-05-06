@@ -221,6 +221,12 @@ export function WebSearchToggle({
                       })}
                     </span>
                   </div>
+                  <p
+                    className="pl-6 text-[10px] leading-tight text-muted-foreground/70"
+                    data-tooltip-cost-note=""
+                  >
+                    {t("webSearch.metaCostNote")}
+                  </p>
                   {providerLabel ? (
                     <div
                       className="flex items-center gap-2 text-[11px]"
