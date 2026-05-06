@@ -235,7 +235,12 @@ export const markPaperIndexed = internalMutation({
       args.billing.creditsToDeduct > 0
     ) {
       const now = Date.now();
-      await ctx.runMutation(internal.credits.internal.deductCredits, {
+      // allowPartial:true — embedding succeeded; any in-flight overrun
+      // drains the wallet rather than leaving the index unbilled.
+      // indexingBilled flips regardless of partial because the embedding
+      // ran — we don't want to retry the embedding when the wallet
+      // simply couldn't pay in full.
+      const { deducted } = await ctx.runMutation(internal.credits.internal.deductCredits, {
         userId: args.billing.userId,
         amount: args.billing.creditsToDeduct,
         description: "AI: Extraction embedding index",
@@ -245,17 +250,21 @@ export const markPaperIndexed = internalMutation({
         metadata: {
           embeddingTokens: String(args.billing.embeddingTokens),
         },
+        allowPartial: true,
       });
       // Same-txn spend mirror for creditsAgg. Id is `embed:<paperId>`
       // because the aggregate mixes extraction_llm (keyed by resultId)
       // and embedding (keyed by paperId) entries in the same namespace;
-      // prefixing keeps them collision-free.
-      await recordCreditSpend(ctx, {
-        jobId: args.billing.jobId,
-        key: now,
-        id: `embed:${args.paperId}`,
-        creditsUsed: args.billing.creditsToDeduct,
-      });
+      // prefixing keeps them collision-free. Skip when deducted is 0
+      // so we don't write zero-amount aggregator entries.
+      if (deducted > 0) {
+        await recordCreditSpend(ctx, {
+          jobId: args.billing.jobId,
+          key: now,
+          id: `embed:${args.paperId}`,
+          creditsUsed: deducted,
+        });
+      }
       updates.indexingBilled = true;
     }
 
