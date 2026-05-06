@@ -17,6 +17,10 @@ import {
 } from "./cost";
 import type { AIProvider } from "../../../lib/types/ai.types";
 import type { Id, Doc } from "../../_generated/dataModel";
+import {
+  ESTIMATED_CREDITS_PER_WALLET_API_CALL,
+  ESTIMATED_CREDITS_PER_WEB_SEARCH,
+} from "../../lib/constants";
 
 // ─── CORS helpers ───────────────────────────────────────────
 
@@ -121,26 +125,8 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     );
   }
 
-  // 4. Balance check
-  const balance: {
-    free: number;
-    paid: number;
-    total: number;
-    lifetimeUsed: number;
-  } | null = await ctx.runQuery(
-    internal.credits.internal.getBalanceByUserId,
-    { userId: keyResult.userId },
-  );
-  if (!balance || balance.total <= 0) {
-    return openAIError(
-      "Insufficient credits",
-      "insufficient_quota",
-      402,
-      allowedOrigin,
-    );
-  }
-
-  // 5. Parse request
+  // 4. Parse request (moved before balance check — pre-flight needs
+  //    `req.web_search_options` to estimate the additive grounding cost).
   let body: unknown;
   try {
     body = await request.json();
@@ -153,6 +139,30 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     return openAIError(parsed.error, "invalid_request_error", 400, allowedOrigin);
   }
   const req = parsed.request;
+
+  // 5. Balance check — estimate-based pre-flight. Web-search turns add
+  //    the grounding-fee constant on top of the chat-completion floor.
+  //    Drain-to-zero (plan-03 in makeDeductFn) handles in-flight overrun.
+  const balance: {
+    free: number;
+    paid: number;
+    total: number;
+    lifetimeUsed: number;
+  } | null = await ctx.runQuery(
+    internal.credits.internal.getBalanceByUserId,
+    { userId: keyResult.userId },
+  );
+  const requiredCredits =
+    ESTIMATED_CREDITS_PER_WALLET_API_CALL +
+    (req.web_search_options ? ESTIMATED_CREDITS_PER_WEB_SEARCH : 0);
+  if (!balance || balance.total < requiredCredits) {
+    return openAIError(
+      `Insufficient credits — need at least ${requiredCredits}, have ${balance?.total ?? 0}.`,
+      "insufficient_quota",
+      402,
+      allowedOrigin,
+    );
+  }
 
   // 6. Resolve model
   const walletModel: Doc<"models"> | null = await ctx.runQuery(
