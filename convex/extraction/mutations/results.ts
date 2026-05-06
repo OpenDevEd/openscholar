@@ -231,7 +231,12 @@ export const recordOneAnswer = internalMutation({
     }
 
     if (args.creditsUsed > 0 && job) {
-      await ctx.runMutation(internal.credits.internal.deductCredits, {
+      // allowPartial:true — the extraction job's per-question pre-flight
+      // floor (ESTIMATED_CREDITS_PER_QUERY) was the gate; any in-flight
+      // overrun drains the wallet rather than leaving the result row
+      // committed but unbilled. The aggregator mirror below uses the
+      // actual deducted amount so per-job spend stays accurate.
+      const { deducted } = await ctx.runMutation(internal.credits.internal.deductCredits, {
         userId: job.userId,
         amount: args.creditsUsed,
         description: "AI: Extraction (1 question)",
@@ -240,17 +245,21 @@ export const recordOneAnswer = internalMutation({
         resultId,
         billingType: "extraction_llm",
         metadata: { questionKey: args.questionKey },
+        allowPartial: true,
       });
       // Same-txn spend mirror for the creditsAgg B-tree. `billed` gates
       // retries before we reach here so insertIfDoesNotExist just needs
       // to be idempotent on the (jobId, now, resultId) triple — which it
-      // is via the dedup on (namespace, key+id position).
-      await recordCreditSpend(ctx, {
-        jobId: paper.jobId,
-        key: now,
-        id: resultId,
-        creditsUsed: args.creditsUsed,
-      });
+      // is via the dedup on (namespace, key+id position). Skip when
+      // deducted is 0 so we don't write zero-amount aggregator entries.
+      if (deducted > 0) {
+        await recordCreditSpend(ctx, {
+          jobId: paper.jobId,
+          key: now,
+          id: resultId,
+          creditsUsed: deducted,
+        });
+      }
     }
 
     await recordResult(ctx, {
