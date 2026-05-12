@@ -404,6 +404,24 @@ describe("classifyChatError", () => {
     ).toBe("insufficient_credits");
   });
 
+  it("preserves chat insufficient-credit estimate metadata", () => {
+    expect(
+      classifyChatError(
+        new ConvexError({
+          code: "AI_INSUFFICIENT_CREDITS",
+          message: "Not enough credits for this chat message.",
+          requiredCredits: 700,
+          availableCredits: 125,
+          deficitCredits: 575,
+        }),
+      ).creditEstimate,
+    ).toEqual({
+      required: 700,
+      available: 125,
+      deficit: 575,
+    });
+  });
+
   it("maps 503/502 to model_unavailable", () => {
     expect(
       classifyChatError({ statusCode: 503, message: "no provider" }).class,

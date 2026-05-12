@@ -38,6 +38,7 @@ import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/lib/hooks";
+import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
 
 const stepVariants = {
   enter: (direction: number) => ({
@@ -143,14 +144,16 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
   // Plan-03: live preflight estimate + balance check. Mirrors the
   // screening-dialog balance row (components/screening/screening-dialog.tsx:210-215).
   const preflightEstimate = useMemo(
-    () =>
-      estimateExtractionCredits({
-        papers: readyBucketItems.length,
+    () => {
+      const paperCount = readyBucketPaperCount(readyBucketItems);
+      return estimateExtractionCredits({
+        papers: paperCount,
         questions: draftJob.questions.length,
         usePdfs: draftJob.usePdfs,
         avgPaperKind: draftJob.usePdfs ? "pdf" : "abstract",
-      }),
-    [readyBucketItems.length, draftJob.questions.length, draftJob.usePdfs],
+      });
+    },
+    [readyBucketItems, draftJob.questions.length, draftJob.usePdfs],
   );
   const { data: preflightBalance } = useProtectedQuery(
     api.credits.queries.checkBalance,

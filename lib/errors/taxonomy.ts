@@ -74,6 +74,11 @@ export type ChatErrorEnvelope = {
   httpStatus?: number;
   retryAfterMs?: number;
   providerName?: string;
+  creditEstimate?: {
+    required: number;
+    available: number;
+    deficit: number;
+  };
   /**
    * Short human-readable fallback. Prefer i18n keyed on `class` in the UI;
    * use this only when you need to surface raw provider text.
@@ -399,6 +404,7 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
   const providerName = extractProviderName(rec);
   const message = extractMessage(rec) ?? "Unknown error";
   const retryAfterMs = extractRetryAfterMs(rec);
+  const creditEstimate = extractCreditEstimate(rec);
 
   // Detect user-initiated aborts first — they come through as DOMException
   // or AbortError, not AI SDK APICallError. Strict: only OUR user_stopped
@@ -420,6 +426,7 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
     return envelope("insufficient_credits", message, {
       httpStatus,
       providerName,
+      creditEstimate,
     });
   }
 
@@ -443,6 +450,7 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
       return envelope("insufficient_credits", message, {
         httpStatus,
         providerName,
+        creditEstimate,
       });
     }
     if (httpStatus === 400 && isContextTooLong(message)) {
@@ -501,9 +509,10 @@ function envelope(
     httpStatus?: number;
     retryAfterMs?: number;
     providerName?: string;
+    creditEstimate?: ChatErrorEnvelope["creditEstimate"];
   } = {},
 ): ChatErrorEnvelope {
-  const { httpStatus, retryAfterMs, providerName } = extras;
+  const { httpStatus, retryAfterMs, providerName, creditEstimate } = extras;
   return {
     version: 1,
     class: cls,
@@ -511,6 +520,7 @@ function envelope(
     ...(httpStatus !== undefined ? { httpStatus } : {}),
     ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
     ...(providerName ? { providerName } : {}),
+    ...(creditEstimate ? { creditEstimate } : {}),
   };
 }
 
@@ -549,6 +559,26 @@ function extractStatus(rec: Record<string, unknown>): number | undefined {
     if (typeof code === "number" && code >= 100 && code < 600) return code;
   }
   return undefined;
+}
+
+function extractCreditEstimate(
+  rec: Record<string, unknown>,
+): ChatErrorEnvelope["creditEstimate"] | undefined {
+  const required = asFiniteNumber(rec.requiredCredits);
+  const available = asFiniteNumber(rec.availableCredits);
+  const rawDeficit = asFiniteNumber(rec.deficitCredits);
+  if (required === undefined || available === undefined) return undefined;
+  return {
+    required,
+    available,
+    deficit: rawDeficit ?? Math.max(0, required - available),
+  };
+}
+
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function extractProviderName(rec: Record<string, unknown>): string | undefined {

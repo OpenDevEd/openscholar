@@ -88,7 +88,7 @@ export const startJob = mutation({
 
     // Shared: bucket validation + source persistence.
     const deduped = dedupeBucketItems(args.bucketItems);
-    await assertBucketWithinLimits(ctx, user._id, deduped);
+    const bucketLimits = await assertBucketWithinLimits(ctx, user._id, deduped);
     const sourceType = deriveSourceType(deduped);
 
     // Extraction-mode question validation happens after bucket validation
@@ -117,7 +117,7 @@ export const startJob = mutation({
       // the credits row directly — avoids a sub-transaction round-trip).
       const usePdfs = args.usePdfs ?? false;
       estimate = estimateExtractionCredits({
-        papers: deduped.length,
+        papers: bucketLimits.effectiveCount,
         questions: qs.length,
         usePdfs,
         avgPaperKind: usePdfs ? "pdf" : "abstract",
@@ -133,7 +133,7 @@ export const startJob = mutation({
         if (totalAvailable < estimate.high) {
           throw createError(
             "INSUFFICIENT_CREDITS",
-            `Need ~${estimate.mid} credits (up to ${estimate.high}) for ${deduped.length} papers × ${qs.length} questions but only have ${totalAvailable}`,
+            `Need ~${estimate.mid} credits (up to ${estimate.high}) for ${bucketLimits.effectiveCount} papers × ${qs.length} questions but only have ${totalAvailable}`,
           );
         }
       }

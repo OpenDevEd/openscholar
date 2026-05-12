@@ -606,7 +606,7 @@
     },
     "body": {
       "rate_limit": "इस मॉडल के लिए अपस्ट्रीम क्षमता अस्थायी रूप से समाप्त हो गई है। शीघ्र पुनः प्रयास करें या दूसरा मॉडल चुनें।",
-      "insufficient_credits": "इस कार्यक्षेत्र में उत्तर उत्पन्न करने के लिए पर्याप्त क्रेडिट नहीं हैं।",
+      "insufficient_credits": "आपके खाते में उत्तर जनरेट करने के लिए पर्याप्त क्रेडिट नहीं हैं।",
       "model_unavailable": "चयनित मॉडल अभी अनुरोध स्वीकार नहीं कर रहा है। दूसरा मॉडल आज़माएँ।",
       "auth": "मॉडल प्रदाता के साथ प्रमाणीकरण नहीं हो सका। अपनी API कुंजी कॉन्फ़िगरेशन जाँचें।",
       "moderation": "प्रदाता के सामग्री फ़िल्टर ने इस इनपुट को फ्लैग किया है। अपना संदेश संशोधित करें और पुनः प्रयास करें।",
@@ -723,6 +723,9 @@
     "chatErrorShowDetails": "तकनीकी विवरण दिखाएँ",
     "chatErrorBackendReasonLabel": "बैकएंड कारण:",
     "chatErrorNoBackendReason": "इस विफल असिस्टेंट संदेश के लिए कोई बैकएंड त्रुटि दर्ज नहीं की गई.",
+    "chatErrorCreditsBalance": "क्रेडिट बैलेंस",
+    "chatErrorCreditsCurrentVsEstimate": "{current, number} / ~{estimate, number} क्रेडिट",
+    "chatErrorCreditsDeficit": "यह उत्तर चलाने के लिए लगभग {deficit, number} और क्रेडिट जोड़ें।",
     "chatErrorRetryIn": "{seconds}s में पुनः प्रयास करें",
     "chatWaitForResponse": "प्रतिक्रिया समाप्त होने तक प्रतीक्षा करें",
     "chatPreparing": "चैट तैयार हो रही है…",
@@ -1011,11 +1014,9 @@
       "metaCostLoading": "मूल्य की गणना हो रही है…",
       "metaProvider": "{provider} के माध्यम से",
       "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter देशी",
+      "providerOpenRouter": "OpenRouter सर्वर टूल",
       "statusOn": "चालू",
-      "statusOff": "बंद",
-      "hintEnable": "सक्षम करने के लिए क्लिक करें",
-      "hintDisable": "अक्षम करने के लिए क्लिक करें"
+      "statusOff": "बंद"
     }
   },
   "toast": {

@@ -383,10 +383,16 @@ export const generateResponse = internalAction({
       const requiredCredits =
         ESTIMATED_CREDITS_PER_CHAT_MESSAGE +
         (meta.webSearchEnabled ? ESTIMATED_CREDITS_PER_WEB_SEARCH : 0);
-      if (!balance || balance.total < requiredCredits) {
+      const availableCredits = balance?.total ?? 0;
+      if (availableCredits < requiredCredits) {
         throw createError(
           "AI_INSUFFICIENT_CREDITS",
           "Not enough credits for this chat message.",
+          {
+            requiredCredits,
+            availableCredits,
+            deficitCredits: requiredCredits - availableCredits,
+          },
         );
       }
 

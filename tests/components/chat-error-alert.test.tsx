@@ -13,11 +13,17 @@ import { serializeChatError } from "@/lib/errors/taxonomy";
 import { ABORT_ERROR_STRING } from "@/lib/chat/abort-signal";
 
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace?: string) => (key: string) => {
+  useTranslations:
+    (namespace?: string) => (key: string, vars?: Record<string, unknown>) => {
     // Simulate message resolution: return a stable string that encodes
     // the namespace + key so tests can assert the component read from
     // the right translation path.
-    return namespace ? `${namespace}:${key}` : key;
+    const resolved = namespace ? `${namespace}:${key}` : key;
+    if (!vars) return resolved;
+    const suffix = Object.entries(vars)
+      .map(([name, value]) => `${name}=${String(value)}`)
+      .join(",");
+    return `${resolved}(${suffix})`;
   },
 }));
 
@@ -67,6 +73,55 @@ describe("<ChatErrorAlert> — plan-01 taxonomy surface", () => {
     expect(
       screen.getByText("errors:body.insufficient_credits"),
     ).toBeInTheDocument();
+  });
+
+  it("does not show backend reason or technical details for insufficient credits", () => {
+    const { container } = render(
+      <ChatErrorAlert
+        rawError={serializeChatError({
+          version: 1,
+          class: "insufficient_credits",
+          message: "Not enough credits for this chat message.",
+          creditEstimate: {
+            required: 700,
+            available: 125,
+            deficit: 575,
+          },
+        })}
+        onRetry={() => {}}
+        models={[]}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveAttribute(
+      "data-error-code",
+      "insufficient_credits",
+    );
+    expect(
+      container.querySelector("[data-error-backend-reason]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-error-technical-details]"),
+    ).toBeNull();
+    expect(screen.queryByText("extraction:chatErrorShowDetails")).toBeNull();
+    expect(
+      screen.queryByText("Not enough credits for this chat message."),
+    ).toBeNull();
+    const estimate = container.querySelector("[data-error-credit-estimate]");
+    expect(estimate).not.toBeNull();
+    expect(estimate).toHaveAttribute("data-credit-required", "700");
+    expect(estimate).toHaveAttribute("data-credit-available", "125");
+    expect(estimate).toHaveAttribute("data-credit-deficit", "575");
+    expect(estimate).toHaveTextContent("extraction:chatErrorCreditsBalance");
+    expect(estimate).toHaveTextContent(
+      "extraction:chatErrorCreditsCurrentVsEstimate(current=125,estimate=700)",
+    );
+    expect(estimate).toHaveTextContent(
+      "extraction:chatErrorCreditsDeficit(deficit=575)",
+    );
+    expect(
+      container.querySelector("[data-action='retry-inline']"),
+    ).not.toBeNull();
   });
 
   it("uses role=alert for destructive codes and role=status for aborted", () => {

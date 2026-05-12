@@ -22,6 +22,7 @@ import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { commandCenterSpring } from "@/lib/animation-config";
 import { useCooldown } from "@/lib/hooks/use-cooldown";
+import { useAppToast } from "@/lib/toast";
 
 interface ScreeningExpansionProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ interface ScreeningExpansionProps {
 }
 
 export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpansionProps) {
+  const toast = useAppToast();
   const t = useTranslations();
   const locale = useLocale();
   const [newQuestion, setNewQuestion] = useState("");
@@ -196,8 +198,9 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
           total_questions: screeningQuestions.length + addedCount,
         });
       }
-    } catch {
+    } catch (error) {
       posthog.capture("screening_questions_generation_failed", {});
+      toast.ai.failed(t("searchCommand.questionGeneration"), error);
     } finally {
       setIsGenerating(false);
     }

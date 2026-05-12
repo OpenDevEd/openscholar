@@ -45,9 +45,12 @@ export function WebSearchToggle({
       ? "on"
       : "off";
 
-  const ariaLabel = enabled
-    ? t("webSearch.ariaDisable")
-    : t("webSearch.ariaEnable");
+  const ariaLabel =
+    state === "unsupported"
+      ? t("webSearch.titleUnsupported")
+      : enabled
+        ? t("webSearch.ariaDisable")
+        : t("webSearch.ariaEnable");
 
   const interactive = !disabled && !reduceMotion;
 
@@ -87,8 +90,8 @@ export function WebSearchToggle({
         <motion.button
           type="button"
           aria-pressed={enabled}
+          aria-disabled={disabled}
           aria-label={ariaLabel}
-          disabled={disabled}
           data-action="toggle-web-search"
           data-web-search-state={state}
           data-web-search-enabled={String(enabled)}
@@ -101,13 +104,14 @@ export function WebSearchToggle({
           whileTap={interactive ? { scale: 0.94 } : undefined}
           transition={modeToggleSpring}
           onClick={() => {
+            if (disabled) return;
             void setWebSearch({ threadId, enabled: !enabled });
           }}
           className={cn(
             "relative inline-flex h-7 select-none items-center gap-1.5 rounded-full px-2.5 text-xs font-medium",
             "outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             "transition-[background,color,box-shadow,border-color] duration-200",
-            "disabled:pointer-events-none disabled:opacity-50",
+            disabled && "cursor-not-allowed opacity-50",
             state === "off" &&
               "text-muted-foreground hover:bg-accent hover:text-foreground",
             state === "unsupported" && "text-muted-foreground/60",
@@ -122,13 +126,6 @@ export function WebSearchToggle({
             transition={{ duration: 0.45, ease: [0.32, 0.72, 0, 1] }}
           >
             <Globe className="size-3.5" aria-hidden="true" />
-            {state === "on" ? (
-              <span
-                aria-hidden="true"
-                data-web-search-pulse=""
-                className="web-search-pulse pointer-events-none absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-primary shadow-[0_0_5px_oklch(0.7_0.17_54/0.85)]"
-              />
-            ) : null}
           </motion.span>
           <span className="hidden sm:inline">{t("webSearch.label")}</span>
         </motion.button>
@@ -136,7 +133,7 @@ export function WebSearchToggle({
       <TooltipContent
         side="top"
         sideOffset={8}
-        className="w-[260px] max-w-[260px] overflow-hidden border border-border bg-popover p-0 text-popover-foreground shadow-xl"
+        className="w-[min(260px,calc(100vw-24px))] max-w-[260px] overflow-hidden border border-border bg-popover p-0 text-popover-foreground shadow-xl"
         arrowClassName="bg-popover fill-popover"
       >
         {/* State-tinted gradient bar — instant visual signal of the state
@@ -170,21 +167,12 @@ export function WebSearchToggle({
               <span
                 data-web-search-status-pill={state}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                  "inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
                   state === "on" && "bg-primary/15 text-primary",
                   state === "off" &&
                     "bg-muted text-muted-foreground/80",
                 )}
               >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    state === "on" &&
-                      "web-search-pulse bg-primary shadow-[0_0_4px_oklch(0.7_0.17_54/0.85)]",
-                    state === "off" && "bg-muted-foreground/45",
-                  )}
-                />
                 {state === "on"
                   ? t("webSearch.statusOn")
                   : t("webSearch.statusOff")}
@@ -259,18 +247,6 @@ export function WebSearchToggle({
             </div>
           ) : null}
 
-          {/* Footer — micro-hint reinforcing the click affordance. Only
-              when the toggle is actionable; suppressed in unsupported. */}
-          {state !== "unsupported" ? (
-            <p
-              className="mt-2 text-[10.5px] leading-tight text-muted-foreground/60"
-              data-web-search-tooltip-hint={state}
-            >
-              {state === "on"
-                ? t("webSearch.hintDisable")
-                : t("webSearch.hintEnable")}
-            </p>
-          ) : null}
         </div>
       </TooltipContent>
     </Tooltip>

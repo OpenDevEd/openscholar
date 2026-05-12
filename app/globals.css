@@ -494,39 +494,12 @@
   }
 }
 
-/* Web-search toggle live-state indicator. 2s loop, opacity + scale only
-   so the compositor handles it without layout. The dot signals "the
-   button is currently active" — paired with the gradient background it
-   distinguishes the on-state without relying on color alone. */
-.web-search-pulse {
-  animation: web-search-pulse 2s ease-in-out infinite;
-  transform-origin: center;
-  will-change: transform, opacity;
-}
-
-@keyframes web-search-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(0.85);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-}
-
 /* Reduced-motion audit (plan 06): strip every transactions-panel animation
    that isn't load-bearing for comprehension. Drawer / popover / dropdown
    animations are handled by their own shadcn media queries. */
 @media (prefers-reduced-motion: reduce) {
   .txn-pulse {
     animation: none !important;
-  }
-  .web-search-pulse {
-    animation: none !important;
-    opacity: 0.85;
-    transform: none;
   }
   [data-transactions-progress] > div {
     transition: none !important;

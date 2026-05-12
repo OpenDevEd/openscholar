@@ -10,8 +10,9 @@
  *
  * Contract surfaced here:
  *  - aria-pressed mirrors the persisted server state
- *  - the button is disabled when the active model lacks the "tools"
- *    capability or when the chat is generating
+ *  - the button is aria-disabled, not native-disabled, when the active model
+ *    lacks the "tools" capability or when the chat is generating so the
+ *    explanatory tooltip can still open
  *  - clicking flips the value via setChatWebSearchEnabled
  *  - tooltip renders a richer surface: title, body, status pill, and
  *    (when supported) cost + provider meta rows in BOTH on and off states
@@ -70,11 +71,9 @@ const composerStrings: Record<string, string> = {
   "webSearch.metaCostLoading": "Calculating cost…",
   "webSearch.metaProvider": "via {provider}",
   "webSearch.providerTavilyBasic": "Tavily Basic",
-  "webSearch.providerOpenRouter": "OpenRouter native",
+  "webSearch.providerOpenRouter": "OpenRouter server tool",
   "webSearch.statusOn": "On",
   "webSearch.statusOff": "Off",
-  "webSearch.hintEnable": "Click to enable",
-  "webSearch.hintDisable": "Click to disable",
 };
 
 vi.mock("next-intl", () => ({
@@ -134,22 +133,26 @@ describe("<WebSearchToggle>", () => {
     expect(on).toHaveAttribute("data-web-search-state", "on");
   });
 
-  it("is disabled when the active model lacks the tools capability", () => {
+  it("is aria-disabled, but still tooltip-addressable, when the active model lacks the tools capability", () => {
     const { rerender } = render(
       <WebSearchToggle
         {...baseProps}
         modelSupportedParameters={["stream", "reasoning"]}
       />,
     );
-    const btn = screen.getByRole("button");
-    expect(btn).toBeDisabled();
+    const btn = screen.getByRole("button", {
+      name: /web search unavailable/i,
+    });
+    expect(btn).not.toBeDisabled();
+    expect(btn).toHaveAttribute("aria-disabled", "true");
     expect(btn).toHaveAttribute("data-web-search-supported", "false");
     expect(btn).toHaveAttribute("data-web-search-state", "unsupported");
 
     rerender(
       <WebSearchToggle {...baseProps} modelSupportedParameters={undefined} />,
     );
-    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button")).not.toBeDisabled();
+    expect(screen.getByRole("button")).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button")).toHaveAttribute(
       "data-web-search-supported",
       "false",
@@ -158,7 +161,8 @@ describe("<WebSearchToggle>", () => {
     rerender(
       <WebSearchToggle {...baseProps} modelSupportedParameters={null} />,
     );
-    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button")).not.toBeDisabled();
+    expect(screen.getByRole("button")).toHaveAttribute("aria-disabled", "true");
 
     rerender(
       <WebSearchToggle
@@ -168,16 +172,31 @@ describe("<WebSearchToggle>", () => {
     );
     expect(screen.getByRole("button")).not.toBeDisabled();
     expect(screen.getByRole("button")).toHaveAttribute(
+      "aria-disabled",
+      "false",
+    );
+    expect(screen.getByRole("button")).toHaveAttribute(
       "data-web-search-supported",
       "true",
     );
   });
 
-  it("is disabled while the chat is generating, even on a capable model", () => {
+  it("is aria-disabled while the chat is generating, even on a capable model", () => {
     render(<WebSearchToggle {...baseProps} isGenerating={true} />);
     const btn = screen.getByRole("button");
-    expect(btn).toBeDisabled();
+    expect(btn).not.toBeDisabled();
+    expect(btn).toHaveAttribute("aria-disabled", "true");
     expect(btn).toHaveAttribute("data-web-search-supported", "true");
+  });
+
+  it("does not mutate when aria-disabled", async () => {
+    const user = userEvent.setup();
+    setWebSearchMock.mockClear();
+
+    render(<WebSearchToggle {...baseProps} isGenerating={true} />);
+    await user.click(screen.getByRole("button"));
+
+    expect(setWebSearchMock).not.toHaveBeenCalled();
   });
 
   it("clicking calls setChatWebSearchEnabled with the negated current value", async () => {
@@ -229,7 +248,6 @@ describe("<WebSearchToggle>", () => {
     expect(
       container.querySelector("[data-tooltip-provider-line]"),
     ).toBeNull();
-    // No click hint either — the toggle is not actionable.
     expect(
       container.querySelector("[data-web-search-tooltip-hint]"),
     ).toBeNull();
@@ -270,11 +288,12 @@ describe("<WebSearchToggle>", () => {
     expect(providerRow).not.toBeNull();
     expect(providerRow).toHaveTextContent(/via Tavily Basic/);
     expect(providerRow).not.toHaveTextContent(/tavily-basic/);
-    // Click-to-disable hint reinforces affordance.
-    expect(tooltip).toHaveTextContent(/Click to disable/);
+    expect(
+      container.querySelector("[data-web-search-tooltip-hint]"),
+    ).toBeNull();
   });
 
-  it("renders the off-state tooltip with the full meta surface and click-to-enable hint", () => {
+  it("renders the off-state tooltip with the full meta surface", () => {
     pricingMock.mockReturnValue({
       source: "tavily-basic",
       usdPerCall: 0.008,
@@ -302,13 +321,15 @@ describe("<WebSearchToggle>", () => {
     expect(
       container.querySelector("[data-tooltip-provider-line]"),
     ).not.toBeNull();
-    expect(tooltip).toHaveTextContent(/Click to enable/);
+    expect(
+      container.querySelector("[data-web-search-tooltip-hint]"),
+    ).toBeNull();
     const btn = screen.getByRole("button");
     expect(btn).toHaveAttribute("data-web-search-source", "tavily-basic");
     expect(btn).toHaveAttribute("data-web-search-credits-estimate", "104");
   });
 
-  it("renders the OpenRouter native provider label for the openrouter-server-tool source", () => {
+  it("renders the OpenRouter server-tool provider label for the openrouter-server-tool source", () => {
     pricingMock.mockReturnValue({
       source: "openrouter-server-tool",
       usdPerCall: 0.02,
@@ -326,7 +347,7 @@ describe("<WebSearchToggle>", () => {
     const providerRow = container.querySelector(
       "[data-tooltip-provider-line]",
     );
-    expect(providerRow).toHaveTextContent(/via OpenRouter native/);
+    expect(providerRow).toHaveTextContent(/via OpenRouter server tool/);
     expect(screen.getByRole("button")).toHaveAttribute(
       "data-web-search-source",
       "openrouter-server-tool",

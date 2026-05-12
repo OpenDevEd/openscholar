@@ -96,9 +96,9 @@ export function ChatErrorAlert({
     ? "default"
     : "destructive";
   const role = variant === "destructive" ? "alert" : "status";
-  const showTechnicalDetails =
-    envelope.class !== "aborted" && envelope.message.length > 0;
-  const backendReason = backendReasonFor(envelope, t);
+  const showDiagnostics = shouldShowDiagnostics(envelope);
+  const showTechnicalDetails = showDiagnostics && envelope.message.length > 0;
+  const backendReason = showDiagnostics ? backendReasonFor(envelope, t) : null;
 
   return (
     <Alert
@@ -124,6 +124,10 @@ export function ChatErrorAlert({
             {backendReason}
           </span>
         ) : null}
+        {envelope.class === "insufficient_credits" &&
+        envelope.creditEstimate ? (
+          <CreditEstimateRow estimate={envelope.creditEstimate} />
+        ) : null}
         <ActionRow
           envelope={envelope}
           onRetry={onRetry}
@@ -145,6 +149,52 @@ export function ChatErrorAlert({
         ) : null}
       </AlertDescription>
     </Alert>
+  );
+}
+
+function CreditEstimateRow({
+  estimate,
+}: {
+  estimate: NonNullable<ChatErrorEnvelope["creditEstimate"]>;
+}) {
+  const t = useTranslations("extraction");
+  const progress = Math.max(
+    0,
+    Math.min(100, (estimate.available / Math.max(1, estimate.required)) * 100),
+  );
+
+  return (
+    <div
+      className="mb-3 rounded-md border border-destructive/20 bg-background/60 p-2.5"
+      data-error-credit-estimate
+      data-credit-required={String(estimate.required)}
+      data-credit-available={String(estimate.available)}
+      data-credit-deficit={String(estimate.deficit)}
+    >
+      <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+        <span className="font-medium text-foreground">
+          {t("chatErrorCreditsBalance")}
+        </span>
+        <span className="tabular-nums text-muted-foreground">
+          {t("chatErrorCreditsCurrentVsEstimate", {
+            current: estimate.available,
+            estimate: estimate.required,
+          })}
+        </span>
+      </div>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-destructive/15"
+        aria-hidden="true"
+      >
+        <div
+          className="h-full rounded-full bg-destructive/70"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        {t("chatErrorCreditsDeficit", { deficit: estimate.deficit })}
+      </p>
+    </div>
   );
 }
 
@@ -271,4 +321,10 @@ function backendReasonFor(
     return t("chatErrorNoBackendReason");
   }
   return envelope.message;
+}
+
+function shouldShowDiagnostics(envelope: ChatErrorEnvelope): boolean {
+  return (
+    envelope.class !== "aborted" && envelope.class !== "insufficient_credits"
+  );
 }

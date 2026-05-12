@@ -606,7 +606,7 @@
     },
     "body": {
       "rate_limit": "此模型的上游容量暂时耗尽。请稍后重试或切换到其他模型。",
-      "insufficient_credits": "此工作区没有足够的积分来生成响应。",
+      "insufficient_credits": "你的账户没有足够的积分来生成回复。",
       "model_unavailable": "所选模型当前不接受请求。请尝试其他模型。",
       "auth": "无法与模型提供商进行身份验证。请检查 API 密钥配置。",
       "moderation": "提供商的内容过滤器标记了此输入。请修改您的消息后重试。",
@@ -723,6 +723,9 @@
     "chatErrorShowDetails": "显示技术详情",
     "chatErrorBackendReasonLabel": "后端原因：",
     "chatErrorNoBackendReason": "没有为这条失败的助手消息记录后端错误。",
+    "chatErrorCreditsBalance": "积分余额",
+    "chatErrorCreditsCurrentVsEstimate": "{current, number} / 约 {estimate, number} 积分",
+    "chatErrorCreditsDeficit": "请再添加约 {deficit, number} 积分以生成此回复。",
     "chatErrorRetryIn": "{seconds}秒后重试",
     "chatWaitForResponse": "请等待响应完成",
     "chatPreparing": "正在准备对话…",
@@ -1011,11 +1014,9 @@
       "metaCostLoading": "正在计算费用…",
       "metaProvider": "经由 {provider}",
       "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter 原生",
+      "providerOpenRouter": "OpenRouter 服务器工具",
       "statusOn": "开",
-      "statusOff": "关",
-      "hintEnable": "点击启用",
-      "hintDisable": "点击禁用"
+      "statusOff": "关"
     }
   },
   "toast": {

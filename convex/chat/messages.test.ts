@@ -1899,9 +1899,13 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const jobAfterFailure = await t.run((ctx) => ctx.db.get(jobId));
 
     expect(failedAssistant).toBeDefined();
-    expect(parseChatError(failedAssistant?.error)?.class).toBe(
-      "insufficient_credits",
-    );
+    const errorEnvelope = parseChatError(failedAssistant?.error);
+    expect(errorEnvelope?.class).toBe("insufficient_credits");
+    expect(errorEnvelope?.creditEstimate).toEqual({
+      required: 200,
+      available: 0,
+      deficit: 200,
+    });
     expect(jobAfterFailure?.isGenerating).toBe(false);
     expect(jobAfterFailure?.error?.code).toBe("insufficient_credits");
   });

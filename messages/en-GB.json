@@ -606,7 +606,7 @@
     },
     "body": {
       "rate_limit": "Upstream capacity for this model is temporarily exhausted. Retry shortly or switch to another model.",
-      "insufficient_credits": "This workspace doesn't have enough credits to generate a response.",
+      "insufficient_credits": "Your account doesn't have enough credits to generate a response.",
       "model_unavailable": "The selected model isn't accepting requests right now. Try another model.",
       "auth": "We couldn't authenticate with the model provider. Check your API key configuration.",
       "moderation": "The provider's content filter flagged this input. Revise your message and try again.",
@@ -740,6 +740,9 @@
     "chatErrorShowDetails": "Show technical details",
     "chatErrorBackendReasonLabel": "Backend reason:",
     "chatErrorNoBackendReason": "No backend error was recorded for this failed assistant message.",
+    "chatErrorCreditsBalance": "Credit balance",
+    "chatErrorCreditsCurrentVsEstimate": "{current, number} / ~{estimate, number} credits",
+    "chatErrorCreditsDeficit": "Add about {deficit, number} more credits to run this response.",
     "chatErrorRetryIn": "Retry in {seconds}s",
     "chatWaitForResponse": "Wait for the response to finish",
     "chatPreparing": "Preparing chat…",
@@ -1034,11 +1037,9 @@
       "metaCostLoading": "Calculating cost…",
       "metaProvider": "via {provider}",
       "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter native",
+      "providerOpenRouter": "OpenRouter server tool",
       "statusOn": "On",
-      "statusOff": "Off",
-      "hintEnable": "Click to enable",
-      "hintDisable": "Click to disable"
+      "statusOff": "Off"
     }
   },
   "toast": {

@@ -28,6 +28,13 @@ const BUCKET_ITEM_HISTORY = {
   searchFilters: { limit: 1 },
 };
 
+const BUCKET_ITEM_HISTORY_200 = {
+  ...BUCKET_ITEM_HISTORY,
+  bucketKey: "history:W200",
+  sourceRefId: "W200",
+  searchFilters: { limit: 200 },
+};
+
 async function seedUserFlagsAndCredits(
   t: ReturnType<typeof convexTest>,
   opts: { paid: number; free?: number } = { paid: 0 },
@@ -114,6 +121,24 @@ describe("startJob — pre-flight credit check", () => {
         usePdfs: false,
       }),
     ).rejects.toThrow(/workflow/i);
+  });
+
+  it("counts saved-search history placeholders by expanded paper count, not row count", async () => {
+    const t = convexTest(schema);
+    await seedUserFlagsAndCredits(t, { paid: 1_000 });
+    const auth = t.withIdentity(IDENTITY);
+
+    await expect(
+      auth.mutation(api.extraction.mutations.startJob, {
+        name: "Expanded History",
+        mode: "extraction",
+        bucketItems: [BUCKET_ITEM_HISTORY_200],
+        questions: [
+          { key: "q1", question: "What is the outcome?", type: "string" },
+        ],
+        usePdfs: false,
+      }),
+    ).rejects.toThrow(/2400|200 papers|INSUFFICIENT_CREDITS|credits/i);
   });
 
   it("skips preflight when mode=chat (chat jobs don't consume LLM credits up-front)", async () => {

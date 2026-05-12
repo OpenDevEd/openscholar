@@ -606,7 +606,7 @@
     },
     "body": {
       "rate_limit": "La capacité amont de ce modèle est temporairement épuisée. Réessayez dans un instant ou choisissez un autre modèle.",
-      "insufficient_credits": "Cet espace de travail n'a pas assez de crédits pour générer une réponse.",
+      "insufficient_credits": "Votre compte n'a pas assez de crédits pour générer une réponse.",
       "model_unavailable": "Le modèle sélectionné n'accepte pas de requêtes pour le moment. Essayez un autre modèle.",
       "auth": "Impossible de s'authentifier auprès du fournisseur du modèle. Vérifiez la configuration de la clé API.",
       "moderation": "Le filtre de contenu du fournisseur a signalé cette entrée. Modifiez votre message et réessayez.",
@@ -723,6 +723,9 @@
     "chatErrorShowDetails": "Afficher les détails techniques",
     "chatErrorBackendReasonLabel": "Raison backend :",
     "chatErrorNoBackendReason": "Aucune erreur backend n'a été enregistrée pour ce message assistant échoué.",
+    "chatErrorCreditsBalance": "Solde de crédits",
+    "chatErrorCreditsCurrentVsEstimate": "{current, number} / ~{estimate, number} crédits",
+    "chatErrorCreditsDeficit": "Ajoutez environ {deficit, number} crédits pour lancer cette réponse.",
     "chatErrorRetryIn": "Réessayer dans {seconds}s",
     "chatWaitForResponse": "Attendez la fin de la réponse",
     "chatPreparing": "Préparation de la conversation…",
@@ -1011,11 +1014,9 @@
       "metaCostLoading": "Calcul du coût…",
       "metaProvider": "via {provider}",
       "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter natif",
+      "providerOpenRouter": "outil serveur OpenRouter",
       "statusOn": "Actif",
-      "statusOff": "Inactif",
-      "hintEnable": "Cliquez pour activer",
-      "hintDisable": "Cliquez pour désactiver"
+      "statusOff": "Inactif"
     }
   },
   "toast": {
