@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
   errorCodeValidator,
+  extractionEvidenceUnitFields,
   extractionJobFields,
   extractionPaperErrorFields,
   extractionPaperFields,
@@ -441,19 +442,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION EVIDENCE UNITS - Anchored sentence evidence (V3)
   // ═══════════════════════════════════════════════════════════════
-  extractionEvidenceUnits: defineTable({
-    jobId: v.id("extractionJobs"),
-    paperId: v.id("extractionPapers"),
-    evidenceId: v.string(),
-    page: v.number(),
-    charRange: v.array(v.number()),
-    text: v.string(),
-    section: v.optional(v.string()),
-    tokens: v.array(v.string()),
-    anchorConfidence: v.number(),
-    source: v.string(),
-    createdAt: v.number(),
-  })
+  extractionEvidenceUnits: defineTable(extractionEvidenceUnitFields)
     .index("by_paper", ["paperId"])
     .index("by_paper_evidence", ["paperId", "evidenceId"])
     .index("by_paper_page", ["paperId", "page"])

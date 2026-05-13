@@ -440,9 +440,7 @@ export const extractionResultValidator = v.object({
 const _check_extractionResultValidator: AssertExactDoc<"extractionResults", typeof extractionResultValidator> = true;
 void _check_extractionResultValidator;
 
-export const extractionEvidenceUnitValidator = v.object({
-  _id: v.id("extractionEvidenceUnits"),
-  _creationTime: v.number(),
+export const extractionEvidenceUnitFields = {
   jobId: v.id("extractionJobs"),
   paperId: v.id("extractionPapers"),
   evidenceId: v.string(),
@@ -454,7 +452,19 @@ export const extractionEvidenceUnitValidator = v.object({
   anchorConfidence: v.number(),
   source: v.string(),
   createdAt: v.number(),
+};
+
+export const extractionEvidenceUnitValidator = v.object({
+  _id: v.id("extractionEvidenceUnits"),
+  _creationTime: v.number(),
+  ...extractionEvidenceUnitFields,
 });
+
+const _check_extractionEvidenceUnitValidator: AssertExactDoc<
+  "extractionEvidenceUnits",
+  typeof extractionEvidenceUnitValidator
+> = true;
+void _check_extractionEvidenceUnitValidator;
 
 /**
  * Shape returned by readJobSources — the bucket items that were frozen
