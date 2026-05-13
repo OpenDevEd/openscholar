@@ -74,6 +74,8 @@ interface SeedOpts {
   processedPapers?: number;
   failedPapers?: number;
   paperCreditsUsed?: number;
+  paperQuestionsBilled?: boolean;
+  startingCredits?: number;
   clerkSuffix?: string;
 }
 
@@ -86,6 +88,7 @@ async function seedScenario(
   opts: SeedOpts = {},
 ): Promise<{
   userId: Id<"users">;
+  creditsId: Id<"credits">;
   jobId: Id<"extractionJobs">;
   paperId: Id<"extractionPapers">;
 }> {
@@ -99,6 +102,8 @@ async function seedScenario(
     processedPapers = 0,
     failedPapers = 0,
     paperCreditsUsed,
+    paperQuestionsBilled,
+    startingCredits = 1_000,
     clerkSuffix = String(Math.random()).slice(2),
   } = opts;
 
@@ -111,10 +116,10 @@ async function seedScenario(
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.insert("credits", {
+    const creditsId = await ctx.db.insert("credits", {
       userId,
       freeBalance: 0,
-      paidBalance: 1_000,
+      paidBalance: startingCredits,
       lifetimeUsed: 0,
       lastUpdatedAt: now,
     });
@@ -147,6 +152,7 @@ async function seedScenario(
       title: "FinalizePaper Edge Case Paper",
       status: paperStatus,
       creditsUsed: paperCreditsUsed,
+      questionsBilled: paperQuestionsBilled,
     });
     for (const r of results) {
       await ctx.db.insert("extractionResults", {
@@ -175,8 +181,16 @@ async function seedScenario(
         processedAt: now,
       });
     }
-    return { userId, jobId, paperId };
+    return { userId, creditsId, jobId, paperId };
   });
+}
+
+async function readBalance(
+  t: ReturnType<typeof convexTest>,
+  creditsId: Id<"credits">,
+): Promise<number> {
+  const row = await t.run((ctx) => ctx.db.get("credits", creditsId));
+  return row!.paidBalance;
 }
 
 const finalizePaperRef =
@@ -777,5 +791,237 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
     expect(job?.status).toBe("extracting");
     expect(job?.processedPapers).toBe(1);
     expect(job?.failedPapers).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// 8. Per-paper credit-debit semantics (new debit site).
+//
+// finalizePaper is now the one-and-only debit site for LLM-extraction
+// credits (the per-question debit inside recordOneAnswer was removed
+// to eliminate OCC-storm contention on the user's credits row). Every
+// terminal flip with a non-zero paper.creditsUsed drains that amount
+// from the wallet, gated on `paper.questionsBilled` so retries never
+// double-charge.
+// ─────────────────────────────────────────────────────────────────────
+
+describe("finalizePaper — per-paper credit debit", () => {
+  it("debits paper.creditsUsed from the wallet on terminal flip and sets questionsBilled", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seedScenario(t, {
+      paperCreditsUsed: 7,
+      startingCredits: 1_000,
+      results: [{ questionKey: "q1", status: "completed", billed: true }],
+    });
+
+    await t.mutation(finalizePaperRef, { paperId });
+
+    expect(await readBalance(t, creditsId)).toBe(993);
+    const paper = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paper?.status).toBe("completed");
+    expect(paper?.questionsBilled).toBe(true);
+    expect(paper?.creditsUsed).toBe(7);
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(1);
+    expect(charges[0]?.amount).toBe(-7);
+    expect(charges[0]?.billingType).toBe("extraction_llm");
+    expect(charges[0]?.paperId).toBe(paperId);
+  });
+
+  it("debits accumulated credits even when the paper terminal status is failed (partial successes still cost)", async () => {
+    // paper.creditsUsed only accumulates from successful per-question
+    // billings — but a paper whose questions partially failed can still
+    // have a non-zero accumulator. The terminal flip is `failed` (rollup
+    // says so) yet the wallet must still be debited for the completed
+    // work; otherwise users get unbilled LLM calls on partial failures.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seedScenario(t, {
+      paperCreditsUsed: 4,
+      startingCredits: 1_000,
+      questionKeys: ["q1", "q2"],
+      results: [
+        {
+          questionKey: "q1",
+          status: "failed",
+          billed: false,
+          lastErrorCode: "pdf_invalid",
+          attemptCount: 1,
+        },
+        {
+          questionKey: "q2",
+          status: "failed",
+          billed: false,
+          lastErrorCode: "pdf_invalid",
+          attemptCount: 1,
+        },
+      ],
+    });
+
+    await t.mutation(finalizePaperRef, { paperId });
+
+    expect(await readBalance(t, creditsId)).toBe(996);
+    const paper = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paper?.status).toBe("failed");
+    expect(paper?.questionsBilled).toBe(true);
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(1);
+    expect(charges[0]?.amount).toBe(-4);
+  });
+
+  it("does NOT debit when paper.questionsBilled is already true (workflow retry idempotency)", async () => {
+    // Seeds a paper that already carries questionsBilled=true (a prior
+    // run already paid the bill). The terminal flip happens, but the
+    // wallet is untouched.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seedScenario(t, {
+      paperCreditsUsed: 5,
+      paperQuestionsBilled: true,
+      startingCredits: 1_000,
+      results: [{ questionKey: "q1", status: "completed", billed: true }],
+    });
+
+    await t.mutation(finalizePaperRef, { paperId });
+
+    expect(await readBalance(t, creditsId)).toBe(1_000);
+    const paper = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paper?.status).toBe("completed");
+    expect(paper?.questionsBilled).toBe(true);
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(0);
+  });
+
+  it("does NOT debit and does NOT flip questionsBilled when paper.creditsUsed is zero", async () => {
+    // Zero-credit guard short-circuits before deductCreditsTransaction
+    // would throw INVALID_AMOUNT on a zero-amount debit. questionsBilled
+    // stays unset so a downstream resume that records real cost can
+    // still charge.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seedScenario(t, {
+      paperCreditsUsed: 0,
+      startingCredits: 1_000,
+      results: [{ questionKey: "q1", status: "completed", billed: true }],
+    });
+
+    await t.mutation(finalizePaperRef, { paperId });
+
+    expect(await readBalance(t, creditsId)).toBe(1_000);
+    const paper = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paper?.status).toBe("completed");
+    expect(paper?.questionsBilled).toBeUndefined();
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(0);
+  });
+
+  it("does NOT debit when paper.creditsUsed is undefined (never accumulated)", async () => {
+    // paperCreditsUsed omitted at seed time → field is undefined.
+    // creditsToDebit = (undefined ?? 0) === 0, guard skips.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seedScenario(t, {
+      startingCredits: 1_000,
+      results: [{ questionKey: "q1", status: "completed", billed: true }],
+    });
+
+    await t.mutation(finalizePaperRef, { paperId });
+
+    expect(await readBalance(t, creditsId)).toBe(1_000);
+    const paper = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paper?.status).toBe("completed");
+    expect(paper?.questionsBilled).toBeUndefined();
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(0);
+  });
+
+  it("drains the wallet (allowPartial:true) when balance < paper.creditsUsed instead of throwing", async () => {
+    // The contract is `allowPartial:true` — if the wallet ran short
+    // mid-run, finalizePaper must drain the remaining balance and let
+    // the cascade transition the job to creditsExhausted upstream.
+    // Throwing INSUFFICIENT_CREDITS here would mean a successfully-
+    // extracted paper stays in "extracting" forever.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seedScenario(t, {
+      paperCreditsUsed: 10,
+      startingCredits: 3,
+      results: [{ questionKey: "q1", status: "completed", billed: true }],
+    });
+
+    await t.mutation(finalizePaperRef, { paperId });
+
+    expect(await readBalance(t, creditsId)).toBe(0);
+    const paper = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paper?.status).toBe("completed");
+    expect(paper?.questionsBilled).toBe(true);
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(1);
+    expect(charges[0]?.amount).toBe(-3);
+  });
+
+  it("calling finalizePaper twice with non-zero credits debits exactly once (terminal short-circuit)", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seedScenario(t, {
+      paperCreditsUsed: 6,
+      startingCredits: 1_000,
+      results: [{ questionKey: "q1", status: "completed", billed: true }],
+    });
+
+    await t.mutation(finalizePaperRef, { paperId });
+    await t.mutation(finalizePaperRef, { paperId });
+
+    expect(await readBalance(t, creditsId)).toBe(994);
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(1);
   });
 });
