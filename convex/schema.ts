@@ -10,6 +10,7 @@ import {
   extractionQuestionFields,
   extractionReportSnapshotFields,
   extractionResultFields,
+  extractionRunDiffFields,
   extractionSavedViewFields,
   searchFiltersValidator,
 } from "./extraction/validators";
@@ -545,45 +546,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION RUN DIFFS - Rerun change summaries for alerts
   // ═══════════════════════════════════════════════════════════════
-  extractionRunDiffs: defineTable({
-    jobId: v.id("extractionJobs"),
-    baselineJobId: v.id("extractionJobs"),
-    userId: v.id("users"),
-    summary: v.object({
-      newAnswers: v.number(),
-      changedAnswers: v.number(),
-      removedAnswers: v.number(),
-      confidenceShifts: v.number(),
-      newlyInsufficientEvidence: v.number(),
-      totalCompared: v.number(),
-    }),
-    changes: v.array(
-      v.object({
-        openalexId: v.string(),
-        title: v.string(),
-        questionKey: v.string(),
-        changeType: v.union(
-          v.literal("new"),
-          v.literal("changed"),
-          v.literal("removed"),
-          v.literal("confidence_shift"),
-          v.literal("newly_insufficient_evidence")
-        ),
-        previousAnswer: v.optional(
-          v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null())
-        ),
-        nextAnswer: v.optional(
-          v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null())
-        ),
-        previousConfidence: v.optional(v.number()),
-        nextConfidence: v.optional(v.number()),
-      })
-    ),
-    generatedAt: v.number(),
-    createdAt: v.number(),
-    isTruncated: v.optional(v.boolean()),
-    totalChanges: v.optional(v.number()),
-  })
+  extractionRunDiffs: defineTable(extractionRunDiffFields)
     .index("by_job", ["jobId"])
     .index("by_baseline", ["baselineJobId"])
     .index("by_job_generated", ["jobId", "generatedAt"]),

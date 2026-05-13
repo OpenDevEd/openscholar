@@ -567,9 +567,24 @@ const _check_extractionReportSnapshotValidator: AssertExactDoc<
 > = true;
 void _check_extractionReportSnapshotValidator;
 
-export const extractionRunDiffValidator = v.object({
-  _id: v.id("extractionRunDiffs"),
-  _creationTime: v.number(),
+export const extractionRunDiffChangeValidator = v.object({
+  openalexId: v.string(),
+  title: v.string(),
+  questionKey: v.string(),
+  changeType: v.union(
+    v.literal("new"),
+    v.literal("changed"),
+    v.literal("removed"),
+    v.literal("confidence_shift"),
+    v.literal("newly_insufficient_evidence"),
+  ),
+  previousAnswer: v.optional(answerValidator),
+  nextAnswer: v.optional(answerValidator),
+  previousConfidence: v.optional(v.number()),
+  nextConfidence: v.optional(v.number()),
+});
+
+export const extractionRunDiffFields = {
   jobId: v.id("extractionJobs"),
   baselineJobId: v.id("extractionJobs"),
   userId: v.id("users"),
@@ -581,26 +596,21 @@ export const extractionRunDiffValidator = v.object({
     newlyInsufficientEvidence: v.number(),
     totalCompared: v.number(),
   }),
-  changes: v.array(
-    v.object({
-      openalexId: v.string(),
-      title: v.string(),
-      questionKey: v.string(),
-      changeType: v.union(
-        v.literal("new"),
-        v.literal("changed"),
-        v.literal("removed"),
-        v.literal("confidence_shift"),
-        v.literal("newly_insufficient_evidence")
-      ),
-      previousAnswer: v.optional(answerValidator),
-      nextAnswer: v.optional(answerValidator),
-      previousConfidence: v.optional(v.number()),
-      nextConfidence: v.optional(v.number()),
-    })
-  ),
+  changes: v.array(extractionRunDiffChangeValidator),
   generatedAt: v.number(),
   createdAt: v.number(),
   isTruncated: v.optional(v.boolean()),
   totalChanges: v.optional(v.number()),
+};
+
+export const extractionRunDiffValidator = v.object({
+  _id: v.id("extractionRunDiffs"),
+  _creationTime: v.number(),
+  ...extractionRunDiffFields,
 });
+
+const _check_extractionRunDiffValidator: AssertExactDoc<
+  "extractionRunDiffs",
+  typeof extractionRunDiffValidator
+> = true;
+void _check_extractionRunDiffValidator;
