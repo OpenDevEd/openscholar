@@ -77,7 +77,6 @@ const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
   ["internal", "getQuestionByIdInternal"],
   ["internal", "getResultByPaperAndQuestionInternal"],
   ["papers", "resultsInternal"],
-  ["papers", "byOpenAlexIds"],
   ["papers", "byId"],
 ];
 
@@ -86,6 +85,7 @@ const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
 // actions; `debug_pdfjs_alignment.ts` hosts a debug action.
 const INTERNAL_ACTIONS: ReadonlyArray<readonly [string, string]> = [
   ["actions", "fetchPapersFromHistory"],
+  ["actions", "fetchAndPersistPapers"],
   ["workpoolActions", "downloadAndIndexPdfAction"],
   ["workpoolActions", "extractOneQuestion"],
   ["debug_pdfjs_alignment", "debugPdfAlignment"],

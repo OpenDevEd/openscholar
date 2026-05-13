@@ -2,9 +2,8 @@
  * Paper-scoped queries, grouped under queries/papers.ts. Each function is
  * addressed by the short name in this module — e.g.
  * `api.extraction.queries.papers.results` / `…papers.pdfUrl` for the
- * public ones, `internal.extraction.queries.papers.{byId,byOpenAlexIds,
- * resultsInternal}` for the internals. Task 12 renames applied: the old
- * `getPaper*` prefixes are gone.
+ * public ones, `internal.extraction.queries.papers.{byId,resultsInternal}`
+ * for the internals.
  */
 
 import { query, internalQuery } from "../../_generated/server";
@@ -12,7 +11,6 @@ import { v } from "convex/values";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedPaper } from "../access";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
-import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import {
   extractionPaperValidator,
   extractionResultValidator,
@@ -76,21 +74,6 @@ export const resultsInternal = internalQuery({
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
       .collect();
-  },
-});
-
-export const byOpenAlexIds = internalQuery({
-  args: {
-    jobId: v.id("extractionJobs"),
-    openalexIds: v.array(v.string()),
-  },
-  returns: v.array(extractionPaperValidator),
-  handler: async (ctx, args) => {
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT_MAX);
-    return papers.filter((p) => args.openalexIds.includes(p.openalexId));
   },
 });
 
