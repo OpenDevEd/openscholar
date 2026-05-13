@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
   errorCodeValidator,
+  extractionJobFields,
   extractionPaperFields,
   searchFiltersValidator,
   structuredErrorValidator,
@@ -271,115 +272,13 @@ export default defineSchema({
   // EXTRACTION JOBS - Dual-mode job rows: "extraction" (data pipeline)
   //                   and "chat" (conversational Q&A over papers).
   //                   One table, one set of URLs, mode-discriminated.
+  //
+  // Field-object SSOT lives in convex/extraction/validators.ts as
+  // `extractionJobFields`; spread there into the row-mirror validator
+  // and here into `defineTable(...)`. Drift fails compile-time via
+  // `AssertExactDoc<"extractionJobs", ...>`.
   // ═══════════════════════════════════════════════════════════════
-  extractionJobs: defineTable({
-    userId: v.id("users"),
-
-    // Required discriminator. Every field below that is mode-specific is
-    // optional in the schema; the mode is what tells the reader which
-    // subset to expect.
-    mode: v.union(v.literal("extraction"), v.literal("chat")),
-
-    // Source type classifier. Present for both modes — chat also pins a
-    // paper set. Actual per-row source payloads live in
-    // `extractionJobSources` (below).
-    sourceType: v.optional(
-      v.union(
-        v.literal("history"),
-        v.literal("zotero"),
-        v.literal("manual"),
-        v.literal("mixed")
-      )
-    ),
-
-    // ─── Extraction-only fields ───────────────────────────────────
-    // Status / counters / workflowId only apply to the data-extraction
-    // pipeline. Unset on chat rows.
-    status: v.optional(
-      v.union(
-        v.literal("pending"),
-        v.literal("downloading_pdfs"),
-        v.literal("indexing"),
-        v.literal("extracting"),
-        // Non-terminal: the user can top up credits and resume (plan 06).
-        // Deliberately diverges from screening where creditsExhausted is
-        // terminal.
-        v.literal("creditsExhausted"),
-        // Non-terminal user-initiated pause (plan 06). Resume transitions
-        // back to `pausedFromStatus` (or `extracting` as fallback).
-        v.literal("paused"),
-        v.literal("completed"),
-        v.literal("failed"),
-        v.literal("cancelled")
-      )
-    ),
-    totalPapers: v.optional(v.number()),
-    processedPapers: v.optional(v.number()),
-    failedPapers: v.optional(v.number()),
-    workflowId: v.optional(v.string()),
-    runEpoch: v.optional(v.number()),
-    // Per-job PDF opt-in. Replaces the old global `extraction.pdf` flag
-    // as the *default*; the flag remains as an admin capability gate.
-    usePdfs: v.optional(v.boolean()),
-    // Plan-06 pause state. `pausedAt` timestamps the transition; the UI
-    // renders "paused N min ago". `pausedFromStatus` captures the phase
-    // the job was in at pause time so resume can restore it (workflow
-    // gate replays from that phase).
-    pausedAt: v.optional(v.number()),
-    pausedFromStatus: v.optional(
-      v.union(
-        v.literal("pending"),
-        v.literal("downloading_pdfs"),
-        v.literal("indexing"),
-        v.literal("extracting"),
-      ),
-    ),
-    // Pre-flight credit estimate persisted at startJob time. Consumed
-    // by the UI to size remaining-work banners and by plan 06's Resume
-    // button gate.
-    estimatedCredits: v.optional(
-      v.object({
-        low: v.number(),
-        mid: v.number(),
-        high: v.number(),
-      })
-    ),
-
-    // ─── Chat-only fields ─────────────────────────────────────────
-    // @convex-dev/agent thread id (component-owned).
-    chatThreadId: v.optional(v.string()),
-    // Current model choice — picker seeds from models table (isServed).
-    chatModelId: v.optional(v.id("models")),
-    // Per-thread opt-in for web-search grounding. Read by the chat
-    // orchestrator (plan 06) to decide whether to register the web-search
-    // tool. Patched by setChatWebSearchEnabled (plan 03). Capability-gated
-    // in the UI by lib/chat/web-search-capability.ts.
-    webSearchEnabled: v.optional(v.boolean()),
-    // Denormalised for list rendering + sort.
-    lastMessageAt: v.optional(v.number()),
-    messageCount: v.optional(v.number()),
-    // Per-thread concurrency lock — one in-flight generation per chat.
-    isGenerating: v.optional(v.boolean()),
-    generatingStartedAt: v.optional(v.number()),
-    chatGenerationAttemptId: v.optional(v.string()),
-    // Mid-stream abort flag. Set by abortGeneration, polled every
-    // 500ms by generateResponse's AbortController-poll loop, cleared
-    // by releaseThreadLock in the action's finally.
-    shouldAbort: v.optional(v.boolean()),
-
-    // ─── Shared metadata ──────────────────────────────────────────
-    name: v.string(),
-    description: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    completedAt: v.optional(v.number()),
-
-    // Populated by the workflow onComplete handler when the workflow
-    // terminates with kind: "failed", or by any catch site that wants
-    // to surface a structured failure reason. The taxonomy code lets
-    // the UI pick localized title/body without parsing the message.
-    error: v.optional(structuredErrorValidator),
-  })
+  extractionJobs: defineTable(extractionJobFields)
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     // Unified history list + single-mode scoping (count user's chats).

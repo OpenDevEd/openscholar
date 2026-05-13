@@ -193,9 +193,7 @@ export const searchFiltersValidator = v.object({
 
 // ---- Full document validators ----
 
-export const extractionJobValidator = v.object({
-  _id: v.id("extractionJobs"),
-  _creationTime: v.number(),
+export const extractionJobFields = {
   userId: v.id("users"),
   mode: v.union(v.literal("extraction"), v.literal("chat")),
   sourceType: v.optional(sourceTypeValidator),
@@ -230,7 +228,16 @@ export const extractionJobValidator = v.object({
   updatedAt: v.number(),
   completedAt: v.optional(v.number()),
   error: v.optional(structuredErrorValidator),
+};
+
+export const extractionJobValidator = v.object({
+  _id: v.id("extractionJobs"),
+  _creationTime: v.number(),
+  ...extractionJobFields,
 });
+
+const _check_extractionJobValidator: AssertExactDoc<"extractionJobs", typeof extractionJobValidator> = true;
+void _check_extractionJobValidator;
 
 /**
  * Bucket item input — the single validator for every source-tab payload
