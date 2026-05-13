@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
   errorCodeValidator,
+  extractionPaperFields,
   searchFiltersValidator,
   structuredErrorValidator,
 } from "./extraction/validators";
@@ -520,100 +521,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION PAPERS - Individual papers being processed
   // ═══════════════════════════════════════════════════════════════
-  extractionPapers: defineTable({
-    jobId: v.id("extractionJobs"),
-
-    // Paper metadata (from OpenAlex)
-    openalexId: v.string(),
-    title: v.string(),
-    doi: v.optional(v.string()),
-    publicationYear: v.optional(v.number()),
-    abstract: v.optional(v.string()),
-    authors: v.optional(v.array(v.string())),
-    isOpenAccess: v.optional(v.boolean()),
-    processable: v.optional(v.boolean()),
-
-    // Processing status
-    status: v.union(
-      v.literal("pending"),
-      v.literal("downloading"),
-      v.literal("download_failed"),
-      v.literal("indexing"),
-      v.literal("indexing_failed"),
-      v.literal("extracting"),
-      v.literal("completed"),
-      v.literal("failed")
-    ),
-
-    // PDF handling
-    pdfUrl: v.optional(v.string()), // Source URL
-    storageId: v.optional(v.id("_storage")), // Convex file storage ID
-    pdfDownloadError: v.optional(v.string()),
-    sourceType: v.optional(v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"))),
-    sourceId: v.optional(v.string()),
-
-    // RAG indexing
-    ragEntryId: v.optional(v.string()), // RAG component entry ID (actual entry ID from callback)
-    isIndexed: v.optional(v.boolean()), // true when PDF was successfully indexed in RAG
-    indexedAt: v.optional(v.number()),
-    // Idempotency flag: true once embedding credits have been deducted.
-    // Prevents double-billing if indexPaperAction is retried after a crash
-    // that occurred between rag.add() and the credit-deduction mutation.
-    indexingBilled: v.optional(v.boolean()),
-
-    // Processing metadata
-    workId: v.optional(v.string()), // Workpool work ID for tracking
-    startedAt: v.optional(v.number()),
-    completedAt: v.optional(v.number()),
-    // Most recent structured failure for this paper. Append-only history
-    // of every attempt is kept in `extractionPaperErrors` (see below).
-    lastError: v.optional(structuredErrorValidator),
-    // Number of completed attempts (success or failure). Bumped on every
-    // terminal transition by markPaperTerminalTx.
-    attemptCount: v.optional(v.number()),
-
-    // Cost tracking. `creditsUsed` is the running aggregate of every
-    // recordOneAnswer's `creditsUsed` arg, incremented as each question
-    // result lands via applyResultProjectionWrite. `finalizePaper` reads
-    // this accumulator and debits the ledger ONCE per paper — moving the
-    // hot-row write from per-question to per-paper to slash OCC
-    // contention on the user's single `credits` row.
-    //
-    // `questionsBilled` is the paper-level idempotency flag for that
-    // debit. Set to `true` inside finalizePaper after the credit
-    // deduction commits; the same mutation re-running (or being re-run
-    // adversarially after a status reset) short-circuits before
-    // re-debiting. Mirrors the `indexingBilled` pattern used by
-    // markPaperIndexed for the embedding charge.
-    creditsUsed: v.optional(v.number()),
-    questionsBilled: v.optional(v.boolean()),
-
-    // Content usage tracking
-    pdfContentUsed: v.optional(v.boolean()), // true if PDF content was actually used for extraction (any question)
-
-    // Paper-list projection (results-scale plan 02). Maintained on writes
-    // so full-corpus filters/sorts/search do not reread every child row.
-    sortTitle: v.optional(v.string()),
-    avgConfidence: v.optional(v.number()),
-    hasErrors: v.optional(v.boolean()),
-    hasPdfSource: v.optional(v.boolean()),
-    questionAnswerTokens: v.optional(v.array(v.string())),
-    searchText: v.optional(v.string()),
-    // Internal write-path state so per-question completions can patch the
-    // visible projection without rereading every child row.
-    projectionResultCount: v.optional(v.number()),
-    projectionConfidenceSum: v.optional(v.number()),
-    projectionQuestionStates: v.optional(
-      v.array(
-        v.object({
-          questionKey: v.string(),
-          token: v.optional(v.string()),
-          searchPart: v.optional(v.string()),
-        }),
-      ),
-    ),
-    projectionErrorQuestionKeys: v.optional(v.array(v.string())),
-  })
+  extractionPapers: defineTable(extractionPaperFields)
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
     .index("by_job_status", ["jobId", "status"])

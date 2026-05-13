@@ -6,6 +6,7 @@
 
 import { v } from "convex/values";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
+import { type AssertExactDoc } from "../lib/validators";
 
 /**
  * Re-export so all extraction code can pull the taxonomy validator from
@@ -303,9 +304,7 @@ export const extractionQuestionValidator = v.object({
   createdAt: v.number(),
 });
 
-export const extractionPaperValidator = v.object({
-  _id: v.id("extractionPapers"),
-  _creationTime: v.number(),
+export const extractionPaperFields = {
   jobId: v.id("extractionJobs"),
   openalexId: v.string(),
   title: v.string(),
@@ -351,7 +350,16 @@ export const extractionPaperValidator = v.object({
     ),
   ),
   projectionErrorQuestionKeys: v.optional(v.array(v.string())),
+};
+
+export const extractionPaperValidator = v.object({
+  _id: v.id("extractionPapers"),
+  _creationTime: v.number(),
+  ...extractionPaperFields,
 });
+
+const _check_extractionPaperValidator: AssertExactDoc<"extractionPapers", typeof extractionPaperValidator> = true;
+void _check_extractionPaperValidator;
 
 /**
  * Append-only history of every error a paper has hit. One row per
@@ -446,7 +454,9 @@ export const resultsPageFiltersValidator = v.object({
 // ---- Typed page item validator for extraction results ----
 // Shared by the results queries that return paper rows with attached results.
 export const paginatedPaperWithResultsValidator = v.object({
-  ...extractionPaperValidator.fields,
+  _id: v.id("extractionPapers"),
+  _creationTime: v.number(),
+  ...extractionPaperFields,
   results: v.array(extractionResultValidator),
 });
 
