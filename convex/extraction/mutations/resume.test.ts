@@ -181,7 +181,7 @@ describe("resumeExtraction — happy paths", () => {
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
       usePdfs: false,
-      remainingQuestions: 5, // 5 × 12 (ABSTRACT_Q_CREDIT_HIGH) = 60
+      remainingQuestions: 5, // 5 × 5 (ABSTRACT_Q_CREDIT_HIGH) = 25
     });
     const auth = t.withIdentity(OWNER_IDENTITY);
 

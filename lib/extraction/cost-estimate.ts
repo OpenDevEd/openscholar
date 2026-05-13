@@ -25,17 +25,23 @@ export type ExtractionEstimateArgs = {
   avgPaperKind: AvgPaperKind;
 };
 
-// Conservative over-estimates — we prefer blocking preflight over mid-run
-// failure. Derived empirically from screening's ESTIMATED_CREDITS_PER_QUERY=2
-// floor (convex/lib/constants.ts) and RAG embedding pricing at
-// $0.02/1M tokens × AI_COST_MARKUP=1.3 × 10k credits/USD.
-// TODO(plan-03): re-calibrate from creditTransactions once 30 days of
-// billingType="extraction_llm" / "extraction_embedding" data exists.
+// Abstract-tier constants recalibrated from 2,821 production
+// `creditTransactions` rows where billingType="extraction_llm":
+//   mean=2.02, p10≈1, p50=2, p90=3, p95=3, p99=5, max=9
+// LOW=1 (p10), MID=2 (mean/p50), HIGH=5 (p99). HIGH is the preflight
+// block threshold; with n=2821 only 1% of questions exceed it and the
+// worst observed overshoot is +4 credits — bounded blast radius even
+// for large jobs. R9 (`high ≥ 1.2 × mid`) holds at 5/2 = 2.5×.
+//
+// PDF-tier constants are unchanged: zero PDF transactions in the
+// dataset, so 10/20/50 + INDEX_PDF_CREDIT=1.5 are still derived from
+// RAG embedding pricing ($0.02/1M tokens × AI_COST_MARKUP=1.3 ×
+// 10k credits/USD). Re-probe once PDF jobs accumulate real data.
 export const EXTRACTION_COST_CONSTANTS = {
   INDEX_PDF_CREDIT: 1.5,
-  ABSTRACT_Q_CREDIT_LOW: 3,
-  ABSTRACT_Q_CREDIT_MID: 6,
-  ABSTRACT_Q_CREDIT_HIGH: 12,
+  ABSTRACT_Q_CREDIT_LOW: 1,
+  ABSTRACT_Q_CREDIT_MID: 2,
+  ABSTRACT_Q_CREDIT_HIGH: 5,
   PDF_Q_CREDIT_LOW: 10,
   PDF_Q_CREDIT_MID: 20,
   PDF_Q_CREDIT_HIGH: 50,

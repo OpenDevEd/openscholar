@@ -74,7 +74,7 @@ async function seedUserFlagsAndCredits(
 describe("startJob — pre-flight credit check", () => {
   it("throws INSUFFICIENT_CREDITS when totalAvailable < estimate.high; no job is inserted", async () => {
     const t = convexTest(schema);
-    const { userId } = await seedUserFlagsAndCredits(t, { paid: 5 }); // way below
+    const { userId } = await seedUserFlagsAndCredits(t, { paid: 3 }); // way below new HIGH=5
     const auth = t.withIdentity(IDENTITY);
 
     await expect(
@@ -125,7 +125,11 @@ describe("startJob — pre-flight credit check", () => {
 
   it("counts saved-search history placeholders by expanded paper count, not row count", async () => {
     const t = convexTest(schema);
-    await seedUserFlagsAndCredits(t, { paid: 1_000 });
+    // 200 papers × 1 Q × ABSTRACT_Q_CREDIT_HIGH=5 = 1000 estimate. Seed
+    // below that so the expanded count drives a real preflight block;
+    // if the placeholder were counted as 1 row the estimate would be 5
+    // and this would pass preflight.
+    await seedUserFlagsAndCredits(t, { paid: 500 });
     const auth = t.withIdentity(IDENTITY);
 
     await expect(
@@ -138,7 +142,7 @@ describe("startJob — pre-flight credit check", () => {
         ],
         usePdfs: false,
       }),
-    ).rejects.toThrow(/2400|200 papers|INSUFFICIENT_CREDITS|credits/i);
+    ).rejects.toThrow(/200 papers|INSUFFICIENT_CREDITS|credits/i);
   });
 
   it("skips preflight when mode=chat (chat jobs don't consume LLM credits up-front)", async () => {
@@ -190,8 +194,9 @@ describe("startJob — pre-flight credit check", () => {
     // the mutation.
     const t = convexTest(schema);
     // Give just enough credits for the 1-paper / 2-question abstract-tier
-    // estimate (≤ 24 under current constants) but not enough for the
-    // PDF-tier estimate (≥ 100 under current constants).
+    // estimate (= 10 under current constants: 2 × ABSTRACT_Q_CREDIT_HIGH=5)
+    // but not enough for the PDF-tier estimate (= 101.5 under current
+    // constants: 1 × INDEX_PDF_CREDIT=1.5 + 2 × PDF_Q_CREDIT_HIGH=50).
     await seedUserFlagsAndCredits(t, { paid: 30 });
     const auth = t.withIdentity(IDENTITY);
 
