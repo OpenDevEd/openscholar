@@ -13,9 +13,7 @@ import { workflow } from "../workflow";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { getProcessableFlags } from "./content";
-import type { PaperData } from "./types";
 import type { Doc, Id } from "../_generated/dataModel";
-import { dedupeExpandedSources, expandJobSources } from "./expandSources";
 import { chunk, resolveBoundedConcurrency } from "./batching";
 
 import { createError } from "../lib/errors";
@@ -259,20 +257,34 @@ async function runPaperPipeline(
   step: ExtractionWorkflowStep,
   {
     jobId,
-    paper,
+    paperId,
     questionIds,
     questionConcurrency,
     pdfEnabled,
     expectedEpoch,
   }: {
     jobId: Id<"extractionJobs">;
-    paper: ExtractionPaper;
+    paperId: Id<"extractionPapers">;
     questionIds: ReadonlyArray<ExtractionQuestion>;
     questionConcurrency: number;
     pdfEnabled: boolean;
     expectedEpoch: number;
   },
 ): Promise<PaperPipelineResult> {
+  // Fetch the paper at the step boundary so the per-paper journal entry
+  // holds only one ~2-3 KB doc instead of the full Array<ExtractionPaper>
+  // (~600 × 2.5 KB = 1.5 MiB) that the old by-openalex-ids round-trip
+  // dumped into a single step doc.
+  const paper: ExtractionPaper | null = await step.runQuery(
+    internal.extraction.queries.papers.byId,
+    { paperId },
+  );
+  if (!paper) {
+    // Row deleted between persist and fan-out — treat as completed so
+    // the outer batch advances rather than retrying forever.
+    return "completed";
+  }
+
   const { processable: computedProcessable } = getProcessableFlags({
     pdfUrl: paper.pdfUrl,
     storageId: paper.storageId,
@@ -479,52 +491,18 @@ export const runExtractionWorkflow = workflow.define({
       },
     );
 
-    const bucketItems = await step.runQuery(
-      internal.extraction.queries.internal.getJobSourcesInternal,
+    // Single step boundary: the entire fetch/expand/dedupe/persist
+    // sequence runs inside one action's ctx so no large array crosses a
+    // workflow journal write. The action chunks createPaperRecords
+    // internally and returns just the inserted IDs + counts (≈13 KB
+    // for 600 papers — well under the 1 MiB single-document limit).
+    const {
+      paperIds,
+      totalPapers,
+      processableCount,
+    } = await step.runAction(
+      internal.extraction.actions.fetchAndPersistPapers,
       { jobId },
-    );
-
-    let cachedZoteroUserId: string | undefined;
-
-    const expandedSources = await expandJobSources(bucketItems, {
-      fetchPapersFromHistory: async (searchFilters) => {
-        const result = await step.runAction(
-          internal.extraction.actions.fetchPapersFromHistory,
-          { searchFilters },
-        );
-        return result as PaperData[];
-      },
-      resolveZoteroUserId: async () => {
-        if (cachedZoteroUserId !== undefined) {
-          return cachedZoteroUserId;
-        }
-        try {
-          const resolved = await step.runQuery(
-            internal.zotero.queries.getZoteroUserIdInternal,
-            {},
-          );
-          cachedZoteroUserId = resolved ?? undefined;
-        } catch {
-          cachedZoteroUserId = undefined;
-        }
-        return cachedZoteroUserId;
-      },
-    });
-
-    if (expandedSources.length === 0) {
-      throw createError("VALIDATION_ERROR", "No sources selected");
-    }
-
-    const dedupedPapers = dedupeExpandedSources(expandedSources).map(
-      ({ paper, sourceType, sourceId }) => ({
-        ...paper,
-        sourceType,
-        sourceId,
-      }),
-    );
-
-    console.log(
-      `[Workflow] Fetched ${expandedSources.length} papers (${dedupedPapers.length} deduped)`,
     );
 
     // Defense-in-depth: `assertBucketWithinLimits` already rejects jobs
@@ -539,10 +517,10 @@ export const runExtractionWorkflow = workflow.define({
       internal.extraction.bucket.limits.getPaperLimitForUser,
       { userId: job.userId },
     );
-    if (dedupedPapers.length > paperLimit) {
+    if (totalPapers > paperLimit) {
       throw createError(
         "VALIDATION_ERROR",
-        `Job would produce ${dedupedPapers.length} papers, exceeding plan limit of ${paperLimit}`,
+        `Job would produce ${totalPapers} papers, exceeding plan limit of ${paperLimit}`,
       );
     }
 
@@ -552,29 +530,6 @@ export const runExtractionWorkflow = workflow.define({
       return;
     }
     expectedEpoch = controlAfterExpansion.runEpoch;
-
-    await step.runMutation(
-      internal.extraction.mutations.papers.createPaperRecords,
-      {
-        jobId,
-        papers: dedupedPapers.map((p) => ({
-          ...p,
-          storageId: p.storageId as Id<"_storage"> | undefined,
-        })),
-      },
-    );
-
-    const paperIds = await step.runQuery(
-      internal.extraction.queries.papers.byOpenAlexIds,
-      {
-        jobId,
-        openalexIds: dedupedPapers.map((p) => p.openalexId),
-      },
-    );
-
-    const processableCount = paperIds.filter(
-      (paper: { processable?: boolean }) => paper.processable !== false,
-    ).length;
 
     const { pdfEnabled } = await step.runQuery(
       internal.extraction.queries.internal.getJobAndFlagsInternal,
@@ -629,10 +584,10 @@ export const runExtractionWorkflow = workflow.define({
         }
         return control;
       },
-      runItem: async (paper, control) =>
+      runItem: async (paperId, control) =>
         runPaperPipeline(step, {
           jobId,
-          paper,
+          paperId,
           questionIds,
           questionConcurrency: effectiveQuestionConcurrency,
           pdfEnabled,
