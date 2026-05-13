@@ -5,8 +5,8 @@ import {
   errorCodeValidator,
   extractionJobFields,
   extractionPaperFields,
+  extractionResultFields,
   searchFiltersValidator,
-  structuredErrorValidator,
 } from "./extraction/validators";
 import {
   creditsFields,
@@ -481,82 +481,14 @@ export default defineSchema({
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION RESULTS - Extracted data for each paper/question combo
+  //
+  // Field-object SSOT lives in convex/extraction/validators.ts as
+  // `extractionResultFields`. Inline citation / retrievalDiagnostics
+  // shapes that used to be duplicated here are now sourced from the
+  // named `citationValidator` / `retrievalDiagnosticsValidator`
+  // validators via the field object.
   // ═══════════════════════════════════════════════════════════════
-  extractionResults: defineTable({
-    jobId: v.id("extractionJobs"),
-    paperId: v.id("extractionPapers"),
-    questionKey: v.string(),
-
-    // Answer value (type depends on question type, null if not found)
-    answer: v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null()),
-
-    // AI metadata
-    confidence: v.optional(v.number()),
-    reasoning: v.optional(v.string()),
-    citations: v.array(
-      v.object({
-        evidenceId: v.string(),
-        page: v.number(),
-        charRange: v.array(v.number()),
-        quote: v.string(),
-        retrieval: v.object({
-          denseScore: v.optional(v.number()),
-          lexicalScore: v.optional(v.number()),
-          fusedScore: v.optional(v.number()),
-          rerankScore: v.optional(v.number()),
-        }),
-        validated: v.boolean(),
-      })
-    ),
-    citationStatus: v.union(
-      v.literal("grounded"),
-      v.literal("best_effort"),
-      v.literal("insufficient_evidence"),
-      v.literal("extraction_error")
-    ),
-    retrievalDiagnostics: v.optional(
-      v.object({
-        denseCandidates: v.number(),
-        lexicalCandidates: v.number(),
-        fusedCandidates: v.number(),
-        rerankedCandidates: v.number(),
-        validatedCitations: v.number(),
-        strictNull: v.boolean(),
-      })
-    ),
-
-    // Per-question lifecycle status. Plan-02 moves the orchestration from
-    // per-paper to per-(paper, question) so every question gets its own
-    // workflow step, its own retry budget, and its own billing gate.
-    status: v.optional(
-      v.union(
-        v.literal("pending"),
-        v.literal("extracting"),
-        v.literal("completed"),
-        v.literal("failed"),
-      ),
-    ),
-    // Idempotency gate: true once the LLM credits for this question have
-    // been deducted atomically with persisting the answer. This is the
-    // per-question billing flag plan-02 uses in place of any per-paper
-    // equivalent.
-    billed: v.optional(v.boolean()),
-    // Per-question retry counter. Bumped every time the workflow step
-    // terminates (success or failure) so `aggregatePaperStatus` can decide
-    // whether a retryable failure has exhausted its budget.
-    attemptCount: v.optional(v.number()),
-    // Most recent structured failure for this question, classified by
-    // `lib/errors/taxonomy`. Paper-level `extractionPapers.lastError`
-    // still exists as the coarse per-paper fallback used by the
-    // download/index stages.
-    lastError: v.optional(structuredErrorValidator),
-
-    // Source tracking
-    model: v.optional(v.string()),
-    provider: v.optional(v.string()),
-    pdfContentUsed: v.optional(v.boolean()), // Whether PDF content was actually used for this answer
-    processedAt: v.number(),
-  })
+  extractionResults: defineTable(extractionResultFields)
     .index("by_paper", ["paperId"])
     .index("by_paper_question", ["paperId", "questionKey"])
     .index("by_job", ["jobId"])

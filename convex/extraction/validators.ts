@@ -394,9 +394,7 @@ export const resultStatusValidator = v.union(
   v.literal("failed"),
 );
 
-export const extractionResultValidator = v.object({
-  _id: v.id("extractionResults"),
-  _creationTime: v.number(),
+export const extractionResultFields = {
   jobId: v.id("extractionJobs"),
   paperId: v.id("extractionPapers"),
   questionKey: v.string(),
@@ -414,7 +412,16 @@ export const extractionResultValidator = v.object({
   provider: v.optional(v.string()),
   pdfContentUsed: v.optional(v.boolean()),
   processedAt: v.number(),
+};
+
+export const extractionResultValidator = v.object({
+  _id: v.id("extractionResults"),
+  _creationTime: v.number(),
+  ...extractionResultFields,
 });
+
+const _check_extractionResultValidator: AssertExactDoc<"extractionResults", typeof extractionResultValidator> = true;
+void _check_extractionResultValidator;
 
 export const extractionEvidenceUnitValidator = v.object({
   _id: v.id("extractionEvidenceUnits"),
