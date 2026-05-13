@@ -501,9 +501,7 @@ export const paginatedPaperWithResultsValidator = v.object({
   results: v.array(extractionResultValidator),
 });
 
-export const extractionSavedViewValidator = v.object({
-  _id: v.id("extractionSavedViews"),
-  _creationTime: v.number(),
+export const extractionSavedViewFields = {
   jobId: v.id("extractionJobs"),
   userId: v.id("users"),
   name: v.string(),
@@ -517,7 +515,19 @@ export const extractionSavedViewValidator = v.object({
   selectedQuestionKeys: v.optional(v.array(v.string())),
   createdAt: v.number(),
   updatedAt: v.number(),
+};
+
+export const extractionSavedViewValidator = v.object({
+  _id: v.id("extractionSavedViews"),
+  _creationTime: v.number(),
+  ...extractionSavedViewFields,
 });
+
+const _check_extractionSavedViewValidator: AssertExactDoc<
+  "extractionSavedViews",
+  typeof extractionSavedViewValidator
+> = true;
+void _check_extractionSavedViewValidator;
 
 export const extractionReportSnapshotValidator = v.object({
   _id: v.id("extractionReportSnapshots"),

@@ -9,6 +9,7 @@ import {
   extractionPaperFields,
   extractionQuestionFields,
   extractionResultFields,
+  extractionSavedViewFields,
   searchFiltersValidator,
 } from "./extraction/validators";
 import {
@@ -467,21 +468,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION SAVED VIEWS - Persisted filtering and sorting presets
   // ═══════════════════════════════════════════════════════════════
-  extractionSavedViews: defineTable({
-    jobId: v.id("extractionJobs"),
-    userId: v.id("users"),
-    name: v.string(),
-    filters: v.object({
-      searchQuery: v.string(),
-      confidenceRange: v.array(v.number()),
-      statusFilters: v.array(v.string()),
-    }),
-    sortBy: v.optional(v.string()),
-    viewMode: v.optional(v.string()),
-    selectedQuestionKeys: v.optional(v.array(v.string())),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
+  extractionSavedViews: defineTable(extractionSavedViewFields)
     .index("by_job", ["jobId"])
     .index("by_user", ["userId"])
     .index("by_job_name", ["jobId", "name"]),
