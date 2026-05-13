@@ -421,11 +421,22 @@ export const recordOneAnswerFailure = internalMutation({
  * terminal status. Called by the workflow once all per-question steps
  * have either succeeded or exhausted their retry budget. Idempotent:
  * running on an already-terminal paper is a no-op.
+ *
+ * No `expectedEpoch` arg by design. A pause + resume mid-fanout bumps
+ * `job.runEpoch`, but the per-question rows that finished at the older
+ * epoch are still authoritative — they captured real LLM work and were
+ * already billed via `recordOneAnswer`. The paper-status idempotency
+ * guard above plus the `job.status === "extracting"` gate below are
+ * sufficient: if the paper has rolled up to a terminal state and the
+ * job is still in flight, finalizing is correct regardless of how many
+ * epoch bumps happened during fan-out. Guarding on a captured epoch
+ * caused the stuck-at-99% bug — every cross-epoch finalize was a
+ * silent no-op, the workflow returned success, and the job never
+ * cascaded to completed.
  */
 export const finalizePaper = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
-    expectedEpoch: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
@@ -434,7 +445,6 @@ export const finalizePaper = internalMutation({
     if (isTerminalPaperStatus(paper.status)) return null;
 
     const job = await ctx.db.get("extractionJobs", paper.jobId);
-    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
     if (isJobTerminal(job)) return null;
     if (job?.status !== "extracting") return null;
 
@@ -487,7 +497,7 @@ export const finalizePaper = internalMutation({
 
     await ctx.runMutation(
       internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
-      { jobId: paper.jobId, expectedEpoch: args.expectedEpoch },
+      { jobId: paper.jobId },
     );
 
     console.log(

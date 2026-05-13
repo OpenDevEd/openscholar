@@ -391,7 +391,7 @@ async function runPaperPipeline(
 
   await step.runMutation(
     internal.extraction.mutations.results.finalizePaper,
-    { paperId: paper._id, expectedEpoch },
+    { paperId: paper._id },
     { name: `finpaper:${paper._id}` },
   );
 
@@ -435,7 +435,7 @@ async function runRetryPaperPipeline(
 
   await step.runMutation(
     internal.extraction.mutations.results.finalizePaper,
-    { paperId, expectedEpoch },
+    { paperId },
     { name: `finpaper-retry:${paperId}` },
   );
 
