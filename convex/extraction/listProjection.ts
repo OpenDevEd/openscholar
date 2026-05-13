@@ -14,18 +14,11 @@ type ProjectionQuestionState = {
   searchPart?: string;
 };
 
-type ProjectionState = {
-  resultCount: number;
-  confidenceSum: number;
-  questionStates: ProjectionQuestionState[];
-  errorQuestionKeys: string[];
-};
-
 export function normalizeProjectionText(value: string | null | undefined): string {
   if (typeof value !== "string") return "";
   return value
     .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .trim()
     .toLowerCase()
     .replace(/[^\w\s%.-]/g, " ")
@@ -128,12 +121,6 @@ function buildSearchText(args: {
   return parts.join(" ");
 }
 
-function sortQuestionStates(
-  questionStates: ProjectionQuestionState[],
-): ProjectionQuestionState[] {
-  return [...questionStates].sort((a, b) => a.questionKey.localeCompare(b.questionKey));
-}
-
 function isErrorResult(
   result: Pick<
     Doc<"extractionResults">,
@@ -145,83 +132,6 @@ function isErrorResult(
     result.citationStatus === "extraction_error" ||
     result.lastError !== undefined
   );
-}
-
-function readProjectionState(paper: Doc<"extractionPapers">): ProjectionState {
-  return {
-    resultCount:
-      typeof paper.projectionResultCount === "number" &&
-      Number.isFinite(paper.projectionResultCount)
-        ? paper.projectionResultCount
-        : 0,
-    confidenceSum:
-      typeof paper.projectionConfidenceSum === "number" &&
-      Number.isFinite(paper.projectionConfidenceSum)
-        ? paper.projectionConfidenceSum
-        : 0,
-    questionStates: Array.isArray(paper.projectionQuestionStates)
-      ? paper.projectionQuestionStates
-      : [],
-    errorQuestionKeys: Array.isArray(paper.projectionErrorQuestionKeys)
-      ? paper.projectionErrorQuestionKeys
-      : [],
-  };
-}
-
-function buildProjectionPatch(args: {
-  paper: Doc<"extractionPapers">;
-  state: ProjectionState;
-}): Partial<Doc<"extractionPapers">> {
-  const { paper, state } = args;
-  const questionStates = sortQuestionStates(state.questionStates);
-  const questionAnswerTokens = questionStates.flatMap((entry) =>
-    entry.token ? [entry.token] : [],
-  );
-  const avgConfidence =
-    state.resultCount > 0 ? state.confidenceSum / state.resultCount : 0;
-
-  const hasPaperError =
-    paper.status === "download_failed" ||
-    paper.status === "indexing_failed" ||
-    paper.status === "failed" ||
-    paper.lastError !== undefined;
-
-  return {
-    sortTitle: normalizeProjectionText(paper.title),
-    avgConfidence,
-    hasErrors: hasPaperError || state.errorQuestionKeys.length > 0,
-    hasPdfSource: Boolean(
-      paper.pdfUrl || paper.storageId || paper.ragEntryId || paper.isIndexed,
-    ),
-    questionAnswerTokens,
-    searchText: buildSearchText({ paper, questionStates }),
-    projectionResultCount: state.resultCount,
-    projectionConfidenceSum: state.confidenceSum,
-    projectionQuestionStates: questionStates,
-    projectionErrorQuestionKeys: [...new Set(state.errorQuestionKeys)].sort(),
-  };
-}
-
-function upsertQuestionState(
-  questionStates: ProjectionQuestionState[],
-  nextState: ProjectionQuestionState | null,
-): ProjectionQuestionState[] {
-  const withoutCurrent = questionStates.filter(
-    (entry) => entry.questionKey !== nextState?.questionKey,
-  );
-  if (!nextState || (!nextState.token && !nextState.searchPart)) {
-    return withoutCurrent;
-  }
-  return [...withoutCurrent, nextState];
-}
-
-function setErrorQuestion(
-  errorQuestionKeys: string[],
-  questionKey: string,
-  hasError: boolean,
-): string[] {
-  const withoutCurrent = errorQuestionKeys.filter((key) => key !== questionKey);
-  return hasError ? [...withoutCurrent, questionKey] : withoutCurrent;
 }
 
 function confidenceContribution(confidence: number | undefined): number {
@@ -240,70 +150,24 @@ function toQuestionState(
   return { questionKey, token, searchPart };
 }
 
-export async function refreshPaperListProjection(
-  ctx: MutationCtx,
-  paperId: Id<"extractionPapers">,
-): Promise<void> {
-  const paper = await ctx.db.get("extractionPapers", paperId);
-  if (!paper) return;
-
-  const state = readProjectionState(paper);
-  await ctx.db.patch("extractionPapers", paperId, buildProjectionPatch({
-    paper,
-    state,
-  }));
-}
-
-export async function applyResultProjectionWrite(
-  ctx: MutationCtx,
-  args: {
-    paper: Doc<"extractionPapers">;
-    paperId: Id<"extractionPapers">;
-    questionKey: string;
-    previousResult: Pick<
-      Doc<"extractionResults">,
-      "confidence" | "status" | "citationStatus" | "lastError" | "answer"
-    > | null;
-    nextResult: Pick<
-      Doc<"extractionResults">,
-      "confidence" | "status" | "citationStatus" | "lastError" | "answer"
-    >;
-    creditsUsedDelta?: number;
-  },
-): Promise<void> {
-  const { paper, previousResult, nextResult } = args;
-  const state = readProjectionState(paper);
-  const hadPrevious = previousResult !== null;
-  const previousContribution = hadPrevious
-    ? confidenceContribution(previousResult.confidence)
-    : 0;
-  const nextContribution = confidenceContribution(nextResult.confidence);
-  const nextState = toQuestionState(args.questionKey, nextResult.answer);
-
-  const nextProjectionState: ProjectionState = {
-    resultCount: hadPrevious ? Math.max(state.resultCount, 1) : state.resultCount + 1,
-    confidenceSum:
-      state.confidenceSum - previousContribution + nextContribution,
-    questionStates: upsertQuestionState(state.questionStates, nextState),
-    errorQuestionKeys: setErrorQuestion(
-      state.errorQuestionKeys,
-      args.questionKey,
-      isErrorResult(nextResult),
-    ),
-  };
-
-  const patch = buildProjectionPatch({
-    paper,
-    state: nextProjectionState,
-  });
-
-  if ((args.creditsUsedDelta ?? 0) > 0) {
-    patch.creditsUsed = (paper.creditsUsed ?? 0) + (args.creditsUsedDelta ?? 0);
-  }
-
-  await ctx.db.patch("extractionPapers", args.paperId, patch);
-}
-
+/**
+ * Tier C: the denormalized search/list fields on extractionPapers are
+ * rebuilt from the per-question extractionResults rows. Per-question
+ * writes (recordOneAnswer / recordOneAnswerFailure) no longer patch the
+ * paper row — they just write their own results row. The Q-way OCC
+ * contention point that the old applyResultProjectionWrite created is
+ * gone.
+ *
+ * This function is the single source of truth for projection state and
+ * is invoked at:
+ *   - paper insert (createPaperRecords) — initialises denorm fields
+ *   - paper non-terminal status / processable / storage / index updates
+ *   - markPaperTerminalTx (per paper, once, after finalize)
+ *   - admin rebuild (rebuildJobListProjection)
+ *
+ * O(Q) read per call (collect results by_paper). Far cheaper than the
+ * P×Q OCC retry storms the per-question write path used to produce.
+ */
 export async function recomputePaperListProjection(
   ctx: MutationCtx,
   paperId: Id<"extractionPapers">,
@@ -320,20 +184,36 @@ export async function recomputePaperListProjection(
     const state = toQuestionState(result.questionKey, result.answer);
     return state ? [state] : [];
   });
-  const state: ProjectionState = {
-    resultCount: results.length,
-    confidenceSum: results.reduce(
-      (sum, result) => sum + confidenceContribution(result.confidence),
-      0,
-    ),
-    questionStates,
-    errorQuestionKeys: results.flatMap((result) =>
-      isErrorResult(result) ? [result.questionKey] : [],
-    ),
-  };
+  questionStates.sort((a, b) => a.questionKey.localeCompare(b.questionKey));
 
-  await ctx.db.patch("extractionPapers", paperId, buildProjectionPatch({
-    paper,
-    state,
-  }));
+  const confidenceSum = results.reduce(
+    (sum, result) => sum + confidenceContribution(result.confidence),
+    0,
+  );
+  const errorQuestionKeys = Array.from(
+    new Set(results.flatMap((r) => (isErrorResult(r) ? [r.questionKey] : []))),
+  ).sort();
+
+  const resultCount = results.length;
+  const avgConfidence = resultCount > 0 ? confidenceSum / resultCount : 0;
+  const questionAnswerTokens = questionStates.flatMap((s) =>
+    s.token ? [s.token] : [],
+  );
+
+  const hasPaperError =
+    paper.status === "download_failed" ||
+    paper.status === "indexing_failed" ||
+    paper.status === "failed" ||
+    paper.lastError !== undefined;
+
+  await ctx.db.patch("extractionPapers", paperId, {
+    sortTitle: normalizeProjectionText(paper.title),
+    avgConfidence,
+    hasErrors: hasPaperError || errorQuestionKeys.length > 0,
+    hasPdfSource: Boolean(
+      paper.pdfUrl || paper.storageId || paper.ragEntryId || paper.isIndexed,
+    ),
+    questionAnswerTokens,
+    searchText: buildSearchText({ paper, questionStates }),
+  });
 }

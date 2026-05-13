@@ -393,18 +393,6 @@ export const extractionPaperFields = {
   hasPdfSource: v.optional(v.boolean()),
   questionAnswerTokens: v.optional(v.array(v.string())),
   searchText: v.optional(v.string()),
-  projectionResultCount: v.optional(v.number()),
-  projectionConfidenceSum: v.optional(v.number()),
-  projectionQuestionStates: v.optional(
-    v.array(
-      v.object({
-        questionKey: v.string(),
-        token: v.optional(v.string()),
-        searchPart: v.optional(v.string()),
-      }),
-    ),
-  ),
-  projectionErrorQuestionKeys: v.optional(v.array(v.string())),
 };
 
 export const extractionPaperValidator = v.object({
@@ -469,6 +457,7 @@ export const extractionResultFields = {
   model: v.optional(v.string()),
   provider: v.optional(v.string()),
   pdfContentUsed: v.optional(v.boolean()),
+  creditsUsed: v.optional(v.number()),
   processedAt: v.number(),
 };
 

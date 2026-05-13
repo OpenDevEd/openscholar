@@ -48,7 +48,7 @@ import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { estimateRetryCredits } from "../../../lib/extraction/cost-estimate";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
-import { refreshPaperListProjection } from "../listProjection";
+import { recomputePaperListProjection } from "../listProjection";
 
 const ALLOWED_RETRY_STATUSES: readonly JobStatus[] = [
   "completed",
@@ -113,7 +113,7 @@ export async function applyRetryResetTx(
         status: "extracting" as const,
         completedAt: undefined,
       });
-      await refreshPaperListProjection(ctx, paperId);
+      await recomputePaperListProjection(ctx, paperId);
     }
   }
 

@@ -19,7 +19,7 @@ import { errorCodeValidator, paperSourceTypeValidator } from "../validators";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
 import { recordCreditSpend } from "../aggregates";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
-import { refreshPaperListProjection } from "../listProjection";
+import { recomputePaperListProjection } from "../listProjection";
 
 function matchesExpectedEpoch(
   job: { runEpoch?: number } | null | undefined,
@@ -95,7 +95,7 @@ export const createPaperRecords = internalMutation({
       });
       paperIds.push(paperId);
       if (processable) processableCount += 1;
-      await refreshPaperListProjection(ctx, paperId);
+      await recomputePaperListProjection(ctx, paperId);
     }
     return { paperIds, processableCount };
   },
@@ -160,7 +160,7 @@ export const updatePaperStatus = internalMutation({
     }
 
     await ctx.db.patch("extractionPapers", args.paperId, updates);
-    await refreshPaperListProjection(ctx, args.paperId);
+    await recomputePaperListProjection(ctx, args.paperId);
     return null;
   },
 });
@@ -175,7 +175,7 @@ export const updatePaperProcessable = internalMutation({
     await ctx.db.patch("extractionPapers", args.paperId, {
       processable: args.processable,
     });
-    await refreshPaperListProjection(ctx, args.paperId);
+    await recomputePaperListProjection(ctx, args.paperId);
     return null;
   },
 });
@@ -204,7 +204,7 @@ export const setPaperStorage = internalMutation({
       storageId: args.storageId,
       processable,
     });
-    await refreshPaperListProjection(ctx, args.paperId);
+    await recomputePaperListProjection(ctx, args.paperId);
     return null;
   },
 });
@@ -280,7 +280,7 @@ export const markPaperIndexed = internalMutation({
     }
 
     await ctx.db.patch("extractionPapers", args.paperId, updates);
-    await refreshPaperListProjection(ctx, args.paperId);
+    await recomputePaperListProjection(ctx, args.paperId);
     return null;
   },
 });

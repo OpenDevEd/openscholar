@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import { recomputePaperListProjection } from "./listProjection";
 
 const CLERK_OWNER = "clerk_list_projection";
 
@@ -87,7 +88,16 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
 }
 
 describe("paper list projection write maintenance", () => {
-  it("recordOneAnswer updates avgConfidence, questionAnswerTokens, and searchText", async () => {
+  // Tier C: per-question writes (recordOneAnswer / recordOneAnswerFailure)
+  // no longer patch the paper row. The denormalized projection fields
+  // (avgConfidence, questionAnswerTokens, searchText, hasErrors) are
+  // rebuilt from the per-question result rows by
+  // recomputePaperListProjection, which the workflow calls at paper-level
+  // events (insert, terminal transition, PDF/index update). These tests
+  // verify the projection contract end-to-end by writing question rows
+  // then invoking the rebuild directly — the way finalizePaper /
+  // markPaperTerminalTx does in production.
+  it("recomputePaperListProjection rebuilds avgConfidence, questionAnswerTokens, and searchText from result rows", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
@@ -105,6 +115,8 @@ describe("paper list projection write maintenance", () => {
       creditsUsed: 1,
     });
 
+    await t.run((ctx) => recomputePaperListProjection(ctx, paperId));
+
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.avgConfidence).toBe(0.75);
     expect(paper?.questionAnswerTokens).toEqual(["q1::cafe au lait"]);
@@ -113,7 +125,7 @@ describe("paper list projection write maintenance", () => {
     expect(paper?.hasPdfSource).toBe(true);
   });
 
-  it("recordOneAnswerFailure flips hasErrors", async () => {
+  it("recomputePaperListProjection flips hasErrors after a failed question row exists", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
@@ -133,12 +145,13 @@ describe("paper list projection write maintenance", () => {
         },
       },
     );
+    await t.run((ctx) => recomputePaperListProjection(ctx, paperId));
 
     const after = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(after?.hasErrors).toBe(true);
   });
 
-  it("preserves existing answers when a later question completion patches the same paper", async () => {
+  it("aggregates avgConfidence and tokens across multiple question rows", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
@@ -168,6 +181,8 @@ describe("paper list projection write maintenance", () => {
       },
       creditsUsed: 1,
     });
+
+    await t.run((ctx) => recomputePaperListProjection(ctx, paperId));
 
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.avgConfidence).toBeCloseTo(0.65);

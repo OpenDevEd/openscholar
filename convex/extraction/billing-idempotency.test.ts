@@ -152,9 +152,10 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
   };
 
   it("recordOneAnswer alone does NOT debit; debit is deferred to finalizePaper", async () => {
-    // Per-paper debit refactor: recordOneAnswer only accumulates
-    // paper.creditsUsed; the wallet is touched once at terminal
-    // transition in finalizePaper.
+    // Tier C: per-question creditsUsed lives on the extractionResults row
+    // (not the paper row — that was the OCC contention point). The wallet
+    // is touched once at terminal transition in finalizePaper, which sums
+    // result.creditsUsed across the paper's question rows.
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
@@ -173,8 +174,18 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     const paperAfterAnswer = await t.run((ctx) =>
       ctx.db.get("extractionPapers", paperId),
     );
-    expect(paperAfterAnswer?.creditsUsed).toBe(5);
+    expect(paperAfterAnswer?.creditsUsed).toBeUndefined();
     expect(paperAfterAnswer?.questionsBilled).toBeUndefined();
+    const resultRow = await t.run((ctx) =>
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper_question", (q) =>
+          q.eq("paperId", paperId).eq("questionKey", "q1"),
+        )
+        .unique(),
+    );
+    expect(resultRow?.creditsUsed).toBe(5);
+    expect(resultRow?.billed).toBe(true);
     const charges = await t.run((ctx) =>
       ctx.db
         .query("creditTransactions")
@@ -313,10 +324,12 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
   });
 
   it("questionsBilled blocks re-debit even when result.billed AND paper status are reset", async () => {
-    // Defense-in-depth: the adversarial reset that clears BOTH gates
-    // upstream of recordOneAnswer (so applyResultProjectionWrite runs
-    // and doubles paper.creditsUsed) must still be blocked at the
-    // paper-level questionsBilled flag inside finalizePaper.
+    // Defense-in-depth: the adversarial reset that clears every upstream
+    // gate (result.billed=false, job/paper rolled back to "extracting")
+    // must still be blocked at the paper-level questionsBilled flag
+    // inside finalizePaper. Tier C: result.creditsUsed (the per-question
+    // accumulator) re-grows on the replayed recordOneAnswer; the
+    // questionsBilled gate is what keeps the wallet untouched.
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
@@ -359,13 +372,22 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       },
     );
 
-    // paper.creditsUsed has now been re-incremented to 10 — but the
-    // questionsBilled gate inside finalizePaper must still prevent the
-    // wallet from being touched a second time.
+    // The per-question result row has re-accumulated to 10 (5 from the
+    // first attempt + 5 from the adversarial replay). paper.questionsBilled
+    // is still true from the first finalize, which is the only thing
+    // keeping the wallet from being touched again.
+    const resultBeforeFinalize = await t.run((ctx) =>
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper_question", (q) =>
+          q.eq("paperId", paperId).eq("questionKey", "q1"),
+        )
+        .unique(),
+    );
+    expect(resultBeforeFinalize?.creditsUsed).toBe(10);
     const paperBeforeFinalize = await t.run((ctx) =>
       ctx.db.get("extractionPapers", paperId),
     );
-    expect(paperBeforeFinalize?.creditsUsed).toBe(10);
     expect(paperBeforeFinalize?.questionsBilled).toBe(true);
 
     await t.mutation(

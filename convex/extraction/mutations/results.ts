@@ -35,7 +35,6 @@ import {
 } from "../validators";
 import { aggregatePaperStatus } from "@/lib/extraction/paper-status";
 import type { ErrorCode } from "@/lib/errors/taxonomy";
-import { applyResultProjectionWrite } from "../listProjection";
 
 export const updateJobStatus = internalMutation({
   args: {
@@ -205,6 +204,11 @@ export const recordOneAnswer = internalMutation({
 
     const now = Date.now();
     const attemptCount = (existing?.attemptCount ?? 0) + 1;
+    // Tier C: per-question creditsUsed lives on the result row. Retries
+    // accumulate (LLM call per attempt costs credits). finalizePaper
+    // sums them and debits once per paper.
+    const accumulatedCreditsUsed =
+      (existing?.creditsUsed ?? 0) + args.creditsUsed;
     const fields = {
       jobId: paper.jobId,
       paperId: args.paperId,
@@ -216,6 +220,7 @@ export const recordOneAnswer = internalMutation({
       citationStatus: args.result.citationStatus,
       retrievalDiagnostics: args.result.retrievalDiagnostics,
       pdfContentUsed: args.result.pdfContentUsed,
+      creditsUsed: accumulatedCreditsUsed,
       status: "completed" as const,
       billed: true,
       attemptCount,
@@ -233,11 +238,15 @@ export const recordOneAnswer = internalMutation({
     // Credit deduction happens at paper-finalize granularity (see
     // finalizePaper below) — NOT per question. Per-question debits used
     // to hammer the user's single `credits` row with P×Q parallel
-    // writes, triggering OCC retry storms on busy fan-outs. The
-    // per-question creditsUsed is still tracked here on
-    // `paper.creditsUsed` via applyResultProjectionWrite; finalizePaper
-    // reads the accumulator and debits ONCE per paper.
-
+    // writes, triggering OCC retry storms on busy fan-outs.
+    //
+    // Tier C: the paper-list projection (sortTitle/avgConfidence/
+    // searchText/etc.) is no longer maintained per question — that
+    // patch-on-the-paper-row was the Q-way OCC contention point. Per-
+    // question writes only touch their own extractionResults row;
+    // recomputePaperListProjection rebuilds the denormalized paper-row
+    // fields at finalizePaper time (or whenever the paper itself
+    // transitions / gains a PDF / etc.).
     await recordResult(ctx, {
       _id: resultId,
       jobId: paper.jobId,
@@ -245,29 +254,6 @@ export const recordOneAnswer = internalMutation({
       answer: fields.answer,
       confidence: fields.confidence,
       citationStatus: fields.citationStatus,
-    });
-
-    await applyResultProjectionWrite(ctx, {
-      paper,
-      paperId: args.paperId,
-      questionKey: args.questionKey,
-      previousResult: existing
-        ? {
-            answer: existing.answer,
-            confidence: existing.confidence,
-            status: existing.status,
-            citationStatus: existing.citationStatus,
-            lastError: existing.lastError,
-          }
-        : null,
-      nextResult: {
-        answer: fields.answer,
-        confidence: fields.confidence,
-        status: fields.status,
-        citationStatus: fields.citationStatus,
-        lastError: undefined,
-      },
-      creditsUsedDelta: args.creditsUsed,
     });
 
     return null;
@@ -366,28 +352,6 @@ export const recordOneAnswerFailure = internalMutation({
       citationStatus: "extraction_error",
     });
 
-    await applyResultProjectionWrite(ctx, {
-      paper,
-      paperId: args.paperId,
-      questionKey: args.questionKey,
-      previousResult: existing
-        ? {
-            answer: existing.answer,
-            confidence: existing.confidence,
-            status: existing.status,
-            citationStatus: existing.citationStatus,
-            lastError: existing.lastError,
-          }
-        : null,
-      nextResult: {
-        answer: fields.answer,
-        confidence: fields.confidence,
-        status: fields.status,
-        citationStatus: fields.citationStatus,
-        lastError: fields.lastError,
-      },
-    });
-
     return null;
   },
 });
@@ -466,21 +430,23 @@ export const finalizePaper = internalMutation({
     const terminalStatus = rollup.status === "failed" ? "failed" : "completed";
     const anyPdfUsed = resultsForPaper.some((r) => r.pdfContentUsed);
 
-    // Per-paper credit debit. The accumulator `paper.creditsUsed` was
-    // incremented per question by applyResultProjectionWrite inside
-    // recordOneAnswer; we debit the wallet ONCE here on the terminal
-    // transition. `questionsBilled` is the idempotency gate so a second
-    // finalizePaper (e.g. a workpool retry that lands after the paper is
-    // already terminal would already short-circuit at isTerminalPaperStatus
-    // above, but an adversarial reset-then-rerun would not — this flag
-    // closes that hole, mirroring the `indexingBilled` precedent).
+    // Per-paper credit debit. Tier C: the per-question creditsUsed now
+    // lives on each extractionResults row (no longer accumulated on the
+    // paper row by an OCC-contended applyResultProjectionWrite). Sum
+    // them here to debit the wallet ONCE on the terminal transition.
+    // `questionsBilled` is the idempotency gate so an adversarial
+    // reset-then-rerun cannot re-bill — mirrors the `indexingBilled`
+    // precedent.
     //
     // allowPartial:true drains the wallet rather than throwing
     // INSUFFICIENT_CREDITS mid-fanout. The pre-flight gate on startJob
     // sized the budget conservatively against the HIGH estimate, so
     // shortfalls here are rare; when they do happen they cascade through
     // maybeFinalizeJob → creditsExhausted via the usual path.
-    const creditsToDebit = paper.creditsUsed ?? 0;
+    const creditsToDebit = resultsForPaper.reduce(
+      (sum, r) => sum + (r.creditsUsed ?? 0),
+      0,
+    );
     if (!paper.questionsBilled && creditsToDebit > 0 && job) {
       const { deducted } = await deductCreditsTransaction(ctx, {
         userId: job.userId,
@@ -502,7 +468,7 @@ export const finalizePaper = internalMutation({
     }
 
     await markPaperTerminalTx(ctx, args.paperId, terminalStatus, {
-      creditsUsed: paper.creditsUsed,
+      creditsUsed: creditsToDebit > 0 ? creditsToDebit : undefined,
       pdfContentUsed: anyPdfUsed ? true : undefined,
     });
 

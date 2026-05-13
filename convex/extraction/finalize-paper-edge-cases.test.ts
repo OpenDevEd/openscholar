@@ -63,6 +63,9 @@ type ResultFixture = {
   attemptCount?: number;
   lastErrorCode?: string;
   pdfContentUsed?: boolean;
+  // Tier C: per-question creditsUsed lives on the extractionResults row.
+  // finalizePaper sums these to compute the per-paper wallet debit.
+  creditsUsed?: number;
 };
 
 interface SeedOpts {
@@ -74,7 +77,6 @@ interface SeedOpts {
   totalPapers?: number;
   processedPapers?: number;
   failedPapers?: number;
-  paperCreditsUsed?: number;
   paperQuestionsBilled?: boolean;
   startingCredits?: number;
   clerkSuffix?: string;
@@ -102,7 +104,6 @@ async function seedScenario(
     totalPapers = 1,
     processedPapers = 0,
     failedPapers = 0,
-    paperCreditsUsed,
     paperQuestionsBilled,
     startingCredits = 1_000,
     clerkSuffix = String(Math.random()).slice(2),
@@ -157,7 +158,6 @@ async function seedScenario(
       openalexId: `oa:fp_${clerkSuffix}`,
       title: "FinalizePaper Edge Case Paper",
       status: paperStatus,
-      creditsUsed: paperCreditsUsed,
       questionsBilled: paperQuestionsBilled,
     });
     for (const r of results) {
@@ -177,6 +177,7 @@ async function seedScenario(
         billed: r.billed ?? r.status === "completed",
         attemptCount: r.attemptCount ?? 1,
         pdfContentUsed: r.pdfContentUsed,
+        creditsUsed: r.creditsUsed,
         lastError: r.lastErrorCode
           ? {
               code: r.lastErrorCode as never,
@@ -688,14 +689,16 @@ describe("finalizePaper — pdfContentUsed propagation", () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe("finalizePaper — creditsUsed preservation", () => {
-  it("preserves the accumulated paper.creditsUsed when flipping to terminal", async () => {
+  it("preserves the accumulated per-question creditsUsed on the paper-row terminal copy", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
-    // Seed as if recordOneAnswer already credited 7 to paper.creditsUsed
-    // via applyResultProjectionWrite — finalizePaper must keep that value.
+    // Tier C: the per-question creditsUsed lives on the extractionResults
+    // row. finalizePaper sums them and writes the total onto the paper
+    // row via markPaperTerminalTx as the terminal-time copy for the UI.
     const { paperId } = await seedScenario(t, {
-      paperCreditsUsed: 7,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
+      results: [
+        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 7 },
+      ],
     });
 
     await t.mutation(finalizePaperRef, { paperId });
@@ -712,7 +715,9 @@ describe("finalizePaper — creditsUsed preservation", () => {
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       results: [{ questionKey: "q1", status: "completed", billed: true }],
-      // paperCreditsUsed deliberately omitted.
+      // result.creditsUsed deliberately omitted — sum=0 → finalize passes
+      // creditsUsed:undefined to markPaperTerminalTx so the field stays
+      // unset.
     });
 
     await t.mutation(finalizePaperRef, { paperId });
@@ -814,13 +819,14 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe("finalizePaper — per-paper credit debit", () => {
-  it("debits paper.creditsUsed from the wallet on terminal flip and sets questionsBilled", async () => {
+  it("debits summed result.creditsUsed from the wallet on terminal flip and sets questionsBilled", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seedScenario(t, {
-      paperCreditsUsed: 7,
       startingCredits: 1_000,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
+      results: [
+        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 7 },
+      ],
     });
 
     await t.mutation(finalizePaperRef, { paperId });
@@ -844,16 +850,16 @@ describe("finalizePaper — per-paper credit debit", () => {
     expect(charges[0]?.paperId).toBe(paperId);
   });
 
-  it("debits accumulated credits even when the paper terminal status is failed (partial successes still cost)", async () => {
-    // paper.creditsUsed only accumulates from successful per-question
-    // billings — but a paper whose questions partially failed can still
-    // have a non-zero accumulator. The terminal flip is `failed` (rollup
-    // says so) yet the wallet must still be debited for the completed
-    // work; otherwise users get unbilled LLM calls on partial failures.
+  it("debits accumulated result-row credits even when the paper terminal status is failed (partial-cost successes still bill)", async () => {
+    // Tier C: result.creditsUsed lives on the extractionResults row and
+    // can be non-zero even for a row that later resolved to status=failed
+    // (e.g. a retry attempt that consumed LLM tokens before exhausting).
+    // finalizePaper sums them and bills regardless of the paper-level
+    // rollup status — otherwise users get unbilled LLM calls on papers
+    // whose questions ultimately all failed.
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seedScenario(t, {
-      paperCreditsUsed: 4,
       startingCredits: 1_000,
       questionKeys: ["q1", "q2"],
       results: [
@@ -863,6 +869,7 @@ describe("finalizePaper — per-paper credit debit", () => {
           billed: false,
           lastErrorCode: "pdf_invalid",
           attemptCount: 1,
+          creditsUsed: 2,
         },
         {
           questionKey: "q2",
@@ -870,6 +877,7 @@ describe("finalizePaper — per-paper credit debit", () => {
           billed: false,
           lastErrorCode: "pdf_invalid",
           attemptCount: 1,
+          creditsUsed: 2,
         },
       ],
     });
@@ -899,10 +907,11 @@ describe("finalizePaper — per-paper credit debit", () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seedScenario(t, {
-      paperCreditsUsed: 5,
       paperQuestionsBilled: true,
       startingCredits: 1_000,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
+      results: [
+        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 5 },
+      ],
     });
 
     await t.mutation(finalizePaperRef, { paperId });
@@ -922,7 +931,7 @@ describe("finalizePaper — per-paper credit debit", () => {
     expect(charges).toHaveLength(0);
   });
 
-  it("does NOT debit and does NOT flip questionsBilled when paper.creditsUsed is zero", async () => {
+  it("does NOT debit and does NOT flip questionsBilled when summed result credits are zero", async () => {
     // Zero-credit guard short-circuits before deductCreditsTransaction
     // would throw INVALID_AMOUNT on a zero-amount debit. questionsBilled
     // stays unset so a downstream resume that records real cost can
@@ -930,9 +939,10 @@ describe("finalizePaper — per-paper credit debit", () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seedScenario(t, {
-      paperCreditsUsed: 0,
       startingCredits: 1_000,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
+      results: [
+        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 0 },
+      ],
     });
 
     await t.mutation(finalizePaperRef, { paperId });
@@ -952,9 +962,9 @@ describe("finalizePaper — per-paper credit debit", () => {
     expect(charges).toHaveLength(0);
   });
 
-  it("does NOT debit when paper.creditsUsed is undefined (never accumulated)", async () => {
-    // paperCreditsUsed omitted at seed time → field is undefined.
-    // creditsToDebit = (undefined ?? 0) === 0, guard skips.
+  it("does NOT debit when no result row has creditsUsed (never accumulated)", async () => {
+    // result.creditsUsed omitted at seed time → field is undefined.
+    // sum = (undefined ?? 0) === 0, guard skips.
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seedScenario(t, {
@@ -979,7 +989,7 @@ describe("finalizePaper — per-paper credit debit", () => {
     expect(charges).toHaveLength(0);
   });
 
-  it("drains the wallet (allowPartial:true) when balance < paper.creditsUsed instead of throwing", async () => {
+  it("drains the wallet (allowPartial:true) when balance < summed result credits instead of throwing", async () => {
     // The contract is `allowPartial:true` — if the wallet ran short
     // mid-run, finalizePaper must drain the remaining balance and let
     // the cascade transition the job to creditsExhausted upstream.
@@ -988,9 +998,10 @@ describe("finalizePaper — per-paper credit debit", () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seedScenario(t, {
-      paperCreditsUsed: 10,
       startingCredits: 3,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
+      results: [
+        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 10 },
+      ],
     });
 
     await t.mutation(finalizePaperRef, { paperId });
@@ -1015,9 +1026,10 @@ describe("finalizePaper — per-paper credit debit", () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seedScenario(t, {
-      paperCreditsUsed: 6,
       startingCredits: 1_000,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
+      results: [
+        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 6 },
+      ],
     });
 
     await t.mutation(finalizePaperRef, { paperId });
