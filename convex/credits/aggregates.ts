@@ -8,14 +8,24 @@
  * OCC-contend with another user's writes, and the B-tree for a given user
  * is bounded by that user's lifetime ledger rather than the whole table.
  *
- *   - txnTypeAgg         — Key = [TransactionType, createdAt]
- *   - txnCreditPoolAgg   — Key = [CreditType,      createdAt]
- *   - txnBillingTypeAgg  — Key = [BillingType,     createdAt]   (absent when
+ *   - txnTypeAgg         — Key = [TransactionType, hashTxId]
+ *   - txnCreditPoolAgg   — Key = [CreditType,      hashTxId]
+ *   - txnBillingTypeAgg  — Key = [BillingType,     hashTxId]   (absent when
  *                          the row has no billingType)
  *
- * Reads happen via `countBatch` — one component round-trip returns the count
- * for every bucket value of a dimension. With `createdAt` trailing the
- * composite key, a date-range count is O(log n) via compound bounds.
+ * The second key slot is a 32-bit FNV-1a hash of the transaction _id — it
+ * has no semantic, exists only to distribute parallel inserts across B-tree
+ * leaves within each facet's prefix. The previous `createdAt`-keyed scheme
+ * collapsed all writes onto the rightmost leaf of each prefix under fan-
+ * out, re-creating the OCC contention the aggregate was supposed to absorb.
+ *
+ * Reads happen via `countBatch` with `prefix: [facetValue]` — one component
+ * round-trip returns the count for every bucket value of a dimension.
+ * Date-range counts CANNOT use the aggregate (the hash slot has no time
+ * ordering); they fall back to an indexed `creditTransactions` scan on
+ * `by_credits_createdAt` with in-app counting per facet. This is O(N) in
+ * the user's transactions within the window, which is fine because the
+ * window is user-scoped and bounded.
  *
  * Writes are insert-only — the production `creditTransactions` table is
  * append-only — so the `forget*` helpers exist for symmetry with
@@ -32,10 +42,37 @@
 import { DirectAggregate } from "@convex-dev/aggregate";
 import { components } from "../_generated/api";
 import type { GenericMutationCtx, GenericQueryCtx } from "convex/server";
-import type { Id } from "../_generated/dataModel";
+import type { DataModel, Id } from "../_generated/dataModel";
 
 type RunMutationCtx = { runMutation: GenericMutationCtx<never>["runMutation"] };
 type RunQueryCtx = { runQuery: GenericQueryCtx<never>["runQuery"] };
+
+// Convex query ctx that can also read a table directly. Date-range facet
+// counts fall back to an indexed table scan (`by_credits_createdAt`)
+// because the aggregate's second key slot is a row-stable hash, not a
+// timestamp — composite-key range bounds on it would be meaningless.
+type FacetQueryCtx = RunQueryCtx & {
+  db: GenericQueryCtx<DataModel>["db"];
+};
+
+/**
+ * 32-bit FNV-1a hash of a creditTransactions._id, returned as an unsigned
+ * integer that fits comfortably in JS's safe-integer range. Used as the
+ * second component of each aggregate key so writes for one (creditsId,
+ * facetValue) namespace land at uniformly distributed B-tree positions —
+ * fixing the rightmost-leaf collapse that the previous `[enum, createdAt]`
+ * scheme suffered under fan-out. Deterministic per _id, so a backfill
+ * pass over already-recorded rows still produces the same (key, id)
+ * position and `insertIfDoesNotExist` remains a true no-op.
+ */
+function hashTxId(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
 
 export type TransactionType =
   | "purchase"
@@ -106,7 +143,9 @@ export type TransactionForAggregate = {
 /**
  * Record one creditTransaction into all applicable aggregates. Uses
  * `insertIfDoesNotExist` so a mutation retry (OCC) or a backfill pass over
- * an already-recorded row is a no-op.
+ * an already-recorded row is a no-op — the key's second slot is
+ * `hashTxId(_id)`, which is deterministic per row, so the (key, id)
+ * position matches on replay.
  *
  * Call AFTER `ctx.db.insert` succeeds so `_id` is final.
  */
@@ -114,21 +153,22 @@ export async function recordTransactionCounters(
   ctx: RunMutationCtx,
   tx: TransactionForAggregate,
 ): Promise<void> {
+  const tieBreaker = hashTxId(tx._id);
   await Promise.all([
     txnTypeAgg.insertIfDoesNotExist(ctx, {
       namespace: tx.creditsId,
-      key: [tx.type, tx.createdAt],
+      key: [tx.type, tieBreaker],
       id: tx._id,
     }),
     txnCreditPoolAgg.insertIfDoesNotExist(ctx, {
       namespace: tx.creditsId,
-      key: [tx.creditType, tx.createdAt],
+      key: [tx.creditType, tieBreaker],
       id: tx._id,
     }),
     tx.billingType
       ? txnBillingTypeAgg.insertIfDoesNotExist(ctx, {
           namespace: tx.creditsId,
-          key: [tx.billingType, tx.createdAt],
+          key: [tx.billingType, tieBreaker],
           id: tx._id,
         })
       : Promise.resolve(),
@@ -145,21 +185,22 @@ export async function forgetTransactionCounters(
   ctx: RunMutationCtx,
   tx: TransactionForAggregate,
 ): Promise<void> {
+  const tieBreaker = hashTxId(tx._id);
   await Promise.all([
     txnTypeAgg.deleteIfExists(ctx, {
       namespace: tx.creditsId,
-      key: [tx.type, tx.createdAt],
+      key: [tx.type, tieBreaker],
       id: tx._id,
     }),
     txnCreditPoolAgg.deleteIfExists(ctx, {
       namespace: tx.creditsId,
-      key: [tx.creditType, tx.createdAt],
+      key: [tx.creditType, tieBreaker],
       id: tx._id,
     }),
     tx.billingType
       ? txnBillingTypeAgg.deleteIfExists(ctx, {
           namespace: tx.creditsId,
-          key: [tx.billingType, tx.createdAt],
+          key: [tx.billingType, tieBreaker],
           id: tx._id,
         })
       : Promise.resolve(),
@@ -191,38 +232,55 @@ type DateRange = { from: number; to: number } | null;
 
 /**
  * Read the 5 + 2 + 7 = 14 bucket counts for a user, optionally bounded by
- * a date range. Three parallel `countBatch` calls — one component round
- * trip per dimension.
+ * a date range.
+ *
+ *   - no date range  → aggregate fast path. Three parallel `countBatch`
+ *                       calls with `prefix: [facetValue]`, one component
+ *                       round-trip per dimension. O(log n).
+ *   - with date range → indexed scan fast path. One pass over
+ *                       `by_credits_createdAt` bounded by [from, to],
+ *                       counting each row into all three facet buckets in
+ *                       app code. O(N_within_range) for this user.
  *
  * Convention A semantics: counts reflect the full user ledger within the
  * current date range, ignoring other-facet selections. See
  * `plans/billing-transactions-perf/00-README.md` §D4 for rationale.
  */
 export async function readTransactionFacetCounts(
-  ctx: RunQueryCtx,
+  ctx: FacetQueryCtx,
   creditsId: Id<"credits">,
   dateRange: DateRange,
+): Promise<FacetCounts> {
+  if (dateRange === null) {
+    return await readFacetsFromAggregates(ctx, creditsId);
+  }
+  return await readFacetsFromIndex(ctx, creditsId, dateRange);
+}
+
+async function readFacetsFromAggregates(
+  ctx: RunQueryCtx,
+  creditsId: Id<"credits">,
 ): Promise<FacetCounts> {
   const [typeCounts, creditPoolCounts, billingTypeCounts] = await Promise.all([
     txnTypeAgg.countBatch(
       ctx,
       TRANSACTION_TYPES.map((v) => ({
         namespace: creditsId,
-        bounds: boundsFor(v, dateRange),
+        bounds: { prefix: [v] as [TransactionType] },
       })),
     ),
     txnCreditPoolAgg.countBatch(
       ctx,
       CREDIT_TYPES.map((v) => ({
         namespace: creditsId,
-        bounds: boundsFor(v, dateRange),
+        bounds: { prefix: [v] as [CreditType] },
       })),
     ),
     txnBillingTypeAgg.countBatch(
       ctx,
       BILLING_TYPES.map((v) => ({
         namespace: creditsId,
-        bounds: boundsFor(v, dateRange),
+        bounds: { prefix: [v] as [BillingType] },
       })),
     ),
   ]);
@@ -234,14 +292,37 @@ export async function readTransactionFacetCounts(
   };
 }
 
-function boundsFor<K extends string>(value: K, dateRange: DateRange) {
-  if (!dateRange) {
-    return { prefix: [value] satisfies [K] as [K] };
+async function readFacetsFromIndex(
+  ctx: FacetQueryCtx,
+  creditsId: Id<"credits">,
+  dateRange: { from: number; to: number },
+): Promise<FacetCounts> {
+  const type = zeroRecord(TRANSACTION_TYPES);
+  const creditPool = zeroRecord(CREDIT_TYPES);
+  const billingType = zeroRecord(BILLING_TYPES);
+
+  for await (const row of ctx.db
+    .query("creditTransactions")
+    .withIndex("by_credits_createdAt", (q) =>
+      q
+        .eq("creditsId", creditsId)
+        .gte("createdAt", dateRange.from)
+        .lte("createdAt", dateRange.to),
+    )) {
+    type[row.type as TransactionType] += 1;
+    creditPool[row.creditType as CreditType] += 1;
+    if (row.billingType) {
+      billingType[row.billingType as BillingType] += 1;
+    }
   }
-  return {
-    lower: { key: [value, dateRange.from] as [K, number], inclusive: true },
-    upper: { key: [value, dateRange.to] as [K, number], inclusive: true },
-  };
+
+  return { type, creditPool, billingType };
+}
+
+function zeroRecord<K extends string>(keys: readonly K[]): Record<K, number> {
+  const out = {} as Record<K, number>;
+  for (const k of keys) out[k] = 0;
+  return out;
 }
 
 function zipCounts<K extends string>(
