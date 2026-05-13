@@ -331,6 +331,7 @@ export const extractionPaperValidator = v.object({
   lastError: v.optional(structuredErrorValidator),
   attemptCount: v.optional(v.number()),
   creditsUsed: v.optional(v.number()),
+  questionsBilled: v.optional(v.boolean()),
   pdfContentUsed: v.optional(v.boolean()),
   sortTitle: v.optional(v.string()),
   avgConfidence: v.optional(v.number()),
