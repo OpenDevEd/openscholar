@@ -3,7 +3,9 @@
 import { useMemo } from "react";
 import { motion } from "motion/react";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { api } from "@/convex/_generated/api";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { cn } from "@/lib/utils";
 import { FileText, Clock, MessageSquare } from "lucide-react";
 import Link from "next/link";
@@ -70,7 +72,17 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
     statusLabelMap[status] ?? status.replace(/_/g, " ");
   const status = job.status ?? "pending";
   const totalPapers = job.totalPapers ?? 0;
-  const processedPapers = job.processedPapers ?? 0;
+
+  // Tier B: counters live in sharded counters off-row. Subscribe per item
+  // — Convex pools the subscription, so this is cheap for terminal jobs
+  // (shards never change) and live for in-progress ones.
+  const progressQuery = useProtectedQuery(
+    api.extraction.queries.subscribeToJobProgress,
+    job.mode === "chat" ? "skip" : { jobId: job._id },
+  );
+  const progressData = progressQuery.data;
+  const processedPapers =
+    progressData?.status === "ok" ? progressData.processedPapers : 0;
   const progressPercentage =
     totalPapers > 0
       ? Math.round((processedPapers / totalPapers) * 100)

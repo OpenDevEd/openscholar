@@ -57,8 +57,6 @@ async function seedExtractionJob(
       sourceType: "history" as const,
       status: opts.status,
       totalPapers: 3,
-      processedPapers: 0,
-      failedPapers: 0,
       name: "Plan-04 cost fixture",
       createdAt: now,
       updatedAt: now,

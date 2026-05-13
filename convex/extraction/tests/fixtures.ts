@@ -79,8 +79,6 @@ export const createTestJob = internalMutation({
       sourceType: "history",
       status: args.status ?? "pending",
       totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
       runEpoch: 0,
       createdAt: now,
       updatedAt: now,

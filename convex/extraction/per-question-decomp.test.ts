@@ -21,6 +21,7 @@ import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import { setupAggregates } from "./aggregates.test-support";
 import { readAggregateCounters } from "./aggregates";
+import { readJobCounters } from "./jobCounters";
 
 async function seedJobWithPapersAndQuestions(
   t: ReturnType<typeof convexTest>,
@@ -60,8 +61,6 @@ async function seedJobWithPapersAndQuestions(
       sourceType: "history" as const,
       status: "extracting" as const,
       totalPapers: opts.paperCount,
-      processedPapers: 0,
-      failedPapers: 0,
       name: "Decomp Test",
       createdAt: now,
       updatedAt: now,
@@ -158,8 +157,9 @@ describe("plan-02 per-question decomposition", () => {
     // Job transitioned to completed via maybeFinalizeJob.
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(job?.status).toBe("completed");
-    expect(job?.processedPapers).toBe(3);
-    expect(job?.failedPapers).toBe(0);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(3);
+    expect(counters.failed).toBe(0);
   });
 
   it("finalizePaper with mix of completed + hard-failed questions → completed with failedQuestions", async () => {
@@ -215,8 +215,9 @@ describe("plan-02 per-question decomposition", () => {
     // not question-level).
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(job?.status).toBe("completed");
-    expect(job?.processedPapers).toBe(1);
-    expect(job?.failedPapers).toBe(0);
+    const jobCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(jobCounters.processed).toBe(1);
+    expect(jobCounters.failed).toBe(0);
 
     // Only the successful debits landed — 2 × 1 = 2.
     expect(await readBalance(t, creditsId)).toBe(100 - 2);
@@ -292,8 +293,9 @@ describe("plan-02 per-question decomposition", () => {
 
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(job?.status).toBe("completed");
-    expect(job?.processedPapers).toBe(1);
-    expect(job?.failedPapers).toBe(0);
+    const jobCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(jobCounters.processed).toBe(1);
+    expect(jobCounters.failed).toBe(0);
 
     expect(await readBalance(t, creditsId)).toBe(25 - 6);
   });
@@ -495,7 +497,8 @@ describe("plan-02 per-question decomposition", () => {
 
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(job?.status).toBe("failed");
-    expect(job?.failedPapers).toBe(1);
-    expect(job?.processedPapers).toBe(0);
+    const jobCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(jobCounters.failed).toBe(1);
+    expect(jobCounters.processed).toBe(0);
   });
 });

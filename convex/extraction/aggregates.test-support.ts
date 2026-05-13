@@ -14,6 +14,7 @@
 import type { TestConvex } from "convex-test";
 import type { GenericSchema, SchemaDefinition } from "convex/server";
 import { register as registerAggregate } from "@convex-dev/aggregate/test";
+import { register as registerShardedCounter } from "@convex-dev/sharded-counter/test";
 
 export function setupAggregates<
   S extends SchemaDefinition<GenericSchema, boolean>,
@@ -33,4 +34,10 @@ export function setupAggregates<
   registerAggregate(ht, "txnTypeAgg");
   registerAggregate(ht, "txnCreditPoolAgg");
   registerAggregate(ht, "txnBillingTypeAgg");
+  // Tier B (extraction-occ-fixes): per-job processed/failed counters
+  // migrated from extractionJobs row fields to a 16-shard counter. Any
+  // test that triggers markPaperTerminalTx — i.e., almost every test
+  // that exercises paper completion — needs these registered.
+  registerShardedCounter(ht, "extractionProcessedCounter");
+  registerShardedCounter(ht, "extractionFailedCounter");
 }

@@ -60,8 +60,6 @@ describe("handleExtractionJobComplete freshness guard", () => {
         sourceType: "history" as const,
         status: "extracting" as const,
         totalPapers: 1,
-        processedPapers: 0,
-        failedPapers: 0,
         runEpoch: 2,
         workflowId: "wf_current",
         createdAt: now,

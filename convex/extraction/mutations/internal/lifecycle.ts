@@ -24,6 +24,7 @@ import {
   questionTypeValidator,
   sourceTypeValidator,
 } from "../../validators";
+import { readJobCounters } from "../../jobCounters";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -57,8 +58,6 @@ export const maybeFinalizeJob = internalMutation({
 
     const now = Date.now();
     const total = job.totalPapers ?? 0;
-    const processed = job.processedPapers ?? 0;
-    const failed = job.failedPapers ?? 0;
 
     // Degenerate case: every source was non-processable, so totalPapers was
     // set to 0 at enqueue time. Fail the job immediately so the UI is not
@@ -73,8 +72,14 @@ export const maybeFinalizeJob = internalMutation({
       return null;
     }
 
+    const { processed, failed } = await readJobCounters(ctx, args.jobId);
+
+    // Tier B: when the job is still mid-flight, do not patch the row.
+    // Bumping `updatedAt` here would re-introduce per-paper OCC contention
+    // on the same singleton row that the sharded counter just eliminated.
+    // `updatedAt` is owned by genuine state transitions only — for "last
+    // activity" the sharded counter values themselves are reactive.
     if (processed + failed < total) {
-      await ctx.db.patch("extractionJobs", args.jobId, { updatedAt: now });
       return null;
     }
 
@@ -105,8 +110,6 @@ export const createJobDirect = internalMutation({
       sourceType: args.sourceType,
       status: "pending",
       totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
       runEpoch: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),

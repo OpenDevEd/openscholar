@@ -62,6 +62,7 @@ import type * as extraction_dedupe from "../extraction/dedupe.js";
 import type * as extraction_evidence_units from "../extraction/evidence_units.js";
 import type * as extraction_expandSources from "../extraction/expandSources.js";
 import type * as extraction_index from "../extraction/index.js";
+import type * as extraction_jobCounters from "../extraction/jobCounters.js";
 import type * as extraction_jobSources from "../extraction/jobSources.js";
 import type * as extraction_listProjection from "../extraction/listProjection.js";
 import type * as extraction_mutations from "../extraction/mutations.js";
@@ -252,6 +253,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/evidence_units": typeof extraction_evidence_units;
   "extraction/expandSources": typeof extraction_expandSources;
   "extraction/index": typeof extraction_index;
+  "extraction/jobCounters": typeof extraction_jobCounters;
   "extraction/jobSources": typeof extraction_jobSources;
   "extraction/listProjection": typeof extraction_listProjection;
   "extraction/mutations": typeof extraction_mutations;
@@ -415,6 +417,8 @@ export declare const components: {
   workpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"workpool">;
   screeningWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"screeningWorkpool">;
   agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
+  extractionProcessedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionProcessedCounter">;
+  extractionFailedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionFailedCounter">;
   resultStatusAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultStatusAgg">;
   resultAnsweredAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultAnsweredAgg">;
   resultConfidenceAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"resultConfidenceAgg">;

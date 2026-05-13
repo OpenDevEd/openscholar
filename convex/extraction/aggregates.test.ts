@@ -42,8 +42,6 @@ async function seedMinimalJob(
       sourceType: "history" as const,
       status: "extracting" as const,
       totalPapers: 5,
-      processedPapers: 0,
-      failedPapers: 0,
       name: "Agg test",
       createdAt: now,
       updatedAt: now,

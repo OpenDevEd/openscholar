@@ -27,8 +27,6 @@ describe("cleanupOldPdfs", () => {
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 10,
-        processedPapers: 10,
-        failedPapers: 0,
         name: "Cleanup Test Job",
         createdAt: old,
         updatedAt: old,

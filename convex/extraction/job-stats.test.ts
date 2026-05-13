@@ -105,8 +105,6 @@ async function seedJobWithPapers(
       sourceType: "history" as const,
       status: "extracting" as const,
       totalPapers: paperCount,
-      processedPapers: 0,
-      failedPapers: 0,
       name: "Stats Test Job",
       createdAt: now,
       updatedAt: now,

@@ -11,6 +11,7 @@ import { internal } from "../../../_generated/api";
 import { batchDeleteByIndex } from "../../../lib/cascade";
 import { PAPER_LIMIT_MAX } from "../../bucket/limits";
 import { clearJobAggregates, clearJobCredits } from "../../aggregates";
+import { clearJobCounters } from "../../jobCounters";
 import { recomputePaperListProjection } from "../../listProjection";
 
 const PROJECTION_REPAIR_BATCH_SIZE = 25;
@@ -119,6 +120,12 @@ export const deleteExtractionInternal = internalMutation({
     // credit-audit trail and must survive job deletion, even if the
     // jobId FK becomes dangling.
     await clearJobCredits(ctx, jobId);
+
+    // Tier B: zero the per-job processed/failed sharded counters so a
+    // recreated job (same jobId reuse is impossible — Convex Ids are
+    // unique — but stale shards would otherwise linger) is dropped from
+    // the component too.
+    await clearJobCounters(ctx, jobId);
 
     // Steps 5-8b: straightforward by-job drains. Ordered so that
     // extractionRunDiffs rows referencing this job as baseline are

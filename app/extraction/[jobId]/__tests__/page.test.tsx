@@ -136,8 +136,6 @@ type MockJobDetailsData = {
     messageCount: number;
     status?: "pending" | "extracting" | "completed";
     totalPapers?: number;
-    processedPapers?: number;
-    failedPapers?: number;
     usePdfs?: boolean;
     createdAt: number;
     updatedAt: number;
@@ -230,8 +228,6 @@ const extractionJobQueryResult: MockQueryResult = {
       messageCount: 0,
       status: "completed",
       totalPapers: 293,
-      processedPapers: 200,
-      failedPapers: 0,
       usePdfs: false,
       createdAt: 0,
       updatedAt: 0,

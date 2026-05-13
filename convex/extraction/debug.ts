@@ -1,6 +1,7 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { assertNonProd } from "../lib/assertNonProd";
+import { readJobCounters } from "./jobCounters";
 
 /**
  * Diagnostic query to inspect extraction job status, paper counts, and processing state.
@@ -58,12 +59,14 @@ export const diagnoseJob = internalQuery({
     const papersWithWorkIds = papers.filter((p) => p.workId).length;
     const papersWithoutWorkIds = papers.length - papersWithWorkIds;
 
+    const { processed, failed } = await readJobCounters(ctx, args.jobId);
+
     return {
       job: {
         status: job.status,
         totalPapers: job.totalPapers,
-        processedPapers: job.processedPapers,
-        failedPapers: job.failedPapers,
+        processedPapers: processed,
+        failedPapers: failed,
         workflowId: job.workflowId,
       },
       papersSummary: {

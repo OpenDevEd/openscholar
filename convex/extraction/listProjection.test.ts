@@ -49,8 +49,6 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
       sourceType: "history" as const,
       status: "extracting" as const,
       totalPapers: 1,
-      processedPapers: 0,
-      failedPapers: 0,
       name: "Projection Test",
       createdAt: now,
       updatedAt: now,

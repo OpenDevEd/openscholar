@@ -169,8 +169,6 @@ describe("deleteExtractionInternal cascade", () => {
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 0,
-        processedPapers: 0,
-        failedPapers: 0,
         name: "Empty Job",
         createdAt: now,
         updatedAt: now,

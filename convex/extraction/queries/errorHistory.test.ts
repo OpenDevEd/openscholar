@@ -41,8 +41,6 @@ async function seedPaperWithErrors(
       sourceType: "history" as const,
       status: "completed" as const,
       totalPapers: 1,
-      processedPapers: 1,
-      failedPapers: 0,
       usePdfs: false,
       createdAt: now,
       updatedAt: now,

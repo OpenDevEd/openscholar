@@ -45,8 +45,6 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
       sourceType: "history" as const,
       status: "completed" as const,
       totalPapers: 60,
-      processedPapers: 60,
-      failedPapers: 0,
       usePdfs: false,
       createdAt: now,
       updatedAt: now,

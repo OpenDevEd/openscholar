@@ -16,6 +16,7 @@ import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedJob, type OwnedJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { getPaperLimit, PAPER_LIMIT_MAX } from "../bucket/limits";
+import { readJobCounters } from "../jobCounters";
 import {
   extractionJobValidator,
   extractionPaperValidator,
@@ -160,12 +161,16 @@ export const subscribeToJobProgress = query({
     const access = await resolveReadableJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { job } = access;
+    // Tier B: counts now live in the sharded counter rather than on the
+    // job row. Convex query reactivity tracks the counter shards, so the
+    // subscription still re-fires on every increment.
+    const { processed, failed } = await readJobCounters(ctx, args.jobId);
 
     return ok({
       job,
       totalPapers: job.totalPapers ?? 0,
-      processedPapers: job.processedPapers ?? 0,
-      failedPapers: job.failedPapers ?? 0,
+      processedPapers: processed,
+      failedPapers: failed,
     });
   },
 });

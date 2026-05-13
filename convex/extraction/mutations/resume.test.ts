@@ -81,8 +81,6 @@ async function seedJob(
       sourceType: "history" as const,
       status: opts.jobStatus,
       totalPapers: 10,
-      processedPapers: 2,
-      failedPapers: 0,
       runEpoch: opts.runEpoch ?? 1,
       usePdfs: opts.usePdfs ?? false,
       pausedFromStatus: opts.pausedFromStatus,

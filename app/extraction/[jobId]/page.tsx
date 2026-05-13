@@ -338,15 +338,15 @@ export default function JobDetailPage() {
   };
 
   const handlePause = async () => {
-    const job =
-      jobDetails?.status === "ok" ? jobDetails.job : undefined;
+    const details =
+      jobDetails?.status === "ok" ? jobDetails : undefined;
     try {
       const result = await pauseJob({ jobId });
-      if (result.paused && job) {
+      if (result.paused && details) {
         posthog.capture("extraction_job_paused", {
           jobId,
-          duration_so_far_ms: Date.now() - job.createdAt,
-          processed_papers: job.processedPapers ?? 0,
+          duration_so_far_ms: Date.now() - details.job.createdAt,
+          processed_papers: details.progress.processed,
         });
       }
     } catch (error) {
@@ -590,7 +590,7 @@ export default function JobDetailPage() {
             <CompletionToastObserver
               jobId={jobId}
               jobStatus={job.status}
-              processedPapers={job.processedPapers ?? job.totalPapers ?? 0}
+              processedPapers={resolvedProgress.processed}
             />
             <div className="container mx-auto max-w-6xl p-4 sm:p-6">
               <CommandCenterContainer>
@@ -839,7 +839,7 @@ export default function JobDetailPage() {
             {job.status === "paused" && (
               <JobStatusBanner
                 variant="paused"
-                processedPapers={job.processedPapers}
+                processedPapers={resolvedProgress.processed}
                 totalPapers={job.totalPapers}
                 onResume={handleResume}
                 onCancelRemaining={handleCancel}

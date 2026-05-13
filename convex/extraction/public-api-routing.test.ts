@@ -408,8 +408,6 @@ describe("duplicateJob", () => {
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 1,
-        processedPapers: 1,
-        failedPapers: 0,
         name: "Base",
         createdAt: now,
         updatedAt: now,

@@ -32,8 +32,6 @@ describe("extractionJobs schema", () => {
       expect(job?.mode).toBe("chat");
       expect(job?.status).toBeUndefined();
       expect(job?.totalPapers).toBeUndefined();
-      expect(job?.processedPapers).toBeUndefined();
-      expect(job?.failedPapers).toBeUndefined();
     });
   });
 
@@ -53,8 +51,6 @@ describe("extractionJobs schema", () => {
         sourceType: "history",
         status: "pending",
         totalPapers: 0,
-        processedPapers: 0,
-        failedPapers: 0,
         name: "ext job",
         usePdfs: true,
         createdAt: 0,
@@ -79,7 +75,7 @@ describe("extractionJobs schema", () => {
       });
       await ctx.db.insert("extractionJobs", {
         userId, mode: "extraction", sourceType: "history", status: "pending",
-        totalPapers: 0, processedPapers: 0, failedPapers: 0,
+        totalPapers: 0,
         name: "a", createdAt: 1, updatedAt: 1,
       });
       await ctx.db.insert("extractionJobs", {

@@ -166,8 +166,6 @@ async function seedJob(
       sourceType: "history" as const,
       status: options.jobStatus ?? "extracting",
       totalPapers: options.paperCount,
-      processedPapers: 0,
-      failedPapers: 0,
       name: "Parity test",
       createdAt: now,
       updatedAt: now,

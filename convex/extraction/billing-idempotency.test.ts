@@ -34,8 +34,6 @@ async function seed(
       sourceType: "history" as const,
       status: "extracting" as const,
       totalPapers: 1,
-      processedPapers: 0,
-      failedPapers: 0,
       name: "Billing Idempotency Test",
       createdAt: now,
       updatedAt: now,

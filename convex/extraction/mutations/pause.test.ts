@@ -58,8 +58,6 @@ async function seedJob(
       sourceType: "history" as const,
       status,
       totalPapers: 10,
-      processedPapers: 2,
-      failedPapers: 0,
       runEpoch,
       usePdfs: false,
       createdAt: now,

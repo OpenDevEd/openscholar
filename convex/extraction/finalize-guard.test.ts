@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
 import { readAggregateCounters } from "./aggregates";
+import { incPaperOutcome, readJobCounters } from "./jobCounters";
 
 async function seedJob(
   t: ReturnType<typeof convexTest>,
@@ -34,8 +35,6 @@ async function seedJob(
       sourceType: "history" as const,
       status: jobStatus,
       totalPapers: 1,
-      processedPapers: 0,
-      failedPapers: 0,
       name: "Finalize Guard Test",
       createdAt: now,
       updatedAt: now,
@@ -114,16 +113,15 @@ describe("maybeFinalizeJob terminal-state guard", () => {
         status: "completed",
         completedAt: Date.now(),
       });
-      await ctx.db.patch("extractionJobs", jobId, {
-        processedPapers: 1,
-      });
+      await incPaperOutcome(ctx, jobId, true);
     });
 
     await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
 
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(after?.status).toBe("completed");
-    expect(after?.processedPapers).toBe(1);
+    const afterCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(afterCounters.processed).toBe(1);
   });
 
   it("ignores stale maybeFinalizeJob calls from an older epoch", async () => {
@@ -137,9 +135,9 @@ describe("maybeFinalizeJob terminal-state guard", () => {
         completedAt: Date.now(),
       });
       await ctx.db.patch("extractionJobs", jobId, {
-        processedPapers: 1,
         runEpoch: 3,
       });
+      await incPaperOutcome(ctx, jobId, true);
     });
 
     await t.mutation(
@@ -207,9 +205,9 @@ describe("markPaperTerminalTx counter maintenance", () => {
       completedAt: Date.now(),
     });
 
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.processedPapers).toBe(1);
-    expect(job?.failedPapers).toBe(0);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(1);
+    expect(counters.failed).toBe(0);
   });
 
   it("bumps failedPapers on a download_failed transition", async () => {
@@ -223,9 +221,9 @@ describe("markPaperTerminalTx counter maintenance", () => {
       error: { code: "pdf_invalid", message: "no pdf" },
     });
 
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.processedPapers).toBe(0);
-    expect(job?.failedPapers).toBe(1);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(0);
+    expect(counters.failed).toBe(1);
   });
 
   it("is idempotent: a second terminal transition does not double-count", async () => {
@@ -242,8 +240,8 @@ describe("markPaperTerminalTx counter maintenance", () => {
       status: "failed",
     });
 
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.failedPapers).toBe(1);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.failed).toBe(1);
   });
 
   it("does not bump counters for non-processable papers", async () => {
@@ -261,9 +259,9 @@ describe("markPaperTerminalTx counter maintenance", () => {
       status: "download_failed",
     });
 
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.processedPapers).toBe(0);
-    expect(job?.failedPapers).toBe(0);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(0);
+    expect(counters.failed).toBe(0);
   });
 });
 
@@ -355,7 +353,8 @@ describe("recordOneAnswer + finalizePaper terminal-state guard", () => {
       // Job should also be finalized to completed since the only paper is done
       const job = await ctx.db.get("extractionJobs", jobId);
       expect(job?.status).toBe("completed");
-      expect(job?.processedPapers).toBe(1);
+      const counters = await readJobCounters(ctx, jobId);
+      expect(counters.processed).toBe(1);
     });
   });
 });

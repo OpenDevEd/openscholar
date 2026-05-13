@@ -27,8 +27,6 @@ async function seed(
       sourceType: "history",
       status: "pending",
       totalPapers: 0,
-      processedPapers: 0,
-      failedPapers: 0,
       usePdfs: opts.usePdfs,
       name: "p",
       createdAt: 0,

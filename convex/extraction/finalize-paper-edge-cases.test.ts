@@ -34,6 +34,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import { incPaperOutcome, readJobCounters } from "./jobCounters";
 
 type JobStatusFixture =
   | "pending"
@@ -129,13 +130,18 @@ async function seedScenario(
       sourceType: "history" as const,
       status: jobStatus,
       totalPapers,
-      processedPapers,
-      failedPapers,
       runEpoch,
       name: "FinalizePaper Edge Case Scenario",
       createdAt: now,
       updatedAt: now,
     });
+    // Tier B: counters live in sharded counters off-row. Bump per request.
+    for (let i = 0; i < processedPapers; i++) {
+      await incPaperOutcome(ctx, jobId, true);
+    }
+    for (let i = 0; i < failedPapers; i++) {
+      await incPaperOutcome(ctx, jobId, false);
+    }
     for (let i = 0; i < questionKeys.length; i++) {
       await ctx.db.insert("extractionQuestions", {
         jobId,
@@ -240,7 +246,8 @@ describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
     expect(paper?.completedAt).toBeDefined();
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(job?.status).toBe("completed");
-    expect(job?.processedPapers).toBe(1);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(1);
   });
 
   it("completes a paper even when the job has been resumed many times (runEpoch=10)", async () => {
@@ -288,9 +295,7 @@ describe("finalizePaper — paper-level idempotency", () => {
         failedPapers: initial === "completed" ? 0 : 1,
         results: [{ questionKey: "q1", status: "completed", billed: true }],
       });
-      const before = await t.run((ctx) =>
-        ctx.db.get("extractionJobs", jobId),
-      );
+      const before = await t.run((ctx) => readJobCounters(ctx, jobId));
 
       await t.mutation(finalizePaperRef, { paperId });
 
@@ -298,9 +303,9 @@ describe("finalizePaper — paper-level idempotency", () => {
         ctx.db.get("extractionPapers", paperId),
       );
       expect(paper?.status).toBe(expected);
-      const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-      expect(after?.processedPapers).toBe(before?.processedPapers);
-      expect(after?.failedPapers).toBe(before?.failedPapers);
+      const after = await t.run((ctx) => readJobCounters(ctx, jobId));
+      expect(after.processed).toBe(before.processed);
+      expect(after.failed).toBe(before.failed);
     },
   );
 
@@ -315,8 +320,9 @@ describe("finalizePaper — paper-level idempotency", () => {
     await t.mutation(finalizePaperRef, { paperId });
 
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.processedPapers).toBe(1);
-    expect(job?.failedPapers).toBe(0);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(1);
+    expect(counters.failed).toBe(0);
     // Sticky completed.
     expect(job?.status).toBe("completed");
   });
@@ -345,9 +351,7 @@ describe("finalizePaper — job-state gating", () => {
         jobStatus,
         results: [{ questionKey: "q1", status: "completed", billed: true }],
       });
-      const before = await t.run((ctx) =>
-        ctx.db.get("extractionJobs", jobId),
-      );
+      const before = await t.run((ctx) => readJobCounters(ctx, jobId));
 
       await t.mutation(finalizePaperRef, { paperId });
 
@@ -359,8 +363,9 @@ describe("finalizePaper — job-state gating", () => {
       expect(paper?.status).toBe("extracting");
       const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
       expect(after?.status).toBe(jobStatus);
-      expect(after?.processedPapers).toBe(before?.processedPapers);
-      expect(after?.failedPapers).toBe(before?.failedPapers);
+      const afterCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
+      expect(afterCounters.processed).toBe(before.processed);
+      expect(afterCounters.failed).toBe(before.failed);
     },
   );
 
@@ -472,9 +477,9 @@ describe("finalizePaper — aggregation outcomes", () => {
       ctx.db.get("extractionPapers", paperId),
     );
     expect(paper?.status).toBe("failed");
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.processedPapers).toBe(0);
-    expect(job?.failedPapers).toBe(1);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(0);
+    expect(counters.failed).toBe(1);
   });
 
   it("all results retryable failures with attempts exhausted → paper failed", async () => {
@@ -737,7 +742,8 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
 
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(job?.status).toBe("completed");
-    expect(job?.processedPapers).toBe(1);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(1);
     expect(job?.completedAt).toBeDefined();
   });
 
@@ -762,8 +768,9 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
 
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(job?.status).toBe("failed");
-    expect(job?.processedPapers).toBe(0);
-    expect(job?.failedPapers).toBe(1);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(0);
+    expect(counters.failed).toBe(1);
   });
 
   it("leaves job extracting when peer papers are still in flight", async () => {
@@ -789,8 +796,9 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
 
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(job?.status).toBe("extracting");
-    expect(job?.processedPapers).toBe(1);
-    expect(job?.failedPapers).toBe(0);
+    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
+    expect(counters.processed).toBe(1);
+    expect(counters.failed).toBe(0);
   });
 });
 

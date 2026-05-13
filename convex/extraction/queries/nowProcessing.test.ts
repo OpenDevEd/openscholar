@@ -39,8 +39,6 @@ async function seedJob(t: ReturnType<typeof convexTest>) {
       sourceType: "history" as const,
       status: "extracting" as const,
       totalPapers: 3,
-      processedPapers: 0,
-      failedPapers: 0,
       usePdfs: false,
       createdAt: now,
       updatedAt: now,

@@ -6,6 +6,7 @@ import workpool from "@convex-dev/workpool/convex.config.js";
 import screeningWorkpool from "@convex-dev/workpool/convex.config.js";
 import aggregate from "@convex-dev/aggregate/convex.config.js";
 import agent from "@convex-dev/agent/convex.config.js";
+import shardedCounter from "@convex-dev/sharded-counter/convex.config.js";
 
 const app = defineApp();
 app.use(stripe);
@@ -14,6 +15,16 @@ app.use(workflow);
 app.use(workpool);
 app.use(screeningWorkpool, { name: "screeningWorkpool" });
 app.use(agent);
+// Tier B (plans/extraction-occ-fixes): per-job processed/failed paper
+// counters live in a sharded counter instead of mutable fields on the
+// extractionJobs row. Two named instances — `extractionProcessedCounter`
+// and `extractionFailedCounter` — each keyed by jobId. The previous
+// singleton-row patch in markPaperTerminalTx forced P-way OCC retries
+// on every job whenever the workflow fanned out per paper; routing the
+// increments through shards eliminates the write-write contention so
+// the workpool can run at maxParallelism without hot-leaf collapse.
+app.use(shardedCounter, { name: "extractionProcessedCounter" });
+app.use(shardedCounter, { name: "extractionFailedCounter" });
 // Three @convex-dev/aggregate instances back extractionJobStats (Task 11):
 // - resultStatusAgg: per-(jobId, questionKey) counts by citationStatus
 // - resultAnsweredAgg: per-(jobId, questionKey) counts by answered/unanswered
