@@ -134,4 +134,9 @@ export const creditTransactionValidator = v.object({
   stripeChargeId: v.optional(v.string()),
   stripeCheckoutSessionId: v.optional(v.string()),
   createdAt: v.number(),
+  // billing-txn-perf plan-02: precomputed search string for the
+  // `search_transactions` searchIndex. Defined on the table at
+  // `convex/schema.ts:170`; was missing from this validator and
+  // silently stripped from every `getTransactions` payload.
+  searchableText: v.optional(v.string()),
 });

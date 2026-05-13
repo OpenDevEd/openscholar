@@ -339,3 +339,35 @@ describe("getTransactions backwards-compat", () => {
     expect(result).toHaveLength(2);
   });
 });
+
+describe("getTransactions searchableText drift (plan-01)", () => {
+  it("preserves searchableText on the wire when the row stores it", async () => {
+    const t = convexTest(schema);
+    const { creditsId } = await seedUserWithCredits(
+      t,
+      "clerk_searchable",
+      "searchable@test.com",
+    );
+    await t.run(async (ctx) => {
+      await ctx.db.insert("creditTransactions", {
+        creditsId,
+        type: "usage" as const,
+        creditType: "paid" as const,
+        amount: -25,
+        balanceAfter: 75,
+        createdAt: Date.now(),
+        searchableText: "manual extraction job · openrouter/anthropic",
+      });
+    });
+    const asUser = t.withIdentity({ subject: "clerk_searchable" });
+
+    const result = await asUser.query(api.credits.queries.getTransactions, {
+      limit: 10,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].searchableText).toBe(
+      "manual extraction job · openrouter/anthropic",
+    );
+  });
+});
