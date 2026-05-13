@@ -623,11 +623,6 @@ export const downloadAndIndexPdfAction = internalAction({
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
     expectedEpoch: v.number(),
-    pdfUrl: v.string(),
-    storageId: v.optional(v.id("_storage")),
-    title: v.string(),
-    abstract: v.optional(v.string()),
-    doi: v.optional(v.string()),
   },
   returns: v.union(
     v.object({
@@ -677,11 +672,21 @@ export const downloadAndIndexPdfAction = internalAction({
 
       // Idempotency gate: a workpool retry that lands here after the paper
       // was already indexed (and billed) must not re-embed or re-charge.
+      // Doubles as the source of truth for pdfUrl/storageId/abstract/doi —
+      // pulling them off the row instead of the action args keeps the
+      // workflow journal lean (~600 papers × ~2 KB of paper metadata adds
+      // up fast across step boundaries).
       const existingPaper = await ctx.runQuery(
         internal.extraction.queries.papers.byId,
         { paperId: args.paperId },
       );
-      if (existingPaper?.isIndexed || existingPaper?.indexingBilled) {
+      if (!existingPaper) {
+        return {
+          status: "failed",
+          error: mkError("paper_not_found", "Paper not found"),
+        };
+      }
+      if (existingPaper.isIndexed || existingPaper.indexingBilled) {
         console.log(
           `[downloadAndIndexPdfAction] paper ${args.paperId} already indexed/billed; skipping`,
         );
@@ -692,7 +697,10 @@ export const downloadAndIndexPdfAction = internalAction({
         };
       }
       if (!pdfEnabled) {
-        if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
+        if (
+          existingPaper.abstract &&
+          existingPaper.abstract.length > MIN_ABSTRACT_LENGTH
+        ) {
           await ctx.runMutation(
             internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
             {
@@ -718,14 +726,17 @@ export const downloadAndIndexPdfAction = internalAction({
       const resolved = await resolvePdfBlob(ctx, job, {
         paperId: args.paperId,
         jobId: args.jobId,
-        pdfUrl: args.pdfUrl,
-        storageId: args.storageId,
-        doi: args.doi,
+        pdfUrl: existingPaper.pdfUrl ?? "",
+        storageId: existingPaper.storageId,
+        doi: existingPaper.doi,
       });
 
       // Keep pipeline alive for abstract-only papers by leaving evidence empty.
       if (!resolved.pdfBlob) {
-        if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
+        if (
+          existingPaper.abstract &&
+          existingPaper.abstract.length > MIN_ABSTRACT_LENGTH
+        ) {
           const control = await ctx.runQuery(
             internal.extraction.queries.internal.getJobStatusInternal,
             { jobId: args.jobId },

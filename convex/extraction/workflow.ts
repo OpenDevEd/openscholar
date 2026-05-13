@@ -327,11 +327,6 @@ async function runPaperPipeline(
       paperId: paper._id,
       jobId,
       expectedEpoch,
-      pdfUrl: paper.pdfUrl || "",
-      storageId: paper.storageId,
-      title: paper.title,
-      abstract: paper.abstract,
-      doi: paper.doi,
     },
     { retry: true, name: `dl:${paper._id}` },
   );

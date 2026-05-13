@@ -208,8 +208,6 @@ describe("extractOneQuestion skip-guard", () => {
         jobId,
         paperId,
         expectedEpoch: 2,
-        pdfUrl: "https://example.com/paper.pdf",
-        title: "Skip Paper",
       },
     );
     expect(result).toEqual({ status: "skipped", reason: "stale_epoch" });
