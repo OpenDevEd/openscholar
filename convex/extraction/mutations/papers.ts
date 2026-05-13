@@ -12,7 +12,7 @@
 import { internalMutation } from "../../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
-import type { Doc } from "../../_generated/dataModel";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { getFlag } from "../../featureFlags/guard";
 import { getProcessableFlags } from "../content";
 import { errorCodeValidator, paperSourceTypeValidator } from "../validators";
@@ -48,10 +48,21 @@ export const createPaperRecords = internalMutation({
       }),
     ),
   },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
+  returns: v.object({
+    paperIds: v.array(v.id("extractionPapers")),
+    processableCount: v.number(),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    paperIds: Array<Id<"extractionPapers">>;
+    processableCount: number;
+  }> => {
     const pdfFlag = await getFlag(ctx, "extraction.pdf");
     const pdfEnabled = pdfFlag?.enabled ?? true;
+    const paperIds: Array<Id<"extractionPapers">> = [];
+    let processableCount = 0;
     for (const paper of args.papers) {
       const sanitizedPdfUrl = pdfEnabled ? paper.pdfUrl : undefined;
       const sanitizedStorageId = pdfEnabled ? paper.storageId : undefined;
@@ -82,9 +93,11 @@ export const createPaperRecords = internalMutation({
         processable,
         status: "pending",
       });
+      paperIds.push(paperId);
+      if (processable) processableCount += 1;
       await refreshPaperListProjection(ctx, paperId);
     }
-    return null;
+    return { paperIds, processableCount };
   },
 });
 
