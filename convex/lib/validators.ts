@@ -208,3 +208,57 @@ const _check_chatPaperValidator: AssertExactDoc<
   typeof chatPaperValidator
 > = true;
 void _check_chatPaperValidator;
+
+export const chatGenerationUsageSourceValidator = v.union(
+  v.literal("openrouter_response_id"),
+  v.literal("sdk_usage"),
+  v.literal("openrouter_generation_api"),
+);
+
+export const chatGenerationUsageStatusValidator = v.union(
+  v.literal("captured"),
+  v.literal("retrying"),
+  v.literal("billed"),
+  v.literal("failed"),
+);
+
+export const chatGenerationUsageFields = {
+  generationId: v.string(),
+  jobId: v.id("extractionJobs"),
+  threadId: v.string(),
+  userId: v.id("users"),
+  requestedModel: v.optional(v.string()),
+  authoritativeModel: v.optional(v.string()),
+  providerName: v.optional(v.string()),
+  source: chatGenerationUsageSourceValidator,
+  status: chatGenerationUsageStatusValidator,
+  cancelled: v.optional(v.boolean()),
+  finishReason: v.optional(v.string()),
+  nativeFinishReason: v.optional(v.string()),
+  promptTokens: v.optional(v.number()),
+  completionTokens: v.optional(v.number()),
+  reasoningTokens: v.optional(v.number()),
+  cachedPromptTokens: v.optional(v.number()),
+  totalCostUsd: v.optional(v.number()),
+  billedCredits: v.optional(v.number()),
+  attemptCount: v.number(),
+  lastAttemptAt: v.optional(v.number()),
+  nextRetryAt: v.optional(v.number()),
+  authoritativeAt: v.optional(v.number()),
+  billedAt: v.optional(v.number()),
+  lastError: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+export const chatGenerationUsageValidator = v.object({
+  _id: v.id("chatGenerationUsages"),
+  _creationTime: v.number(),
+  ...chatGenerationUsageFields,
+});
+
+const _check_chatGenerationUsageValidator: AssertExactDoc<
+  "chatGenerationUsages",
+  typeof chatGenerationUsageValidator
+> = true;
+void _check_chatGenerationUsageValidator;
