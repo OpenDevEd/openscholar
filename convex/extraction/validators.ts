@@ -299,9 +299,7 @@ export const workflowTemplateValidator = v.object({
   updatedAt: v.number(),
 });
 
-export const extractionQuestionValidator = v.object({
-  _id: v.id("extractionQuestions"),
-  _creationTime: v.number(),
+export const extractionQuestionFields = {
   jobId: v.id("extractionJobs"),
   key: v.string(),
   question: v.string(),
@@ -309,7 +307,16 @@ export const extractionQuestionValidator = v.object({
   description: v.optional(v.string()),
   order: v.number(),
   createdAt: v.number(),
+};
+
+export const extractionQuestionValidator = v.object({
+  _id: v.id("extractionQuestions"),
+  _creationTime: v.number(),
+  ...extractionQuestionFields,
 });
+
+const _check_extractionQuestionValidator: AssertExactDoc<"extractionQuestions", typeof extractionQuestionValidator> = true;
+void _check_extractionQuestionValidator;
 
 export const extractionPaperFields = {
   jobId: v.id("extractionJobs"),

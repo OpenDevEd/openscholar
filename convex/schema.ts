@@ -5,6 +5,7 @@ import {
   errorCodeValidator,
   extractionJobFields,
   extractionPaperFields,
+  extractionQuestionFields,
   extractionResultFields,
   searchFiltersValidator,
 } from "./extraction/validators";
@@ -399,21 +400,12 @@ export default defineSchema({
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION QUESTIONS - User-defined questions for data extraction
+  //
+  // Field-object SSOT: `extractionQuestionFields` in
+  // convex/extraction/validators.ts. The `type` union pulls the
+  // existing `questionTypeValidator` rather than re-declaring inline.
   // ═══════════════════════════════════════════════════════════════
-  extractionQuestions: defineTable({
-    jobId: v.id("extractionJobs"),
-    key: v.string(), // Unique identifier for this question within the job
-    question: v.string(), // The actual question text
-    type: v.union(
-      v.literal("string"),
-      v.literal("boolean"),
-      v.literal("number"),
-      v.literal("array")
-    ),
-    description: v.optional(v.string()), // Help text for the AI
-    order: v.number(), // Display order
-    createdAt: v.number(),
-  })
+  extractionQuestions: defineTable(extractionQuestionFields)
     .index("by_job", ["jobId"])
     .index("by_job_key", ["jobId", "key"]),
 
