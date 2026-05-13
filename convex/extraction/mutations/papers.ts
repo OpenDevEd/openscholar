@@ -247,7 +247,6 @@ export const markPaperIndexed = internalMutation({
       !paper.indexingBilled &&
       args.billing.creditsToDeduct > 0
     ) {
-      const now = Date.now();
       // allowPartial:true — embedding succeeded; any in-flight overrun
       // drains the wallet rather than leaving the index unbilled.
       // indexingBilled flips regardless of partial because the embedding
@@ -273,7 +272,6 @@ export const markPaperIndexed = internalMutation({
       if (deducted > 0) {
         await recordCreditSpend(ctx, {
           jobId: args.billing.jobId,
-          key: now,
           id: `embed:${args.paperId}`,
           creditsUsed: deducted,
         });

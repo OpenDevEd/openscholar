@@ -70,7 +70,12 @@ export const resultConfidenceAgg = new DirectAggregate<{
  * paper-N completing on job-A does not rerun queries for job-B).
  *
  * Namespace: the jobId — one B-tree per job.
- * Key:       the debit timestamp (ms). Entries sort by spend order.
+ * Key:       a random number in [0, 2^53). No semantic — exists only to
+ *            distribute parallel inserts across B-tree leaves. The
+ *            previous timestamp-keyed scheme collapsed all writes onto
+ *            the rightmost leaf under fan-out, re-creating the OCC
+ *            contention the aggregate was supposed to absorb. Reads
+ *            (`sum`, `clear`) are namespace-wide and key-agnostic.
  * Id:        opaque unique string per debit (resultId for extraction_llm,
  *            or `embed:${paperId}` for embedding). Typed as string
  *            because the aggregate captures both per-question results
@@ -93,21 +98,26 @@ export const creditsAgg = new DirectAggregate<{
  * transaction as `deductCredits` so the aggregate total stays
  * exactly in sync with the ledger.
  *
- * Uses `insertIfDoesNotExist` so a workpool retry (OCC) or a replay
- * through an already-billed path is a no-op.
+ * Idempotency is NOT enforced here. `insertIfDoesNotExist` lookups are
+ * keyed by (key, id) position — with a random key on every call, two
+ * calls with the same id at different keys would create duplicate
+ * entries. Callers MUST gate this through a billing flag on the source
+ * row (`indexingBilled` and `questionsBilled` on extractionPapers) so
+ * recordCreditSpend is called at most once per logical debit. OCC
+ * retries within a single mutation invocation are fine because only
+ * the committed attempt's writes persist.
  */
 export async function recordCreditSpend(
   ctx: RunMutationCtx,
   args: {
     jobId: Id<"extractionJobs">;
-    key: number;
     id: string;
     creditsUsed: number;
   },
 ): Promise<void> {
   await creditsAgg.insertIfDoesNotExist(ctx, {
     namespace: args.jobId,
-    key: args.key,
+    key: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
     id: args.id,
     sumValue: args.creditsUsed,
   });

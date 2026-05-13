@@ -494,7 +494,6 @@ export const finalizePaper = internalMutation({
       if (deducted > 0) {
         await recordCreditSpend(ctx, {
           jobId: paper.jobId,
-          key: Date.now(),
           id: args.paperId,
           creditsUsed: deducted,
         });
