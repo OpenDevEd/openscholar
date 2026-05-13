@@ -379,9 +379,7 @@ void _check_extractionPaperValidator;
  * Append-only history of every error a paper has hit. One row per
  * attempt; pagination/queries via by_paper / by_job indexes.
  */
-export const extractionPaperErrorValidator = v.object({
-  _id: v.id("extractionPaperErrors"),
-  _creationTime: v.number(),
+export const extractionPaperErrorFields = {
   paperId: v.id("extractionPapers"),
   jobId: v.id("extractionJobs"),
   attempt: v.number(),
@@ -391,7 +389,19 @@ export const extractionPaperErrorValidator = v.object({
   httpStatus: v.optional(v.number()),
   providerName: v.optional(v.string()),
   context: v.optional(v.any()),
+};
+
+export const extractionPaperErrorValidator = v.object({
+  _id: v.id("extractionPaperErrors"),
+  _creationTime: v.number(),
+  ...extractionPaperErrorFields,
 });
+
+const _check_extractionPaperErrorValidator: AssertExactDoc<
+  "extractionPaperErrors",
+  typeof extractionPaperErrorValidator
+> = true;
+void _check_extractionPaperErrorValidator;
 
 /** Per-question lifecycle status on an extractionResults row. */
 export const resultStatusValidator = v.union(

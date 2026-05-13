@@ -4,6 +4,7 @@ import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
   errorCodeValidator,
   extractionJobFields,
+  extractionPaperErrorFields,
   extractionPaperFields,
   extractionQuestionFields,
   extractionResultFields,
@@ -433,20 +434,7 @@ export default defineSchema({
   // diagnose flaky upstream behavior without bloating extractionPapers.
   // Plan-01 § "Persistence hooks".
   // ═══════════════════════════════════════════════════════════════
-  extractionPaperErrors: defineTable({
-    paperId: v.id("extractionPapers"),
-    jobId: v.id("extractionJobs"),
-    // 1-indexed attempt number; matches the attemptCount on the paper
-    // *after* this row is written.
-    attempt: v.number(),
-    at: v.number(),
-    code: errorCodeValidator,
-    message: v.string(),
-    httpStatus: v.optional(v.number()),
-    providerName: v.optional(v.string()),
-    // Capped at 4 KB by classifyUnknownError before insert.
-    context: v.optional(v.any()),
-  })
+  extractionPaperErrors: defineTable(extractionPaperErrorFields)
     .index("by_paper", ["paperId"])
     .index("by_job", ["jobId"]),
 
