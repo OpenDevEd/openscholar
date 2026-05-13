@@ -666,10 +666,21 @@ export default defineSchema({
     // terminal transition by markPaperTerminalTx.
     attemptCount: v.optional(v.number()),
 
-    // Cost tracking. Plan-02 billing-idempotency lives on the per-question
-    // extractionResults.billed flag; per-paper creditsUsed is just the
-    // running aggregate of recordOneAnswer's debits.
+    // Cost tracking. `creditsUsed` is the running aggregate of every
+    // recordOneAnswer's `creditsUsed` arg, incremented as each question
+    // result lands via applyResultProjectionWrite. `finalizePaper` reads
+    // this accumulator and debits the ledger ONCE per paper — moving the
+    // hot-row write from per-question to per-paper to slash OCC
+    // contention on the user's single `credits` row.
+    //
+    // `questionsBilled` is the paper-level idempotency flag for that
+    // debit. Set to `true` inside finalizePaper after the credit
+    // deduction commits; the same mutation re-running (or being re-run
+    // adversarially after a status reset) short-circuits before
+    // re-debiting. Mirrors the `indexingBilled` pattern used by
+    // markPaperIndexed for the embedding charge.
     creditsUsed: v.optional(v.number()),
+    questionsBilled: v.optional(v.boolean()),
 
     // Content usage tracking
     pdfContentUsed: v.optional(v.boolean()), // true if PDF content was actually used for extraction (any question)
