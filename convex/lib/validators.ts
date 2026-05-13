@@ -92,15 +92,22 @@ export const userValidator = v.object({
 const _check_userValidator: AssertExactDoc<"users", typeof userValidator> = true;
 void _check_userValidator;
 
-export const creditsValidator = v.object({
-  _id: v.id("credits"),
-  _creationTime: v.number(),
+export const creditsFields = {
   userId: v.id("users"),
   freeBalance: v.number(),
   paidBalance: v.number(),
   lifetimeUsed: v.number(),
   lastUpdatedAt: v.number(),
+};
+
+export const creditsValidator = v.object({
+  _id: v.id("credits"),
+  _creationTime: v.number(),
+  ...creditsFields,
 });
+
+const _check_creditsValidator: AssertExactDoc<"credits", typeof creditsValidator> = true;
+void _check_creditsValidator;
 
 export const creditBalanceValidator = v.object({
   free: v.number(),

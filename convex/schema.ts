@@ -6,7 +6,7 @@ import {
   searchFiltersValidator,
   structuredErrorValidator,
 } from "./extraction/validators";
-import { userFields } from "./lib/validators";
+import { creditsFields, userFields } from "./lib/validators";
 
 export default defineSchema({
   // Rate limiting (convex-helpers)
@@ -97,13 +97,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // CREDITS - per-user credit balance
   // ═══════════════════════════════════════════════════════════════
-  credits: defineTable({
-    userId: v.id("users"),
-    freeBalance: v.number(),
-    paidBalance: v.number(),
-    lifetimeUsed: v.number(),
-    lastUpdatedAt: v.number(),
-  }).index("by_user", ["userId"]),
+  credits: defineTable(creditsFields).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // CREDIT_TRANSACTIONS - audit log for credit changes
