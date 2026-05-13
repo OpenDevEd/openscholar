@@ -1,12 +1,23 @@
 /**
- * Extraction workflow — plan-02 per-question decomposition.
+ * Extraction workflow — Tier A per-paper sub-workflow decomposition.
  *
- * The handler owns every paper's pipeline end-to-end via
- * `step.runAction` + `step.runMutation`, so the 10-minute ceiling is
- * now per-question (≤ 1 LLM call + 1 dense search) instead of
- * per-paper-with-all-questions. The earlier workpool `onComplete`
- * chain (handleDownloadAndIndexComplete → waitAndExtractAction →
- * handleExtractionComplete) is retired in plan-02 step 5.
+ * Each paper runs as a child workflow (`paperPipelineWorkflow` /
+ * `retryPaperPipelineWorkflow`) launched from the parent
+ * (`runExtractionWorkflow` / `runRetryWorkflow`) via `step.runWorkflow`.
+ *
+ * Why: prior to Tier A, every paper's per-step journal entries lived
+ * in the parent's journal. With Q questions × P papers, the parent
+ * journal accumulated O(P × (Q + 5)) rows, and every step write
+ * contended on the parent generation lock. Sub-workflows give each
+ * paper its own `workflows` row and its own `steps` table, so the
+ * parent journal collapses to one entry per paper (the runWorkflow
+ * call) and per-paper journal churn no longer cross-contends with
+ * peer papers' steps.
+ *
+ * Halt / park / completed flow up the parent identically — the child
+ * returns its `PaperPipelineResult` from its handler, the parent reads
+ * it from `await step.runWorkflow(...)`, and `runBoundedBatches`
+ * batches and re-queues parked items exactly as before.
  */
 
 import { workflow } from "../workflow";
@@ -34,6 +45,12 @@ type JobControl = {
 };
 
 type PaperPipelineResult = "completed" | "halted" | "park";
+
+const paperPipelineResultValidator = v.union(
+  v.literal("completed"),
+  v.literal("halted"),
+  v.literal("park"),
+);
 
 type ExtractionWorkerSkipReason =
   | "already_billed"
@@ -580,14 +597,17 @@ export const runExtractionWorkflow = workflow.define({
         return control;
       },
       runItem: async (paperId, control) =>
-        runPaperPipeline(step, {
-          jobId,
-          paperId,
-          questionIds,
-          questionConcurrency: effectiveQuestionConcurrency,
-          pdfEnabled,
-          expectedEpoch: control.runEpoch,
-        }),
+        step.runWorkflow(
+          internal.extraction.workflow.paperPipelineWorkflow,
+          {
+            jobId,
+            paperId,
+            expectedEpoch: control.runEpoch,
+            pdfEnabled,
+            questionConcurrency: effectiveQuestionConcurrency,
+          },
+          { name: `pp:${paperId}` },
+        ),
     });
 
     if (paperBatchResult === "halted") {
@@ -723,14 +743,17 @@ export const runRetryWorkflow = workflow.define({
         return control;
       },
       runItem: async ([paperId, questionKeys], control) =>
-        runRetryPaperPipeline(step, {
-          jobId,
-          paperId,
-          questionKeys,
-          keyToId,
-          questionConcurrency: effectiveQuestionConcurrency,
-          expectedEpoch: control.runEpoch,
-        }),
+        step.runWorkflow(
+          internal.extraction.workflow.retryPaperPipelineWorkflow,
+          {
+            jobId,
+            paperId,
+            questionKeys,
+            expectedEpoch: control.runEpoch,
+            questionConcurrency: effectiveQuestionConcurrency,
+          },
+          { name: `rpp:${paperId}` },
+        ),
     });
 
     if (retryBatchResult === "halted") {
@@ -738,5 +761,82 @@ export const runRetryWorkflow = workflow.define({
     }
 
     console.log(`[RetryWorkflow] Retry fan-out complete for job ${jobId}`);
+  },
+});
+
+/**
+ * Tier A child workflow — runs one paper's full extraction pipeline
+ * (downloadAndIndex → per-question fan-out → finalizePaper) in its own
+ * journal. Launched from `runExtractionWorkflow` via `step.runWorkflow`,
+ * which awaits the child's return value (`PaperPipelineResult`).
+ *
+ * The child re-fetches its question list rather than receiving it as
+ * an arg — keeps the parent step's argument payload tiny (just IDs +
+ * primitives) so the parent journal never bloats with per-paper
+ * question docs.
+ */
+export const paperPipelineWorkflow = workflow.define({
+  args: {
+    jobId: v.id("extractionJobs"),
+    paperId: v.id("extractionPapers"),
+    expectedEpoch: v.number(),
+    pdfEnabled: v.boolean(),
+    questionConcurrency: v.number(),
+  },
+  returns: paperPipelineResultValidator,
+  handler: async (
+    step,
+    { jobId, paperId, expectedEpoch, pdfEnabled, questionConcurrency },
+  ): Promise<PaperPipelineResult> => {
+    const questionIds = await step.runQuery(
+      internal.extraction.queries.internal.getQuestionsInternal,
+      { jobId },
+    );
+    return await runPaperPipeline(step, {
+      jobId,
+      paperId,
+      questionIds,
+      questionConcurrency,
+      pdfEnabled,
+      expectedEpoch,
+    });
+  },
+});
+
+/**
+ * Tier A retry child workflow — runs one paper's retry pipeline
+ * (re-dispatch only the listed `questionKeys` then finalizePaper) in
+ * its own journal. Launched from `runRetryWorkflow` via
+ * `step.runWorkflow`. Download + indexing are NOT re-run; the per-
+ * question worker honors the existing `indexingBilled` guard.
+ */
+export const retryPaperPipelineWorkflow = workflow.define({
+  args: {
+    jobId: v.id("extractionJobs"),
+    paperId: v.id("extractionPapers"),
+    questionKeys: v.array(v.string()),
+    expectedEpoch: v.number(),
+    questionConcurrency: v.number(),
+  },
+  returns: paperPipelineResultValidator,
+  handler: async (
+    step,
+    { jobId, paperId, questionKeys, expectedEpoch, questionConcurrency },
+  ): Promise<PaperPipelineResult> => {
+    const questionList = await step.runQuery(
+      internal.extraction.queries.internal.getQuestionsInternal,
+      { jobId },
+    );
+    const keyToId = new Map<string, Id<"extractionQuestions">>(
+      questionList.map((q) => [q.key, q._id]),
+    );
+    return await runRetryPaperPipeline(step, {
+      jobId,
+      paperId,
+      questionKeys,
+      keyToId,
+      questionConcurrency,
+      expectedEpoch,
+    });
   },
 });
