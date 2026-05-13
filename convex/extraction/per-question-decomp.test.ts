@@ -298,7 +298,7 @@ describe("plan-02 per-question decomposition", () => {
     expect(await readBalance(t, creditsId)).toBe(25 - 6);
   });
 
-  it("recordOneAnswer is idempotent under workpool retry — one debit, one aggregate row", async () => {
+  it("recordOneAnswer is idempotent under workpool retry — one creditsUsed accumulation, one aggregate row, one debit at finalize", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
@@ -320,23 +320,32 @@ describe("plan-02 per-question decomposition", () => {
       creditsUsed: 7,
     };
 
-    // First call debits 7, billed=true.
+    // recordOneAnswer never debits — it only accumulates paper.creditsUsed
+    // behind the `billed` projection guard. Retries 2 and 3 short-circuit
+    // on result.billed=true so creditsUsed stays at 7.
     await t.mutation(
       internal.extraction.mutations.results.recordOneAnswer,
       args,
     );
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      args,
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      args,
+    );
+    expect(await readBalance(t, creditsId)).toBe(100);
+
+    // finalizePaper performs the single per-paper debit.
+    await t.mutation(internal.extraction.mutations.results.finalizePaper, {
+      paperId,
+    });
     expect(await readBalance(t, creditsId)).toBe(100 - 7);
 
-    // Retry short-circuits on billed=true.
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      args,
-    );
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      args,
-    );
-    expect(await readBalance(t, creditsId)).toBe(100 - 7);
+    const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
+    expect(paper?.creditsUsed).toBe(7);
+    expect(paper?.questionsBilled).toBe(true);
 
     // Exactly one aggregate entry persisted (not three).
     const counters = await t.run((ctx) =>

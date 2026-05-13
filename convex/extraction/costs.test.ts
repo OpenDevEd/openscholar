@@ -110,6 +110,18 @@ async function recordAnswerForPaper(
   );
 }
 
+async function finalizeAllPapers(
+  t: ReturnType<typeof convexTest>,
+  paperIds: Id<"extractionPapers">[],
+) {
+  for (const paperId of paperIds) {
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
+    );
+  }
+}
+
 describe("[plan-04] creditsAgg + getJobCost", () => {
   it("sum tracks paper.creditsUsed across 3 papers × 2 questions", async () => {
     const t = convexTest(schema);
@@ -128,6 +140,8 @@ describe("[plan-04] creditsAgg + getJobCost", () => {
         expectedTotal += credits;
       }
     }
+    // Per-paper debits now happen at finalizePaper, not per-question.
+    await finalizeAllPapers(t, paperIds);
 
     const sum = await t.run(async (ctx) =>
       creditsAgg.sum(ctx, { namespace: jobId }),
@@ -140,14 +154,18 @@ describe("[plan-04] creditsAgg + getJobCost", () => {
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
         .collect(),
     );
-    expect(txns.length).toBe(paperIds.length * questionKeys.length);
+    // One row per paper (P), not P×Q.
+    expect(txns.length).toBe(paperIds.length);
     for (const txn of txns) {
       expect(txn.billingType).toBe("extraction_llm");
       expect(txn.paperId).toBeDefined();
-      expect(txn.resultId).toBeDefined();
+      // Debit is per-paper, so resultId is not set on the txn.
+      expect(txn.resultId).toBeUndefined();
       expect(txn.metadata?.jobId).toBeUndefined();
       expect(txn.metadata?.paperId).toBeUndefined();
       expect(txn.metadata?.billingType).toBeUndefined();
+      // Each paper accumulated questionKeys.length × 5 = 30 credits.
+      expect(txn.amount).toBe(-(questionKeys.length * 5));
     }
   });
 
@@ -165,6 +183,7 @@ describe("[plan-04] creditsAgg + getJobCost", () => {
         await recordAnswerForPaper(t, paperId, qk, 7);
       }
     }
+    await finalizeAllPapers(t, paperIds);
 
     const beforeSum = await t.run(async (ctx) =>
       creditsAgg.sum(ctx, { namespace: jobId }),
@@ -203,6 +222,7 @@ describe("[plan-04] creditsAgg + getJobCost", () => {
         await recordAnswerForPaper(t, paperId, qk, 3);
       }
     }
+    await finalizeAllPapers(t, paperIds);
 
     const result = await t
       .withIdentity({
