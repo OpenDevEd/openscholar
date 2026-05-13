@@ -6,6 +6,7 @@ import {
   searchFiltersValidator,
   structuredErrorValidator,
 } from "./extraction/validators";
+import { userFields } from "./lib/validators";
 
 export default defineSchema({
   // Rate limiting (convex-helpers)
@@ -88,22 +89,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // USERS - synced from Clerk, single source of truth in Convex
   // ═══════════════════════════════════════════════════════════════
-  users: defineTable({
-    clerkId: v.string(),
-    email: v.string(),
-    firstName: v.optional(v.string()),
-    lastName: v.optional(v.string()),
-    avatarUrl: v.optional(v.string()),
-    state: v.union(
-      v.literal("active"),
-      v.literal("suspended"),
-      v.literal("deleted")
-    ),
-    lastLoginAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    libraryItemCount: v.optional(v.number()),
-  })
+  users: defineTable(userFields)
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
     .index("by_state", ["state"]),
