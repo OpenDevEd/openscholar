@@ -18,7 +18,7 @@ import { internalMutation } from "../../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
-import { requireFeature } from "../../featureFlags/guard";
+import { deductCreditsTransaction } from "../../credits/internal";
 import {
   assertValidJobTransition,
   type JobStatus,
@@ -230,37 +230,13 @@ export const recordOneAnswer = internalMutation({
       resultId = await ctx.db.insert("extractionResults", fields);
     }
 
-    if (args.creditsUsed > 0 && job) {
-      // allowPartial:true — the extraction job's per-question pre-flight
-      // floor (ESTIMATED_CREDITS_PER_QUERY) was the gate; any in-flight
-      // overrun drains the wallet rather than leaving the result row
-      // committed but unbilled. The aggregator mirror below uses the
-      // actual deducted amount so per-job spend stays accurate.
-      const { deducted } = await ctx.runMutation(internal.credits.internal.deductCredits, {
-        userId: job.userId,
-        amount: args.creditsUsed,
-        description: "AI: Extraction (1 question)",
-        jobId: paper.jobId,
-        paperId: args.paperId,
-        resultId,
-        billingType: "extraction_llm",
-        metadata: { questionKey: args.questionKey },
-        allowPartial: true,
-      });
-      // Same-txn spend mirror for the creditsAgg B-tree. `billed` gates
-      // retries before we reach here so insertIfDoesNotExist just needs
-      // to be idempotent on the (jobId, now, resultId) triple — which it
-      // is via the dedup on (namespace, key+id position). Skip when
-      // deducted is 0 so we don't write zero-amount aggregator entries.
-      if (deducted > 0) {
-        await recordCreditSpend(ctx, {
-          jobId: paper.jobId,
-          key: now,
-          id: resultId,
-          creditsUsed: deducted,
-        });
-      }
-    }
+    // Credit deduction happens at paper-finalize granularity (see
+    // finalizePaper below) — NOT per question. Per-question debits used
+    // to hammer the user's single `credits` row with P×Q parallel
+    // writes, triggering OCC retry storms on busy fan-outs. The
+    // per-question creditsUsed is still tracked here on
+    // `paper.creditsUsed` via applyResultProjectionWrite; finalizePaper
+    // reads the accumulator and debits ONCE per paper.
 
     await recordResult(ctx, {
       _id: resultId,
@@ -489,6 +465,42 @@ export const finalizePaper = internalMutation({
 
     const terminalStatus = rollup.status === "failed" ? "failed" : "completed";
     const anyPdfUsed = resultsForPaper.some((r) => r.pdfContentUsed);
+
+    // Per-paper credit debit. The accumulator `paper.creditsUsed` was
+    // incremented per question by applyResultProjectionWrite inside
+    // recordOneAnswer; we debit the wallet ONCE here on the terminal
+    // transition. `questionsBilled` is the idempotency gate so a second
+    // finalizePaper (e.g. a workpool retry that lands after the paper is
+    // already terminal would already short-circuit at isTerminalPaperStatus
+    // above, but an adversarial reset-then-rerun would not — this flag
+    // closes that hole, mirroring the `indexingBilled` precedent).
+    //
+    // allowPartial:true drains the wallet rather than throwing
+    // INSUFFICIENT_CREDITS mid-fanout. The pre-flight gate on startJob
+    // sized the budget conservatively against the HIGH estimate, so
+    // shortfalls here are rare; when they do happen they cascade through
+    // maybeFinalizeJob → creditsExhausted via the usual path.
+    const creditsToDebit = paper.creditsUsed ?? 0;
+    if (!paper.questionsBilled && creditsToDebit > 0 && job) {
+      const { deducted } = await deductCreditsTransaction(ctx, {
+        userId: job.userId,
+        amount: creditsToDebit,
+        description: `AI: Extraction (${paper.openalexId} — ${rollup.completedQuestions} questions)`,
+        jobId: paper.jobId,
+        paperId: args.paperId,
+        billingType: "extraction_llm",
+        allowPartial: true,
+      });
+      if (deducted > 0) {
+        await recordCreditSpend(ctx, {
+          jobId: paper.jobId,
+          key: Date.now(),
+          id: args.paperId,
+          creditsUsed: deducted,
+        });
+      }
+      await ctx.db.patch(args.paperId, { questionsBilled: true });
+    }
 
     await markPaperTerminalTx(ctx, args.paperId, terminalStatus, {
       creditsUsed: paper.creditsUsed,
