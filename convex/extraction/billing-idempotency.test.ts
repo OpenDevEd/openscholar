@@ -4,7 +4,11 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
 
-async function seed(t: ReturnType<typeof convexTest>, startingCredits = 1000) {
+async function seed(
+  t: ReturnType<typeof convexTest>,
+  startingCredits = 1000,
+  questionKeys: readonly string[] = ["q1"],
+) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
@@ -36,16 +40,20 @@ async function seed(t: ReturnType<typeof convexTest>, startingCredits = 1000) {
       createdAt: now,
       updatedAt: now,
     });
-    // Plan-02 finalizePaper counts pending questions, so every test needs
-    // at least one seeded extractionQuestion row per questionKey it uses.
-    await ctx.db.insert("extractionQuestions", {
-      jobId,
-      key: "q1",
-      question: "Q1?",
-      type: "string" as const,
-      order: 0,
-      createdAt: now,
-    });
+    // finalizePaper rolls up over every seeded question for the job, so
+    // every test must seed every questionKey it will recordOneAnswer
+    // against, otherwise the rollup stays "pending" and the debit path
+    // is never reached.
+    for (const [order, key] of questionKeys.entries()) {
+      await ctx.db.insert("extractionQuestions", {
+        jobId,
+        key,
+        question: `${key}?`,
+        type: "string" as const,
+        order,
+        createdAt: now,
+      });
+    }
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
       openalexId: "oa:idem",
@@ -145,7 +153,40 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     citationStatus: "grounded" as const,
   };
 
-  it("deducts once, skips on direct retry because the result.billed gate short-circuits", async () => {
+  it("recordOneAnswer alone does NOT debit; debit is deferred to finalizePaper", async () => {
+    // Per-paper debit refactor: recordOneAnswer only accumulates
+    // paper.creditsUsed; the wallet is touched once at terminal
+    // transition in finalizePaper.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seed(t, 1000);
+
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      {
+        paperId,
+        questionKey: "q1",
+        result: sampleResult,
+        creditsUsed: 5,
+      },
+    );
+
+    expect(await readBalance(t, creditsId)).toBe(1000);
+    const paperAfterAnswer = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paperAfterAnswer?.creditsUsed).toBe(5);
+    expect(paperAfterAnswer?.questionsBilled).toBeUndefined();
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(0);
+  });
+
+  it("finalizePaper drains paper.creditsUsed exactly once and sets questionsBilled", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
@@ -169,6 +210,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       ctx.db.get("extractionPapers", paperId),
     );
     expect(firstPaper?.status).toBe("completed");
+    expect(firstPaper?.questionsBilled).toBe(true);
     const firstResult = await t.run((ctx) =>
       ctx.db
         .query("extractionResults")
@@ -179,39 +221,59 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     const firstJob = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     expect(firstJob?.status).toBe("completed");
 
-    // Retry: the result row already has billed=true, so the per-question
-    // idempotency gate short-circuits before the LLM re-run / credit debit.
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 5,
-      },
-    );
-
-    expect(await readBalance(t, creditsId)).toBe(995);
-    const results = await t.run((ctx) =>
-      ctx.db
-        .query("extractionResults")
-        .withIndex("by_paper", (q) => q.eq("paperId", paperId))
-        .collect(),
-    );
-    expect(results).toHaveLength(1);
-    const paperAfterRetry = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
-    expect(paperAfterRetry?.creditsUsed).toBe(5);
-    const extractionCharges = await t.run((ctx) =>
+    const charges = await t.run((ctx) =>
       ctx.db
         .query("creditTransactions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
         .collect(),
     );
-    expect(extractionCharges).toHaveLength(1);
-    expect(extractionCharges[0]?.billingType).toBe("extraction_llm");
+    expect(charges).toHaveLength(1);
+    expect(charges[0]?.billingType).toBe("extraction_llm");
+    expect(charges[0]?.amount).toBe(-5);
   });
 
-  it("result.billed gate blocks re-bill even if job+paper are reset to active", async () => {
+  it("finalizePaper aggregates multi-question paper.creditsUsed into a single debit", async () => {
+    // The whole point of the refactor: 3 questions × 5 credits issues
+    // ONE creditTransactions row, not three. This is what eliminates
+    // P×Q parallel writes to the credits row.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seed(t, 1000, [
+      "q1",
+      "q2",
+      "q3",
+    ]);
+
+    for (const key of ["q1", "q2", "q3"] as const) {
+      await t.mutation(
+        internal.extraction.mutations.results.recordOneAnswer,
+        {
+          paperId,
+          questionKey: key,
+          result: sampleResult,
+          creditsUsed: 5,
+        },
+      );
+      expect(await readBalance(t, creditsId)).toBe(1000);
+    }
+
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
+    );
+
+    expect(await readBalance(t, creditsId)).toBe(985);
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(1);
+    expect(charges[0]?.amount).toBe(-15);
+  });
+
+  it("result.billed gate blocks re-bill when job+paper are reset to active (questionsBilled also holds)", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
@@ -231,10 +293,9 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     );
     expect(await readBalance(t, creditsId)).toBe(995);
 
-    // Adversarial case: something resets the job back to "extracting"
-    // and the paper back to "extracting" (e.g. buggy admin tool). The
-    // extractionResults row still has billed=true — the per-question
-    // gate must still fire.
+    // Adversarial: a buggy admin tool resets job/paper status. The
+    // extractionResults row still has billed=true → recordOneAnswer
+    // short-circuits before re-incrementing paper.creditsUsed.
     await t.run(async (ctx) => {
       await ctx.db.patch("extractionJobs", jobId, { status: "extracting" });
       await ctx.db.patch("extractionPapers", paperId, { status: "extracting" });
@@ -253,7 +314,153 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     expect(await readBalance(t, creditsId)).toBe(995);
   });
 
-  it("skips deduct when creditsUsed is 0", async () => {
+  it("questionsBilled blocks re-debit even when result.billed AND paper status are reset", async () => {
+    // Defense-in-depth: the adversarial reset that clears BOTH gates
+    // upstream of recordOneAnswer (so applyResultProjectionWrite runs
+    // and doubles paper.creditsUsed) must still be blocked at the
+    // paper-level questionsBilled flag inside finalizePaper.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seed(t, 1000);
+
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      {
+        paperId,
+        questionKey: "q1",
+        result: sampleResult,
+        creditsUsed: 5,
+      },
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
+    );
+    expect(await readBalance(t, creditsId)).toBe(995);
+
+    // Clear EVERY upstream gate except questionsBilled.
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q) => q.eq("paperId", paperId))
+        .unique();
+      if (row) await ctx.db.patch(row._id, { billed: false });
+      await ctx.db.patch("extractionJobs", jobId, { status: "extracting" });
+      await ctx.db.patch("extractionPapers", paperId, {
+        status: "extracting",
+      });
+    });
+
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      {
+        paperId,
+        questionKey: "q1",
+        result: sampleResult,
+        creditsUsed: 5,
+      },
+    );
+
+    // paper.creditsUsed has now been re-incremented to 10 — but the
+    // questionsBilled gate inside finalizePaper must still prevent the
+    // wallet from being touched a second time.
+    const paperBeforeFinalize = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paperBeforeFinalize?.creditsUsed).toBe(10);
+    expect(paperBeforeFinalize?.questionsBilled).toBe(true);
+
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
+    );
+
+    expect(await readBalance(t, creditsId)).toBe(995);
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(1);
+  });
+
+  it("finalizePaper with paper.creditsUsed=0 doesn't write a charge or set questionsBilled", async () => {
+    // The zero-credit path must not insert an empty creditTransactions
+    // row (deductCreditsTransaction throws INVALID_AMOUNT on amount=0,
+    // so the guard is required). questionsBilled stays unset so a
+    // later resume that retries with a real cost can still bill.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seed(t, 1000);
+
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      {
+        paperId,
+        questionKey: "q1",
+        result: sampleResult,
+        creditsUsed: 0,
+      },
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
+    );
+
+    expect(await readBalance(t, creditsId)).toBe(1000);
+    const paper = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paper?.status).toBe("completed");
+    expect(paper?.questionsBilled).toBeUndefined();
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(0);
+  });
+
+  it("finalizePaper called twice debits once (terminal-status guard already short-circuits)", async () => {
+    // Belt-and-suspenders: the most likely retry path is two
+    // finalizePaper calls without any reset. The isTerminalPaperStatus
+    // guard at the top of the mutation makes the second call a no-op
+    // before it even reaches the debit logic.
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { creditsId, jobId, paperId } = await seed(t, 1000);
+
+    await t.mutation(
+      internal.extraction.mutations.results.recordOneAnswer,
+      {
+        paperId,
+        questionKey: "q1",
+        result: sampleResult,
+        creditsUsed: 5,
+      },
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
+    );
+    await t.mutation(
+      internal.extraction.mutations.results.finalizePaper,
+      { paperId },
+    );
+
+    expect(await readBalance(t, creditsId)).toBe(995);
+    const charges = await t.run((ctx) =>
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+    expect(charges).toHaveLength(1);
+  });
+
+  it("skips deduct when paper.creditsUsed never accumulated (recordOneAnswer with creditsUsed=0)", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     const { creditsId, paperId } = await seed(t, 1000);
@@ -269,5 +476,9 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     );
 
     expect(await readBalance(t, creditsId)).toBe(1000);
+    const paper = await t.run((ctx) =>
+      ctx.db.get("extractionPapers", paperId),
+    );
+    expect(paper?.creditsUsed).toBeUndefined();
   });
 });
