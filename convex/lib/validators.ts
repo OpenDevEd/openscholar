@@ -1,4 +1,25 @@
-import { v } from "convex/values";
+import { v, type Infer, type Validator } from "convex/values";
+import type { Doc, TableNames } from "../_generated/dataModel";
+
+/**
+ * Compile-time invariant: the runtime row type for `T` is exactly the
+ * `Infer<>` shape of the mirror validator `V`. Drift in either direction
+ * collapses this type to a string literal that fails to assign to `true`,
+ * surfacing the bug under `tsc --noEmit`.
+ *
+ * Used as:
+ *   const _check_xValidator: AssertExactDoc<"x", typeof xValidator> = true;
+ *
+ * Place the `_check_` line directly under each mirror validator — it is
+ * the structural contract.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AssertExactDoc<T extends TableNames, V extends Validator<any, any, any>> =
+  [Doc<T>] extends [Infer<V>]
+    ? [Infer<V>] extends [Doc<T>]
+      ? true
+      : "validator has fields the table does not (validator is wider)"
+    : "table has fields the validator does not (validator is narrower)";
 
 export const planValidator = v.union(
   v.literal("free"),
@@ -49,9 +70,7 @@ export const apiKeyProviderValidator = v.union(
   v.literal("openrouter")
 );
 
-export const userValidator = v.object({
-  _id: v.id("users"),
-  _creationTime: v.number(),
+export const userFields = {
   clerkId: v.string(),
   email: v.string(),
   firstName: v.optional(v.string()),
@@ -62,7 +81,16 @@ export const userValidator = v.object({
   libraryItemCount: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
+};
+
+export const userValidator = v.object({
+  _id: v.id("users"),
+  _creationTime: v.number(),
+  ...userFields,
 });
+
+const _check_userValidator: AssertExactDoc<"users", typeof userValidator> = true;
+void _check_userValidator;
 
 export const creditsValidator = v.object({
   _id: v.id("credits"),
