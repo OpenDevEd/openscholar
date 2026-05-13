@@ -115,9 +115,7 @@ export const creditBalanceValidator = v.object({
   total: v.number(),
 });
 
-export const subscriptionValidator = v.object({
-  _id: v.id("subscriptions"),
-  _creationTime: v.number(),
+export const subscriptionFields = {
   userId: v.id("users"),
   stripeSubscriptionId: v.optional(v.string()),
   stripeCustomerId: v.optional(v.string()),
@@ -135,7 +133,16 @@ export const subscriptionValidator = v.object({
   pendingChangeTimestamp: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
+};
+
+export const subscriptionValidator = v.object({
+  _id: v.id("subscriptions"),
+  _creationTime: v.number(),
+  ...subscriptionFields,
 });
+
+const _check_subscriptionValidator: AssertExactDoc<"subscriptions", typeof subscriptionValidator> = true;
+void _check_subscriptionValidator;
 
 export const creditTransactionValidator = v.object({
   _id: v.id("creditTransactions"),

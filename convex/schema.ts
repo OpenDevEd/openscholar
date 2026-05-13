@@ -6,7 +6,11 @@ import {
   searchFiltersValidator,
   structuredErrorValidator,
 } from "./extraction/validators";
-import { creditsFields, userFields } from "./lib/validators";
+import {
+  creditsFields,
+  subscriptionFields,
+  userFields,
+} from "./lib/validators";
 
 export default defineSchema({
   // Rate limiting (convex-helpers)
@@ -177,40 +181,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // SUBSCRIPTIONS - Stripe billing integration ready
   // ═══════════════════════════════════════════════════════════════
-  subscriptions: defineTable({
-    userId: v.id("users"),
-    stripeSubscriptionId: v.optional(v.string()),
-    stripeCustomerId: v.optional(v.string()),
-    plan: v.union(
-      v.literal("free"),
-      v.literal("go"),
-      v.literal("pro"),
-      v.literal("enterprise")
-    ),
-    status: v.union(
-      v.literal("active"),
-      v.literal("past_due"),
-      v.literal("canceled"),
-      v.literal("trialing"),
-      v.literal("incomplete"),
-      v.literal("incomplete_expired"),
-      v.literal("unpaid"),
-      v.literal("paused")
-    ),
-    currentPeriodStart: v.optional(v.number()),
-    currentPeriodEnd: v.optional(v.number()),
-    cancelAtPeriodEnd: v.optional(v.boolean()),
-    canceledAt: v.optional(v.number()),
-    pastDueSince: v.optional(v.number()),
-    creditsPerMonth: v.optional(v.number()),
-    seats: v.optional(v.number()),
-    // Pending plan change state (BILL-02) -- source of truth in Convex, not Stripe metadata
-    pendingFromPlan: v.optional(v.union(v.literal("free"), v.literal("go"), v.literal("pro"), v.literal("enterprise"))),
-    pendingToPlan: v.optional(v.union(v.literal("free"), v.literal("go"), v.literal("pro"), v.literal("enterprise"))),
-    pendingChangeTimestamp: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
+  subscriptions: defineTable(subscriptionFields)
     .index("by_user", ["userId"])
     .index("by_stripe_sub", ["stripeSubscriptionId"])
     .index("by_stripe_customer", ["stripeCustomerId"])
