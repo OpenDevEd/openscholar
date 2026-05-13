@@ -529,9 +529,7 @@ const _check_extractionSavedViewValidator: AssertExactDoc<
 > = true;
 void _check_extractionSavedViewValidator;
 
-export const extractionReportSnapshotValidator = v.object({
-  _id: v.id("extractionReportSnapshots"),
-  _creationTime: v.number(),
+export const extractionReportSnapshotFields = {
   jobId: v.id("extractionJobs"),
   userId: v.id("users"),
   name: v.string(),
@@ -545,7 +543,7 @@ export const extractionReportSnapshotValidator = v.object({
       id: v.string(),
       title: v.string(),
       body: v.string(),
-    })
+    }),
   ),
   metrics: v.object({
     totalPapers: v.number(),
@@ -555,7 +553,19 @@ export const extractionReportSnapshotValidator = v.object({
   }),
   generatedAt: v.number(),
   createdAt: v.number(),
+};
+
+export const extractionReportSnapshotValidator = v.object({
+  _id: v.id("extractionReportSnapshots"),
+  _creationTime: v.number(),
+  ...extractionReportSnapshotFields,
 });
+
+const _check_extractionReportSnapshotValidator: AssertExactDoc<
+  "extractionReportSnapshots",
+  typeof extractionReportSnapshotValidator
+> = true;
+void _check_extractionReportSnapshotValidator;
 
 export const extractionRunDiffValidator = v.object({
   _id: v.id("extractionRunDiffs"),

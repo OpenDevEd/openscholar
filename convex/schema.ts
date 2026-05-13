@@ -8,6 +8,7 @@ import {
   extractionPaperErrorFields,
   extractionPaperFields,
   extractionQuestionFields,
+  extractionReportSnapshotFields,
   extractionResultFields,
   extractionSavedViewFields,
   searchFiltersValidator,
@@ -536,31 +537,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION REPORT SNAPSHOTS - Generated report artifacts
   // ═══════════════════════════════════════════════════════════════
-  extractionReportSnapshots: defineTable({
-    jobId: v.id("extractionJobs"),
-    userId: v.id("users"),
-    name: v.string(),
-    scope: v.object({
-      filteredPaperIds: v.optional(v.array(v.id("extractionPapers"))),
-      selectedQuestionKeys: v.optional(v.array(v.string())),
-      viewName: v.optional(v.string()),
-    }),
-    sections: v.array(
-      v.object({
-        id: v.string(),
-        title: v.string(),
-        body: v.string(),
-      })
-    ),
-    metrics: v.object({
-      totalPapers: v.number(),
-      answeredRate: v.number(),
-      groundedRate: v.number(),
-      bestEffortRate: v.number(),
-    }),
-    generatedAt: v.number(),
-    createdAt: v.number(),
-  })
+  extractionReportSnapshots: defineTable(extractionReportSnapshotFields)
     .index("by_job", ["jobId"])
     .index("by_user", ["userId"])
     .index("by_job_generated", ["jobId", "generatedAt"]),
