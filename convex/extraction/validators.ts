@@ -283,21 +283,64 @@ export const questionInputValidator = v.object({
 });
 
 /**
+ * Persisted bucket-item shape on `extractionWorkflowTemplates.bucketItems`.
+ * Narrower than `bucketItemInputValidator` because the three OpenAlex-derived
+ * signals (`citedByCount`, `venueName`, `workType`) are re-fetched at template
+ * re-run time rather than frozen onto the row — the template is the seed, not
+ * the snapshot.
+ */
+export const templateBucketItemValidator = v.object({
+  bucketKey: v.string(),
+  source: v.union(
+    v.literal("history"),
+    v.literal("library"),
+    v.literal("collection"),
+    v.literal("zotero"),
+    v.literal("upload"),
+  ),
+  sourceRefId: v.string(),
+  title: v.string(),
+  authors: v.array(v.string()),
+  year: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  openalexId: v.optional(v.string()),
+  abstract: v.optional(v.string()),
+  pdfUrl: v.optional(v.string()),
+  storageId: v.optional(v.id("_storage")),
+  searchFilters: v.optional(searchFiltersValidator),
+  libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
+  groupId: v.optional(v.string()),
+  zoteroUserId: v.optional(v.string()),
+  collectionKey: v.optional(v.string()),
+  includeDescendants: v.optional(v.boolean()),
+});
+
+/**
  * Full extractionWorkflowTemplates document shape — reused by
  * queries/mutations returning saved templates.
  */
-export const workflowTemplateValidator = v.object({
-  _id: v.id("extractionWorkflowTemplates"),
-  _creationTime: v.number(),
+export const workflowTemplateFields = {
   userId: v.id("users"),
   name: v.string(),
   description: v.optional(v.string()),
   sourceType: sourceTypeValidator,
-  bucketItems: v.array(bucketItemInputValidator),
+  bucketItems: v.array(templateBucketItemValidator),
   questions: v.array(questionInputValidator),
   createdAt: v.number(),
   updatedAt: v.number(),
+};
+
+export const workflowTemplateValidator = v.object({
+  _id: v.id("extractionWorkflowTemplates"),
+  _creationTime: v.number(),
+  ...workflowTemplateFields,
 });
+
+const _check_workflowTemplateValidator: AssertExactDoc<
+  "extractionWorkflowTemplates",
+  typeof workflowTemplateValidator
+> = true;
+void _check_workflowTemplateValidator;
 
 export const extractionQuestionFields = {
   jobId: v.id("extractionJobs"),

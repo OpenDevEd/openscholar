@@ -13,6 +13,7 @@ import {
   extractionRunDiffFields,
   extractionSavedViewFields,
   searchFiltersValidator,
+  workflowTemplateFields,
 } from "./extraction/validators";
 import {
   creditsFields,
@@ -478,60 +479,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION WORKFLOW TEMPLATES - Reusable extraction configs
   // ═══════════════════════════════════════════════════════════════
-  extractionWorkflowTemplates: defineTable({
-    userId: v.id("users"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    sourceType: v.union(
-      v.literal("history"),
-      v.literal("zotero"),
-      v.literal("manual"),
-      v.literal("mixed")
-    ),
-    // Frozen bucket snapshot — the exact paper set the template re-runs on.
-    bucketItems: v.array(
-      v.object({
-        bucketKey: v.string(),
-        source: v.union(
-          v.literal("history"),
-          v.literal("library"),
-          v.literal("collection"),
-          v.literal("zotero"),
-          v.literal("upload")
-        ),
-        sourceRefId: v.string(),
-        title: v.string(),
-        authors: v.array(v.string()),
-        year: v.optional(v.number()),
-        doi: v.optional(v.string()),
-        openalexId: v.optional(v.string()),
-        abstract: v.optional(v.string()),
-        pdfUrl: v.optional(v.string()),
-        storageId: v.optional(v.id("_storage")),
-        searchFilters: v.optional(searchFiltersValidator),
-        libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
-        groupId: v.optional(v.string()),
-        zoteroUserId: v.optional(v.string()),
-        collectionKey: v.optional(v.string()),
-        includeDescendants: v.optional(v.boolean()),
-      })
-    ),
-    questions: v.array(
-      v.object({
-        key: v.string(),
-        question: v.string(),
-        type: v.union(
-          v.literal("string"),
-          v.literal("boolean"),
-          v.literal("number"),
-          v.literal("array")
-        ),
-        description: v.optional(v.string()),
-      })
-    ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
+  extractionWorkflowTemplates: defineTable(workflowTemplateFields)
     .index("by_user", ["userId"])
     .index("by_user_name", ["userId", "name"]),
 
