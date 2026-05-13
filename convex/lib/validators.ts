@@ -190,3 +190,21 @@ const _check_creditTransactionValidator: AssertExactDoc<
   typeof creditTransactionValidator
 > = true;
 void _check_creditTransactionValidator;
+
+export const chatPaperFields = {
+  jobId: v.id("extractionJobs"),
+  sourceId: v.id("extractionJobSources"),
+  included: v.boolean(),
+};
+
+export const chatPaperValidator = v.object({
+  _id: v.id("chatPapers"),
+  _creationTime: v.number(),
+  ...chatPaperFields,
+});
+
+const _check_chatPaperValidator: AssertExactDoc<
+  "chatPapers",
+  typeof chatPaperValidator
+> = true;
+void _check_chatPaperValidator;

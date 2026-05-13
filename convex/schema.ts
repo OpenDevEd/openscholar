@@ -16,6 +16,7 @@ import {
   workflowTemplateFields,
 } from "./extraction/validators";
 import {
+  chatPaperFields,
   creditsFields,
   creditTransactionFields,
   subscriptionFields,
@@ -394,11 +395,7 @@ export default defineSchema({
   // Kept separate so the frozen source snapshot stays immutable and
   // high-frequency toggle writes do not touch the audit table.
   // ═══════════════════════════════════════════════════════════════
-  chatPapers: defineTable({
-    jobId: v.id("extractionJobs"),
-    sourceId: v.id("extractionJobSources"),
-    included: v.boolean(),
-  })
+  chatPapers: defineTable(chatPaperFields)
     .index("by_job", ["jobId"])
     .index("by_job_included", ["jobId", "included"])
     .index("by_job_source", ["jobId", "sourceId"])
