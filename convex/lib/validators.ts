@@ -144,9 +144,17 @@ export const subscriptionValidator = v.object({
 const _check_subscriptionValidator: AssertExactDoc<"subscriptions", typeof subscriptionValidator> = true;
 void _check_subscriptionValidator;
 
-export const creditTransactionValidator = v.object({
-  _id: v.id("creditTransactions"),
-  _creationTime: v.number(),
+export const billingTypeValidator = v.union(
+  v.literal("extraction_llm"),
+  v.literal("embedding"),
+  v.literal("screening"),
+  v.literal("chat"),
+  v.literal("search"),
+  v.literal("translation"),
+  v.literal("wallet_api"),
+);
+
+export const creditTransactionFields = {
   creditsId: v.id("credits"),
   userId: v.optional(v.id("users")),
   type: creditTransactionTypeValidator,
@@ -159,17 +167,7 @@ export const creditTransactionValidator = v.object({
   jobId: v.optional(v.id("extractionJobs")),
   paperId: v.optional(v.id("extractionPapers")),
   resultId: v.optional(v.id("extractionResults")),
-  billingType: v.optional(
-    v.union(
-      v.literal("extraction_llm"),
-      v.literal("embedding"),
-      v.literal("screening"),
-      v.literal("chat"),
-      v.literal("search"),
-      v.literal("translation"),
-      v.literal("wallet_api"),
-    ),
-  ),
+  billingType: v.optional(billingTypeValidator),
   metadata: v.optional(v.record(v.string(), v.string())),
   stripeInvoiceId: v.optional(v.string()),
   stripePaymentIntentId: v.optional(v.string()),
@@ -177,8 +175,18 @@ export const creditTransactionValidator = v.object({
   stripeCheckoutSessionId: v.optional(v.string()),
   createdAt: v.number(),
   // billing-txn-perf plan-02: precomputed search string for the
-  // `search_transactions` searchIndex. Defined on the table at
-  // `convex/schema.ts:170`; was missing from this validator and
-  // silently stripped from every `getTransactions` payload.
+  // `search_transactions` searchIndex.
   searchableText: v.optional(v.string()),
+};
+
+export const creditTransactionValidator = v.object({
+  _id: v.id("creditTransactions"),
+  _creationTime: v.number(),
+  ...creditTransactionFields,
 });
+
+const _check_creditTransactionValidator: AssertExactDoc<
+  "creditTransactions",
+  typeof creditTransactionValidator
+> = true;
+void _check_creditTransactionValidator;

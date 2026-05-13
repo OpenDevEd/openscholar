@@ -8,6 +8,7 @@ import {
 } from "./extraction/validators";
 import {
   creditsFields,
+  creditTransactionFields,
   subscriptionFields,
   userFields,
 } from "./lib/validators";
@@ -106,53 +107,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // CREDIT_TRANSACTIONS - audit log for credit changes
   // ═══════════════════════════════════════════════════════════════
-  creditTransactions: defineTable({
-    creditsId: v.id("credits"),
-    userId: v.optional(v.id("users")),
-    type: v.union(
-      v.literal("purchase"),
-      v.literal("usage"),
-      v.literal("grant"),
-      v.literal("refund"),
-      v.literal("expiry")
-    ),
-    creditType: v.union(v.literal("free"), v.literal("paid")), // Which pool was affected
-    amount: v.number(),
-    balanceAfter: v.number(),
-    description: v.optional(v.string()),
-    // First-class scoping columns (plan-04). `metadata` stays as the
-    // escape hatch for non-promoted keys (usage tokens, finishReason,
-    // etc). Promotions here fuel the `by_job` index and cost-breakdown
-    // ledger queries. jobId/paperId/resultId/billingType MUST NOT be
-    // duplicated into metadata.
-    jobId: v.optional(v.id("extractionJobs")),
-    paperId: v.optional(v.id("extractionPapers")),
-    resultId: v.optional(v.id("extractionResults")),
-    billingType: v.optional(
-      v.union(
-        v.literal("extraction_llm"),
-        v.literal("embedding"),
-        v.literal("screening"),
-        v.literal("chat"),
-        v.literal("search"),
-        v.literal("translation"),
-        v.literal("wallet_api"),
-      ),
-    ),
-    metadata: v.optional(v.record(v.string(), v.string())),
-    stripeInvoiceId: v.optional(v.string()), // For idempotency
-    stripePaymentIntentId: v.optional(v.string()),
-    stripeChargeId: v.optional(v.string()),
-    stripeCheckoutSessionId: v.optional(v.string()),
-    createdAt: v.number(),
-    // billing-txn-perf plan-02: precomputed search string — description +
-    // metadata.model + metadata.openalexId + billingType + type, lowercased
-    // and space-separated. Populated by `computeSearchableText` at every
-    // insert site; backed by the `search_transactions` search index below.
-    // Optional during rollout; backfilled by
-    // `migrations/backfillSearchableText.ts` on every historical row.
-    searchableText: v.optional(v.string()),
-  })
+  creditTransactions: defineTable(creditTransactionFields)
     .index("by_credits", ["creditsId"])
     .index("by_stripe_invoice", ["stripeInvoiceId"])
     .index("by_stripe_payment_intent", ["stripePaymentIntentId"])
