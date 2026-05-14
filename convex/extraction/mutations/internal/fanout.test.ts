@@ -280,4 +280,47 @@ describe("launchPaperWorkflowsForJob — chunked fan-out", () => {
       expect(paper?.paperWorkflowEpoch).toBe(0);
     }
   });
+
+  it("R4: resume invalidates prior-epoch launches and starts fresh workflows", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    setupAggregates(t);
+    setupExtractionWorkflow(t);
+
+    const { jobId, paperIds } = await seedJobAndPapers(t, {
+      paperCount: 25,
+      runEpoch: 1,
+    });
+
+    const STALE = "stale";
+    await t.run(async (ctx) => {
+      for (const id of paperIds) {
+        await ctx.db.patch(id, {
+          paperWorkflowId: STALE,
+          paperWorkflowEpoch: 0,
+        });
+      }
+    });
+
+    await t.mutation(
+      internal.extraction.mutations.internal.fanout
+        .launchPaperWorkflowsForJob,
+      {
+        jobId,
+        paperIds,
+        expectedEpoch: 1,
+        pdfEnabled: false,
+        questionConcurrency: 1,
+      },
+    );
+
+    const papers = await t.run((ctx) =>
+      Promise.all(paperIds.map((id) => ctx.db.get(id))),
+    );
+    for (const paper of papers) {
+      expect(paper?.paperWorkflowId).toBeDefined();
+      expect(paper?.paperWorkflowId).not.toBe(STALE);
+      expect(paper?.paperWorkflowEpoch).toBe(1);
+    }
+  });
 });
