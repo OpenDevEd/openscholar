@@ -372,4 +372,66 @@ describe("launchPaperWorkflowsForJob — chunked fan-out", () => {
     });
     expect(queuedSelf).toHaveLength(0);
   });
+
+  it("R6: subsequent chunks (offset > 0) bypass the full-list pre-flight scan", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    setupAggregates(t);
+    setupExtractionWorkflow(t);
+
+    // perPaperBudget = 1 question × ABSTRACT_Q_CREDIT_HIGH (5) = 5.
+    // Full pre-flight at 60 papers needs 300; one chunk needs 125.
+    // 200 fits one chunk but would have failed the full scan.
+    const ONE_CHUNK_FITS_FULL_FAILS = 200;
+    const { jobId, paperIds } = await seedJobAndPapers(t, {
+      paperCount: 60,
+      paidCredits: ONE_CHUNK_FITS_FULL_FAILS,
+    });
+
+    const result = await t.mutation(
+      internal.extraction.mutations.internal.fanout
+        .launchPaperWorkflowsForJob,
+      {
+        jobId,
+        paperIds,
+        expectedEpoch: 0,
+        pdfEnabled: false,
+        questionConcurrency: 1,
+        offset: CHUNK_SIZE,
+      },
+    );
+    expect(result.creditsExhausted).toBe(false);
+    expect(result.launched).toBe(CHUNK_SIZE);
+    expect(result.reserved).toBe(CHUNK_SIZE);
+
+    const job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.status).toBe("extracting");
+
+    const chunkPapers = await t.run((ctx) =>
+      Promise.all(
+        paperIds
+          .slice(CHUNK_SIZE, CHUNK_SIZE * 2)
+          .map((id) => ctx.db.get(id)),
+      ),
+    );
+    for (const paper of chunkPapers) {
+      expect(paper?.paperWorkflowId).toBeDefined();
+      expect(paper?.paperWorkflowEpoch).toBe(0);
+      expect(paper?.reservationId).toBeDefined();
+    }
+
+    const nextQueued = await t.run(async (ctx) => {
+      const all = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+      return all.filter((sf) =>
+        sf.name.includes("launchPaperWorkflowsForJob"),
+      );
+    });
+    expect(nextQueued).toHaveLength(1);
+    const nextArgs = nextQueued[0]?.args as
+      | ReadonlyArray<{ offset?: number }>
+      | undefined;
+    expect(nextArgs?.[0]?.offset).toBe(CHUNK_SIZE * 2);
+  });
 });
