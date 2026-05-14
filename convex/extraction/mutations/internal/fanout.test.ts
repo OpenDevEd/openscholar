@@ -323,4 +323,53 @@ describe("launchPaperWorkflowsForJob — chunked fan-out", () => {
       expect(paper?.paperWorkflowEpoch).toBe(1);
     }
   });
+
+  it("R5: pre-flight on first chunk flips job to creditsExhausted when balance is insufficient", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    setupAggregates(t);
+    setupExtractionWorkflow(t);
+
+    const { jobId, paperIds } = await seedJobAndPapers(t, {
+      paperCount: 60,
+      paidCredits: 0,
+    });
+
+    const result = await t.mutation(
+      internal.extraction.mutations.internal.fanout
+        .launchPaperWorkflowsForJob,
+      {
+        jobId,
+        paperIds,
+        expectedEpoch: 0,
+        pdfEnabled: false,
+        questionConcurrency: 1,
+      },
+    );
+    expect(result.creditsExhausted).toBe(true);
+    expect(result.launched).toBe(0);
+    expect(result.reserved).toBe(0);
+
+    const job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.status).toBe("creditsExhausted");
+    expect(job?.error?.code).toBe("insufficient_credits");
+
+    const papers = await t.run((ctx) =>
+      Promise.all(paperIds.map((id) => ctx.db.get(id))),
+    );
+    for (const paper of papers) {
+      expect(paper?.paperWorkflowId).toBeUndefined();
+      expect(paper?.reservationId).toBeUndefined();
+    }
+
+    const queuedSelf = await t.run(async (ctx) => {
+      const all = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+      return all.filter((sf) =>
+        sf.name.includes("launchPaperWorkflowsForJob"),
+      );
+    });
+    expect(queuedSelf).toHaveLength(0);
+  });
 });
