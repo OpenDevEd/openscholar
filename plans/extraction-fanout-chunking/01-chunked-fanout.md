@@ -122,9 +122,26 @@ Helper: `convex/extraction/workflow.test-support.ts` exports
   `paperWorkflowId === undefined`; one scheduled function is queued
   for `offset: 25`.
 - **R2 — scheduler chain to completion.** Seed 60 papers. Call once,
-  then run `t.finishAllScheduledFunctions(vi.runAllTimersAsync)`.
-  Assert all 60 papers have `paperWorkflowId` set; no further
-  scheduled functions queued.
+  then pump the launch chain by reading
+  `_scheduled_functions` for entries whose `name` includes
+  `launchPaperWorkflowsForJob`, invoking each via `t.mutation` with its
+  stored args, tracking consumed `_id`s, and looping until no new
+  launch-chain entry is queued. Assert all 60 papers have
+  `paperWorkflowId` set; no further `launchPaperWorkflowsForJob`
+  entries remain in `_scheduled_functions`.
+
+  > **Plan deviation note (R2).** The original spec called for
+  > `t.finishAllScheduledFunctions(vi.runAllTimersAsync)`. That helper
+  > would also drive the workflow component (registered via
+  > `setupExtractionWorkflow`) into running each `paperPipelineWorkflow`'s
+  > first action call. Those actions (`extractOneQuestion`,
+  > `downloadAndIndexPdfAction`, …) have no mock in convex-test — they
+  > would either fail or hang. The behavioral invariant we actually care
+  > about for R2 is "from a single initial call, the launch chain
+  > unwinds and every paper receives a `paperWorkflowId`". Manually
+  > pumping just the launch-chain entries tests exactly that without
+  > entangling the workflow component's internals. R3–R8 follow the
+  > same pumping pattern when they need >1 chunk.
 - **R3 — launch idempotency on chunk retry.** Seed 25 papers,
   pre-patch 10 of them with `paperWorkflowId: "stub"` and
   `paperWorkflowEpoch: expectedEpoch`. Call the mutation. Assert: the
