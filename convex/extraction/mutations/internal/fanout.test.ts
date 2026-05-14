@@ -434,4 +434,96 @@ describe("launchPaperWorkflowsForJob — chunked fan-out", () => {
       | undefined;
     expect(nextArgs?.[0]?.offset).toBe(CHUNK_SIZE * 2);
   });
+
+  it("R7: reservation idempotency — pre-reserved papers are not double-charged", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    setupAggregates(t);
+    setupExtractionWorkflow(t);
+
+    const { userId, jobId, paperIds } = await seedJobAndPapers(t, {
+      paperCount: 25,
+      paidCredits: 1_000,
+    });
+
+    const preReservedIds = paperIds.slice(0, 10);
+    await t.run(async (ctx) => {
+      const credits = await ctx.db
+        .query("credits")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .unique();
+      if (!credits) throw new Error("seed: credits row missing");
+      for (const paperId of preReservedIds) {
+        const reservationId = await ctx.db.insert("creditTransactions", {
+          creditsId: credits._id,
+          userId,
+          type: "reservation",
+          creditType: "paid",
+          amount: -5,
+          description: "Test pre-existing reservation",
+          createdAt: Date.now(),
+          jobId,
+          paperId,
+          billingType: "extraction_llm",
+        });
+        await ctx.db.patch(paperId, { reservationId });
+      }
+    });
+
+    const txCountBefore = await t.run(async (ctx) => {
+      const rows = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+      return rows.filter((r) => r.type === "reservation").length;
+    });
+    expect(txCountBefore).toBe(10);
+
+    await t.mutation(
+      internal.extraction.mutations.internal.fanout
+        .launchPaperWorkflowsForJob,
+      {
+        jobId,
+        paperIds,
+        expectedEpoch: 0,
+        pdfEnabled: false,
+        questionConcurrency: 1,
+      },
+    );
+
+    const reservationCounts = await t.run(async (ctx) => {
+      const rows = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+      const counts: Record<string, number> = {};
+      for (const r of rows) {
+        if (r.type !== "reservation") continue;
+        if (!r.paperId) continue;
+        counts[r.paperId] = (counts[r.paperId] ?? 0) + 1;
+      }
+      return counts;
+    });
+
+    for (const paperId of preReservedIds) {
+      expect(reservationCounts[paperId]).toBe(1);
+    }
+    for (const paperId of paperIds.slice(10)) {
+      expect(reservationCounts[paperId] ?? 0).toBeGreaterThanOrEqual(1);
+    }
+
+    const totalReservations = Object.values(reservationCounts).reduce(
+      (sum, n) => sum + n,
+      0,
+    );
+    expect(totalReservations).toBeGreaterThanOrEqual(25);
+
+    const papers = await t.run((ctx) =>
+      Promise.all(paperIds.map((id) => ctx.db.get(id))),
+    );
+    for (const paper of papers) {
+      expect(paper?.reservationId).toBeDefined();
+      expect(paper?.paperWorkflowId).toBeDefined();
+    }
+  });
 });
