@@ -148,4 +148,86 @@ describe("launchPaperWorkflowsForJob — chunked fan-out", () => {
       | undefined;
     expect(nextChunkArgs?.[0]?.offset).toBe(CHUNK_SIZE);
   });
+
+  it("R2: scheduler chain unwinds to completion across all chunks", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    setupAggregates(t);
+    setupExtractionWorkflow(t);
+
+    const { jobId, paperIds } = await seedJobAndPapers(t, {
+      paperCount: 60,
+    });
+
+    // Seed the chain with the initial (offset-implicit) call.
+    await t.mutation(
+      internal.extraction.mutations.internal.fanout
+        .launchPaperWorkflowsForJob,
+      {
+        jobId,
+        paperIds,
+        expectedEpoch: 0,
+        pdfEnabled: false,
+        questionConcurrency: 1,
+      },
+    );
+
+    // Pump only the launch-chain entries. The workflow component
+    // schedules its own work; intentionally ignoring those keeps the
+    // test focused on the fan-out invariant and immune to action
+    // implementations the convex-test runtime cannot execute.
+    type LaunchArgs = {
+      jobId: typeof jobId;
+      paperIds: typeof paperIds;
+      expectedEpoch: number;
+      pdfEnabled: boolean;
+      questionConcurrency: number;
+      offset?: number;
+    };
+    const consumed = new Set<string>();
+    const MAX_HOPS = 10;
+    let hops = 0;
+    while (hops < MAX_HOPS) {
+      const next = await t.run(async (ctx) => {
+        const all = await ctx.db.system
+          .query("_scheduled_functions")
+          .collect();
+        return all.find(
+          (sf) =>
+            sf.name.includes("launchPaperWorkflowsForJob") &&
+            !consumed.has(sf._id),
+        );
+      });
+      if (!next) break;
+      consumed.add(next._id);
+      const launchArgs = (next.args as ReadonlyArray<unknown>)[0] as LaunchArgs;
+      await t.mutation(
+        internal.extraction.mutations.internal.fanout
+          .launchPaperWorkflowsForJob,
+        launchArgs,
+      );
+      hops++;
+    }
+    expect(hops).toBeLessThan(MAX_HOPS);
+
+    const papers = await t.run((ctx) =>
+      Promise.all(paperIds.map((id) => ctx.db.get(id))),
+    );
+    for (const paper of papers) {
+      expect(paper?.paperWorkflowId).toBeDefined();
+      expect(paper?.paperWorkflowEpoch).toBe(0);
+    }
+
+    const stillUnconsumed = await t.run(async (ctx) => {
+      const all = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+      return all.filter(
+        (sf) =>
+          sf.name.includes("launchPaperWorkflowsForJob") &&
+          !consumed.has(sf._id),
+      );
+    });
+    expect(stillUnconsumed).toHaveLength(0);
+  });
 });
