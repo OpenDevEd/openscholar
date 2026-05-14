@@ -230,4 +230,54 @@ describe("launchPaperWorkflowsForJob — chunked fan-out", () => {
     });
     expect(stillUnconsumed).toHaveLength(0);
   });
+
+  it("R3: launch idempotency on chunk retry — pre-launched papers keep their workflowId", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    setupAggregates(t);
+    setupExtractionWorkflow(t);
+
+    const { jobId, paperIds } = await seedJobAndPapers(t, {
+      paperCount: 25,
+    });
+
+    const STUB = "stub";
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 10; i++) {
+        await ctx.db.patch(paperIds[i]!, {
+          paperWorkflowId: STUB,
+          paperWorkflowEpoch: 0,
+        });
+      }
+    });
+
+    await t.mutation(
+      internal.extraction.mutations.internal.fanout
+        .launchPaperWorkflowsForJob,
+      {
+        jobId,
+        paperIds,
+        expectedEpoch: 0,
+        pdfEnabled: false,
+        questionConcurrency: 1,
+      },
+    );
+
+    const preLaunched = await t.run((ctx) =>
+      Promise.all(paperIds.slice(0, 10).map((id) => ctx.db.get(id))),
+    );
+    for (const paper of preLaunched) {
+      expect(paper?.paperWorkflowId).toBe(STUB);
+      expect(paper?.paperWorkflowEpoch).toBe(0);
+    }
+
+    const freshlyLaunched = await t.run((ctx) =>
+      Promise.all(paperIds.slice(10).map((id) => ctx.db.get(id))),
+    );
+    for (const paper of freshlyLaunched) {
+      expect(paper?.paperWorkflowId).toBeDefined();
+      expect(paper?.paperWorkflowId).not.toBe(STUB);
+      expect(paper?.paperWorkflowEpoch).toBe(0);
+    }
+  });
 });
