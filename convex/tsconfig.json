@@ -30,5 +30,19 @@
     }
   },
   "include": ["./**/*"],
-  "exclude": ["./_generated"]
+  "exclude": [
+    "./_generated",
+    /* `@convex-dev/workflow/test` ships .ts source whose `register`
+     * function has a generic-narrowing bug (workpool.register can't
+     * accept the local Schema generic). Importing it from inside
+     * `convex/` makes the convex CLI's `tsc` step walk into the broken
+     * module and fail the push. The helper file itself is excluded,
+     * and so are all `.test.ts` files under `convex/` — TypeScript
+     * follows imports regardless of `exclude`, so any test that
+     * imports the helper would drag the broken module back into the
+     * push's typecheck pass. Tests aren't deployed, and vitest still
+     * type-checks them via the root tsconfig.json. */
+    "./extraction/workflow.test-support.ts",
+    "./**/*.test.ts"
+  ]
 }

@@ -386,6 +386,24 @@ export const extractionPaperFields = {
   attemptCount: v.optional(v.number()),
   creditsUsed: v.optional(v.number()),
   questionsBilled: v.optional(v.boolean()),
+  // Tier D fan-out reservation. Set when `launchPaperWorkflowsForJob`
+  // reserves this paper's question budget (Q × HIGH per question) via
+  // `reserveCreditsTransaction`. Cleared by `finalizePaper` after
+  // `settleReservationTransaction` releases the hold and deducts the
+  // actuals, or by a release sweep when the job goes terminal before
+  // the paper finalizes. Held = `reservationId !== undefined &&
+  // questionsBilled !== true`. Settled = `reservationId === undefined &&
+  // questionsBilled === true`.
+  reservationId: v.optional(v.id("creditTransactions")),
+  // Chunked-fanout launch idempotency. `paperWorkflowId` is the
+  // WorkflowId returned by `workflow.start` for the paper's pipeline,
+  // pinned to `paperWorkflowEpoch === runEpoch`. The fanout skips
+  // `workflow.start` when both match; resume bumps `runEpoch` and the
+  // epoch mismatch invalidates a stale launch so the new epoch can
+  // start a fresh workflow. Stale workflows self-terminate on their
+  // next step via `getWorkerSkipReason`.
+  paperWorkflowId: v.optional(v.string()),
+  paperWorkflowEpoch: v.optional(v.number()),
   pdfContentUsed: v.optional(v.boolean()),
   sortTitle: v.optional(v.string()),
   avgConfidence: v.optional(v.number()),
