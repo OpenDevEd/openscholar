@@ -156,12 +156,25 @@ Helper: `convex/extraction/workflow.test-support.ts` exports
   `offset: 0`. Assert job.status === `"creditsExhausted"`, no
   reservations created, no `paperWorkflowId` set on any paper, no
   scheduled functions queued.
-- **R6 — pre-flight skipped when offset > 0.** Seed 60 papers, seed
-  zero balance, set offset=25. Assert the mutation does NOT flip the
-  job to `creditsExhausted`; instead it processes the chunk and
-  proceeds (the reservation step will end up patching nothing because
-  no credits — but the launch loop still runs for already-reserved
-  papers).
+- **R6 — pre-flight skipped when offset > 0.** Seed 60 papers and a
+  balance that is sufficient for exactly one chunk's reservations
+  (`CHUNK_SIZE × perPaperBudget`) but insufficient for the full
+  pre-flight requirement (`60 × perPaperBudget`). Call with
+  `offset: CHUNK_SIZE`. Assert the mutation does NOT flip the job to
+  `creditsExhausted`, the chunk's papers all reserve+launch, and the
+  next chunk (`offset: 2 × CHUNK_SIZE`) is queued.
+
+  > **Plan deviation note (R6).** The original spec used a zero balance
+  > to "prove" pre-flight was skipped, asserting the reservation step
+  > would silently patch nothing. That hypothesis was wrong:
+  > `reserveCreditsTransaction` throws `INSUFFICIENT_CREDITS` (it does
+  > not return `{ reservationId: null }`) when the balance falls below
+  > the per-paper amount, which rolls the whole chunk mutation back.
+  > The correct way to prove pre-flight is skipped is to seed a balance
+  > that would have failed the FULL pre-flight (60 × budget) but is
+  > sufficient for the CHUNK's reservations (25 × budget). If the
+  > chunk runs cleanly at that balance, pre-flight clearly did not
+  > scan the full list.
 - **R7 — reservation idempotency preserved.** Seed 25 papers, 10 of
   them with `reservationId` already set. Call. Assert no NEW
   `creditTransactions` rows for the 10 pre-reserved papers; the other
