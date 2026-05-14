@@ -526,4 +526,54 @@ describe("launchPaperWorkflowsForJob — chunked fan-out", () => {
       expect(paper?.paperWorkflowId).toBeDefined();
     }
   });
+
+  it("R8: terminal papers are skipped entirely — no reservation, no workflow launch", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    setupAggregates(t);
+    setupExtractionWorkflow(t);
+
+    const { jobId, paperIds } = await seedJobAndPapers(t, {
+      paperCount: 25,
+      paidCredits: 1_000,
+    });
+
+    const terminalIds = paperIds.slice(0, 5);
+    const pendingIds = paperIds.slice(5);
+    await t.run(async (ctx) => {
+      for (const id of terminalIds) {
+        await ctx.db.patch(id, { status: "completed" });
+      }
+    });
+
+    await t.mutation(
+      internal.extraction.mutations.internal.fanout
+        .launchPaperWorkflowsForJob,
+      {
+        jobId,
+        paperIds,
+        expectedEpoch: 0,
+        pdfEnabled: false,
+        questionConcurrency: 1,
+      },
+    );
+
+    const terminalAfter = await t.run((ctx) =>
+      Promise.all(terminalIds.map((id) => ctx.db.get(id))),
+    );
+    for (const paper of terminalAfter) {
+      expect(paper?.status).toBe("completed");
+      expect(paper?.paperWorkflowId).toBeUndefined();
+      expect(paper?.reservationId).toBeUndefined();
+    }
+
+    const pendingAfter = await t.run((ctx) =>
+      Promise.all(pendingIds.map((id) => ctx.db.get(id))),
+    );
+    for (const paper of pendingAfter) {
+      expect(paper?.paperWorkflowId).toBeDefined();
+      expect(paper?.paperWorkflowEpoch).toBe(0);
+      expect(paper?.reservationId).toBeDefined();
+    }
+  });
 });
