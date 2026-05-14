@@ -12,7 +12,6 @@ function makeDoc(
     type: "purchase",
     creditType: "paid",
     amount: 100,
-    balanceAfter: 100,
     createdAt: 1_000_000,
     ...overrides,
   };
@@ -104,9 +103,8 @@ describe("toViewModel", () => {
     expect(vm.id).toBe("txn_1");
   });
 
-  it("copies createdAt + balanceAfter unchanged", () => {
-    const vm = toViewModel(makeDoc({ createdAt: 42, balanceAfter: 12345 }));
+  it("copies createdAt unchanged", () => {
+    const vm = toViewModel(makeDoc({ createdAt: 42 }));
     expect(vm.createdAt).toBe(42);
-    expect(vm.balanceAfter).toBe(12345);
   });
 });

@@ -590,9 +590,9 @@ export default function BillingPage() {
 
         {creditsEnabled && creditBalance && (
           <CreditBalanceCard
-            freeBalance={creditBalance.free}
-            paidBalance={creditBalance.paid}
-            totalBalance={creditBalance.total}
+            free={creditBalance.free}
+            paid={creditBalance.paid}
+            total={creditBalance.total}
             creditsPerMonth={creditsPerMonth}
             freeCreditCap={getFreeCreditCapForPlan(effectivePlan)}
           />

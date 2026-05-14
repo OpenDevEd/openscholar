@@ -9,7 +9,18 @@ import {
   recordTerminalResult,
 } from "./aggregates";
 import { setupScreeningAggregates } from "./aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+
+const _registeredTxnAggHandles = new WeakSet<object>();
+function ensureTransactionAggregates(t: ReturnType<typeof convexTest>) {
+  if (_registeredTxnAggHandles.has(t)) return;
+  setupTransactionAggregates(t);
+  _registeredTxnAggHandles.add(t);
+}
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 
 // ---------------------------------------------------------------------------
@@ -42,13 +53,13 @@ async function seedCredits(
   freeBalance: number,
   paidBalance: number
 ) {
+  ensureTransactionAggregates(t);
   return await t.run(async (ctx) => {
-    const id = await ctx.db.insert("credits", {
+    const id = await seedCreditsForTest(ctx, {
       userId,
-      freeBalance,
-      paidBalance,
-      lifetimeUsed: 0,
-      lastUpdatedAt: Date.now(),
+      free: freeBalance,
+      paid: paidBalance,
+      now: Date.now(),
     });
     return (await ctx.db.get("credits", id))!;
   });

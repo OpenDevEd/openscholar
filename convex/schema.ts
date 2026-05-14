@@ -136,6 +136,13 @@ export default defineSchema({
     .index("by_credits_creditType", ["creditsId", "creditType", "createdAt"])
     .index("by_credits_billingType", ["creditsId", "billingType", "createdAt"])
     .index("by_credits_createdAt", ["creditsId", "createdAt"])
+    // Tier D: idempotency lookup for the reservation primitive. A
+    // `reservation_release` row stores the originating reservation's _id
+    // in `reservationOf`; the release path needs an O(1) probe to decide
+    // whether each member of a reservation group is already released.
+    // Sparse on purpose — only reservation siblings and release rows ever
+    // populate `reservationOf`.
+    .index("by_reservationOf", ["reservationOf"])
     // billing-txn-perf plan-02: full-text search across searchableText,
     // filter-narrowed by creditsId + the facet dimensions so the search
     // path stays user-scoped. Replaces the client-side substring scan.

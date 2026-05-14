@@ -13,6 +13,7 @@ import { PAPER_LIMIT_MAX } from "../../bucket/limits";
 import { clearJobAggregates, clearJobCredits } from "../../aggregates";
 import { clearJobCounters } from "../../jobCounters";
 import { recomputePaperListProjection } from "../../listProjection";
+import { releaseReservationTransaction } from "../../../credits/reservation";
 
 const PROJECTION_REPAIR_BATCH_SIZE = 25;
 
@@ -58,6 +59,22 @@ export const deleteExtractionInternal = internalMutation({
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .take(PAPER_LIMIT_MAX);
+
+    // Tier D: release any HELD reservations BEFORE deleting the paper
+    // rows that reference them. creditTransactions are intentionally
+    // retained as the user's audit trail, so orphaned negative
+    // `reservation` rows would otherwise permanently drain the wallet.
+    // `releaseReservationTransaction` is idempotent — re-runs on a
+    // rescheduled cascade are no-ops.
+    for (const paper of papers) {
+      if (paper.reservationId === undefined) continue;
+      await releaseReservationTransaction(ctx, {
+        reservationId: paper.reservationId,
+        description: "Reservation released (job deleted)",
+      });
+      await ctx.db.patch(paper._id, { reservationId: undefined });
+    }
+
     const perPaperChildTables: Array<[string, string]> = [
       ["extractionEvidenceUnits", "by_paper"],
       ["extractionResults", "by_paper"],

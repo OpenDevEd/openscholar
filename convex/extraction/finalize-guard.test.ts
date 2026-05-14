@@ -3,6 +3,10 @@ import { describe, it, expect } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
 import { readAggregateCounters } from "./aggregates";
 import { incPaperOutcome, readJobCounters } from "./jobCounters";
 
@@ -22,13 +26,7 @@ async function seedJob(
       updatedAt: now,
       lastLoginAt: now,
     });
-    await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 0,
-      paidBalance: 1000,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
+    await seedCreditsForTest(ctx, { userId, free: 0, paid: 1000, now });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       mode: "extraction" as const,
@@ -62,6 +60,7 @@ async function seedJob(
 describe("maybeFinalizeJob terminal-state guard", () => {
   it("does not mutate a cancelled job", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId } = await seedJob(t, "cancelled");
 
@@ -76,6 +75,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
 
   it("does not mutate a failed job", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId } = await seedJob(t, "failed");
 
@@ -89,6 +89,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
 
   it("does not mutate a completed job", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId } = await seedJob(t, "completed");
 
@@ -102,6 +103,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
 
   it("still finalizes a job in an active state when all papers are done", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
@@ -126,6 +128,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
 
   it("ignores stale maybeFinalizeJob calls from an older epoch", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
@@ -152,6 +155,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
 
   it("fails a job with totalPapers=0 (all sources non-processable)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId } = await seedJob(t, "extracting");
 
@@ -171,6 +175,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
     // no reason to transition. A scan-based finalize would touch all 50
     // papers; the counter-based one must not.
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId } = await seedJob(t, "extracting");
     await t.run(async (ctx) => {
@@ -196,6 +201,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
 describe("markPaperTerminalTx counter maintenance", () => {
   it("bumps processedPapers on a successful completion", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
@@ -212,6 +218,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
 
   it("bumps failedPapers on a download_failed transition", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
@@ -228,6 +235,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
 
   it("is idempotent: a second terminal transition does not double-count", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
@@ -246,6 +254,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
 
   it("does not bump counters for non-processable papers", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
@@ -268,6 +277,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
 describe("recordOneAnswer + finalizePaper terminal-state guard", () => {
   it("does not persist results or finalize when job is cancelled", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "cancelled");
 
@@ -316,6 +326,7 @@ describe("recordOneAnswer + finalizePaper terminal-state guard", () => {
 
   it("persists results normally when job is in an active state", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedJob(t, "extracting");
 

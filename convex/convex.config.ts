@@ -53,5 +53,14 @@ app.use(aggregate, { name: "screeningQualifiedAgg" });
 app.use(aggregate, { name: "txnTypeAgg" });
 app.use(aggregate, { name: "txnCreditPoolAgg" });
 app.use(aggregate, { name: "txnBillingTypeAgg" });
+// plans/balance-sharded-counter: append-only credit balance backed by
+// two `@convex-dev/sharded-counter` instances (one per pool). The prior
+// `balanceAgg` DirectAggregate read the lazy-root B+ tree on every
+// balance lookup, walking ~48 component docs for ~4k-row ledgers and
+// blowing the 16 MB / mutation budget on the reservation hot path.
+// ShardedCounter is O(shards) per pool (16 each) regardless of ledger
+// depth. Keyed by `Id<"credits">`; total balance is derived (free + paid).
+app.use(shardedCounter, { name: "balanceFreeCounter" });
+app.use(shardedCounter, { name: "balancePaidCounter" });
 
 export default app;

@@ -79,10 +79,9 @@ export type BillingSnapshot = {
   };
   credits: Array<{
     _id: string;
-    freeBalance: number;
-    paidBalance: number;
-    lifetimeUsed: number;
-    lastUpdatedAt: number;
+    free: number;
+    paid: number;
+    total: number;
   }>;
   subscriptions: Array<{
     _id: string;
@@ -106,7 +105,6 @@ export type BillingSnapshot = {
     type: string;
     creditType: string;
     amount: number;
-    balanceAfter: number;
     description?: string;
     stripeInvoiceId?: string;
     stripePaymentIntentId?: string;

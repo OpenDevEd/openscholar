@@ -40,7 +40,6 @@ function makeRow(overrides: Partial<TransactionViewModel> = {}): TransactionView
     direction: "in",
     amount: 1240,
     signedAmount: 1240,
-    balanceAfter: 5000,
     description: "Top-up 1,240 credits",
     createdAt: Date.UTC(2026, 3, 20, 10, 0, 0),
     jobId: null,
@@ -93,14 +92,11 @@ describe("TransactionRow", () => {
     expect(screen.getByRole("listitem").id).toBe("txn-row-tx-abc");
   });
 
-  it("carries an aria-label summarizing amount, direction, balance-after, and date", () => {
+  it("carries an aria-label summarizing amount, direction, and date", () => {
     render(<TransactionRow row={makeRow({ type: "purchase", direction: "in" })} density="comfortable" />);
     const label = screen.getByRole("listitem").getAttribute("aria-label");
-    // mocked t() returns "aria.credit" for direction='in' and "aria.balanceAfter|5000"
     expect(label).toMatch(/aria\.credit/);
     expect(label).toMatch(/1240/);
-    expect(label).toMatch(/aria\.balanceAfter/);
-    expect(label).toMatch(/5000/);
   });
 
   it("exposes data-txn-title-source so tests can pin the title branch without reading CSS", () => {

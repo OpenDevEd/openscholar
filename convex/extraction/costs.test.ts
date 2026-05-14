@@ -16,24 +16,23 @@ import { internal, api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
 import { creditsAgg } from "./aggregates";
 
 async function seedUserAndCredits(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
+    const now = Date.now();
     const userId = await ctx.db.insert("users", {
       clerkId: "clerk_plan04",
       email: "plan04@test.local",
       state: "active" as const,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
-    await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 10000,
-      paidBalance: 0,
-      lifetimeUsed: 0,
-      lastUpdatedAt: Date.now(),
-    });
+    await seedCreditsForTest(ctx, { userId, free: 10000, paid: 0, now });
     return userId;
   });
 }
@@ -123,6 +122,7 @@ async function finalizeAllPapers(
 describe("[plan-04] creditsAgg + getJobCost", () => {
   it("sum tracks paper.creditsUsed across 3 papers × 2 questions", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const userId = await seedUserAndCredits(t);
     const { jobId, paperIds, questionKeys } = await seedExtractionJob(
@@ -169,6 +169,7 @@ describe("[plan-04] creditsAgg + getJobCost", () => {
 
   it("delete → creditsAgg.sum(jobId) === 0 (cascade clean)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const userId = await seedUserAndCredits(t);
     const { jobId, paperIds, questionKeys } = await seedExtractionJob(
@@ -208,6 +209,7 @@ describe("[plan-04] creditsAgg + getJobCost", () => {
 
   it("getJobCost returns total + billingType breakdown summed from the ledger", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const userId = await seedUserAndCredits(t);
     const { jobId, paperIds, questionKeys } = await seedExtractionJob(

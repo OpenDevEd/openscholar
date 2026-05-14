@@ -3,6 +3,11 @@ import { describe, it, expect } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
+import { readBalance } from "../credits/balanceCounter";
 
 async function seed(
   t: ReturnType<typeof convexTest>,
@@ -21,12 +26,11 @@ async function seed(
       updatedAt: now,
       lastLoginAt: now,
     });
-    const creditsId = await ctx.db.insert("credits", {
+    const creditsId = await seedCreditsForTest(ctx, {
       userId,
-      freeBalance: 0,
-      paidBalance: startingCredits,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: 0,
+      paid: startingCredits,
+      now,
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
@@ -62,17 +66,17 @@ async function seed(
   });
 }
 
-async function readBalance(
+async function readPaidBalance(
   t: ReturnType<typeof convexTest>,
   creditsId: Awaited<ReturnType<typeof seed>>["creditsId"],
 ) {
-  const row = await t.run((ctx) => ctx.db.get("credits", creditsId));
-  return row!.paidBalance;
+  return (await t.run((ctx) => readBalance(ctx, creditsId))).paid;
 }
 
 describe("embedding credit idempotency (markPaperIndexed)", () => {
   it("deducts once on first billing call, skips on retry", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { userId, creditsId, jobId, paperId } = await seed(t, 1000);
 
@@ -87,7 +91,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
       },
     });
 
-    expect(await readBalance(t, creditsId)).toBe(997);
+    expect(await readPaidBalance(t, creditsId)).toBe(997);
     const afterFirst = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(afterFirst?.isIndexed).toBe(true);
     expect(afterFirst?.indexingBilled).toBe(true);
@@ -106,11 +110,12 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
       },
     });
 
-    expect(await readBalance(t, creditsId)).toBe(997);
+    expect(await readPaidBalance(t, creditsId)).toBe(997);
   });
 
   it("does not deduct when billing is omitted (cancellation path)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, paperId } = await seed(t, 1000);
 
@@ -119,7 +124,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
       ragEntryId: "rag:cancel",
     });
 
-    expect(await readBalance(t, creditsId)).toBe(1000);
+    expect(await readPaidBalance(t, creditsId)).toBe(1000);
     const after = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(after?.isIndexed).toBe(true);
     // Not billed on the cancellation path — a later retry with billing still
@@ -129,6 +134,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
 
   it("does not deduct when creditsToDeduct is 0", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { userId, creditsId, jobId, paperId } = await seed(t, 1000);
 
@@ -138,7 +144,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
       billing: { userId, jobId, creditsToDeduct: 0, embeddingTokens: 0 },
     });
 
-    expect(await readBalance(t, creditsId)).toBe(1000);
+    expect(await readPaidBalance(t, creditsId)).toBe(1000);
   });
 });
 
@@ -157,6 +163,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     // is touched once at terminal transition in finalizePaper, which sums
     // result.creditsUsed across the paper's question rows.
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
@@ -170,7 +177,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       },
     );
 
-    expect(await readBalance(t, creditsId)).toBe(1000);
+    expect(await readPaidBalance(t, creditsId)).toBe(1000);
     const paperAfterAnswer = await t.run((ctx) =>
       ctx.db.get("extractionPapers", paperId),
     );
@@ -197,6 +204,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
 
   it("finalizePaper drains paper.creditsUsed exactly once and sets questionsBilled", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
@@ -214,7 +222,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       { paperId },
     );
 
-    expect(await readBalance(t, creditsId)).toBe(995);
+    expect(await readPaidBalance(t, creditsId)).toBe(995);
     const firstPaper = await t.run((ctx) =>
       ctx.db.get("extractionPapers", paperId),
     );
@@ -246,6 +254,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     // ONE creditTransactions row, not three. This is what eliminates
     // P×Q parallel writes to the credits row.
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000, [
       "q1",
@@ -263,7 +272,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
           creditsUsed: 5,
         },
       );
-      expect(await readBalance(t, creditsId)).toBe(1000);
+      expect(await readPaidBalance(t, creditsId)).toBe(1000);
     }
 
     await t.mutation(
@@ -271,7 +280,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       { paperId },
     );
 
-    expect(await readBalance(t, creditsId)).toBe(985);
+    expect(await readPaidBalance(t, creditsId)).toBe(985);
     const charges = await t.run((ctx) =>
       ctx.db
         .query("creditTransactions")
@@ -284,6 +293,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
 
   it("result.billed gate blocks re-bill when job+paper are reset to active (questionsBilled also holds)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
@@ -300,7 +310,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       internal.extraction.mutations.results.finalizePaper,
       { paperId },
     );
-    expect(await readBalance(t, creditsId)).toBe(995);
+    expect(await readPaidBalance(t, creditsId)).toBe(995);
 
     // Adversarial: a buggy admin tool resets job/paper status. The
     // extractionResults row still has billed=true → recordOneAnswer
@@ -320,7 +330,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       },
     );
 
-    expect(await readBalance(t, creditsId)).toBe(995);
+    expect(await readPaidBalance(t, creditsId)).toBe(995);
   });
 
   it("questionsBilled blocks re-debit even when result.billed AND paper status are reset", async () => {
@@ -331,6 +341,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     // accumulator) re-grows on the replayed recordOneAnswer; the
     // questionsBilled gate is what keeps the wallet untouched.
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
@@ -347,7 +358,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       internal.extraction.mutations.results.finalizePaper,
       { paperId },
     );
-    expect(await readBalance(t, creditsId)).toBe(995);
+    expect(await readPaidBalance(t, creditsId)).toBe(995);
 
     // Clear EVERY upstream gate except questionsBilled.
     await t.run(async (ctx) => {
@@ -395,7 +406,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       { paperId },
     );
 
-    expect(await readBalance(t, creditsId)).toBe(995);
+    expect(await readPaidBalance(t, creditsId)).toBe(995);
     const charges = await t.run((ctx) =>
       ctx.db
         .query("creditTransactions")
@@ -411,6 +422,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     // so the guard is required). questionsBilled stays unset so a
     // later resume that retries with a real cost can still bill.
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
@@ -428,7 +440,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       { paperId },
     );
 
-    expect(await readBalance(t, creditsId)).toBe(1000);
+    expect(await readPaidBalance(t, creditsId)).toBe(1000);
     const paper = await t.run((ctx) =>
       ctx.db.get("extractionPapers", paperId),
     );
@@ -449,6 +461,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     // guard at the top of the mutation makes the second call a no-op
     // before it even reaches the debit logic.
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
@@ -470,7 +483,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       { paperId },
     );
 
-    expect(await readBalance(t, creditsId)).toBe(995);
+    expect(await readPaidBalance(t, creditsId)).toBe(995);
     const charges = await t.run((ctx) =>
       ctx.db
         .query("creditTransactions")
@@ -482,6 +495,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
 
   it("skips deduct when paper.creditsUsed never accumulated (recordOneAnswer with creditsUsed=0)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, paperId } = await seed(t, 1000);
 
@@ -495,7 +509,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       },
     );
 
-    expect(await readBalance(t, creditsId)).toBe(1000);
+    expect(await readPaidBalance(t, creditsId)).toBe(1000);
     const paper = await t.run((ctx) =>
       ctx.db.get("extractionPapers", paperId),
     );

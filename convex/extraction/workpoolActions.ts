@@ -1385,7 +1385,6 @@ export const extractOneQuestion = internalAction({
       creditsDeducted: creditsUsed,
       creditsRawCost: calculateServerRawCreditCost(outcome.usage, pricing),
       creditsRemaining: Math.max(0, balance.total - creditsUsed),
-      lifetimeCreditsUsed: balance.lifetimeUsed + creditsUsed,
     };
     if (outcome.trackingEntry) {
       await captureAIGenerationServer({

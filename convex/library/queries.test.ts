@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { setupTransactionAggregates } from "../credits/aggregates.test-support";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -786,6 +787,10 @@ describe("getLibraryFilteredCount", () => {
 describe("library counter", () => {
   it("ensureUser initializes libraryItemCount for fresh users", async () => {
     const t = convexTest(schema);
+    // ensureUser → createCreditsForUser → recordTransactionCounters writes
+    // the initial monthly free grant to the balance sharded counters, so the
+    // counters must be registered on this handle.
+    setupTransactionAggregates(t);
     const asUser = t.withIdentity({
       subject: "clerk_user1",
       email: "user1@test.com",

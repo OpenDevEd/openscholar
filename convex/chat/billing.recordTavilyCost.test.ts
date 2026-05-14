@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import schema from "../schema";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { setupTransactionAggregates } from "../credits/aggregates.test-support";
+import { setupTransactionAggregates, seedCreditsForTest } from "../credits/aggregates.test-support";
 
 async function seedThreadForBilling(
   t: ReturnType<typeof convexTest>,
@@ -22,13 +22,7 @@ async function seedThreadForBilling(
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 10_000,
-      paidBalance: 0,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
+    await seedCreditsForTest(ctx, { userId, free: 10_000, now });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       mode: "chat",
@@ -67,7 +61,6 @@ describe("recordTavilyCost", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBe(EXPECTED_CREDITS_PER_BASIC_TAVILY_CALL);
     expect(balance?.total).toBe(10_000 - EXPECTED_CREDITS_PER_BASIC_TAVILY_CALL);
   });
 
@@ -84,8 +77,8 @@ describe("recordTavilyCost", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBe(
-      EXPECTED_CREDITS_PER_ADVANCED_TAVILY_CALL,
+    expect(balance?.total).toBe(
+      10_000 - EXPECTED_CREDITS_PER_ADVANCED_TAVILY_CALL,
     );
   });
 
@@ -131,8 +124,8 @@ describe("recordTavilyCost", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBe(
-      EXPECTED_CREDITS_PER_BASIC_TAVILY_CALL * 2,
+    expect(balance?.total).toBe(
+      10_000 - EXPECTED_CREDITS_PER_BASIC_TAVILY_CALL * 2,
     );
 
     await t.run(async (ctx) => {

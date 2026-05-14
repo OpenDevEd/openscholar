@@ -63,7 +63,6 @@ const representative: TransactionViewModel = {
   direction: "in",
   amount: 1240,
   signedAmount: 1240,
-  balanceAfter: 5000,
   description: "Top-up 1,240 credits",
   createdAt: Date.UTC(2026, 3, 20, 10, 0, 0),
   jobId: "job_abc",

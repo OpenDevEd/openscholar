@@ -1,14 +1,22 @@
+/// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import type { Doc, Id } from "../_generated/dataModel";
+import { setupTransactionAggregates, seedCreditsForTest } from "./aggregates.test-support";
 
 type CreditTransactionInsert = Omit<
   Doc<"creditTransactions">,
   "_id" | "_creationTime"
 >;
 
+/**
+ * Tier D test seed: insert a bare `credits` anchor row without seeding any
+ * `grant`/`purchase` rows (free=0, paid=0). The tests in this file insert
+ * their own transactions directly to exercise the pagination query, so the
+ * seed must NOT emit phantom rows that would pollute exact-count assertions.
+ */
 async function seedUserWithCredits(
   t: ReturnType<typeof convexTest>,
   clerkId: string,
@@ -26,13 +34,7 @@ async function seedUserWithCredits(
       updatedAt: now,
       lastLoginAt: now,
     });
-    const creditsId = await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 1000,
-      paidBalance: 0,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
+    const creditsId = await seedCreditsForTest(ctx, { userId, free: 0, paid: 0, now });
     return { userId, creditsId };
   });
 }
@@ -48,7 +50,6 @@ async function insertTxn(
       type: overrides.type ?? "purchase",
       creditType: overrides.creditType ?? "paid",
       amount: overrides.amount ?? 100,
-      balanceAfter: overrides.balanceAfter ?? 100,
       createdAt: overrides.createdAt ?? Date.now(),
       ...(overrides.description !== undefined
         ? { description: overrides.description }
@@ -72,6 +73,7 @@ async function insertTxn(
 describe("listTransactionsPaginated", () => {
   it("empty user (no credits row) → empty paginated result", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     await t.run(async (ctx) => {
       const now = Date.now();
       await ctx.db.insert("users", {
@@ -96,6 +98,7 @@ describe("listTransactionsPaginated", () => {
 
   it("unauthenticated caller → empty paginated result", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const result = await t.query(api.credits.queries.listTransactionsPaginated, {
       paginationOpts: { numItems: 10, cursor: null },
     });
@@ -106,6 +109,7 @@ describe("listTransactionsPaginated", () => {
 
   it("happy path: returns PaginationResult with page/isDone/continueCursor", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { creditsId } = await seedUserWithCredits(
       t,
       "clerk_happy",
@@ -127,6 +131,7 @@ describe("listTransactionsPaginated", () => {
 
   it("paginates across multiple pages when numItems < total", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { creditsId } = await seedUserWithCredits(
       t,
       "clerk_paginate",
@@ -159,6 +164,7 @@ describe("listTransactionsPaginated", () => {
 
   it("single-type filter uses the index path and returns only matching type", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { creditsId } = await seedUserWithCredits(
       t,
       "clerk_type",
@@ -183,6 +189,7 @@ describe("listTransactionsPaginated", () => {
 
   it("multi-type filter post-filters on by_credits and returns both kinds", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { creditsId } = await seedUserWithCredits(
       t,
       "clerk_multi",
@@ -206,6 +213,7 @@ describe("listTransactionsPaginated", () => {
 
   it("date range narrows by createdAt inclusively", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { creditsId } = await seedUserWithCredits(
       t,
       "clerk_range",
@@ -230,6 +238,7 @@ describe("listTransactionsPaginated", () => {
 
   it("ownership: user A's rows never appear in user B's query", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { creditsId: creditsA } = await seedUserWithCredits(
       t,
       "clerk_a",
@@ -263,6 +272,7 @@ describe("listTransactionsPaginated", () => {
 
   it("jobId path scopes to by_job + enforces ownership", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId: userA, creditsId: creditsA } = await seedUserWithCredits(
       t,
       "clerk_ja",
@@ -322,6 +332,7 @@ describe("listTransactionsPaginated", () => {
 describe("getTransactions backwards-compat", () => {
   it("still returns a plain array for the existing caller shape", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { creditsId } = await seedUserWithCredits(
       t,
       "clerk_compat",
@@ -343,6 +354,7 @@ describe("getTransactions backwards-compat", () => {
 describe("getTransactions searchableText drift (plan-01)", () => {
   it("preserves searchableText on the wire when the row stores it", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { creditsId } = await seedUserWithCredits(
       t,
       "clerk_searchable",
@@ -354,7 +366,6 @@ describe("getTransactions searchableText drift (plan-01)", () => {
         type: "usage" as const,
         creditType: "paid" as const,
         amount: -25,
-        balanceAfter: 75,
         createdAt: Date.now(),
         searchableText: "manual extraction job · openrouter/anthropic",
       });

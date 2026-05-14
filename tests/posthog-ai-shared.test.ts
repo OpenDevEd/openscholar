@@ -550,14 +550,6 @@ describe("buildAIGenerationProperties", () => {
       expect(props.credits_remaining).toBe(95);
     });
 
-    it("includes lifetime_credits_used when provided", () => {
-      const props = buildAIGenerationProperties({
-        ...baseParams,
-        lifetimeCreditsUsed: 1500,
-      });
-      expect(props.lifetime_credits_used).toBe(1500);
-    });
-
     it("includes credits_deducted of 0", () => {
       const props = buildAIGenerationProperties({
         ...baseParams,
@@ -585,12 +577,10 @@ describe("buildAIGenerationProperties", () => {
         creditsDeducted: 3,
         creditsRawCost: 2.7341,
         creditsRemaining: 47,
-        lifetimeCreditsUsed: 253,
       });
       expect(props.credits_deducted).toBe(3);
       expect(props.credits_raw_cost).toBe(2.7341);
       expect(props.credits_remaining).toBe(47);
-      expect(props.lifetime_credits_used).toBe(253);
     });
   });
 
@@ -615,7 +605,6 @@ describe("buildAIGenerationProperties", () => {
         creditsDeducted: 3,
         creditsRawCost: 2.7341,
         creditsRemaining: 97,
-        lifetimeCreditsUsed: 503,
         metadata: { paperId: "abc123" },
       });
 
@@ -637,7 +626,6 @@ describe("buildAIGenerationProperties", () => {
         credits_deducted: 3,
         credits_raw_cost: 2.7341,
         credits_remaining: 97,
-        lifetime_credits_used: 503,
         paperId: "abc123",
       });
     });

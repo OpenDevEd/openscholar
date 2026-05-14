@@ -72,4 +72,15 @@ crons.interval(
   internal.chat.concurrency.cleanupZombieChatLocks,
 );
 
+// Hourly reconciliation of the sharded balance counters against the
+// `creditTransactions` ledger. Read-only — drift is logged via
+// `console.error`, never silently self-healed. Manual remediation runs
+// through `internal.credits.internal.seedBalanceCountersFromLedger`.
+crons.interval(
+  "audit balance counter drift",
+  { hours: 1 },
+  internal.credits.actions.auditBalanceDrift,
+  {},
+);
+
 export default crons;

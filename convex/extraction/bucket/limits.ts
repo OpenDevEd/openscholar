@@ -101,6 +101,12 @@ export const EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN: Record<
   enterprise: 5,
 };
 
+// Infra-level upper bound applied on top of the plan-based per-paper
+// question concurrency. Shared by the workflow (used by `paperPipeline`
+// fan-out) and the resume mutation (used to re-launch paper workflows
+// with the same concurrency the original fan-out used).
+export const EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP = 5;
+
 export type ExtractionExecutionLimits = {
   paperConcurrency: number;
   questionConcurrencyPerPaper: number;

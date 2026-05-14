@@ -5,18 +5,18 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 interface CreditBalanceCardProps {
-  freeBalance: number;
-  paidBalance: number;
-  totalBalance: number;
+  free: number;
+  paid: number;
+  total: number;
   creditsPerMonth?: number;
   freeCreditCap: number;
   className?: string;
 }
 
 export function CreditBalanceCard({
-  freeBalance,
-  paidBalance,
-  totalBalance,
+  free,
+  paid,
+  total,
   creditsPerMonth = 0,
   freeCreditCap,
   className,
@@ -27,7 +27,7 @@ export function CreditBalanceCard({
 
   // Calculate how close to the cap
   const freeCapPercentage =
-    freeCreditCap > 0 ? Math.min((freeBalance / freeCreditCap) * 100, 100) : 0;
+    freeCreditCap > 0 ? Math.min((free / freeCreditCap) * 100, 100) : 0;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -38,9 +38,9 @@ export function CreditBalanceCard({
             <span className="text-sm font-medium">{t("totalBalance")}</span>
             <span data-testid="billing-credit-balance" className={cn(
               "text-2xl font-bold font-mono",
-              totalBalance < 0 && "text-red-600"
+              total < 0 && "text-red-600"
             )}>
-              {format.number(totalBalance)}
+              {format.number(total)}
             </span>
           </div>
         </div>
@@ -57,7 +57,7 @@ export function CreditBalanceCard({
               )}
             </span>
             <span data-testid="billing-free-credits" className="text-muted-foreground font-mono">
-              {format.number(freeBalance)} / {format.number(freeCreditCap)}
+              {format.number(free)} / {format.number(freeCreditCap)}
             </span>
           </div>
           <Progress 
@@ -72,15 +72,15 @@ export function CreditBalanceCard({
         </div>
 
         {/* Paid Credits */}
-        {paidBalance !== 0 && (
+        {paid !== 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{t("purchasedCredits")}</span>
               <span data-testid="billing-paid-credits" className={cn(
                 "text-muted-foreground font-mono",
-                paidBalance < 0 && "text-red-600"
+                paid < 0 && "text-red-600"
               )}>
-                {format.number(paidBalance)}
+                {format.number(paid)}
               </span>
             </div>
             <div className="text-xs text-muted-foreground">

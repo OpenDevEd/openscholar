@@ -15,9 +15,9 @@ export type BillingSnapshot = {
     state: string;
   } | null;
   credits: Array<{
-    freeBalance: number;
-    paidBalance: number;
-    lifetimeUsed: number;
+    free: number;
+    paid: number;
+    total: number;
   }>;
   subscriptions: Array<{
     plan: string;
@@ -93,8 +93,7 @@ export class WebhookWaiter {
         const snapshot = await this.getBillingSnapshot();
         const credits = snapshot.credits[0];
         if (!credits) return null;
-        const total = credits.freeBalance + credits.paidBalance;
-        return predicate(total) ? total : null;
+        return predicate(credits.total) ? credits.total : null;
       },
       timeoutMs,
     );

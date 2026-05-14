@@ -72,7 +72,6 @@ test.describe("Transactions panel — plan-06 polish", () => {
       "billingType",
       "description",
       "signedAmount",
-      "balanceAfter",
       "stripeInvoiceId",
       "stripePaymentIntentId",
       "stripeChargeId",

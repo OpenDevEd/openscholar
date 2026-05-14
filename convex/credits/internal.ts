@@ -15,7 +15,7 @@ import {
   type MonthlyCreditGrantDecision,
 } from "./lib/invoiceGrantPolicy";
 import { PLAN_CONFIG, FREE_SIGNUP_CREDIT_GRANT } from "../lib/constants";
-import { planValidator } from "../lib/validators";
+import { billingTypeValidator, planValidator } from "../lib/validators";
 import {
   CREDIT_TOPUP_CURRENCY,
   calculateRefundDeltaCredits,
@@ -24,6 +24,11 @@ import {
   getCreditsPerUsd,
 } from "../lib/creditTopups";
 import { recordTransactionCounters } from "./aggregates";
+import {
+  addBalanceDelta,
+  clearBalanceCounters,
+  readBalance,
+} from "./balanceCounter";
 import { computeSearchableText } from "../../lib/billing/transactions/search-text";
 
 
@@ -62,7 +67,13 @@ function createGrantResult(args: {
 }
 
 /**
- * Get credit balance for a user by ID (for background jobs)
+ * Get credit balance for a user by ID (for background jobs).
+ *
+ * Balances are read from the two `@convex-dev/sharded-counter` instances
+ * in `./balanceCounter.ts` — O(shards) per pool, regardless of ledger
+ * depth. The legacy `credits.{freeBalance|paidBalance}` columns are gone,
+ * and `lifetimeUsed` no longer exists as a stored field — no production
+ * caller depends on it.
  */
 export const getBalanceByUserId = internalQuery({
   args: { userId: v.id("users") },
@@ -72,7 +83,6 @@ export const getBalanceByUserId = internalQuery({
       free: v.number(),
       paid: v.number(),
       total: v.number(),
-      lifetimeUsed: v.number(),
     }),
   ),
   handler: async (ctx, { userId }) => {
@@ -83,12 +93,7 @@ export const getBalanceByUserId = internalQuery({
 
     if (!credits) return null;
 
-    return {
-      free: credits.freeBalance,
-      paid: credits.paidBalance,
-      total: credits.freeBalance + credits.paidBalance,
-      lifetimeUsed: credits.lifetimeUsed,
-    };
+    return await readBalance(ctx, credits._id);
   },
 });
 
@@ -105,22 +110,58 @@ async function getLatestCreditsByUser(
   return rows[0] ?? null;
 }
 
-export function buildInitialCreditsRecord(args: {
-  userId: Doc<"users">["_id"];
-  now: number;
-}) {
+/**
+ * Create the bare credits anchor row and emit a signup `grant` ledger
+ * transaction. The row no longer carries balance fields — the signed
+ * `creditTransactions.amount` summands feed the two sharded balance
+ * counters via `recordTransactionCounters`. Callers replace the old
+ *   `ctx.db.insert("credits", buildInitialCreditsRecord({userId, now}))`
+ *   + `ctx.db.get("credits", creditsId)`
+ * pair with one `await createCreditsForUser(ctx, userId, now)`.
+ */
+export async function createCreditsForUser(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  now: number,
+): Promise<Doc<"credits">> {
+  const creditsId = await ctx.db.insert("credits", { userId, createdAt: now });
+
   const signupCredits = applyTierFreeCreditCap({
     plan: "free",
     currentFreeBalance: 0,
     amountToAdd: FREE_SIGNUP_CREDIT_GRANT,
   });
-  return {
-    userId: args.userId,
-    freeBalance: signupCredits.newFreeBalance,
-    paidBalance: 0,
-    lifetimeUsed: 0,
-    lastUpdatedAt: args.now,
-  };
+
+  if (signupCredits.actualAdded > 0) {
+    const signupGrantDescription = `Signup credit grant (${signupCredits.actualAdded} credits)`;
+    const signupGrantTxId = await ctx.db.insert("creditTransactions", {
+      creditsId,
+      userId,
+      type: "grant",
+      creditType: "free",
+      amount: signupCredits.actualAdded,
+      description: signupGrantDescription,
+      createdAt: now,
+      searchableText: computeSearchableText({
+        description: signupGrantDescription,
+        type: "grant",
+      }),
+    });
+    await recordTransactionCounters(ctx, {
+      _id: signupGrantTxId,
+      creditsId,
+      type: "grant",
+      creditType: "free",
+      amount: signupCredits.actualAdded,
+      createdAt: now,
+    });
+  }
+
+  const credits = await ctx.db.get("credits", creditsId);
+  if (!credits) {
+    throw new ConvexError(`Failed to read just-inserted credits row ${creditsId}`);
+  }
+  return credits;
 }
 
 export const ensureCreditsForUser = internalMutation({
@@ -138,15 +179,8 @@ export const ensureCreditsForUser = internalMutation({
     }
 
     const now = Date.now();
-    const creditsId = await ctx.db.insert(
-      "credits",
-      buildInitialCreditsRecord({
-        userId: args.userId,
-        now,
-      }),
-    );
-
-    return { creditsId, created: true };
+    const credits = await createCreditsForUser(ctx, args.userId, now);
+    return { creditsId: credits._id, created: true };
   },
 });
 
@@ -730,43 +764,18 @@ export const grantMonthlyCredits = internalMutation({
       });
     }
 
+    const now = Date.now();
     let credits: Doc<"credits"> | null = await getLatestCreditsByUser(ctx, subscription.userId);
     if (!credits) {
-      const now = Date.now();
-      const creditsId = await ctx.db.insert(
-        "credits",
-        buildInitialCreditsRecord({
-          userId: subscription.userId,
-          now,
-        }),
-      );
-      credits = await ctx.db.get("credits", creditsId);
+      credits = await createCreditsForUser(ctx, subscription.userId, now);
     }
 
-    if (!credits) {
-      await markEventFailed(ctx, {
-        stripeEventId: args.stripeEventId,
-        eventType: args.stripeEventType,
-        stripeObjectId: args.stripeInvoiceId,
-        stripeApiVersion: args.stripeApiVersion,
-        classification: "credits_record_missing",
-        message: `Unable to create credits record for user ${subscription.userId}`,
-      });
-      return createGrantResult({
-        outcome: "failed_subscription_lookup",
-        decision: "grant",
-        classification: "credits_record_missing",
-        message: `Unable to create credits record for user ${subscription.userId}`,
-      });
-    }
-
-    const now = Date.now();
+    const currentBalance = await readBalance(ctx, credits._id);
     const cappedGrant = applyTierFreeCreditCap({
       plan: subscription.plan,
-      currentFreeBalance: credits.freeBalance,
+      currentFreeBalance: currentBalance.free,
       amountToAdd: subscription.creditsPerMonth,
     });
-    const newFreeBalance = cappedGrant.newFreeBalance;
     const actualGranted = cappedGrant.actualAdded;
 
     if (actualGranted <= 0) {
@@ -785,18 +794,13 @@ export const grantMonthlyCredits = internalMutation({
       });
     }
 
-    await ctx.db.patch("credits", credits._id, {
-      freeBalance: newFreeBalance,
-      lastUpdatedAt: now,
-    });
-
     const monthlyGrantDescription = `Monthly credit grant (${subscription.plan} plan) - ${actualGranted}/${subscription.creditsPerMonth} credits granted`;
     const monthlyGrantTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
+      userId: subscription.userId,
       type: "grant",
       creditType: "free",
       amount: actualGranted,
-      balanceAfter: newFreeBalance,
       description: monthlyGrantDescription,
       stripeInvoiceId: args.stripeInvoiceId,
       createdAt: now,
@@ -810,6 +814,7 @@ export const grantMonthlyCredits = internalMutation({
       creditsId: credits._id,
       type: "grant",
       creditType: "free",
+      amount: actualGranted,
       createdAt: now,
     });
 
@@ -859,26 +864,45 @@ export const grantUpgradeProRataCredits = internalMutation({
     message: v.string(),
   }),
   handler: async (ctx, args) => {
-    // Dedup: check if we already granted an upgrade_prorate for this user in this period.
-    // We intentionally do NOT dedup by stripeInvoiceId here because
-    // updated.latest_invoice from Stripe may still point to the original
-    // subscription cycle invoice (which grantMonthlyCredits already recorded),
-    // causing a false "already_granted" on every upgrade.
-    // Cardinality: ~1-3 credit records per user
-    const recentGrants = await ctx.db
-      .query("creditTransactions")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .order("desc")
-      .collect();
+    // Fetch the credits row first. The dedup scan is scoped to this row's
+    // ledger via the `by_credits_createdAt` index, so we need the id up
+    // front. For first-ever grants the row is null and the dedup loop is
+    // skipped; the later branch creates the row before recording the grant.
+    let credits: Doc<"credits"> | null = await getLatestCreditsByUser(ctx, args.userId);
 
-    const existingUpgradeGrant = recentGrants.find(
-      (tx) =>
-        tx.type === "grant" &&
-        tx.metadata?.grantType === "upgrade_prorate" &&
-        tx.metadata?.fromPlan === args.fromPlan &&
-        tx.metadata?.toPlan === args.toPlan &&
-        tx.createdAt >= args.currentPeriodStartMs,
-    );
+    // Dedup: descending async-iterate over this user's ledger bounded to
+    // the current billing period by `gte("createdAt", currentPeriodStartMs)`,
+    // break on the first matching `upgrade_prorate` row. Bounds reads at
+    // O(rows-this-period) instead of the full lifetime ledger that the
+    // legacy `.collect()` over `by_user` walked — the latter blows the
+    // 16 MB / mutation budget on fat wallets.
+    //
+    // We intentionally do NOT dedup by stripeInvoiceId because
+    // updated.latest_invoice from Stripe may still point to the original
+    // subscription cycle invoice (which grantMonthlyCredits already
+    // recorded), causing a false "already_granted" on every upgrade.
+    let existingUpgradeGrant: Doc<"creditTransactions"> | null = null;
+    if (credits) {
+      const creditsId = credits._id;
+      for await (const tx of ctx.db
+        .query("creditTransactions")
+        .withIndex("by_credits_createdAt", (q) =>
+          q
+            .eq("creditsId", creditsId)
+            .gte("createdAt", args.currentPeriodStartMs),
+        )
+        .order("desc")) {
+        if (
+          tx.type === "grant" &&
+          tx.metadata?.grantType === "upgrade_prorate" &&
+          tx.metadata?.fromPlan === args.fromPlan &&
+          tx.metadata?.toPlan === args.toPlan
+        ) {
+          existingUpgradeGrant = tx;
+          break;
+        }
+      }
+    }
 
     if (existingUpgradeGrant) {
       return {
@@ -915,24 +939,15 @@ export const grantUpgradeProRataCredits = internalMutation({
       };
     }
 
-    // Get or create credits record (same pattern as grantMonthlyCredits)
-    let credits: Doc<"credits"> | null = await getLatestCreditsByUser(ctx, args.userId);
+    // Reuse the credits row fetched above; create only if first-ever grant.
     if (!credits) {
-      const creditsId = await ctx.db.insert(
-        "credits",
-        buildInitialCreditsRecord({ userId: args.userId, now }),
-      );
-      credits = await ctx.db.get("credits", creditsId);
+      credits = await createCreditsForUser(ctx, args.userId, now);
     }
 
-    if (!credits) {
-      throw new ConvexError(`Unable to create credits record for user ${args.userId}`);
-    }
-
-    // Apply tier cap for the new plan
+    const currentBalance = await readBalance(ctx, credits._id);
     const cappedGrant = applyTierFreeCreditCap({
       plan: args.toPlan,
-      currentFreeBalance: credits.freeBalance,
+      currentFreeBalance: currentBalance.free,
       amountToAdd: proRataCredits,
     });
     const actualGranted = cappedGrant.actualAdded;
@@ -941,14 +956,9 @@ export const grantUpgradeProRataCredits = internalMutation({
       return {
         outcome: "no_delta" as const,
         grantedCredits: 0,
-        message: `Pro-rata grant capped to zero (freeBalance=${credits.freeBalance}, cap=${cappedGrant.cap})`,
+        message: `Pro-rata grant capped to zero (free=${currentBalance.free}, cap=${cappedGrant.cap})`,
       };
     }
-
-    await ctx.db.patch("credits", credits._id, {
-      freeBalance: cappedGrant.newFreeBalance,
-      lastUpdatedAt: now,
-    });
 
     const prorataGrantDescription = `Upgrade pro-rata credit grant (${args.fromPlan} → ${args.toPlan}) - ${actualGranted} credits`;
     const prorataGrantTxId = await ctx.db.insert("creditTransactions", {
@@ -957,7 +967,6 @@ export const grantUpgradeProRataCredits = internalMutation({
       type: "grant",
       creditType: "free",
       amount: actualGranted,
-      balanceAfter: cappedGrant.newFreeBalance,
       description: prorataGrantDescription,
       metadata: {
         grantType: "upgrade_prorate",
@@ -976,6 +985,7 @@ export const grantUpgradeProRataCredits = internalMutation({
       creditsId: credits._id,
       type: "grant",
       creditType: "free",
+      amount: actualGranted,
       createdAt: now,
     });
 
@@ -1108,30 +1118,11 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
       );
     }
 
+    const now = Date.now();
     let credits = await getLatestCreditsByUser(ctx, userId);
     if (!credits) {
-      const now = Date.now();
-      const creditsId = await ctx.db.insert(
-        "credits",
-        buildInitialCreditsRecord({
-          userId,
-          now,
-        }),
-      );
-      credits = await ctx.db.get("credits", creditsId);
+      credits = await createCreditsForUser(ctx, userId, now);
     }
-
-    if (!credits) {
-      throw new ConvexError(`Unable to create credits record for user ${userId}`);
-    }
-
-    const now = Date.now();
-    const newPaidBalance = credits.paidBalance + creditsToGrant;
-
-    await ctx.db.patch("credits", credits._id, {
-      paidBalance: newPaidBalance,
-      lastUpdatedAt: now,
-    });
 
     const transactionMetadata: Record<string, string> = {
       ...metadata,
@@ -1147,7 +1138,6 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
       type: "purchase",
       creditType: "paid",
       amount: creditsToGrant,
-      balanceAfter: newPaidBalance,
       description: purchaseFromIntentDescription,
       metadata: transactionMetadata,
       stripePaymentIntentId: args.stripePaymentIntentId,
@@ -1164,6 +1154,7 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
       creditsId: credits._id,
       type: "purchase",
       creditType: "paid",
+      amount: creditsToGrant,
       createdAt: now,
     });
 
@@ -1262,27 +1253,11 @@ export const grantPurchasedCreditsFromCheckout = internalMutation({
       );
     }
 
+    const now = Date.now();
     let credits = await getLatestCreditsByUser(ctx, userId);
     if (!credits) {
-      const now = Date.now();
-      const creditsId = await ctx.db.insert(
-        "credits",
-        buildInitialCreditsRecord({ userId, now }),
-      );
-      credits = await ctx.db.get("credits", creditsId);
+      credits = await createCreditsForUser(ctx, userId, now);
     }
-
-    if (!credits) {
-      throw new ConvexError(`Unable to create credits record for user ${userId}`);
-    }
-
-    const now = Date.now();
-    const newPaidBalance = credits.paidBalance + creditsToGrant;
-
-    await ctx.db.patch("credits", credits._id, {
-      paidBalance: newPaidBalance,
-      lastUpdatedAt: now,
-    });
 
     const isNoCost = args.paymentStatus === "no_payment_required";
     const metadataCreditsPerUsd =
@@ -1305,7 +1280,6 @@ export const grantPurchasedCreditsFromCheckout = internalMutation({
       type: "purchase",
       creditType: "paid",
       amount: creditsToGrant,
-      balanceAfter: newPaidBalance,
       description: purchaseFromCheckoutDescription,
       metadata: transactionMetadata,
       stripeCheckoutSessionId: args.stripeCheckoutSessionId,
@@ -1322,6 +1296,7 @@ export const grantPurchasedCreditsFromCheckout = internalMutation({
       creditsId: credits._id,
       type: "purchase",
       creditType: "paid",
+      amount: creditsToGrant,
       createdAt: now,
     });
 
@@ -1410,13 +1385,6 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
     }
 
     const now = Date.now();
-    const newPaidBalance = credits.paidBalance - reversalDelta;
-
-    await ctx.db.patch("credits", credits._id, {
-      paidBalance: newPaidBalance,
-      lastUpdatedAt: now,
-    });
-
     const refundReversalDescription = `Credit top-up refund reversal (${reversalDelta} credits)`;
     const refundReversalMetadata = {
       refundedAmountCents: String(refundedAmountCents),
@@ -1430,7 +1398,6 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
       type: "refund",
       creditType: "paid",
       amount: -reversalDelta,
-      balanceAfter: newPaidBalance,
       description: refundReversalDescription,
       metadata: refundReversalMetadata,
       stripePaymentIntentId: args.stripePaymentIntentId,
@@ -1447,6 +1414,7 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
       creditsId: credits._id,
       type: "refund",
       creditType: "paid",
+      amount: -reversalDelta,
       createdAt: now,
     });
 
@@ -1458,58 +1426,32 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
 });
 
 /**
- * TOCTOU CONTRACT (INFRA-04):
+ * Credit deduction (append-only, sharded).
  *
- * Credit deduction race condition analysis and mitigation strategy.
- * Consumes free credits first, then paid credits.
+ * Balances live on two `@convex-dev/sharded-counter` instances per user
+ * (one per pool), fed by the append-only `creditTransactions` ledger. That
+ * delivered the parallel-fan-out scaling we needed and bounds balance
+ * reads at O(shards) regardless of ledger depth, but it also dissolved
+ * the implicit OCC serialization the old shared `credits.{free,paid}`
+ * cells provided: two concurrent deductions
+ * write rows in disjoint B-tree leaves (different `hashTxId`), so neither
+ * conflicts on the other's write set.
  *
- * ## Current Protection
- * This mutation is atomic: it reads the balance, checks sufficiency, and writes
- * the deduction within a single Convex mutation transaction. Convex OCC provides
- * serializable isolation -- two concurrent deductCredits mutations touching the
- * same credits record will conflict. One commits, the other retries with fresh
- * data (up to 32 retries with exponential backoff).
+ * The cross-caller pre-flight gate now lives upstream in
+ * `reserveCreditsTransaction` (convex/credits/reservation.ts). The
+ * extraction fan-out reserves the HIGH estimate once at startJob and per-
+ * paper `finalizePaper` settles partial slices against that reservation.
+ * The reservation row is the single contention point — concurrent reserves
+ * race through one aggregate write, not P of them. See plan-tier-D for the
+ * full rationale.
  *
- * The critical invariant is that the sufficiency check (`totalAvailable < amount`)
- * is INSIDE this mutation, not in the calling action. This means even if two
- * actions concurrently decide the user "has enough credits" and both call
- * deductCredits, the OCC serialization ensures:
- * - First mutation: reads balance=100, deducts 80, commits balance=20
- * - Second mutation: retries, reads balance=20, deducts 80, throws INSUFFICIENT_CREDITS
- *
- * ## Theoretical Risk Window
- * The action-level pattern `query(balance) -> business logic -> mutation(deduct)`
- * has a gap where stale balance data could inform business logic decisions. However,
- * the mutation-level re-read prevents financial incorrectness (negative balances).
- * The gap only causes UX issues: a user might start an operation expecting success
- * but get INSUFFICIENT_CREDITS when the mutation runs.
- *
- * ## Why This Is Safe Today
- * No user can reach a negative balance. The worst case is a rejected deduction that
- * the user expected to succeed. This is correct behavior for concurrent usage.
- *
- * ## Trigger for Additional Mitigation
- * Implement additional mitigation ONLY on observed incident: a real double-deduction
- * producing a negative balance in production. This would indicate a bug in the
- * mutation logic (sufficiency check bypassed), not an OCC failure.
- *
- * ## Recommended Mitigation Path (when trigger hits)
- * Option A (preferred): Route all deductCredits callers through a per-user workpool
- * with maxParallelism: 1. This serializes deduction requests at the action level,
- * eliminating the gap entirely.
- * Option B: Add a version field to the credits record and assert expected version
- * in the mutation (optimistic locking on top of OCC -- defense in depth).
+ * `deductCreditsTransaction` is therefore a primitive, not a gate. It
+ * floors at zero so a wallet that has somehow gone underwater (drained
+ * reservation, dev seed drift, a legacy code path) cannot bleed further
+ * via compounding negative usage rows. Callers that need overdraft
+ * prevention go through the reservation path; callers that need
+ * drain-to-zero set `allowPartial: true`.
  */
-const billingTypeValidator = v.union(
-  v.literal("extraction_llm"),
-  v.literal("embedding"),
-  v.literal("screening"),
-  v.literal("chat"),
-  v.literal("search"),
-  v.literal("translation"),
-  v.literal("wallet_api"),
-);
-
 type DeductCreditsArgs = {
   userId: Id<"users">;
   amount: number;
@@ -1533,6 +1475,17 @@ export type DeductCreditsResult = {
   remaining: number;
 };
 
+/**
+ * Deduct credits via append-only inserts.
+ *
+ * Reads the running balance from the sharded balance counters (the
+ * credits row no longer stores balances), then emits one or two signed
+ * `usage` transactions (free pool first, paid pool as spillover). No
+ * `ctx.db.patch("credits", …)` — concurrent fan-out deductions become
+ * pure inserts and per-shard counter `.add(...)` calls, so the previous
+ * row-level OCC bottleneck on the shared `credits.{freeBalance|paidBalance}`
+ * cell is gone.
+ */
 export async function deductCreditsTransaction(
   ctx: MutationCtx,
   args: DeductCreditsArgs,
@@ -1548,17 +1501,21 @@ export async function deductCreditsTransaction(
 
   if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });
 
-  const totalAvailable = credits.freeBalance + credits.paidBalance;
-  if (totalAvailable < args.amount && !args.allowPartial) {
+  const balance = await readBalance(ctx, credits._id);
+  if (balance.total < args.amount && !args.allowPartial) {
     throw new ConvexError({
       code: "INSUFFICIENT_CREDITS",
-      message: `Insufficient credits: need ${args.amount}, have ${totalAvailable}`,
+      message: `Insufficient credits: need ${args.amount}, have ${balance.total}`,
     });
   }
 
-  const amountToDeduct = Math.min(args.amount, totalAvailable);
-  if (amountToDeduct === 0) {
-    return { deducted: 0, remaining: 0 };
+  // Floor at zero. A negative balance must not produce a negative
+  // `amountToDeduct` (which would emit a usage row whose math drives the
+  // wallet further underwater — observed in the dev wallet that hit -500
+  // and kept bleeding via 12-credit asks producing -38 usage rows).
+  const amountToDeduct = Math.max(0, Math.min(args.amount, balance.total));
+  if (amountToDeduct <= 0) {
+    return { deducted: 0, remaining: balance.total };
   }
 
   const shortfall = args.amount - amountToDeduct;
@@ -1572,8 +1529,6 @@ export async function deductCreditsTransaction(
       : args.metadata;
 
   const now = Date.now();
-  let newFreeBalance = credits.freeBalance;
-  let newPaidBalance = credits.paidBalance;
 
   const scope = {
     jobId: args.jobId,
@@ -1589,16 +1544,16 @@ export async function deductCreditsTransaction(
     type: "usage",
   });
 
-  if (newFreeBalance >= amountToDeduct) {
-    newFreeBalance -= amountToDeduct;
+  const freeUsed = Math.min(balance.free, amountToDeduct);
+  const paidUsed = amountToDeduct - freeUsed;
 
-    const freeOnlyTxId = await ctx.db.insert("creditTransactions", {
+  if (freeUsed > 0) {
+    const freeTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       userId: args.userId,
       type: "usage",
       creditType: "free",
-      amount: -amountToDeduct,
-      balanceAfter: newFreeBalance,
+      amount: -freeUsed,
       description: args.description,
       metadata: txMetadata,
       ...scope,
@@ -1606,77 +1561,43 @@ export async function deductCreditsTransaction(
       searchableText: usageSearchableText,
     });
     await recordTransactionCounters(ctx, {
-      _id: freeOnlyTxId,
+      _id: freeTxId,
       creditsId: credits._id,
       type: "usage",
       creditType: "free",
-      billingType: args.billingType,
-      createdAt: now,
-    });
-  } else {
-    const freeUsed = newFreeBalance;
-    newFreeBalance = 0;
-
-    if (freeUsed > 0) {
-      const freeSpilloverTxId = await ctx.db.insert("creditTransactions", {
-        creditsId: credits._id,
-        userId: args.userId,
-        type: "usage",
-        creditType: "free",
-        amount: -freeUsed,
-        balanceAfter: 0,
-        description: args.description,
-        metadata: txMetadata,
-        ...scope,
-        createdAt: now,
-        searchableText: usageSearchableText,
-      });
-      await recordTransactionCounters(ctx, {
-        _id: freeSpilloverTxId,
-        creditsId: credits._id,
-        type: "usage",
-        creditType: "free",
-        billingType: args.billingType,
-        createdAt: now,
-      });
-    }
-
-    const paidNeeded = amountToDeduct - freeUsed;
-    newPaidBalance -= paidNeeded;
-
-    const paidSpilloverTxId = await ctx.db.insert("creditTransactions", {
-      creditsId: credits._id,
-      userId: args.userId,
-      type: "usage",
-      creditType: "paid",
-      amount: -paidNeeded,
-      balanceAfter: newPaidBalance,
-      description: args.description,
-      metadata: txMetadata,
-      ...scope,
-      createdAt: now,
-      searchableText: usageSearchableText,
-    });
-    await recordTransactionCounters(ctx, {
-      _id: paidSpilloverTxId,
-      creditsId: credits._id,
-      type: "usage",
-      creditType: "paid",
+      amount: -freeUsed,
       billingType: args.billingType,
       createdAt: now,
     });
   }
 
-  await ctx.db.patch("credits", credits._id, {
-    freeBalance: newFreeBalance,
-    paidBalance: newPaidBalance,
-    lifetimeUsed: credits.lifetimeUsed + amountToDeduct,
-    lastUpdatedAt: now,
-  });
+  if (paidUsed > 0) {
+    const paidTxId = await ctx.db.insert("creditTransactions", {
+      creditsId: credits._id,
+      userId: args.userId,
+      type: "usage",
+      creditType: "paid",
+      amount: -paidUsed,
+      description: args.description,
+      metadata: txMetadata,
+      ...scope,
+      createdAt: now,
+      searchableText: usageSearchableText,
+    });
+    await recordTransactionCounters(ctx, {
+      _id: paidTxId,
+      creditsId: credits._id,
+      type: "usage",
+      creditType: "paid",
+      amount: -paidUsed,
+      billingType: args.billingType,
+      createdAt: now,
+    });
+  }
 
   return {
     deducted: amountToDeduct,
-    remaining: newFreeBalance + newPaidBalance,
+    remaining: balance.total - amountToDeduct,
   };
 }
 
@@ -1716,7 +1637,10 @@ export const deductCredits = internalMutation({
 });
 
 /**
- * Add credits (admin grant or refund)
+ * Add credits (admin grant or refund). Pure append-only insert. Free-pool
+ * grants still flow through the per-tier cap so we never grant more than
+ * the plan ceiling — the current free balance is read from the sharded
+ * balance counters via `readBalance`. Returns the new pool balance.
  */
 export const addCredits = internalMutation({
   args: {
@@ -1740,8 +1664,7 @@ export const addCredits = internalMutation({
     if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });
 
     const now = Date.now();
-    let newFreeBalance = credits.freeBalance;
-    let newPaidBalance = credits.paidBalance;
+    const balance = await readBalance(ctx, credits._id);
     let actualAdded = args.amount;
 
     if (args.creditType === "free") {
@@ -1756,27 +1679,22 @@ export const addCredits = internalMutation({
 
       const cappedAddition = applyTierFreeCreditCap({
         plan: effectivePlan,
-        currentFreeBalance: credits.freeBalance,
+        currentFreeBalance: balance.free,
         amountToAdd: args.amount,
       });
-      newFreeBalance = cappedAddition.newFreeBalance;
       actualAdded = cappedAddition.actualAdded;
-    } else {
-      newPaidBalance += args.amount;
     }
 
-    await ctx.db.patch("credits", credits._id, {
-      freeBalance: newFreeBalance,
-      paidBalance: newPaidBalance,
-      lastUpdatedAt: now,
-    });
+    if (actualAdded <= 0) {
+      return args.creditType === "free" ? balance.free : balance.paid;
+    }
 
     const addCreditsTxId = await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
+      userId: args.userId,
       type: args.type,
       creditType: args.creditType,
       amount: actualAdded,
-      balanceAfter: args.creditType === "free" ? newFreeBalance : newPaidBalance,
       description: args.description,
       createdAt: now,
       searchableText: computeSearchableText({
@@ -1789,9 +1707,137 @@ export const addCredits = internalMutation({
       creditsId: credits._id,
       type: args.type,
       creditType: args.creditType,
+      amount: actualAdded,
       createdAt: now,
     });
 
-    return args.creditType === "free" ? newFreeBalance : newPaidBalance;
+    return args.creditType === "free"
+      ? balance.free + actualAdded
+      : balance.paid + actualAdded;
+  },
+});
+
+/**
+ * One-shot helper to seed the sharded balance counters from the
+ * append-only ledger for a single user. Idempotent: clears both pools
+ * first, then re-applies one signed delta per pool computed from the sum
+ * of `creditTransactions.amount` filtered by `creditType`.
+ *
+ * Manual invocation from the Convex dashboard after the balanceAgg →
+ * sharded-counter cut-over. NOT used by production paths — every ledger
+ * insert site already routes through `recordTransactionCounters`, which
+ * keeps the counters in lockstep with the ledger.
+ */
+export const seedBalanceCountersFromLedger = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.object({
+    creditsId: v.id("credits"),
+    free: v.number(),
+    paid: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const credits = await ctx.db
+      .query("credits")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .unique();
+    if (!credits) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Credits record not found",
+      });
+    }
+
+    await clearBalanceCounters(ctx, credits._id);
+
+    let free = 0;
+    let paid = 0;
+    for await (const tx of ctx.db
+      .query("creditTransactions")
+      .withIndex("by_credits", (q) => q.eq("creditsId", credits._id))) {
+      if (tx.creditType === "free") free += tx.amount;
+      else paid += tx.amount;
+    }
+
+    if (free !== 0) await addBalanceDelta(ctx, credits._id, "free", free);
+    if (paid !== 0) await addBalanceDelta(ctx, credits._id, "paid", paid);
+
+    return { creditsId: credits._id, free, paid };
+  },
+});
+
+/**
+ * Drift audit primitive: compute the discrepancy between the sharded
+ * balance counters and the ledger sum for one user. Returns `null` when
+ * the user has no credits row. Modern Treasury reconciliation pattern:
+ * detect drift, never silently self-heal.
+ */
+export const computeBalanceDriftForUser = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      creditsId: v.id("credits"),
+      counterFree: v.number(),
+      counterPaid: v.number(),
+      ledgerFree: v.number(),
+      ledgerPaid: v.number(),
+      driftFree: v.number(),
+      driftPaid: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const credits = await ctx.db
+      .query("credits")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .unique();
+    if (!credits) return null;
+
+    let ledgerFree = 0;
+    let ledgerPaid = 0;
+    for await (const tx of ctx.db
+      .query("creditTransactions")
+      .withIndex("by_credits", (q) => q.eq("creditsId", credits._id))) {
+      if (tx.creditType === "free") ledgerFree += tx.amount;
+      else ledgerPaid += tx.amount;
+    }
+
+    const counter = await readBalance(ctx, credits._id);
+
+    return {
+      creditsId: credits._id,
+      counterFree: counter.free,
+      counterPaid: counter.paid,
+      ledgerFree,
+      ledgerPaid,
+      driftFree: counter.free - ledgerFree,
+      driftPaid: counter.paid - ledgerPaid,
+    };
+  },
+});
+
+/**
+ * Paginated list of every userId that owns a credits row. Consumed by the
+ * hourly drift audit action so it streams users without blowing the
+ * per-query read budget on the credits table.
+ */
+export const listUsersWithCreditsPage = internalQuery({
+  args: {
+    cursor: v.union(v.string(), v.null()),
+    pageSize: v.number(),
+  },
+  returns: v.object({
+    userIds: v.array(v.id("users")),
+    nextCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const result = await ctx.db
+      .query("credits")
+      .paginate({ cursor: args.cursor, numItems: args.pageSize });
+    return {
+      userIds: result.page.map((row) => row.userId),
+      nextCursor: result.continueCursor,
+      isDone: result.isDone,
+    };
   },
 });

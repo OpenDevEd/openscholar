@@ -1,0 +1,38 @@
+qwen/qwen3.5-flash-02-23	Qwen: Qwen3.5-Flash	1000000	0.000000065	0.00000026	n/a	text,image,video	65536
+google/gemini-2.0-flash-lite-001	Google: Gemini 2.0 Flash Lite	1048576	0.000000075	0.0000003	n/a	text,image,file,audio,video	8192
+google/gemini-2.0-flash-001	Google: Gemini 2.0 Flash	1048576	0.0000001	0.0000004	0.000000025	text,image,file,audio,video	8192
+google/gemini-2.5-flash-lite	Google: Gemini 2.5 Flash Lite	1048576	0.0000001	0.0000004	0.00000001	text,image,file,audio,video	65535
+google/gemini-2.5-flash-lite-preview-09-2025	Google: Gemini 2.5 Flash Lite Preview 09-2025	1048576	0.0000001	0.0000004	0.00000001	text,image,file,audio,video	65535
+openai/gpt-4.1-nano	OpenAI: GPT-4.1 Nano	1047576	0.0000001	0.0000004	0.000000025	image,text,file	32768
+deepseek/deepseek-v4-flash	DeepSeek: DeepSeek V4 Flash	1048576	0.00000014	0.00000028	0.0000000028	text	384000
+meta-llama/llama-4-maverick	Meta: Llama 4 Maverick	1048576	0.00000015	0.0000006	n/a	text,image	16384
+qwen/qwen3-coder-flash	Qwen: Qwen3 Coder Flash	1000000	0.000000195	0.000000975	0.000000039	text	65536
+minimax/minimax-01	MiniMax: MiniMax-01	1000192	0.0000002	0.0000011	n/a	text,image	1000192
+x-ai/grok-4-fast	xAI: Grok 4 Fast	2000000	0.0000002	0.0000005	0.00000005	text,image,file	30000
+x-ai/grok-4.1-fast	xAI: Grok 4.1 Fast	2000000	0.0000002	0.0000005	0.00000005	text,image,file	30000
+google/gemini-3.1-flash-lite	Google: Gemini 3.1 Flash Lite	1048576	0.00000025	0.0000015	0.000000025	text,image,video,file,audio	65536
+google/gemini-3.1-flash-lite-preview	Google: Gemini 3.1 Flash Lite Preview	1048576	0.00000025	0.0000015	0.000000025	text,image,video,file,audio	65536
+qwen/qwen3.6-flash	Qwen: Qwen3.6 Flash	1000000	0.00000025	0.0000015	n/a	text,image,video	65536
+qwen/qwen-plus	Qwen: Qwen-Plus	1000000	0.00000026	0.00000078	0.000000052	text	32768
+qwen/qwen-plus-2025-07-28	Qwen: Qwen Plus 0728	1000000	0.00000026	0.00000078	n/a	text	32768
+qwen/qwen-plus-2025-07-28:thinking	Qwen: Qwen Plus 0728 (thinking)	1000000	0.00000026	0.00000078	n/a	text	32768
+qwen/qwen3.5-plus-02-15	Qwen: Qwen3.5 Plus 2026-02-15	1000000	0.00000026	0.00000156	n/a	text,image,video	65536
+amazon/nova-2-lite-v1	Amazon: Nova 2 Lite	1000000	0.0000003	0.0000025	n/a	text,image,video,file	65535
+google/gemini-2.5-flash	Google: Gemini 2.5 Flash	1048576	0.0000003	0.0000025	0.00000003	file,image,text,audio,video	65535
+qwen/qwen3.6-plus	Qwen: Qwen3.6 Plus	1000000	0.000000325	0.00000195	n/a	text,image,video	65536
+minimax/minimax-m1	MiniMax: MiniMax M1	1000000	0.0000004	0.0000022	n/a	text	40000
+openai/gpt-4.1-mini	OpenAI: GPT-4.1 Mini	1047576	0.0000004	0.0000016	0.0000001	image,text,file	32768
+qwen/qwen3.5-plus-20260420	Qwen: Qwen3.5 Plus 2026-04-20	1000000	0.0000004	0.0000024	n/a	text,image,video	65536
+xiaomi/mimo-v2.5	Xiaomi: MiMo-V2.5	1048576	0.0000004	0.000002	0.00000008	text,audio,image,video	131072
+deepseek/deepseek-v4-pro	DeepSeek: DeepSeek V4 Pro	1048576	0.000000435	0.00000087	0.000000003625	text	384000
+~google/gemini-flash-latest	Google Gemini Flash Latest	1048576	0.0000005	0.000003	0.00000005	text,image,file,audio,video	65536
+google/gemini-3-flash-preview	Google: Gemini 3 Flash Preview	1048576	0.0000005	0.000003	0.00000005	text,image,file,audio,video	65536
+writer/palmyra-x5	Writer: Palmyra X5	1040000	0.0000006	0.000006	n/a	text	8192
+qwen/qwen3-coder-plus	Qwen: Qwen3 Coder Plus	1000000	0.00000065	0.00000325	0.00000013	text	65536
+xiaomi/mimo-v2-pro	Xiaomi: MiMo-V2-Pro	1048576	0.000001	0.000003	0.0000002	text	131072
+xiaomi/mimo-v2.5-pro	Xiaomi: MiMo-V2.5-Pro	1048576	0.000001	0.000003	0.0000002	text	16384
+google/gemini-2.5-pro	Google: Gemini 2.5 Pro	1048576	0.00000125	0.00001	0.000000125	text,image,file,audio,video	65536
+google/gemini-2.5-pro-preview	Google: Gemini 2.5 Pro Preview 06-05	1048576	0.00000125	0.00001	0.000000125	file,image,text,audio	65536
+google/gemini-2.5-pro-preview-05-06	Google: Gemini 2.5 Pro Preview 05-06	1048576	0.00000125	0.00001	0.000000125	text,image,file,audio,video	65535
+x-ai/grok-4.20	xAI: Grok 4.20	2000000	0.00000125	0.0000025	0.0000002	text,image,file	n/a
+x-ai/grok-4.3	xAI: Grok 4.3	1000000	0.00000125	0.0000025	0.0000002	text,image	n/a

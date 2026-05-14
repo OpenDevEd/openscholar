@@ -186,4 +186,63 @@ describe("cleanupZombieChatLocks", () => {
     expect(fresh?.isGenerating).toBe(true);
     expect(unlocked?.isGenerating).toBeUndefined();
   });
+
+  it("ignores non-chat rows even when they carry a stale isGenerating flag", async () => {
+    // Plan-03 R1: the indexed scan must gate on mode === "chat"; a
+    // stale-locked extraction-mode row must NOT be touched. This is a
+    // defensive guarantee — extraction jobs never set isGenerating in
+    // practice, but the scan boundary must be tight.
+    const t = convexTest(schema);
+    const STALE = Date.now() - 6 * 60 * 1000;
+
+    const { chatStaleId, extractionStaleId } = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        clerkId: "c_h4_r1",
+        email: "h4r1@t",
+        state: "active",
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      const chatStaleId = await ctx.db.insert("extractionJobs", {
+        userId,
+        mode: "chat",
+        sourceType: "history",
+        name: "chat-stale",
+        messageCount: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        isGenerating: true,
+        generatingStartedAt: STALE,
+      });
+      const extractionStaleId = await ctx.db.insert("extractionJobs", {
+        userId,
+        mode: "extraction",
+        sourceType: "history",
+        name: "extraction-stale",
+        messageCount: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        isGenerating: true,
+        generatingStartedAt: STALE,
+      });
+      return { chatStaleId, extractionStaleId };
+    });
+
+    const { cleared } = await t.mutation(
+      internal.chat.concurrency.cleanupZombieChatLocks,
+      {},
+    );
+    expect(cleared).toBe(1);
+
+    const [chatAfter, extractionAfter] = await t.run(async (ctx) =>
+      Promise.all([
+        ctx.db.get(chatStaleId),
+        ctx.db.get(extractionStaleId),
+      ]),
+    );
+    expect(chatAfter?.isGenerating).toBe(false);
+    // Extraction row is untouched — index gate excludes it.
+    expect(extractionAfter?.isGenerating).toBe(true);
+    expect(extractionAfter?.generatingStartedAt).toBe(STALE);
+  });
 });

@@ -3,7 +3,10 @@ import { describe, it, expect } from "vitest";
 import { internal, api } from "../_generated/api";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
-import { setupTransactionAggregates } from "../credits/aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
 
 // ─── Seed helpers ────────────────────────────────────────────
 
@@ -45,12 +48,11 @@ async function seedUserWithCredits(
       lastLoginAt: now,
     });
 
-    const creditsId = await ctx.db.insert("credits", {
+    const creditsId = await seedCreditsForTest(ctx, {
       userId,
-      freeBalance,
-      paidBalance,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: freeBalance,
+      paid: paidBalance,
+      now,
     });
 
     return { userId, creditsId };
@@ -397,11 +399,13 @@ describe("wallet + credits integration", () => {
     expect(result.deducted).toBe(25);
     expect(result.remaining).toBe(75);
 
-    // Verify transaction recorded correctly
+    // Verify transaction recorded correctly. Seed `grant`/`purchase` rows
+    // also live on the credits row, so filter to the deduction row.
     const transactions = await t.run(async (ctx) =>
       ctx.db
         .query("creditTransactions")
         .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+        .filter((q) => q.eq(q.field("type"), "usage"))
         .collect(),
     );
     expect(transactions).toHaveLength(1);

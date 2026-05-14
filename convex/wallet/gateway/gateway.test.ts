@@ -3,7 +3,10 @@ import { describe, it, expect, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
-import { setupTransactionAggregates } from "../../credits/aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../../credits/aggregates.test-support";
 
 import { parseAndValidateRequest, convertToAISdkParams, normalizeSchemaForStrictMode } from "./parseRequest";
 import {
@@ -59,12 +62,11 @@ async function seedUserWithCredits(
       updatedAt: now,
       lastLoginAt: now,
     });
-    const creditsId = await ctx.db.insert("credits", {
+    const creditsId = await seedCreditsForTest(ctx, {
       userId,
-      freeBalance,
-      paidBalance,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: freeBalance,
+      paid: paidBalance,
+      now,
     });
     return { userId, creditsId };
   });
@@ -1763,11 +1765,13 @@ describe("gateway integration (data layer)", () => {
     expect(result.deducted).toBe(25);
     expect(result.remaining).toBe(675);
 
-    // Verify transaction
+    // Verify transaction. Seed `grant`/`purchase` rows also live on the
+    // credits row, so filter to the deduction row.
     const txns = await t.run(async (ctx) =>
       ctx.db
         .query("creditTransactions")
         .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+        .filter((q) => q.eq(q.field("type"), "usage"))
         .collect(),
     );
     expect(txns).toHaveLength(1);
@@ -1849,10 +1853,13 @@ describe("gateway integration (data layer)", () => {
       },
     });
 
+    // Seed `grant`/`purchase` rows also live on the credits row, so
+    // filter to the deduction row.
     const txns = await t.run(async (ctx) =>
       ctx.db
         .query("creditTransactions")
         .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+        .filter((q) => q.eq(q.field("type"), "usage"))
         .collect(),
     );
 

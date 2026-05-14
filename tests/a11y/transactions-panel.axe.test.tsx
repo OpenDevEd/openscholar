@@ -66,7 +66,6 @@ type Doc = {
   _id: string;
   _creationTime: number;
   amount: number;
-  balanceAfter: number;
   creditType: "free" | "paid";
   createdAt: number;
   type: "purchase" | "usage" | "grant" | "refund" | "expiry";
@@ -82,7 +81,6 @@ function mkDoc(i: number, overrides: Partial<Doc> = {}): Doc {
     _id: `tx-${i}`,
     _creationTime: Date.UTC(2026, 3, 20 - i, 10),
     amount: type === "usage" ? -(50 + i) : 100 + i,
-    balanceAfter: 1000 - i * 10,
     creditType: i % 2 === 0 ? "paid" : "free",
     createdAt: Date.UTC(2026, 3, 20 - i, 10),
     type,

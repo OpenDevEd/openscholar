@@ -147,7 +147,6 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     free: number;
     paid: number;
     total: number;
-    lifetimeUsed: number;
   } | null = await ctx.runQuery(
     internal.credits.internal.getBalanceByUserId,
     { userId: keyResult.userId },
@@ -550,7 +549,6 @@ export const handleBalance = httpAction(async (ctx, request) => {
     free: number;
     paid: number;
     total: number;
-    lifetimeUsed: number;
   } | null = await ctx.runQuery(
     internal.credits.internal.getBalanceByUserId,
     { userId: keyResult.userId },

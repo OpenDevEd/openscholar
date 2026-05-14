@@ -42,8 +42,6 @@ export interface AIGenerationParams {
   creditsDeducted?: number;
   /** Credits remaining after this operation. */
   creditsRemaining?: number;
-  /** Lifetime credits used by this user (cumulative). */
-  lifetimeCreditsUsed?: number;
   /** Raw fractional credit cost before ceiling/minimum (for analytics). */
   creditsRawCost?: number;
 }
@@ -64,7 +62,6 @@ export interface AITrackingEntry {
   sessionId?: string;
   creditsDeducted?: number;
   creditsRemaining?: number;
-  lifetimeCreditsUsed?: number;
   creditsRawCost?: number;
 }
 
@@ -146,7 +143,6 @@ export function buildAIGenerationProperties(params: AIGenerationParams): Record<
     ...(params.creditsDeducted !== undefined && { credits_deducted: params.creditsDeducted }),
     ...(params.creditsRawCost !== undefined && { credits_raw_cost: params.creditsRawCost }),
     ...(params.creditsRemaining !== undefined && { credits_remaining: params.creditsRemaining }),
-    ...(params.lifetimeCreditsUsed !== undefined && { lifetime_credits_used: params.lifetimeCreditsUsed }),
     ...(params.metadata || {}),
   };
 }

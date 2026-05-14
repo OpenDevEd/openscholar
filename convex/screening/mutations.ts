@@ -27,6 +27,7 @@ import { deriveCompletionTransition } from "./completion";
 import { buildScreeningProgressSnapshot } from "./progress";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
+import { readBalance } from "../credits/balanceCounter";
 
 /**
  * Create a bulk screening job.
@@ -83,8 +84,9 @@ export const createScreeningJob = mutation({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
 
-    const totalAvailable =
-      (credits?.freeBalance ?? 0) + (credits?.paidBalance ?? 0);
+    const totalAvailable = credits
+      ? (await readBalance(ctx, credits._id)).total
+      : 0;
 
     const estimatedCost = Math.ceil(args.papers.length * ESTIMATED_CREDITS_PER_PAPER);
     if (totalAvailable < estimatedCost) {

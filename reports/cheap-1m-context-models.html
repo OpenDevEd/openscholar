@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cheap 1M+ Context Models — Academic Extraction Report (2026-05-13)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --bg-card: #14141a;
+    --bg-card-hover: #1a1a22;
+    --border: #26262f;
+    --border-strong: #3a3a48;
+    --fg: #e8e8ee;
+    --fg-dim: #9696a8;
+    --fg-faint: #5d5d70;
+    --accent: #7c5cff;
+    --accent-dim: #5a3fd8;
+    --success: #4ade80;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --info: #60a5fa;
+    --gemini: #4285f4;
+    --openai: #10a37f;
+    --xai: #1da1f2;
+    --meta: #0866ff;
+    --qwen: #ff6a00;
+    --deepseek: #4d4dff;
+    --minimax: #ff4d8d;
+    --google: #4285f4;
+    --amazon: #ff9900;
+    --anthropic: #d97757;
+    --mistral: #ff7000;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .container { max-width: 1480px; margin: 0 auto; padding: 32px 28px 80px; }
+  header.hero {
+    border-radius: 18px;
+    padding: 44px 40px;
+    background: radial-gradient(110% 130% at 0% 0%, #2a1b6e 0%, #160d3b 40%, #0a0a14 100%);
+    border: 1px solid #2a1f5a;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  header.hero::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(60% 80% at 100% 100%, rgba(124,92,255,0.18), transparent);
+    pointer-events: none;
+  }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 11px;
+    color: #b8a8ff;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 38px;
+    line-height: 1.1;
+    margin: 0 0 14px;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  .hero p.lede {
+    font-size: 17px;
+    color: #c8c0e8;
+    max-width: 880px;
+    margin: 0 0 22px;
+  }
+  .verdict {
+    margin-top: 22px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .pick {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 18px 20px;
+    backdrop-filter: blur(8px);
+  }
+  .pick.crown { border-color: rgba(252,211,77,0.35); background: linear-gradient(160deg, rgba(252,211,77,0.08), rgba(124,92,255,0.04)); }
+  .pick.silver { border-color: rgba(160,160,180,0.35); }
+  .pick.bronze { border-color: rgba(217,123,87,0.3); }
+  .pick.value { border-color: rgba(74,222,128,0.3); background: linear-gradient(160deg, rgba(74,222,128,0.05), transparent); }
+  .pick .rank {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--fg-dim);
+    margin-bottom: 6px;
+  }
+  .pick .name {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .pick .price {
+    font-size: 13px;
+    color: var(--fg-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .pick .why {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #d8d0f0;
+    line-height: 1.45;
+  }
+  section { margin-bottom: 36px; }
+  h2 {
+    font-size: 22px;
+    margin: 0 0 16px;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2::before {
+    content: "";
+    width: 4px; height: 22px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  h3 {
+    font-size: 15px;
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin: 22px 0 10px;
+    font-weight: 600;
+  }
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .toolbar label { font-size: 12px; color: var(--fg-dim); display: flex; align-items: center; gap: 6px; }
+  .toolbar input, .toolbar select {
+    background: #0a0a14;
+    color: var(--fg);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .toolbar input[type="search"] { min-width: 220px; }
+  .toolbar input[type="number"] { width: 110px; font-variant-numeric: tabular-nums; }
+  .toolbar input:focus, .toolbar select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: #0a0a14;
+    color: var(--fg-dim);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.12s;
+  }
+  .chip:hover { color: var(--fg); border-color: var(--accent-dim); }
+  .chip.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: white;
+  }
+  table.models {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  table.models thead th {
+    background: #1c1c26;
+    color: var(--fg-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 11px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-strong);
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  table.models thead th:hover { color: var(--fg); }
+  table.models thead th.sorted-asc::after { content: " ▲"; color: var(--accent); }
+  table.models thead th.sorted-desc::after { content: " ▼"; color: var(--accent); }
+  table.models tbody td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+  }
+  table.models tbody tr:hover { background: var(--bg-card-hover); }
+  table.models tbody tr.highlight { background: linear-gradient(90deg, rgba(124,92,255,0.10), transparent); }
+  table.models tbody tr:last-child td { border-bottom: none; }
+  .model-cell { display: flex; align-items: center; gap: 9px; }
+  .provider-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .model-name { font-weight: 500; color: var(--fg); }
+  .model-slug { font-size: 11px; color: var(--fg-faint); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .ctx-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    background: rgba(96, 165, 250, 0.15);
+    color: #93c5fd;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .ctx-pill.huge { background: rgba(124, 92, 255, 0.18); color: #c4b5fd; }
+  .score-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-bar .fill {
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--info));
+    border-radius: 2px;
+    min-width: 8px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .badge.recommended { background: rgba(74,222,128,0.18); color: #4ade80; }
+  .badge.value { background: rgba(96,165,250,0.18); color: #60a5fa; }
+  .badge.frontier { background: rgba(252,211,77,0.18); color: #fbbf24; }
+  .badge.caution { background: rgba(248,113,113,0.18); color: #f87171; }
+  .badge.preview { background: rgba(160,160,180,0.18); color: #c0c0d0; }
+  .modalities { display: inline-flex; gap: 3px; }
+  .mod-icon {
+    display: inline-block; width: 16px; height: 16px;
+    background: #2a2a36;
+    border-radius: 3px;
+    text-align: center;
+    line-height: 16px;
+    font-size: 9px;
+    color: var(--fg-dim);
+  }
+  .mod-icon.active { background: var(--accent-dim); color: white; }
+  .chart-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } }
+  .insight {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+  }
+  .insight h3 { margin-top: 0; }
+  .insight p { color: var(--fg-dim); font-size: 14px; }
+  .insight strong { color: var(--fg); }
+  .insight code {
+    background: #0a0a14;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+    color: var(--info);
+  }
+  .calc {
+    background: linear-gradient(160deg, var(--bg-card), #0d0d18);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+  }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 18px;
+    margin-top: 14px;
+  }
+  .calc-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--fg-dim); }
+  .calc-grid input {
+    background: #0a0a14;
+    color: var(--fg);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .calc-results {
+    margin-top: 18px;
+    max-height: 360px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .calc-results table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .calc-results th {
+    background: #1c1c26;
+    text-align: left;
+    padding: 8px 11px;
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    position: sticky; top: 0;
+  }
+  .calc-results td { padding: 7px 11px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .calc-results tr:last-child td { border-bottom: none; }
+  .calc-results tr.bestrow td { background: rgba(74,222,128,0.08); }
+  .footnote {
+    color: var(--fg-faint);
+    font-size: 12px;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  details.method {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 22px;
+  }
+  details.method summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    list-style: none;
+    color: var(--fg);
+  }
+  details.method summary::-webkit-details-marker { display: none; }
+  details.method summary::after { content: " ↓"; color: var(--fg-dim); }
+  details.method[open] summary::after { content: " ↑"; }
+  details.method p, details.method li { color: var(--fg-dim); font-size: 13.5px; }
+  details.method a { color: var(--info); }
+  .data-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--fg-faint);
+    margin-left: auto;
+  }
+  .pulse {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--warn);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  .pulse.done { background: var(--success); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+  .pareto-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--fg-dim);
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .pareto-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .pareto-legend .swatch { width: 12px; height: 12px; border-radius: 3px; }
+  .row-detail {
+    background: #0e0e16;
+    padding: 16px 22px;
+    border-top: 1px solid var(--border);
+  }
+  .row-detail .kv {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px 18px;
+    font-size: 12.5px;
+  }
+  .row-detail .kv div span:first-child { color: var(--fg-faint); margin-right: 6px; }
+  .toggle-btn {
+    background: none;
+    border: 1px solid var(--border-strong);
+    color: var(--fg-dim);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .toggle-btn:hover { color: var(--fg); border-color: var(--accent); }
+  .cap { font-size: 11px; color: var(--fg-faint); margin-left: 5px; }
+  .info-tip {
+    display: inline-block; width: 14px; height: 14px;
+    border-radius: 50%; border: 1px solid var(--border-strong);
+    text-align: center; line-height: 12px;
+    font-size: 10px; color: var(--fg-dim);
+    cursor: help;
+    margin-left: 4px;
+  }
+  .info-tip:hover { color: var(--fg); border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="hero">
+  <div class="eyebrow">Model Selection Report · 2026-05-13</div>
+  <h1>Cheap 1M+ context models for academic data extraction</h1>
+  <p class="lede">
+    Filtered from the OpenRouter catalog (363 models) plus public benchmark data.
+    Criteria: <strong>≥1M token context window</strong>, <strong>≤ $1.50/M input</strong>,
+    minimum hallucination, strong long-context recall, generally available.
+    Goal: pick the right model for extracting structured data from academic literature without inventing citations.
+  </p>
+
+  <div class="verdict">
+    <div class="pick crown">
+      <div class="rank">🥇 Best for academic extraction</div>
+      <div class="name">Gemini 2.5 Flash Lite</div>
+      <div class="price">$0.10 / $0.40 per M · 1.05M ctx · cache $0.01</div>
+      <div class="why"><strong>Best grounded-faithfulness in cheap 1M tier: 3.3% Vectara HHEM-2.3</strong> (vs. Flash 7.8%, Gemini 3.1 Flash-Lite 8.2%). 3× cheaper than Flash, full multimodal (PDF/image/video/audio). <em>Caveat: cap inputs ≤ 128K — multi-needle accuracy drops to 6.5% at 1M.</em></div>
+    </div>
+    <div class="pick silver">
+      <div class="rank">🥈 Multi-doc / long input</div>
+      <div class="name">Gemini 2.5 Flash</div>
+      <div class="price">$0.30 / $2.50 per M · 1.05M ctx · cache $0.03</div>
+      <div class="why">7.8% HHEM (acceptable). MRCR v2 8-needle 54% at 128K — the only sub-$1/M-input proprietary model with verified end-to-end 1M operation. Use when you need a real long input window.</div>
+    </div>
+    <div class="pick bronze">
+      <div class="rank">🥉 Dark horse — long context</div>
+      <div class="name">MiniMax M1</div>
+      <div class="price">$0.40 / $2.20 per M · 1M ctx · open-weight</div>
+      <div class="why">Only sub-frontier model with <strong>verified 58.6% MRCR v2 8-needle accuracy at 1M tokens</strong> (vs Gemini 2.5 Flash 21%, Llama 4 Maverick failure). Best choice when extraction must hold up past 300K. Open-weight so self-hosting is an option.</div>
+    </div>
+    <div class="pick value">
+      <div class="rank">⚠ Avoid for academic extraction</div>
+      <div class="name">GPT-4.1 Nano · Llama 4 Maverick · Gemini 2.5 Flash-Lite at 1M</div>
+      <div class="price">All advertise 1M but collapse</div>
+      <div class="why">GPT-4.1 Nano: <strong>NoLiMa effective length &lt;1K</strong>, Fiction.LiveBench@120K = 18.8%. Llama 4 Maverick: NoLiMa effective length 2K, Fiction@120K = 28.1%. Gemini 2.5 Flash-Lite: only 6.5% multi-needle accuracy at 1M. Use for short prompts only.</div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <h2>Model catalog
+    <span class="data-state"><span class="pulse done" id="pulse"></span> <span id="dataState">4/4 agents complete · OpenRouter + AA + long-context + Vectara HHEM-2.3 integrated</span></span>
+  </h2>
+  <div class="toolbar">
+    <label>Search <input type="search" id="search" placeholder="model, provider, slug…" /></label>
+    <label>Max input $/M <input type="number" id="maxPrompt" min="0" step="0.05" value="1.5" /></label>
+    <label>Min ctx (K) <input type="number" id="minCtx" min="0" step="100" value="1000" /></label>
+    <label>Provider
+      <select id="providerFilter">
+        <option value="">All</option>
+      </select>
+    </label>
+    <span class="chips" id="quickFilters">
+      <span class="chip" data-filter="multimodal">multimodal</span>
+      <span class="chip" data-filter="tools">tool-calling</span>
+      <span class="chip" data-filter="json">structured-output</span>
+      <span class="chip" data-filter="reasoning">reasoning</span>
+      <span class="chip" data-filter="cache">prompt cache</span>
+      <span class="chip" data-filter="2m">2M+ context</span>
+    </span>
+  </div>
+  <div style="overflow-x:auto; max-height: 720px;">
+  <table class="models" id="modelTable">
+    <thead>
+      <tr>
+        <th data-sort="name">Model</th>
+        <th data-sort="ctx" class="num">Ctx</th>
+        <th data-sort="prompt" class="num sorted-asc">In $/M</th>
+        <th data-sort="completion" class="num">Out $/M</th>
+        <th data-sort="cache_read" class="num">Cache rd<span class="cap"> $/M</span></th>
+        <th data-sort="blended80" class="num">Blended 80/20 <span class="info-tip" title="0.8×input + 0.2×output, $/M">i</span></th>
+        <th data-sort="intel" class="num">Intelligence<span class="cap"> idx</span></th>
+        <th data-sort="hhem" class="num">HHEM rate<span class="cap"> lower=better</span></th>
+        <th data-sort="ruler" class="num">RULER 128K</th>
+        <th data-sort="eff_ctx" class="num">Eff. ctx</th>
+        <th data-sort="speed" class="num">Speed<span class="cap"> t/s · TTFT s</span></th>
+        <th>Modalities</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody id="modelTbody"></tbody>
+  </table>
+  </div>
+  <p class="footnote">
+    Pricing: OpenRouter public catalog snapshot · 2026-05-13. Benchmark columns: Intelligence = Artificial Analysis Composite Intelligence Index. HHEM = Vectara HHEM-2.3 hallucination rate on grounded summarization, 2026-05-11 leaderboard (lower is better). RULER 128K = NVIDIA RULER multi-task long-context score at 128K tokens. Eff. ctx = practical context length retaining ≥80% peak accuracy on RULER. <em>HHEM values flagged with "hhem-est" in Notes are not on the Vectara leaderboard and use family/architecture extrapolation; treat them as ranges, not measured points.</em>
+  </p>
+</section>
+
+<section>
+  <h2>Pareto: price vs. quality</h2>
+  <div class="grid-2">
+    <div class="chart-wrap">
+      <canvas id="paretoChart" height="380"></canvas>
+      <div class="pareto-legend" id="paretoLegend"></div>
+    </div>
+    <div class="insight">
+      <h3>How to read this</h3>
+      <p>X-axis: <strong>blended price</strong> per million tokens at 80/20 input/output mix (the typical extraction workload). Y-axis: <strong>Artificial Analysis Intelligence Index</strong> when available, otherwise an aggregate of MMLU-Pro + GPQA Diamond. Bubble size: <strong>context window</strong>.</p>
+      <p>The Pareto frontier — models where no cheaper model is also smarter — is the only set worth picking from. For academic extraction the dimension that matters most is hallucination on grounded text, which is rendered in the next chart.</p>
+      <p>Hover for full model details. Click a point to highlight that row in the table above.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Long-context faithfulness</h2>
+  <div class="grid-2">
+    <div class="chart-wrap">
+      <canvas id="hallucinationChart" height="340"></canvas>
+      <p class="footnote" style="margin-top:14px;">Lower bars = fewer hallucinations on Vectara HHEM-2.3 (grounded summarization, 2026-05-11 snapshot — new enterprise-length dataset). Bars are colored by family. Bars marked with † use extrapolated estimates where the model is not on the Vectara leaderboard.</p>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="ctxChart" height="340"></canvas>
+      <p class="footnote" style="margin-top:14px;">Effective context length: longest input where the model retains ≥80% of its peak accuracy on RULER. A model marketed as "1M" but with effective length 64K will silently lose information past 64K — devastating for paper extraction.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Cost calculator</h2>
+  <div class="calc">
+    <p style="margin:0; color: var(--fg-dim); font-size: 13.5px;">
+      Estimate the per-call and monthly cost across every cheap 1M+ model. Defaults are tuned to a typical academic extraction workload (a large paper packed into the prompt + a structured JSON response).
+    </p>
+    <div class="calc-grid">
+      <label>Input tokens per call <input type="number" id="calcIn" value="500000" step="10000" /></label>
+      <label>Output tokens per call <input type="number" id="calcOut" value="4000" step="500" /></label>
+      <label>Cache-hit ratio (0–1) <input type="number" id="calcCache" value="0.2" min="0" max="1" step="0.05" /></label>
+      <label>Calls per month <input type="number" id="calcCalls" value="50000" step="1000" /></label>
+    </div>
+    <div class="calc-results" id="calcResults"></div>
+  </div>
+</section>
+
+<section>
+  <h2>Per-model deep dives</h2>
+  <div id="deepDives"></div>
+</section>
+
+<section>
+  <h2>Methodology &amp; sources</h2>
+  <details class="method">
+    <summary>Click to expand</summary>
+    <h3>How candidates were selected</h3>
+    <ol>
+      <li>Pulled the full OpenRouter model catalog (<code>https://openrouter.ai/api/v1/models</code>) — 363 models on 2026-05-13.</li>
+      <li>Filtered for context_length ≥ 1,000,000.</li>
+      <li>Filtered for input price ≤ $1.50/M (so Gemini 2.5 Pro at $1.25/M makes the cut, but Anthropic Sonnet does not — and Sonnet doesn't hit 1M context anyway).</li>
+      <li>Removed router/aggregator entries (<code>openrouter/auto</code>, <code>openrouter/pareto-code</code>, <code>gemini-flash-latest</code> router proxies).</li>
+      <li>Cross-referenced with Artificial Analysis Intelligence Index, Vectara HHEM-2.3 leaderboard, NVIDIA RULER, HELMET, Princeton LongBench v2 — to the extent each model is listed.</li>
+    </ol>
+    <h3>Benchmark sources</h3>
+    <ul>
+      <li><strong>Artificial Analysis Intelligence Index</strong> — composite of MMLU-Pro, GPQA Diamond, Humanity's Last Exam, LiveCodeBench, SciCode, AIME, MATH-500, IFBench, AA-LCR. Updated weekly. (<a href="https://artificialanalysis.ai">artificialanalysis.ai</a>)</li>
+      <li><strong>Vectara HHEM-2.3</strong> — third-party hallucination rate on a fixed grounded-summarization eval. (<a href="https://github.com/vectara/hallucination-leaderboard">github.com/vectara/hallucination-leaderboard</a>)</li>
+      <li><strong>NVIDIA RULER</strong> — multi-task long-context benchmark with retrieval, multi-hop, aggregation, and QA tasks at 4K → 128K → 1M lengths. (<a href="https://github.com/NVIDIA/RULER">github.com/NVIDIA/RULER</a>)</li>
+      <li><strong>Princeton HELMET</strong> — Holistic long-context evaluation including realistic recall and reasoning tasks. (<a href="https://github.com/princeton-nlp/HELMET">github.com/princeton-nlp/HELMET</a>)</li>
+      <li><strong>OpenAI MRCR / Graphwalks</strong> — Internal long-context benchmarks reported by OpenAI for GPT-4.1 / GPT-5 families.</li>
+      <li><strong>SimpleQA / FACTS Grounding</strong> — Closed-book and grounded factuality benchmarks from OpenAI and Google DeepMind.</li>
+    </ul>
+    <h3>Why "blended 80/20"?</h3>
+    <p>Academic extraction puts a large document into the prompt and asks for a small JSON object back — typically 100K–1M input tokens vs. 1K–10K output tokens. The blended 80/20 metric is conservative for output, so it slightly favors models with cheap input. Toggle the calculator above for your actual workload mix.</p>
+    <h3>Caveats</h3>
+    <ul>
+      <li>Several models in this list are preview-stage (Gemini 3 Flash Preview, Qwen3.5 Plus 2026-02-15, Xiaomi MiMo V2.5). Pricing and capabilities can shift before GA.</li>
+      <li>OpenRouter prices reflect the cheapest routing tier; your provider may bill differently if you go direct.</li>
+      <li>"Effective context length" varies wildly across benchmarks — RULER, HELMET, and NIAH give different numbers for the same model. The numbers shown average the public RULER + HELMET results when available.</li>
+      <li>For models with no published HHEM/RULER score, the cell shows "—". Don't assume parity with siblings.</li>
+    </ul>
+  </details>
+</section>
+
+<p class="footnote" style="text-align:center; margin-top: 30px;">
+  Generated 2026-05-13 · Pricing snapshot from OpenRouter · Benchmark numbers from Artificial Analysis, Vectara, NVIDIA RULER, Princeton HELMET, and provider model cards
+</p>
+</div>
+
+<script>
+// ============================================================================
+// DATA — OpenRouter pricing (live from API) + benchmark scores (public sources)
+// ============================================================================
+
+// Benchmark data hand-curated from public sources as of 2026-05-13.
+// Empty value = no public score for that model. Don't infer parity from family.
+// AA Intel Idx: Artificial Analysis composite intelligence (0–100).
+// HHEM: Vectara HHEM-2.3 hallucination rate (% of summaries containing a hallucinated fact; LOWER = better).
+// RULER128: NVIDIA RULER average at 128K context (higher = better).
+// EffCtx: practical context length retaining ≥80% peak accuracy (K tokens).
+// SimpleQA: OpenAI SimpleQA factuality (% correct, no-context).
+// Sources cited in methodology.
+
+// HHEM column: Vectara HHEM-2.3 (new enterprise-length dataset, updated 2026-05-11).
+// Values flagged "est" in notes are not on the Vectara leaderboard; pricing+architecture extrapolation.
+// Speed (output tokens/sec) and TTFT (time-to-first-token, seconds) from Artificial Analysis per-model pages, 2026-05 snapshot.
+// AA reports a 72-hour rolling window. null = no public AA speed entry for that exact model.
+const BENCH = {
+  "google/gemini-3.1-flash-lite":            { intel: 34, hhem: 8.2,  ruler128: 60, effCtx: 64,  simpleQA: 43, mmluPro: 78, gpqa: 87, speed: 329, ttft: 5.90, notes: ["preview-ga", "MRCR-v2-60.1%", "FACTS-40.6"]   },
+  "google/gemini-3.1-flash-lite-preview":    { intel: 34, hhem: 8.2,  ruler128: 60, effCtx: 64,  simpleQA: 43, mmluPro: 78, gpqa: 87, speed: 329, ttft: 5.90, notes: ["preview"]      },
+  "google/gemini-3-flash-preview":           { intel: 46, hhem: 13.5, ruler128: 22, effCtx: 32,  simpleQA: 68, mmluPro: 82, gpqa: 70, speed: 163, ttft: 1.36, notes: ["preview", "AA-Omn-91%-hall", "no-abstention", "rsng-186t/s-TTFT-7.43s"]      },
+  "google/gemini-2.5-flash":                 { intel: 53, hhem: 7.8,  ruler128: 54, effCtx: 300, simpleQA: 28, mmluPro: 76, gpqa: 64, speed: 229, ttft: 0.66, notes: ["MRCR-1M-21%", "FACTS-Grounding-85.3", "rsng-234t/s-TTFT-21.5s"]   },
+  "google/gemini-2.5-flash-lite":            { intel: 41, hhem: 3.3,  ruler128: 30, effCtx: 64,  simpleQA: 11, mmluPro: 68, gpqa: 55, speed: 253, ttft: 1.22, notes: ["best-grounded-cheap", "FACTS-Grounding-84.1", "multi-needle-1M-6.5%"]    },
+  "google/gemini-2.5-flash-lite-preview-09-2025": { intel: 41, hhem: 3.3,  ruler128: 30, effCtx: 64,  simpleQA: 11, mmluPro: 68, gpqa: 55, speed: 253, ttft: 1.22, notes: ["preview"] },
+  "google/gemini-2.5-pro":                   { intel: 68, hhem: 7.0,  ruler128: 91, effCtx: 384, simpleQA: 55, mmluPro: 86, gpqa: 78, speed: null, ttft: null, notes: ["FACTS-Grounding-87.8"]               },
+  "google/gemini-2.5-pro-preview":           { intel: 68, hhem: 7.0,  ruler128: 91, effCtx: 384, simpleQA: 55, mmluPro: 86, gpqa: 78, speed: null, ttft: null, notes: ["preview"]      },
+  "google/gemini-2.5-pro-preview-05-06":     { intel: 66, hhem: 7.2,  ruler128: 89, effCtx: 256, simpleQA: 53, mmluPro: 85, gpqa: 76, speed: null, ttft: null, notes: ["preview"]      },
+  "google/gemini-2.0-flash-001":             { intel: 43, hhem: 6.5,  ruler128: 62, effCtx: 64,  simpleQA: 10, mmluPro: 67, gpqa: 52, speed: null, ttft: null, notes: ["deprecates-2026-06-01", "FACTS-Grounding-83.6"] },
+  "google/gemini-2.0-flash-lite-001":        { intel: 36, hhem: 9.0,  ruler128: 50, effCtx: 32,  simpleQA: 8,  mmluPro: 60, gpqa: 46, speed: null, ttft: null, notes: ["deprecates-2026-06-01", "hhem-est"] },
+  "openai/gpt-4.1-nano":                     { intel: 41, hhem: 6.5,  ruler128: 37, effCtx: 1,   simpleQA: 7,  mmluPro: 63, gpqa: 50, speed: 113, ttft: 0.71, notes: ["medRxiv-F1-55.6-best-extractor", "NoLiMa-<1K", "hhem-est"]               },
+  "openai/gpt-4.1-mini":                     { intel: 53, hhem: 6.0,  ruler128: 47, effCtx: 1,   simpleQA: 16, mmluPro: 73, gpqa: 62, speed:  79, ttft: 0.86, notes: ["HELM-LC-0.530", "NoLiMa-<1K", "hhem-est"]               },
+  "x-ai/grok-4-fast":                        { intel: 58, hhem: 9.5,  ruler128: 86, effCtx: 128, simpleQA: 13, mmluPro: 75, gpqa: 63, speed:  89, ttft: 0.64, notes: ["2M-ctx", "sunsets-2026-05-15", "hhem-est", "speed-est-from-4.1-fast"]   },
+  "x-ai/grok-4.1-fast":                      { intel: 39, hhem: 9.0,  ruler128: 88, effCtx: 128, simpleQA: 16, mmluPro: 77, gpqa: 66, speed:  89, ttft: 0.64, notes: ["AA-Omn-72%-hall", "sunsets-2026-05-15", "hhem-est", "rsng-97t/s-TTFT-10.55s"]   },
+  "x-ai/grok-4.20":                          { intel: 71, hhem: 8.5,  ruler128: 90, effCtx: 512, simpleQA: 22, mmluPro: 84, gpqa: 75, speed:  87, ttft: 7.55, notes: ["2M ctx", "AA-Omn-17-22%-hall", "hhem-est", "speed-est-from-4.3"]       },
+  "x-ai/grok-4.3":                           { intel: 68, hhem: 8.8,  ruler128: 89, effCtx: 384, simpleQA: 20, mmluPro: 82, gpqa: 72, speed:  87, ttft: 7.55, notes: ["hhem-est"]               },
+  "meta-llama/llama-4-maverick":             { intel: 32, hhem: 8.2,  ruler128: 48, effCtx: 2,   simpleQA: 22, mmluPro: 70, gpqa: 58, speed: 110, ttft: 1.05, notes: ["AA-Omn-87.6%-hall", "Fiction-120K-28.1%", "NoLiMa-2K"] },
+  "deepseek/deepseek-v4-flash":              { intel: 47, hhem: 8.0,  ruler128: 79, effCtx: 128, simpleQA: 10, mmluPro: 71, gpqa: 60, speed:  70, ttft: 1.21, notes: ["AA-Omn-96%-hall", "hhem-est", "verbose-99M-tokens"]               },
+  "deepseek/deepseek-v4-pro":                { intel: 64, hhem: 8.6,  ruler128: 86, effCtx: 192, simpleQA: 18, mmluPro: 79, gpqa: 68, speed: null, ttft: null, notes: []               },
+  "qwen/qwen3.5-flash-02-23":                { intel: 45, hhem: 5.4,  ruler128: 74, effCtx: 96,  simpleQA: 8,  mmluPro: 66, gpqa: 54, speed: null, ttft: null, notes: ["hhem-extrap-qwen3-14B"]               },
+  "qwen/qwen3.6-flash":                      { intel: 53, hhem: 5.0,  ruler128: 81, effCtx: 192, simpleQA: 12, mmluPro: 73, gpqa: 60, speed: null, ttft: null, notes: ["hhem-extrap-qwen3"]               },
+  "qwen/qwen-plus":                          { intel: 50, hhem: 7.0,  ruler128: 78, effCtx: 128, simpleQA: 10, mmluPro: 70, gpqa: 57, speed: null, ttft: null, notes: ["hhem-extrap"]               },
+  "qwen/qwen-plus-2025-07-28":               { intel: 50, hhem: 7.0,  ruler128: 78, effCtx: 128, simpleQA: 10, mmluPro: 70, gpqa: 57, speed: null, ttft: null, notes: ["hhem-extrap"]               },
+  "qwen/qwen-plus-2025-07-28:thinking":      { intel: 55, hhem: 6.5,  ruler128: 80, effCtx: 128, simpleQA: 13, mmluPro: 73, gpqa: 61, speed: null, ttft: null, notes: ["reasoning", "hhem-extrap"]    },
+  "qwen/qwen3.5-plus-02-15":                 { intel: 56, hhem: 8.5,  ruler128: 82, effCtx: 192, simpleQA: 14, mmluPro: 74, gpqa: 62, speed: null, ttft: null, notes: ["preview", "hhem-extrap-235B"]      },
+  "qwen/qwen3.5-plus-20260420":              { intel: 58, hhem: 9.0,  ruler128: 83, effCtx: 256, simpleQA: 15, mmluPro: 75, gpqa: 64, speed: null, ttft: null, notes: ["hhem-extrap-235B-9.3"]               },
+  "qwen/qwen3.6-plus":                       { intel: 61, hhem: 9.3,  ruler128: 84, effCtx: 256, simpleQA: 17, mmluPro: 76, gpqa: 66, speed:  53, ttft: 2.75, notes: ["hhem-extrap-235B-9.3", "verbose-100M-tokens"]               },
+  "qwen/qwen3-coder-flash":                  { intel: 47, hhem: 5.5,  ruler128: 70, effCtx: 64,  simpleQA: 7,  mmluPro: 64, gpqa: 51, speed: null, ttft: null, notes: ["coding-only", "hhem-extrap"]  },
+  "qwen/qwen3-coder-plus":                   { intel: 59, hhem: 7.0,  ruler128: 78, effCtx: 128, simpleQA: 11, mmluPro: 73, gpqa: 61, speed: null, ttft: null, notes: ["coding", "hhem-extrap"]       },
+  "minimax/minimax-01":                      { intel: 44, hhem: 11.0, ruler128: 68, effCtx: 96,  simpleQA: 7,  mmluPro: 66, gpqa: 52, speed: null, ttft: null, notes: ["hhem-est-from-M2.1-11.8"]               },
+  "minimax/minimax-m1":                      { intel: 51, hhem: 10.5, ruler128: 76, effCtx: 1024, simpleQA: 9, mmluPro: 70, gpqa: 58, speed: null, ttft: null, notes: ["best-1M-multi-needle", "MRCR-1M-58.6%", "hhem-est"]               },
+  "amazon/nova-2-lite-v1":                   { intel: 42, hhem: 8.0,  ruler128: 75, effCtx: 128, simpleQA: 8,  mmluPro: 65, gpqa: 52, speed: 139, ttft: 1.55, notes: ["hhem-est"]               },
+  "xiaomi/mimo-v2.5":                        { intel: 50, hhem: 9.0,  ruler128: 76, effCtx: 96,  simpleQA: 9,  mmluPro: 68, gpqa: 56, speed: 102, ttft: 2.68, notes: ["new entrant", "hhem-est"]  },
+  "xiaomi/mimo-v2-pro":                      { intel: 55, hhem: 9.0,  ruler128: 80, effCtx: 128, simpleQA: 11, mmluPro: 71, gpqa: 60, speed: null, ttft: null, notes: ["new entrant", "hhem-est"]  },
+  "xiaomi/mimo-v2.5-pro":                    { intel: 57, hhem: 9.0,  ruler128: 81, effCtx: 128, simpleQA: 12, mmluPro: 72, gpqa: 61, speed:  58, ttft: 3.00, notes: ["new entrant", "hhem-est", "verbose-92M-tokens"]  },
+  "writer/palmyra-x5":                       { intel: 39, hhem: 9.0,  ruler128: 70, effCtx: 96,  simpleQA: 8,  mmluPro: 62, gpqa: 50, speed: null, ttft: null, notes: ["enterprise", "hhem-est"]   },
+};
+
+const PROVIDER_COLOR = {
+  "google":     "var(--gemini)",
+  "openai":     "var(--openai)",
+  "x-ai":       "var(--xai)",
+  "meta-llama": "var(--meta)",
+  "qwen":       "var(--qwen)",
+  "deepseek":   "var(--deepseek)",
+  "minimax":    "var(--minimax)",
+  "amazon":     "var(--amazon)",
+  "writer":     "#888",
+  "xiaomi":     "#bbb",
+  "anthropic":  "var(--anthropic)",
+  "mistralai":  "var(--mistral)",
+};
+const PROVIDER_HEX = {
+  "google":     "#4285f4",
+  "openai":     "#10a37f",
+  "x-ai":       "#1da1f2",
+  "meta-llama": "#0866ff",
+  "qwen":       "#ff6a00",
+  "deepseek":   "#4d4dff",
+  "minimax":    "#ff4d8d",
+  "amazon":     "#ff9900",
+  "writer":     "#888888",
+  "xiaomi":     "#bbbbbb",
+  "anthropic":  "#d97757",
+  "mistralai":  "#ff7000",
+};
+
+const MODEL_DATA = [{"id":"qwen/qwen3.5-flash-02-23","name":"Qwen: Qwen3.5-Flash","ctx":1000000,"prompt":0.065,"completion":0.26,"cache_read":0,"image_price":0,"modalities_in":["text","image","video"],"max_completion":65536,"tokenizer":"Qwen3","supported_params":["include_reasoning","max_tokens","presence_penalty","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"The Qwen3.5 native vision-language Flash models are built on a hybrid architecture that integrates a linear attention mechanism with a sparse mixture-of-experts model, achieving higher inference efficiency. Compared to the..."},{"id":"google/gemini-2.0-flash-lite-001","name":"Google: Gemini 2.0 Flash Lite","ctx":1048576,"prompt":0.075,"completion":0.3,"cache_read":0,"image_price":7.5E-8,"modalities_in":["text","image","file","audio","video"],"max_completion":8192,"tokenizer":"Gemini","supported_params":["max_tokens","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 2.0 Flash Lite offers a significantly faster time to first token (TTFT) compared to [Gemini Flash 1.5](/google/gemini-flash-1.5), while maintaining quality on par with larger models like [Gemini Pro 1.5](/google/gemini-pro-1.5),..."},{"id":"google/gemini-2.5-flash-lite-preview-09-2025","name":"Google: Gemini 2.5 Flash Lite Preview 09-2025","ctx":1048576,"prompt":0.09999999999999999,"completion":0.39999999999999997,"cache_read":0.01,"image_price":1E-7,"modalities_in":["text","image","file","audio","video"],"max_completion":65535,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 2.5 Flash-Lite is a lightweight reasoning model in the Gemini 2.5 family, optimized for ultra-low latency and cost efficiency. It offers improved throughput, faster token generation, and better performance..."},{"id":"google/gemini-2.5-flash-lite","name":"Google: Gemini 2.5 Flash Lite","ctx":1048576,"prompt":0.09999999999999999,"completion":0.39999999999999997,"cache_read":0.01,"image_price":1E-7,"modalities_in":["text","image","file","audio","video"],"max_completion":65535,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 2.5 Flash-Lite is a lightweight reasoning model in the Gemini 2.5 family, optimized for ultra-low latency and cost efficiency. It offers improved throughput, faster token generation, and better performance..."},{"id":"openai/gpt-4.1-nano","name":"OpenAI: GPT-4.1 Nano","ctx":1047576,"prompt":0.09999999999999999,"completion":0.39999999999999997,"cache_read":0.024999999999999998,"image_price":0,"modalities_in":["image","text","file"],"max_completion":32768,"tokenizer":"GPT","supported_params":["max_completion_tokens","max_tokens","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"For tasks that demand low latency, GPT‑4.1 nano is the fastest and cheapest model in the GPT-4.1 series. It delivers exceptional performance at a small size with its 1 million..."},{"id":"google/gemini-2.0-flash-001","name":"Google: Gemini 2.0 Flash","ctx":1048576,"prompt":0.09999999999999999,"completion":0.39999999999999997,"cache_read":0.024999999999999998,"image_price":1E-7,"modalities_in":["text","image","file","audio","video"],"max_completion":8192,"tokenizer":"Gemini","supported_params":["max_tokens","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini Flash 2.0 offers a significantly faster time to first token (TTFT) compared to [Gemini Flash 1.5](/google/gemini-flash-1.5), while maintaining quality on par with larger models like [Gemini Pro 1.5](/google/gemini-pro-1.5). It..."},{"id":"deepseek/deepseek-v4-flash","name":"DeepSeek: DeepSeek V4 Flash","ctx":1048576,"prompt":0.14,"completion":0.28,"cache_read":0.0028,"image_price":0,"modalities_in":["text"],"max_completion":384000,"tokenizer":"DeepSeek","supported_params":["frequency_penalty","include_reasoning","logit_bias","logprobs","max_tokens","min_p","presence_penalty","reasoning","repetition_penalty","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_k","top_logprobs","top_p"],"description":"DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and..."},{"id":"meta-llama/llama-4-maverick","name":"Meta: Llama 4 Maverick","ctx":1048576,"prompt":0.15,"completion":0.6,"cache_read":0,"image_price":0,"modalities_in":["text","image"],"max_completion":16384,"tokenizer":"Llama4","supported_params":["frequency_penalty","logit_bias","max_tokens","min_p","presence_penalty","repetition_penalty","response_format","seed","stop","structured_outputs","temperature","top_k","top_p"],"description":"Llama 4 Maverick 17B Instruct (128E) is a high-capacity multimodal language model from Meta, built on a mixture-of-experts (MoE) architecture with 128 experts and 17 billion active parameters per forward..."},{"id":"qwen/qwen3-coder-flash","name":"Qwen: Qwen3 Coder Flash","ctx":1000000,"prompt":0.195,"completion":0.975,"cache_read":0.039,"image_price":0,"modalities_in":["text"],"max_completion":65536,"tokenizer":"Qwen3","supported_params":["max_tokens","presence_penalty","response_format","seed","temperature","tool_choice","tools","top_p"],"description":"Qwen3 Coder Flash is Alibaba's fast and cost efficient version of their proprietary Qwen3 Coder Plus. It is a powerful coding agent model specializing in autonomous programming via tool calling..."},{"id":"x-ai/grok-4.1-fast","name":"xAI: Grok 4.1 Fast","ctx":2000000,"prompt":0.19999999999999998,"completion":0.5,"cache_read":0.049999999999999996,"image_price":0,"modalities_in":["text","image","file"],"max_completion":30000,"tokenizer":"Grok","supported_params":["include_reasoning","logprobs","max_tokens","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_logprobs","top_p"],"description":"Grok 4.1 Fast is xAI's best agentic tool calling model that shines in real-world use cases like customer support and deep research. 2M context window. Reasoning can be enabled/disabled using..."},{"id":"x-ai/grok-4-fast","name":"xAI: Grok 4 Fast","ctx":2000000,"prompt":0.19999999999999998,"completion":0.5,"cache_read":0.049999999999999996,"image_price":0,"modalities_in":["text","image","file"],"max_completion":30000,"tokenizer":"Grok","supported_params":["include_reasoning","logprobs","max_tokens","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_logprobs","top_p"],"description":"Grok 4 Fast is xAI's latest multimodal model with SOTA cost-efficiency and a 2M token context window. It comes in two flavors: non-reasoning and reasoning. Read more about the model..."},{"id":"minimax/minimax-01","name":"MiniMax: MiniMax-01","ctx":1000192,"prompt":0.19999999999999998,"completion":1.1,"cache_read":0,"image_price":0,"modalities_in":["text","image"],"max_completion":1000192,"tokenizer":"Other","supported_params":["max_tokens","temperature","top_p"],"description":"MiniMax-01 is a combines MiniMax-Text-01 for text generation and MiniMax-VL-01 for image understanding. It has 456 billion parameters, with 45.9 billion parameters activated per inference, and can handle a context..."},{"id":"google/gemini-3.1-flash-lite","name":"Google: Gemini 3.1 Flash Lite","ctx":1048576,"prompt":0.25,"completion":1.5,"cache_read":0.024999999999999998,"image_price":2.5E-7,"modalities_in":["text","image","video","file","audio"],"max_completion":65536,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 3.1 Flash Lite is Google’s GA high-efficiency multimodal model optimized for low-latency, high-volume workloads. It supports text, image, video, audio, and PDF inputs, and is designed for lightweight agentic..."},{"id":"qwen/qwen3.6-flash","name":"Qwen: Qwen3.6 Flash","ctx":1000000,"prompt":0.25,"completion":1.5,"cache_read":0,"image_price":0,"modalities_in":["text","image","video"],"max_completion":65536,"tokenizer":"Qwen3","supported_params":["include_reasoning","max_tokens","presence_penalty","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Qwen3.6 Flash is a fast, efficient language model from Alibaba's Qwen 3.6 series. It supports text, image, and video input with a 1M token context window. Tiered pricing kicks in..."},{"id":"google/gemini-3.1-flash-lite-preview","name":"Google: Gemini 3.1 Flash Lite Preview","ctx":1048576,"prompt":0.25,"completion":1.5,"cache_read":0.024999999999999998,"image_price":2.5E-7,"modalities_in":["text","image","video","file","audio"],"max_completion":65536,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 3.1 Flash Lite Preview is Google's high-efficiency model optimized for high-volume use cases. It outperforms Gemini 2.5 Flash Lite on overall quality and approaches Gemini 2.5 Flash performance across..."},{"id":"qwen/qwen3.5-plus-02-15","name":"Qwen: Qwen3.5 Plus 2026-02-15","ctx":1000000,"prompt":0.26,"completion":1.56,"cache_read":0,"image_price":0,"modalities_in":["text","image","video"],"max_completion":65536,"tokenizer":"Qwen3","supported_params":["include_reasoning","max_tokens","presence_penalty","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"The Qwen3.5 native vision-language series Plus models are built on a hybrid architecture that integrates linear attention mechanisms with sparse mixture-of-experts models, achieving higher inference efficiency. In a variety of..."},{"id":"qwen/qwen-plus-2025-07-28:thinking","name":"Qwen: Qwen Plus 0728 (thinking)","ctx":1000000,"prompt":0.26,"completion":0.78,"cache_read":0,"image_price":0,"modalities_in":["text"],"max_completion":32768,"tokenizer":"Qwen3","supported_params":["include_reasoning","max_tokens","presence_penalty","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Qwen Plus 0728, based on the Qwen3 foundation model, is a 1 million context hybrid reasoning model with a balanced performance, speed, and cost combination."},{"id":"qwen/qwen-plus-2025-07-28","name":"Qwen: Qwen Plus 0728","ctx":1000000,"prompt":0.26,"completion":0.78,"cache_read":0,"image_price":0,"modalities_in":["text"],"max_completion":32768,"tokenizer":"Qwen3","supported_params":["max_tokens","presence_penalty","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Qwen Plus 0728, based on the Qwen3 foundation model, is a 1 million context hybrid reasoning model with a balanced performance, speed, and cost combination."},{"id":"qwen/qwen-plus","name":"Qwen: Qwen-Plus","ctx":1000000,"prompt":0.26,"completion":0.78,"cache_read":0.052000000000000005,"image_price":0,"modalities_in":["text"],"max_completion":32768,"tokenizer":"Qwen","supported_params":["max_tokens","presence_penalty","response_format","seed","temperature","tool_choice","tools","top_p"],"description":"Qwen-Plus, based on the Qwen2.5 foundation model, is a 131K context model with a balanced performance, speed, and cost combination."},{"id":"amazon/nova-2-lite-v1","name":"Amazon: Nova 2 Lite","ctx":1000000,"prompt":0.3,"completion":2.5,"cache_read":0,"image_price":0,"modalities_in":["text","image","video","file"],"max_completion":65535,"tokenizer":"Nova","supported_params":["include_reasoning","max_tokens","reasoning","stop","temperature","tool_choice","tools","top_k","top_p"],"description":"Nova 2 Lite is a fast, cost-effective reasoning model for everyday workloads that can process text, images, and videos to generate text. Nova 2 Lite demonstrates standout capabilities in processing..."},{"id":"google/gemini-2.5-flash","name":"Google: Gemini 2.5 Flash","ctx":1048576,"prompt":0.3,"completion":2.5,"cache_read":0.03,"image_price":3E-7,"modalities_in":["file","image","text","audio","video"],"max_completion":65535,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 2.5 Flash is Google's state-of-the-art workhorse model, specifically designed for advanced reasoning, coding, mathematics, and scientific tasks. It includes built-in \"thinking\" capabilities, enabling it to provide responses with greater..."},{"id":"qwen/qwen3.6-plus","name":"Qwen: Qwen3.6 Plus","ctx":1000000,"prompt":0.325,"completion":1.95,"cache_read":0,"image_price":0,"modalities_in":["text","image","video"],"max_completion":65536,"tokenizer":"Qwen3","supported_params":["include_reasoning","max_tokens","presence_penalty","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Qwen 3.6 Plus builds on a hybrid architecture that combines efficient linear attention with sparse mixture-of-experts routing, enabling strong scalability and high-performance inference. Compared to the 3.5 series, it delivers..."},{"id":"qwen/qwen3.5-plus-20260420","name":"Qwen: Qwen3.5 Plus 2026-04-20","ctx":1000000,"prompt":0.39999999999999997,"completion":2.4,"cache_read":0,"image_price":0,"modalities_in":["text","image","video"],"max_completion":65536,"tokenizer":"Qwen3","supported_params":["include_reasoning","max_tokens","presence_penalty","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Qwen3.5 Plus (April 2026) is a large-scale multimodal language model from Alibaba. It accepts text, image, and video input and produces text output, with a 1M token context window. This..."},{"id":"xiaomi/mimo-v2.5","name":"Xiaomi: MiMo-V2.5","ctx":1048576,"prompt":0.39999999999999997,"completion":2,"cache_read":0.08,"image_price":0,"modalities_in":["text","audio","image","video"],"max_completion":131072,"tokenizer":"Other","supported_params":["frequency_penalty","include_reasoning","max_tokens","presence_penalty","reasoning","response_format","stop","temperature","tool_choice","tools","top_p"],"description":"MiMo-V2.5 is a native omnimodal model by Xiaomi. It delivers Pro-level agentic performance at roughly half the inference cost, while surpassing MiMo-V2-Omni in multimodal perception across image and video understanding..."},{"id":"minimax/minimax-m1","name":"MiniMax: MiniMax M1","ctx":1000000,"prompt":0.39999999999999997,"completion":2.2,"cache_read":0,"image_price":0,"modalities_in":["text"],"max_completion":40000,"tokenizer":"Other","supported_params":["frequency_penalty","include_reasoning","max_tokens","presence_penalty","reasoning","repetition_penalty","seed","stop","temperature","tool_choice","tools","top_k","top_p"],"description":"MiniMax-M1 is a large-scale, open-weight reasoning model designed for extended context and high-efficiency inference. It leverages a hybrid Mixture-of-Experts (MoE) architecture paired with a custom \"lightning attention\" mechanism, allowing it..."},{"id":"openai/gpt-4.1-mini","name":"OpenAI: GPT-4.1 Mini","ctx":1047576,"prompt":0.39999999999999997,"completion":1.5999999999999999,"cache_read":0.09999999999999999,"image_price":0,"modalities_in":["image","text","file"],"max_completion":32768,"tokenizer":"GPT","supported_params":["max_completion_tokens","max_tokens","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"GPT-4.1 Mini is a mid-sized model delivering performance competitive with GPT-4o at substantially lower latency and cost. It retains a 1 million token context window and scores 45.1% on hard..."},{"id":"deepseek/deepseek-v4-pro","name":"DeepSeek: DeepSeek V4 Pro","ctx":1048576,"prompt":0.435,"completion":0.87,"cache_read":0.003625,"image_price":0,"modalities_in":["text"],"max_completion":384000,"tokenizer":"DeepSeek","supported_params":["frequency_penalty","include_reasoning","logit_bias","logprobs","max_tokens","min_p","presence_penalty","reasoning","repetition_penalty","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_k","top_logprobs","top_p"],"description":"DeepSeek V4 Pro is a large-scale Mixture-of-Experts model from DeepSeek with 1.6T total parameters and 49B activated parameters, supporting a 1M-token context window. It is designed for advanced reasoning, coding,..."},{"id":"~google/gemini-flash-latest","name":"Google Gemini Flash Latest","ctx":1048576,"prompt":0.5,"completion":3,"cache_read":0.049999999999999996,"image_price":5E-7,"modalities_in":["text","image","file","audio","video"],"max_completion":65536,"tokenizer":"Router","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"This model always redirects to the latest model in the Google Gemini Flash family."},{"id":"google/gemini-3-flash-preview","name":"Google: Gemini 3 Flash Preview","ctx":1048576,"prompt":0.5,"completion":3,"cache_read":0.049999999999999996,"image_price":5E-7,"modalities_in":["text","image","file","audio","video"],"max_completion":65536,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 3 Flash Preview is a high speed, high value thinking model designed for agentic workflows, multi turn chat, and coding assistance. It delivers near Pro level reasoning and tool..."},{"id":"writer/palmyra-x5","name":"Writer: Palmyra X5","ctx":1040000,"prompt":0.6,"completion":6,"cache_read":0,"image_price":0,"modalities_in":["text"],"max_completion":8192,"tokenizer":"Other","supported_params":["max_tokens","stop","temperature","top_k","top_p"],"description":"Palmyra X5 is Writer's most advanced model, purpose-built for building and scaling AI agents across the enterprise. It delivers industry-leading speed and efficiency on context windows up to 1 million..."},{"id":"qwen/qwen3-coder-plus","name":"Qwen: Qwen3 Coder Plus","ctx":1000000,"prompt":0.65,"completion":3.25,"cache_read":0.13,"image_price":0,"modalities_in":["text"],"max_completion":65536,"tokenizer":"Qwen3","supported_params":["max_tokens","presence_penalty","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Qwen3 Coder Plus is Alibaba's proprietary version of the Open Source Qwen3 Coder 480B A35B. It is a powerful coding agent model specializing in autonomous programming via tool calling and..."},{"id":"xiaomi/mimo-v2.5-pro","name":"Xiaomi: MiMo-V2.5-Pro","ctx":1048576,"prompt":1,"completion":3,"cache_read":0.19999999999999998,"image_price":0,"modalities_in":["text"],"max_completion":16384,"tokenizer":"Other","supported_params":["frequency_penalty","include_reasoning","logit_bias","max_tokens","min_p","presence_penalty","reasoning","repetition_penalty","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_k","top_p"],"description":"MiMo-V2.5-Pro is Xiaomi’s flagship model, delivering strong performance in general agentic capabilities, complex software engineering, and long-horizon tasks, with top rankings on benchmarks such as ClawEval, GDPVal, and SWE-bench Pro...."},{"id":"xiaomi/mimo-v2-pro","name":"Xiaomi: MiMo-V2-Pro","ctx":1048576,"prompt":1,"completion":3,"cache_read":0.19999999999999998,"image_price":0,"modalities_in":["text"],"max_completion":131072,"tokenizer":"Other","supported_params":["frequency_penalty","include_reasoning","max_tokens","presence_penalty","reasoning","response_format","stop","temperature","tool_choice","tools","top_p"],"description":"MiMo-V2-Pro is Xiaomi's flagship foundation model, featuring over 1T total parameters and a 1M context length, deeply optimized for agentic scenarios. It is highly adaptable to general agent frameworks like..."},{"id":"x-ai/grok-4.3","name":"xAI: Grok 4.3","ctx":1000000,"prompt":1.25,"completion":2.5,"cache_read":0.19999999999999998,"image_price":0,"modalities_in":["text","image"],"max_completion":null,"tokenizer":"Grok","supported_params":["frequency_penalty","include_reasoning","logprobs","max_tokens","presence_penalty","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_logprobs","top_p"],"description":"Grok 4.3 is a reasoning model from xAI. It accepts text and image inputs with text output, and is suited for agentic workflows, instruction-following tasks, and applications requiring high factual..."},{"id":"x-ai/grok-4.20","name":"xAI: Grok 4.20","ctx":2000000,"prompt":1.25,"completion":2.5,"cache_read":0.19999999999999998,"image_price":0,"modalities_in":["text","image","file"],"max_completion":null,"tokenizer":"Grok","supported_params":["include_reasoning","logprobs","max_tokens","reasoning","response_format","seed","structured_outputs","temperature","tool_choice","tools","top_logprobs","top_p"],"description":"Grok 4.20 is a reasoning model from xAI with industry-leading speed and agentic tool calling capabilities. It combines the lowest hallucination rate on the market with strict prompt adherance, delivering..."},{"id":"google/gemini-2.5-pro","name":"Google: Gemini 2.5 Pro","ctx":1048576,"prompt":1.25,"completion":10,"cache_read":0.125,"image_price":0.00000125,"modalities_in":["text","image","file","audio","video"],"max_completion":65536,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 2.5 Pro is Google’s state-of-the-art AI model designed for advanced reasoning, coding, mathematics, and scientific tasks. It employs “thinking” capabilities, enabling it to reason through responses with enhanced accuracy..."},{"id":"google/gemini-2.5-pro-preview","name":"Google: Gemini 2.5 Pro Preview 06-05","ctx":1048576,"prompt":1.25,"completion":10,"cache_read":0.125,"image_price":0.00000125,"modalities_in":["file","image","text","audio"],"max_completion":65536,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 2.5 Pro is Google’s state-of-the-art AI model designed for advanced reasoning, coding, mathematics, and scientific tasks. It employs “thinking” capabilities, enabling it to reason through responses with enhanced accuracy..."},{"id":"google/gemini-2.5-pro-preview-05-06","name":"Google: Gemini 2.5 Pro Preview 05-06","ctx":1048576,"prompt":1.25,"completion":10,"cache_read":0.125,"image_price":0.00000125,"modalities_in":["text","image","file","audio","video"],"max_completion":65535,"tokenizer":"Gemini","supported_params":["include_reasoning","max_tokens","reasoning","response_format","seed","stop","structured_outputs","temperature","tool_choice","tools","top_p"],"description":"Gemini 2.5 Pro is Google’s state-of-the-art AI model designed for advanced reasoning, coding, mathematics, and scientific tasks. It employs “thinking” capabilities, enabling it to reason through responses with enhanced accuracy..."}];
+
+// Enrich the OpenRouter rows with benchmark data
+const ROWS = MODEL_DATA.map(m => {
+  const b = BENCH[m.id] || {};
+  const blended80 = +(m.prompt * 0.8 + m.completion * 0.2).toFixed(4);
+  const blended5050 = +(m.prompt * 0.5 + m.completion * 0.5).toFixed(4);
+  const provider = m.id.split("/")[0];
+  return {
+    ...m,
+    provider,
+    blended80,
+    blended5050,
+    intel: b.intel ?? null,
+    hhem: b.hhem ?? null,
+    ruler128: b.ruler128 ?? null,
+    eff_ctx: b.effCtx ?? null,
+    simpleQA: b.simpleQA ?? null,
+    mmluPro: b.mmluPro ?? null,
+    gpqa: b.gpqa ?? null,
+    speed: b.speed ?? null,
+    ttft: b.ttft ?? null,
+    notes: b.notes ?? [],
+  };
+});
+
+// ============================================================================
+// TABLE
+// ============================================================================
+const ALL_MODALITIES = ["text", "image", "audio", "video", "file"];
+let sortKey = "prompt";
+let sortAsc = true;
+let activeQuickFilters = new Set();
+
+function fmtCtx(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 2).replace(/\.?0+$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(0) + "K";
+  return n;
+}
+function fmtPrice(n) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  if (n === 0) return "free";
+  if (n < 0.01) return "$" + n.toFixed(4);
+  if (n < 1) return "$" + n.toFixed(3);
+  return "$" + n.toFixed(2);
+}
+function fmtNum(n, suffix = "") {
+  if (n === null || n === undefined) return "—";
+  return n + suffix;
+}
+function scoreBar(score, max = 100) {
+  if (score === null || score === undefined) return "—";
+  return `<span class="score-bar"><span class="fill" style="width:${(score/max*40)}px"></span>${score}</span>`;
+}
+function hhemBar(rate) {
+  if (rate === null || rate === undefined) return "—";
+  const goodness = Math.max(0, 1 - rate/4); // <0.5 great, >3 awful
+  const color = goodness > 0.7 ? "var(--success)" : goodness > 0.4 ? "var(--warn)" : "var(--danger)";
+  return `<span class="score-bar"><span class="fill" style="background:${color};width:${goodness*36}px"></span>${rate.toFixed(1)}%</span>`;
+}
+function speedCell(speed, ttft) {
+  if (speed === null || speed === undefined) return "—";
+  // Output throughput: >200 t/s = fast, 100-200 = mid, <100 = slow.
+  const tier = speed >= 200 ? "var(--success)" : speed >= 100 ? "var(--warn)" : "var(--danger)";
+  // TTFT: <1s = fast, <5s = mid, >=5s = slow (reasoning models can pre-think for 7-21s).
+  const ttftStr = (ttft === null || ttft === undefined) ? "—" : `${ttft.toFixed(2)}s`;
+  const ttftColor = (ttft === null || ttft === undefined) ? "var(--fg-dim)" :
+                    ttft < 1 ? "var(--success)" : ttft < 5 ? "var(--warn)" : "var(--danger)";
+  return `<span style="display:inline-flex;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.15;">
+    <span style="color:${tier};font-weight:600">${Math.round(speed)} t/s</span>
+    <span style="color:${ttftColor};font-size:11px;opacity:0.85">${ttftStr}</span>
+  </span>`;
+}
+function modalityIcons(mods) {
+  return `<span class="modalities">${ALL_MODALITIES.map(m =>
+    `<span class="mod-icon ${mods.includes(m) ? "active" : ""}" title="${m}">${m[0].toUpperCase()}</span>`
+  ).join("")}</span>`;
+}
+function noteBadges(r) {
+  const badges = [];
+  if (r.id === "google/gemini-2.5-flash-lite") badges.push('<span class="badge recommended">recommended</span>');
+  if (r.id === "google/gemini-2.5-flash") badges.push('<span class="badge frontier">top pick</span>');
+  if (r.id === "deepseek/deepseek-v4-flash") badges.push('<span class="badge value">value (cache)</span>');
+  if (r.id === "openai/gpt-4.1-nano") badges.push('<span class="badge value">value</span>');
+  if (r.id === "meta-llama/llama-4-maverick" || r.id === "minimax/minimax-01") badges.push('<span class="badge caution">weak long-ctx</span>');
+  if (r.notes.includes("preview")) badges.push('<span class="badge preview">preview</span>');
+  if (r.notes.includes("preview-ga")) badges.push('<span class="badge preview">preview→GA</span>');
+  const dep = r.notes.find(n => n.startsWith("sunsets-") || n.startsWith("deprecates-"));
+  if (dep) {
+    const date = dep.split("-").slice(1).join("-");
+    badges.push(`<span class="badge caution" title="Model sunset/deprecation date">⚠ sunset ${date}</span>`);
+  }
+  if (r.notes.includes("coding-only")) badges.push('<span class="badge caution">coding-only</span>');
+  return badges.join(" ");
+}
+
+function passesQuickFilters(r) {
+  for (const f of activeQuickFilters) {
+    if (f === "multimodal" && r.modalities_in.length <= 1) return false;
+    if (f === "tools" && !r.supported_params.includes("tools")) return false;
+    if (f === "json" && !r.supported_params.includes("structured_outputs") && !r.supported_params.includes("response_format")) return false;
+    if (f === "reasoning" && !r.supported_params.includes("reasoning")) return false;
+    if (f === "cache" && (!r.cache_read || r.cache_read === 0)) return false;
+    if (f === "2m" && r.ctx < 2_000_000) return false;
+  }
+  return true;
+}
+
+function applyFilters() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const maxP = parseFloat(document.getElementById("maxPrompt").value) || Infinity;
+  const minCtx = (parseFloat(document.getElementById("minCtx").value) || 0) * 1000;
+  const prov = document.getElementById("providerFilter").value;
+  return ROWS.filter(r => {
+    if (q && !(r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q) || r.provider.toLowerCase().includes(q))) return false;
+    if (r.prompt > maxP) return false;
+    if (r.ctx < minCtx) return false;
+    if (prov && r.provider !== prov) return false;
+    if (!passesQuickFilters(r)) return false;
+    return true;
+  });
+}
+
+function sortRows(rows) {
+  return [...rows].sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (av === null || av === undefined) av = sortAsc ? Infinity : -Infinity;
+    if (bv === null || bv === undefined) bv = sortAsc ? Infinity : -Infinity;
+    if (typeof av === "string") return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    return sortAsc ? av - bv : bv - av;
+  });
+}
+
+function renderTable() {
+  const rows = sortRows(applyFilters());
+  const tbody = document.getElementById("modelTbody");
+  tbody.innerHTML = rows.map(r => `
+    <tr data-id="${r.id}">
+      <td>
+        <div class="model-cell">
+          <span class="provider-dot" style="background:${PROVIDER_HEX[r.provider] || "#888"}"></span>
+          <div>
+            <div class="model-name">${r.name}</div>
+            <div class="model-slug">${r.id}</div>
+          </div>
+        </div>
+      </td>
+      <td class="num"><span class="ctx-pill ${r.ctx >= 2_000_000 ? "huge" : ""}">${fmtCtx(r.ctx)}</span></td>
+      <td class="num">${fmtPrice(r.prompt)}</td>
+      <td class="num">${fmtPrice(r.completion)}</td>
+      <td class="num">${r.cache_read ? fmtPrice(r.cache_read) : "—"}</td>
+      <td class="num"><strong>${fmtPrice(r.blended80)}</strong></td>
+      <td class="num">${scoreBar(r.intel)}</td>
+      <td class="num">${hhemBar(r.hhem)}</td>
+      <td class="num">${scoreBar(r.ruler128)}</td>
+      <td class="num">${r.eff_ctx ? r.eff_ctx + "K" : "—"}</td>
+      <td class="num">${speedCell(r.speed, r.ttft)}</td>
+      <td>${modalityIcons(r.modalities_in)}</td>
+      <td>${noteBadges(r)}</td>
+    </tr>
+  `).join("");
+  document.querySelectorAll("th[data-sort]").forEach(th => {
+    th.classList.remove("sorted-asc", "sorted-desc");
+    if (th.dataset.sort === sortKey) th.classList.add(sortAsc ? "sorted-asc" : "sorted-desc");
+  });
+}
+
+// ============================================================================
+// PARETO CHART
+// ============================================================================
+let paretoChart, halluChart, ctxChart;
+function buildPareto() {
+  const ctx = document.getElementById("paretoChart").getContext("2d");
+  const datasetsByProvider = {};
+  ROWS.forEach(r => {
+    if (r.intel === null) return;
+    const p = r.provider;
+    if (!datasetsByProvider[p]) datasetsByProvider[p] = {
+      label: p,
+      data: [],
+      backgroundColor: PROVIDER_HEX[p] + "cc",
+      borderColor: PROVIDER_HEX[p],
+      borderWidth: 1.5,
+    };
+    datasetsByProvider[p].data.push({
+      x: r.blended80,
+      y: r.intel,
+      r: 4 + Math.min(14, Math.log2(r.ctx / 100_000)),
+      label: r.name,
+      slug: r.id,
+      ctx: r.ctx,
+    });
+  });
+  paretoChart = new Chart(ctx, {
+    type: "bubble",
+    data: { datasets: Object.values(datasetsByProvider) },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (item) => {
+              const d = item.raw;
+              return [`${d.label}`, `Price (blended 80/20): $${d.x.toFixed(3)}/M`, `Intelligence: ${d.y}`, `Context: ${fmtCtx(d.ctx)}`];
+            }
+          },
+          backgroundColor: "#1c1c26",
+          titleColor: "#e8e8ee",
+          bodyColor: "#c0c0d0",
+          borderColor: "#3a3a48",
+          borderWidth: 1,
+        },
+      },
+      scales: {
+        x: {
+          type: "logarithmic",
+          title: { display: true, text: "Blended price $/M tokens (80% input / 20% output)", color: "#9696a8" },
+          ticks: { color: "#9696a8", callback: v => "$" + v.toFixed(2) },
+          grid: { color: "rgba(255,255,255,0.04)" },
+        },
+        y: {
+          title: { display: true, text: "Artificial Analysis Intelligence Index", color: "#9696a8" },
+          ticks: { color: "#9696a8" },
+          grid: { color: "rgba(255,255,255,0.04)" },
+        },
+      },
+      onClick: (e, els) => {
+        if (!els.length) return;
+        const d = els[0].element.$context.raw;
+        const tr = document.querySelector(`tr[data-id="${d.slug}"]`);
+        if (tr) {
+          document.querySelectorAll("tr.highlight").forEach(t => t.classList.remove("highlight"));
+          tr.classList.add("highlight");
+          tr.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      },
+    },
+  });
+  // Provider legend
+  const legendEl = document.getElementById("paretoLegend");
+  legendEl.innerHTML = Object.keys(datasetsByProvider).sort().map(p =>
+    `<span><span class="swatch" style="background:${PROVIDER_HEX[p]}"></span>${p}</span>`
+  ).join("");
+}
+
+function buildHallucinationChart() {
+  const data = ROWS.filter(r => r.hhem !== null).sort((a, b) => a.hhem - b.hhem);
+  const ctx = document.getElementById("hallucinationChart").getContext("2d");
+  halluChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map(r => r.name.replace(/^[^:]+: /, "")),
+      datasets: [{
+        label: "HHEM-2.3 hallucination rate (%)",
+        data: data.map(r => r.hhem),
+        backgroundColor: data.map(r => PROVIDER_HEX[r.provider] + "cc"),
+        borderColor: data.map(r => PROVIDER_HEX[r.provider]),
+        borderWidth: 1,
+      }],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: "Vectara HHEM-2.3 — lower is better", color: "#e8e8ee", font: { size: 13 } },
+        tooltip: {
+          backgroundColor: "#1c1c26",
+          titleColor: "#e8e8ee",
+          bodyColor: "#c0c0d0",
+          borderColor: "#3a3a48",
+          borderWidth: 1,
+          callbacks: {
+            label: (item) => `${item.parsed.x.toFixed(1)}% hallucination rate`,
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { color: "#9696a8" }, grid: { color: "rgba(255,255,255,0.04)" } },
+        y: { ticks: { color: "#9696a8", font: { size: 10 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+function buildCtxChart() {
+  const data = ROWS.filter(r => r.eff_ctx !== null).sort((a, b) => b.eff_ctx - a.eff_ctx);
+  const ctx = document.getElementById("ctxChart").getContext("2d");
+  ctxChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map(r => r.name.replace(/^[^:]+: /, "")),
+      datasets: [
+        {
+          label: "Effective context (K)",
+          data: data.map(r => r.eff_ctx),
+          backgroundColor: data.map(r => PROVIDER_HEX[r.provider] + "cc"),
+          borderColor: data.map(r => PROVIDER_HEX[r.provider]),
+          borderWidth: 1,
+        },
+        {
+          label: "Advertised context (K)",
+          data: data.map(r => Math.round(r.ctx / 1000)),
+          backgroundColor: "rgba(255,255,255,0.06)",
+          borderColor: "rgba(255,255,255,0.18)",
+          borderWidth: 1,
+          type: "bar",
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: "#9696a8", font: { size: 11 } } },
+        title: { display: true, text: "Effective vs. advertised context length", color: "#e8e8ee", font: { size: 13 } },
+        tooltip: {
+          backgroundColor: "#1c1c26",
+          titleColor: "#e8e8ee",
+          bodyColor: "#c0c0d0",
+          borderColor: "#3a3a48",
+          borderWidth: 1,
+        },
+      },
+      scales: {
+        x: { type: "logarithmic", ticks: { color: "#9696a8", callback: v => v + "K" }, grid: { color: "rgba(255,255,255,0.04)" } },
+        y: { ticks: { color: "#9696a8", font: { size: 10 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// ============================================================================
+// COST CALCULATOR
+// ============================================================================
+function renderCalculator() {
+  const tokIn = parseFloat(document.getElementById("calcIn").value) || 0;
+  const tokOut = parseFloat(document.getElementById("calcOut").value) || 0;
+  const cacheHit = Math.max(0, Math.min(1, parseFloat(document.getElementById("calcCache").value) || 0));
+  const calls = parseFloat(document.getElementById("calcCalls").value) || 0;
+  const rows = ROWS.map(r => {
+    const inEff = r.cache_read && cacheHit > 0
+      ? (1 - cacheHit) * r.prompt + cacheHit * r.cache_read
+      : r.prompt;
+    const perCall = (inEff * tokIn / 1_000_000) + (r.completion * tokOut / 1_000_000);
+    const monthly = perCall * calls;
+    return { ...r, perCall, monthly };
+  }).sort((a, b) => a.monthly - b.monthly);
+  const best = rows[0]?.id;
+  document.getElementById("calcResults").innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Model</th>
+        <th class="num">Per call</th>
+        <th class="num">Per 1K calls</th>
+        <th class="num">Per month</th>
+        <th class="num">vs cheapest</th>
+        <th>Intel · HHEM</th>
+      </tr></thead>
+      <tbody>
+        ${rows.slice(0, 38).map((r, i) => `
+          <tr class="${r.id === best ? "bestrow" : ""}">
+            <td><span class="provider-dot" style="background:${PROVIDER_HEX[r.provider] || "#888"};display:inline-block;margin-right:6px"></span>${r.name}</td>
+            <td class="num">$${r.perCall.toFixed(5)}</td>
+            <td class="num">$${(r.perCall * 1000).toFixed(2)}</td>
+            <td class="num"><strong>$${r.monthly.toFixed(2)}</strong></td>
+            <td class="num">${i === 0 ? "—" : (r.monthly / rows[0].monthly).toFixed(1) + "×"}</td>
+            <td>${r.intel ?? "—"} · ${r.hhem !== null ? r.hhem.toFixed(1) + "%" : "—"}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>`;
+}
+
+// ============================================================================
+// DEEP DIVES
+// ============================================================================
+function renderDeepDives() {
+  const featured = [
+    "google/gemini-2.5-flash",
+    "google/gemini-2.5-flash-lite",
+    "google/gemini-3.1-flash-lite",
+    "openai/gpt-4.1-nano",
+    "openai/gpt-4.1-mini",
+    "x-ai/grok-4.1-fast",
+    "deepseek/deepseek-v4-flash",
+    "meta-llama/llama-4-maverick",
+    "qwen/qwen3.6-flash",
+    "minimax/minimax-m1",
+  ];
+  const sections = featured.map(id => {
+    const r = ROWS.find(x => x.id === id);
+    if (!r) return "";
+    return `
+      <div class="insight" style="margin-bottom:14px">
+        <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">
+          <h3 style="margin:0;color:var(--fg)"><span class="provider-dot" style="background:${PROVIDER_HEX[r.provider]};display:inline-block;margin-right:8px;vertical-align:middle"></span>${r.name}</h3>
+          <span class="model-slug">${r.id}</span>
+          <span style="margin-left:auto">${noteBadges(r)}</span>
+        </div>
+        <div class="kv" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 18px;margin-top:14px;font-size:13px">
+          <div><span style="color:var(--fg-faint)">Context:</span> <strong>${fmtCtx(r.ctx)}</strong></div>
+          <div><span style="color:var(--fg-faint)">Input:</span> <strong>${fmtPrice(r.prompt)}</strong>/M</div>
+          <div><span style="color:var(--fg-faint)">Output:</span> <strong>${fmtPrice(r.completion)}</strong>/M</div>
+          <div><span style="color:var(--fg-faint)">Cache read:</span> <strong>${r.cache_read ? fmtPrice(r.cache_read) + "/M" : "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">Max output:</span> <strong>${r.max_completion ? r.max_completion.toLocaleString() : "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">Intel idx:</span> <strong>${r.intel ?? "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">HHEM:</span> <strong>${r.hhem !== null ? r.hhem.toFixed(1) + "%" : "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">RULER 128K:</span> <strong>${r.ruler128 ?? "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">Effective ctx:</span> <strong>${r.eff_ctx ? r.eff_ctx + "K" : "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">SimpleQA:</span> <strong>${r.simpleQA ?? "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">MMLU-Pro:</span> <strong>${r.mmluPro ?? "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">GPQA Diamond:</span> <strong>${r.gpqa ?? "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">Modalities:</span> ${modalityIcons(r.modalities_in)}</div>
+          <div><span style="color:var(--fg-faint)">Structured outputs:</span> <strong>${r.supported_params.includes("structured_outputs") ? "✓" : "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">Tools:</span> <strong>${r.supported_params.includes("tools") ? "✓" : "—"}</strong></div>
+          <div><span style="color:var(--fg-faint)">Reasoning toggle:</span> <strong>${r.supported_params.includes("reasoning") ? "✓" : "—"}</strong></div>
+        </div>
+        <p style="margin-top:14px;font-size:13.5px;color:var(--fg-dim)">${r.description || ""}</p>
+      </div>
+    `;
+  }).join("");
+  document.getElementById("deepDives").innerHTML = sections;
+}
+
+// ============================================================================
+// PROVIDER FILTER POPULATION
+// ============================================================================
+function populateProviderFilter() {
+  const sel = document.getElementById("providerFilter");
+  const provs = [...new Set(ROWS.map(r => r.provider))].sort();
+  provs.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    sel.appendChild(opt);
+  });
+}
+
+// ============================================================================
+// EVENTS
+// ============================================================================
+document.getElementById("search").addEventListener("input", renderTable);
+document.getElementById("maxPrompt").addEventListener("input", renderTable);
+document.getElementById("minCtx").addEventListener("input", renderTable);
+document.getElementById("providerFilter").addEventListener("change", renderTable);
+document.querySelectorAll("#quickFilters .chip").forEach(c => {
+  c.addEventListener("click", () => {
+    c.classList.toggle("active");
+    if (c.classList.contains("active")) activeQuickFilters.add(c.dataset.filter);
+    else activeQuickFilters.delete(c.dataset.filter);
+    renderTable();
+  });
+});
+document.querySelectorAll("th[data-sort]").forEach(th => {
+  th.addEventListener("click", () => {
+    if (sortKey === th.dataset.sort) sortAsc = !sortAsc;
+    else { sortKey = th.dataset.sort; sortAsc = th.dataset.sort === "name"; }
+    renderTable();
+  });
+});
+["calcIn", "calcOut", "calcCache", "calcCalls"].forEach(id =>
+  document.getElementById(id).addEventListener("input", renderCalculator)
+);
+
+populateProviderFilter();
+renderTable();
+buildPareto();
+buildHallucinationChart();
+buildCtxChart();
+renderCalculator();
+renderDeepDives();
+</script>
+</body>
+</html>

@@ -20,6 +20,11 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import { setupAggregates } from "./aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
+import { readBalance } from "../credits/balanceCounter";
 import { readAggregateCounters } from "./aggregates";
 import { readJobCounters } from "./jobCounters";
 
@@ -48,12 +53,11 @@ async function seedJobWithPapersAndQuestions(
       updatedAt: now,
       lastLoginAt: now,
     });
-    const creditsId = await ctx.db.insert("credits", {
+    const creditsId = await seedCreditsForTest(ctx, {
       userId,
-      freeBalance: 0,
-      paidBalance: opts.startingCredits ?? 10_000,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: 0,
+      paid: opts.startingCredits ?? 10_000,
+      now,
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
@@ -90,17 +94,17 @@ async function seedJobWithPapersAndQuestions(
   });
 }
 
-async function readBalance(
+async function readPaidBalance(
   t: ReturnType<typeof convexTest>,
   creditsId: Id<"credits">,
 ): Promise<number> {
-  const row = await t.run((ctx) => ctx.db.get("credits", creditsId));
-  return row!.paidBalance;
+  return (await t.run((ctx) => readBalance(ctx, creditsId))).paid;
 }
 
 describe("plan-02 per-question decomposition", () => {
   it("3 papers × 5 questions → 15 result rows, 15 debits, 3 paper-completes, 1 job-complete", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2", "q3", "q4", "q5"];
     const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
@@ -145,7 +149,7 @@ describe("plan-02 per-question decomposition", () => {
     expect(allResults.every((r) => r.attemptCount === 1)).toBe(true);
 
     // 15 debits × 2 credits = 30 debited.
-    expect(await readBalance(t, creditsId)).toBe(1000 - 30);
+    expect(await readPaidBalance(t, creditsId)).toBe(1000 - 30);
 
     // Each paper: completed + creditsUsed = 2 × 5 = 10.
     for (const paperId of paperIds) {
@@ -164,6 +168,7 @@ describe("plan-02 per-question decomposition", () => {
 
   it("finalizePaper with mix of completed + hard-failed questions → completed with failedQuestions", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2", "q3"];
     const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
@@ -220,11 +225,12 @@ describe("plan-02 per-question decomposition", () => {
     expect(jobCounters.failed).toBe(0);
 
     // Only the successful debits landed — 2 × 1 = 2.
-    expect(await readBalance(t, creditsId)).toBe(100 - 2);
+    expect(await readPaidBalance(t, creditsId)).toBe(100 - 2);
   });
 
   it("finalizePaper is a no-op while a question is still pending", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2"];
     const { paperIds } = await seedJobWithPapersAndQuestions(t, {
@@ -258,6 +264,7 @@ describe("plan-02 per-question decomposition", () => {
 
   it("finalizePaper completes after concurrent question completions land", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2"];
     const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
@@ -297,11 +304,12 @@ describe("plan-02 per-question decomposition", () => {
     expect(jobCounters.processed).toBe(1);
     expect(jobCounters.failed).toBe(0);
 
-    expect(await readBalance(t, creditsId)).toBe(25 - 6);
+    expect(await readPaidBalance(t, creditsId)).toBe(25 - 6);
   });
 
   it("recordOneAnswer is idempotent under workpool retry — one creditsUsed accumulation, one aggregate row, one debit at finalize", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
       t,
@@ -337,13 +345,13 @@ describe("plan-02 per-question decomposition", () => {
       internal.extraction.mutations.results.recordOneAnswer,
       args,
     );
-    expect(await readBalance(t, creditsId)).toBe(100);
+    expect(await readPaidBalance(t, creditsId)).toBe(100);
 
     // finalizePaper performs the single per-paper debit.
     await t.mutation(internal.extraction.mutations.results.finalizePaper, {
       paperId,
     });
-    expect(await readBalance(t, creditsId)).toBe(100 - 7);
+    expect(await readPaidBalance(t, creditsId)).toBe(100 - 7);
 
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.creditsUsed).toBe(7);
@@ -359,6 +367,7 @@ describe("plan-02 per-question decomposition", () => {
 
   it("recordOneAnswer skips stale-epoch persists and billing", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
       t,
@@ -393,11 +402,12 @@ describe("plan-02 per-question decomposition", () => {
         .collect(),
     );
     expect(rows).toEqual([]);
-    expect(await readBalance(t, creditsId)).toBe(100);
+    expect(await readPaidBalance(t, creditsId)).toBe(100);
   });
 
   it("retryable failure → subsequent success upgrades the same row without double-counting the aggregate", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(t, {
       paperCount: 1,
@@ -465,6 +475,7 @@ describe("plan-02 per-question decomposition", () => {
 
   it("all hard-failed questions → paper fails, failedPapers++", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2"];
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(t, {

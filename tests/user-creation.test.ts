@@ -1,24 +1,13 @@
+/// <reference types="vite/client" />
+import { convexTest } from "convex-test";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import schema from "../convex/schema";
 import { createUserWithDefaults } from "../convex/lib/userCreation";
 import { FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "../convex/lib/constants";
-import type { MutationCtx } from "../convex/_generated/server";
+import { setupTransactionAggregates } from "../convex/credits/aggregates.test-support";
+import { readBalance } from "../convex/credits/balanceCounter";
 
 const FIXED_TIME = new Date("2026-01-15T12:00:00Z").getTime();
-
-function createMockMutationCtx() {
-  const inserts: Array<{ table: string; doc: Record<string, unknown> }> = [];
-  return {
-    ctx: {
-      db: {
-        insert: vi.fn(async (table: string, doc: Record<string, unknown>) => {
-          inserts.push({ table, doc });
-          return `mock_${table}_id`;
-        }),
-      },
-    } as unknown as MutationCtx,
-    inserts,
-  };
-}
 
 describe("createUserWithDefaults", () => {
   beforeEach(() => {
@@ -30,131 +19,142 @@ describe("createUserWithDefaults", () => {
     vi.useRealTimers();
   });
 
-  it("makes exactly 3 db.insert calls (atomicity)", async () => {
-    const { ctx } = createMockMutationCtx();
+  it("creates user, credits row, signup grant txn, and subscription", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
 
-    await createUserWithDefaults(ctx, {
-      clerkId: "clerk_123",
-      email: "test@example.com",
+    const userId = await t.run(async (ctx) =>
+      createUserWithDefaults(ctx, {
+        clerkId: "clerk_123",
+        email: "test@example.com",
+      }),
+    );
+
+    await t.run(async (ctx) => {
+      const user = await ctx.db.get(userId);
+      expect(user).toMatchObject({
+        clerkId: "clerk_123",
+        email: "test@example.com",
+        state: "active",
+        createdAt: FIXED_TIME,
+        updatedAt: FIXED_TIME,
+        lastLoginAt: FIXED_TIME,
+      });
+
+      const credits = await ctx.db
+        .query("credits")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .unique();
+      expect(credits).not.toBeNull();
+      expect(credits).toMatchObject({ userId, createdAt: FIXED_TIME });
+
+      const txns = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_credits", (q) => q.eq("creditsId", credits!._id))
+        .collect();
+      expect(txns).toHaveLength(1);
+      expect(txns[0]).toMatchObject({
+        type: "grant",
+        creditType: "free",
+        amount: FREE_SIGNUP_CREDIT_GRANT,
+        createdAt: FIXED_TIME,
+      });
+
+      const subscription = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .unique();
+      expect(subscription).toMatchObject({
+        userId,
+        plan: "free",
+        status: "active",
+        creditsPerMonth: PLAN_CONFIG.free.creditsPerMonth,
+        seats: 1,
+        createdAt: FIXED_TIME,
+        updatedAt: FIXED_TIME,
+      });
     });
-
-    expect(ctx.db.insert).toHaveBeenCalledTimes(3);
   });
 
-  it("first insert is users table with state active", async () => {
-    const { ctx, inserts } = createMockMutationCtx();
+  it("seed grant pushes balanceFreeCounter to FREE_SIGNUP_CREDIT_GRANT", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
 
-    await createUserWithDefaults(ctx, {
-      clerkId: "clerk_123",
-      email: "test@example.com",
+    const userId = await t.run(async (ctx) =>
+      createUserWithDefaults(ctx, {
+        clerkId: "clerk_balance",
+        email: "balance@example.com",
+      }),
+    );
+
+    const balance = await t.run(async (ctx) => {
+      const credits = await ctx.db
+        .query("credits")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .unique();
+      return readBalance(ctx, credits!._id);
     });
 
-    expect(inserts[0].table).toBe("users");
-    expect(inserts[0].doc).toMatchObject({
-      clerkId: "clerk_123",
-      email: "test@example.com",
-      state: "active",
-    });
-    expect(inserts[0].doc.createdAt).toBe(FIXED_TIME);
-    expect(inserts[0].doc.updatedAt).toBe(FIXED_TIME);
-    expect(inserts[0].doc.lastLoginAt).toBe(FIXED_TIME);
-  });
-
-  it("second insert is credits table with correct freeBalance", async () => {
-    const { ctx, inserts } = createMockMutationCtx();
-
-    await createUserWithDefaults(ctx, {
-      clerkId: "clerk_123",
-      email: "test@example.com",
-    });
-
-    expect(inserts[1].table).toBe("credits");
-    expect(inserts[1].doc).toMatchObject({
-      userId: "mock_users_id",
-      freeBalance: FREE_SIGNUP_CREDIT_GRANT,
-      paidBalance: 0,
-      lifetimeUsed: 0,
-    });
-    expect(inserts[1].doc.lastUpdatedAt).toBe(FIXED_TIME);
-  });
-
-  it("third insert is subscriptions table with plan free and status active", async () => {
-    const { ctx, inserts } = createMockMutationCtx();
-
-    await createUserWithDefaults(ctx, {
-      clerkId: "clerk_123",
-      email: "test@example.com",
-    });
-
-    expect(inserts[2].table).toBe("subscriptions");
-    expect(inserts[2].doc).toMatchObject({
-      userId: "mock_users_id",
-      plan: "free",
-      status: "active",
-      creditsPerMonth: PLAN_CONFIG.free.creditsPerMonth,
-      seats: 1,
-    });
-    expect(inserts[2].doc.createdAt).toBe(FIXED_TIME);
-    expect(inserts[2].doc.updatedAt).toBe(FIXED_TIME);
+    expect(balance.free).toBe(FREE_SIGNUP_CREDIT_GRANT);
+    expect(balance.paid).toBe(0);
+    expect(balance.total).toBe(FREE_SIGNUP_CREDIT_GRANT);
   });
 
   it("returns the userId from the users insert", async () => {
-    const { ctx } = createMockMutationCtx();
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
 
-    const result = await createUserWithDefaults(ctx, {
-      clerkId: "clerk_123",
-      email: "test@example.com",
-    });
+    const userId = await t.run(async (ctx) =>
+      createUserWithDefaults(ctx, {
+        clerkId: "clerk_ret",
+        email: "ret@example.com",
+      }),
+    );
 
-    expect(result).toBe("mock_users_id");
+    expect(userId).toMatch(/^[a-z0-9]+$/);
   });
 
   it("passes optional profile fields to users table", async () => {
-    const { ctx, inserts } = createMockMutationCtx();
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
 
-    await createUserWithDefaults(ctx, {
-      clerkId: "clerk_123",
-      email: "test@example.com",
-      firstName: "Test",
-      lastName: "User",
-      avatarUrl: "https://example.com/avatar.jpg",
-    });
+    const userId = await t.run(async (ctx) =>
+      createUserWithDefaults(ctx, {
+        clerkId: "clerk_profile",
+        email: "profile@example.com",
+        firstName: "Test",
+        lastName: "User",
+        avatarUrl: "https://example.com/avatar.jpg",
+      }),
+    );
 
-    expect(inserts[0].doc).toMatchObject({
-      firstName: "Test",
-      lastName: "User",
-      avatarUrl: "https://example.com/avatar.jpg",
+    await t.run(async (ctx) => {
+      const user = await ctx.db.get(userId);
+      expect(user).toMatchObject({
+        firstName: "Test",
+        lastName: "User",
+        avatarUrl: "https://example.com/avatar.jpg",
+      });
     });
   });
 
   it("omits undefined optional fields from user insert", async () => {
-    const { ctx, inserts } = createMockMutationCtx();
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
 
-    await createUserWithDefaults(ctx, {
-      clerkId: "clerk_123",
-      email: "test@example.com",
+    const userId = await t.run(async (ctx) =>
+      createUserWithDefaults(ctx, {
+        clerkId: "clerk_noopt",
+        email: "noopt@example.com",
+      }),
+    );
+
+    await t.run(async (ctx) => {
+      const user = await ctx.db.get(userId);
+      expect(user).not.toBeNull();
+      expect("firstName" in (user as object)).toBe(false);
+      expect("lastName" in (user as object)).toBe(false);
+      expect("avatarUrl" in (user as object)).toBe(false);
     });
-
-    // The spread ...userData should not add firstName/lastName/avatarUrl keys
-    // when they are not provided in the input
-    expect(inserts[0].doc.clerkId).toBe("clerk_123");
-    expect(inserts[0].doc.email).toBe("test@example.com");
-    expect("firstName" in inserts[0].doc).toBe(false);
-    expect("lastName" in inserts[0].doc).toBe(false);
-    expect("avatarUrl" in inserts[0].doc).toBe(false);
-  });
-
-  it("credits freeBalance matches FREE_SIGNUP_CREDIT_GRANT constant", async () => {
-    const { ctx, inserts } = createMockMutationCtx();
-
-    await createUserWithDefaults(ctx, {
-      clerkId: "clerk_123",
-      email: "test@example.com",
-    });
-
-    // The free plan cap equals FREE_SIGNUP_CREDIT_GRANT (500),
-    // so applyTierFreeCreditCap({ plan: "free", currentFreeBalance: 0, amountToAdd: 500 })
-    // returns newFreeBalance = 500
-    expect(inserts[1].doc.freeBalance).toBe(FREE_SIGNUP_CREDIT_GRANT);
   });
 });

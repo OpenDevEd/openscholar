@@ -21,7 +21,7 @@ export const run = internalMutation({
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db
       .query("creditTransactions")
-      .paginate({ numItems: 500, cursor: cursor ?? null });
+      .paginate({ numItems: 50, cursor: cursor ?? null });
 
     for (const row of page.page) {
       await recordTransactionCounters(ctx, {
@@ -30,6 +30,7 @@ export const run = internalMutation({
         type: row.type,
         creditType: row.creditType,
         billingType: row.billingType,
+        amount: row.amount,
         createdAt: row.createdAt,
       });
     }

@@ -11,7 +11,6 @@ function row(overrides: Partial<TransactionViewModel> = {}): TransactionViewMode
     direction: "out",
     amount: 4,
     signedAmount: -4,
-    balanceAfter: 1_000,
     description: null,
     createdAt: 0,
     jobId: null,

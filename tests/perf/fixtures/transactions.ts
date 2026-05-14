@@ -84,7 +84,6 @@ export function generateFixture(n: number): Doc<"creditTransactions">[] {
       type,
       creditType: rand() < 0.6 ? "paid" : "free",
       amount,
-      balanceAfter: Math.max(0, 100_000 - i * 10),
       description: DESCRIPTIONS[Math.floor(rand() * DESCRIPTIONS.length)],
       billingType,
       metadata: {

@@ -131,20 +131,17 @@ export const releaseThreadLock = internalMutation({
 /**
  * 5-minute cron entry point. Iterates every chat row with a stale lock
  * and clears it. `isGenerating` rows with fresh timestamps stay
- * untouched; unlocked rows are skipped by the index filter.
+ * untouched; non-chat rows are excluded by the `by_mode` index gate.
  */
 export const cleanupZombieChatLocks = internalMutation({
   args: {},
   returns: v.object({ cleared: v.number() }),
   handler: async (ctx) => {
     const cutoff = Date.now() - STALE_LOCK_MS;
-    // No index on `isGenerating` alone; this sweep runs once every 5
-    // minutes and chat rows are small relative to the full table, so a
-    // table-wide scan is acceptable. Promote to a counter only if it
-    // gets hot.
     let cleared = 0;
-    for await (const row of ctx.db.query("extractionJobs")) {
-      if (row.mode !== "chat") continue;
+    for await (const row of ctx.db
+      .query("extractionJobs")
+      .withIndex("by_mode", (q) => q.eq("mode", "chat"))) {
       if (!row.isGenerating) continue;
       if ((row.generatingStartedAt ?? 0) >= cutoff) continue;
       await ctx.db.patch(row._id, {

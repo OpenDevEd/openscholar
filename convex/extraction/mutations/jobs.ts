@@ -27,6 +27,7 @@ import { requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { PAPER_LIMIT_MAX, assertBucketWithinLimits } from "../bucket/limits";
+import { readBalance } from "../../credits/balanceCounter";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
@@ -128,8 +129,9 @@ export const startJob = mutation({
           .query("credits")
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .unique();
-        const totalAvailable =
-          (credits?.freeBalance ?? 0) + (credits?.paidBalance ?? 0);
+        const totalAvailable = credits
+          ? (await readBalance(ctx, credits._id)).total
+          : 0;
         if (totalAvailable < estimate.high) {
           throw createError(
             "INSUFFICIENT_CREDITS",
@@ -487,6 +489,16 @@ export const cancelExtraction = mutation({
         console.warn(`[cancelExtraction] Failed to cancel workflow: ${e}`);
       }
     }
+
+    // Tier D: release any HELD paper reservations so the wallet
+    // recovers the cancelled-but-pre-billed credits. Scheduled async so
+    // this user-mutation's tx doesn't grow O(P).
+    await ctx.scheduler.runAfter(
+      0,
+      internal.extraction.mutations.internal.lifecycle
+        .releaseUnsettledPaperReservationsForJob,
+      { jobId: args.jobId },
+    );
 
     // Plan-02 removed the workpool-driven per-paper pipeline — the
     // workflow handler now owns every paper via step.runAction. The

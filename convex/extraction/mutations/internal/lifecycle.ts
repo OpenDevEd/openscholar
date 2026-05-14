@@ -6,6 +6,11 @@
  *   - createJobDirect / createQuestionDirect: test-and-workflow job/question
  *     record creation used by fixtures and the workflow step.
  *   - setJobWorkflowId: patch the workflow handle after workflow.start().
+ *   - releaseUnsettledPaperReservationsForJob: Tier D sweep that releases
+ *     every paper-level credit reservation that survived a terminal job
+ *     transition (cancel, fail, complete-with-orphans, delete). Scheduled
+ *     async from `maybeFinalizeJob` and `cancelExtraction` so the user
+ *     mutation itself doesn't pay an O(P) tx cost.
  *
  * Plan-02 retires the per-paper workpool enqueue helper that used to
  * live here — the workflow handler now calls downloadAndIndexPdfAction
@@ -14,6 +19,7 @@
 
 import { internalMutation } from "../../../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../../../_generated/api";
 import { writeJobSources } from "../../jobSources";
 import {
   assertValidJobTransition,
@@ -25,6 +31,8 @@ import {
   sourceTypeValidator,
 } from "../../validators";
 import { readJobCounters } from "../../jobCounters";
+import { releaseReservationTransaction } from "../../../credits/reservation";
+import { PAPER_LIMIT_MAX } from "../../bucket/limits";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -69,6 +77,15 @@ export const maybeFinalizeJob = internalMutation({
         completedAt: now,
         updatedAt: now,
       });
+      // Tier D: release any reservations that survived the immediate-fail
+      // path. With total === 0 the fan-out couldn't have run, but resume
+      // / retry paths could have left reservations here in theory.
+      await ctx.scheduler.runAfter(
+        0,
+        internal.extraction.mutations.internal.lifecycle
+          .releaseUnsettledPaperReservationsForJob,
+        { jobId: args.jobId },
+      );
       return null;
     }
 
@@ -90,7 +107,60 @@ export const maybeFinalizeJob = internalMutation({
       completedAt: now,
       updatedAt: now,
     });
+    // Tier D: release any paper reservations that didn't settle on the
+    // happy path. With `status === "completed"` every paper that landed
+    // a terminal status went through `finalizePaper`, which settled and
+    // cleared `reservationId` — so this is usually a no-op. The sweep
+    // exists for `status === "failed"` (no per-paper settle ran) and for
+    // edge cases where a paper terminalized via `markPaperTerminalTx`
+    // without going through finalizePaper's settle branch.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.extraction.mutations.internal.lifecycle
+        .releaseUnsettledPaperReservationsForJob,
+      { jobId: args.jobId },
+    );
     return null;
+  },
+});
+
+/**
+ * Tier D — sweep paper-level reservations that survived a terminal job
+ * transition. Scheduled async from `maybeFinalizeJob` and
+ * `cancelExtraction` so the user-facing mutation doesn't pay the O(P)
+ * scan + release cost in its own tx.
+ *
+ * Idempotent: `releaseReservationTransaction` probes for an existing
+ * `reservation_release` before inserting an offset, so re-running this
+ * mutation (cron retry, replay) is a no-op. The paper-row clear is
+ * unconditional but writing the same `reservationId: undefined` twice
+ * is a no-op.
+ *
+ * Batched implicitly: PAPER_LIMIT_MAX is 1000 and most jobs are far
+ * below it; if Convex's per-mutation write budget ever pushes back we
+ * can split into a self-scheduling resume pattern, but that's premature.
+ */
+export const releaseUnsettledPaperReservationsForJob = internalMutation({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.object({ released: v.number() }),
+  handler: async (ctx, args): Promise<{ released: number }> => {
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(PAPER_LIMIT_MAX);
+
+    let released = 0;
+    for (const paper of papers) {
+      if (paper.reservationId === undefined) continue;
+      await releaseReservationTransaction(ctx, {
+        reservationId: paper.reservationId,
+        description: "Reservation released (job terminal)",
+      });
+      await ctx.db.patch(paper._id, { reservationId: undefined });
+      released++;
+    }
+
+    return { released };
   },
 });
 

@@ -9,8 +9,14 @@
  * conflicted on that single row — Convex OCC re-ran the loser, the
  * workpool blew through its retry budget, and the bottleneck capped the
  * workpool's effective parallelism. Routing the increments through a
- * 16-shard counter eliminates the write-write contention: two writers
+ * 64-shard counter eliminates the write-write contention: two writers
  * almost always hit different shards.
+ *
+ * Tier E.2: shard count was bumped from the library default (16) to 64
+ * after telemetry showed birthday-collision contention on the counter
+ * rows under 50-way paper fan-out — `~p(collision) ≈ k² / (2·N)` puts
+ * 50-way writers at ~78% collision risk on 16 shards versus ~18% on
+ * 64. Reads still scan all shards (cheap), so the trade is favourable.
  *
  * Reads:
  *
@@ -55,9 +61,11 @@ type RunQueryCtx = { runQuery: GenericQueryCtx<never>["runQuery"] };
 
 const jobProcessedCounter = new ShardedCounter<Id<"extractionJobs">>(
   components.extractionProcessedCounter,
+  { defaultShards: 64 },
 );
 const jobFailedCounter = new ShardedCounter<Id<"extractionJobs">>(
   components.extractionFailedCounter,
+  { defaultShards: 64 },
 );
 
 export async function incPaperOutcome(

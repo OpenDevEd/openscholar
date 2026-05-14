@@ -4,6 +4,17 @@ import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
+
+const _registeredTxnAggHandles = new WeakSet<object>();
+function ensureTransactionAggregates(t: ReturnType<typeof convexTest>) {
+  if (_registeredTxnAggHandles.has(t)) return;
+  setupTransactionAggregates(t);
+  _registeredTxnAggHandles.add(t);
+}
 
 // Helper: create a user directly in the mock DB
 async function seedUser(
@@ -59,13 +70,13 @@ async function seedCredits(
   freeBalance: number,
   paidBalance: number
 ) {
+  ensureTransactionAggregates(t);
   return await t.run(async (ctx) => {
-    const id = await ctx.db.insert("credits", {
+    const id = await seedCreditsForTest(ctx, {
       userId,
-      freeBalance,
-      paidBalance,
-      lifetimeUsed: 0,
-      lastUpdatedAt: Date.now(),
+      free: freeBalance,
+      paid: paidBalance,
+      now: Date.now(),
     });
     return (await ctx.db.get("credits", id))!;
   });

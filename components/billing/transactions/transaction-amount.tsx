@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter } from "next-intl";
 import type { TransactionViewModel } from "@/lib/billing/transactions/transaction-view-model";
 import { cn } from "@/lib/utils";
 
@@ -11,21 +11,12 @@ interface Props {
   amount: TransactionViewModel["amount"];
   status: TransactionAmountStatus;
   density: "compact" | "comfortable" | "spacious";
-  balanceAfter?: number;
 }
 
-export function TransactionAmount({
-  direction,
-  amount,
-  status,
-  density,
-  balanceAfter,
-}: Props) {
+export function TransactionAmount({ direction, amount, status }: Props) {
   const format = useFormatter();
-  const t = useTranslations("billingPage.transactions");
   const sign = direction === "in" ? "+" : "−";
   const isFailure = status === "failed" || status === "expired";
-  const showBalance = density !== "compact" && balanceAfter !== undefined;
 
   return (
     <div
@@ -46,14 +37,6 @@ export function TransactionAmount({
         {sign}
         {format.number(amount)}
       </span>
-      {showBalance && (
-        <span
-          className="text-[10.5px] tabular-nums text-muted-foreground/80"
-          data-txn-balance=""
-        >
-          {t("amount.balance", { balance: format.number(balanceAfter!) })}
-        </span>
-      )}
     </div>
   );
 }

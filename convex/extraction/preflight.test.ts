@@ -4,6 +4,10 @@ import { describe, it, expect } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
 
 /**
  * Plan-03 preflight credit check on startJob. Mirrors screening's preflight
@@ -60,12 +64,11 @@ async function seedUserFlagsAndCredits(
       minimumTier: 0,
       updatedAt: now,
     });
-    await ctx.db.insert("credits", {
+    await seedCreditsForTest(ctx, {
       userId,
-      freeBalance: opts.free ?? 0,
-      paidBalance: opts.paid,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: opts.free ?? 0,
+      paid: opts.paid,
+      now,
     });
     return { userId };
   });
@@ -74,6 +77,7 @@ async function seedUserFlagsAndCredits(
 describe("startJob — pre-flight credit check", () => {
   it("throws INSUFFICIENT_CREDITS when totalAvailable < estimate.high; no job is inserted", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId } = await seedUserFlagsAndCredits(t, { paid: 3 }); // way below new HIGH=5
     const auth = t.withIdentity(IDENTITY);
 
@@ -106,6 +110,7 @@ describe("startJob — pre-flight credit check", () => {
     // mutation advanced past every pre-workflow step — including the
     // preflight gate and the extractionJobs insert.
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     await seedUserFlagsAndCredits(t, { paid: 100_000 });
     const auth = t.withIdentity(IDENTITY);
 
@@ -125,6 +130,7 @@ describe("startJob — pre-flight credit check", () => {
 
   it("counts saved-search history placeholders by expanded paper count, not row count", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     // 200 papers × 1 Q × ABSTRACT_Q_CREDIT_HIGH=5 = 1000 estimate. Seed
     // below that so the expanded count drives a real preflight block;
     // if the placeholder were counted as 1 row the estimate would be 5
@@ -147,6 +153,7 @@ describe("startJob — pre-flight credit check", () => {
 
   it("skips preflight when mode=chat (chat jobs don't consume LLM credits up-front)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId: _userId } = await seedUserFlagsAndCredits(t, { paid: 0 });
 
     // Enable the chat flag.
@@ -173,6 +180,7 @@ describe("startJob — pre-flight credit check", () => {
 
   it("zero questions short-circuits the preflight (estimator returns zero; insufficient balance still allowed)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     await seedUserFlagsAndCredits(t, { paid: 0 });
     const auth = t.withIdentity(IDENTITY);
 
@@ -193,6 +201,7 @@ describe("startJob — pre-flight credit check", () => {
     // usePdfs=false, proving the estimator branch is exercised through
     // the mutation.
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     // Give just enough credits for the 1-paper / 2-question abstract-tier
     // estimate (= 10 under current constants: 2 × ABSTRACT_Q_CREDIT_HIGH=5)
     // but not enough for the PDF-tier estimate (= 101.5 under current

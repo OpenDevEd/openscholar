@@ -4,7 +4,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import schema from "../schema";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { setupTransactionAggregates } from "../credits/aggregates.test-support";
+import { setupTransactionAggregates, seedCreditsForTest } from "../credits/aggregates.test-support";
 
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
@@ -21,13 +21,7 @@ async function seedChatBillingState(
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 10_000,
-      paidBalance: 0,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
+    await seedCreditsForTest(ctx, { userId, free: 10_000, now });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       mode: "chat",
@@ -105,7 +99,7 @@ describe("chat generation reconciliation", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBeGreaterThan(0);
+    expect(balance?.total).toBeLessThan(10_000);
 
     await t.run(async (ctx) => {
       const ledger = await ctx.db
@@ -144,7 +138,7 @@ describe("chat generation reconciliation", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBeGreaterThan(0);
+    expect(balance?.total).toBeLessThan(10_000);
 
     await t.run(async (ctx) => {
       const txs = await ctx.db
@@ -187,8 +181,8 @@ describe("chat generation reconciliation", () => {
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
 
-    expect(firstBalance?.lifetimeUsed).toBeGreaterThan(0);
-    expect(secondBalance?.lifetimeUsed).toBe(firstBalance?.lifetimeUsed);
+    expect(firstBalance?.total).toBeLessThan(10_000);
+    expect(secondBalance?.total).toBe(firstBalance?.total);
 
     await t.run(async (ctx) => {
       const ledger = await ctx.db
@@ -245,7 +239,7 @@ describe("chat generation reconciliation", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBeGreaterThan(0);
+    expect(balance?.total).toBeLessThan(10_000);
 
     await t.run(async (ctx) => {
       const ledger = await ctx.db
@@ -319,7 +313,7 @@ describe("billGenerationFromSdkUsage cost-source switch", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBe(650);
+    expect(balance?.total).toBe(10_000 - 650);
   });
 
   it("falls back to the token-based calc when totalCostUsd is omitted", async () => {
@@ -413,7 +407,7 @@ describe("billGenerationFromSdkUsage cost-source switch", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBe(0);
+    expect(balance?.total).toBe(10_000);
   });
 
   it("bills only once when called twice with the same generationId and totalCostUsd", async () => {
@@ -464,7 +458,7 @@ describe("billGenerationFromSdkUsage cost-source switch", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBe(650);
+    expect(balance?.total).toBe(10_000 - 650);
   });
 });
 
@@ -510,7 +504,7 @@ describe("billThreadUsageFromSdk cost-source switch", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBe(650);
+    expect(balance?.total).toBe(10_000 - 650);
   });
 
   it("falls back to token math when totalCostUsd is omitted", async () => {

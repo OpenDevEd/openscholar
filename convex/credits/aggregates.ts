@@ -1,6 +1,5 @@
 /**
- * @convex-dev/aggregate wiring for per-user transaction facet counts
- * (plans/billing-transactions-perf/01).
+ * @convex-dev/aggregate wiring for per-user transaction facet counts.
  *
  * Three DirectAggregate instances back the filter-dropdown count badges in
  * `components/billing/transactions/transactions-panel-toolbar.tsx`. Each is
@@ -27,6 +26,20 @@
  * the user's transactions within the window, which is fine because the
  * window is user-scoped and bounded.
  *
+ * Balance reads are NOT here — they live in `./balanceCounter.ts`
+ * (`readBalance`, `addBalanceDelta`, `clearBalanceCounters`), backed by
+ * two `@convex-dev/sharded-counter` instances. The previous Tier D
+ * `balanceAgg` DirectAggregate read the lazy-root B+ tree on every
+ * `getBalance`, blowing the 16 MB / mutation budget on fat ledgers; the
+ * counters are O(shards) regardless of ledger depth.
+ *
+ * Reservation rows (`type ∈ {reservation, reservation_release}`) are
+ * INTERNAL accounting primitives — they DO participate in the balance
+ * counters (they hold credits against an in-flight estimate) but they are
+ * skipped by the three user-visible facet aggregates so the billing
+ * transactions panel never surfaces a transient hold as a settled
+ * transaction.
+ *
  * Writes are insert-only — the production `creditTransactions` table is
  * append-only — so the `forget*` helpers exist for symmetry with
  * `convex/extraction/aggregates.ts` but are only used by the cascade-clear
@@ -35,14 +48,18 @@
  * Usage boundary: every `ctx.db.insert("creditTransactions", ...)` site in
  * `convex/credits/internal.ts` calls `recordTransactionCounters` with the
  * just-inserted row's minimal shape. The query side calls
- * `readTransactionFacetCounts`, which is wrapped by the public query
- * `api.credits.queries.getTransactionFacetCounts`.
+ * `readTransactionFacetCounts` (facet UI) or `readBalance` (balance reads,
+ * from `balanceCounter.ts`).
  */
 
 import { DirectAggregate } from "@convex-dev/aggregate";
 import { components } from "../_generated/api";
 import type { GenericMutationCtx, GenericQueryCtx } from "convex/server";
 import type { DataModel, Id } from "../_generated/dataModel";
+import {
+  addBalanceDelta,
+  clearBalanceCounters,
+} from "./balanceCounter";
 
 type RunMutationCtx = { runMutation: GenericMutationCtx<never>["runMutation"] };
 type RunQueryCtx = { runQuery: GenericQueryCtx<never>["runQuery"] };
@@ -74,12 +91,24 @@ function hashTxId(id: string): number {
   return h >>> 0;
 }
 
+// User-visible transaction types — the 5 that surface in the billing
+// panel filter dropdown. Reservation primitives are internal accounting
+// (see `LedgerType` below) and are deliberately excluded so users never
+// see a transient hold as a settled transaction.
 export type TransactionType =
   | "purchase"
   | "usage"
   | "grant"
   | "refund"
   | "expiry";
+
+// Every type that can appear in `creditTransactions.type`. The superset
+// of `TransactionType` plus the two reservation primitives. Used by the
+// balance counters (which see ALL rows including reservations) and the
+// discriminator in `recordTransactionCounters` to decide which facet
+// aggregates a row participates in.
+export type LedgerType = TransactionType | "reservation" | "reservation_release";
+
 export type CreditType = "free" | "paid";
 export type BillingType =
   | "extraction_llm"
@@ -108,6 +137,14 @@ export const BILLING_TYPES: readonly BillingType[] = [
   "wallet_api",
 ];
 
+const USER_VISIBLE_TYPES: ReadonlySet<LedgerType> = new Set<LedgerType>([
+  "purchase",
+  "usage",
+  "grant",
+  "refund",
+  "expiry",
+]);
+
 export const txnTypeAgg = new DirectAggregate<{
   Namespace: Id<"credits">;
   Key: [TransactionType, number];
@@ -130,34 +167,68 @@ export const txnBillingTypeAgg = new DirectAggregate<{
  * Minimal shape the aggregate helpers need — structurally compatible with
  * `Doc<"creditTransactions">` so call sites can pass either a just-
  * inserted synthetic row or a real doc from the backfill iterator.
+ *
+ * `amount` is the SIGNED ledger summand (positive for grants / purchases /
+ * refund-in / reservation_release, negative for usage / refund-out /
+ * reservation). It feeds the sharded-counter delta so balance reads
+ * (`readBalance` in `./balanceCounter.ts`) reflect every ledger entry —
+ * including the reservation primitives.
  */
 export type TransactionForAggregate = {
   _id: Id<"creditTransactions">;
   creditsId: Id<"credits">;
-  type: TransactionType;
+  type: LedgerType;
   creditType: CreditType;
   billingType?: BillingType;
+  amount: number;
   createdAt: number;
 };
 
 /**
- * Record one creditTransaction into all applicable aggregates. Uses
- * `insertIfDoesNotExist` so a mutation retry (OCC) or a backfill pass over
- * an already-recorded row is a no-op — the key's second slot is
- * `hashTxId(_id)`, which is deterministic per row, so the (key, id)
- * position matches on replay.
+ * Record one creditTransaction into the user-visible facet aggregates and
+ * apply the signed amount to the balance counter. Uses
+ * `insertIfDoesNotExist` so a mutation retry (OCC) or a backfill pass
+ * over an already-recorded row is a no-op for the aggregates — the key's
+ * second slot is `hashTxId(_id)`, deterministic per row.
+ *
+ * Note: ShardedCounter's `.add()` is NOT idempotent — a retried mutation
+ * that re-runs this helper for the SAME `_id` would double-count. Convex
+ * OCC retries re-run the whole mutation transaction (so the underlying
+ * `ctx.db.insert("creditTransactions", ...)` would itself produce a new
+ * `_id`), and the donor caller pattern is "insert-then-record" inside
+ * one mutation, so retries roll back together.
  *
  * Call AFTER `ctx.db.insert` succeeds so `_id` is final.
+ *
+ * Reservation primitives (`reservation`, `reservation_release`) DO
+ * participate in the balance counter — they're real signed ledger entries
+ * — but skip the three user-visible facet aggregates so the billing panel
+ * never surfaces a transient hold as a settled transaction.
  */
 export async function recordTransactionCounters(
   ctx: RunMutationCtx,
   tx: TransactionForAggregate,
 ): Promise<void> {
   const tieBreaker = hashTxId(tx._id);
+
+  const balancePromise = addBalanceDelta(
+    ctx,
+    tx.creditsId,
+    tx.creditType,
+    tx.amount,
+  );
+
+  if (!USER_VISIBLE_TYPES.has(tx.type)) {
+    await balancePromise;
+    return;
+  }
+  const userVisibleType = tx.type as TransactionType;
+
   await Promise.all([
+    balancePromise,
     txnTypeAgg.insertIfDoesNotExist(ctx, {
       namespace: tx.creditsId,
-      key: [tx.type, tieBreaker],
+      key: [userVisibleType, tieBreaker],
       id: tx._id,
     }),
     txnCreditPoolAgg.insertIfDoesNotExist(ctx, {
@@ -176,20 +247,37 @@ export async function recordTransactionCounters(
 }
 
 /**
- * Reverse `recordTransactionCounters`. `deleteIfExists` tolerates drift —
- * the caller must not throw if the row is absent from an aggregate.
- * Unused on the production path (ledger is insert-only) but provided for
- * symmetry and for dev/admin cascade-delete paths.
+ * Reverse `recordTransactionCounters`. `deleteIfExists` tolerates drift
+ * for the facet aggregates. The balance-counter side applies an
+ * equal-and-opposite delta — the counter has no per-row state to "miss",
+ * so this is symmetric with the insert side. Unused on the production
+ * path (ledger is insert-only) but provided for symmetry and for
+ * dev/admin cascade-delete paths.
  */
 export async function forgetTransactionCounters(
   ctx: RunMutationCtx,
   tx: TransactionForAggregate,
 ): Promise<void> {
   const tieBreaker = hashTxId(tx._id);
+
+  const balancePromise = addBalanceDelta(
+    ctx,
+    tx.creditsId,
+    tx.creditType,
+    -tx.amount,
+  );
+
+  if (!USER_VISIBLE_TYPES.has(tx.type)) {
+    await balancePromise;
+    return;
+  }
+  const userVisibleType = tx.type as TransactionType;
+
   await Promise.all([
+    balancePromise,
     txnTypeAgg.deleteIfExists(ctx, {
       namespace: tx.creditsId,
-      key: [tx.type, tieBreaker],
+      key: [userVisibleType, tieBreaker],
       id: tx._id,
     }),
     txnCreditPoolAgg.deleteIfExists(ctx, {
@@ -208,8 +296,9 @@ export async function forgetTransactionCounters(
 }
 
 /**
- * Wipe every entry in all three aggregates for a user. Production
- * creditTransactions is insert-only, so this is dev/admin tooling only.
+ * Wipe every facet entry and zero both balance counters for a user.
+ * Production creditTransactions is insert-only, so this is dev/admin
+ * tooling only.
  */
 export async function clearUserTransactionCounters(
   ctx: RunMutationCtx,
@@ -219,6 +308,7 @@ export async function clearUserTransactionCounters(
     txnTypeAgg.clear(ctx, { namespace: creditsId }),
     txnCreditPoolAgg.clear(ctx, { namespace: creditsId }),
     txnBillingTypeAgg.clear(ctx, { namespace: creditsId }),
+    clearBalanceCounters(ctx, creditsId),
   ]);
 }
 

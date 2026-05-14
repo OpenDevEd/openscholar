@@ -61,7 +61,6 @@ function makeRow(i: number): TransactionViewModel {
     direction,
     amount: 100 + i * 37,
     signedAmount: direction === "in" ? 100 + i * 37 : -(100 + i * 37),
-    balanceAfter: 10_000 - i * 100,
     description: `Row ${i}`,
     createdAt: Date.UTC(2026, 3, 1 + i, 10),
     jobId: type === "usage" ? `job-${i}` : null,

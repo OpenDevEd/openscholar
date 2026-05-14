@@ -19,7 +19,6 @@ function row(
     direction: partial.direction ?? "in",
     amount: partial.amount ?? 100,
     signedAmount: partial.signedAmount ?? 100,
-    balanceAfter: partial.balanceAfter ?? 1000,
     description: partial.description ?? null,
     createdAt: partial.createdAt ?? 0,
     jobId: partial.jobId ?? null,
@@ -133,7 +132,7 @@ describe("escapeCsvField", () => {
 });
 
 describe("CSV_COLUMNS", () => {
-  it("contains 16 columns in the documented order", () => {
+  it("contains 15 columns in the documented order", () => {
     expect(CSV_COLUMNS).toEqual([
       "id",
       "createdAt",
@@ -143,7 +142,6 @@ describe("CSV_COLUMNS", () => {
       "billingType",
       "description",
       "signedAmount",
-      "balanceAfter",
       "stripeInvoiceId",
       "stripePaymentIntentId",
       "stripeChargeId",
@@ -160,7 +158,7 @@ describe("CSV_COLUMNS", () => {
 });
 
 describe("toCsvRow", () => {
-  it("renders all 16 fields in column order", () => {
+  it("renders all 15 fields in column order", () => {
     const createdAt = Date.UTC(2026, 3, 20, 9, 30, 0);
     const r = row({
       id: "tx-1",
@@ -171,7 +169,6 @@ describe("toCsvRow", () => {
       billingType: null,
       description: "Top-up",
       signedAmount: 1000,
-      balanceAfter: 1500,
       stripeInvoiceId: "in_abc",
       stripePaymentIntentId: "pi_xyz",
       stripeChargeId: null,
@@ -190,7 +187,6 @@ describe("toCsvRow", () => {
         "",
         "Top-up",
         "1000",
-        "1500",
         "in_abc",
         "pi_xyz",
         "",
@@ -261,6 +257,6 @@ describe("toCsv", () => {
     expect(parsed[1][7]).toBe("-42");
     expect(parsed[2][0]).toBe("r2");
     expect(parsed[2][6]).toBe("");
-    expect(parsed[2][9]).toBe("in_123");
+    expect(parsed[2][8]).toBe("in_123");
   });
 });

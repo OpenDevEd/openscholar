@@ -110,11 +110,6 @@ export function TransactionDetailDrawer({ row, onOpenChange }: Props) {
                   {row.direction === "in" ? "+" : "−"}
                   {format.number(row.amount)}
                 </span>
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {t("balanceAfter", {
-                    balance: format.number(row.balanceAfter),
-                  })}
-                </span>
               </div>
 
               <div

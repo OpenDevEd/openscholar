@@ -5,13 +5,18 @@ import { filter } from "convex-helpers/server/filter";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { getCurrentUser } from "../lib/auth";
-import { creditBalanceValidator, creditTransactionValidator } from "../lib/validators";
+import {
+  billingTypeValidator,
+  creditBalanceValidator,
+  creditTransactionValidator,
+} from "../lib/validators";
 import { components } from "../_generated/api";
 import { getCreditTopupCatalog, getCreditsPerUsd } from "../lib/creditTopups";
 import { getFlag } from "../featureFlags/guard";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { readTransactionFacetCounts } from "./aggregates";
+import { readBalance } from "./balanceCounter";
 
 
 export const TRACKED_GRANT_EVENT_TYPES = [
@@ -50,11 +55,7 @@ export const getMyBalance = query({
       return { free: 0, paid: 0, total: 0 };
     }
 
-    return {
-      free: credits.freeBalance,
-      paid: credits.paidBalance,
-      total: credits.freeBalance + credits.paidBalance,
-    };
+    return await readBalance(ctx, credits._id);
   },
 });
 
@@ -127,9 +128,9 @@ export const checkBalance = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
 
-    const free = credits?.freeBalance ?? 0;
-    const paid = credits?.paidBalance ?? 0;
-    const total = free + paid;
+    const { free, paid, total } = credits
+      ? await readBalance(ctx, credits._id)
+      : { free: 0, paid: 0, total: 0 };
 
     return {
       hasEnough: total >= args.requiredAmount,
@@ -304,6 +305,11 @@ export const getLatestGrantStatus = query({
   },
 });
 
+/**
+ * Filter validator for the user-visible transactions panel. Deliberately
+ * excludes the `reservation` / `reservation_release` types — those never
+ * surface in the UI; they only feed the balance sharded counters.
+ */
 const transactionTypeValidator = v.union(
   v.literal("purchase"),
   v.literal("usage"),
@@ -313,16 +319,6 @@ const transactionTypeValidator = v.union(
 );
 
 const creditTypeValidator = v.union(v.literal("free"), v.literal("paid"));
-
-const billingTypeValidator = v.union(
-  v.literal("extraction_llm"),
-  v.literal("embedding"),
-  v.literal("screening"),
-  v.literal("chat"),
-  v.literal("search"),
-  v.literal("translation"),
-  v.literal("wallet_api"),
-);
 
 /**
  * Paginated ledger for the signed-in user. Split from `getTransactions`
@@ -380,6 +376,11 @@ export const listTransactionsPaginated = query({
 
     const matchesAllFilters = (row: Doc<"creditTransactions">): boolean => {
       if (row.creditsId !== creditsId) return false;
+      // Reservation primitives feed the balance sharded counters only —
+      // they must never surface in the user-visible transactions panel.
+      if (row.type === "reservation" || row.type === "reservation_release") {
+        return false;
+      }
       if (types && types.length > 0 && !types.includes(row.type)) return false;
       if (creditPools && creditPools.length > 0 && !creditPools.includes(row.creditType)) return false;
       if (billingTypes && billingTypes.length > 0) {
@@ -536,6 +537,11 @@ export const listTransactionsPaginatedRaw = query({
 
     const matchesAllFilters = (row: Doc<"creditTransactions">): boolean => {
       if (row.creditsId !== creditsId) return false;
+      // Reservation primitives feed the balance sharded counters only —
+      // they must never surface in the user-visible transactions panel.
+      if (row.type === "reservation" || row.type === "reservation_release") {
+        return false;
+      }
       if (types && types.length > 0 && !types.includes(row.type)) return false;
       if (creditPools && creditPools.length > 0 && !creditPools.includes(row.creditType)) return false;
       if (billingTypes && billingTypes.length > 0) {

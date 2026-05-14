@@ -294,7 +294,6 @@ export async function withAuthAndCreditsBatch<T extends BatchShapedResult>(
       creditsDeducted: totalCreditsDeducted,
       creditsRawCost: totalRawCost,
       creditsRemaining: Math.max(0, balance!.total - totalCreditsDeducted),
-      lifetimeCreditsUsed: balance!.lifetimeUsed + totalCreditsDeducted,
     };
 
     // Per-item tracking when entries provided; single aggregated event otherwise
@@ -423,7 +422,6 @@ export async function withUserCreditsBatch<T>(
       creditsDeducted: deducted,
       creditsRawCost: calculateServerRawCreditCost(totalUsage, pricing),
       creditsRemaining: Math.max(0, balance!.total - deducted),
-      lifetimeCreditsUsed: balance!.lifetimeUsed + deducted,
     };
 
     // Per-item tracking when entries provided; single aggregated event otherwise
@@ -475,7 +473,6 @@ export type CreditContext = {
   creditsDeducted: number;
   creditsRawCost: number;
   creditsRemaining: number;
-  lifetimeCreditsUsed: number;
 };
 
 /**
@@ -537,7 +534,6 @@ export async function withAuthAndCredits<T>(
         creditsDeducted: deducted,
         creditsRawCost: calculateServerRawCreditCost(usage, pricing),
         creditsRemaining: Math.max(0, balance!.total - deducted),
-        lifetimeCreditsUsed: balance!.lifetimeUsed + deducted,
       };
     };
 

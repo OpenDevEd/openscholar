@@ -6,6 +6,7 @@ import {
 } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id, TableNames } from "../_generated/dataModel";
+import { readBalance } from "../credits/balanceCounter";
 
 export type BillingStripeObjectIdCollections = {
   stripeCustomerIds: string[];
@@ -126,10 +127,9 @@ export const getBillingSnapshotForUser = internalQuery({
     }),
     credits: v.array(v.object({
       _id: v.id("credits"),
-      freeBalance: v.number(),
-      paidBalance: v.number(),
-      lifetimeUsed: v.number(),
-      lastUpdatedAt: v.number(),
+      free: v.number(),
+      paid: v.number(),
+      total: v.number(),
     })),
     subscriptions: v.array(v.object({
       _id: v.id("subscriptions"),
@@ -153,7 +153,6 @@ export const getBillingSnapshotForUser = internalQuery({
       type: v.string(),
       creditType: v.string(),
       amount: v.number(),
-      balanceAfter: v.number(),
       description: v.optional(v.string()),
       stripeInvoiceId: v.optional(v.string()),
       stripePaymentIntentId: v.optional(v.string()),
@@ -237,13 +236,17 @@ export const getBillingSnapshotForUser = internalQuery({
           }
         : null,
       objectIds,
-      credits: creditsRows.map((row) => ({
-        _id: row._id,
-        freeBalance: row.freeBalance,
-        paidBalance: row.paidBalance,
-        lifetimeUsed: row.lifetimeUsed,
-        lastUpdatedAt: row.lastUpdatedAt,
-      })),
+      credits: await Promise.all(
+        creditsRows.map(async (row) => {
+          const balance = await readBalance(ctx, row._id);
+          return {
+            _id: row._id,
+            free: balance.free,
+            paid: balance.paid,
+            total: balance.total,
+          };
+        }),
+      ),
       subscriptions: subscriptions
         .map((row) => ({
           _id: row._id,
@@ -271,7 +274,6 @@ export const getBillingSnapshotForUser = internalQuery({
           type: row.type,
           creditType: row.creditType,
           amount: row.amount,
-          balanceAfter: row.balanceAfter,
           description: row.description,
           stripeInvoiceId: row.stripeInvoiceId,
           stripePaymentIntentId: row.stripePaymentIntentId,

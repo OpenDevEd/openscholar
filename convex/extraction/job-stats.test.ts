@@ -4,6 +4,10 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import { setupAggregates } from "./aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
 import { readAggregateCounters } from "./aggregates";
 
 type LegacyResultRow = {
@@ -91,13 +95,7 @@ async function seedJobWithPapers(
       lastLoginAt: now,
     });
 
-    await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 0,
-      paidBalance: 1000,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
+    await seedCreditsForTest(ctx, { userId, free: 0, paid: 1000, now });
 
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
@@ -141,6 +139,7 @@ async function seedJobWithPapers(
 describe("aggregate counters via recordOneAnswer + finalizePaper", () => {
   it("records counters for 3 papers × 2 questions", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 3, [
@@ -193,6 +192,7 @@ describe("aggregate counters via recordOneAnswer + finalizePaper", () => {
 
   it("classifies confidence buckets correctly (high/medium/low/unknown)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 4, ["q1"]);
@@ -255,6 +255,7 @@ describe("aggregate counters via recordOneAnswer + finalizePaper", () => {
 
   it("accumulates counters across multiple paper completions", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 2, ["q1"]);
@@ -300,6 +301,7 @@ describe("aggregate counters via recordOneAnswer + finalizePaper", () => {
 describe("aggregate counters cascade delete", () => {
   it("clears the aggregate when the job is cascade-deleted", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
 
     const { jobId, paperIds } = await seedJobWithPapers(t, 1, ["q1"]);

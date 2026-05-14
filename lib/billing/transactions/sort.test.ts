@@ -14,7 +14,6 @@ function row(
     direction: partial.direction ?? "in",
     amount: partial.amount ?? 100,
     signedAmount: partial.signedAmount ?? 100,
-    balanceAfter: partial.balanceAfter ?? 0,
     description: partial.description ?? null,
     createdAt: partial.createdAt ?? 0,
     jobId: partial.jobId ?? null,

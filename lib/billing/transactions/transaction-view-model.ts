@@ -13,7 +13,6 @@ export interface TransactionViewModel {
   direction: "in" | "out";
   amount: number;
   signedAmount: number;
-  balanceAfter: number;
 
   description: string | null;
   createdAt: number;
@@ -43,6 +42,11 @@ type EnrichedTransactionDoc = Doc<"creditTransactions"> & {
 };
 
 export function toViewModel(doc: EnrichedTransactionDoc): TransactionViewModel {
+  if (doc.type === "reservation" || doc.type === "reservation_release") {
+    throw new Error(
+      `toViewModel called with internal ledger type "${doc.type}" — reservation primitives must be filtered out at the query layer.`,
+    );
+  }
   const direction: "in" | "out" = doc.amount >= 0 ? "in" : "out";
   const stripeInvoiceId = doc.stripeInvoiceId ?? null;
   const stripePaymentIntentId = doc.stripePaymentIntentId ?? null;
@@ -61,7 +65,6 @@ export function toViewModel(doc: EnrichedTransactionDoc): TransactionViewModel {
     direction,
     amount: Math.abs(doc.amount),
     signedAmount: doc.amount,
-    balanceAfter: doc.balanceAfter,
     description: doc.description ?? null,
     createdAt: doc.createdAt,
     jobId: doc.jobId ?? null,

@@ -4,6 +4,10 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
 import { recomputePaperListProjection } from "./listProjection";
 
 const CLERK_OWNER = "clerk_list_projection";
@@ -36,13 +40,7 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
       });
     }
 
-    await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 0,
-      paidBalance: 10_000,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
+    await seedCreditsForTest(ctx, { userId, free: 0, paid: 10_000, now });
 
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
@@ -99,6 +97,7 @@ describe("paper list projection write maintenance", () => {
   // markPaperTerminalTx does in production.
   it("recomputePaperListProjection rebuilds avgConfidence, questionAnswerTokens, and searchText from result rows", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
 
@@ -127,6 +126,7 @@ describe("paper list projection write maintenance", () => {
 
   it("recomputePaperListProjection flips hasErrors after a failed question row exists", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
 
@@ -153,6 +153,7 @@ describe("paper list projection write maintenance", () => {
 
   it("aggregates avgConfidence and tokens across multiple question rows", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
 

@@ -19,6 +19,7 @@ import { v } from "convex/values";
 import type { Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
 import { deductCreditsTransaction } from "../../credits/internal";
+import { settleReservationTransaction } from "../../credits/reservation";
 import {
   assertValidJobTransition,
   type JobStatus,
@@ -433,30 +434,61 @@ export const finalizePaper = internalMutation({
     // Per-paper credit debit. Tier C: the per-question creditsUsed now
     // lives on each extractionResults row (no longer accumulated on the
     // paper row by an OCC-contended applyResultProjectionWrite). Sum
-    // them here to debit the wallet ONCE on the terminal transition.
+    // them here and settle the wallet ONCE on the terminal transition.
     // `questionsBilled` is the idempotency gate so an adversarial
     // reset-then-rerun cannot re-bill — mirrors the `indexingBilled`
     // precedent.
     //
+    // Tier D: when `paper.reservationId` is set, fan-out reserved a
+    // HIGH-estimate hold for this paper and we settle it against the
+    // actuals via `settleReservationTransaction` — that releases the
+    // negative hold (returning the reserved credits to the wallet)
+    // then deducts `creditsToDebit` against the post-release balance.
+    // Combined in one tx so the wallet never transiently shows the
+    // released amount. The fallback `deductCreditsTransaction` path
+    // remains for direct test calls and for the legacy fan-out path
+    // that doesn't reserve (e.g. retry, which intentionally reuses the
+    // original bill — see `launchRetryPaperWorkflowsForJob`).
+    //
     // allowPartial:true drains the wallet rather than throwing
-    // INSUFFICIENT_CREDITS mid-fanout. The pre-flight gate on startJob
-    // sized the budget conservatively against the HIGH estimate, so
-    // shortfalls here are rare; when they do happen they cascade through
-    // maybeFinalizeJob → creditsExhausted via the usual path.
+    // INSUFFICIENT_CREDITS mid-fanout. The pre-flight reserve gate on
+    // launch sized the budget conservatively against the HIGH estimate,
+    // so settle-time shortfalls are rare; when they do happen they
+    // cascade through maybeFinalizeJob → creditsExhausted via the usual
+    // path.
     const creditsToDebit = resultsForPaper.reduce(
       (sum, r) => sum + (r.creditsUsed ?? 0),
       0,
     );
-    if (!paper.questionsBilled && creditsToDebit > 0 && job) {
-      const { deducted } = await deductCreditsTransaction(ctx, {
-        userId: job.userId,
-        amount: creditsToDebit,
-        description: `AI: Extraction (${paper.openalexId} — ${rollup.completedQuestions} questions)`,
-        jobId: paper.jobId,
-        paperId: args.paperId,
-        billingType: "extraction_llm",
-        allowPartial: true,
-      });
+    if (!paper.questionsBilled && job) {
+      let deducted = 0;
+      let billingOccurred = false;
+      if (paper.reservationId !== undefined) {
+        const settle = await settleReservationTransaction(ctx, {
+          reservationId: paper.reservationId,
+          userId: job.userId,
+          actualCost: creditsToDebit,
+          description: `AI: Extraction (${paper.openalexId} — ${rollup.completedQuestions} questions)`,
+          jobId: paper.jobId,
+          paperId: args.paperId,
+          billingType: "extraction_llm",
+          allowPartial: true,
+        });
+        deducted = settle.usage.deducted;
+        billingOccurred = true;
+      } else if (creditsToDebit > 0) {
+        const result = await deductCreditsTransaction(ctx, {
+          userId: job.userId,
+          amount: creditsToDebit,
+          description: `AI: Extraction (${paper.openalexId} — ${rollup.completedQuestions} questions)`,
+          jobId: paper.jobId,
+          paperId: args.paperId,
+          billingType: "extraction_llm",
+          allowPartial: true,
+        });
+        deducted = result.deducted;
+        billingOccurred = true;
+      }
       if (deducted > 0) {
         await recordCreditSpend(ctx, {
           jobId: paper.jobId,
@@ -464,7 +496,12 @@ export const finalizePaper = internalMutation({
           creditsUsed: deducted,
         });
       }
-      await ctx.db.patch(args.paperId, { questionsBilled: true });
+      if (billingOccurred) {
+        await ctx.db.patch(args.paperId, {
+          questionsBilled: true,
+          reservationId: undefined,
+        });
+      }
     }
 
     await markPaperTerminalTx(ctx, args.paperId, terminalStatus, {

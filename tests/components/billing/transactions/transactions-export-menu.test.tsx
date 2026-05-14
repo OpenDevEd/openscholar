@@ -27,7 +27,6 @@ function row(
     direction: "in",
     amount: 100,
     signedAmount: 100,
-    balanceAfter: 1000,
     description: null,
     createdAt: 0,
     jobId: null,

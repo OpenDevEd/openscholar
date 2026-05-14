@@ -1,0 +1,1141 @@
+[
+  {
+    "id": "qwen/qwen3.5-flash-02-23",
+    "name": "Qwen: Qwen3.5-Flash",
+    "ctx": 1000000,
+    "prompt": 0.065,
+    "completion": 0.26,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "video"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "The Qwen3.5 native vision-language Flash models are built on a hybrid architecture that integrates a linear attention mechanism with a sparse mixture-of-experts model, achieving higher inference efficiency. Compared to the..."
+  },
+  {
+    "id": "google/gemini-2.0-flash-lite-001",
+    "name": "Google: Gemini 2.0 Flash Lite",
+    "ctx": 1048576,
+    "prompt": 0.075,
+    "completion": 0.3,
+    "cache_read": 0,
+    "image_price": 7.5E-8,
+    "modalities_in": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video"
+    ],
+    "max_completion": 8192,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "max_tokens",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 2.0 Flash Lite offers a significantly faster time to first token (TTFT) compared to [Gemini Flash 1.5](/google/gemini-flash-1.5), while maintaining quality on par with larger models like [Gemini Pro 1.5](/google/gemini-pro-1.5),..."
+  },
+  {
+    "id": "google/gemini-2.5-flash-lite-preview-09-2025",
+    "name": "Google: Gemini 2.5 Flash Lite Preview 09-2025",
+    "ctx": 1048576,
+    "prompt": 0.09999999999999999,
+    "completion": 0.39999999999999997,
+    "cache_read": 0.01,
+    "image_price": 1E-7,
+    "modalities_in": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video"
+    ],
+    "max_completion": 65535,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 2.5 Flash-Lite is a lightweight reasoning model in the Gemini 2.5 family, optimized for ultra-low latency and cost efficiency. It offers improved throughput, faster token generation, and better performance..."
+  },
+  {
+    "id": "google/gemini-2.5-flash-lite",
+    "name": "Google: Gemini 2.5 Flash Lite",
+    "ctx": 1048576,
+    "prompt": 0.09999999999999999,
+    "completion": 0.39999999999999997,
+    "cache_read": 0.01,
+    "image_price": 1E-7,
+    "modalities_in": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video"
+    ],
+    "max_completion": 65535,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 2.5 Flash-Lite is a lightweight reasoning model in the Gemini 2.5 family, optimized for ultra-low latency and cost efficiency. It offers improved throughput, faster token generation, and better performance..."
+  },
+  {
+    "id": "openai/gpt-4.1-nano",
+    "name": "OpenAI: GPT-4.1 Nano",
+    "ctx": 1047576,
+    "prompt": 0.09999999999999999,
+    "completion": 0.39999999999999997,
+    "cache_read": 0.024999999999999998,
+    "image_price": 0,
+    "modalities_in": [
+      "image",
+      "text",
+      "file"
+    ],
+    "max_completion": 32768,
+    "tokenizer": "GPT",
+    "supported_params": [
+      "max_completion_tokens",
+      "max_tokens",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "For tasks that demand low latency, GPT‑4.1 nano is the fastest and cheapest model in the GPT-4.1 series. It delivers exceptional performance at a small size with its 1 million..."
+  },
+  {
+    "id": "google/gemini-2.0-flash-001",
+    "name": "Google: Gemini 2.0 Flash",
+    "ctx": 1048576,
+    "prompt": 0.09999999999999999,
+    "completion": 0.39999999999999997,
+    "cache_read": 0.024999999999999998,
+    "image_price": 1E-7,
+    "modalities_in": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video"
+    ],
+    "max_completion": 8192,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "max_tokens",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini Flash 2.0 offers a significantly faster time to first token (TTFT) compared to [Gemini Flash 1.5](/google/gemini-flash-1.5), while maintaining quality on par with larger models like [Gemini Pro 1.5](/google/gemini-pro-1.5). It..."
+  },
+  {
+    "id": "deepseek/deepseek-v4-flash",
+    "name": "DeepSeek: DeepSeek V4 Flash",
+    "ctx": 1048576,
+    "prompt": 0.14,
+    "completion": 0.28,
+    "cache_read": 0.0028,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 384000,
+    "tokenizer": "DeepSeek",
+    "supported_params": [
+      "frequency_penalty",
+      "include_reasoning",
+      "logit_bias",
+      "logprobs",
+      "max_tokens",
+      "min_p",
+      "presence_penalty",
+      "reasoning",
+      "repetition_penalty",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p"
+    ],
+    "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and..."
+  },
+  {
+    "id": "meta-llama/llama-4-maverick",
+    "name": "Meta: Llama 4 Maverick",
+    "ctx": 1048576,
+    "prompt": 0.15,
+    "completion": 0.6,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image"
+    ],
+    "max_completion": 16384,
+    "tokenizer": "Llama4",
+    "supported_params": [
+      "frequency_penalty",
+      "logit_bias",
+      "max_tokens",
+      "min_p",
+      "presence_penalty",
+      "repetition_penalty",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "top_k",
+      "top_p"
+    ],
+    "description": "Llama 4 Maverick 17B Instruct (128E) is a high-capacity multimodal language model from Meta, built on a mixture-of-experts (MoE) architecture with 128 experts and 17 billion active parameters per forward..."
+  },
+  {
+    "id": "qwen/qwen3-coder-flash",
+    "name": "Qwen: Qwen3 Coder Flash",
+    "ctx": 1000000,
+    "prompt": 0.195,
+    "completion": 0.975,
+    "cache_read": 0.039,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "max_tokens",
+      "presence_penalty",
+      "response_format",
+      "seed",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Qwen3 Coder Flash is Alibaba's fast and cost efficient version of their proprietary Qwen3 Coder Plus. It is a powerful coding agent model specializing in autonomous programming via tool calling..."
+  },
+  {
+    "id": "x-ai/grok-4.1-fast",
+    "name": "xAI: Grok 4.1 Fast",
+    "ctx": 2000000,
+    "prompt": 0.19999999999999998,
+    "completion": 0.5,
+    "cache_read": 0.049999999999999996,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "file"
+    ],
+    "max_completion": 30000,
+    "tokenizer": "Grok",
+    "supported_params": [
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_logprobs",
+      "top_p"
+    ],
+    "description": "Grok 4.1 Fast is xAI's best agentic tool calling model that shines in real-world use cases like customer support and deep research. 2M context window. Reasoning can be enabled/disabled using..."
+  },
+  {
+    "id": "x-ai/grok-4-fast",
+    "name": "xAI: Grok 4 Fast",
+    "ctx": 2000000,
+    "prompt": 0.19999999999999998,
+    "completion": 0.5,
+    "cache_read": 0.049999999999999996,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "file"
+    ],
+    "max_completion": 30000,
+    "tokenizer": "Grok",
+    "supported_params": [
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_logprobs",
+      "top_p"
+    ],
+    "description": "Grok 4 Fast is xAI's latest multimodal model with SOTA cost-efficiency and a 2M token context window. It comes in two flavors: non-reasoning and reasoning. Read more about the model..."
+  },
+  {
+    "id": "minimax/minimax-01",
+    "name": "MiniMax: MiniMax-01",
+    "ctx": 1000192,
+    "prompt": 0.19999999999999998,
+    "completion": 1.1,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image"
+    ],
+    "max_completion": 1000192,
+    "tokenizer": "Other",
+    "supported_params": [
+      "max_tokens",
+      "temperature",
+      "top_p"
+    ],
+    "description": "MiniMax-01 is a combines MiniMax-Text-01 for text generation and MiniMax-VL-01 for image understanding. It has 456 billion parameters, with 45.9 billion parameters activated per inference, and can handle a context..."
+  },
+  {
+    "id": "google/gemini-3.1-flash-lite",
+    "name": "Google: Gemini 3.1 Flash Lite",
+    "ctx": 1048576,
+    "prompt": 0.25,
+    "completion": 1.5,
+    "cache_read": 0.024999999999999998,
+    "image_price": 2.5E-7,
+    "modalities_in": [
+      "text",
+      "image",
+      "video",
+      "file",
+      "audio"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 3.1 Flash Lite is Google’s GA high-efficiency multimodal model optimized for low-latency, high-volume workloads. It supports text, image, video, audio, and PDF inputs, and is designed for lightweight agentic..."
+  },
+  {
+    "id": "qwen/qwen3.6-flash",
+    "name": "Qwen: Qwen3.6 Flash",
+    "ctx": 1000000,
+    "prompt": 0.25,
+    "completion": 1.5,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "video"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Qwen3.6 Flash is a fast, efficient language model from Alibaba's Qwen 3.6 series. It supports text, image, and video input with a 1M token context window. Tiered pricing kicks in..."
+  },
+  {
+    "id": "google/gemini-3.1-flash-lite-preview",
+    "name": "Google: Gemini 3.1 Flash Lite Preview",
+    "ctx": 1048576,
+    "prompt": 0.25,
+    "completion": 1.5,
+    "cache_read": 0.024999999999999998,
+    "image_price": 2.5E-7,
+    "modalities_in": [
+      "text",
+      "image",
+      "video",
+      "file",
+      "audio"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 3.1 Flash Lite Preview is Google's high-efficiency model optimized for high-volume use cases. It outperforms Gemini 2.5 Flash Lite on overall quality and approaches Gemini 2.5 Flash performance across..."
+  },
+  {
+    "id": "qwen/qwen3.5-plus-02-15",
+    "name": "Qwen: Qwen3.5 Plus 2026-02-15",
+    "ctx": 1000000,
+    "prompt": 0.26,
+    "completion": 1.56,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "video"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "The Qwen3.5 native vision-language series Plus models are built on a hybrid architecture that integrates linear attention mechanisms with sparse mixture-of-experts models, achieving higher inference efficiency. In a variety of..."
+  },
+  {
+    "id": "qwen/qwen-plus-2025-07-28:thinking",
+    "name": "Qwen: Qwen Plus 0728 (thinking)",
+    "ctx": 1000000,
+    "prompt": 0.26,
+    "completion": 0.78,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 32768,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Qwen Plus 0728, based on the Qwen3 foundation model, is a 1 million context hybrid reasoning model with a balanced performance, speed, and cost combination."
+  },
+  {
+    "id": "qwen/qwen-plus-2025-07-28",
+    "name": "Qwen: Qwen Plus 0728",
+    "ctx": 1000000,
+    "prompt": 0.26,
+    "completion": 0.78,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 32768,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "max_tokens",
+      "presence_penalty",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Qwen Plus 0728, based on the Qwen3 foundation model, is a 1 million context hybrid reasoning model with a balanced performance, speed, and cost combination."
+  },
+  {
+    "id": "qwen/qwen-plus",
+    "name": "Qwen: Qwen-Plus",
+    "ctx": 1000000,
+    "prompt": 0.26,
+    "completion": 0.78,
+    "cache_read": 0.052000000000000005,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 32768,
+    "tokenizer": "Qwen",
+    "supported_params": [
+      "max_tokens",
+      "presence_penalty",
+      "response_format",
+      "seed",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Qwen-Plus, based on the Qwen2.5 foundation model, is a 131K context model with a balanced performance, speed, and cost combination."
+  },
+  {
+    "id": "amazon/nova-2-lite-v1",
+    "name": "Amazon: Nova 2 Lite",
+    "ctx": 1000000,
+    "prompt": 0.3,
+    "completion": 2.5,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "video",
+      "file"
+    ],
+    "max_completion": 65535,
+    "tokenizer": "Nova",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "stop",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_p"
+    ],
+    "description": "Nova 2 Lite is a fast, cost-effective reasoning model for everyday workloads that can process text, images, and videos to generate text. Nova 2 Lite demonstrates standout capabilities in processing..."
+  },
+  {
+    "id": "google/gemini-2.5-flash",
+    "name": "Google: Gemini 2.5 Flash",
+    "ctx": 1048576,
+    "prompt": 0.3,
+    "completion": 2.5,
+    "cache_read": 0.03,
+    "image_price": 3E-7,
+    "modalities_in": [
+      "file",
+      "image",
+      "text",
+      "audio",
+      "video"
+    ],
+    "max_completion": 65535,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 2.5 Flash is Google's state-of-the-art workhorse model, specifically designed for advanced reasoning, coding, mathematics, and scientific tasks. It includes built-in \"thinking\" capabilities, enabling it to provide responses with greater..."
+  },
+  {
+    "id": "qwen/qwen3.6-plus",
+    "name": "Qwen: Qwen3.6 Plus",
+    "ctx": 1000000,
+    "prompt": 0.325,
+    "completion": 1.95,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "video"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Qwen 3.6 Plus builds on a hybrid architecture that combines efficient linear attention with sparse mixture-of-experts routing, enabling strong scalability and high-performance inference. Compared to the 3.5 series, it delivers..."
+  },
+  {
+    "id": "qwen/qwen3.5-plus-20260420",
+    "name": "Qwen: Qwen3.5 Plus 2026-04-20",
+    "ctx": 1000000,
+    "prompt": 0.39999999999999997,
+    "completion": 2.4,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "video"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Qwen3.5 Plus (April 2026) is a large-scale multimodal language model from Alibaba. It accepts text, image, and video input and produces text output, with a 1M token context window. This..."
+  },
+  {
+    "id": "xiaomi/mimo-v2.5",
+    "name": "Xiaomi: MiMo-V2.5",
+    "ctx": 1048576,
+    "prompt": 0.39999999999999997,
+    "completion": 2,
+    "cache_read": 0.08,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "audio",
+      "image",
+      "video"
+    ],
+    "max_completion": 131072,
+    "tokenizer": "Other",
+    "supported_params": [
+      "frequency_penalty",
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "stop",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "MiMo-V2.5 is a native omnimodal model by Xiaomi. It delivers Pro-level agentic performance at roughly half the inference cost, while surpassing MiMo-V2-Omni in multimodal perception across image and video understanding..."
+  },
+  {
+    "id": "minimax/minimax-m1",
+    "name": "MiniMax: MiniMax M1",
+    "ctx": 1000000,
+    "prompt": 0.39999999999999997,
+    "completion": 2.2,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 40000,
+    "tokenizer": "Other",
+    "supported_params": [
+      "frequency_penalty",
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "repetition_penalty",
+      "seed",
+      "stop",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_p"
+    ],
+    "description": "MiniMax-M1 is a large-scale, open-weight reasoning model designed for extended context and high-efficiency inference. It leverages a hybrid Mixture-of-Experts (MoE) architecture paired with a custom \"lightning attention\" mechanism, allowing it..."
+  },
+  {
+    "id": "openai/gpt-4.1-mini",
+    "name": "OpenAI: GPT-4.1 Mini",
+    "ctx": 1047576,
+    "prompt": 0.39999999999999997,
+    "completion": 1.5999999999999999,
+    "cache_read": 0.09999999999999999,
+    "image_price": 0,
+    "modalities_in": [
+      "image",
+      "text",
+      "file"
+    ],
+    "max_completion": 32768,
+    "tokenizer": "GPT",
+    "supported_params": [
+      "max_completion_tokens",
+      "max_tokens",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "GPT-4.1 Mini is a mid-sized model delivering performance competitive with GPT-4o at substantially lower latency and cost. It retains a 1 million token context window and scores 45.1% on hard..."
+  },
+  {
+    "id": "deepseek/deepseek-v4-pro",
+    "name": "DeepSeek: DeepSeek V4 Pro",
+    "ctx": 1048576,
+    "prompt": 0.435,
+    "completion": 0.87,
+    "cache_read": 0.003625,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 384000,
+    "tokenizer": "DeepSeek",
+    "supported_params": [
+      "frequency_penalty",
+      "include_reasoning",
+      "logit_bias",
+      "logprobs",
+      "max_tokens",
+      "min_p",
+      "presence_penalty",
+      "reasoning",
+      "repetition_penalty",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p"
+    ],
+    "description": "DeepSeek V4 Pro is a large-scale Mixture-of-Experts model from DeepSeek with 1.6T total parameters and 49B activated parameters, supporting a 1M-token context window. It is designed for advanced reasoning, coding,..."
+  },
+  {
+    "id": "~google/gemini-flash-latest",
+    "name": "Google Gemini Flash Latest",
+    "ctx": 1048576,
+    "prompt": 0.5,
+    "completion": 3,
+    "cache_read": 0.049999999999999996,
+    "image_price": 5E-7,
+    "modalities_in": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Router",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "This model always redirects to the latest model in the Google Gemini Flash family."
+  },
+  {
+    "id": "google/gemini-3-flash-preview",
+    "name": "Google: Gemini 3 Flash Preview",
+    "ctx": 1048576,
+    "prompt": 0.5,
+    "completion": 3,
+    "cache_read": 0.049999999999999996,
+    "image_price": 5E-7,
+    "modalities_in": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 3 Flash Preview is a high speed, high value thinking model designed for agentic workflows, multi turn chat, and coding assistance. It delivers near Pro level reasoning and tool..."
+  },
+  {
+    "id": "writer/palmyra-x5",
+    "name": "Writer: Palmyra X5",
+    "ctx": 1040000,
+    "prompt": 0.6,
+    "completion": 6,
+    "cache_read": 0,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 8192,
+    "tokenizer": "Other",
+    "supported_params": [
+      "max_tokens",
+      "stop",
+      "temperature",
+      "top_k",
+      "top_p"
+    ],
+    "description": "Palmyra X5 is Writer's most advanced model, purpose-built for building and scaling AI agents across the enterprise. It delivers industry-leading speed and efficiency on context windows up to 1 million..."
+  },
+  {
+    "id": "qwen/qwen3-coder-plus",
+    "name": "Qwen: Qwen3 Coder Plus",
+    "ctx": 1000000,
+    "prompt": 0.65,
+    "completion": 3.25,
+    "cache_read": 0.13,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Qwen3",
+    "supported_params": [
+      "max_tokens",
+      "presence_penalty",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Qwen3 Coder Plus is Alibaba's proprietary version of the Open Source Qwen3 Coder 480B A35B. It is a powerful coding agent model specializing in autonomous programming via tool calling and..."
+  },
+  {
+    "id": "xiaomi/mimo-v2.5-pro",
+    "name": "Xiaomi: MiMo-V2.5-Pro",
+    "ctx": 1048576,
+    "prompt": 1,
+    "completion": 3,
+    "cache_read": 0.19999999999999998,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 16384,
+    "tokenizer": "Other",
+    "supported_params": [
+      "frequency_penalty",
+      "include_reasoning",
+      "logit_bias",
+      "max_tokens",
+      "min_p",
+      "presence_penalty",
+      "reasoning",
+      "repetition_penalty",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_p"
+    ],
+    "description": "MiMo-V2.5-Pro is Xiaomi’s flagship model, delivering strong performance in general agentic capabilities, complex software engineering, and long-horizon tasks, with top rankings on benchmarks such as ClawEval, GDPVal, and SWE-bench Pro...."
+  },
+  {
+    "id": "xiaomi/mimo-v2-pro",
+    "name": "Xiaomi: MiMo-V2-Pro",
+    "ctx": 1048576,
+    "prompt": 1,
+    "completion": 3,
+    "cache_read": 0.19999999999999998,
+    "image_price": 0,
+    "modalities_in": [
+      "text"
+    ],
+    "max_completion": 131072,
+    "tokenizer": "Other",
+    "supported_params": [
+      "frequency_penalty",
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "stop",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "MiMo-V2-Pro is Xiaomi's flagship foundation model, featuring over 1T total parameters and a 1M context length, deeply optimized for agentic scenarios. It is highly adaptable to general agent frameworks like..."
+  },
+  {
+    "id": "x-ai/grok-4.3",
+    "name": "xAI: Grok 4.3",
+    "ctx": 1000000,
+    "prompt": 1.25,
+    "completion": 2.5,
+    "cache_read": 0.19999999999999998,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image"
+    ],
+    "max_completion": null,
+    "tokenizer": "Grok",
+    "supported_params": [
+      "frequency_penalty",
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_logprobs",
+      "top_p"
+    ],
+    "description": "Grok 4.3 is a reasoning model from xAI. It accepts text and image inputs with text output, and is suited for agentic workflows, instruction-following tasks, and applications requiring high factual..."
+  },
+  {
+    "id": "x-ai/grok-4.20",
+    "name": "xAI: Grok 4.20",
+    "ctx": 2000000,
+    "prompt": 1.25,
+    "completion": 2.5,
+    "cache_read": 0.19999999999999998,
+    "image_price": 0,
+    "modalities_in": [
+      "text",
+      "image",
+      "file"
+    ],
+    "max_completion": null,
+    "tokenizer": "Grok",
+    "supported_params": [
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_logprobs",
+      "top_p"
+    ],
+    "description": "Grok 4.20 is a reasoning model from xAI with industry-leading speed and agentic tool calling capabilities. It combines the lowest hallucination rate on the market with strict prompt adherance, delivering..."
+  },
+  {
+    "id": "google/gemini-2.5-pro",
+    "name": "Google: Gemini 2.5 Pro",
+    "ctx": 1048576,
+    "prompt": 1.25,
+    "completion": 10,
+    "cache_read": 0.125,
+    "image_price": 0.00000125,
+    "modalities_in": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 2.5 Pro is Google’s state-of-the-art AI model designed for advanced reasoning, coding, mathematics, and scientific tasks. It employs “thinking” capabilities, enabling it to reason through responses with enhanced accuracy..."
+  },
+  {
+    "id": "google/gemini-2.5-pro-preview",
+    "name": "Google: Gemini 2.5 Pro Preview 06-05",
+    "ctx": 1048576,
+    "prompt": 1.25,
+    "completion": 10,
+    "cache_read": 0.125,
+    "image_price": 0.00000125,
+    "modalities_in": [
+      "file",
+      "image",
+      "text",
+      "audio"
+    ],
+    "max_completion": 65536,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 2.5 Pro is Google’s state-of-the-art AI model designed for advanced reasoning, coding, mathematics, and scientific tasks. It employs “thinking” capabilities, enabling it to reason through responses with enhanced accuracy..."
+  },
+  {
+    "id": "google/gemini-2.5-pro-preview-05-06",
+    "name": "Google: Gemini 2.5 Pro Preview 05-06",
+    "ctx": 1048576,
+    "prompt": 1.25,
+    "completion": 10,
+    "cache_read": 0.125,
+    "image_price": 0.00000125,
+    "modalities_in": [
+      "text",
+      "image",
+      "file",
+      "audio",
+      "video"
+    ],
+    "max_completion": 65535,
+    "tokenizer": "Gemini",
+    "supported_params": [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p"
+    ],
+    "description": "Gemini 2.5 Pro is Google’s state-of-the-art AI model designed for advanced reasoning, coding, mathematics, and scientific tasks. It employs “thinking” capabilities, enabling it to reason through responses with enhanced accuracy..."
+  }
+]

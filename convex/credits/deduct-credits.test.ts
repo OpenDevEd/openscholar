@@ -1,20 +1,30 @@
+/// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
-import { setupTransactionAggregates } from "./aggregates.test-support";
+import { setupTransactionAggregates, seedCreditsForTest } from "./aggregates.test-support";
 import { deductCreditsTransaction } from "./internal";
+import { readBalance } from "./balanceCounter";
 
 /**
- * Seed a user with a credits record at the specified balances.
- * Returns { userId, creditsId } for assertions.
+ * Test seed: create the `credits` anchor row and seed initial pools via
+ * `seedCreditsForTest`, which emits `grant`/`purchase` ledger
+ * transactions that drive the `balanceFreeCounter` /
+ * `balancePaidCounter` shards through `recordTransactionCounters`. The
+ * legacy `freeBalance|paidBalance|lifetimeUsed|lastUpdatedAt` columns
+ * are gone — balances are derived from the append-only ledger summed by
+ * sharded counters.
+ *
+ * Tests that assert on usage transactions filter by `type === "usage"`
+ * so the seed `grant`/`purchase` rows do not pollute the assertion.
  */
 async function seedUserWithCredits(
   t: ReturnType<typeof convexTest>,
   freeBalance: number,
-  paidBalance: number
-) {
+  paidBalance: number,
+): Promise<{ userId: Id<"users">; creditsId: Id<"credits"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
@@ -28,12 +38,11 @@ async function seedUserWithCredits(
       lastLoginAt: now,
     });
 
-    const creditsId = await ctx.db.insert("credits", {
+    const creditsId = await seedCreditsForTest(ctx, {
       userId,
-      freeBalance,
-      paidBalance,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: freeBalance,
+      paid: paidBalance,
+      now,
     });
 
     return { userId, creditsId };
@@ -49,30 +58,28 @@ describe("deductCredits", () => {
 
       const { deducted, remaining } = await t.mutation(
         internal.credits.internal.deductCredits,
-        { userId, amount: 30, description: "test deduction" }
+        { userId, amount: 30, description: "test deduction" },
       );
 
       expect(deducted).toBe(30);
       expect(remaining).toBe(120); // 100 + 50 - 30 = 120
 
-      // Verify credits record was updated
-      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(70); // 100 - 30
-      expect(credits!.paidBalance).toBe(50); // unchanged
-      expect(credits!.lifetimeUsed).toBe(30);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(70); // 100 - 30
+      expect(balance.paid).toBe(50); // unchanged
+      expect(balance.total).toBe(120);
 
-      // Verify a single "free" usage transaction was created
-      const transactions = await t.run(async (ctx) =>
+      // One usage transaction; seed grant + purchase rows are filtered out.
+      const usages = await t.run(async (ctx) =>
         ctx.db
           .query("creditTransactions")
           .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
-          .collect()
+          .filter((q) => q.eq(q.field("type"), "usage"))
+          .collect(),
       );
-      expect(transactions).toHaveLength(1);
-      expect(transactions[0].type).toBe("usage");
-      expect(transactions[0].creditType).toBe("free");
-      expect(transactions[0].amount).toBe(-30);
-      expect(transactions[0].balanceAfter).toBe(70);
+      expect(usages).toHaveLength(1);
+      expect(usages[0].creditType).toBe("free");
+      expect(usages[0].amount).toBe(-30);
     });
 
     it("splits deduction across free and paid when free < amount", async () => {
@@ -82,36 +89,35 @@ describe("deductCredits", () => {
 
       const { deducted, remaining } = await t.mutation(
         internal.credits.internal.deductCredits,
-        { userId, amount: 50, description: "split deduction" }
+        { userId, amount: 50, description: "split deduction" },
       );
 
       expect(deducted).toBe(50);
       expect(remaining).toBe(50); // 20 + 80 - 50 = 50
 
-      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(0); // all free used
-      expect(credits!.paidBalance).toBe(50); // 80 - 30 remaining paid
-      expect(credits!.lifetimeUsed).toBe(50);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(0); // all free used
+      expect(balance.paid).toBe(50); // 80 - 30 remaining paid
+      expect(balance.total).toBe(50);
 
-      // Verify two transactions: free usage + paid usage
-      const transactions = await t.run(async (ctx) =>
+      // Two usage rows: free drained, paid spillover. Seed rows excluded.
+      const usages = await t.run(async (ctx) =>
         ctx.db
           .query("creditTransactions")
           .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
-          .collect()
+          .filter((q) => q.eq(q.field("type"), "usage"))
+          .collect(),
       );
-      expect(transactions).toHaveLength(2);
+      expect(usages).toHaveLength(2);
 
-      const freeTx = transactions.find((tx) => tx.creditType === "free");
-      const paidTx = transactions.find((tx) => tx.creditType === "paid");
+      const freeTx = usages.find((tx) => tx.creditType === "free");
+      const paidTx = usages.find((tx) => tx.creditType === "paid");
 
       expect(freeTx).toBeDefined();
       expect(freeTx!.amount).toBe(-20); // all free credits used
-      expect(freeTx!.balanceAfter).toBe(0);
 
       expect(paidTx).toBeDefined();
       expect(paidTx!.amount).toBe(-30); // 50 - 20 = 30 from paid
-      expect(paidTx!.balanceAfter).toBe(50); // 80 - 30 = 50
     });
 
     it("throws INSUFFICIENT_CREDITS when balance is insufficient", async () => {
@@ -124,7 +130,7 @@ describe("deductCredits", () => {
           userId,
           amount: 20,
           description: "too much",
-        })
+        }),
       ).rejects.toThrow("INSUFFICIENT_CREDITS");
     });
 
@@ -135,16 +141,16 @@ describe("deductCredits", () => {
 
       const { deducted, remaining } = await t.mutation(
         internal.credits.internal.deductCredits,
-        { userId, amount: 100, description: "exact deduction" }
+        { userId, amount: 100, description: "exact deduction" },
       );
 
       expect(deducted).toBe(100);
       expect(remaining).toBe(0);
 
-      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(0);
-      expect(credits!.paidBalance).toBe(0);
-      expect(credits!.lifetimeUsed).toBe(100);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(0);
+      expect(balance.paid).toBe(0);
+      expect(balance.total).toBe(0);
     });
   });
 
@@ -162,22 +168,22 @@ describe("deductCredits", () => {
       // First deduction: 60 from 100 free
       const first = await t.mutation(
         internal.credits.internal.deductCredits,
-        { userId, amount: 60, description: "first deduction" }
+        { userId, amount: 60, description: "first deduction" },
       );
       expect(first.remaining).toBe(40);
 
       // Second deduction: 30 from remaining 40 free
       const second = await t.mutation(
         internal.credits.internal.deductCredits,
-        { userId, amount: 30, description: "second deduction" }
+        { userId, amount: 30, description: "second deduction" },
       );
       expect(second.remaining).toBe(10);
 
-      // Verify final state
-      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(10);
-      expect(credits!.paidBalance).toBe(0);
-      expect(credits!.lifetimeUsed).toBe(90); // 60 + 30
+      // Verify final state via the aggregate-derived balance.
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(10);
+      expect(balance.paid).toBe(0);
+      expect(balance.total).toBe(10);
     });
 
     it("second deduction fails when first exhausts balance", async () => {
@@ -188,7 +194,7 @@ describe("deductCredits", () => {
       // First deduction: takes all 50
       const first = await t.mutation(
         internal.credits.internal.deductCredits,
-        { userId, amount: 50, description: "exhaust balance" }
+        { userId, amount: 50, description: "exhaust balance" },
       );
       expect(first.remaining).toBe(0);
 
@@ -198,14 +204,14 @@ describe("deductCredits", () => {
           userId,
           amount: 10,
           description: "should fail",
-        })
+        }),
       ).rejects.toThrow("INSUFFICIENT_CREDITS");
 
       // Verify balance unchanged after failed deduction
-      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(0);
-      expect(credits!.paidBalance).toBe(0);
-      expect(credits!.lifetimeUsed).toBe(50);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(0);
+      expect(balance.paid).toBe(0);
+      expect(balance.total).toBe(0);
     });
   });
 
@@ -226,7 +232,7 @@ describe("deductCredits", () => {
           userId,
           amount: 30,
           description: `concurrent-${i}`,
-        })
+        }),
       );
       const results = await Promise.allSettled(promises);
 
@@ -240,18 +246,18 @@ describe("deductCredits", () => {
       // Every failure should be INSUFFICIENT_CREDITS
       for (const f of failures) {
         expect((f as PromiseRejectedResult).reason.message).toContain(
-          "INSUFFICIENT_CREDITS"
+          "INSUFFICIENT_CREDITS",
         );
       }
 
       // CRITICAL INVARIANT: balance is NEVER negative
-      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBeGreaterThanOrEqual(0);
-      expect(credits!.paidBalance).toBeGreaterThanOrEqual(0);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBeGreaterThanOrEqual(0);
+      expect(balance.paid).toBeGreaterThanOrEqual(0);
 
       // Balance should equal starting - (successes * 30)
       const expectedBalance = 100 - successes.length * 30;
-      expect(credits!.freeBalance).toBe(expectedBalance);
+      expect(balance.free).toBe(expectedBalance);
     });
 
     it("all deductions fail when each exceeds total balance", async () => {
@@ -265,7 +271,7 @@ describe("deductCredits", () => {
           userId,
           amount: 60,
           description: `concurrent-fail-${i}`,
-        })
+        }),
       );
       const results = await Promise.allSettled(promises);
 
@@ -273,10 +279,9 @@ describe("deductCredits", () => {
       expect(successes.length).toBe(0);
 
       // Balance unchanged
-      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(50);
-      expect(credits!.paidBalance).toBe(0);
-      expect(credits!.lifetimeUsed).toBe(0);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(50);
+      expect(balance.paid).toBe(0);
     });
 
     it("concurrent deductions drain to zero without going negative", async () => {
@@ -291,7 +296,7 @@ describe("deductCredits", () => {
           userId,
           amount: 10,
           description: `drain-${i}`,
-        })
+        }),
       );
       const results = await Promise.allSettled(promises);
 
@@ -299,10 +304,10 @@ describe("deductCredits", () => {
       expect(successes.length).toBe(10);
 
       // Balance is exactly 0
-      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(0);
-      expect(credits!.paidBalance).toBe(0);
-      expect(credits!.lifetimeUsed).toBe(100);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(0);
+      expect(balance.paid).toBe(0);
+      expect(balance.total).toBe(0);
     });
   });
 
@@ -330,22 +335,22 @@ describe("deductCredits", () => {
 
       expect(result).toEqual({ deducted: 313, remaining: 0 });
 
-      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(0);
-      expect(credits!.paidBalance).toBe(0);
-      expect(credits!.lifetimeUsed).toBe(313);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(0);
+      expect(balance.paid).toBe(0);
+      expect(balance.total).toBe(0);
 
-      const transactions = await t.run((ctx) =>
+      const usages = await t.run((ctx) =>
         ctx.db
           .query("creditTransactions")
           .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .filter((q) => q.eq(q.field("type"), "usage"))
           .collect(),
       );
-      expect(transactions).toHaveLength(1);
-      expect(transactions[0].amount).toBe(-313);
-      expect(transactions[0].balanceAfter).toBe(0);
-      expect(transactions[0].metadata?.requestedCredits).toBe("550");
-      expect(transactions[0].metadata?.shortfall).toBe("237");
+      expect(usages).toHaveLength(1);
+      expect(usages[0].amount).toBe(-313);
+      expect(usages[0].metadata?.requestedCredits).toBe("550");
+      expect(usages[0].metadata?.shortfall).toBe("237");
     });
 
     it("returns {0,0} and writes nothing when balance is exactly zero", async () => {
@@ -365,20 +370,20 @@ describe("deductCredits", () => {
 
       expect(result).toEqual({ deducted: 0, remaining: 0 });
 
-      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.lifetimeUsed).toBe(0);
-      expect(credits!.lastUpdatedAt).toBe(
-        // Untouched: the seed timestamp is the only write.
-        (await t.run((ctx) => ctx.db.get("credits", creditsId)))!.lastUpdatedAt,
-      );
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.total).toBe(0);
 
-      const transactions = await t.run((ctx) =>
+      // No usage rows written. Seed rows are skipped here because both
+      // free and paid were 0 — seedCreditsForTest only emits a tx when
+      // the pool is non-zero.
+      const usages = await t.run((ctx) =>
         ctx.db
           .query("creditTransactions")
           .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .filter((q) => q.eq(q.field("type"), "usage"))
           .collect(),
       );
-      expect(transactions).toHaveLength(0);
+      expect(usages).toHaveLength(0);
     });
 
     it("behaves identically to the non-partial path when balance covers amount", async () => {
@@ -398,19 +403,20 @@ describe("deductCredits", () => {
 
       expect(result).toEqual({ deducted: 250, remaining: 750 });
 
-      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(750);
-      expect(credits!.lifetimeUsed).toBe(250);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(750);
+      expect(balance.total).toBe(750);
 
-      const transactions = await t.run((ctx) =>
+      const usages = await t.run((ctx) =>
         ctx.db
           .query("creditTransactions")
           .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .filter((q) => q.eq(q.field("type"), "usage"))
           .collect(),
       );
       // No shortfall metadata when there was no shortfall.
-      expect(transactions[0].metadata?.requestedCredits).toBeUndefined();
-      expect(transactions[0].metadata?.shortfall).toBeUndefined();
+      expect(usages[0].metadata?.requestedCredits).toBeUndefined();
+      expect(usages[0].metadata?.shortfall).toBeUndefined();
     });
 
     it("drains across free then paid pools when both are partially needed", async () => {
@@ -430,24 +436,152 @@ describe("deductCredits", () => {
 
       expect(result).toEqual({ deducted: 150, remaining: 0 });
 
-      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(0);
-      expect(credits!.paidBalance).toBe(0);
-      expect(credits!.lifetimeUsed).toBe(150);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(0);
+      expect(balance.paid).toBe(0);
+      expect(balance.total).toBe(0);
 
-      const transactions = await t.run((ctx) =>
+      const usages = await t.run((ctx) =>
         ctx.db
           .query("creditTransactions")
           .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .filter((q) => q.eq(q.field("type"), "usage"))
           .collect(),
       );
-      expect(transactions).toHaveLength(2);
-      const free = transactions.find((tx) => tx.creditType === "free")!;
-      const paid = transactions.find((tx) => tx.creditType === "paid")!;
+      expect(usages).toHaveLength(2);
+      const free = usages.find((tx) => tx.creditType === "free")!;
+      const paid = usages.find((tx) => tx.creditType === "paid")!;
       expect(free.amount).toBe(-100);
       expect(paid.amount).toBe(-50);
       expect(free.metadata?.shortfall).toBe("50");
       expect(paid.metadata?.shortfall).toBe("50");
+    });
+  });
+
+  describe("negative-balance floor", () => {
+    // Regression for the compounding-negative bug. Tier D removed the OCC
+    // serialization the shared credits cell used to provide; if a wallet
+    // does go underwater (drained reservation, race in a legacy code
+    // path, dev seed drift), every subsequent `deductCreditsTransaction`
+    // with `allowPartial: true` must NOT emit a usage row that drives
+    // the balance further negative. The historical bug — observed at the
+    // -500 dev wallet — was `Math.min(args.amount, balance.total)`
+    // returning a negative value when `balance.total < 0`, then
+    // `paidUsed = amountToDeduct - freeUsed` becoming positive and
+    // inserting a usage row that bled the wallet by another 38 credits.
+    it("writes nothing when total balance is negative", async () => {
+      const t = convexTest(schema);
+      setupTransactionAggregates(t);
+      const { userId, creditsId } = await seedUserWithCredits(t, 0, 0);
+
+      // Force the wallet underwater by inserting a synthetic usage row
+      // and registering it with the aggregate, mirroring the production
+      // overdraft state we observed.
+      await t.run(async (ctx) => {
+        const now = Date.now();
+        const txId = await ctx.db.insert("creditTransactions", {
+          creditsId,
+          userId,
+          type: "usage",
+          creditType: "free",
+          amount: -500,
+          description: "synthetic overdraft",
+          createdAt: now,
+        });
+        const { recordTransactionCounters } = await import("./aggregates");
+        await recordTransactionCounters(ctx, {
+          _id: txId,
+          creditsId,
+          type: "usage",
+          creditType: "free",
+          amount: -500,
+          createdAt: now,
+        });
+      });
+
+      const before = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(before.total).toBe(-500);
+
+      const result = await t.run((ctx) =>
+        deductCreditsTransaction(ctx, {
+          userId,
+          amount: 12,
+          description: "must not bleed further",
+          billingType: "chat",
+          allowPartial: true,
+        }),
+      );
+
+      expect(result).toEqual({ deducted: 0, remaining: -500 });
+
+      const after = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(after.total).toBe(-500);
+
+      // No NEW usage rows emitted — the synthetic seed row is the only
+      // usage row in the table.
+      const usages = await t.run((ctx) =>
+        ctx.db
+          .query("creditTransactions")
+          .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+          .filter((q) => q.eq(q.field("type"), "usage"))
+          .collect(),
+      );
+      expect(usages).toHaveLength(1);
+      expect(usages[0].description).toBe("synthetic overdraft");
+    });
+
+    it("writes nothing when split balance is partly-negative but total<=0", async () => {
+      // free=-500, paid=200, total=-300. The historical bug emitted a
+      // paid-pool usage row whose math drove the wallet further negative
+      // (freeUsed=-500, paidUsed = amountToDeduct - freeUsed > 0 → insert
+      // -paidUsed). The floor must catch this before the per-pool split.
+      const t = convexTest(schema);
+      setupTransactionAggregates(t);
+      const { userId, creditsId } = await seedUserWithCredits(t, 0, 200);
+
+      await t.run(async (ctx) => {
+        const now = Date.now();
+        const txId = await ctx.db.insert("creditTransactions", {
+          creditsId,
+          userId,
+          type: "usage",
+          creditType: "free",
+          amount: -500,
+          description: "synthetic overdraft (free pool)",
+          createdAt: now,
+        });
+        const { recordTransactionCounters } = await import("./aggregates");
+        await recordTransactionCounters(ctx, {
+          _id: txId,
+          creditsId,
+          type: "usage",
+          creditType: "free",
+          amount: -500,
+          createdAt: now,
+        });
+      });
+
+      const before = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(before.free).toBe(-500);
+      expect(before.paid).toBe(200);
+      expect(before.total).toBe(-300);
+
+      const result = await t.run((ctx) =>
+        deductCreditsTransaction(ctx, {
+          userId,
+          amount: 100,
+          description: "must not bleed further from paid pool",
+          billingType: "chat",
+          allowPartial: true,
+        }),
+      );
+
+      expect(result).toEqual({ deducted: 0, remaining: -300 });
+
+      const after = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(after.free).toBe(-500);
+      expect(after.paid).toBe(200);
+      expect(after.total).toBe(-300);
     });
   });
 
@@ -471,14 +605,14 @@ describe("deductCredits", () => {
           description: "AI: Chat message",
           billingType: "chat",
           allowPartial: true,
-        }
+        },
       );
 
       expect(result).toEqual({ deducted: 100, remaining: 0 });
 
-      const credits = await t.run((ctx) => ctx.db.get("credits", creditsId));
-      expect(credits!.freeBalance).toBe(0);
-      expect(credits!.lifetimeUsed).toBe(100);
+      const balance = await t.run((ctx) => readBalance(ctx, creditsId));
+      expect(balance.free).toBe(0);
+      expect(balance.total).toBe(0);
     });
 
     it("public mutation without allowPartial still throws on shortfall", async () => {
@@ -492,7 +626,7 @@ describe("deductCredits", () => {
           amount: 250,
           description: "AI: Chat message",
           billingType: "chat",
-        })
+        }),
       ).rejects.toThrow("INSUFFICIENT_CREDITS");
     });
   });

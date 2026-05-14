@@ -17,7 +17,6 @@ function makeRow(overrides: Partial<TransactionViewModel> = {}): TransactionView
     direction: "in",
     amount: 100,
     signedAmount: 100,
-    balanceAfter: 100,
     description: null,
     createdAt: 0,
     jobId: null,

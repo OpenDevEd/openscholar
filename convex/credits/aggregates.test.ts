@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { setupTransactionAggregates } from "./aggregates.test-support";
+import { setupTransactionAggregates, seedCreditsForTest } from "./aggregates.test-support";
 
 const CLERK = "clerk_txn_facet_counts";
 
@@ -21,12 +21,11 @@ async function seedUserAndCredits(
       updatedAt: now,
       lastLoginAt: now,
     });
-    const creditsId = await ctx.db.insert("credits", {
+    const creditsId = await seedCreditsForTest(ctx, {
       userId,
-      freeBalance: 10_000,
-      paidBalance: 10_000,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: 10_000,
+      paid: 10_000,
+      now,
     });
     return { userId, creditsId };
   });
@@ -56,12 +55,15 @@ describe("transaction facet-count aggregates", () => {
     );
     expect(facets).not.toBeNull();
     expect(facets!.type.usage).toBe(5);
-    expect(facets!.type.purchase).toBe(0);
-    expect(facets!.type.grant).toBe(0);
+    // Seed emits 1 purchase + 1 grant via seedCreditsForTest.
+    expect(facets!.type.purchase).toBe(1);
+    expect(facets!.type.grant).toBe(1);
     expect(facets!.type.refund).toBe(0);
     expect(facets!.type.expiry).toBe(0);
-    expect(facets!.creditPool.free).toBe(5);
-    expect(facets!.creditPool.paid).toBe(0);
+    // 1 seed grant on free + 5 usage rows on free.
+    expect(facets!.creditPool.free).toBe(6);
+    // 1 seed purchase on paid.
+    expect(facets!.creditPool.paid).toBe(1);
     expect(facets!.billingType.extraction_llm).toBe(5);
     expect(facets!.billingType.embedding).toBe(0);
   });
@@ -69,7 +71,23 @@ describe("transaction facet-count aggregates", () => {
   it("billingType=undefined row is absent from billingType aggregate but still counted by type + creditPool", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
-    const { userId } = await seedUserAndCredits(t);
+    // Seed with an empty wallet so `addCredits(100, free)` actually lands
+    // a row — `seedUserAndCredits` would prime free=10_000 which already
+    // exceeds the free plan's 500 cap, so the production `addCredits`
+    // path would return early without inserting.
+    const { userId } = await t.run(async (ctx) => {
+      const now = Date.now();
+      const uid = await ctx.db.insert("users", {
+        clerkId: CLERK,
+        email: "facet-billingless@test.local",
+        state: "active" as const,
+        createdAt: now,
+        updatedAt: now,
+        lastLoginAt: now,
+      });
+      await seedCreditsForTest(ctx, { userId: uid, free: 0, paid: 0, now });
+      return { userId: uid };
+    });
 
     // addCredits never sets billingType. The type + creditPool aggregates
     // must still count it; the billingType aggregate must leave every
@@ -87,9 +105,12 @@ describe("transaction facet-count aggregates", () => {
       {},
     );
     expect(facets).not.toBeNull();
+    // Seed inserts no grant row when free=0/paid=0, so the addCredits
+    // grant is the only row in either aggregate.
     expect(facets!.type.grant).toBe(1);
     expect(facets!.creditPool.free).toBe(1);
-    // Every billingType bucket is 0 — the row had no billingType.
+    // Every billingType bucket is 0 — neither the seed grant nor the
+    // addCredits grant carry a billingType.
     const billingTotal = Object.values(facets!.billingType).reduce(
       (a, b) => a + b,
       0,
@@ -110,13 +131,7 @@ describe("transaction facet-count aggregates", () => {
         updatedAt: now,
         lastLoginAt: now,
       });
-      await ctx.db.insert("credits", {
-        userId: uid,
-        freeBalance: 10,
-        paidBalance: 100,
-        lifetimeUsed: 0,
-        lastUpdatedAt: now,
-      });
+      await seedCreditsForTest(ctx, { userId: uid, free: 10, paid: 100, now });
       return { userId: uid };
     });
 
@@ -134,8 +149,10 @@ describe("transaction facet-count aggregates", () => {
     );
     expect(facets).not.toBeNull();
     expect(facets!.type.usage).toBe(2);
-    expect(facets!.creditPool.free).toBe(1);
-    expect(facets!.creditPool.paid).toBe(1);
+    // 1 seed grant on free + 1 usage on free.
+    expect(facets!.creditPool.free).toBe(2);
+    // 1 seed purchase on paid + 1 usage on paid.
+    expect(facets!.creditPool.paid).toBe(2);
     expect(facets!.billingType.embedding).toBe(2);
   });
 
@@ -203,7 +220,7 @@ describe("transaction facet-count aggregates", () => {
     expect(facets).toBeNull();
   });
 
-  it("empty ledger returns all-zero counts", async () => {
+  it("seed-only ledger returns counts equal to the seed grant + purchase rows", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     await seedUserAndCredits(t);
@@ -213,11 +230,20 @@ describe("transaction facet-count aggregates", () => {
       {},
     );
     expect(facets).not.toBeNull();
-    const total =
-      Object.values(facets!.type).reduce((a, b) => a + b, 0) +
-      Object.values(facets!.creditPool).reduce((a, b) => a + b, 0) +
-      Object.values(facets!.billingType).reduce((a, b) => a + b, 0);
-    expect(total).toBe(0);
+    // Every credits row anchors a seed grant + purchase tx so the
+    // sharded balance counters have summands to read. The facet
+    // aggregates surface those rows as `grant=1` / `purchase=1`.
+    expect(facets!.type.grant).toBe(1);
+    expect(facets!.type.purchase).toBe(1);
+    expect(facets!.type.usage).toBe(0);
+    expect(facets!.creditPool.free).toBe(1);
+    expect(facets!.creditPool.paid).toBe(1);
+    // Neither seed row carries a billingType.
+    const billingTotal = Object.values(facets!.billingType).reduce(
+      (a, b) => a + b,
+      0,
+    );
+    expect(billingTotal).toBe(0);
   });
 
   it("backfill migration populates aggregates for pre-existing rows idempotently", async () => {
@@ -235,7 +261,6 @@ describe("transaction facet-count aggregates", () => {
           type: "purchase",
           creditType: "paid",
           amount: 100,
-          balanceAfter: 100,
           createdAt: now + i,
         });
       }
@@ -246,19 +271,20 @@ describe("transaction facet-count aggregates", () => {
           creditType: "free",
           billingType: "screening",
           amount: -5,
-          balanceAfter: 95,
           createdAt: now + 100 + i,
         });
       }
     });
 
-    // Pre-backfill: aggregates are empty — counts are 0.
+    // Pre-backfill: only the seed grant + purchase from seedUserAndCredits
+    // appear in the aggregates (the bypass inserts have not been backfilled).
     const asUser = t.withIdentity({ subject: CLERK });
     const preBackfill = await asUser.query(
       api.credits.queries.getTransactionFacetCounts,
       {},
     );
-    expect(preBackfill!.type.purchase).toBe(0);
+    expect(preBackfill!.type.purchase).toBe(1);
+    expect(preBackfill!.type.grant).toBe(1);
     expect(preBackfill!.type.usage).toBe(0);
 
     // Run the backfill.
@@ -271,10 +297,13 @@ describe("transaction facet-count aggregates", () => {
       api.credits.queries.getTransactionFacetCounts,
       {},
     );
-    expect(postBackfill!.type.purchase).toBe(3);
+    // Seed (1 purchase) + 3 backfilled purchases.
+    expect(postBackfill!.type.purchase).toBe(4);
     expect(postBackfill!.type.usage).toBe(2);
-    expect(postBackfill!.creditPool.paid).toBe(3);
-    expect(postBackfill!.creditPool.free).toBe(2);
+    // Seed paid (1) + 3 backfilled paid purchases.
+    expect(postBackfill!.creditPool.paid).toBe(4);
+    // Seed free (1) + 2 backfilled free usages.
+    expect(postBackfill!.creditPool.free).toBe(3);
     expect(postBackfill!.billingType.screening).toBe(2);
 
     // Idempotency: re-running must be a no-op.
@@ -286,7 +315,7 @@ describe("transaction facet-count aggregates", () => {
       api.credits.queries.getTransactionFacetCounts,
       {},
     );
-    expect(postSecondRun!.type.purchase).toBe(3);
+    expect(postSecondRun!.type.purchase).toBe(4);
     expect(postSecondRun!.type.usage).toBe(2);
   });
 });

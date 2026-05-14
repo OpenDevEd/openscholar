@@ -5,6 +5,10 @@ import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { register as registerAgentComponent } from "@convex-dev/agent/test";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../credits/aggregates.test-support";
 
 /**
  * Safety net SN-1 (P3 plan): pin the PUBLIC `api.extraction.{mutations,queries}`
@@ -20,6 +24,7 @@ const ROUTING_ERROR_RE =
 
 function createTestConvex() {
   const t = convexTest(schema);
+  setupTransactionAggregates(t);
   registerAgentComponent(t);
   return t;
 }
@@ -83,6 +88,7 @@ describe("SN-1 public mutation routing", () => {
     "api.extraction.mutations.%s is registered and invokable",
     async (name) => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const ref = (api.extraction.mutations as unknown as Record<string, never>)[name];
       await assertRoutes(() => (t.mutation as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
     }
@@ -94,6 +100,7 @@ describe("SN-1 public query routing", () => {
     "api.extraction.queries.%s.%s is registered and invokable",
     async (scope, name) => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const parent = resolve(api.extraction.queries, scope);
       const ref = (parent as Record<string, never>)[name];
       await assertRoutes(() => (t.query as unknown as (r: unknown, a: unknown) => Promise<unknown>)(ref, {}));
@@ -165,13 +172,7 @@ async function seedUserAndFlags(
     });
     // Seed a large credit balance so plan-03's preflight gate in
     // startJob does not block these routing tests.
-    await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 0,
-      paidBalance: 100_000,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
+    await seedCreditsForTest(ctx, { userId, free: 0, paid: 100_000, now });
     return { userId };
   });
 }
@@ -221,6 +222,7 @@ const WORKFLOW_NOT_REGISTERED_RE =
 describe("startJob — extraction mode", () => {
   it("reaches workflow.start with extraction args (auth + flag + bucket + insert succeed)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     await seedUserAndFlags(t);
     const auth = t.withIdentity(STARTJOB_IDENTITY);
 
@@ -241,6 +243,7 @@ describe("startJob — extraction mode", () => {
 describe("startJob — chat mode", () => {
   it("creates a chat job with messageCount initialised when the chat flag is ON", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     await seedUserAndFlags(t, { chat: true });
     const auth = t.withIdentity(STARTJOB_IDENTITY);
 
@@ -260,6 +263,7 @@ describe("startJob — chat mode", () => {
 
   it("rejects chat mode when the extraction.chat flag is OFF", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     await seedUserAndFlags(t, { chat: false });
     const auth = t.withIdentity(STARTJOB_IDENTITY);
 
@@ -395,6 +399,7 @@ describe("startJob — chat source preparation", () => {
 describe("duplicateJob", () => {
   it("reads the source job and reaches workflow.start for the (Copy) duplicate", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId } = await seedUserAndFlags(t);
 
     // Seed an existing extraction job row + source rows directly — this lets
@@ -444,6 +449,7 @@ describe("duplicateJob", () => {
 
   it("rejects chat-mode duplicate when the extraction.chat flag is OFF", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId } = await seedUserAndFlags(t, { chat: false });
 
     const chatJobId = await t.run(async (ctx) => {
@@ -468,6 +474,7 @@ describe("duplicateJob", () => {
 
   it("duplicates a chat-mode job with sources and chatPapers when extraction.chat is ON", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId } = await seedUserAndFlags(t, { chat: true });
 
     const { chatJobId, oldSourceIds } = await t.run(async (ctx) => {
@@ -560,6 +567,7 @@ describe("duplicateJob", () => {
 describe("startJobFromTemplate", () => {
   it("reads the template and reaches workflow.start for the rerun", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const { userId } = await seedUserAndFlags(t);
     const auth = t.withIdentity(STARTJOB_IDENTITY);
 

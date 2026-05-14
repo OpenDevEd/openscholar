@@ -34,6 +34,12 @@ export function setupAggregates<
   registerAggregate(ht, "txnTypeAgg");
   registerAggregate(ht, "txnCreditPoolAgg");
   registerAggregate(ht, "txnBillingTypeAgg");
+  // balanceFreeCounter / balancePaidCounter are the source-of-truth for
+  // free/paid/total balance reads (sharded counters, 16 shards each).
+  // Every extraction mutation that hits deductCredits transitively reads
+  // them via readBalance(), so they must be registered here too.
+  registerShardedCounter(ht, "balanceFreeCounter");
+  registerShardedCounter(ht, "balancePaidCounter");
   // Tier B (extraction-occ-fixes): per-job processed/failed counters
   // migrated from extractionJobs row fields to a 16-shard counter. Any
   // test that triggers markPaperTerminalTx — i.e., almost every test

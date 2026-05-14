@@ -684,3 +684,67 @@ export const backfillBillingAndCredits = internalAction({
     };
   },
 });
+
+const DRIFT_AUDIT_PAGE_SIZE = 50;
+
+/**
+ * Hourly reconciliation that compares each user's sharded balance counter
+ * against the sum of their `creditTransactions.amount`. Logs (does not
+ * fix) any discrepancy — Modern Treasury reconciliation pattern: detect
+ * and alert, never silently self-heal. Manual remediation runs through
+ * `seedBalanceCountersFromLedger`.
+ *
+ * Pagination is mandatory: the credits table walk and the per-user
+ * ledger walk both happen inside internalQueries so each call stays
+ * under the 16 MB per-query read budget regardless of ledger depth.
+ */
+export const auditBalanceDrift = internalAction({
+  args: {},
+  returns: v.object({
+    usersScanned: v.number(),
+    driftDetected: v.number(),
+  }),
+  handler: async (ctx: ActionCtx) => {
+    let cursor: string | null = null;
+    let usersScanned = 0;
+    let driftDetected = 0;
+
+    while (true) {
+      const page: {
+        userIds: Id<"users">[];
+        nextCursor: string | null;
+        isDone: boolean;
+      } = await ctx.runQuery(
+        internal.credits.internal.listUsersWithCreditsPage,
+        { cursor, pageSize: DRIFT_AUDIT_PAGE_SIZE },
+      );
+
+      for (const userId of page.userIds) {
+        usersScanned += 1;
+        const drift = await ctx.runQuery(
+          internal.credits.internal.computeBalanceDriftForUser,
+          { userId },
+        );
+        if (drift === null) continue;
+        if (drift.driftFree === 0 && drift.driftPaid === 0) continue;
+
+        driftDetected += 1;
+        console.error("[auditBalanceDrift] drift detected", {
+          userId,
+          creditsId: drift.creditsId,
+          counterFree: drift.counterFree,
+          counterPaid: drift.counterPaid,
+          ledgerFree: drift.ledgerFree,
+          ledgerPaid: drift.ledgerPaid,
+          driftFree: drift.driftFree,
+          driftPaid: drift.driftPaid,
+        });
+      }
+
+      if (page.isDone || page.nextCursor === null) break;
+      cursor = page.nextCursor;
+    }
+
+    return { usersScanned, driftDetected };
+  },
+});

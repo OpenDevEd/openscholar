@@ -11,7 +11,7 @@ import { paperChat } from "./agent";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
 import { STOP_ABORT_POLL_INTERVAL_MS } from "./messages";
 import { ABORT_TOKEN_SURCHARGE_MULTIPLIER } from "./abortTokenEstimate";
-import { setupTransactionAggregates } from "../credits/aggregates.test-support";
+import { setupTransactionAggregates, seedCreditsForTest } from "../credits/aggregates.test-support";
 import { parseChatError } from "../../lib/errors/taxonomy";
 
 // Capture the composed abortSignal the library hands to doStream so
@@ -267,12 +267,10 @@ async function seedModelAndCredits(
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.insert("credits", {
+    await seedCreditsForTest(ctx, {
       userId,
-      freeBalance: opts.freeBalance ?? 10_000,
-      paidBalance: 0,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: opts.freeBalance ?? 10_000,
+      now,
     });
     return { modelId };
   });
@@ -1104,7 +1102,6 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBe(0);
     expect(balance?.total).toBe(10_000);
 
     await t.run(async (ctx) => {
@@ -1228,7 +1225,6 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const balance = await t.run(async (ctx) =>
       ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
     );
-    expect(balance?.lifetimeUsed).toBeGreaterThan(0);
     expect(balance?.total).toBeLessThan(10_000);
 
     await t.run(async (ctx) => {
@@ -1996,13 +1992,7 @@ describe("chat.messages.generateResponse — web search tool wiring (plan-06)", 
           ? { supportedParameters: ["tools"] }
           : {}),
       });
-      await ctx.db.insert("credits", {
-        userId,
-        freeBalance: 10_000,
-        paidBalance: 0,
-        lifetimeUsed: 0,
-        lastUpdatedAt: now,
-      });
+      await seedCreditsForTest(ctx, { userId, free: 10_000, now });
       return { modelId: insertedModelId };
     });
     await t.run(async (ctx) =>

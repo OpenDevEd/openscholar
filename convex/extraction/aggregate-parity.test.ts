@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
+import { seedCreditsForTest } from "../credits/aggregates.test-support";
 import { readAggregateCounters, recordResult, resultStatusAgg } from "./aggregates";
 
 type Ctx = TestConvex<typeof schema>;
@@ -153,13 +154,11 @@ async function seedJob(
       updatedAt: now,
       lastLoginAt: now,
     });
-    await ctx.db.insert("credits", {
-      userId,
-      freeBalance: 0,
-      paidBalance: 100000,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
+    // Seed the credits anchor row with 100k paid pool so the
+    // extraction recordResult / finalizePaper mutations have a balance
+    // to deduct against (creditsUsed=0 in this suite, but the row must
+    // exist for readBalance() to resolve the sharded counters cleanly).
+    await seedCreditsForTest(ctx, { userId, free: 0, paid: 100_000, now });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       mode: "extraction" as const,

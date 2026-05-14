@@ -14,6 +14,10 @@ import { describe, it, expect } from "vitest";
 import { api } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
+import {
+  setupTransactionAggregates,
+  seedCreditsForTest,
+} from "../../credits/aggregates.test-support";
 
 const CLERK = "clerk_resume_owner";
 const OWNER_IDENTITY = {
@@ -34,12 +38,11 @@ async function seedUserAndCredits(
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.insert("credits", {
+    await seedCreditsForTest(ctx, {
       userId,
-      freeBalance: opts.free ?? 0,
-      paidBalance: opts.paid ?? 100_000,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
+      free: opts.free ?? 0,
+      paid: opts.paid ?? 100_000,
+      now,
     });
     return userId;
   });
@@ -132,6 +135,7 @@ async function seedJob(
 describe("resumeExtraction — happy paths", () => {
   it("resumes 'paused' back to the captured pausedFromStatus", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -155,6 +159,7 @@ describe("resumeExtraction — happy paths", () => {
 
   it("falls back to 'extracting' when pausedFromStatus is missing", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -175,6 +180,7 @@ describe("resumeExtraction — happy paths", () => {
 
   it("resumes 'creditsExhausted' to 'extracting' when balance covers the estimate", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t, { paid: 100_000 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
@@ -198,6 +204,7 @@ describe("resumeExtraction — happy paths", () => {
 describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () => {
   it("throws INSUFFICIENT_CREDITS when balance < estimate.high", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t, { paid: 0, free: 5 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
@@ -220,6 +227,7 @@ describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () =>
 
   it("includes indexing cost for unindexed PDF-tier papers in the preflight", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t, { paid: 0, free: 0 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
@@ -238,6 +246,7 @@ describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () =>
 
   it("ignores balance on user-paused jobs (pause is not a credit state)", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t, { paid: 0, free: 0 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -256,6 +265,7 @@ describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () =>
 describe("resumeExtraction — idempotency + refusals", () => {
   it("returns resumed:false with reason 'not_paused' on an already-running job", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, { jobStatus: "extracting" });
     const auth = t.withIdentity(OWNER_IDENTITY);
@@ -269,6 +279,7 @@ describe("resumeExtraction — idempotency + refusals", () => {
 
   it("double-resume is a no-op — second call returns not_paused", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -293,6 +304,7 @@ describe("resumeExtraction — idempotency + refusals", () => {
     "returns not_paused on terminal status '%s'",
     async (status) => {
       const t = convexTest(schema);
+      setupTransactionAggregates(t);
       const userId = await seedUserAndCredits(t);
       const jobId = await seedJob(t, userId, { jobStatus: status });
       const auth = t.withIdentity(OWNER_IDENTITY);
@@ -308,6 +320,7 @@ describe("resumeExtraction — idempotency + refusals", () => {
 describe("resumeExtraction — auth + mode guards", () => {
   it("rejects unauthenticated callers", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -320,6 +333,7 @@ describe("resumeExtraction — auth + mode guards", () => {
 
   it("rejects foreign users with NOT_FOUND shape", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -348,6 +362,7 @@ describe("resumeExtraction — auth + mode guards", () => {
 
   it("rejects resume on chat-mode jobs", async () => {
     const t = convexTest(schema);
+    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await t.run((ctx) =>
       ctx.db.insert("extractionJobs", {

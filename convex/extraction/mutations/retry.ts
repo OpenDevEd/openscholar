@@ -47,6 +47,7 @@ import {
 import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { estimateRetryCredits } from "../../../lib/extraction/cost-estimate";
+import { readBalance } from "../../credits/balanceCounter";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
 import { recomputePaperListProjection } from "../listProjection";
 
@@ -193,8 +194,9 @@ export const retryFailedQuestions = mutation({
         .query("credits")
         .withIndex("by_user", (q) => q.eq("userId", user._id))
         .unique();
-      const totalAvailable =
-        (credits?.freeBalance ?? 0) + (credits?.paidBalance ?? 0);
+      const totalAvailable = credits
+        ? (await readBalance(ctx, credits._id)).total
+        : 0;
       if (totalAvailable < estimate.high) {
         throw createError(
           "INSUFFICIENT_CREDITS",

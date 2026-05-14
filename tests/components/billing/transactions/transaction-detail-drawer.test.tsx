@@ -47,7 +47,6 @@ function makeRow(
     direction: "in",
     amount: 1240,
     signedAmount: 1240,
-    balanceAfter: 5000,
     description: "Top-up 1,240 credits",
     createdAt: Date.UTC(2026, 3, 20, 10, 0, 0),
     jobId: null,
@@ -147,19 +146,16 @@ describe("TransactionDetailDrawer", () => {
     expect(title.textContent).toBe("titles.walletApi:model=GPT 4o Mini");
   });
 
-  it("renders the signed amount with + for credits and balanceAfter below", () => {
+  it("renders the signed amount with + for credits", () => {
     render(
       <TransactionDetailDrawer
-        row={makeRow({ direction: "in", amount: 500, balanceAfter: 5500 })}
+        row={makeRow({ direction: "in", amount: 500 })}
         onOpenChange={vi.fn()}
       />,
     );
     const amount = document.querySelector("[data-drawer-amount]");
     expect(amount?.getAttribute("data-direction")).toBe("in");
     expect(amount?.textContent).toBe("+500");
-    expect(
-      document.querySelector("[data-drawer-section='amount']")?.textContent,
-    ).toContain("balance=5500");
   });
 
   it("uses U+2212 minus for debits, not ASCII hyphen", () => {

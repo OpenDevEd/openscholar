@@ -1,23 +1,44 @@
 /**
- * Extraction workflow — Tier A per-paper sub-workflow decomposition.
+ * Extraction workflow — Tier A per-paper sub-workflow decomposition,
+ * plus Tier E.1 root-detach.
  *
- * Each paper runs as a child workflow (`paperPipelineWorkflow` /
- * `retryPaperPipelineWorkflow`) launched from the parent
- * (`runExtractionWorkflow` / `runRetryWorkflow`) via `step.runWorkflow`.
+ * Tier A split each paper into its own child workflow
+ * (`paperPipelineWorkflow` / `retryPaperPipelineWorkflow`) so per-step
+ * journal entries lived on the child, not the parent.
  *
- * Why: prior to Tier A, every paper's per-step journal entries lived
- * in the parent's journal. With Q questions × P papers, the parent
- * journal accumulated O(P × (Q + 5)) rows, and every step write
- * contended on the parent generation lock. Sub-workflows give each
- * paper its own `workflows` row and its own `steps` table, so the
- * parent journal collapses to one entry per paper (the runWorkflow
- * call) and per-paper journal churn no longer cross-contends with
- * peer papers' steps.
+ * Tier E.1 then drops the parent/child tether entirely. The setup
+ * workflows (`runExtractionWorkflow` / `runRetryWorkflow`) do
+ * pre-fan-out work (fetch papers, validation, status flips, the
+ * `waitWhilePausedOrCancelled` gate), then hand off to
+ * `launchPaperWorkflowsForJob` — an internal mutation that
+ * `workflow.start`s each paper workflow as a ROOT (no parent step
+ * waiting on its return). The setup workflow exits immediately
+ * afterwards.
  *
- * Halt / park / completed flow up the parent identically — the child
- * returns its `PaperPipelineResult` from its handler, the parent reads
- * it from `await step.runWorkflow(...)`, and `runBoundedBatches`
- * batches and re-queues parked items exactly as before.
+ * Why detach? `step.runWorkflow` made every child's
+ * `nestedWorkflowOnComplete` re-read the parent's row, insert a step
+ * row on the parent, and re-enqueue the parent in
+ * `pendingStart` / `pendingCompletion`. With 50 concurrent paper
+ * workflows that's four hot tables, all keyed by the same parent
+ * workflowId, contended by 50 writers per job. Detach kills the
+ * shared keyspace.
+ *
+ * Job rollup after detach: the per-job sharded counter
+ * (`jobCounters.ts`) still drives `maybeFinalizeJob` — every terminal
+ * paper bumps the counter and the counter-driven check transitions
+ * the job to `completed` / `failed`. No parent workflow needed.
+ *
+ * Pause / resume after detach: paper workflows do NOT awaitEvent
+ * (multi-listener fan-out isn't supported by the workflow component's
+ * 1:1 event channel). On park reason, the paper workflow exits
+ * cleanly. `resumeExtraction` bumps `runEpoch` and re-launches a paper
+ * workflow per non-terminal paper. Stale in-flight workflows
+ * self-terminate at their next step via the `expectedEpoch` check.
+ *
+ * Cancel after detach: `cancelExtraction` flips `job.status` to
+ * `"cancelled"` and cancels only the setup workflow. Paper workflows
+ * detect cancellation via their next action's `getWorkerSkipReason`
+ * check and exit cleanly.
  */
 
 import { workflow } from "../workflow";
@@ -26,13 +47,11 @@ import { internal } from "../_generated/api";
 import { getProcessableFlags } from "./content";
 import type { Doc, Id } from "../_generated/dataModel";
 import { chunk, resolveBoundedConcurrency } from "./batching";
+import { EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP } from "./bucket/limits";
 
 import { createError } from "../lib/errors";
 import { classifyUnknownError } from "@/lib/errors/taxonomy";
 import type { WorkflowCtx } from "@convex-dev/workflow";
-
-const EXTRACTION_PAPER_CONCURRENCY_INFRA_CLAMP = 5;
-const EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP = 5;
 
 type ExtractionWorkflowStep = Pick<
   WorkflowCtx,
@@ -85,64 +104,18 @@ export function classifyWorkerSkip(
 type ExtractionPaper = Doc<"extractionPapers">;
 type ExtractionQuestion = Doc<"extractionQuestions">;
 
-async function getEffectiveExecutionConcurrency(
+async function getEffectiveQuestionConcurrency(
   step: ExtractionWorkflowStep,
   userId: Id<"users">,
-): Promise<{
-  paperConcurrency: number;
-  questionConcurrency: number;
-}> {
+): Promise<number> {
   const executionLimits = await step.runQuery(
     internal.extraction.bucket.limits.getExtractionExecutionLimitsForUser,
     { userId },
   );
-
-  return {
-    paperConcurrency: resolveBoundedConcurrency(
-      executionLimits.paperConcurrency,
-      EXTRACTION_PAPER_CONCURRENCY_INFRA_CLAMP,
-    ),
-    questionConcurrency: resolveBoundedConcurrency(
-      executionLimits.questionConcurrencyPerPaper,
-      EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
-    ),
-  };
-}
-
-export async function runBoundedBatches<TItem>({
-  items,
-  batchSize,
-  waitForNextBatch,
-  runItem,
-}: {
-  items: ReadonlyArray<TItem>;
-  batchSize: number;
-  waitForNextBatch: () => Promise<JobControl | null>;
-  runItem: (item: TItem, control: JobControl) => Promise<PaperPipelineResult>;
-}): Promise<PaperPipelineResult> {
-  for (const batch of chunk(items, batchSize)) {
-    let pendingItems: ReadonlyArray<TItem> = batch;
-    while (pendingItems.length > 0) {
-      const control = await waitForNextBatch();
-      if (control === null) {
-        return "halted";
-      }
-
-      const batchResults = await Promise.all(
-        pendingItems.map((item) => runItem(item, control)),
-      );
-
-      if (batchResults.some((result) => result === "halted")) {
-        return "halted";
-      }
-
-      pendingItems = pendingItems.filter(
-        (_, index) => batchResults[index] === "park",
-      );
-    }
-  }
-
-  return "completed";
+  return resolveBoundedConcurrency(
+    executionLimits.questionConcurrencyPerPaper,
+    EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
+  );
 }
 
 async function runQuestionStep(
@@ -477,10 +450,8 @@ export const runExtractionWorkflow = workflow.define({
       throw createError("NOT_FOUND", "Job not found");
     }
     let expectedEpoch = job.runEpoch ?? 0;
-    const {
-      paperConcurrency: effectivePaperConcurrency,
-      questionConcurrency: effectiveQuestionConcurrency,
-    } = await getEffectiveExecutionConcurrency(step, job.userId);
+    const effectiveQuestionConcurrency =
+      await getEffectiveQuestionConcurrency(step, job.userId);
 
     const questionIds = await step.runQuery(
       internal.extraction.queries.internal.getQuestionsInternal,
@@ -581,40 +552,38 @@ export const runExtractionWorkflow = workflow.define({
       },
     );
 
-    console.log(
-      `[Workflow] Fanning out ${paperIds.length} papers × ${questionIds.length} questions in paper batches of ${effectivePaperConcurrency} and question batches of ${effectiveQuestionConcurrency}`,
+    // Tier E.1 detach: hand each paper to a ROOT workflow via
+    // `launchPaperWorkflowsForJob`. No `step.runWorkflow` → no shared
+    // parent journal → 50 concurrent paper workflows write to disjoint
+    // workflowIds instead of contending on a single parent row.
+    const controlBeforeFanOut = await waitWhilePausedOrCancelled(step, jobId);
+    if (controlBeforeFanOut.status === "cancelled") {
+      console.log(`[Workflow] Cancelled before fan-out; halting`);
+      return;
+    }
+    expectedEpoch = controlBeforeFanOut.runEpoch;
+
+    const { launched, reserved, creditsExhausted } = await step.runMutation(
+      internal.extraction.mutations.internal.fanout.launchPaperWorkflowsForJob,
+      {
+        jobId,
+        paperIds,
+        expectedEpoch,
+        pdfEnabled,
+        questionConcurrency: effectiveQuestionConcurrency,
+      },
     );
 
-    const paperBatchResult = await runBoundedBatches({
-      items: paperIds,
-      batchSize: effectivePaperConcurrency,
-      waitForNextBatch: async () => {
-        const control = await waitWhilePausedOrCancelled(step, jobId);
-        if (control.status === "cancelled") {
-          console.log(`[Workflow] Cancelled before next paper batch; halting`);
-          return null;
-        }
-        return control;
-      },
-      runItem: async (paperId, control) =>
-        step.runWorkflow(
-          internal.extraction.workflow.paperPipelineWorkflow,
-          {
-            jobId,
-            paperId,
-            expectedEpoch: control.runEpoch,
-            pdfEnabled,
-            questionConcurrency: effectiveQuestionConcurrency,
-          },
-          { name: `pp:${paperId}` },
-        ),
-    });
-
-    if (paperBatchResult === "halted") {
+    if (creditsExhausted) {
+      console.log(
+        `[Workflow] Fan-out aborted: insufficient credits for ${paperIds.length} paper(s); job ${jobId} → creditsExhausted`,
+      );
       return;
     }
 
-    console.log(`[Workflow] Per-question fan-out complete for job ${jobId}`);
+    console.log(
+      `[Workflow] Detached ${launched} paper workflow(s) for job ${jobId} (${reserved} freshly reserved); setup workflow exiting`,
+    );
   },
 });
 
@@ -686,18 +655,8 @@ export const runRetryWorkflow = workflow.define({
     if (!job) {
       throw createError("NOT_FOUND", "Job not found");
     }
-    const {
-      paperConcurrency: effectivePaperConcurrency,
-      questionConcurrency: effectiveQuestionConcurrency,
-    } = await getEffectiveExecutionConcurrency(step, job.userId);
-
-    const questionList = await step.runQuery(
-      internal.extraction.queries.internal.getQuestionsInternal,
-      { jobId },
-    );
-    const keyToId = new Map<string, Id<"extractionQuestions">>(
-      questionList.map((q) => [q.key, q._id]),
-    );
+    const effectiveQuestionConcurrency =
+      await getEffectiveQuestionConcurrency(step, job.userId);
 
     const pending = await step.runQuery(
       internal.extraction.queries.internal.getPendingResultsInternal,
@@ -725,55 +684,45 @@ export const runRetryWorkflow = workflow.define({
       else byPaper.set(r.paperId, [r.questionKey]);
     }
 
-    console.log(
-      `[RetryWorkflow] Re-dispatching ${pending.length} question(s) across ${byPaper.size} paper(s) in batches of ${effectivePaperConcurrency}`,
-    );
-
-    const retryBatchResult = await runBoundedBatches({
-      items: Array.from(byPaper.entries()),
-      batchSize: effectivePaperConcurrency,
-      waitForNextBatch: async () => {
-        const control = await waitWhilePausedOrCancelled(step, jobId);
-        if (control.status === "cancelled") {
-          console.log(
-            `[RetryWorkflow] Cancelled before next paper batch; halting`,
-          );
-          return null;
-        }
-        return control;
-      },
-      runItem: async ([paperId, questionKeys], control) =>
-        step.runWorkflow(
-          internal.extraction.workflow.retryPaperPipelineWorkflow,
-          {
-            jobId,
-            paperId,
-            questionKeys,
-            expectedEpoch: control.runEpoch,
-            questionConcurrency: effectiveQuestionConcurrency,
-          },
-          { name: `rpp:${paperId}` },
-        ),
-    });
-
-    if (retryBatchResult === "halted") {
+    // Tier E.1 detach: see runExtractionWorkflow above for rationale.
+    const controlBeforeFanOut = await waitWhilePausedOrCancelled(step, jobId);
+    if (controlBeforeFanOut.status === "cancelled") {
+      console.log(`[RetryWorkflow] Cancelled before fan-out; halting`);
       return;
     }
+    expectedEpoch = controlBeforeFanOut.runEpoch;
 
-    console.log(`[RetryWorkflow] Retry fan-out complete for job ${jobId}`);
+    const { launched } = await step.runMutation(
+      internal.extraction.mutations.internal.fanout
+        .launchRetryPaperWorkflowsForJob,
+      {
+        jobId,
+        paperWork: Array.from(byPaper.entries()).map(
+          ([paperId, questionKeys]) => ({ paperId, questionKeys }),
+        ),
+        expectedEpoch,
+        questionConcurrency: effectiveQuestionConcurrency,
+      },
+    );
+
+    console.log(
+      `[RetryWorkflow] Detached ${launched} retry paper workflow(s) for job ${jobId}; setup workflow exiting`,
+    );
   },
 });
 
 /**
- * Tier A child workflow — runs one paper's full extraction pipeline
- * (downloadAndIndex → per-question fan-out → finalizePaper) in its own
- * journal. Launched from `runExtractionWorkflow` via `step.runWorkflow`,
- * which awaits the child's return value (`PaperPipelineResult`).
+ * Per-paper extraction pipeline (download → index → per-question
+ * fan-out → finalizePaper). Tier A gave it its own journal; Tier E.1
+ * promotes it to a ROOT workflow launched from the
+ * `launchPaperWorkflowsForJob` mutation. No parent step awaits this
+ * workflow's return value — terminal outcomes feed the job-level
+ * sharded counter in `markPaperTerminalTx`, and the
+ * counter-driven `maybeFinalizeJob` settles the job status.
  *
- * The child re-fetches its question list rather than receiving it as
- * an arg — keeps the parent step's argument payload tiny (just IDs +
- * primitives) so the parent journal never bloats with per-paper
- * question docs.
+ * The workflow re-fetches its question list at boot so the launch
+ * mutation's argument payload stays IDs + primitives — keeps the
+ * mutation's tx small even when fanning out hundreds of papers.
  */
 export const paperPipelineWorkflow = workflow.define({
   args: {
@@ -804,11 +753,11 @@ export const paperPipelineWorkflow = workflow.define({
 });
 
 /**
- * Tier A retry child workflow — runs one paper's retry pipeline
- * (re-dispatch only the listed `questionKeys` then finalizePaper) in
- * its own journal. Launched from `runRetryWorkflow` via
- * `step.runWorkflow`. Download + indexing are NOT re-run; the per-
- * question worker honors the existing `indexingBilled` guard.
+ * Per-paper retry pipeline — re-dispatch only the listed
+ * `questionKeys` then finalizePaper. Tier E.1 promotes it to a ROOT
+ * workflow launched from `launchRetryPaperWorkflowsForJob`. Download +
+ * indexing are NOT re-run; the per-question worker honours the
+ * existing `indexingBilled` guard.
  */
 export const retryPaperPipelineWorkflow = workflow.define({
   args: {

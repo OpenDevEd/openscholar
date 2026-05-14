@@ -9,7 +9,6 @@ export const CSV_COLUMNS = [
   "billingType",
   "description",
   "signedAmount",
-  "balanceAfter",
   "stripeInvoiceId",
   "stripePaymentIntentId",
   "stripeChargeId",

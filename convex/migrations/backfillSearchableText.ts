@@ -27,6 +27,7 @@ export const run = internalMutation({
     let patched = 0;
     for (const row of page.page) {
       if (row.searchableText && row.searchableText.length > 0) continue;
+      if (row.type === "reservation" || row.type === "reservation_release") continue;
       const searchableText = computeSearchableText({
         description: row.description,
         metadata: row.metadata,

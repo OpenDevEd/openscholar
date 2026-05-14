@@ -104,7 +104,6 @@ function TransactionRowImpl({
         amount={row.amount}
         status={status}
         density={density}
-        balanceAfter={row.balanceAfter}
       />
 
       <div className="flex shrink-0 items-center gap-0.5 text-muted-foreground/50 opacity-60 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
@@ -172,6 +171,5 @@ function buildAriaLabel(
   const sign = row.direction === "in" ? t("aria.credit") : t("aria.debit");
   const amt = format.number(row.amount);
   const date = format.dateTime(new Date(row.createdAt), { dateStyle: "medium" });
-  const bal = format.number(row.balanceAfter);
-  return `${title}. ${sign} ${amt}. ${t("aria.balanceAfter", { balance: bal })}. ${date}.`;
+  return `${title}. ${sign} ${amt}. ${date}.`;
 }

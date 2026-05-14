@@ -39,10 +39,12 @@ import type * as chat_tools_selectWebSearchTool from "../chat/tools/selectWebSea
 import type * as chat_tools_tavilyWebSearch from "../chat/tools/tavilyWebSearch.js";
 import type * as credits_actions from "../credits/actions.js";
 import type * as credits_aggregates from "../credits/aggregates.js";
+import type * as credits_balanceCounter from "../credits/balanceCounter.js";
 import type * as credits_internal from "../credits/internal.js";
 import type * as credits_lib_invoiceGrantPolicy from "../credits/lib/invoiceGrantPolicy.js";
 import type * as credits_lib_retryPolicy from "../credits/lib/retryPolicy.js";
 import type * as credits_queries from "../credits/queries.js";
+import type * as credits_reservation from "../credits/reservation.js";
 import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as extraction_access from "../extraction/access.js";
@@ -68,6 +70,7 @@ import type * as extraction_listProjection from "../extraction/listProjection.js
 import type * as extraction_mutations from "../extraction/mutations.js";
 import type * as extraction_mutations_evidence from "../extraction/mutations/evidence.js";
 import type * as extraction_mutations_internal_admin from "../extraction/mutations/internal/admin.js";
+import type * as extraction_mutations_internal_fanout from "../extraction/mutations/internal/fanout.js";
 import type * as extraction_mutations_internal_lifecycle from "../extraction/mutations/internal/lifecycle.js";
 import type * as extraction_mutations_internal_onComplete from "../extraction/mutations/internal/onComplete.js";
 import type * as extraction_mutations_jobs from "../extraction/mutations/jobs.js";
@@ -230,10 +233,12 @@ declare const fullApi: ApiFromModules<{
   "chat/tools/tavilyWebSearch": typeof chat_tools_tavilyWebSearch;
   "credits/actions": typeof credits_actions;
   "credits/aggregates": typeof credits_aggregates;
+  "credits/balanceCounter": typeof credits_balanceCounter;
   "credits/internal": typeof credits_internal;
   "credits/lib/invoiceGrantPolicy": typeof credits_lib_invoiceGrantPolicy;
   "credits/lib/retryPolicy": typeof credits_lib_retryPolicy;
   "credits/queries": typeof credits_queries;
+  "credits/reservation": typeof credits_reservation;
   crons: typeof crons;
   debug_papers: typeof debug_papers;
   "extraction/access": typeof extraction_access;
@@ -259,6 +264,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/mutations": typeof extraction_mutations;
   "extraction/mutations/evidence": typeof extraction_mutations_evidence;
   "extraction/mutations/internal/admin": typeof extraction_mutations_internal_admin;
+  "extraction/mutations/internal/fanout": typeof extraction_mutations_internal_fanout;
   "extraction/mutations/internal/lifecycle": typeof extraction_mutations_internal_lifecycle;
   "extraction/mutations/internal/onComplete": typeof extraction_mutations_internal_onComplete;
   "extraction/mutations/jobs": typeof extraction_mutations_jobs;
@@ -428,4 +434,6 @@ export declare const components: {
   txnTypeAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"txnTypeAgg">;
   txnCreditPoolAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"txnCreditPoolAgg">;
   txnBillingTypeAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"txnBillingTypeAgg">;
+  balanceFreeCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"balanceFreeCounter">;
+  balancePaidCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"balancePaidCounter">;
 };
