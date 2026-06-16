@@ -1,20 +1,16 @@
 /**
  * Internal job / question lifecycle mutations — the plumbing the
- * workflow calls between source fetch and paper processing.
+ * queue setup action calls between source fetch and paper processing.
  *
  *   - maybeFinalizeJob: O(1) "all done" check from extractionJobs counters.
- *   - createJobDirect / createQuestionDirect: test-and-workflow job/question
- *     record creation used by fixtures and the workflow step.
- *   - setJobWorkflowId: patch the workflow handle after workflow.start().
- *   - releaseUnsettledPaperReservationsForJob: Tier D sweep that releases
- *     every paper-level credit reservation that survived a terminal job
- *     transition (cancel, fail, complete-with-orphans, delete). Scheduled
- *     async from `maybeFinalizeJob` and `cancelExtraction` so the user
- *     mutation itself doesn't pay an O(P) tx cost.
+ *   - createJobDirect / createQuestionDirect: test/queue job/question
+ *     record creation used by fixtures and setup helpers.
+ *   - clearAdmittedPaperCreditsForJob: clears per-paper admission markers
+ *     that survived a terminal job transition.
  *
  * Plan-02 retires the per-paper workpool enqueue helper that used to
- * live here — the workflow handler now calls downloadAndIndexPdfAction
- * and extractOneQuestion directly via step.runAction.
+ * live here — paper queue workers call download/index and extraction
+ * helpers directly through Workpool actions.
  */
 
 import { internalMutation } from "../../../_generated/server";
@@ -31,8 +27,7 @@ import {
   sourceTypeValidator,
 } from "../../validators";
 import { readJobCounters } from "../../jobCounters";
-import { releaseReservationTransaction } from "../../../credits/reservation";
-import { PAPER_LIMIT_MAX } from "../../bucket/limits";
+import { clearJobPaperQuestionAdmissionsTx } from "../../creditAdmissions";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -56,7 +51,7 @@ export const maybeFinalizeJob = internalMutation({
       job.status === "completed" ||
       // Paused and creditsExhausted are non-terminal pauses. Do not let
       // a late counter-increment cascade through to `completed`/`failed`
-      // while the workflow is blocked on awaitEvent — the resume path
+      // while the job is parked — the resume path
       // owns status transitions back to active.
       job.status === "paused" ||
       job.status === "creditsExhausted"
@@ -77,13 +72,10 @@ export const maybeFinalizeJob = internalMutation({
         completedAt: now,
         updatedAt: now,
       });
-      // Tier D: release any reservations that survived the immediate-fail
-      // path. With total === 0 the fan-out couldn't have run, but resume
-      // / retry paths could have left reservations here in theory.
       await ctx.scheduler.runAfter(
         0,
         internal.extraction.mutations.internal.lifecycle
-          .releaseUnsettledPaperReservationsForJob,
+          .clearAdmittedPaperCreditsForJob,
         { jobId: args.jobId },
       );
       return null;
@@ -107,17 +99,10 @@ export const maybeFinalizeJob = internalMutation({
       completedAt: now,
       updatedAt: now,
     });
-    // Tier D: release any paper reservations that didn't settle on the
-    // happy path. With `status === "completed"` every paper that landed
-    // a terminal status went through `finalizePaper`, which settled and
-    // cleared `reservationId` — so this is usually a no-op. The sweep
-    // exists for `status === "failed"` (no per-paper settle ran) and for
-    // edge cases where a paper terminalized via `markPaperTerminalTx`
-    // without going through finalizePaper's settle branch.
     await ctx.scheduler.runAfter(
       0,
       internal.extraction.mutations.internal.lifecycle
-        .releaseUnsettledPaperReservationsForJob,
+        .clearAdmittedPaperCreditsForJob,
       { jobId: args.jobId },
     );
     return null;
@@ -125,42 +110,15 @@ export const maybeFinalizeJob = internalMutation({
 });
 
 /**
- * Tier D — sweep paper-level reservations that survived a terminal job
- * transition. Scheduled async from `maybeFinalizeJob` and
- * `cancelExtraction` so the user-facing mutation doesn't pay the O(P)
- * scan + release cost in its own tx.
- *
- * Idempotent: `releaseReservationTransaction` probes for an existing
- * `reservation_release` before inserting an offset, so re-running this
- * mutation (cron retry, replay) is a no-op. The paper-row clear is
- * unconditional but writing the same `reservationId: undefined` twice
- * is a no-op.
- *
- * Batched implicitly: PAPER_LIMIT_MAX is 1000 and most jobs are far
- * below it; if Convex's per-mutation write budget ever pushes back we
- * can split into a self-scheduling resume pattern, but that's premature.
+ * Clear per-paper admission markers that survived a terminal job
+ * transition. This does not touch the credit ledger because admission is
+ * only a start gate; final billing writes the settled usage transaction.
  */
-export const releaseUnsettledPaperReservationsForJob = internalMutation({
+export const clearAdmittedPaperCreditsForJob = internalMutation({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.object({ released: v.number() }),
-  handler: async (ctx, args): Promise<{ released: number }> => {
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT_MAX);
-
-    let released = 0;
-    for (const paper of papers) {
-      if (paper.reservationId === undefined) continue;
-      await releaseReservationTransaction(ctx, {
-        reservationId: paper.reservationId,
-        description: "Reservation released (job terminal)",
-      });
-      await ctx.db.patch(paper._id, { reservationId: undefined });
-      released++;
-    }
-
-    return { released };
+  returns: v.object({ cleared: v.number() }),
+  handler: async (ctx, args): Promise<{ cleared: number }> => {
+    return await clearJobPaperQuestionAdmissionsTx(ctx, args);
   },
 });
 
@@ -209,19 +167,5 @@ export const createQuestionDirect = internalMutation({
       order: args.order,
       createdAt: Date.now(),
     });
-  },
-});
-
-export const setJobWorkflowId = internalMutation({
-  args: {
-    jobId: v.id("extractionJobs"),
-    workflowId: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch("extractionJobs", args.jobId, {
-      workflowId: args.workflowId,
-    });
-    return null;
   },
 });

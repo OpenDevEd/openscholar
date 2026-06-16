@@ -6,7 +6,7 @@
  *
  * Mirrors the duplicateJob auth / rate-limit / ownership shape, but
  * does NOT duplicate the job row — it un-terminals the existing row
- * and re-dispatches a secondary `runRetryWorkflow`.
+ * and re-dispatches retry paper queue rows.
  *
  * Guards:
  *   - `status ∈ {completed, failed, creditsExhausted}` (state-machine edges
@@ -17,25 +17,21 @@
  *     plan 02; the retry mutation never flips `billed` back to false and
  *     never touches a row where it's true (would re-bill).
  *   - Indexing is NEVER re-run. Retry reuses the paper's existing
- *     `ragEntryId` + `indexingBilled=true` flag; the workflow branch for
- *     download/indexing is not entered.
+ *     `ragEntryId` + `indexingBilled=true` flag; retry rows skip download
+ *     and indexing.
  *   - Pre-flight credit check via `estimateRetryCredits` × balance.
  *
  * The state-mutation core is split out as `applyRetryResetTx` so tests
  * can run it in isolation via `t.run(ctx => applyRetryResetTx(ctx, …))`
- * without the outer mutation rolling back at `workflow.start` (the
- * workflow component is unregistered in convex-test, so the public
- * mutation's happy-path tx always rolls back in tests).
+ * without requiring the public mutation's auth/rate-limit shell.
  */
 
 import { mutation } from "../../_generated/server";
 import type { MutationCtx } from "../../_generated/server";
 import { v } from "convex/values";
-import { internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { workflow } from "../../workflow";
 import { requireAuth } from "../../lib/auth";
-import { requireFeature } from "../../featureFlags/guard";
+import { getFlag, requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertJobOwnership } from "../access";
@@ -44,12 +40,21 @@ import {
   assertValidPaperTransition,
   type JobStatus,
 } from "../stateMachine";
-import { PAPER_LIMIT_MAX } from "../bucket/limits";
+import {
+  EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
+  getExtractionExecutionLimits,
+  PAPER_LIMIT_MAX,
+} from "../bucket/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { estimateRetryCredits } from "../../../lib/extraction/cost-estimate";
 import { readBalance } from "../../credits/balanceCounter";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
 import { recomputePaperListProjection } from "../listProjection";
+import { normalizeBatchSize, resolveBoundedConcurrency } from "../batching";
+import {
+  dispatchPaperQueueWindowTx,
+  enqueueRetryPapersForJobTx,
+} from "../queue/mutations";
 
 const ALLOWED_RETRY_STATUSES: readonly JobStatus[] = [
   "completed",
@@ -77,22 +82,45 @@ async function listRetryableFailures(
   });
 }
 
-/**
- * Reset retryable failed results on a job, flip the containing papers
- * and the job itself back to "extracting". Pure tx logic — no workflow
- * dispatch. Returns the count of rows reset (0 means nothing to retry).
- *
- * Pre-condition: caller has already asserted auth / ownership / job
- * status / preflight credits. Exported so tests can invoke it via
- * `t.run(…)`.
- */
-export async function applyRetryResetTx(
+type RetryPaperWork = {
+  paperId: Id<"extractionPapers">;
+  questionKeys: string[];
+};
+
+type RetryResetResult = {
+  retryableCount: number;
+  retryPapers: RetryPaperWork[];
+  nextEpoch: number;
+};
+
+function groupRetryableFailuresByPaper(
+  retryable: ReadonlyArray<Doc<"extractionResults">>,
+): RetryPaperWork[] {
+  const byPaper = new Map<Id<"extractionPapers">, string[]>();
+  for (const result of retryable) {
+    const existing = byPaper.get(result.paperId);
+    if (existing) existing.push(result.questionKey);
+    else byPaper.set(result.paperId, [result.questionKey]);
+  }
+  return Array.from(byPaper.entries()).map(([paperId, questionKeys]) => ({
+    paperId,
+    questionKeys,
+  }));
+}
+
+async function applyRetryResetForRowsTx(
   ctx: MutationCtx,
   job: Doc<"extractionJobs">,
-): Promise<number> {
-  const retryable = await listRetryableFailures(ctx, job._id);
-
-  if (retryable.length === 0) return 0;
+  retryable: ReadonlyArray<Doc<"extractionResults">>,
+): Promise<RetryResetResult> {
+  const retryPapers = groupRetryableFailuresByPaper(retryable);
+  if (retryable.length === 0) {
+    return {
+      retryableCount: 0,
+      retryPapers,
+      nextEpoch: job.runEpoch ?? 0,
+    };
+  }
 
   const now = Date.now();
   const paperIdsToReset = new Set<Id<"extractionPapers">>();
@@ -119,9 +147,10 @@ export async function applyRetryResetTx(
   }
 
   assertValidJobTransition(job.status as JobStatus, "extracting");
+  const nextEpoch = (job.runEpoch ?? 0) + 1;
   await ctx.db.patch(job._id, {
     status: "extracting" as const,
-    runEpoch: (job.runEpoch ?? 0) + 1,
+    runEpoch: nextEpoch,
     error: undefined,
     completedAt: undefined,
     pausedAt: undefined,
@@ -129,7 +158,51 @@ export async function applyRetryResetTx(
     updatedAt: now,
   });
 
-  return retryable.length;
+  return {
+    retryableCount: retryable.length,
+    retryPapers,
+    nextEpoch,
+  };
+}
+
+async function resolveRetryQueueRuntime(
+  ctx: MutationCtx,
+  job: Doc<"extractionJobs">,
+): Promise<{
+  pdfEnabled: boolean;
+  questionConcurrency: number;
+  paperConcurrency: number;
+}> {
+  const [pdfFlag, executionLimits] = await Promise.all([
+    getFlag(ctx, "extraction.pdf"),
+    getExtractionExecutionLimits(ctx, job.userId),
+  ]);
+  return {
+    pdfEnabled: (pdfFlag?.enabled ?? true) && (job.usePdfs ?? false),
+    questionConcurrency: resolveBoundedConcurrency(
+      executionLimits.questionConcurrencyPerPaper,
+      EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
+    ),
+    paperConcurrency: normalizeBatchSize(executionLimits.paperConcurrency),
+  };
+}
+
+/**
+ * Reset retryable failed results on a job, flip the containing papers
+ * and the job itself back to "extracting". Pure tx logic — no dispatch
+ * dispatch. Returns the count of rows reset (0 means nothing to retry).
+ *
+ * Pre-condition: caller has already asserted auth / ownership / job
+ * status / preflight credits. Exported so tests can invoke it via
+ * `t.run(…)`.
+ */
+export async function applyRetryResetTx(
+  ctx: MutationCtx,
+  job: Doc<"extractionJobs">,
+): Promise<number> {
+  const retryable = await listRetryableFailures(ctx, job._id);
+  const reset = await applyRetryResetForRowsTx(ctx, job, retryable);
+  return reset.retryableCount;
 }
 
 export const retryFailedQuestions = mutation({
@@ -137,7 +210,8 @@ export const retryFailedQuestions = mutation({
   returns: v.object({
     jobId: v.id("extractionJobs"),
     retryableCount: v.number(),
-    workflowId: v.string(),
+    queued: v.number(),
+    dispatched: v.number(),
   }),
   handler: async (
     ctx,
@@ -145,7 +219,8 @@ export const retryFailedQuestions = mutation({
   ): Promise<{
     jobId: Id<"extractionJobs">;
     retryableCount: number;
-    workflowId: string;
+    queued: number;
+    dispatched: number;
   }> => {
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
@@ -166,7 +241,10 @@ export const retryFailedQuestions = mutation({
       throws: true,
     });
 
-    if (!job.status || !ALLOWED_RETRY_STATUSES.includes(job.status as JobStatus)) {
+    if (
+      !job.status ||
+      !ALLOWED_RETRY_STATUSES.includes(job.status as JobStatus)
+    ) {
       throw createError(
         "VALIDATION_ERROR",
         `Cannot retry job in status ${job.status ?? "unknown"}`,
@@ -176,7 +254,8 @@ export const retryFailedQuestions = mutation({
     // Count retryable rows (for the preflight estimate). We re-scan
     // inside `applyRetryResetTx` — same tx, so the read is cheap and
     // keeps the preflight value source-of-truth aligned with the reset.
-    const retryableCount = (await listRetryableFailures(ctx, jobId)).length;
+    const retryableFailures = await listRetryableFailures(ctx, jobId);
+    const retryableCount = retryableFailures.length;
 
     if (retryableCount === 0) {
       throw createError("VALIDATION_ERROR", "No retryable failures to retry");
@@ -205,37 +284,29 @@ export const retryFailedQuestions = mutation({
       }
     }
 
-    const applied = await applyRetryResetTx(ctx, job);
-
-    if (job.workflowId) {
-      try {
-        await workflow.cancel(ctx, job.workflowId as never);
-      } catch {
-        // Already finished — nothing to cancel.
-      }
-    }
-
-    const workflowId = await workflow.start(
-      ctx,
-      internal.extraction.workflow.runRetryWorkflow,
-      { jobId },
-      {
-        onComplete:
-          internal.extraction.mutations.internal.onComplete
-            .handleExtractionJobComplete,
-        context: { jobId },
-      },
-    );
-
-    await ctx.db.patch(jobId, {
-      workflowId,
-      updatedAt: Date.now(),
+    const reset = await applyRetryResetForRowsTx(ctx, job, retryableFailures);
+    const runtime = await resolveRetryQueueRuntime(ctx, job);
+    const queued = await enqueueRetryPapersForJobTx(ctx, {
+      jobId,
+      expectedEpoch: reset.nextEpoch,
+      retryPapers: reset.retryPapers,
+      priority: 0,
+    });
+    const dispatch = await dispatchPaperQueueWindowTx(ctx, {
+      jobId,
+      expectedEpoch: reset.nextEpoch,
+      paperConcurrency: runtime.paperConcurrency,
+      leaseOwner: `retry:${jobId}:${reset.nextEpoch}`,
+      leaseMs: 60_000,
+      questionConcurrency: runtime.questionConcurrency,
+      pdfEnabled: runtime.pdfEnabled,
     });
 
     return {
       jobId,
-      retryableCount: applied,
-      workflowId,
+      retryableCount: reset.retryableCount,
+      queued: queued.enqueued + queued.existing,
+      dispatched: dispatch.dispatched,
     };
   },
 });

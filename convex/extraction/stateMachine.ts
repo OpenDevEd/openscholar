@@ -23,8 +23,8 @@ export const JOB_STATUSES = [
   // credits mid-run, transitions the job here, and stops dispatching.
   // Plan 06 adds the resume mutation that transitions back to `extracting`.
   "creditsExhausted",
-  // Non-terminal user-initiated pause (plan 06). The workflow's gate
-  // step.awaitEvent holds new dispatches until resume fires sendEvent.
+  // Non-terminal user-initiated pause (plan 06). Queue dispatchers stop
+  // leasing new paper work until resume creates a fresh epoch.
   // The pausedFromStatus column captures the phase to resume to.
   "paused",
   "completed",
@@ -70,11 +70,10 @@ export const TERMINAL_JOB_STATUSES = new Set<JobStatus>([
 ]);
 
 /**
- * Source of truth for job transitions. Derived from the workflow
- * orchestration in convex/extraction/workflow.ts + finalize /
- * cancel paths in mutations.ts.
+ * Source of truth for job transitions. Derived from queue setup,
+ * paper-worker finalization, and cancel paths in mutations.ts.
  *
- * The workflow can skip directly from `pending` into any active phase
+ * Queue setup can skip directly from `pending` into any active phase
  * when a prior phase is a no-op (e.g. PDF-disabled jobs go
  * pending → indexing). `maybeFinalizeJob` can short-circuit a job with
  * zero processable papers directly to `failed`.
@@ -123,7 +122,7 @@ const VALID_JOB_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
   // phase captured in `pausedFromStatus`; cancel is the only other exit
   // while paused. No transition to `creditsExhausted` from paused — the
   // mid-run credit detector only fires during active phases, not while
-  // the workflow is blocked on awaitEvent.
+  // the job is parked.
   paused: [
     "pending",
     "downloading_pdfs",

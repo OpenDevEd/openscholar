@@ -199,7 +199,8 @@ export const extractionJobFields = {
   sourceType: v.optional(sourceTypeValidator),
   status: v.optional(jobStatusValidator),
   totalPapers: v.optional(v.number()),
-  workflowId: v.optional(v.string()),
+  processedPapers: v.optional(v.number()),
+  failedPapers: v.optional(v.number()),
   runEpoch: v.optional(v.number()),
   usePdfs: v.optional(v.boolean()),
   pausedAt: v.optional(v.number()),
@@ -220,6 +221,8 @@ export const extractionJobFields = {
   chatGenerationAttemptId: v.optional(v.string()),
   shouldAbort: v.optional(v.boolean()),
   webSearchEnabled: v.optional(v.boolean()),
+  chatSourceFingerprint: v.optional(v.string()),
+  chatSourceOpenAlexIds: v.optional(v.array(v.string())),
   name: v.string(),
   description: v.optional(v.string()),
   createdAt: v.number(),
@@ -239,7 +242,7 @@ void _check_extractionJobValidator;
 
 /**
  * Bucket item input — the single validator for every source-tab payload
- * that reaches startJob, saveWorkflowTemplate, or createJobDirect.
+ * that reaches startJob or createJobDirect.
  * Server round-trip mirrors `lib/bucket/bucketItem.ts::BucketItem` minus
  * the client-only `addedAt` / `status` fields.
  */
@@ -272,73 +275,13 @@ export const bucketItemInputValidator = v.object({
   includeDescendants: v.optional(v.boolean()),
 });
 
-/** User-authored question input for startJob / templates. */
+/** User-authored question input for startJob. */
 export const questionInputValidator = v.object({
   key: v.string(),
   question: v.string(),
   type: questionTypeValidator,
   description: v.optional(v.string()),
 });
-
-/**
- * Persisted bucket-item shape on `extractionWorkflowTemplates.bucketItems`.
- * Narrower than `bucketItemInputValidator` because the three OpenAlex-derived
- * signals (`citedByCount`, `venueName`, `workType`) are re-fetched at template
- * re-run time rather than frozen onto the row — the template is the seed, not
- * the snapshot.
- */
-export const templateBucketItemValidator = v.object({
-  bucketKey: v.string(),
-  source: v.union(
-    v.literal("history"),
-    v.literal("library"),
-    v.literal("collection"),
-    v.literal("zotero"),
-    v.literal("upload"),
-  ),
-  sourceRefId: v.string(),
-  title: v.string(),
-  authors: v.array(v.string()),
-  year: v.optional(v.number()),
-  doi: v.optional(v.string()),
-  openalexId: v.optional(v.string()),
-  abstract: v.optional(v.string()),
-  pdfUrl: v.optional(v.string()),
-  storageId: v.optional(v.id("_storage")),
-  searchFilters: v.optional(searchFiltersValidator),
-  libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
-  groupId: v.optional(v.string()),
-  zoteroUserId: v.optional(v.string()),
-  collectionKey: v.optional(v.string()),
-  includeDescendants: v.optional(v.boolean()),
-});
-
-/**
- * Full extractionWorkflowTemplates document shape — reused by
- * queries/mutations returning saved templates.
- */
-export const workflowTemplateFields = {
-  userId: v.id("users"),
-  name: v.string(),
-  description: v.optional(v.string()),
-  sourceType: sourceTypeValidator,
-  bucketItems: v.array(templateBucketItemValidator),
-  questions: v.array(questionInputValidator),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-export const workflowTemplateValidator = v.object({
-  _id: v.id("extractionWorkflowTemplates"),
-  _creationTime: v.number(),
-  ...workflowTemplateFields,
-});
-
-const _check_workflowTemplateValidator: AssertExactDoc<
-  "extractionWorkflowTemplates",
-  typeof workflowTemplateValidator
-> = true;
-void _check_workflowTemplateValidator;
 
 export const extractionQuestionFields = {
   jobId: v.id("extractionJobs"),
@@ -386,24 +329,9 @@ export const extractionPaperFields = {
   attemptCount: v.optional(v.number()),
   creditsUsed: v.optional(v.number()),
   questionsBilled: v.optional(v.boolean()),
-  // Tier D fan-out reservation. Set when `launchPaperWorkflowsForJob`
-  // reserves this paper's question budget (Q × HIGH per question) via
-  // `reserveCreditsTransaction`. Cleared by `finalizePaper` after
-  // `settleReservationTransaction` releases the hold and deducts the
-  // actuals, or by a release sweep when the job goes terminal before
-  // the paper finalizes. Held = `reservationId !== undefined &&
-  // questionsBilled !== true`. Settled = `reservationId === undefined &&
-  // questionsBilled === true`.
-  reservationId: v.optional(v.id("creditTransactions")),
-  // Chunked-fanout launch idempotency. `paperWorkflowId` is the
-  // WorkflowId returned by `workflow.start` for the paper's pipeline,
-  // pinned to `paperWorkflowEpoch === runEpoch`. The fanout skips
-  // `workflow.start` when both match; resume bumps `runEpoch` and the
-  // epoch mismatch invalidates a stale launch so the new epoch can
-  // start a fresh workflow. Stale workflows self-terminate on their
-  // next step via `getWorkerSkipReason`.
-  paperWorkflowId: v.optional(v.string()),
-  paperWorkflowEpoch: v.optional(v.number()),
+  admittedEstimateCredits: v.optional(v.number()),
+  admittedRunEpoch: v.optional(v.number()),
+  admittedAt: v.optional(v.number()),
   pdfContentUsed: v.optional(v.boolean()),
   sortTitle: v.optional(v.string()),
   avgConfidence: v.optional(v.number()),
@@ -449,6 +377,52 @@ const _check_extractionPaperErrorValidator: AssertExactDoc<
   typeof extractionPaperErrorValidator
 > = true;
 void _check_extractionPaperErrorValidator;
+
+export const extractionQueueKindValidator = v.union(
+  v.literal("initial"),
+  v.literal("retry"),
+);
+
+export const extractionQueueStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("leased"),
+  v.literal("running"),
+  v.literal("parked"),
+  v.literal("completed"),
+  v.literal("failed"),
+  v.literal("cancelled"),
+);
+
+export const extractionPaperQueueFields = {
+  jobId: v.id("extractionJobs"),
+  userId: v.id("users"),
+  paperId: v.id("extractionPapers"),
+  runEpoch: v.number(),
+  kind: extractionQueueKindValidator,
+  status: extractionQueueStatusValidator,
+  priority: v.number(),
+  attempt: v.number(),
+  leaseOwner: v.optional(v.string()),
+  leasedAt: v.optional(v.number()),
+  leaseExpiresAt: v.optional(v.number()),
+  workId: v.optional(v.string()),
+  questionKeys: v.optional(v.array(v.string())),
+  lastError: v.optional(structuredErrorValidator),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+export const extractionPaperQueueValidator = v.object({
+  _id: v.id("extractionPaperQueue"),
+  _creationTime: v.number(),
+  ...extractionPaperQueueFields,
+});
+
+const _check_extractionPaperQueueValidator: AssertExactDoc<
+  "extractionPaperQueue",
+  typeof extractionPaperQueueValidator
+> = true;
+void _check_extractionPaperQueueValidator;
 
 /** Per-question lifecycle status on an extractionResults row. */
 export const resultStatusValidator = v.union(
@@ -548,117 +522,3 @@ export const paginatedPaperWithResultsValidator = v.object({
   ...extractionPaperFields,
   results: v.array(extractionResultValidator),
 });
-
-export const extractionSavedViewFields = {
-  jobId: v.id("extractionJobs"),
-  userId: v.id("users"),
-  name: v.string(),
-  filters: v.object({
-    searchQuery: v.string(),
-    confidenceRange: v.array(v.number()),
-    statusFilters: v.array(v.string()),
-  }),
-  sortBy: v.optional(v.string()),
-  viewMode: v.optional(v.string()),
-  selectedQuestionKeys: v.optional(v.array(v.string())),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-export const extractionSavedViewValidator = v.object({
-  _id: v.id("extractionSavedViews"),
-  _creationTime: v.number(),
-  ...extractionSavedViewFields,
-});
-
-const _check_extractionSavedViewValidator: AssertExactDoc<
-  "extractionSavedViews",
-  typeof extractionSavedViewValidator
-> = true;
-void _check_extractionSavedViewValidator;
-
-export const extractionReportSnapshotFields = {
-  jobId: v.id("extractionJobs"),
-  userId: v.id("users"),
-  name: v.string(),
-  scope: v.object({
-    filteredPaperIds: v.optional(v.array(v.id("extractionPapers"))),
-    selectedQuestionKeys: v.optional(v.array(v.string())),
-    viewName: v.optional(v.string()),
-  }),
-  sections: v.array(
-    v.object({
-      id: v.string(),
-      title: v.string(),
-      body: v.string(),
-    }),
-  ),
-  metrics: v.object({
-    totalPapers: v.number(),
-    answeredRate: v.number(),
-    groundedRate: v.number(),
-    bestEffortRate: v.number(),
-  }),
-  generatedAt: v.number(),
-  createdAt: v.number(),
-};
-
-export const extractionReportSnapshotValidator = v.object({
-  _id: v.id("extractionReportSnapshots"),
-  _creationTime: v.number(),
-  ...extractionReportSnapshotFields,
-});
-
-const _check_extractionReportSnapshotValidator: AssertExactDoc<
-  "extractionReportSnapshots",
-  typeof extractionReportSnapshotValidator
-> = true;
-void _check_extractionReportSnapshotValidator;
-
-export const extractionRunDiffChangeValidator = v.object({
-  openalexId: v.string(),
-  title: v.string(),
-  questionKey: v.string(),
-  changeType: v.union(
-    v.literal("new"),
-    v.literal("changed"),
-    v.literal("removed"),
-    v.literal("confidence_shift"),
-    v.literal("newly_insufficient_evidence"),
-  ),
-  previousAnswer: v.optional(answerValidator),
-  nextAnswer: v.optional(answerValidator),
-  previousConfidence: v.optional(v.number()),
-  nextConfidence: v.optional(v.number()),
-});
-
-export const extractionRunDiffFields = {
-  jobId: v.id("extractionJobs"),
-  baselineJobId: v.id("extractionJobs"),
-  userId: v.id("users"),
-  summary: v.object({
-    newAnswers: v.number(),
-    changedAnswers: v.number(),
-    removedAnswers: v.number(),
-    confidenceShifts: v.number(),
-    newlyInsufficientEvidence: v.number(),
-    totalCompared: v.number(),
-  }),
-  changes: v.array(extractionRunDiffChangeValidator),
-  generatedAt: v.number(),
-  createdAt: v.number(),
-  isTruncated: v.optional(v.boolean()),
-  totalChanges: v.optional(v.number()),
-};
-
-export const extractionRunDiffValidator = v.object({
-  _id: v.id("extractionRunDiffs"),
-  _creationTime: v.number(),
-  ...extractionRunDiffFields,
-});
-
-const _check_extractionRunDiffValidator: AssertExactDoc<
-  "extractionRunDiffs",
-  typeof extractionRunDiffValidator
-> = true;
-void _check_extractionRunDiffValidator;

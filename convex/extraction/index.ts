@@ -10,8 +10,7 @@
  *       api.extraction.queries.*     (convex/extraction/queries.ts)
  *       api.extraction.uploads.*     (convex/extraction/uploads.ts)
  *
- *   - Internal (workflow / workpool contract):
- *       internal.extraction.workflow.runExtractionWorkflow
+ *   - Internal (queue / workpool contract):
  *       internal.extraction.actions.*
  *       internal.extraction.mutations.*  (the *internal* functions)
  *       internal.extraction.queries.*    (the *Internal functions)

@@ -1,15 +1,13 @@
 /**
  * Job lifecycle mutations (public API).
  *
- * startJob / duplicateJob / startJobFromTemplate own the job-start path;
- * cancelExtraction / deleteExtraction own the terminal paths. The
- * surviving mutations.ts barrel re-exports all five at
- * `api.extraction.mutations.<fn>`, so external callers don't change.
+ * startJob / duplicateJob own the job-start path; cancelExtraction /
+ * deleteExtraction own the terminal paths.
  *
- * startJob is mode-aware: `mode: "extraction"` launches the data
- * extraction workflow (existing behaviour); `mode: "chat"` schedules
- * the P9.T10 ensureThreadForJob stub. Validation, auth, rate-limit
- * and bucket persistence are shared between both branches.
+ * startJob is mode-aware: `mode: "extraction"` schedules the app-owned
+ * paper queue setup action; `mode: "chat"` schedules thread creation.
+ * Validation, auth, rate-limit and bucket persistence are shared between
+ * both branches.
  *
  * cancelExtraction and deleteExtraction stay extraction-specific.
  * cancelExtraction rejects chat jobs up front; deleteExtraction
@@ -20,8 +18,6 @@ import { mutation } from "../../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
-import type { WorkflowId } from "@convex-dev/workflow";
-import { workflow } from "../../workflow";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
@@ -36,15 +32,13 @@ import {
   MAX_QUESTIONS_PER_JOB,
   MAX_QUESTION_TEXT_LENGTH,
 } from "../validators";
-import {
-  writeJobSources,
-  type BucketItemInput,
-} from "../jobSources";
+import { writeJobSources, type BucketItemInput } from "../jobSources";
 import { cloneChatPapersForDuplicate } from "../../chat/chatPapersDuplicate";
 import {
   estimateExtractionCredits,
   type ExtractionCostEstimate,
 } from "../../../lib/extraction/cost-estimate";
+import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -189,22 +183,11 @@ export const startJob = mutation({
         });
       }
 
-      const workflowId = await workflow.start(
-        ctx,
-        internal.extraction.workflow.runExtractionWorkflow,
-        { jobId },
-        {
-          onComplete:
-            internal.extraction.mutations.internal.onComplete
-              .handleExtractionJobComplete,
-          context: { jobId },
-        },
+      await ctx.scheduler.runAfter(
+        0,
+        internal.extraction.actions.setupExtractionQueueJob,
+        { jobId, expectedEpoch: 0 },
       );
-
-      await ctx.db.patch("extractionJobs", jobId, {
-        workflowId,
-        updatedAt: Date.now(),
-      });
     } else {
       // Chat branch: schedule thread creation. The scheduler target is the
       // P9.T10 stub for now — it throws FEATURE_DISABLED. The job row
@@ -355,101 +338,13 @@ export const duplicateJob = mutation({
       });
     }
 
-    const workflowId = await workflow.start(
-      ctx,
-      internal.extraction.workflow.runExtractionWorkflow,
-      { jobId: newJobId },
-      {
-        onComplete:
-          internal.extraction.mutations.internal.onComplete
-            .handleExtractionJobComplete,
-        context: { jobId: newJobId },
-      },
+    await ctx.scheduler.runAfter(
+      0,
+      internal.extraction.actions.setupExtractionQueueJob,
+      { jobId: newJobId, expectedEpoch: 0 },
     );
-
-    await ctx.db.patch("extractionJobs", newJobId, {
-      workflowId,
-      updatedAt: Date.now(),
-    });
 
     return { jobId: newJobId };
-  },
-});
-
-export const startJobFromTemplate = mutation({
-  args: {
-    templateId: v.id("extractionWorkflowTemplates"),
-    name: v.optional(v.string()),
-  },
-  returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
-    await requireFeature(ctx, "extraction.start", user._id);
-    await rateLimit(ctx, {
-      name: "start-extraction",
-      key: user._id,
-      throws: true,
-    });
-
-    const template = await ctx.db.get(
-      "extractionWorkflowTemplates",
-      args.templateId,
-    );
-    if (!template || template.userId !== user._id) {
-      throw createError("NOT_FOUND", "Template not found");
-    }
-
-    const deduped = dedupeBucketItems(template.bucketItems);
-    await assertBucketWithinLimits(ctx, user._id, deduped);
-    const sourceType = deriveSourceType(deduped);
-
-    const now = Date.now();
-    const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-      userId: user._id,
-      mode: "extraction" as const,
-      name: args.name?.trim() || `${template.name} (Rerun)`,
-      sourceType,
-      status: "pending",
-      totalPapers: 0,
-      runEpoch: 0,
-      usePdfs: false,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await writeJobSources(ctx, jobId, deduped);
-
-    for (let i = 0; i < template.questions.length; i++) {
-      const question = template.questions[i];
-      await ctx.db.insert("extractionQuestions", {
-        jobId,
-        key: question.key,
-        question: question.question,
-        type: question.type,
-        description: question.description,
-        order: i,
-        createdAt: now,
-      });
-    }
-
-    const workflowId = await workflow.start(
-      ctx,
-      internal.extraction.workflow.runExtractionWorkflow,
-      { jobId },
-      {
-        onComplete:
-          internal.extraction.mutations.internal.onComplete
-            .handleExtractionJobComplete,
-        context: { jobId },
-      },
-    );
-    await ctx.db.patch("extractionJobs", jobId, {
-      workflowId,
-      updatedAt: Date.now(),
-    });
-
-    return { jobId };
   },
 });
 
@@ -472,7 +367,10 @@ export const cancelExtraction = mutation({
       );
     }
 
-    if (job.status && ["completed", "failed", "cancelled"].includes(job.status)) {
+    if (
+      job.status &&
+      ["completed", "failed", "cancelled"].includes(job.status)
+    ) {
       return { success: true };
     }
 
@@ -481,30 +379,19 @@ export const cancelExtraction = mutation({
       status: "cancelled",
       updatedAt: Date.now(),
     });
+    await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
 
-    if (job.workflowId) {
-      try {
-        await workflow.cancel(ctx, job.workflowId as WorkflowId);
-      } catch (e) {
-        console.warn(`[cancelExtraction] Failed to cancel workflow: ${e}`);
-      }
-    }
-
-    // Tier D: release any HELD paper reservations so the wallet
-    // recovers the cancelled-but-pre-billed credits. Scheduled async so
-    // this user-mutation's tx doesn't grow O(P).
+    // Clear any paper admission markers that no longer represent active
+    // work. Scheduled async so this user mutation does not grow O(P).
     await ctx.scheduler.runAfter(
       0,
       internal.extraction.mutations.internal.lifecycle
-        .releaseUnsettledPaperReservationsForJob,
+        .clearAdmittedPaperCreditsForJob,
       { jobId: args.jobId },
     );
 
-    // Plan-02 removed the workpool-driven per-paper pipeline — the
-    // workflow handler now owns every paper via step.runAction. The
-    // workflow.cancel call above short-circuits queued steps; any
-    // in-flight action sees the cancelled job on its next status check
-    // and returns without persisting.
+    // Any in-flight paper action sees the cancelled job on its next
+    // status check and returns without persisting.
     return { success: true };
   },
 });
@@ -519,6 +406,8 @@ export const deleteExtraction = mutation({
     if (!job || job.userId !== user._id) {
       throw createError("NOT_FOUND", "Job not found");
     }
+
+    await ctx.db.delete(args.jobId);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables. Cascade is

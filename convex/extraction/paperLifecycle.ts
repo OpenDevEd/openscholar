@@ -1,6 +1,6 @@
 /**
  * Shared paper-lifecycle helpers used by multiple mutation submodules
- * (papers, results, onComplete). Plain TS module — exports helper
+ * (papers, results, queue workers). Plain TS module — exports helper
  * functions only, no Convex function registrations.
  */
 
@@ -120,8 +120,8 @@ export async function markPaperTerminalTx(
   // transitions for the same job almost always hit different shards,
   // so the P-way OCC retry storm on the singleton extractionJobs row
   // is gone. We also stop bumping `extractionJobs.updatedAt` on the
-  // per-paper path — the workflow's `maybeFinalizeJob` write on the
-  // final transition is the only updatedAt source from per-paper code
+  // per-paper path — the finalization write on the final transition is
+  // the only updatedAt source from per-paper code
   // now, which is enough for "last activity" sort.
   if (paper.processable !== false) {
     await incPaperOutcome(ctx, paper.jobId, newStatus === "completed");

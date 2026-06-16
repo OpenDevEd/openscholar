@@ -102,9 +102,8 @@ export const EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN: Record<
 };
 
 // Infra-level upper bound applied on top of the plan-based per-paper
-// question concurrency. Shared by the workflow (used by `paperPipeline`
-// fan-out) and the resume mutation (used to re-launch paper workflows
-// with the same concurrency the original fan-out used).
+// question concurrency. Shared by queue setup, resume, retry, and paper
+// workers so every entrypoint uses the same bounded parallelism.
 export const EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP = 5;
 
 export type ExtractionExecutionLimits = {
@@ -298,7 +297,7 @@ export async function assertBucketWithinLimits(
   const count = effectivePaperCount(items, pullCap);
   // Reject empty buckets up-front. A bucket with zero effective papers
   // (e.g. every history row has `searchFilters.limit <= 0`) would
-  // otherwise pass the plan-cap check, spin up a workflow, advance the
+  // otherwise pass the plan-cap check, spin up queue setup, advance the
   // job to `downloading_pdfs`/`indexing`, and only then throw — leaving
   // the job stranded in an intermediate status. Fail fast so the client
   // sees a synchronous VALIDATION_ERROR and no job is ever created.

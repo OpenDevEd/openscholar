@@ -1,9 +1,9 @@
 import { defineApp } from "convex/server";
 import stripe from "@convex-dev/stripe/convex.config.js";
 import rag from "@convex-dev/rag/convex.config.js";
-import workflow from "@convex-dev/workflow/convex.config.js";
 import workpool from "@convex-dev/workpool/convex.config.js";
 import screeningWorkpool from "@convex-dev/workpool/convex.config.js";
+import extractionPaperWorkpool from "@convex-dev/workpool/convex.config.js";
 import aggregate from "@convex-dev/aggregate/convex.config.js";
 import agent from "@convex-dev/agent/convex.config.js";
 import shardedCounter from "@convex-dev/sharded-counter/convex.config.js";
@@ -11,28 +11,21 @@ import shardedCounter from "@convex-dev/sharded-counter/convex.config.js";
 const app = defineApp();
 app.use(stripe);
 app.use(rag);
-app.use(workflow);
 app.use(workpool);
 app.use(screeningWorkpool, { name: "screeningWorkpool" });
+app.use(extractionPaperWorkpool, { name: "extractionPaperWorkpool" });
 app.use(agent);
 // Tier B (plans/extraction-occ-fixes): per-job processed/failed paper
 // counters live in a sharded counter instead of mutable fields on the
 // extractionJobs row. Two named instances — `extractionProcessedCounter`
 // and `extractionFailedCounter` — each keyed by jobId. The previous
 // singleton-row patch in markPaperTerminalTx forced P-way OCC retries
-// on every job whenever the workflow fanned out per paper; routing the
+// on every job whenever extraction fanned out per paper; routing the
 // increments through shards eliminates the write-write contention so
-// the workpool can run at maxParallelism without hot-leaf collapse.
+// the queue/workpool path can run at bounded parallelism without
+// hot-leaf collapse.
 app.use(shardedCounter, { name: "extractionProcessedCounter" });
 app.use(shardedCounter, { name: "extractionFailedCounter" });
-// Three @convex-dev/aggregate instances back extractionJobStats (Task 11):
-// - resultStatusAgg: per-(jobId, questionKey) counts by citationStatus
-// - resultAnsweredAgg: per-(jobId, questionKey) counts by answered/unanswered
-// - resultConfidenceAgg: per-(jobId, questionKey) sum/count + bucket counts
-//   (key = confidence number; rows only exist when confidence is defined)
-app.use(aggregate, { name: "resultStatusAgg" });
-app.use(aggregate, { name: "resultAnsweredAgg" });
-app.use(aggregate, { name: "resultConfidenceAgg" });
 // creditsAgg (plan-04): per-job credit-spend aggregate for O(log n) total
 // cost queries. Namespace = jobId; sumValue = credits spent per entry
 // (extraction_llm per-result + embedding per-paper). Cleared on cascade
@@ -57,7 +50,7 @@ app.use(aggregate, { name: "txnBillingTypeAgg" });
 // two `@convex-dev/sharded-counter` instances (one per pool). The prior
 // `balanceAgg` DirectAggregate read the lazy-root B+ tree on every
 // balance lookup, walking ~48 component docs for ~4k-row ledgers and
-// blowing the 16 MB / mutation budget on the reservation hot path.
+// blowing the 16 MB / mutation budget on hot billing paths.
 // ShardedCounter is O(shards) per pool (16 each) regardless of ledger
 // depth. Keyed by `Id<"credits">`; total balance is derived (free + paid).
 app.use(shardedCounter, { name: "balanceFreeCounter" });

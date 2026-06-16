@@ -15,11 +15,10 @@ import { getCurrentUser } from "../../lib/auth";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedJob, type OwnedJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
-import { getPaperLimit, PAPER_LIMIT_MAX } from "../bucket/limits";
+import { PAPER_LIMIT_MAX } from "../bucket/limits";
 import { readJobCounters } from "../jobCounters";
 import {
   extractionJobValidator,
-  extractionPaperValidator,
   extractionQuestionValidator,
   jobStatusValidator,
   searchFiltersValidator,
@@ -81,18 +80,11 @@ export const getJobDetails = query({
   returns: statusResultValidator({
     job: extractionJobValidator,
     questions: v.array(extractionQuestionValidator),
-    papers: v.array(extractionPaperValidator),
-    progress: v.object({
-      total: v.number(),
-      processed: v.number(),
-      failed: v.number(),
-      percentage: v.number(),
-    }),
   }),
   handler: async (ctx, args) => {
     const access = await resolveReadableJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
-    const { job, user } = access;
+    const { job } = access;
 
     const questions = await ctx.db
       .query("extractionQuestions")
@@ -100,39 +92,9 @@ export const getJobDetails = query({
       .order("asc")
       .collect();
 
-    const limit = await getPaperLimit(ctx, user._id);
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job_processable", (q) =>
-        q.eq("jobId", args.jobId).eq("processable", true),
-      )
-      .order("asc")
-      .take(limit);
-
-    const processablePapers = papers.filter((p) => p.processable !== false);
-    const processed = processablePapers.filter(
-      (p) => p.status === "completed",
-    ).length;
-    const failed = processablePapers.filter(
-      (p) =>
-        p.status === "failed" ||
-        p.status === "download_failed" ||
-        p.status === "indexing_failed",
-    ).length;
-
-    const total = job.totalPapers || processablePapers.length;
-
     return ok({
       job,
       questions,
-      papers,
-      progress: {
-        total,
-        processed,
-        failed,
-        percentage:
-          total > 0 ? Math.round(((processed + failed) / total) * 100) : 0,
-      },
     });
   },
 });

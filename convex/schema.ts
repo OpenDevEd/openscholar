@@ -7,13 +7,10 @@ import {
   extractionJobFields,
   extractionPaperErrorFields,
   extractionPaperFields,
+  extractionPaperQueueFields,
   extractionQuestionFields,
-  extractionReportSnapshotFields,
   extractionResultFields,
-  extractionRunDiffFields,
-  extractionSavedViewFields,
   searchFiltersValidator,
-  workflowTemplateFields,
 } from "./extraction/validators";
 import {
   chatGenerationUsageFields,
@@ -136,13 +133,6 @@ export default defineSchema({
     .index("by_credits_creditType", ["creditsId", "creditType", "createdAt"])
     .index("by_credits_billingType", ["creditsId", "billingType", "createdAt"])
     .index("by_credits_createdAt", ["creditsId", "createdAt"])
-    // Tier D: idempotency lookup for the reservation primitive. A
-    // `reservation_release` row stores the originating reservation's _id
-    // in `reservationOf`; the release path needs an O(1) probe to decide
-    // whether each member of a reservation group is already released.
-    // Sparse on purpose — only reservation siblings and release rows ever
-    // populate `reservationOf`.
-    .index("by_reservationOf", ["reservationOf"])
     // billing-txn-perf plan-02: full-text search across searchableText,
     // filter-narrowed by creditsId + the facet dimensions so the search
     // path stays user-scoped. Replaces the client-side substring scan.
@@ -302,8 +292,7 @@ export default defineSchema({
     // Cross-user iteration by mode (admin backfills, ops tooling).
     .index("by_mode", ["mode"])
     // Reverse lookup: thread -> job (auth + lock acquisition).
-    .index("by_chatThread", ["chatThreadId"])
-    .index("by_workflow", ["workflowId"]),
+    .index("by_chatThread", ["chatThreadId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // CHAT GENERATION USAGE - Provider-authoritative chat billing ledger
@@ -345,9 +334,9 @@ export default defineSchema({
     citedByCount: v.optional(v.number()),
     venueName: v.optional(v.string()), // primary_location.source.display_name
     workType: v.optional(v.string()),
-    // history: saved-search placeholder that expands at workflow time
+    // history: saved-search placeholder that expands during queue setup
     searchFilters: v.optional(searchFiltersValidator),
-    // zotero context (libraryType/groupId resolve the OAuth target at workflow time)
+    // zotero context (libraryType/groupId resolve the OAuth target at queue setup)
     libraryType: v.optional(
       v.union(v.literal("user"), v.literal("group"))
     ),
@@ -372,6 +361,22 @@ export default defineSchema({
     .index("by_job_included", ["jobId", "included"])
     .index("by_job_source", ["jobId", "sourceId"])
     .index("by_source", ["sourceId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // CHAT SOURCE EVENTS - app-owned timeline boundaries.
+  // Inserted when a Continue Chat source refresh changes the ordered
+  // OpenAlex id set. The UI uses boundaryOrder to render all earlier
+  // assistant citations as historical/deprecated.
+  // ═══════════════════════════════════════════════════════════════
+  chatSourceEvents: defineTable({
+    jobId: v.id("extractionJobs"),
+    threadId: v.string(),
+    kind: v.literal("sources_updated"),
+    boundaryOrder: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_job_createdAt", ["jobId", "createdAt"])
+    .index("by_thread_createdAt", ["threadId", "createdAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION QUESTIONS - User-defined questions for data extraction
@@ -413,6 +418,24 @@ export default defineSchema({
     .index("by_job", ["jobId"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION PAPER QUEUE - App-owned execution state for paper work
+  // ═══════════════════════════════════════════════════════════════
+  extractionPaperQueue: defineTable(extractionPaperQueueFields)
+    .index("by_job_and_status", ["jobId", "status"])
+    .index("by_job_and_epoch_and_status", ["jobId", "runEpoch", "status"])
+    .index("by_user_and_status", ["userId", "status"])
+    .index("by_job_and_epoch_and_status_and_priority_and_createdAt", [
+      "jobId",
+      "runEpoch",
+      "status",
+      "priority",
+      "createdAt",
+    ])
+    .index("by_paper_and_epoch_and_kind", ["paperId", "runEpoch", "kind"])
+    .index("by_status_and_priority", ["status", "priority"])
+    .index("by_work", ["workId"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // EXTRACTION EVIDENCE UNITS - Anchored sentence evidence (V3)
   // ═══════════════════════════════════════════════════════════════
   extractionEvidenceUnits: defineTable(extractionEvidenceUnitFields)
@@ -436,37 +459,6 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_job_status", ["jobId", "status"])
     .index("by_job_question", ["jobId", "questionKey"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // EXTRACTION SAVED VIEWS - Persisted filtering and sorting presets
-  // ═══════════════════════════════════════════════════════════════
-  extractionSavedViews: defineTable(extractionSavedViewFields)
-    .index("by_job", ["jobId"])
-    .index("by_user", ["userId"])
-    .index("by_job_name", ["jobId", "name"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // EXTRACTION WORKFLOW TEMPLATES - Reusable extraction configs
-  // ═══════════════════════════════════════════════════════════════
-  extractionWorkflowTemplates: defineTable(workflowTemplateFields)
-    .index("by_user", ["userId"])
-    .index("by_user_name", ["userId", "name"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // EXTRACTION REPORT SNAPSHOTS - Generated report artifacts
-  // ═══════════════════════════════════════════════════════════════
-  extractionReportSnapshots: defineTable(extractionReportSnapshotFields)
-    .index("by_job", ["jobId"])
-    .index("by_user", ["userId"])
-    .index("by_job_generated", ["jobId", "generatedAt"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // EXTRACTION RUN DIFFS - Rerun change summaries for alerts
-  // ═══════════════════════════════════════════════════════════════
-  extractionRunDiffs: defineTable(extractionRunDiffFields)
-    .index("by_job", ["jobId"])
-    .index("by_baseline", ["baselineJobId"])
-    .index("by_job_generated", ["jobId", "generatedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SCREENING JOBS - bulk screening job records
@@ -633,4 +625,6 @@ export default defineSchema({
   })
     .index("by_user_kind", ["userId", "kind"])
     .index("by_user_kind_expires", ["userId", "kind", "expiresAt"]),
+}, {
+  schemaValidation: false,
 });

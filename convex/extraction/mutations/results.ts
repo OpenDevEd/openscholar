@@ -1,31 +1,26 @@
 /**
  * Extraction result mutations — the write-side of the result/review
- * domain, plus the job-status primitive used by the workflow.
+ * domain, plus the job-status primitive used by queue workers.
  *
- * Per-question lifecycle (plan-02):
- *   - recordOneAnswer: upsert one extractionResults row with the answer
- *     + deduct one question's credits atomically. Gated on result.billed
- *     so a workpool retry never double-charges.
- *   - recordOneAnswerFailure: upsert one extractionResults row with
- *     status="failed" + lastError when the workflow step retries exhaust.
- *   - finalizePaper: aggregate the per-question result rows via
- *     aggregatePaperStatus, flip the paper to its terminal status, fire
- *     maybeFinalizeJob. Idempotent — re-running after the paper is
- *     already terminal is a no-op.
+ * Paper-batch lifecycle:
+ *   - recordQuestionBatch upserts all completed/failed question rows for
+ *     one paper batch in a single mutation.
+ *   - finalizePaper aggregates those rows through aggregatePaperStatus,
+ *     flips the paper terminal, settles one paper-level credit debit, and
+ *     fires maybeFinalizeJob. Re-running after terminal is a no-op.
  */
 
-import { internalMutation } from "../../_generated/server";
-import { v } from "convex/values";
-import type { Id } from "../../_generated/dataModel";
+import { internalMutation, type MutationCtx } from "../../_generated/server";
+import { v, type Infer } from "convex/values";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
 import { deductCreditsTransaction } from "../../credits/internal";
-import { settleReservationTransaction } from "../../credits/reservation";
 import {
   assertValidJobTransition,
   type JobStatus,
 } from "../stateMachine";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
-import { forgetResult, recordCreditSpend, recordResult } from "../aggregates";
+import { recordCreditSpend } from "../aggregates";
 import {
   answerValidator,
   citationStatusValidator,
@@ -68,8 +63,7 @@ export const updateJobStatus = internalMutation({
       return null;
     }
 
-    // Terminal states are sticky. A late workflow step (e.g. the unconditional
-    // `extracting` update at the end of runExtractionWorkflow) must not roll
+    // Terminal states are sticky. A late worker update must not roll
     // a finalized job back to an active state.
     const isTerminal =
       job.status === "cancelled" ||
@@ -80,9 +74,8 @@ export const updateJobStatus = internalMutation({
     }
 
     // Idempotency for creditsExhausted: if the job is already
-    // creditsExhausted, a concurrent second extractOneQuestion catch
-    // site transitioning it again is a no-op (plan-03 "race on mid-run
-    // detection" pitfall).
+    // creditsExhausted, a concurrent second worker catch site
+    // transitioning it again is a no-op.
     if (
       args.status === "creditsExhausted" &&
       job.status === "creditsExhausted"
@@ -110,7 +103,7 @@ export const updateJobStatus = internalMutation({
 });
 
 // ──────────────────────────────────────────────────────────────────────
-// Plan-02 per-question mutations
+// Paper-level result persistence
 // ──────────────────────────────────────────────────────────────────────
 
 /**
@@ -148,231 +141,317 @@ const oneAnswerBody = v.object({
   pdfContentUsed: v.optional(v.boolean()),
 });
 
-export const recordOneAnswer = internalMutation({
+type OneAnswerBody = Infer<typeof oneAnswerBody>;
+type ClassifiedErrorInput = Infer<typeof classifiedErrorValidator>;
+type ResultFields = Omit<Doc<"extractionResults">, "_id" | "_creationTime">;
+
+async function readExistingResultForQuestion(
+  ctx: MutationCtx,
+  paperId: Id<"extractionPapers">,
+  questionKey: string,
+): Promise<Doc<"extractionResults"> | null> {
+  return await ctx.db
+    .query("extractionResults")
+    .withIndex("by_paper_question", (q) =>
+      q.eq("paperId", paperId).eq("questionKey", questionKey),
+    )
+    .unique();
+}
+
+async function readExistingResultsForQuestionKeys(
+  ctx: MutationCtx,
+  paperId: Id<"extractionPapers">,
+  questionKeys: ReadonlyArray<string>,
+): Promise<Map<string, Doc<"extractionResults">>> {
+  const uniqueKeys = [...new Set(questionKeys)];
+  const entries = await Promise.all(
+    uniqueKeys.map(async (questionKey) => {
+      const row = await readExistingResultForQuestion(ctx, paperId, questionKey);
+      return [questionKey, row] as const;
+    }),
+  );
+  return new Map(
+    entries.flatMap(([questionKey, row]) =>
+      row ? [[questionKey, row] as const] : [],
+    ),
+  );
+}
+
+function buildCompletedResultFields({
+  paper,
+  paperId,
+  questionKey,
+  result,
+  creditsUsed,
+  existing,
+  now,
+}: {
+  paper: Doc<"extractionPapers">;
+  paperId: Id<"extractionPapers">;
+  questionKey: string;
+  result: OneAnswerBody;
+  creditsUsed: number;
+  existing: Doc<"extractionResults"> | null | undefined;
+  now: number;
+}): ResultFields {
+  return {
+    jobId: paper.jobId,
+    paperId,
+    questionKey,
+    answer: result.answer,
+    confidence: result.confidence,
+    reasoning: result.reasoning,
+    citations: result.citations,
+    citationStatus: result.citationStatus,
+    retrievalDiagnostics: result.retrievalDiagnostics,
+    pdfContentUsed: result.pdfContentUsed,
+    creditsUsed: (existing?.creditsUsed ?? 0) + creditsUsed,
+    status: "completed",
+    billed: true,
+    attemptCount: (existing?.attemptCount ?? 0) + 1,
+    processedAt: now,
+  };
+}
+
+function buildFailedResultFields({
+  paper,
+  paperId,
+  questionKey,
+  error,
+  existing,
+  now,
+}: {
+  paper: Doc<"extractionPapers">;
+  paperId: Id<"extractionPapers">;
+  questionKey: string;
+  error: ClassifiedErrorInput;
+  existing: Doc<"extractionResults"> | null | undefined;
+  now: number;
+}): ResultFields {
+  return {
+    jobId: paper.jobId,
+    paperId,
+    questionKey,
+    answer: null,
+    confidence: 0,
+    reasoning: `Extraction failed: ${error.message}`,
+    citations: [],
+    citationStatus: "extraction_error",
+    retrievalDiagnostics: undefined,
+    pdfContentUsed: false,
+    status: "failed",
+    billed: false,
+    attemptCount: (existing?.attemptCount ?? 0) + 1,
+    lastError: {
+      code: error.code,
+      message: error.message,
+      ...(error.context !== undefined ? { context: error.context } : {}),
+      ...(error.httpStatus !== undefined ? { httpStatus: error.httpStatus } : {}),
+      ...(error.providerName !== undefined
+        ? { providerName: error.providerName }
+        : {}),
+      at: now,
+    },
+    processedAt: now,
+  };
+}
+
+function toResultDoc(
+  id: Id<"extractionResults">,
+  creationTime: number,
+  fields: ResultFields,
+): Doc<"extractionResults"> {
+  return { _id: id, _creationTime: creationTime, ...fields };
+}
+
+const batchSkipReasonValidator = v.union(
+  v.literal("paper_missing"),
+  v.literal("job_missing"),
+  v.literal("stale_epoch"),
+  v.literal("job_terminal"),
+  v.literal("paused"),
+  v.literal("credits_exhausted"),
+  v.literal("not_extracting"),
+);
+
+function getBatchSkipReason(
+  job: { status?: string; runEpoch?: number } | null | undefined,
+  expectedEpoch?: number,
+):
+  | "job_missing"
+  | "stale_epoch"
+  | "job_terminal"
+  | "paused"
+  | "credits_exhausted"
+  | "not_extracting"
+  | null {
+  if (!job) return "job_missing";
+  if (!matchesExpectedEpoch(job, expectedEpoch)) return "stale_epoch";
+  if (isJobTerminal(job)) return "job_terminal";
+  if (job.status === "paused") return "paused";
+  if (job.status === "creditsExhausted") return "credits_exhausted";
+  if (job.status !== "extracting") return "not_extracting";
+  return null;
+}
+
+export const recordQuestionBatch = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
-    questionKey: v.string(),
-    result: oneAnswerBody,
-    creditsUsed: v.number(),
     expectedEpoch: v.optional(v.number()),
+    completed: v.array(
+      v.object({
+        questionKey: v.string(),
+        result: oneAnswerBody,
+        creditsUsed: v.number(),
+      }),
+    ),
+    failed: v.array(
+      v.object({
+        questionKey: v.string(),
+        error: classifiedErrorValidator,
+      }),
+    ),
   },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
+  returns: v.union(
+    v.object({
+      status: v.literal("skipped"),
+      reason: batchSkipReasonValidator,
+    }),
+    v.object({
+      status: v.literal("ok"),
+      completed: v.array(v.string()),
+      failed: v.array(v.string()),
+      skipped: v.array(
+        v.object({
+          questionKey: v.string(),
+          reason: v.literal("already_billed"),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
     const paper = await ctx.db.get("extractionPapers", args.paperId);
-    if (!paper) return null;
+    if (!paper) {
+      return { status: "skipped" as const, reason: "paper_missing" as const };
+    }
 
     const job = await ctx.db.get("extractionJobs", paper.jobId);
-    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
-    if (isJobTerminal(job)) {
-      console.log(
-        `[recordOneAnswer] Skipping ${args.paperId}:${args.questionKey}; job ${paper.jobId} terminal`,
-      );
-      return null;
-    }
-    if (job?.status !== "extracting") return null;
-
-    const existing = await ctx.db
-      .query("extractionResults")
-      .withIndex("by_paper_question", (q) =>
-        q.eq("paperId", args.paperId).eq("questionKey", args.questionKey),
-      )
-      .unique();
-
-    // Billing-idempotency gate. A workpool retry that lands here after
-    // the question was already billed must not re-debit. The flag flips
-    // atomically with the credit deduction inside this mutation.
-    if (existing?.billed) {
-      console.log(
-        `[recordOneAnswer] Skipping ${args.paperId}:${args.questionKey}; already billed`,
-      );
-      return null;
+    const skipReason = getBatchSkipReason(job, args.expectedEpoch);
+    if (skipReason) {
+      return { status: "skipped" as const, reason: skipReason };
     }
 
-    // Status-change requires rewriting the aggregate's keyed rows.
-    // DirectAggregate keys by (namespace, key, id); an upsert from
-    // citationStatus=X → Y leaves the old X-keyed row behind unless we
-    // explicitly forget it. Same for answered/unanswered.
-    if (existing) {
-      await forgetResult(ctx, {
-        _id: existing._id,
-        jobId: existing.jobId,
-        questionKey: existing.questionKey,
-        answer: existing.answer,
-        confidence: existing.confidence,
-        citationStatus: existing.citationStatus,
-      });
-    }
-
+    const existingByQuestion = await readExistingResultsForQuestionKeys(
+      ctx,
+      args.paperId,
+      [
+        ...args.completed.map((item) => item.questionKey),
+        ...args.failed.map((item) => item.questionKey),
+      ],
+    );
     const now = Date.now();
-    const attemptCount = (existing?.attemptCount ?? 0) + 1;
-    // Tier C: per-question creditsUsed lives on the result row. Retries
-    // accumulate (LLM call per attempt costs credits). finalizePaper
-    // sums them and debits once per paper.
-    const accumulatedCreditsUsed =
-      (existing?.creditsUsed ?? 0) + args.creditsUsed;
-    const fields = {
-      jobId: paper.jobId,
-      paperId: args.paperId,
-      questionKey: args.questionKey,
-      answer: args.result.answer,
-      confidence: args.result.confidence,
-      reasoning: args.result.reasoning,
-      citations: args.result.citations,
-      citationStatus: args.result.citationStatus,
-      retrievalDiagnostics: args.result.retrievalDiagnostics,
-      pdfContentUsed: args.result.pdfContentUsed,
-      creditsUsed: accumulatedCreditsUsed,
-      status: "completed" as const,
-      billed: true,
-      attemptCount,
-      processedAt: now,
-    };
+    const completed: string[] = [];
+    const failed: string[] = [];
+    const skipped: Array<{
+      questionKey: string;
+      reason: "already_billed";
+    }> = [];
 
-    let resultId: Id<"extractionResults">;
-    if (existing) {
-      await ctx.db.replace(existing._id, fields);
-      resultId = existing._id;
-    } else {
-      resultId = await ctx.db.insert("extractionResults", fields);
-    }
+    for (const item of args.completed) {
+      const existing = existingByQuestion.get(item.questionKey);
+      if (existing?.billed) {
+        skipped.push({
+          questionKey: item.questionKey,
+          reason: "already_billed",
+        });
+        continue;
+      }
 
-    // Credit deduction happens at paper-finalize granularity (see
-    // finalizePaper below) — NOT per question. Per-question debits used
-    // to hammer the user's single `credits` row with P×Q parallel
-    // writes, triggering OCC retry storms on busy fan-outs.
-    //
-    // Tier C: the paper-list projection (sortTitle/avgConfidence/
-    // searchText/etc.) is no longer maintained per question — that
-    // patch-on-the-paper-row was the Q-way OCC contention point. Per-
-    // question writes only touch their own extractionResults row;
-    // recomputePaperListProjection rebuilds the denormalized paper-row
-    // fields at finalizePaper time (or whenever the paper itself
-    // transitions / gains a PDF / etc.).
-    await recordResult(ctx, {
-      _id: resultId,
-      jobId: paper.jobId,
-      questionKey: args.questionKey,
-      answer: fields.answer,
-      confidence: fields.confidence,
-      citationStatus: fields.citationStatus,
-    });
-
-    return null;
-  },
-});
-
-export const recordOneAnswerFailure = internalMutation({
-  args: {
-    paperId: v.id("extractionPapers"),
-    questionKey: v.string(),
-    error: classifiedErrorValidator,
-    expectedEpoch: v.optional(v.number()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const paper = await ctx.db.get("extractionPapers", args.paperId);
-    if (!paper) return null;
-
-    const job = await ctx.db.get("extractionJobs", paper.jobId);
-    if (!matchesExpectedEpoch(job, args.expectedEpoch)) return null;
-    if (isJobTerminal(job)) {
-      console.log(
-        `[recordOneAnswerFailure] Skipping ${args.paperId}:${args.questionKey}; job ${paper.jobId} terminal`,
-      );
-      return null;
-    }
-    if (job?.status !== "extracting") return null;
-
-    const existing = await ctx.db
-      .query("extractionResults")
-      .withIndex("by_paper_question", (q) =>
-        q.eq("paperId", args.paperId).eq("questionKey", args.questionKey),
-      )
-      .unique();
-
-    // If the question was already billed as completed, don't overwrite
-    // the good answer with a stale failure row. Workflow re-entry after
-    // a success-then-failure is impossible but the guard makes the
-    // invariant explicit.
-    if (existing?.billed) return null;
-
-    if (existing) {
-      await forgetResult(ctx, {
-        _id: existing._id,
-        jobId: existing.jobId,
-        questionKey: existing.questionKey,
-        answer: existing.answer,
-        confidence: existing.confidence,
-        citationStatus: existing.citationStatus,
+      const fields = buildCompletedResultFields({
+        paper,
+        paperId: args.paperId,
+        questionKey: item.questionKey,
+        result: item.result,
+        creditsUsed: item.creditsUsed,
+        existing,
+        now,
       });
+
+      if (existing) {
+        await ctx.db.replace(existing._id, fields);
+        existingByQuestion.set(
+          item.questionKey,
+          toResultDoc(existing._id, existing._creationTime, fields),
+        );
+      } else {
+        const rowId = await ctx.db.insert("extractionResults", fields);
+        existingByQuestion.set(
+          item.questionKey,
+          toResultDoc(rowId, now, fields),
+        );
+      }
+      completed.push(item.questionKey);
     }
 
-    const now = Date.now();
-    const attemptCount = (existing?.attemptCount ?? 0) + 1;
-    const fields = {
-      jobId: paper.jobId,
-      paperId: args.paperId,
-      questionKey: args.questionKey,
-      answer: null,
-      confidence: 0,
-      reasoning: `Extraction failed: ${args.error.message}`,
-      citations: [],
-      citationStatus: "extraction_error" as const,
-      retrievalDiagnostics: undefined,
-      pdfContentUsed: false,
-      status: "failed" as const,
-      billed: false,
-      attemptCount,
-      lastError: {
-        code: args.error.code,
-        message: args.error.message,
-        ...(args.error.context !== undefined ? { context: args.error.context } : {}),
-        ...(args.error.httpStatus !== undefined ? { httpStatus: args.error.httpStatus } : {}),
-        ...(args.error.providerName !== undefined
-          ? { providerName: args.error.providerName }
-          : {}),
-        at: now,
-      },
-      processedAt: now,
+    for (const item of args.failed) {
+      const existing = existingByQuestion.get(item.questionKey);
+      if (existing?.billed) {
+        skipped.push({
+          questionKey: item.questionKey,
+          reason: "already_billed",
+        });
+        continue;
+      }
+
+      const fields = buildFailedResultFields({
+        paper,
+        paperId: args.paperId,
+        questionKey: item.questionKey,
+        error: item.error,
+        existing,
+        now,
+      });
+
+      if (existing) {
+        await ctx.db.replace(existing._id, fields);
+        existingByQuestion.set(
+          item.questionKey,
+          toResultDoc(existing._id, existing._creationTime, fields),
+        );
+      } else {
+        const rowId = await ctx.db.insert("extractionResults", fields);
+        existingByQuestion.set(
+          item.questionKey,
+          toResultDoc(rowId, now, fields),
+        );
+      }
+      failed.push(item.questionKey);
+    }
+
+    return {
+      status: "ok" as const,
+      completed,
+      failed,
+      skipped,
     };
-
-    let resultId: Id<"extractionResults">;
-    if (existing) {
-      await ctx.db.replace(existing._id, fields);
-      resultId = existing._id;
-    } else {
-      resultId = await ctx.db.insert("extractionResults", fields);
-    }
-
-    await recordResult(ctx, {
-      _id: resultId,
-      jobId: paper.jobId,
-      questionKey: args.questionKey,
-      answer: null,
-      confidence: 0,
-      citationStatus: "extraction_error",
-    });
-
-    return null;
   },
 });
 
 /**
  * Collapse the per-question extractionResults rows into a paper-level
- * terminal status. Called by the workflow once all per-question steps
+ * terminal status. Called by the worker once all per-question attempts
  * have either succeeded or exhausted their retry budget. Idempotent:
  * running on an already-terminal paper is a no-op.
  *
  * No `expectedEpoch` arg by design. A pause + resume mid-fanout bumps
- * `job.runEpoch`, but the per-question rows that finished at the older
- * epoch are still authoritative — they captured real LLM work and were
- * already billed via `recordOneAnswer`. The paper-status idempotency
+ * `job.runEpoch`, but result rows that finished at the older epoch are
+ * still authoritative — they captured real LLM work. The paper-status idempotency
  * guard above plus the `job.status === "extracting"` gate below are
  * sufficient: if the paper has rolled up to a terminal state and the
  * job is still in flight, finalizing is correct regardless of how many
  * epoch bumps happened during fan-out. Guarding on a captured epoch
  * caused the stuck-at-99% bug — every cross-epoch finalize was a
- * silent no-op, the workflow returned success, and the job never
+ * silent no-op, the worker returned success, and the job never
  * cascaded to completed.
  */
 export const finalizePaper = internalMutation({
@@ -406,9 +485,8 @@ export const finalizePaper = internalMutation({
       if (!r) {
         return { status: "pending" as const };
       }
-      // Row inserted by recordOneAnswer / recordOneAnswerFailure. Fall
-      // back to "completed" when the row predates plan-02 (no status
-      // column).
+      // Older dev rows may lack `status` because schema validation is off.
+      // Treat them as completed so local disposable data can still finalize.
       const status = r.status ?? ("completed" as const);
       const code = r.lastError?.code as ErrorCode | undefined;
       return {
@@ -438,24 +516,10 @@ export const finalizePaper = internalMutation({
     // `questionsBilled` is the idempotency gate so an adversarial
     // reset-then-rerun cannot re-bill — mirrors the `indexingBilled`
     // precedent.
-    //
-    // Tier D: when `paper.reservationId` is set, fan-out reserved a
-    // HIGH-estimate hold for this paper and we settle it against the
-    // actuals via `settleReservationTransaction` — that releases the
-    // negative hold (returning the reserved credits to the wallet)
-    // then deducts `creditsToDebit` against the post-release balance.
-    // Combined in one tx so the wallet never transiently shows the
-    // released amount. The fallback `deductCreditsTransaction` path
-    // remains for direct test calls and for the legacy fan-out path
-    // that doesn't reserve (e.g. retry, which intentionally reuses the
-    // original bill — see `launchRetryPaperWorkflowsForJob`).
-    //
     // allowPartial:true drains the wallet rather than throwing
-    // INSUFFICIENT_CREDITS mid-fanout. The pre-flight reserve gate on
-    // launch sized the budget conservatively against the HIGH estimate,
-    // so settle-time shortfalls are rare; when they do happen they
-    // cascade through maybeFinalizeJob → creditsExhausted via the usual
-    // path.
+    // INSUFFICIENT_CREDITS mid-fanout. Queue admission already checked
+    // the HIGH estimate before starting this paper; final billing is the
+    // single settled usage row.
     const creditsToDebit = resultsForPaper.reduce(
       (sum, r) => sum + (r.creditsUsed ?? 0),
       0,
@@ -463,20 +527,7 @@ export const finalizePaper = internalMutation({
     if (!paper.questionsBilled && job) {
       let deducted = 0;
       let billingOccurred = false;
-      if (paper.reservationId !== undefined) {
-        const settle = await settleReservationTransaction(ctx, {
-          reservationId: paper.reservationId,
-          userId: job.userId,
-          actualCost: creditsToDebit,
-          description: `AI: Extraction (${paper.openalexId} — ${rollup.completedQuestions} questions)`,
-          jobId: paper.jobId,
-          paperId: args.paperId,
-          billingType: "extraction_llm",
-          allowPartial: true,
-        });
-        deducted = settle.usage.deducted;
-        billingOccurred = true;
-      } else if (creditsToDebit > 0) {
+      if (creditsToDebit > 0) {
         const result = await deductCreditsTransaction(ctx, {
           userId: job.userId,
           amount: creditsToDebit,
@@ -496,10 +547,12 @@ export const finalizePaper = internalMutation({
           creditsUsed: deducted,
         });
       }
-      if (billingOccurred) {
+      if (billingOccurred || paper.admittedEstimateCredits !== undefined) {
         await ctx.db.patch(args.paperId, {
-          questionsBilled: true,
-          reservationId: undefined,
+          ...(billingOccurred ? { questionsBilled: true } : {}),
+          admittedEstimateCredits: undefined,
+          admittedRunEpoch: undefined,
+          admittedAt: undefined,
         });
       }
     }

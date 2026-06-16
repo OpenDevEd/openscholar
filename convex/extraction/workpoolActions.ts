@@ -1,8 +1,7 @@
 "use node";
 
-import { internalAction, type ActionCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
-import { v } from "convex/values";
+import type { ActionCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import { components, internal } from "../_generated/api";
 import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
@@ -12,22 +11,24 @@ import {
   calculateServerCreditsToDeduct,
   calculateServerRawCreditCost,
   convertServerCostDollarsToCredits,
-  fetchServerPricing,
-  getModel,
 } from "../ai/helpers";
+import {
+  getExtractionModel,
+  getExtractionPricing,
+  type ExtractionModel,
+  type ExtractionPricing,
+} from "./aiRuntime";
 import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
 import {
   truncateForTracking,
   type AITrackingEntry,
 } from "../../lib/posthog-ai-shared";
 import {
-  captureAIGenerationBatchServer,
   captureAIGenerationServer,
   captureServerEvent,
 } from "../../lib/posthog-server";
 import type { AIProvider } from "../../lib/types";
 import { SERVER_AI_CONFIG } from "../ai/config";
-import { ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { decryptApiKey } from "../lib/crypto";
@@ -74,14 +75,6 @@ import {
   type RetrievalDiagnostics,
   type StrictExtractionOutput,
 } from "../../lib/extraction/evidence-policy";
-import {
-  answerValidator,
-  citationStatusValidator,
-  citationValidator,
-  classifiedErrorValidator,
-  questionInputValidator,
-  retrievalDiagnosticsValidator,
-} from "./validators";
 
 const isUsableAbstract = (abstract?: string | null) =>
   isUsableAbstractPure(abstract, MIN_ABSTRACT_LENGTH);
@@ -288,7 +281,7 @@ type ExtractionWithUsage = {
 };
 
 async function extractQuestionAnswer(params: {
-  model: Awaited<ReturnType<typeof getModel>>;
+  model: ExtractionModel;
   question: {
     key: string;
     question: string;
@@ -382,7 +375,7 @@ async function extractQuestionAnswer(params: {
 }
 
 async function extractQuestionAnswerFromAbstract(params: {
-  model: Awaited<ReturnType<typeof getModel>>;
+  model: ExtractionModel;
   question: {
     key: string;
     question: string;
@@ -513,7 +506,11 @@ async function resolvePdfBlob(
     storageId?: Id<"_storage">;
     doi?: string;
   },
-): Promise<{ pdfBlob: Blob | null; storageId?: Id<"_storage">; error?: string }> {
+): Promise<{
+  pdfBlob: Blob | null;
+  storageId?: Id<"_storage">;
+  error?: string;
+}> {
   if (args.storageId) {
     const stored = await ctx.storage.get(args.storageId);
     if (stored) {
@@ -569,7 +566,7 @@ async function resolvePdfBlob(
   return { pdfBlob: downloaded.pdfBlob };
 }
 
-type WorkerSkipReason =
+export type JobWorkerSkipReason =
   | "cancelled"
   | "job_terminal"
   | "credits_exhausted"
@@ -584,7 +581,7 @@ type JobControlState = {
 function getWorkerSkipReason(
   control: JobControlState,
   expectedEpoch: number,
-): WorkerSkipReason | null {
+): JobWorkerSkipReason | null {
   if (control.runEpoch !== expectedEpoch) {
     return "stale_epoch";
   }
@@ -603,7 +600,9 @@ function getWorkerSkipReason(
   }
 }
 
-type IndexResult =
+export type WorkerSkipReason = JobWorkerSkipReason | "already_billed";
+
+export type IndexResult =
   | {
       status: "completed";
       storageId?: Id<"_storage">;
@@ -611,315 +610,289 @@ type IndexResult =
     }
   | {
       status: "skipped";
-      reason: WorkerSkipReason;
+      reason: JobWorkerSkipReason;
     }
   | {
       status: "failed";
       error?: ClassifiedError;
     };
 
-export const downloadAndIndexPdfAction = internalAction({
-  args: {
-    paperId: v.id("extractionPapers"),
-    jobId: v.id("extractionJobs"),
-    expectedEpoch: v.number(),
-  },
-  returns: v.union(
-    v.object({
-      status: v.literal("completed"),
-      storageId: v.optional(v.id("_storage")),
-      chunksCount: v.optional(v.number()),
-    }),
-    v.object({
-      status: v.literal("skipped"),
-      reason: v.union(
-        v.literal("cancelled"),
-        v.literal("job_terminal"),
-        v.literal("credits_exhausted"),
-        v.literal("paused"),
-        v.literal("stale_epoch"),
-      ),
-    }),
-    v.object({
-      status: v.literal("failed"),
-      error: v.optional(classifiedErrorValidator),
-    }),
-  ),
-  handler: async (ctx, args): Promise<IndexResult> => {
-    try {
-      // One round trip for job + pdf-flag instead of two.
-      const { job, pdfEnabled } = await ctx.runQuery(
-        internal.extraction.queries.internal.getJobAndFlagsInternal,
-        { jobId: args.jobId },
-      );
-      if (!job) {
-        return {
-          status: "failed",
-          error: mkError("paper_not_found", "Job not found"),
-        };
-      }
+export type DownloadAndIndexPdfArgs = {
+  paperId: Id<"extractionPapers">;
+  jobId: Id<"extractionJobs">;
+  expectedEpoch: number;
+};
 
-      const initialSkipReason = getWorkerSkipReason(
-        {
-          status: job.status ?? null,
-          runEpoch: job.runEpoch ?? 0,
-        },
-        args.expectedEpoch,
-      );
-      if (initialSkipReason) {
-        return { status: "skipped", reason: initialSkipReason };
-      }
+export async function runDownloadAndIndexPdf(
+  ctx: ActionCtx,
+  args: DownloadAndIndexPdfArgs,
+): Promise<IndexResult> {
+  try {
+    // One round trip for job + pdf-flag instead of two.
+    const { job, pdfEnabled } = await ctx.runQuery(
+      internal.extraction.queries.internal.getJobAndFlagsInternal,
+      { jobId: args.jobId },
+    );
+    if (!job) {
+      return {
+        status: "failed",
+        error: mkError("paper_not_found", "Job not found"),
+      };
+    }
 
-      // Idempotency gate: a workpool retry that lands here after the paper
-      // was already indexed (and billed) must not re-embed or re-charge.
-      // Doubles as the source of truth for pdfUrl/storageId/abstract/doi —
-      // pulling them off the row instead of the action args keeps the
-      // workflow journal lean (~600 papers × ~2 KB of paper metadata adds
-      // up fast across step boundaries).
-      const existingPaper = await ctx.runQuery(
-        internal.extraction.queries.papers.byId,
-        { paperId: args.paperId },
+    const initialSkipReason = getWorkerSkipReason(
+      {
+        status: job.status ?? null,
+        runEpoch: job.runEpoch ?? 0,
+      },
+      args.expectedEpoch,
+    );
+    if (initialSkipReason) {
+      return { status: "skipped", reason: initialSkipReason };
+    }
+
+    // Idempotency gate: a workpool retry that lands here after the paper
+    // was already indexed (and billed) must not re-embed or re-charge.
+    // Doubles as the source of truth for pdfUrl/storageId/abstract/doi.
+    const existingPaper = await ctx.runQuery(
+      internal.extraction.queries.papers.byId,
+      { paperId: args.paperId },
+    );
+    if (!existingPaper) {
+      return {
+        status: "failed",
+        error: mkError("paper_not_found", "Paper not found"),
+      };
+    }
+    if (existingPaper.isIndexed || existingPaper.indexingBilled) {
+      console.log(
+        `[runDownloadAndIndexPdf] paper ${args.paperId} already indexed/billed; skipping`,
       );
-      if (!existingPaper) {
-        return {
-          status: "failed",
-          error: mkError("paper_not_found", "Paper not found"),
-        };
-      }
-      if (existingPaper.isIndexed || existingPaper.indexingBilled) {
-        console.log(
-          `[downloadAndIndexPdfAction] paper ${args.paperId} already indexed/billed; skipping`,
+      return {
+        status: "completed",
+        chunksCount: 0,
+        storageId: existingPaper.storageId ?? undefined,
+      };
+    }
+    if (!pdfEnabled) {
+      if (
+        existingPaper.abstract &&
+        existingPaper.abstract.length > MIN_ABSTRACT_LENGTH
+      ) {
+        await ctx.runMutation(
+          internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
+          {
+            paperId: args.paperId,
+            expectedEpoch: args.expectedEpoch,
+            units: [],
+          },
         );
         return {
           status: "completed",
           chunksCount: 0,
-          storageId: existingPaper.storageId ?? undefined,
         };
       }
-      if (!pdfEnabled) {
-        if (
-          existingPaper.abstract &&
-          existingPaper.abstract.length > MIN_ABSTRACT_LENGTH
-        ) {
-          await ctx.runMutation(
-            internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
-            {
-              paperId: args.paperId,
-              expectedEpoch: args.expectedEpoch,
-              units: [],
-            },
-          );
-          return {
-            status: "completed",
-            chunksCount: 0,
-          };
-        }
-        return {
-          status: "failed",
-          error: mkError(
-            "pdf_invalid",
-            "PDF processing is disabled and no usable abstract is available.",
-          ),
-        };
-      }
-
-      const resolved = await resolvePdfBlob(ctx, job, {
-        paperId: args.paperId,
-        jobId: args.jobId,
-        pdfUrl: existingPaper.pdfUrl ?? "",
-        storageId: existingPaper.storageId,
-        doi: existingPaper.doi,
-      });
-
-      // Keep pipeline alive for abstract-only papers by leaving evidence empty.
-      if (!resolved.pdfBlob) {
-        if (
-          existingPaper.abstract &&
-          existingPaper.abstract.length > MIN_ABSTRACT_LENGTH
-        ) {
-          const control = await ctx.runQuery(
-            internal.extraction.queries.internal.getJobStatusInternal,
-            { jobId: args.jobId },
-          );
-          const skipReason = getWorkerSkipReason(control, args.expectedEpoch);
-          if (skipReason) {
-            return { status: "skipped", reason: skipReason };
-          }
-          await ctx.runMutation(
-            internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
-            {
-              paperId: args.paperId,
-              expectedEpoch: args.expectedEpoch,
-              units: [],
-            },
-          );
-          return {
-            status: "completed",
-            chunksCount: 0,
-            storageId: resolved.storageId,
-          };
-        }
-        return {
-          status: "failed",
-          error: mkError(
-            "pdf_download_failed",
-            resolved.error || "No PDF available",
-          ),
-        };
-      }
-
-      const beforeParse = await ctx.runQuery(
-        internal.extraction.queries.internal.getJobStatusInternal,
-        { jobId: args.jobId },
-      );
-      const beforeParseSkipReason = getWorkerSkipReason(
-        beforeParse,
-        args.expectedEpoch,
-      );
-      if (beforeParseSkipReason) {
-        return { status: "skipped", reason: beforeParseSkipReason };
-      }
-
-      const pdfBuffer = await resolved.pdfBlob.arrayBuffer();
-      const units = await buildEvidenceUnitsFromPdf(pdfBuffer);
-
-      const beforePersist = await ctx.runQuery(
-        internal.extraction.queries.internal.getJobStatusInternal,
-        { jobId: args.jobId },
-      );
-      const beforePersistSkipReason = getWorkerSkipReason(
-        beforePersist,
-        args.expectedEpoch,
-      );
-      if (beforePersistSkipReason) {
-        return { status: "skipped", reason: beforePersistSkipReason };
-      }
-
-      let storedId = resolved.storageId;
-      if (!storedId) {
-        storedId = await ctx.storage.store(resolved.pdfBlob);
-        await ctx.runMutation(
-          internal.extraction.mutations.papers.setPaperStorage,
-          {
-            paperId: args.paperId,
-            storageId: storedId,
-            expectedEpoch: args.expectedEpoch,
-          },
-        );
-      }
-
-      await ctx.runMutation(
-        internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
-        {
-          paperId: args.paperId,
-          expectedEpoch: args.expectedEpoch,
-          units: units.map((unit) => ({
-            evidenceId: unit.evidenceId,
-            page: unit.page,
-            charRange: unit.charRange,
-            text: unit.text,
-            section: unit.section,
-            tokens: unit.tokens,
-            anchorConfidence: unit.anchorConfidence,
-            source: unit.source,
-          })),
-        },
-      );
-
-      if (units.length > 0) {
-        const beforeRag = await ctx.runQuery(
-          internal.extraction.queries.internal.getJobStatusInternal,
-          { jobId: args.jobId },
-        );
-        const beforeRagSkipReason = getWorkerSkipReason(
-          beforeRag,
-          args.expectedEpoch,
-        );
-        if (beforeRagSkipReason) {
-          return { status: "skipped", reason: beforeRagSkipReason };
-        }
-
-        const ragResult = await rag.add(ctx, {
-          namespace: `extraction:${args.jobId}`,
-          key: `${args.paperId}:evidence-v3`,
-          chunks: units.map((unit) => ({
-            text: unit.text,
-            metadata: {
-              evidenceId: unit.evidenceId,
-              page: unit.page,
-              charRange: unit.charRange,
-              section: unit.section || "body",
-              anchorConfidence: unit.anchorConfidence,
-            },
-          })),
-          filterValues: [{ name: "paperId", value: args.paperId }],
-          metadata: { paperId: args.paperId },
-        });
-
-        const embeddingTokens = ragResult.usage?.tokens ?? 0;
-        const embeddingCostDollars =
-          estimateEmbeddingCostDollars(embeddingTokens);
-        const embeddingCreditsToDeduct =
-          convertServerCostDollarsToCredits(embeddingCostDollars);
-
-        // If the job was cancelled mid-indexing, flip isIndexed but do not
-        // charge the user — preserves the existing UX decision that a cancelled
-        // job is free. If not cancelled, billing is done atomically with the
-        // isIndexed flip inside markPaperIndexed, gated on indexingBilled so
-        // workpool retries are safe.
-        const freshControl = await ctx.runQuery(
-          internal.extraction.queries.internal.getJobStatusInternal,
-          { jobId: args.jobId },
-        );
-        const freshSkipReason = getWorkerSkipReason(
-          freshControl,
-          args.expectedEpoch,
-        );
-        if (freshSkipReason) {
-          return { status: "skipped", reason: freshSkipReason };
-        }
-        const shouldBill =
-          freshControl.status !== "cancelled" && embeddingCreditsToDeduct > 0;
-
-        await ctx.runMutation(
-          internal.extraction.mutations.papers.markPaperIndexed,
-          {
-            paperId: args.paperId,
-            expectedEpoch: args.expectedEpoch,
-            ragEntryId: ragResult.entryId,
-            billing: shouldBill
-              ? {
-                  userId: job.userId,
-                  jobId: args.jobId,
-                  creditsToDeduct: embeddingCreditsToDeduct,
-                  embeddingTokens,
-                }
-              : undefined,
-          },
-        );
-      }
-
-      return {
-        status: "completed",
-        chunksCount: units.length,
-        storageId: storedId,
-      };
-    } catch (error) {
       return {
         status: "failed",
-        error: toClassifiedError(
-          error,
-          "indexing_failed",
-          "Unknown indexing error",
+        error: mkError(
+          "pdf_invalid",
+          "PDF processing is disabled and no usable abstract is available.",
         ),
       };
     }
-  },
-});
 
-// ──────────────────────────────────────────────────────────────────────
-// Plan-02 per-question action
-// ──────────────────────────────────────────────────────────────────────
+    const resolved = await resolvePdfBlob(ctx, job, {
+      paperId: args.paperId,
+      jobId: args.jobId,
+      pdfUrl: existingPaper.pdfUrl ?? "",
+      storageId: existingPaper.storageId,
+      doi: existingPaper.doi,
+    });
+
+    // Keep pipeline alive for abstract-only papers by leaving evidence empty.
+    if (!resolved.pdfBlob) {
+      if (
+        existingPaper.abstract &&
+        existingPaper.abstract.length > MIN_ABSTRACT_LENGTH
+      ) {
+        const control = await ctx.runQuery(
+          internal.extraction.queries.internal.getJobStatusInternal,
+          { jobId: args.jobId },
+        );
+        const skipReason = getWorkerSkipReason(control, args.expectedEpoch);
+        if (skipReason) {
+          return { status: "skipped", reason: skipReason };
+        }
+        await ctx.runMutation(
+          internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
+          {
+            paperId: args.paperId,
+            expectedEpoch: args.expectedEpoch,
+            units: [],
+          },
+        );
+        return {
+          status: "completed",
+          chunksCount: 0,
+          storageId: resolved.storageId,
+        };
+      }
+      return {
+        status: "failed",
+        error: mkError(
+          "pdf_download_failed",
+          resolved.error || "No PDF available",
+        ),
+      };
+    }
+
+    const beforeParse = await ctx.runQuery(
+      internal.extraction.queries.internal.getJobStatusInternal,
+      { jobId: args.jobId },
+    );
+    const beforeParseSkipReason = getWorkerSkipReason(
+      beforeParse,
+      args.expectedEpoch,
+    );
+    if (beforeParseSkipReason) {
+      return { status: "skipped", reason: beforeParseSkipReason };
+    }
+
+    const pdfBuffer = await resolved.pdfBlob.arrayBuffer();
+    const units = await buildEvidenceUnitsFromPdf(pdfBuffer);
+
+    const beforePersist = await ctx.runQuery(
+      internal.extraction.queries.internal.getJobStatusInternal,
+      { jobId: args.jobId },
+    );
+    const beforePersistSkipReason = getWorkerSkipReason(
+      beforePersist,
+      args.expectedEpoch,
+    );
+    if (beforePersistSkipReason) {
+      return { status: "skipped", reason: beforePersistSkipReason };
+    }
+
+    let storedId = resolved.storageId;
+    if (!storedId) {
+      storedId = await ctx.storage.store(resolved.pdfBlob);
+      await ctx.runMutation(
+        internal.extraction.mutations.papers.setPaperStorage,
+        {
+          paperId: args.paperId,
+          storageId: storedId,
+          expectedEpoch: args.expectedEpoch,
+        },
+      );
+    }
+
+    await ctx.runMutation(
+      internal.extraction.mutations.evidence.replacePaperEvidenceUnits,
+      {
+        paperId: args.paperId,
+        expectedEpoch: args.expectedEpoch,
+        units: units.map((unit) => ({
+          evidenceId: unit.evidenceId,
+          page: unit.page,
+          charRange: unit.charRange,
+          text: unit.text,
+          section: unit.section,
+          tokens: unit.tokens,
+          anchorConfidence: unit.anchorConfidence,
+          source: unit.source,
+        })),
+      },
+    );
+
+    if (units.length > 0) {
+      const beforeRag = await ctx.runQuery(
+        internal.extraction.queries.internal.getJobStatusInternal,
+        { jobId: args.jobId },
+      );
+      const beforeRagSkipReason = getWorkerSkipReason(
+        beforeRag,
+        args.expectedEpoch,
+      );
+      if (beforeRagSkipReason) {
+        return { status: "skipped", reason: beforeRagSkipReason };
+      }
+
+      const ragResult = await rag.add(ctx, {
+        namespace: `extraction:${args.jobId}`,
+        key: `${args.paperId}:evidence-v3`,
+        chunks: units.map((unit) => ({
+          text: unit.text,
+          metadata: {
+            evidenceId: unit.evidenceId,
+            page: unit.page,
+            charRange: unit.charRange,
+            section: unit.section || "body",
+            anchorConfidence: unit.anchorConfidence,
+          },
+        })),
+        filterValues: [{ name: "paperId", value: args.paperId }],
+        metadata: { paperId: args.paperId },
+      });
+
+      const embeddingTokens = ragResult.usage?.tokens ?? 0;
+      const embeddingCostDollars =
+        estimateEmbeddingCostDollars(embeddingTokens);
+      const embeddingCreditsToDeduct =
+        convertServerCostDollarsToCredits(embeddingCostDollars);
+
+      // If the job was cancelled mid-indexing, flip isIndexed but do not
+      // charge the user — preserves the existing UX decision that a cancelled
+      // job is free. If not cancelled, billing is done atomically with the
+      // isIndexed flip inside markPaperIndexed, gated on indexingBilled so
+      // workpool retries are safe.
+      const freshControl = await ctx.runQuery(
+        internal.extraction.queries.internal.getJobStatusInternal,
+        { jobId: args.jobId },
+      );
+      const freshSkipReason = getWorkerSkipReason(
+        freshControl,
+        args.expectedEpoch,
+      );
+      if (freshSkipReason) {
+        return { status: "skipped", reason: freshSkipReason };
+      }
+      const shouldBill =
+        freshControl.status !== "cancelled" && embeddingCreditsToDeduct > 0;
+
+      await ctx.runMutation(
+        internal.extraction.mutations.papers.markPaperIndexed,
+        {
+          paperId: args.paperId,
+          expectedEpoch: args.expectedEpoch,
+          ragEntryId: ragResult.entryId,
+          billing: shouldBill
+            ? {
+                userId: job.userId,
+                jobId: args.jobId,
+                creditsToDeduct: embeddingCreditsToDeduct,
+                embeddingTokens,
+              }
+            : undefined,
+        },
+      );
+    }
+
+    return {
+      status: "completed",
+      chunksCount: units.length,
+      storageId: storedId,
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      error: toClassifiedError(
+        error,
+        "indexing_failed",
+        "Unknown indexing error",
+      ),
+    };
+  }
+}
 
 type PerQuestionOutcome = {
   result: ExtractionQuestionResult;
@@ -928,20 +901,15 @@ type PerQuestionOutcome = {
 };
 
 /**
- * One-question extraction pipeline. Factored out of `waitAndExtractAction`
- * so the new per-question workflow step can call it without rebuilding
- * the three-mode (abstract-only / no-content / PDF-evidence) selector
- * that `waitAndExtractAction` encapsulates.
- *
- * Errors propagate so the workflow-step retry budget is meaningful —
- * catching + recording a failure row is the workflow handler's job once
- * retries exhaust. See `recordOneAnswerFailure`.
+ * One-question extraction pipeline used inside a paper-level batch.
+ * Errors propagate to the batch runner so failures can be written once
+ * through recordQuestionBatch.
  */
 async function runOneQuestionExtraction(params: {
   ctx: ActionCtx;
   paperId: Id<"extractionPapers">;
   jobId: Id<"extractionJobs">;
-  model: Awaited<ReturnType<typeof getModel>>;
+  model: ExtractionModel;
   question: {
     key: string;
     question: string;
@@ -978,7 +946,7 @@ async function runOneQuestionExtraction(params: {
       );
       const qLatency = Date.now() - qStart;
       console.info(
-        "[extractOneQuestion] question diagnostics",
+        "[runExtractQuestionWithContext] question diagnostics",
         JSON.stringify({
           paperId,
           questionKey: question.key,
@@ -1027,7 +995,7 @@ async function runOneQuestionExtraction(params: {
       pdfContentUsed: false,
     };
     console.info(
-      "[extractOneQuestion] question diagnostics",
+      "[runExtractQuestionWithContext] question diagnostics",
       JSON.stringify({
         paperId,
         questionKey: question.key,
@@ -1094,7 +1062,7 @@ async function runOneQuestionExtraction(params: {
   const qLatency = Date.now() - qStart;
 
   console.info(
-    "[extractOneQuestion] question diagnostics",
+    "[runExtractQuestionWithContext] question diagnostics",
     JSON.stringify({
       paperId,
       questionKey: question.key,
@@ -1125,206 +1093,256 @@ async function runOneQuestionExtraction(params: {
   };
 }
 
-export const extractOneQuestion = internalAction({
-  args: {
-    paperId: v.id("extractionPapers"),
-    jobId: v.id("extractionJobs"),
-    questionId: v.id("extractionQuestions"),
-    expectedEpoch: v.number(),
-  },
-  returns: v.union(
-    v.object({ status: v.literal("completed") }),
-    v.object({
-      status: v.literal("skipped"),
-      reason: v.union(
-        v.literal("already_billed"),
-        v.literal("cancelled"),
-        v.literal("job_terminal"),
-        v.literal("credits_exhausted"),
-        // Plan-06: question was already enqueued before the user hit
-        // pause. The workflow gate stops NEW dispatches; this guard
-        // handles the ones already in flight.
-        v.literal("paused"),
-        v.literal("stale_epoch"),
-      ),
-    }),
-  ),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<
-    | { status: "completed" }
-    | {
-        status: "skipped";
-        reason:
-          | "already_billed"
-          | "cancelled"
-          | "job_terminal"
-          | "credits_exhausted"
-          | "paused"
-          | "stale_epoch";
-      }
-  > => {
-    const question = await ctx.runQuery(
-      internal.extraction.queries.internal.getQuestionByIdInternal,
-      { questionId: args.questionId },
-    );
-    if (!question) {
-      throw createError("NOT_FOUND", "Question not found");
-    }
+export type PaperExtractionContext = {
+  job: Doc<"extractionJobs">;
+  paper: Doc<"extractionPapers">;
+  user: Doc<"users"> | null;
+  pdfEnabled: boolean;
+  questions: Array<Doc<"extractionQuestions">>;
+  results: Array<Doc<"extractionResults">>;
+  evidenceUnits: Array<Doc<"extractionEvidenceUnits">>;
+};
 
-    const [paper, jobWithFlags, existingResult] = await Promise.all([
-      ctx.runQuery(internal.extraction.queries.papers.byId, {
-        paperId: args.paperId,
-      }),
-      ctx.runQuery(
-        internal.extraction.queries.internal.getJobAndFlagsInternal,
-        {
-          jobId: args.jobId,
-        },
-      ),
-      ctx.runQuery(
-        internal.extraction.queries.internal
-          .getResultByPaperAndQuestionInternal,
-        { paperId: args.paperId, questionKey: question.key },
-      ),
-    ]);
-    if (!paper) {
-      throw createError("NOT_FOUND", "Paper not found");
-    }
-    const { job, pdfEnabled } = jobWithFlags;
-    if (!job) {
-      throw createError("NOT_FOUND", "Job not found");
-    }
+export type CompletedQuestionBatchItem = {
+  questionKey: string;
+  result: ExtractionQuestionResult;
+  creditsUsed: number;
+  creditsRawCost: number;
+  trackingEntry: AITrackingEntry | null;
+};
 
-    // Billing-idempotency gate: a workpool retry after a successful
-    // persist must skip the LLM round trip and the credit charge.
-    if (existingResult?.billed) {
-      console.log(
-        `[extractOneQuestion] Skipping ${args.paperId}:${question.key}; already billed`,
-      );
-      return { status: "skipped", reason: "already_billed" };
-    }
-    const initialSkipReason = getWorkerSkipReason(
-      {
-        status: job.status ?? null,
-        runEpoch: job.runEpoch ?? 0,
-      },
-      args.expectedEpoch,
-    );
-    if (initialSkipReason) {
-      return { status: "skipped", reason: initialSkipReason };
-    }
+export type CompletedQuestionBatchWrite = {
+  questionKey: string;
+  result: {
+    answer: ExtractionQuestionResult["answer"];
+    confidence: ExtractionQuestionResult["confidence"];
+    reasoning: ExtractionQuestionResult["reasoning"];
+    citations: ExtractionQuestionResult["citations"];
+    citationStatus: ExtractionQuestionResult["citationStatus"];
+    retrievalDiagnostics: ExtractionQuestionResult["retrievalDiagnostics"];
+    pdfContentUsed: ExtractionQuestionResult["pdfContentUsed"];
+  };
+  creditsUsed: number;
+};
 
-    const operation = `Extraction (1 question)`;
-    const [billingUser, balance, unitsRaw, model, pricing] = await Promise.all([
-      ctx.runQuery(internal.users.internal.getUserById, {
-        userId: job.userId,
-      }),
-      ctx.runQuery(internal.credits.internal.getBalanceByUserId, {
-        userId: job.userId,
-      }),
-      ctx.runQuery(
-        internal.extraction.queries.internal.getEvidenceUnitsInternal,
-        {
-          paperId: args.paperId,
-        },
-      ),
-      getModel(),
-      fetchServerPricing(ctx),
-    ]);
-    if (!billingUser) {
-      throw createError(
-        "AI_UNAUTHENTICATED",
-        "Authentication required to use AI features",
-      );
+export type QuestionBatchOutcome =
+  | ({ status: "completed" } & CompletedQuestionBatchItem)
+  | {
+      status: "failed";
+      questionKey: string;
+      error: ClassifiedError;
     }
-
-    // Plan-03: detect credit exhaustion at the pre-flight check and at
-    // the recordOneAnswer deductCredits call. Transition the job to
-    // creditsExhausted (non-terminal) and re-throw so the workflow
-    // records a per-question failure row that plan-06's resume path
-    // will retry.
-    const handleCreditsExhaustionAndRethrow = async (
-      error: unknown,
-    ): Promise<never> => {
-      const classified = classifyUnknownError(error);
-      if (classified.code === "insufficient_credits") {
-        try {
-          await ctx.runMutation(
-            internal.extraction.mutations.results.updateJobStatus,
-            {
-              jobId: args.jobId,
-              expectedEpoch: args.expectedEpoch,
-              status: "creditsExhausted",
-              error: {
-                code: classified.code,
-                message: classified.message,
-                context: classified.context,
-                httpStatus: classified.httpStatus,
-                providerName: classified.providerName,
-                at: Date.now(),
-              },
-            },
-          );
-          await captureServerEvent(
-            billingUser.clerkId,
-            "extraction_job_credits_exhausted",
-            {
-              job_id: args.jobId,
-              question_key: question.key,
-            },
-          );
-        } catch (transitionErr) {
-          console.warn(
-            `[extractOneQuestion] Failed to transition job to creditsExhausted: ${transitionErr}`,
-          );
-        }
-      }
-      throw error;
+  | {
+      status: "skipped";
+      questionKey: string;
+      reason: WorkerSkipReason;
     };
 
-    if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
-      await captureServerEvent(billingUser.clerkId, "credits_insufficient", {
-        required_credits: ESTIMATED_CREDITS_PER_QUERY,
-        available_credits: balance?.total ?? 0,
-        feature: operation,
+export function toCompletedQuestionBatchWrite(
+  outcome: CompletedQuestionBatchItem,
+): CompletedQuestionBatchWrite {
+  return {
+    questionKey: outcome.questionKey,
+    result: {
+      answer: outcome.result.answer,
+      confidence: outcome.result.confidence,
+      reasoning: outcome.result.reasoning,
+      citations: outcome.result.citations,
+      citationStatus: outcome.result.citationStatus,
+      retrievalDiagnostics: outcome.result.retrievalDiagnostics,
+      pdfContentUsed: outcome.result.pdfContentUsed,
+    },
+    creditsUsed: outcome.creditsUsed,
+  };
+}
+
+export function batchSkipReasonToWorkerSkipReason(reason: string): WorkerSkipReason {
+  if (reason === "paused") return "paused";
+  if (reason === "credits_exhausted") return "credits_exhausted";
+  if (reason === "stale_epoch") return "stale_epoch";
+  return "job_terminal";
+}
+
+export async function captureCompletedQuestionTracking({
+  distinctId,
+  outcomes,
+  persistedQuestionKeys,
+}: {
+  distinctId: string;
+  outcomes: ReadonlyArray<CompletedQuestionBatchItem>;
+  persistedQuestionKeys: ReadonlySet<string>;
+}): Promise<void> {
+  await Promise.all(
+    outcomes.map(async (outcome) => {
+      if (
+        !outcome.trackingEntry ||
+        !persistedQuestionKeys.has(outcome.questionKey)
+      ) {
+        return;
+      }
+      await captureAIGenerationServer({
+        distinctId,
+        provider: SERVER_AI_CONFIG.provider as AIProvider,
+        modelId: SERVER_AI_CONFIG.model,
+        feature: outcome.trackingEntry.feature,
+        usage: outcome.trackingEntry.usage,
+        latencyMs: outcome.trackingEntry.latencyMs,
+        input: outcome.trackingEntry.input,
+        output: outcome.trackingEntry.output,
+        temperature: outcome.trackingEntry.temperature,
+        creditsDeducted: outcome.creditsUsed,
+        creditsRawCost: outcome.creditsRawCost,
       });
-      // handleCreditsExhaustionAndRethrow is typed Promise<never> but
-      // TS does not narrow `balance` across an awaited throw-helper, so
-      // the explicit throw below is unreachable yet keeps the flow
-      // analyser happy for the downstream `balance.total` references.
-      await handleCreditsExhaustionAndRethrow(
-        createError(
-          "AI_INSUFFICIENT_CREDITS",
-          "Insufficient credits for AI operation",
-        ),
+    }),
+  );
+}
+
+function toEvidenceUnitDocs(
+  unitsRaw: ReadonlyArray<Doc<"extractionEvidenceUnits">>,
+): EvidenceUnitDoc[] {
+  return unitsRaw.map((unit) => ({
+    evidenceId: unit.evidenceId,
+    page: unit.page,
+    charRange: toTupleRange(unit.charRange),
+    text: unit.text,
+    section: unit.section,
+    tokens: Array.isArray(unit.tokens) ? unit.tokens : [],
+    anchorConfidence: unit.anchorConfidence,
+    source: unit.source,
+  }));
+}
+
+function getExistingResult(
+  context: Pick<PaperExtractionContext, "results">,
+  questionKey: string,
+): Doc<"extractionResults"> | null {
+  return (
+    context.results.find((result) => result.questionKey === questionKey) ?? null
+  );
+}
+
+function getQuestionEntrySkipReason({
+  job,
+  existingResult,
+  expectedEpoch,
+}: {
+  job: Doc<"extractionJobs">;
+  existingResult: Doc<"extractionResults"> | null;
+  expectedEpoch: number;
+}): WorkerSkipReason | null {
+  if (existingResult?.billed) return "already_billed";
+  return getWorkerSkipReason(
+    {
+      status: job.status ?? null,
+      runEpoch: job.runEpoch ?? 0,
+    },
+    expectedEpoch,
+  );
+}
+
+async function handleQuestionCreditsExhaustionAndRethrow({
+  ctx,
+  error,
+  jobId,
+  expectedEpoch,
+  billingUser,
+  questionKey,
+}: {
+  ctx: ActionCtx;
+  error: unknown;
+  jobId: Id<"extractionJobs">;
+  expectedEpoch: number;
+  billingUser: Doc<"users">;
+  questionKey: string;
+}): Promise<never> {
+  const classified = classifyUnknownError(error);
+  if (classified.code === "insufficient_credits") {
+    try {
+      await ctx.runMutation(
+        internal.extraction.mutations.results.updateJobStatus,
+        {
+          jobId,
+          expectedEpoch,
+          status: "creditsExhausted",
+          error: {
+            code: classified.code,
+            message: classified.message,
+            context: classified.context,
+            httpStatus: classified.httpStatus,
+            providerName: classified.providerName,
+            at: Date.now(),
+          },
+        },
       );
-      throw createError(
-        "AI_INSUFFICIENT_CREDITS",
-        "Insufficient credits for AI operation",
+      await captureServerEvent(
+        billingUser.clerkId,
+        "extraction_job_credits_exhausted",
+        {
+          job_id: jobId,
+          question_key: questionKey,
+        },
+      );
+    } catch (transitionErr) {
+      console.warn(
+        `[runExtractQuestionWithContext] Failed to transition job to creditsExhausted: ${transitionErr}`,
       );
     }
+  }
+  throw error;
+}
 
-    const units: EvidenceUnitDoc[] = (unitsRaw || []).map((unit) => ({
-      evidenceId: unit.evidenceId,
-      page: unit.page,
-      charRange: toTupleRange(unit.charRange),
-      text: unit.text,
-      section: unit.section,
-      tokens: Array.isArray(unit.tokens) ? unit.tokens : [],
-      anchorConfidence: unit.anchorConfidence,
-      source: unit.source,
-    }));
+export async function runExtractQuestionWithContext({
+  ctx,
+  context,
+  question,
+  expectedEpoch,
+  model,
+  pricing,
+}: {
+  ctx: ActionCtx;
+  context: PaperExtractionContext;
+  question: Doc<"extractionQuestions">;
+  expectedEpoch: number;
+  model: ExtractionModel;
+  pricing: ExtractionPricing;
+}): Promise<QuestionBatchOutcome> {
+  const existingResult = getExistingResult(context, question.key);
+  const skipReason = getQuestionEntrySkipReason({
+    job: context.job,
+    existingResult,
+    expectedEpoch,
+  });
+  if (skipReason) {
+    if (skipReason === "already_billed") {
+      console.log(
+        `[runExtractQuestionWithContext] Skipping ${context.paper._id}:${question.key}; already billed`,
+      );
+    }
+    return {
+      status: "skipped",
+      questionKey: question.key,
+      reason: skipReason,
+    };
+  }
+  if (!context.user) {
+    throw createError(
+      "AI_UNAUTHENTICATED",
+      "Authentication required to use AI features",
+    );
+  }
 
-    const abstractPresent = isUsableAbstract(paper.abstract);
-    const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
+  const units = toEvidenceUnitDocs(context.evidenceUnits);
+  const abstractPresent = isUsableAbstract(context.paper.abstract);
+  const abstractText = abstractPresent
+    ? context.paper.abstract!.trim()
+    : undefined;
 
-    const startedAt = Date.now();
+  const startedAt = Date.now();
+  try {
     const outcome = await runOneQuestionExtraction({
       ctx,
-      paperId: args.paperId,
-      jobId: args.jobId,
+      paperId: context.paper._id,
+      jobId: context.job._id,
       model,
       question: {
         key: question.key,
@@ -1335,72 +1353,28 @@ export const extractOneQuestion = internalAction({
       abstractText,
       abstractPresent,
       units,
-      pdfEnabled,
+      pdfEnabled: context.pdfEnabled,
     });
     const latencyMs = Date.now() - startedAt;
-
     const creditsUsed = calculateServerCreditsToDeduct(outcome.usage, pricing);
-
-    const beforePersist = await ctx.runQuery(
-      internal.extraction.queries.internal.getJobStatusInternal,
-      { jobId: args.jobId },
-    );
-    const beforePersistSkipReason = getWorkerSkipReason(
-      beforePersist,
-      args.expectedEpoch,
-    );
-    if (beforePersistSkipReason) {
-      return { status: "skipped", reason: beforePersistSkipReason };
-    }
-
-    // Persist + bill in one transaction. recordOneAnswer internally
-    // gates on result.billed, so a late workpool retry that re-runs
-    // this action after a successful persist is still a no-op.
-    // Plan-03: a mid-run insufficient_credits throw here transitions
-    // the job to creditsExhausted before bubbling the error up.
-    try {
-      await ctx.runMutation(
-        internal.extraction.mutations.results.recordOneAnswer,
-        {
-          paperId: args.paperId,
-          questionKey: question.key,
-          result: {
-            answer: outcome.result.answer,
-            confidence: outcome.result.confidence,
-            reasoning: outcome.result.reasoning,
-            citations: outcome.result.citations,
-            citationStatus: outcome.result.citationStatus,
-            retrievalDiagnostics: outcome.result.retrievalDiagnostics,
-            pdfContentUsed: outcome.result.pdfContentUsed,
-          },
-          creditsUsed,
-          expectedEpoch: args.expectedEpoch,
-        },
-      );
-    } catch (error) {
-      await handleCreditsExhaustionAndRethrow(error);
-    }
-
-    const creditContext = {
-      creditsDeducted: creditsUsed,
+    return {
+      status: "completed",
+      questionKey: question.key,
+      result: outcome.result,
+      creditsUsed,
       creditsRawCost: calculateServerRawCreditCost(outcome.usage, pricing),
-      creditsRemaining: Math.max(0, balance.total - creditsUsed),
+      trackingEntry: outcome.trackingEntry
+        ? { ...outcome.trackingEntry, latencyMs }
+        : null,
     };
-    if (outcome.trackingEntry) {
-      await captureAIGenerationServer({
-        distinctId: billingUser.clerkId,
-        provider: SERVER_AI_CONFIG.provider as AIProvider,
-        modelId: SERVER_AI_CONFIG.model,
-        feature: outcome.trackingEntry.feature,
-        usage: outcome.trackingEntry.usage,
-        latencyMs,
-        input: outcome.trackingEntry.input,
-        output: outcome.trackingEntry.output,
-        temperature: outcome.trackingEntry.temperature,
-        ...creditContext,
-      });
-    }
-
-    return { status: "completed" };
-  },
-});
+  } catch (error) {
+    return await handleQuestionCreditsExhaustionAndRethrow({
+      ctx,
+      error,
+      jobId: context.job._id,
+      expectedEpoch,
+      billingUser: context.user,
+      questionKey: question.key,
+    });
+  }
+}

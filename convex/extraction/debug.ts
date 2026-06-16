@@ -16,7 +16,6 @@ export const diagnoseJob = internalQuery({
       totalPapers: v.optional(v.number()),
       processedPapers: v.optional(v.number()),
       failedPapers: v.optional(v.number()),
-      workflowId: v.optional(v.string()),
     }),
     papersSummary: v.object({
       total: v.number(),
@@ -67,7 +66,6 @@ export const diagnoseJob = internalQuery({
         totalPapers: job.totalPapers,
         processedPapers: processed,
         failedPapers: failed,
-        workflowId: job.workflowId,
       },
       papersSummary: {
         total: papers.length,

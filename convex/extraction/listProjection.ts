@@ -153,7 +153,7 @@ function toQuestionState(
 /**
  * Tier C: the denormalized search/list fields on extractionPapers are
  * rebuilt from the per-question extractionResults rows. Per-question
- * writes (recordOneAnswer / recordOneAnswerFailure) no longer patch the
+ * writes no longer patch the
  * paper row — they just write their own results row. The Q-way OCC
  * contention point that the old applyResultProjectionWrite created is
  * gone.

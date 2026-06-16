@@ -1,5 +1,5 @@
 /**
- * Internal queries used by the workflow / workpool / cron handlers. Every
+ * Internal queries used by queue / workpool / cron handlers. Every
  * export here is an `internalQuery`; public readers live in the sibling
  * submodules. Gathering them in one file makes the internal surface
  * obvious at a glance and cheap to audit.
@@ -7,13 +7,14 @@
  * Names intentionally keep the `*Internal` suffix for the non-debug
  * internals; after T5.13 they surface at
  * `internal.extraction.queries.internal.<fn>` and the suffix is
- * redundant, but renaming them would fan out across workflow.ts and
- * workpoolActions.ts without adding value.
+ * redundant, but renaming them would fan out across workpoolActions.ts
+ * without adding value.
  */
 
 import { internalQuery } from "../../_generated/server";
 import { v } from "convex/values";
 import { getFlag } from "../../featureFlags/guard";
+import { userValidator } from "../../lib/validators";
 import { getProcessableFlags } from "../content";
 import { readJobSources } from "../jobSources";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
@@ -22,6 +23,7 @@ import {
   errorCodeValidator,
   extractionEvidenceUnitValidator,
   extractionJobValidator,
+  extractionPaperValidator,
   extractionQuestionValidator,
   extractionResultValidator,
   jobSourcesReadValidator,
@@ -38,7 +40,7 @@ export const getJobInternal = internalQuery({
 });
 
 /**
- * Lean control-plane read used by workflow gates and worker stale-run
+ * Lean control-plane read used by queue dispatchers and worker stale-run
  * guards. Returning just `{ status, runEpoch }` keeps the freshness read
  * cheap enough to repeat before dispatch and before persistence.
  */
@@ -54,18 +56,6 @@ export const getJobStatusInternal = internalQuery({
       status: job?.status ?? null,
       runEpoch: job?.runEpoch ?? 0,
     };
-  },
-});
-
-export const getQuestionsInternal = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.array(extractionQuestionValidator),
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .order("asc")
-      .collect();
   },
 });
 
@@ -102,52 +92,68 @@ export const getJobAndFlagsInternal = internalQuery({
   },
 });
 
-export const getEvidenceUnitsInternal = internalQuery({
-  args: { paperId: v.id("extractionPapers") },
-  returns: v.array(extractionEvidenceUnitValidator),
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("extractionEvidenceUnits")
-      .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .take(MAX_EVIDENCE_UNITS_PER_PAPER);
-  },
-});
-
-export const getQuestionByIdInternal = internalQuery({
-  args: { questionId: v.id("extractionQuestions") },
-  returns: v.union(v.null(), extractionQuestionValidator),
-  handler: async (ctx, args) => {
-    return await ctx.db.get("extractionQuestions", args.questionId);
-  },
-});
-
-/**
- * Per-question idempotency read used by `extractOneQuestion`. Returns
- * `null` when the question hasn't been processed yet for this paper.
- * Consumers gate on `result.billed` to skip redundant LLM work after a
- * workpool retry.
- */
-export const getResultByPaperAndQuestionInternal = internalQuery({
+export const getPaperExtractionContext = internalQuery({
   args: {
+    jobId: v.id("extractionJobs"),
     paperId: v.id("extractionPapers"),
-    questionKey: v.string(),
   },
-  returns: v.union(v.null(), extractionResultValidator),
+  returns: v.union(
+    v.object({ status: v.literal("not_found") }),
+    v.object({
+      status: v.literal("ok"),
+      job: extractionJobValidator,
+      paper: extractionPaperValidator,
+      user: v.union(v.null(), userValidator),
+      pdfEnabled: v.boolean(),
+      questions: v.array(extractionQuestionValidator),
+      results: v.array(extractionResultValidator),
+      evidenceUnits: v.array(extractionEvidenceUnitValidator),
+    }),
+  ),
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("extractionResults")
-      .withIndex("by_paper_question", (q) =>
-        q.eq("paperId", args.paperId).eq("questionKey", args.questionKey),
-      )
-      .unique();
+    const [job, paper, pdfFlag] = await Promise.all([
+      ctx.db.get(args.jobId),
+      ctx.db.get(args.paperId),
+      getFlag(ctx, "extraction.pdf"),
+    ]);
+    if (!job || !paper || paper.jobId !== args.jobId) {
+      return { status: "not_found" as const };
+    }
+
+    const [user, questions, results, evidenceUnits] = await Promise.all([
+      ctx.db.get("users", job.userId),
+      ctx.db
+        .query("extractionQuestions")
+        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+        .order("asc")
+        .collect(),
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
+        .collect(),
+      ctx.db
+        .query("extractionEvidenceUnits")
+        .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
+        .take(MAX_EVIDENCE_UNITS_PER_PAPER),
+    ]);
+
+    return {
+      status: "ok" as const,
+      job,
+      paper,
+      user,
+      pdfEnabled: (pdfFlag?.enabled ?? true) && (job.usePdfs ?? false),
+      questions,
+      results,
+      evidenceUnits,
+    };
   },
 });
 
 /**
  * Plan-05 retry: load every `extractionResults` row for a job whose
- * status is "pending". Consumed by `runRetryWorkflow` to drive the
- * re-enqueue loop after `retryFailedQuestions` has reset retryable
- * failures to pending.
+ * status is "pending". Retained for internal retry/debug callers that
+ * need to inspect reset rows after `retryFailedQuestions` runs.
  */
 export const getPendingResultsInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },

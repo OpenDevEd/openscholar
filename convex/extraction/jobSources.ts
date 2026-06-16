@@ -3,7 +3,7 @@
  *
  * Every row is a frozen BucketItem. writeJobSources / readJobSources are
  * the only callers that touch the table outside the schema-level index
- * queries in queries/internal.ts. Consumers (workflow, duplicate,
+ * queries in queries/internal.ts. Consumers (queue setup, duplicate,
  * templates, fixtures) work exclusively with BucketItemInput[].
  */
 

@@ -1,12 +1,9 @@
 import { Workpool } from "@convex-dev/workpool";
 import { components } from "./_generated/api";
 
-// PDF processing pool — runs the OpenAlex search + bibliometric snapshot
-// actions. Sized to keep external-service rate limits comfortable while
-// the extraction workflow itself fans out paper × question work through
-// `step.runAction`. Previous values clamped this to 3 as a workaround for
-// OCC contention on the timestamp-keyed `creditsAgg` writes; with that
-// hot-leaf issue fixed (random-keyed inserts), the pool can run wider.
+// PDF processing pool — runs OpenAlex search + bibliometric snapshot actions.
+// Sized to keep external-service rate limits comfortable; paper extraction
+// itself is now driven by the dedicated extraction paper pool below.
 export const pdfProcessingPool = new Workpool(components.workpool, {
   maxParallelism: 10,
   retryActionsByDefault: true,
@@ -27,3 +24,18 @@ export const screeningPool = new Workpool(components.screeningWorkpool, {
     base: 2,
   },
 });
+
+// Extraction paper pool — one item owns one paper queue row. Question
+// parallelism stays inside that action via the extraction queue runtime.
+export const extractionPaperPool = new Workpool(
+  components.extractionPaperWorkpool,
+  {
+    maxParallelism: 5,
+    retryActionsByDefault: true,
+    defaultRetryBehavior: {
+      maxAttempts: 3,
+      initialBackoffMs: 2000,
+      base: 2,
+    },
+  },
+);

@@ -1,12 +1,12 @@
 /**
  * Extraction paper internal mutations.
  *
- * The workflow writes each paper through these: createPaperRecords bulk-
- * inserts rows as the source fetcher yields them; updatePaperStatus
- * routes terminal transitions through markPaperTerminalTx (shared with
- * results.ts + onComplete.ts); setPaperStorage re-evaluates processable
- * when a PDF lands; markPaperIndexed flips isIndexed and deducts
- * embedding credits idempotently.
+ * The queue setup and paper workers write each paper through these:
+ * createPaperRecords bulk-inserts rows as the source fetcher yields them;
+ * updatePaperStatus routes terminal transitions through markPaperTerminalTx
+ * (shared with results.ts); setPaperStorage re-evaluates processable when a
+ * PDF lands; markPaperIndexed flips isIndexed and deducts embedding credits
+ * idempotently.
  */
 
 import { internalMutation } from "../../_generated/server";

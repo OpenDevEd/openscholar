@@ -10,10 +10,9 @@ import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
 import { batchDeleteByIndex } from "../../../lib/cascade";
 import { PAPER_LIMIT_MAX } from "../../bucket/limits";
-import { clearJobAggregates, clearJobCredits } from "../../aggregates";
+import { clearJobCredits } from "../../aggregates";
 import { clearJobCounters } from "../../jobCounters";
 import { recomputePaperListProjection } from "../../listProjection";
-import { releaseReservationTransaction } from "../../../credits/reservation";
 
 const PROJECTION_REPAIR_BATCH_SIZE = 25;
 
@@ -60,21 +59,6 @@ export const deleteExtractionInternal = internalMutation({
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .take(PAPER_LIMIT_MAX);
 
-    // Tier D: release any HELD reservations BEFORE deleting the paper
-    // rows that reference them. creditTransactions are intentionally
-    // retained as the user's audit trail, so orphaned negative
-    // `reservation` rows would otherwise permanently drain the wallet.
-    // `releaseReservationTransaction` is idempotent — re-runs on a
-    // rescheduled cascade are no-ops.
-    for (const paper of papers) {
-      if (paper.reservationId === undefined) continue;
-      await releaseReservationTransaction(ctx, {
-        reservationId: paper.reservationId,
-        description: "Reservation released (job deleted)",
-      });
-      await ctx.db.patch(paper._id, { reservationId: undefined });
-    }
-
     const perPaperChildTables: Array<[string, string]> = [
       ["extractionEvidenceUnits", "by_paper"],
       ["extractionResults", "by_paper"],
@@ -117,20 +101,6 @@ export const deleteExtractionInternal = internalMutation({
       return reschedule();
     }
 
-    // Clear the @convex-dev/aggregate state for every question on this
-    // job before dropping extractionQuestions below. The aggregate
-    // namespaces are keyed by (jobId, questionKey), so we need the keys
-    // in hand before the drain.
-    const jobQuestions = await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .collect();
-    await clearJobAggregates(
-      ctx,
-      jobId,
-      jobQuestions.map((q) => q.key),
-    );
-
     // Plan-04: wipe the creditsAgg namespace for this job so cached
     // per-job totals return 0 immediately. The creditTransactions
     // rows are intentionally NOT deleted — the ledger is the user's
@@ -144,21 +114,20 @@ export const deleteExtractionInternal = internalMutation({
     // the component too.
     await clearJobCounters(ctx, jobId);
 
-    // Steps 5-8b: straightforward by-job drains. Ordered so that
-    // extractionRunDiffs rows referencing this job as baseline are
-    // cleaned up last (BUG-03 fix — preserves existing semantics).
+    // Straightforward by-job drains. Results/evidence normally disappear
+    // through the per-paper pass above, but the by-job drains catch any
+    // orphaned rows left by an interrupted or older cascade.
     const byJobDrains: Array<[string, string, string]> = [
+      ["extractionPaperQueue", "by_job_and_status", "jobId"],
+      ["extractionPaperErrors", "by_job", "jobId"],
+      ["extractionEvidenceUnits", "by_job", "jobId"],
+      ["extractionResults", "by_job", "jobId"],
       ["extractionQuestions", "by_job", "jobId"],
-      ["extractionSavedViews", "by_job", "jobId"],
-      ["extractionReportSnapshots", "by_job", "jobId"],
-      ["extractionRunDiffs", "by_job", "jobId"],
-      ["extractionJobSources", "by_job_and_position", "jobId"],
-      // Drain chatPapers after extractionJobSources so any brief window of
-      // stale sourceId references is closed out by the time the bridge
-      // rows are gone. chatPapers only ever exists for chat-mode jobs;
-      // for extraction-mode jobs this is a no-op drain.
+      ["chatSourceEvents", "by_job_createdAt", "jobId"],
+      // Drain chatPapers before extractionJobSources so sourceId bridge rows
+      // do not outlive the source snapshot they point at.
       ["chatPapers", "by_job", "jobId"],
-      ["extractionRunDiffs", "by_baseline", "baselineJobId"],
+      ["extractionJobSources", "by_job_and_position", "jobId"],
     ];
     for (const [table, indexName, field] of byJobDrains) {
       const deleted = await batchDeleteByIndex(
@@ -254,6 +223,7 @@ export const rebuildJobListProjection = internalMutation({
 export const cleanupOldPdfs = internalMutation({
   args: {
     maxAgeHours: v.number(),
+    cursor: v.optional(v.union(v.string(), v.null())),
   },
   returns: v.object({ cleaned: v.number() }),
   handler: async (ctx, args): Promise<{ cleaned: number }> => {
@@ -265,9 +235,10 @@ export const cleanupOldPdfs = internalMutation({
       .withIndex("by_status_completedAt", (q) =>
         q.eq("status", "completed").lt("completedAt", cutoffTime),
       )
-      .take(CLEANUP_BATCH);
+      .paginate({ numItems: CLEANUP_BATCH, cursor: args.cursor ?? null });
 
-    for (const paper of oldPapers) {
+    let cleaned = 0;
+    for (const paper of oldPapers.page) {
       if (paper.storageId) {
         try {
           await ctx.storage.delete(paper.storageId);
@@ -275,20 +246,24 @@ export const cleanupOldPdfs = internalMutation({
             storageId: undefined,
           });
           await recomputePaperListProjection(ctx, paper._id);
+          cleaned++;
         } catch (error) {
           console.error(`Failed to delete PDF for paper ${paper._id}:`, error);
         }
       }
     }
 
-    if (oldPapers.length >= CLEANUP_BATCH) {
+    if (!oldPapers.isDone) {
       await ctx.scheduler.runAfter(
         0,
         internal.extraction.mutations.internal.admin.cleanupOldPdfs,
-        { maxAgeHours: args.maxAgeHours },
+        {
+          maxAgeHours: args.maxAgeHours,
+          cursor: oldPapers.continueCursor,
+        },
       );
     }
 
-    return { cleaned: oldPapers.length };
+    return { cleaned };
   },
 });

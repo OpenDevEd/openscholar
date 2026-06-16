@@ -5,7 +5,7 @@
  *
  * Why this exists: every paper that reaches a terminal state used to
  * patch the owning job's singleton row to bump the counter. Under
- * P-way fan-out from the workflow, every concurrent terminal transition
+ * P-way queue fan-out, every concurrent terminal transition
  * conflicted on that single row — Convex OCC re-ran the loser, the
  * workpool blew through its retry budget, and the bottleneck capped the
  * workpool's effective parallelism. Routing the increments through a
@@ -33,7 +33,7 @@
  * Writes:
  *
  *   - `incPaperOutcome(ctx, jobId, isSuccess)` lands one `inc()` call on
- *     a random shard. Idempotent at the workflow level via the paper's
+ *     a random shard. Idempotent at the paper-lifecycle level via the paper's
  *     prior terminal-status check in `markPaperTerminalTx`; this helper
  *     never double-counts within a single transition because the caller
  *     guards on `isTerminalPaperStatus(paper.status)` before invoking

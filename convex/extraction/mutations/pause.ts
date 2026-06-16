@@ -3,9 +3,8 @@
  *
  * `pauseExtraction(jobId)` is a cooperative pause — it flips the job
  * into status `paused` and captures the phase it was in (so resume can
- * restore it). Workflow orchestration is unaffected: the workflow
- * handler's `step.awaitEvent({ name: 'resume:<jobId>' })` gate (see
- * convex/extraction/workflow.ts) is what actually blocks new dispatches.
+ * restore it). Queue dispatchers and workers read the paused status
+ * before leasing or persisting further work.
  *
  * Idempotent: calling on a non-running status (already paused, terminal,
  * creditsExhausted) returns silently without throwing. All decision
