@@ -52,16 +52,6 @@ vi.mock("motion/react", () => ({
   ),
 }));
 
-// Tier B (extraction-occ-fixes): JobListItem now subscribes per-item to
-// subscribeToJobProgress to read sharded counters off the row. Stub it
-// so the test renders without a Convex client.
-vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: () => ({
-    data: { status: "ok", processedPapers: 3, failedPapers: 0 },
-    settlement: "ready",
-  }),
-}));
-
 import { JobListItem } from "@/components/extraction/job-list-item";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 

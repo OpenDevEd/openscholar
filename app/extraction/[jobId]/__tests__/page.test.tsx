@@ -425,10 +425,6 @@ vi.mock("@/components/extraction/export-dialog", () => ({
   ExportDialog: exportDialogSpy,
 }));
 
-vi.mock("@/components/extraction/report-builder", () => ({
-  ReportBuilder: () => <div>report builder</div>,
-}));
-
 vi.mock("@/components/extraction/extraction-results-shell", () => ({
   ExtractionResultsShell: ({ children }: { children: ReactNode }) => (
     <div data-testid="extraction-results-shell">{children}</div>

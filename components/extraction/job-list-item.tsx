@@ -3,9 +3,7 @@
 import { useMemo } from "react";
 import { motion } from "motion/react";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { api } from "@/convex/_generated/api";
-import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useTranslations, useFormatter, useNow } from "next-intl";
 import { cn } from "@/lib/utils";
 import { FileText, Clock, MessageSquare } from "lucide-react";
 import Link from "next/link";
@@ -27,12 +25,6 @@ const STATUS_DOT_COLORS: Record<string, string> = {
   cancelled: "bg-muted-foreground",
 };
 
-const STATUS_BAR_COLORS: Record<string, string> = {
-  completed: "bg-emerald-500",
-  failed: "bg-destructive",
-  cancelled: "bg-muted-foreground",
-};
-
 const STATUS_STRIPE_COLORS: Record<string, string> = {
   completed: "bg-emerald-500",
   failed: "bg-destructive",
@@ -43,10 +35,6 @@ function getStatusDotColor(status: string) {
   return STATUS_DOT_COLORS[status] ?? "bg-primary animate-pulse";
 }
 
-function getStatusBarColor(status: string) {
-  return STATUS_BAR_COLORS[status] ?? "bg-primary";
-}
-
 function getStatusStripeColor(status: string) {
   return STATUS_STRIPE_COLORS[status] ?? "bg-primary";
 }
@@ -54,7 +42,7 @@ function getStatusStripeColor(status: string) {
 export function JobListItem({ job, viewMode, index }: JobListItemProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const locale = useLocale();
+  const tJob = useTranslations("jobStatus");
   const format = useFormatter();
   const now = useNow();
 
@@ -72,21 +60,6 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
     statusLabelMap[status] ?? status.replace(/_/g, " ");
   const status = job.status ?? "pending";
   const totalPapers = job.totalPapers ?? 0;
-
-  // Tier B: counters live in sharded counters off-row. Subscribe per item
-  // — Convex pools the subscription, so this is cheap for terminal jobs
-  // (shards never change) and live for in-progress ones.
-  const progressQuery = useProtectedQuery(
-    api.extraction.queries.subscribeToJobProgress,
-    job.mode === "chat" ? "skip" : { jobId: job._id },
-  );
-  const progressData = progressQuery.data;
-  const processedPapers =
-    progressData?.status === "ok" ? progressData.processedPapers : 0;
-  const progressPercentage =
-    totalPapers > 0
-      ? Math.round((processedPapers / totalPapers) * 100)
-      : 0;
 
   const isChat = job.mode === "chat";
   const messageCount = job.messageCount ?? 0;
@@ -140,7 +113,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           <span className="text-xs text-muted-foreground shrink-0">
             {isChat
               ? t("jobChatSubline", { messages: bucketCount })
-              : t("paperProgress", { processed: processedPapers, total: totalPapers })}
+              : tJob("papersCount", { count: totalPapers })}
           </span>
 
           {/* Time ago */}
@@ -203,18 +176,6 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
                   </p>
                 )}
 
-                {/* Progress bar (extraction only) */}
-                {!isChat && (
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden max-w-xs">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progressPercentage}%` }}
-                      transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
-                      className={cn("h-full rounded-full", getStatusBarColor(status))}
-                    />
-                  </div>
-                )}
-
                 {/* Metadata row */}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   {!isChat && (
@@ -240,7 +201,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
                     <span>
                       {isChat
                         ? t("jobChatSubline", { messages: bucketCount })
-                        : t("paperProgress", { processed: processedPapers, total: totalPapers })}
+                        : tJob("papersCount", { count: totalPapers })}
                     </span>
                   </div>
 
@@ -314,18 +275,6 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
             </p>
           )}
 
-          {/* Progress bar (extraction only) */}
-          {!isChat && (
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-3">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercentage}%` }}
-                transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className={cn("h-full rounded-full", getStatusBarColor(status))}
-              />
-            </div>
-          )}
-
           {/* Metadata */}
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -337,7 +286,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
               <span>
                 {isChat
                   ? t("jobChatSubline", { messages: bucketCount })
-                  : t("paperProgress", { processed: processedPapers, total: totalPapers })}
+                  : tJob("papersCount", { count: totalPapers })}
               </span>
             </div>
             <span className="text-xs text-muted-foreground">

@@ -1,9 +1,10 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import React, { useState, useTransition } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useUser } from "@clerk/nextjs";
+import { useAction, useMutation } from "convex/react";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
@@ -38,11 +39,13 @@ import { ScreeningDialog } from "@/components/screening/screening-dialog";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { fromSavedSearchQuery } from "@/lib/bucket/bucketItem";
 import { bucketItemToServerInput } from "@/lib/bucket/to-server-input";
 import { deriveChatName } from "@/lib/chat/chat-name";
 import { paramsToBucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
 import { deriveStartChatButtonState } from "@/lib/chat/start-chat-button-state";
+import { buildChatSourceFingerprint } from "@/lib/chat/source-request";
 import { api } from "@/convex/_generated/api";
 
 interface SearchCommandFooterProps {
@@ -76,31 +79,44 @@ export function SearchCommandFooter({
   const shouldReduceMotion = useReducedMotion();
   const search = useSearchOptional();
   const { currentQuestion } = useCurrentQuestionStore();
+  const { user } = useUser();
 
   const { phase } = useAuthReadiness();
+  const currentAccountId = user?.id ?? null;
   const goToSignIn = useSignInRedirect();
   const router = useRouter();
 
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);
   const [isScreeningDialogOpen, setIsScreeningDialogOpen] = useState(false);
-  const [isStartingChat, startChatTransition] = useTransition();
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   const startJob = useMutation(api.extraction.mutations.startJob);
-  const pullCap =
-    useQuery(api.extraction.bucket.queries.getMyPaperPullCap) ?? 200;
-  const pullDefault =
-    useQuery(api.extraction.bucket.queries.getMyPaperPullDefault) ?? 200;
+  const continueChatWithSourceRefresh = useAction(
+    api.chat.threads.continueChatWithSourceRefresh,
+  );
+  const { data: livePullCap } = useProtectedQuery(
+    api.extraction.bucket.queries.getMyPaperPullCap,
+    {},
+  );
+  const { data: livePullDefault } = useProtectedQuery(
+    api.extraction.bucket.queries.getMyPaperPullDefault,
+    {},
+  );
+  const pullCap = livePullCap ?? 200;
+  const pullDefault = livePullDefault ?? 200;
   const chatFlagEnabled = useFeatureFlag("extraction.chat");
 
-  const linkedChatJobId = useSearchHistoryStore((state) =>
-    state.searchHistory.find((item) => item.id === searchId)?.chatJobId,
+  const linkedChatJobIdsByAccountId = useSearchHistoryStore((state) =>
+    state.searchHistory.find((item) => item.id === searchId)
+      ?.chatJobIdsByAccountId,
   );
   const updateSearchResult = useSearchHistoryStore(
     (state) => state.updateSearchResult,
   );
   const chatButtonState = deriveStartChatButtonState({
-    chatJobId: linkedChatJobId,
+    chatJobIdsByAccountId: linkedChatJobIdsByAccountId,
+    currentAccountId,
   });
 
   // Use the new router hook
@@ -234,18 +250,13 @@ Return a more targeted version of this query.`;
     }
   };
 
-  const handleStartChat = () => {
+  const handleStartChat = async () => {
     if (phase !== "authenticated") {
       goToSignIn();
       return;
     }
-
-    if (chatButtonState.mode === "continue") {
-      posthog.capture("chat_continued_from_results", {
-        search_id: searchId,
-        job_id: chatButtonState.jobId,
-      });
-      router.push(`/extraction/${chatButtonState.jobId}?mode=chat`);
+    if (!currentAccountId) {
+      goToSignIn();
       return;
     }
 
@@ -260,12 +271,18 @@ Return a more targeted version of this query.`;
       Math.max(0, totalCount ?? pullDefault),
     );
     const params = search.params;
+    const searchFilters = paramsToBucketSearchFilters(params);
 
     const placeholder = fromSavedSearchQuery({
       id: searchId,
       query: params.q ?? "",
       count: initialCount,
-      searchFilters: paramsToBucketSearchFilters(params),
+      searchFilters,
+    });
+    const bucketItem = bucketItemToServerInput(placeholder);
+    const sourceFingerprint = buildChatSourceFingerprint({
+      searchFilters,
+      limit: initialCount,
     });
 
     const name = deriveChatName({
@@ -274,30 +291,52 @@ Return a more targeted version of this query.`;
       fallback: tsc("untitledChat"),
     });
 
-    startChatTransition(async () => {
-      try {
-        const result = await startJob({
-          name,
-          mode: "chat",
-          bucketItems: [bucketItemToServerInput(placeholder) as never],
+    setIsStartingChat(true);
+    try {
+      if (chatButtonState.mode === "continue") {
+        const result = await continueChatWithSourceRefresh({
+          jobId: chatButtonState.jobId as never,
+          bucketItems: [bucketItem as never],
+          sourceFingerprint,
         });
-
-        updateSearchResult(searchId, { chatJobId: result.jobId });
-
-        posthog.capture("chat_started_from_results", {
+        posthog.capture("chat_continued_from_results", {
           search_id: searchId,
-          total_count: totalCount,
-          pulled_count: initialCount,
+          job_id: chatButtonState.jobId,
+          sources_changed: result.sourcesChanged,
+          refreshed: result.changed,
         });
-
-        router.push(`/extraction/${result.jobId}?mode=chat`);
-      } catch (error) {
-        toast.error(
-          tsc("startChatFailed"),
-          getErrorMessage(error, te("unexpectedErrorRetry")),
-        );
+        router.push(`/extraction/${chatButtonState.jobId}?mode=chat`);
+        return;
       }
-    });
+
+      const result = await startJob({
+        name,
+        mode: "chat",
+        bucketItems: [bucketItem as never],
+      });
+
+      updateSearchResult(searchId, {
+        chatJobIdsByAccountId: {
+          ...(linkedChatJobIdsByAccountId ?? {}),
+          [currentAccountId]: result.jobId,
+        },
+      });
+
+      posthog.capture("chat_started_from_results", {
+        search_id: searchId,
+        total_count: totalCount,
+        pulled_count: initialCount,
+      });
+
+      router.push(`/extraction/${result.jobId}?mode=chat`);
+    } catch (error) {
+      toast.error(
+        tsc("startChatFailed"),
+        getErrorMessage(error, te("unexpectedErrorRetry")),
+      );
+    } finally {
+      setIsStartingChat(false);
+    }
   };
 
   return (

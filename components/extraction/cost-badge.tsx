@@ -6,11 +6,6 @@ import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 export interface CostBadgeProps {
   jobId: Id<"extractionJobs">;
@@ -29,18 +24,13 @@ export interface CostBadgeProps {
 }
 
 /**
- * Live per-job credit-cost chip. Subscribes to
- * api.extraction.queries.costs.getJobCost (O(log n) via creditsAgg)
- * so the total updates in near-real-time as each question completes.
+ * Live per-job credit-cost chip. Subscribes to the per-job aggregate total only.
  *
  * Contract:
  *   role="status"         — the total is an at-a-glance status value
  *                           (not an alert; not a static definition).
  *   data-credits-total    — stable hook for tests, independent of the
  *                           formatted string (i18n + tabular-nums).
- *   Tooltip breakdown     — indexing vs extraction split from the
- *                           creditTransactions ledger, keyed to the
- *                           billingType taxonomy.
  *   href (optional)       — wraps the chip in a <Link>. Renders an
  *                           anchor the whole badge becomes clickable;
  *                           aria-label carries the navigation intent.
@@ -65,13 +55,6 @@ export function CostBadge({ jobId, compact = false, href }: CostBadgeProps) {
   }
 
   const total = data.total;
-  const breakdown = data.breakdown;
-  const hasBreakdown =
-    breakdown.extraction_llm > 0 ||
-    breakdown.embedding > 0 ||
-    breakdown.screening > 0 ||
-    breakdown.chat > 0 ||
-    breakdown.other > 0;
 
   const chipClasses = compact
     ? "inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-0.5 text-xs"
@@ -100,90 +83,11 @@ export function CostBadge({ jobId, compact = false, href }: CostBadgeProps) {
     <span
       role="status"
       data-credits-total={String(total)}
-      className={`${chipClasses} cursor-help`}
+      className={chipClasses}
     >
       {chipBody}
     </span>
   );
 
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-xs">
-        {hasBreakdown ? (
-          <ul className="space-y-0.5 text-xs">
-            {breakdown.embedding > 0 && (
-              <li
-                className="flex items-center justify-between gap-3"
-                data-breakdown-bucket="embedding"
-              >
-                <span className="text-muted-foreground">
-                  {t("breakdown.indexing")}
-                </span>
-                <span className="tabular-nums">
-                  {breakdown.embedding.toLocaleString()}
-                </span>
-              </li>
-            )}
-            {breakdown.extraction_llm > 0 && (
-              <li
-                className="flex items-center justify-between gap-3"
-                data-breakdown-bucket="extraction_llm"
-              >
-                <span className="text-muted-foreground">
-                  {t("breakdown.extraction")}
-                </span>
-                <span className="tabular-nums">
-                  {breakdown.extraction_llm.toLocaleString()}
-                </span>
-              </li>
-            )}
-            {breakdown.screening > 0 && (
-              <li
-                className="flex items-center justify-between gap-3"
-                data-breakdown-bucket="screening"
-              >
-                <span className="text-muted-foreground">
-                  {t("breakdown.screening")}
-                </span>
-                <span className="tabular-nums">
-                  {breakdown.screening.toLocaleString()}
-                </span>
-              </li>
-            )}
-            {breakdown.chat > 0 && (
-              <li
-                className="flex items-center justify-between gap-3"
-                data-breakdown-bucket="chat"
-              >
-                <span className="text-muted-foreground">
-                  {t("breakdown.chat")}
-                </span>
-                <span className="tabular-nums">
-                  {breakdown.chat.toLocaleString()}
-                </span>
-              </li>
-            )}
-            {breakdown.other > 0 && (
-              <li
-                className="flex items-center justify-between gap-3"
-                data-breakdown-bucket="other"
-              >
-                <span className="text-muted-foreground">
-                  {t("breakdown.other")}
-                </span>
-                <span className="tabular-nums">
-                  {breakdown.other.toLocaleString()}
-                </span>
-              </li>
-            )}
-          </ul>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            {t("credits", { amount: total })}
-          </p>
-        )}
-      </TooltipContent>
-    </Tooltip>
-  );
+  return trigger;
 }

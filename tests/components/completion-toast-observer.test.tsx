@@ -44,16 +44,7 @@ const fakeJobId = "job_xyz" as Id<"extractionJobs">;
 
 function withCost(total: number) {
   useProtectedQueryMock.mockReturnValue({
-    data: {
-      total,
-      breakdown: {
-        extraction_llm: total,
-        embedding: 0,
-        screening: 0,
-        chat: 0,
-        other: 0,
-      },
-    },
+    data: { total },
     settlement: "ready",
   });
 }

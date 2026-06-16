@@ -4,7 +4,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
+import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -47,7 +47,6 @@ import { TableView, CardView, SplitView } from "@/components/extraction/results-
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
-import { ReportBuilder } from "@/components/extraction/report-builder";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
@@ -63,9 +62,6 @@ import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import type { Infer } from "convex/values";
-import type { extractionSavedViewValidator } from "@/convex/extraction/validators";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { useExtractionCitationPanelStore } from "@/lib/store";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -90,7 +86,6 @@ export default function JobDetailPage() {
   const tErrors = useTranslations('errors');
   const tc = useTranslations('common');
   const tPdf = useTranslations('pdfViewer');
-  const locale = useLocale();
   const format = useFormatter();
   const now = useNow();
   
@@ -101,9 +96,6 @@ export default function JobDetailPage() {
   const jobId = params.jobId as Id<"extractionJobs">;
   // Wizard hands off `?mode=chat` so the destination shows "Preparing chat…" copy from frame zero instead of the generic spinner that flips to the chat label once the shell resolves.
   const modeHint = searchParams.get("mode");
-
-  const reportBuilderEnabled = useFeatureFlag("extraction.reportBuilder");
-  const templatesEnabled = useFeatureFlag("extraction.templates");
 
   const viewModeSerialize = useCallback((v: 'table' | 'cards' | 'split') => v, []);
   const viewModeDeserialize = useCallback((v: string) => v as 'table' | 'cards' | 'split', []);
@@ -139,7 +131,6 @@ export default function JobDetailPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(200);
 
-  const [activeTab, setActiveTab] = useState<"results" | "report">("results");
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
@@ -346,7 +337,10 @@ export default function JobDetailPage() {
         posthog.capture("extraction_job_paused", {
           jobId,
           duration_so_far_ms: Date.now() - details.job.createdAt,
-          processed_papers: details.progress.processed,
+          processed_papers:
+            jobProgress?.status === "ok"
+              ? jobProgress.processedPapers
+              : undefined,
         });
       }
     } catch (error) {
@@ -396,29 +390,6 @@ export default function JobDetailPage() {
       toast.job.createFailed(error);
     }
   };
-
-  const handleApplySavedView = useCallback(
-    (view: Infer<typeof extractionSavedViewValidator>) => {
-      setFilters({
-        searchQuery: view?.filters?.searchQuery || "",
-        confidenceRange: Array.isArray(view?.filters?.confidenceRange)
-          ? (view.filters.confidenceRange as [number, number])
-          : [0, 100],
-        statusFilters: new Set(view?.filters?.statusFilters || []),
-        questionFilters: new Map(),
-      });
-      if (view?.sortBy) {
-        setResultsSortBy(view.sortBy as ResultsSortBy);
-      }
-      if (view?.viewMode && ["table", "cards", "split"].includes(view.viewMode)) {
-        setViewMode(view.viewMode as "table" | "cards" | "split");
-      }
-      setCurrentPage(1);
-      setActiveTab("results");
-      setSearchQueryResetKey((k) => k + 1);
-    },
-    [setViewMode, setFilters, setResultsSortBy, toast, tJob, tc]
-  );
 
   if (
     jobShellQuery.isDeferred ||
@@ -537,7 +508,7 @@ export default function JobDetailPage() {
     );
   }
 
-  const { job, progress } = jobDetails;
+  const { job } = jobDetails;
   const jobProgressSafe = jobProgress?.status === "ok" ? jobProgress : null;
   const resolvedProgress = jobProgressSafe
     ? {
@@ -554,7 +525,12 @@ export default function JobDetailPage() {
               )
             : 0,
       }
-    : progress;
+    : {
+        total: job.totalPapers ?? 0,
+        processed: 0,
+        failed: 0,
+        percentage: 0,
+      };
   const authoritativeTotalPapers =
     resultsPage?.status === "ok"
       ? resultsPage.totalAll
@@ -918,38 +894,8 @@ export default function JobDetailPage() {
             />
           </motion.div>
 
-          {reportBuilderEnabled && (
-            <div className="border-b border-border/40 px-4 md:px-6">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setActiveTab("results")}
-                  className={cn(
-                    "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
-                    activeTab === "results"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {tView("extractionResults")}
-                </button>
-                <button
-                  onClick={() => setActiveTab("report")}
-                  className={cn(
-                    "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
-                    activeTab === "report"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {tView("reportBuilder")}
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Content Section */}
           <div className="overflow-x-hidden p-4 md:p-6">
-          {activeTab === 'results' ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1108,24 +1054,6 @@ export default function JobDetailPage() {
                 />
               </ExtractionResultsShell>
             </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <ReportBuilder
-                jobId={jobId}
-                filters={filters}
-                sortBy={resultsSortBy}
-                viewMode={viewMode}
-                questions={questions}
-                onApplySavedView={handleApplySavedView}
-                canUseTemplates={templatesEnabled}
-                canUseRunDiff={reportBuilderEnabled}
-              />
-            </motion.div>
-          )}
               </div>
                 </CommandCenterContainer>
             </div>

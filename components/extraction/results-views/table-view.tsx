@@ -34,7 +34,6 @@ import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { HighlightedText } from "./highlighted-text";
 import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
-import { ErrorHistory } from "@/components/extraction/error-history";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -267,14 +266,6 @@ export const TableView = memo(function TableView({
                           />
                         </div>
 
-                        {/* Plan-07: expandable error history.
-                            Self-hides when the paper has no error rows
-                            (the 99% happy path). Click bubbling is
-                            stopped so toggling the accordion doesn't
-                            also toggle the row selection. */}
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <ErrorHistory paperId={paper._id} />
-                        </div>
                       </div>
                     </TableCell>
 
