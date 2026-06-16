@@ -3,9 +3,8 @@ import {
   aggregateQuestionInsights,
   buildArrayAnswerProfileClusters,
   buildDisagreementClusters,
-  buildRunDiff,
 } from "../lib/extraction/analysis";
-import type { CitationStatus, InsightEntry, RunDiffRecord } from "../lib/extraction/analysis";
+import type { CitationStatus, InsightEntry } from "../lib/extraction/analysis";
 
 describe("aggregateQuestionInsights", () => {
   it("computes coverage, confidence, and citation status mix", () => {
@@ -173,67 +172,6 @@ describe("buildDisagreementClusters", () => {
 
     expect(profiles.clusters.length).toBe(1);
     expect(profiles.suppressedSingletonCount).toBeGreaterThan(0);
-  });
-});
-
-describe("buildRunDiff", () => {
-  it("tracks new, changed, removed, and confidence-shift outcomes", () => {
-    const baseline = [
-      {
-        key: "oa:1::sample_size",
-        openalexId: "oa:1",
-        title: "Paper 1",
-        questionKey: "sample_size",
-        answer: "273",
-        confidence: 0.9,
-        citationStatus: "grounded" as const,
-      },
-      {
-        key: "oa:2::sample_size",
-        openalexId: "oa:2",
-        title: "Paper 2",
-        questionKey: "sample_size",
-        answer: "300",
-        confidence: 0.8,
-        citationStatus: "grounded" as const,
-      },
-    ];
-    const next = [
-      {
-        key: "oa:1::sample_size",
-        openalexId: "oa:1",
-        title: "Paper 1",
-        questionKey: "sample_size",
-        answer: "273",
-        confidence: 0.6,
-        citationStatus: "grounded" as const,
-      },
-      {
-        key: "oa:2::sample_size",
-        openalexId: "oa:2",
-        title: "Paper 2",
-        questionKey: "sample_size",
-        answer: null,
-        confidence: 0.2,
-        citationStatus: "insufficient_evidence" as const,
-      },
-      {
-        key: "oa:3::sample_size",
-        openalexId: "oa:3",
-        title: "Paper 3",
-        questionKey: "sample_size",
-        answer: "120",
-        confidence: 0.9,
-        citationStatus: "best_effort" as const,
-      },
-    ];
-
-    const { summary } = buildRunDiff(baseline, next, 0.15);
-    expect(summary.totalCompared).toBe(3);
-    expect(summary.newAnswers).toBe(1);
-    expect(summary.removedAnswers).toBe(1);
-    expect(summary.confidenceShifts).toBeGreaterThanOrEqual(1);
-    expect(summary.newlyInsufficientEvidence).toBe(1);
   });
 });
 
@@ -509,78 +447,6 @@ describe("buildDisagreementClusters edge cases", () => {
     const result = buildDisagreementClusters(entries, "string");
     // normalized is null, all skipped, groups.size === 0
     expect(result).toEqual([]);
-  });
-});
-
-describe("buildRunDiff edge cases", () => {
-  it("handles empty baseline and next", () => {
-    const { summary, changes } = buildRunDiff([], [], 0.2);
-
-    expect(summary.totalCompared).toBe(0);
-    expect(summary.newAnswers).toBe(0);
-    expect(summary.removedAnswers).toBe(0);
-    expect(summary.changedAnswers).toBe(0);
-    expect(summary.confidenceShifts).toBe(0);
-    expect(summary.newlyInsufficientEvidence).toBe(0);
-    expect(changes).toEqual([]);
-  });
-
-  it("handles all-removed (baseline only, empty next)", () => {
-    const baseline: RunDiffRecord[] = [
-      {
-        key: "oa:1::q1",
-        openalexId: "oa:1",
-        title: "Paper 1",
-        questionKey: "q1",
-        answer: "yes",
-        confidence: 0.9,
-        citationStatus: "grounded",
-      },
-      {
-        key: "oa:2::q1",
-        openalexId: "oa:2",
-        title: "Paper 2",
-        questionKey: "q1",
-        answer: "no",
-        confidence: 0.8,
-        citationStatus: "grounded",
-      },
-    ];
-
-    const { summary } = buildRunDiff(baseline, [], 0.2);
-
-    expect(summary.removedAnswers).toBe(2);
-    expect(summary.newAnswers).toBe(0);
-    expect(summary.totalCompared).toBe(2);
-  });
-
-  it("handles all-new (empty baseline, next only)", () => {
-    const next: RunDiffRecord[] = [
-      {
-        key: "oa:1::q1",
-        openalexId: "oa:1",
-        title: "Paper 1",
-        questionKey: "q1",
-        answer: "yes",
-        confidence: 0.85,
-        citationStatus: "grounded",
-      },
-      {
-        key: "oa:2::q1",
-        openalexId: "oa:2",
-        title: "Paper 2",
-        questionKey: "q1",
-        answer: "no",
-        confidence: 0.75,
-        citationStatus: "best_effort",
-      },
-    ];
-
-    const { summary } = buildRunDiff([], next, 0.2);
-
-    expect(summary.newAnswers).toBe(2);
-    expect(summary.removedAnswers).toBe(0);
-    expect(summary.totalCompared).toBe(2);
   });
 });
 

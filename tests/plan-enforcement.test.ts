@@ -186,10 +186,10 @@ describe("requireFeature", () => {
   it("passes when user tier meets minimum", async () => {
     const ctx = createFeatureFlagCtx(
       {
-        key: "extraction.reportBuilder",
+        key: "extraction.start",
         enabled: true,
         minimumTier: 10,
-        description: "AI Insights",
+        description: "Start Extraction",
       },
       [
         makeSub({
@@ -200,22 +200,22 @@ describe("requireFeature", () => {
       ],
     );
     await expect(
-      requireFeature(ctx, "extraction.reportBuilder", mockId("users", "1")),
+      requireFeature(ctx, "extraction.start", mockId("users", "1")),
     ).resolves.toBeUndefined();
   });
 
   it("throws FEATURE_PLAN_REQUIRED when tier is below minimum", async () => {
     const ctx = createFeatureFlagCtx(
       {
-        key: "extraction.reportBuilder",
+        key: "extraction.start",
         enabled: true,
         minimumTier: 10,
-        description: "AI Insights",
+        description: "Start Extraction",
       },
       [makeSub({ plan: "free", status: "active" })],
     );
     try {
-      await requireFeature(ctx, "extraction.reportBuilder", mockId("users", "1"));
+      await requireFeature(ctx, "extraction.start", mockId("users", "1"));
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
@@ -249,10 +249,10 @@ describe("requireFeature", () => {
   it("treats canceled subscription as free tier", async () => {
     const ctx = createFeatureFlagCtx(
       {
-        key: "extraction.reportBuilder",
+        key: "extraction.start",
         enabled: true,
         minimumTier: 10,
-        description: "AI Insights",
+        description: "Start Extraction",
       },
       [
         makeSub({
@@ -263,7 +263,7 @@ describe("requireFeature", () => {
       ],
     );
     try {
-      await requireFeature(ctx, "extraction.reportBuilder", mockId("users", "1"));
+      await requireFeature(ctx, "extraction.start", mockId("users", "1"));
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
@@ -274,12 +274,12 @@ describe("requireFeature", () => {
 
   it("throws UNAUTHENTICATED when tier-gated flag is checked without userId", async () => {
     const ctx = createFeatureFlagCtx({
-      key: "extraction.reportBuilder",
+      key: "extraction.start",
       enabled: true,
       minimumTier: 10,
     });
     try {
-      await requireFeature(ctx, "extraction.reportBuilder");
+      await requireFeature(ctx, "extraction.start");
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
