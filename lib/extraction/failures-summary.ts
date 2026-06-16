@@ -1,8 +1,7 @@
 /**
  * Failures-by-code summarizer for extraction `extractionPaperErrors`
- * rows. Feeds the mixed-success callout and the error-history side
- * panel. Pure — no Convex dependency — so the UI can compute it from
- * any source (live query, snapshot, test fixture) without a round trip.
+ * rows. Feeds the mixed-success callout. Pure — no Convex dependency — so the
+ * UI can compute it from any source without a round trip.
  */
 
 import { isRetryable } from "@/lib/errors/taxonomy";

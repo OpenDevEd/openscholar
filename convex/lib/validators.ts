@@ -60,16 +60,7 @@ export const creditTransactionTypeValidator = v.union(
   v.literal("usage"),
   v.literal("grant"),
   v.literal("refund"),
-  v.literal("expiry"),
-  // Tier D: append-only reservation primitive. `reservation` rows carry a
-  // negative `amount` summand that drops the aggregated balance, holding
-  // credits against an in-flight estimate. `reservation_release` rows
-  // carry a positive offsetting summand keyed to the same scope, settling
-  // or cancelling the reservation. Both shapes are pure inserts — no
-  // credits row mutation — so concurrent reservations across fan-out
-  // never OCC-contend on a shared cell.
-  v.literal("reservation"),
-  v.literal("reservation_release")
+  v.literal("expiry")
 );
 
 export const apiKeyProviderValidator = v.union(
@@ -172,17 +163,13 @@ export const creditTransactionFields = {
   userId: v.optional(v.id("users")),
   type: creditTransactionTypeValidator,
   creditType: v.union(v.literal("free"), v.literal("paid")),
-  // Tier D: `amount` is a SIGNED ledger entry — positive for grants /
-  // purchases / refund-in / reservation_release, negative for usage /
-  // refund-out / reservation. The aggregate sums these to produce the
+  // `amount` is a signed ledger entry: positive for grants / purchases /
+  // refund-in, negative for usage / refund-out. The aggregate sums these to produce the
   // current balance, so no `balanceAfter` snapshot is recorded (it would
   // be stale the instant a concurrent insert lands).
   amount: v.number(),
+  balanceAfter: v.optional(v.number()),
   description: v.optional(v.string()),
-  // Tier D: links a `reservation_release` back to the originating
-  // `reservation` row. The pre-flight reservation primitive uses this to
-  // identify and offset its hold once the actual cost is known.
-  reservationOf: v.optional(v.id("creditTransactions")),
   // Plan-04 first-class scoping columns. Present on all usage rows
   // created after the plan-04 schema refactor; optional on legacy rows.
   jobId: v.optional(v.id("extractionJobs")),

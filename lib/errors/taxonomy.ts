@@ -181,9 +181,7 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
   }
 
   // 3. AbortError / AbortSignal — user-initiated stop. isAbortLike
-  // covers DOMException-style instances AND `new Error(persistedSentinel)`
-  // (extraction's onComplete hands us the latter when it rehydrates a
-  // stored chat error string).
+  // covers DOMException-style instances AND `new Error(persistedSentinel)`.
   if (isAbortLike(err)) {
     return finalize("aborted", message, { context });
   }
@@ -411,9 +409,8 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
   // sentinel counts; other AbortError shapes (e.g. provider-side aborts on
   // upstream timeouts) classify as "unknown" so the user sees the real
   // failure. Contrast `isAbortLike` from lib/chat/abort-signal.ts which
-  // is permissive on AbortError name — it's used by classifyUnknownError
-  // (extraction onComplete) where we don't have provider context to
-  // distinguish ours from theirs.
+  // is permissive on AbortError name — classifyUnknownError may be called
+  // without provider context to distinguish ours from theirs.
   if (isUserStopAbort(rec)) {
     return envelope("aborted", message, { providerName });
   }
@@ -649,8 +646,8 @@ function parseJsonIfString(
  *
  * Deliberately stricter than `isAbortLike` from lib/chat/abort-signal.ts:
  * `isAbortLike` accepts ANY AbortError name regardless of message and is
- * used by `classifyUnknownError` (extraction onComplete path) where we
- * receive a rehydrated string with no provider context. Here in chat we
+ * used by `classifyUnknownError` where we may receive a rehydrated string
+ * with no provider context. Here in chat we
  * need to distinguish our stop from upstream provider-side AbortErrors
  * (timeout aborts, etc.) so the user sees the real failure — see test
  * `lib/errors/taxonomy.test.ts:431` "does not swallow provider AbortError

@@ -48,8 +48,4 @@ export type {
   ExtractionPaperStatus,
   ExtractionResult,
   ExtractionJobDetails,
-  ExtractionSavedView,
-  ExtractionWorkflowTemplate,
-  ExtractionReportSnapshot,
-  ExtractionRunDiff,
 } from './extraction.types';

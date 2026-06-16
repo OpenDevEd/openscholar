@@ -154,7 +154,7 @@ export interface SearchResult {
   reviewFilter?: boolean;
   language?: string; // ISO 639-1 language code
   page?: number; // Last viewed page for this search
-  chatJobId?: string; // Most recent chat (extractionJobs.id) created from this search
+  chatJobIdsByAccountId?: Record<string, string>; // Per-account chat job links for this search
   createdAt: string;
   updatedAt: string;
 }

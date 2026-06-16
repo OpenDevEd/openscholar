@@ -116,12 +116,11 @@ describe("classifyUnknownError — fingerprint cascade", () => {
     expect(classifyUnknownError(err).code).toBe("aborted");
   });
 
-  it("R7b: rehydrated `new Error(serializedAbortSentinel)` → aborted (the extraction onComplete shape)", () => {
-    // convex/extraction/mutations/internal/onComplete.ts wraps stored
-    // error strings into Error instances before classifying. When the
-    // stored string is the agent's persisted abort sentinel, the
-    // resulting Error has name "Error" — not "AbortError" — and the
-    // sentinel only as message. The R7 name-only check used to miss
+  it("R7b: rehydrated `new Error(serializedAbortSentinel)` → aborted", () => {
+    // Stored error strings can be rehydrated into Error instances before
+    // classifying. When the stored string is the agent's persisted abort
+    // sentinel, the resulting Error has name "Error" — not "AbortError" —
+    // and the sentinel only as message. The R7 name-only check used to miss
     // this and the job was misclassified as "unknown".
     expect(
       classifyUnknownError(new Error(`${ABORT_ERROR_STRING}`)).code,

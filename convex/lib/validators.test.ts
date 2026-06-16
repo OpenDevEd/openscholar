@@ -17,11 +17,7 @@ import {
   extractionPaperErrorFields,
   extractionPaperFields,
   extractionQuestionFields,
-  extractionReportSnapshotFields,
   extractionResultFields,
-  extractionRunDiffFields,
-  extractionSavedViewFields,
-  workflowTemplateFields,
 } from "../extraction/validators";
 
 const ssotTables = {
@@ -37,10 +33,6 @@ const ssotTables = {
   extractionPaperErrors: extractionPaperErrorFields,
   extractionResults: extractionResultFields,
   extractionEvidenceUnits: extractionEvidenceUnitFields,
-  extractionSavedViews: extractionSavedViewFields,
-  extractionReportSnapshots: extractionReportSnapshotFields,
-  extractionRunDiffs: extractionRunDiffFields,
-  extractionWorkflowTemplates: workflowTemplateFields,
 } as const;
 
 type AnyValidator = Validator<unknown, "required" | "optional", string>;

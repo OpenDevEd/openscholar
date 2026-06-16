@@ -1,7 +1,7 @@
 /**
  * Pure rollup from per-question result rows to the paper's terminal
  * status. Consumed by `convex/extraction/mutations/results.ts::finalizePaper`
- * once every per-question workflow step returns.
+ * once every per-question worker attempt has settled.
  *
  * This module is backend-only: it decides whether a paper has reached
  * a terminal state after per-question fan-out.
@@ -26,10 +26,9 @@ export type PaperRollupResult = {
 };
 
 /**
- * Workflow step retry budget. Matches the per-step retry configured on the
- * WorkflowManager in `convex/workflow.ts` — three attempts total before a
- * question's `attemptCount` ticks past the cap and the rollup treats the
- * retryable failure as effectively terminal.
+ * Per-question retry budget. Three attempts total before a question's
+ * `attemptCount` ticks past the cap and the rollup treats the retryable
+ * failure as effectively terminal.
  */
 export const MAX_QUESTION_ATTEMPTS = 3;
 
@@ -47,7 +46,7 @@ function classifyQuestion(r: PaperQuestionInput): QuestionBucket {
   // Conservative default: if the failure was never classified into a
   // taxonomy code we cannot know if it was transient or permanent.
   // Prefer the "could be retried" branch so we don't falsely finalize
-  // a paper as complete before the workflow has exhausted its retry
+  // a paper as complete before the worker has exhausted its retry
   // budget. Once `attemptCount` hits the cap the failure flips to
   // `terminal_failure` regardless of retryability.
   const retryable = code === undefined ? true : isRetryable[code];
