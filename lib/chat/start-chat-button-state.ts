@@ -3,9 +3,13 @@ export type StartChatButtonState =
   | { mode: "continue"; jobId: string };
 
 export function deriveStartChatButtonState(opts: {
-  chatJobId?: string | null;
+  chatJobIdsByAccountId?: Record<string, string> | null;
+  currentAccountId?: string | null;
 }): StartChatButtonState {
-  const trimmed = opts.chatJobId?.trim();
+  const accountId = opts.currentAccountId?.trim();
+  if (!accountId) return { mode: "start" };
+
+  const trimmed = opts.chatJobIdsByAccountId?.[accountId]?.trim();
   if (trimmed) return { mode: "continue", jobId: trimmed };
   return { mode: "start" };
 }

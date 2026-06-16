@@ -35,11 +35,11 @@ describe("isAbortLike", () => {
     expect(isAbortLike(err)).toBe(true);
   });
 
-  it("recognizes new Error(stringifiedAbortSentinel) — the extraction onComplete shape", () => {
-    // convex/extraction/mutations/internal/onComplete.ts wraps stored
-    // error strings into Error instances. When the stored string is the
-    // agent's serialized abort sentinel, the resulting Error has name
-    // "Error" (not "AbortError") and the sentinel only as message.
+  it("recognizes new Error(stringifiedAbortSentinel)", () => {
+    // Stored error strings can be rehydrated into Error instances. When the
+    // stored string is the agent's serialized abort sentinel, the resulting
+    // Error has name "Error" (not "AbortError") and the sentinel only as
+    // message.
     expect(isAbortLike(new Error(ABORT_ERROR_STRING))).toBe(true);
   });
 

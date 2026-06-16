@@ -6,24 +6,30 @@
  */
 
 import {
+  action,
   internalAction,
   internalMutation,
   internalQuery,
   mutation,
   type ActionCtx,
+  type MutationCtx,
 } from "../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
-import { authorizeThreadAccess } from "./auth";
+import { assertCallerOwnsJob, authorizeThreadAccess } from "./auth";
 import { paperChat } from "./agent";
 import { dedupeExpandedSources, expandJobSources } from "../extraction/expandSources";
 import { replaceJobSources, type BucketItemInput } from "../extraction/jobSources";
 import type { PaperData } from "../extraction/types";
 import { internal } from "../_generated/api";
 import { bucketItemInputValidator, structuredErrorValidator } from "../extraction/validators";
-import { buildSeedChatPaperRows } from "./chatPapersSeed";
 import { classifyUnknownError } from "@/lib/errors/taxonomy";
+import {
+  assertNonEmptyOpenAlexSourceIds,
+  hasSameOrderedOpenAlexIds,
+  orderedOpenAlexIds,
+} from "./sourceRefreshModel";
 
 function classifyChatPrepError(error: unknown) {
   const result = classifyUnknownError(error);
@@ -41,6 +47,13 @@ async function resolvePreparedSources(
     internal.extraction.queries.internal.getJobSourcesInternal,
     { jobId },
   );
+  return await resolvePreparedSourcesFromItems(ctx, bucketItems);
+}
+
+async function resolvePreparedSourcesFromItems(
+  ctx: ActionCtx,
+  bucketItems: BucketItemInput[],
+): Promise<BucketItemInput[]> {
   let cachedZoteroUserId: string | undefined;
 
   const expanded = await expandJobSources(bucketItems, {
@@ -69,6 +82,30 @@ async function resolvePreparedSources(
   });
 
   return dedupeExpandedSources(expanded).map((item) => item.bucketItem);
+}
+
+const chatSourceRefreshResultValidator = v.object({
+  jobId: v.id("extractionJobs"),
+  changed: v.boolean(),
+  sourcesChanged: v.boolean(),
+});
+
+type ChatJobForSourceRefresh = {
+  _id: Id<"extractionJobs">;
+  userId: Id<"users">;
+  chatThreadId: string | null;
+  isGenerating: boolean;
+  chatSourceFingerprint: string | null;
+};
+
+type ChatSourceRefreshResult = {
+  jobId: Id<"extractionJobs">;
+  changed: boolean;
+  sourcesChanged: boolean;
+};
+
+function toValidationError(error: unknown) {
+  return error instanceof Error ? error.message : "Invalid chat sources.";
 }
 
 /**
@@ -240,6 +277,218 @@ export const getChatJobForPreparation = internalQuery({
   },
 });
 
+export const getChatJobForSourceRefresh = internalQuery({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.object({
+    _id: v.id("extractionJobs"),
+    userId: v.id("users"),
+    chatThreadId: v.union(v.string(), v.null()),
+    isGenerating: v.boolean(),
+    chatSourceFingerprint: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, { jobId }) => {
+    const { job } = await assertCallerOwnsJob(ctx, jobId);
+    return {
+      _id: job._id,
+      userId: job.userId,
+      chatThreadId: job.chatThreadId ?? null,
+      isGenerating: job.isGenerating ?? false,
+      chatSourceFingerprint: job.chatSourceFingerprint ?? null,
+    };
+  },
+});
+
+export const continueChatWithSourceRefresh = action({
+  args: {
+    jobId: v.id("extractionJobs"),
+    bucketItems: v.array(bucketItemInputValidator),
+    sourceFingerprint: v.string(),
+  },
+  returns: chatSourceRefreshResultValidator,
+  handler: async (
+    ctx,
+    { jobId, bucketItems, sourceFingerprint },
+  ): Promise<ChatSourceRefreshResult> => {
+    const job: ChatJobForSourceRefresh = await ctx.runQuery(
+      internal.chat.threads.getChatJobForSourceRefresh,
+      { jobId },
+    );
+
+    if (job.isGenerating) {
+      throw createError(
+        "CONFLICT",
+        "A response is already being generated for this chat.",
+      );
+    }
+    if (!job.chatThreadId) {
+      throw createError(
+        "CONFLICT",
+        "This chat is still being prepared. Try again in a moment.",
+      );
+    }
+
+    if (job.chatSourceFingerprint === sourceFingerprint) {
+      return { jobId, changed: false, sourcesChanged: false };
+    }
+
+    const preparedSources = await resolvePreparedSourcesFromItems(
+      ctx,
+      bucketItems,
+    );
+    const nextOpenAlexIds = orderedOpenAlexIds(preparedSources);
+    try {
+      assertNonEmptyOpenAlexSourceIds(nextOpenAlexIds);
+    } catch (error) {
+      throw createError("VALIDATION_ERROR", toValidationError(error));
+    }
+
+    await ctx.runQuery(
+      internal.extraction.bucket.limits.assertBucketWithinLimitsForUser,
+      {
+        userId: job.userId,
+        items: preparedSources.map((item) => ({
+          source: item.source,
+          searchFilters: item.searchFilters,
+        })),
+      },
+    );
+
+    return await ctx.runMutation(
+      internal.chat.threads.applyChatSourceRefresh,
+      {
+        jobId,
+        items: preparedSources,
+        sourceFingerprint,
+      },
+    );
+  },
+});
+
+async function replaceChatSourcesForJob(
+  ctx: MutationCtx,
+  jobId: Id<"extractionJobs">,
+  items: BucketItemInput[],
+  opts: { preserveInclusion: boolean },
+) {
+  const existingPapers = await ctx.db
+    .query("chatPapers")
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
+    .collect();
+  const existingSources = opts.preserveInclusion
+    ? await ctx.db
+        .query("extractionJobSources")
+        .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+        .collect()
+    : [];
+
+  const sourceById = new Map(
+    existingSources.map((source) => [source._id, source]),
+  );
+  const includedByOpenAlexId = new Map<string, boolean>();
+  if (opts.preserveInclusion) {
+    for (const paper of existingPapers) {
+      const openalexId = sourceById.get(paper.sourceId)?.openalexId?.trim();
+      if (openalexId && !includedByOpenAlexId.has(openalexId)) {
+        includedByOpenAlexId.set(openalexId, paper.included);
+      }
+    }
+  }
+
+  for (const row of existingPapers) {
+    await ctx.db.delete(row._id);
+  }
+
+  await replaceJobSources(ctx, jobId, items);
+
+  const newSources = await ctx.db
+    .query("extractionJobSources")
+    .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+    .collect();
+  for (const source of newSources) {
+    const openalexId = source.openalexId?.trim();
+    await ctx.db.insert("chatPapers", {
+      jobId,
+      sourceId: source._id,
+      included:
+        openalexId && includedByOpenAlexId.has(openalexId)
+          ? includedByOpenAlexId.get(openalexId)!
+          : true,
+    });
+  }
+}
+
+export const applyChatSourceRefresh = internalMutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    items: v.array(bucketItemInputValidator),
+    sourceFingerprint: v.string(),
+  },
+  returns: chatSourceRefreshResultValidator,
+  handler: async (ctx, { jobId, items, sourceFingerprint }) => {
+    const job = await ctx.db.get(jobId);
+    if (!job || job.mode !== "chat") {
+      throw createError("NOT_FOUND", "Chat job not found");
+    }
+    if (job.isGenerating) {
+      throw createError(
+        "CONFLICT",
+        "A response is already being generated for this chat.",
+      );
+    }
+    if (!job.chatThreadId) {
+      throw createError(
+        "CONFLICT",
+        "This chat is still being prepared. Try again in a moment.",
+      );
+    }
+
+    const currentSources = await ctx.db
+      .query("extractionJobSources")
+      .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+      .collect();
+    const currentOpenAlexIds = orderedOpenAlexIds(currentSources);
+    const nextOpenAlexIds = orderedOpenAlexIds(items);
+    try {
+      assertNonEmptyOpenAlexSourceIds(nextOpenAlexIds);
+    } catch (error) {
+      throw createError("VALIDATION_ERROR", toValidationError(error));
+    }
+
+    const sourcesChanged = !hasSameOrderedOpenAlexIds(
+      currentOpenAlexIds,
+      nextOpenAlexIds,
+    );
+    const fingerprintChanged = job.chatSourceFingerprint !== sourceFingerprint;
+    if (!fingerprintChanged && !sourcesChanged) {
+      return { jobId, changed: false, sourcesChanged: false };
+    }
+
+    await replaceChatSourcesForJob(ctx, jobId, items, {
+      preserveInclusion: true,
+    });
+
+    const now = Date.now();
+    if (sourcesChanged) {
+      await ctx.db.insert("chatSourceEvents", {
+        jobId,
+        threadId: job.chatThreadId,
+        kind: "sources_updated",
+        boundaryOrder: job.messageCount ?? 0,
+        createdAt: now,
+      });
+    }
+
+    await ctx.db.patch(jobId, {
+      chatSourceFingerprint: sourceFingerprint,
+      chatSourceOpenAlexIds: nextOpenAlexIds,
+      error: undefined,
+      updatedAt: now,
+    });
+
+    return { jobId, changed: true, sourcesChanged };
+  },
+});
+
 export const persistPreparedSourcesForJob = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
@@ -252,34 +501,12 @@ export const persistPreparedSourcesForJob = internalMutation({
       throw createError("NOT_FOUND", "Chat job not found");
     }
 
-    // Wipe existing chatPapers before replaceJobSources rotates source
-    // _ids — otherwise stale rows would point at deleted sources on a
-    // partial-commit retry. The mutation is transactional, so all three
-    // steps (wipe chatPapers / replace sources / seed chatPapers) commit
-    // together or roll back together.
-    const existingPapers = await ctx.db
-      .query("chatPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .collect();
-    for (const row of existingPapers) {
-      await ctx.db.delete(row._id);
-    }
-
-    await replaceJobSources(ctx, jobId, items);
-
-    const newSources = await ctx.db
-      .query("extractionJobSources")
-      .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-      .collect();
-    const seedRows = buildSeedChatPaperRows(
-      jobId,
-      newSources.map((s) => s._id),
-    );
-    for (const row of seedRows) {
-      await ctx.db.insert("chatPapers", row);
-    }
+    await replaceChatSourcesForJob(ctx, jobId, items, {
+      preserveInclusion: false,
+    });
 
     await ctx.db.patch(jobId, {
+      chatSourceOpenAlexIds: orderedOpenAlexIds(items).filter(Boolean),
       error: undefined,
       updatedAt: Date.now(),
     });

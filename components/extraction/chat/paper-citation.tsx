@@ -21,7 +21,13 @@ import {
 import { applyInclusionPatchToSnapshot } from "@/lib/chat/chat-papers-selection";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import { cn } from "@/lib/utils";
+import {
+  DeprecatedPaperCitationsProvider,
+  useDeprecatedPaperCitations,
+} from "./paper-citation-context";
 import { usePapersContext } from "./papers-context";
+
+export { DeprecatedPaperCitationsProvider };
 
 export type PaperCitationTarget = ResolvablePaper;
 
@@ -68,6 +74,10 @@ const PILL_CLASS_BY_STATE: Record<CitationState, string> = {
     BASE_PILL,
     "bg-muted text-muted-foreground/80",
   ),
+  deprecated: cn(
+    BASE_PILL,
+    "border border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  ),
 };
 
 /**
@@ -104,6 +114,7 @@ export function PaperCitation({ index }: PaperCitationProps) {
   const tCommon = useTranslations("common");
   const tAcc = useTranslations("accessibility");
   const { papersByPosition, jobId } = usePapersContext();
+  const deprecated = useDeprecatedPaperCitations();
   const paper = papersByPosition.get(index) ?? null;
 
   const reinclude = useMutation(
@@ -124,7 +135,35 @@ export function PaperCitation({ index }: PaperCitationProps) {
     );
   });
 
-  const state = classifyCitationState(paper);
+  const state = classifyCitationState(paper, { deprecated });
+
+  if (state === "deprecated") {
+    return (
+      <InlineCitationCard openDelay={120} closeDelay={160}>
+        <HoverCardTrigger asChild>
+          <span
+            className={PILL_CLASS_BY_STATE.deprecated}
+            data-citation-state="deprecated"
+            data-paper-index={index}
+            data-paper-resolved="deprecated"
+            aria-label={t("chatCitationDeprecated", { index })}
+            title={t("chatCitationDeprecated", { index })}
+            tabIndex={0}
+          >
+            {index}
+          </span>
+        </HoverCardTrigger>
+        <InlineCitationCardBody>
+          <div className="space-y-2 p-3">
+            <InlineCitationSource
+              title={t("chatCitationDeprecatedTitle", { index })}
+              description={t("chatCitationDeprecatedDescription")}
+            />
+          </div>
+        </InlineCitationCardBody>
+      </InlineCitationCard>
+    );
+  }
 
   if (state === "unresolved") {
     return (

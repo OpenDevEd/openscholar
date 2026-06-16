@@ -8,6 +8,15 @@ const mk = (included: boolean): CitationResolvable =>
   ({ included }) as CitationResolvable;
 
 describe("classifyCitationState", () => {
+  it("returns 'deprecated' when the citation belongs to an earlier source segment", () => {
+    expect(classifyCitationState(mk(true), { deprecated: true })).toBe(
+      "deprecated",
+    );
+    expect(classifyCitationState(null, { deprecated: true })).toBe(
+      "deprecated",
+    );
+  });
+
   it("returns 'unresolved' when paper is null", () => {
     expect(classifyCitationState(null)).toBe("unresolved");
   });

@@ -47,8 +47,8 @@ export function isAbortErrorString(error: string): boolean {
  *   2. `new Error(persistedSentinel)` — name "Error", message
  *      "AbortError: user_stopped" (or the agent's "Trying to update a
  *      message that failed: …, error: AbortError: user_stopped" wrapper).
- *      This is the shape extraction's onComplete handler hands to
- *      classifyUnknownError when it rehydrates a stored error string.
+ *      This is the shape callers get when they rehydrate a stored error
+ *      string before classification.
  *   3. Plain Record `{ name?, message? }` or the bare sentinel string —
  *      lets callers pass parsed-JSON envelopes or raw payload strings
  *      without first wrapping in Error.

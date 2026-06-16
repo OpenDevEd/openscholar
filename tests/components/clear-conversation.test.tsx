@@ -70,6 +70,9 @@ vi.mock("@/convex/_generated/api", () => ({
         regenerateLastAssistant: "regenerateLastAssistant",
         listThreadMessages: "listThreadMessages",
       },
+      sourceEvents: {
+        listForThread: "listSourceEventsForThread",
+      },
     },
   },
 }));

@@ -23,7 +23,10 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PaperCitation } from "@/components/extraction/chat/paper-citation";
+import {
+  DeprecatedPaperCitationsProvider,
+  PaperCitation,
+} from "@/components/extraction/chat/paper-citation";
 import { PapersContext } from "@/components/extraction/chat/papers-context";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -33,10 +36,12 @@ function renderCitation({
   index,
   paper,
   jobId,
+  deprecated = false,
 }: {
   index: number;
   paper: ResolvablePaper | null;
   jobId: Id<"extractionJobs">;
+  deprecated?: boolean;
 }) {
   const papersByPosition = new Map<number, ResolvablePaper>();
   if (paper) papersByPosition.set(index, paper);
@@ -44,7 +49,9 @@ function renderCitation({
     <PapersContext.Provider
       value={fakePapersContext({ jobId, papersByPosition })}
     >
-      <PaperCitation index={index} />
+      <DeprecatedPaperCitationsProvider deprecated={deprecated}>
+        <PaperCitation index={index} />
+      </DeprecatedPaperCitationsProvider>
     </PapersContext.Provider>,
   );
 }
@@ -287,6 +294,19 @@ describe("<PaperCitation>", () => {
   });
 
   describe("tri-state", () => {
+    it("marks old-segment citations as deprecated and does not link current sources", () => {
+      renderCitation({
+        index: 3,
+        paper: mkPaper({ included: true }),
+        jobId: JOB_ID,
+        deprecated: true,
+      });
+      expect(screen.queryByRole("link")).toBeNull();
+      const pill = screen.getByText("3");
+      expect(pill.getAttribute("data-citation-state")).toBe("deprecated");
+      expect(pill.getAttribute("data-paper-resolved")).toBe("deprecated");
+    });
+
     it("marks an included pill with data-citation-state='included'", () => {
       renderCitation({
         index: 3,

@@ -331,16 +331,10 @@ describe("duplicateJob clones chatPapers", () => {
     });
 
     const auth = t.withIdentity(IDENTITY);
-    // Extraction duplicate reaches workflow.start, which isn't registered
-    // in convex-test — the mutation throws and the transaction rolls back
-    // wholesale. That rollback is itself the proof we need: no stray
-    // extraction-mode clone ever wrote chatPapers rows, since if the
-    // rollback were incomplete we'd see stale rows here.
-    await expect(
-      auth.mutation(api.extraction.mutations.duplicateJob, {
-        jobId: sourceJobId,
-      }),
-    ).rejects.toThrow(/Component "workflow" is not registered/);
+    const { jobId: duplicateJobId } = await auth.mutation(
+      api.extraction.mutations.duplicateJob,
+      { jobId: sourceJobId },
+    );
 
     await t.run(async (ctx) => {
       const papersAnywhere = await ctx.db.query("chatPapers").collect();
@@ -350,9 +344,9 @@ describe("duplicateJob clones chatPapers", () => {
         .query("extractionJobs")
         .withIndex("by_user", (q) => q.eq("userId", userId))
         .collect();
-      // Only the original extraction-mode job survives the rollback.
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0]._id).toBe(sourceJobId);
+      expect(jobs).toHaveLength(2);
+      expect(jobs.map((job) => job._id)).toContain(sourceJobId);
+      expect(jobs.map((job) => job._id)).toContain(duplicateJobId);
     });
   });
 });

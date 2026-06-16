@@ -36,6 +36,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MessageActions } from "./message-actions";
 import { PaperCitation } from "./paper-citation";
+import { DeprecatedPaperCitationsProvider } from "./paper-citation-context";
 import { SuggestionChips } from "./suggestion-chips";
 import { StreamingCursor } from "./streaming-cursor";
 import { TypingDots } from "./typing-dots";
@@ -59,6 +60,11 @@ import {
   serializeChatError,
   type ChatErrorClass,
 } from "@/lib/errors/taxonomy";
+import {
+  isAssistantCitationDeprecated,
+  shouldRenderSourceUpdateDividerAfterMessages,
+  shouldRenderSourceUpdateDividerBeforeMessage,
+} from "@/lib/chat/source-update-timeline";
 import { cn } from "@/lib/utils";
 
 interface MessageListProps {
@@ -374,6 +380,30 @@ function markLocalRegenerateFailed(
   };
 }
 
+function SourceUpdateDivider({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <motion.li
+      data-chat-event="sources-updated"
+      role="status"
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      className="my-2 flex justify-center"
+    >
+      <div className="max-w-[90%] rounded-md border border-border/70 bg-muted/45 px-3 py-1.5 text-center text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{title}</span>
+        <span className="ml-1">{description}</span>
+      </div>
+    </motion.li>
+  );
+}
+
 interface MessageRowProps {
   message: ChatUIMessage;
   isLastAssistant: boolean;
@@ -390,6 +420,7 @@ interface MessageRowProps {
   /** Native model web-search USD price, populated only when
    *  `webSearchSource === "openrouter-native"`. */
   modelWebSearchPriceUsd?: number | null;
+  paperCitationsDeprecated?: boolean;
 }
 
 /**
@@ -404,9 +435,11 @@ interface MessageRowProps {
 function AssistantTextPart({
   part,
   parseIncompleteMarkdown: outerParseIncomplete,
+  paperCitationsDeprecated = false,
 }: {
   part: TextUIPart;
   parseIncompleteMarkdown: boolean;
+  paperCitationsDeprecated?: boolean;
 }) {
   const partStreaming = part.state === "streaming";
   const partDone = part.state === "done";
@@ -414,14 +447,16 @@ function AssistantTextPart({
     partStreaming || (!partDone && outerParseIncomplete);
   const renderText = normalizeChatMarkdownForRender(part.text);
   return (
-    <MessageResponse
-      allowedTags={CHAT_MARKDOWN_ALLOWED_TAGS}
-      components={STREAMDOWN_COMPONENTS}
-      mode={parseIncompleteMarkdown ? "streaming" : "static"}
-      parseIncompleteMarkdown={parseIncompleteMarkdown}
-    >
-      {renderText}
-    </MessageResponse>
+    <DeprecatedPaperCitationsProvider deprecated={paperCitationsDeprecated}>
+      <MessageResponse
+        allowedTags={CHAT_MARKDOWN_ALLOWED_TAGS}
+        components={STREAMDOWN_COMPONENTS}
+        mode={parseIncompleteMarkdown ? "streaming" : "static"}
+        parseIncompleteMarkdown={parseIncompleteMarkdown}
+      >
+        {renderText}
+      </MessageResponse>
+    </DeprecatedPaperCitationsProvider>
   );
 }
 
@@ -436,6 +471,7 @@ export const MessageRow = memo(function MessageRow({
   isJobGenerating = true,
   webSearchSource,
   modelWebSearchPriceUsd,
+  paperCitationsDeprecated = false,
 }: MessageRowProps) {
   const normalizedMessage = normalizeChatUIMessage(message);
   const isStreamingStatus = normalizedMessage.status === "streaming";
@@ -548,6 +584,7 @@ export const MessageRow = memo(function MessageRow({
                     key={`text-${idx}`}
                     part={part as TextUIPart}
                     parseIncompleteMarkdown={parseIncompleteMarkdown}
+                    paperCitationsDeprecated={paperCitationsDeprecated}
                   />
                 );
               }
@@ -619,6 +656,9 @@ export function MessageList({
     { threadId },
     { initialNumItems: 20, stream: true },
   );
+  const sourceEvents = useQuery(api.chat.sourceEvents.listForThread, {
+    threadId,
+  });
   // Resolves the active web-search path + per-call price server-side
   // so each in-flight `<ToolStep>` chip can render the real credit
   // estimate. Convex deduplicates this against the toggle's own
@@ -685,6 +725,15 @@ export function MessageList({
       ) as ChatUIMessage[],
     [results, localRegenerate, serverRegenerateReplacementVisible],
   );
+  const latestSourceEvent = useMemo(() => {
+    if (!sourceEvents || sourceEvents.length === 0) return null;
+    return sourceEvents.reduce((latest, event) =>
+      event.createdAt > latest.createdAt ? event : latest,
+    );
+  }, [sourceEvents]);
+  const sourceUpdateBoundary = latestSourceEvent
+    ? { boundaryOrder: latestSourceEvent.boundaryOrder }
+    : null;
 
   const generationActive = isChatGenerationActive(
     renderResults,
@@ -844,9 +893,26 @@ export function MessageList({
           <AnimatePresence initial={false}>
             {renderResults.map((message, i) => {
               const prev = renderResults[i - 1];
+              const showSourceUpdateDividerBefore =
+                shouldRenderSourceUpdateDividerBeforeMessage({
+                  previous: prev,
+                  message,
+                  boundary: sourceUpdateBoundary,
+                });
+              const paperCitationsDeprecated = isAssistantCitationDeprecated(
+                message,
+                sourceUpdateBoundary,
+              );
               const isFirstInGroup = !prev || prev.role !== message.role;
               return (
                 <Fragment key={message.id}>
+                  {showSourceUpdateDividerBefore && latestSourceEvent ? (
+                    <SourceUpdateDivider
+                      key={latestSourceEvent._id}
+                      title={t("chatSourcesUpdatedDivider")}
+                      description={t("chatSourcesUpdatedDividerDescription")}
+                    />
+                  ) : null}
                   <MessageRow
                     message={message as ChatUIMessage}
                     isLastAssistant={message.id === lastAssistantId}
@@ -858,10 +924,22 @@ export function MessageList({
                     isJobGenerating={isJobGenerating}
                     webSearchSource={webSearchSource}
                     modelWebSearchPriceUsd={modelWebSearchPriceUsd}
+                    paperCitationsDeprecated={paperCitationsDeprecated}
                   />
                 </Fragment>
               );
             })}
+            {latestSourceEvent &&
+            shouldRenderSourceUpdateDividerAfterMessages(
+              renderResults,
+              sourceUpdateBoundary,
+            ) ? (
+              <SourceUpdateDivider
+                key={`${latestSourceEvent._id}:after`}
+                title={t("chatSourcesUpdatedDivider")}
+                description={t("chatSourcesUpdatedDividerDescription")}
+              />
+            ) : null}
           </AnimatePresence>
         </ol>
       </ConversationContent>
