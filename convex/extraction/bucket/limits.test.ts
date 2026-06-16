@@ -219,7 +219,7 @@ describe("assertBucketWithinLimits", () => {
 
   it("rejects a bucket whose every history row has limit <= 0", async () => {
     // Every row contributes 0 effective papers. Without the count===0
-    // guard, this bucket would start a workflow that would then strand
+    // guard, this bucket would start queue setup that would then strand
     // the job in downloading_pdfs/indexing when its loop skipped every
     // source and threw "No sources selected" post-status-transition.
     const t = convexTest(schema);

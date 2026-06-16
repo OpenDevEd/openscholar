@@ -44,14 +44,6 @@ const PUBLIC_MUTATIONS: ReadonlyArray<string> = [
   "startJob",
   "cancelExtraction",
   "duplicateJob",
-  "startJobFromTemplate",
-  "saveExtractionSavedView",
-  "deleteExtractionSavedView",
-  "saveWorkflowTemplateFromJob",
-  "saveWorkflowTemplate",
-  "deleteWorkflowTemplate",
-  "createExtractionReportSnapshot",
-  "createExtractionRunDiff",
   "deleteExtraction",
 ];
 
@@ -67,10 +59,6 @@ const PUBLIC_QUERIES: ReadonlyArray<readonly [string, string]> = [
   ["papers", "pdfUrl"],
   ["", "getJobResultsForExport"],
   ["", "getJobResultsPage"],
-  ["", "getSavedViews"],
-  ["", "getWorkflowTemplates"],
-  ["", "getReportSnapshots"],
-  ["", "getRunDiff"],
   ["", "subscribeToJobProgress"],
 ];
 
@@ -109,19 +97,14 @@ describe("SN-1 public query routing", () => {
 });
 
 // ============================================================================
-// P9.T5 — unified job creation (startJob / duplicateJob / startJobFromTemplate)
+// P9.T5 — unified job creation (startJob / duplicateJob)
 //
-// Extraction-mode jobs call `workflow.start(...)` at the tail of the mutation,
-// which requires the workflow Convex component to be registered in the test
-// harness. Registering workflow + nested workpool components here is invasive
-// (requires globbing the upstream component sources); following the existing
-// SN-1 pattern above, we accept "workflow component not registered" as proof
-// the mutation path reached workflow.start — i.e. every pre-workflow step
-// (auth, rate-limit, flag, dedupe, bucket validation, insert) passed.
+// Extraction-mode jobs schedule the app-owned paper queue setup action. The
+// public mutation should complete cleanly, persist the job/questions/sources,
+// and leave no external orchestration handle on the job row.
 //
-// Chat-mode jobs schedule `internal.chat.threads.ensureThreadForJob` instead
-// of starting a workflow, so they complete cleanly against convex-test and
-// support direct state assertions.
+// Chat-mode jobs schedule `internal.chat.threads.ensureThreadForJob`, so they
+// complete cleanly against convex-test and support direct state assertions.
 // ============================================================================
 
 const STARTJOB_CLERK = "clerk_startjob";
@@ -213,30 +196,47 @@ const BUCKET_ITEM_ZOTERO = {
   zoteroUserId: "98765",
 };
 
-// Matches the runtime message convex-test emits when an un-registered
-// Convex component is invoked. Reaching this point proves the mutation
-// advanced through every server-side step before workflow.start.
-const WORKFLOW_NOT_REGISTERED_RE =
-  /Component "workflow" is not registered/;
-
 describe("startJob — extraction mode", () => {
-  it("reaches workflow.start with extraction args (auth + flag + bucket + insert succeed)", async () => {
+  it("creates an extraction job and schedules queue setup", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     await seedUserAndFlags(t);
     const auth = t.withIdentity(STARTJOB_IDENTITY);
 
-    await expect(
-      auth.mutation(api.extraction.mutations.startJob, {
-        name: "Extraction Job",
-        mode: "extraction",
-        bucketItems: [BUCKET_ITEM_HISTORY],
-        questions: [
-          { key: "q1", question: "What is the outcome?", type: "string" },
-        ],
-        usePdfs: false,
-      }),
-    ).rejects.toThrow(WORKFLOW_NOT_REGISTERED_RE);
+    const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
+      name: "Extraction Job",
+      mode: "extraction",
+      bucketItems: [BUCKET_ITEM_HISTORY],
+      questions: [
+        { key: "q1", question: "What is the outcome?", type: "string" },
+      ],
+      usePdfs: false,
+    });
+
+    await t.run(async (ctx) => {
+      const job = await ctx.db.get(jobId);
+      const questions = await ctx.db
+        .query("extractionQuestions")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect();
+      const sources = await ctx.db
+        .query("extractionJobSources")
+        .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+        .collect();
+      const scheduledFunctions = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+
+      expect(job?.mode).toBe("extraction");
+      expect(job?.status).toBe("pending");
+      expect(questions).toHaveLength(1);
+      expect(sources).toHaveLength(1);
+      expect(
+        scheduledFunctions.some((sf) =>
+          sf.name.includes("setupExtractionQueueJob"),
+        ),
+      ).toBe(true);
+    });
   });
 });
 
@@ -258,7 +258,6 @@ describe("startJob — chat mode", () => {
     expect(job?.mode).toBe("chat");
     expect(job?.status).toBeUndefined();
     expect(job?.messageCount).toBe(0);
-    expect(job?.workflowId).toBeUndefined();
   });
 
   it("rejects chat mode when the extraction.chat flag is OFF", async () => {
@@ -397,14 +396,13 @@ describe("startJob — chat source preparation", () => {
 });
 
 describe("duplicateJob", () => {
-  it("reads the source job and reaches workflow.start for the (Copy) duplicate", async () => {
+  it("duplicates an extraction job and schedules queue setup", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     const { userId } = await seedUserAndFlags(t);
 
-    // Seed an existing extraction job row + source rows directly — this lets
-    // the duplicate path exercise its full read-then-write chain without the
-    // original startJob attempting to call workflow.start.
+    // Seed an existing extraction job row + source rows directly so the
+    // duplicate path exercises its full read-then-write chain.
     const sourceJobId = await t.run(async (ctx) => {
       const now = Date.now();
       const jobId = await ctx.db.insert("extractionJobs", {
@@ -440,11 +438,36 @@ describe("duplicateJob", () => {
     });
 
     const auth = t.withIdentity(STARTJOB_IDENTITY);
-    await expect(
-      auth.mutation(api.extraction.mutations.duplicateJob, {
-        jobId: sourceJobId,
-      }),
-    ).rejects.toThrow(WORKFLOW_NOT_REGISTERED_RE);
+    const { jobId: newJobId } = await auth.mutation(
+      api.extraction.mutations.duplicateJob,
+      { jobId: sourceJobId },
+    );
+
+    await t.run(async (ctx) => {
+      const newJob = await ctx.db.get(newJobId);
+      const questions = await ctx.db
+        .query("extractionQuestions")
+        .withIndex("by_job", (q) => q.eq("jobId", newJobId))
+        .collect();
+      const sources = await ctx.db
+        .query("extractionJobSources")
+        .withIndex("by_job_and_position", (q) => q.eq("jobId", newJobId))
+        .collect();
+      const scheduledFunctions = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+
+      expect(newJob?.mode).toBe("extraction");
+      expect(newJob?.name).toBe("Base (Copy)");
+      expect(newJob?.status).toBe("pending");
+      expect(questions).toHaveLength(1);
+      expect(sources).toHaveLength(1);
+      expect(
+        scheduledFunctions.some((sf) =>
+          sf.name.includes("setupExtractionQueueJob"),
+        ),
+      ).toBe(true);
+    });
   });
 
   it("rejects chat-mode duplicate when the extraction.chat flag is OFF", async () => {
@@ -561,37 +584,5 @@ describe("duplicateJob", () => {
         expect(bySourceIncluded.has(oldId)).toBe(false);
       }
     });
-  });
-});
-
-describe("startJobFromTemplate", () => {
-  it("reads the template and reaches workflow.start for the rerun", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    const { userId } = await seedUserAndFlags(t);
-    const auth = t.withIdentity(STARTJOB_IDENTITY);
-
-    const templateId: Id<"extractionWorkflowTemplates"> = await t.run(
-      async (ctx) => {
-        const now = Date.now();
-        return await ctx.db.insert("extractionWorkflowTemplates", {
-          userId,
-          name: "Template A",
-          sourceType: "history",
-          bucketItems: [BUCKET_ITEM_HISTORY],
-          questions: [
-            { key: "q1", question: "What is the outcome?", type: "string" },
-          ],
-          createdAt: now,
-          updatedAt: now,
-        });
-      },
-    );
-
-    await expect(
-      auth.mutation(api.extraction.mutations.startJobFromTemplate, {
-        templateId,
-      }),
-    ).rejects.toThrow(WORKFLOW_NOT_REGISTERED_RE);
   });
 });

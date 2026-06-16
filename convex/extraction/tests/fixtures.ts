@@ -2,7 +2,6 @@ import { internalMutation, internalQuery } from "../../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
-import { workflow } from "../../workflow";
 import { writeJobSources, type BucketItemInput } from "../jobSources";
 import { assertNonProd } from "../../lib/assertNonProd";
 import {
@@ -45,7 +44,7 @@ const DEFAULT_BUCKET_ITEMS: BucketItemInput[] = [
 /**
  * Create a test extraction job. Supersedes the old `createTestJob` /
  * `createTestJobForFix` / `createAndRunTestJob` / `test_automation_internal.createTestJob`
- * variants. Set `start: true` to start the workflow after insertion.
+ * variants. Set `start: true` to schedule queue setup after insertion.
  * When `userId` is omitted, the first user in the database is used.
  */
 export const createTestJob = internalMutation({
@@ -102,18 +101,11 @@ export const createTestJob = internalMutation({
     }
 
     if (args.start) {
-      const workflowId = await workflow.start(
-        ctx,
-        internal.extraction.workflow.runExtractionWorkflow,
-        { jobId },
-        {
-          onComplete:
-            internal.extraction.mutations.internal.onComplete
-              .handleExtractionJobComplete,
-          context: { jobId },
-        },
+      await ctx.scheduler.runAfter(
+        0,
+        internal.extraction.actions.setupExtractionQueueJob,
+        { jobId, expectedEpoch: 0 },
       );
-      await ctx.db.patch(jobId, { workflowId, updatedAt: Date.now() });
     }
 
     return { jobId, userId };
@@ -221,7 +213,7 @@ export const getTestJobStatus = internalQuery({
 });
 
 /**
- * Lightweight aggregate counters — used by the PDF smoke-test polling loop.
+ * Lightweight result counts — used by the PDF smoke-test polling loop.
  */
 export const getTestJobResults = internalQuery({
   args: { jobId: v.id("extractionJobs") },

@@ -7,7 +7,6 @@ import {
   setupTransactionAggregates,
   seedCreditsForTest,
 } from "../credits/aggregates.test-support";
-import { readAggregateCounters } from "./aggregates";
 import { incPaperOutcome, readJobCounters } from "./jobCounters";
 
 async function seedJob(
@@ -274,7 +273,7 @@ describe("markPaperTerminalTx counter maintenance", () => {
   });
 });
 
-describe("recordOneAnswer + finalizePaper terminal-state guard", () => {
+describe("recordQuestionBatch + finalizePaper terminal-state guard", () => {
   it("does not persist results or finalize when job is cancelled", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
@@ -282,18 +281,23 @@ describe("recordOneAnswer + finalizePaper terminal-state guard", () => {
     const { jobId, paperId } = await seedJob(t, "cancelled");
 
     await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
+      internal.extraction.mutations.results.recordQuestionBatch,
       {
         paperId,
-        questionKey: "q1",
-        result: {
-          answer: "A",
-          confidence: 0.9,
-          reasoning: "r",
-          citations: [],
-          citationStatus: "grounded",
-        },
-        creditsUsed: 1,
+        completed: [
+          {
+            questionKey: "q1",
+            result: {
+              answer: "A",
+              confidence: 0.9,
+              reasoning: "r",
+              citations: [],
+              citationStatus: "grounded",
+            },
+            creditsUsed: 1,
+          },
+        ],
+        failed: [],
       },
     );
     await t.mutation(
@@ -316,12 +320,6 @@ describe("recordOneAnswer + finalizePaper terminal-state guard", () => {
       expect(results).toHaveLength(0);
     });
 
-    // No aggregate rows either: the terminal-state guard short-circuits
-    // before recordResult runs.
-    const counters = await t.run(async (ctx) =>
-      readAggregateCounters(ctx, jobId, "q1"),
-    );
-    expect(counters.totalPapers).toBe(0);
   });
 
   it("persists results normally when job is in an active state", async () => {
@@ -331,18 +329,23 @@ describe("recordOneAnswer + finalizePaper terminal-state guard", () => {
     const { jobId, paperId } = await seedJob(t, "extracting");
 
     await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
+      internal.extraction.mutations.results.recordQuestionBatch,
       {
         paperId,
-        questionKey: "q1",
-        result: {
-          answer: "A",
-          confidence: 0.9,
-          reasoning: "r",
-          citations: [],
-          citationStatus: "grounded",
-        },
-        creditsUsed: 1,
+        completed: [
+          {
+            questionKey: "q1",
+            result: {
+              answer: "A",
+              confidence: 0.9,
+              reasoning: "r",
+              citations: [],
+              citationStatus: "grounded",
+            },
+            creditsUsed: 1,
+          },
+        ],
+        failed: [],
       },
     );
     await t.mutation(

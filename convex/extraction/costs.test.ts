@@ -92,17 +92,22 @@ async function recordAnswerForPaper(
   creditsUsed: number,
 ) {
   await t.mutation(
-    internal.extraction.mutations.results.recordOneAnswer,
+    internal.extraction.mutations.results.recordQuestionBatch,
     {
       paperId,
-      questionKey,
-      creditsUsed,
-      result: {
-        answer: `answer-${questionKey}`,
-        confidence: 0.9,
-        citations: [],
-        citationStatus: "grounded" as const,
-      },
+      completed: [
+        {
+          questionKey,
+          creditsUsed,
+          result: {
+            answer: `answer-${questionKey}`,
+            confidence: 0.9,
+            citations: [],
+            citationStatus: "grounded" as const,
+          },
+        },
+      ],
+      failed: [],
     },
   );
 }
@@ -207,7 +212,7 @@ describe("[plan-04] creditsAgg + getJobCost", () => {
     expect(job).toBeNull();
   });
 
-  it("getJobCost returns total + billingType breakdown summed from the ledger", async () => {
+  it("getJobCost returns the aggregate total without scanning the ledger breakdown", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     setupAggregates(t);
@@ -233,12 +238,6 @@ describe("[plan-04] creditsAgg + getJobCost", () => {
       .query(api.extraction.queries.costs.getJobCost, { jobId });
 
     expect(result.total).toBe(paperIds.length * questionKeys.length * 3);
-    expect(result.breakdown.extraction_llm).toBe(
-      paperIds.length * questionKeys.length * 3,
-    );
-    expect(result.breakdown.embedding).toBe(0);
-    expect(result.breakdown.chat).toBe(0);
-    expect(result.breakdown.screening).toBe(0);
-    expect(result.breakdown.other).toBe(0);
+    expect("breakdown" in result).toBe(false);
   });
 });

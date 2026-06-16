@@ -9,13 +9,10 @@ import { setupTransactionAggregates } from "../credits/aggregates.test-support";
 /**
  * Plan-03 mid-run credits-exhaustion behaviour. Focuses on the
  * updateJobStatus internal mutation — the state-transition primitive that
- * the per-question worker (convex/extraction/workpoolActions.ts
- * extractOneQuestion) invokes from its catch site when recordOneAnswer's
- * deductCredits call throws AI_INSUFFICIENT_CREDITS.
+ * the paper worker invokes if provider billing reports insufficient credits.
  *
- * End-to-end tests on extractOneQuestion would require registering
- * workflow + rag + ai-model components; following the pattern in
- * public-api-routing.test.ts, we test the mutation primitive directly.
+ * The full-flow test covers the worker path with mocked provider I/O; this
+ * file tests the mutation primitive directly.
  */
 
 const CLERK = "clerk_credits_exhausted";

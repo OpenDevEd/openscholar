@@ -2,15 +2,15 @@
  * finalizePaper edge-case suite.
  *
  * Background — the stuck-at-99% bug:
- * runPaperPipeline in workflow.ts captures `expectedEpoch = job.runEpoch ?? 0`
- * at the start of a paper's batch. If the user paused + resumed mid-fanout,
- * job.runEpoch bumps to a higher value while the captured epoch stays at 0.
- * The per-question writes (recordOneAnswer) re-read the job and either skip
- * (workpool guard) or write at the new epoch. By the time the question batch
- * "completes" and runPaperPipeline calls finalizePaper with the captured
+ * The old paper runner captured `expectedEpoch = job.runEpoch ?? 0` at the
+ * start of a paper's batch. If the user paused + resumed mid-fanout,
+ * job.runEpoch bumped to a higher value while the captured epoch stayed at 0.
+ * The result batch write re-reads the job and either skips or writes at
+ * the new epoch. By the time the question batch completes and the worker
+ * calls finalizePaper with the captured
  * stale `expectedEpoch=0`, finalizePaper's matchesExpectedEpoch returned
- * false and silently no-op'd. Paper stuck in "extracting"; workflow exited
- * "success"; job never finalized.
+ * false and silently no-op'd. Paper stuck in "extracting"; the worker
+ * returned success; job never finalized.
  *
  * The fix: finalizePaper no longer takes an expectedEpoch arg. Paper-status
  * idempotency + the job's status-must-be-"extracting" gate are sufficient —
@@ -211,7 +211,7 @@ const finalizePaperRef =
 // ─────────────────────────────────────────────────────────────────────
 
 describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
-  it("rejects an extra expectedEpoch arg (the workflow caller must not pass it)", async () => {
+  it("rejects an extra expectedEpoch arg", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     setupAggregates(t);
@@ -224,7 +224,7 @@ describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
       t.mutation(
         finalizePaperRef,
         // Pass an unknown field; the args validator must reject it so a
-        // future regression that re-introduces the arg in workflow.ts
+        // future regression that re-introduces the arg
         // fails loud here instead of silently bailing in production.
         { paperId, expectedEpoch: 5 } as unknown as { paperId: Id<"extractionPapers"> },
       ),
@@ -235,10 +235,10 @@ describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     setupAggregates(t);
-    // Simulates the post-pause-resume world: workflow originally booted at
-    // runEpoch=0; a pause+resume cycle bumped it to 2 while the question
-    // fan-out was in flight; questions finished at epoch=2; runPaperPipeline
-    // still calls finalizePaper after the bump.
+    // Simulates the post-pause-resume world: work started at runEpoch=0;
+    // a pause+resume cycle bumped it to 2 while question fan-out was in
+    // flight; questions finished at epoch=2; finalization still runs
+    // after the bump.
     const { jobId, paperId } = await seedScenario(t, {
       jobStatus: "extracting",
       runEpoch: 2,
@@ -838,8 +838,8 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
 // 8. Per-paper credit-debit semantics (new debit site).
 //
 // finalizePaper is now the one-and-only debit site for LLM-extraction
-// credits (the per-question debit inside recordOneAnswer was removed
-// to eliminate OCC-storm contention on the user's credits row). Every
+// credits, which eliminates OCC-storm contention on the user's credits row.
+// Every
 // terminal flip with a non-zero paper.creditsUsed drains that amount
 // from the wallet, gated on `paper.questionsBilled` so retries never
 // double-charge.
@@ -929,7 +929,7 @@ describe("finalizePaper — per-paper credit debit", () => {
     expect(charges[0]?.amount).toBe(-4);
   });
 
-  it("does NOT debit when paper.questionsBilled is already true (workflow retry idempotency)", async () => {
+  it("does NOT debit when paper.questionsBilled is already true", async () => {
     // Seeds a paper that already carries questionsBilled=true (a prior
     // run already paid the bill). The terminal flip happens, but the
     // wallet is untouched.

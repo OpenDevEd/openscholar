@@ -43,9 +43,8 @@ async function seed(
       updatedAt: now,
     });
     // finalizePaper rolls up over every seeded question for the job, so
-    // every test must seed every questionKey it will recordOneAnswer
-    // against, otherwise the rollup stays "pending" and the debit path
-    // is never reached.
+    // every test must seed every questionKey it will record, otherwise
+    // the rollup stays "pending" and the debit path is never reached.
     for (const [order, key] of questionKeys.entries()) {
       await ctx.db.insert("extractionQuestions", {
         jobId,
@@ -148,7 +147,7 @@ describe("embedding credit idempotency (markPaperIndexed)", () => {
   });
 });
 
-describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", () => {
+describe("LLM extraction credit idempotency (recordQuestionBatch + finalizePaper)", () => {
   const sampleResult = {
     answer: "A",
     confidence: 0.9,
@@ -157,7 +156,28 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     citationStatus: "grounded" as const,
   };
 
-  it("recordOneAnswer alone does NOT debit; debit is deferred to finalizePaper", async () => {
+  async function recordCompleted(
+    t: ReturnType<typeof convexTest>,
+    args: {
+      paperId: Awaited<ReturnType<typeof seed>>["paperId"];
+      questionKey: string;
+      creditsUsed: number;
+    },
+  ) {
+    await t.mutation(internal.extraction.mutations.results.recordQuestionBatch, {
+      paperId: args.paperId,
+      completed: [
+        {
+          questionKey: args.questionKey,
+          result: sampleResult,
+          creditsUsed: args.creditsUsed,
+        },
+      ],
+      failed: [],
+    });
+  }
+
+  it("recordQuestionBatch alone does NOT debit; debit is deferred to finalizePaper", async () => {
     // Tier C: per-question creditsUsed lives on the extractionResults row
     // (not the paper row — that was the OCC contention point). The wallet
     // is touched once at terminal transition in finalizePaper, which sums
@@ -167,15 +187,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 5,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 5 });
 
     expect(await readPaidBalance(t, creditsId)).toBe(1000);
     const paperAfterAnswer = await t.run((ctx) =>
@@ -208,15 +220,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 5,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 5 });
     await t.mutation(
       internal.extraction.mutations.results.finalizePaper,
       { paperId },
@@ -263,15 +267,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     ]);
 
     for (const key of ["q1", "q2", "q3"] as const) {
-      await t.mutation(
-        internal.extraction.mutations.results.recordOneAnswer,
-        {
-          paperId,
-          questionKey: key,
-          result: sampleResult,
-          creditsUsed: 5,
-        },
-      );
+      await recordCompleted(t, { paperId, questionKey: key, creditsUsed: 5 });
       expect(await readPaidBalance(t, creditsId)).toBe(1000);
     }
 
@@ -297,15 +293,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 5,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 5 });
     await t.mutation(
       internal.extraction.mutations.results.finalizePaper,
       { paperId },
@@ -313,22 +301,14 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     expect(await readPaidBalance(t, creditsId)).toBe(995);
 
     // Adversarial: a buggy admin tool resets job/paper status. The
-    // extractionResults row still has billed=true → recordOneAnswer
+    // extractionResults row still has billed=true → recordQuestionBatch
     // short-circuits before re-incrementing paper.creditsUsed.
     await t.run(async (ctx) => {
       await ctx.db.patch("extractionJobs", jobId, { status: "extracting" });
       await ctx.db.patch("extractionPapers", paperId, { status: "extracting" });
     });
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 5,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 5 });
 
     expect(await readPaidBalance(t, creditsId)).toBe(995);
   });
@@ -338,22 +318,14 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     // gate (result.billed=false, job/paper rolled back to "extracting")
     // must still be blocked at the paper-level questionsBilled flag
     // inside finalizePaper. Tier C: result.creditsUsed (the per-question
-    // accumulator) re-grows on the replayed recordOneAnswer; the
+    // accumulator) re-grows on the replayed recordQuestionBatch; the
     // questionsBilled gate is what keeps the wallet untouched.
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 5,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 5 });
     await t.mutation(
       internal.extraction.mutations.results.finalizePaper,
       { paperId },
@@ -373,15 +345,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
       });
     });
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 5,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 5 });
 
     // The per-question result row has re-accumulated to 10 (5 from the
     // first attempt + 5 from the adversarial replay). paper.questionsBilled
@@ -426,15 +390,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 0,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 0 });
     await t.mutation(
       internal.extraction.mutations.results.finalizePaper,
       { paperId },
@@ -465,15 +421,7 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     setupAggregates(t);
     const { creditsId, jobId, paperId } = await seed(t, 1000);
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 5,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 5 });
     await t.mutation(
       internal.extraction.mutations.results.finalizePaper,
       { paperId },
@@ -493,21 +441,13 @@ describe("LLM extraction credit idempotency (recordOneAnswer + finalizePaper)", 
     expect(charges).toHaveLength(1);
   });
 
-  it("skips deduct when paper.creditsUsed never accumulated (recordOneAnswer with creditsUsed=0)", async () => {
+  it("skips deduct when result credits never accumulated", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     setupAggregates(t);
     const { creditsId, paperId } = await seed(t, 1000);
 
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      {
-        paperId,
-        questionKey: "q1",
-        result: sampleResult,
-        creditsUsed: 0,
-      },
-    );
+    await recordCompleted(t, { paperId, questionKey: "q1", creditsUsed: 0 });
 
     expect(await readPaidBalance(t, creditsId)).toBe(1000);
     const paper = await t.run((ctx) =>

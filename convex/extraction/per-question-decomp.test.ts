@@ -1,17 +1,14 @@
 /**
- * Plan-02 per-question decomposition — the pair of contracts the
- * workflow handler relies on once it fans out one step per (paper,
- * question):
+ * Paper-level question-result decomposition — the pair of contracts the
+ * paper worker relies on once it processes one paper at a time:
  *
- *   - recordOneAnswer / recordOneAnswerFailure persist exactly one
- *     extractionResults row per question and bill at most once.
+ *   - recordQuestionBatch persists exactly one extractionResults row per
+ *     question and bills at most once.
  *   - finalizePaper aggregates those rows through aggregatePaperStatus
  *     and flips the paper terminal when every question resolves.
  *
- * Tests here drive the mutations directly — the LLM step (extractOneQuestion)
- * has no deterministic harness, so its per-question idempotency is
- * covered by exercising recordOneAnswer twice (which the action calls)
- * and asserting on the same billing/aggregate invariants.
+ * Tests here drive the mutations directly; the mocked full-flow test
+ * covers the LLM-facing worker path.
  */
 
 import { convexTest } from "convex-test";
@@ -25,7 +22,6 @@ import {
   seedCreditsForTest,
 } from "../credits/aggregates.test-support";
 import { readBalance } from "../credits/balanceCounter";
-import { readAggregateCounters } from "./aggregates";
 import { readJobCounters } from "./jobCounters";
 
 async function seedJobWithPapersAndQuestions(
@@ -101,6 +97,62 @@ async function readPaidBalance(
   return (await t.run((ctx) => readBalance(ctx, creditsId))).paid;
 }
 
+async function recordCompletedQuestion(
+  t: ReturnType<typeof convexTest>,
+  args: {
+    paperId: Id<"extractionPapers">;
+    questionKey: string;
+    creditsUsed: number;
+    answer?: string;
+    expectedEpoch?: number;
+  },
+) {
+  await t.mutation(internal.extraction.mutations.results.recordQuestionBatch, {
+    paperId: args.paperId,
+    expectedEpoch: args.expectedEpoch,
+    completed: [
+      {
+        questionKey: args.questionKey,
+        result: {
+          answer: args.answer ?? "A",
+          confidence: 0.9,
+          reasoning: "r",
+          citations: [],
+          citationStatus: "grounded" as const,
+        },
+        creditsUsed: args.creditsUsed,
+      },
+    ],
+    failed: [],
+  });
+}
+
+async function recordFailedQuestion(
+  t: ReturnType<typeof convexTest>,
+  args: {
+    paperId: Id<"extractionPapers">;
+    questionKey: string;
+    code: "pdf_invalid" | "rate_limit";
+    message: string;
+    retryable: boolean;
+  },
+) {
+  await t.mutation(internal.extraction.mutations.results.recordQuestionBatch, {
+    paperId: args.paperId,
+    completed: [],
+    failed: [
+      {
+        questionKey: args.questionKey,
+        error: {
+          code: args.code,
+          message: args.message,
+          retryable: args.retryable,
+        },
+      },
+    ],
+  });
+}
+
 describe("plan-02 per-question decomposition", () => {
   it("3 papers × 5 questions → 15 result rows, 15 debits, 3 paper-completes, 1 job-complete", async () => {
     const t = convexTest(schema);
@@ -114,21 +166,12 @@ describe("plan-02 per-question decomposition", () => {
 
     for (const paperId of paperIds) {
       for (const key of questionKeys) {
-        await t.mutation(
-          internal.extraction.mutations.results.recordOneAnswer,
-          {
-            paperId,
-            questionKey: key,
-            result: {
-              answer: `ans-${key}`,
-              confidence: 0.9,
-              reasoning: "r",
-              citations: [],
-              citationStatus: "grounded" as const,
-            },
-            creditsUsed: 2,
-          },
-        );
+        await recordCompletedQuestion(t, {
+          paperId,
+          questionKey: key,
+          answer: `ans-${key}`,
+          creditsUsed: 2,
+        });
       }
       await t.mutation(internal.extraction.mutations.results.finalizePaper, {
         paperId,
@@ -179,33 +222,21 @@ describe("plan-02 per-question decomposition", () => {
 
     // q1, q2 complete successfully.
     for (const key of ["q1", "q2"]) {
-      await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+      await recordCompletedQuestion(t, {
         paperId,
         questionKey: key,
-        result: {
-          answer: "A",
-          confidence: 0.9,
-          reasoning: "r",
-          citations: [],
-          citationStatus: "grounded" as const,
-        },
         creditsUsed: 1,
       });
     }
 
     // q3 permanently fails (pdf_invalid is non-retryable).
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswerFailure,
-      {
-        paperId,
-        questionKey: "q3",
-        error: {
-          code: "pdf_invalid",
-          message: "Corrupt PDF",
-          retryable: false,
-        },
-      },
-    );
+    await recordFailedQuestion(t, {
+      paperId,
+      questionKey: "q3",
+      code: "pdf_invalid",
+      message: "Corrupt PDF",
+      retryable: false,
+    });
 
     await t.mutation(internal.extraction.mutations.results.finalizePaper, {
       paperId,
@@ -240,16 +271,9 @@ describe("plan-02 per-question decomposition", () => {
     const [paperId] = paperIds;
 
     // Only q1 resolves; q2 has no row yet.
-    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+    await recordCompletedQuestion(t, {
       paperId,
       questionKey: "q1",
-      result: {
-        answer: "A",
-        confidence: 0.9,
-        reasoning: "r",
-        citations: [],
-        citationStatus: "grounded" as const,
-      },
       creditsUsed: 1,
     });
 
@@ -275,16 +299,10 @@ describe("plan-02 per-question decomposition", () => {
 
     await Promise.all(
       questionKeys.map((questionKey) =>
-        t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+        recordCompletedQuestion(t, {
           paperId,
           questionKey,
-          result: {
-            answer: `A-${questionKey}`,
-            confidence: 0.9,
-            reasoning: "r",
-            citations: [],
-            citationStatus: "grounded" as const,
-          },
+          answer: `A-${questionKey}`,
           creditsUsed: 3,
         }),
       ),
@@ -307,7 +325,7 @@ describe("plan-02 per-question decomposition", () => {
     expect(await readPaidBalance(t, creditsId)).toBe(25 - 6);
   });
 
-  it("recordOneAnswer is idempotent under workpool retry — one creditsUsed accumulation, one aggregate row, one debit at finalize", async () => {
+  it("recordQuestionBatch is idempotent under worker retry — one result row, one debit at finalize", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     setupAggregates(t);
@@ -320,31 +338,15 @@ describe("plan-02 per-question decomposition", () => {
     const args = {
       paperId,
       questionKey: "q1",
-      result: {
-        answer: "A",
-        confidence: 0.9,
-        reasoning: "r",
-        citations: [],
-        citationStatus: "grounded" as const,
-      },
       creditsUsed: 7,
     };
 
-    // recordOneAnswer never debits — it only accumulates paper.creditsUsed
-    // behind the `billed` projection guard. Retries 2 and 3 short-circuit
+    // recordQuestionBatch never debits — it stores result.creditsUsed
+    // behind the `billed` result guard. Retries 2 and 3 short-circuit
     // on result.billed=true so creditsUsed stays at 7.
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      args,
-    );
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      args,
-    );
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswer,
-      args,
-    );
+    await recordCompletedQuestion(t, args);
+    await recordCompletedQuestion(t, args);
+    await recordCompletedQuestion(t, args);
     expect(await readPaidBalance(t, creditsId)).toBe(100);
 
     // finalizePaper performs the single per-paper debit.
@@ -357,15 +359,20 @@ describe("plan-02 per-question decomposition", () => {
     expect(paper?.creditsUsed).toBe(7);
     expect(paper?.questionsBilled).toBe(true);
 
-    // Exactly one aggregate entry persisted (not three).
-    const counters = await t.run((ctx) =>
-      readAggregateCounters(ctx, jobId, "q1"),
+    const rows = await t.run((ctx) =>
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper_question", (q) =>
+          q.eq("paperId", paperId).eq("questionKey", "q1"),
+        )
+        .collect(),
     );
-    expect(counters.totalPapers).toBe(1);
-    expect(counters.groundedCount).toBe(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe("completed");
+    expect(rows[0]?.citationStatus).toBe("grounded");
   });
 
-  it("recordOneAnswer skips stale-epoch persists and billing", async () => {
+  it("recordQuestionBatch skips stale-epoch persists and billing", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     setupAggregates(t);
@@ -379,16 +386,9 @@ describe("plan-02 per-question decomposition", () => {
       await ctx.db.patch("extractionJobs", jobId, { runEpoch: 3 });
     });
 
-    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+    await recordCompletedQuestion(t, {
       paperId,
       questionKey: "q1",
-      result: {
-        answer: "A",
-        confidence: 0.9,
-        reasoning: "r",
-        citations: [],
-        citationStatus: "grounded" as const,
-      },
       creditsUsed: 7,
       expectedEpoch: 2,
     });
@@ -405,58 +405,54 @@ describe("plan-02 per-question decomposition", () => {
     expect(await readPaidBalance(t, creditsId)).toBe(100);
   });
 
-  it("retryable failure → subsequent success upgrades the same row without double-counting the aggregate", async () => {
+  it("retryable failure → subsequent success upgrades the same row", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     setupAggregates(t);
-    const { jobId, paperIds } = await seedJobWithPapersAndQuestions(t, {
+    const { paperIds } = await seedJobWithPapersAndQuestions(t, {
       paperCount: 1,
       questionKeys: ["q1"],
     });
     const [paperId] = paperIds;
 
     // First pass: terminal retry exhaust writes a failure row.
-    await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswerFailure,
-      {
-        paperId,
-        questionKey: "q1",
-        error: {
-          code: "rate_limit",
-          message: "429",
-          retryable: true,
-        },
-      },
-    );
-
-    const afterFail = await t.run((ctx) =>
-      readAggregateCounters(ctx, jobId, "q1"),
-    );
-    expect(afterFail.totalPapers).toBe(1);
-    expect(afterFail.extractionErrorCount).toBe(1);
-    expect(afterFail.groundedCount).toBe(0);
-
-    // Second pass: user retry (plan 05) re-runs the action and this
-    // time it succeeds — recordOneAnswer upgrades the same row.
-    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+    await recordFailedQuestion(t, {
       paperId,
       questionKey: "q1",
-      result: {
-        answer: "A",
-        confidence: 0.9,
-        reasoning: "r",
-        citations: [],
-        citationStatus: "grounded" as const,
-      },
+      code: "rate_limit",
+      message: "429",
+      retryable: true,
+    });
+
+    const afterFail = await t.run((ctx) =>
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper_question", (q) =>
+          q.eq("paperId", paperId).eq("questionKey", "q1"),
+        )
+        .unique(),
+    );
+    expect(afterFail?.status).toBe("failed");
+    expect(afterFail?.citationStatus).toBe("extraction_error");
+
+    // Second pass: user retry re-runs the paper worker and this time it
+    // succeeds — recordQuestionBatch upgrades the same row.
+    await recordCompletedQuestion(t, {
+      paperId,
+      questionKey: "q1",
       creditsUsed: 1,
     });
 
     const afterSuccess = await t.run((ctx) =>
-      readAggregateCounters(ctx, jobId, "q1"),
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper_question", (q) =>
+          q.eq("paperId", paperId).eq("questionKey", "q1"),
+        )
+        .unique(),
     );
-    expect(afterSuccess.totalPapers).toBe(1);
-    expect(afterSuccess.groundedCount).toBe(1);
-    expect(afterSuccess.extractionErrorCount).toBe(0);
+    expect(afterSuccess?.status).toBe("completed");
+    expect(afterSuccess?.citationStatus).toBe("grounded");
 
     // Only one result row ever exists for (paper, question).
     const rows = await t.run((ctx) =>
@@ -485,18 +481,13 @@ describe("plan-02 per-question decomposition", () => {
     const [paperId] = paperIds;
 
     for (const key of questionKeys) {
-      await t.mutation(
-        internal.extraction.mutations.results.recordOneAnswerFailure,
-        {
-          paperId,
-          questionKey: key,
-          error: {
-            code: "pdf_invalid",
-            message: "bad pdf",
-            retryable: false,
-          },
-        },
-      );
+      await recordFailedQuestion(t, {
+        paperId,
+        questionKey: key,
+        code: "pdf_invalid",
+        message: "bad pdf",
+        retryable: false,
+      });
     }
 
     await t.mutation(internal.extraction.mutations.results.finalizePaper, {

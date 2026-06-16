@@ -2,31 +2,32 @@
  * Plan-05 — retryFailedQuestions + applyRetryResetTx behavior tests.
  *
  * Split rationale:
- *  - The public mutation reaches `workflow.start` on the happy path,
- *    and the workflow component is not registered in convex-test →
- *    the tx rolls back. Tests covering state changes (result resets,
- *    paper flips, job un-terminal) invoke the tx-only helper
+ *  - The public mutation dispatches retry queue rows on the happy path.
+ *    Tests covering state changes (result resets, paper flips,
+ *    job un-terminal) invoke the tx-only helper
  *    `applyRetryResetTx` via `t.run(…)`, which commits.
  *  - Tests covering auth / ownership / preconditions / preflight
  *    invoke the public mutation and assert on rejection shape.
  */
 
-import { convexTest } from "convex-test";
+import { convexTest, type TestConvex } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { api } from "../../_generated/api";
 import schema from "../../schema";
-import type { Id } from "../../_generated/dataModel";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { applyRetryResetTx } from "./retry";
 import {
   setupTransactionAggregates,
   seedCreditsForTest,
 } from "../../credits/aggregates.test-support";
+import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 
 const CLERK = "clerk_retry_mutation_owner";
 const OWNER_IDENTITY = {
   subject: CLERK,
   tokenIdentifier: `${CLERK}|test`,
 };
+type ExtractionTest = TestConvex<typeof schema>;
 
 async function seedFlagsAndCredits(
   t: ReturnType<typeof convexTest>,
@@ -169,6 +170,40 @@ async function seedJob(
   });
 }
 
+async function retryAndReadQueuedWork(
+  t: ExtractionTest,
+  jobId: Id<"extractionJobs">,
+): Promise<{
+  result: { retryableCount: number; queued: number; dispatched: number };
+  job: Doc<"extractionJobs"> | null;
+  queueRows: Array<Doc<"extractionPaperQueue">>;
+  retryRows: Array<Doc<"extractionResults">>;
+}> {
+  const auth = t.withIdentity(OWNER_IDENTITY);
+  const result = await auth.mutation(
+    api.extraction.mutations.retry.retryFailedQuestions,
+    { jobId },
+  );
+  const [job, queueRows, retryRows] = await t.run(async (ctx) => {
+    return await Promise.all([
+      ctx.db.get(jobId),
+      ctx.db
+        .query("extractionPaperQueue")
+        .withIndex("by_job_and_epoch_and_status", (q) =>
+          q.eq("jobId", jobId).eq("runEpoch", 1).eq("status", "leased"),
+        )
+        .collect(),
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_job_status", (q) =>
+          q.eq("jobId", jobId).eq("status", "pending"),
+        )
+        .collect(),
+    ]);
+  });
+  return { result, job, queueRows, retryRows };
+}
+
 describe("applyRetryResetTx — state changes", () => {
   it("resets only retryable failures; leaves permanents, completed, and billed rows untouched", async () => {
     const t = convexTest(schema);
@@ -284,9 +319,7 @@ describe("applyRetryResetTx — state changes", () => {
     const { jobId } = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
       paperStatus: "failed",
-      rows: [
-        { kind: "failed", key: "q1", code: "insufficient_credits" },
-      ],
+      rows: [{ kind: "failed", key: "q1", code: "insufficient_credits" }],
     });
 
     const count = await t.run(async (ctx) => {
@@ -436,9 +469,10 @@ describe("retryFailedQuestions — public mutation guards", () => {
     expect(rows.every((r) => r.status === "failed")).toBe(true);
   });
 
-  it("reaches workflow.start on the happy path (proof of life)", async () => {
+  it("enqueues retry queue work on the happy path", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
+    setupExtractionPaperWorkpool(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId } = await seedJob(t, userId, {
       jobStatus: "completed",
@@ -448,51 +482,53 @@ describe("retryFailedQuestions — public mutation guards", () => {
         { kind: "failed", key: "q_rate", code: "rate_limit" },
       ],
     });
-    const auth = t.withIdentity(OWNER_IDENTITY);
-    // The workflow component is not registered in convex-test; reaching
-    // workflow.start (which throws "Component 'workflow' is not
-    // registered") proves the mutation advanced past ownership,
-    // status-guard, no-retryable, and preflight gates.
-    await expect(
-      auth.mutation(api.extraction.mutations.retry.retryFailedQuestions, {
-        jobId,
-      }),
-    ).rejects.toThrow(/workflow/i);
+    const { result, job, queueRows, retryRows } = await retryAndReadQueuedWork(
+      t,
+      jobId,
+    );
+
+    expect(result.retryableCount).toBe(1);
+    expect(result.queued).toBe(1);
+    expect(result.dispatched).toBe(1);
+    expect(job?.status).toBe("extracting");
+    expect(job?.runEpoch).toBe(1);
+    expect(queueRows).toHaveLength(1);
+    expect(queueRows[0].kind).toBe("retry");
+    expect(queueRows[0].questionKeys).toEqual(["q_rate"]);
+    expect(retryRows.map((row) => row.questionKey)).toEqual(["q_rate"]);
   });
 
   it("allows retry on status=failed", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
+    setupExtractionPaperWorkpool(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId } = await seedJob(t, userId, {
       jobStatus: "failed",
       paperStatus: "failed",
       rows: [{ kind: "failed", key: "q_rate", code: "rate_limit" }],
     });
-    const auth = t.withIdentity(OWNER_IDENTITY);
-    await expect(
-      auth.mutation(api.extraction.mutations.retry.retryFailedQuestions, {
-        jobId,
-      }),
-    ).rejects.toThrow(/workflow/i);
+    const { result, job, queueRows } = await retryAndReadQueuedWork(t, jobId);
+    expect(result.retryableCount).toBe(1);
+    expect(job?.status).toBe("extracting");
+    expect(queueRows).toHaveLength(1);
+    expect(queueRows[0].questionKeys).toEqual(["q_rate"]);
   });
 
   it("allows retry on status=creditsExhausted", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
+    setupExtractionPaperWorkpool(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId } = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
       paperStatus: "failed",
-      rows: [
-        { kind: "failed", key: "q_stuck", code: "insufficient_credits" },
-      ],
+      rows: [{ kind: "failed", key: "q_stuck", code: "insufficient_credits" }],
     });
-    const auth = t.withIdentity(OWNER_IDENTITY);
-    await expect(
-      auth.mutation(api.extraction.mutations.retry.retryFailedQuestions, {
-        jobId,
-      }),
-    ).rejects.toThrow(/workflow/i);
+    const { result, job, queueRows } = await retryAndReadQueuedWork(t, jobId);
+    expect(result.retryableCount).toBe(1);
+    expect(job?.status).toBe("extracting");
+    expect(queueRows).toHaveLength(1);
+    expect(queueRows[0].questionKeys).toEqual(["q_stuck"]);
   });
 });

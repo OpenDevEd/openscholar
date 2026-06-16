@@ -5,7 +5,7 @@ import schema from "../schema";
 
 /**
  * Safety net SN-2 (P3 plan): pin the INTERNAL `internal.extraction.*` routing
- * surface. Workflow / workpool / crons / tests resolve internal functions via
+ * surface. Queue workers / workpool / crons / tests resolve internal functions via
  * these paths; a bad split that drops an export (or moves an internal without
  * updating callers) is caught here.
  *
@@ -46,16 +46,13 @@ const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
   ["internal.lifecycle", "maybeFinalizeJob"],
   ["internal.lifecycle", "createJobDirect"],
   ["internal.lifecycle", "createQuestionDirect"],
-  ["internal.lifecycle", "setJobWorkflowId"],
-  ["internal.onComplete", "handleExtractionJobComplete"],
   ["papers", "createPaperRecords"],
   ["papers", "updatePaperStatus"],
   ["papers", "updatePaperProcessable"],
   ["papers", "setPaperStorage"],
   ["papers", "markPaperIndexed"],
   ["results", "updateJobStatus"],
-  ["results", "recordOneAnswer"],
-  ["results", "recordOneAnswerFailure"],
+  ["results", "recordQuestionBatch"],
   ["results", "finalizePaper"],
   ["evidence", "replacePaperEvidenceUnits"],
 ];
@@ -68,26 +65,23 @@ const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
   ["internal", "getJobInternal"],
   ["internal", "getJobStatusInternal"],
   ["internal", "debugRecentPapers"],
-  ["internal", "getQuestionsInternal"],
   ["internal", "getJobSourcesInternal"],
   ["internal", "getJobAndFlagsInternal"],
-  ["internal", "getEvidenceUnitsInternal"],
+  ["internal", "getPaperExtractionContext"],
   ["internal", "getJobProgressInternal"],
   ["internal", "getPapersDebug"],
-  ["internal", "getQuestionByIdInternal"],
-  ["internal", "getResultByPaperAndQuestionInternal"],
   ["papers", "resultsInternal"],
   ["papers", "byId"],
 ];
 
-// Internal actions — workflow/workpool/crons call these via internal.*.
+// Internal actions — queue/workpool/crons call these via internal.*.
 // `actions.ts` hosts OpenAlex fetch; `workpoolActions.ts` hosts pipeline
 // actions; `debug_pdfjs_alignment.ts` hosts a debug action.
 const INTERNAL_ACTIONS: ReadonlyArray<readonly [string, string]> = [
   ["actions", "fetchPapersFromHistory"],
   ["actions", "fetchAndPersistPapers"],
-  ["workpoolActions", "downloadAndIndexPdfAction"],
-  ["workpoolActions", "extractOneQuestion"],
+  ["actions", "setupExtractionQueueJob"],
+  ["paperWorker", "runPaperQueueItem"],
   ["debug_pdfjs_alignment", "debugPdfAlignment"],
 ];
 

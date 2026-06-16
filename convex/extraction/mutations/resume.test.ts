@@ -3,10 +3,8 @@
  *
  * Covers: restore-from-pausedFromStatus, credit pre-flight on
  * creditsExhausted, idempotent no-op on non-paused, ownership + mode
- * guards. Seeded jobs deliberately omit `workflowId` — the sendEvent
- * call is skipped, and the mutation exercises only the DB decision +
- * patch surface. Full end-to-end coverage including the workflow gate
- * is exercised by the integration smoke (task #12).
+ * guards. Full end-to-end coverage is exercised by queue worker tests
+ * and the resume requeue integration below.
  */
 
 import { convexTest } from "convex-test";
@@ -18,6 +16,7 @@ import {
   setupTransactionAggregates,
   seedCreditsForTest,
 } from "../../credits/aggregates.test-support";
+import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 
 const CLERK = "clerk_resume_owner";
 const OWNER_IDENTITY = {
@@ -181,6 +180,7 @@ describe("resumeExtraction — happy paths", () => {
   it("resumes 'creditsExhausted' to 'extracting' when balance covers the estimate", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
+    setupExtractionPaperWorkpool(t);
     const userId = await seedUserAndCredits(t, { paid: 100_000 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
@@ -198,6 +198,56 @@ describe("resumeExtraction — happy paths", () => {
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("extracting");
     expect(job?.runEpoch).toBe(2);
+  });
+
+  it("requeues non-terminal papers through the paper queue", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    setupExtractionPaperWorkpool(t);
+    const userId = await seedUserAndCredits(t);
+    const jobId = await seedJob(t, userId, {
+      jobStatus: "paused",
+      pausedFromStatus: "extracting",
+      runEpoch: 3,
+    });
+    const paperId = await t.run(async (ctx) => {
+      return await ctx.db.insert("extractionPapers", {
+        jobId,
+        openalexId: "oa:resume_queue",
+        title: "Resume Queue Paper",
+        status: "pending" as const,
+        processable: true,
+      });
+    });
+    const auth = t.withIdentity(OWNER_IDENTITY);
+
+    await auth.mutation(api.extraction.mutations.resume.resumeExtraction, {
+      jobId,
+    });
+
+    await t.run(async (ctx) => {
+      const job = await ctx.db.get(jobId);
+      const queueRows = await ctx.db
+        .query("extractionPaperQueue")
+        .withIndex("by_paper_and_epoch_and_kind", (q) =>
+          q.eq("paperId", paperId).eq("runEpoch", 4).eq("kind", "initial"),
+        )
+        .collect();
+      const scheduledFunctions = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+
+      expect(job?.status).toBe("extracting");
+      expect(job?.runEpoch).toBe(4);
+      expect(queueRows).toHaveLength(1);
+      expect(queueRows[0].status).toBe("leased");
+      expect(queueRows[0].workId).toBeDefined();
+      expect(
+        scheduledFunctions.some((sf) =>
+          sf.name.includes("setupExtractionQueueJob"),
+        ),
+      ).toBe(false);
+    });
   });
 });
 

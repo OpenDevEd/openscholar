@@ -86,11 +86,10 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
 }
 
 describe("paper list projection write maintenance", () => {
-  // Tier C: per-question writes (recordOneAnswer / recordOneAnswerFailure)
-  // no longer patch the paper row. The denormalized projection fields
+  // Tier C: result writes no longer patch the paper row. The denormalized projection fields
   // (avgConfidence, questionAnswerTokens, searchText, hasErrors) are
   // rebuilt from the per-question result rows by
-  // recomputePaperListProjection, which the workflow calls at paper-level
+  // recomputePaperListProjection, which the paper worker calls at paper-level
   // events (insert, terminal transition, PDF/index update). These tests
   // verify the projection contract end-to-end by writing question rows
   // then invoking the rebuild directly — the way finalizePaper /
@@ -101,17 +100,22 @@ describe("paper list projection write maintenance", () => {
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
 
-    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+    await t.mutation(internal.extraction.mutations.results.recordQuestionBatch, {
       paperId,
-      questionKey: "q1",
-      result: {
-        answer: "Café au lait",
-        confidence: 0.75,
-        reasoning: "Reasoning",
-        citations: [],
-        citationStatus: "grounded" as const,
-      },
-      creditsUsed: 1,
+      completed: [
+        {
+          questionKey: "q1",
+          result: {
+            answer: "Café au lait",
+            confidence: 0.75,
+            reasoning: "Reasoning",
+            citations: [],
+            citationStatus: "grounded" as const,
+          },
+          creditsUsed: 1,
+        },
+      ],
+      failed: [],
     });
 
     await t.run((ctx) => recomputePaperListProjection(ctx, paperId));
@@ -134,15 +138,20 @@ describe("paper list projection write maintenance", () => {
     expect(before?.hasErrors).toBeUndefined();
 
     await t.mutation(
-      internal.extraction.mutations.results.recordOneAnswerFailure,
+      internal.extraction.mutations.results.recordQuestionBatch,
       {
         paperId,
-        questionKey: "q1",
-        error: {
-          code: "pdf_invalid",
-          message: "Unreadable PDF",
-          retryable: false,
-        },
+        completed: [],
+        failed: [
+          {
+            questionKey: "q1",
+            error: {
+              code: "pdf_invalid",
+              message: "Unreadable PDF",
+              retryable: false,
+            },
+          },
+        ],
       },
     );
     await t.run((ctx) => recomputePaperListProjection(ctx, paperId));
@@ -157,30 +166,33 @@ describe("paper list projection write maintenance", () => {
     setupAggregates(t);
     const { paperId } = await seedProjectionFixture(t);
 
-    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
+    await t.mutation(internal.extraction.mutations.results.recordQuestionBatch, {
       paperId,
-      questionKey: "q1",
-      result: {
-        answer: "Original outcome",
-        confidence: 0.9,
-        reasoning: "Reasoning",
-        citations: [],
-        citationStatus: "grounded" as const,
-      },
-      creditsUsed: 1,
-    });
-
-    await t.mutation(internal.extraction.mutations.results.recordOneAnswer, {
-      paperId,
-      questionKey: "q2",
-      result: {
-        answer: "Secondary outcome",
-        confidence: 0.4,
-        reasoning: "Reasoning",
-        citations: [],
-        citationStatus: "best_effort" as const,
-      },
-      creditsUsed: 1,
+      completed: [
+        {
+          questionKey: "q1",
+          result: {
+            answer: "Original outcome",
+            confidence: 0.9,
+            reasoning: "Reasoning",
+            citations: [],
+            citationStatus: "grounded" as const,
+          },
+          creditsUsed: 1,
+        },
+        {
+          questionKey: "q2",
+          result: {
+            answer: "Secondary outcome",
+            confidence: 0.4,
+            reasoning: "Reasoning",
+            citations: [],
+            citationStatus: "best_effort" as const,
+          },
+          creditsUsed: 1,
+        },
+      ],
+      failed: [],
     });
 
     await t.run((ctx) => recomputePaperListProjection(ctx, paperId));

@@ -74,6 +74,20 @@ async function seedUserFlagsAndCredits(
   });
 }
 
+async function expectQueueSetupScheduled(
+  t: ReturnType<typeof convexTest>,
+): Promise<void> {
+  const scheduledSetupCount = await t.run(async (ctx) => {
+    const scheduledFunctions = await ctx.db.system
+      .query("_scheduled_functions")
+      .collect();
+    return scheduledFunctions.filter((sf) =>
+      sf.name.includes("setupExtractionQueueJob"),
+    ).length;
+  });
+  expect(scheduledSetupCount).toBeGreaterThan(0);
+}
+
 describe("startJob — pre-flight credit check", () => {
   it("throws INSUFFICIENT_CREDITS when totalAvailable < estimate.high; no job is inserted", async () => {
     const t = convexTest(schema);
@@ -103,29 +117,26 @@ describe("startJob — pre-flight credit check", () => {
     expect(jobs).toHaveLength(0);
   });
 
-  it("passes preflight and reaches workflow.start when balance >= estimate.high", async () => {
-    // Per public-api-routing.test.ts:112-121, the workflow component is
-    // not registered in convex-test; reaching workflow.start (which then
-    // throws "Component 'workflow' is not registered") is proof the
-    // mutation advanced past every pre-workflow step — including the
-    // preflight gate and the extractionJobs insert.
+  it("passes preflight and schedules queue setup when balance >= estimate.high", async () => {
     const t = convexTest(schema);
     setupTransactionAggregates(t);
     await seedUserFlagsAndCredits(t, { paid: 100_000 });
     const auth = t.withIdentity(IDENTITY);
 
-    await expect(
-      auth.mutation(api.extraction.mutations.startJob, {
-        name: "Rich Job",
-        mode: "extraction",
-        bucketItems: [BUCKET_ITEM_HISTORY],
-        questions: [
-          { key: "q1", question: "What is the outcome?", type: "string" },
-          { key: "q2", question: "Second question?", type: "string" },
-        ],
-        usePdfs: false,
-      }),
-    ).rejects.toThrow(/workflow/i);
+    const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
+      name: "Rich Job",
+      mode: "extraction",
+      bucketItems: [BUCKET_ITEM_HISTORY],
+      questions: [
+        { key: "q1", question: "What is the outcome?", type: "string" },
+        { key: "q2", question: "Second question?", type: "string" },
+      ],
+      usePdfs: false,
+    });
+
+    const job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.status).toBe("pending");
+    await expectQueueSetupScheduled(t);
   });
 
   it("counts saved-search history placeholders by expanded paper count, not row count", async () => {
@@ -184,16 +195,17 @@ describe("startJob — pre-flight credit check", () => {
     await seedUserFlagsAndCredits(t, { paid: 0 });
     const auth = t.withIdentity(IDENTITY);
 
-    // Reaching workflow.start proves the preflight was skipped.
-    await expect(
-      auth.mutation(api.extraction.mutations.startJob, {
-        name: "No Qs",
-        mode: "extraction",
-        bucketItems: [BUCKET_ITEM_HISTORY],
-        questions: [],
-        usePdfs: false,
-      }),
-    ).rejects.toThrow(/workflow/i);
+    const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
+      name: "No Qs",
+      mode: "extraction",
+      bucketItems: [BUCKET_ITEM_HISTORY],
+      questions: [],
+      usePdfs: false,
+    });
+
+    const job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.status).toBe("pending");
+    await expectQueueSetupScheduled(t);
   });
 
   it("PDF-tier estimate is materially higher than abstract-tier for the same job shape", async () => {
@@ -209,19 +221,20 @@ describe("startJob — pre-flight credit check", () => {
     await seedUserFlagsAndCredits(t, { paid: 30 });
     const auth = t.withIdentity(IDENTITY);
 
-    // Abstract-tier: passes preflight, reaches workflow.start.
-    await expect(
-      auth.mutation(api.extraction.mutations.startJob, {
-        name: "Abstract",
-        mode: "extraction",
-        bucketItems: [BUCKET_ITEM_HISTORY],
-        questions: [
-          { key: "q1", question: "Q1?", type: "string" },
-          { key: "q2", question: "Q2?", type: "string" },
-        ],
-        usePdfs: false,
-      }),
-    ).rejects.toThrow(/workflow/i);
+    const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
+      name: "Abstract",
+      mode: "extraction",
+      bucketItems: [BUCKET_ITEM_HISTORY],
+      questions: [
+        { key: "q1", question: "Q1?", type: "string" },
+        { key: "q2", question: "Q2?", type: "string" },
+      ],
+      usePdfs: false,
+    });
+
+    const job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.status).toBe("pending");
+    await expectQueueSetupScheduled(t);
 
     // PDF-tier: blocks on the same shape.
     await expect(

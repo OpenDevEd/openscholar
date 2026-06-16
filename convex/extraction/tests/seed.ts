@@ -2,7 +2,7 @@ import type { convexTest } from "convex-test";
 import type { Id } from "../../_generated/dataModel";
 
 /**
- * Seed a full extraction job graph across all 9 child tables.
+ * Seed a full extraction job graph across active child tables.
  * Returns all IDs for verification. Used by cascade-delete tests AND the
  * SN-3 queries-e2e pin-test.
  *
@@ -36,23 +36,38 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
       updatedAt: now,
     });
 
-    const baselineJobId = await ctx.db.insert("extractionJobs", {
-      userId,
-      mode: "extraction" as const,
-      sourceType: "history" as const,
-      status: "completed" as const,
-      totalPapers: 1,
-      name: "Baseline Job",
-      createdAt: now,
-      updatedAt: now,
-    });
-
     const questionId = await ctx.db.insert("extractionQuestions", {
       jobId,
       key: "q1",
       question: "Test question?",
       type: "string" as const,
       order: 0,
+      createdAt: now,
+    });
+
+    const sourceId = await ctx.db.insert("extractionJobSources", {
+      jobId,
+      position: 0,
+      bucketKey: "history:test1",
+      source: "history" as const,
+      sourceRefId: "oa:test1",
+      title: "Test Paper",
+      authors: ["Test Author"],
+      year: 2024,
+      openalexId: "oa:test1",
+    });
+
+    const chatPaperId = await ctx.db.insert("chatPapers", {
+      jobId,
+      sourceId,
+      included: true,
+    });
+
+    const chatSourceEventId = await ctx.db.insert("chatSourceEvents", {
+      jobId,
+      threadId: "thread_test",
+      kind: "sources_updated" as const,
+      boundaryOrder: 1,
       createdAt: now,
     });
 
@@ -96,63 +111,40 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
       createdAt: now,
     });
 
-    const savedViewId = await ctx.db.insert("extractionSavedViews", {
+    const queueId = await ctx.db.insert("extractionPaperQueue", {
       jobId,
       userId,
-      name: "Test View",
-      filters: {
-        searchQuery: "",
-        confidenceRange: [0, 1],
-        statusFilters: [],
-      },
+      paperId,
+      runEpoch: 0,
+      kind: "initial" as const,
+      status: "pending" as const,
+      priority: 0,
+      attempt: 0,
       createdAt: now,
       updatedAt: now,
     });
 
-    const snapshotId = await ctx.db.insert("extractionReportSnapshots", {
+    const paperErrorId = await ctx.db.insert("extractionPaperErrors", {
       jobId,
-      userId,
-      name: "Test Report",
-      scope: {},
-      sections: [],
-      metrics: {
-        totalPapers: 1,
-        answeredRate: 1,
-        groundedRate: 1,
-        bestEffortRate: 0,
-      },
-      generatedAt: now,
-      createdAt: now,
-    });
-
-    const runDiffId = await ctx.db.insert("extractionRunDiffs", {
-      jobId,
-      baselineJobId,
-      userId,
-      summary: {
-        newAnswers: 0,
-        changedAnswers: 0,
-        removedAnswers: 0,
-        confidenceShifts: 0,
-        newlyInsufficientEvidence: 0,
-        totalCompared: 1,
-      },
-      changes: [],
-      generatedAt: now,
-      createdAt: now,
+      paperId,
+      attempt: 1,
+      at: now,
+      code: "extraction_failed" as const,
+      message: "Synthetic extraction error",
     });
 
     return {
       userId,
       jobId,
-      baselineJobId,
       paperId,
       questionId,
+      sourceId,
+      chatPaperId,
+      chatSourceEventId,
       resultId,
       evidenceUnitId,
-      savedViewId,
-      snapshotId,
-      runDiffId,
+      queueId,
+      paperErrorId,
       hasStorageId: !!storageId,
     };
   });

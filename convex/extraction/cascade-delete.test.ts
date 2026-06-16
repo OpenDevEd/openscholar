@@ -1,8 +1,9 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
+import { api } from "../_generated/api";
 import { internal } from "../_generated/api";
 import schema from "../schema";
-import { seedFullJobGraph } from "./tests/seed";
+import { SEED_IDENTITY, seedFullJobGraph } from "./tests/seed";
 import { setupAggregates } from "./aggregates.test-support";
 
 describe("deleteExtractionInternal cascade", () => {
@@ -42,106 +43,60 @@ describe("deleteExtractionInternal cascade", () => {
         .collect();
       expect(results).toHaveLength(0);
 
-      // 3. Papers
+      // 3. Paper error history
+      const paperErrors = await ctx.db
+        .query("extractionPaperErrors")
+        .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+        .collect();
+      expect(paperErrors).toHaveLength(0);
+
+      // 4. Papers
       const papers = await ctx.db
         .query("extractionPapers")
         .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
         .collect();
       expect(papers).toHaveLength(0);
 
-      // 4. Questions
+      // 5. Queue rows
+      const queueRows = await ctx.db
+        .query("extractionPaperQueue")
+        .withIndex("by_job_and_status", (q) => q.eq("jobId", ids.jobId))
+        .collect();
+      expect(queueRows).toHaveLength(0);
+
+      // 6. Questions
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
         .collect();
       expect(questions).toHaveLength(0);
 
-      // 5. Saved views
-      const savedViews = await ctx.db
-        .query("extractionSavedViews")
-        .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+      // 7. Source snapshot rows
+      const sources = await ctx.db
+        .query("extractionJobSources")
+        .withIndex("by_job_and_position", (q) => q.eq("jobId", ids.jobId))
         .collect();
-      expect(savedViews).toHaveLength(0);
+      expect(sources).toHaveLength(0);
 
-      // 6. Report snapshots
-      const snapshots = await ctx.db
-        .query("extractionReportSnapshots")
+      const chatPapers = await ctx.db
+        .query("chatPapers")
         .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
         .collect();
-      expect(snapshots).toHaveLength(0);
+      expect(chatPapers).toHaveLength(0);
 
-      // 7. Run diffs
-      const runDiffs = await ctx.db
-        .query("extractionRunDiffs")
-        .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+      const chatSourceEvents = await ctx.db
+        .query("chatSourceEvents")
+        .withIndex("by_job_createdAt", (q) => q.eq("jobId", ids.jobId))
         .collect();
-      expect(runDiffs).toHaveLength(0);
+      expect(chatSourceEvents).toHaveLength(0);
 
       // 8. The job itself
       const job = await ctx.db.get("extractionJobs", ids.jobId);
       expect(job).toBeNull();
 
-      // Baseline job should NOT be deleted
-      const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
-      expect(baselineJob).not.toBeNull();
-
       // User should NOT be deleted
       const user = await ctx.db.get("users", ids.userId);
       expect(user).not.toBeNull();
-    });
-  });
-
-  it("deletes diffs where deleted job is the BASELINE (BUG-03 fix)", async () => {
-    const t = convexTest(schema);
-    setupAggregates(t);
-
-    const ids = await seedFullJobGraph(t);
-
-    // Insert a "reverse" diff: baselineJobId is the primary, jobId is the baseline
-    // This simulates a diff where the job we're about to delete is the BASELINE
-    const reverseDiffId = await t.run(async (ctx) => {
-      const now = Date.now();
-      return await ctx.db.insert("extractionRunDiffs", {
-        jobId: ids.baselineJobId,
-        baselineJobId: ids.jobId,
-        userId: ids.userId,
-        summary: {
-          newAnswers: 0,
-          changedAnswers: 0,
-          removedAnswers: 0,
-          confidenceShifts: 0,
-          newlyInsufficientEvidence: 0,
-          totalCompared: 1,
-        },
-        changes: [],
-        generatedAt: Date.now(),
-        createdAt: Date.now(),
-      });
-    });
-
-    vi.useFakeTimers();
-
-    // Delete the PRIMARY job (ids.jobId) -- which is the BASELINE in the reverse diff
-    await t.mutation(
-      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
-      { jobId: ids.jobId }
-    );
-
-    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
-    vi.useRealTimers();
-
-    await t.run(async (ctx) => {
-      // The original diff (jobId: ids.jobId) should be deleted (Step 8)
-      const originalDiff = await ctx.db.get("extractionRunDiffs", ids.runDiffId);
-      expect(originalDiff).toBeNull();
-
-      // The reverse diff (baselineJobId: ids.jobId) should ALSO be deleted (Step 8b)
-      const reverseDiff = await ctx.db.get("extractionRunDiffs", reverseDiffId);
-      expect(reverseDiff).toBeNull();
-
-      // The baseline job should still exist (we only deleted ids.jobId)
-      const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
-      expect(baselineJob).not.toBeNull();
     });
   });
 
@@ -265,30 +220,20 @@ describe("deleteExtractionInternal cascade", () => {
           .collect();
         expect(questions).toHaveLength(0);
 
-        const savedViews = await ctx.db
-          .query("extractionSavedViews")
+        const paperErrors = await ctx.db
+          .query("extractionPaperErrors")
           .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
           .collect();
-        expect(savedViews).toHaveLength(0);
+        expect(paperErrors).toHaveLength(0);
 
-        const snapshots = await ctx.db
-          .query("extractionReportSnapshots")
-          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+        const sourceEvents = await ctx.db
+          .query("chatSourceEvents")
+          .withIndex("by_job_createdAt", (q) => q.eq("jobId", ids.jobId))
           .collect();
-        expect(snapshots).toHaveLength(0);
-
-        const runDiffs = await ctx.db
-          .query("extractionRunDiffs")
-          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
-          .collect();
-        expect(runDiffs).toHaveLength(0);
+        expect(sourceEvents).toHaveLength(0);
 
         const job = await ctx.db.get("extractionJobs", ids.jobId);
         expect(job).toBeNull();
-
-        // Baseline job should survive
-        const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
-        expect(baselineJob).not.toBeNull();
       });
     });
 
@@ -333,31 +278,39 @@ describe("deleteExtractionInternal cascade", () => {
           .collect();
         expect(questions).toHaveLength(0);
 
-        const savedViews = await ctx.db
-          .query("extractionSavedViews")
+        const paperErrors = await ctx.db
+          .query("extractionPaperErrors")
           .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
           .collect();
-        expect(savedViews).toHaveLength(0);
+        expect(paperErrors).toHaveLength(0);
 
-        const snapshots = await ctx.db
-          .query("extractionReportSnapshots")
-          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+        const queueRows = await ctx.db
+          .query("extractionPaperQueue")
+          .withIndex("by_job_and_status", (q) => q.eq("jobId", ids.jobId))
           .collect();
-        expect(snapshots).toHaveLength(0);
+        expect(queueRows).toHaveLength(0);
 
-        const runDiffs = await ctx.db
-          .query("extractionRunDiffs")
+        const sources = await ctx.db
+          .query("extractionJobSources")
+          .withIndex("by_job_and_position", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(sources).toHaveLength(0);
+
+        const chatPapers = await ctx.db
+          .query("chatPapers")
           .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
           .collect();
-        expect(runDiffs).toHaveLength(0);
+        expect(chatPapers).toHaveLength(0);
+
+        const chatSourceEvents = await ctx.db
+          .query("chatSourceEvents")
+          .withIndex("by_job_createdAt", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(chatSourceEvents).toHaveLength(0);
 
         // Job itself
         const job = await ctx.db.get("extractionJobs", ids.jobId);
         expect(job).toBeNull();
-
-        // Baseline job survives
-        const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
-        expect(baselineJob).not.toBeNull();
 
         // User survives
         const user = await ctx.db.get("users", ids.userId);
@@ -396,14 +349,41 @@ describe("deleteExtractionInternal cascade", () => {
       await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
       vi.useRealTimers();
 
-      // Verify nothing crashed and baseline is still intact
+      // Verify nothing crashed and user state is still intact.
       await t.run(async (ctx) => {
-        const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
-        expect(baselineJob).not.toBeNull();
-
         const user = await ctx.db.get("users", ids.userId);
         expect(user).not.toBeNull();
       });
+    });
+  });
+
+  it("public delete removes the visible job row immediately and schedules cascade cleanup", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const ids = await seedFullJobGraph(t);
+    const auth = t.withIdentity(SEED_IDENTITY);
+
+    await auth.mutation(api.extraction.mutations.deleteExtraction, {
+      jobId: ids.jobId,
+    });
+
+    await t.run(async (ctx) => {
+      const job = await ctx.db.get("extractionJobs", ids.jobId);
+      const queueRows = await ctx.db
+        .query("extractionPaperQueue")
+        .withIndex("by_job_and_status", (q) => q.eq("jobId", ids.jobId))
+        .collect();
+      const scheduledFunctions = await ctx.db.system
+        .query("_scheduled_functions")
+        .collect();
+
+      expect(job).toBeNull();
+      expect(queueRows).toHaveLength(1);
+      expect(
+        scheduledFunctions.some((sf) =>
+          sf.name.includes("deleteExtractionInternal"),
+        ),
+      ).toBe(true);
     });
   });
 });

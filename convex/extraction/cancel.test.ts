@@ -36,7 +36,22 @@ async function seedUserAndJob(
       status: "downloading" as const,
       workId: `work_${clerkId}`,
     });
-    return { userId, jobId, paperId, clerkId };
+    const queueId = await ctx.db.insert("extractionPaperQueue", {
+      jobId,
+      userId,
+      paperId,
+      runEpoch: 0,
+      kind: "initial" as const,
+      status: "leased" as const,
+      priority: 0,
+      attempt: 0,
+      leaseOwner: `worker_${clerkId}`,
+      leasedAt: now,
+      leaseExpiresAt: now + 60_000,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { userId, jobId, paperId, queueId, clerkId };
   });
 }
 
@@ -52,9 +67,12 @@ describe("cancelExtraction scope", () => {
       tokenIdentifier: "alice|test",
     };
     const aliceT = t.withIdentity(aliceIdentity);
-    const res = await aliceT.mutation(api.extraction.mutations.cancelExtraction, {
-      jobId: a.jobId,
-    });
+    const res = await aliceT.mutation(
+      api.extraction.mutations.cancelExtraction,
+      {
+        jobId: a.jobId,
+      },
+    );
     expect(res.success).toBe(true);
 
     await t.run(async (ctx) => {
@@ -70,6 +88,14 @@ describe("cancelExtraction scope", () => {
       const paperB = await ctx.db.get("extractionPapers", b.paperId);
       expect(paperB?.status).toBe("downloading");
       expect(paperB?.workId).toBe("work_bob");
+
+      const queueA = await ctx.db.get(a.queueId);
+      expect(queueA?.status).toBe("cancelled");
+      expect(queueA?.leaseOwner).toBeUndefined();
+
+      const queueB = await ctx.db.get(b.queueId);
+      expect(queueB?.status).toBe("leased");
+      expect(queueB?.leaseOwner).toBe("worker_bob");
     });
   });
 
@@ -100,9 +126,12 @@ describe("cancelExtraction scope", () => {
       subject: "alice",
       tokenIdentifier: "alice|test",
     });
-    const res = await aliceT.mutation(api.extraction.mutations.cancelExtraction, {
-      jobId: a.jobId,
-    });
+    const res = await aliceT.mutation(
+      api.extraction.mutations.cancelExtraction,
+      {
+        jobId: a.jobId,
+      },
+    );
     expect(res.success).toBe(true);
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", a.jobId));
     expect(job?.status).toBe("completed");
