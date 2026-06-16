@@ -305,11 +305,6 @@ export const getLatestGrantStatus = query({
   },
 });
 
-/**
- * Filter validator for the user-visible transactions panel. Deliberately
- * excludes the `reservation` / `reservation_release` types — those never
- * surface in the UI; they only feed the balance sharded counters.
- */
 const transactionTypeValidator = v.union(
   v.literal("purchase"),
   v.literal("usage"),
@@ -376,11 +371,6 @@ export const listTransactionsPaginated = query({
 
     const matchesAllFilters = (row: Doc<"creditTransactions">): boolean => {
       if (row.creditsId !== creditsId) return false;
-      // Reservation primitives feed the balance sharded counters only —
-      // they must never surface in the user-visible transactions panel.
-      if (row.type === "reservation" || row.type === "reservation_release") {
-        return false;
-      }
       if (types && types.length > 0 && !types.includes(row.type)) return false;
       if (creditPools && creditPools.length > 0 && !creditPools.includes(row.creditType)) return false;
       if (billingTypes && billingTypes.length > 0) {
@@ -537,11 +527,6 @@ export const listTransactionsPaginatedRaw = query({
 
     const matchesAllFilters = (row: Doc<"creditTransactions">): boolean => {
       if (row.creditsId !== creditsId) return false;
-      // Reservation primitives feed the balance sharded counters only —
-      // they must never surface in the user-visible transactions panel.
-      if (row.type === "reservation" || row.type === "reservation_release") {
-        return false;
-      }
       if (types && types.length > 0 && !types.includes(row.type)) return false;
       if (creditPools && creditPools.length > 0 && !creditPools.includes(row.creditType)) return false;
       if (billingTypes && billingTypes.length > 0) {

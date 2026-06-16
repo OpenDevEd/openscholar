@@ -6,7 +6,7 @@
  *
  *  - **Saved-search history placeholders** — `source === "history"` with
  *    a `searchFilters` blob attached. They expand to `searchFilters.limit`
- *    actual papers when the workflow runs `fetchPapersFromHistory`. An
+ *    actual papers when queue setup runs `fetchPapersFromHistory`. An
  *    unset limit falls back to the OpenAlex single-page ceiling, which is
  *    the same value as the per-row pull cap.
  *  - **Per-paper rows** — every other source (library, collection, zotero,
@@ -29,8 +29,8 @@ export type EffectiveCountItem = {
 
 /**
  * Papers a single bucket row will produce at submit time, clamped to
- * `pullCap`. Negative or NaN limits collapse to 0 — the workflow's
- * zero-paper short-circuit treats them as "skip this row".
+ * `pullCap`. Negative or NaN limits collapse to 0 — queue setup treats
+ * them as "skip this row".
  */
 export function paperCountForItem(
   item: EffectiveCountItem,

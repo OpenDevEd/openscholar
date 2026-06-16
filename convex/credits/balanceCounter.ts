@@ -15,10 +15,10 @@
  * exposes downstream.
  *
  * `defaultShards: 16` matches the library default. Credits writes per
- * user are reservation + settlement + grant + occasional deduct — far
- * lower fan-out than the per-job paper counters (which run 50-way and
- * picked 64). Sticky-shard keeps repeat writers on the same shard until
- * contention is observed.
+ * user are settled usage, grant, purchase, and occasional refund rows,
+ * far lower fan-out than the per-job paper counters (which run 50-way
+ * and picked 64). Sticky-shard keeps repeat writers on the same shard
+ * until contention is observed.
  *
  * The mutation-side API is signed: `addBalanceDelta(ctx, id, pool, n)`
  * adds `n` (positive for credits-in, negative for credits-out) to the
@@ -79,8 +79,8 @@ export async function readBalance(
 
 /**
  * Apply a signed delta to one pool's counter. Positive amounts add
- * credits (grant / purchase / refund-in / reservation_release), negative
- * amounts remove credits (usage / refund-out / reservation).
+ * credits (grant / purchase / refund-in), negative amounts remove
+ * credits (usage / refund-out).
  *
  * Zero-amount calls short-circuit so the recordTransactionCounters
  * branch doesn't pay a shard write for a no-op.

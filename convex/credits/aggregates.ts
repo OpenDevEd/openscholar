@@ -33,13 +33,6 @@
  * `getBalance`, blowing the 16 MB / mutation budget on fat ledgers; the
  * counters are O(shards) regardless of ledger depth.
  *
- * Reservation rows (`type ∈ {reservation, reservation_release}`) are
- * INTERNAL accounting primitives — they DO participate in the balance
- * counters (they hold credits against an in-flight estimate) but they are
- * skipped by the three user-visible facet aggregates so the billing
- * transactions panel never surfaces a transient hold as a settled
- * transaction.
- *
  * Writes are insert-only — the production `creditTransactions` table is
  * append-only — so the `forget*` helpers exist for symmetry with
  * `convex/extraction/aggregates.ts` but are only used by the cascade-clear
@@ -91,10 +84,6 @@ function hashTxId(id: string): number {
   return h >>> 0;
 }
 
-// User-visible transaction types — the 5 that surface in the billing
-// panel filter dropdown. Reservation primitives are internal accounting
-// (see `LedgerType` below) and are deliberately excluded so users never
-// see a transient hold as a settled transaction.
 export type TransactionType =
   | "purchase"
   | "usage"
@@ -102,12 +91,7 @@ export type TransactionType =
   | "refund"
   | "expiry";
 
-// Every type that can appear in `creditTransactions.type`. The superset
-// of `TransactionType` plus the two reservation primitives. Used by the
-// balance counters (which see ALL rows including reservations) and the
-// discriminator in `recordTransactionCounters` to decide which facet
-// aggregates a row participates in.
-export type LedgerType = TransactionType | "reservation" | "reservation_release";
+export type LedgerType = TransactionType;
 
 export type CreditType = "free" | "paid";
 export type BillingType =
@@ -137,14 +121,6 @@ export const BILLING_TYPES: readonly BillingType[] = [
   "wallet_api",
 ];
 
-const USER_VISIBLE_TYPES: ReadonlySet<LedgerType> = new Set<LedgerType>([
-  "purchase",
-  "usage",
-  "grant",
-  "refund",
-  "expiry",
-]);
-
 export const txnTypeAgg = new DirectAggregate<{
   Namespace: Id<"credits">;
   Key: [TransactionType, number];
@@ -168,11 +144,9 @@ export const txnBillingTypeAgg = new DirectAggregate<{
  * `Doc<"creditTransactions">` so call sites can pass either a just-
  * inserted synthetic row or a real doc from the backfill iterator.
  *
- * `amount` is the SIGNED ledger summand (positive for grants / purchases /
- * refund-in / reservation_release, negative for usage / refund-out /
- * reservation). It feeds the sharded-counter delta so balance reads
- * (`readBalance` in `./balanceCounter.ts`) reflect every ledger entry —
- * including the reservation primitives.
+ * `amount` is the signed ledger summand. It feeds the sharded-counter
+ * delta so balance reads (`readBalance` in `./balanceCounter.ts`) reflect
+ * every ledger entry.
  */
 export type TransactionForAggregate = {
   _id: Id<"creditTransactions">;
@@ -199,11 +173,6 @@ export type TransactionForAggregate = {
  * one mutation, so retries roll back together.
  *
  * Call AFTER `ctx.db.insert` succeeds so `_id` is final.
- *
- * Reservation primitives (`reservation`, `reservation_release`) DO
- * participate in the balance counter — they're real signed ledger entries
- * — but skip the three user-visible facet aggregates so the billing panel
- * never surfaces a transient hold as a settled transaction.
  */
 export async function recordTransactionCounters(
   ctx: RunMutationCtx,
@@ -218,17 +187,11 @@ export async function recordTransactionCounters(
     tx.amount,
   );
 
-  if (!USER_VISIBLE_TYPES.has(tx.type)) {
-    await balancePromise;
-    return;
-  }
-  const userVisibleType = tx.type as TransactionType;
-
   await Promise.all([
     balancePromise,
     txnTypeAgg.insertIfDoesNotExist(ctx, {
       namespace: tx.creditsId,
-      key: [userVisibleType, tieBreaker],
+      key: [tx.type, tieBreaker],
       id: tx._id,
     }),
     txnCreditPoolAgg.insertIfDoesNotExist(ctx, {
@@ -267,17 +230,11 @@ export async function forgetTransactionCounters(
     -tx.amount,
   );
 
-  if (!USER_VISIBLE_TYPES.has(tx.type)) {
-    await balancePromise;
-    return;
-  }
-  const userVisibleType = tx.type as TransactionType;
-
   await Promise.all([
     balancePromise,
     txnTypeAgg.deleteIfExists(ctx, {
       namespace: tx.creditsId,
-      key: [userVisibleType, tieBreaker],
+      key: [tx.type, tieBreaker],
       id: tx._id,
     }),
     txnCreditPoolAgg.deleteIfExists(ctx, {

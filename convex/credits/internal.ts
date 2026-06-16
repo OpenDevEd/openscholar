@@ -1437,20 +1437,15 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
  * write rows in disjoint B-tree leaves (different `hashTxId`), so neither
  * conflicts on the other's write set.
  *
- * The cross-caller pre-flight gate now lives upstream in
- * `reserveCreditsTransaction` (convex/credits/reservation.ts). The
- * extraction fan-out reserves the HIGH estimate once at startJob and per-
- * paper `finalizePaper` settles partial slices against that reservation.
- * The reservation row is the single contention point — concurrent reserves
- * race through one aggregate write, not P of them. See plan-tier-D for the
- * full rationale.
+ * Extraction fan-out now gates starts with paper-local admission markers
+ * before actions run, then calls this primitive once per finalized paper
+ * with the settled usage total.
  *
  * `deductCreditsTransaction` is therefore a primitive, not a gate. It
  * floors at zero so a wallet that has somehow gone underwater (drained
- * reservation, dev seed drift, a legacy code path) cannot bleed further
- * via compounding negative usage rows. Callers that need overdraft
- * prevention go through the reservation path; callers that need
- * drain-to-zero set `allowPartial: true`.
+ * dev seed drift, a stale code path) cannot bleed further via compounding
+ * negative usage rows. Callers that need drain-to-zero set
+ * `allowPartial: true`.
  */
 type DeductCreditsArgs = {
   userId: Id<"users">;

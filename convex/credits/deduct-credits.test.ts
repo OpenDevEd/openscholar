@@ -461,8 +461,8 @@ describe("deductCredits", () => {
   describe("negative-balance floor", () => {
     // Regression for the compounding-negative bug. Tier D removed the OCC
     // serialization the shared credits cell used to provide; if a wallet
-    // does go underwater (drained reservation, race in a legacy code
-    // path, dev seed drift), every subsequent `deductCreditsTransaction`
+    // does go underwater (race in a stale code path, dev seed drift),
+    // every subsequent `deductCreditsTransaction`
     // with `allowPartial: true` must NOT emit a usage row that drives
     // the balance further negative. The historical bug — observed at the
     // -500 dev wallet — was `Math.min(args.amount, balance.total)`
