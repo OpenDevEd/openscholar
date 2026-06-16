@@ -17,9 +17,9 @@ const HOUR = 60 * MINUTE;
 export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
   "start-extraction": {
     kind: "token bucket",
-    rate: 5,
+    rate: 30,
     period: HOUR,
-    capacity: 3,
+    capacity: 30,
   },
   "api-key-save": {
     kind: "token bucket",
