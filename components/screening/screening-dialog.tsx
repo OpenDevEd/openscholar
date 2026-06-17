@@ -24,7 +24,6 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast";
 import { showStyledToast } from "@/components/ui/sonner";
 import { reconstructAbstract } from "@/lib/openalex/reconstruct-abstract";
-import { hasUnquotedWildcard } from "@/lib/search/wildcard";
 import { api } from "@/convex/_generated/api";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "@/convex/lib/queryBounds";
 import { ESTIMATED_CREDITS_PER_PAPER } from "@/convex/lib/constants";
@@ -261,19 +260,10 @@ export function ScreeningDialog({
       const [rangeStart, rangeEnd] = paperRange;
       const PER_PAGE = 200;
       const url = new URL(search.apiUrl);
-      // apiUrl comes from the SDK's meta.url, which echoes the STEMMED `.search`
-      // field even for wildcard queries (the search itself queries the no-stem
-      // `.search.exact`). OpenAlex 400s on a `*`/`?` against `.search`, so re-route
-      // it here — matching lib/search/search-field.ts.
-      const filter = url.searchParams.get("filter");
-      if (
-        filter &&
-        hasUnquotedWildcard(filter) &&
-        filter.includes(".search:") &&
-        !filter.includes(".search.exact:")
-      ) {
-        url.searchParams.set("filter", filter.replace(/\.search:/g, ".search.exact:"));
-      }
+      // apiUrl is the SDK's meta.url, which carries `cursor=*`. We paginate with
+      // `page`, and OpenAlex rejects `cursor` + `page` together ("Cannot use page
+      // parameter with cursor"), so drop the cursor before paging.
+      url.searchParams.delete("cursor");
       url.searchParams.set("per_page", String(PER_PAGE));
       const collected: Array<Record<string, unknown>> = [];
       const pagesNeeded = Math.ceil(rangeEnd / PER_PAGE);
