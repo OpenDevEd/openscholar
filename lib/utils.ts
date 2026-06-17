@@ -5,6 +5,7 @@ import type { SortByWork } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { DateRange } from "react-day-picker";
 import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
+import { buildSearchSubfilter } from './search/search-field'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -263,18 +264,10 @@ export function createSearchParameters(
       // Use search filters for specific fields
       const filterKey = searchFilterMap[filters.searchField as keyof typeof searchFilterMap];
       
-      // For the SDK, we use the filter object with search subfields
-      if (filterKey === 'title_and_abstract') {
-        apiFilters.title_and_abstract = { search: query };
-      } else if (filterKey === 'title') {
-        apiFilters.title = { search: query };
-      } else if (filterKey === 'abstract') {
-        apiFilters.abstract = { search: query };
-      } else if (filterKey === 'fulltext') {
-        apiFilters.fulltext = { search: query };
-      } else if (filterKey === 'display_name') {
-        apiFilters.display_name = { search: query };
-      }
+      // Stemmed `.search` by default; route to the no-stem `.search.exact`
+      // field when the query has an unquoted wildcard, the way openalex.org
+      // does — otherwise a `*`/`?` 400s against the stemmed field.
+      apiFilters[filterKey] = buildSearchSubfilter(query);
     } else {
       // Fallback to main search
       searchParams.search = query;
