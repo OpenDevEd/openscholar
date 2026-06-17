@@ -25,8 +25,10 @@ export const MAX_REVIEWS_PER_JOB = 50_000;
 export const MAX_CREDIT_TRANSACTIONS = 1_000;
 
 /** Maximum papers in a single screening job.
- * Balances throughput with credit/cost predictability. */
-export const MAX_SCREENING_PAPERS_PER_JOB = 200;
+ * Balances throughput with credit/cost predictability. The Screen-All dialog
+ * pages OpenAlex (200/page) to collect up to this many. Stays within
+ * MAX_REVIEWS_PER_JOB (1000 × 50 questions = 50,000). */
+export const MAX_SCREENING_PAPERS_PER_JOB = 1000;
 
 /** Maximum screening jobs listed per user.
  * Matches extraction job limit for consistency. */

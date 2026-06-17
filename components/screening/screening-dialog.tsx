@@ -254,17 +254,28 @@ export function ScreeningDialog({
     if (!search?.apiUrl) return;
     setIsSubmitting(true);
     try {
-      // 1. Fetch papers from OpenAlex and slice to user-selected range
+      // 1. Fetch papers from OpenAlex, then slice to the user-selected range.
+      //    OpenAlex hard-caps per_page at 200, so page through (basic paging is
+      //    good to 10k results) until we've covered the range or run out.
       const [rangeStart, rangeEnd] = paperRange;
+      const PER_PAGE = 200;
       const url = new URL(search.apiUrl);
-      url.searchParams.set("per_page", String(rangeEnd));
-      url.searchParams.set("page", "1");
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`OpenAlex API error: ${response.status}`);
+      url.searchParams.set("per_page", String(PER_PAGE));
+      const collected: Array<Record<string, unknown>> = [];
+      const pagesNeeded = Math.ceil(rangeEnd / PER_PAGE);
+      for (let page = 1; page <= pagesNeeded; page++) {
+        url.searchParams.set("page", String(page));
+        const response = await fetch(url.toString());
+        if (!response.ok) {
+          throw new Error(`OpenAlex API error: ${response.status}`);
+        }
+        const data = await response.json();
+        const pageResults: Array<Record<string, unknown>> = data.results ?? [];
+        collected.push(...pageResults);
+        // Short page → OpenAlex has no more results, stop early.
+        if (pageResults.length < PER_PAGE) break;
       }
-      const data = await response.json();
-      const works: Array<Record<string, unknown>> = (data.results ?? []).slice(rangeStart - 1, rangeEnd);
+      const works: Array<Record<string, unknown>> = collected.slice(rangeStart - 1, rangeEnd);
 
       // 2. Map to screening paper input shape
       const papers = works.map((w) => {
