@@ -20,6 +20,7 @@ import { useTranslations } from 'next-intl';
 import { useAppToast } from '@/lib/toast';
 
 import { searchParamsParsers, serializeSearchParams, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
+import { sanitizeSelection } from '../search-params/sanitize';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { validateAndExpandKeywordsSilently } from '../keyword-validation';
@@ -464,13 +465,15 @@ export function SearchProvider({ children }: SearchProviderProps) {
   }, [setUrlParams, syncToStore]);
   
   const setRegions = useCallback((regions: string[]) => {
-    setUrlParams({ reg: regions, page: 1 });
-    syncToStore({ selectedRegions: regions, page: 1 });
+    const cleaned = sanitizeSelection(regions);
+    setUrlParams({ reg: cleaned, page: 1 });
+    syncToStore({ selectedRegions: cleaned, page: 1 });
   }, [setUrlParams, syncToStore]);
-  
+
   const setCountryFocus = useCallback((countries: string[]) => {
-    setUrlParams({ focus: countries, page: 1 });
-    syncToStore({ selectedCountryFocus: countries, page: 1 });
+    const cleaned = sanitizeSelection(countries);
+    setUrlParams({ focus: cleaned, page: 1 });
+    syncToStore({ selectedCountryFocus: cleaned, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setCites = useCallback((id: string) => {
