@@ -59,6 +59,21 @@ function canonicalUrlForParams(
   return buildResultsUrl(searchId, canonicalParams);
 }
 
+/**
+ * Normalize a URL for comparison: decode + re-encode the query string through
+ * URLSearchParams and sort the keys. nuqs leaves `(` `)` unencoded while the
+ * browser's `searchParams.toString()` encodes them as %28/%29 — comparing the
+ * raw strings would treat the same query as "non-canonical" forever and
+ * redirect-loop. Normalizing makes the comparison encoding- and order-agnostic.
+ */
+function normalizeUrl(url: string): string {
+  const q = url.indexOf("?");
+  if (q === -1) return url;
+  const sp = new URLSearchParams(url.slice(q + 1));
+  sp.sort();
+  return `${url.slice(0, q)}?${sp.toString()}`;
+}
+
 export function resolveSearchInit(input: SearchInitInput): SearchInitDecision {
   const { searchId, parsedParams, hasExplicitParams, existingEntry, currentUrl } =
     input;
@@ -76,13 +91,15 @@ export function resolveSearchInit(input: SearchInitInput): SearchInitDecision {
     };
   }
 
-  // Branch C: known id, explicit params.
+  // Branch C: known id, explicit params. Compare normalized URLs so encoding
+  // differences (nuqs vs browser) don't trigger spurious canonicalize redirects.
   const canonicalUrl = canonicalUrlForParams(searchId, parsedParams);
+  const isCanonical = normalizeUrl(canonicalUrl) === normalizeUrl(currentUrl);
 
   if (paramsMatchState(parsedParams, existingEntry)) {
-    return canonicalUrl !== currentUrl
-      ? { kind: "redirect", url: canonicalUrl }
-      : { kind: "ready" };
+    return isCanonical
+      ? { kind: "ready" }
+      : { kind: "redirect", url: canonicalUrl };
   }
 
   const addQuery =
@@ -94,6 +111,6 @@ export function resolveSearchInit(input: SearchInitInput): SearchInitDecision {
     kind: "sync",
     addQuery,
     filterUpdates,
-    redirectTo: canonicalUrl !== currentUrl ? canonicalUrl : null,
+    redirectTo: isCanonical ? null : canonicalUrl,
   };
 }

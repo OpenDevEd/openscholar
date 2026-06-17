@@ -130,6 +130,23 @@ describe("resolveSearchInit — Branch C (sync + canonicalize)", () => {
     }
   });
 
+  it("treats a differently-encoded but equivalent URL as already canonical (no redirect loop)", () => {
+    // buildResultsUrl (nuqs) leaves '(' ')' unencoded; the browser's
+    // searchParams.toString() encodes them as %28/%29. The same query must NOT
+    // be seen as non-canonical, or the initializer redirect-loops on it.
+    const p = params({ q: "(ai OR ml)" });
+    const nuqsUrl = canonicalFor("abc", p); // parens unencoded
+    const browserEncoded = nuqsUrl.replace(/\(/g, "%28").replace(/\)/g, "%29");
+    const d = resolveSearchInit({
+      searchId: "abc",
+      parsedParams: p,
+      hasExplicitParams: true,
+      existingEntry: entry({ id: "abc", query: "(ai OR ml)" }),
+      currentUrl: browserEncoded,
+    });
+    expect(d.kind).toBe("ready");
+  });
+
   it("syncs without recording query history when only a filter changed", () => {
     const d = resolveSearchInit({
       searchId: "abc",
