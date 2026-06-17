@@ -19,7 +19,8 @@ import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import { useAppToast } from '@/lib/toast';
 
-import { searchParamsParsers, serializeSearchParams, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
+import { searchParamsParsers, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
+import { buildShareableUrl } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
@@ -584,19 +585,17 @@ export function SearchProvider({ children }: SearchProviderProps) {
   // Expands keyword bookmarks before generating the URL so shared links work for everyone
   const getShareableUrl = useCallback(() => {
     if (typeof window === 'undefined') return '';
-    
+
     // Expand keywords in the query (e.g., ml... → "machine learning" OR AI)
     const { expandedQuery } = expandQuery(urlParams.q || '');
-    
-    // Create params with expanded query
-    const expandedParams = {
+
+    // Strip the local history id from shared links — the recipient's
+    // SearchInitializer mints a fresh id for them. See buildShareableUrl.
+    return buildShareableUrl(window.location.origin, {
       ...urlParams,
-      q: expandedQuery
-    };
-    
-    const baseUrl = `${window.location.origin}/results/${searchId}`;
-    return serializeSearchParams(baseUrl, expandedParams);
-  }, [searchId, urlParams, expandQuery]);
+      q: expandedQuery,
+    });
+  }, [urlParams, expandQuery]);
   
   // Convert URL params to SearchFilters for external use
   const toSearchFilters = useCallback((): SearchFilters => ({

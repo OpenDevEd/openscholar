@@ -61,4 +61,19 @@ export function buildResultsUrl(searchId: string, params: Partial<ParsedSearchPa
   return serializeSearchParams(`/results/${searchId}`, params);
 }
 
+/**
+ * Build a SHAREABLE results URL — deliberately WITHOUT a searchId.
+ *
+ * The searchId is a per-browser localStorage history key, meaningless (and a
+ * minor leak) to a recipient. A shared `${origin}/results?…` carries only the
+ * query/filters; the recipient's SearchInitializer mints a fresh id for them
+ * (resolveSearchInit Branch A). Defaults are stripped via clearOnDefault.
+ *
+ * @param origin - The absolute origin, e.g. window.location.origin
+ * @param params - The search params to serialize
+ */
+export function buildShareableUrl(origin: string, params: Partial<ParsedSearchParams>): string {
+  return serializeSearchParams(`${origin}/results`, params);
+}
+
 
