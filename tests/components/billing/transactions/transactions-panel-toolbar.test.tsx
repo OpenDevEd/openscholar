@@ -93,9 +93,14 @@ describe("TransactionsPanelToolbar", () => {
     // nuqs's throttle queue can land URL updates out of order under
     // contention; assert that the final value lands somewhere in the
     // update stream rather than relying on it being the last entry.
-    await waitFor(() => {
-      expect(updates.some((u) => u.get("q") === "abc")).toBe(true);
-    });
+    // Under full-suite parallel load the throttled flush can land well past
+    // waitFor's default 1s budget, so give the throttle room to drain.
+    await waitFor(
+      () => {
+        expect(updates.some((u) => u.get("q") === "abc")).toBe(true);
+      },
+      { timeout: 5000 },
+    );
   });
 
   it("search clear button is hidden when q is empty and visible when q is set", () => {
