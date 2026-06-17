@@ -10,6 +10,8 @@
  * for the filter/sort grammar.
  */
 
+import { hasUnquotedWildcard } from "../search/wildcard";
+
 export type OpenAlexSearchFilters = {
   query: string;
   field?: string;
@@ -66,17 +68,22 @@ function searchFieldFilter(
   searchField: string | undefined,
   query: string,
 ): string | null {
+  // Route an unquoted */? wildcard to the no-stem `.search.exact` field — the
+  // same decision the SDK path makes (lib/search/search-field.ts) — otherwise
+  // OpenAlex 400s a wildcard against the stemmed `.search` field. The wildcard
+  // decision lives in ONE place: hasUnquotedWildcard.
+  const suffix = hasUnquotedWildcard(query) ? "search.exact" : "search";
   switch (searchField) {
     case "title_and_abstract":
-      return `title_and_abstract.search:${query}`;
+      return `title_and_abstract.${suffix}:${query}`;
     case "title":
-      return `title.search:${query}`;
+      return `title.${suffix}:${query}`;
     case "abstract":
-      return `abstract.search:${query}`;
+      return `abstract.${suffix}:${query}`;
     case "fulltext":
-      return `fulltext.search:${query}`;
+      return `fulltext.${suffix}:${query}`;
     case "display_name":
-      return `display_name.search:${query}`;
+      return `display_name.${suffix}:${query}`;
     default:
       return null;
   }
