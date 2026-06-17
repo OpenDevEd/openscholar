@@ -1,4 +1,6 @@
 import { getSearchResults } from '@/app/actions/openalex';
+import { SearchError } from './search/search-error';
+import type { Works } from '@sickrin/openalex-sdk/dist/src/types/work';
 import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
 import { getCountryCodesForRegions, COUNTRIES } from './constants';
 import { validateAndExpandKeywords } from './keyword-validation';
@@ -23,7 +25,7 @@ export interface EnhancedSearchResult {
     expandedQuery: string;
     warnings: string[];
   };
-  results: Awaited<ReturnType<typeof getSearchResults>>;
+  results: Works;
   paramsKey?: string;
 }
 
@@ -131,7 +133,7 @@ export async function getSearchResultsWithFilters(
   }
 
   // Get results with the final enhanced query for API, but keep original query for UI
-  const results = await getSearchResults(
+  const result = await getSearchResults(
     finalApiQuery,
     effectiveFilters,
     finalApiQuery, // Pass the final enhanced query as both search and expanded query
@@ -139,11 +141,18 @@ export async function getSearchResultsWithFilters(
     effectiveRelatedToItemId
   );
 
+  if (!result.ok) {
+    // Throw client-side so the real status + OpenAlex message reach the toast
+    // intact. A server-action-thrown message is stripped by Next in production;
+    // this SearchError is constructed here, in the browser, so it survives.
+    throw new SearchError(result.message, result.status);
+  }
+
   return {
     originalQuery: query,
     enhancedQuery: query, // Keep the original query for UI display
     countryNames,
     validation,
-    results
+    results: result.data
   };
 } 
