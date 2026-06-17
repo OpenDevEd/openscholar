@@ -28,6 +28,7 @@ import { serializeSearchParams, type ParsedSearchParams } from './parsers';
 export {
   searchParamsParsers,
   serializeSearchParams,
+  parseSearchParamsFromUrl,
   DEFAULT_SEARCH_PARAMS,
   type ParsedSearchParams,
 } from './parsers';
