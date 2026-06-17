@@ -19,56 +19,11 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useSearchHistoryStore } from '../store';
 import { paramsToSearchResult, searchResultToParams, paramsMatchState } from '../search-params/converters';
-import { buildResultsUrl, DEFAULT_SEARCH_PARAMS } from '../search-params';
-import type { ParsedSearchParams } from '../search-params/parsers';
+import { buildResultsUrl, DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl } from '../search-params';
 import type { SearchResult } from '../types';
 
 interface SearchInitializerProps {
   children: ReactNode;
-}
-
-/**
- * Parse URL search params into our ParsedSearchParams format
- * Uses the nuqs parser defaults for missing values
- */
-function parseUrlParams(searchParams: URLSearchParams): ParsedSearchParams {
-  return {
-    q: searchParams.get('q') ?? DEFAULT_SEARCH_PARAMS.q,
-    field: searchParams.get('field') ?? DEFAULT_SEARCH_PARAMS.field,
-    sort: searchParams.get('sort') ?? DEFAULT_SEARCH_PARAMS.sort,
-    page: searchParams.has('page') ? parseInt(searchParams.get('page')!, 10) : DEFAULT_SEARCH_PARAMS.page,
-    yf: searchParams.has('yf') ? parseInt(searchParams.get('yf')!, 10) : null,
-    yt: searchParams.has('yt') ? parseInt(searchParams.get('yt')!, 10) : null,
-    df: searchParams.get('df') ?? null,
-    dt: searchParams.get('dt') ?? null,
-    ft: searchParams.get('ft') ?? DEFAULT_SEARCH_PARAMS.ft,
-    rmin: searchParams.has('rmin') ? parseInt(searchParams.get('rmin')!, 10) : DEFAULT_SEARCH_PARAMS.rmin,
-    rmax: searchParams.has('rmax') ? parseInt(searchParams.get('rmax')!, 10) : DEFAULT_SEARCH_PARAMS.rmax,
-    rated: searchParams.get('rated') === 'true',
-    reg: searchParams.has('reg') ? decodeRegionsFromUrl(searchParams.get('reg')!) : [],
-    focus: searchParams.has('focus') ? decodeRegionsFromUrl(searchParams.get('focus')!) : [],
-    cites: searchParams.get('cites') ?? DEFAULT_SEARCH_PARAMS.cites,
-    citedBy: searchParams.get('citedBy') ?? DEFAULT_SEARCH_PARAMS.citedBy,
-    rel: searchParams.get('rel') ?? DEFAULT_SEARCH_PARAMS.rel,
-    review: searchParams.get('review') === 'true',
-    lang: searchParams.get('lang') ?? null,
-  };
-}
-
-/**
- * Simple region decoder - handles comma-separated values
- * The actual smart encoding/decoding is done by nuqs parser
- */
-function decodeRegionsFromUrl(value: string): string[] {
-  if (!value) return [];
-  // Import the decode function from regions module
-  try {
-    const { decodeRegions } = require('../search-params/regions');
-    return decodeRegions(value);
-  } catch {
-    // Fallback: simple comma split
-    return value.split(',').filter(Boolean);
-  }
 }
 
 export function SearchInitializer({ children }: SearchInitializerProps) {
@@ -114,7 +69,7 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
       setStatus('redirecting');
       
       // Parse URL params (or use defaults for empty search)
-      const parsedParams = hasUrlParams ? parseUrlParams(searchParams) : DEFAULT_SEARCH_PARAMS;
+      const parsedParams = hasUrlParams ? parseSearchParamsFromUrl(searchParams) : DEFAULT_SEARCH_PARAMS;
       const newEntry = paramsToSearchResult(parsedParams);
       const newId = addSearchResult(newEntry);
       
@@ -127,7 +82,7 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
     
     // CASE 2: Known ID + has URL params → Add to queryHistory if query differs, update filters
     if (existingEntry && hasUrlParams) {
-      const parsedParams = parseUrlParams(searchParams);
+      const parsedParams = parseSearchParamsFromUrl(searchParams);
       
       // Check if params differ from stored state
       if (!paramsMatchState(parsedParams, existingEntry)) {
