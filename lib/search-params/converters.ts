@@ -12,6 +12,7 @@ import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
 import type { ParsedSearchParams } from './parsers';
 import { DEFAULT_SEARCH_PARAMS } from './parsers';
+import { sanitizeSelection } from './sanitize';
 
 /**
  * Type for what addSearchResult expects (required fields for new history entries)
@@ -128,12 +129,14 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
     params.rated = true;
   }
   
-  // Geographic - only include if non-empty
-  if (result.selectedRegions && result.selectedRegions.length > 0) {
-    params.reg = result.selectedRegions;
+  // Geographic - sanitize (trim + drop empty) then only include if non-empty
+  const selectedRegions = sanitizeSelection(result.selectedRegions);
+  if (selectedRegions.length > 0) {
+    params.reg = selectedRegions;
   }
-  if (result.selectedCountryFocus && result.selectedCountryFocus.length > 0) {
-    params.focus = result.selectedCountryFocus;
+  const selectedCountryFocus = sanitizeSelection(result.selectedCountryFocus);
+  if (selectedCountryFocus.length > 0) {
+    params.focus = selectedCountryFocus;
   }
   
   // References - only include if non-empty
