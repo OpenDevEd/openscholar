@@ -2,24 +2,26 @@
 
 /**
  * SearchInitializer - Handles URL/History Reconciliation
- * 
- * This component runs ONCE on mount and handles these scenarios:
- * 
- * 1. Unknown ID (any params, including none) → Create new entry with new ID, redirect
- * 2. Known ID + has URL params → If query differs, add to queryHistory; update filters
- * 3. Known ID + no URL params → Restore params from storage to URL
- * 4. Known ID + matching params → Ready (do nothing)
- * 
- * IMPORTANT: Empty searches (no query, no filters) are VALID and should be stored.
- * 
- * Uses useEffect to handle redirects (cannot call router during render).
+ *
+ * Runs once on mount and reconciles the URL with the stored search history.
+ * The decision (create / restore / canonicalize / sync / ready) is computed by
+ * the pure, unit-tested resolveSearchInit(); this component only applies it.
+ *
+ *  A. Missing OR unknown searchId → create a new entry, redirect to /results/[id].
+ *     (bare /results always renders results; an empty query is a valid search.)
+ *  B. Known id, no URL params → restore stored state to a canonical URL.
+ *  C. Known id, URL params → sync the store if they changed, then canonicalize.
+ *
+ * Uses useEffect because the router cannot be called during render, and the
+ * id is minted by the client-side history store (localStorage).
  */
 
 import { useState, useEffect, type ReactNode } from 'react';
-import { useRouter, useSearchParams, useParams } from 'next/navigation';
+import { useRouter, useSearchParams, useParams, usePathname } from 'next/navigation';
 import { useSearchHistoryStore } from '../store';
-import { paramsToSearchResult, searchResultToParams, paramsMatchState } from '../search-params/converters';
-import { buildResultsUrl, DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl } from '../search-params';
+import { searchResultToParams } from '../search-params/converters';
+import { buildResultsUrl, parseSearchParamsFromUrl } from '../search-params';
+import { resolveSearchInit } from './resolve-search-init';
 import type { SearchResult } from '../types';
 
 interface SearchInitializerProps {
@@ -29,108 +31,89 @@ interface SearchInitializerProps {
 export function SearchInitializer({ children }: SearchInitializerProps) {
   const router = useRouter();
   const routeParams = useParams<{ searchId: string }>();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchId = routeParams?.searchId ?? '';
-  
-  // Get store methods
+
+  // Store methods
   const getSearchResult = useSearchHistoryStore((state) => state.getSearchResult);
   const addSearchResult = useSearchHistoryStore((state) => state.addSearchResult);
   const updateSearchResult = useSearchHistoryStore((state) => state.updateSearchResult);
   const addQueryToHistory = useSearchHistoryStore((state) => state.addQueryToHistory);
-  
-  // Track initialization state
-  const [status, setStatus] = useState<'pending' | 'redirecting' | 'ready'>('pending');
-  
-  // Handle initialization in useEffect (cannot call router during render)
-  useEffect(() => {
-    // Skip if no searchId (shouldn't happen on /results/[searchId] routes)
-    if (!searchId) {
-      setStatus('ready');
-      return;
-    }
 
-    // Skip if searchParams is null (during SSR)
-    if (!searchParams) {
-      return;
-    }
-    
-    // Only run initialization logic once when pending
-    if (status !== 'pending') {
-      return;
-    }
-    
-    const existingEntry = getSearchResult(searchId);
-    // Check if URL has any search-related params (q is always present with clearOnDefault: false)
-    const hasUrlParams = searchParams.has('q') || searchParams.has('field') || searchParams.toString() !== '';
-    
-    // CASE 1: Unknown ID → Create new entry with new ID, redirect
-    // This handles both shared links (with params) and direct URL access (no params)
-    if (!existingEntry) {
-      setStatus('redirecting');
-      
-      // Parse URL params (or use defaults for empty search)
-      const parsedParams = hasUrlParams ? parseSearchParamsFromUrl(searchParams) : DEFAULT_SEARCH_PARAMS;
-      const newEntry = paramsToSearchResult(parsedParams);
-      const newId = addSearchResult(newEntry);
-      
-      // Build URL with params and redirect to new ID
-      const entryWithId: Partial<SearchResult> = { ...newEntry, id: newId };
-      const params = searchResultToParams(entryWithId);
-      router.replace(buildResultsUrl(newId, params));
-      return;
-    }
-    
-    // CASE 2: Known ID + has URL params → Add to queryHistory if query differs, update filters
-    if (existingEntry && hasUrlParams) {
-      const parsedParams = parseSearchParamsFromUrl(searchParams);
-      
-      // Check if params differ from stored state
-      if (!paramsMatchState(parsedParams, existingEntry)) {
-        // If query changed, add to query history within this entry
-        if (parsedParams.q !== existingEntry.query) {
-          addQueryToHistory(searchId, parsedParams.q);
-        }
-        
-        // Update filter fields (query is already handled by addQueryToHistory if changed)
-        // Note: We exclude 'count' because paramsToSearchResult always returns count: 0
-        // and we don't want to overwrite the actual count from the store
-        const updatedEntry = paramsToSearchResult(parsedParams);
-        const { query, count, ...filterUpdates } = updatedEntry;
-        updateSearchResult(searchId, filterUpdates);
-      }
-      
-      // Either way, we're ready
-      setStatus('ready');
-      return;
-    }
-    
-    // CASE 3: Known ID + no URL params → Restore params from storage to URL
-    if (existingEntry && !hasUrlParams) {
-      setStatus('redirecting');
-      const params = searchResultToParams(existingEntry);
-      router.replace(buildResultsUrl(searchId, params));
-      return;
-    }
-    
-    // CASE 4: Should not reach here, but mark as ready
-    setStatus('ready');
-  }, [searchId, status, getSearchResult, addSearchResult, updateSearchResult, addQueryToHistory, searchParams, router]);
-  
-  // After redirect completes, check if we can mark as ready
+  const [status, setStatus] = useState<'pending' | 'redirecting' | 'ready'>('pending');
+
+  // Reconcile URL <-> stored history. Pure decision in resolveSearchInit();
+  // this effect only performs the resulting side effects.
   useEffect(() => {
-    if (status === 'redirecting' && searchParams) {
-      const existingEntry = getSearchResult(searchId);
-      // Check if URL has any search-related params (q is always present with clearOnDefault: false)
-      const hasUrlParams = searchParams.has('q') || searchParams.has('field') || searchParams.toString() !== '';
-      
-      // Redirect complete when: entry exists and has URL params
-      if (existingEntry && hasUrlParams) {
-        setStatus('ready');
+    if (!searchParams) return; // SSR
+    if (status !== 'pending') return;
+
+    const parsedParams = parseSearchParamsFromUrl(searchParams);
+    const hasExplicitParams = searchParams.toString() !== '';
+    const existingEntry = searchId ? getSearchResult(searchId) : undefined;
+    const currentUrl = `${pathname}${hasExplicitParams ? `?${searchParams.toString()}` : ''}`;
+
+    const decision = resolveSearchInit({
+      searchId,
+      parsedParams,
+      hasExplicitParams,
+      existingEntry,
+      currentUrl,
+    });
+
+    switch (decision.kind) {
+      case 'create': {
+        setStatus('redirecting');
+        const newId = addSearchResult(decision.entry);
+        const url = buildResultsUrl(
+          newId,
+          searchResultToParams({ ...decision.entry, id: newId } as SearchResult),
+        );
+        router.replace(url);
+        return;
       }
+      case 'redirect':
+        setStatus('redirecting');
+        router.replace(decision.url);
+        return;
+      case 'sync':
+        if (decision.addQuery !== null) {
+          addQueryToHistory(searchId, decision.addQuery);
+        }
+        updateSearchResult(searchId, decision.filterUpdates);
+        if (decision.redirectTo) {
+          setStatus('redirecting');
+          router.replace(decision.redirectTo);
+          return;
+        }
+        setStatus('ready');
+        return;
+      case 'ready':
+        setStatus('ready');
+        return;
+    }
+  }, [
+    searchId,
+    status,
+    getSearchResult,
+    addSearchResult,
+    updateSearchResult,
+    addQueryToHistory,
+    pathname,
+    searchParams,
+    router,
+  ]);
+
+  // After a redirect lands on a route with a known entry, mark ready.
+  useEffect(() => {
+    if (status !== 'redirecting' || !searchId) return;
+    if (getSearchResult(searchId)) {
+      setStatus('ready');
     }
   }, [status, searchId, searchParams, getSearchResult]);
-  
-  // Show loading while pending or redirecting
+
+  // Show loading while pending or redirecting.
   if (status !== 'ready') {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -138,6 +121,6 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
       </div>
     );
   }
-  
+
   return <>{children}</>;
 }
