@@ -33,11 +33,13 @@ describe("parseAsRegions round-trip", () => {
 });
 
 describe("serializeSearchParams", () => {
-  it("produces a non-empty query string for default params", () => {
+  it("omits default params so an empty search yields a clean canonical URL", () => {
+    // clearOnDefault: true — every value equals its default, so nothing is
+    // emitted and the URL stays bare (/results/[id] with no query string).
     const result = serializeSearchParams(DEFAULT_SEARCH_PARAMS);
-    expect(result).toBeTruthy();
-    expect(result).toContain("q=");
-    expect(result).toContain("field=");
+    expect(result).not.toContain("q=");
+    expect(result).not.toContain("field=");
+    expect(result).not.toContain("sort=");
   });
 
   it("serializes custom query", () => {

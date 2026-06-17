@@ -166,11 +166,18 @@ export function parseSearchParamsFromUrl(
 }
 
 /**
- * Create URL serializer for building shareable URLs
- * clearOnDefault: false ensures empty searches still produce valid query strings
+ * Create URL serializer for building shareable / canonical URLs.
+ *
+ * clearOnDefault: true omits any param equal to its default, so an empty search
+ * yields a bare /results/[id] and only non-default filters appear in the URL.
+ * This is safe because SearchInitializer detects params via
+ * `searchParams.toString() !== ''` (not by assuming `q` is always present) and
+ * creates a new entry for a missing/unknown id — see resolveSearchInit. It also
+ * matches nuqs v2's default clearOnDefault used by the live provider, so
+ * initializer-built URLs and live filter updates stay consistent.
  */
 export const serializeSearchParams = createSerializer(searchParamsParsers, {
-  clearOnDefault: false
+  clearOnDefault: true,
 });
 
 /**
