@@ -7,6 +7,7 @@ import {
   getToastMessageKeyForErrorCode,
   resolveToastError,
 } from "./error-resolver";
+import { classifySearchError } from "@/lib/search/search-error";
 import type { ToastAction } from "./core";
 
 function navigateTo(
@@ -18,11 +19,6 @@ function navigateTo(
     return;
   }
   window.location.href = path;
-}
-
-function getStatusCode(message: string): string | null {
-  const statusMatch = message.match(/\b(\d{3})\b/);
-  return statusMatch?.[1] ?? null;
 }
 
 function buildActionFromRoute(
@@ -160,24 +156,15 @@ export function useAppToast(): AppToastApi {
     },
     search: {
       failed: (error: unknown) => {
-        const { message } = resolveErrorDetails(error, t("unexpectedError"));
-        const statusCode = getStatusCode(message);
-
-        if (statusCode === "400") {
-          showStyledToast("error", t("searchQueryTooLarge"), {
-            description: t("searchQueryTooLargeDescription"),
-          });
-          return;
-        }
-
-        if (statusCode === "429") {
-          showStyledToast("error", t("tooManyRequests"), {
-            description: t("tooManyRequestsDescription"),
-          });
-          return;
-        }
-
-        showStyledToast("error", t("searchFailed"), { description: message });
+        // Classify by the structured status carried on SearchError — the error
+        // message is stripped by Next in prod, so we never regex-scrape it.
+        const { titleKey, descriptionKey, description } =
+          classifySearchError(error);
+        showStyledToast("error", t(titleKey), {
+          description: descriptionKey
+            ? t(descriptionKey)
+            : (description ?? t("unexpectedError")),
+        });
       },
     },
     io: {

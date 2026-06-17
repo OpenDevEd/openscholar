@@ -18,9 +18,9 @@ export class SearchError extends Error {
 }
 
 export interface SearchToastCopy {
-  titleKey: string;
+  titleKey: "searchInvalidQuery" | "tooManyRequests" | "searchFailed";
   /** i18n key for the description (used when the copy is ours, e.g. rate limit). */
-  descriptionKey?: string;
+  descriptionKey?: "tooManyRequestsDescription";
   /** Raw description, e.g. OpenAlex's literal reason for a bad query. */
   description?: string;
 }
