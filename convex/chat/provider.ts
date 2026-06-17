@@ -26,7 +26,10 @@ import {
 export type Pricing = { input: number; output: number };
 
 export type ResolvedChatModel = {
-  model: LanguageModel;
+  // The concrete getProviderModel result (a LanguageModel subtype). Typed
+  // precisely so server-feature consumers (extraction pipeline) that thread the
+  // narrower getProviderModel type can reuse this resolver without a cast.
+  model: Awaited<ReturnType<typeof getProviderModel>>;
   modelSlug: string;
   pricing: Pricing;
 };
@@ -54,10 +57,13 @@ export async function resolveOpenRouterModel(
       internal.models.queries.getById,
       { modelId },
     );
-    if (!row || !row.isServed) {
+    // `isServed` is a curation flag (gates the preset/served lists), not a
+    // runtime capability gate — a Custom pick may be any catalog model. Only
+    // require the row to exist; pricing comes from the row regardless.
+    if (!row) {
       throw createError(
         "VALIDATION_ERROR",
-        "Selected chat model is not available.",
+        "Selected model was not found.",
       );
     }
     modelSlug = row.modelId;

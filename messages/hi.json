@@ -352,7 +352,43 @@
     "useSmartMode": "स्मार्ट मोड का उपयोग करें",
     "smartModeDescription": "उपलब्ध होने पर क्रेडिट्स का उपयोग करें, नहीं तो आपकी API key का उपयोग करें",
     "creditsModeDisabled": "क्रेडिट्स मोड बंद है",
-    "creditsModeDisabledDescription": "इस ऐप के लिए क्रेडिट्स अभी बंद हैं। Smart Mode या Use My API Keys चुनें।"
+    "creditsModeDisabledDescription": "इस ऐप के लिए क्रेडिट्स अभी बंद हैं। Smart Mode या Use My API Keys चुनें।",
+    "creditsOnly": "credits",
+    "serverSignInBlurb": "Run Chat, Extraction & Screen All instantly — no card.",
+    "customModel": "Custom model",
+    "recommended": "Recommended",
+    "providerAndKey": "Provider & key",
+    "features": {
+      "chat": "Chat",
+      "extraction": "Extraction",
+      "screenAll": "Screen All"
+    },
+    "localFeatures": {
+      "questionToQuery": "Question → query",
+      "refine": "Refine",
+      "translateQuery": "Translate query",
+      "translatePaper": "Translate paper",
+      "screening": "Screening",
+      "broadenNarrow": "Broaden / narrow"
+    },
+    "modeLabel": {
+      "smart": "Smart",
+      "local": "My keys",
+      "credits": "Credits"
+    },
+    "modeShort": {
+      "smart": "Credits, then your key",
+      "local": "Own provider & model",
+      "credits": "Your account balance"
+    },
+    "modeLocked": {
+      "notOnPlan": "Not on your plan",
+      "signIn": "Sign in to use"
+    },
+    "primaryModelTitle": "Select your primary model",
+    "secondaryModelTitle": "Select your secondary model",
+    "primaryModelDesc": "Always used for Chat, Extraction & Screen All — runs in the OpenScholar cloud.",
+    "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
     "transactions": {
@@ -952,7 +988,8 @@
       "presetHundred": "100",
       "presetMax": "अधिकतम",
       "liveAnnouncement": "शोधपत्रों की संख्या {count, number} पर सेट की गई"
-    }
+    },
+    "chatModelPresets": "Presets"
   },
   "sourcesPanel": {
     "title": "स्रोत",
@@ -2050,7 +2087,9 @@
     "qualifiedCount": "{count} योग्य",
     "newCollectionName": "संग्रह का नाम",
     "closeDialog": "बंद करें",
-    "newScreening": "नई स्क्रीनिंग"
+    "newScreening": "नई स्क्रीनिंग",
+    "makeRequired": "Make required",
+    "makeOptional": "Make optional"
   },
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",

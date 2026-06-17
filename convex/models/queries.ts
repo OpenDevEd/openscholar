@@ -2,6 +2,7 @@ import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
 const catalogOptionValidator = v.object({
+  _id: v.id("models"),
   modelId: v.string(),
   name: v.string(),
   provider: v.string(),
@@ -48,6 +49,7 @@ export const listCatalogOptions = query({
       : await ctx.db.query("models").take(1000);
 
     return rows.map((model) => ({
+      _id: model._id,
       modelId: model.modelId,
       name: model.name,
       provider: model.provider,

@@ -18,7 +18,6 @@ import {
 import {
   createAIAction,
   calculateServerCreditsToDeduct,
-  getModel,
   withAuthAndCreditsBatch,
 } from "./helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
@@ -202,9 +201,7 @@ export const generateBatchTranslations = action({
       return await withAuthAndCreditsBatch(
         ctx,
         `Batch translation (${papers.length} papers)`,
-        async (_user, pricing) => {
-          const model = await getModel();
-
+        async (_user, pricing, model) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
             model,
             papers,
@@ -321,9 +318,7 @@ export const generateBatchScreeningResponses = action({
       return await withAuthAndCreditsBatch(
         ctx,
         `Batch screening (${papers.length} papers)`,
-        async (_user, pricing) => {
-          const model = await getModel();
-
+        async (_user, pricing, model) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
             model,
             papers,

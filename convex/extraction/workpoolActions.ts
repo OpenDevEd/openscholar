@@ -12,12 +12,9 @@ import {
   calculateServerRawCreditCost,
   convertServerCostDollarsToCredits,
 } from "../ai/helpers";
-import {
-  getExtractionModel,
-  getExtractionPricing,
-  type ExtractionModel,
-  type ExtractionPricing,
-} from "./aiRuntime";
+import { resolveOpenRouterModel } from "../chat/provider";
+type ExtractionModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
+type ExtractionPricing = Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
 import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
 import {
   truncateForTracking,
@@ -28,7 +25,6 @@ import {
   captureServerEvent,
 } from "../../lib/posthog-server";
 import type { AIProvider } from "../../lib/types";
-import { SERVER_AI_CONFIG } from "../ai/config";
 import { createError } from "../lib/errors";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { decryptApiKey } from "../lib/crypto";
@@ -1167,10 +1163,12 @@ export async function captureCompletedQuestionTracking({
   distinctId,
   outcomes,
   persistedQuestionKeys,
+  modelSlug,
 }: {
   distinctId: string;
   outcomes: ReadonlyArray<CompletedQuestionBatchItem>;
   persistedQuestionKeys: ReadonlySet<string>;
+  modelSlug: string;
 }): Promise<void> {
   await Promise.all(
     outcomes.map(async (outcome) => {
@@ -1182,8 +1180,8 @@ export async function captureCompletedQuestionTracking({
       }
       await captureAIGenerationServer({
         distinctId,
-        provider: SERVER_AI_CONFIG.provider as AIProvider,
-        modelId: SERVER_AI_CONFIG.model,
+        provider: "openrouter" as AIProvider,
+        modelId: modelSlug,
         feature: outcome.trackingEntry.feature,
         usage: outcome.trackingEntry.usage,
         latencyMs: outcome.trackingEntry.latencyMs,

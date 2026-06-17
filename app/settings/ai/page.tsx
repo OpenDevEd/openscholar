@@ -10,8 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
-  ArrowRight,
-  Bot,
   ChevronDown,
   ChevronUp,
   Search,
@@ -21,8 +19,12 @@ import {
   Lock,
   Save,
   RotateCcw,
+  Coins,
+  KeyRound,
+  Sparkles,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
-import Image from "next/image";
 import {
   OpenAIIcon,
   GoogleIcon,
@@ -41,6 +43,7 @@ import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { ServerModelSection } from "@/components/settings/server-model-section";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import {
   useSharedSubscriptionState,
@@ -259,6 +262,40 @@ export default function AISettingsPage() {
   const showFullConfig = isSignedIn ? true : showApiKeyConfig;
   const isConfigDisabled = isSignedIn ? isDisabled : false;
 
+  // Keep showApiKeyConfig referenced (legacy local toggle, retained for parity).
+  void showApiKeyConfig;
+  void showFullConfig;
+  void isConfigDisabled;
+  void setShowApiKeyConfig;
+  void router;
+
+  // The in-browser features run client-side: BYOK config shows unless the user
+  // picked Credits. Credits is gated (sign-in + credits.enabled), matching the
+  // legacy mode-card logic; Smart and My-keys are always available.
+  const modeCards: Array<{ id: "smart" | "local" | "credits"; label: string; desc: string; icon: typeof KeyRound }> = [
+    { id: "smart", label: t("modeLabel.smart"), desc: t("modeShort.smart"), icon: Sparkles },
+    { id: "local", label: t("modeLabel.local"), desc: t("modeShort.local"), icon: KeyRound },
+    { id: "credits", label: t("modeLabel.credits"), desc: t("modeShort.credits"), icon: Coins },
+  ];
+
+  const handleModeClick = (id: "smart" | "local" | "credits") => {
+    if (id === "credits") {
+      if (isCreditsModeLocked) {
+        toast.error(t("creditsModeDisabled"), t("creditsModeDisabledDescription"));
+        return;
+      }
+      if (!isSignedIn) {
+        toast.error(t("signInToUseCredits"), undefined, {
+          label: tc("signIn"),
+          onClick: goToSignIn,
+          icon: "arrow-right",
+        });
+        return;
+      }
+    }
+    setApiKeyMode(id);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -271,508 +308,166 @@ export default function AISettingsPage() {
         </p>
       </div>
 
-      {/* Content */}
-      <div className="p-6 space-y-8 max-w-2xl">
+      {/* Content — two buckets: server (credits) + in-browser (key or credits) */}
+      <div className="p-6 space-y-4 max-w-2xl">
+        {/* ── ON OUR SERVERS (credits) ── */}
+        <ServerModelSection
+          signedIn={isSignedIn}
+          creditsEnabled={creditsEnabled}
+          onSignIn={goToSignIn}
+        />
 
-        {/* ── Logged-out: two-path cards ── */}
-        {!isSignedIn && (
-          <div className="space-y-4">
-            {/* Option A: Sign in for free credits */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="rounded-xl border-2 border-primary/30 bg-primary/[0.04] p-5 space-y-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center">
-                  <Image src="/icon.svg" alt="" width={36} height={36} className="w-9 h-9" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base">{t("getStartedSignInTitle")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("getStartedSignInDescription")}</p>
-                </div>
-              </div>
-              <Button onClick={goToSignIn} className="gap-1.5">
-                <ArrowRight className="h-4 w-4" />
-                {tc("signIn")}
-              </Button>
-            </motion.div>
-
-            {/* Option B: Bring your own API key */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12 }}
-              className="rounded-xl border-2 border-border/50 p-5 space-y-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50">
-                  <Bot className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base">{t("getStartedApiKeyTitle")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("getStartedApiKeyDescription")}</p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowApiKeyConfig((prev) => !prev)}
-                className="gap-1.5"
-              >
-                <ChevronDown className={cn("h-4 w-4 transition-transform", showApiKeyConfig && "rotate-180")} />
-                {t("getStartedConfigureApiKey")}
-              </Button>
-            </motion.div>
-          </div>
-        )}
-
-        {/* ── Logged-in: mode selector ── */}
-        {isSignedIn && (
-          <>
-        {/* Mode Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <Bot className="w-4 h-4" />
-            <span>{tc("mode")}</span>
+        {/* ── IN YOUR BROWSER (your key or credits) ── */}
+        <section className="overflow-hidden rounded-2xl border-2 border-border/60">
+          <div className="space-y-1.5 border-b border-border/50 bg-muted/30 px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <h3 className="flex-1 text-sm font-semibold">{t("secondaryModelTitle")}</h3>
+              <span className="flex h-6 items-center gap-1 rounded-md bg-sky-500/15 px-2 text-xs font-medium text-sky-700"><KeyRound className="h-3 w-3" /> / <Coins className="h-3 w-3" /></span>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("secondaryModelDesc")}</p>
           </div>
 
-          <div className="space-y-3">
-            <motion.button
-              type="button"
-              onClick={() => {
-                setApiKeyMode("smart");
-              }}
-              whileHover={{ scale: 1.01 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
-                apiKeyMode === "smart"
-                  ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
-                  : "border-border/50 hover:border-border/80 hover:bg-muted/30",
-              )}
-            >
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                  apiKeyMode === "smart" ? "bg-primary/20" : "bg-muted/50",
-                )}
-              >
-                {apiKeyMode === "smart" && (
-                  <Check className="w-5 h-5 text-primary" />
-                )}
+          <div className="space-y-3 p-4">
+            {/* mode cards — credits gated; smart/my-keys always available */}
+            <div className="grid grid-cols-3 gap-2.5">
+              {modeCards.map((mc) => {
+                const locked = mc.id === "credits" && (isCreditsModeLocked || !isSignedIn);
+                const on = apiKeyMode === mc.id && !locked;
+                const ModeIcon = locked && isCreditsModeLocked ? Lock : mc.icon;
+                const shownDesc = locked ? (isCreditsModeLocked ? t("modeLocked.notOnPlan") : t("modeLocked.signIn")) : mc.desc;
+                return (
+                  <button
+                    key={mc.id}
+                    type="button"
+                    onClick={() => handleModeClick(mc.id)}
+                    className={cn("flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-all", on ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5" : "border-border/50 hover:border-border/80 hover:bg-muted/30", locked && "opacity-60")}
+                  >
+                    <ModeIcon className={cn("h-6 w-6", on ? "text-primary" : "text-muted-foreground")} />
+                    <span className="flex items-center gap-1 text-sm font-semibold">{mc.label}{on && <Check className="h-3.5 w-3.5 text-primary" />}</span>
+                    <span className="text-[11px] text-muted-foreground">{shownDesc}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {apiKeyMode === "credits" ? (
+              <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-background p-3 text-sm text-muted-foreground">
+                <Coins className="h-4 w-4 text-amber-500" /> {t("creditsInfoBanner")}
               </div>
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-base">{t("useSmartMode")}</div>
-                <div className="text-sm text-muted-foreground">
-                  {t("smartModeDescription")}
+            ) : (
+              <div className="space-y-2.5 rounded-xl border border-border/50 bg-muted/30 p-3">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><KeyRound className="h-3 w-3" /> {t("providerAndKey")}</div>
+
+                {/* provider — compact segmented control */}
+                <div className="flex gap-0.5 rounded-lg border border-border/50 bg-background p-0.5">
+                  {providers.map((p) => {
+                    const Icon = p.icon;
+                    const sel = provider === p.id;
+                    return (
+                      <button key={p.id} type="button" onClick={() => handleProviderChange(p.id)} title={p.name} className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-all", sel ? "bg-muted font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                        <Icon className={cn("h-4 w-4", sel ? p.color : "")} />
+                        <span className="hidden sm:inline">{p.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-            </motion.button>
 
-            <motion.button
-              type="button"
-              onClick={() => {
-                setApiKeyMode("local");
-              }}
-              whileHover={{ scale: 1.01 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
-                apiKeyMode === "local"
-                  ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
-                  : "border-border/50 hover:border-border/80 hover:bg-muted/30",
-              )}
-            >
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                  apiKeyMode === "local" ? "bg-primary/20" : "bg-muted/50",
-                )}
-              >
-                {apiKeyMode === "local" && (
-                  <Check className="w-5 h-5 text-primary" />
-                )}
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-base">{t("useMyApiKeys")}</div>
-                <div className="text-sm text-muted-foreground">
-                  {t("bringYourOwn")}
-                </div>
-              </div>
-            </motion.button>
+                {/* model picker (reuses the live catalog + grouped search) */}
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setModelSectionExpanded(!modelSectionExpanded)}
+                    className="flex w-full items-center gap-2 rounded-xl border-2 border-border/50 bg-background p-3 text-left transition-colors hover:border-border/80"
+                  >
+                    <span className="flex-1 truncate text-sm">
+                      <span className="font-medium">{selectedModel?.name || tc("selectAModel")}</span>
+                      {selectedModel && <span className="ml-1.5 text-xs text-muted-foreground">${selectedModel.pricing.input.toFixed(2)} / ${selectedModel.pricing.output.toFixed(2)} {t("per1MTokens")}</span>}
+                    </span>
+                    {loadingModels ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : modelSectionExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </button>
 
-            <motion.button
-              type="button"
-              onClick={() => {
-                if (isCreditsModeLocked) {
-                  toast.error(
-                    t("creditsModeDisabled"),
-                    t("creditsModeDisabledDescription"),
-                  );
-                  return;
-                }
-                if (!isSignedIn) {
-                  toast.error(t("signInToUseCredits"), undefined, {
-                    label: tc("signIn"),
-                    onClick: goToSignIn,
-                    icon: "arrow-right",
-                  });
-                  return;
-                }
-                setApiKeyMode("credits");
-              }}
-              whileHover={
-                isSignedIn && !isCreditsModeLocked ? { scale: 1.01 } : undefined
-              }
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
-                apiKeyMode === "credits"
-                  ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
-                  : "border-border/50 hover:border-border/80 hover:bg-muted/30",
-                (!isSignedIn || isCreditsModeLocked) && "opacity-60",
-              )}
-            >
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                  apiKeyMode === "credits" ? "bg-primary/20" : "bg-muted/50",
-                )}
-              >
-                {apiKeyMode === "credits" ? (
-                  <Check className="w-5 h-5 text-primary" />
-                ) : isCreditsModeLocked ? (
-                  <Lock className="w-4 h-4 text-muted-foreground" />
-                ) : null}
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-base">{t("useCredits")}</div>
-                <div className="text-sm text-muted-foreground">
-                  {isCreditsModeLocked
-                    ? t("creditsModeDisabledDescription")
-                    : t("accountBalance")}
-                </div>
-              </div>
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Disabled Info Banner */}
-        <AnimatePresence>
-          {isSignedIn && isDisabled && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: "auto", marginBottom: 32 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 400,
-                damping: 30,
-              }}
-              className="overflow-hidden"
-            >
-              <div className="rounded-xl border border-border/50 bg-muted/30 p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-muted-foreground">
-                  {isCreditsModeLocked
-                    ? t("creditsModeDisabledDescription")
-                    : t("creditsInfoBanner")}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-          </>
-        )}
-
-        {/* Provider Section */}
-        {showFullConfig && (
-        <div
-          className={cn(
-            "space-y-4 transition-opacity duration-300",
-            isConfigDisabled && "opacity-50 pointer-events-none",
-          )}
-        >
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <span>{tc("provider")}</span>
-          </div>
-
-          <div className="space-y-2">
-            {providers.map((p) => {
-              const Icon = p.icon;
-              const isSelected = provider === p.id;
-
-              return (
-                <motion.button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handleProviderChange(p.id)}
-                  whileHover={{ scale: 1.01 }}
-                  className={cn(
-                    "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
-                    isSelected
-                      ? `border-l-[4px] ${p.borderColor} border-t-border/50 border-r-border/50 border-b-border/50 ${p.bgColor}`
-                      : "border-border/50 hover:border-border/80 hover:bg-muted/30",
+                  {modelCatalogFailed && !loadingModels && (
+                    <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-2.5">
+                      <span className="flex items-center gap-2 text-sm"><AlertCircle className="h-4 w-4 text-destructive" /> {tc("somethingWentWrong")}</span>
+                      <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5" onClick={handleRetryModelCatalog}><RotateCcw className="h-3.5 w-3.5" /> {tc("retry")}</Button>
+                    </div>
                   )}
-                >
-                  <Icon
-                    className={cn(
-                      "w-10 h-10 transition-colors",
-                      isSelected ? p.color : "text-muted-foreground",
-                    )}
-                  />
-                  <div className="flex-1 text-left">
-                    <div className="font-semibold text-lg">{p.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {p.family}
-                    </div>
-                  </div>
-                  {isSelected && <Check className={cn("w-5 h-5", p.color)} />}
-                </motion.button>
-              );
-            })}
-          </div>
-        </div>
 
-        )}
-
-        {/* Model Section */}
-        {showFullConfig && (
-        <div
-          className={cn(
-            "space-y-4 transition-opacity duration-300",
-            isConfigDisabled && "opacity-50 pointer-events-none",
-          )}
-        >
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <span>{tc("model")}</span>
-          </div>
-
-          <div className="space-y-2">
-            {/* Current Model Display */}
-            <button
-              type="button"
-              onClick={() => setModelSectionExpanded(!modelSectionExpanded)}
-              className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-border/50 hover:border-border/80 hover:bg-muted/30 transition-all duration-200"
-            >
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-base">
-                  {selectedModel?.name || tc("selectAModel")}
-                </div>
-                {selectedModel && (
-                  <div className="text-sm text-muted-foreground">
-                    ${selectedModel.pricing.input.toFixed(2)} / $
-                    {selectedModel.pricing.output.toFixed(2)} {t("per1MTokens")}
-                  </div>
-                )}
-              </div>
-              {loadingModels ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : modelSectionExpanded ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </button>
-
-            {modelCatalogFailed && !loadingModels && (
-              <div
-                role="alert"
-                className="rounded-xl border border-destructive/20 bg-destructive/5 p-3"
-              >
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="mt-0.5 h-4 w-4 text-destructive" />
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">
-                      {tc("somethingWentWrong")}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRetryModelCatalog}
-                    >
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      {tc("retry")}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Expandable Model List */}
-            <AnimatePresence>
-              {modelSectionExpanded && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden"
-                >
-                  <div className="rounded-xl border-2 border-border/50 bg-muted/20 overflow-hidden">
-                    {/* Search */}
-                    <div className="p-3 border-b border-border/40">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder={t("searchModels")}
-                          value={modelSearch}
-                          onChange={(e) => setModelSearch(e.target.value)}
-                          className="pl-9 h-9"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Model List */}
-                    <div className="max-h-[400px] overflow-y-auto p-2">
-                      {loadingModels ? (
-                        <div className="py-8 text-center text-sm text-muted-foreground">
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent mx-auto mb-2" />
-                          {tc("loadingModels")}
-                        </div>
-                      ) : filteredModels.length === 0 ? (
-                        <div className="py-8 text-center text-sm text-muted-foreground">
-                          {tc("noModelsFound")}
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {Object.entries(filteredGroupedModels).map(
-                            ([category, categoryModels]) => (
-                              <div key={category}>
-                                {provider === "openrouter" && (
-                                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2 py-1">
-                                    {category}
-                                  </div>
-                                )}
-                                <div className="space-y-1">
+                  <AnimatePresence initial={false}>
+                    {modelSectionExpanded && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }} className="overflow-hidden">
+                        <div className="overflow-hidden rounded-xl border-2 border-border/50 bg-muted/20">
+                          <div className="border-b border-border/40 p-2">
+                            <div className="relative">
+                              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                              <Input placeholder={t("searchModels")} value={modelSearch} onChange={(e) => setModelSearch(e.target.value)} className="h-8 pl-8 text-sm" />
+                            </div>
+                          </div>
+                          <div className="max-h-64 overflow-y-auto p-1.5">
+                            {loadingModels ? (
+                              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {tc("loadingModels")}</div>
+                            ) : filteredModels.length === 0 ? (
+                              <div className="py-8 text-center text-sm text-muted-foreground">{tc("noModelsFound")}</div>
+                            ) : (
+                              Object.entries(filteredGroupedModels).map(([category, categoryModels]) => (
+                                <div key={category}>
+                                  {provider === "openrouter" && <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{category}</div>}
                                   {categoryModels.map((m) => (
-                                    <button
-                                      key={m.id}
-                                      type="button"
-                                      onClick={() => handleModelChange(m.id)}
-                                      className={cn(
-                                        "w-full flex flex-col items-start gap-1 p-3 rounded-lg text-left transition-colors",
-                                        m.id === model
-                                          ? "bg-primary/10 border border-primary/20"
-                                          : "hover:bg-accent border border-transparent",
-                                      )}
-                                    >
-                                      <div className="flex items-center justify-between w-full gap-2 min-w-0">
-                                        <span className="font-medium truncate min-w-0 flex-1">
-                                          {m.name}
-                                        </span>
-                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                            ${m.pricing.input.toFixed(2)}/$
-                                            {m.pricing.output.toFixed(2)}
-                                          </span>
-                                          {m.id === model && (
-                                            <Check className="h-4 w-4 text-primary" />
-                                          )}
-                                        </div>
-                                      </div>
-                                      {m.description && (
-                                        <span className="text-xs text-muted-foreground line-clamp-1 w-full">
-                                          {m.description}
-                                        </span>
-                                      )}
+                                    <button key={m.id} type="button" onClick={() => handleModelChange(m.id)} className={cn("flex w-full flex-col gap-0.5 rounded-lg border p-2 text-left transition-colors", m.id === model ? "border-primary/20 bg-primary/10" : "border-transparent hover:bg-accent")}>
+                                      <span className="flex items-center gap-2">
+                                        <span className="flex-1 truncate text-sm font-medium">{m.name}</span>
+                                        <span className="whitespace-nowrap text-[11px] text-muted-foreground">${m.pricing.input.toFixed(2)}/${m.pricing.output.toFixed(2)}</span>
+                                        {m.id === model && <Check className="h-4 w-4 flex-shrink-0 text-primary" />}
+                                      </span>
+                                      {m.description && <span className="text-[11px] text-muted-foreground line-clamp-1">{m.description}</span>}
                                     </button>
                                   ))}
                                 </div>
-                              </div>
-                            ),
-                          )}
+                              ))
+                            )}
+                          </div>
                         </div>
-                      )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* credentials (per-provider key, save/reset, get-key link, guidance) */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="api-key" className="sr-only">{t("apiKey")}</Label>
+                  <div className="flex gap-1.5">
+                    <div className="relative flex-1">
+                      <Input
+                        id="api-key"
+                        type="password"
+                        placeholder={t("apiKeyPlaceholder", { provider: t(`providerNames.${provider}`) })}
+                        value={pendingApiKey}
+                        onChange={(e) => setPendingKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === "Enter" && hasUnsavedKey) handleSaveApiKey(); }}
+                        className="bg-background pr-9 font-mono text-sm"
+                      />
+                      <ShieldCheck className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
                     </div>
+                    {hasUnsavedKey && (
+                      <ButtonGroup>
+                        <Button size="icon" variant="outline" onClick={() => setPendingKeys((prev) => { const next = { ...prev }; delete next[provider]; return next; })}><RotateCcw className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" onClick={handleSaveApiKey}><Save className="h-3.5 w-3.5" /></Button>
+                      </ButtonGroup>
+                    )}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        )}
-
-        {/* Credentials Section */}
-        {showFullConfig && (
-        <div
-          className={cn(
-            "space-y-4 transition-opacity duration-300",
-            isConfigDisabled && "opacity-50 pointer-events-none",
-          )}
-        >
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <span>{t("credentials")}</span>
-          </div>
-
-          <div className="space-y-4">
-            {/* API Key */}
-            <div className="space-y-2">
-              <Label htmlFor="api-key" className="text-sm font-medium">
-                {t("apiKey")}
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="api-key"
-                  type="password"
-                  placeholder={t("apiKeyPlaceholder", { provider: t(`providerNames.${provider}`) })}
-                  value={pendingApiKey}
-                  disabled={isConfigDisabled}
-                  onChange={(e) => setPendingKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && hasUnsavedKey) {
-                      handleSaveApiKey();
-                    }
-                  }}
-                  className="font-mono text-sm"
-                />
-                {hasUnsavedKey && (
-                  <ButtonGroup>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      disabled={isConfigDisabled}
-                      onClick={() => setPendingKeys((prev) => {
-                        const next = { ...prev };
-                        delete next[provider];
-                        return next;
-                      })}
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      disabled={isConfigDisabled}
-                      onClick={handleSaveApiKey}
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                    </Button>
-                  </ButtonGroup>
-                )}
+                  <a href={providerConfig.apiKeyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    {t("getApiKey", { provider: providerConfig.name })} <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <ul className="space-y-0.5 text-[11px] text-muted-foreground">
+                    <li>{t(`providerGuidance.${provider}.whatIs`)}</li>
+                    <li>{t(`providerGuidance.${provider}.credits`)}</li>
+                    <li>{t(`providerGuidance.${provider}.freeModels`)}</li>
+                  </ul>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={providerConfig.apiKeyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  {t("getApiKey", { provider: providerConfig.name })}
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p>{t(`providerGuidance.${provider}.whatIs`)}</p>
-                <p>{t(`providerGuidance.${provider}.credits`)}</p>
-                <p>{t(`providerGuidance.${provider}.freeModels`)}</p>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
-        )}
+        </section>
       </div>
     </div>
   );

@@ -214,6 +214,9 @@ export const extractionJobFields = {
   ),
   chatThreadId: v.optional(v.string()),
   chatModelId: v.optional(v.id("models")),
+  // Resolved per-user server model for extraction-mode runs (credits path).
+  // Separate from chatModelId (chat-mode, user-swappable per conversation).
+  serverModelId: v.optional(v.id("models")),
   lastMessageAt: v.optional(v.number()),
   messageCount: v.optional(v.number()),
   isGenerating: v.optional(v.boolean()),

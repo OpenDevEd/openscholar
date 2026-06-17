@@ -339,6 +339,7 @@ export const getJobInternal = internalQuery({
       questions: v.array(screeningQuestionValidator),
       scoringConfig: screeningScoringConfigValidator,
       targetCollectionId: v.optional(v.id("collections")),
+      serverModelId: v.optional(v.id("models")),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -359,6 +360,7 @@ export const getJobInternal = internalQuery({
       questions: job.questions,
       scoringConfig: job.scoringConfig,
       targetCollectionId: job.targetCollectionId,
+      serverModelId: job.serverModelId,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     };

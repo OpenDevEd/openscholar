@@ -2,11 +2,21 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Asterisk, Check, MoreVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { ScoringRule } from "@/convex/screening/scoring";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// A "required" question scores No and N/A this low so any non-Yes answer sinks
+// the paper below any star threshold. Both being this value === required.
+const REQUIRED_SCORE = -1000;
 
 interface ScoringRulesEditorProps {
   questions: { key: string; question: string }[];
@@ -47,6 +57,20 @@ export function ScoringRulesEditor({
       rule.questionKey === questionKey ? { ...rule, [field]: value } : rule
     );
     onChange(updated);
+  }
+
+  // A "required" question disqualifies any non-Yes answer — done bluntly by
+  // scoring both No and N/A as -1000 (those inputs are then hidden). One onChange
+  // sets both, so there's no stale-state clobber.
+  function setRequired(questionKey: string, required: boolean) {
+    const value = required ? REQUIRED_SCORE : 0;
+    onChange(
+      rules.map((rule) =>
+        rule.questionKey === questionKey
+          ? { ...rule, noPoints: value, nullPoints: value }
+          : rule,
+      ),
+    );
   }
 
   function startEdit(index: number) {
@@ -103,17 +127,19 @@ export function ScoringRulesEditor({
           const rule = rules.find((r) => r.questionKey === q.key);
           if (!rule) return null;
           const isEditing = editingIndex === i;
+          const isRequired =
+            rule.noPoints === REQUIRED_SCORE && rule.nullPoints === REQUIRED_SCORE;
 
           return (
             <div
               key={q.key}
-              className={`flex items-center gap-2 px-3 py-2 ${
+              className={`flex items-start gap-2 px-3 py-2 ${
                 i < questions.length - 1 ? "border-b border-border/30" : ""
               }`}
             >
               {/* Numbered question */}
-              <div className="flex flex-1 items-center gap-2 min-w-0">
-                <span className="shrink-0 text-xs font-semibold text-muted-foreground tabular-nums">
+              <div className="flex flex-1 items-start gap-2 min-w-0">
+                <span className="mt-0.5 shrink-0 text-xs font-semibold text-muted-foreground tabular-nums">
                   {i + 1}.
                 </span>
                 {isEditing ? (
@@ -129,7 +155,7 @@ export function ScoringRulesEditor({
                     disabled={disabled}
                   />
                 ) : (
-                  <span className="truncate text-sm text-foreground/90">
+                  <span className="min-w-0 flex-1 text-sm leading-5 text-foreground/90">
                     {q.question}
                   </span>
                 )}
@@ -153,7 +179,7 @@ export function ScoringRulesEditor({
                     handlePointChange(q.key, "noPoints", Number(e.target.value))
                   }
                   disabled={disabled}
-                  className="h-7 w-16 text-center"
+                  className={`h-7 w-16 text-center ${isRequired ? "invisible" : ""}`}
                 />
                 <Input
                   type="number"
@@ -162,12 +188,12 @@ export function ScoringRulesEditor({
                     handlePointChange(q.key, "nullPoints", Number(e.target.value))
                   }
                   disabled={disabled}
-                  className="h-7 w-16 text-center"
+                  className={`h-7 w-16 text-center ${isRequired ? "invisible" : ""}`}
                 />
 
-                {/* Edit/Delete actions */}
+                {/* Edit/Delete actions — collapsed into a kebab menu to free row space */}
                 {canManage && (
-                  <div className="flex items-center gap-0.5 w-14 justify-end">
+                  <div className="flex shrink-0 items-center gap-0.5 justify-end">
                     {isEditing ? (
                       <>
                         <Button variant="ghost" size="icon" onClick={() => saveEdit(i)} disabled={disabled} className="h-7 w-7">
@@ -178,14 +204,36 @@ export function ScoringRulesEditor({
                         </Button>
                       </>
                     ) : (
-                      <>
-                        <Button variant="ghost" size="icon" onClick={() => startEdit(i)} disabled={disabled} className="h-7 w-7 text-muted-foreground">
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onRemoveQuestion(i)} disabled={disabled} className="h-7 w-7 text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={disabled}
+                            aria-label={tc("more")}
+                            className="h-7 w-7 text-muted-foreground"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => startEdit(i)}>
+                            <Pencil className="mr-2 h-3.5 w-3.5" />
+                            {tc("edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setRequired(q.key, !isRequired)}>
+                            <Asterisk className="mr-2 h-3.5 w-3.5" />
+                            {isRequired ? t("makeOptional") : t("makeRequired")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => onRemoveQuestion(i)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-3.5 w-3.5" />
+                            {tc("delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 )}

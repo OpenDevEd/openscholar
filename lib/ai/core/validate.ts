@@ -1,4 +1,5 @@
 import { jsonrepair } from 'jsonrepair'
+import { hasWildcardInQuotedPhrase } from '../../search/wildcard'
 
 export function validateQuery(query: string): string {
   const openParens = (query.match(/\(/g) || []).length
@@ -10,6 +11,12 @@ export function validateQuery(query: string): string {
 
   if (/OR\s*$|AND\s*$|NOT\s*$/.test(query)) {
     throw new Error('Generated query ends with an incomplete operator')
+  }
+
+  // OpenAlex rejects a wildcard inside a quoted phrase ("contextual support*").
+  // Fail validation so the op retries and re-prompts the model to fix it.
+  if (hasWildcardInQuotedPhrase(query)) {
+    throw new Error('Generated query has a wildcard (* or ?) inside a quoted phrase')
   }
 
   return query

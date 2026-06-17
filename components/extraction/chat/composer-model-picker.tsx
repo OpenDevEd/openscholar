@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { getProviderIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
@@ -82,6 +84,21 @@ export function ComposerModelPicker({
   const t = useTranslations("extraction");
   const [open, setOpen] = useState(false);
   const sortedModels = useMemo(() => models, [models]);
+
+  // Preset shortcuts (Fast / Balanced / Intelligent) resolved to catalog rows.
+  const presetConfig = useQuery(api.aiModelConfig.queries.list, {});
+  const presetRows = useMemo(() => {
+    const order: Record<string, number> = {
+      "preset.fast": 0,
+      "preset.balanced": 1,
+      "preset.intelligent": 2,
+    };
+    return (presetConfig ?? [])
+      .filter((r) => r.key in order)
+      .sort((a, b) => order[a.key] - order[b.key])
+      .map((r) => ({ label: r.label ?? r.key, m: sortedModels.find((x) => x.modelId === r.modelId) }))
+      .filter((r): r is { label: string; m: ChatModelRow } => Boolean(r.m));
+  }, [presetConfig, sortedModels]);
 
   const groups = useMemo(() => {
     const byProvider = new Map<string, typeof sortedModels>();
@@ -149,6 +166,34 @@ export function ComposerModelPicker({
           <CommandInput placeholder={t("chatModelPickerSearch")} />
           <CommandList className="max-h-[340px]">
             <CommandEmpty>{t("chatModelPickerEmpty")}</CommandEmpty>
+            {presetRows.length > 0 ? (
+              <>
+                <CommandGroup heading={t("chatModelPresets")}>
+                  {presetRows.map(({ label, m }) => {
+                    const Icon = getProviderIcon(m.provider as AIProvider);
+                    const isSelected = m._id === value;
+                    return (
+                      <CommandItem
+                        key={`preset-${m._id}`}
+                        value={`Preset ${label} ${stripProviderPrefix(m.name)}`}
+                        onSelect={() => {
+                          onChange(m._id);
+                          setOpen(false);
+                        }}
+                        data-preset-option={label}
+                        className="gap-2.5 py-2"
+                      >
+                        <Icon className={cn("size-3.5 shrink-0", isSelected ? "text-foreground" : "text-muted-foreground/70")} />
+                        <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+                        <span className="shrink-0 truncate text-[11px] text-muted-foreground">{stripProviderPrefix(m.name)}</span>
+                        <CheckIcon className={cn("size-3.5 shrink-0 text-primary transition-opacity", isSelected ? "opacity-100" : "opacity-0")} aria-hidden />
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            ) : null}
             {groups.map(([provider, list], i) => {
               const Icon = getProviderIcon(provider as AIProvider);
               return (

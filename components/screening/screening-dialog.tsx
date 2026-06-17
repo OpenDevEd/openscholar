@@ -44,13 +44,15 @@ function getDefaultScoringConfig(questions: { key: string; question: string }[])
     nullPoints: 0,
   }));
 
-  const n = questions.length;
+  // Incrementing defaults so each star tier needs a distinct, higher score. The
+  // old percentage formula (floor(n*pct)+1) collapsed to repeated 1s for small
+  // question sets, leaving most tiers tied at >= 1.
   const starThresholds: StarThreshold[] = [
-    { minScore: 0, stars: 1 },
-    { minScore: 1, stars: 2 },
-    { minScore: Math.floor(n * 0.25) + 1, stars: 3 },
-    { minScore: Math.floor(n * 0.5) + 1, stars: 4 },
-    { minScore: Math.floor(n * 0.75) + 1, stars: 5 },
+    { minScore: 1, stars: 1 },
+    { minScore: 2, stars: 2 },
+    { minScore: 3, stars: 3 },
+    { minScore: 4, stars: 4 },
+    { minScore: 5, stars: 5 },
   ];
 
   return { rules, starThresholds };
@@ -109,9 +111,7 @@ export function ScreeningDialog({
   const [starThresholds, setStarThresholds] = useState<StarThreshold[]>(
     defaults.starThresholds
   );
-  const [minimumScore, setMinimumScore] = useState<number | undefined>(
-    undefined
-  );
+  const [minimumScore, setMinimumScore] = useState<number | undefined>(1);
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     import("@/convex/_generated/dataModel").Id<"collections"> | undefined
   >(undefined);
@@ -123,7 +123,7 @@ export function ScreeningDialog({
       setLocalQuestions([]);
       setScoringRules([]);
       setStarThresholds(getDefaultScoringConfig([]).starThresholds);
-      setMinimumScore(undefined);
+      setMinimumScore(1);
       setSelectedCollectionId(undefined);
     }
     prevOpenRef.current = open;

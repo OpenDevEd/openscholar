@@ -122,10 +122,15 @@ export function YearRangePicker({
   );
 
   const applyYearPreset = (preset: [number, number]) => {
-    commitYearRange(preset);
+    // Order matters. `updateFilter` reads a stale URL snapshot per call, and the
+    // enable path re-derives yf/yt from the OLD range when none is passed — so an
+    // enable issued AFTER the range clobbers the preset with the default range
+    // (the "press twice to activate" bug). Enable first, then commit the range so
+    // the preset is the last (winning) write.
     if (showToggle && !isEnabled && onToggleEnabled) {
       onToggleEnabled(true);
     }
+    commitYearRange(preset);
   };
 
   // Whether to show the range controls (always when no toggle, or when enabled)

@@ -13,7 +13,8 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { processScreeningBatch } from "../../lib/ai/core/batch";
-import { withUserCreditsBatch, getModel } from "../ai/helpers";
+import { withUserCreditsBatch } from "../ai/helpers";
+import { resolveOpenRouterModel } from "../chat/provider";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
@@ -95,6 +96,13 @@ export const screenPaperAction = internalAction({
       (q: { key: string; question: string }) => q.question
     );
 
+    // Resolve the per-user server model for this job; pricing comes from the same
+    // row and is passed to the wrapper so the deduction matches the model that ran.
+    const { model, pricing: serverPricing, modelSlug: serverModelSlug } = await resolveOpenRouterModel(
+      ctx,
+      job.serverModelId ?? null,
+    );
+
     // 5. Call AI screening with credit billing
     try {
       const screeningResult: ScreeningResultData = await withUserCreditsBatch<ScreeningResultData>(
@@ -102,7 +110,6 @@ export const screenPaperAction = internalAction({
         job.userId as Id<"users">,
         `Bulk screening`,
         async (_pricing) => {
-          const model = await getModel();
           const paperId = String(args.resultId);
           const batchResult = await processScreeningBatch({
             model,
@@ -158,6 +165,8 @@ export const screenPaperAction = internalAction({
         {
           billingType: "screening",
           metadata: { openalexId: result.openalexId },
+          pricingOverride: serverPricing,
+          modelSlugOverride: serverModelSlug,
         },
       );
 

@@ -20,10 +20,9 @@ export const listChatModels = query({
     }),
   ),
   handler: async (ctx) => {
-    const rows = await ctx.db
-      .query("models")
-      .withIndex("by_served_sort", (q) => q.eq("isServed", true))
-      .collect();
+    // Chat lets you pick ANY catalog model (isServed is curation, not a runtime
+    // gate). Served models keep their curated sortOrder; the rest sort last.
+    const rows = await ctx.db.query("models").collect();
     return rows.map((m) => ({
       _id: m._id,
       modelId: m.modelId,

@@ -352,7 +352,43 @@
     "useSmartMode": "Utiliser le mode intelligent",
     "smartModeDescription": "Utilise les crédits s'ils sont disponibles, puis bascule vers votre clé API",
     "creditsModeDisabled": "Le mode crédits est désactivé",
-    "creditsModeDisabledDescription": "Les crédits sont actuellement désactivés pour cette application. Passez au mode intelligent ou utilisez vos clés API."
+    "creditsModeDisabledDescription": "Les crédits sont actuellement désactivés pour cette application. Passez au mode intelligent ou utilisez vos clés API.",
+    "creditsOnly": "credits",
+    "serverSignInBlurb": "Run Chat, Extraction & Screen All instantly — no card.",
+    "customModel": "Custom model",
+    "recommended": "Recommended",
+    "providerAndKey": "Provider & key",
+    "features": {
+      "chat": "Chat",
+      "extraction": "Extraction",
+      "screenAll": "Screen All"
+    },
+    "localFeatures": {
+      "questionToQuery": "Question → query",
+      "refine": "Refine",
+      "translateQuery": "Translate query",
+      "translatePaper": "Translate paper",
+      "screening": "Screening",
+      "broadenNarrow": "Broaden / narrow"
+    },
+    "modeLabel": {
+      "smart": "Smart",
+      "local": "My keys",
+      "credits": "Credits"
+    },
+    "modeShort": {
+      "smart": "Credits, then your key",
+      "local": "Own provider & model",
+      "credits": "Your account balance"
+    },
+    "modeLocked": {
+      "notOnPlan": "Not on your plan",
+      "signIn": "Sign in to use"
+    },
+    "primaryModelTitle": "Select your primary model",
+    "secondaryModelTitle": "Select your secondary model",
+    "primaryModelDesc": "Always used for Chat, Extraction & Screen All — runs in the OpenScholar cloud.",
+    "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
     "transactions": {
@@ -952,7 +988,8 @@
       "presetHundred": "100",
       "presetMax": "Max",
       "liveAnnouncement": "Nombre d'articles défini sur {count, number}"
-    }
+    },
+    "chatModelPresets": "Presets"
   },
   "sourcesPanel": {
     "title": "Sources",
@@ -2050,7 +2087,9 @@
     "qualifiedCount": "{count} qualifiés",
     "newCollectionName": "Nom de la collection",
     "closeDialog": "Fermer",
-    "newScreening": "Nouveau criblage"
+    "newScreening": "Nouveau criblage",
+    "makeRequired": "Make required",
+    "makeOptional": "Make optional"
   },
   "connectionsPage": {
     "connectedApps": "Applications connectées",

@@ -24,12 +24,18 @@ const {
   },
 }));
 
-vi.mock("./aiRuntime", async () => {
+// The extraction run path resolves its model+pricing through the shared chat
+// resolver now (per-user server model). Mock that to the deterministic fixture.
+vi.mock("../chat/provider", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../chat/provider")>();
   const { MockLanguageModelV3 } = await import("ai/test");
 
   return {
-    getExtractionModel: async () =>
-      new MockLanguageModelV3({
+    ...actual,
+    resolveOpenRouterModel: async () => ({
+      modelSlug: "mock/extraction-model",
+      pricing: { input: 0.1, output: 0.1 },
+      model: new MockLanguageModelV3({
         provider: "mock-extraction-provider",
         modelId: "mock-extraction-model",
         doGenerate: async () => {
@@ -64,7 +70,7 @@ vi.mock("./aiRuntime", async () => {
           };
         },
       }),
-    getExtractionPricing: async () => ({ input: 0.1, output: 0.1 }),
+    }),
   };
 });
 

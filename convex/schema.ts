@@ -100,6 +100,38 @@ export default defineSchema({
   }).index("by_key", ["key"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // AI_MODEL_CONFIG - global curated model config: credit presets
+  // (preset.fast/balanced/intelligent) + per-provider defaults
+  // (default.openai/anthropic/google/openrouter). Decoupled from the
+  // OpenRouter sync; mirrors the featureFlags key-keyed pattern.
+  // ═══════════════════════════════════════════════════════════════
+  aiModelConfig: defineTable({
+    key: v.string(), // "preset.fast" | "preset.balanced" | "preset.intelligent" | "default.<provider>"
+    modelId: v.string(), // model slug the key resolves to
+    label: v.optional(v.string()),
+    blurb: v.optional(v.string()),
+    sortOrder: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // USER_AI_CONFIG - per-user server-model choice (credits path).
+  // serverModelId is sticky: only read when serverPreset === "custom",
+  // and never cleared when switching to a named preset.
+  // ═══════════════════════════════════════════════════════════════
+  userAiConfig: defineTable({
+    userId: v.id("users"),
+    serverPreset: v.union(
+      v.literal("fast"),
+      v.literal("balanced"),
+      v.literal("intelligent"),
+      v.literal("custom"),
+    ),
+    serverModelId: v.optional(v.id("models")),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // USERS - synced from Clerk, single source of truth in Convex
   // ═══════════════════════════════════════════════════════════════
   users: defineTable(userFields)
@@ -494,6 +526,8 @@ export default defineSchema({
       minimumScore: v.optional(v.number()),
     }),
     targetCollectionId: v.optional(v.id("collections")),
+    // Resolved per-user server model for this bulk screening run (credits path).
+    serverModelId: v.optional(v.id("models")),
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),

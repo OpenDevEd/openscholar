@@ -20,6 +20,7 @@ import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
+import { resolveServerModelId } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { PAPER_LIMIT_MAX, assertBucketWithinLimits } from "../bucket/limits";
@@ -135,15 +136,20 @@ export const startJob = mutation({
       }
     }
 
-    // Pre-resolve so the composer's controlled value is never null and never has to auto-default on the client.
+    // Pre-resolve so the composer's controlled value is never null. Default a new
+    // chat to the user's server-model preset (balanced unless they changed it),
+    // which swapModel can still override per conversation.
     let resolvedChatModelId: Id<"models"> | undefined = args.chatModelId;
     if (args.mode === "chat" && resolvedChatModelId === undefined) {
-      const firstServed = await ctx.db
-        .query("models")
-        .withIndex("by_served_sort", (q) => q.eq("isServed", true))
-        .first();
-      resolvedChatModelId = firstServed?._id;
+      resolvedChatModelId = (await resolveServerModelId(ctx, user._id)) ?? undefined;
     }
+
+    // Stamp the resolved per-user server model on extraction-mode jobs (credits
+    // path), read back at run by paperWorker via resolveOpenRouterModel.
+    const serverModelId =
+      args.mode === "extraction"
+        ? await resolveServerModelId(ctx, user._id)
+        : undefined;
 
     const now = Date.now();
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
@@ -159,6 +165,7 @@ export const startJob = mutation({
             totalPapers: 0,
             runEpoch: 0,
             usePdfs: args.usePdfs ?? false,
+            ...(serverModelId && { serverModelId }),
             ...(estimate !== undefined && { estimatedCredits: estimate }),
           }
         : {
@@ -311,6 +318,7 @@ export const duplicateJob = mutation({
       .order("asc")
       .collect();
 
+    const dupServerModelId = await resolveServerModelId(ctx, user._id);
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       mode: "extraction" as const,
@@ -320,6 +328,7 @@ export const duplicateJob = mutation({
       totalPapers: 0,
       runEpoch: 0,
       usePdfs: oldJob.usePdfs ?? false,
+      ...(dupServerModelId && { serverModelId: dupServerModelId }),
       createdAt: now,
       updatedAt: now,
     });

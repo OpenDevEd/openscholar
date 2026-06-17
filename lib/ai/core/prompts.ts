@@ -37,13 +37,15 @@ Elasticsearch Rules:
 - Use AND, OR, NOT operators (case sensitive) - THESE OPERATORS MUST NEVER BE TRANSLATED
 - Group with parentheses for precedence
 - Use quotes for exact phrases: "machine learning"
-- Wildcards: algorithm* for variations
+- Wildcards: algorithm* for variations (ON A BARE TERM ONLY)
+- NEVER put a wildcard (* or ?) inside a quoted phrase. "contextual support*" is INVALID and is rejected by the search engine. To wildcard a multi-word concept, drop the quotes (contextual support*) or split it: "contextual support" OR support*
 - Field searches: title:"deep learning"
 
 Validation Rules:
 - Always return a complete Boolean query with balanced parentheses
 - Never leave unfinished groups
 - Do not end with OR, AND, or NOT
+- Never place a wildcard (* or ?) inside quotes — no "phrase*"
 - Limit synonym groups to the most common 2–3 academic terms to avoid truncation
 - The final query must be executable in Elasticsearch
 
@@ -143,6 +145,8 @@ export function buildTranslateQueryPrompts(input: TranslateQueryInput) {
 4. The same query structure and complexity
 
 CRITICAL RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as the literal strings "AND", "OR", and "NOT", even when translating the rest of the query. These are syntax keywords that must remain unchanged.
+
+CRITICAL RULE: Never place a wildcard (* or ?) inside a quoted phrase (e.g. "term*" is INVALID and rejected by the search engine). Preserve wildcards exactly where they already sit on bare, unquoted terms; do not move one into quotes when translating.
 
 Translate naturally and fluently, using the most appropriate academic terms in the target language, but preserve the Boolean operators AND, OR, NOT as literal strings.`,
     prompt: `Translate this academic search query to ${getLanguageName(input.targetLanguage)}:

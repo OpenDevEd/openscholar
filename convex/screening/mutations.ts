@@ -10,6 +10,7 @@ import {
 } from "./validators";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { resolveServerModelId } from "../ai/serverModel";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 import { screeningPool } from "../workpool";
@@ -96,7 +97,9 @@ export const createScreeningJob = mutation({
       );
     }
 
-    // 5. Create screening job record
+    // 5. Create screening job record (stamp the resolved per-user server model;
+    // read back at run by screenPaperAction via resolveOpenRouterModel).
+    const serverModelId = await resolveServerModelId(ctx, user._id);
     const now = Date.now();
     const jobId = await ctx.db.insert("screeningJobs", {
       userId: user._id,
@@ -105,6 +108,7 @@ export const createScreeningJob = mutation({
       questions: args.questions,
       scoringConfig: args.scoringConfig,
       targetCollectionId: args.targetCollectionId,
+      ...(serverModelId && { serverModelId }),
       createdAt: now,
       updatedAt: now,
     });

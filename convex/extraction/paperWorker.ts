@@ -10,7 +10,7 @@ import {
 } from "@/lib/errors/taxonomy";
 import { chunk } from "./batching";
 import { getProcessableFlags } from "./content";
-import { getExtractionModel, getExtractionPricing } from "./aiRuntime";
+import { resolveOpenRouterModel } from "../chat/provider";
 import {
   batchSkipReasonToWorkerSkipReason,
   captureCompletedQuestionTracking,
@@ -212,12 +212,14 @@ async function runQuestionBatch(
     expectedEpoch,
     model,
     pricing,
+    modelSlug,
   }: {
     context: PaperExtractionContext;
     batch: ReadonlyArray<QuestionItem>;
     expectedEpoch: number;
-    model: Awaited<ReturnType<typeof getExtractionModel>>;
-    pricing: Awaited<ReturnType<typeof getExtractionPricing>>;
+    model: Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
+    pricing: Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
+    modelSlug: string;
   },
 ): Promise<QueueStopStatus | null> {
   const outcomes = await Promise.all(
@@ -280,6 +282,7 @@ async function runQuestionBatch(
       distinctId: context.user.clerkId,
       outcomes: completed,
       persistedQuestionKeys: new Set(writeResult.completed),
+      modelSlug,
     });
   }
 
@@ -300,10 +303,12 @@ async function runQuestionBatches(
     expectedEpoch: number;
   },
 ): Promise<QueueStopStatus | null> {
-  const [model, pricing] = await Promise.all([
-    getExtractionModel(),
-    getExtractionPricing(ctx),
-  ]);
+  // Per-user server model stamped on the job (credits path). Pricing comes from
+  // the SAME row, so the deduction can never diverge from the model that ran.
+  const { model, pricing, modelSlug } = await resolveOpenRouterModel(
+    ctx,
+    context.job.serverModelId ?? null,
+  );
   for (const batch of chunk(items, questionConcurrency)) {
     const stopStatus = await runQuestionBatch(ctx, {
       context,
@@ -311,6 +316,7 @@ async function runQuestionBatches(
       expectedEpoch,
       model,
       pricing,
+      modelSlug,
     });
     if (stopStatus) return stopStatus;
   }

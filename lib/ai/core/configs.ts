@@ -40,6 +40,12 @@ export interface OperationConfig<TInput, TOutput> {
   postProcess?: (output: TOutput, input: TInput) => any
 }
 
+// A query-validation error worth re-prompting on (vs a hard failure).
+const isRetryableQueryError = (error: Error): boolean =>
+  error.message.includes('unbalanced parentheses') ||
+  error.message.includes('incomplete operator') ||
+  error.message.includes('wildcard')
+
 export function getEnhanceQueryConfig(
   input: EnhanceSearchQueryInput
 ): OperationConfig<EnhanceSearchQueryInput, z.infer<typeof queryEnhancementSchema>> {
@@ -51,9 +57,7 @@ export function getEnhanceQueryConfig(
     temperature: 1,
     retryConfig: {
       maxRetries: 10,
-      shouldRetry: (error, attempt) =>
-        error.message.includes('unbalanced parentheses') ||
-        error.message.includes('incomplete operator'),
+      shouldRetry: (error) => isRetryableQueryError(error),
       onRetry: (error, attempt) => {
         console.warn(`Query validation failed (attempt ${attempt}/10):`, error)
       },
@@ -126,6 +130,19 @@ export function getTranslateQueryConfig(
     input,
     repairStrategy: { type: 'single-field', fieldName: 'translatedQuery' },
     temperature: 0.3,
+    retryConfig: {
+      maxRetries: 5,
+      shouldRetry: (error) => isRetryableQueryError(error),
+      onRetry: (error, attempt) => {
+        console.warn(`Translate validation failed (attempt ${attempt}/5):`, error)
+      },
+    },
+    // Same guard as the enhance op — a wildcard inside a quoted phrase (or other
+    // invalid query shape) fails validation and re-prompts the translator.
+    validator: (output) => ({
+      ...output,
+      translatedQuery: validateQuery(output.translatedQuery),
+    }),
   }
 }
 
