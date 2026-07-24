@@ -40,7 +40,7 @@
     "@formatjs/intl-localematcher": "^0.8.1",
     "@next/third-parties": "^16.2.2",
     "@openrouter/ai-sdk-provider": "^2.8.0",
-    "@sickrin/openalex-sdk": "^1.0.0",
+    "@sickrin/openalex-sdk": "^1.1.0",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
     "@tanstack/react-virtual": "^3.13.24",
