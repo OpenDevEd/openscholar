@@ -1,3 +1,71 @@
+## Ultimate rules
+
+1. **DRY first.** Before implementing anything, search the codebase for an existing component, helper, contract, test fixture, or workflow that can be extended or repurposed.
+2. **Research before guessing.** Words such as "likely", "possible", "probably", and "I think" are a stop signal. Use the `find-skills` skill, the relevant installed skill, primary/current documentation, library source, and web research before deciding.
+3. **No legacy compatibility.** This project is pre-testing. Prefer clean breaking changes, remove obsolete paths, and leave no dead code, compatibility shims, dual behavior, or feature-flag fallback unless the user explicitly changes this rule.
+4. **Do not derail work over secrets.** The user accepts environment values appearing in agent history and terminal output. Do not rotate keys, lecture about exposure, or add redaction work unless requested.
+
+## Product identity and repository boundary
+
+This repository is **OpenScholar**, not merely an academic search engine. OpenScholar supports research discovery, literature reviews, screening, data extraction, source-grounded chat and synthesis, evidence organization, and publishing to public Evidence Libraries. It is also the intended subscription and control-plane surface through which users and organizations create, configure, provision, and operate those libraries.
+
+The complementary Evidence Library runtime is developed in `OpenDevEd/new-el` on branch `openscholar`. That repository owns the public library, record-and-metadata `/admin`, canonical published records, files, runtime manifests, search projection, source synchronization, and Zotero writeback. Do not reimplement those runtime responsibilities here. Cross-repository publishing must use an explicit authenticated, versioned, idempotent contract.
+
+Active development branch for this repository: `dev`.
+
+## Outline knowledge base — required project context
+
+The shared durable knowledge base is the **OpenScholar** collection in Outline.
+
+- Collection ID: `16480726-288c-42f7-9912-5047444585c9`
+- Start document: **00 — Start Here: OpenScholar Agent Map**
+- Start document ID: `cc243a51-87ec-4137-869e-0e791f6161f4`
+- OpenScholar current state: `6dcc7403-a39f-4922-8a6c-a5c7b2a900dd`
+- Product boundaries: `ff5168e3-7289-42b2-a3e4-a07401fcfce1`
+- Integration contract: `ff15f65c-bf85-48b3-baf5-e849f85cde41`
+- Current decisions: `636ce019-6fe6-4a4e-918b-95e0912cc92d`
+- Development runbooks: `30b7169b-1530-424a-a374-80478d1bee56`
+- Knowledge-base protocol: `81d7111b-d75c-46d2-9229-e1eb44934195`
+
+At the start of product, architecture, roadmap, or cross-repository work:
+
+1. Confirm the Outline MCP server is connected.
+2. Read the Start document by ID.
+3. Read the OpenScholar current-state page.
+4. Read only the additional pages relevant to the task.
+5. Cross-check implementation and deployment claims against this branch, tests, pm2 logs, and the live runtime.
+
+If Outline is unavailable, continue only when repository-local context is sufficient and explicitly report that the knowledge base could not be read or updated. Never claim an MCP write succeeded without re-reading it.
+
+## Knowledge-base write requirement
+
+Outline must track durable shared truth, not every commit. After an authorized change is verified and pushed, update the smallest canonical Outline page when the work changes:
+
+- a product or architecture decision;
+- repository ownership or a cross-repository contract;
+- actual implementation status;
+- a supported development or operational workflow;
+- deployment topology; or
+- roadmap interpretation.
+
+Search before creating a page. Update the canonical document instead of creating duplicates. Record the date, repository, branch, commit, and verification evidence. Preserve superseded decisions and their rationale. Do not document uncommitted experiments or let Outline get ahead of Git.
+
+## Authority and roadmap interpretation
+
+When sources conflict, use this order:
+
+1. the user's current explicit instruction;
+2. active branch code, tests, committed history, and verified runtime;
+3. current Outline decisions;
+4. the applicable product roadmap;
+5. delivery plans, prototypes, transcripts, historical audits, and superseded material.
+
+The BeeWriter `roadmap.qmd` remains the Evidence Library/self-service product roadmap despite its obsolete callout; the user explicitly rejected that callout. In that roadmap, the “subscription website” is OpenScholar. `roadmap-v2.qmd` is a narrower Discover-to-Publish pilot programme and does not replace the broader product roadmap.
+
+The rule that branch-only work “does not exist” applied only when constructing a clean GitHub milestone baseline from `main`. It does not apply to current engineering status. Report OpenScholar progress from `dev`; report Evidence Library progress from `new-el/openscholar`.
+
+Zotero Sync and Zotero Writeback, including source collection-membership writeback, already exist in `new-el/openscholar`. Never plan them as untouched future work.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
