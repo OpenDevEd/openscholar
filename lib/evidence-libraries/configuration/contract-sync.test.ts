@@ -49,4 +49,21 @@ describe("createContractSnapshot", () => {
       }),
     ).toThrow(/schema digest mismatch/i);
   });
+
+  test("rejects artifacts whose declared schema versions disagree", () => {
+    const mismatchedCatalogText = `${JSON.stringify({
+      schemaVersion: 2,
+      catalogVersion: 1,
+      fields: { writeOnlyPaths: [] },
+    })}\n`;
+
+    expect(() =>
+      createContractSnapshot({
+        repository: "https://github.com/OpenDevEd/new-el",
+        commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+        schemaText,
+        catalogText: mismatchedCatalogText,
+      }),
+    ).toThrow(/schema version mismatch/i);
+  });
 });
