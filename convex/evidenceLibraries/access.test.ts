@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { parseOrganizationClaims } from "./access";
+import { canPerformOrganizationAction, parseOrganizationClaims } from "./access";
 
 describe("parseOrganizationClaims", () => {
   test("accepts the verified active-organization admin claim", () => {
@@ -17,5 +17,14 @@ describe("parseOrganizationClaims", () => {
       role: "org:admin",
       canManage: true,
     });
+  });
+});
+
+describe("canPerformOrganizationAction", () => {
+  test("allows admins to manage while members remain read-only", () => {
+    expect(canPerformOrganizationAction("org:admin", "read")).toBe(true);
+    expect(canPerformOrganizationAction("org:admin", "manage")).toBe(true);
+    expect(canPerformOrganizationAction("org:member", "read")).toBe(true);
+    expect(canPerformOrganizationAction("org:member", "manage")).toBe(false);
   });
 });

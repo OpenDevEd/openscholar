@@ -1,4 +1,5 @@
 export type OrganizationRole = "org:admin" | "org:member";
+export type OrganizationAction = "read" | "manage";
 
 export type OrganizationClaims = {
   organizationId: string;
@@ -8,6 +9,13 @@ export type OrganizationClaims = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function canPerformOrganizationAction(
+  role: OrganizationRole,
+  action: OrganizationAction,
+): boolean {
+  return action === "read" || role === "org:admin";
 }
 
 export function parseOrganizationClaims(identity: unknown): OrganizationClaims | null {
@@ -21,6 +29,6 @@ export function parseOrganizationClaims(identity: unknown): OrganizationClaims |
   return {
     organizationId,
     role,
-    canManage: role === "org:admin",
+    canManage: canPerformOrganizationAction(role, "manage"),
   };
 }
