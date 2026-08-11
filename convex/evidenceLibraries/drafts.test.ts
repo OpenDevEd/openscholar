@@ -206,6 +206,9 @@ describe("Evidence Library draft storage", () => {
         expectedEditVersion: 1,
       }),
     );
+    const libraryAfterFinalize = await admin.run((ctx) =>
+      ctx.db.get(created.libraryId),
+    );
     await admin.run((ctx) =>
       saveEvidenceLibraryDraftSection(ctx, {
         libraryId: created.libraryId,
@@ -222,6 +225,8 @@ describe("Evidence Library draft storage", () => {
     );
 
     expect(finalized).toMatchObject({ revisionKey: "r1", revisionNumber: 1 });
+    expect(libraryAfterFinalize).toMatchObject({ state: "provisioning" });
+    expect(libraryAfterFinalize).not.toHaveProperty("activeRevisionId");
     expect(revision.sections).toEqual([
       expect.objectContaining({
         sectionKey: "identity",

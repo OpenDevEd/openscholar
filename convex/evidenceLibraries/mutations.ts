@@ -182,12 +182,6 @@ export async function finalizeEvidenceLibraryDraft(
       createdAt: now,
     });
   }
-  await ctx.db.patch("evidenceLibraries", args.libraryId, {
-    activeRevisionId: revisionId,
-    state: "active",
-    updatedByClerkUserId: access.clerkUserId,
-    updatedAt: now,
-  });
   await ctx.db.patch("evidenceLibraryConfigDrafts", draft._id, {
     baseRevisionId: revisionId,
     editVersion,
