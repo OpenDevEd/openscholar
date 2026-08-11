@@ -1,4 +1,9 @@
 import catalogs from "./generated/library-config.catalogs.json";
+import {
+  escapeJsonPointerToken,
+  jsonPointerPatternMatches,
+  unescapeJsonPointerToken,
+} from "./json-pointer";
 
 export const ENVELOPE_FIELDS = [
   "schemaVersion",
@@ -195,20 +200,12 @@ export const SECTION_REGISTRY = [
   },
 ] as const satisfies readonly SectionDefinition[];
 
-function escapePointerToken(token: string) {
-  return token.replaceAll("~", "~0").replaceAll("/", "~1");
-}
-
-function unescapePointerToken(token: string) {
-  return token.replaceAll("~1", "/").replaceAll("~0", "~");
-}
-
 export function writeOnlyPathToPointerPattern(path: string): `/${string}` {
   const tokens = path.split(".").flatMap((segment) => {
     if (segment.endsWith("[]")) return [segment.slice(0, -2), "*"];
     return [segment];
   });
-  return `/${tokens.map(escapePointerToken).join("/")}`;
+  return `/${tokens.map(escapeJsonPointerToken).join("/")}`;
 }
 
 export const WRITE_ONLY_POINTER_PATTERNS = catalogs.fields.writeOnlyPaths.map(
@@ -224,7 +221,7 @@ export function resolveSchemaPointer(
 
   let current: unknown = schema;
   for (const rawToken of pointer.slice(1).split("/")) {
-    const token = unescapePointerToken(rawToken);
+    const token = unescapeJsonPointerToken(rawToken);
     if (!current || typeof current !== "object") return undefined;
     const node = current as {
       properties?: Record<string, unknown>;
@@ -239,27 +236,16 @@ export function resolveSchemaPointer(
   return current;
 }
 
-function pointerMatches(pattern: string, pointer: string) {
-  const patternTokens = pattern.split("/");
-  const pointerTokens = pointer.split("/");
-  return (
-    patternTokens.length === pointerTokens.length &&
-    patternTokens.every(
-      (token, index) => token === "*" || token === pointerTokens[index],
-    )
-  );
-}
-
 export function getFieldAuthority(pointer: string): FieldAuthority | undefined {
   if (
     WRITE_ONLY_POINTER_PATTERNS.some((pattern) =>
-      pointerMatches(pattern, pointer),
+      jsonPointerPatternMatches(pattern, pointer),
     )
   ) {
     return "credentialLifecycle";
   }
 
-  const sectionKey = unescapePointerToken(pointer.split("/")[1] ?? "");
+  const sectionKey = unescapeJsonPointerToken(pointer.split("/")[1] ?? "");
   if ((ENVELOPE_FIELDS as readonly string[]).includes(sectionKey)) {
     return "controlPlaneGenerated";
   }

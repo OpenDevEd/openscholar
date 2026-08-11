@@ -4,6 +4,7 @@ import Ajv2020, { type ErrorObject } from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 
 import schema from "./generated/library-config.schema.json";
+import { escapeJsonPointerToken } from "./json-pointer";
 import { SECTION_REGISTRY } from "./section-registry";
 
 export type ValidationIssue = {
@@ -19,20 +20,16 @@ ajv.addKeyword("x-dynamicDefault");
 addFormats(ajv);
 const validate = ajv.compile(schema);
 
-function escapePointerToken(token: string) {
-  return token.replaceAll("~", "~0").replaceAll("/", "~1");
-}
-
 function issuePointer(error: ErrorObject) {
   if (error.keyword === "required") {
     const missingProperty = (error.params as { missingProperty: string })
       .missingProperty;
-    return `${error.instancePath}/${escapePointerToken(missingProperty)}`;
+    return `${error.instancePath}/${escapeJsonPointerToken(missingProperty)}`;
   }
   if (error.keyword === "additionalProperties") {
     const property = (error.params as { additionalProperty: string })
       .additionalProperty;
-    return `${error.instancePath}/${escapePointerToken(property)}`;
+    return `${error.instancePath}/${escapeJsonPointerToken(property)}`;
   }
   return error.instancePath || "";
 }
