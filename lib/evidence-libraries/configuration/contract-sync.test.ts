@@ -24,4 +24,15 @@ describe("createContractSnapshot", () => {
       }),
     ).toThrow(/40-character commit SHA/i);
   });
+
+  test("rejects missing repository provenance", () => {
+    expect(() =>
+      createContractSnapshot({
+        repository: "",
+        commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+        schemaText,
+        catalogText,
+      }),
+    ).toThrow(/repository provenance/i);
+  });
 });
