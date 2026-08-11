@@ -86,8 +86,6 @@ async function main() {
   await synchronizeContractSnapshot({
     snapshot,
     outputRoot: options.outputRoot,
-    inspectedCheckoutCommit:
-      existingLock?.source?.inspectedCheckoutCommit ?? checkout.head,
     check: options.check,
   });
 

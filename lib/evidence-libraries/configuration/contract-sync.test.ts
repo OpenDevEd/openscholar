@@ -107,7 +107,6 @@ test("writes exact artifact bytes and verifies them without rewriting", async ()
     await synchronizeContractSnapshot({
       snapshot,
       outputRoot,
-      inspectedCheckoutCommit: "426b4b1a71ed2d5ce045479c1e630c0fc1f3e290",
       check: false,
     });
 
@@ -121,11 +120,84 @@ test("writes exact artifact bytes and verifies them without rewriting", async ()
       synchronizeContractSnapshot({
         snapshot,
         outputRoot,
-        inspectedCheckoutCommit: "426b4b1a71ed2d5ce045479c1e630c0fc1f3e290",
         check: true,
       }),
     ).resolves.toEqual({ changed: false });
   } finally {
+    await rm(outputRoot, { recursive: true, force: true });
+  }
+});
+
+test("produces identical output when only the local checkout HEAD changes", async () => {
+  const sourceRoot = await mkdtemp(join(tmpdir(), "evidence-library-source-"));
+  const outputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-contract-"));
+  const publicRoot = join(sourceRoot, "public");
+
+  try {
+    await mkdir(publicRoot, { recursive: true });
+    await writeFile(join(publicRoot, "library-config.schema.json"), schemaText, "utf8");
+    await writeFile(join(publicRoot, "library-config.catalogs.json"), catalogText, "utf8");
+    execFileSync("git", ["init", "--quiet", sourceRoot]);
+    execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
+    execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
+    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "openscholar"]);
+    execFileSync("git", ["-C", sourceRoot, "add", "public"]);
+    execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "artifacts"]);
+    execFileSync("git", [
+      "-C",
+      sourceRoot,
+      "remote",
+      "add",
+      "origin",
+      "git@github.com:OpenDevEd/new-el.git",
+    ]);
+    const artifactCommit = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    execFileSync("git", [
+      "-C",
+      sourceRoot,
+      "update-ref",
+      "refs/remotes/origin/openscholar",
+      artifactCommit,
+    ]);
+
+    const synchronizeFromCheckout = async () => {
+      const checkout = await inspectContractCheckout({
+        sourceRoot,
+        expectedRepository: "https://github.com/OpenDevEd/new-el",
+        expectedBranch: "openscholar",
+        artifactCommit,
+      });
+      const artifacts = await readContractArtifactsAtCommit({
+        sourceRoot,
+        commit: artifactCommit,
+      });
+      const snapshot = createContractSnapshot({
+        repository: checkout.repository,
+        commit: artifactCommit,
+        ...artifacts,
+      });
+      await synchronizeContractSnapshot({ snapshot, outputRoot, check: false });
+    };
+
+    await synchronizeFromCheckout();
+    const firstLock = await readFile(join(outputRoot, "contract-lock.json"), "utf8");
+    const firstReadme = await readFile(join(outputRoot, "generated/README.md"), "utf8");
+
+    await writeFile(join(sourceRoot, "README.md"), "unrelated local change\n", "utf8");
+    execFileSync("git", ["-C", sourceRoot, "add", "README.md"]);
+    execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "local only"]);
+    await synchronizeFromCheckout();
+
+    await expect(readFile(join(outputRoot, "contract-lock.json"), "utf8")).resolves.toBe(
+      firstLock,
+    );
+    await expect(readFile(join(outputRoot, "generated/README.md"), "utf8")).resolves.toBe(
+      firstReadme,
+    );
+  } finally {
+    await rm(sourceRoot, { recursive: true, force: true });
     await rm(outputRoot, { recursive: true, force: true });
   }
 });
@@ -144,7 +216,6 @@ test("check mode reports drift without repairing the file", async () => {
     await synchronizeContractSnapshot({
       snapshot,
       outputRoot,
-      inspectedCheckoutCommit: "426b4b1a71ed2d5ce045479c1e630c0fc1f3e290",
       check: false,
     });
     await writeFile(schemaPath, "tampered\n", "utf8");
@@ -153,7 +224,6 @@ test("check mode reports drift without repairing the file", async () => {
       synchronizeContractSnapshot({
         snapshot,
         outputRoot,
-        inspectedCheckoutCommit: "426b4b1a71ed2d5ce045479c1e630c0fc1f3e290",
         check: true,
       }),
     ).rejects.toThrow(/contract drift.*library-config\.schema\.json/i);
@@ -190,7 +260,7 @@ test("reads contract bytes from the exact commit instead of the worktree", async
   }
 });
 
-test("normalizes the verified checkout origin and reports its exact head", async () => {
+test("normalizes the verified checkout origin", async () => {
   const sourceRoot = await mkdtemp(join(tmpdir(), "evidence-library-source-"));
 
   try {
@@ -229,7 +299,6 @@ test("normalizes the verified checkout origin and reports its exact head", async
       }),
     ).resolves.toEqual({
       repository: "https://github.com/OpenDevEd/new-el",
-      head,
     });
   } finally {
     await rm(sourceRoot, { recursive: true, force: true });
