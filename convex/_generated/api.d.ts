@@ -56,6 +56,8 @@ import type * as evidenceLibraries_credentialActions from "../evidenceLibraries/
 import type * as evidenceLibraries_credentials from "../evidenceLibraries/credentials.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
+import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
+import type * as evidenceLibraries_provisioningActions from "../evidenceLibraries/provisioningActions.js";
 import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
@@ -261,6 +263,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/credentials": typeof evidenceLibraries_credentials;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
+  "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;
+  "evidenceLibraries/provisioningActions": typeof evidenceLibraries_provisioningActions;
   "evidenceLibraries/queries": typeof evidenceLibraries_queries;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
