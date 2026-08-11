@@ -14,6 +14,7 @@ import {
   seedCreditsForTest,
 } from "../credits/aggregates.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 
 const _registeredTxnAggHandles = new WeakSet<object>();
 function ensureTransactionAggregates(t: ReturnType<typeof convexTest>) {
@@ -197,7 +198,7 @@ describe("createScreeningJob", () => {
     ).rejects.toThrow("VALIDATION_ERROR");
   });
 
-  it("rejects when papers exceed MAX_SCREENING_PAPERS_PER_JOB (201 papers)", async () => {
+  it("rejects when papers exceed MAX_SCREENING_PAPERS_PER_JOB", async () => {
     const t = convexTest(schema);
     setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
@@ -206,7 +207,7 @@ describe("createScreeningJob", () => {
 
     await expect(
       asUser.mutation(api.screening.mutations.createScreeningJob, {
-        papers: makePapers(201),
+        papers: makePapers(MAX_SCREENING_PAPERS_PER_JOB + 1),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
       })
