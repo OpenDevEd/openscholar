@@ -7,6 +7,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   createContractSnapshot,
+  inspectContractCheckout,
   readContractArtifactsAtCommit,
   synchronizeContractSnapshot,
 } from "./contract-sync.mjs";
@@ -183,6 +184,42 @@ test("reads contract bytes from the exact commit instead of the worktree", async
     await expect(readContractArtifactsAtCommit({ sourceRoot, commit })).resolves.toEqual({
       schemaText,
       catalogText,
+    });
+  } finally {
+    await rm(sourceRoot, { recursive: true, force: true });
+  }
+});
+
+test("normalizes the verified checkout origin and reports its exact head", async () => {
+  const sourceRoot = await mkdtemp(join(tmpdir(), "evidence-library-source-"));
+
+  try {
+    execFileSync("git", ["init", "--quiet", sourceRoot]);
+    execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
+    execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
+    await writeFile(join(sourceRoot, "README.md"), "fixture\n", "utf8");
+    execFileSync("git", ["-C", sourceRoot, "add", "README.md"]);
+    execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "fixture"]);
+    execFileSync("git", [
+      "-C",
+      sourceRoot,
+      "remote",
+      "add",
+      "origin",
+      "git@github.com:OpenDevEd/new-el.git",
+    ]);
+    const head = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+
+    await expect(
+      inspectContractCheckout({
+        sourceRoot,
+        expectedRepository: "https://github.com/OpenDevEd/new-el",
+      }),
+    ).resolves.toEqual({
+      repository: "https://github.com/OpenDevEd/new-el",
+      head,
     });
   } finally {
     await rm(sourceRoot, { recursive: true, force: true });
