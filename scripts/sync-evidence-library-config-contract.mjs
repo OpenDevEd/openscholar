@@ -12,7 +12,6 @@ import {
 } from "../lib/evidence-libraries/configuration/contract-sync.mjs";
 
 const EXPECTED_REPOSITORY = "https://github.com/OpenDevEd/new-el";
-const DEFAULT_ARTIFACT_COMMIT = "4a07fd6176d827d3382b392f847639167ec741ed";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function parseArgs(argv) {
@@ -54,7 +53,13 @@ async function readExistingLock(outputRoot) {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const existingLock = options.check ? await readExistingLock(options.outputRoot) : undefined;
-  const commit = options.commit ?? existingLock?.source?.commit ?? DEFAULT_ARTIFACT_COMMIT;
+  if (!options.check && !options.commit) {
+    throw new Error("--commit is required for mutating contract synchronization");
+  }
+  const commit = options.commit ?? existingLock?.source?.commit;
+  if (!commit) {
+    throw new Error("The committed contract lock does not contain a source commit");
+  }
   const checkout = await inspectContractCheckout({
     sourceRoot: options.sourceRoot,
     expectedRepository: EXPECTED_REPOSITORY,
