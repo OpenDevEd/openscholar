@@ -24,7 +24,9 @@ export function classifyClerkEvent(args: {
   if (args.occurredAt < args.latestApplied.occurredAt) {
     return "stale";
   }
-  return "timestamp_conflict";
+  return args.eventId > args.latestApplied.eventId
+    ? "applied"
+    : "timestamp_conflict";
 }
 
 export type ClerkEventMetadata = {
@@ -51,9 +53,19 @@ export async function applyOrderedClerkEvent(
         .eq("eventId", metadata.eventId),
     )
     .unique();
+  if (
+    existing &&
+    (existing.eventType !== metadata.eventType ||
+      existing.entityType !== metadata.entityType ||
+      existing.entityId !== metadata.entityId ||
+      existing.occurredAt !== metadata.occurredAt ||
+      existing.payloadSha256 !== metadata.payloadSha256)
+  ) {
+    throw new Error("Clerk event ID was reused with different signed content");
+  }
   const latestApplied = await ctx.db
     .query("clerkEventLogs")
-    .withIndex("by_entity_outcome_time", (query) =>
+    .withIndex("by_entity_outcome_time_and_eventId", (query) =>
       query
         .eq("instanceId", metadata.instanceId)
         .eq("entityType", metadata.entityType)
@@ -73,6 +85,15 @@ export async function applyOrderedClerkEvent(
     return outcome;
   }
   if (outcome === "applied") {
+    if (
+      latestApplied &&
+      latestApplied.occurredAt === metadata.occurredAt &&
+      latestApplied.eventId !== metadata.eventId
+    ) {
+      await ctx.db.patch("clerkEventLogs", latestApplied._id, {
+        outcome: "timestamp_conflict",
+      });
+    }
     await apply();
   }
   await ctx.db.insert("clerkEventLogs", {

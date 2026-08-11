@@ -30,6 +30,7 @@ async function upsertOrganizationSnapshot(
   snapshot: ClerkOrganizationSnapshot,
   processedAt: number,
   reactivateDeleted: boolean,
+  acceptEqualTimestamp: boolean,
 ) {
   const existing = await ctx.db
     .query("organizations")
@@ -46,7 +47,9 @@ async function upsertOrganizationSnapshot(
     });
   }
   if (
-    snapshot.clerkUpdatedAt <= existing.clerkUpdatedAt ||
+    snapshot.clerkUpdatedAt < existing.clerkUpdatedAt ||
+    (!acceptEqualTimestamp &&
+      snapshot.clerkUpdatedAt === existing.clerkUpdatedAt) ||
     (existing.state === "deleted" && !reactivateDeleted)
   ) {
     return existing._id;
@@ -75,7 +78,13 @@ export async function applyOrganizationProjection(
     { ...args, entityType: "organization" },
     async () => {
       if (args.action === "upsert") {
-        await upsertOrganizationSnapshot(ctx, args.organization, args.processedAt, true);
+        await upsertOrganizationSnapshot(
+          ctx,
+          args.organization,
+          args.processedAt,
+          true,
+          true,
+        );
         return;
       }
       const existing = await ctx.db
@@ -116,6 +125,7 @@ export async function applyMembershipProjection(
         ctx,
         args.membership.organization,
         args.processedAt,
+        false,
         false,
       );
       const existing = await ctx.db

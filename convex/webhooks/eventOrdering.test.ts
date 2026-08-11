@@ -38,13 +38,21 @@ describe("classifyClerkEvent", () => {
     ).toBe("stale");
   });
 
-  it("does not let arrival order break an equal-timestamp tie", () => {
+  it("uses event identity as the deterministic equal-timestamp tie-break", () => {
     expect(
       classifyClerkEvent({
-        eventId: "msg_other",
+        eventId: "msg_z",
         occurredAt: 100,
         existing: null,
-        latestApplied: { eventId: "msg_first", occurredAt: 100 },
+        latestApplied: { eventId: "msg_a", occurredAt: 100 },
+      }),
+    ).toBe("applied");
+    expect(
+      classifyClerkEvent({
+        eventId: "msg_a",
+        occurredAt: 100,
+        existing: null,
+        latestApplied: { eventId: "msg_z", occurredAt: 100 },
       }),
     ).toBe("timestamp_conflict");
   });

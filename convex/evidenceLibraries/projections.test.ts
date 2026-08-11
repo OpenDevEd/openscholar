@@ -117,7 +117,7 @@ describe("Evidence Library identity projections", () => {
     );
     const tied = await t.run((ctx) =>
       applyOrganizationProjection(ctx, {
-        ...eventMetadata("msg_tied", 100),
+        ...eventMetadata("msg_a_tied", 100),
         action: "upsert",
         entityId: "org_123",
         organization: { ...organizationSnapshot, name: "Tie must not apply" },
@@ -147,6 +147,71 @@ describe("Evidence Library identity projections", () => {
       "stale",
     ]);
     expect(stored).toMatchObject({ name: "Evidence Team", state: "active" });
+  });
+
+  it("converges on the same equal-timestamp winner in either delivery order", async () => {
+    async function run(order: readonly ["msg_a", "msg_z"] | readonly ["msg_z", "msg_a"]) {
+      const t = convexTest(schema);
+      for (const eventId of order) {
+        await t.run((ctx) =>
+          applyOrganizationProjection(ctx, {
+            ...eventMetadata(eventId, 100),
+            action: "upsert",
+            entityId: "org_123",
+            organization: {
+              ...organizationSnapshot,
+              name: eventId === "msg_z" ? "Deterministic winner" : "Tie loser",
+            },
+          }),
+        );
+      }
+      return await t.run(async (ctx) => {
+        const organization = await ctx.db
+          .query("organizations")
+          .withIndex("by_clerkOrganizationId", (query) =>
+            query.eq("clerkOrganizationId", "org_123"),
+          )
+          .unique();
+        const logs = await ctx.db.query("clerkEventLogs").collect();
+        return {
+          name: organization?.name,
+          outcomes: Object.fromEntries(
+            logs.map((log) => [log.eventId, log.outcome]).sort(),
+          ),
+        };
+      });
+    }
+
+    const expected = {
+      name: "Deterministic winner",
+      outcomes: { msg_a: "timestamp_conflict", msg_z: "applied" },
+    };
+    expect(await run(["msg_a", "msg_z"])).toEqual(expected);
+    expect(await run(["msg_z", "msg_a"])).toEqual(expected);
+  });
+
+  it("fails closed when a signed event ID is reused with different content", async () => {
+    const t = convexTest(schema);
+    await t.run((ctx) =>
+      applyOrganizationProjection(ctx, {
+        ...eventMetadata("msg_reused", 100),
+        action: "upsert",
+        entityId: "org_123",
+        organization: organizationSnapshot,
+      }),
+    );
+
+    await expect(
+      t.run((ctx) =>
+        applyOrganizationProjection(ctx, {
+          ...eventMetadata("msg_reused", 100),
+          payloadSha256: "f".repeat(64),
+          action: "upsert",
+          entityId: "org_123",
+          organization: { ...organizationSnapshot, name: "Tampered replay" },
+        }),
+      ),
+    ).rejects.toThrow(/reused with different signed content/);
   });
 
   it("tombstones an organization and prevents stale resurrection", async () => {

@@ -37,8 +37,15 @@ export default defineSchema({
   clerkEventLogs: defineTable(clerkEventLogFields)
     .index("by_instanceId_and_eventId", ["instanceId", "eventId"])
     .index(
-      "by_entity_outcome_time",
-      ["instanceId", "entityType", "entityId", "outcome", "occurredAt"],
+      "by_entity_outcome_time_and_eventId",
+      [
+        "instanceId",
+        "entityType",
+        "entityId",
+        "outcome",
+        "occurredAt",
+        "eventId",
+      ],
     ),
 
   organizations: defineTable(organizationFields)
