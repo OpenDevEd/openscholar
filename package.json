@@ -9,6 +9,8 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
+    "schema:sync:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs",
+    "schema:check:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs --check",
     "test:perf": "vitest bench --config vitest.perf.config.ts",
     "bench:transactions": "vitest bench --config vitest.perf.config.ts tests/perf/billing-transactions.bench.ts",
     "test:billing:preflight": "node ./scripts/billing-preflight.mjs",
