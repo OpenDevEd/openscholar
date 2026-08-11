@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import schema from "../schema";
+import { internal } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
   applyOperationTransition,
@@ -73,6 +74,112 @@ async function createOperationFixture(
 }
 
 describe("Evidence Library operation state", () => {
+  it("exposes exact transition entrypoints with bounded receipt metadata", async () => {
+    const t = convexTest(schema);
+    const fixture = await createOperationFixture(t, "transition_contract");
+    const queued = await fixture.admin.run((ctx) =>
+      queueEvidenceLibraryOperation(ctx, {
+        libraryId: fixture.libraryId,
+        kind: "validate",
+        idempotencyKey: "transition-contract",
+      }),
+    );
+
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.operations.startOperation,
+        // @ts-expect-error Runtime validator must reject a missing stage too.
+        { libraryId: fixture.libraryId, operationId: queued.operationId },
+      ),
+    ).rejects.toThrow();
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.operations.failOperation,
+        // @ts-expect-error Runtime validator must reject a missing error too.
+        { libraryId: fixture.libraryId, operationId: queued.operationId },
+      ),
+    ).rejects.toThrow();
+    await fixture.admin.mutation(
+      internal.evidenceLibraries.operations.startOperation,
+      {
+        libraryId: fixture.libraryId,
+        operationId: queued.operationId,
+        stage: "validating",
+      },
+    );
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.operations.succeedOperation,
+        {
+          libraryId: fixture.libraryId,
+          operationId: queued.operationId,
+          receipt: { revisionKey: "r".repeat(65) },
+        },
+      ),
+    ).rejects.toThrow(/revisionKey/);
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.operations.succeedOperation,
+        {
+          libraryId: fixture.libraryId,
+          operationId: queued.operationId,
+          receipt: { targetConfigSha256: "not-a-digest" },
+        },
+      ),
+    ).rejects.toThrow(/targetConfigSha256/);
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.operations.succeedOperation,
+        {
+          libraryId: fixture.libraryId,
+          operationId: queued.operationId,
+          receipt: { runtimeReceiptId: "   " },
+        },
+      ),
+    ).rejects.toThrow(/runtimeReceiptId/);
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.operations.succeedOperation,
+        {
+          libraryId: fixture.libraryId,
+          operationId: queued.operationId,
+          receipt: { activatedAt: -1 },
+        },
+      ),
+    ).rejects.toThrow(/activatedAt/);
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.operations.succeedOperation,
+        {
+          libraryId: fixture.libraryId,
+          operationId: queued.operationId,
+          // @ts-expect-error Exact succeed args reject start-only metadata.
+          stage: "activating",
+        },
+      ),
+    ).rejects.toThrow();
+    await fixture.admin.mutation(
+      internal.evidenceLibraries.operations.failOperation,
+      {
+        libraryId: fixture.libraryId,
+        operationId: queued.operationId,
+        error: { code: "REMOTE_FAILURE", message: "Runtime rejected candidate" },
+      },
+    );
+
+    const stored = await t.run((ctx) =>
+      ctx.db.get("evidenceLibraryConfigOperations", queued.operationId),
+    );
+    expect(stored).toMatchObject({
+      error: {
+        code: "REMOTE_FAILURE",
+        message: "Runtime rejected candidate",
+        stage: "validating",
+      },
+      status: "failed",
+    });
+  });
+
   it("scopes idempotency to a library and binds it to the complete command", async () => {
     const t = convexTest(schema);
     const first = await createOperationFixture(t, "first");

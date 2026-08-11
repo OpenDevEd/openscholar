@@ -204,9 +204,34 @@ export const evidenceLibraryCredentialFields = {
   updatedAt: v.number(),
 };
 
+export const evidenceLibraryOperationKindValidator = v.union(
+  v.literal("validate"),
+  v.literal("publish"),
+  v.literal("rollback"),
+);
+
+export const evidenceLibraryRunningStageValidator = v.union(
+  v.literal("assembling"),
+  v.literal("validating"),
+  v.literal("publishing"),
+  v.literal("activating"),
+);
+
+export const evidenceLibraryOperationReceiptValidator = v.object({
+  revisionKey: v.optional(v.string()),
+  targetConfigSha256: v.optional(v.string()),
+  runtimeReceiptId: v.optional(v.string()),
+  activatedAt: v.optional(v.number()),
+});
+
+export const evidenceLibraryOperationErrorInputValidator = v.object({
+  code: v.string(),
+  message: v.string(),
+});
+
 export const evidenceLibraryOperationFields = {
   libraryId: v.id("evidenceLibraries"),
-  kind: v.union(v.literal("validate"), v.literal("publish"), v.literal("rollback")),
+  kind: evidenceLibraryOperationKindValidator,
   idempotencyKey: v.string(),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   status: v.union(
@@ -224,14 +249,7 @@ export const evidenceLibraryOperationFields = {
     v.literal("completed"),
   ),
   attemptCount: v.number(),
-  receipt: v.optional(
-    v.object({
-      revisionKey: v.optional(v.string()),
-      targetConfigSha256: v.optional(v.string()),
-      runtimeReceiptId: v.optional(v.string()),
-      activatedAt: v.optional(v.number()),
-    }),
-  ),
+  receipt: v.optional(evidenceLibraryOperationReceiptValidator),
   error: v.optional(
     v.object({
       code: v.string(),

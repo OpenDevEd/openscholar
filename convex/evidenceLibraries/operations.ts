@@ -3,6 +3,12 @@ import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
+import {
+  evidenceLibraryOperationErrorInputValidator,
+  evidenceLibraryOperationKindValidator,
+  evidenceLibraryOperationReceiptValidator,
+  evidenceLibraryRunningStageValidator,
+} from "./validators";
 
 type OperationKind = "validate" | "publish" | "rollback";
 type RunningStage = "assembling" | "validating" | "publishing" | "activating";
@@ -12,6 +18,71 @@ type OperationReceipt = {
   runtimeReceiptId?: string;
   activatedAt?: number;
 };
+
+function validateOperationReceipt(
+  receipt: OperationReceipt | undefined,
+): OperationReceipt | undefined {
+  if (!receipt) return undefined;
+  const normalized: OperationReceipt = {};
+  if (receipt.revisionKey !== undefined) {
+    const revisionKey = receipt.revisionKey.trim();
+    if (!revisionKey || revisionKey.length > 64) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt revisionKey must contain 1 to 64 characters",
+      );
+    }
+    normalized.revisionKey = revisionKey;
+  }
+  if (receipt.targetConfigSha256 !== undefined) {
+    if (!/^[a-f0-9]{64}$/i.test(receipt.targetConfigSha256)) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt targetConfigSha256 must be a 64-character digest",
+      );
+    }
+    normalized.targetConfigSha256 = receipt.targetConfigSha256.toLowerCase();
+  }
+  if (receipt.runtimeReceiptId !== undefined) {
+    const runtimeReceiptId = receipt.runtimeReceiptId.trim();
+    if (!runtimeReceiptId || runtimeReceiptId.length > 200) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt runtimeReceiptId must contain 1 to 200 characters",
+      );
+    }
+    normalized.runtimeReceiptId = runtimeReceiptId;
+  }
+  if (receipt.activatedAt !== undefined) {
+    if (!Number.isFinite(receipt.activatedAt) || receipt.activatedAt < 0) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt activatedAt must be a finite non-negative number",
+      );
+    }
+    normalized.activatedAt = receipt.activatedAt;
+  }
+  return normalized;
+}
+
+function sanitizeOperationError(
+  error: { code: string; message: string },
+  stage: RunningStage,
+) {
+  const code = error.code.trim();
+  const message = error.message.trim();
+  if (!code || !message) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "Operation error code and message must not be blank",
+    );
+  }
+  return {
+    code: code.slice(0, 200),
+    message: message.slice(0, 2_000),
+    stage,
+  };
+}
 
 export async function queueEvidenceLibraryOperation(
   ctx: MutationCtx,
@@ -83,7 +154,7 @@ type TransitionArgs = {
     | { transition: "succeed"; receipt?: OperationReceipt }
     | {
         transition: "fail";
-        error: { code: string; message: string; stage: string };
+        error: { code: string; message: string };
       }
   );
 
@@ -119,50 +190,32 @@ export async function applyOperationTransition(
     throw createError("CONFLICT", "Invalid Evidence Library operation transition");
   }
   if (args.transition === "succeed") {
+    const receipt = validateOperationReceipt(args.receipt);
     await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
       status: "succeeded",
       stage: "completed",
-      receipt: args.receipt,
+      receipt,
       completedAt: now,
       updatedAt: now,
     });
     return "succeeded" as const;
   }
+  if (operation.stage === "queued" || operation.stage === "completed") {
+    throw createError("CONFLICT", "Invalid Evidence Library operation stage");
+  }
   await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
     status: "failed",
-    error: {
-      code: args.error.code.slice(0, 200),
-      message: args.error.message.slice(0, 2_000),
-      stage: args.error.stage.slice(0, 200),
-    },
+    error: sanitizeOperationError(args.error, operation.stage),
     completedAt: now,
     updatedAt: now,
   });
   return "failed" as const;
 }
 
-const operationKindValidator = v.union(
-  v.literal("validate"),
-  v.literal("publish"),
-  v.literal("rollback"),
-);
-const runningStageValidator = v.union(
-  v.literal("assembling"),
-  v.literal("validating"),
-  v.literal("publishing"),
-  v.literal("activating"),
-);
-const receiptValidator = v.object({
-  revisionKey: v.optional(v.string()),
-  targetConfigSha256: v.optional(v.string()),
-  runtimeReceiptId: v.optional(v.string()),
-  activatedAt: v.optional(v.number()),
-});
-
 export const queueOperation = mutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
-    kind: operationKindValidator,
+    kind: evidenceLibraryOperationKindValidator,
     idempotencyKey: v.string(),
     revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   },
@@ -178,48 +231,41 @@ export const queueOperation = mutation({
   handler: queueEvidenceLibraryOperation,
 });
 
-export const transitionOperation = internalMutation({
+const transitionReturnValidator = v.union(
+  v.literal("running"),
+  v.literal("succeeded"),
+  v.literal("failed"),
+);
+
+export const startOperation = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
-    transition: v.union(
-      v.literal("start"),
-      v.literal("succeed"),
-      v.literal("fail"),
-    ),
-    stage: v.optional(runningStageValidator),
-    receipt: v.optional(receiptValidator),
-    error: v.optional(
-      v.object({ code: v.string(), message: v.string(), stage: v.string() }),
-    ),
+    stage: evidenceLibraryRunningStageValidator,
   },
-  returns: v.union(
-    v.literal("running"),
-    v.literal("succeeded"),
-    v.literal("failed"),
-  ),
-  handler: async (ctx, args) => {
-    const common = { libraryId: args.libraryId, operationId: args.operationId };
-    if (args.transition === "start") {
-      if (!args.stage) throw new Error("Start transition requires a stage");
-      return await applyOperationTransition(ctx, {
-        ...common,
-        transition: "start",
-        stage: args.stage,
-      });
-    }
-    if (args.transition === "succeed") {
-      return await applyOperationTransition(ctx, {
-        ...common,
-        transition: "succeed",
-        receipt: args.receipt,
-      });
-    }
-    if (!args.error) throw new Error("Fail transition requires an error");
-    return await applyOperationTransition(ctx, {
-      ...common,
-      transition: "fail",
-      error: args.error,
-    });
+  returns: transitionReturnValidator,
+  handler: async (ctx, args) =>
+    await applyOperationTransition(ctx, { ...args, transition: "start" }),
+});
+
+export const succeedOperation = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    receipt: v.optional(evidenceLibraryOperationReceiptValidator),
   },
+  returns: transitionReturnValidator,
+  handler: async (ctx, args) =>
+    await applyOperationTransition(ctx, { ...args, transition: "succeed" }),
+});
+
+export const failOperation = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    error: evidenceLibraryOperationErrorInputValidator,
+  },
+  returns: transitionReturnValidator,
+  handler: async (ctx, args) =>
+    await applyOperationTransition(ctx, { ...args, transition: "fail" }),
 });
