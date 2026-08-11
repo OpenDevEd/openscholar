@@ -14,6 +14,15 @@ export function validateTargetBaseUrl(value: string): string {
   return url.origin;
 }
 
+export function assertEvidenceLibraryDevProvisioningEnabled(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): void {
+  assertNonProd(env);
+  if (env.EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED !== "true") {
+    throw new Error("evidence-library-dev-provisioning-not-enabled");
+  }
+}
+
 type SeedRuntimeBindingArgs = {
   libraryId: Id<"evidenceLibraries">;
   targetRuntimeId: string;
@@ -34,7 +43,7 @@ export async function seedDevelopmentRuntimeBinding(
   ctx: MutationCtx,
   args: SeedRuntimeBindingArgs,
 ) {
-  assertNonProd();
+  assertEvidenceLibraryDevProvisioningEnabled();
   await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
   const existing = await ctx.db
     .query("evidenceLibraryRuntimeBindings")

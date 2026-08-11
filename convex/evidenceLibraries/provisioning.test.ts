@@ -1,11 +1,16 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import schema from "../schema";
 import {
+  assertEvidenceLibraryDevProvisioningEnabled,
   seedDevelopmentRuntimeBinding,
   validateTargetBaseUrl,
 } from "./provisioning";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("validateTargetBaseUrl", () => {
   it("accepts an origin and rejects a path-bearing URL", () => {
@@ -19,7 +24,30 @@ describe("validateTargetBaseUrl", () => {
 });
 
 describe("development runtime binding seed", () => {
+  it("requires an explicit development opt-in and still rejects production", () => {
+    expect(() =>
+      assertEvidenceLibraryDevProvisioningEnabled({}),
+    ).toThrow(/not-enabled/);
+    expect(() =>
+      assertEvidenceLibraryDevProvisioningEnabled({
+        EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED: "false",
+      }),
+    ).toThrow(/not-enabled/);
+    expect(() =>
+      assertEvidenceLibraryDevProvisioningEnabled({
+        CONVEX_CLOUD_ENV: "prod",
+        EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED: "true",
+      }),
+    ).toThrow(/not-available-in-production/);
+    expect(() =>
+      assertEvidenceLibraryDevProvisioningEnabled({
+        EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED: "true",
+      }),
+    ).not.toThrow();
+  });
+
   it("stores platform values and credential references outside draft JSON", async () => {
+    vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
     const t = convexTest(schema);
     const libraryId = await t.run(async (ctx) => {
       const organizationId = await ctx.db.insert("organizations", {

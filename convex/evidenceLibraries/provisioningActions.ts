@@ -6,7 +6,7 @@ import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { encrypt } from "../lib/crypto";
 import { createError } from "../lib/errors";
-import { assertNonProd } from "../lib/assertNonProd";
+import { assertEvidenceLibraryDevProvisioningEnabled } from "./provisioning";
 
 type SeedResult = {
   bindingId: Id<"evidenceLibraryRuntimeBindings">;
@@ -38,7 +38,7 @@ export const seedDevelopmentBinding = action({
     storageCredentialId: v.id("evidenceLibraryCredentials"),
   }),
   handler: async (ctx, args): Promise<SeedResult> => {
-    assertNonProd();
+    assertEvidenceLibraryDevProvisioningEnabled();
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
       throw createError(
