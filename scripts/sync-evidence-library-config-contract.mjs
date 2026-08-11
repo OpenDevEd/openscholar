@@ -12,6 +12,7 @@ import {
 } from "../lib/evidence-libraries/configuration/contract-sync.mjs";
 
 const EXPECTED_REPOSITORY = "https://github.com/OpenDevEd/new-el";
+const EXPECTED_BRANCH = "openscholar";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function parseArgs(argv) {
@@ -63,6 +64,8 @@ async function main() {
   const checkout = await inspectContractCheckout({
     sourceRoot: options.sourceRoot,
     expectedRepository: EXPECTED_REPOSITORY,
+    expectedBranch: EXPECTED_BRANCH,
+    artifactCommit: commit,
   });
   const artifacts = await readContractArtifactsAtCommit({
     sourceRoot: options.sourceRoot,
