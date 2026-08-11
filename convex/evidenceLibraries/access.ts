@@ -32,3 +32,56 @@ export function parseOrganizationClaims(identity: unknown): OrganizationClaims |
     canManage: canPerformOrganizationAction(role, "manage"),
   };
 }
+
+type OrganizationAccessCtx = Pick<QueryCtx | MutationCtx, "auth" | "db">;
+
+function denyOrganizationAccess(): never {
+  throw createError("FORBIDDEN", "Evidence Library access denied");
+}
+
+export async function requireOrganizationAccess(
+  ctx: OrganizationAccessCtx,
+  action: OrganizationAction,
+) {
+  const identity = await ctx.auth.getUserIdentity();
+  const claims = parseOrganizationClaims(identity);
+  if (!identity || !claims || typeof identity.subject !== "string") {
+    return denyOrganizationAccess();
+  }
+
+  const organization = await ctx.db
+    .query("organizations")
+    .withIndex("by_clerkOrganizationId", (query) =>
+      query.eq("clerkOrganizationId", claims.organizationId),
+    )
+    .unique();
+  if (!organization || organization.state !== "active") {
+    return denyOrganizationAccess();
+  }
+
+  const membership = await ctx.db
+    .query("organizationMemberships")
+    .withIndex("by_organizationId_and_clerkUserId", (query) =>
+      query
+        .eq("organizationId", organization._id)
+        .eq("clerkUserId", identity.subject),
+    )
+    .unique();
+  if (
+    !membership ||
+    membership.state !== "active" ||
+    membership.role !== claims.role ||
+    !canPerformOrganizationAction(claims.role, action)
+  ) {
+    return denyOrganizationAccess();
+  }
+
+  return {
+    clerkUserId: identity.subject,
+    membership,
+    organization,
+    role: claims.role,
+  };
+}
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { createError } from "../lib/errors";
