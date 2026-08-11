@@ -5,9 +5,10 @@ import schema from "../schema";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
   createEvidenceLibrary,
+  finalizeEvidenceLibraryDraft,
   saveEvidenceLibraryDraftSection,
 } from "./mutations";
-import { readEvidenceLibraryDraft } from "./queries";
+import { readEvidenceLibraryDraft, readEvidenceLibraryRevision } from "./queries";
 
 describe("Evidence Library draft storage", () => {
   it("stores one provenance-locked draft with section rows", async () => {
@@ -149,5 +150,76 @@ describe("Evidence Library draft storage", () => {
         }),
       ),
     ).rejects.toThrow(/CONFLICT.*Draft changed since it was loaded/);
+  });
+
+  it("copies a draft into an immutable revision while later draft edits stay separate", async () => {
+    const t = convexTest(schema);
+    await t.run(async (ctx) => {
+      const organizationId = await ctx.db.insert("organizations", {
+        clerkOrganizationId: "org_revision",
+        name: "Revision Team",
+        slug: "revision-team",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("organizationMemberships", {
+        organizationId,
+        clerkMembershipId: "orgmem_revision",
+        clerkUserId: "user_revision",
+        role: "org:admin",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+    const admin = t.withIdentity({
+      subject: "user_revision",
+      o: { id: "org_revision", rol: "org:admin" },
+    });
+    const created = await admin.run((ctx) =>
+      createEvidenceLibrary(ctx, { name: "Revision Library", slug: "revision-library" }),
+    );
+    await admin.run((ctx) =>
+      saveEvidenceLibraryDraftSection(ctx, {
+        libraryId: created.libraryId,
+        sectionKey: "identity",
+        payload: { name: "Published name" },
+        expectedEditVersion: 0,
+      }),
+    );
+    const finalized = await admin.run((ctx) =>
+      finalizeEvidenceLibraryDraft(ctx, {
+        libraryId: created.libraryId,
+        expectedEditVersion: 1,
+      }),
+    );
+    await admin.run((ctx) =>
+      saveEvidenceLibraryDraftSection(ctx, {
+        libraryId: created.libraryId,
+        sectionKey: "identity",
+        payload: { name: "Unpublished edit" },
+        expectedEditVersion: 2,
+      }),
+    );
+    const revision = await admin.run((ctx) =>
+      readEvidenceLibraryRevision(ctx, {
+        libraryId: created.libraryId,
+        revisionId: finalized.revisionId,
+      }),
+    );
+
+    expect(finalized).toMatchObject({ revisionKey: "r1", revisionNumber: 1 });
+    expect(revision.sections).toEqual([
+      expect.objectContaining({
+        sectionKey: "identity",
+        payload: { name: "Published name" },
+      }),
+    ]);
+    expect(revision.revision).not.toHaveProperty("updatedAt");
   });
 });

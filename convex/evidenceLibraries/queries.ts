@@ -42,6 +42,39 @@ export async function readEvidenceLibraryDraft(
   return { draft, library: access.library, sections };
 }
 
+export async function readEvidenceLibraryRevision(
+  ctx: QueryCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    revisionId: Id<"evidenceLibraryConfigRevisions">;
+  },
+) {
+  await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
+  const revision = await ctx.db.get("evidenceLibraryConfigRevisions", args.revisionId);
+  if (!revision || revision.libraryId !== args.libraryId) {
+    throw createError("NOT_FOUND", "Evidence Library revision not found");
+  }
+  const sectionRows = await ctx.db
+    .query("evidenceLibraryConfigSections")
+    .withIndex("by_revisionId_and_sectionKey", (query) =>
+      query.eq("revisionId", args.revisionId),
+    )
+    .collect();
+  const sections = sectionRows.map((section) => {
+    if (section.kind !== "revision") {
+      throw new Error("Revision section index returned a draft row");
+    }
+    return {
+      contractProvenance: section.contractProvenance,
+      createdAt: section.createdAt,
+      payload: section.payload,
+      payloadByteLength: section.payloadByteLength,
+      sectionKey: section.sectionKey,
+    };
+  });
+  return { revision, sections };
+}
+
 export const getDraft = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({
@@ -73,4 +106,41 @@ export const getDraft = query({
     ),
   }),
   handler: readEvidenceLibraryDraft,
+});
+
+export const getRevision = query({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+  },
+  returns: v.object({
+    revision: v.object({
+      _id: v.id("evidenceLibraryConfigRevisions"),
+      _creationTime: v.number(),
+      libraryId: v.id("evidenceLibraries"),
+      revisionKey: v.string(),
+      revisionNumber: v.number(),
+      basedOnRevisionId: v.union(
+        v.id("evidenceLibraryConfigRevisions"),
+        v.null(),
+      ),
+      rollbackOfRevisionId: v.union(
+        v.id("evidenceLibraryConfigRevisions"),
+        v.null(),
+      ),
+      contractProvenance: configProvenanceValidator,
+      createdByClerkUserId: v.string(),
+      createdAt: v.number(),
+    }),
+    sections: v.array(
+      v.object({
+        sectionKey: sectionKeyValidator,
+        payload: v.any(),
+        payloadByteLength: v.number(),
+        contractProvenance: configProvenanceValidator,
+        createdAt: v.number(),
+      }),
+    ),
+  }),
+  handler: readEvidenceLibraryRevision,
 });

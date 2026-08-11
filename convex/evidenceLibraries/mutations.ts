@@ -121,6 +121,83 @@ export async function saveEvidenceLibraryDraftSection(
   return { editVersion, payloadByteLength };
 }
 
+export async function finalizeEvidenceLibraryDraft(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    expectedEditVersion: number;
+  },
+) {
+  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const draft = await ctx.db
+    .query("evidenceLibraryConfigDrafts")
+    .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+    .unique();
+  if (!draft) {
+    throw createError("NOT_FOUND", "Evidence Library draft not found");
+  }
+  const editVersion = nextDraftEditVersion(
+    draft.editVersion,
+    args.expectedEditVersion,
+  );
+  const latestRevision = await ctx.db
+    .query("evidenceLibraryConfigRevisions")
+    .withIndex("by_libraryId_and_revisionNumber", (query) =>
+      query.eq("libraryId", args.libraryId),
+    )
+    .order("desc")
+    .first();
+  const revisionNumber = (latestRevision?.revisionNumber ?? 0) + 1;
+  const revisionKey = `r${revisionNumber}`;
+  const now = Date.now();
+  const revisionId = await ctx.db.insert("evidenceLibraryConfigRevisions", {
+    libraryId: args.libraryId,
+    revisionKey,
+    revisionNumber,
+    basedOnRevisionId: draft.baseRevisionId,
+    rollbackOfRevisionId: null,
+    contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+    createdByClerkUserId: access.clerkUserId,
+    createdAt: now,
+  });
+  const draftSections = await ctx.db
+    .query("evidenceLibraryConfigSections")
+    .withIndex("by_draftId_and_sectionKey", (query) =>
+      query.eq("draftId", draft._id),
+    )
+    .collect();
+  for (const section of draftSections) {
+    if (section.kind !== "draft") {
+      throw new Error("Draft section index returned a revision row");
+    }
+    await ctx.db.insert("evidenceLibraryConfigSections", {
+      kind: "revision",
+      libraryId: args.libraryId,
+      revisionId,
+      sectionKey: section.sectionKey,
+      payload: section.payload,
+      payloadByteLength: section.payloadByteLength,
+      contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+      createdByClerkUserId: access.clerkUserId,
+      createdAt: now,
+    });
+  }
+  await ctx.db.patch("evidenceLibraries", args.libraryId, {
+    activeRevisionId: revisionId,
+    state: "active",
+    updatedByClerkUserId: access.clerkUserId,
+    updatedAt: now,
+  });
+  await ctx.db.patch("evidenceLibraryConfigDrafts", draft._id, {
+    baseRevisionId: revisionId,
+    editVersion,
+    contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+    updatedByClerkUserId: access.clerkUserId,
+    updatedAt: now,
+  });
+  return { editVersion, revisionId, revisionKey, revisionNumber };
+}
+
 export const createLibrary = mutation({
   args: { name: v.string(), slug: v.string() },
   returns: v.object({
@@ -143,4 +220,18 @@ export const saveDraftSection = mutation({
     payloadByteLength: v.number(),
   }),
   handler: saveEvidenceLibraryDraftSection,
+});
+
+export const finalizeDraft = mutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    expectedEditVersion: v.number(),
+  },
+  returns: v.object({
+    editVersion: v.number(),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+    revisionKey: v.string(),
+    revisionNumber: v.number(),
+  }),
+  handler: finalizeEvidenceLibraryDraft,
 });
