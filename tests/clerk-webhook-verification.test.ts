@@ -60,8 +60,10 @@ describe("clerk webhook verification", () => {
   it("returns parsed event contract for valid signature", () => {
     const secret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";
     const event = {
-      id: "evt_valid",
+      object: "event",
       type: "user.created",
+      timestamp: 1_786_446_000,
+      instance_id: "ins_test",
       data: { id: "user_abc" },
     };
     const payloadText = JSON.stringify(event);
@@ -81,8 +83,10 @@ describe("clerk webhook verification", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.eventId).toBe(event.id);
+      expect(result.eventId).toBe(svixId);
       expect(result.eventType).toBe(event.type);
+      expect(result.occurredAt).toBe(event.timestamp);
+      expect(result.instanceId).toBe(event.instance_id);
       expect(result.data).toEqual(JSON.stringify(event.data));
     }
   });
@@ -90,7 +94,10 @@ describe("clerk webhook verification", () => {
   it("falls back to svix-id when payload omits event id", () => {
     const secret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";
     const event = {
+      object: "event",
       type: "user.updated",
+      timestamp: 1_786_446_001,
+      instance_id: "ins_test",
       data: { id: "user_abc" },
     };
     const payloadText = JSON.stringify(event);
@@ -119,8 +126,10 @@ describe("clerk webhook verification", () => {
   it("accepts signing secrets wrapped in quotes", () => {
     const secret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";
     const event = {
-      id: "evt_quoted_secret",
+      object: "event",
       type: "user.updated",
+      timestamp: 1_786_446_002,
+      instance_id: "ins_test",
       data: { id: "user_abc" },
     };
     const payloadText = JSON.stringify(event);

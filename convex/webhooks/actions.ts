@@ -7,6 +7,8 @@ export type ClerkWebhookVerificationSuccess = {
   success: true;
   eventId: string;
   eventType: string;
+  occurredAt: number;
+  instanceId: string;
   data: string; // JSON-serialized Clerk webhook data
 };
 
@@ -62,15 +64,12 @@ export function verifyClerkWebhookPayload(args: {
       "svix-signature": args.svixSignature,
     }) as Record<string, unknown>;
 
-    const payloadEventId = verified.id;
     const payloadEventType = verified.type;
     const payloadEventAlias = verified.event;
+    const payloadTimestamp = verified.timestamp;
+    const payloadInstanceId = verified.instance_id;
     const data = verified.data;
 
-    const eventId =
-      typeof payloadEventId === "string" && payloadEventId.length > 0
-        ? payloadEventId
-        : args.svixId;
     const eventType =
       typeof payloadEventType === "string" && payloadEventType.length > 0
         ? payloadEventType
@@ -84,11 +83,25 @@ export function verifyClerkWebhookPayload(args: {
         error: "Verified webhook payload is missing type.",
       };
     }
+    if (!Number.isSafeInteger(payloadTimestamp) || Number(payloadTimestamp) < 0) {
+      return {
+        success: false,
+        error: "Verified webhook payload has an invalid timestamp.",
+      };
+    }
+    if (typeof payloadInstanceId !== "string" || payloadInstanceId.length === 0) {
+      return {
+        success: false,
+        error: "Verified webhook payload is missing instance_id.",
+      };
+    }
 
     return {
       success: true,
-      eventId,
+      eventId: args.svixId,
       eventType,
+      occurredAt: Number(payloadTimestamp),
+      instanceId: payloadInstanceId,
       data: JSON.stringify(data ?? {}),
     };
   } catch (err) {
@@ -124,6 +137,8 @@ export const verifyClerkWebhook = internalAction({
       success: v.literal(true),
       eventId: v.string(),
       eventType: v.string(),
+      occurredAt: v.number(),
+      instanceId: v.string(),
       data: v.string(), // JSON-serialized; v.unknown() not available in Convex 1.32.0
     }),
     v.object({
