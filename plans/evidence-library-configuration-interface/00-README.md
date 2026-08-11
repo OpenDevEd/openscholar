@@ -82,6 +82,7 @@ plans/evidence-library-configuration-interface/
 ├── 01-ownership-and-generated-config-contract.md
 ├── 01-SOL-REVIEW.md
 ├── 02-drafts-revisions-and-authorization.md
+├── 02-PREREQUISITES.md
 ├── 03-route-shell-and-anchor-rail.md
 ├── 04-brand-content-and-collection-editors.md
 ├── 05-discovery-and-platform-editors.md

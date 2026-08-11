@@ -22,7 +22,7 @@ Out of scope: UI, authoritative Evidence Library validation, network activation.
 
 1. Clerk remains authoritative for organizations, membership and roles. Convex projections provide application joins/audit and are updated only through verified Clerk events.
 2. Add `organizations`, `organizationMemberships`, `evidenceLibraries`, `evidenceLibraryRuntimeBindings`, `evidenceLibraryConfigDrafts`, `evidenceLibraryConfigRevisions`, `evidenceLibraryConfigSections`, `evidenceLibraryConfigOperations` and a library-scoped credential table.
-3. Access resolution derives the authenticated user from `ctx.auth.getUserIdentity()`, resolves the active organization claim, and cross-checks a live projected membership. Never trust a client-supplied `userId`, role or organization alone.
+3. Access resolution derives the authenticated user from `ctx.auth.getUserIdentity()`, reads the verified custom-template claims `identity.o.id` and `identity.o.rol`, and cross-checks a live projected membership. The role claim is exactly `org:admin` or `org:member`. Never trust a client-supplied `userId`, role or organization alone, and never add Clerk v1 `org_id` / `org_role` fallbacks.
 4. `org:admin` may mutate; `org:member` may read. Anonymous, inactive membership, wrong active organization and cross-tenant access fail identically without leaking existence.
 5. A draft has `baseRevisionId`, `editVersion`, contract provenance and timestamps. Every save provides the expected `editVersion`; mismatch returns a typed conflict.
 6. Sections are bounded JSON values keyed by canonical section name. Published revision sections are immutable. Secrets are referenced by status/credential identity, never embedded in section JSON or query results.
@@ -91,6 +91,7 @@ Latest output must contain `✔ Convex functions ready!` and no newer `✖ Error
 ## Known pitfalls
 
 - Clerk Organizations, the exact Convex JWT claims, and the two-role development fixture are execution prerequisites, not assumptions; block before schema work if they cannot be verified.
+- Clerk's default v2 session token and the custom `convex` JWT are different contracts. Convex receives the custom template, whose verified organization claim is `{ o: { id, rol } }`; do not parse the default token's unprefixed compact role.
 - Membership deletion/revocation must cut access immediately.
 - Avoid unbounded arrays; sections and operations are separate tables.
 - Validators must include every returned field or Convex will strip it.
