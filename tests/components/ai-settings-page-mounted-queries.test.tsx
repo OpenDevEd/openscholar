@@ -8,7 +8,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 const convexQueryMock = vi.fn();
 const convexClientMock = { query: convexQueryMock };
 const useQueryMock = vi.fn();
-const useMutationMock = vi.fn(() => vi.fn());
+const useMutationMock = vi.fn((..._args: unknown[]) => vi.fn());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
