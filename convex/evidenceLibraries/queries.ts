@@ -2,12 +2,37 @@ import { query, type QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { requireEvidenceLibraryAccess } from "./access";
+import {
+  requireEvidenceLibraryAccess,
+  requireOrganizationAccess,
+} from "./access";
 import {
   configProvenanceValidator,
   evidenceLibraryFields,
   sectionKeyValidator,
 } from "./validators";
+
+export async function readEvidenceLibraries(ctx: QueryCtx) {
+  const access = await requireOrganizationAccess(ctx, "read");
+  return await ctx.db
+    .query("evidenceLibraries")
+    .withIndex("by_organizationId", (query) =>
+      query.eq("organizationId", access.organization._id),
+    )
+    .collect();
+}
+
+export const listLibraries = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("evidenceLibraries"),
+      _creationTime: v.number(),
+      ...evidenceLibraryFields,
+    }),
+  ),
+  handler: readEvidenceLibraries,
+});
 
 export async function readEvidenceLibraryDraft(
   ctx: QueryCtx,

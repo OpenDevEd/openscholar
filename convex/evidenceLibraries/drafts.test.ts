@@ -8,7 +8,11 @@ import {
   finalizeEvidenceLibraryDraft,
   saveEvidenceLibraryDraftSection,
 } from "./mutations";
-import { readEvidenceLibraryDraft, readEvidenceLibraryRevision } from "./queries";
+import {
+  readEvidenceLibraries,
+  readEvidenceLibraryDraft,
+  readEvidenceLibraryRevision,
+} from "./queries";
 
 describe("Evidence Library draft storage", () => {
   it("stores one provenance-locked draft with section rows", async () => {
@@ -131,8 +135,12 @@ describe("Evidence Library draft storage", () => {
     const reloaded = await asMember.run((ctx) =>
       readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
     );
+    const libraries = await asMember.run((ctx) => readEvidenceLibraries(ctx));
 
     expect(saved.editVersion).toBe(1);
+    expect(libraries).toEqual([
+      expect.objectContaining({ _id: created.libraryId, slug: "climate-evidence" }),
+    ]);
     expect(reloaded).toMatchObject({
       draft: { editVersion: 1 },
       library: { name: "Climate Evidence" },
