@@ -55,9 +55,10 @@ export default defineSchema({
 
   organizationMemberships: defineTable(organizationMembershipFields)
     .index("by_clerkMembershipId", ["clerkMembershipId"])
-    .index("by_organizationId_and_clerkUserId", [
+    .index("by_organizationId_and_clerkUserId_and_state", [
       "organizationId",
       "clerkUserId",
+      "state",
     ])
     .index("by_organizationId_and_state", ["organizationId", "state"])
     .index("by_clerkUserId_and_state", ["clerkUserId", "state"]),

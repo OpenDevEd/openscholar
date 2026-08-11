@@ -63,17 +63,18 @@ export async function requireOrganizationAccess(
     return denyOrganizationAccess();
   }
 
-  const membership = await ctx.db
+  const memberships = await ctx.db
     .query("organizationMemberships")
-    .withIndex("by_organizationId_and_clerkUserId", (query) =>
+    .withIndex("by_organizationId_and_clerkUserId_and_state", (query) =>
       query
         .eq("organizationId", organization._id)
-        .eq("clerkUserId", identity.subject),
+        .eq("clerkUserId", identity.subject)
+        .eq("state", "active"),
     )
-    .unique();
+    .take(2);
+  const membership = memberships.length === 1 ? memberships[0] : null;
   if (
     !membership ||
-    membership.state !== "active" ||
     membership.role !== claims.role ||
     !canPerformOrganizationAction(claims.role, action)
   ) {

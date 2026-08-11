@@ -122,7 +122,6 @@ export async function processClerkWebhookEvent(args: {
           await runMutation(mutationRefs.applyOrganizationMembershipEvent, {
             ...eventMetadata,
             action: projection.action,
-            entityId: projection.entityId,
             membership: projection.membership,
           });
         }

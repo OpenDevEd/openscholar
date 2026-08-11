@@ -16,6 +16,7 @@ import {
 } from "./eventOrdering";
 
 type ProjectionMetadata = Omit<ClerkEventMetadata, "entityType">;
+type MembershipProjectionMetadata = Omit<ProjectionMetadata, "entityId">;
 
 const eventMetadataFields = {
   eventId: v.string(),
@@ -105,7 +106,7 @@ export async function applyOrganizationProjection(
 
 export async function applyMembershipProjection(
   ctx: MutationCtx,
-  args: ProjectionMetadata & {
+  args: MembershipProjectionMetadata & {
     action: "upsert" | "delete";
     membership: ClerkMembershipSnapshot;
   },
@@ -119,7 +120,14 @@ export async function applyMembershipProjection(
 
   return await applyOrderedClerkEvent(
     ctx,
-    { ...args, entityType: "organizationMembership" },
+    {
+      ...args,
+      entityType: "organizationMembership",
+      entityId: JSON.stringify([
+        args.membership.organization.clerkOrganizationId,
+        args.membership.clerkUserId,
+      ]),
+    },
     async () => {
       const organizationId = await upsertOrganizationSnapshot(
         ctx,
@@ -134,6 +142,27 @@ export async function applyMembershipProjection(
           query.eq("clerkMembershipId", args.membership.clerkMembershipId),
         )
         .unique();
+      if (args.membership.state === "active") {
+        const activeMemberships = await ctx.db
+          .query("organizationMemberships")
+          .withIndex(
+            "by_organizationId_and_clerkUserId_and_state",
+            (query) =>
+              query
+                .eq("organizationId", organizationId)
+                .eq("clerkUserId", args.membership.clerkUserId)
+                .eq("state", "active"),
+          )
+          .collect();
+        for (const activeMembership of activeMemberships) {
+          if (activeMembership.clerkMembershipId !== args.membership.clerkMembershipId) {
+            await ctx.db.patch("organizationMemberships", activeMembership._id, {
+              state: "revoked",
+              updatedAt: args.processedAt,
+            });
+          }
+        }
+      }
       const membershipFields = {
         organizationId,
         clerkMembershipId: args.membership.clerkMembershipId,
@@ -198,7 +227,6 @@ export const applyOrganizationMembershipEvent = internalMutation({
   args: {
     ...eventMetadataFields,
     action: v.union(v.literal("upsert"), v.literal("delete")),
-    entityId: v.string(),
     membership: v.object(clerkMembershipSnapshotFields),
   },
   returns: clerkEventOutcomeValidator,

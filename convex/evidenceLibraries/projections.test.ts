@@ -6,6 +6,7 @@ import {
   applyMembershipProjection,
   applyOrganizationProjection,
 } from "../webhooks/projections";
+import { requireOrganizationAccess } from "./access";
 
 const organizationSnapshot = {
   clerkOrganizationId: "org_123",
@@ -269,7 +270,6 @@ describe("Evidence Library identity projections", () => {
         ...eventMetadata("msg_membership_create", 100),
         eventType: "organizationMembership.created",
         action: "upsert",
-        entityId: "orgmem_123",
         membership,
       }),
     );
@@ -278,7 +278,6 @@ describe("Evidence Library identity projections", () => {
         ...eventMetadata("msg_membership_delete", 102),
         eventType: "organizationMembership.deleted",
         action: "delete",
-        entityId: "orgmem_123",
         membership: { ...membership, state: "revoked" },
       }),
     );
@@ -287,7 +286,6 @@ describe("Evidence Library identity projections", () => {
         ...eventMetadata("msg_membership_delayed", 101),
         eventType: "organizationMembership.updated",
         action: "upsert",
-        entityId: "orgmem_123",
         membership: { ...membership, role: "org:admin" },
       }),
     );
@@ -312,5 +310,97 @@ describe("Evidence Library identity projections", () => {
       role: "org:member",
       state: "revoked",
     });
+  });
+
+  it("authorizes a rejoin and converges across tied delete/create delivery order", async () => {
+    async function run(
+      order: readonly ["delete", "create"] | readonly ["create", "delete"],
+    ) {
+      const t = convexTest(schema);
+      const oldMembership = {
+        clerkCreatedAt: 1_700_000_002_000,
+        clerkMembershipId: "orgmem_old",
+        clerkUpdatedAt: 1_700_000_003_000,
+        clerkUserId: "user_rejoin",
+        organization: organizationSnapshot,
+        role: "org:member" as const,
+        state: "active" as const,
+      };
+      const newMembership = {
+        ...oldMembership,
+        clerkMembershipId: "orgmem_new",
+        clerkUpdatedAt: 1_700_000_004_000,
+      };
+      await t.run((ctx) =>
+        applyMembershipProjection(ctx, {
+          ...eventMetadata("msg_initial", 90),
+          eventType: "organizationMembership.created",
+          action: "upsert",
+          membership: oldMembership,
+        }),
+      );
+      for (const action of order) {
+        await t.run((ctx) =>
+          applyMembershipProjection(
+            ctx,
+            action === "create"
+              ? {
+                  ...eventMetadata("msg_z_create", 100),
+                  eventType: "organizationMembership.created",
+                  action: "upsert",
+                  membership: newMembership,
+                }
+              : {
+                  ...eventMetadata("msg_a_delete", 100),
+                  eventType: "organizationMembership.deleted",
+                  action: "delete",
+                  membership: { ...oldMembership, state: "revoked" },
+                },
+          ),
+        );
+      }
+      const delayed = await t.run((ctx) =>
+        applyMembershipProjection(ctx, {
+          ...eventMetadata("msg_delayed_old", 99),
+          eventType: "organizationMembership.updated",
+          action: "upsert",
+          membership: { ...oldMembership, role: "org:admin" },
+        }),
+      );
+      const member = t.withIdentity({
+        subject: "user_rejoin",
+        o: { id: "org_123", rol: "org:member" },
+      });
+      return await member.run(async (ctx) => {
+        const access = await requireOrganizationAccess(ctx, "read");
+        const memberships = await ctx.db
+          .query("organizationMemberships")
+          .collect();
+        return {
+          authorizedMembershipId: access.membership.clerkMembershipId,
+          delayed,
+          memberships: memberships
+            .map(({ clerkMembershipId, role, state }) => ({
+              clerkMembershipId,
+              role,
+              state,
+            }))
+            .sort((left, right) =>
+              left.clerkMembershipId.localeCompare(right.clerkMembershipId),
+            ),
+        };
+      });
+    }
+
+    const expected = {
+      authorizedMembershipId: "orgmem_new",
+      delayed: "stale",
+      memberships: [
+        { clerkMembershipId: "orgmem_new", role: "org:member", state: "active" },
+        { clerkMembershipId: "orgmem_old", role: "org:member", state: "revoked" },
+      ],
+    };
+    expect(await run(["delete", "create"])).toEqual(expected);
+    expect(await run(["create", "delete"])).toEqual(expected);
   });
 });
