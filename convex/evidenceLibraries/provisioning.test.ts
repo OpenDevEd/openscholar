@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import {
   assertEvidenceLibraryDevProvisioningEnabled,
@@ -11,6 +12,71 @@ import {
 afterEach(() => {
   vi.unstubAllEnvs();
 });
+
+async function createProvisioningFixture(
+  t: ReturnType<typeof convexTest>,
+  suffix: string,
+) {
+  const clerkOrganizationId = `org_${suffix}`;
+  const clerkUserId = `user_${suffix}`;
+  const libraryId = await t.run(async (ctx) => {
+    const organizationId = await ctx.db.insert("organizations", {
+      clerkOrganizationId,
+      name: `Team ${suffix}`,
+      slug: `team-${suffix}`,
+      state: "active",
+      clerkCreatedAt: 1,
+      clerkUpdatedAt: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await ctx.db.insert("organizationMemberships", {
+      organizationId,
+      clerkMembershipId: `orgmem_${suffix}`,
+      clerkUserId,
+      role: "org:admin",
+      state: "active",
+      clerkCreatedAt: 1,
+      clerkUpdatedAt: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    return await ctx.db.insert("evidenceLibraries", {
+      organizationId,
+      name: `Library ${suffix}`,
+      slug: `library-${suffix}`,
+      state: "provisioning",
+      createdByClerkUserId: clerkUserId,
+      updatedByClerkUserId: clerkUserId,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+  });
+  return {
+    admin: t.withIdentity({
+      subject: clerkUserId,
+      o: { id: clerkOrganizationId, rol: "org:admin" },
+    }),
+    libraryId,
+  };
+}
+
+function validSeedArgs(libraryId: Id<"evidenceLibraries">) {
+  return {
+    libraryId,
+    targetRuntimeId: "runtime_dev_1",
+    targetBaseUrl: "https://library.example.org",
+    searchHost: "https://search.example.org",
+    searchIndex: "evidence",
+    storageUrl: "https://storage.example.org",
+    storageDocumentsBucket: "documents",
+    storageImagesBucket: "images",
+    storageMaxPdfBytes: 20_000_000,
+    encryptedDatabaseUrl: "enc-db",
+    encryptedSearchKey: "enc-search",
+    encryptedStorageServiceRoleKey: "enc-storage",
+  };
+}
 
 describe("validateTargetBaseUrl", () => {
   it("accepts an origin and rejects a path-bearing URL", () => {
@@ -123,5 +189,60 @@ describe("development runtime binding seed", () => {
     });
     expect(stored.credentials).toHaveLength(3);
     expect(stored.sections).toHaveLength(0);
+  });
+
+  it.each([
+    "targetRuntimeId",
+    "searchHost",
+    "searchIndex",
+    "storageUrl",
+    "storageDocumentsBucket",
+    "storageImagesBucket",
+    "encryptedDatabaseUrl",
+    "encryptedSearchKey",
+    "encryptedStorageServiceRoleKey",
+    "zoteroTranslationUrl",
+  ] as const)("rejects blank %s before writing anything", async (field) => {
+    vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+    const t = convexTest(schema);
+    const { admin, libraryId } = await createProvisioningFixture(t, field);
+    const args = {
+      ...validSeedArgs(libraryId),
+      ...(field === "zoteroTranslationUrl" ? { zoteroTranslationUrl: "   " } : {}),
+    };
+    if (field !== "zoteroTranslationUrl") {
+      args[field] = "   ";
+    }
+
+    await expect(
+      admin.run((ctx) => seedDevelopmentRuntimeBinding(ctx, args)),
+    ).rejects.toThrow(/must not be blank/);
+    const counts = await t.run(async (ctx) => ({
+      bindings: (await ctx.db.query("evidenceLibraryRuntimeBindings").collect()).length,
+      credentials: (await ctx.db.query("evidenceLibraryCredentials").collect()).length,
+    }));
+    expect(counts).toEqual({ bindings: 0, credentials: 0 });
+  });
+
+  it("reserves each target runtime for exactly one library", async () => {
+    vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+    const t = convexTest(schema);
+    const first = await createProvisioningFixture(t, "runtime_first");
+    const second = await createProvisioningFixture(t, "runtime_second");
+
+    await first.admin.run((ctx) =>
+      seedDevelopmentRuntimeBinding(ctx, validSeedArgs(first.libraryId)),
+    );
+    await expect(
+      second.admin.run((ctx) =>
+        seedDevelopmentRuntimeBinding(ctx, validSeedArgs(second.libraryId)),
+      ),
+    ).rejects.toThrow(/CONFLICT.*target runtime/);
+
+    const counts = await t.run(async (ctx) => ({
+      bindings: (await ctx.db.query("evidenceLibraryRuntimeBindings").collect()).length,
+      credentials: (await ctx.db.query("evidenceLibraryCredentials").collect()).length,
+    }));
+    expect(counts).toEqual({ bindings: 1, credentials: 3 });
   });
 });

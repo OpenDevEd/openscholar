@@ -23,6 +23,17 @@ export function assertEvidenceLibraryDevProvisioningEnabled(
   }
 }
 
+export function requireNonBlankProvisioningValue(
+  field: string,
+  value: string,
+): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw createError("VALIDATION_ERROR", `${field} must not be blank`);
+  }
+  return normalized;
+}
+
 type SeedRuntimeBindingArgs = {
   libraryId: Id<"evidenceLibraries">;
   targetRuntimeId: string;
@@ -45,6 +56,47 @@ export async function seedDevelopmentRuntimeBinding(
 ) {
   assertEvidenceLibraryDevProvisioningEnabled();
   await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const targetRuntimeId = requireNonBlankProvisioningValue(
+    "targetRuntimeId",
+    args.targetRuntimeId,
+  );
+  const targetBaseUrl = validateTargetBaseUrl(args.targetBaseUrl);
+  const searchHost = requireNonBlankProvisioningValue("searchHost", args.searchHost);
+  const searchIndex = requireNonBlankProvisioningValue(
+    "searchIndex",
+    args.searchIndex,
+  );
+  const storageUrl = requireNonBlankProvisioningValue("storageUrl", args.storageUrl);
+  const storageDocumentsBucket = requireNonBlankProvisioningValue(
+    "storageDocumentsBucket",
+    args.storageDocumentsBucket,
+  );
+  const storageImagesBucket = requireNonBlankProvisioningValue(
+    "storageImagesBucket",
+    args.storageImagesBucket,
+  );
+  requireNonBlankProvisioningValue("encryptedDatabaseUrl", args.encryptedDatabaseUrl);
+  requireNonBlankProvisioningValue("encryptedSearchKey", args.encryptedSearchKey);
+  requireNonBlankProvisioningValue(
+    "encryptedStorageServiceRoleKey",
+    args.encryptedStorageServiceRoleKey,
+  );
+  const zoteroTranslationUrl =
+    args.zoteroTranslationUrl === undefined
+      ? undefined
+      : requireNonBlankProvisioningValue(
+          "zoteroTranslationUrl",
+          args.zoteroTranslationUrl,
+        );
+  if (
+    !Number.isSafeInteger(args.storageMaxPdfBytes) ||
+    args.storageMaxPdfBytes <= 0
+  ) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "storageMaxPdfBytes must be a positive safe integer",
+    );
+  }
   const existing = await ctx.db
     .query("evidenceLibraryRuntimeBindings")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
@@ -52,7 +104,15 @@ export async function seedDevelopmentRuntimeBinding(
   if (existing) {
     throw createError("CONFLICT", "Evidence Library runtime binding already exists");
   }
-  const targetBaseUrl = validateTargetBaseUrl(args.targetBaseUrl);
+  const targetBinding = await ctx.db
+    .query("evidenceLibraryRuntimeBindings")
+    .withIndex("by_targetRuntimeId", (query) =>
+      query.eq("targetRuntimeId", targetRuntimeId),
+    )
+    .first();
+  if (targetBinding) {
+    throw createError("CONFLICT", "Evidence Library target runtime already reserved");
+  }
   const databaseCredentialId = await storeEvidenceLibraryCredential(ctx, {
     libraryId: args.libraryId,
     concretePath: "/services/database/url",
@@ -71,16 +131,16 @@ export async function seedDevelopmentRuntimeBinding(
   const now = Date.now();
   const bindingId = await ctx.db.insert("evidenceLibraryRuntimeBindings", {
     libraryId: args.libraryId,
-    targetRuntimeId: args.targetRuntimeId,
+    targetRuntimeId,
     targetBaseUrl,
     state: "pending",
-    searchHost: args.searchHost,
-    searchIndex: args.searchIndex,
-    storageUrl: args.storageUrl,
-    storageDocumentsBucket: args.storageDocumentsBucket,
-    storageImagesBucket: args.storageImagesBucket,
+    searchHost,
+    searchIndex,
+    storageUrl,
+    storageDocumentsBucket,
+    storageImagesBucket,
     storageMaxPdfBytes: args.storageMaxPdfBytes,
-    zoteroTranslationUrl: args.zoteroTranslationUrl,
+    zoteroTranslationUrl,
     databaseCredentialId,
     searchCredentialId,
     storageCredentialId,
