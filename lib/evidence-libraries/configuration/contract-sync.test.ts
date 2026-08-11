@@ -371,3 +371,39 @@ test("rejects an artifact commit absent from origin/openscholar", async () => {
     await rm(sourceRoot, { recursive: true, force: true });
   }
 });
+
+test("rejects a checkout without origin/openscholar", async () => {
+  const sourceRoot = await mkdtemp(join(tmpdir(), "evidence-library-source-"));
+
+  try {
+    execFileSync("git", ["init", "--quiet", sourceRoot]);
+    execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
+    execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
+    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "openscholar"]);
+    await writeFile(join(sourceRoot, "README.md"), "fixture\n", "utf8");
+    execFileSync("git", ["-C", sourceRoot, "add", "README.md"]);
+    execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "fixture"]);
+    execFileSync("git", [
+      "-C",
+      sourceRoot,
+      "remote",
+      "add",
+      "origin",
+      "git@github.com:OpenDevEd/new-el.git",
+    ]);
+    const head = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+
+    await expect(
+      inspectContractCheckout({
+        sourceRoot,
+        expectedRepository: "https://github.com/OpenDevEd/new-el",
+        expectedBranch: "openscholar",
+        artifactCommit: head,
+      }),
+    ).rejects.toThrow(/missing refs\/remotes\/origin\/openscholar/i);
+  } finally {
+    await rm(sourceRoot, { recursive: true, force: true });
+  }
+});
