@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -122,6 +122,39 @@ test("writes exact artifact bytes and verifies them without rewriting", async ()
         check: true,
       }),
     ).resolves.toEqual({ changed: false });
+  } finally {
+    await rm(outputRoot, { recursive: true, force: true });
+  }
+});
+
+test("check mode reports drift without repairing the file", async () => {
+  const outputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-contract-"));
+  const schemaPath = join(outputRoot, "generated/library-config.schema.json");
+  const snapshot = createContractSnapshot({
+    repository: "https://github.com/OpenDevEd/new-el",
+    commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+    schemaText,
+    catalogText,
+  });
+
+  try {
+    await synchronizeContractSnapshot({
+      snapshot,
+      outputRoot,
+      inspectedCheckoutCommit: "426b4b1a71ed2d5ce045479c1e630c0fc1f3e290",
+      check: false,
+    });
+    await writeFile(schemaPath, "tampered\n", "utf8");
+
+    await expect(
+      synchronizeContractSnapshot({
+        snapshot,
+        outputRoot,
+        inspectedCheckoutCommit: "426b4b1a71ed2d5ce045479c1e630c0fc1f3e290",
+        check: true,
+      }),
+    ).rejects.toThrow(/contract drift.*library-config\.schema\.json/i);
+    await expect(readFile(schemaPath, "utf8")).resolves.toBe("tampered\n");
   } finally {
     await rm(outputRoot, { recursive: true, force: true });
   }
