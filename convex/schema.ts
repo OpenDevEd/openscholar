@@ -22,6 +22,13 @@ import {
 } from "./lib/validators";
 import {
   clerkEventLogFields,
+  evidenceLibraryConfigDraftFields,
+  evidenceLibraryConfigRevisionFields,
+  evidenceLibraryConfigSectionValidator,
+  evidenceLibraryCredentialFields,
+  evidenceLibraryFields,
+  evidenceLibraryOperationFields,
+  evidenceLibraryRuntimeBindingFields,
   organizationFields,
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
@@ -47,6 +54,47 @@ export default defineSchema({
     ])
     .index("by_organizationId_and_state", ["organizationId", "state"])
     .index("by_clerkUserId_and_state", ["clerkUserId", "state"]),
+
+  evidenceLibraries: defineTable(evidenceLibraryFields)
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_and_slug", ["organizationId", "slug"])
+    .index("by_organizationId_and_state", ["organizationId", "state"]),
+
+  evidenceLibraryConfigDrafts: defineTable(evidenceLibraryConfigDraftFields).index(
+    "by_libraryId",
+    ["libraryId"],
+  ),
+
+  evidenceLibraryConfigRevisions: defineTable(
+    evidenceLibraryConfigRevisionFields,
+  )
+    .index("by_libraryId_and_revisionKey", ["libraryId", "revisionKey"])
+    .index("by_libraryId_and_revisionNumber", ["libraryId", "revisionNumber"]),
+
+  evidenceLibraryConfigSections: defineTable(
+    evidenceLibraryConfigSectionValidator,
+  )
+    .index("by_draftId_and_sectionKey", ["draftId", "sectionKey"])
+    .index("by_revisionId_and_sectionKey", ["revisionId", "sectionKey"])
+    .index("by_libraryId_and_kind", ["libraryId", "kind"]),
+
+  evidenceLibraryCredentials: defineTable(evidenceLibraryCredentialFields)
+    .index("by_libraryId", ["libraryId"])
+    .index("by_libraryId_and_credentialKey", ["libraryId", "credentialKey"]),
+
+  evidenceLibraryRuntimeBindings: defineTable(evidenceLibraryRuntimeBindingFields)
+    .index("by_libraryId", ["libraryId"])
+    .index("by_targetRuntimeId", ["targetRuntimeId"])
+    .index("by_state", ["state"]),
+
+  evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)
+    .index("by_idempotencyKey", ["idempotencyKey"])
+    .index("by_libraryId_and_createdAt", ["libraryId", "createdAt"])
+    .index("by_libraryId_and_status_and_updatedAt", [
+      "libraryId",
+      "status",
+      "updatedAt",
+    ]),
 
   // Rate limiting (convex-helpers)
   ...rateLimitTables,

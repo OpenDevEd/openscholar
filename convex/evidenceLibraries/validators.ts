@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 
 export const organizationStateValidator = v.union(
   v.literal("active"),
@@ -76,4 +77,170 @@ export const organizationMembershipFields = {
   clerkUpdatedAt: clerkMembershipSnapshotFields.clerkUpdatedAt,
   createdAt: v.number(),
   updatedAt: v.number(),
+};
+
+const sectionKeyValidators = SECTION_REGISTRY.map((section) =>
+  v.literal(section.key),
+);
+export const sectionKeyValidator = v.union(
+  ...(sectionKeyValidators as [
+    (typeof sectionKeyValidators)[number],
+    (typeof sectionKeyValidators)[number],
+    ...(typeof sectionKeyValidators)[number][],
+  ]),
+);
+
+export const configProvenanceValidator = v.object({
+  repository: v.string(),
+  commit: v.string(),
+  schemaVersion: v.number(),
+  catalogVersion: v.number(),
+  schemaSha256: v.string(),
+  catalogsSha256: v.string(),
+});
+
+export const evidenceLibraryStateValidator = v.union(
+  v.literal("provisioning"),
+  v.literal("active"),
+  v.literal("disabled"),
+);
+
+export const evidenceLibraryFields = {
+  organizationId: v.id("organizations"),
+  name: v.string(),
+  slug: v.string(),
+  state: evidenceLibraryStateValidator,
+  activeRevisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
+  createdByClerkUserId: v.string(),
+  updatedByClerkUserId: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+export const evidenceLibraryConfigDraftFields = {
+  libraryId: v.id("evidenceLibraries"),
+  baseRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
+  editVersion: v.number(),
+  contractProvenance: configProvenanceValidator,
+  createdByClerkUserId: v.string(),
+  updatedByClerkUserId: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+export const evidenceLibraryConfigRevisionFields = {
+  libraryId: v.id("evidenceLibraries"),
+  revisionKey: v.string(),
+  revisionNumber: v.number(),
+  basedOnRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
+  rollbackOfRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
+  contractProvenance: configProvenanceValidator,
+  createdByClerkUserId: v.string(),
+  createdAt: v.number(),
+};
+
+export const evidenceLibraryConfigSectionValidator = v.union(
+  v.object({
+    kind: v.literal("draft"),
+    libraryId: v.id("evidenceLibraries"),
+    draftId: v.id("evidenceLibraryConfigDrafts"),
+    sectionKey: sectionKeyValidator,
+    payload: v.any(),
+    payloadByteLength: v.number(),
+    contractProvenance: configProvenanceValidator,
+    updatedByClerkUserId: v.string(),
+    updatedAt: v.number(),
+  }),
+  v.object({
+    kind: v.literal("revision"),
+    libraryId: v.id("evidenceLibraries"),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+    sectionKey: sectionKeyValidator,
+    payload: v.any(),
+    payloadByteLength: v.number(),
+    contractProvenance: configProvenanceValidator,
+    createdByClerkUserId: v.string(),
+    createdAt: v.number(),
+  }),
+);
+
+export const evidenceLibraryRuntimeBindingFields = {
+  libraryId: v.id("evidenceLibraries"),
+  targetRuntimeId: v.string(),
+  targetBaseUrl: v.string(),
+  state: v.union(v.literal("pending"), v.literal("ready"), v.literal("failed")),
+  searchHost: v.string(),
+  searchIndex: v.string(),
+  storageUrl: v.string(),
+  storageDocumentsBucket: v.string(),
+  storageImagesBucket: v.string(),
+  storageMaxPdfBytes: v.number(),
+  zoteroTranslationUrl: v.optional(v.string()),
+  databaseCredentialId: v.id("evidenceLibraryCredentials"),
+  searchCredentialId: v.id("evidenceLibraryCredentials"),
+  storageCredentialId: v.id("evidenceLibraryCredentials"),
+  lastVerifiedAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+export const evidenceLibraryCredentialFields = {
+  libraryId: v.id("evidenceLibraries"),
+  credentialKey: v.string(),
+  pathPattern: v.string(),
+  instanceKey: v.optional(v.string()),
+  encryptedValue: v.string(),
+  maskedHint: v.optional(v.string()),
+  validationState: v.union(
+    v.literal("untested"),
+    v.literal("valid"),
+    v.literal("invalid"),
+  ),
+  lastValidatedAt: v.optional(v.number()),
+  createdByClerkUserId: v.string(),
+  updatedByClerkUserId: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+export const evidenceLibraryOperationFields = {
+  libraryId: v.id("evidenceLibraries"),
+  kind: v.union(v.literal("validate"), v.literal("publish"), v.literal("rollback")),
+  idempotencyKey: v.string(),
+  revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
+  status: v.union(
+    v.literal("queued"),
+    v.literal("running"),
+    v.literal("succeeded"),
+    v.literal("failed"),
+  ),
+  stage: v.union(
+    v.literal("queued"),
+    v.literal("assembling"),
+    v.literal("validating"),
+    v.literal("publishing"),
+    v.literal("activating"),
+    v.literal("completed"),
+  ),
+  attemptCount: v.number(),
+  receipt: v.optional(
+    v.object({
+      revisionKey: v.optional(v.string()),
+      targetConfigSha256: v.optional(v.string()),
+      runtimeReceiptId: v.optional(v.string()),
+      activatedAt: v.optional(v.number()),
+    }),
+  ),
+  error: v.optional(
+    v.object({
+      code: v.string(),
+      message: v.string(),
+      stage: v.string(),
+    }),
+  ),
+  requestedByClerkUserId: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  startedAt: v.optional(v.number()),
+  completedAt: v.optional(v.number()),
 };

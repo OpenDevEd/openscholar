@@ -53,6 +53,7 @@ import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
+import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
@@ -253,6 +254,7 @@ declare const fullApi: ApiFromModules<{
   debug_papers: typeof debug_papers;
   "evidenceLibraries/access": typeof evidenceLibraries_access;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
+  "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;

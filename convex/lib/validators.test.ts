@@ -47,7 +47,7 @@ describe("schema/validator parity", () => {
   for (const [tableName, fields] of Object.entries(ssotTables)) {
     test(`${tableName}: field-object matches schema.tables.${tableName}.validator.fields`, () => {
       const tableDef = (
-        schema.tables as Record<
+        schema.tables as unknown as Record<
           string,
           { validator: { fields: Record<string, AnyValidator> } }
         >
