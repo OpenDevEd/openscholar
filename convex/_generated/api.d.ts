@@ -51,6 +51,8 @@ import type * as credits_lib_retryPolicy from "../credits/lib/retryPolicy.js";
 import type * as credits_queries from "../credits/queries.js";
 import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
+import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
+import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
 import type * as extraction_aggregates from "../extraction/aggregates.js";
@@ -246,6 +248,8 @@ declare const fullApi: ApiFromModules<{
   "credits/queries": typeof credits_queries;
   crons: typeof crons;
   debug_papers: typeof debug_papers;
+  "evidenceLibraries/access": typeof evidenceLibraries_access;
+  "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
   "extraction/aggregates": typeof extraction_aggregates;
