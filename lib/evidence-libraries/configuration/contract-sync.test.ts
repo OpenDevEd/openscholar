@@ -35,4 +35,18 @@ describe("createContractSnapshot", () => {
       }),
     ).toThrow(/repository provenance/i);
   });
+
+  test("rejects a source artifact whose expected digest does not match", () => {
+    expect(() =>
+      createContractSnapshot({
+        repository: "https://github.com/OpenDevEd/new-el",
+        commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+        schemaText,
+        catalogText,
+        expectedDigests: {
+          schema: "0".repeat(64),
+        },
+      }),
+    ).toThrow(/schema digest mismatch/i);
+  });
 });
