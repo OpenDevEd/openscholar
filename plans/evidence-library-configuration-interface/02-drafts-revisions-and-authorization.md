@@ -66,7 +66,7 @@ Breaking/new tables and strict global schema validation. No legacy model exists.
 
 ```bash
 npm test -- convex/evidenceLibraries convex/webhooks
-npx convex function-spec --file /tmp/openscholar-plan02-function-spec.json
+npx convex function-spec > /tmp/openscholar-plan02-function-spec.json
 rg 'evidenceLibraries|webhooks' /tmp/openscholar-plan02-function-spec.json
 npx pm2 logs convex --lines 5 --nostream
 ```
