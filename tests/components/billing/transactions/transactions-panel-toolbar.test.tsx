@@ -28,7 +28,6 @@ function renderToolbar({
     <NuqsTestingAdapter
       searchParams={searchParams}
       onUrlUpdate={onUrlUpdate}
-      hasMemory
     >
       <TransactionsPanelToolbar counts={counts} />
     </NuqsTestingAdapter>,
@@ -90,17 +89,9 @@ describe("TransactionsPanelToolbar", () => {
       "[data-transactions-search]",
     )! as HTMLInputElement;
     await user.type(search, "abc");
-    // nuqs's throttle queue can land URL updates out of order under
-    // contention; assert that the final value lands somewhere in the
-    // update stream rather than relying on it being the last entry.
-    // Under full-suite parallel load the throttled flush can land well past
-    // waitFor's default 1s budget, so give the throttle room to drain.
-    await waitFor(
-      () => {
-        expect(updates.some((u) => u.get("q") === "abc")).toBe(true);
-      },
-      { timeout: 5000 },
-    );
+    await waitFor(() => {
+      expect(updates.some((u) => u.get("q") === "abc")).toBe(true);
+    });
   });
 
   it("search clear button is hidden when q is empty and visible when q is set", () => {
