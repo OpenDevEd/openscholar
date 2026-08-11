@@ -17,7 +17,7 @@ Out of scope: Convex tables, route UI, remote activation.
 
 ## Design
 
-1. `scripts/sync-evidence-library-config-contract.mjs` accepts an exact upstream SHA and either the verified checkout at `/Users/mcharrad/Documents/Github/new-el-optimize` on branch `openscholar` or an authenticated immutable GitHub source. It writes generated artifacts plus `contract-lock.json`; `--check` performs no writes and fails on drift.
+1. `scripts/sync-evidence-library-config-contract.mjs` accepts an exact upstream SHA from the verified checkout at `/Users/mcharrad/Documents/Github/new-el-optimize` on branch `openscholar`. It verifies the origin, tracked upstream branch and artifact ancestry before reading the exact Git objects. Generated output records only immutable artifact provenance; the mutable local checkout HEAD is validation context and is never serialized. `--check` performs no writes and fails on drift.
 2. Generated files live under `lib/evidence-libraries/configuration/generated/` and carry a generated-file header/README. They are never hand-edited.
 3. The generated schema declares JSON Schema draft 2020-12. Verify that at execution, then use the matching Ajv 2020 entry point plus a compatible `ajv-formats`. Compile once in a server-only module; expose normalized `ValidationIssue[]` values, not Ajv internals, to UI code.
 4. `section-registry.ts` owns section labels, descriptions, ordering and default section authority—not schema constraints or field widgets. Every section-root pointer and generated credential pointer must resolve in the upstream schema. Plans 04–05 own per-field widget and authority metadata after their shared field controls exist.
@@ -42,10 +42,16 @@ Out of scope: Convex tables, route UI, remote activation.
 - `package.json`, `package-lock.json`
 - `scripts/sync-evidence-library-config-contract.mjs`
 - `lib/evidence-libraries/configuration/contract-lock.json`
+- `lib/evidence-libraries/configuration/contract-sync.mjs`
+- `lib/evidence-libraries/configuration/contract-sync.test.ts`
+- `lib/evidence-libraries/configuration/contract-sync-cli.test.ts`
+- `lib/evidence-libraries/configuration/contract.ts` and `contract.test.ts`
+- `lib/evidence-libraries/configuration/json-pointer.ts` and `json-pointer.test.ts`
+- `lib/evidence-libraries/configuration/section-registry.ts` and `section-registry.test.ts`
+- `lib/evidence-libraries/configuration/validation.ts` and `validation.test.ts`
+- `lib/evidence-libraries/configuration/generated/README.md`
 - `lib/evidence-libraries/configuration/generated/library-config.schema.json`
 - `lib/evidence-libraries/configuration/generated/library-config.catalogs.json`
-- `lib/evidence-libraries/configuration/{contract,section-registry,validation}.ts`
-- corresponding `*.test.ts`
 
 No `convex/`, `app/` or `components/` files.
 
@@ -89,3 +95,7 @@ This plan does not touch a deployed tree. `npm run build` must still pass becaus
 ## Deviation — 2026-08-11
 
 The original plan assigned per-field widget hints and every field-level authority classification to Plan 01 before field controls existed. GPT-5.6 Sol review identified that the implementation correctly established only section defaults plus generated credential paths. The plan now makes that boundary explicit: Plan 01 owns the complete section registry and generated secret classification; Plans 04–05 own detailed field presentation and authority as part of the actual editors. This avoids speculative metadata and preserves DRY against the generated schema/catalog.
+
+## Deviation — 2026-08-11 — reproducible provenance
+
+The first implementation serialized the neighboring checkout's current HEAD as `inspectedCheckoutCommit`. GPT-5.6 Sol review identified that this made committed generated output vary when unrelated local-only commits advanced that checkout, even though the pinned artifact commit and bytes were unchanged. Plan 01 now records only immutable repository, artifact commit, versions, digests and sizes. Checkout origin, branch, upstream ref and artifact ancestry remain mandatory preconditions, but the mutable checkout HEAD is not part of the generated contract.
