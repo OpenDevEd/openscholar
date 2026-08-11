@@ -1,3 +1,9 @@
+import {
+  escapeJsonPointerToken,
+  jsonPointerPatternMatches,
+} from "../../lib/evidence-libraries/configuration/json-pointer";
+import { WRITE_ONLY_POINTER_PATTERNS } from "../../lib/evidence-libraries/configuration/section-registry";
+
 export const MAX_SECTION_PAYLOAD_BYTES = 512 * 1024;
 export const MAX_DRAFT_PAYLOAD_BYTES = 768 * 1024;
 
@@ -52,4 +58,30 @@ export function assertDraftPayloadBudget(totalByteLength: number): void {
   if (totalByteLength > MAX_DRAFT_PAYLOAD_BYTES) {
     throw new Error("Draft exceeds the draft payload limit");
   }
+}
+
+export function assertNoCredentialMaterial(
+  sectionKey: string,
+  payload: unknown,
+): void {
+  function visit(value: unknown, pointer: string): void {
+    if (
+      WRITE_ONLY_POINTER_PATTERNS.some((pattern) =>
+        jsonPointerPatternMatches(pattern, pointer),
+      )
+    ) {
+      throw new Error("Write-only values belong to the credential lifecycle");
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, `${pointer}/${index}`));
+      return;
+    }
+    if (value && typeof value === "object") {
+      for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+        visit(item, `${pointer}/${escapeJsonPointerToken(key)}`);
+      }
+    }
+  }
+
+  visit(payload, `/${escapeJsonPointerToken(sectionKey)}`);
 }

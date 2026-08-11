@@ -10,6 +10,7 @@ import {
 import { nextDraftEditVersion } from "./draftVersion";
 import {
   assertDraftPayloadBudget,
+  assertNoCredentialMaterial,
   validateSectionPayload,
 } from "./sectionPayload";
 import { sectionKeyValidator, type SectionKey } from "./validators";
@@ -80,6 +81,7 @@ export async function saveEvidenceLibraryDraftSection(
     args.expectedEditVersion,
   );
   const payloadByteLength = validateSectionPayload(args.payload);
+  assertNoCredentialMaterial(args.sectionKey, args.payload);
   const sections = await ctx.db
     .query("evidenceLibraryConfigSections")
     .withIndex("by_draftId_and_sectionKey", (query) =>

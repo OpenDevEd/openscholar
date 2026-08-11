@@ -3,6 +3,7 @@ import {
   MAX_DRAFT_PAYLOAD_BYTES,
   MAX_SECTION_PAYLOAD_BYTES,
   assertDraftPayloadBudget,
+  assertNoCredentialMaterial,
   validateSectionPayload,
 } from "./sectionPayload";
 
@@ -27,6 +28,29 @@ describe("validateSectionPayload", () => {
   it("rejects a section beyond the bounded document budget", () => {
     const payload = "x".repeat(MAX_SECTION_PAYLOAD_BYTES);
     expect(() => validateSectionPayload(payload)).toThrow(/section payload limit/);
+  });
+});
+
+describe("assertNoCredentialMaterial", () => {
+  it("rejects write-only values at generated credential paths", () => {
+    expect(() =>
+      assertNoCredentialMaterial("ai", {
+        providers: [{ id: "provider", apiKey: "secret" }],
+      }),
+    ).toThrow(/credential lifecycle/);
+    expect(() =>
+      assertNoCredentialMaterial("services", {
+        database: { url: "postgres://secret" },
+      }),
+    ).toThrow(/credential lifecycle/);
+  });
+
+  it("accepts non-secret owner configuration", () => {
+    expect(() =>
+      assertNoCredentialMaterial("ai", {
+        providers: [{ id: "provider", enabled: true }],
+      }),
+    ).not.toThrow();
   });
 });
 
