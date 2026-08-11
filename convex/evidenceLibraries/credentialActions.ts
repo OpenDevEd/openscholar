@@ -16,7 +16,7 @@ export const writeCredential = action({
   },
   returns: v.id("evidenceLibraryCredentials"),
   handler: async (ctx, args): Promise<Id<"evidenceLibraryCredentials">> => {
-    const encryptionKey = process.env.API_KEY_ENCRYPTION_KEY;
+    const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
       throw createError(
         "API_KEY_ENCRYPTION_KEY_MISSING",
