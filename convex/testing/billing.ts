@@ -7,6 +7,7 @@ import {
 import { v } from "convex/values";
 import type { Doc, Id, TableNames } from "../_generated/dataModel";
 import { readBalance } from "../credits/balanceCounter";
+import { clearUserTransactionCounters } from "../credits/aggregates";
 
 export type BillingStripeObjectIdCollections = {
   stripeCustomerIds: string[];
@@ -299,7 +300,7 @@ export const getBillingSnapshotForUser = internalQuery({
 });
 
 async function deleteBillingStateForUser(
-  ctx: Pick<MutationCtx, "db">,
+  ctx: MutationCtx,
   userId: Id<"users">,
 ) {
     const creditsRows = await ctx.db
@@ -352,6 +353,10 @@ async function deleteBillingStateForUser(
 
     for (const row of creditTransactions) {
       await ctx.db.delete("creditTransactions", row._id);
+    }
+
+    for (const row of creditsRows) {
+      await clearUserTransactionCounters(ctx, row._id);
     }
 
     for (const row of subscriptions) {

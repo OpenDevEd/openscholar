@@ -659,6 +659,4 @@ export default defineSchema({
   })
     .index("by_user_kind", ["userId", "kind"])
     .index("by_user_kind_expires", ["userId", "kind", "expiresAt"]),
-}, {
-  schemaValidation: false,
 });
