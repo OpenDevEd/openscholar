@@ -52,6 +52,8 @@ import type * as credits_queries from "../credits/queries.js";
 import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
+import type * as evidenceLibraries_credentialActions from "../evidenceLibraries/credentialActions.js";
+import type * as evidenceLibraries_credentials from "../evidenceLibraries/credentials.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js";
@@ -255,6 +257,8 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   debug_papers: typeof debug_papers;
   "evidenceLibraries/access": typeof evidenceLibraries_access;
+  "evidenceLibraries/credentialActions": typeof evidenceLibraries_credentialActions;
+  "evidenceLibraries/credentials": typeof evidenceLibraries_credentials;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/queries": typeof evidenceLibraries_queries;
