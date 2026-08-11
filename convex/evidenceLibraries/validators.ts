@@ -40,26 +40,40 @@ export const clerkEventLogFields = {
   processedAt: v.number(),
 };
 
-export const organizationFields = {
+export const clerkOrganizationSnapshotFields = {
   clerkOrganizationId: v.string(),
   name: v.string(),
   slug: v.string(),
   imageUrl: v.optional(v.string()),
-  state: organizationStateValidator,
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
+};
+
+export const organizationFields = {
+  ...clerkOrganizationSnapshotFields,
+  state: organizationStateValidator,
   createdAt: v.number(),
   updatedAt: v.number(),
 };
 
-export const organizationMembershipFields = {
-  organizationId: v.id("organizations"),
+export const clerkMembershipSnapshotFields = {
   clerkMembershipId: v.string(),
   clerkUserId: v.string(),
   role: organizationRoleValidator,
   state: organizationMembershipStateValidator,
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
+  organization: v.object(clerkOrganizationSnapshotFields),
+};
+
+export const organizationMembershipFields = {
+  organizationId: v.id("organizations"),
+  clerkMembershipId: clerkMembershipSnapshotFields.clerkMembershipId,
+  clerkUserId: clerkMembershipSnapshotFields.clerkUserId,
+  role: clerkMembershipSnapshotFields.role,
+  state: clerkMembershipSnapshotFields.state,
+  clerkCreatedAt: clerkMembershipSnapshotFields.clerkCreatedAt,
+  clerkUpdatedAt: clerkMembershipSnapshotFields.clerkUpdatedAt,
   createdAt: v.number(),
   updatedAt: v.number(),
 };
