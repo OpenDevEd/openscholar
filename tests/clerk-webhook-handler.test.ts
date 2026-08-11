@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { processClerkWebhookEvent } from "../convex/webhooks/clerk";
 
+const signedEventMetadata = {
+  instanceId: "ins_123",
+  occurredAt: 1_700_000_000,
+  payloadSha256: "a".repeat(64),
+};
+
 describe("clerk webhook handler", () => {
   it("dispatches user.created to upsert mutation", async () => {
     const mutationRefs = {
@@ -18,6 +24,7 @@ describe("clerk webhook handler", () => {
 
     const outcome = await processClerkWebhookEvent({
       eventId: "evt_1",
+      ...signedEventMetadata,
       eventType: "user.created",
       data: {
         id: "user_123",
@@ -58,6 +65,7 @@ describe("clerk webhook handler", () => {
 
     const outcome = await processClerkWebhookEvent({
       eventId: "evt_2",
+      ...signedEventMetadata,
       eventType: "user.updated",
       data: {
         id: "user_123",
@@ -94,6 +102,7 @@ describe("clerk webhook handler", () => {
 
     const outcome = await processClerkWebhookEvent({
       eventId: "evt_3",
+      ...signedEventMetadata,
       eventType: "user.deleted",
       data: { id: "user_123" },
       runMutation,
@@ -110,6 +119,7 @@ describe("clerk webhook handler", () => {
 
     const outcome = await processClerkWebhookEvent({
       eventId: "evt_4",
+      ...signedEventMetadata,
       eventType: "session.created",
       data: { id: "sess_123" },
       runMutation,
@@ -124,6 +134,7 @@ describe("clerk webhook handler", () => {
 
     const outcome = await processClerkWebhookEvent({
       eventId: "evt_5",
+      ...signedEventMetadata,
       eventType: "user.updated",
       data: { foo: "bar" },
       runMutation,
@@ -131,5 +142,64 @@ describe("clerk webhook handler", () => {
 
     expect(outcome).toEqual({ status: 400, body: "Invalid user payload" });
     expect(runMutation).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["organization.created", "upsert", "organization"],
+    ["organization.updated", "upsert", "organization"],
+    ["organization.deleted", "delete", "organization"],
+    ["organizationMembership.created", "upsert", "membership"],
+    ["organizationMembership.updated", "upsert", "membership"],
+    ["organizationMembership.deleted", "delete", "membership"],
+  ] as const)("dispatches %s to its projection mutation", async (eventType, action, kind) => {
+    const mutationRefs = {
+      applyOrganizationEvent: Symbol("applyOrganizationEvent"),
+      applyOrganizationMembershipEvent: Symbol("applyOrganizationMembershipEvent"),
+    };
+    const organization = {
+      id: "org_123",
+      name: "Evidence Team",
+      slug: "evidence-team",
+      created_at: 1_700_000_000_000,
+      updated_at: 1_700_000_001_000,
+    };
+    const data = kind === "organization"
+      ? action === "delete"
+        ? { id: "org_123", deleted: true }
+        : organization
+      : {
+          id: "orgmem_123",
+          role: "org:member",
+          created_at: 1_700_000_002_000,
+          updated_at: 1_700_000_003_000,
+          organization,
+          public_user_data: { user_id: "user_123" },
+        };
+    const runMutation = vi.fn().mockResolvedValue("applied");
+
+    const outcome = await processClerkWebhookEvent({
+      eventId: `msg_${eventType}`,
+      eventType,
+      data,
+      ...signedEventMetadata,
+      runMutation,
+      mutationRefs,
+    });
+
+    expect(outcome).toEqual({ status: 200, body: "OK" });
+    expect(runMutation).toHaveBeenCalledTimes(1);
+    expect(runMutation.mock.calls[0]?.[0]).toBe(
+      kind === "organization"
+        ? mutationRefs.applyOrganizationEvent
+        : mutationRefs.applyOrganizationMembershipEvent,
+    );
+    expect(runMutation.mock.calls[0]?.[1]).toMatchObject({
+      action,
+      eventId: `msg_${eventType}`,
+      eventType,
+      instanceId: "ins_123",
+      occurredAt: 1_700_000_000,
+      payloadSha256: "a".repeat(64),
+    });
   });
 });

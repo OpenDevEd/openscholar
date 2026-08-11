@@ -4,6 +4,7 @@ import {
   type ClerkUserPayload,
   mapClerkUserToDeleteArgs,
   mapClerkUserToUpsertArgs,
+  parseClerkProjectionEvent,
 } from "./clerk_mappers";
 
 export function parseClerkUserPayload(data: unknown): ClerkUserPayload | null {
@@ -30,19 +31,28 @@ type ClerkWebhookMutationRunner = (
 type ClerkWebhookMutationRefs = {
   upsertUserFromClerk: unknown;
   markUserDeletedFromClerk: unknown;
+  applyOrganizationEvent: unknown;
+  applyOrganizationMembershipEvent: unknown;
 };
 
 export async function processClerkWebhookEvent(args: {
   eventId: string;
   eventType: string;
+  instanceId: string;
+  occurredAt: number;
+  payloadSha256: string;
   data: unknown;
   runMutation: ClerkWebhookMutationRunner;
-  mutationRefs?: ClerkWebhookMutationRefs;
+  mutationRefs?: Partial<ClerkWebhookMutationRefs>;
 }): Promise<ClerkWebhookHandlerOutcome> {
-  const { eventId, eventType, data, runMutation } = args;
-  const mutationRefs = args.mutationRefs ?? {
+  const { eventId, eventType, instanceId, occurredAt, payloadSha256, data, runMutation } = args;
+  const mutationRefs: ClerkWebhookMutationRefs = {
     upsertUserFromClerk: internal.users.internal.upsertUserFromClerk,
     markUserDeletedFromClerk: internal.users.internal.markUserDeletedFromClerk,
+    applyOrganizationEvent: internal.webhooks.projections.applyOrganizationEvent,
+    applyOrganizationMembershipEvent:
+      internal.webhooks.projections.applyOrganizationMembershipEvent,
+    ...args.mutationRefs,
   };
 
   try {
@@ -66,6 +76,50 @@ export async function processClerkWebhookEvent(args: {
           mutationRefs.markUserDeletedFromClerk,
           mapClerkUserToDeleteArgs(user),
         );
+        break;
+      }
+
+      case "organization.created":
+      case "organization.updated":
+      case "organization.deleted":
+      case "organizationMembership.created":
+      case "organizationMembership.updated":
+      case "organizationMembership.deleted": {
+        const projection = parseClerkProjectionEvent(eventType, data);
+        if (!projection) {
+          return { status: 400, body: "Invalid organization payload" };
+        }
+        const metadata = {
+          eventId,
+          eventType,
+          instanceId,
+          occurredAt,
+          payloadSha256,
+        };
+        if (projection.kind === "organization") {
+          await runMutation(
+            mutationRefs.applyOrganizationEvent,
+            projection.action === "upsert"
+              ? {
+                  ...metadata,
+                  action: projection.action,
+                  entityId: projection.entityId,
+                  organization: projection.organization,
+                }
+              : {
+                  ...metadata,
+                  action: projection.action,
+                  entityId: projection.entityId,
+                },
+          );
+        } else {
+          await runMutation(mutationRefs.applyOrganizationMembershipEvent, {
+            ...metadata,
+            action: projection.action,
+            entityId: projection.entityId,
+            membership: projection.membership,
+          });
+        }
         break;
       }
 
@@ -102,11 +156,14 @@ export const clerkWebhook = httpAction(async (ctx, req) => {
     return new Response("Invalid signature", { status: 401 });
   }
 
-  const { eventId, eventType, data } = result;
+  const { eventId, eventType, instanceId, occurredAt, payloadSha256, data } = result;
   const parsedData: unknown = JSON.parse(data);
   const outcome = await processClerkWebhookEvent({
     eventId,
     eventType,
+    instanceId,
+    occurredAt,
+    payloadSha256,
     data: parsedData,
     runMutation: (mutation, mutationArgs) =>
       ctx.runMutation(mutation as never, mutationArgs as never),
