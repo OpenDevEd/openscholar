@@ -6,7 +6,10 @@ import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { encrypt } from "../lib/crypto";
 import { createError } from "../lib/errors";
-import { assertEvidenceLibraryDevProvisioningEnabled } from "./provisioning";
+import {
+  assertEvidenceLibraryDevProvisioningEnabled,
+  requireNonBlankProvisioningValue,
+} from "./provisioning";
 
 type SeedResult = {
   bindingId: Id<"evidenceLibraryRuntimeBindings">;
@@ -46,6 +49,12 @@ export const seedDevelopmentBinding = action({
         "Credential encryption key is not configured",
       );
     }
+    requireNonBlankProvisioningValue("databaseUrl", args.databaseUrl);
+    requireNonBlankProvisioningValue("searchKey", args.searchKey);
+    requireNonBlankProvisioningValue(
+      "storageServiceRoleKey",
+      args.storageServiceRoleKey,
+    );
     return await ctx.runMutation(
       internal.evidenceLibraries.provisioning.seedRuntimeBinding,
       {

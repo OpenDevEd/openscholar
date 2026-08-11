@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
+import { api } from "../_generated/api";
 import schema from "../schema";
 import {
   assertEvidenceLibraryDevProvisioningEnabled,
@@ -19,7 +20,7 @@ async function createProvisioningFixture(
 ) {
   const clerkOrganizationId = `org_${suffix}`;
   const clerkUserId = `user_${suffix}`;
-  const libraryId = await t.run(async (ctx) => {
+  const fixture = await t.run(async (ctx) => {
     const organizationId = await ctx.db.insert("organizations", {
       clerkOrganizationId,
       name: `Team ${suffix}`,
@@ -41,7 +42,7 @@ async function createProvisioningFixture(
       createdAt: 1,
       updatedAt: 1,
     });
-    return await ctx.db.insert("evidenceLibraries", {
+    const libraryId = await ctx.db.insert("evidenceLibraries", {
       organizationId,
       name: `Library ${suffix}`,
       slug: `library-${suffix}`,
@@ -51,13 +52,15 @@ async function createProvisioningFixture(
       createdAt: 1,
       updatedAt: 1,
     });
+    return { libraryId, organizationId };
   });
   return {
     admin: t.withIdentity({
       subject: clerkUserId,
       o: { id: clerkOrganizationId, rol: "org:admin" },
     }),
-    libraryId,
+    ...fixture,
+    clerkOrganizationId,
   };
 }
 
@@ -75,6 +78,21 @@ function validSeedArgs(libraryId: Id<"evidenceLibraries">) {
     encryptedDatabaseUrl: "enc-db",
     encryptedSearchKey: "enc-search",
     encryptedStorageServiceRoleKey: "enc-storage",
+  };
+}
+
+function validPublicSeedArgs(libraryId: Id<"evidenceLibraries">) {
+  const {
+    encryptedDatabaseUrl: _encryptedDatabaseUrl,
+    encryptedSearchKey: _encryptedSearchKey,
+    encryptedStorageServiceRoleKey: _encryptedStorageServiceRoleKey,
+    ...platformValues
+  } = validSeedArgs(libraryId);
+  return {
+    ...platformValues,
+    databaseUrl: "postgresql://database.example.org/evidence",
+    searchKey: "search-secret",
+    storageServiceRoleKey: "storage-secret",
   };
 }
 
@@ -244,5 +262,75 @@ describe("development runtime binding seed", () => {
       credentials: (await ctx.db.query("evidenceLibraryCredentials").collect()).length,
     }));
     expect(counts).toEqual({ bindings: 1, credentials: 3 });
+  });
+
+  it.each(["databaseUrl", "searchKey", "storageServiceRoleKey"] as const)(
+    "rejects blank public %s before encryption or writes",
+    async (field) => {
+      vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+      vi.stubEnv("ENCRYPTION_KEY", "ab".repeat(32));
+      const t = convexTest(schema);
+      const { admin, libraryId } = await createProvisioningFixture(t, field);
+      const args = validPublicSeedArgs(libraryId);
+      args[field] = "   ";
+
+      await expect(
+        admin.action(
+          api.evidenceLibraries.provisioningActions.seedDevelopmentBinding,
+          args,
+        ),
+      ).rejects.toThrow(/must not be blank/);
+      const counts = await t.run(async (ctx) => ({
+        bindings: (await ctx.db.query("evidenceLibraryRuntimeBindings").collect()).length,
+        credentials: (await ctx.db.query("evidenceLibraryCredentials").collect()).length,
+      }));
+      expect(counts).toEqual({ bindings: 0, credentials: 0 });
+    },
+  );
+
+  it("denies member, anonymous, and production action calls", async () => {
+    vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+    vi.stubEnv("ENCRYPTION_KEY", "ab".repeat(32));
+    const t = convexTest(schema);
+    const { admin, clerkOrganizationId, libraryId, organizationId } =
+      await createProvisioningFixture(t, "action_denials");
+    await t.run((ctx) =>
+      ctx.db.insert("organizationMemberships", {
+        organizationId,
+        clerkMembershipId: "orgmem_action_member",
+        clerkUserId: "user_action_member",
+        role: "org:member",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      }),
+    );
+    const member = t.withIdentity({
+      subject: "user_action_member",
+      o: { id: clerkOrganizationId, rol: "org:member" },
+    });
+    const args = validPublicSeedArgs(libraryId);
+
+    await expect(
+      member.action(
+        api.evidenceLibraries.provisioningActions.seedDevelopmentBinding,
+        args,
+      ),
+    ).rejects.toThrow(/FORBIDDEN/);
+    await expect(
+      t.action(
+        api.evidenceLibraries.provisioningActions.seedDevelopmentBinding,
+        args,
+      ),
+    ).rejects.toThrow(/FORBIDDEN/);
+    vi.stubEnv("CONVEX_CLOUD_ENV", "prod");
+    await expect(
+      admin.action(
+        api.evidenceLibraries.provisioningActions.seedDevelopmentBinding,
+        args,
+      ),
+    ).rejects.toThrow(/not-available-in-production/);
   });
 });
