@@ -27,9 +27,9 @@ Out of scope: UI, authoritative Evidence Library validation, network activation.
 3. Access resolution derives the authenticated user from `ctx.auth.getUserIdentity()`, reads the verified custom-template claims `identity.o.id` and `identity.o.rol`, and cross-checks a live projected membership. The role claim is exactly `org:admin` or `org:member`. Never trust a client-supplied `userId`, role or organization alone, and never add Clerk v1 `org_id` / `org_role` fallbacks.
 4. `org:admin` may mutate; `org:member` may read. Anonymous, inactive membership, wrong active organization and cross-tenant access fail identically without leaking existence.
 5. A draft has `baseRevisionId`, `editVersion`, contract provenance and timestamps. Every save provides the expected `editVersion`; mismatch returns a typed conflict.
-6. Sections are bounded JSON values keyed by canonical section name. Published revision sections are immutable. Secrets are referenced by status/credential identity, never embedded in section JSON or query results.
-7. Operation state is separate high-churn data: queued/running/succeeded/failed with stage, attempt, receipt and sanitized error metadata.
-8. The verified Clerk envelope preserves `svix-id` as message identity plus the signed body `timestamp` and `instance_id`. Projection mutations use occurrence time—not delivery time—for deterministic `applied`, `duplicate`, `stale` or `timestamp_conflict` outcomes. A membership event transactionally applies its nested organization snapshot before the membership.
+6. Sections are bounded JSON values keyed by canonical section name. Finalization creates an immutable candidate revision and advances the draft base/edit version only; it never changes `activeRevisionId` or library lifecycle state. Plan 06 alone may activate a revision after exact revision/digest health confirmation. Secrets are referenced by status/credential identity, never embedded in section JSON or query results.
+7. Operation state is separate high-churn data: queued/running/succeeded/failed with bounded discriminated stage, receipt and sanitized-error metadata. Idempotency is scoped to the owning library and bound to the complete normalized command, including kind and revision identity, so a key cannot disclose or alias another tenant's command.
+8. The verified Clerk envelope preserves `svix-id` as message identity plus the signed body `timestamp` and `instance_id`. Projection mutations use occurrence time—not delivery time—for deterministic `applied`, `duplicate`, `stale` or `timestamp_conflict` outcomes. For distinct events at the same occurrence time, the lexicographically greatest signed event ID is the deterministic winner and may supersede an earlier-delivered loser; the final projection must be identical in either delivery order. A membership event transactionally applies its nested organization snapshot before the membership.
 9. `clerkEventLogs` stores event identity, entity identity, occurrence time, payload digest and outcome, but never the payload. Replay/order decisions are durable and shared by user, organization and membership projections.
 10. Remove the repository-wide `schemaValidation: false` before adding the Plan 02 tables. This is a breaking dev-only cleanup: inspect validation failures, delete invalid disposable rows from only the affected tables, and never add optional-field compatibility shims.
 
@@ -41,12 +41,12 @@ Out of scope: UI, authoritative Evidence Library validation, network activation.
 4. Green: implement centralized `convex/evidenceLibraries/access.ts`; commit.
 5. Red: schema and mutation tests for create library, one draft, section saves, reload and optimistic conflict.
 6. Green: implement tables/validators/queries/mutations; commit per green.
-7. Red: immutable revision and section tests, including rejection of mutation after publish.
+7. Red: immutable candidate-revision and section tests, including rejection of mutation after finalization and proof that finalization leaves the active revision/lifecycle unchanged.
 8. Green: implement revision finalization; commit.
-9. Red/green dev-gated provisioning tests: target identity is required, platform service values are stored outside owner section JSON, non-admin/production use fails, and a seeded library is acceptance-ready; commit.
+9. Red/green dev-gated provisioning tests: an explicit development opt-in and nonblank target/service identity are required, target runtimes are unique across libraries, platform service values are stored outside owner section JSON, non-admin/production use fails, and a seeded library is acceptance-ready; commit.
 10. Red: encrypted credential write and metadata-only read tests.
 11. Green: implement library-scoped credential actions; commit.
-12. Red/green operation-state transition tests; then refactor.
+12. Red/green operation-state transition tests covering tenant-scoped complete-command idempotency, revision ownership and bounded discriminated transition metadata; then refactor.
 
 ## Files touched
 
@@ -66,7 +66,8 @@ Breaking/new tables and strict global schema validation. No legacy model exists.
 
 ```bash
 npm test -- convex/evidenceLibraries convex/webhooks
-npx convex function-spec | rg 'evidenceLibraries|webhooks'
+npx convex function-spec --file /tmp/openscholar-plan02-function-spec.json
+rg 'evidenceLibraries|webhooks' /tmp/openscholar-plan02-function-spec.json
 npx pm2 logs convex --lines 5 --nostream
 ```
 
@@ -89,7 +90,7 @@ Latest output must contain `✔ Convex functions ready!` and no newer `✖ Error
 - Cross-tenant enumeration is impossible through error differences.
 - One draft survives reload and rejects stale edit versions.
 - A dev-gated seed creates a library/runtime binding with platform service values for isolated acceptance; it is inaccessible in production and to non-admins.
-- Published revisions and their sections cannot be mutated.
+- Finalized candidate revisions and their sections cannot be mutated, and finalization never changes the active revision.
 - Every draft, revision and configuration-section record carries contract provenance.
 - Global Convex schema validation is enabled; no `schemaValidation: false` remains.
 - Query results never expose stored secret material.
@@ -100,7 +101,7 @@ Latest output must contain `✔ Convex functions ready!` and no newer `✖ Error
 - Clerk Organizations, the exact Convex JWT claims, and the two-role development fixture are execution prerequisites, not assumptions; block before schema work if they cannot be verified.
 - Clerk's default v2 session token and the custom `convex` JWT are different contracts. Convex receives the custom template, whose verified organization claim is `{ o: { id, rol } }`; do not parse the default token's unprefixed compact role.
 - Membership deletion/revocation must cut access immediately.
-- `svix-timestamp` is delivery-attempt time. Ordering uses the signed event body's `timestamp`; equal timestamps with different event IDs never use arrival order.
+- `svix-timestamp` is delivery-attempt time. Ordering uses the signed event body's `timestamp`; equal timestamps use the signed event-ID tie-break and must converge to the same projection in either arrival order.
 - Avoid unbounded arrays; sections and operations are separate tables.
 - A durable event log is required for replay/order decisions; never store the signed webhook payload in it.
 - Validators must include every returned field or Convex will strip it.
