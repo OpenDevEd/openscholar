@@ -18,6 +18,23 @@ describe("parseOrganizationClaims", () => {
       canManage: true,
     });
   });
+
+  test("rejects missing, unprefixed, and Clerk v1 organization claims", () => {
+    expect(parseOrganizationClaims({ subject: "user_missing" })).toBeNull();
+    expect(
+      parseOrganizationClaims({
+        subject: "user_default_token",
+        o: { id: "org_evidence_library", rol: "admin" },
+      }),
+    ).toBeNull();
+    expect(
+      parseOrganizationClaims({
+        subject: "user_legacy",
+        org_id: "org_evidence_library",
+        org_role: "org:admin",
+      }),
+    ).toBeNull();
+  });
 });
 
 describe("canPerformOrganizationAction", () => {
