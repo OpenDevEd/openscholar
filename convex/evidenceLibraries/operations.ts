@@ -23,15 +23,38 @@ export async function queueEvidenceLibraryOperation(
   },
 ) {
   const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  if ((args.kind === "publish" || args.kind === "rollback") && !args.revisionId) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "Publish and rollback operations require a revision",
+    );
+  }
+  if (args.revisionId) {
+    const revision = await ctx.db.get(
+      "evidenceLibraryConfigRevisions",
+      args.revisionId,
+    );
+    if (!revision || revision.libraryId !== args.libraryId) {
+      throw createError("NOT_FOUND", "Evidence Library revision not found");
+    }
+  }
   const existing = await ctx.db
     .query("evidenceLibraryConfigOperations")
-    .withIndex("by_idempotencyKey", (query) =>
-      query.eq("idempotencyKey", args.idempotencyKey),
+    .withIndex("by_libraryId_and_idempotencyKey", (query) =>
+      query
+        .eq("libraryId", args.libraryId)
+        .eq("idempotencyKey", args.idempotencyKey),
     )
     .unique();
   if (existing) {
-    if (existing.libraryId !== args.libraryId || existing.kind !== args.kind) {
-      throw createError("CONFLICT", "Operation idempotency key is already in use");
+    if (
+      existing.kind !== args.kind ||
+      (existing.revisionId ?? null) !== (args.revisionId ?? null)
+    ) {
+      throw createError(
+        "CONFLICT",
+        "Operation idempotency key does not match the original command",
+      );
     }
     return { operationId: existing._id, status: existing.status };
   }
