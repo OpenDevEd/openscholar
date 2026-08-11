@@ -146,6 +146,7 @@ describe("models.queries.listCatalogOptions", () => {
     expect(models).toHaveLength(1);
 
     expect(models[0]).toEqual({
+      _id: expect.any(String),
       modelId: "anthropic/claude-sonnet-4-5",
       name: "Claude Sonnet 4.5",
       provider: "anthropic",
@@ -176,7 +177,7 @@ describe("models.queries.listCatalogOptions", () => {
     });
 
     expect(models).toHaveLength(1);
-    expect(models[0]).not.toHaveProperty("_id");
+    expect(models[0]).toHaveProperty("_id", expect.any(String));
     expect(models[0]).not.toHaveProperty("costMarkup");
     expect(models[0]).not.toHaveProperty("sortOrder");
     expect(models[0]).not.toHaveProperty("isServed");
