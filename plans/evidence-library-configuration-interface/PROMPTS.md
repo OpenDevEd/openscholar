@@ -85,7 +85,7 @@ Long-running autonomous task. Expect 6–9 hours. Do not stop mid-plan to ask fo
 3. Read `convex/_generated/ai/guidelines.md` before touching Convex. Its guidance overrides training knowledge.
 4. Use TDD for organization role mapping, authorization decisions, revision transitions, optimistic-concurrency conflicts, and credential metadata. Assert results and errors, not source text.
 5. After every Convex-touching commit, run `npx pm2 logs convex --lines 5 --nostream`; require the newest deployment to show `✔ Convex functions ready!` with no recent `✖ Error`. Check `npx convex function-spec | rg 'evidenceLibraries'` for every new public function and validator.
-6. Use the live-grounded Clerk contract in `02-PREREQUISITES.md`: Convex receives `identity.o.id` and `identity.o.rol`, with roles exactly `org:admin` / `org:member`. Never add Clerk v1 fallbacks or guess an event payload.
+6. Use the live-grounded Clerk contract in `02-PREREQUISITES.md`: Convex receives `identity.o.id` and `identity.o.rol`, with roles exactly `org:admin` / `org:member`. Preserve the signed Clerk body `timestamp` and `instance_id`; never order events by `svix-timestamp`, add Clerk v1 fallbacks, or guess a payload.
 7. Delegate broad caller mapping and documentation research, but retain TDD cycles, commits, plan edits, and final deployed-spec verification in the main session.
 8. Do not use `useEffect` for auth, query, draft, save, or revision synchronization. Use Convex subscriptions, derived render state, and triggering event handlers.
 9. Never push. Local atomic commits only.
