@@ -20,8 +20,34 @@ import {
   subscriptionFields,
   userFields,
 } from "./lib/validators";
+import {
+  clerkEventLogFields,
+  organizationFields,
+  organizationMembershipFields,
+} from "./evidenceLibraries/validators";
 
 export default defineSchema({
+  clerkEventLogs: defineTable(clerkEventLogFields)
+    .index("by_instanceId_and_eventId", ["instanceId", "eventId"])
+    .index(
+      "by_entity_outcome_time",
+      ["instanceId", "entityType", "entityId", "outcome", "occurredAt"],
+    ),
+
+  organizations: defineTable(organizationFields)
+    .index("by_clerkOrganizationId", ["clerkOrganizationId"])
+    .index("by_slug", ["slug"])
+    .index("by_state", ["state"]),
+
+  organizationMemberships: defineTable(organizationMembershipFields)
+    .index("by_clerkMembershipId", ["clerkMembershipId"])
+    .index("by_organizationId_and_clerkUserId", [
+      "organizationId",
+      "clerkUserId",
+    ])
+    .index("by_organizationId_and_state", ["organizationId", "state"])
+    .index("by_clerkUserId_and_state", ["clerkUserId", "state"]),
+
   // Rate limiting (convex-helpers)
   ...rateLimitTables,
 
