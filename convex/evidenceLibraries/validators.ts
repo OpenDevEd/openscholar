@@ -82,6 +82,7 @@ export const organizationMembershipFields = {
 const sectionKeyValidators = SECTION_REGISTRY.map((section) =>
   v.literal(section.key),
 );
+export type SectionKey = (typeof SECTION_REGISTRY)[number]["key"];
 export const sectionKeyValidator = v.union(
   ...(sectionKeyValidators as [
     (typeof sectionKeyValidators)[number],

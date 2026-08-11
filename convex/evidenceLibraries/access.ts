@@ -1,3 +1,7 @@
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { createError } from "../lib/errors";
+
 export type OrganizationRole = "org:admin" | "org:member";
 export type OrganizationAction = "read" | "manage";
 
@@ -83,5 +87,16 @@ export async function requireOrganizationAccess(
     role: claims.role,
   };
 }
-import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { createError } from "../lib/errors";
+
+export async function requireEvidenceLibraryAccess(
+  ctx: OrganizationAccessCtx,
+  libraryId: Id<"evidenceLibraries">,
+  action: OrganizationAction,
+) {
+  const access = await requireOrganizationAccess(ctx, action);
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  if (!library || library.organizationId !== access.organization._id) {
+    return denyOrganizationAccess();
+  }
+  return { ...access, library };
+}
