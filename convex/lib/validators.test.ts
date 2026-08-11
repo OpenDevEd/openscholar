@@ -69,3 +69,7 @@ describe("schema/validator parity", () => {
     });
   }
 });
+
+test("credit transactions use signed ledger amounts without a stale balance snapshot", () => {
+  expect(creditTransactionFields).not.toHaveProperty("balanceAfter");
+});

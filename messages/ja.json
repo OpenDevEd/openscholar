@@ -450,7 +450,6 @@
       },
       "drawer": {
         "close": "詳細を閉じる",
-        "balanceAfter": "残高 · {balance}",
         "stripe": {
           "heading": "Stripe",
           "invoice": "請求書",
@@ -550,8 +549,7 @@
       },
       "aria": {
         "credit": "クレジット",
-        "debit": "デビット",
-        "balanceAfter": "残高 {balance}"
+        "debit": "デビット"
       }
     },
     "billingAndPlans": "請求とプラン",

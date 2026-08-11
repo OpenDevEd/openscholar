@@ -450,7 +450,6 @@
       },
       "drawer": {
         "close": "Close details",
-        "balanceAfter": "Balance after · {balance}",
         "stripe": {
           "heading": "Stripe",
           "invoice": "Invoice",
@@ -550,8 +549,7 @@
       },
       "aria": {
         "credit": "Credit",
-        "debit": "Debit",
-        "balanceAfter": "Balance after {balance}"
+        "debit": "Debit"
       }
     },
     "billingAndPlans": "Billing & Plans",

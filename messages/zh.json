@@ -450,7 +450,6 @@
       },
       "drawer": {
         "close": "关闭详情",
-        "balanceAfter": "余额 · {balance}",
         "stripe": {
           "heading": "Stripe",
           "invoice": "发票",
@@ -550,8 +549,7 @@
       },
       "aria": {
         "credit": "入账",
-        "debit": "出账",
-        "balanceAfter": "余额 {balance}"
+        "debit": "出账"
       }
     },
     "billingAndPlans": "账单和计划",

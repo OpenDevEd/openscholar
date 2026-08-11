@@ -164,11 +164,10 @@ export const creditTransactionFields = {
   type: creditTransactionTypeValidator,
   creditType: v.union(v.literal("free"), v.literal("paid")),
   // `amount` is a signed ledger entry: positive for grants / purchases /
-  // refund-in, negative for usage / refund-out. The aggregate sums these to produce the
-  // current balance, so no `balanceAfter` snapshot is recorded (it would
+  // refund-in, negative for usage / refund-out. The sharded balance counters sum these
+  // to produce the current balance, so no `balanceAfter` snapshot is recorded (it would
   // be stale the instant a concurrent insert lands).
   amount: v.number(),
-  balanceAfter: v.optional(v.number()),
   description: v.optional(v.string()),
   // Plan-04 first-class scoping columns. Present on all usage rows
   // created after the plan-04 schema refactor; optional on legacy rows.

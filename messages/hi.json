@@ -450,7 +450,6 @@
       },
       "drawer": {
         "close": "विवरण बंद करें",
-        "balanceAfter": "शेष राशि · {balance}",
         "stripe": {
           "heading": "Stripe",
           "invoice": "इनवॉइस",
@@ -550,8 +549,7 @@
       },
       "aria": {
         "credit": "क्रेडिट",
-        "debit": "डेबिट",
-        "balanceAfter": "लेन-देन के बाद शेष {balance}"
+        "debit": "डेबिट"
       }
     },
     "billingAndPlans": "बिलिंग और प्लान्स",

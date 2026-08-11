@@ -450,7 +450,6 @@
       },
       "drawer": {
         "close": "Fermer les détails",
-        "balanceAfter": "Solde après · {balance}",
         "stripe": {
           "heading": "Stripe",
           "invoice": "Facture",
@@ -550,8 +549,7 @@
       },
       "aria": {
         "credit": "Crédit",
-        "debit": "Débit",
-        "balanceAfter": "Solde après {balance}"
+        "debit": "Débit"
       }
     },
     "billingAndPlans": "Facturation et forfaits",
