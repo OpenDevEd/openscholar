@@ -1,4 +1,5 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -6,6 +7,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   createContractSnapshot,
+  readContractArtifactsAtCommit,
   synchronizeContractSnapshot,
 } from "./contract-sync.mjs";
 
@@ -157,5 +159,32 @@ test("check mode reports drift without repairing the file", async () => {
     await expect(readFile(schemaPath, "utf8")).resolves.toBe("tampered\n");
   } finally {
     await rm(outputRoot, { recursive: true, force: true });
+  }
+});
+
+test("reads contract bytes from the exact commit instead of the worktree", async () => {
+  const sourceRoot = await mkdtemp(join(tmpdir(), "evidence-library-source-"));
+  const publicRoot = join(sourceRoot, "public");
+
+  try {
+    await mkdir(publicRoot, { recursive: true });
+    await writeFile(join(publicRoot, "library-config.schema.json"), schemaText, "utf8");
+    await writeFile(join(publicRoot, "library-config.catalogs.json"), catalogText, "utf8");
+    execFileSync("git", ["init", "--quiet", sourceRoot]);
+    execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
+    execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
+    execFileSync("git", ["-C", sourceRoot, "add", "public"]);
+    execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "add artifacts"]);
+    const commit = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    await writeFile(join(publicRoot, "library-config.schema.json"), "worktree drift\n", "utf8");
+
+    await expect(readContractArtifactsAtCommit({ sourceRoot, commit })).resolves.toEqual({
+      schemaText,
+      catalogText,
+    });
+  } finally {
+    await rm(sourceRoot, { recursive: true, force: true });
   }
 });
