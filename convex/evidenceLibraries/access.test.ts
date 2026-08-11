@@ -6,6 +6,7 @@ import schema from "../schema";
 import {
   canPerformOrganizationAction,
   parseOrganizationClaims,
+  requireEvidenceLibraryAccess,
   requireOrganizationAccess,
 } from "./access";
 
@@ -147,5 +148,69 @@ describe("requireOrganizationAccess", () => {
         })
         .run((ctx) => requireOrganizationAccess(ctx, "read")),
     ).rejects.toThrow(/FORBIDDEN.*Evidence Library access denied/);
+  });
+
+  test("makes missing and cross-tenant library denials indistinguishable", async () => {
+    const t = await seedMembership("org:admin");
+    const { crossTenantLibraryId, missingLibraryId } = await t.run(async (ctx) => {
+      const otherOrganizationId = await ctx.db.insert("organizations", {
+        clerkOrganizationId: "org_other",
+        name: "Other Team",
+        slug: "other-team",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const crossTenantLibraryId = await ctx.db.insert("evidenceLibraries", {
+        organizationId: otherOrganizationId,
+        name: "Other Library",
+        slug: "other-library",
+        state: "active",
+        createdByClerkUserId: "user_other",
+        updatedByClerkUserId: "user_other",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const missingLibraryId = await ctx.db.insert("evidenceLibraries", {
+        organizationId: otherOrganizationId,
+        name: "Deleted Library",
+        slug: "deleted-library",
+        state: "active",
+        createdByClerkUserId: "user_other",
+        updatedByClerkUserId: "user_other",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.delete("evidenceLibraries", missingLibraryId);
+      return { crossTenantLibraryId, missingLibraryId };
+    });
+    const admin = t.withIdentity({
+      subject: "user_123",
+      o: { id: "org_evidence_library", rol: "org:admin" },
+    });
+    async function rejectionMessage(promise: Promise<unknown>) {
+      try {
+        await promise;
+        return "resolved";
+      } catch (error) {
+        return error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    const crossTenant = await rejectionMessage(
+      admin.run((ctx) =>
+        requireEvidenceLibraryAccess(ctx, crossTenantLibraryId, "read"),
+      ),
+    );
+    const missing = await rejectionMessage(
+      admin.run((ctx) =>
+        requireEvidenceLibraryAccess(ctx, missingLibraryId, "read"),
+      ),
+    );
+
+    expect(crossTenant).toMatch(/FORBIDDEN.*Evidence Library access denied/);
+    expect(missing).toBe(crossTenant);
   });
 });
