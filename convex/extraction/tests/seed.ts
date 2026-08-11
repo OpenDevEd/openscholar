@@ -129,7 +129,7 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
       paperId,
       attempt: 1,
       at: now,
-      code: "extraction_failed" as const,
+      code: "unknown" as const,
       message: "Synthetic extraction error",
     });
 
