@@ -37,7 +37,7 @@ Work in `lib/evidence-libraries/configuration/` for pure sync/provenance/digest/
 
 1. Implement the pinned upstream artifact directory and provenance manifest.
 2. Implement the deterministic sync/check command.
-3. Add the OpenScholar presentation registry keyed only by generated JSON pointers.
+3. Add the OpenScholar section presentation registry keyed only by generated section-root JSON pointers; leave per-field widgets and authority metadata to Plans 04–05.
 4. Wire package scripts and documentation.
 
 Run targeted tests after each unit and commit each logical unit separately.
