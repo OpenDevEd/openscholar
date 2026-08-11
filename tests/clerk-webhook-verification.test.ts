@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Webhook } from "svix";
+import { createHash } from "node:crypto";
 import { verifyClerkWebhookPayload } from "../convex/webhooks/actions";
 
 describe("clerk webhook verification", () => {
@@ -87,6 +88,9 @@ describe("clerk webhook verification", () => {
       expect(result.eventType).toBe(event.type);
       expect(result.occurredAt).toBe(event.timestamp);
       expect(result.instanceId).toBe(event.instance_id);
+      expect(result.payloadSha256).toBe(
+        createHash("sha256").update(payloadText).digest("hex"),
+      );
       expect(result.data).toEqual(JSON.stringify(event.data));
     }
   });

@@ -2,6 +2,7 @@
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { Webhook } from "svix";
+import { createHash } from "node:crypto";
 
 export type ClerkWebhookVerificationSuccess = {
   success: true;
@@ -9,6 +10,7 @@ export type ClerkWebhookVerificationSuccess = {
   eventType: string;
   occurredAt: number;
   instanceId: string;
+  payloadSha256: string;
   data: string; // JSON-serialized Clerk webhook data
 };
 
@@ -102,6 +104,7 @@ export function verifyClerkWebhookPayload(args: {
       eventType,
       occurredAt: Number(payloadTimestamp),
       instanceId: payloadInstanceId,
+      payloadSha256: createHash("sha256").update(args.payloadText).digest("hex"),
       data: JSON.stringify(data ?? {}),
     };
   } catch (err) {
@@ -139,6 +142,7 @@ export const verifyClerkWebhook = internalAction({
       eventType: v.string(),
       occurredAt: v.number(),
       instanceId: v.string(),
+      payloadSha256: v.string(),
       data: v.string(), // JSON-serialized; v.unknown() not available in Convex 1.32.0
     }),
     v.object({
