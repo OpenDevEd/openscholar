@@ -6,7 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const convexQueryMock = vi.fn();
+const convexClientMock = { query: convexQueryMock };
 const useQueryMock = vi.fn();
+const useMutationMock = vi.fn(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -36,8 +38,9 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("convex/react", () => ({
-  useConvex: () => ({ query: convexQueryMock }),
+  useConvex: () => convexClientMock,
   useQuery: (...args: unknown[]) => useQueryMock(...args),
+  useMutation: (...args: unknown[]) => useMutationMock(...args),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
@@ -47,6 +50,16 @@ vi.mock("@/convex/_generated/api", () => ({
         listCatalogOptions: "models:listCatalogOptions",
         list: "models:list",
       },
+    },
+    userAiConfig: {
+      queries: { get: "userAiConfig:get" },
+      mutations: {
+        setPreset: "userAiConfig:setPreset",
+        setCustomModel: "userAiConfig:setCustomModel",
+      },
+    },
+    aiModelConfig: {
+      queries: { list: "aiModelConfig:list" },
     },
   },
 }));
@@ -59,7 +72,7 @@ vi.mock("@/lib/store", () => ({
     setModel: vi.fn(),
     apiKey: "",
     setApiKey: vi.fn(),
-    apiKeyMode: "credits",
+    apiKeyMode: "local",
     setApiKeyMode: vi.fn(),
   }),
 }));
@@ -102,6 +115,7 @@ describe("<AISettingsPage> model catalog loading", () => {
   beforeEach(() => {
     convexQueryMock.mockReset();
     useQueryMock.mockReset();
+    useMutationMock.mockClear();
     convexQueryMock.mockResolvedValue([]);
   });
 
