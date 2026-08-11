@@ -41,6 +41,9 @@ describe("clerk webhook handler", () => {
     expect(outcome).toEqual({ status: 200, body: "OK" });
     expect(runMutation).toHaveBeenCalledTimes(1);
     expect(runMutation.mock.calls[0]?.[1]).toEqual({
+      eventId: "evt_1",
+      eventType: "user.created",
+      ...signedEventMetadata,
       clerkId: "user_123",
       email: "ava@example.com",
       firstName: "Ava",
@@ -78,6 +81,9 @@ describe("clerk webhook handler", () => {
     expect(outcome).toEqual({ status: 200, body: "OK" });
     expect(runMutation).toHaveBeenCalledTimes(1);
     expect(runMutation.mock.calls[0]?.[1]).toEqual({
+      eventId: "evt_2",
+      eventType: "user.updated",
+      ...signedEventMetadata,
       clerkId: "user_123",
       email: "ava@example.com",
       firstName: undefined,
@@ -111,7 +117,12 @@ describe("clerk webhook handler", () => {
 
     expect(outcome).toEqual({ status: 200, body: "OK" });
     expect(runMutation).toHaveBeenCalledTimes(1);
-    expect(runMutation.mock.calls[0]?.[1]).toEqual({ clerkId: "user_123" });
+    expect(runMutation.mock.calls[0]?.[1]).toEqual({
+      eventId: "evt_3",
+      eventType: "user.deleted",
+      ...signedEventMetadata,
+      clerkId: "user_123",
+    });
   });
 
   it("returns 200 for unknown events and does not mutate", async () => {

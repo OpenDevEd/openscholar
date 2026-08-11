@@ -54,6 +54,13 @@ export async function processClerkWebhookEvent(args: {
       internal.webhooks.projections.applyOrganizationMembershipEvent,
     ...args.mutationRefs,
   };
+  const eventMetadata = {
+    eventId,
+    eventType,
+    instanceId,
+    occurredAt,
+    payloadSha256,
+  };
 
   try {
     switch (eventType) {
@@ -63,7 +70,10 @@ export async function processClerkWebhookEvent(args: {
         if (!user) {
           return { status: 400, body: "Invalid user payload" };
         }
-        await runMutation(mutationRefs.upsertUserFromClerk, mapClerkUserToUpsertArgs(user));
+        await runMutation(mutationRefs.upsertUserFromClerk, {
+          ...eventMetadata,
+          ...mapClerkUserToUpsertArgs(user),
+        });
         break;
       }
 
@@ -74,7 +84,10 @@ export async function processClerkWebhookEvent(args: {
         }
         await runMutation(
           mutationRefs.markUserDeletedFromClerk,
-          mapClerkUserToDeleteArgs(user),
+          {
+            ...eventMetadata,
+            ...mapClerkUserToDeleteArgs(user),
+          },
         );
         break;
       }
@@ -89,32 +102,25 @@ export async function processClerkWebhookEvent(args: {
         if (!projection) {
           return { status: 400, body: "Invalid organization payload" };
         }
-        const metadata = {
-          eventId,
-          eventType,
-          instanceId,
-          occurredAt,
-          payloadSha256,
-        };
         if (projection.kind === "organization") {
           await runMutation(
             mutationRefs.applyOrganizationEvent,
             projection.action === "upsert"
               ? {
-                  ...metadata,
+                  ...eventMetadata,
                   action: projection.action,
                   entityId: projection.entityId,
                   organization: projection.organization,
                 }
               : {
-                  ...metadata,
+                  ...eventMetadata,
                   action: projection.action,
                   entityId: projection.entityId,
                 },
           );
         } else {
           await runMutation(mutationRefs.applyOrganizationMembershipEvent, {
-            ...metadata,
+            ...eventMetadata,
             action: projection.action,
             entityId: projection.entityId,
             membership: projection.membership,

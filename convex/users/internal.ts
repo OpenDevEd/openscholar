@@ -1,8 +1,22 @@
-import { internalMutation, internalQuery } from "../_generated/server";
+import { internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { userValidator } from "../lib/validators";
 import { createUserWithDefaults, repairUserBillingRecords } from "../lib/userCreation";
+import { clerkEventOutcomeValidator } from "../evidenceLibraries/validators";
+import {
+  applyOrderedClerkEvent,
+  type ClerkEventMetadata,
+  type ClerkEventOutcome,
+} from "../webhooks/eventOrdering";
+
+const clerkEventMetadataFields = {
+  eventId: v.string(),
+  eventType: v.string(),
+  instanceId: v.string(),
+  occurredAt: v.number(),
+  payloadSha256: v.string(),
+};
 
 export const getCurrentUser = internalQuery({
   args: {},
@@ -22,16 +36,22 @@ export const getUserById = internalQuery({
   },
 });
 
-export const upsertUserFromClerk = internalMutation({
-  args: {
-    clerkId: v.string(),
-    email: v.string(),
-    firstName: v.optional(v.string()),
-    lastName: v.optional(v.string()),
-    avatarUrl: v.optional(v.string()),
-  },
-  returns: v.id("users"),
-  handler: async (ctx, args) => {
+type UserUpsertProjectionArgs = ClerkEventMetadata & {
+  clerkId: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+};
+
+export async function applyUserUpsertProjection(
+  ctx: MutationCtx,
+  args: UserUpsertProjectionArgs,
+): Promise<ClerkEventOutcome> {
+  if (args.entityId !== args.clerkId) {
+    throw new Error("Clerk user event entity does not match its payload");
+  }
+  return await applyOrderedClerkEvent(ctx, args, async () => {
     const existing = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
@@ -47,37 +67,75 @@ export const upsertUserFromClerk = internalMutation({
         updatedAt: Date.now(),
       });
       await repairUserBillingRecords(ctx, existing._id);
-      return existing._id;
+      return;
     }
 
-    return await createUserWithDefaults(ctx, {
+    await createUserWithDefaults(ctx, {
       clerkId: args.clerkId,
       email: args.email,
       firstName: args.firstName,
       lastName: args.lastName,
       avatarUrl: args.avatarUrl,
     });
+  });
+}
+
+export const upsertUserFromClerk = internalMutation({
+  args: {
+    ...clerkEventMetadataFields,
+    clerkId: v.string(),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
   },
+  returns: clerkEventOutcomeValidator,
+  handler: async (ctx, args) =>
+    await applyUserUpsertProjection(ctx, {
+      ...args,
+      entityId: args.clerkId,
+      entityType: "user",
+      processedAt: Date.now(),
+    }),
 });
 
-export const markUserDeletedFromClerk = internalMutation({
-  args: { clerkId: v.string() },
-  returns: v.null(),
-  handler: async (ctx, { clerkId }) => {
+type UserDeleteProjectionArgs = ClerkEventMetadata & { clerkId: string };
+
+export async function applyUserDeleteProjection(
+  ctx: MutationCtx,
+  args: UserDeleteProjectionArgs,
+): Promise<ClerkEventOutcome> {
+  if (args.entityId !== args.clerkId) {
+    throw new Error("Clerk user event entity does not match its payload");
+  }
+  return await applyOrderedClerkEvent(ctx, args, async () => {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
 
-    if (!user) return null;
+    if (!user) return;
 
     await ctx.db.patch("users", user._id, {
       state: "deleted",
       updatedAt: Date.now(),
     });
+  });
+}
 
-    return null;
+export const markUserDeletedFromClerk = internalMutation({
+  args: {
+    ...clerkEventMetadataFields,
+    clerkId: v.string(),
   },
+  returns: clerkEventOutcomeValidator,
+  handler: async (ctx, args) =>
+    await applyUserDeleteProjection(ctx, {
+      ...args,
+      entityId: args.clerkId,
+      entityType: "user",
+      processedAt: Date.now(),
+    }),
 });
 
 export const updateLastLogin = internalMutation({
