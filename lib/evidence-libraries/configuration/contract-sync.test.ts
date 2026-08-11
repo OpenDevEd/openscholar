@@ -1,6 +1,13 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, test } from "vitest";
 
-import { createContractSnapshot } from "./contract-sync.mjs";
+import {
+  createContractSnapshot,
+  synchronizeContractSnapshot,
+} from "./contract-sync.mjs";
 
 const schemaText = `${JSON.stringify({
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -82,4 +89,40 @@ describe("createContractSnapshot", () => {
       }),
     ).toThrow(/draft 2020-12/i);
   });
+});
+
+test("writes exact artifact bytes and verifies them without rewriting", async () => {
+  const outputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-contract-"));
+  const snapshot = createContractSnapshot({
+    repository: "https://github.com/OpenDevEd/new-el",
+    commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+    schemaText,
+    catalogText,
+  });
+
+  try {
+    await synchronizeContractSnapshot({
+      snapshot,
+      outputRoot,
+      inspectedCheckoutCommit: "426b4b1a71ed2d5ce045479c1e630c0fc1f3e290",
+      check: false,
+    });
+
+    await expect(
+      readFile(join(outputRoot, "generated/library-config.schema.json"), "utf8"),
+    ).resolves.toBe(schemaText);
+    await expect(
+      readFile(join(outputRoot, "generated/library-config.catalogs.json"), "utf8"),
+    ).resolves.toBe(catalogText);
+    await expect(
+      synchronizeContractSnapshot({
+        snapshot,
+        outputRoot,
+        inspectedCheckoutCommit: "426b4b1a71ed2d5ce045479c1e630c0fc1f3e290",
+        check: true,
+      }),
+    ).resolves.toEqual({ changed: false });
+  } finally {
+    await rm(outputRoot, { recursive: true, force: true });
+  }
 });
