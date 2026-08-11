@@ -18,7 +18,7 @@ export function assertEvidenceLibraryDevProvisioningEnabled(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): void {
   assertNonProd(env);
-  if (env.EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED !== "true") {
+  if (env.EL_DEV_PROVISIONING_ENABLED !== "true") {
     throw new Error("evidence-library-dev-provisioning-not-enabled");
   }
 }

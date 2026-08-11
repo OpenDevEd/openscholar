@@ -114,24 +114,24 @@ describe("development runtime binding seed", () => {
     ).toThrow(/not-enabled/);
     expect(() =>
       assertEvidenceLibraryDevProvisioningEnabled({
-        EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED: "false",
+        EL_DEV_PROVISIONING_ENABLED: "false",
       }),
     ).toThrow(/not-enabled/);
     expect(() =>
       assertEvidenceLibraryDevProvisioningEnabled({
         CONVEX_CLOUD_ENV: "prod",
-        EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED: "true",
+        EL_DEV_PROVISIONING_ENABLED: "true",
       }),
     ).toThrow(/not-available-in-production/);
     expect(() =>
       assertEvidenceLibraryDevProvisioningEnabled({
-        EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED: "true",
+        EL_DEV_PROVISIONING_ENABLED: "true",
       }),
     ).not.toThrow();
   });
 
   it("stores platform values and credential references outside draft JSON", async () => {
-    vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+    vi.stubEnv("EL_DEV_PROVISIONING_ENABLED", "true");
     const t = convexTest(schema);
     const libraryId = await t.run(async (ctx) => {
       const organizationId = await ctx.db.insert("organizations", {
@@ -221,7 +221,7 @@ describe("development runtime binding seed", () => {
     "encryptedStorageServiceRoleKey",
     "zoteroTranslationUrl",
   ] as const)("rejects blank %s before writing anything", async (field) => {
-    vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+    vi.stubEnv("EL_DEV_PROVISIONING_ENABLED", "true");
     const t = convexTest(schema);
     const { admin, libraryId } = await createProvisioningFixture(t, field);
     const args = {
@@ -243,7 +243,7 @@ describe("development runtime binding seed", () => {
   });
 
   it("reserves each target runtime for exactly one library", async () => {
-    vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+    vi.stubEnv("EL_DEV_PROVISIONING_ENABLED", "true");
     const t = convexTest(schema);
     const first = await createProvisioningFixture(t, "runtime_first");
     const second = await createProvisioningFixture(t, "runtime_second");
@@ -267,7 +267,7 @@ describe("development runtime binding seed", () => {
   it.each(["databaseUrl", "searchKey", "storageServiceRoleKey"] as const)(
     "rejects blank public %s before encryption or writes",
     async (field) => {
-      vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+      vi.stubEnv("EL_DEV_PROVISIONING_ENABLED", "true");
       vi.stubEnv("ENCRYPTION_KEY", "ab".repeat(32));
       const t = convexTest(schema);
       const { admin, libraryId } = await createProvisioningFixture(t, field);
@@ -289,7 +289,7 @@ describe("development runtime binding seed", () => {
   );
 
   it("denies member, anonymous, and production action calls", async () => {
-    vi.stubEnv("EVIDENCE_LIBRARY_DEV_PROVISIONING_ENABLED", "true");
+    vi.stubEnv("EL_DEV_PROVISIONING_ENABLED", "true");
     vi.stubEnv("ENCRYPTION_KEY", "ab".repeat(32));
     const t = convexTest(schema);
     const { admin, clerkOrganizationId, libraryId, organizationId } =
