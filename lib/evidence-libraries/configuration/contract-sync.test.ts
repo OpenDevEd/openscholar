@@ -66,4 +66,20 @@ describe("createContractSnapshot", () => {
       }),
     ).toThrow(/schema version mismatch/i);
   });
+
+  test("rejects a schema that is not JSON Schema draft 2020-12", () => {
+    const draftSevenSchemaText = `${JSON.stringify({
+      $schema: "http://json-schema.org/draft-07/schema#",
+      properties: { schemaVersion: { const: 1 } },
+    })}\n`;
+
+    expect(() =>
+      createContractSnapshot({
+        repository: "https://github.com/OpenDevEd/new-el",
+        commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+        schemaText: draftSevenSchemaText,
+        catalogText,
+      }),
+    ).toThrow(/draft 2020-12/i);
+  });
 });
