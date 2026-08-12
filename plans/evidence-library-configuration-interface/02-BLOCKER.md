@@ -3,14 +3,18 @@
 ## Status
 
 Provisioning resumed on **2026-08-12** after the user approved creating the
-isolated Coolify application and its dedicated development services. No live
-Evidence Library may be reused or changed.
+isolated Coolify application and its dedicated development services. The
+isolated web app, database, search index, keys, buckets, and runtime config now
+exist. No live Evidence Library was reused or changed.
 
 The remaining Plan 02 acceptance criterion is:
 
 - "A dev-gated seed creates a library/runtime binding with platform service values for isolated acceptance."
 
-The OpenScholar-side organization, memberships, Evidence Library, draft and provisioning action are live. The missing prerequisite is a real isolated Evidence Library runtime and its dedicated service values. No production tenant will be reused and no placeholder binding will be inserted.
+The OpenScholar-side organization, memberships, Evidence Library, draft and
+provisioning action are live. The runtime health route is also live. The
+remaining deployment gap is the required search-indexer worker: the web app
+cannot render `/lib` until that worker creates the index settings.
 
 ## What Was Verified
 
@@ -31,6 +35,18 @@ The OpenScholar-side organization, memberships, Evidence Library, draft and prov
 - The deployed function spec contains the public Evidence Library mutations, queries, credential action and provisioning action with explicit args and return validators.
 - `npx pm2 logs convex --lines 5 --nostream` shows the latest `✔ Convex functions ready!` deployment.
 
+### Isolated Evidence Library runtime
+
+- Coolify application: `vntgj8bi5omift3a7u279ymd`
+- Public origin: `https://docs-openscholar-e2e.opendev.space`
+- PostgreSQL database: `jsl67a25e78gukd3izzxz4zf`
+- Meilisearch index: `openscholar_e2e`
+- Private bucket: `openscholar-e2e-private`
+- Public bucket: `openscholar-e2e-public`
+- Runtime config revision: `openscholar-e2e-1`
+- Evidence Library commits `36bd50d` and `66a78dd` were reviewed by Fable,
+  pushed to `openscholar`, and deployed. The application is healthy.
+
 ## What Was Tried
 
 1. Audited the OpenScholar Coolify project's `development` environment. It has no Evidence Library runtime application.
@@ -47,23 +63,25 @@ The current Evidence Library runtime also lacks the authenticated, versioned and
 
 ## What Would Unblock It
 
-Provision one development-only Evidence Library runtime in the OpenScholar Coolify project's `development` environment from the `openscholar` branch, with:
-
-1. A durable public application origin and Coolify application UUID.
-2. An isolated database and database URL.
-3. A unique Meilisearch index and key.
-4. Dedicated private document and public image buckets plus a storage service-role key.
-5. `storageMaxPdfBytes=104857600`.
-6. Optional Zotero translation URL only if the isolated runtime consumes it.
-7. The revision-and-digest activation/health contract required by Plan 06, or an explicit decision to provision the runtime now and add that contract in Plan 06 before activation testing.
-
-After those resources exist, resume Plan 02 at `seedDevelopmentBinding`, read service values through the supported Coolify API, seed library `r17feg9wgsamsshbp1j6nbjess8c85q6`, verify metadata-only reads, rerun the deployed gates, and request the final two-reviewer approval.
+1. Add a repository-owned production Compose file that always deploys the web
+   app and one `search-indexer` worker from the same commit and runtime config.
+2. Change runtime acceptance to use that worker and delete its copied raw
+   Meilisearch settings setup.
+3. Deploy the Compose shape and prove that `/lib` renders without a search
+   settings error.
+4. Seed library `r17feg9wgsamsshbp1j6nbjess8c85q6`, verify metadata-only
+   reads, rerun the Plan 02 gates, and request Fable's final approval.
 
 ## Safety Boundary
 
-No production Coolify application, database, index, bucket, deployment or environment variable was changed. No code was pushed.
+No production Coolify application, database, index, bucket, deployment or
+environment variable was changed. Only the isolated test resources above were
+created. The two reviewed Evidence Library container fixes were pushed to the
+`openscholar` branch.
 
 ## Resume Note — 2026-08-12
+
+This note is superseded by the deployment deviations below.
 
 Create a development-only `OpenDevEd/new-el` application from branch
 `openscholar` in the OpenScholar Coolify `development` environment. Create a
@@ -113,3 +131,31 @@ checks the configured file, makes it readable by the app user, drops root
 privileges, and starts Next.js with correct signal handling. Prove it against a
 root-owned mounted file, run the full image checks, ask Fable to review it,
 then push and redeploy the same repository Dockerfile.
+
+## Search Worker Deployment Deviation — 2026-08-12
+
+Commit `66a78dd` fixed the mounted config permissions. Deployment
+`se6k1u527xnjm1jsnwmk7lek` finished and the runtime health route reports the
+active `openscholar-e2e-1` revision. The web app still logs this error when
+`/lib` loads:
+
+```text
+Index openscholar_e2e: Attribute tags is not filterable.
+```
+
+Fable traced the error to the deployment shape. The repository gives
+`ensureSearchIndex` one owner: the `search-indexer` worker. The current Coolify
+application deploys only the web target, so no service creates the required
+Meilisearch settings or later drains published records into search.
+
+Before seeding the OpenScholar binding:
+
+1. Add `docker/compose.library.yaml` as the repository-owned Coolify shape for
+   the web app plus the required search worker.
+2. Put source workers behind an opt-in Compose profile because this empty
+   fixture has no Zotero source connection.
+3. Add the search worker to runtime acceptance and delete the copied
+   Meilisearch settings call from the acceptance tool.
+4. Run the search-worker and full runtime acceptance checks, request Fable
+   review, commit, push, and deploy the same Compose file.
+5. Verify the real browser page and logs before continuing Plan 02.
