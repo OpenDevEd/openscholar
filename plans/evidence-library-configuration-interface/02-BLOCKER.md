@@ -12,9 +12,10 @@ The remaining Plan 02 acceptance criterion is:
 - "A dev-gated seed creates a library/runtime binding with platform service values for isolated acceptance."
 
 The OpenScholar-side organization, memberships, Evidence Library, draft and
-provisioning action are live. The runtime health route is also live. The
-remaining deployment gap is the required search-indexer worker: the web app
-cannot render `/lib` until that worker creates the index settings.
+provisioning action are live. The Compose runtime and search worker are also
+healthy. The remaining deployment gap is fresh-database startup: migrations
+create the `status` table but not its one required row, so `/lib` fails with
+`Status not found`.
 
 ## What Was Verified
 
@@ -196,3 +197,30 @@ reachable through Coolify's shared network at
 Use that internal address in the development library config. Keep the public
 port only for tests run outside Coolify. Redeploy the same repository Compose
 file, then verify the worker, health route, and `/lib` in the real browser.
+
+## Fresh Database Status Bootstrap — 2026-08-12
+
+Deployment `yxcirq6ftd44nkuzh0v4bucq` finished successfully. The repository
+Compose file now runs a healthy web app and search worker from the same commit.
+The runtime health route reports active revision `openscholar-e2e-3`.
+
+The real `/lib` page still fails with `Status not found`. The `status` table is
+empty because fresh migrations create only its schema. Tests hide the problem
+by inserting the row later. Fable reviewed the next step and approved this
+clean repository-owned fix:
+
+1. Make `status` a one-row table with integer ID `1`, zero count defaults, and
+   a migration-time date default.
+2. Add a migration that replaces the old development-only table and inserts
+   row `1`. Do not add fallback reads or a Coolify-only startup command.
+3. Change acceptance setup and the search-worker verifier to expect the
+   migration-created row, then update it instead of inserting it.
+4. Keep the runtime error when the row is missing, but explain that migrations
+   must run.
+5. Run lint, TypeScript, unit, acceptance, and search-worker checks. Push the
+   Evidence Library commit, redeploy the same Compose app, and prove `/lib` in
+   the browser before seeding the OpenScholar binding.
+
+This migration drops and recreates only the `status` table. Its current values
+are disposable progress counters, and Plan 02 targets an isolated development
+database. The migration must not be applied to an existing production tenant.
