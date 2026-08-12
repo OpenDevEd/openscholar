@@ -2,20 +2,9 @@
 
 ## Status
 
-Provisioning resumed on **2026-08-12** after the user approved creating the
-isolated Coolify application and its dedicated development services. The
-isolated web app, database, search index, keys, buckets, and runtime config now
-exist. No live Evidence Library was reused or changed.
-
-The remaining Plan 02 acceptance criterion is:
-
-- "A dev-gated seed creates a library/runtime binding with platform service values for isolated acceptance."
-
-The OpenScholar-side organization, memberships, Evidence Library, draft and
-provisioning action are live. The Compose runtime and search worker are also
-healthy. The remaining deployment gap is fresh-database startup: migrations
-create the `status` table but not its one required row, so `/lib` fails with
-`Status not found`.
+Resolved on **2026-08-12**. The isolated Compose runtime is healthy, the public
+library loads, and OpenScholar now stores its real runtime binding and encrypted
+service credentials. No production Evidence Library was reused or changed.
 
 ## What Was Verified
 
@@ -38,15 +27,16 @@ create the `status` table but not its one required row, so `/lib` fails with
 
 ### Isolated Evidence Library runtime
 
-- Coolify application: `vntgj8bi5omift3a7u279ymd`
-- Public origin: `https://docs-openscholar-e2e.opendev.space`
+- Coolify application: `rzbo9als0hdnr4gegtx97qos`
+- Public origin: `https://docs-openscholar-compose-e2e.opendev.space`
 - PostgreSQL database: `jsl67a25e78gukd3izzxz4zf`
 - Meilisearch index: `openscholar_e2e`
 - Private bucket: `openscholar-e2e-private`
 - Public bucket: `openscholar-e2e-public`
-- Runtime config revision: `openscholar-e2e-1`
-- Evidence Library commits `36bd50d` and `66a78dd` were reviewed by Fable,
-  pushed to `openscholar`, and deployed. The application is healthy.
+- Runtime config revision: `openscholar-e2e-4`
+- Evidence Library commit `2f5e815` is deployed from the repository-owned
+  `/docker/compose.library.yaml`. Both the web app and search worker are
+  healthy.
 
 ## What Was Tried
 
@@ -271,3 +261,33 @@ Do not use its old origin. The durable runtime identity and base URL are:
 
 - runtime ID: `rzbo9als0hdnr4gegtx97qos`
 - base URL: `https://docs-openscholar-compose-e2e.opendev.space`
+
+## Blocker Resolution — 2026-08-12
+
+The public `seedDevelopmentBinding` action created the real Plan 02 binding:
+
+- binding: `rs7eafe5a7d2v7ngvsg6vc8kmh8cbjck`
+- library: `r17feg9wgsamsshbp1j6nbjess8c85q6`
+- runtime: `rzbo9als0hdnr4gegtx97qos`
+- base URL: `https://docs-openscholar-compose-e2e.opendev.space`
+- database credential: `rn7f15mzthh25w5v6adw4nj9hs8ca343`
+- search credential: `rn7ekn0djzpr6xv36dh8bf7d2h8cban8`
+- storage credential: `rn7472gc476rhwm2hc85fvxjf58cbxsj`
+
+The stored binding was read back with the isolated database, search index,
+private bucket, public bucket, and 100 MiB PDF limit. The authenticated
+credential query returned only the three credential IDs, paths, dates, and
+validation state. It returned none of the stored values.
+
+Final proof:
+
+- `npm test -- convex/evidenceLibraries convex/webhooks`: 10 files and 68 tests passed.
+- `npm test`: 363 files and 3,547 tests passed.
+- `npx tsc --noEmit`: passed.
+- `npx convex function-spec`: the Plan 02 public functions have explicit
+  argument and return validators.
+- `npx pm2 logs convex --lines 5 --nostream`: no current deployment error; the
+  newest deploy result is `✔ 14:12:59 Convex functions ready!`.
+
+The isolated runtime blocker is closed. Plan 02 can move to its final Fable
+review.
