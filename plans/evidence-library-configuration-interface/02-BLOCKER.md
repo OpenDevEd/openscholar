@@ -99,3 +99,17 @@ image build passed, and Fable approved the change. The Coolify application
 still uses the repository's normal Dockerfile with no custom Dockerfile,
 install command, build command, or start command. Deployment is paused because
 the user has also said not to push.
+
+## Runtime File-Permission Deviation — 2026-08-12
+
+The user later allowed pushes. Commit `36bd50d` was pushed and Coolify built
+the full image successfully. Deployment `frzxpycbrb8v4s1haqp7rqpi` then failed
+its runtime health check because the non-root `nextjs` user could not read the
+root-owned `/runtime/config/library.json` file mount.
+
+Do not solve this with a Coolify-only owner, mode, custom command, or custom
+Dockerfile. Add the smallest repository-owned container startup path that
+checks the configured file, makes it readable by the app user, drops root
+privileges, and starts Next.js with correct signal handling. Prove it against a
+root-owned mounted file, run the full image checks, ask Fable to review it,
+then push and redeploy the same repository Dockerfile.
