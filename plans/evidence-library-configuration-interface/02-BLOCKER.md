@@ -2,7 +2,11 @@
 
 ## Status
 
-Blocked on the final Plan 02 acceptance criterion:
+Provisioning resumed on **2026-08-12** after the user approved creating the
+isolated Coolify application and its dedicated development services. No live
+Evidence Library may be reused or changed.
+
+The remaining Plan 02 acceptance criterion is:
 
 - "A dev-gated seed creates a library/runtime binding with platform service values for isolated acceptance."
 
@@ -58,3 +62,13 @@ After those resources exist, resume Plan 02 at `seedDevelopmentBinding`, read se
 ## Safety Boundary
 
 No production Coolify application, database, index, bucket, deployment or environment variable was changed. No code was pushed.
+
+## Resume Note — 2026-08-12
+
+Create a development-only `OpenDevEd/new-el` application from branch
+`openscholar` in the OpenScholar Coolify `development` environment. Create a
+new PostgreSQL database, a dedicated Meilisearch index and key, and separate
+private-document and public-image buckets. Read every value back before
+deployment. After the runtime is healthy, seed its binding into library
+`r17feg9wgsamsshbp1j6nbjess8c85q6`, rerun the Plan 02 gates, and request a
+Fable review. Do not push code.
