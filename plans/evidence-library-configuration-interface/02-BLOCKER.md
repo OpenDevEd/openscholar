@@ -224,3 +224,26 @@ clean repository-owned fix:
 This migration drops and recreates only the `status` table. Its current values
 are disposable progress counters, and Plan 02 targets an isolated development
 database. The migration must not be applied to an existing production tenant.
+
+## Empty Library Configuration — 2026-08-12
+
+Evidence Library commit `2f5e815` and deployment
+`pnvjmwdrzpv1hvnplzxi55qx` fixed fresh-database startup. Both Compose services
+are healthy and `/lib` returns HTTP 200, but the real page still fails. Runtime
+logs show that the current config asks for `collection-one`, which is copied
+sample data and does not exist in the intentionally empty database.
+
+Fable approved a config-only correction. Keep the strict missing-collection
+error and do not add a fake database row, fallback, code change, or custom
+Coolify command:
+
+1. Remove the `collections` value from the isolated library config.
+2. Bump the config to revision `openscholar-e2e-4` with a newer `updatedAt`.
+3. Read the value back, redeploy the same repository Compose app, and confirm
+   revision 4 is active.
+4. Prove `/lib`, `/api/items`, and `/api/facets` in the real runtime and check
+   that the worker remains healthy.
+
+The library config is per-library data that OpenScholar will later publish.
+The Dockerfile, Compose services, worker startup, migration, and file mount
+remain repository-owned deployment setup.
