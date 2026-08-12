@@ -152,10 +152,18 @@ Before seeding the OpenScholar binding:
 
 1. Add `docker/compose.library.yaml` as the repository-owned Coolify shape for
    the web app plus the required search worker.
-2. Put source workers behind an opt-in Compose profile because this empty
-   fixture has no Zotero source connection.
+2. Keep optional source workers in a separate repository Compose file because
+   the target Coolify version cannot be trusted to honor Compose profiles.
 3. Add the search worker to runtime acceptance and delete the copied
    Meilisearch settings call from the acceptance tool.
 4. Run the search-worker and full runtime acceptance checks, request Fable
    review, commit, push, and deploy the same Compose file.
 5. Verify the real browser page and logs before continuing Plan 02.
+
+Fable's implementation review found two more startup rules that the Compose
+contract must enforce before it can be deployed:
+
+- the search worker is not healthy while its stage is `starting`, so the web
+  app cannot serve requests before index settings finish; and
+- the worker gets a five-minute health-check start window so a real database
+  migration does not fail the deployment after about one minute.
