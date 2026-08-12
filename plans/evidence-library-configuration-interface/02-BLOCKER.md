@@ -91,5 +91,11 @@ Before retrying the deployment:
 2. Prove the fix with the matching package build and Docker image build.
 3. Ask Fable to review the fix.
 4. Commit the working Evidence Library fix locally without pushing it.
-5. Use that exact reviewed Dockerfile for the isolated Coolify application,
-   then retry and verify the deployment.
+5. Deploy only after that commit exists in the remote `openscholar` branch.
+   Do not add a Coolify-only Dockerfile, build command, or other one-off setup.
+
+The fix is now local commit `36bd50d`. The package build and full production
+image build passed, and Fable approved the change. The Coolify application
+still uses the repository's normal Dockerfile with no custom Dockerfile,
+install command, build command, or start command. Deployment is paused because
+the user has also said not to push.
