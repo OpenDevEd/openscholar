@@ -247,3 +247,27 @@ Coolify command:
 The library config is per-library data that OpenScholar will later publish.
 The Dockerfile, Compose services, worker startup, migration, and file mount
 remain repository-owned deployment setup.
+
+## Deployment Result — 2026-08-12
+
+The isolated runtime deployment step is complete:
+
+- Compose app `rzbo9als0hdnr4gegtx97qos` runs Evidence Library commit
+  `2f5e815` from `/docker/compose.library.yaml`.
+- Deployment `jrozh9anmh22icguq7ejuc81` finished with both the web app and
+  search worker healthy.
+- The health route reports active revision `openscholar-e2e-4` with no rejected
+  revision.
+- `/api/items` and `/api/facets` return HTTP 200.
+- Real Chromium loaded `/lib` with the title `OpenScholar Evidence Library
+  E2E`, showed `0 resources` and `No resources found`, and reported no page
+  errors.
+- Fable reviewed the complete deployment step and approved moving to
+  `seedDevelopmentBinding`.
+
+The superseded Dockerfile-only app `vntgj8bi5omift3a7u279ymd` was still using
+the same isolated services. It was stopped and read back as `exited:unhealthy`.
+Do not use its old origin. The durable runtime identity and base URL are:
+
+- runtime ID: `rzbo9als0hdnr4gegtx97qos`
+- base URL: `https://docs-openscholar-compose-e2e.opendev.space`
