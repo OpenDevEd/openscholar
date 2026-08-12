@@ -72,3 +72,24 @@ private-document and public-image buckets. Read every value back before
 deployment. After the runtime is healthy, seed its binding into library
 `r17feg9wgsamsshbp1j6nbjess8c85q6`, rerun the Plan 02 gates, and request a
 Fable review. Do not push code.
+
+## Deployment Deviation — 2026-08-12
+
+The isolated database, Meilisearch index and key, storage buckets, runtime
+configuration, and Coolify application now exist. Fable approved each setup
+step.
+
+The first application deployment, `n8g3ryu9qwggofjhzrejw9x7`, failed before
+starting the app. The Docker image runs the main build before it builds the
+local `@opendeved/evidence-library-core` package. The main build therefore
+cannot load `packages/evidence-library-core/dist/index.js`.
+
+Before retrying the deployment:
+
+1. Fix the Evidence Library Dockerfile so the local core package is built
+   before the main Next.js build.
+2. Prove the fix with the matching package build and Docker image build.
+3. Ask Fable to review the fix.
+4. Commit the working Evidence Library fix locally without pushing it.
+5. Use that exact reviewed Dockerfile for the isolated Coolify application,
+   then retry and verify the deployment.
