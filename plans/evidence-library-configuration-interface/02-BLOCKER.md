@@ -167,3 +167,19 @@ contract must enforce before it can be deployed:
   app cannot serve requests before index settings finish; and
 - the worker gets a five-minute health-check start window so a real database
   migration does not fail the deployment after about one minute.
+
+## Compose Build Context Deviation — 2026-08-12
+
+Evidence Library commit `8566927` passed its local checks and Fable review, but
+Coolify deployment `ugwf9nq5q3wbkr1hyllvob8f` could not find the repository
+Dockerfile. Coolify runs Compose from the repository root. The Compose files
+used `context: ..`, which therefore pointed one folder above the repository.
+
+Before retrying the deployment:
+
+1. Change every repository Compose build context to `.` so the Dockerfile and
+   source files come from the repository root.
+2. Make local Compose checks set the repository root as the project directory,
+   matching Coolify instead of relying on the Compose file's folder.
+3. Run both Compose render checks, the focused deployment tests, and Fable
+   review before committing, pushing, and redeploying.
