@@ -183,3 +183,16 @@ Before retrying the deployment:
    matching Coolify instead of relying on the Compose file's folder.
 3. Run both Compose render checks, the focused deployment tests, and Fable
    review before committing, pushing, and redeploying.
+
+## Internal Database Address — 2026-08-12
+
+Evidence Library commit `6a56741` fixed the build context. Deployment
+`q5hjnbiivhzj6xgx8k52u9n6` built both images, but the search worker could not
+reach PostgreSQL through the server's public port and remained in migration
+startup. A direct check from the worker proved that the isolated database is
+reachable through Coolify's shared network at
+`jsl67a25e78gukd3izzxz4zf:5432`.
+
+Use that internal address in the development library config. Keep the public
+port only for tests run outside Coolify. Redeploy the same repository Compose
+file, then verify the worker, health route, and `/lib` in the real browser.
