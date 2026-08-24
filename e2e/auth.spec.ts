@@ -4,9 +4,7 @@ import { clerk } from "@clerk/testing/playwright";
 function getTestUserEmail() {
   const emailAddress = process.env.E2E_CLERK_USER_EMAIL;
   if (!emailAddress) {
-    throw new Error(
-      "Missing E2E_CLERK_USER_EMAIL for auth E2E tests.",
-    );
+    throw new Error("Missing E2E_CLERK_USER_EMAIL for auth E2E tests.");
   }
   return emailAddress;
 }
@@ -72,9 +70,11 @@ test.describe("clerk auth flows", () => {
       organizationDialog.getByRole("button", { name: "Invite" }),
     ).toBeVisible();
     await expect(
-      organizationDialog.getByRole("button", {
-        name: /^(Admin|Member)$/,
-      }).first(),
+      organizationDialog
+        .getByRole("button", {
+          name: /^(Admin|Member)$/,
+        })
+        .first(),
     ).toBeVisible();
 
     await organizationDialog
@@ -84,6 +84,57 @@ test.describe("clerk auth flows", () => {
     await expect(
       page.getByRole("menuitem", { name: "Remove member" }),
     ).toBeVisible();
+  });
+
+  test("an owner can save and reopen essential library configuration", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto("/evidence-libraries/new");
+
+    const libraryName = `E2E Library ${Date.now()}`;
+    await page.getByLabel("Library name").fill(libraryName);
+    await page.getByRole("button", { name: "Reserve address" }).click();
+    await expect(page.getByLabel("Platform address")).toHaveValue(
+      /^https:\/\//,
+    );
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/evidence-libraries\/[^/]+\/configuration$/);
+    const configurationUrl = page.url();
+
+    await page
+      .getByLabel("Logo URL")
+      .fill("https://assets.example.org/e2e-logo.svg");
+    await page
+      .getByLabel("Favicon URL")
+      .fill("https://assets.example.org/e2e-favicon.ico");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("Configuration saved.");
+
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    const preview = page.getByRole("dialog");
+    await expect(preview).toContainText(libraryName);
+    await expect(preview).toContainText("en-GB");
+    await preview.getByRole("button", { name: "Close" }).first().click();
+
+    await page.getByRole("button", { name: "Activate", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveAttribute(
+      "data-result",
+      "activation-success",
+    );
+
+    await page.goto("/settings");
+    await page.goto(configurationUrl);
+    await expect(page.getByLabel("Library name")).toHaveValue(libraryName);
+    await expect(page.getByLabel("Logo URL")).toHaveValue(
+      "https://assets.example.org/e2e-logo.svg",
+    );
+    await expect(page.getByLabel("Favicon URL")).toHaveValue(
+      "https://assets.example.org/e2e-favicon.ico",
+    );
+    await expect(page.getByLabel("Platform address")).toHaveAttribute(
+      "readonly",
+    );
   });
 
   test("sign out returns session to anonymous behavior", async ({ page }) => {
