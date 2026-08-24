@@ -8,8 +8,9 @@ steps without leaving an unscheduled gap.
 
 ## Scope
 
-1. Activation claims the existing setup operation and schedules the database
-   action in the same Convex mutation.
+1. Activation schedules one setup starter in the same Convex mutation that
+   freezes the revision. The starter generates the attempt token, then one
+   mutation claims the operation and schedules the database action atomically.
 2. Database completion schedules storage in the same mutation that records the
    database receipt.
 3. Storage reconciles one private documents bucket and one public images
@@ -47,8 +48,9 @@ its current all-or-nothing schema.
 
 ## Test-first steps
 
-1. Add a behavior test proving first activation atomically schedules the
-   database action and a repeated activation does not create a second setup.
+1. Add a behavior test proving first activation atomically schedules one setup
+   starter and a repeated activation does not schedule another. Prove the
+   starter's claim mutation changes the stage and schedules database together.
 2. Change database completion to schedule storage in the same mutation. Prove
    the scheduled function and stage change exist together.
 3. Add pure bucket-name and Storage client tests for create, match, correction,
@@ -92,7 +94,8 @@ entries.
 
 ## Completion rules
 
-- Activation schedules database without a second user action.
+- Activation schedules setup without a second user action, and claiming an
+  attempt cannot commit without its database action.
 - Database and storage transitions cannot commit without their next scheduled
   action.
 - Retry creates no duplicate bucket and does not change names.
@@ -114,4 +117,3 @@ entries.
 - [Supabase bucket guide](https://supabase.com/docs/guides/storage/buckets/creating-buckets)
 - Installed `@supabase/storage-js` bucket client source in Evidence Library
 - GitHub issue OpenDevEd/openalex-count #28
-
