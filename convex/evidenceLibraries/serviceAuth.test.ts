@@ -106,6 +106,24 @@ describe("Evidence Library machine credentials", () => {
     ]);
     expect(metadata[0]).not.toHaveProperty("encryptedValue");
     expect(metadata[0]).not.toHaveProperty("credentialDigest");
+
+    const auditRows = await t.run(async (ctx) =>
+      ctx.db
+        .query("auditLogs")
+        .withIndex("by_action", (query) =>
+          query.eq("action", "evidence_library.service_credential.rotated"),
+        )
+        .take(2),
+    );
+    expect(auditRows).toEqual([
+      expect.objectContaining({
+        userId: "user_service_auth",
+        metadata: {
+          credentialId: issued.credentialId,
+          libraryId,
+        },
+      }),
+    ]);
   });
 
   it("rotates one library in place without invalidating another library", async () => {

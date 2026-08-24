@@ -5,6 +5,7 @@ import {
   WRITE_ONLY_POINTER_PATTERNS,
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { jsonPointerPatternMatches } from "../../lib/evidence-libraries/configuration/json-pointer";
+import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 
@@ -121,19 +122,28 @@ export async function storeLibraryServiceCredential(
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
   };
+  let credentialId: Id<"evidenceLibraryCredentials">;
   if (existing) {
     await ctx.db.replace("evidenceLibraryCredentials", existing._id, {
       ...fields,
       createdByClerkUserId: existing.createdByClerkUserId,
       createdAt: existing.createdAt,
     });
-    return existing._id;
+    credentialId = existing._id;
+  } else {
+    credentialId = await ctx.db.insert("evidenceLibraryCredentials", {
+      ...fields,
+      createdByClerkUserId: access.clerkUserId,
+      createdAt: now,
+    });
   }
-  return await ctx.db.insert("evidenceLibraryCredentials", {
-    ...fields,
-    createdByClerkUserId: access.clerkUserId,
-    createdAt: now,
+
+  await writeAuditLogRecord(ctx, {
+    action: "evidence_library.service_credential.rotated",
+    userId: access.clerkUserId,
+    metadata: { credentialId, libraryId: args.libraryId },
   });
+  return credentialId;
 }
 
 export async function readCredentialMetadata(
