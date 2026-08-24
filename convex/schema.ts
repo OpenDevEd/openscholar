@@ -22,6 +22,7 @@ import {
 } from "./lib/validators";
 import {
   clerkEventLogFields,
+  evidenceLibraryAdminLoginCodeFields,
   evidenceLibraryConfigDraftFields,
   evidenceLibraryConfigRevisionFields,
   evidenceLibraryConfigSectionValidator,
@@ -89,6 +90,10 @@ export default defineSchema({
   evidenceLibraryCredentials: defineTable(evidenceLibraryCredentialFields)
     .index("by_libraryId", ["libraryId"])
     .index("by_libraryId_and_credentialKey", ["libraryId", "credentialKey"]),
+
+  evidenceLibraryAdminLoginCodes: defineTable(
+    evidenceLibraryAdminLoginCodeFields,
+  ).index("by_libraryId_and_codeDigest", ["libraryId", "codeDigest"]),
 
   evidenceLibraryRuntimeBindings: defineTable(evidenceLibraryRuntimeBindingFields)
     .index("by_libraryId", ["libraryId"])

@@ -16,6 +16,11 @@ export const organizationMembershipStateValidator = v.union(
   v.literal("revoked"),
 );
 
+export const evidenceLibraryAdminRoleValidator = v.union(
+  v.literal("owner"),
+  v.literal("editor"),
+);
+
 export const clerkEventOutcomeValidator = v.union(
   v.literal("applied"),
   v.literal("duplicate"),
@@ -203,6 +208,17 @@ export const evidenceLibraryCredentialFields = {
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
+};
+
+export const evidenceLibraryAdminLoginCodeFields = {
+  libraryId: v.id("evidenceLibraries"),
+  organizationId: v.id("organizations"),
+  clerkUserId: v.string(),
+  role: evidenceLibraryAdminRoleValidator,
+  codeDigest: v.string(),
+  issuedAt: v.number(),
+  expiresAt: v.number(),
+  consumedAt: v.optional(v.number()),
 };
 
 export const evidenceLibraryOperationKindValidator = v.union(

@@ -4,6 +4,7 @@ import { createError } from "../lib/errors";
 
 export type OrganizationRole = "org:admin" | "org:member";
 export type OrganizationAction = "read" | "manage";
+export type EvidenceLibraryAdminRole = "owner" | "editor";
 
 export type OrganizationClaims = {
   organizationId: string;
@@ -20,6 +21,12 @@ export function canPerformOrganizationAction(
   action: OrganizationAction,
 ): boolean {
   return action === "read" || role === "org:admin";
+}
+
+export function mapOrganizationRoleToAdminRole(
+  role: OrganizationRole,
+): EvidenceLibraryAdminRole {
+  return role === "org:admin" ? "owner" : "editor";
 }
 
 export function parseOrganizationClaims(identity: unknown): OrganizationClaims | null {
