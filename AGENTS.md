@@ -130,15 +130,15 @@ npm run convex:push  # upload Convex functions once, then exit
 npm run logs:convex  # stream remote function logs; stop with Ctrl-C
 ```
 
-The wrapper refuses any Convex URL except `https://convex.opendev.space` and requires the `openscholar-dev` admin key. The matching HTTP-actions URL is `https://convex-site.opendev.space`. The remote dashboard is `https://openscholar-dashboard.opendev.space`.
+The wrapper refuses any Convex URL except `https://convex.opendev.space` and requires the `openscholar-dev` admin key. The matching HTTP-actions URL is `https://convex-site.opendev.space`. The remote dashboard is `https://convex-dashboard.opendev.space`.
 
-Use the Convex log command or dashboard for function errors, data, schedules, and deployed functions. Use Coolify service `jqlwqa7jatuq5n3e6nvc6xwh`, sub-service `backend`, only for container, network, disk, or startup failures. Other Coolify services have similar names. Do not use them.
+Use the Convex log command or dashboard for function errors, data, schedules, and deployed functions. Use Coolify service `m6kbbm36nkb9anjt5vfc6e4e`, sub-service `backend`, only for container, network, disk, or startup failures. Other Coolify services have similar names. Do not use them.
 
 Read the last 200 backend container lines through the supported Coolify API:
 
 ```sh
 coolify_token_for_logs="$(coolify context list --format json 2>/dev/null | jq -r '.[] | select(.default == true) | .token')"
-curl -sS -H "Authorization: Bearer $coolify_token_for_logs" "https://coolify.opendeved.net/api/v1/services/jqlwqa7jatuq5n3e6nvc6xwh/logs?sub_service_name=backend&lines=200&show_timestamps=true" | jq -r '.logs'
+curl -sS -H "Authorization: Bearer $coolify_token_for_logs" "https://coolify.opendeved.net/api/v1/services/m6kbbm36nkb9anjt5vfc6e4e/logs?sub_service_name=backend&lines=200&show_timestamps=true" | jq -r '.logs'
 ```
 
 Tests passing does not prove that the remote deployment or running app accepted the change.
