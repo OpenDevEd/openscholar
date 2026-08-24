@@ -5,13 +5,15 @@ import {
   createEvidenceLibraryPublicAddress,
   createEvidenceLibrarySlugCandidate,
   createInitialEvidenceLibraryShortName,
+  EVIDENCE_LIBRARY_PLATFORM_DOMAIN_ENV,
+  MAX_EVIDENCE_LIBRARY_ADDRESS_CANDIDATES,
+  MAX_EVIDENCE_LIBRARY_NAME_LENGTH,
+  MAX_EVIDENCE_LIBRARY_SHORT_NAME_LENGTH,
   normalizeEvidenceLibraryName,
+  validateEvidenceLibraryPlatformDomain,
 } from "../../lib/evidence-libraries/setup/naming";
 import { createError } from "../lib/errors";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
-
-const MAX_LIBRARY_NAME_LENGTH = 100;
-const MAX_ADDRESS_CANDIDATES = 100;
 
 type SetupNamingCtx = Pick<QueryCtx | MutationCtx, "db">;
 
@@ -28,13 +30,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function validateEvidenceLibrarySetupName(value: string): string {
   const name = normalizeEvidenceLibraryName(value);
-  if (!name || Array.from(name).length > MAX_LIBRARY_NAME_LENGTH) {
+  if (
+    !name ||
+    Array.from(name).length > MAX_EVIDENCE_LIBRARY_NAME_LENGTH
+  ) {
     throw createError(
       "VALIDATION_ERROR",
       "Evidence Library name must be between 1 and 100 characters",
     );
   }
   return name;
+}
+
+export function requireEvidenceLibraryPlatformDomain(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  return validateEvidenceLibraryPlatformDomain(
+    env[EVIDENCE_LIBRARY_PLATFORM_DOMAIN_ENV],
+  );
 }
 
 export async function findAvailableEvidenceLibrarySetupIdentity(
@@ -44,10 +57,18 @@ export async function findAvailableEvidenceLibrarySetupIdentity(
   const name = validateEvidenceLibrarySetupName(args.name);
   const shortName = createInitialEvidenceLibraryShortName(name);
   const baseSlug = createEvidenceLibraryBaseSlug(name);
+  const platformDomain = requireEvidenceLibraryPlatformDomain();
 
-  for (let position = 1; position <= MAX_ADDRESS_CANDIDATES; position += 1) {
+  for (
+    let position = 1;
+    position <= MAX_EVIDENCE_LIBRARY_ADDRESS_CANDIDATES;
+    position += 1
+  ) {
     const slug = createEvidenceLibrarySlugCandidate(baseSlug, position);
-    const publicAddress = createEvidenceLibraryPublicAddress(slug);
+    const publicAddress = createEvidenceLibraryPublicAddress(
+      slug,
+      platformDomain,
+    );
     const [library, runtimeBinding] = await Promise.all([
       ctx.db
         .query("evidenceLibraries")
@@ -89,8 +110,12 @@ export async function readEvidenceLibrarySetupIdentity(
     identitySection.kind !== "draft" ||
     !isRecord(payload) ||
     payload.name !== setup.library.name ||
+    Array.from(setup.library.name).length >
+      MAX_EVIDENCE_LIBRARY_NAME_LENGTH ||
     typeof payload.shortName !== "string" ||
-    !payload.shortName ||
+    !payload.shortName.trim() ||
+    Array.from(payload.shortName).length >
+      MAX_EVIDENCE_LIBRARY_SHORT_NAME_LENGTH ||
     payload.baseUrl !== setup.publicAddress
   ) {
     throw createError(

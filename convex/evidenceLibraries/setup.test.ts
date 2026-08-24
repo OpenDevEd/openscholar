@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
 
@@ -44,9 +44,19 @@ const setupArgs = {
   name: "Climate Evidence",
 };
 
-const setupAddress = "https://climate-evidence-lib.openscholar.ai";
+const testPlatformDomain = "libraries.example.test";
+const setupAddress =
+  "https://climate-evidence-lib.libraries.example.test";
 
 describe("Evidence Library setup draft", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", testPlatformDomain);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("creates, reopens, and retries one linked setup draft", async () => {
     const t = convexTest(schema, modules);
     await seedOrganization(t, {
@@ -182,6 +192,11 @@ describe("Evidence Library setup draft", () => {
       clerkUserId: "user_second",
       role: "org:admin",
     });
+    await seedOrganization(t, {
+      clerkOrganizationId: "org_third",
+      clerkUserId: "user_third",
+      role: "org:admin",
+    });
     const first = t.withIdentity({
       subject: "user_first",
       o: { id: "org_first", rol: "org:admin" },
@@ -189,6 +204,10 @@ describe("Evidence Library setup draft", () => {
     const second = t.withIdentity({
       subject: "user_second",
       o: { id: "org_second", rol: "org:admin" },
+    });
+    const third = t.withIdentity({
+      subject: "user_third",
+      o: { id: "org_third", rol: "org:admin" },
     });
 
     await first.mutation(
@@ -205,6 +224,14 @@ describe("Evidence Library setup draft", () => {
       setupArgs,
     );
     const secondCreated = await second.mutation(
+      api.evidenceLibraries.mutations.createSetupDraft,
+      setupArgs,
+    );
+    const thirdCreated = await third.mutation(
+      api.evidenceLibraries.mutations.createSetupDraft,
+      setupArgs,
+    );
+    const secondRetriedAfterAnotherCollision = await second.mutation(
       api.evidenceLibraries.mutations.createSetupDraft,
       setupArgs,
     );
@@ -225,7 +252,8 @@ describe("Evidence Library setup draft", () => {
 
     expect(preview).toEqual({
       name: setupArgs.name,
-      publicAddress: "https://climate-evidence-2-lib.openscholar.ai",
+      publicAddress:
+        "https://climate-evidence-2-lib.libraries.example.test",
       shortName: setupArgs.name,
       slug: "climate-evidence-2",
     });
@@ -233,12 +261,18 @@ describe("Evidence Library setup draft", () => {
       publicAddress: preview.publicAddress,
       slug: preview.slug,
     });
+    expect(thirdCreated).toMatchObject({
+      publicAddress:
+        "https://climate-evidence-3-lib.libraries.example.test",
+      slug: "climate-evidence-3",
+    });
+    expect(secondRetriedAfterAnotherCollision).toEqual(secondCreated);
     expect(counts).toEqual({
-      drafts: 2,
-      libraries: 2,
-      operations: 2,
-      revisions: 2,
-      runtimeBindings: 2,
+      drafts: 3,
+      libraries: 3,
+      operations: 3,
+      revisions: 3,
+      runtimeBindings: 3,
     });
   });
 
