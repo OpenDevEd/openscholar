@@ -11,18 +11,22 @@ admin page are ready.
 1. Keep Coolify deployment status, host-side Compose state, and HTTP responses
    as separate evidence. Do not create a second readiness store.
 2. Add one development runtime verifier to Evidence Library. It accepts only a
-   validated Coolify application UUID and returns Docker state for containers
-   bearing that Compose project label. It cannot accept a command, label,
-   service list, host, or socket path from the caller.
+   validated Coolify application UUID and expected release commit, then returns
+   Docker state for containers bearing that Compose project label. It cannot
+   accept a command, label, service list, host, socket path, or container ID
+   from the caller.
 3. Require exactly one current container for `web`, `search-indexer`,
    `source-sync`, `source-writeback`, `publication-worker`, and `meilisearch`.
    Web, search, publication, and Meilisearch must be healthy. The two source
    workers must be running; their current Compose definitions intentionally
    have no Docker health check.
-4. Require the saved Coolify deployment to be `finished` for the saved app and
-   commit.
-5. Require `/api/library-config/health` to report the saved revision, then
-   require the public library route and `/admin` to return success.
+4. Require the saved Coolify deployment to be `finished` for the saved app,
+   commit, and Coolify configuration hash. Require every container's
+   repository-owned release label to match that commit and reject a public
+   Meilisearch port.
+5. Require `/api/library-config/health` to report `state: "active"`, the saved
+   revision, and no rejected configuration. Then require the default-locale
+   public library route and `/admin` to return same-origin success.
 6. Record the health receipt and activate the library only after all checks
    pass. This final mutation clears setup-only encrypted secrets.
 
@@ -31,9 +35,10 @@ admin page are ready.
 Coolify 4.3.10 does not expose per-service Compose state through its supported
 REST API. The verifier is therefore a separate fixed boundary. Package it as a
 small Evidence Library Docker target and deploy one authenticated development
-service on the Coolify host. Give only that service access to the Docker Engine
-socket. Its code performs one fixed read-only container query and returns a
-small validated JSON result. Do not add shell execution, arbitrary Docker API
+service on the Coolify host. Put a GET-only Docker socket proxy between the
+verifier and Docker; a read-only socket mount still permits mutating Docker API
+requests. Its code performs one fixed container query and returns a small
+validated JSON result. Do not add shell execution, arbitrary Docker API
 proxying, or a Docker socket mount to OpenScholar, Convex, or a tenant app.
 
 The OpenScholar readiness action calls the supported Coolify application and
@@ -52,7 +57,8 @@ has separately proved that a new deployment is required.
 3. In OpenScholar, add readiness client tests for exact URLs, revision match,
    public/admin responses, safe errors, and timeouts.
 4. Add the readiness action and final mutation. Prove no active revision or
-   ready binding is written when any one boundary fails.
+   ready binding is written when any one boundary fails, the release label is
+   stale, Meilisearch is public, or config health reports a rejected revision.
 5. Run one disposable library through activation twice. Prove one app, one
    volume, two buckets, one database, six services, one active revision, and a
    successful second reconciliation. Remove the disposable resources.
@@ -113,6 +119,8 @@ the singleton provisioner and verifier running for later sprints.
 
 - A finished Coolify deployment alone cannot mark a library ready.
 - Missing, duplicate, exited, or unhealthy services name the failed service.
+- Every service carries the exact saved release commit and Meilisearch has no
+  public port binding.
 - The requested revision is active before the public and admin checks pass.
 - Setup marks the binding ready, library active, and revision active in one
   final mutation only after every boundary passes.
@@ -122,7 +130,8 @@ the singleton provisioner and verifier running for later sprints.
 ## Risks
 
 - Docker socket access is powerful even for a read-only endpoint. Keep it out
-  of tenant apps and expose only the fixed authenticated query.
+  of tenant apps and expose only the fixed authenticated query through a
+  GET-only socket proxy.
 - Rolling deployments may briefly leave old containers. Match the saved
   application's current Compose project and reject duplicates until rollout
   settles.
@@ -135,4 +144,3 @@ the singleton provisioner and verifier running for later sprints.
 - Evidence Library `docs/evidence-library-operations.md`
 - Evidence Library `tools/runRuntimeAcceptance.ts`
 - GitHub issues OpenDevEd/openalex-count #28 and OpenDevEd/new-el #50
-

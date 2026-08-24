@@ -23,12 +23,14 @@ Library commit.
 6. Give only `web` the library's public domain. Write and read back exactly
    `LIBRARY_CONFIG_JSON` and `MEILISEARCH_MASTER_KEY`; the Compose file owns
    every worker setting.
-7. Save the complete runtime binding and application receipt, then schedule
-   deployment in the same mutation.
+7. Save the complete runtime binding and application receipt, including the
+   release commit, runtime JSON hash, and Coolify configuration hash, then
+   schedule deployment in the same mutation.
 8. Start or adopt the deployment for the same application, commit, and config
-   digest. Poll the supported deployment endpoint until `finished`; treat
-   failure and cancellation as failures. Save the deployment receipt and
-   schedule readiness atomically.
+   digest. Each poll performs one supported deployment request, renews the
+   lease, and schedules the next poll instead of sleeping. Treat failure and
+   cancellation as failures. Save the deployment receipt and schedule
+   readiness atomically.
 
 ## Design
 
@@ -38,16 +40,33 @@ project UUID, environment name, GitHub App UUID, and Evidence Library commit.
 OpenScholar code fixes the repository, branch, Compose path, service names, and
 allowed environment keys.
 
+Pin the exact 40-character commit. Disable automatic, preview, instant, and
+webhook deployment. Also disable generated domains, forced domain replacement,
+automatic Dockerfile build-argument injection, and source-commit build
+injection. Write the runtime commit into a repository-owned container label so
+readiness cannot approve old healthy containers.
+
 Tag every application with a deterministic library tag. Before creation, list
 by that tag. Zero matches means create; one matching application means read and
 repair it; more than one means stop with a conflict. After every create, patch,
 or environment write, read the application or value back before saving a
-receipt. Never use Coolify's internal database.
+receipt. Both allowed values are non-preview, literal runtime and build-time
+variables because Coolify resolves required Compose substitutions during the
+build. Never use Coolify's internal database.
 
-The application receipt must include application UUID, configured commit, and
-configuration SHA-256. The deployment receipt must include those values plus
-the deployment UUID. This ties readiness to the frozen revision instead of a
-later draft or webhook deployment.
+Keep three values separate: the SHA-256 of the exact `LIBRARY_CONFIG_JSON`
+bytes, Coolify's application `config_hash` after every readback, and the
+deployment UUID. The application receipt includes the application UUID,
+configured commit, runtime JSON hash, and Coolify hash. The deployment receipt
+adds the deployment UUID. This ties readiness to the frozen revision instead
+of a later draft or webhook deployment.
+
+Coolify has no deployment idempotency key. Before starting a deployment, list
+the application's deployments and adopt one that matches the application,
+commit, and Coolify hash. A failed or cancelled match may be replaced. If the
+POST result is completely lost, a second queue row cannot be ruled out without
+another service; do not add one. The application, route, volume, Meilisearch
+service, and configuration must still remain unique.
 
 Use short Convex environment names, including `EL_COOLIFY_URL`,
 `EL_COOLIFY_TOKEN`, `EL_COOLIFY_SERVER_UUID`, `EL_COOLIFY_PROJECT_UUID`,
@@ -61,9 +80,9 @@ Use short Convex environment names, including `EL_COOLIFY_URL`,
    credential, and authentication secret, while public queries expose none.
 2. Add configuration assembly coverage using the frozen revision and managed
    values. Compare behavior and parsed JSON, not source text or call counts.
-3. Add Coolify client contract tests for tag lookup, create, repair, allowed
-   environment writes, readback, deployment adoption, status polling, bounded
-   timeouts, and safe errors.
+3. Add Coolify client contract tests for tag lookup, create, repair, immutable
+   release flags, allowed environment writes, readback, deployment adoption,
+   one-check polling, bounded timeouts, and safe errors.
 4. Add application action and completion mutation. Save the full runtime
    binding and schedule deployment atomically.
 5. Add deployment action and completion mutation. Save the deployment receipt
@@ -114,8 +133,8 @@ disposable application afterward.
 - The app contains the repository Compose file, requested commit, frozen
   configuration digest, web-only domain, private Meilisearch, and all four
   workers.
-- Retry does not create another app, volume, route, key, or deployment for the
-  same committed state.
+- Retry does not create another app, volume, route, or key. It adopts a known
+  matching deployment whenever Coolify returns enough evidence to do so.
 - No manual worker environment variables or `SYNC_TARGETS` exist.
 - Focused tests, TypeScript, schema check, live Coolify check, cleanup, Convex
   upload, and log check pass.
@@ -128,6 +147,8 @@ disposable application afterward.
 - A create response may be lost. The deterministic tag is the recovery key.
 - A user-selected domain may already belong to another app. Treat that as a
   conflict; never force a domain override.
+- A long-running poll would exceed Convex's action limit. One action performs
+  one check, then a mutation renews the lease and schedules the next check.
 
 ## Sources
 
@@ -135,4 +156,3 @@ disposable application afterward.
 - [Coolify Docker Compose guide](https://coolify.io/docs/applications/build-packs/docker-compose)
 - [Coolify application list API](https://coolify.io/docs/api-reference/api/applications/list-applications)
 - GitHub issue OpenDevEd/openalex-count #28
-
