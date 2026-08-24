@@ -47,10 +47,10 @@ export const runDatabaseSetup = internalAction({
     try {
       const encryptionKey = requireEnvironmentValue("ENCRYPTION_KEY");
       const provisionerUrl = requireEnvironmentValue(
-        "EVIDENCE_LIBRARY_DATABASE_PROVISIONER_URL",
+        "EL_DATABASE_PROVISIONER_URL",
       );
       const token = requireEnvironmentValue(
-        "EVIDENCE_LIBRARY_DATABASE_PROVISIONER_TOKEN",
+        "EL_DATABASE_PROVISIONER_TOKEN",
       );
       const prepared = await ctx.runMutation(
         internal.evidenceLibraries.databaseSetup.prepareDatabaseSetup,

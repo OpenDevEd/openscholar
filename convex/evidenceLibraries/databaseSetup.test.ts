@@ -25,10 +25,10 @@ describe("Evidence Library database setup", () => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
     vi.stubEnv("ENCRYPTION_KEY", ENCRYPTION_KEY);
     vi.stubEnv(
-      "EVIDENCE_LIBRARY_DATABASE_PROVISIONER_URL",
+      "EL_DATABASE_PROVISIONER_URL",
       "https://database-provisioner.example.test",
     );
-    vi.stubEnv("EVIDENCE_LIBRARY_DATABASE_PROVISIONER_TOKEN", "service-token");
+    vi.stubEnv("EL_DATABASE_PROVISIONER_TOKEN", "service-token");
   });
 
   afterEach(() => {
