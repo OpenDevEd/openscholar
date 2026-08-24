@@ -43,8 +43,11 @@ allowed environment keys.
 Pin the exact 40-character commit. Disable automatic, preview, instant, and
 webhook deployment. Also disable generated domains, forced domain replacement,
 automatic Dockerfile build-argument injection, and source-commit build
-injection. Write the runtime commit into a repository-owned container label so
-readiness cannot approve old healthy containers.
+injection. Coolify still exports `SOURCE_COMMIT` to the Compose command. The
+repository Compose file writes that value to
+`org.opendeved.evidence-library.release` on all six services, so readiness
+cannot approve old healthy containers without invalidating the Docker build
+cache on every commit.
 
 Tag every application with a deterministic library tag. Before creation, list
 by that tag. Zero matches means create; one matching application means read and
@@ -73,6 +76,10 @@ Use short Convex environment names, including `EL_COOLIFY_URL`,
 `EL_COOLIFY_ENVIRONMENT`, `EL_COOLIFY_GITHUB_APP_UUID`,
 `EL_RUNTIME_COMMIT_SHA`, `EL_CONVEX_SITE_URL`, and
 `EL_ZOTERO_TRANSLATION_URL`.
+
+Each Coolify request has a 20-second timeout and accepts at most 2 MiB of JSON.
+Each deployment poll performs one status request and then reschedules itself;
+it never sleeps while a deployment runs.
 
 ## Test-first steps
 

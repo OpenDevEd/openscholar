@@ -3,7 +3,8 @@
 import { createHash } from "node:crypto";
 import type { Id } from "../_generated/dataModel";
 
-const REQUEST_TIMEOUT_MS = 75_000;
+const REQUEST_TIMEOUT_MS = 20_000;
+const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_APPLICATION_MATCHES = 2;
 const MAX_GITHUB_APPS = 100;
 const MAX_ENVIRONMENT_VARIABLES = 256;
@@ -422,8 +423,32 @@ async function requestCoolify(
       );
     }
     try {
-      return await response.json();
-    } catch {
+      const declaredLength = Number(response.headers.get("content-length"));
+      if (
+        Number.isFinite(declaredLength) &&
+        declaredLength > MAX_RESPONSE_BYTES
+      ) {
+        invalidResponse("Coolify returned too much data");
+      }
+      const reader = response.body?.getReader();
+      if (!reader) invalidResponse("Coolify returned invalid JSON");
+      const chunks: Uint8Array[] = [];
+      let bytes = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > MAX_RESPONSE_BYTES) {
+          await reader.cancel();
+          invalidResponse("Coolify returned too much data");
+        }
+        chunks.push(value);
+      }
+      return JSON.parse(
+        new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)),
+      );
+    } catch (error) {
+      if (error instanceof CoolifyClientError) throw error;
       throw new CoolifyClientError(
         "COOLIFY_INVALID_RESPONSE",
         "Coolify returned invalid JSON",

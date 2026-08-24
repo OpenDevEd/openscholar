@@ -248,7 +248,8 @@ export async function claimEvidenceLibrarySetupOperation(
   const now = Date.now();
   const attemptToken = requireSetupResourceIdentity(
     "attemptToken",
-    args.attemptToken ?? `elsetup_${operation._id}_${operation.attemptCount + 1}`,
+    args.attemptToken ??
+      `elsetup_${operation._id}_${operation.attemptCount + 1}`,
   );
   if (
     operation.status === "running" &&
@@ -277,6 +278,9 @@ export async function claimEvidenceLibrarySetupOperation(
     completedAt: undefined,
     setupAttemptToken: attemptToken,
     setupLeaseExpiresAt,
+    setupDeploymentId: undefined,
+    setupDeploymentOutcome: undefined,
+    setupDeploymentPollCount: 0,
     updatedAt: now,
   });
   if (setup.runtimeBinding.state === "failed") {
@@ -364,10 +368,7 @@ export async function requireCurrentEvidenceLibrarySetupAttempt(
     args.attemptToken,
     args.attemptCount,
   );
-  if (
-    args.expectedStage &&
-    setup.setupOperation.stage !== args.expectedStage
-  ) {
+  if (args.expectedStage && setup.setupOperation.stage !== args.expectedStage) {
     throw createError(
       "CONFLICT",
       `Evidence Library setup is running ${setup.setupOperation.stage}, not ${args.expectedStage}`,
@@ -468,6 +469,9 @@ export async function recordEvidenceLibrarySetupStep(
     setupLeaseExpiresAt: undefined,
     setupEncryptedDatabasePassword: undefined,
     setupRuntimeCommit: undefined,
+    setupDeploymentId: undefined,
+    setupDeploymentOutcome: undefined,
+    setupDeploymentPollCount: undefined,
     updatedAt: now,
   });
   await ctx.db.replace(setup.runtimeBinding._id, {

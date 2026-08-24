@@ -337,7 +337,7 @@ export const evidenceLibraryReconcileOutcomeValidator = v.union(
   v.literal("updated"),
 );
 
-const evidenceLibraryDeploymentOutcomeValidator = v.union(
+export const evidenceLibraryDeploymentOutcomeValidator = v.union(
   v.literal("created"),
   v.literal("matched"),
 );
@@ -472,6 +472,9 @@ export const evidenceLibraryOperationFields = {
   setupLeaseExpiresAt: v.optional(v.number()),
   setupEncryptedDatabasePassword: v.optional(v.string()),
   setupRuntimeCommit: v.optional(v.string()),
+  setupDeploymentId: v.optional(v.string()),
+  setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
+  setupDeploymentPollCount: v.optional(v.number()),
   status: v.union(
     v.literal("queued"),
     v.literal("running"),

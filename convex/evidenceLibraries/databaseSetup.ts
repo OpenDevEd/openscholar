@@ -1,9 +1,11 @@
 import { internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { requireNonBlankProvisioningValue } from "./provisioning";
 import {
   recordEvidenceLibrarySetupStep,
   requireCurrentEvidenceLibrarySetupAttempt,
+  EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS,
 } from "./setupOperation";
 import { writeEvidenceLibraryCredentialRecord } from "./credentials";
 import { evidenceLibraryReconcileOutcomeValidator } from "./validators";
@@ -81,6 +83,16 @@ export const completeDatabaseSetup = internalMutation({
         loginName: args.loginName,
       },
     });
+    await ctx.scheduler.runAfter(
+      EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS,
+      internal.evidenceLibraries.storageSetupActions.runStorageSetup,
+      {
+        libraryId: args.libraryId,
+        operationId: args.operationId,
+        attemptToken: args.attemptToken,
+        attemptCount: args.attemptCount,
+      },
+    );
     return {
       credentialId,
       nextStep: transition.nextStep as "storage",

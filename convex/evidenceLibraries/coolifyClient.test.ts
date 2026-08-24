@@ -1106,4 +1106,24 @@ describe("Coolify Evidence Library client", () => {
     expect(String(error)).not.toContain(COOLIFY_TOKEN);
     expect(String(error)).not.toContain(LIBRARY_CONFIG_JSON);
   });
+
+  it("rejects an oversized successful response before parsing it", async () => {
+    const fetchImpl: typeof fetch = vi.fn(
+      async () =>
+        new Response("{}", {
+          status: 200,
+          headers: {
+            "content-length": String(3 * 1024 * 1024),
+            "content-type": "application/json",
+          },
+        }),
+    );
+
+    await expect(
+      createClient(fetchImpl).reconcileApplication(reconcileInput()),
+    ).rejects.toMatchObject({
+      code: "COOLIFY_INVALID_RESPONSE",
+      message: "Coolify returned too much data",
+    });
+  });
 });

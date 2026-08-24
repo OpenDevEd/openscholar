@@ -38,15 +38,14 @@ describe("Evidence Library database setup", () => {
 
   it("keeps one encrypted password across database and later-step retries", async () => {
     const fixture = await createActivatedSetupFixture("database-secret");
-    await claim(fixture, "attempt-1");
 
     const first = await fixture.t.mutation(
       internal.evidenceLibraries.databaseSetup.prepareDatabaseSetup,
       {
         libraryId: fixture.created.libraryId,
         operationId: fixture.created.setupOperationId,
-        attemptToken: "attempt-1",
-        attemptCount: 1,
+        attemptToken: fixture.attemptToken,
+        attemptCount: fixture.attemptCount,
         candidateEncryptedPassword: "encrypted-password-1",
       },
     );
@@ -55,8 +54,8 @@ describe("Evidence Library database setup", () => {
       {
         libraryId: fixture.created.libraryId,
         operationId: fixture.created.setupOperationId,
-        attemptToken: "attempt-1",
-        attemptCount: 1,
+        attemptToken: fixture.attemptToken,
+        attemptCount: fixture.attemptCount,
         candidateEncryptedPassword: "encrypted-password-2",
       },
     );
@@ -68,8 +67,8 @@ describe("Evidence Library database setup", () => {
       {
         libraryId: fixture.created.libraryId,
         operationId: fixture.created.setupOperationId,
-        attemptToken: "attempt-1",
-        attemptCount: 1,
+        attemptToken: fixture.attemptToken,
+        attemptCount: fixture.attemptCount,
         expectedStage: "database",
         error: { code: "DATABASE_UNAVAILABLE", message: "Try again" },
       },
@@ -112,6 +111,9 @@ describe("Evidence Library database setup", () => {
         )
         .unique(),
       operation: await ctx.db.get(fixture.created.setupOperationId),
+      scheduledFunctions: await ctx.db.system
+        .query("_scheduled_functions")
+        .collect(),
     }));
     expect(saved.credential).toMatchObject({
       encryptedValue: "encrypted-database-url",
@@ -129,12 +131,15 @@ describe("Evidence Library database setup", () => {
       stage: "storage",
     });
     expect(
+      saved.scheduledFunctions.filter((scheduled) =>
+        scheduled.name.includes("runStorageSetup"),
+      ),
+    ).toHaveLength(1);
+    expect(
       await fixture.admin.query(api.evidenceLibraries.queries.getSetupDraft, {
         libraryId: fixture.created.libraryId,
       }),
-    ).not.toHaveProperty(
-      "setupOperation.setupEncryptedDatabasePassword",
-    );
+    ).not.toHaveProperty("setupOperation.setupEncryptedDatabasePassword");
 
     await expect(
       fixture.t.mutation(
@@ -142,8 +147,8 @@ describe("Evidence Library database setup", () => {
         {
           libraryId: fixture.created.libraryId,
           operationId: fixture.created.setupOperationId,
-          attemptToken: "attempt-1",
-          attemptCount: 1,
+          attemptToken: fixture.attemptToken,
+          attemptCount: fixture.attemptCount,
           encryptedDatabaseUrl: "stale-url",
           outcome: "updated",
           databaseName: "el_123",
@@ -184,49 +189,51 @@ describe("Evidence Library database setup", () => {
 
   it("sends a bounded request and records a safe failure before retrying", async () => {
     const fixture = await createActivatedSetupFixture("database-action");
-    await claim(fixture, "attempt-1");
     const passwords: string[] = [];
     let shouldFail = true;
-    vi.stubGlobal("fetch", async (input: URL | RequestInfo, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body)) as {
-        libraryId: string;
-        password: string;
-      };
-      passwords.push(body.password);
-      expect(String(input)).toBe(
-        "https://database-provisioner.example.test/v1/library-databases/reconcile",
-      );
-      expect(init?.method).toBe("POST");
-      expect(new Headers(init?.headers).get("content-type")).toBe(
-        "application/json",
-      );
-      expect(body.libraryId).toBe(fixture.created.libraryId);
-      expect(Object.keys(body).sort()).toEqual(["libraryId", "password"]);
-      expect(new Headers(init?.headers).get("authorization")).toBe(
-        "Bearer service-token",
-      );
-      if (shouldFail) {
+    vi.stubGlobal(
+      "fetch",
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body)) as {
+          libraryId: string;
+          password: string;
+        };
+        passwords.push(body.password);
+        expect(String(input)).toBe(
+          "https://database-provisioner.example.test/v1/library-databases/reconcile",
+        );
+        expect(init?.method).toBe("POST");
+        expect(new Headers(init?.headers).get("content-type")).toBe(
+          "application/json",
+        );
+        expect(body.libraryId).toBe(fixture.created.libraryId);
+        expect(Object.keys(body).sort()).toEqual(["libraryId", "password"]);
+        expect(new Headers(init?.headers).get("authorization")).toBe(
+          "Bearer service-token",
+        );
+        if (shouldFail) {
+          return new Response(
+            JSON.stringify({
+              error: {
+                code: "database_owner_conflict",
+                message: `leaked password: ${body.password}`,
+              },
+            }),
+            { status: 503, headers: { "content-type": "application/json" } },
+          );
+        }
         return new Response(
           JSON.stringify({
-            error: {
-              code: "database_owner_conflict",
-              message: `leaked password: ${body.password}`,
-            },
+            libraryId: body.libraryId,
+            outcome: "updated",
+            databaseName: "el_456",
+            loginName: "el_456_user",
+            databaseUrl: `postgresql://el_456_user:${encodeURIComponent(body.password)}@postgres:5432/el_456`,
           }),
-          { status: 503, headers: { "content-type": "application/json" } },
+          { status: 200, headers: { "content-type": "application/json" } },
         );
-      }
-      return new Response(
-        JSON.stringify({
-          libraryId: body.libraryId,
-          outcome: "updated",
-          databaseName: "el_456",
-          loginName: "el_456_user",
-          databaseUrl: `postgresql://el_456_user:${encodeURIComponent(body.password)}@postgres:5432/el_456`,
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    });
+      },
+    );
 
     expect(
       await fixture.t.action(
@@ -234,8 +241,8 @@ describe("Evidence Library database setup", () => {
         {
           libraryId: fixture.created.libraryId,
           operationId: fixture.created.setupOperationId,
-          attemptToken: "attempt-1",
-          attemptCount: 1,
+          attemptToken: fixture.attemptToken,
+          attemptCount: fixture.attemptCount,
         },
       ),
     ).toEqual({ status: "failed" });
@@ -280,9 +287,9 @@ describe("Evidence Library database setup", () => {
       operation: await ctx.db.get(fixture.created.setupOperationId),
     }));
     expect(saved.credential).not.toBeNull();
-    expect(
-      decrypt(saved.credential!.encryptedValue, ENCRYPTION_KEY),
-    ).toContain("postgresql://el_456_user:");
+    expect(decrypt(saved.credential!.encryptedValue, ENCRYPTION_KEY)).toContain(
+      "postgresql://el_456_user:",
+    );
     expect(
       decodeURIComponent(
         new URL(decrypt(saved.credential!.encryptedValue, ENCRYPTION_KEY))
