@@ -56,6 +56,9 @@ import type * as evidenceLibraries_adminLoginCodeActions from "../evidenceLibrar
 import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/adminLoginCodes.js";
 import type * as evidenceLibraries_credentialActions from "../evidenceLibraries/credentialActions.js";
 import type * as evidenceLibraries_credentials from "../evidenceLibraries/credentials.js";
+import type * as evidenceLibraries_databaseSetup from "../evidenceLibraries/databaseSetup.js";
+import type * as evidenceLibraries_databaseSetupActions from "../evidenceLibraries/databaseSetupActions.js";
+import type * as evidenceLibraries_databaseSetupClient from "../evidenceLibraries/databaseSetupClient.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
@@ -272,6 +275,9 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/adminLoginCodes": typeof evidenceLibraries_adminLoginCodes;
   "evidenceLibraries/credentialActions": typeof evidenceLibraries_credentialActions;
   "evidenceLibraries/credentials": typeof evidenceLibraries_credentials;
+  "evidenceLibraries/databaseSetup": typeof evidenceLibraries_databaseSetup;
+  "evidenceLibraries/databaseSetupActions": typeof evidenceLibraries_databaseSetupActions;
+  "evidenceLibraries/databaseSetupClient": typeof evidenceLibraries_databaseSetupClient;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;

@@ -284,6 +284,34 @@ function requireCurrentSetupAttempt(
   return normalized;
 }
 
+export async function requireCurrentEvidenceLibrarySetupAttempt(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+    attemptToken: string;
+    attemptCount: number;
+    expectedStage?: EvidenceLibrarySetupStage;
+  },
+) {
+  const setup = await readLinkedSetup(ctx, args);
+  requireCurrentSetupAttempt(
+    setup.setupOperation,
+    args.attemptToken,
+    args.attemptCount,
+  );
+  if (
+    args.expectedStage &&
+    setup.setupOperation.stage !== args.expectedStage
+  ) {
+    throw createError(
+      "CONFLICT",
+      `Evidence Library setup is running ${setup.setupOperation.stage}, not ${args.expectedStage}`,
+    );
+  }
+  return setup;
+}
+
 export async function recordEvidenceLibrarySetupStep(
   ctx: MutationCtx,
   args: {
@@ -294,9 +322,8 @@ export async function recordEvidenceLibrarySetupStep(
     result: EvidenceLibrarySetupResult;
   },
 ) {
-  const setup = await readLinkedSetup(ctx, args);
+  const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, args);
   const operation = setup.setupOperation;
-  requireCurrentSetupAttempt(operation, args.attemptToken, args.attemptCount);
   if (operation.stage !== args.result.step) {
     throw createError(
       "CONFLICT",
@@ -372,6 +399,7 @@ export async function recordEvidenceLibrarySetupStep(
     completedAt: now,
     setupAttemptToken: undefined,
     setupLeaseExpiresAt: undefined,
+    setupEncryptedDatabasePassword: undefined,
     updatedAt: now,
   });
   await ctx.db.replace(setup.runtimeBinding._id, {
@@ -400,9 +428,8 @@ export async function failEvidenceLibrarySetupOperation(
     error: { code: string; message: string };
   },
 ) {
-  const setup = await readLinkedSetup(ctx, args);
+  const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, args);
   const operation = setup.setupOperation;
-  requireCurrentSetupAttempt(operation, args.attemptToken, args.attemptCount);
   if (operation.stage !== args.expectedStage) {
     throw createError(
       "CONFLICT",
@@ -446,12 +473,7 @@ export async function renewEvidenceLibrarySetupLease(
     attemptCount: number;
   },
 ) {
-  const setup = await readLinkedSetup(ctx, args);
-  requireCurrentSetupAttempt(
-    setup.setupOperation,
-    args.attemptToken,
-    args.attemptCount,
-  );
+  const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, args);
   const now = Date.now();
   const setupLeaseExpiresAt = now + EVIDENCE_LIBRARY_SETUP_LEASE_MS;
   await ctx.db.patch(setup.setupOperation._id, {

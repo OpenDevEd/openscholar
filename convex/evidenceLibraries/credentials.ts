@@ -75,6 +75,25 @@ export async function storeEvidenceLibraryCredential(
   },
 ) {
   const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  return await writeEvidenceLibraryCredentialRecord(ctx, {
+    ...args,
+    clerkUserId: access.clerkUserId,
+    validationState: "untested",
+  });
+}
+
+export async function writeEvidenceLibraryCredentialRecord(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    concretePath: string;
+    instanceKey?: string;
+    encryptedValue: string;
+    maskedHint?: string;
+    clerkUserId: string;
+    validationState: "untested" | "valid" | "invalid";
+  },
+) {
   const resolved = resolveCredentialPath(args.concretePath, args.instanceKey);
   const existing = await ctx.db
     .query("evidenceLibraryCredentials")
@@ -92,8 +111,8 @@ export async function storeEvidenceLibraryCredential(
     instanceKey: args.instanceKey,
     encryptedValue: args.encryptedValue,
     maskedHint: args.maskedHint,
-    validationState: "untested" as const,
-    updatedByClerkUserId: access.clerkUserId,
+    validationState: args.validationState,
+    updatedByClerkUserId: args.clerkUserId,
     updatedAt: now,
   };
   if (existing) {
@@ -102,7 +121,7 @@ export async function storeEvidenceLibraryCredential(
   }
   return await ctx.db.insert("evidenceLibraryCredentials", {
     ...fields,
-    createdByClerkUserId: access.clerkUserId,
+    createdByClerkUserId: args.clerkUserId,
     createdAt: now,
   });
 }
