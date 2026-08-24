@@ -50,16 +50,24 @@ async function record(
         deploymentId: string;
         revisionKey: string;
       },
-  attemptToken = "attempt-1",
-  attemptCount = 1,
+  attemptToken?: string,
+  attemptCount?: number,
 ) {
+  const operation = await fixture.t.run((ctx) =>
+    ctx.db.get(fixture.created.setupOperationId),
+  );
+  const currentAttemptToken = attemptToken ?? operation?.setupAttemptToken;
+  const currentAttemptCount = attemptCount ?? operation?.attemptCount;
+  if (!currentAttemptToken || !currentAttemptCount) {
+    throw new Error("Setup attempt is not active");
+  }
   return await fixture.t.mutation(
     internal.evidenceLibraries.setupOperation.recordSetupStep,
     {
       libraryId: fixture.created.libraryId,
       operationId: fixture.created.setupOperationId,
-      attemptToken,
-      attemptCount,
+      attemptToken: currentAttemptToken,
+      attemptCount: currentAttemptCount,
       result: receipt,
     },
   );
@@ -76,15 +84,24 @@ describe("fixed Evidence Library setup operation", () => {
 
   it("claims the activated revision once and rejects generic setup transitions", async () => {
     const fixture = await createActivatedSetupFixture("claim");
-    const claimed = await claim(fixture);
+    const claimed = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.setupOperationId),
+    );
 
     expect(claimed).toMatchObject({
       attemptCount: 1,
-      attemptToken: "attempt-1",
+      setupAttemptToken: fixture.attemptToken,
       revisionId: fixture.activated.revisionId,
-      revisionKey: fixture.activated.revisionKey,
-      step: "database",
+      stage: "database",
     });
+    const scheduledAfterClaim = await fixture.t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect(),
+    );
+    expect(
+      scheduledAfterClaim.filter((scheduled) =>
+        scheduled.name.includes("runDatabaseSetup"),
+      ),
+    ).toHaveLength(1);
     await expect(claim(fixture, "attempt-2")).rejects.toThrow(
       /already running/,
     );
@@ -93,7 +110,7 @@ describe("fixed Evidence Library setup operation", () => {
       {
         libraryId: fixture.created.libraryId,
         operationId: fixture.created.setupOperationId,
-        attemptToken: "attempt-1",
+        attemptToken: fixture.attemptToken,
         attemptCount: 1,
       },
     );
@@ -103,9 +120,9 @@ describe("fixed Evidence Library setup operation", () => {
         setupLeaseExpiresAt: 0,
       }),
     );
-    expect(await claim(fixture, "attempt-1")).toMatchObject({
+    expect(await claim(fixture, "attempt-2")).toMatchObject({
       attemptCount: 2,
-      attemptToken: "attempt-1",
+      attemptToken: "attempt-2",
     });
     await expect(
       record(
@@ -116,7 +133,8 @@ describe("fixed Evidence Library setup operation", () => {
           databaseName: "climate_library",
           loginName: "climate_library",
         },
-        "attempt-1",
+        fixture.attemptToken,
+        1,
       ),
     ).rejects.toThrow(/no longer active/);
     await expect(
@@ -133,7 +151,6 @@ describe("fixed Evidence Library setup operation", () => {
 
   it("records checked resources in the fixed order", async () => {
     const fixture = await createActivatedSetupFixture("order");
-    await claim(fixture);
 
     await expect(
       record(fixture, {
@@ -166,7 +183,7 @@ describe("fixed Evidence Library setup operation", () => {
         {
           libraryId: fixture.created.libraryId,
           operationId: fixture.created.setupOperationId,
-          attemptToken: "attempt-1",
+          attemptToken: fixture.attemptToken,
           attemptCount: 1,
           expectedStage: "database",
           error: { code: "DATABASE_FAILED", message: "Late database error" },
@@ -196,7 +213,6 @@ describe("fixed Evidence Library setup operation", () => {
 
   it("keeps receipts after failure and rechecks from the first step", async () => {
     const fixture = await createActivatedSetupFixture("retry");
-    await claim(fixture);
     await record(fixture, {
       step: "database",
       outcome: "created",
@@ -208,7 +224,7 @@ describe("fixed Evidence Library setup operation", () => {
       {
         libraryId: fixture.created.libraryId,
         operationId: fixture.created.setupOperationId,
-        attemptToken: "attempt-1",
+        attemptToken: fixture.attemptToken,
         attemptCount: 1,
         expectedStage: "storage",
         error: { code: "BUCKET_FAILED", message: "Storage refused the bucket" },
@@ -312,7 +328,6 @@ describe("fixed Evidence Library setup operation", () => {
     });
     expect(Object.values(credentialIds)).toHaveLength(3);
 
-    await claim(fixture);
     await record(fixture, {
       step: "database",
       outcome: "created",
@@ -342,7 +357,7 @@ describe("fixed Evidence Library setup operation", () => {
         {
           libraryId: fixture.created.libraryId,
           operationId: fixture.created.setupOperationId,
-          attemptToken: "attempt-1",
+          attemptToken: fixture.attemptToken,
           attemptCount: 1,
           result: {
             step: "health_check",

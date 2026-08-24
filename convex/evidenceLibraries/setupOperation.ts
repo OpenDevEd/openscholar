@@ -1,4 +1,5 @@
 import { internalMutation, type MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
@@ -25,6 +26,7 @@ export const EVIDENCE_LIBRARY_SETUP_STEPS = [
 ] as const satisfies readonly EvidenceLibrarySetupStage[];
 
 export const EVIDENCE_LIBRARY_SETUP_LEASE_MS = 20 * 60 * 1_000;
+export const EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS = 1_000;
 
 function setupStagePosition(step: EvidenceLibrarySetupStage): number {
   return EVIDENCE_LIBRARY_SETUP_STEPS.indexOf(step);
@@ -198,7 +200,7 @@ export async function claimEvidenceLibrarySetupOperation(
   args: {
     libraryId: Id<"evidenceLibraries">;
     operationId: Id<"evidenceLibraryConfigOperations">;
-    attemptToken: string;
+    attemptToken?: string;
   },
 ) {
   const setup = await readLinkedSetup(ctx, args);
@@ -206,7 +208,7 @@ export async function claimEvidenceLibrarySetupOperation(
   const now = Date.now();
   const attemptToken = requireSetupResourceIdentity(
     "attemptToken",
-    args.attemptToken,
+    args.attemptToken ?? `elsetup_${operation._id}_${operation.attemptCount + 1}`,
   );
   if (
     operation.status === "running" &&
@@ -261,6 +263,28 @@ export async function claimEvidenceLibrarySetupOperation(
     attemptToken,
     setupLeaseExpiresAt,
   };
+}
+
+export async function claimAndScheduleEvidenceLibrarySetupOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+    attemptToken?: string;
+  },
+) {
+  const claimed = await claimEvidenceLibrarySetupOperation(ctx, args);
+  await ctx.scheduler.runAfter(
+    EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS,
+    internal.evidenceLibraries.databaseSetupActions.runDatabaseSetup,
+    {
+      libraryId: args.libraryId,
+      operationId: args.operationId,
+      attemptToken: claimed.attemptToken,
+      attemptCount: claimed.attemptCount,
+    },
+  );
+  return { ...claimed, status: "running" as const };
 }
 
 function requireCurrentSetupAttempt(
@@ -497,8 +521,9 @@ export const claimSetupOperation = internalMutation({
     step: evidenceLibrarySetupStageValidator,
     attemptToken: v.string(),
     setupLeaseExpiresAt: v.number(),
+    status: v.literal("running"),
   }),
-  handler: claimEvidenceLibrarySetupOperation,
+  handler: claimAndScheduleEvidenceLibrarySetupOperation,
 });
 
 export const recordSetupStep = internalMutation({

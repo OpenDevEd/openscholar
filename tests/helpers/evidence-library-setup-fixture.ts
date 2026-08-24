@@ -68,5 +68,16 @@ export async function createActivatedSetupFixture(suffix: string) {
       expectedEditVersion: saved.editVersion,
     },
   );
-  return { activated, admin, created, t };
+  const operation = await t.run((ctx) => ctx.db.get(created.setupOperationId));
+  if (!operation?.setupAttemptToken) {
+    throw new Error("Activated setup did not start an attempt");
+  }
+  return {
+    activated,
+    admin,
+    created,
+    t,
+    attemptToken: operation.setupAttemptToken,
+    attemptCount: operation.attemptCount,
+  };
 }
