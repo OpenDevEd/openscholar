@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -43,7 +44,17 @@ async function seedRedemptionScenario() {
       createdAt: 1,
       updatedAt: 1,
     });
-    return { libraryId, membershipId, organizationId };
+    const secondLibraryId = await ctx.db.insert("evidenceLibraries", {
+      organizationId,
+      name: "Second Admin Login Redemption Library",
+      slug: "second-admin-login-redemption-library",
+      state: "active",
+      createdByClerkUserId: "user_admin_login_redemption",
+      updatedByClerkUserId: "user_admin_login_redemption",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    return { libraryId, membershipId, organizationId, secondLibraryId };
   });
   const owner = t.withIdentity({
     subject: "user_admin_login_redemption",
@@ -78,6 +89,38 @@ function redeem(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ libraryId: args.libraryId, code: args.code }),
+  });
+}
+
+async function readCodeRow(
+  t: Awaited<ReturnType<typeof seedRedemptionScenario>>["t"],
+  libraryId: Id<"evidenceLibraries">,
+  code: string,
+) {
+  const rows = await t.run(async (ctx) =>
+    ctx.db
+      .query("evidenceLibraryAdminLoginCodes")
+      .withIndex("by_libraryId_and_codeDigest", (query) =>
+        query
+          .eq("libraryId", libraryId)
+          .eq("codeDigest", createHash("sha256").update(code).digest("hex")),
+      )
+      .take(2),
+  );
+  if (rows.length !== 1) throw new Error("Expected one login code row");
+  return rows[0];
+}
+
+async function updateMembership(
+  t: Awaited<ReturnType<typeof seedRedemptionScenario>>["t"],
+  membershipId: Awaited<ReturnType<typeof seedRedemptionScenario>>["membershipId"],
+  updates: {
+    role?: "org:admin" | "org:member";
+    state?: "active" | "revoked";
+  },
+) {
+  await t.run(async (ctx) => {
+    await ctx.db.patch("organizationMemberships", membershipId, updates);
   });
 }
 
@@ -211,5 +254,165 @@ describe("Evidence Library admin login redemption", () => {
         .take(2),
     );
     expect(auditRows).toHaveLength(1);
+  });
+
+  it("rejects a rotated machine credential without consuming the code", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, owner, t } = await seedRedemptionScenario();
+    const { loginCode, machineCredential: oldCredential } =
+      await issueRedemptionPair(owner, libraryId);
+    const newCredential = await owner.action(
+      api.evidenceLibraries.credentialActions.rotateServiceCredential,
+      { libraryId },
+    );
+
+    const rejected = await redeem(t, {
+      libraryId,
+      machineCredential: oldCredential.credential,
+      code: loginCode.code,
+    });
+    expect(rejected.status).toBe(401);
+    expect(rejected.headers.get("www-authenticate")).toBe("Bearer");
+    await expect(rejected.json()).resolves.toEqual({
+      error: "invalid_service_credential",
+    });
+    expect((await readCodeRow(t, libraryId, loginCode.code)).consumedAt).toBeUndefined();
+
+    const accepted = await redeem(t, {
+      libraryId,
+      machineCredential: newCredential.credential,
+      code: loginCode.code,
+    });
+    expect(accepted.status).toBe(200);
+  });
+
+  it("rejects a code for the wrong library without consuming it", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, owner, secondLibraryId, t } =
+      await seedRedemptionScenario();
+    const { loginCode, machineCredential } = await issueRedemptionPair(
+      owner,
+      libraryId,
+    );
+    const secondLibraryCredential = await owner.action(
+      api.evidenceLibraries.credentialActions.rotateServiceCredential,
+      { libraryId: secondLibraryId },
+    );
+
+    const rejected = await redeem(t, {
+      libraryId: secondLibraryId,
+      machineCredential: secondLibraryCredential.credential,
+      code: loginCode.code,
+    });
+    expect(rejected.status).toBe(400);
+    await expect(rejected.json()).resolves.toEqual({
+      error: "invalid_login_code",
+    });
+    expect((await readCodeRow(t, libraryId, loginCode.code)).consumedAt).toBeUndefined();
+
+    const accepted = await redeem(t, {
+      libraryId,
+      machineCredential: machineCredential.credential,
+      code: loginCode.code,
+    });
+    expect(accepted.status).toBe(200);
+  });
+
+  it("rejects an expired code without consuming it", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, owner, t } = await seedRedemptionScenario();
+    const { loginCode, machineCredential } = await issueRedemptionPair(
+      owner,
+      libraryId,
+    );
+    const codeRow = await readCodeRow(t, libraryId, loginCode.code);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("evidenceLibraryAdminLoginCodes", codeRow._id, {
+        expiresAt: Date.now() - 1,
+      });
+    });
+
+    const rejected = await redeem(t, {
+      libraryId,
+      machineCredential: machineCredential.credential,
+      code: loginCode.code,
+    });
+
+    expect(rejected.status).toBe(400);
+    await expect(rejected.json()).resolves.toEqual({
+      error: "invalid_login_code",
+    });
+    expect((await readCodeRow(t, libraryId, loginCode.code)).consumedAt).toBeUndefined();
+  });
+
+  it.each([
+    {
+      label: "revoked membership",
+      rejectWith: { state: "revoked" as const },
+      restoreWith: { state: "active" as const },
+    },
+    {
+      label: "changed role",
+      rejectWith: { role: "org:member" as const },
+      restoreWith: { role: "org:admin" as const },
+    },
+  ])("checks the current $label before consuming", async (scenario) => {
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, membershipId, owner, t } =
+      await seedRedemptionScenario();
+    const { loginCode, machineCredential } = await issueRedemptionPair(
+      owner,
+      libraryId,
+    );
+    await updateMembership(t, membershipId, scenario.rejectWith);
+
+    const rejected = await redeem(t, {
+      libraryId,
+      machineCredential: machineCredential.credential,
+      code: loginCode.code,
+    });
+    expect(rejected.status).toBe(400);
+    await expect(rejected.json()).resolves.toEqual({
+      error: "invalid_login_code",
+    });
+    expect((await readCodeRow(t, libraryId, loginCode.code)).consumedAt).toBeUndefined();
+
+    await updateMembership(t, membershipId, scenario.restoreWith);
+    const accepted = await redeem(t, {
+      libraryId,
+      machineCredential: machineCredential.credential,
+      code: loginCode.code,
+    });
+    expect(accepted.status).toBe(200);
+  });
+
+  it("returns bounded no-store errors for malformed requests", async () => {
+    const unauthenticatedTest = convexTest(schema, modules);
+    const missingCredential = await unauthenticatedTest.fetch(redemptionPath, {
+      method: "POST",
+      body: "{}",
+    });
+    expect(missingCredential.status).toBe(401);
+    expect(missingCredential.headers.get("cache-control")).toBe("no-store");
+    await expect(missingCredential.json()).resolves.toEqual({
+      error: "invalid_service_credential",
+    });
+
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, owner, t } = await seedRedemptionScenario();
+    const machineCredential = await owner.action(
+      api.evidenceLibraries.credentialActions.rotateServiceCredential,
+      { libraryId },
+    );
+    const malformedBody = await t.fetch(redemptionPath, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${machineCredential.credential}` },
+      body: "not-json",
+    });
+    expect(malformedBody.status).toBe(400);
+    expect(malformedBody.headers.get("cache-control")).toBe("no-store");
+    await expect(malformedBody.json()).resolves.toEqual({
+      error: "invalid_request",
+    });
   });
 });
