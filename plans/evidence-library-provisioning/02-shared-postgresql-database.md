@@ -43,8 +43,11 @@ OpenScholar uses a Node action for the network call and encryption. Before the
 first call, it creates one random database password and saves its encrypted
 form on the setup operation. A retry decrypts the same password. After the
 service succeeds, one internal mutation saves the encrypted runtime URL as the
-library's database credential, records the database receipt, and clears the
-temporary password. A stale attempt cannot save a URL or receipt.
+library's database credential and records the database receipt. The encrypted
+password stays on the setup operation because a failure in any later step
+restarts checks at the database. The final health-check transition clears it
+only after the whole setup succeeds. A stale attempt cannot save a URL or
+receipt.
 
 The database action is one setup step, not a general job runner. Issue #28
 wires all five setup steps into the public Start and Retry flow. Until then,
@@ -100,9 +103,9 @@ cleanly. Do not create an extra abstraction only to match this list.
 
 ## Data migration
 
-Development data is disposable. Add the temporary encrypted password directly
-to the setup operation and clear it after the database URL is saved. Do not add
-a backfill or compatibility field.
+Development data is disposable. Add the encrypted password directly to the
+setup operation and clear it only after the complete five-step setup succeeds.
+Do not add a backfill or compatibility field.
 
 ## Runtime check
 
@@ -130,8 +133,8 @@ database, or expose a shell or SQL endpoint.
 - Extensions are installed before migrations.
 - A retry returns the same database and login without rotating the password.
 - A different existing owner stops setup with a clear error.
-- The runtime URL is encrypted in OpenScholar and stale setup attempts cannot
-  replace it.
+- The runtime URL is encrypted in OpenScholar, retries through later steps keep
+  the same database password, and stale setup attempts cannot replace it.
 - Evidence Library focused tests, `check:changed`, the real PostgreSQL verifier,
   Docker build, and cleanup pass.
 - OpenScholar focused tests, full tests, TypeScript, production build, isolated
