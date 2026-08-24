@@ -46,7 +46,7 @@ npx vitest run convex/evidenceLibraries/adminLoginCodes.test.ts
 
 ## Deployability gate
 
-Run `npx pm2 logs convex --lines 5 --nostream` and require `✔ Convex functions ready!`. Check the deployed function spec for the public issue action and its exact return validator.
+Run `npm run convex:push` from `dev-self` and require `✔ Convex functions ready!`. Check the deployed function spec for the public issue action and its exact return validator.
 
 ## Completion rules
 

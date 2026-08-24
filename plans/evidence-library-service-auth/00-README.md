@@ -21,7 +21,7 @@ OpenScholar already checks the active Clerk organization and projected membershi
 - A machine credential contains 256 random bits, is encrypted with `ENCRYPTION_KEY`, and also has a SHA-256 digest for request authentication.
 - The existing credential table reserves the key `library-service` for the one machine credential. Runtime configuration secrets keep their real JSON path; the machine credential has no fake configuration path.
 - Rotation replaces the one credential row for that library. It never creates a second active machine credential.
-- Code redemption checks the machine credential, code, library, organization, current membership, current role, expiry, and unused state in one Convex mutation.
+- Code issuance checks the person's active Clerk organization. Redemption checks the code's bound organization, current projected membership, current role, expiry, and unused state in one Convex mutation.
 - Workers use the shared runtime settings. This plan does not create worker-specific OpenScholar credentials.
 
 ## Plans
@@ -58,7 +58,7 @@ The public seams are:
 
 Tests check returned values, stored rows, clear failure responses, and one-time behavior. They do not assert internal call order or source text.
 
-Use red → green for token policy, rotation, code issue, and redemption. Each Convex change must pass its focused test and the pm2 deployability check.
+Use red → green for token policy, rotation, code issue, and redemption. Each Convex change must pass its focused test and `npm run convex:push` from `dev-self`.
 
 ## Migration
 
@@ -66,7 +66,7 @@ Development data is disposable. Make the config-only path optional, add the opti
 
 ## Agent use
 
-A Sol worker may map existing code and tests. The main session owns plan changes, every red → green cycle, commits, pm2 checks, and final verification.
+A Sol worker may map existing code and tests. The main session owns plan changes, every red → green cycle, commits, remote Convex checks, and final verification.
 
 ## Sources
 

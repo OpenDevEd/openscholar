@@ -16,7 +16,7 @@ Long-running autonomous task. Expect 1–2 hours. Continue through the full plan
 2. No legacy or second credential store.
 3. Read `convex/_generated/ai/guidelines.md`; it overrides training.
 4. Use one behavioral failing test, one minimal green, then clean up.
-5. After each Convex commit, require `npx pm2 logs convex --lines 5 --nostream` to show `✔ Convex functions ready!`.
+5. After each Convex commit, run `npm run convex:push` from `dev-self` and require `✔ Convex functions ready!`.
 6. Check current primary docs before guessing.
 7. Delegate broad maps only; keep TDD and commits in this session.
 
@@ -28,14 +28,14 @@ Phase B: connect the public rotation action, check generated validators, and com
 Use conventional commits with `[plan-01]`. Never commit red tests, bypass hooks, or push.
 
 ## WHEN TO STOP
-Stop only when every completion rule and the pm2 gate pass. Do not stop for an answer already in the plan or concern about token use.
+Stop only when every completion rule and the remote Convex gate pass. Do not stop for an answer already in the plan or concern about token use.
 
 ## DEVIATIONS
 Commit safe work, update and commit the plan before changing direction. For a real blocker, write `01-BLOCKER.md` and stop.
 
 ## START NOW
 1. Read the plan, README, Convex rules, and named donors.
-2. Check `git status` and `npx pm2 logs convex --lines 5 --nostream`.
+2. Check `git status`, confirm no other Convex uploader is running, and run `npm run convex:push`.
 3. Write the first failing rotation test.
 
 Go.
@@ -55,7 +55,7 @@ Long-running autonomous task. Expect 1–2 hours. Continue through the full plan
 2. No legacy token format, compatibility path, or second membership model.
 3. Read the Convex rules first.
 4. Use red → green for every issue and denial behavior.
-5. Run the Convex pm2 gate after every backend commit.
+5. Run `npm run convex:push` after every backend commit.
 6. Use current primary docs before guessing.
 7. Keep TDD and commits in the main session.
 
@@ -67,14 +67,14 @@ Phase B: add the public issue action and deployed validator check.
 Use conventional commits with `[plan-02]`. Never commit red, bypass hooks, or push.
 
 ## WHEN TO STOP
-Stop only when all completion rules and the pm2 gate pass.
+Stop only when all completion rules and the remote Convex gate pass.
 
 ## DEVIATIONS
 Update and commit the plan before changing direction. Write `02-BLOCKER.md` only for a real blocker.
 
 ## START NOW
 1. Read the plan, README, Convex rules, access helper, and Clerk prerequisite record.
-2. Check Git and pm2.
+2. Check Git, confirm no other Convex uploader is running, and run `npm run convex:push`.
 3. Write the first failing Owner issue test.
 
 Go.
@@ -94,7 +94,7 @@ Long-running autonomous task. Expect 1–2 hours. Finish the atomic redemption a
 2. No second session system or general API gateway.
 3. Read Convex rules before coding.
 4. Test the public request and one-time result, not internal calls.
-5. Run the Convex pm2 gate after each commit.
+5. Run `npm run convex:push` after each commit.
 6. Follow current Convex HTTP and transaction docs.
 7. Keep TDD, commits, and final smoke here.
 
@@ -106,14 +106,14 @@ Phase B: add the HTTP handler, response mapping, deployed route smoke, and one i
 Use conventional commits with `[plan-03]`. Never commit red, bypass hooks, or push.
 
 ## WHEN TO STOP
-Stop only after focused tests, replay proof, function spec, endpoint smoke, and pm2 pass.
+Stop only after focused tests, replay proof, function spec, endpoint smoke, and the remote Convex gate pass.
 
 ## DEVIATIONS
 Commit safe work and revise the plan first. Write `03-BLOCKER.md` for a real blocker.
 
 ## START NOW
 1. Read the plan, README, Convex rules, and current HTTP router.
-2. Check Git and pm2.
+2. Check Git, confirm no other Convex uploader is running, and run `npm run convex:push`.
 3. Write the first failing successful-redemption test.
 
 Go.

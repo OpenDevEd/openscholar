@@ -13,7 +13,7 @@ Add one POST endpoint and one atomic redemption mutation. Return the checked ses
 - Route: `POST /api/evidence-libraries/admin-login/redeem`.
 - Request: `Authorization: Bearer <machine credential>` plus JSON `{ "libraryId": "...", "code": "..." }`.
 - The HTTP action parses and hashes both secrets, then calls one internal mutation.
-- The mutation checks the machine credential digest, code digest, code library, library organization, active organization, active current membership, unchanged role, unused state, and expiry.
+- The mutation checks the machine credential digest, code digest, code library, the code's bound organization, active current membership, unchanged role, unused state, and expiry. The active Clerk organization was already checked when OpenScholar issued the code.
 - The same mutation marks the code consumed and returns the library, user, Clerk organization, role, and consumption time.
 - Every invalid credential gets 401. Every invalid, expired, reused, or wrong-library code gets one 400 response without exposing another tenant.
 
@@ -46,7 +46,7 @@ npx vitest run convex/evidenceLibraries/adminLoginRedemption.test.ts
 
 ## Deployability gate
 
-Run `npx pm2 logs convex --lines 5 --nostream` and require `✔ Convex functions ready!`. Check the deployed HTTP route and the internal mutation validator. Then call the deployed endpoint with one test credential and confirm one success followed by one rejected replay.
+Run `npm run convex:push` from `dev-self` and require `✔ Convex functions ready!`. Check the deployed HTTP route and the internal mutation validator. Then call the deployed endpoint with one test credential and confirm one success followed by one rejected replay.
 
 ## Completion rules
 

@@ -47,7 +47,7 @@ npx vitest run convex/evidenceLibraries/serviceAuth.test.ts
 
 ## Deployability gate
 
-Run `npx pm2 logs convex --lines 5 --nostream`. The newest deploy must show `✔ Convex functions ready!` with no later error. Check the deployed function spec for the public rotation action and its return validator.
+Run `npm run convex:push` from `dev-self`. It must end with `✔ Convex functions ready!`. Check the deployed function spec for the public rotation action and its return validator.
 
 ## Completion rules
 
