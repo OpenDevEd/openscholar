@@ -78,7 +78,7 @@ function applyGeneratedDefaults(
   now: Date,
 ): unknown {
   const source =
-    value === undefined && Object.hasOwn(node, "default")
+    value === undefined && Object.prototype.hasOwnProperty.call(node, "default")
       ? cloneJson(node.default)
       : value === undefined && node["x-dynamicDefault"] === "currentUtcYear"
         ? now.getUTCFullYear()
