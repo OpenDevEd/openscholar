@@ -1905,15 +1905,8 @@
 			"additionalProperties": false
 		},
 		"authentication": {
-			"default": {},
 			"type": "object",
 			"properties": {
-				"adminPassword": {
-					"type": "string",
-					"minLength": 12,
-					"maxLength": 512,
-					"writeOnly": true
-				},
 				"google": {
 					"default": {},
 					"type": "object",
@@ -1937,6 +1930,41 @@
 					},
 					"additionalProperties": false
 				},
+				"openScholar": {
+					"type": "object",
+					"properties": {
+						"convexSiteUrl": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 2048,
+							"format": "uri"
+						},
+						"libraryId": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 128
+						},
+						"loginPageUrl": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 2048,
+							"format": "uri"
+						},
+						"machineCredential": {
+							"type": "string",
+							"minLength": 47,
+							"maxLength": 47,
+							"writeOnly": true
+						}
+					},
+					"required": [
+						"convexSiteUrl",
+						"libraryId",
+						"loginPageUrl",
+						"machineCredential"
+					],
+					"additionalProperties": false
+				},
 				"secret": {
 					"type": "string",
 					"minLength": 32,
@@ -1944,6 +1972,10 @@
 					"writeOnly": true
 				}
 			},
+			"required": [
+				"openScholar",
+				"secret"
+			],
 			"additionalProperties": false
 		},
 		"email": {
@@ -2178,7 +2210,8 @@
 		"identity",
 		"theme",
 		"localization",
-		"services"
+		"services",
+		"authentication"
 	],
 	"additionalProperties": false,
 	"$id": "/library-config.schema.json",

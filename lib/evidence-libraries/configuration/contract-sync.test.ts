@@ -28,7 +28,7 @@ describe("createContractSnapshot", () => {
     expect(() =>
       createContractSnapshot({
         repository: "https://github.com/OpenDevEd/new-el",
-        commit: "openscholar",
+        commit: "main",
         schemaText,
         catalogText,
       }),
@@ -140,7 +140,7 @@ test("produces identical output when only the local checkout HEAD changes", asyn
     execFileSync("git", ["init", "--quiet", sourceRoot]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
-    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "openscholar"]);
+    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "main"]);
     execFileSync("git", ["-C", sourceRoot, "add", "public"]);
     execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "artifacts"]);
     execFileSync("git", [
@@ -158,7 +158,7 @@ test("produces identical output when only the local checkout HEAD changes", asyn
       "-C",
       sourceRoot,
       "update-ref",
-      "refs/remotes/origin/openscholar",
+      "refs/remotes/origin/main",
       artifactCommit,
     ]);
 
@@ -166,7 +166,7 @@ test("produces identical output when only the local checkout HEAD changes", asyn
       const checkout = await inspectContractCheckout({
         sourceRoot,
         expectedRepository: "https://github.com/OpenDevEd/new-el",
-        expectedBranch: "openscholar",
+        expectedBranch: "main",
         artifactCommit,
       });
       const artifacts = await readContractArtifactsAtCommit({
@@ -267,7 +267,7 @@ test("normalizes the verified checkout origin", async () => {
     execFileSync("git", ["init", "--quiet", sourceRoot]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
-    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "openscholar"]);
+    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "main"]);
     await writeFile(join(sourceRoot, "README.md"), "fixture\n", "utf8");
     execFileSync("git", ["-C", sourceRoot, "add", "README.md"]);
     execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "fixture"]);
@@ -286,7 +286,7 @@ test("normalizes the verified checkout origin", async () => {
       "-C",
       sourceRoot,
       "update-ref",
-      "refs/remotes/origin/openscholar",
+      "refs/remotes/origin/main",
       head,
     ]);
 
@@ -294,7 +294,7 @@ test("normalizes the verified checkout origin", async () => {
       inspectContractCheckout({
         sourceRoot,
         expectedRepository: "https://github.com/OpenDevEd/new-el",
-        expectedBranch: "openscholar",
+        expectedBranch: "main",
         artifactCommit: head,
       }),
     ).resolves.toEqual({
@@ -331,7 +331,7 @@ test("rejects a checkout on the wrong branch", async () => {
       "-C",
       sourceRoot,
       "update-ref",
-      "refs/remotes/origin/openscholar",
+      "refs/remotes/origin/main",
       head,
     ]);
 
@@ -339,7 +339,7 @@ test("rejects a checkout on the wrong branch", async () => {
       inspectContractCheckout({
         sourceRoot,
         expectedRepository: "https://github.com/OpenDevEd/new-el",
-        expectedBranch: "openscholar",
+        expectedBranch: "main",
         artifactCommit: head,
       }),
     ).rejects.toThrow(/branch mismatch/i);
@@ -355,7 +355,7 @@ test("rejects a checkout from the wrong origin", async () => {
     execFileSync("git", ["init", "--quiet", sourceRoot]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
-    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "openscholar"]);
+    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "main"]);
     await writeFile(join(sourceRoot, "README.md"), "fixture\n", "utf8");
     execFileSync("git", ["-C", sourceRoot, "add", "README.md"]);
     execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "fixture"]);
@@ -374,7 +374,7 @@ test("rejects a checkout from the wrong origin", async () => {
       "-C",
       sourceRoot,
       "update-ref",
-      "refs/remotes/origin/openscholar",
+      "refs/remotes/origin/main",
       head,
     ]);
 
@@ -382,7 +382,7 @@ test("rejects a checkout from the wrong origin", async () => {
       inspectContractCheckout({
         sourceRoot,
         expectedRepository: "https://github.com/OpenDevEd/new-el",
-        expectedBranch: "openscholar",
+        expectedBranch: "main",
         artifactCommit: head,
       }),
     ).rejects.toThrow(/origin mismatch/i);
@@ -391,14 +391,14 @@ test("rejects a checkout from the wrong origin", async () => {
   }
 });
 
-test("rejects an artifact commit absent from origin/openscholar", async () => {
+test("rejects an artifact commit absent from origin/main", async () => {
   const sourceRoot = await mkdtemp(join(tmpdir(), "evidence-library-source-"));
 
   try {
     execFileSync("git", ["init", "--quiet", sourceRoot]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
-    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "openscholar"]);
+    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "main"]);
     await writeFile(join(sourceRoot, "README.md"), "remote fixture\n", "utf8");
     execFileSync("git", ["-C", sourceRoot, "add", "README.md"]);
     execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "remote fixture"]);
@@ -417,7 +417,7 @@ test("rejects an artifact commit absent from origin/openscholar", async () => {
       "-C",
       sourceRoot,
       "update-ref",
-      "refs/remotes/origin/openscholar",
+      "refs/remotes/origin/main",
       remoteHead,
     ]);
 
@@ -432,23 +432,23 @@ test("rejects an artifact commit absent from origin/openscholar", async () => {
       inspectContractCheckout({
         sourceRoot,
         expectedRepository: "https://github.com/OpenDevEd/new-el",
-        expectedBranch: "openscholar",
+        expectedBranch: "main",
         artifactCommit: localOnlyCommit,
       }),
-    ).rejects.toThrow(/artifact commit.*origin\/openscholar/i);
+    ).rejects.toThrow(/artifact commit.*origin\/main/i);
   } finally {
     await rm(sourceRoot, { recursive: true, force: true });
   }
 });
 
-test("rejects a checkout without origin/openscholar", async () => {
+test("rejects a checkout without origin/main", async () => {
   const sourceRoot = await mkdtemp(join(tmpdir(), "evidence-library-source-"));
 
   try {
     execFileSync("git", ["init", "--quiet", sourceRoot]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
-    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "openscholar"]);
+    execFileSync("git", ["-C", sourceRoot, "checkout", "--quiet", "-b", "main"]);
     await writeFile(join(sourceRoot, "README.md"), "fixture\n", "utf8");
     execFileSync("git", ["-C", sourceRoot, "add", "README.md"]);
     execFileSync("git", ["-C", sourceRoot, "commit", "--quiet", "-m", "fixture"]);
@@ -468,10 +468,10 @@ test("rejects a checkout without origin/openscholar", async () => {
       inspectContractCheckout({
         sourceRoot,
         expectedRepository: "https://github.com/OpenDevEd/new-el",
-        expectedBranch: "openscholar",
+        expectedBranch: "main",
         artifactCommit: head,
       }),
-    ).rejects.toThrow(/missing refs\/remotes\/origin\/openscholar/i);
+    ).rejects.toThrow(/missing refs\/remotes\/origin\/main/i);
   } finally {
     await rm(sourceRoot, { recursive: true, force: true });
   }

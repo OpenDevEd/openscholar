@@ -1,7 +1,7 @@
 # Generated Evidence Library configuration contract
 
 DO NOT EDIT these files by hand. Regenerate them with
-`node scripts/sync-evidence-library-config-contract.mjs --commit 8b2a006f9eab62555d6a2d638c6510bf4688ed40`.
+`node scripts/sync-evidence-library-config-contract.mjs --commit 7878a359e30525f84dca0209c0745cb608edb990`.
 
 - Repository: https://github.com/OpenDevEd/new-el
-- Artifact commit: `8b2a006f9eab62555d6a2d638c6510bf4688ed40`
+- Artifact commit: `7878a359e30525f84dca0209c0745cb608edb990`
