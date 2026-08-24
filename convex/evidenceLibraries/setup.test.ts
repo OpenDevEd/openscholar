@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -87,6 +87,13 @@ describe("Evidence Library setup draft", () => {
         idempotencyKey: "another-setup-operation",
       }),
     ).rejects.toThrow(/ArgumentValidationError|Validator/);
+    await expect(
+      admin.mutation(internal.evidenceLibraries.operations.startOperation, {
+        libraryId: created.libraryId,
+        operationId: created.setupOperationId,
+        stage: "assembling",
+      }),
+    ).rejects.toThrow(/requires an activated revision/);
     const counts = await t.run(async (ctx) => ({
       drafts: (await ctx.db.query("evidenceLibraryConfigDrafts").collect())
         .length,
@@ -264,9 +271,7 @@ describe("Evidence Library setup draft", () => {
       api.evidenceLibraries.mutations.createSetupDraft,
       { name: "Other Selection" },
     );
-    await t.run((ctx) =>
-      ctx.db.delete("evidenceLibraries", deleted.libraryId),
-    );
+    await t.run((ctx) => ctx.db.delete("evidenceLibraries", deleted.libraryId));
 
     await expect(
       admin.query(api.evidenceLibraries.queries.getSetupDraftSelection, {

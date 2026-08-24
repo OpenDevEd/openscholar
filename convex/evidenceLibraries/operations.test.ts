@@ -232,7 +232,10 @@ describe("Evidence Library operation state", () => {
       {
         libraryId: fixture.libraryId,
         operationId: queued.operationId,
-        error: { code: "REMOTE_FAILURE", message: "Runtime rejected candidate" },
+        error: {
+          code: "REMOTE_FAILURE",
+          message: "Runtime rejected candidate",
+        },
       },
     );
 
@@ -428,6 +431,13 @@ describe("Evidence Library operation state", () => {
         expectedEditVersion: saved.editVersion,
       },
     );
+    const retried = await admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId: created.libraryId,
+        expectedEditVersion: saved.editVersion,
+      },
+    );
     const stored = await t.run(async (ctx) => ({
       library: await ctx.db.get(created.libraryId),
       operations: await ctx.db
@@ -452,6 +462,7 @@ describe("Evidence Library operation state", () => {
       revisionKey: "r2",
       status: "queued",
     });
+    expect(retried).toEqual(activated);
     expect(stored.operations).toHaveLength(1);
     expect(stored.operations[0]).toMatchObject({
       _id: created.setupOperationId,
@@ -491,6 +502,13 @@ describe("Evidence Library operation state", () => {
         expectedEditVersion: saved.editVersion,
       },
     );
+    const retried = await admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId: created.libraryId,
+        expectedEditVersion: saved.editVersion,
+      },
+    );
     const beforeRejected = await t.run(async (ctx) => {
       const sections = await ctx.db
         .query("evidenceLibraryConfigSections")
@@ -502,7 +520,7 @@ describe("Evidence Library operation state", () => {
         (section) => section.sectionKey === "localization",
       )!;
       await ctx.db.patch(localization._id, {
-        payload: { locales: ["fr"], defaultLocale: "en-GB" },
+        payload: { locales: ["fr"], defaultLocale: "not-supported" },
       });
       return {
         operations: await ctx.db
@@ -527,12 +545,13 @@ describe("Evidence Library operation state", () => {
       revisionKey: "r2",
       status: "queued",
     });
+    expect(retried).toEqual(activated);
     expect(
       await t.run((ctx) =>
         ctx.db.get("evidenceLibraryConfigOperations", activated.operationId),
       ),
     ).toMatchObject({
-      idempotencyKey: "publish:r2",
+      idempotencyKey: `activate:${saved.editVersion}`,
       kind: "publish",
       revisionId: activated.revisionId,
     });
@@ -564,8 +583,12 @@ describe("Evidence Library operation state", () => {
         )
         .collect(),
     }));
-    expect(afterRejected.operations).toHaveLength(beforeRejected.operations.length);
-    expect(afterRejected.revisions).toHaveLength(beforeRejected.revisions.length);
+    expect(afterRejected.operations).toHaveLength(
+      beforeRejected.operations.length,
+    );
+    expect(afterRejected.revisions).toHaveLength(
+      beforeRejected.revisions.length,
+    );
     expect(afterRejected.library?.activeRevisionId).toBe(created.revisionId);
   });
 });

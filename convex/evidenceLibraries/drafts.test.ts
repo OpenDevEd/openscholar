@@ -4,11 +4,7 @@ import { describe, expect, it } from "vitest";
 import schema from "../schema";
 import { api } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
-import {
-  createEvidenceLibrarySetup,
-  finalizeEvidenceLibraryDraft,
-  saveEvidenceLibraryDraftSection,
-} from "./mutations";
+import { createEvidenceLibrarySetup } from "./mutations";
 import {
   readEvidenceLibraries,
   readEvidenceLibraryDraft,
@@ -16,6 +12,22 @@ import {
 } from "./queries";
 
 const modules = import.meta.glob("/convex/**/*.ts");
+
+function configurationSections(baseUrl: string, name: string) {
+  return {
+    identity: {
+      baseUrl,
+      name,
+      shortName: name,
+      assets: {
+        logoDark: "https://assets.example.org/library-logo.svg",
+        favicon: "https://assets.example.org/library-favicon.ico",
+      },
+    },
+    theme: { colors: { accent: "#005A9C", tertiary: "#F2A900" } },
+    localization: { locales: ["en-GB", "fr"], defaultLocale: "en-GB" },
+  };
+}
 
 describe("Evidence Library draft storage", () => {
   it("stores one provenance-locked draft with section rows", async () => {
@@ -115,29 +127,41 @@ describe("Evidence Library draft storage", () => {
         publicAddress: "https://identity-library.example.org",
       }),
     );
+    const validSections = configurationSections(
+      "https://identity-library.example.org",
+      "Identity Library",
+    );
 
     await expect(
-      admin.run((ctx) =>
-        saveEvidenceLibraryDraftSection(ctx, {
+      admin.mutation(
+        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        {
           libraryId: created.libraryId,
-          sectionKey: "identity",
-          payload: { name: "Incomplete identity" },
+          sections: {
+            ...validSections,
+            identity: {
+              ...validSections.identity,
+              assets: { ...validSections.identity.assets, logoDark: "" },
+            },
+          },
           expectedEditVersion: 0,
-        }),
+        },
       ),
     ).rejects.toThrow(/VALIDATION_ERROR/);
     await expect(
-      admin.run((ctx) =>
-        saveEvidenceLibraryDraftSection(ctx, {
+      admin.mutation(
+        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        {
           libraryId: created.libraryId,
-          sectionKey: "identity",
-          payload: {
-            baseUrl: "https://changed-address.example.org",
-            name: "Edited identity",
-            shortName: "Edited identity",
+          sections: {
+            ...validSections,
+            identity: {
+              ...validSections.identity,
+              baseUrl: "https://changed-address.example.org",
+            },
           },
           expectedEditVersion: 0,
-        }),
+        },
       ),
     ).rejects.toThrow(/VALIDATION_ERROR/);
 
@@ -209,24 +233,10 @@ describe("Evidence Library draft storage", () => {
         publicAddress: "https://climate-evidence.example.org",
       }),
     );
-    const sections = {
-      identity: {
-        baseUrl: "https://climate-evidence.example.org",
-        name: "Climate Evidence",
-        shortName: "Climate Evidence",
-        assets: {
-          logoDark: "https://assets.example.org/climate-logo.svg",
-          favicon: "https://assets.example.org/climate-favicon.ico",
-        },
-      },
-      theme: {
-        colors: { accent: "#005A9C", tertiary: "#F2A900" },
-      },
-      localization: {
-        locales: ["en-GB", "fr"],
-        defaultLocale: "en-GB",
-      },
-    };
+    const sections = configurationSections(
+      "https://climate-evidence.example.org",
+      "Climate Evidence",
+    );
     const saved = await asAdmin.mutation(
       api.evidenceLibraries.mutations.saveEssentialConfiguration,
       {
@@ -252,7 +262,10 @@ describe("Evidence Library draft storage", () => {
     expect(reloaded.library.name).toBe("Climate Evidence");
     expect(
       Object.fromEntries(
-        reloaded.sections.map((section) => [section.sectionKey, section.payload]),
+        reloaded.sections.map((section) => [
+          section.sectionKey,
+          section.payload,
+        ]),
       ),
     ).toMatchObject(sections);
     await expect(
@@ -290,7 +303,7 @@ describe("Evidence Library draft storage", () => {
             ...sections,
             localization: {
               locales: ["fr"],
-              defaultLocale: "en-GB",
+              defaultLocale: "not-supported",
             },
           },
           expectedEditVersion: 1,
@@ -350,38 +363,38 @@ describe("Evidence Library draft storage", () => {
         publicAddress: "https://revision-library.example.org",
       }),
     );
-    await admin.run((ctx) =>
-      saveEvidenceLibraryDraftSection(ctx, {
-        libraryId: created.libraryId,
-        sectionKey: "identity",
-        payload: {
-          baseUrl: "https://revision-library.example.org",
-          name: "Published name",
-          shortName: "Published name",
-        },
-        expectedEditVersion: 0,
-      }),
+    const published = configurationSections(
+      "https://revision-library.example.org",
+      "Published name",
     );
-    const finalized = await admin.run((ctx) =>
-      finalizeEvidenceLibraryDraft(ctx, {
+    const saved = await admin.mutation(
+      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      {
         libraryId: created.libraryId,
-        expectedEditVersion: 1,
-      }),
+        sections: published,
+        expectedEditVersion: 0,
+      },
+    );
+    const finalized = await admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId: created.libraryId,
+        expectedEditVersion: saved.editVersion,
+      },
     );
     const libraryAfterFinalize = await admin.run((ctx) =>
       ctx.db.get(created.libraryId),
     );
-    await admin.run((ctx) =>
-      saveEvidenceLibraryDraftSection(ctx, {
+    await admin.mutation(
+      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      {
         libraryId: created.libraryId,
-        sectionKey: "identity",
-        payload: {
-          baseUrl: "https://revision-library.example.org",
-          name: "Unpublished edit",
-          shortName: "Unpublished edit",
-        },
-        expectedEditVersion: 2,
-      }),
+        sections: configurationSections(
+          "https://revision-library.example.org",
+          "Unpublished edit",
+        ),
+        expectedEditVersion: finalized.editVersion,
+      },
     );
     await expect(
       member.run((ctx) =>
@@ -401,19 +414,16 @@ describe("Evidence Library draft storage", () => {
     expect(finalized).toMatchObject({ revisionKey: "r2", revisionNumber: 2 });
     expect(libraryAfterFinalize).toMatchObject({
       latestRevisionId: finalized.revisionId,
+      name: "Published name",
       state: "provisioning",
     });
     expect(libraryAfterFinalize).not.toHaveProperty("activeRevisionId");
-    expect(revision.sections).toEqual([
-      expect.objectContaining({
-        sectionKey: "identity",
-        payload: {
-          baseUrl: "https://revision-library.example.org",
-          name: "Published name",
-          shortName: "Published name",
-        },
-      }),
-    ]);
+    expect(revision.sections).toHaveLength(3);
+    expect(
+      revision.sections.find((section) => section.sectionKey === "identity"),
+    ).toMatchObject({
+      payload: published.identity,
+    });
     expect(revision.revision).not.toHaveProperty("updatedAt");
   });
 });

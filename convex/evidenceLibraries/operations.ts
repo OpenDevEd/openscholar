@@ -1,4 +1,8 @@
-import { internalMutation, mutation, type MutationCtx } from "../_generated/server";
+import {
+  internalMutation,
+  mutation,
+  type MutationCtx,
+} from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
@@ -93,8 +97,15 @@ export async function queueEvidenceLibraryOperation(
     revisionId?: Id<"evidenceLibraryConfigRevisions">;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-  if ((args.kind === "publish" || args.kind === "rollback") && !args.revisionId) {
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
+  if (
+    (args.kind === "publish" || args.kind === "rollback") &&
+    !args.revisionId
+  ) {
     throw createError(
       "VALIDATION_ERROR",
       "Publish and rollback operations require a revision",
@@ -153,7 +164,11 @@ export async function attachRevisionToSetupOperation(
     revisionId: Id<"evidenceLibraryConfigRevisions">;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
   const [operation, revision] = await Promise.all([
     ctx.db.get("evidenceLibraryConfigOperations", args.operationId),
     ctx.db.get("evidenceLibraryConfigRevisions", args.revisionId),
@@ -164,10 +179,24 @@ export async function attachRevisionToSetupOperation(
     operation.libraryId !== args.libraryId ||
     operation.kind !== "setup"
   ) {
-    throw createError("INVALID_DATA", "Evidence Library setup operation not found");
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library setup operation not found",
+    );
   }
   if (!revision || revision.libraryId !== args.libraryId) {
     throw createError("NOT_FOUND", "Evidence Library revision not found");
+  }
+  if (
+    operation.status !== "queued" ||
+    operation.stage !== "queued" ||
+    operation.attemptCount !== 0 ||
+    operation.startedAt !== undefined
+  ) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library setup operation has already started",
+    );
   }
   if (operation.revisionId && operation.revisionId !== args.revisionId) {
     throw createError(
@@ -187,15 +216,14 @@ export async function attachRevisionToSetupOperation(
 type TransitionArgs = {
   libraryId: Id<"evidenceLibraries">;
   operationId: Id<"evidenceLibraryConfigOperations">;
-} &
-  (
-    | { transition: "start"; stage: RunningStage }
-    | { transition: "succeed"; receipt?: OperationReceipt }
-    | {
-        transition: "fail";
-        error: { code: string; message: string };
-      }
-  );
+} & (
+  | { transition: "start"; stage: RunningStage }
+  | { transition: "succeed"; receipt?: OperationReceipt }
+  | {
+      transition: "fail";
+      error: { code: string; message: string };
+    }
+);
 
 export async function applyOperationTransition(
   ctx: MutationCtx,
@@ -211,8 +239,17 @@ export async function applyOperationTransition(
   }
   const now = Date.now();
   if (args.transition === "start") {
+    if (operation.kind === "setup" && !operation.revisionId) {
+      throw createError(
+        "CONFLICT",
+        "Evidence Library setup requires an activated revision",
+      );
+    }
     if (operation.status !== "queued" && operation.status !== "failed") {
-      throw createError("CONFLICT", "Invalid Evidence Library operation transition");
+      throw createError(
+        "CONFLICT",
+        "Invalid Evidence Library operation transition",
+      );
     }
     await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
       status: "running",
@@ -226,7 +263,10 @@ export async function applyOperationTransition(
     return "running" as const;
   }
   if (operation.status !== "running") {
-    throw createError("CONFLICT", "Invalid Evidence Library operation transition");
+    throw createError(
+      "CONFLICT",
+      "Invalid Evidence Library operation transition",
+    );
   }
   if (args.transition === "succeed") {
     const receipt = validateOperationReceipt(args.receipt);
