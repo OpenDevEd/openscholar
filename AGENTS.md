@@ -263,15 +263,28 @@ For Next.js work, read `node_modules/next/dist/docs/`. For Convex work, read `co
 
 Check the remote Convex logs and the local Next.js terminal before, during, and after work that can affect the running app. A plan based on memory or guesses is not ready.
 
-## Tests are required
+## Decide whether tests are required
 
-For plain logic, use red → green → clean up. Put logic in testable helpers.
+Before creating, changing, deleting, or reviewing any test or assertion, use
+the `test-decision` skill and read
+[`docs/test-quality.md`](docs/test-quality.md).
+
+Do not add or change tests for copy-only, style-only, comment-only,
+documentation-only, or behavior-preserving refactor changes. Run the existing
+checks and inspect the real result instead. Exact wording needs a test only when
+the wording is itself a lasting legal, security, accessibility, or protocol
+contract.
+
+When behavior, data, authentication, an API, accessibility, or plain logic
+changes, add or update the smallest honest behavior test in the same change.
+For new plain logic, use red → green → clean up. Put logic in testable helpers.
 
 Tests should check behavior, visible text, roles, labels, ARIA, `data-*` values, database state, API responses, or real service state. Do not test CSS class names.
 
 Every plan must name the exact unit, integration, benchmark, smoke, or browser tests that prove it works.
 
-Do not call work complete until the right tests pass. If a test cannot run, say which test and why. Add or update tests in the same change as the behavior.
+Do not call work complete until the right checks pass. If a required test cannot
+run, say which test and why.
 
 ## Check that the running app accepted the change
 
