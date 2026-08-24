@@ -318,14 +318,15 @@ export async function reconcileLibraryStorage(input: {
   };
   const maxFileBytes = requireMaxPdfBytes(input.maxPdfBytes);
   const names = createLibraryStorageBucketNames(input.libraryId);
+  const allowedMimeTypes = ["application/pdf", "image/png"];
   const privateOutcome = await reconcileBucket(client, {
-    allowedMimeTypes: ["application/pdf"],
+    allowedMimeTypes,
     fileSizeLimit: maxFileBytes,
     name: names.privateBucket,
     public: false,
   });
   const publicOutcome = await reconcileBucket(client, {
-    allowedMimeTypes: ["image/*"],
+    allowedMimeTypes,
     fileSizeLimit: maxFileBytes,
     name: names.publicBucket,
     public: true,

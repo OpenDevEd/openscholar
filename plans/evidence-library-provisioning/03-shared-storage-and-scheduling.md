@@ -31,10 +31,10 @@ Use a small Node client over the documented Supabase Storage bucket API:
   size limit, or MIME types.
 
 Every request carries the service-role key in both `apikey` and bearer headers.
-The private bucket allows PDFs up to the managed PDF limit. The public bucket
-allows images and uses the same size ceiling. Read both buckets again before
-recording success. Return only `created`, `matched`, or `updated`; do not save
-remote error text.
+Both buckets allow PDFs and PNG covers up to the managed PDF limit. The private
+bucket stores staged files; the public bucket stores published files. Read both
+buckets again before recording success. Return only `created`, `matched`, or
+`updated`; do not save remote error text.
 
 Use these Convex environment names so the current self-hosted server accepts
 them: `EL_STORAGE_URL`, `EL_STORAGE_SERVICE_KEY`, and

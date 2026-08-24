@@ -161,8 +161,8 @@ describe("Supabase storage setup client", () => {
     expect(
       server.requests.filter(({ method }) => method === "POST").map(({ body }) => body),
     ).toEqual([
-      expectedBucket(names.privateBucket, false, ["application/pdf"]),
-      expectedBucket(names.publicBucket, true, ["image/*"]),
+      expectedBucket(names.privateBucket, false, ["application/pdf", "image/png"]),
+      expectedBucket(names.publicBucket, true, ["application/pdf", "image/png"]),
     ]);
     for (const request of server.requests) {
       expect(request.headers.get("apikey")).toBe(SERVICE_ROLE_KEY);
@@ -176,8 +176,8 @@ describe("Supabase storage setup client", () => {
   it("matches buckets that already have the fixed policies", async () => {
     const names = createLibraryStorageBucketNames(LIBRARY_ID);
     const server = createStorageServer([
-      expectedBucket(names.privateBucket, false, ["application/pdf"]),
-      expectedBucket(names.publicBucket, true, ["image/*"]),
+      expectedBucket(names.privateBucket, false, ["application/pdf", "image/png"]),
+      expectedBucket(names.publicBucket, true, ["application/pdf", "image/png"]),
     ]);
 
     await expect(reconcile(server.fetchImpl)).resolves.toEqual({
@@ -191,7 +191,7 @@ describe("Supabase storage setup client", () => {
     const names = createLibraryStorageBucketNames(LIBRARY_ID);
     const server = createStorageServer([
       expectedBucket(names.privateBucket, true, ["text/plain"]),
-      expectedBucket(names.publicBucket, false, ["application/pdf"]),
+      expectedBucket(names.publicBucket, false, ["text/plain"]),
     ]);
 
     await expect(reconcile(server.fetchImpl)).resolves.toEqual({
@@ -205,11 +205,17 @@ describe("Supabase storage setup client", () => {
       })),
     ).toEqual([
       {
-        body: expectedBucket(names.privateBucket, false, ["application/pdf"]),
+        body: expectedBucket(names.privateBucket, false, [
+          "application/pdf",
+          "image/png",
+        ]),
         path: `/storage/v1/bucket/${names.privateBucket}`,
       },
       {
-        body: expectedBucket(names.publicBucket, true, ["image/*"]),
+        body: expectedBucket(names.publicBucket, true, [
+          "application/pdf",
+          "image/png",
+        ]),
         path: `/storage/v1/bucket/${names.publicBucket}`,
       },
     ]);
@@ -223,7 +229,10 @@ describe("Supabase storage setup client", () => {
     const server = createStorageServer(
       [
         expectedBucket(names.privateBucket, true, ["text/plain"]),
-        expectedBucket(names.publicBucket, true, ["image/*"]),
+        expectedBucket(names.publicBucket, true, [
+          "application/pdf",
+          "image/png",
+        ]),
       ],
       { persistWrites: false },
     );
