@@ -74,8 +74,13 @@ service, and configuration must still remain unique.
 Use short Convex environment names, including `EL_COOLIFY_URL`,
 `EL_COOLIFY_TOKEN`, `EL_COOLIFY_SERVER_UUID`, `EL_COOLIFY_PROJECT_UUID`,
 `EL_COOLIFY_ENVIRONMENT`, `EL_COOLIFY_GITHUB_APP_UUID`,
-`EL_RUNTIME_COMMIT_SHA`, `EL_CONVEX_SITE_URL`, and
+`EL_RUNTIME_COMMIT_SHA`, `EL_OPENSCHOLAR_URL`, `EL_CONVEX_SITE_URL`, and
 `EL_ZOTERO_TRANSLATION_URL`.
+
+`NEXT_PUBLIC_APP_URL` remains `http://localhost:3000` for the local Next.js
+development server. `EL_OPENSCHOLAR_URL` is the stable HTTPS development
+origin written into deployed library login links. Do not make local web
+development depend on a deployed OpenScholar frontend.
 
 Each Coolify request has a 20-second timeout and accepts at most 2 MiB of JSON.
 Each deployment poll performs one status request and then reschedules itself;

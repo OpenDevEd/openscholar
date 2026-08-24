@@ -110,7 +110,7 @@ export const runApplicationSetup = internalAction({
           ),
         },
       );
-      const appOrigin = requireHttpsOrigin("NEXT_PUBLIC_APP_URL");
+      const appOrigin = requireHttpsOrigin("EL_OPENSCHOLAR_URL");
       const storageUrl = requireHttpsOrigin("EL_STORAGE_URL");
       const storageMaxPdfBytes = requirePositiveIntegerEnvironment(
         "EL_STORAGE_MAX_PDF_BYTES",
