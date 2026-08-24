@@ -212,6 +212,10 @@ export const WRITE_ONLY_POINTER_PATTERNS = catalogs.fields.writeOnlyPaths.map(
   writeOnlyPathToPointerPattern,
 );
 
+const FIELD_AUTHORITY_OVERRIDES = new Map<string, FieldAuthority>([
+  ["/identity/baseUrl", "platformProvisioned"],
+]);
+
 function resolveSchemaToken(schema: unknown, token: string): unknown {
   if (!schema || typeof schema !== "object") return undefined;
 
@@ -260,6 +264,9 @@ export function getFieldAuthority(pointer: string): FieldAuthority | undefined {
   ) {
     return "credentialLifecycle";
   }
+
+  const override = FIELD_AUTHORITY_OVERRIDES.get(pointer);
+  if (override) return override;
 
   const sectionKey = unescapeJsonPointerToken(pointer.split("/")[1] ?? "");
   if ((ENVELOPE_FIELDS as readonly string[]).includes(sectionKey)) {
