@@ -4,7 +4,6 @@ import { createError } from "../lib/errors";
 
 const POSTGRES_IDENTIFIER = /^[a-z0-9_]{1,63}$/u;
 const ERROR_CODE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
-const MAX_ERROR_MESSAGE_LENGTH = 500;
 const REQUEST_TIMEOUT_MS = 8 * 60 * 1_000;
 
 export type DatabaseSetupResult = {
@@ -55,20 +54,26 @@ function requireProvisionerOrigin(value: string): URL {
   return url;
 }
 
+const SAFE_PROVISIONER_ERRORS: Record<string, string> = {
+  database_object_owner_conflict:
+    "The library database contains objects owned by another login.",
+  database_owner_conflict:
+    "The library database is owned by another login.",
+  extension_owner_conflict:
+    "A required database extension is owned by another login.",
+  login_database_conflict: "The library login owns another database.",
+  login_security_conflict: "The library login has server-wide rights.",
+};
+
 function parseSafeServiceError(payload: unknown): DatabaseProvisionerError {
   if (
     isRecord(payload) &&
     isRecord(payload.error) &&
     typeof payload.error.code === "string" &&
-    ERROR_CODE.test(payload.error.code) &&
-    typeof payload.error.message === "string" &&
-    payload.error.message.trim() &&
-    payload.error.message.length <= MAX_ERROR_MESSAGE_LENGTH
+    ERROR_CODE.test(payload.error.code)
   ) {
-    return new DatabaseProvisionerError(
-      payload.error.code,
-      payload.error.message,
-    );
+    const message = SAFE_PROVISIONER_ERRORS[payload.error.code];
+    if (message) return new DatabaseProvisionerError(payload.error.code, message);
   }
   return new DatabaseProvisionerError(
     "DATABASE_PROVISIONER_FAILED",
@@ -76,9 +81,14 @@ function parseSafeServiceError(payload: unknown): DatabaseProvisionerError {
   );
 }
 
-function parseDatabaseSetupResult(payload: unknown): DatabaseSetupResult {
+function parseDatabaseSetupResult(
+  payload: unknown,
+  expectedLibraryId: string,
+  expectedPassword: string,
+): DatabaseSetupResult {
   if (
     !isRecord(payload) ||
+    payload.libraryId !== expectedLibraryId ||
     (payload.outcome !== "created" &&
       payload.outcome !== "matched" &&
       payload.outcome !== "updated") ||
@@ -102,12 +112,21 @@ function parseDatabaseSetupResult(payload: unknown): DatabaseSetupResult {
       "Database provisioner returned an invalid response",
     );
   }
+  let databasePassword: string;
+  try {
+    databasePassword = decodeURIComponent(databaseUrl.password);
+  } catch {
+    throw new DatabaseProvisionerError(
+      "DATABASE_PROVISIONER_INVALID_RESPONSE",
+      "Database provisioner returned an invalid response",
+    );
+  }
   if (
     (databaseUrl.protocol !== "postgres:" &&
       databaseUrl.protocol !== "postgresql:") ||
     !databaseUrl.hostname ||
     decodeURIComponent(databaseUrl.username) !== payload.loginName ||
-    !databaseUrl.password ||
+    databasePassword !== expectedPassword ||
     databaseUrl.pathname !== `/${payload.databaseName}`
   ) {
     throw new DatabaseProvisionerError(
@@ -156,5 +175,5 @@ export async function reconcileLibraryDatabase(input: {
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw parseSafeServiceError(payload);
-  return parseDatabaseSetupResult(payload);
+  return parseDatabaseSetupResult(payload, input.libraryId, input.password);
 }

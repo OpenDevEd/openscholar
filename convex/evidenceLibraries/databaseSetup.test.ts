@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { decrypt } from "../lib/crypto";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
@@ -128,6 +128,13 @@ describe("Evidence Library database setup", () => {
       },
       stage: "storage",
     });
+    expect(
+      await fixture.admin.query(api.evidenceLibraries.queries.getSetupDraft, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).not.toHaveProperty(
+      "setupOperation.setupEncryptedDatabasePassword",
+    );
 
     await expect(
       fixture.t.mutation(
@@ -149,6 +156,30 @@ describe("Evidence Library database setup", () => {
         ctx.db.get("evidenceLibraryCredentials", saved.credential!._id),
       ),
     ).toMatchObject({ encryptedValue: "encrypted-database-url" });
+
+    await fixture.t.mutation(
+      internal.evidenceLibraries.setupOperation.failSetupOperation,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: fixture.created.setupOperationId,
+        attemptToken: "attempt-2",
+        attemptCount: 2,
+        expectedStage: "storage",
+        error: { code: "STORAGE_FAILED", message: "Try storage again" },
+      },
+    );
+    await claim(fixture, "attempt-3");
+    const laterStepRetry = await fixture.t.mutation(
+      internal.evidenceLibraries.databaseSetup.prepareDatabaseSetup,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: fixture.created.setupOperationId,
+        attemptToken: "attempt-3",
+        attemptCount: 3,
+        candidateEncryptedPassword: "encrypted-password-4",
+      },
+    );
+    expect(laterStepRetry.encryptedPassword).toBe("encrypted-password-1");
   });
 
   it("sends a bounded request and records a safe failure before retrying", async () => {
@@ -156,12 +187,19 @@ describe("Evidence Library database setup", () => {
     await claim(fixture, "attempt-1");
     const passwords: string[] = [];
     let shouldFail = true;
-    vi.stubGlobal("fetch", async (_input: URL | RequestInfo, init?: RequestInit) => {
+    vi.stubGlobal("fetch", async (input: URL | RequestInfo, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as {
         libraryId: string;
         password: string;
       };
       passwords.push(body.password);
+      expect(String(input)).toBe(
+        "https://database-provisioner.example.test/v1/library-databases/reconcile",
+      );
+      expect(init?.method).toBe("POST");
+      expect(new Headers(init?.headers).get("content-type")).toBe(
+        "application/json",
+      );
       expect(body.libraryId).toBe(fixture.created.libraryId);
       expect(Object.keys(body).sort()).toEqual(["libraryId", "password"]);
       expect(new Headers(init?.headers).get("authorization")).toBe(
@@ -172,7 +210,7 @@ describe("Evidence Library database setup", () => {
           JSON.stringify({
             error: {
               code: "database_owner_conflict",
-              message: "The library database is owned by another login.",
+              message: `leaked password: ${body.password}`,
             },
           }),
           { status: 503, headers: { "content-type": "application/json" } },
@@ -180,10 +218,11 @@ describe("Evidence Library database setup", () => {
       }
       return new Response(
         JSON.stringify({
+          libraryId: body.libraryId,
           outcome: "updated",
           databaseName: "el_456",
           loginName: "el_456_user",
-          databaseUrl: "postgresql://el_456_user:secret@postgres:5432/el_456",
+          databaseUrl: `postgresql://el_456_user:${encodeURIComponent(body.password)}@postgres:5432/el_456`,
         }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
@@ -243,7 +282,13 @@ describe("Evidence Library database setup", () => {
     expect(saved.credential).not.toBeNull();
     expect(
       decrypt(saved.credential!.encryptedValue, ENCRYPTION_KEY),
-    ).toBe("postgresql://el_456_user:secret@postgres:5432/el_456");
+    ).toContain("postgresql://el_456_user:");
+    expect(
+      decodeURIComponent(
+        new URL(decrypt(saved.credential!.encryptedValue, ENCRYPTION_KEY))
+          .password,
+      ),
+    ).toBe(passwords[0]);
     expect(saved.operation).toMatchObject({ stage: "storage" });
     expect(saved.operation).toHaveProperty(
       "setupEncryptedDatabasePassword",

@@ -19,6 +19,11 @@ import {
 import { readEvidenceLibrarySetupIdentity } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 
+const {
+  setupEncryptedDatabasePassword: _encryptedDatabasePasswordValidator,
+  ...evidenceLibraryPublicOperationFields
+} = evidenceLibraryOperationFields;
+
 export async function readEvidenceLibraries(ctx: QueryCtx) {
   const access = await requireOrganizationAccess(ctx, "read");
   return await ctx.db
@@ -61,7 +66,7 @@ const evidenceLibrarySetupResultValidator = v.object({
   setupOperation: v.object({
     _id: v.id("evidenceLibraryConfigOperations"),
     _creationTime: v.number(),
-    ...evidenceLibraryOperationFields,
+    ...evidenceLibraryPublicOperationFields,
   }),
   runtimeBinding: v.union(
     v.object({
@@ -98,8 +103,13 @@ async function readEvidenceLibrarySetupForLibrary(
   library: Doc<"evidenceLibraries">,
 ) {
   const setup = await readEvidenceLibrarySetupRecords(ctx, library);
+  const {
+    setupEncryptedDatabasePassword: _encryptedDatabasePassword,
+    ...publicSetupOperation
+  } = setup.setupOperation;
   return {
     ...setup,
+    setupOperation: publicSetupOperation,
     identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
   };
 }
