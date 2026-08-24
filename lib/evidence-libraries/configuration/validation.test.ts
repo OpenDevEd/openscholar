@@ -52,6 +52,7 @@ const managedConfiguration = {
   storageDocumentsBucket: "climate-private",
   storageImagesBucket: "climate-public",
   storageMaxPdfBytes: 52_428_800,
+  zoteroTranslationUrl: "https://translation.example.test",
 };
 
 describe("validateLibraryConfigStructure", () => {
@@ -109,6 +110,7 @@ describe("validateLibraryConfigStructure", () => {
     const configuration = assembleEvidenceLibraryConfiguration({
       sections: visibleConfiguration,
       managed: managedConfiguration,
+      now: new Date("2026-08-24T19:00:00.000Z"),
     });
 
     expect(validateLibraryConfigStructure(configuration)).toEqual({
@@ -125,6 +127,14 @@ describe("validateLibraryConfigStructure", () => {
           index: managedConfiguration.searchIndex,
           key: managedConfiguration.searchKey,
         },
+        storage: {
+          url: managedConfiguration.storageUrl,
+          serviceRoleKey: managedConfiguration.storageServiceRoleKey,
+          privateBucket: managedConfiguration.storageDocumentsBucket,
+          publicBucket: managedConfiguration.storageImagesBucket,
+          maxPdfBytes: managedConfiguration.storageMaxPdfBytes,
+        },
+        zotero: { translationUrl: managedConfiguration.zoteroTranslationUrl },
       },
       authentication: {
         openScholar: {
@@ -135,7 +145,19 @@ describe("validateLibraryConfigStructure", () => {
         },
         secret: managedConfiguration.authenticationSecret,
       },
+      institutions: [],
+      navigation: {},
+      filters: { years: { maximum: 2026 } },
     });
+
+    const withoutZotero = assembleEvidenceLibraryConfiguration({
+      sections: visibleConfiguration,
+      managed: { ...managedConfiguration, zoteroTranslationUrl: undefined },
+      now: new Date("2026-08-24T19:00:00.000Z"),
+    });
+    expect(
+      (withoutZotero.services as Record<string, unknown>).zotero,
+    ).not.toHaveProperty("translationUrl");
   });
 
   test("reports visible and managed failures with field pointers", () => {
@@ -143,7 +165,7 @@ describe("validateLibraryConfigStructure", () => {
       ...visibleConfiguration,
       localization: {
         locales: ["fr"],
-        defaultLocale: "en-GB",
+        defaultLocale: "not-supported",
       },
     });
     expect(invalidLanguages.issues.map((issue) => issue.pointer)).toContain(

@@ -14,7 +14,13 @@ import {
 
 const schemaText = `${JSON.stringify({
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  properties: { schemaVersion: { const: 1 } },
+  type: "object",
+  properties: {
+    schemaVersion: { const: 1 },
+    identity: { type: "object" },
+    theme: { type: "object" },
+    localization: { type: "object" },
+  },
 })}\n`;
 
 const catalogText = `${JSON.stringify({
@@ -116,6 +122,9 @@ test("writes exact artifact bytes and verifies them without rewriting", async ()
     await expect(
       readFile(join(outputRoot, "generated/library-config.catalogs.json"), "utf8"),
     ).resolves.toBe(catalogText);
+    await expect(
+      readFile(join(outputRoot, "generated/library-config.validator.cjs"), "utf8"),
+    ).resolves.toContain("exports.fullValidator");
     await expect(
       synchronizeContractSnapshot({
         snapshot,

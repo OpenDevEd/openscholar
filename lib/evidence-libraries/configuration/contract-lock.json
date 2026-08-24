@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "source": {
     "repository": "https://github.com/OpenDevEd/new-el",
     "commit": "7878a359e30525f84dca0209c0745cb608edb990"
@@ -19,6 +19,11 @@
       "path": "generated/library-config.catalogs.json",
       "bytes": 10948,
       "sha256": "02d504a8b2fa7abf5f53c31d28445fdc497d898062299b36ed8ac5e63cd915ab"
+    },
+    "validator": {
+      "path": "generated/library-config.validator.cjs",
+      "bytes": 482741,
+      "sha256": "c1c7bc0fe552a17546269ba5a1db5202589dbfa2aab4592c219103923d04d6d9"
     }
   }
 }
