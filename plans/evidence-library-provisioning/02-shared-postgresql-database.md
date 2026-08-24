@@ -33,7 +33,9 @@ saved database password. The bearer token comes from the service environment.
 
 The service derives lowercase PostgreSQL-safe names from a stable digest of
 the library ID. Callers cannot choose names, hosts, URLs, SQL, extensions, or a
-migration folder. The existing advisory lock and ownership checks remain the
+migration folder. The success receipt echoes the requested library ID so
+OpenScholar can reject a response for another request. The existing advisory
+lock and ownership checks remain the
 single implementation of database creation. The administrator installs
 `vector` and `pg_trgm`; the restricted login then runs the checked-in Drizzle
 migrations. The response reports `created`, `matched`, or `updated`, the fixed
@@ -49,9 +51,16 @@ restarts checks at the database. The final health-check transition clears it
 only after the whole setup succeeds. A stale attempt cannot save a URL or
 receipt.
 
+OpenScholar accepts only fixed local messages for known provisioner error
+codes. It never stores remote error text. Public setup queries omit the
+encrypted database password even while a later-step retry still needs it.
+
 The database action is one setup step, not a general job runner. Issue #28
-wires all five setup steps into the public Start and Retry flow. Until then,
-the database step is invoked only by an internal development verification.
+wires all five setup steps into the public Start and Retry flow. Its database
+completion mutation must schedule the storage action in the same transaction;
+an action must not save database success and then schedule storage afterward.
+Until then, the database step is invoked only by an internal development
+verification.
 
 ## Test-first steps
 
@@ -63,7 +72,8 @@ the database step is invoked only by an internal development verification.
    twice, run migrations inside reconciliation, reject a conflicting owner,
    and prove both cross-library connection attempts fail.
 3. Add OpenScholar behavior tests proving the setup password is created once,
-   reused after a failed call, cleared after success, and rejected when a stale
+   reused after database and later-step failures, cleared only after complete
+   setup success, omitted from public queries, and rejected when a stale
    attempt tries to save a credential.
 4. Add an OpenScholar action test around a local fixed HTTP server. Prove the
    action sends the bounded request, saves the encrypted URL and database
@@ -135,6 +145,9 @@ database, or expose a shell or SQL endpoint.
 - A different existing owner stops setup with a clear error.
 - The runtime URL is encrypted in OpenScholar, retries through later steps keep
   the same database password, and stale setup attempts cannot replace it.
+- The success receipt names the requested library, and remote error text never
+  enters the saved operation.
+- Issue #28 atomically schedules storage from the database-completion mutation.
 - Evidence Library focused tests, `check:changed`, the real PostgreSQL verifier,
   Docker build, and cleanup pass.
 - OpenScholar focused tests, full tests, TypeScript, production build, isolated
