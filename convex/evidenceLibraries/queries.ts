@@ -1,5 +1,5 @@
 import { query, type QueryCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import {
@@ -41,6 +41,69 @@ export const listLibraries = query({
   handler: readEvidenceLibraries,
 });
 
+const evidenceLibrarySetupResultValidator = v.object({
+  library: v.object({
+    _id: v.id("evidenceLibraries"),
+    _creationTime: v.number(),
+    ...evidenceLibraryFields,
+  }),
+  draft: v.object({
+    _id: v.id("evidenceLibraryConfigDrafts"),
+    _creationTime: v.number(),
+    ...evidenceLibraryConfigDraftFields,
+  }),
+  identity: v.object(evidenceLibrarySetupIdentityFields),
+  revision: v.object({
+    _id: v.id("evidenceLibraryConfigRevisions"),
+    _creationTime: v.number(),
+    ...evidenceLibraryConfigRevisionFields,
+  }),
+  setupOperation: v.object({
+    _id: v.id("evidenceLibraryConfigOperations"),
+    _creationTime: v.number(),
+    ...evidenceLibraryOperationFields,
+  }),
+  runtimeBinding: v.union(
+    v.object({
+      _id: v.id("evidenceLibraryRuntimeBindings"),
+      _creationTime: v.number(),
+      ...evidenceLibraryRuntimeBindingVariantFields.pendingUnassigned,
+    }),
+    v.object({
+      _id: v.id("evidenceLibraryRuntimeBindings"),
+      _creationTime: v.number(),
+      ...evidenceLibraryRuntimeBindingVariantFields.pendingProvisioned,
+    }),
+    v.object({
+      _id: v.id("evidenceLibraryRuntimeBindings"),
+      _creationTime: v.number(),
+      ...evidenceLibraryRuntimeBindingVariantFields.ready,
+    }),
+    v.object({
+      _id: v.id("evidenceLibraryRuntimeBindings"),
+      _creationTime: v.number(),
+      ...evidenceLibraryRuntimeBindingVariantFields.failedUnassigned,
+    }),
+    v.object({
+      _id: v.id("evidenceLibraryRuntimeBindings"),
+      _creationTime: v.number(),
+      ...evidenceLibraryRuntimeBindingVariantFields.failedProvisioned,
+    }),
+  ),
+  publicAddress: v.string(),
+});
+
+async function readEvidenceLibrarySetupForLibrary(
+  ctx: QueryCtx,
+  library: Doc<"evidenceLibraries">,
+) {
+  const setup = await readEvidenceLibrarySetupRecords(ctx, library);
+  return {
+    ...setup,
+    identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
+  };
+}
+
 export async function readEvidenceLibrarySetup(
   ctx: QueryCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
@@ -50,67 +113,29 @@ export async function readEvidenceLibrarySetup(
     args.libraryId,
     "manage",
   );
-  const setup = await readEvidenceLibrarySetupRecords(ctx, access.library);
-  return {
-    ...setup,
-    identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
-  };
+  return await readEvidenceLibrarySetupForLibrary(ctx, access.library);
 }
 
 export const getSetupDraft = query({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.object({
-    library: v.object({
-      _id: v.id("evidenceLibraries"),
-      _creationTime: v.number(),
-      ...evidenceLibraryFields,
-    }),
-    draft: v.object({
-      _id: v.id("evidenceLibraryConfigDrafts"),
-      _creationTime: v.number(),
-      ...evidenceLibraryConfigDraftFields,
-    }),
-    identity: v.object(evidenceLibrarySetupIdentityFields),
-    revision: v.object({
-      _id: v.id("evidenceLibraryConfigRevisions"),
-      _creationTime: v.number(),
-      ...evidenceLibraryConfigRevisionFields,
-    }),
-    setupOperation: v.object({
-      _id: v.id("evidenceLibraryConfigOperations"),
-      _creationTime: v.number(),
-      ...evidenceLibraryOperationFields,
-    }),
-    runtimeBinding: v.union(
-      v.object({
-        _id: v.id("evidenceLibraryRuntimeBindings"),
-        _creationTime: v.number(),
-        ...evidenceLibraryRuntimeBindingVariantFields.pendingUnassigned,
-      }),
-      v.object({
-        _id: v.id("evidenceLibraryRuntimeBindings"),
-        _creationTime: v.number(),
-        ...evidenceLibraryRuntimeBindingVariantFields.pendingProvisioned,
-      }),
-      v.object({
-        _id: v.id("evidenceLibraryRuntimeBindings"),
-        _creationTime: v.number(),
-        ...evidenceLibraryRuntimeBindingVariantFields.ready,
-      }),
-      v.object({
-        _id: v.id("evidenceLibraryRuntimeBindings"),
-        _creationTime: v.number(),
-        ...evidenceLibraryRuntimeBindingVariantFields.failedUnassigned,
-      }),
-      v.object({
-        _id: v.id("evidenceLibraryRuntimeBindings"),
-        _creationTime: v.number(),
-        ...evidenceLibraryRuntimeBindingVariantFields.failedProvisioned,
-      }),
-    ),
-    publicAddress: v.string(),
-  }),
+  returns: evidenceLibrarySetupResultValidator,
   handler: readEvidenceLibrarySetup,
+});
+
+export const getSetupDraftSelection = query({
+  args: { libraryId: v.string() },
+  returns: v.union(v.null(), evidenceLibrarySetupResultValidator),
+  handler: async (ctx, args) => {
+    const access = await requireOrganizationAccess(ctx, "manage");
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
+    if (!libraryId) return null;
+
+    const library = await ctx.db.get("evidenceLibraries", libraryId);
+    if (!library || library.organizationId !== access.organization._id) {
+      return null;
+    }
+    return await readEvidenceLibrarySetupForLibrary(ctx, library);
+  },
 });
 
 export async function readEvidenceLibraryDraft(

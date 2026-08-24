@@ -1,15 +1,35 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+type SetupSelection = {
+  libraryId: string | null;
+  organizationId: string | null;
+};
+
+type SetupSelectionUpdate =
+  | Partial<SetupSelection>
+  | ((current: SetupSelection) => Partial<SetupSelection> | null)
+  | null;
+
+type SetupSelectionSetter = (
+  update: SetupSelectionUpdate,
+  options?: unknown,
+) => Promise<URLSearchParams>;
+
 const mocks = vi.hoisted(() => ({
   createSetupDraft: vi.fn(),
+  latestSetupSelection: {
+    libraryId: null,
+    organizationId: null,
+  } as SetupSelection,
   push: vi.fn(),
   query: vi.fn(),
+  setupSelectionOverride: null as null | SetupSelectionSetter,
   useOrganization: vi.fn(),
 }));
 
@@ -29,12 +49,28 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+vi.mock("nuqs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("nuqs")>();
+  return {
+    ...actual,
+    useQueryStates: (keyMap: never, options: never) => {
+      const [state, setState] = actual.useQueryStates(keyMap, options);
+      const wrappedSetter: SetupSelectionSetter = (update, setOptions) =>
+        mocks.setupSelectionOverride
+          ? mocks.setupSelectionOverride(update, setOptions)
+          : (setState as SetupSelectionSetter)(update, setOptions);
+      return [state, wrappedSetter];
+    },
+  };
+});
+
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
       mutations: { createSetupDraft: "createSetupDraft" },
       queries: {
         getSetupDraft: "getSetupDraft",
+        getSetupDraftSelection: "getSetupDraftSelection",
       },
     },
   },
@@ -67,11 +103,42 @@ const savedSetup = {
   library: { _id: "library_123" },
 };
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let resolveHandled!: () => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  const handled = new Promise<void>((resolvePromise) => {
+    resolveHandled = resolvePromise;
+  });
+  const originalThen = promise.then.bind(promise);
+  promise.then = ((onFulfilled, onRejected) =>
+    originalThen(
+      onFulfilled
+        ? async (value) => {
+            try {
+              return await onFulfilled(value);
+            } finally {
+              resolveHandled();
+            }
+          }
+        : undefined,
+      onRejected,
+    )) as typeof promise.then;
+  return { handled, promise, resolve };
+}
+
 describe("<CreateEvidenceLibraryStep>", () => {
   beforeEach(() => {
     mocks.createSetupDraft.mockReset();
     mocks.push.mockReset();
     mocks.query.mockReset();
+    mocks.latestSetupSelection = {
+      libraryId: null,
+      organizationId: null,
+    };
+    mocks.setupSelectionOverride = null;
     mocks.useOrganization.mockReset();
   });
 
@@ -81,7 +148,11 @@ describe("<CreateEvidenceLibraryStep>", () => {
       membership: { role: "org:member" },
     });
 
-    render(<CreateEvidenceLibraryStep />);
+    render(
+      <NuqsTestingAdapter>
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
 
     expect(screen.getByText("Climate Team")).toBeVisible();
     expect(screen.queryByLabelText("libraryNameLabel")).not.toBeInTheDocument();
@@ -95,7 +166,7 @@ describe("<CreateEvidenceLibraryStep>", () => {
     mocks.useOrganization.mockReturnValue(activeAdminOrganization);
     mocks.query.mockImplementation((query: string, args: unknown) => {
       if (
-        query === "getSetupDraft" &&
+        query === "getSetupDraftSelection" &&
         typeof args === "object" &&
         args !== null &&
         "libraryId" in args
@@ -104,7 +175,8 @@ describe("<CreateEvidenceLibraryStep>", () => {
       }
       return { data: undefined, isReady: true };
     });
-    mocks.createSetupDraft.mockResolvedValue({ libraryId: "library_123" });
+    const pendingCreate = createDeferred<{ libraryId: string }>();
+    mocks.createSetupDraft.mockImplementation(() => pendingCreate.promise);
     const urlUpdates: URLSearchParams[] = [];
     const user = userEvent.setup();
 
@@ -132,6 +204,11 @@ describe("<CreateEvidenceLibraryStep>", () => {
       expect(mocks.createSetupDraft).toHaveBeenCalledWith({
         name: "Climate Evidence",
       });
+      expect(urlUpdates.at(-1)?.get("libraryId")).toBeNull();
+      expect(urlUpdates.at(-1)?.get("organizationId")).toBe("org_climate");
+    });
+    pendingCreate.resolve({ libraryId: "library_123" });
+    await waitFor(() => {
       expect(urlUpdates.at(-1)?.get("libraryId")).toBe("library_123");
       expect(urlUpdates.at(-1)?.get("organizationId")).toBe("org_climate");
     });
@@ -170,7 +247,7 @@ describe("<CreateEvidenceLibraryStep>", () => {
       </NuqsTestingAdapter>,
     );
 
-    expect(mocks.query).toHaveBeenCalledWith("getSetupDraft", {
+    expect(mocks.query).toHaveBeenCalledWith("getSetupDraftSelection", {
       libraryId: "library_123",
     });
     expect(mocks.createSetupDraft).not.toHaveBeenCalled();
@@ -186,6 +263,23 @@ describe("<CreateEvidenceLibraryStep>", () => {
     expect(screen.getByLabelText("publicAddressLabel")).toHaveAttribute(
       "readonly",
     );
+  });
+
+  it("treats a stale setup selection as a fresh form", () => {
+    mocks.useOrganization.mockReturnValue(activeAdminOrganization);
+    mocks.query.mockReturnValue({ data: null, isReady: true });
+
+    render(
+      <NuqsTestingAdapter searchParams="?libraryId=deleted_library&organizationId=org_climate">
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    expect(mocks.query).toHaveBeenCalledWith("getSetupDraftSelection", {
+      libraryId: "deleted_library",
+    });
+    expect(screen.getByLabelText("libraryNameLabel")).toHaveValue("");
+    expect(mocks.createSetupDraft).not.toHaveBeenCalled();
   });
 
   it("does not query a selected library from a different active organization", () => {
@@ -215,7 +309,7 @@ describe("<CreateEvidenceLibraryStep>", () => {
       </NuqsTestingAdapter>,
     );
 
-    expect(mocks.query).toHaveBeenCalledWith("getSetupDraft", "skip");
+    expect(mocks.query).toHaveBeenCalledWith("getSetupDraftSelection", "skip");
     expect(screen.getByLabelText("libraryNameLabel")).toHaveValue("");
 
     mocks.query.mockClear();
@@ -226,7 +320,7 @@ describe("<CreateEvidenceLibraryStep>", () => {
       </NuqsTestingAdapter>,
     );
 
-    expect(mocks.query).toHaveBeenCalledWith("getSetupDraft", {
+    expect(mocks.query).toHaveBeenCalledWith("getSetupDraftSelection", {
       libraryId: "library_123",
     });
     expect(screen.getByLabelText("libraryNameLabel")).toHaveValue(
@@ -255,7 +349,8 @@ describe("<CreateEvidenceLibraryStep>", () => {
       data: args === "skip" ? undefined : savedSetup,
       isReady: true,
     }));
-    mocks.createSetupDraft.mockResolvedValue({ libraryId: "library_123" });
+    const pendingCreate = createDeferred<{ libraryId: string }>();
+    mocks.createSetupDraft.mockImplementation(() => pendingCreate.promise);
     const user = userEvent.setup();
     const validName = "😀".repeat(100);
     const invalidName = "😀".repeat(101);
@@ -282,6 +377,82 @@ describe("<CreateEvidenceLibraryStep>", () => {
 
     await waitFor(() => {
       expect(mocks.createSetupDraft).toHaveBeenCalledWith({ name: validName });
+    });
+  });
+
+  it("does not let an older organization create overwrite the latest selection", async () => {
+    const organizationA = activeAdminOrganization;
+    const organizationB = {
+      ...activeAdminOrganization,
+      organization: { id: "org_education", name: "Education Team" },
+    };
+    const createA = createDeferred<{ libraryId: string }>();
+    const createB = createDeferred<{ libraryId: string }>();
+    mocks.useOrganization.mockReturnValue(organizationA);
+    mocks.query.mockReturnValue({ data: undefined, isReady: true });
+    mocks.createSetupDraft
+      .mockImplementationOnce(() => createA.promise)
+      .mockImplementationOnce(() => createB.promise);
+    mocks.setupSelectionOverride = async (update) => {
+      const partial =
+        typeof update === "function"
+          ? update(mocks.latestSetupSelection)
+          : (update ?? { libraryId: null, organizationId: null });
+      if (partial) {
+        mocks.latestSetupSelection = {
+          ...mocks.latestSetupSelection,
+          ...partial,
+        };
+      }
+      return new URLSearchParams(
+        Object.entries(mocks.latestSetupSelection).flatMap(([key, value]) =>
+          value === null ? [] : [[key, value]],
+        ),
+      );
+    };
+    const user = userEvent.setup();
+    const view = render(
+      <NuqsTestingAdapter hasMemory>
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    await user.type(screen.getByLabelText("libraryNameLabel"), "Library A");
+    await user.click(screen.getByRole("button"));
+    await waitFor(() => {
+      expect(mocks.createSetupDraft).toHaveBeenCalledWith({ name: "Library A" });
+    });
+
+    mocks.useOrganization.mockReturnValue(organizationB);
+    view.rerender(
+      <NuqsTestingAdapter hasMemory>
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+    await user.type(screen.getByLabelText("libraryNameLabel"), "Library B");
+    await user.click(screen.getByRole("button"));
+    await waitFor(() => {
+      expect(mocks.createSetupDraft).toHaveBeenCalledWith({ name: "Library B" });
+    });
+
+    await act(async () => {
+      createB.resolve({ libraryId: "library_b" });
+      await createB.handled;
+    });
+    await waitFor(() => {
+      expect(mocks.latestSetupSelection).toEqual({
+        libraryId: "library_b",
+        organizationId: "org_education",
+      });
+    });
+
+    await act(async () => {
+      createA.resolve({ libraryId: "library_a" });
+      await createA.handled;
+    });
+    expect(mocks.latestSetupSelection).toEqual({
+      libraryId: "library_b",
+      organizationId: "org_education",
     });
   });
 });

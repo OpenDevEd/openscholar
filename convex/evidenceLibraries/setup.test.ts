@@ -232,6 +232,64 @@ describe("Evidence Library setup draft", () => {
     ).toEqual(new Set([first.runtimeBindingId, second.runtimeBindingId]));
   });
 
+  it("returns no setup selection for invalid, deleted, or other-organization IDs", async () => {
+    const t = convexTest(schema, modules);
+    await seedOrganization(t, {
+      clerkOrganizationId: "org_selection",
+      clerkUserId: "user_selection",
+      role: "org:admin",
+    });
+    await seedOrganization(t, {
+      clerkOrganizationId: "org_selection_other",
+      clerkUserId: "user_selection_other",
+      role: "org:admin",
+    });
+    const admin = t.withIdentity({
+      subject: "user_selection",
+      o: { id: "org_selection", rol: "org:admin" },
+    });
+    const otherAdmin = t.withIdentity({
+      subject: "user_selection_other",
+      o: { id: "org_selection_other", rol: "org:admin" },
+    });
+    const own = await admin.mutation(
+      api.evidenceLibraries.mutations.createSetupDraft,
+      { name: "Owned Selection" },
+    );
+    const deleted = await admin.mutation(
+      api.evidenceLibraries.mutations.createSetupDraft,
+      { name: "Deleted Selection" },
+    );
+    const other = await otherAdmin.mutation(
+      api.evidenceLibraries.mutations.createSetupDraft,
+      { name: "Other Selection" },
+    );
+    await t.run((ctx) =>
+      ctx.db.delete("evidenceLibraries", deleted.libraryId),
+    );
+
+    await expect(
+      admin.query(api.evidenceLibraries.queries.getSetupDraftSelection, {
+        libraryId: own.libraryId,
+      }),
+    ).resolves.toMatchObject({ library: { _id: own.libraryId } });
+    await expect(
+      admin.query(api.evidenceLibraries.queries.getSetupDraftSelection, {
+        libraryId: "not-a-convex-id",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      admin.query(api.evidenceLibraries.queries.getSetupDraftSelection, {
+        libraryId: deleted.libraryId,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      admin.query(api.evidenceLibraries.queries.getSetupDraftSelection, {
+        libraryId: other.libraryId,
+      }),
+    ).resolves.toBeNull();
+  });
+
   it("resolves a platform-address collision", async () => {
     const t = convexTest(schema, modules);
     await seedOrganization(t, {

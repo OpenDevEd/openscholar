@@ -4,10 +4,13 @@ import { useOrganization } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { parseAsString, useQueryStates } from "nuqs";
+import {
+  parseAsString,
+  useQueryStates,
+  type UseQueryStatesReturn,
+} from "nuqs";
 import { FormEvent, useState } from "react";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +35,13 @@ const setupSelectionParsers = {
   organizationId: parseAsString,
 };
 
+type SetupSelectionState = UseQueryStatesReturn<
+  typeof setupSelectionParsers
+>[0];
+type SetupSelectionSetter = UseQueryStatesReturn<
+  typeof setupSelectionParsers
+>[1];
+
 function ActiveOrganization({ name }: ActiveOrganizationProps) {
   const t = useTranslations("evidenceLibrarySetup");
 
@@ -47,32 +57,30 @@ function ActiveOrganization({ name }: ActiveOrganizationProps) {
 
 function AdminCreateEvidenceLibraryForm({
   activeOrganizationId,
+  setSetupSelection,
+  setupSelection,
 }: {
   activeOrganizationId: string;
+  setSetupSelection: SetupSelectionSetter;
+  setupSelection: SetupSelectionState;
 }) {
   const t = useTranslations("evidenceLibrarySetup");
   const router = useRouter();
   const createSetupDraft = useMutation(
     api.evidenceLibraries.mutations.createSetupDraft,
   );
-  const [setupSelection, setSetupSelection] = useQueryStates(
-    setupSelectionParsers,
-    { history: "replace" },
-  );
   const selectedLibraryId =
     setupSelection.organizationId === activeOrganizationId
       ? setupSelection.libraryId
       : null;
   const selectedSetupQuery = useProtectedQuery(
-    api.evidenceLibraries.queries.getSetupDraft,
-    selectedLibraryId
-      ? { libraryId: selectedLibraryId as Id<"evidenceLibraries"> }
-      : "skip",
+    api.evidenceLibraries.queries.getSetupDraftSelection,
+    selectedLibraryId ? { libraryId: selectedLibraryId } : "skip",
   );
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const selectedSetup = selectedLibraryId ? selectedSetupQuery.data : undefined;
+  const selectedSetup = selectedLibraryId ? selectedSetupQuery.data : null;
   const normalizedName = name.trim();
   const canCreate =
     normalizedName.length > 0 &&
@@ -90,21 +98,28 @@ function AdminCreateEvidenceLibraryForm({
     }
     if (!canCreate) return;
 
+    const requestOrganizationId = activeOrganizationId;
     setIsSubmitting(true);
     setSubmitError(null);
-    void createSetupDraft({ name: normalizedName })
-      .then(async (created) => {
-        await setSetupSelection({
-          libraryId: created.libraryId,
-          organizationId: activeOrganizationId,
+    void (async () => {
+      try {
+        const claimedSelection = await setSetupSelection({
+          libraryId: null,
+          organizationId: requestOrganizationId,
         });
-      })
-      .catch(() => {
+        const created = await createSetupDraft({ name: normalizedName });
+        await setSetupSelection((current) =>
+          (current.organizationId ??
+            claimedSelection.get("organizationId")) === requestOrganizationId
+            ? { libraryId: created.libraryId }
+            : {},
+        );
+      } catch {
         setSubmitError(t("createError"));
-      })
-      .finally(() => {
+      } finally {
         setIsSubmitting(false);
-      });
+      }
+    })();
   }
 
   if (
@@ -114,7 +129,7 @@ function AdminCreateEvidenceLibraryForm({
     return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
   }
 
-  const isSavedDraft = selectedSetup !== undefined;
+  const isSavedDraft = selectedSetup !== null && selectedSetup !== undefined;
   const canContinue = (isSavedDraft || canCreate) && !isSubmitting;
 
   return (
@@ -208,6 +223,10 @@ function AdminCreateEvidenceLibraryForm({
 export function CreateEvidenceLibraryStep() {
   const t = useTranslations("evidenceLibrarySetup");
   const { isLoaded, membership, organization } = useOrganization();
+  const [setupSelection, setSetupSelection] = useQueryStates(
+    setupSelectionParsers,
+    { history: "replace" },
+  );
 
   if (!isLoaded) {
     return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
@@ -232,6 +251,8 @@ export function CreateEvidenceLibraryStep() {
         <AdminCreateEvidenceLibraryForm
           key={organization.id}
           activeOrganizationId={organization.id}
+          setSetupSelection={setSetupSelection}
+          setupSelection={setupSelection}
         />
       ) : (
         <AuthStatePanel
