@@ -13,7 +13,7 @@ import {
   Loader2,
   Bot,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { cn } from "@/lib/utils";
 import {
@@ -50,11 +50,24 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const { signOut } = useClerk();
   const { phase } = useAuthReadiness();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const goToSignIn = useSignInRedirect();
   const [open, setOpen] = useState(false);
 
   const isInitializing = phase === "initializing";
   const isSignedIn = phase === "authenticated";
+  const safePathname = pathname.startsWith("/") ? pathname : "/";
+  const queryString = searchParams.toString();
+  const currentRelativeUrl = queryString
+    ? `${safePathname}?${queryString}`
+    : safePathname;
+  const signOutRedirectUrl =
+    currentRelativeUrl === "/"
+      ? "/"
+      : `/sign-in?${new URLSearchParams({
+          redirect_url: currentRelativeUrl,
+        }).toString()}`;
 
   const subscriptionState = useSubscriptionState();
   const isSubscriptionLoading = subscriptionState.isSettling;
@@ -356,7 +369,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         <DropdownMenuItem
           onClick={async () => {
             setOpen(false);
-            await signOut({ redirectUrl: "/" });
+            await signOut({ redirectUrl: signOutRedirectUrl });
           }}
           className="text-destructive focus:text-destructive"
         >

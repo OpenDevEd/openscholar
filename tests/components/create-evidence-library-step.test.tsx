@@ -100,9 +100,9 @@ describe("<CreateEvidenceLibraryStep>", () => {
         args !== null &&
         "libraryId" in args
       ) {
-        return { data: savedSetup };
+        return { data: savedSetup, isReady: true };
       }
-      return { data: undefined };
+      return { data: undefined, isReady: true };
     });
     mocks.createSetupDraft.mockResolvedValue({ libraryId: "library_123" });
     const urlUpdates: URLSearchParams[] = [];
@@ -133,6 +133,7 @@ describe("<CreateEvidenceLibraryStep>", () => {
         name: "Climate Evidence",
       });
       expect(urlUpdates.at(-1)?.get("libraryId")).toBe("library_123");
+      expect(urlUpdates.at(-1)?.get("organizationId")).toBe("org_climate");
     });
     expect(mocks.push).not.toHaveBeenCalled();
     expect(screen.getByLabelText("libraryNameLabel")).toHaveValue(
@@ -161,10 +162,10 @@ describe("<CreateEvidenceLibraryStep>", () => {
 
   it("reopens the exact saved draft from the URL", () => {
     mocks.useOrganization.mockReturnValue(activeAdminOrganization);
-    mocks.query.mockReturnValue({ data: savedSetup });
+    mocks.query.mockReturnValue({ data: savedSetup, isReady: true });
 
     render(
-      <NuqsTestingAdapter searchParams="?libraryId=library_123">
+      <NuqsTestingAdapter searchParams="?libraryId=library_123&organizationId=org_climate">
         <CreateEvidenceLibraryStep />
       </NuqsTestingAdapter>,
     );
@@ -185,5 +186,102 @@ describe("<CreateEvidenceLibraryStep>", () => {
     expect(screen.getByLabelText("publicAddressLabel")).toHaveAttribute(
       "readonly",
     );
+  });
+
+  it("does not query a selected library from a different active organization", () => {
+    mocks.useOrganization.mockReturnValue(activeAdminOrganization);
+    mocks.query.mockImplementation((_query: string, args: unknown) => ({
+      data: args === "skip" ? undefined : savedSetup,
+      isReady: true,
+    }));
+    const searchParams = "?libraryId=library_123&organizationId=org_climate";
+    const view = render(
+      <NuqsTestingAdapter searchParams={searchParams} hasMemory>
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+    expect(screen.getByLabelText("libraryNameLabel")).toHaveValue(
+      "Saved Library",
+    );
+
+    mocks.query.mockClear();
+    mocks.useOrganization.mockReturnValue({
+      ...activeAdminOrganization,
+      organization: { id: "org_education", name: "Education Team" },
+    });
+    view.rerender(
+      <NuqsTestingAdapter searchParams={searchParams} hasMemory>
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    expect(mocks.query).toHaveBeenCalledWith("getSetupDraft", "skip");
+    expect(screen.getByLabelText("libraryNameLabel")).toHaveValue("");
+
+    mocks.query.mockClear();
+    mocks.useOrganization.mockReturnValue(activeAdminOrganization);
+    view.rerender(
+      <NuqsTestingAdapter searchParams={searchParams} hasMemory>
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    expect(mocks.query).toHaveBeenCalledWith("getSetupDraft", {
+      libraryId: "library_123",
+    });
+    expect(screen.getByLabelText("libraryNameLabel")).toHaveValue(
+      "Saved Library",
+    );
+  });
+
+  it("does not expose the create form before protected queries are ready", () => {
+    mocks.useOrganization.mockReturnValue(activeAdminOrganization);
+    mocks.query.mockReturnValue({ data: undefined, isReady: false });
+
+    render(
+      <NuqsTestingAdapter>
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(mocks.createSetupDraft).not.toHaveBeenCalled();
+  });
+
+  it("submits 100 astral code points intact and rejects 101", async () => {
+    mocks.useOrganization.mockReturnValue(activeAdminOrganization);
+    mocks.query.mockImplementation((_query: string, args: unknown) => ({
+      data: args === "skip" ? undefined : savedSetup,
+      isReady: true,
+    }));
+    mocks.createSetupDraft.mockResolvedValue({ libraryId: "library_123" });
+    const user = userEvent.setup();
+    const validName = "😀".repeat(100);
+    const invalidName = "😀".repeat(101);
+
+    render(
+      <NuqsTestingAdapter hasMemory>
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+    const nameInput = screen.getByLabelText("libraryNameLabel");
+    const submit = screen.getByRole("button");
+
+    await user.type(nameInput, invalidName);
+    expect(nameInput).toHaveValue(invalidName);
+    expect(submit).toBeDisabled();
+    await user.click(submit);
+    expect(mocks.createSetupDraft).not.toHaveBeenCalled();
+
+    await user.clear(nameInput);
+    await user.type(nameInput, validName);
+    expect(nameInput).toHaveValue(validName);
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+
+    await waitFor(() => {
+      expect(mocks.createSetupDraft).toHaveBeenCalledWith({ name: validName });
+    });
   });
 });
