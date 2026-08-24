@@ -56,6 +56,8 @@ const formContract = {
   fields: {
     name: { minLength: 1, maxLength: 100 },
     shortName: { minLength: 1, maxLength: 40 },
+    logo: { minLength: 1, maxLength: 2048 },
+    favicon: { minLength: 1, maxLength: 2048 },
     colour: { pattern: "^#[0-9A-Fa-f]{6}$" },
   },
   locales: ["en-GB", "en-US", "de", "ar", "hi", "fr", "cn", "sw", "pt"],
@@ -100,7 +102,7 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
             savedInput = input;
             return { editVersion: 5 };
           }
-        : async () => ({ status: "queued" }),
+        : async () => ({ editVersion: 5, kind: "setup", status: "queued" }),
     );
 
     renderShell();
@@ -147,14 +149,18 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
   it("previews saved values and activates the saved draft revision", async () => {
     const user = userEvent.setup();
     let activationInput: unknown;
+    let savedInput: unknown;
     queryMock.mockReturnValue(draftResult());
     mutationMock.mockImplementation((mutation) =>
       mutation === "activateConfiguration"
         ? async (input: unknown) => {
             activationInput = input;
-            return { kind: "setup", status: "queued" };
+            return { editVersion: 5, kind: "setup", status: "queued" };
           }
-        : async () => ({ editVersion: 5 }),
+        : async (input: unknown) => {
+            savedInput = input;
+            return { editVersion: 6 };
+          },
     );
 
     renderShell();
@@ -164,6 +170,8 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
 
     const preview = screen.getByRole("dialog");
     expect(preview).toHaveTextContent("Saved Evidence Library");
+    expect(preview).toHaveTextContent(savedSections.identity.assets.logoDark);
+    expect(preview).toHaveTextContent(savedSections.identity.assets.favicon);
     expect(preview).not.toHaveTextContent("Unsaved name");
 
     await user.click(screen.getAllByRole("button", { name: "Close" })[0]!);
@@ -173,6 +181,16 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
         libraryId: "library_123",
         expectedEditVersion: 4,
       }),
+    );
+
+    await user.clear(screen.getByLabelText("libraryNameLabel"));
+    await user.type(
+      screen.getByLabelText("libraryNameLabel"),
+      "After activation",
+    );
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() =>
+      expect(savedInput).toMatchObject({ expectedEditVersion: 5 }),
     );
   });
 

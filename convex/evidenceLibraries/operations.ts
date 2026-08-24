@@ -162,6 +162,7 @@ export async function attachRevisionToSetupOperation(
     libraryId: Id<"evidenceLibraries">;
     operationId: Id<"evidenceLibraryConfigOperations">;
     revisionId: Id<"evidenceLibraryConfigRevisions">;
+    activationEditVersion: number;
   },
 ) {
   const access = await requireEvidenceLibraryAccess(
@@ -204,8 +205,18 @@ export async function attachRevisionToSetupOperation(
       "Evidence Library setup operation already has a different revision",
     );
   }
+  if (
+    operation.activationEditVersion !== undefined &&
+    operation.activationEditVersion !== args.activationEditVersion
+  ) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library setup operation already has a different activation request",
+    );
+  }
   if (!operation.revisionId) {
     await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
+      activationEditVersion: args.activationEditVersion,
       revisionId: args.revisionId,
       updatedAt: Date.now(),
     });

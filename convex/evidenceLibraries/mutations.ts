@@ -466,29 +466,30 @@ async function readCompletedActivation(
     return null;
   }
 
-  const operation =
-    args.library.state === "provisioning"
-      ? args.library.setupOperationId
-        ? await ctx.db.get(
-            "evidenceLibraryConfigOperations",
-            args.library.setupOperationId,
-          )
-        : null
-      : await ctx.db
-          .query("evidenceLibraryConfigOperations")
-          .withIndex("by_libraryId_and_idempotencyKey", (query) =>
-            query
-              .eq("libraryId", args.library._id)
-              .eq("idempotencyKey", `activate:${args.expectedEditVersion}`),
-          )
-          .unique();
+  const [setupOperation, publishOperation] = await Promise.all([
+    ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_activationEditVersion", (query) =>
+        query
+          .eq("libraryId", args.library._id)
+          .eq("activationEditVersion", args.expectedEditVersion),
+      )
+      .unique(),
+    ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_idempotencyKey", (query) =>
+        query
+          .eq("libraryId", args.library._id)
+          .eq("idempotencyKey", `activate:${args.expectedEditVersion}`),
+      )
+      .unique(),
+  ]);
+  const operation = setupOperation ?? publishOperation;
   if (
     !operation ||
     operation.libraryId !== args.library._id ||
     operation.revisionId !== args.draft.baseRevisionId ||
-    (args.library.state === "provisioning"
-      ? operation.kind !== "setup"
-      : operation.kind !== "publish")
+    (operation.kind !== "setup" && operation.kind !== "publish")
   ) {
     return null;
   }
@@ -586,6 +587,7 @@ export async function activateEvidenceLibraryConfiguration(
       libraryId: args.libraryId,
       operationId: setupOperationId,
       revisionId: frozen.revisionId,
+      activationEditVersion: args.expectedEditVersion,
     });
     return { ...frozen, kind: "setup" as const, ...operation };
   }

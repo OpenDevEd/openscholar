@@ -171,10 +171,30 @@ function SavedConfigurationPreview({
       </section>
       <section>
         <h3 className="font-medium">{t("brandingTitle")}</h3>
-        <p className="mt-2">
-          {configuration.theme.colors.accent} ·{" "}
-          {configuration.theme.colors.tertiary}
-        </p>
+        <dl className="mt-2 grid gap-2">
+          <div>
+            <dt className="text-muted-foreground">{t("logoLabel")}</dt>
+            <dd className="break-all">
+              {configuration.identity.assets.logoDark}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("faviconLabel")}</dt>
+            <dd className="break-all">
+              {configuration.identity.assets.favicon}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("accentColourLabel")}</dt>
+            <dd>{configuration.theme.colors.accent}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">
+              {t("secondaryColourLabel")}
+            </dt>
+            <dd>{configuration.theme.colors.tertiary}</dd>
+          </div>
+        </dl>
       </section>
       <section>
         <h3 className="font-medium">{t("languagesTitle")}</h3>
@@ -290,15 +310,16 @@ function EssentialConfigurationForm({
     setErrors({});
     setStatus(null);
     void activateConfiguration({ libraryId, expectedEditVersion: editVersion })
-      .then((result) =>
+      .then((result) => {
+        setEditVersion(result.editVersion);
         setStatus({
           message:
             result.kind === "setup"
               ? t("setupQueued")
               : t("redeploymentQueued"),
           result: "activation-success",
-        }),
-      )
+        });
+      })
       .catch((error: unknown) => {
         const field = fieldFromError(error);
         if (field) {
@@ -418,6 +439,8 @@ function EssentialConfigurationForm({
                 name="logo"
                 type="url"
                 value={configuration.identity.assets.logoDark}
+                minLength={formContract.fields.logo.minLength}
+                maxLength={formContract.fields.logo.maxLength}
                 required
                 aria-invalid={Boolean(errors.logo)}
                 aria-describedby={
@@ -446,6 +469,8 @@ function EssentialConfigurationForm({
                 name="favicon"
                 type="url"
                 value={configuration.identity.assets.favicon}
+                minLength={formContract.fields.favicon.minLength}
+                maxLength={formContract.fields.favicon.maxLength}
                 required
                 aria-invalid={Boolean(errors.favicon)}
                 aria-describedby={
@@ -554,7 +579,11 @@ function EssentialConfigurationForm({
                 required
                 value={configuration.localization.locales}
                 aria-invalid={Boolean(errors.availableLanguages)}
-                aria-describedby="configuration-available-languages-help"
+                aria-describedby={
+                  errors.availableLanguages
+                    ? "configuration-available-languages-help configuration-available-languages-error"
+                    : "configuration-available-languages-help"
+                }
                 className="min-h-36 w-full rounded-md border bg-background px-3 py-2 text-sm"
                 onChange={(event) => {
                   clearError("availableLanguages");
@@ -602,6 +631,11 @@ function EssentialConfigurationForm({
                 value={configuration.localization.defaultLocale}
                 required
                 aria-invalid={Boolean(errors.defaultLanguage)}
+                aria-describedby={
+                  errors.defaultLanguage
+                    ? "configuration-default-language-error"
+                    : undefined
+                }
                 className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                 onChange={(event) => {
                   clearError("defaultLanguage");

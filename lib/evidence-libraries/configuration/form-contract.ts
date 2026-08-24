@@ -14,6 +14,8 @@ export type EssentialConfigurationFormContract = {
   fields: {
     name: StringFieldContract;
     shortName: StringFieldContract;
+    logo: StringFieldContract;
+    favicon: StringFieldContract;
     colour: StringFieldContract;
   };
   locales: string[];
@@ -53,6 +55,8 @@ export function getEssentialConfigurationFormContract(): EssentialConfigurationF
     fields: {
       name: readStringContract("/identity/name"),
       shortName: readStringContract("/identity/shortName"),
+      logo: readStringContract("/identity/assets/logoDark"),
+      favicon: readStringContract("/identity/assets/favicon"),
       colour: readStringContract("/theme/colors/accent"),
     },
     locales: readLocales(),

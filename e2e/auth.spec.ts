@@ -109,7 +109,10 @@ test.describe("clerk auth flows", () => {
       .getByLabel("Favicon URL")
       .fill("https://assets.example.org/e2e-favicon.ico");
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText("Configuration saved.");
+    await expect(page.getByRole("status")).toHaveAttribute(
+      "data-result",
+      "save-success",
+    );
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     const preview = page.getByRole("dialog");

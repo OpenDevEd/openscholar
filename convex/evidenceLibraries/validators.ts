@@ -335,6 +335,7 @@ export const evidenceLibraryOperationFields = {
   libraryId: v.id("evidenceLibraries"),
   kind: evidenceLibraryOperationKindValidator,
   idempotencyKey: v.string(),
+  activationEditVersion: v.optional(v.number()),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   status: v.union(
     v.literal("queued"),

@@ -3,7 +3,7 @@ import type { EssentialConfigurationSections } from "./essential-configuration";
 import {
   type ValidationIssue,
   validateLibraryConfigStructure,
-} from "./validation";
+} from "./generated-validation";
 
 export type ManagedEvidenceLibraryConfiguration = {
   revision: string;

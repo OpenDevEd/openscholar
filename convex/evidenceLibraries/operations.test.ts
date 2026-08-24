@@ -431,6 +431,11 @@ describe("Evidence Library operation state", () => {
         expectedEditVersion: saved.editVersion,
       },
     );
+    await t.run((ctx) =>
+      ctx.db.patch(created.libraryId, {
+        state: "active",
+      }),
+    );
     const retried = await admin.mutation(
       api.evidenceLibraries.mutations.activateConfiguration,
       {
@@ -466,6 +471,7 @@ describe("Evidence Library operation state", () => {
     expect(stored.operations).toHaveLength(1);
     expect(stored.operations[0]).toMatchObject({
       _id: created.setupOperationId,
+      activationEditVersion: saved.editVersion,
       kind: "setup",
       revisionId: activated.revisionId,
     });
