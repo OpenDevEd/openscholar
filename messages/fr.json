@@ -2107,5 +2107,38 @@
     "minutesAgo": "il y a {count}min",
     "hoursAgo": "il y a {count}h",
     "daysAgo": "il y a {count}j"
+  },
+  "evidenceLibrarySetup": {
+    "eyebrow": "Bibliothèques de données probantes",
+    "title": "Créer une bibliothèque de données probantes",
+    "description": "Nommez la bibliothèque. OpenScholar réservera son adresse avant de continuer.",
+    "activeOrganizationLabel": "Organisation active",
+    "detailsTitle": "Détails de la bibliothèque",
+    "detailsDescription": "Saisissez le nom public. OpenScholar générera et réservera l'adresse lorsque vous continuerez.",
+    "savedDraftDescription": "Votre brouillon est enregistré. Vous pouvez continuer.",
+    "libraryNameLabel": "Nom de la bibliothèque",
+    "libraryNameHelp": "100 caractères maximum.",
+    "shortNameLabel": "Nom court initial",
+    "shortNameHelp": "Généré à partir du nom de la bibliothèque. Vous pourrez le modifier pendant la configuration.",
+    "publicAddressLabel": "Adresse de la plateforme",
+    "publicAddressHelp": "OpenScholar réserve cette adresse. Elle n'est pas modifiable ici.",
+    "reserveAddress": "Réserver l’adresse",
+    "reserving": "Réservation…",
+    "continue": "Continuer",
+    "createError": "La bibliothèque n'a pas pu être enregistrée. Réessayez.",
+    "noActiveOrganizationTitle": "Choisissez une organisation",
+    "noActiveOrganizationDescription": "Sélectionnez ou créez une organisation avec le sélecteur Clerk, puis revenez ici.",
+    "adminOnlyTitle": "Administration de l'organisation requise",
+    "adminOnlyDescription": "Seul un administrateur de l'organisation peut créer sa bibliothèque."
+  },
+  "evidenceLibraryConfigurationShell": {
+    "eyebrow": "Bibliothèque de données probantes",
+    "description": "Voici le brouillon de configuration enregistré pour cette bibliothèque.",
+    "identityTitle": "Identité enregistrée",
+    "identityDescription": "Ces informations ont été enregistrées lors de la création de la bibliothèque.",
+    "libraryNameLabel": "Nom de la bibliothèque",
+    "shortNameLabel": "Nom court",
+    "publicAddressLabel": "Adresse de la plateforme",
+    "publicAddressHelp": "L'adresse de la plateforme est en lecture seule."
   }
 }

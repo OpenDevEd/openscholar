@@ -7,6 +7,7 @@ const REQUIRED_ENV_VARS = [
   "STRIPE_PRO_PRICE_ID",
   "STRIPE_WEBHOOK_SECRET",
   "CLERK_JWT_ISSUER_DOMAIN",
+  "EVIDENCE_LIBRARY_PLATFORM_DOMAIN",
 ];
 
 describe("validateRequiredEnvVars", () => {
@@ -39,6 +40,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
@@ -54,6 +56,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
@@ -69,6 +72,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
@@ -84,6 +88,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_GO_PRICE_ID = "price_go";
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"

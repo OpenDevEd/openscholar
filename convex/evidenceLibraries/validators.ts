@@ -127,6 +127,13 @@ export const evidenceLibraryFields = {
   updatedAt: v.number(),
 };
 
+export const evidenceLibrarySetupIdentityFields = {
+  name: v.string(),
+  publicAddress: v.string(),
+  shortName: v.string(),
+  slug: v.string(),
+};
+
 export const evidenceLibraryConfigDraftFields = {
   libraryId: v.id("evidenceLibraries"),
   baseRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
