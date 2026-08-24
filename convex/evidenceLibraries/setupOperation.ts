@@ -43,6 +43,28 @@ function requireSetupResourceIdentity(field: string, value: string): string {
   return normalized;
 }
 
+function requireRuntimeCommit(value: string): string {
+  const commit = requireSetupResourceIdentity("runtimeCommit", value);
+  if (!/^[a-f0-9]{40}$/u.test(commit)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "runtimeCommit must be a lowercase 40-character commit",
+    );
+  }
+  return commit;
+}
+
+function requireSha256(field: string, value: string): string {
+  const digest = requireSetupResourceIdentity(field, value);
+  if (!/^[a-f0-9]{64}$/u.test(digest)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `${field} must be a lowercase 64-character digest`,
+    );
+  }
+  return digest;
+}
+
 function validateSetupReceipt(
   result: EvidenceLibrarySetupResult,
   checkedAt: number,
@@ -79,6 +101,15 @@ function validateSetupReceipt(
           "applicationId",
           result.applicationId,
         ),
+        runtimeCommit: requireRuntimeCommit(result.runtimeCommit),
+        runtimeConfigSha256: requireSha256(
+          "runtimeConfigSha256",
+          result.runtimeConfigSha256,
+        ),
+        coolifyConfigHash: requireSha256(
+          "coolifyConfigHash",
+          result.coolifyConfigHash,
+        ),
       };
     case "deployment":
       return {
@@ -91,6 +122,15 @@ function validateSetupReceipt(
         deploymentId: requireSetupResourceIdentity(
           "deploymentId",
           result.deploymentId,
+        ),
+        runtimeCommit: requireRuntimeCommit(result.runtimeCommit),
+        runtimeConfigSha256: requireSha256(
+          "runtimeConfigSha256",
+          result.runtimeConfigSha256,
+        ),
+        coolifyConfigHash: requireSha256(
+          "coolifyConfigHash",
+          result.coolifyConfigHash,
         ),
       };
     case "health_check":
@@ -151,8 +191,8 @@ function provisionedRuntimeBindingFields(
     searchHost: binding.searchHost,
     searchIndex: binding.searchIndex,
     storageUrl: binding.storageUrl,
-    storageDocumentsBucket: binding.storageDocumentsBucket,
-    storageImagesBucket: binding.storageImagesBucket,
+    storagePrivateBucket: binding.storagePrivateBucket,
+    storagePublicBucket: binding.storagePublicBucket,
     storageMaxPdfBytes: binding.storageMaxPdfBytes,
     databaseCredentialId: binding.databaseCredentialId,
     searchCredentialId: binding.searchCredentialId,
@@ -394,6 +434,9 @@ export async function recordEvidenceLibrarySetupStep(
   if (
     application.applicationId !== setup.runtimeBinding.targetRuntimeId ||
     deployment.applicationId !== application.applicationId ||
+    deployment.runtimeCommit !== application.runtimeCommit ||
+    deployment.runtimeConfigSha256 !== application.runtimeConfigSha256 ||
+    deployment.coolifyConfigHash !== application.coolifyConfigHash ||
     receipt.applicationId !== application.applicationId ||
     receipt.deploymentId !== deployment.deploymentId
   ) {
@@ -403,8 +446,8 @@ export async function recordEvidenceLibrarySetupStep(
     );
   }
   if (
-    storage.privateBucket !== setup.runtimeBinding.storageDocumentsBucket ||
-    storage.publicBucket !== setup.runtimeBinding.storageImagesBucket
+    storage.privateBucket !== setup.runtimeBinding.storagePrivateBucket ||
+    storage.publicBucket !== setup.runtimeBinding.storagePublicBucket
   ) {
     throw createError(
       "CONFLICT",
@@ -424,6 +467,7 @@ export async function recordEvidenceLibrarySetupStep(
     setupAttemptToken: undefined,
     setupLeaseExpiresAt: undefined,
     setupEncryptedDatabasePassword: undefined,
+    setupRuntimeCommit: undefined,
     updatedAt: now,
   });
   await ctx.db.replace(setup.runtimeBinding._id, {

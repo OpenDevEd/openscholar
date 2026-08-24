@@ -19,8 +19,8 @@ export type ManagedEvidenceLibraryConfiguration = {
   searchIndex: string;
   storageUrl: string;
   storageServiceRoleKey: string;
-  storageDocumentsBucket: string;
-  storageImagesBucket: string;
+  storagePrivateBucket: string;
+  storagePublicBucket: string;
   storageMaxPdfBytes: number;
   zoteroTranslationUrl?: string;
 };
@@ -141,8 +141,8 @@ export function assembleEvidenceLibraryConfiguration({
         storage: {
           url: managed.storageUrl,
           serviceRoleKey: managed.storageServiceRoleKey,
-          privateBucket: managed.storageDocumentsBucket,
-          publicBucket: managed.storageImagesBucket,
+          privateBucket: managed.storagePrivateBucket,
+          publicBucket: managed.storagePublicBucket,
           maxPdfBytes: managed.storageMaxPdfBytes,
         },
         zotero: managed.zoteroTranslationUrl

@@ -52,8 +52,8 @@ type SeedRuntimeBindingArgs = {
   searchHost: string;
   searchIndex: string;
   storageUrl: string;
-  storageDocumentsBucket: string;
-  storageImagesBucket: string;
+  storagePrivateBucket: string;
+  storagePublicBucket: string;
   storageMaxPdfBytes: number;
   zoteroTranslationUrl?: string;
   encryptedDatabaseUrl: string;
@@ -132,13 +132,13 @@ export async function seedDevelopmentRuntimeBinding(
     "storageUrl",
     args.storageUrl,
   );
-  const storageDocumentsBucket = requireNonBlankProvisioningValue(
-    "storageDocumentsBucket",
-    args.storageDocumentsBucket,
+  const storagePrivateBucket = requireNonBlankProvisioningValue(
+    "storagePrivateBucket",
+    args.storagePrivateBucket,
   );
-  const storageImagesBucket = requireNonBlankProvisioningValue(
-    "storageImagesBucket",
-    args.storageImagesBucket,
+  const storagePublicBucket = requireNonBlankProvisioningValue(
+    "storagePublicBucket",
+    args.storagePublicBucket,
   );
   requireNonBlankProvisioningValue(
     "encryptedDatabaseUrl",
@@ -223,8 +223,8 @@ export async function seedDevelopmentRuntimeBinding(
     searchHost,
     searchIndex,
     storageUrl,
-    storageDocumentsBucket,
-    storageImagesBucket,
+    storagePrivateBucket,
+    storagePublicBucket,
     storageMaxPdfBytes: args.storageMaxPdfBytes,
     zoteroTranslationUrl,
     databaseCredentialId,
@@ -248,8 +248,8 @@ export const seedRuntimeBinding = internalMutation({
     searchHost: v.string(),
     searchIndex: v.string(),
     storageUrl: v.string(),
-    storageDocumentsBucket: v.string(),
-    storageImagesBucket: v.string(),
+    storagePrivateBucket: v.string(),
+    storagePublicBucket: v.string(),
     storageMaxPdfBytes: v.number(),
     zoteroTranslationUrl: v.optional(v.string()),
     encryptedDatabaseUrl: v.string(),

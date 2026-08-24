@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
+const runtimeCommit = "a".repeat(40);
+const runtimeConfigSha256 = "b".repeat(64);
+const coolifyConfigHash = "c".repeat(64);
+
 async function claim(
   fixture: Awaited<ReturnType<typeof createActivatedSetupFixture>>,
   attemptToken = "attempt-1",
@@ -36,12 +40,18 @@ async function record(
         step: "application";
         outcome: "created" | "matched" | "updated";
         applicationId: string;
+        runtimeCommit: string;
+        runtimeConfigSha256: string;
+        coolifyConfigHash: string;
       }
     | {
         step: "deployment";
         outcome: "created" | "matched";
         applicationId: string;
         deploymentId: string;
+        runtimeCommit: string;
+        runtimeConfigSha256: string;
+        coolifyConfigHash: string;
       }
     | {
         step: "health_check";
@@ -314,8 +324,8 @@ describe("fixed Evidence Library setup operation", () => {
         searchHost: "http://meilisearch:7700",
         searchIndex: "evidence",
         storageUrl: "https://storage.example.test",
-        storageDocumentsBucket: "climate-private",
-        storageImagesBucket: "climate-public",
+        storagePrivateBucket: "climate-private",
+        storagePublicBucket: "climate-public",
         storageMaxPdfBytes: 20_000_000,
         databaseCredentialId,
         searchCredentialId,
@@ -344,12 +354,18 @@ describe("fixed Evidence Library setup operation", () => {
       step: "application",
       outcome: "created",
       applicationId: "coolify-app-1",
+      runtimeCommit,
+      runtimeConfigSha256,
+      coolifyConfigHash,
     });
     await record(fixture, {
       step: "deployment",
       outcome: "created",
       applicationId: "coolify-app-1",
       deploymentId: "coolify-deploy-1",
+      runtimeCommit,
+      runtimeConfigSha256,
+      coolifyConfigHash,
     });
     await expect(
       fixture.t.mutation(
@@ -371,7 +387,7 @@ describe("fixed Evidence Library setup operation", () => {
     ).rejects.toThrow();
     await fixture.t.run((ctx) =>
       ctx.db.patch(fixture.created.runtimeBindingId, {
-        storageDocumentsBucket: "another-private-bucket",
+        storagePrivateBucket: "another-private-bucket",
       }),
     );
     await expect(
@@ -385,7 +401,7 @@ describe("fixed Evidence Library setup operation", () => {
     ).rejects.toThrow(/storage buckets/);
     await fixture.t.run((ctx) =>
       ctx.db.patch(fixture.created.runtimeBindingId, {
-        storageDocumentsBucket: "climate-private",
+        storagePrivateBucket: "climate-private",
       }),
     );
     await expect(

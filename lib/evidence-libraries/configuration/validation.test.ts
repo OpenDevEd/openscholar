@@ -49,8 +49,8 @@ const managedConfiguration = {
   searchIndex: "climate_library",
   storageUrl: "https://storage.example.test",
   storageServiceRoleKey: "storage-service-role-key",
-  storageDocumentsBucket: "climate-private",
-  storageImagesBucket: "climate-public",
+  storagePrivateBucket: "climate-private",
+  storagePublicBucket: "climate-public",
   storageMaxPdfBytes: 52_428_800,
   zoteroTranslationUrl: "https://translation.example.test",
 };
@@ -130,8 +130,8 @@ describe("validateLibraryConfigStructure", () => {
         storage: {
           url: managedConfiguration.storageUrl,
           serviceRoleKey: managedConfiguration.storageServiceRoleKey,
-          privateBucket: managedConfiguration.storageDocumentsBucket,
-          publicBucket: managedConfiguration.storageImagesBucket,
+          privateBucket: managedConfiguration.storagePrivateBucket,
+          publicBucket: managedConfiguration.storagePublicBucket,
           maxPdfBytes: managedConfiguration.storageMaxPdfBytes,
         },
         zotero: { translationUrl: managedConfiguration.zoteroTranslationUrl },
