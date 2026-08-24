@@ -151,4 +151,65 @@ describe("Evidence Library admin login redemption", () => {
       }),
     ]);
   });
+
+  it("rejects a replay and records one redemption", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, owner, t } = await seedRedemptionScenario();
+    const { loginCode, machineCredential } = await issueRedemptionPair(
+      owner,
+      libraryId,
+    );
+    const request = {
+      libraryId,
+      machineCredential: machineCredential.credential,
+      code: loginCode.code,
+    };
+
+    const firstResponse = await redeem(t, request);
+    const replayResponse = await redeem(t, request);
+
+    expect(firstResponse.status).toBe(200);
+    expect(replayResponse.status).toBe(400);
+    await expect(replayResponse.json()).resolves.toEqual({
+      error: "invalid_login_code",
+    });
+    const auditRows = await t.run(async (ctx) =>
+      ctx.db
+        .query("auditLogs")
+        .withIndex("by_action", (query) =>
+          query.eq("action", "evidence_library.admin_login_code.redeemed"),
+        )
+        .take(2),
+    );
+    expect(auditRows).toHaveLength(1);
+  });
+
+  it("allows exactly one of two simultaneous redemptions", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, owner, t } = await seedRedemptionScenario();
+    const { loginCode, machineCredential } = await issueRedemptionPair(
+      owner,
+      libraryId,
+    );
+    const request = {
+      libraryId,
+      machineCredential: machineCredential.credential,
+      code: loginCode.code,
+    };
+
+    const responses = await Promise.all([redeem(t, request), redeem(t, request)]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 400]);
+    const bodies = await Promise.all(responses.map((response) => response.json()));
+    expect(bodies).toContainEqual({ error: "invalid_login_code" });
+
+    const auditRows = await t.run(async (ctx) =>
+      ctx.db
+        .query("auditLogs")
+        .withIndex("by_action", (query) =>
+          query.eq("action", "evidence_library.admin_login_code.redeemed"),
+        )
+        .take(2),
+    );
+    expect(auditRows).toHaveLength(1);
+  });
 });
