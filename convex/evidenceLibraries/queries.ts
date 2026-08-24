@@ -13,8 +13,14 @@ import {
   evidenceLibraryFields,
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingVariantFields,
+  evidenceLibrarySetupIdentityFields,
   sectionKeyValidator,
 } from "./validators";
+import {
+  findAvailableEvidenceLibrarySetupIdentity,
+  readCurrentEvidenceLibrarySetup,
+  validateEvidenceLibrarySetupName,
+} from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 
 export async function readEvidenceLibraries(ctx: QueryCtx) {
@@ -104,6 +110,59 @@ export const getSetupDraft = query({
     publicAddress: v.string(),
   }),
   handler: readEvidenceLibrarySetup,
+});
+
+export const previewSetupDraftName = query({
+  args: { name: v.string() },
+  returns: v.object(evidenceLibrarySetupIdentityFields),
+  handler: async (ctx, args) => {
+    const access = await requireOrganizationAccess(ctx, "manage");
+    const name = validateEvidenceLibrarySetupName(args.name);
+    const current = await readCurrentEvidenceLibrarySetup(
+      ctx,
+      access.organization._id,
+    );
+    if (current) {
+      if (current.identity.name !== name) {
+        throw createError(
+          "CONFLICT",
+          "Organization already has a different Evidence Library setup draft",
+        );
+      }
+      return current.identity;
+    }
+
+    return await findAvailableEvidenceLibrarySetupIdentity(ctx, {
+      organizationId: access.organization._id,
+      name,
+    });
+  },
+});
+
+export const getCurrentSetupDraft = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      draftId: v.id("evidenceLibraryConfigDrafts"),
+      ...evidenceLibrarySetupIdentityFields,
+      libraryId: v.id("evidenceLibraries"),
+    }),
+  ),
+  handler: async (ctx) => {
+    const access = await requireOrganizationAccess(ctx, "manage");
+    const current = await readCurrentEvidenceLibrarySetup(
+      ctx,
+      access.organization._id,
+    );
+    if (!current) return null;
+
+    return {
+      draftId: current.setup.draft._id,
+      ...current.identity,
+      libraryId: current.setup.library._id,
+    };
+  },
 });
 
 export async function readEvidenceLibraryDraft(
