@@ -8,7 +8,7 @@ import schema from "../schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const encryptionKey = "ab".repeat(32);
-const redemptionPath = "/api/evidence-libraries/admin-login/redeem";
+const redemptionPath = "/api/v1/evidence-libraries/admin-login/redeem";
 
 async function seedRedemptionScenario() {
   const t = convexTest(schema, modules);

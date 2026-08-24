@@ -10,7 +10,7 @@ Add one POST endpoint and one atomic redemption mutation. Return the checked ses
 
 ## Design
 
-- Route: `POST /api/evidence-libraries/admin-login/redeem`.
+- Route: `POST /api/v1/evidence-libraries/admin-login/redeem`.
 - Request: `Authorization: Bearer <machine credential>` plus JSON `{ "libraryId": "...", "code": "..." }`.
 - The HTTP action parses and hashes both secrets, then calls one internal mutation.
 - The mutation checks the machine credential digest, code digest, code library, the code's bound organization, active current membership, unchanged role, unused state, and expiry. The active Clerk organization was already checked when OpenScholar issued the code.

@@ -60,7 +60,7 @@ http.route({
 });
 
 http.route({
-  path: "/api/evidence-libraries/admin-login/redeem",
+  path: "/api/v1/evidence-libraries/admin-login/redeem",
   method: "POST",
   handler: redeemAdminLoginCode,
 });
