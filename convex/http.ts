@@ -3,6 +3,7 @@ import { httpAction } from "./_generated/server";
 import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { clerkWebhook } from "./webhooks/clerk";
+import { redeemAdminLoginCode } from "./evidenceLibraries/serviceHttp";
 import { normalizeStripeWebhookSecret } from "./lib/stripeWebhookSecret";
 import { requireAppUrl } from "./lib/env";
 import {
@@ -56,6 +57,12 @@ http.route({
   path: "/webhooks/clerk",
   method: "POST",
   handler: clerkWebhook,
+});
+
+http.route({
+  path: "/api/evidence-libraries/admin-login/redeem",
+  method: "POST",
+  handler: redeemAdminLoginCode,
 });
 
 // Zotero OAuth callback

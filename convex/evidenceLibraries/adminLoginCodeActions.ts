@@ -4,7 +4,8 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { digestOpaqueToken, generateOpaqueToken } from "../lib/opaqueToken";
+import { generateOpaqueToken } from "../lib/opaqueToken";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
 const ADMIN_LOGIN_CODE_TTL_MS = 5 * 60 * 1000;
 
@@ -25,7 +26,7 @@ export const issueAdminLoginCode = action({
       internal.evidenceLibraries.adminLoginCodes.storeIssuedCode,
       {
         libraryId: args.libraryId,
-        codeDigest: digestOpaqueToken(code),
+        codeDigest: await digestOpaqueToken(code),
         issuedAt,
         expiresAt: issuedAt + ADMIN_LOGIN_CODE_TTL_MS,
       },

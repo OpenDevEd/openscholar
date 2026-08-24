@@ -4,16 +4,13 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { digestOpaqueToken, generateOpaqueToken } from "../lib/opaqueToken";
+import { generateOpaqueToken } from "../lib/opaqueToken";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
 const WALLET_KEY_PREFIX = "wk_";
 
 function generateRawKey(): string {
   return generateOpaqueToken(WALLET_KEY_PREFIX);
-}
-
-function hashKey(rawKey: string): string {
-  return digestOpaqueToken(rawKey);
 }
 
 /**
@@ -33,7 +30,7 @@ export const createKey = internalAction({
   }),
   handler: async (ctx, args): Promise<{ rawKey: string; keyPrefix: string; walletKeyId: Id<"walletKeys"> }> => {
     const rawKey = generateRawKey();
-    const hashedKey = hashKey(rawKey);
+    const hashedKey = await digestOpaqueToken(rawKey);
     const keyPrefix = `${rawKey.substring(0, 7)}...`;
 
     const walletKeyId: Id<"walletKeys"> = await ctx.runMutation(internal.wallet.internal.insertKey, {
@@ -66,7 +63,7 @@ export const validateKey = internalAction({
   handler: async (ctx, args): Promise<{ userId: Id<"users">; walletKeyId: Id<"walletKeys">; appName: string; redirectOrigin: string } | null> => {
     if (!args.rawKey.startsWith(WALLET_KEY_PREFIX)) return null;
 
-    const hashedKey = hashKey(args.rawKey);
+    const hashedKey = await digestOpaqueToken(args.rawKey);
     const result: { userId: Id<"users">; walletKeyId: Id<"walletKeys">; appName: string; redirectOrigin: string } | null = await ctx.runQuery(internal.wallet.internal.lookupKey, { hashedKey });
     if (!result) return null;
 

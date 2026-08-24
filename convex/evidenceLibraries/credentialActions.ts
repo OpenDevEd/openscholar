@@ -6,7 +6,8 @@ import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { encrypt, getKeyPrefix } from "../lib/crypto";
 import { createError } from "../lib/errors";
-import { digestOpaqueToken, generateOpaqueToken } from "../lib/opaqueToken";
+import { generateOpaqueToken } from "../lib/opaqueToken";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
 export const writeCredential = action({
   args: {
@@ -64,7 +65,7 @@ export const rotateServiceCredential = action({
       {
         libraryId: args.libraryId,
         encryptedValue: encrypt(credential, encryptionKey),
-        credentialDigest: digestOpaqueToken(credential),
+        credentialDigest: await digestOpaqueToken(credential),
         maskedHint,
       },
     );

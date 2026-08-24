@@ -63,6 +63,7 @@ import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provi
 import type * as evidenceLibraries_provisioningActions from "../evidenceLibraries/provisioningActions.js";
 import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
+import type * as evidenceLibraries_serviceHttp from "../evidenceLibraries/serviceHttp.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
@@ -141,6 +142,7 @@ import type * as lib_featureFlags from "../lib/featureFlags.js";
 import type * as lib_freeCredits from "../lib/freeCredits.js";
 import type * as lib_locks from "../lib/locks.js";
 import type * as lib_opaqueToken from "../lib/opaqueToken.js";
+import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
 import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -274,6 +276,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/provisioningActions": typeof evidenceLibraries_provisioningActions;
   "evidenceLibraries/queries": typeof evidenceLibraries_queries;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
+  "evidenceLibraries/serviceHttp": typeof evidenceLibraries_serviceHttp;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
@@ -352,6 +355,7 @@ declare const fullApi: ApiFromModules<{
   "lib/freeCredits": typeof lib_freeCredits;
   "lib/locks": typeof lib_locks;
   "lib/opaqueToken": typeof lib_opaqueToken;
+  "lib/opaqueTokenDigest": typeof lib_opaqueTokenDigest;
   "lib/queryBounds": typeof lib_queryBounds;
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;

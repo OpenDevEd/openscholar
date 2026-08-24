@@ -26,7 +26,7 @@ export const LIBRARY_SERVICE_CREDENTIAL_KEY = "library-service";
 
 type ServiceCredentialAuthCtx = Pick<QueryCtx | MutationCtx, "db">;
 
-export async function authenticateLibraryServiceCredential(
+export async function findMatchingLibraryServiceCredential(
   ctx: ServiceCredentialAuthCtx,
   args: {
     libraryId: Id<"evidenceLibraries">;
@@ -42,12 +42,26 @@ export async function authenticateLibraryServiceCredential(
     )
     .unique();
   if (!credential || credential.credentialDigest !== args.credentialDigest) {
+    return null;
+  }
+  return { credentialId: credential._id, libraryId: credential.libraryId };
+}
+
+export async function authenticateLibraryServiceCredential(
+  ctx: ServiceCredentialAuthCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    credentialDigest: string;
+  },
+) {
+  const credential = await findMatchingLibraryServiceCredential(ctx, args);
+  if (!credential) {
     throw createError(
       "FORBIDDEN",
       "Evidence Library service authentication failed",
     );
   }
-  return { credentialId: credential._id, libraryId: credential.libraryId };
+  return credential;
 }
 
 export async function storeEvidenceLibraryCredential(
