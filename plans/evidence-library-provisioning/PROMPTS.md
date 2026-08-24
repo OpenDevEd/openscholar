@@ -168,3 +168,69 @@ START NOW
 
 Go.
 ```
+
+## Plan 03 - Shared storage and scheduling
+
+```text
+Implement plans/evidence-library-provisioning/03-shared-storage-and-scheduling.md.
+Read the provisioning README and plans 01 and 02 first. Plan 02 is merged.
+This plan is the first part of OpenScholar issue #28.
+
+Start by proving activation schedules database and database completion
+schedules storage atomically. Reuse the setup operation, credentials, and
+Supabase Storage bucket API. Use deterministic bucket names and fixed platform
+environment values. Do not add a job table, cleanup worker, general HTTP
+client, per-library storage service, or caller-supplied service fields.
+
+Use test-decision and docs/test-quality.md before changing tests. Test state,
+requests, responses, encryption, retry, and real bucket policy. Use the
+assigned Convex Cloud lane and development storage only. Clean all disposable
+buckets. Run the exact tests, TypeScript, schema check, isolated Convex upload,
+and remote logs. Use only Sol for delegated agents. Commit each working unit
+with `[plan-03]`. Keep #26 and #28 open until the full runtime passes.
+```
+
+## Plan 04 - Coolify application and deployment
+
+```text
+Implement plans/evidence-library-provisioning/04-coolify-application-and-deployment.md.
+Read the provisioning README and plans 01 through 03 first. This is the second
+part of OpenScholar issue #28.
+
+Reuse Evidence Library docker/compose.library.yaml and OpenScholar's existing
+configuration assembly, credentials, runtime binding, receipts, and setup
+operation. Use only supported development Coolify APIs. Fix the repository,
+branch, Compose path, service names, and allowed environment keys in code.
+Use a deterministic application tag and recover uncertain creates or deploys
+by reading current state. Do not touch Coolify's database, production, worker
+environment variables, or add another Compose shape.
+
+Use test-decision and docs/test-quality.md before changing tests. Test behavior
+and validated API contracts. Run the exact tests, TypeScript, schema check,
+disposable Coolify retry and cleanup, isolated Convex upload, and remote logs.
+Use only Sol for delegated agents. Commit each working unit with `[plan-04]`.
+```
+
+## Plan 05 - Runtime readiness
+
+```text
+Implement plans/evidence-library-provisioning/05-runtime-readiness.md across
+OpenScholar and Evidence Library. Read the provisioning README, plans 01
+through 04, COOLIFY-STATUS-RESEARCH.md, both AGENTS.md files, and Evidence
+Library docs/evidence-library-operations.md first.
+
+Keep deployment status, exact Compose service state, and HTTP checks separate.
+Add only one fixed authenticated runtime verifier; it accepts an application
+UUID and cannot run commands or proxy arbitrary Docker requests. Do not mount
+the Docker socket into OpenScholar, Convex, or a tenant app. Mark the library
+active only after the saved deployment, six services, requested revision,
+public library, and admin page all pass.
+
+Use test-decision and docs/test-quality.md before changing tests. Run both
+repositories' exact tests and required branch checks, build the verifier,
+deploy only to development, run a disposable full setup and retry, and remove
+every disposable app, volume, bucket, database, login, and test row. Upload the
+shared Convex deployment, read remote logs, and request a final Sol review.
+Commit each working unit with `[plan-05]`. Close #26 and #28 only after the live
+flow and cleanup pass.
+```
