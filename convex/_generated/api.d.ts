@@ -65,6 +65,7 @@ import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
 import type * as evidenceLibraries_serviceHttp from "../evidenceLibraries/serviceHttp.js";
 import type * as evidenceLibraries_setupNaming from "../evidenceLibraries/setupNaming.js";
+import type * as evidenceLibraries_setupOperation from "../evidenceLibraries/setupOperation.js";
 import type * as evidenceLibraries_setupRecords from "../evidenceLibraries/setupRecords.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
 import type * as extraction_access from "../extraction/access.js";
@@ -280,6 +281,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
   "evidenceLibraries/serviceHttp": typeof evidenceLibraries_serviceHttp;
   "evidenceLibraries/setupNaming": typeof evidenceLibraries_setupNaming;
+  "evidenceLibraries/setupOperation": typeof evidenceLibraries_setupOperation;
   "evidenceLibraries/setupRecords": typeof evidenceLibraries_setupRecords;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
   "extraction/access": typeof extraction_access;

@@ -178,7 +178,10 @@ export const evidenceLibraryConfigRevisionFields = {
   revisionKey: v.string(),
   revisionNumber: v.number(),
   basedOnRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
-  rollbackOfRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
+  rollbackOfRevisionId: v.union(
+    v.id("evidenceLibraryConfigRevisions"),
+    v.null(),
+  ),
   contractProvenance: configProvenanceValidator,
   createdByClerkUserId: v.string(),
   createdAt: v.number(),
@@ -317,7 +320,128 @@ export type EvidenceLibraryOperationKind = Infer<
   typeof evidenceLibraryOperationKindValidator
 >;
 
-export const evidenceLibraryRunningStageValidator = v.union(
+export const evidenceLibrarySetupStageValidator = v.union(
+  v.literal("database"),
+  v.literal("storage"),
+  v.literal("application"),
+  v.literal("deployment"),
+  v.literal("health_check"),
+);
+export type EvidenceLibrarySetupStage = Infer<
+  typeof evidenceLibrarySetupStageValidator
+>;
+
+const evidenceLibraryReconcileOutcomeValidator = v.union(
+  v.literal("created"),
+  v.literal("matched"),
+  v.literal("updated"),
+);
+
+const evidenceLibraryDeploymentOutcomeValidator = v.union(
+  v.literal("created"),
+  v.literal("matched"),
+);
+
+const evidenceLibrarySetupResultVariantFields = {
+  database: {
+    outcome: evidenceLibraryReconcileOutcomeValidator,
+    step: v.literal("database"),
+    databaseName: v.string(),
+    loginName: v.string(),
+  },
+  storage: {
+    outcome: evidenceLibraryReconcileOutcomeValidator,
+    step: v.literal("storage"),
+    privateBucket: v.string(),
+    publicBucket: v.string(),
+  },
+  application: {
+    outcome: evidenceLibraryReconcileOutcomeValidator,
+    step: v.literal("application"),
+    applicationId: v.string(),
+  },
+  deployment: {
+    outcome: evidenceLibraryDeploymentOutcomeValidator,
+    step: v.literal("deployment"),
+    applicationId: v.string(),
+    deploymentId: v.string(),
+  },
+  healthCheck: {
+    outcome: v.literal("matched"),
+    step: v.literal("health_check"),
+    applicationId: v.string(),
+    deploymentId: v.string(),
+    revisionKey: v.string(),
+  },
+};
+
+export const evidenceLibrarySetupResultValidator = v.union(
+  v.object(evidenceLibrarySetupResultVariantFields.database),
+  v.object(evidenceLibrarySetupResultVariantFields.storage),
+  v.object(evidenceLibrarySetupResultVariantFields.application),
+  v.object(evidenceLibrarySetupResultVariantFields.deployment),
+  v.object(evidenceLibrarySetupResultVariantFields.healthCheck),
+);
+export type EvidenceLibrarySetupResult = Infer<
+  typeof evidenceLibrarySetupResultValidator
+>;
+
+const evidenceLibrarySetupReceiptVariantFields = {
+  database: {
+    ...evidenceLibrarySetupResultVariantFields.database,
+    checkedAt: v.number(),
+  },
+  storage: {
+    ...evidenceLibrarySetupResultVariantFields.storage,
+    checkedAt: v.number(),
+  },
+  application: {
+    ...evidenceLibrarySetupResultVariantFields.application,
+    checkedAt: v.number(),
+  },
+  deployment: {
+    ...evidenceLibrarySetupResultVariantFields.deployment,
+    checkedAt: v.number(),
+  },
+  healthCheck: {
+    ...evidenceLibrarySetupResultVariantFields.healthCheck,
+    checkedAt: v.number(),
+  },
+};
+
+export const evidenceLibrarySetupReceiptValidator = v.union(
+  v.object(evidenceLibrarySetupReceiptVariantFields.database),
+  v.object(evidenceLibrarySetupReceiptVariantFields.storage),
+  v.object(evidenceLibrarySetupReceiptVariantFields.application),
+  v.object(evidenceLibrarySetupReceiptVariantFields.deployment),
+  v.object(evidenceLibrarySetupReceiptVariantFields.healthCheck),
+);
+export type EvidenceLibrarySetupReceipt = Infer<
+  typeof evidenceLibrarySetupReceiptValidator
+>;
+
+export const evidenceLibrarySetupReceiptsValidator = v.object({
+  database: v.optional(
+    v.object(evidenceLibrarySetupReceiptVariantFields.database),
+  ),
+  storage: v.optional(
+    v.object(evidenceLibrarySetupReceiptVariantFields.storage),
+  ),
+  application: v.optional(
+    v.object(evidenceLibrarySetupReceiptVariantFields.application),
+  ),
+  deployment: v.optional(
+    v.object(evidenceLibrarySetupReceiptVariantFields.deployment),
+  ),
+  health_check: v.optional(
+    v.object(evidenceLibrarySetupReceiptVariantFields.healthCheck),
+  ),
+});
+export type EvidenceLibrarySetupReceipts = Infer<
+  typeof evidenceLibrarySetupReceiptsValidator
+>;
+
+export const evidenceLibraryConfigRunningStageValidator = v.union(
   v.literal("assembling"),
   v.literal("validating"),
   v.literal("publishing"),
@@ -337,6 +461,9 @@ export const evidenceLibraryOperationFields = {
   idempotencyKey: v.string(),
   activationEditVersion: v.optional(v.number()),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
+  setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
+  setupAttemptToken: v.optional(v.string()),
+  setupLeaseExpiresAt: v.optional(v.number()),
   status: v.union(
     v.literal("queued"),
     v.literal("running"),
@@ -349,6 +476,11 @@ export const evidenceLibraryOperationFields = {
     v.literal("validating"),
     v.literal("publishing"),
     v.literal("activating"),
+    v.literal("database"),
+    v.literal("storage"),
+    v.literal("application"),
+    v.literal("deployment"),
+    v.literal("health_check"),
     v.literal("completed"),
   ),
   attemptCount: v.number(),

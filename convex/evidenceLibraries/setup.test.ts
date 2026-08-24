@@ -93,7 +93,7 @@ describe("Evidence Library setup draft", () => {
         operationId: created.setupOperationId,
         stage: "assembling",
       }),
-    ).rejects.toThrow(/requires an activated revision/);
+    ).rejects.toThrow(/fixed setup transitions/);
     const counts = await t.run(async (ctx) => ({
       drafts: (await ctx.db.query("evidenceLibraryConfigDrafts").collect())
         .length,
