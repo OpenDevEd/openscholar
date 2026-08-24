@@ -134,6 +134,34 @@ export const evidenceLibrarySetupIdentityFields = {
   slug: v.string(),
 };
 
+export const essentialIdentitySectionValidator = v.object({
+  name: v.string(),
+  shortName: v.string(),
+  baseUrl: v.string(),
+  assets: v.object({
+    logoDark: v.string(),
+    favicon: v.string(),
+  }),
+});
+
+export const essentialThemeSectionValidator = v.object({
+  colors: v.object({
+    accent: v.string(),
+    tertiary: v.string(),
+  }),
+});
+
+export const essentialLocalizationSectionValidator = v.object({
+  locales: v.array(v.string()),
+  defaultLocale: v.string(),
+});
+
+export const essentialConfigurationSectionsValidator = v.object({
+  identity: essentialIdentitySectionValidator,
+  theme: essentialThemeSectionValidator,
+  localization: essentialLocalizationSectionValidator,
+});
+
 export const evidenceLibraryConfigDraftFields = {
   libraryId: v.id("evidenceLibraries"),
   baseRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
@@ -307,6 +335,7 @@ export const evidenceLibraryOperationFields = {
   libraryId: v.id("evidenceLibraries"),
   kind: evidenceLibraryOperationKindValidator,
   idempotencyKey: v.string(),
+  activationEditVersion: v.optional(v.number()),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   status: v.union(
     v.literal("queued"),

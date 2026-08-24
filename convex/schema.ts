@@ -108,6 +108,10 @@ export default defineSchema({
 
   evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)
     .index("by_libraryId_and_idempotencyKey", ["libraryId", "idempotencyKey"])
+    .index("by_libraryId_and_activationEditVersion", [
+      "libraryId",
+      "activationEditVersion",
+    ])
     .index("by_libraryId_and_createdAt", ["libraryId", "createdAt"])
     .index("by_libraryId_and_status_and_updatedAt", [
       "libraryId",

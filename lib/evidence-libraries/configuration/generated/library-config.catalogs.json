@@ -363,9 +363,9 @@
 		],
 		"writeOnlyPaths": [
 			"ai.providers[].apiKey",
-			"authentication.adminPassword",
 			"authentication.google.clientId",
 			"authentication.google.clientSecret",
+			"authentication.openScholar.machineCredential",
 			"authentication.secret",
 			"email.smtp.password",
 			"email.smtp.username",

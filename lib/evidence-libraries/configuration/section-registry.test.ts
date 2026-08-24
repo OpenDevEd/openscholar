@@ -58,5 +58,10 @@ describe("Evidence Library section registry", () => {
       expect(resolveSchemaPointer(schema, pointerPattern)).toBeDefined();
       expect(getFieldAuthority(pointerPattern)).toBe("credentialLifecycle");
     }
+
+    expect(getFieldAuthority("/identity/name")).toBe("ownerEdited");
+    expect(getFieldAuthority("/identity/baseUrl")).toBe(
+      "platformProvisioned",
+    );
   });
 });
