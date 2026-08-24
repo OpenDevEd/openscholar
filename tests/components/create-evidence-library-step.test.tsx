@@ -34,7 +34,6 @@ vi.mock("@/convex/_generated/api", () => ({
       mutations: { createSetupDraft: "createSetupDraft" },
       queries: {
         getCurrentSetupDraft: "getCurrentSetupDraft",
-        previewSetupDraftName: "previewSetupDraftName",
       },
     },
   },
@@ -79,21 +78,10 @@ describe("<CreateEvidenceLibraryStep>", () => {
     expect(mocks.query).not.toHaveBeenCalled();
   });
 
-  it("shows a server-checked read-only address and continues to configuration", async () => {
+  it("creates once with only the name and continues to configuration", async () => {
     mocks.useOrganization.mockReturnValue(activeAdminOrganization);
-    mocks.query.mockImplementation((query: string, args: unknown) => {
+    mocks.query.mockImplementation((query: string) => {
       if (query === "getCurrentSetupDraft") return { data: null };
-      if (query === "previewSetupDraftName" && args !== "skip") {
-        return {
-          data: {
-            name: "Climate Evidence",
-            publicAddress:
-              "https://climate-evidence-2-lib.libraries.example.test",
-            shortName: "Climate Evidence",
-            slug: "climate-evidence-2",
-          },
-        };
-      }
       return { data: undefined };
     });
     mocks.createSetupDraft.mockResolvedValue({ libraryId: "library_123" });
@@ -104,16 +92,12 @@ describe("<CreateEvidenceLibraryStep>", () => {
       screen.getByLabelText("libraryNameLabel"),
       "Climate Evidence",
     );
-
-    const address = screen.getByLabelText("publicAddressLabel");
-    expect(address).toHaveValue(
-      "https://climate-evidence-2-lib.libraries.example.test",
-    );
-    expect(address).toHaveAttribute("readonly");
+    expect(screen.queryByLabelText("publicAddressLabel")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "continue" }));
 
     await waitFor(() => {
+      expect(mocks.createSetupDraft).toHaveBeenCalledTimes(1);
       expect(mocks.createSetupDraft).toHaveBeenCalledWith({
         name: "Climate Evidence",
       });
@@ -121,6 +105,9 @@ describe("<CreateEvidenceLibraryStep>", () => {
         "/evidence-libraries/library_123/configuration",
       );
     });
+    expect(
+      new Set(mocks.query.mock.calls.map(([query]) => query)),
+    ).toEqual(new Set(["getCurrentSetupDraft"]));
   });
 
   it("renders the saved draft after the page mounts again", () => {

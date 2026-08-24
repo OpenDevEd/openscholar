@@ -225,10 +225,6 @@ describe("Evidence Library setup draft", () => {
         name: "A different library",
       }),
     ).rejects.toThrow(/CONFLICT/);
-    const preview = await second.query(
-      api.evidenceLibraries.queries.previewSetupDraftName,
-      setupArgs,
-    );
     const secondCreated = await second.mutation(
       api.evidenceLibraries.mutations.createSetupDraft,
       setupArgs,
@@ -256,16 +252,12 @@ describe("Evidence Library setup draft", () => {
       ).length,
     }));
 
-    expect(preview).toEqual({
+    expect(secondCreated).toMatchObject({
       name: setupArgs.name,
       publicAddress:
         "https://climate-evidence-2-lib.libraries.example.test",
       shortName: setupArgs.name,
       slug: "climate-evidence-2",
-    });
-    expect(secondCreated).toMatchObject({
-      publicAddress: preview.publicAddress,
-      slug: preview.slug,
     });
     expect(thirdCreated).toMatchObject({
       publicAddress:
@@ -450,12 +442,6 @@ describe("Evidence Library setup draft", () => {
     await expect(
       member.mutation(
         api.evidenceLibraries.mutations.createSetupDraft,
-        setupArgs,
-      ),
-    ).rejects.toThrow(/FORBIDDEN/);
-    await expect(
-      member.query(
-        api.evidenceLibraries.queries.previewSetupDraftName,
         setupArgs,
       ),
     ).rejects.toThrow(/FORBIDDEN/);

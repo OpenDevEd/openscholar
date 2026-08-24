@@ -17,10 +17,8 @@ import {
   sectionKeyValidator,
 } from "./validators";
 import {
-  findAvailableEvidenceLibrarySetupIdentity,
   readCurrentEvidenceLibrarySetup,
   readEvidenceLibrarySetupIdentity,
-  validateEvidenceLibrarySetupName,
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 
@@ -116,33 +114,6 @@ export const getSetupDraft = query({
     publicAddress: v.string(),
   }),
   handler: readEvidenceLibrarySetup,
-});
-
-export const previewSetupDraftName = query({
-  args: { name: v.string() },
-  returns: v.object(evidenceLibrarySetupIdentityFields),
-  handler: async (ctx, args) => {
-    const access = await requireOrganizationAccess(ctx, "manage");
-    const name = validateEvidenceLibrarySetupName(args.name);
-    const current = await readCurrentEvidenceLibrarySetup(
-      ctx,
-      access.organization._id,
-    );
-    if (current) {
-      if (current.identity.name !== name) {
-        throw createError(
-          "CONFLICT",
-          "Organization already has a different Evidence Library setup draft",
-        );
-      }
-      return current.identity;
-    }
-
-    return await findAvailableEvidenceLibrarySetupIdentity(ctx, {
-      organizationId: access.organization._id,
-      name,
-    });
-  },
 });
 
 export const getCurrentSetupDraft = query({

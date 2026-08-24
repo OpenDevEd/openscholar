@@ -53,19 +53,13 @@ function AdminCreateEvidenceLibraryForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const currentSetup = currentSetupQuery.data;
   const normalizedName = name.trim();
-  const canPreview =
-    currentSetup === null &&
+  const canCreate =
     normalizedName.length > 0 &&
     Array.from(normalizedName).length <= MAX_EVIDENCE_LIBRARY_NAME_LENGTH;
-  const previewQuery = useProtectedQuery(
-    api.evidenceLibraries.queries.previewSetupDraftName,
-    canPreview ? { name: normalizedName } : "skip",
-  );
-  const identity = currentSetup ?? previewQuery.data;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!identity || isSubmitting) return;
+    if (isSubmitting) return;
 
     if (currentSetup) {
       router.push(
@@ -73,10 +67,11 @@ function AdminCreateEvidenceLibraryForm() {
       );
       return;
     }
+    if (!canCreate) return;
 
     setIsSubmitting(true);
     setSubmitError(null);
-    void createSetupDraft({ name: identity.name })
+    void createSetupDraft({ name: normalizedName })
       .then((created) => {
         router.push(
           `/evidence-libraries/${created.libraryId}/configuration`,
@@ -95,7 +90,7 @@ function AdminCreateEvidenceLibraryForm() {
   }
 
   const isSavedDraft = currentSetup !== null;
-  const canContinue = Boolean(identity) && !isSubmitting;
+  const canContinue = (isSavedDraft || canCreate) && !isSubmitting;
 
   return (
     <Card>
@@ -126,44 +121,45 @@ function AdminCreateEvidenceLibraryForm() {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="evidence-library-short-name">
-              {t("shortNameLabel")}
-            </Label>
-            <Input
-              id="evidence-library-short-name"
-              value={identity?.shortName ?? ""}
-              readOnly
-              aria-describedby="evidence-library-short-name-help"
-            />
-            <p
-              id="evidence-library-short-name-help"
-              className="text-sm text-muted-foreground"
-            >
-              {t("shortNameHelp")}
-            </p>
-          </div>
+          {isSavedDraft ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="evidence-library-short-name">
+                  {t("shortNameLabel")}
+                </Label>
+                <Input
+                  id="evidence-library-short-name"
+                  value={currentSetup.shortName}
+                  readOnly
+                  aria-describedby="evidence-library-short-name-help"
+                />
+                <p
+                  id="evidence-library-short-name-help"
+                  className="text-sm text-muted-foreground"
+                >
+                  {t("shortNameHelp")}
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="evidence-library-public-address">
-              {t("publicAddressLabel")}
-            </Label>
-            <Input
-              id="evidence-library-public-address"
-              value={identity?.publicAddress ?? ""}
-              readOnly
-              aria-describedby="evidence-library-public-address-help"
-            />
-            <p
-              id="evidence-library-public-address-help"
-              className="text-sm text-muted-foreground"
-              aria-live="polite"
-            >
-              {canPreview && previewQuery.data === undefined
-                ? t("checkingAddress")
-                : t("publicAddressHelp")}
-            </p>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="evidence-library-public-address">
+                  {t("publicAddressLabel")}
+                </Label>
+                <Input
+                  id="evidence-library-public-address"
+                  value={currentSetup.publicAddress}
+                  readOnly
+                  aria-describedby="evidence-library-public-address-help"
+                />
+                <p
+                  id="evidence-library-public-address-help"
+                  className="text-sm text-muted-foreground"
+                >
+                  {t("publicAddressHelp")}
+                </p>
+              </div>
+            </>
+          ) : null}
 
           {submitError ? (
             <p role="alert" className="text-sm text-destructive">
