@@ -188,9 +188,10 @@ export const evidenceLibraryRuntimeBindingFields = {
 export const evidenceLibraryCredentialFields = {
   libraryId: v.id("evidenceLibraries"),
   credentialKey: v.string(),
-  pathPattern: v.string(),
+  pathPattern: v.optional(v.string()),
   instanceKey: v.optional(v.string()),
   encryptedValue: v.string(),
+  credentialDigest: v.optional(v.string()),
   maskedHint: v.optional(v.string()),
   validationState: v.union(
     v.literal("untested"),

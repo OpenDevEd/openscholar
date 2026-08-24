@@ -3,19 +3,17 @@
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import * as crypto from "node:crypto";
 import type { Id } from "../_generated/dataModel";
+import { digestOpaqueToken, generateOpaqueToken } from "../lib/opaqueToken";
 
 const WALLET_KEY_PREFIX = "wk_";
-const KEY_BYTES = 32;
 
 function generateRawKey(): string {
-  const bytes = crypto.randomBytes(KEY_BYTES);
-  return `${WALLET_KEY_PREFIX}${bytes.toString("base64url")}`;
+  return generateOpaqueToken(WALLET_KEY_PREFIX);
 }
 
 function hashKey(rawKey: string): string {
-  return crypto.createHash("sha256").update(rawKey).digest("hex");
+  return digestOpaqueToken(rawKey);
 }
 
 /**
