@@ -19,7 +19,7 @@ OpenScholar already checks the active Clerk organization and projected membershi
 - The current Convex token contract is `identity.o.id` and `identity.o.rol`, with the full Clerk role values.
 - A login code contains 256 random bits, is stored only as a SHA-256 digest, expires after five minutes, and can be used once.
 - A machine credential contains 256 random bits, is encrypted with `ENCRYPTION_KEY`, and also has a SHA-256 digest for request authentication.
-- The existing credential table gains a required kind. Runtime configuration secrets keep their real JSON path. The one machine credential uses the `library-service` key without pretending to be a configuration field.
+- The existing credential table reserves the key `library-service` for the one machine credential. Runtime configuration secrets keep their real JSON path; the machine credential has no fake configuration path.
 - Rotation replaces the one credential row for that library. It never creates a second active machine credential.
 - Code redemption checks the machine credential, code, library, organization, current membership, current role, expiry, and unused state in one Convex mutation.
 - Workers use the shared runtime settings. This plan does not create worker-specific OpenScholar credentials.
@@ -62,7 +62,7 @@ Use red → green for token policy, rotation, code issue, and redemption. Each C
 
 ## Migration
 
-Development data is disposable. Add the required credential kind, optional digest, and login-code table directly. Do not add compatibility readers or a migration package. Recreate affected development credential rows through the existing seed if strict validation rejects them.
+Development data is disposable. Make the config-only path optional, add the optional digest, and add the login-code table directly. Do not add compatibility readers or a migration package.
 
 ## Agent use
 
