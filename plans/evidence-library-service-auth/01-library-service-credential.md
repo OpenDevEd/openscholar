@@ -10,7 +10,8 @@ Add secure token generation, a digest on the existing credential row, one Owner-
 
 ## Design
 
-- Reuse `evidenceLibraryCredentials` with the fixed key `library-service`.
+- Reuse `evidenceLibraryCredentials` with the fixed kind and key `library-service`.
+- Mark existing configuration credentials as `runtime-config`. Only those rows have a JSON `pathPattern`.
 - Generate a 32-byte `els_` token in a Node action.
 - Store the encrypted token, SHA-256 digest, masked hint, creating user, and update time.
 - Upsert by library and fixed key so one library has one active credential.
@@ -36,7 +37,7 @@ Add secure token generation, a digest on the existing credential row, one Owner-
 
 ## Migration
 
-Add an optional digest field because ordinary runtime credentials do not authenticate inbound requests. No compatibility code or backfill.
+Add a required credential kind and an optional digest because ordinary runtime credentials do not authenticate inbound requests. Make `pathPattern` optional and require it in the runtime-config write path. No compatibility code or backfill.
 
 ## Exact tests
 
@@ -58,5 +59,5 @@ Run `npx pm2 logs convex --lines 5 --nostream`. The newest deploy must show `✔
 
 ## Risks
 
-- Reusing the general configuration-path resolver would reject the fixed machine key. Use a dedicated machine-credential function.
+- Reusing the general configuration-path resolver would reject the fixed machine key. Use a dedicated machine-credential function and an explicit credential kind.
 - Do not use a global credential scan. Look up by library and fixed key.
