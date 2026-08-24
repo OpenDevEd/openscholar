@@ -52,6 +52,17 @@ async function createProvisioningFixture(
       createdAt: 1,
       updatedAt: 1,
     });
+    const runtimeBindingId = await ctx.db.insert(
+      "evidenceLibraryRuntimeBindings",
+      {
+        libraryId,
+        targetBaseUrl: "https://library.example.org",
+        state: "pending",
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    );
+    await ctx.db.patch("evidenceLibraries", libraryId, { runtimeBindingId });
     return { libraryId, organizationId };
   });
   return {
@@ -101,17 +112,17 @@ describe("validateTargetBaseUrl", () => {
     expect(validateTargetBaseUrl("https://library.example.org")).toBe(
       "https://library.example.org",
     );
-    expect(() => validateTargetBaseUrl("https://library.example.org/lib")).toThrow(
-      /origin-only/,
-    );
+    expect(() =>
+      validateTargetBaseUrl("https://library.example.org/lib"),
+    ).toThrow(/origin-only/);
   });
 });
 
 describe("development runtime binding seed", () => {
   it("requires an explicit development opt-in and still rejects production", () => {
-    expect(() =>
-      assertEvidenceLibraryDevProvisioningEnabled({}),
-    ).toThrow(/not-enabled/);
+    expect(() => assertEvidenceLibraryDevProvisioningEnabled({})).toThrow(
+      /not-enabled/,
+    );
     expect(() =>
       assertEvidenceLibraryDevProvisioningEnabled({
         EL_DEV_PROVISIONING_ENABLED: "false",
@@ -155,7 +166,7 @@ describe("development runtime binding seed", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      return await ctx.db.insert("evidenceLibraries", {
+      const libraryId = await ctx.db.insert("evidenceLibraries", {
         organizationId,
         name: "Seed Library",
         slug: "seed-library",
@@ -165,6 +176,18 @@ describe("development runtime binding seed", () => {
         createdAt: 1,
         updatedAt: 1,
       });
+      const runtimeBindingId = await ctx.db.insert(
+        "evidenceLibraryRuntimeBindings",
+        {
+          libraryId,
+          targetBaseUrl: "https://library.example.org",
+          state: "pending",
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      );
+      await ctx.db.patch("evidenceLibraries", libraryId, { runtimeBindingId });
+      return libraryId;
     });
     const admin = t.withIdentity({
       subject: "user_seed",
@@ -187,7 +210,10 @@ describe("development runtime binding seed", () => {
       }),
     );
     const stored = await t.run(async (ctx) => ({
-      binding: await ctx.db.get("evidenceLibraryRuntimeBindings", seeded.bindingId),
+      binding: await ctx.db.get(
+        "evidenceLibraryRuntimeBindings",
+        seeded.bindingId,
+      ),
       credentials: await ctx.db
         .query("evidenceLibraryCredentials")
         .withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId))
@@ -226,7 +252,9 @@ describe("development runtime binding seed", () => {
     const { admin, libraryId } = await createProvisioningFixture(t, field);
     const args = {
       ...validSeedArgs(libraryId),
-      ...(field === "zoteroTranslationUrl" ? { zoteroTranslationUrl: "   " } : {}),
+      ...(field === "zoteroTranslationUrl"
+        ? { zoteroTranslationUrl: "   " }
+        : {}),
     };
     if (field !== "zoteroTranslationUrl") {
       args[field] = "   ";
@@ -236,10 +264,12 @@ describe("development runtime binding seed", () => {
       admin.run((ctx) => seedDevelopmentRuntimeBinding(ctx, args)),
     ).rejects.toThrow(/must not be blank/);
     const counts = await t.run(async (ctx) => ({
-      bindings: (await ctx.db.query("evidenceLibraryRuntimeBindings").collect()).length,
-      credentials: (await ctx.db.query("evidenceLibraryCredentials").collect()).length,
+      bindings: (await ctx.db.query("evidenceLibraryRuntimeBindings").collect())
+        .length,
+      credentials: (await ctx.db.query("evidenceLibraryCredentials").collect())
+        .length,
     }));
-    expect(counts).toEqual({ bindings: 0, credentials: 0 });
+    expect(counts).toEqual({ bindings: 1, credentials: 0 });
   });
 
   it("reserves each target runtime for exactly one library", async () => {
@@ -258,10 +288,12 @@ describe("development runtime binding seed", () => {
     ).rejects.toThrow(/CONFLICT.*target runtime/);
 
     const counts = await t.run(async (ctx) => ({
-      bindings: (await ctx.db.query("evidenceLibraryRuntimeBindings").collect()).length,
-      credentials: (await ctx.db.query("evidenceLibraryCredentials").collect()).length,
+      bindings: (await ctx.db.query("evidenceLibraryRuntimeBindings").collect())
+        .length,
+      credentials: (await ctx.db.query("evidenceLibraryCredentials").collect())
+        .length,
     }));
-    expect(counts).toEqual({ bindings: 1, credentials: 3 });
+    expect(counts).toEqual({ bindings: 2, credentials: 3 });
   });
 
   it.each(["databaseUrl", "searchKey", "storageServiceRoleKey"] as const)(
@@ -281,10 +313,14 @@ describe("development runtime binding seed", () => {
         ),
       ).rejects.toThrow(/must not be blank/);
       const counts = await t.run(async (ctx) => ({
-        bindings: (await ctx.db.query("evidenceLibraryRuntimeBindings").collect()).length,
-        credentials: (await ctx.db.query("evidenceLibraryCredentials").collect()).length,
+        bindings: (
+          await ctx.db.query("evidenceLibraryRuntimeBindings").collect()
+        ).length,
+        credentials: (
+          await ctx.db.query("evidenceLibraryCredentials").collect()
+        ).length,
       }));
-      expect(counts).toEqual({ bindings: 0, credentials: 0 });
+      expect(counts).toEqual({ bindings: 1, credentials: 0 });
     },
   );
 

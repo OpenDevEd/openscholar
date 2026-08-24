@@ -4,13 +4,13 @@ import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import {
+  type EvidenceLibraryOperationKind,
   evidenceLibraryOperationErrorInputValidator,
-  evidenceLibraryOperationKindValidator,
   evidenceLibraryOperationReceiptValidator,
+  evidenceLibraryRequestableOperationKindValidator,
   evidenceLibraryRunningStageValidator,
 } from "./validators";
 
-type OperationKind = "validate" | "publish" | "rollback";
 type RunningStage = "assembling" | "validating" | "publishing" | "activating";
 type OperationReceipt = {
   revisionKey?: string;
@@ -88,7 +88,7 @@ export async function queueEvidenceLibraryOperation(
   ctx: MutationCtx,
   args: {
     libraryId: Id<"evidenceLibraries">;
-    kind: OperationKind;
+    kind: EvidenceLibraryOperationKind;
     idempotencyKey: string;
     revisionId?: Id<"evidenceLibraryConfigRevisions">;
   },
@@ -215,7 +215,7 @@ export async function applyOperationTransition(
 export const queueOperation = mutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
-    kind: evidenceLibraryOperationKindValidator,
+    kind: evidenceLibraryRequestableOperationKindValidator,
     idempotencyKey: v.string(),
     revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   },

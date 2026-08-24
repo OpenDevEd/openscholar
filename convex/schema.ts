@@ -29,7 +29,7 @@ import {
   evidenceLibraryCredentialFields,
   evidenceLibraryFields,
   evidenceLibraryOperationFields,
-  evidenceLibraryRuntimeBindingFields,
+  evidenceLibraryRuntimeBindingValidator,
   organizationFields,
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
@@ -95,9 +95,10 @@ export default defineSchema({
     evidenceLibraryAdminLoginCodeFields,
   ).index("by_libraryId_and_codeDigest", ["libraryId", "codeDigest"]),
 
-  evidenceLibraryRuntimeBindings: defineTable(evidenceLibraryRuntimeBindingFields)
+  evidenceLibraryRuntimeBindings: defineTable(evidenceLibraryRuntimeBindingValidator)
     .index("by_libraryId", ["libraryId"])
     .index("by_targetRuntimeId", ["targetRuntimeId"])
+    .index("by_targetBaseUrl", ["targetBaseUrl"])
     .index("by_state", ["state"]),
 
   evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)

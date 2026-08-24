@@ -8,9 +8,14 @@ import {
 } from "./access";
 import {
   configProvenanceValidator,
+  evidenceLibraryConfigDraftFields,
+  evidenceLibraryConfigRevisionFields,
   evidenceLibraryFields,
+  evidenceLibraryOperationFields,
+  evidenceLibraryRuntimeBindingVariantFields,
   sectionKeyValidator,
 } from "./validators";
+import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 
 export async function readEvidenceLibraries(ctx: QueryCtx) {
   const access = await requireOrganizationAccess(ctx, "read");
@@ -32,6 +37,73 @@ export const listLibraries = query({
     }),
   ),
   handler: readEvidenceLibraries,
+});
+
+export async function readEvidenceLibrarySetup(
+  ctx: QueryCtx,
+  args: { libraryId: Id<"evidenceLibraries"> },
+) {
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
+  return await readEvidenceLibrarySetupRecords(ctx, access.library);
+}
+
+export const getSetupDraft = query({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.object({
+    library: v.object({
+      _id: v.id("evidenceLibraries"),
+      _creationTime: v.number(),
+      ...evidenceLibraryFields,
+    }),
+    draft: v.object({
+      _id: v.id("evidenceLibraryConfigDrafts"),
+      _creationTime: v.number(),
+      ...evidenceLibraryConfigDraftFields,
+    }),
+    revision: v.object({
+      _id: v.id("evidenceLibraryConfigRevisions"),
+      _creationTime: v.number(),
+      ...evidenceLibraryConfigRevisionFields,
+    }),
+    setupOperation: v.object({
+      _id: v.id("evidenceLibraryConfigOperations"),
+      _creationTime: v.number(),
+      ...evidenceLibraryOperationFields,
+    }),
+    runtimeBinding: v.union(
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.pendingUnassigned,
+      }),
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.pendingProvisioned,
+      }),
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.ready,
+      }),
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.failedUnassigned,
+      }),
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.failedProvisioned,
+      }),
+    ),
+    publicAddress: v.string(),
+  }),
+  handler: readEvidenceLibrarySetup,
 });
 
 export async function readEvidenceLibraryDraft(
@@ -75,7 +147,10 @@ export async function readEvidenceLibraryRevision(
   },
 ) {
   await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
-  const revision = await ctx.db.get("evidenceLibraryConfigRevisions", args.revisionId);
+  const revision = await ctx.db.get(
+    "evidenceLibraryConfigRevisions",
+    args.revisionId,
+  );
   if (!revision || revision.libraryId !== args.libraryId) {
     throw createError("NOT_FOUND", "Evidence Library revision not found");
   }

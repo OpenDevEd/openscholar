@@ -7,9 +7,20 @@ import { requireEvidenceLibraryAccess } from "./access";
 import { storeEvidenceLibraryCredential } from "./credentials";
 
 export function validateTargetBaseUrl(value: string): string {
-  const url = new URL(value);
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw createError(
+      "VALIDATION_ERROR",
+      "Target base URL must be a valid URL",
+    );
+  }
   if (url.pathname !== "/" || url.search || url.hash || url.origin === "null") {
-    throw createError("VALIDATION_ERROR", "Target base URL must be origin-only");
+    throw createError(
+      "VALIDATION_ERROR",
+      "Target base URL must be origin-only",
+    );
   }
   return url.origin;
 }
@@ -50,23 +61,77 @@ type SeedRuntimeBindingArgs = {
   encryptedStorageServiceRoleKey: string;
 };
 
+export async function createPendingRuntimeBinding(
+  ctx: MutationCtx,
+  args: { libraryId: Id<"evidenceLibraries">; publicAddress: string },
+) {
+  await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const targetBaseUrl = validateTargetBaseUrl(args.publicAddress);
+  const [existing, occupied] = await Promise.all([
+    ctx.db
+      .query("evidenceLibraryRuntimeBindings")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .unique(),
+    ctx.db
+      .query("evidenceLibraryRuntimeBindings")
+      .withIndex("by_targetBaseUrl", (query) =>
+        query.eq("targetBaseUrl", targetBaseUrl),
+      )
+      .unique(),
+  ]);
+  if (existing) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library runtime binding already exists",
+    );
+  }
+  if (occupied) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library public address is already used",
+    );
+  }
+
+  const now = Date.now();
+  const bindingId = await ctx.db.insert("evidenceLibraryRuntimeBindings", {
+    libraryId: args.libraryId,
+    targetBaseUrl,
+    state: "pending",
+    createdAt: now,
+    updatedAt: now,
+  });
+  return { bindingId, targetBaseUrl };
+}
+
 export async function seedDevelopmentRuntimeBinding(
   ctx: MutationCtx,
   args: SeedRuntimeBindingArgs,
 ) {
   assertEvidenceLibraryDevProvisioningEnabled();
-  await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
   const targetRuntimeId = requireNonBlankProvisioningValue(
     "targetRuntimeId",
     args.targetRuntimeId,
   );
   const targetBaseUrl = validateTargetBaseUrl(args.targetBaseUrl);
-  const searchHost = requireNonBlankProvisioningValue("searchHost", args.searchHost);
+  const searchHost = requireNonBlankProvisioningValue(
+    "searchHost",
+    args.searchHost,
+  );
   const searchIndex = requireNonBlankProvisioningValue(
     "searchIndex",
     args.searchIndex,
   );
-  const storageUrl = requireNonBlankProvisioningValue("storageUrl", args.storageUrl);
+  const storageUrl = requireNonBlankProvisioningValue(
+    "storageUrl",
+    args.storageUrl,
+  );
   const storageDocumentsBucket = requireNonBlankProvisioningValue(
     "storageDocumentsBucket",
     args.storageDocumentsBucket,
@@ -75,8 +140,14 @@ export async function seedDevelopmentRuntimeBinding(
     "storageImagesBucket",
     args.storageImagesBucket,
   );
-  requireNonBlankProvisioningValue("encryptedDatabaseUrl", args.encryptedDatabaseUrl);
-  requireNonBlankProvisioningValue("encryptedSearchKey", args.encryptedSearchKey);
+  requireNonBlankProvisioningValue(
+    "encryptedDatabaseUrl",
+    args.encryptedDatabaseUrl,
+  );
+  requireNonBlankProvisioningValue(
+    "encryptedSearchKey",
+    args.encryptedSearchKey,
+  );
   requireNonBlankProvisioningValue(
     "encryptedStorageServiceRoleKey",
     args.encryptedStorageServiceRoleKey,
@@ -101,8 +172,23 @@ export async function seedDevelopmentRuntimeBinding(
     .query("evidenceLibraryRuntimeBindings")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
     .unique();
-  if (existing) {
-    throw createError("CONFLICT", "Evidence Library runtime binding already exists");
+  if (!existing || access.library.runtimeBindingId !== existing._id) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library runtime binding is missing",
+    );
+  }
+  if (existing.targetBaseUrl !== targetBaseUrl) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library public address does not match its runtime binding",
+    );
+  }
+  if (existing.state !== "pending" || "targetRuntimeId" in existing) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library runtime binding is already seeded",
+    );
   }
   const targetBinding = await ctx.db
     .query("evidenceLibraryRuntimeBindings")
@@ -110,8 +196,11 @@ export async function seedDevelopmentRuntimeBinding(
       query.eq("targetRuntimeId", targetRuntimeId),
     )
     .first();
-  if (targetBinding) {
-    throw createError("CONFLICT", "Evidence Library target runtime already reserved");
+  if (targetBinding && targetBinding._id !== existing._id) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library target runtime already reserved",
+    );
   }
   const databaseCredentialId = await storeEvidenceLibraryCredential(ctx, {
     libraryId: args.libraryId,
@@ -129,11 +218,8 @@ export async function seedDevelopmentRuntimeBinding(
     encryptedValue: args.encryptedStorageServiceRoleKey,
   });
   const now = Date.now();
-  const bindingId = await ctx.db.insert("evidenceLibraryRuntimeBindings", {
-    libraryId: args.libraryId,
+  await ctx.db.patch("evidenceLibraryRuntimeBindings", existing._id, {
     targetRuntimeId,
-    targetBaseUrl,
-    state: "pending",
     searchHost,
     searchIndex,
     storageUrl,
@@ -144,11 +230,10 @@ export async function seedDevelopmentRuntimeBinding(
     databaseCredentialId,
     searchCredentialId,
     storageCredentialId,
-    createdAt: now,
     updatedAt: now,
   });
   return {
-    bindingId,
+    bindingId: existing._id,
     databaseCredentialId,
     searchCredentialId,
     storageCredentialId,

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 
 export const organizationStateValidator = v.union(
@@ -116,6 +116,10 @@ export const evidenceLibraryFields = {
   name: v.string(),
   slug: v.string(),
   state: evidenceLibraryStateValidator,
+  draftId: v.optional(v.id("evidenceLibraryConfigDrafts")),
+  latestRevisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
+  setupOperationId: v.optional(v.id("evidenceLibraryConfigOperations")),
+  runtimeBindingId: v.optional(v.id("evidenceLibraryRuntimeBindings")),
   activeRevisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   createdByClerkUserId: v.string(),
   updatedByClerkUserId: v.string(),
@@ -170,11 +174,20 @@ export const evidenceLibraryConfigSectionValidator = v.union(
   }),
 );
 
-export const evidenceLibraryRuntimeBindingFields = {
+export const evidenceLibraryOperationErrorInputValidator = v.object({
+  code: v.string(),
+  message: v.string(),
+});
+
+const evidenceLibraryRuntimeBindingBaseFields = {
   libraryId: v.id("evidenceLibraries"),
-  targetRuntimeId: v.string(),
   targetBaseUrl: v.string(),
-  state: v.union(v.literal("pending"), v.literal("ready"), v.literal("failed")),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+const evidenceLibraryRuntimeBindingProvisionedFields = {
+  targetRuntimeId: v.string(),
   searchHost: v.string(),
   searchIndex: v.string(),
   storageUrl: v.string(),
@@ -186,9 +199,43 @@ export const evidenceLibraryRuntimeBindingFields = {
   searchCredentialId: v.id("evidenceLibraryCredentials"),
   storageCredentialId: v.id("evidenceLibraryCredentials"),
   lastVerifiedAt: v.optional(v.number()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
 };
+
+export const evidenceLibraryRuntimeBindingVariantFields = {
+  pendingUnassigned: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    state: v.literal("pending"),
+  },
+  pendingProvisioned: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    ...evidenceLibraryRuntimeBindingProvisionedFields,
+    state: v.literal("pending"),
+  },
+  ready: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    ...evidenceLibraryRuntimeBindingProvisionedFields,
+    state: v.literal("ready"),
+  },
+  failedUnassigned: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    state: v.literal("failed"),
+    error: evidenceLibraryOperationErrorInputValidator,
+  },
+  failedProvisioned: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    ...evidenceLibraryRuntimeBindingProvisionedFields,
+    state: v.literal("failed"),
+    error: evidenceLibraryOperationErrorInputValidator,
+  },
+};
+
+export const evidenceLibraryRuntimeBindingValidator = v.union(
+  v.object(evidenceLibraryRuntimeBindingVariantFields.pendingUnassigned),
+  v.object(evidenceLibraryRuntimeBindingVariantFields.pendingProvisioned),
+  v.object(evidenceLibraryRuntimeBindingVariantFields.ready),
+  v.object(evidenceLibraryRuntimeBindingVariantFields.failedUnassigned),
+  v.object(evidenceLibraryRuntimeBindingVariantFields.failedProvisioned),
+);
 
 export const evidenceLibraryCredentialFields = {
   libraryId: v.id("evidenceLibraries"),
@@ -221,11 +268,19 @@ export const evidenceLibraryAdminLoginCodeFields = {
   consumedAt: v.optional(v.number()),
 };
 
-export const evidenceLibraryOperationKindValidator = v.union(
+export const evidenceLibraryRequestableOperationKindValidator = v.union(
   v.literal("validate"),
   v.literal("publish"),
   v.literal("rollback"),
 );
+
+export const evidenceLibraryOperationKindValidator = v.union(
+  v.literal("setup"),
+  evidenceLibraryRequestableOperationKindValidator,
+);
+export type EvidenceLibraryOperationKind = Infer<
+  typeof evidenceLibraryOperationKindValidator
+>;
 
 export const evidenceLibraryRunningStageValidator = v.union(
   v.literal("assembling"),
@@ -239,11 +294,6 @@ export const evidenceLibraryOperationReceiptValidator = v.object({
   targetConfigSha256: v.optional(v.string()),
   runtimeReceiptId: v.optional(v.string()),
   activatedAt: v.optional(v.number()),
-});
-
-export const evidenceLibraryOperationErrorInputValidator = v.object({
-  code: v.string(),
-  message: v.string(),
 });
 
 export const evidenceLibraryOperationFields = {

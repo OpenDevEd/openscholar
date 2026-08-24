@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import schema from "../schema";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
-  createEvidenceLibrary,
+  createEvidenceLibrarySetup,
   finalizeEvidenceLibraryDraft,
   saveEvidenceLibraryDraftSection,
 } from "./mutations";
@@ -61,9 +61,7 @@ describe("Evidence Library draft storage", () => {
       });
       return await ctx.db
         .query("evidenceLibraryConfigDrafts")
-        .withIndex("by_libraryId", (query) =>
-          query.eq("libraryId", libraryId),
-        )
+        .withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId))
         .unique();
     });
 
@@ -119,9 +117,10 @@ describe("Evidence Library draft storage", () => {
     });
 
     const created = await asAdmin.run((ctx) =>
-      createEvidenceLibrary(ctx, {
+      createEvidenceLibrarySetup(ctx, {
         name: "Climate Evidence",
         slug: "climate-evidence",
+        publicAddress: "https://climate-evidence.example.org",
       }),
     );
     const saved = await asAdmin.run((ctx) =>
@@ -139,7 +138,10 @@ describe("Evidence Library draft storage", () => {
 
     expect(saved.editVersion).toBe(1);
     expect(libraries).toEqual([
-      expect.objectContaining({ _id: created.libraryId, slug: "climate-evidence" }),
+      expect.objectContaining({
+        _id: created.libraryId,
+        slug: "climate-evidence",
+      }),
     ]);
     expect(reloaded).toMatchObject({
       draft: { editVersion: 1 },
@@ -184,13 +186,32 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
+      await ctx.db.insert("organizationMemberships", {
+        organizationId,
+        clerkMembershipId: "orgmem_revision_member",
+        clerkUserId: "user_revision_member",
+        role: "org:member",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
     });
     const admin = t.withIdentity({
       subject: "user_revision",
       o: { id: "org_revision", rol: "org:admin" },
     });
+    const member = t.withIdentity({
+      subject: "user_revision_member",
+      o: { id: "org_revision", rol: "org:member" },
+    });
     const created = await admin.run((ctx) =>
-      createEvidenceLibrary(ctx, { name: "Revision Library", slug: "revision-library" }),
+      createEvidenceLibrarySetup(ctx, {
+        name: "Revision Library",
+        slug: "revision-library",
+        publicAddress: "https://revision-library.example.org",
+      }),
     );
     await admin.run((ctx) =>
       saveEvidenceLibraryDraftSection(ctx, {
@@ -217,15 +238,18 @@ describe("Evidence Library draft storage", () => {
         expectedEditVersion: 2,
       }),
     );
-    const revision = await admin.run((ctx) =>
+    const revision = await member.run((ctx) =>
       readEvidenceLibraryRevision(ctx, {
         libraryId: created.libraryId,
         revisionId: finalized.revisionId,
       }),
     );
 
-    expect(finalized).toMatchObject({ revisionKey: "r1", revisionNumber: 1 });
-    expect(libraryAfterFinalize).toMatchObject({ state: "provisioning" });
+    expect(finalized).toMatchObject({ revisionKey: "r2", revisionNumber: 2 });
+    expect(libraryAfterFinalize).toMatchObject({
+      latestRevisionId: finalized.revisionId,
+      state: "provisioning",
+    });
     expect(libraryAfterFinalize).not.toHaveProperty("activeRevisionId");
     expect(revision.sections).toEqual([
       expect.objectContaining({
