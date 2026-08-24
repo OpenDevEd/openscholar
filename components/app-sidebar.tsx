@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
+import { OrganizationSwitcher } from "@clerk/nextjs";
 import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
@@ -363,6 +364,32 @@ function ScreeningFooterButton({
         </span>
       )}
     </Button>
+  );
+}
+
+function SidebarOrganizationSwitcher({
+  isCollapsed,
+}: {
+  isCollapsed: boolean;
+}) {
+  return (
+    <OrganizationSwitcher
+      appearance={{
+        elements: isCollapsed
+          ? {
+              rootBox: "flex w-full justify-center",
+              organizationSwitcherTrigger:
+                "h-8 w-8 justify-center rounded-md p-0 hover:bg-sidebar-accent/80",
+              organizationPreviewTextContainer: "hidden",
+              organizationSwitcherTriggerIcon: "hidden",
+            }
+          : {
+              rootBox: "w-full",
+              organizationSwitcherTrigger:
+                "w-full rounded-md px-2 py-1.5 hover:bg-sidebar-accent/80",
+            },
+      }}
+    />
   );
 }
 
@@ -752,6 +779,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               <ThemeToggle />
               <LanguageSwitcher isCollapsed={false} />
             </div>
+            {phase === "authenticated" && (
+              <SidebarOrganizationSwitcher isCollapsed={false} />
+            )}
             <AuthButton isCollapsed={false} />
           </motion.div>
         ) : (
@@ -764,6 +794,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             />
             <ThemeToggle />
             <LanguageSwitcher isCollapsed={true} />
+            {phase === "authenticated" && (
+              <SidebarOrganizationSwitcher isCollapsed />
+            )}
             <AuthButton isCollapsed={true} />
           </>
         )}
