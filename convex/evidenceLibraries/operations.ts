@@ -145,6 +145,45 @@ export async function queueEvidenceLibraryOperation(
   return { operationId, status: "queued" as const };
 }
 
+export async function attachRevisionToSetupOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+    revisionId: Id<"evidenceLibraryConfigRevisions">;
+  },
+) {
+  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const [operation, revision] = await Promise.all([
+    ctx.db.get("evidenceLibraryConfigOperations", args.operationId),
+    ctx.db.get("evidenceLibraryConfigRevisions", args.revisionId),
+  ]);
+  if (
+    access.library.setupOperationId !== args.operationId ||
+    !operation ||
+    operation.libraryId !== args.libraryId ||
+    operation.kind !== "setup"
+  ) {
+    throw createError("INVALID_DATA", "Evidence Library setup operation not found");
+  }
+  if (!revision || revision.libraryId !== args.libraryId) {
+    throw createError("NOT_FOUND", "Evidence Library revision not found");
+  }
+  if (operation.revisionId && operation.revisionId !== args.revisionId) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library setup operation already has a different revision",
+    );
+  }
+  if (!operation.revisionId) {
+    await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
+      revisionId: args.revisionId,
+      updatedAt: Date.now(),
+    });
+  }
+  return { operationId: operation._id, status: operation.status };
+}
+
 type TransitionArgs = {
   libraryId: Id<"evidenceLibraries">;
   operationId: Id<"evidenceLibraryConfigOperations">;

@@ -3,13 +3,20 @@ import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { createInitialEvidenceLibraryShortName } from "../../lib/evidence-libraries/setup/naming";
+import {
+  validateEssentialConfiguration,
+  type EssentialConfigurationSections,
+} from "../../lib/evidence-libraries/configuration/essential-configuration";
 import { createError } from "../lib/errors";
 import {
   requireEvidenceLibraryAccess,
   requireOrganizationAccess,
 } from "./access";
 import { nextDraftEditVersion } from "./draftVersion";
-import { queueEvidenceLibraryOperation } from "./operations";
+import {
+  attachRevisionToSetupOperation,
+  queueEvidenceLibraryOperation,
+} from "./operations";
 import {
   createPendingRuntimeBinding,
   validateTargetBaseUrl,
@@ -30,7 +37,7 @@ import {
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import {
   evidenceLibrarySetupIdentityFields,
-  sectionKeyValidator,
+  essentialConfigurationSectionsValidator,
   type SectionKey,
 } from "./validators";
 
@@ -190,20 +197,16 @@ async function createEvidenceLibrarySetupFromName(
   );
 }
 
-export async function saveEvidenceLibraryDraftSection(
+async function saveEvidenceLibraryDraftSections(
   ctx: MutationCtx,
   args: {
+    access: Awaited<ReturnType<typeof requireEvidenceLibraryAccess>>;
     libraryId: Id<"evidenceLibraries">;
-    sectionKey: SectionKey;
-    payload: unknown;
+    sections: Array<{ sectionKey: SectionKey; payload: unknown }>;
     expectedEditVersion: number;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(
-    ctx,
-    args.libraryId,
-    "manage",
-  );
+  const { access } = args;
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
@@ -215,7 +218,10 @@ export async function saveEvidenceLibraryDraftSection(
     draft.editVersion,
     args.expectedEditVersion,
   );
-  if (args.sectionKey === "identity") {
+  const identity = args.sections.find(
+    (section) => section.sectionKey === "identity",
+  );
+  if (identity) {
     const runtimeBindingId = access.library.runtimeBindingId;
     const runtimeBinding = runtimeBindingId
       ? await ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId)
@@ -227,48 +233,58 @@ export async function saveEvidenceLibraryDraftSection(
       );
     }
     validateEvidenceLibraryIdentityPayload(
-      args.payload,
+      identity.payload,
       runtimeBinding.targetBaseUrl,
       "VALIDATION_ERROR",
     );
   }
-  const payloadByteLength = validateSectionPayload(args.payload);
-  assertNoCredentialMaterial(args.sectionKey, args.payload);
-  const sections = await ctx.db
+  const writes = args.sections.map((section) => ({
+    ...section,
+    payloadByteLength: validateSectionPayload(section.payload),
+  }));
+  for (const write of writes) {
+    assertNoCredentialMaterial(write.sectionKey, write.payload);
+  }
+  const storedSections = await ctx.db
     .query("evidenceLibraryConfigSections")
     .withIndex("by_draftId_and_sectionKey", (query) =>
       query.eq("draftId", draft._id),
     )
     .collect();
-  const existing = sections.find(
-    (section) => section.sectionKey === args.sectionKey,
-  );
+  const writeKeys = new Set(writes.map((write) => write.sectionKey));
   const totalByteLength =
-    sections.reduce((total, section) => total + section.payloadByteLength, 0) -
-    (existing?.payloadByteLength ?? 0) +
-    payloadByteLength;
+    storedSections.reduce(
+      (total, section) =>
+        total + (writeKeys.has(section.sectionKey) ? 0 : section.payloadByteLength),
+      0,
+    ) + writes.reduce((total, write) => total + write.payloadByteLength, 0);
   assertDraftPayloadBudget(totalByteLength);
 
   const now = Date.now();
-  const sectionFields = {
-    kind: "draft" as const,
-    libraryId: args.libraryId,
-    draftId: draft._id,
-    sectionKey: args.sectionKey,
-    payload: args.payload,
-    payloadByteLength,
-    contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
-    updatedByClerkUserId: access.clerkUserId,
-    updatedAt: now,
-  };
-  if (existing) {
-    await ctx.db.replace(
-      "evidenceLibraryConfigSections",
-      existing._id,
-      sectionFields,
+  for (const write of writes) {
+    const existing = storedSections.find(
+      (section) => section.sectionKey === write.sectionKey,
     );
-  } else {
-    await ctx.db.insert("evidenceLibraryConfigSections", sectionFields);
+    const sectionFields = {
+      kind: "draft" as const,
+      libraryId: args.libraryId,
+      draftId: draft._id,
+      sectionKey: write.sectionKey,
+      payload: write.payload,
+      payloadByteLength: write.payloadByteLength,
+      contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+      updatedByClerkUserId: access.clerkUserId,
+      updatedAt: now,
+    };
+    if (existing) {
+      await ctx.db.replace(
+        "evidenceLibraryConfigSections",
+        existing._id,
+        sectionFields,
+      );
+    } else {
+      await ctx.db.insert("evidenceLibraryConfigSections", sectionFields);
+    }
   }
   await ctx.db.patch("evidenceLibraryConfigDrafts", draft._id, {
     editVersion,
@@ -276,7 +292,72 @@ export async function saveEvidenceLibraryDraftSection(
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
   });
-  return { editVersion, payloadByteLength };
+  return { editVersion, writes };
+}
+
+export async function saveEvidenceLibraryDraftSection(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    sectionKey: SectionKey;
+    payload: unknown;
+    expectedEditVersion: number;
+  },
+) {
+  const result = await saveEvidenceLibraryDraftSections(ctx, {
+    access: await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage"),
+    libraryId: args.libraryId,
+    sections: [{ sectionKey: args.sectionKey, payload: args.payload }],
+    expectedEditVersion: args.expectedEditVersion,
+  });
+  return {
+    editVersion: result.editVersion,
+    payloadByteLength: result.writes[0]!.payloadByteLength,
+  };
+}
+
+export async function saveEssentialEvidenceLibraryConfiguration(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    sections: EssentialConfigurationSections;
+    expectedEditVersion: number;
+  },
+) {
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
+  const runtimeBindingId = access.library.runtimeBindingId;
+  const binding = runtimeBindingId
+    ? await ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId)
+    : null;
+  if (!binding || binding.libraryId !== args.libraryId) {
+    throw createError("INVALID_DATA", "Evidence Library runtime binding not found");
+  }
+  const validation = validateEssentialConfiguration(args.sections, {
+    expectedBaseUrl: binding.targetBaseUrl,
+  });
+  if (!validation.valid) {
+    const issue = validation.issues[0]!;
+    throw createError(
+      "VALIDATION_ERROR",
+      `${issue.pointer}: ${issue.message}`,
+      { pointer: issue.pointer },
+    );
+  }
+  const result = await saveEvidenceLibraryDraftSections(ctx, {
+    access,
+    libraryId: args.libraryId,
+    sections: [
+      { sectionKey: "identity", payload: args.sections.identity },
+      { sectionKey: "theme", payload: args.sections.theme },
+      { sectionKey: "localization", payload: args.sections.localization },
+    ],
+    expectedEditVersion: args.expectedEditVersion,
+  });
+  return { editVersion: result.editVersion };
 }
 
 export async function finalizeEvidenceLibraryDraft(
@@ -284,6 +365,7 @@ export async function finalizeEvidenceLibraryDraft(
   args: {
     libraryId: Id<"evidenceLibraries">;
     expectedEditVersion: number;
+    sectionKeys?: SectionKey[];
   },
 ) {
   const access = await requireEvidenceLibraryAccess(
@@ -328,7 +410,10 @@ export async function finalizeEvidenceLibraryDraft(
       query.eq("draftId", draft._id),
     )
     .collect();
-  for (const section of draftSections) {
+  const includedSections = args.sectionKeys
+    ? draftSections.filter((section) => args.sectionKeys!.includes(section.sectionKey))
+    : draftSections;
+  for (const section of includedSections) {
     if (section.kind !== "draft") {
       throw new Error("Draft section index returned a revision row");
     }
@@ -359,6 +444,82 @@ export async function finalizeEvidenceLibraryDraft(
   return { editVersion, revisionId, revisionKey, revisionNumber };
 }
 
+export async function activateEvidenceLibraryConfiguration(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    expectedEditVersion: number;
+  },
+) {
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
+  if (access.library.state === "disabled") {
+    throw createError("CONFLICT", "Disabled Evidence Libraries cannot be activated");
+  }
+  const runtimeBindingId = access.library.runtimeBindingId;
+  const binding = runtimeBindingId
+    ? await ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId)
+    : null;
+  if (!binding || binding.libraryId !== args.libraryId) {
+    throw createError("INVALID_DATA", "Evidence Library runtime binding not found");
+  }
+  const draft = await ctx.db
+    .query("evidenceLibraryConfigDrafts")
+    .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+    .unique();
+  if (!draft) {
+    throw createError("NOT_FOUND", "Evidence Library draft not found");
+  }
+  if (draft.editVersion !== args.expectedEditVersion) {
+    nextDraftEditVersion(draft.editVersion, args.expectedEditVersion);
+  }
+  const rows = await ctx.db
+    .query("evidenceLibraryConfigSections")
+    .withIndex("by_draftId_and_sectionKey", (query) => query.eq("draftId", draft._id))
+    .collect();
+  const payloads = Object.fromEntries(
+    rows.map((row) => [row.sectionKey, row.payload]),
+  );
+  const validation = validateEssentialConfiguration(payloads, {
+    expectedBaseUrl: binding.targetBaseUrl,
+  });
+  if (!validation.valid) {
+    const issue = validation.issues[0]!;
+    throw createError(
+      "VALIDATION_ERROR",
+      `${issue.pointer}: ${issue.message}`,
+      { pointer: issue.pointer },
+    );
+  }
+
+  const frozen = await finalizeEvidenceLibraryDraft(ctx, {
+    ...args,
+    sectionKeys: ["identity", "theme", "localization"],
+  });
+  if (access.library.state === "provisioning") {
+    const setupOperationId = access.library.setupOperationId;
+    if (!setupOperationId) {
+      throw createError("INVALID_DATA", "Evidence Library setup operation not found");
+    }
+    const operation = await attachRevisionToSetupOperation(ctx, {
+      libraryId: args.libraryId,
+      operationId: setupOperationId,
+      revisionId: frozen.revisionId,
+    });
+    return { ...frozen, kind: "setup" as const, ...operation };
+  }
+  const operation = await queueEvidenceLibraryOperation(ctx, {
+    libraryId: args.libraryId,
+    kind: "publish",
+    revisionId: frozen.revisionId,
+    idempotencyKey: `publish:${frozen.revisionKey}`,
+  });
+  return { ...frozen, kind: "publish" as const, ...operation };
+}
+
 export const createSetupDraft = mutation({
   args: { name: v.string() },
   returns: v.object({
@@ -374,30 +535,34 @@ export const createSetupDraft = mutation({
   handler: createEvidenceLibrarySetupFromName,
 });
 
-export const saveDraftSection = mutation({
+export const saveEssentialConfiguration = mutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
-    sectionKey: sectionKeyValidator,
-    payload: v.any(),
+    sections: essentialConfigurationSectionsValidator,
     expectedEditVersion: v.number(),
   },
-  returns: v.object({
-    editVersion: v.number(),
-    payloadByteLength: v.number(),
-  }),
-  handler: saveEvidenceLibraryDraftSection,
+  returns: v.object({ editVersion: v.number() }),
+  handler: saveEssentialEvidenceLibraryConfiguration,
 });
 
-export const finalizeDraft = mutation({
+export const activateConfiguration = mutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     expectedEditVersion: v.number(),
   },
   returns: v.object({
     editVersion: v.number(),
+    kind: v.union(v.literal("setup"), v.literal("publish")),
+    operationId: v.id("evidenceLibraryConfigOperations"),
     revisionId: v.id("evidenceLibraryConfigRevisions"),
     revisionKey: v.string(),
     revisionNumber: v.number(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("succeeded"),
+      v.literal("failed"),
+    ),
   }),
-  handler: finalizeEvidenceLibraryDraft,
+  handler: activateEvidenceLibraryConfiguration,
 });

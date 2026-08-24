@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import schema from "../schema";
+import { api } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
   createEvidenceLibrarySetup,
@@ -208,20 +209,35 @@ describe("Evidence Library draft storage", () => {
         publicAddress: "https://climate-evidence.example.org",
       }),
     );
-    const saved = await asAdmin.run((ctx) =>
-      saveEvidenceLibraryDraftSection(ctx, {
-        libraryId: created.libraryId,
-        sectionKey: "identity",
-        payload: {
-          baseUrl: "https://climate-evidence.example.org",
-          name: "Climate Evidence",
-          shortName: "Climate Evidence",
+    const sections = {
+      identity: {
+        baseUrl: "https://climate-evidence.example.org",
+        name: "Climate Evidence",
+        shortName: "Climate Evidence",
+        assets: {
+          logoDark: "https://assets.example.org/climate-logo.svg",
+          favicon: "https://assets.example.org/climate-favicon.ico",
         },
+      },
+      theme: {
+        colors: { accent: "#005A9C", tertiary: "#F2A900" },
+      },
+      localization: {
+        locales: ["en-GB", "fr"],
+        defaultLocale: "en-GB",
+      },
+    };
+    const saved = await asAdmin.mutation(
+      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      {
+        libraryId: created.libraryId,
+        sections,
         expectedEditVersion: 0,
-      }),
+      },
     );
-    const reloaded = await asMember.run((ctx) =>
-      readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
+    const reloaded = await asAdmin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId: created.libraryId },
     );
     const libraries = await asMember.run((ctx) => readEvidenceLibraries(ctx));
 
@@ -232,34 +248,55 @@ describe("Evidence Library draft storage", () => {
         slug: "climate-evidence",
       }),
     ]);
-    expect(reloaded).toMatchObject({
-      draft: { editVersion: 1 },
-      library: { name: "Climate Evidence" },
-      sections: [
-        {
-          sectionKey: "identity",
-          payload: {
-            baseUrl: "https://climate-evidence.example.org",
-            name: "Climate Evidence",
-            shortName: "Climate Evidence",
-          },
-        },
-      ],
-    });
+    expect(reloaded.draft.editVersion).toBe(1);
+    expect(reloaded.library.name).toBe("Climate Evidence");
+    expect(
+      Object.fromEntries(
+        reloaded.sections.map((section) => [section.sectionKey, section.payload]),
+      ),
+    ).toMatchObject(sections);
     await expect(
-      asAdmin.run((ctx) =>
-        saveEvidenceLibraryDraftSection(ctx, {
+      asMember.query(api.evidenceLibraries.queries.getDraft, {
+        libraryId: created.libraryId,
+      }),
+    ).rejects.toThrow(/FORBIDDEN/);
+    await expect(
+      asMember.mutation(
+        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        {
           libraryId: created.libraryId,
-          sectionKey: "identity",
-          payload: {
-            baseUrl: "https://climate-evidence.example.org",
-            name: "Stale overwrite",
-            shortName: "Stale overwrite",
-          },
+          sections,
+          expectedEditVersion: 1,
+        },
+      ),
+    ).rejects.toThrow(/FORBIDDEN/);
+    await expect(
+      asAdmin.mutation(
+        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        {
+          libraryId: created.libraryId,
+          sections,
           expectedEditVersion: 0,
-        }),
+        },
       ),
     ).rejects.toThrow(/CONFLICT.*Draft changed since it was loaded/);
+
+    await expect(
+      asAdmin.mutation(
+        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        {
+          libraryId: created.libraryId,
+          sections: {
+            ...sections,
+            localization: {
+              locales: ["fr"],
+              defaultLocale: "en-GB",
+            },
+          },
+          expectedEditVersion: 1,
+        },
+      ),
+    ).rejects.toThrow(/\/localization\/defaultLocale/);
   });
 
   it("copies a draft into an immutable revision while later draft edits stay separate", async () => {
@@ -346,7 +383,15 @@ describe("Evidence Library draft storage", () => {
         expectedEditVersion: 2,
       }),
     );
-    const revision = await member.run((ctx) =>
+    await expect(
+      member.run((ctx) =>
+        readEvidenceLibraryRevision(ctx, {
+          libraryId: created.libraryId,
+          revisionId: finalized.revisionId,
+        }),
+      ),
+    ).rejects.toThrow(/FORBIDDEN/);
+    const revision = await admin.run((ctx) =>
       readEvidenceLibraryRevision(ctx, {
         libraryId: created.libraryId,
         revisionId: finalized.revisionId,

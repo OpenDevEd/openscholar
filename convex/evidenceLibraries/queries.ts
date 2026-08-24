@@ -145,7 +145,7 @@ export async function readEvidenceLibraryDraft(
   const access = await requireEvidenceLibraryAccess(
     ctx,
     args.libraryId,
-    "read",
+    "manage",
   );
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
@@ -182,7 +182,7 @@ export async function readEvidenceLibraryRevision(
     revisionId: Id<"evidenceLibraryConfigRevisions">;
   },
 ) {
-  await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
+  await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
   const revision = await ctx.db.get(
     "evidenceLibraryConfigRevisions",
     args.revisionId,

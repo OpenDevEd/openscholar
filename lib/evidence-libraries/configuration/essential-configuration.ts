@@ -34,6 +34,14 @@ export type EssentialConfigurationIssue = {
   message: string;
 };
 
+type JsonObject = Record<string, unknown>;
+
+function asObject(value: unknown): JsonObject | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonObject)
+    : undefined;
+}
+
 type GeneratedStringContract = {
   enum?: string[];
   format?: string;
@@ -131,42 +139,79 @@ function validateLocales(
 }
 
 export function validateEssentialConfiguration(
-  sections: EssentialConfigurationSections,
+  sections: unknown,
   options: { expectedBaseUrl?: string } = {},
-): { valid: boolean; issues: EssentialConfigurationIssue[] } {
+): {
+  valid: boolean;
+  issues: EssentialConfigurationIssue[];
+  value?: EssentialConfigurationSections;
+} {
   const issues: EssentialConfigurationIssue[] = [];
-  validateString(issues, "/identity/name", sections.identity.name);
-  validateString(issues, "/identity/shortName", sections.identity.shortName);
-  validateString(issues, "/identity/baseUrl", sections.identity.baseUrl);
-  validateString(
+  const root = asObject(sections);
+  const identity = asObject(root?.identity);
+  const assets = asObject(identity?.assets);
+  const theme = asObject(root?.theme);
+  const colors = asObject(theme?.colors);
+  const localization = asObject(root?.localization);
+  const name = identity?.name;
+  const shortName = identity?.shortName;
+  const baseUrl = identity?.baseUrl;
+  const logoDark = assets?.logoDark;
+  const favicon = assets?.favicon;
+  const accent = colors?.accent;
+  const tertiary = colors?.tertiary;
+  const locales = localization?.locales;
+  const defaultLocale = localization?.defaultLocale;
+
+  const nameIsString = validateString(
+    issues,
+    "/identity/name",
+    name,
+  );
+  const shortNameIsString = validateString(
+    issues,
+    "/identity/shortName",
+    shortName,
+  );
+  const baseUrlIsString = validateString(
+    issues,
+    "/identity/baseUrl",
+    baseUrl,
+  );
+  const logoIsString = validateString(
     issues,
     "/identity/assets/logoDark",
-    sections.identity.assets.logoDark,
+    logoDark,
   );
-  validateString(
+  const faviconIsString = validateString(
     issues,
     "/identity/assets/favicon",
-    sections.identity.assets.favicon,
+    favicon,
   );
-  validateString(issues, "/theme/colors/accent", sections.theme.colors.accent);
-  validateString(
+  const accentIsString = validateString(
+    issues,
+    "/theme/colors/accent",
+    accent,
+  );
+  const tertiaryIsString = validateString(
     issues,
     "/theme/colors/tertiary",
-    sections.theme.colors.tertiary,
+    tertiary,
   );
   const localesAreStrings = validateLocales(
     issues,
-    sections.localization.locales,
+    locales,
   );
   const defaultLocaleIsString = validateString(
     issues,
     "/localization/defaultLocale",
-    sections.localization.defaultLocale,
+    defaultLocale,
   );
 
   if (
     options.expectedBaseUrl !== undefined &&
-    sections.identity.baseUrl !== options.expectedBaseUrl
+    baseUrlIsString &&
+    baseUrl !== options.expectedBaseUrl
   ) {
     issues.push({
       pointer: "/identity/baseUrl",
@@ -176,9 +221,7 @@ export function validateEssentialConfiguration(
   if (
     localesAreStrings &&
     defaultLocaleIsString &&
-    !sections.localization.locales.includes(
-      sections.localization.defaultLocale,
-    )
+    !locales.includes(defaultLocale)
   ) {
     issues.push({
       pointer: "/localization/defaultLocale",
@@ -186,6 +229,42 @@ export function validateEssentialConfiguration(
     });
   }
 
-  return { valid: issues.length === 0, issues };
+  const valid = issues.length === 0;
+  return {
+    valid,
+    issues,
+    value:
+      valid &&
+      nameIsString &&
+      shortNameIsString &&
+      baseUrlIsString &&
+      logoIsString &&
+      faviconIsString &&
+      accentIsString &&
+      tertiaryIsString &&
+      localesAreStrings &&
+      defaultLocaleIsString
+        ? {
+            identity: {
+              name,
+              shortName,
+              baseUrl,
+              assets: {
+                logoDark,
+                favicon,
+              },
+            },
+            theme: {
+              colors: {
+                accent,
+                tertiary,
+              },
+            },
+            localization: {
+              locales,
+              defaultLocale,
+            },
+          }
+        : undefined,
+  };
 }
-
