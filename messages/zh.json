@@ -2107,5 +2107,38 @@
     "minutesAgo": "{count}分钟前",
     "hoursAgo": "{count}小时前",
     "daysAgo": "{count}天前"
+  },
+  "evidenceLibrarySetup": {
+    "eyebrow": "证据库",
+    "title": "创建证据库",
+    "description": "为证据库命名。继续前，OpenScholar 会预留平台地址。",
+    "activeOrganizationLabel": "当前组织",
+    "detailsTitle": "证据库详情",
+    "detailsDescription": "输入公开名称。简称和地址会自动生成。",
+    "savedDraftDescription": "已保存的草稿可以继续使用。",
+    "libraryNameLabel": "证据库名称",
+    "libraryNameHelp": "最多 100 个字符。",
+    "shortNameLabel": "初始简称",
+    "shortNameHelp": "根据证据库名称生成，可在配置时修改。",
+    "publicAddressLabel": "平台地址",
+    "publicAddressHelp": "此地址由 OpenScholar 预留，不能在这里编辑。",
+    "checkingAddress": "正在检查下一个可用地址…",
+    "continue": "继续",
+    "continuing": "正在保存…",
+    "createError": "无法保存证据库，请重试。",
+    "noActiveOrganizationTitle": "请选择组织",
+    "noActiveOrganizationDescription": "请使用 Clerk 组织切换器选择或创建组织，然后返回此页面。",
+    "adminOnlyTitle": "需要组织管理员权限",
+    "adminOnlyDescription": "只有组织管理员可以创建该组织的证据库。"
+  },
+  "evidenceLibraryConfigurationShell": {
+    "eyebrow": "证据库",
+    "description": "这是该证据库已保存的设置草稿。",
+    "identityTitle": "已保存的标识信息",
+    "identityDescription": "这些信息在创建证据库时保存。",
+    "libraryNameLabel": "证据库名称",
+    "shortNameLabel": "简称",
+    "publicAddressLabel": "平台地址",
+    "publicAddressHelp": "平台地址为只读。"
   }
 }

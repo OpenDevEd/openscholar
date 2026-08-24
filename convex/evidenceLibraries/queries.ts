@@ -19,6 +19,7 @@ import {
 import {
   findAvailableEvidenceLibrarySetupIdentity,
   readCurrentEvidenceLibrarySetup,
+  readEvidenceLibrarySetupIdentity,
   validateEvidenceLibrarySetupName,
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
@@ -54,7 +55,11 @@ export async function readEvidenceLibrarySetup(
     args.libraryId,
     "manage",
   );
-  return await readEvidenceLibrarySetupRecords(ctx, access.library);
+  const setup = await readEvidenceLibrarySetupRecords(ctx, access.library);
+  return {
+    ...setup,
+    identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
+  };
 }
 
 export const getSetupDraft = query({
@@ -70,6 +75,7 @@ export const getSetupDraft = query({
       _creationTime: v.number(),
       ...evidenceLibraryConfigDraftFields,
     }),
+    identity: v.object(evidenceLibrarySetupIdentityFields),
     revision: v.object({
       _id: v.id("evidenceLibraryConfigRevisions"),
       _creationTime: v.number(),

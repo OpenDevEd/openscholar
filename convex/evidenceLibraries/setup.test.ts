@@ -131,6 +131,12 @@ describe("Evidence Library setup draft", () => {
         baseRevisionId: created.revisionId,
         editVersion: 0,
       },
+      identity: {
+        name: setupArgs.name,
+        publicAddress: setupAddress,
+        shortName: setupArgs.name,
+        slug: "climate-evidence",
+      },
       library: {
         _id: created.libraryId,
         draftId: created.draftId,
@@ -274,6 +280,35 @@ describe("Evidence Library setup draft", () => {
       revisions: 3,
       runtimeBindings: 3,
     });
+  });
+
+  it("enforces the runtime identity name and short-name limits", async () => {
+    const t = convexTest(schema, modules);
+    await seedOrganization(t, {
+      clerkOrganizationId: "org_limits",
+      clerkUserId: "user_limits",
+      role: "org:admin",
+    });
+    const admin = t.withIdentity({
+      subject: "user_limits",
+      o: { id: "org_limits", rol: "org:admin" },
+    });
+
+    await expect(
+      admin.mutation(api.evidenceLibraries.mutations.createSetupDraft, {
+        name: "a".repeat(101),
+      }),
+    ).rejects.toThrow(/VALIDATION_ERROR/);
+    expect(
+      await t.run((ctx) => ctx.db.query("evidenceLibraries").collect()),
+    ).toHaveLength(0);
+
+    const created = await admin.mutation(
+      api.evidenceLibraries.mutations.createSetupDraft,
+      { name: "a".repeat(100) },
+    );
+    expect(created.name).toHaveLength(100);
+    expect(created.shortName).toHaveLength(40);
   });
 
   it("rejects partial pending and ready bindings and requires failed errors", async () => {

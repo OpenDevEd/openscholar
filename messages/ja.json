@@ -2107,5 +2107,38 @@
     "minutesAgo": "{count}分前",
     "hoursAgo": "{count}時間前",
     "daysAgo": "{count}日前"
+  },
+  "evidenceLibrarySetup": {
+    "eyebrow": "エビデンスライブラリ",
+    "title": "エビデンスライブラリを作成",
+    "description": "ライブラリに名前を付けます。続行前に OpenScholar がプラットフォームのアドレスを確保します。",
+    "activeOrganizationLabel": "現在の組織",
+    "detailsTitle": "ライブラリの詳細",
+    "detailsDescription": "公開名を入力してください。短縮名とアドレスは自動で生成されます。",
+    "savedDraftDescription": "保存済みの下書きがあります。このまま続行できます。",
+    "libraryNameLabel": "ライブラリ名",
+    "libraryNameHelp": "100文字以内。",
+    "shortNameLabel": "初期の短縮名",
+    "shortNameHelp": "ライブラリ名から生成されます。設定画面で変更できます。",
+    "publicAddressLabel": "プラットフォームアドレス",
+    "publicAddressHelp": "このアドレスは OpenScholar が確保します。ここでは変更できません。",
+    "checkingAddress": "次に利用できるアドレスを確認中…",
+    "continue": "続行",
+    "continuing": "保存中…",
+    "createError": "ライブラリを保存できませんでした。もう一度お試しください。",
+    "noActiveOrganizationTitle": "組織を選択してください",
+    "noActiveOrganizationDescription": "Clerk の組織スイッチャーで組織を選択または作成してから、ここに戻ってください。",
+    "adminOnlyTitle": "組織管理者が必要です",
+    "adminOnlyDescription": "エビデンスライブラリを作成できるのは組織管理者だけです。"
+  },
+  "evidenceLibraryConfigurationShell": {
+    "eyebrow": "エビデンスライブラリ",
+    "description": "これはこのライブラリに保存された設定の下書きです。",
+    "identityTitle": "保存済みの識別情報",
+    "identityDescription": "これらの情報はライブラリ作成時に保存されました。",
+    "libraryNameLabel": "ライブラリ名",
+    "shortNameLabel": "短縮名",
+    "publicAddressLabel": "プラットフォームアドレス",
+    "publicAddressHelp": "プラットフォームアドレスは読み取り専用です。"
   }
 }

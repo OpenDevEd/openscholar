@@ -2132,5 +2132,38 @@
     "minutesAgo": "{count}m ago",
     "hoursAgo": "{count}h ago",
     "daysAgo": "{count}d ago"
+  },
+  "evidenceLibrarySetup": {
+    "eyebrow": "Evidence Libraries",
+    "title": "Create an Evidence Library",
+    "description": "Name the library. OpenScholar will reserve its platform address before you continue.",
+    "activeOrganizationLabel": "Active organisation",
+    "detailsTitle": "Library details",
+    "detailsDescription": "Enter the public name. The short name and address are generated for you.",
+    "savedDraftDescription": "Your saved draft is ready. Continue when you are ready.",
+    "libraryNameLabel": "Library name",
+    "libraryNameHelp": "Up to 100 characters.",
+    "shortNameLabel": "Initial short name",
+    "shortNameHelp": "Generated from the library name. You can change it during configuration.",
+    "publicAddressLabel": "Platform address",
+    "publicAddressHelp": "OpenScholar reserves this address. It cannot be edited here.",
+    "checkingAddress": "Checking the next available address…",
+    "continue": "Continue",
+    "continuing": "Saving…",
+    "createError": "The library could not be saved. Try again.",
+    "noActiveOrganizationTitle": "Choose an organisation",
+    "noActiveOrganizationDescription": "Select or create an organisation with the Clerk organisation switcher, then return here.",
+    "adminOnlyTitle": "Organisation admin required",
+    "adminOnlyDescription": "Only an organisation admin can create its Evidence Library."
+  },
+  "evidenceLibraryConfigurationShell": {
+    "eyebrow": "Evidence Library",
+    "description": "This is the saved setup draft for this library.",
+    "identityTitle": "Saved identity",
+    "identityDescription": "These details were saved when the library was created.",
+    "libraryNameLabel": "Library name",
+    "shortNameLabel": "Short name",
+    "publicAddressLabel": "Platform address",
+    "publicAddressHelp": "The platform address is read-only."
   }
 }

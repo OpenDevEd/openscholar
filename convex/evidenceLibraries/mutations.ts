@@ -138,15 +138,17 @@ export async function createEvidenceLibrarySetup(
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
   });
-  const setupOperation = await queueEvidenceLibraryOperation(ctx, {
-    libraryId,
-    kind: "setup",
-    idempotencyKey: SETUP_OPERATION_IDEMPOTENCY_KEY,
-  });
-  const runtimeBinding = await createPendingRuntimeBinding(ctx, {
-    libraryId,
-    publicAddress,
-  });
+  const [setupOperation, runtimeBinding] = await Promise.all([
+    queueEvidenceLibraryOperation(ctx, {
+      libraryId,
+      kind: "setup",
+      idempotencyKey: SETUP_OPERATION_IDEMPOTENCY_KEY,
+    }),
+    createPendingRuntimeBinding(ctx, {
+      libraryId,
+      publicAddress,
+    }),
+  ]);
   await ctx.db.patch("evidenceLibraries", libraryId, {
     draftId,
     latestRevisionId: revisionId,
