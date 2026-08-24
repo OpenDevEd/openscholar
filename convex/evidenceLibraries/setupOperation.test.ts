@@ -1,80 +1,10 @@
 /// <reference types="vite/client" />
-import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, internal } from "../_generated/api";
-import schema from "../schema";
-
-const modules = import.meta.glob("/convex/**/*.ts");
-
-const essentialSections = {
-  identity: {
-    name: "Climate Evidence",
-    shortName: "Climate",
-    baseUrl: "https://climate-evidence-lib.libraries.example.test",
-    assets: {
-      logoDark: "https://assets.example.test/logo.svg",
-      favicon: "https://assets.example.test/favicon.ico",
-    },
-  },
-  theme: { colors: { accent: "#005A9C", tertiary: "#F2A900" } },
-  localization: { locales: ["en-GB"], defaultLocale: "en-GB" },
-};
-
-async function createActivatedSetup(suffix: string) {
-  const t = convexTest(schema, modules);
-  const clerkOrganizationId = `org_${suffix}`;
-  const clerkUserId = `user_${suffix}`;
-  await t.run(async (ctx) => {
-    const organizationId = await ctx.db.insert("organizations", {
-      clerkOrganizationId,
-      name: `Team ${suffix}`,
-      slug: `team-${suffix}`,
-      state: "active",
-      clerkCreatedAt: 1,
-      clerkUpdatedAt: 1,
-      createdAt: 1,
-      updatedAt: 1,
-    });
-    await ctx.db.insert("organizationMemberships", {
-      organizationId,
-      clerkMembershipId: `orgmem_${suffix}`,
-      clerkUserId,
-      role: "org:admin",
-      state: "active",
-      clerkCreatedAt: 1,
-      clerkUpdatedAt: 1,
-      createdAt: 1,
-      updatedAt: 1,
-    });
-  });
-  const admin = t.withIdentity({
-    subject: clerkUserId,
-    o: { id: clerkOrganizationId, rol: "org:admin" },
-  });
-  const created = await admin.mutation(
-    api.evidenceLibraries.mutations.createSetupDraft,
-    { name: essentialSections.identity.name },
-  );
-  const saved = await admin.mutation(
-    api.evidenceLibraries.mutations.saveEssentialConfiguration,
-    {
-      libraryId: created.libraryId,
-      sections: essentialSections,
-      expectedEditVersion: 0,
-    },
-  );
-  const activated = await admin.mutation(
-    api.evidenceLibraries.mutations.activateConfiguration,
-    {
-      libraryId: created.libraryId,
-      expectedEditVersion: saved.editVersion,
-    },
-  );
-  return { activated, admin, created, t };
-}
+import { internal } from "../_generated/api";
+import { createActivatedSetupFixture } from "./tests/setupFixture.test";
 
 async function claim(
-  fixture: Awaited<ReturnType<typeof createActivatedSetup>>,
+  fixture: Awaited<ReturnType<typeof createActivatedSetupFixture>>,
   attemptToken = "attempt-1",
 ) {
   return await fixture.t.mutation(
@@ -88,7 +18,7 @@ async function claim(
 }
 
 async function record(
-  fixture: Awaited<ReturnType<typeof createActivatedSetup>>,
+  fixture: Awaited<ReturnType<typeof createActivatedSetupFixture>>,
   receipt:
     | {
         step: "database";
@@ -145,7 +75,7 @@ describe("fixed Evidence Library setup operation", () => {
   });
 
   it("claims the activated revision once and rejects generic setup transitions", async () => {
-    const fixture = await createActivatedSetup("claim");
+    const fixture = await createActivatedSetupFixture("claim");
     const claimed = await claim(fixture);
 
     expect(claimed).toMatchObject({
@@ -202,7 +132,7 @@ describe("fixed Evidence Library setup operation", () => {
   });
 
   it("records checked resources in the fixed order", async () => {
-    const fixture = await createActivatedSetup("order");
+    const fixture = await createActivatedSetupFixture("order");
     await claim(fixture);
 
     await expect(
@@ -265,7 +195,7 @@ describe("fixed Evidence Library setup operation", () => {
   });
 
   it("keeps receipts after failure and rechecks from the first step", async () => {
-    const fixture = await createActivatedSetup("retry");
+    const fixture = await createActivatedSetupFixture("retry");
     await claim(fixture);
     await record(fixture, {
       step: "database",
@@ -347,7 +277,7 @@ describe("fixed Evidence Library setup operation", () => {
   });
 
   it("activates only after readiness proves the requested revision", async () => {
-    const fixture = await createActivatedSetup("complete");
+    const fixture = await createActivatedSetupFixture("complete");
     const credentialIds = await fixture.t.run(async (ctx) => {
       const makeCredential = async (key: string) =>
         await ctx.db.insert("evidenceLibraryCredentials", {

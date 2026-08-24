@@ -331,7 +331,7 @@ export type EvidenceLibrarySetupStage = Infer<
   typeof evidenceLibrarySetupStageValidator
 >;
 
-const evidenceLibraryReconcileOutcomeValidator = v.union(
+export const evidenceLibraryReconcileOutcomeValidator = v.union(
   v.literal("created"),
   v.literal("matched"),
   v.literal("updated"),
@@ -464,6 +464,7 @@ export const evidenceLibraryOperationFields = {
   setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
   setupAttemptToken: v.optional(v.string()),
   setupLeaseExpiresAt: v.optional(v.number()),
+  setupEncryptedDatabasePassword: v.optional(v.string()),
   status: v.union(
     v.literal("queued"),
     v.literal("running"),
