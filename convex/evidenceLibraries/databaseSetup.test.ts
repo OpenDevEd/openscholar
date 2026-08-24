@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import { decrypt } from "../lib/crypto";
-import { createActivatedSetupFixture } from "./tests/setupFixture.test";
+import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const ENCRYPTION_KEY = "11".repeat(32);
 

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
-import { createActivatedSetupFixture } from "./tests/setupFixture.test";
+import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 async function claim(
   fixture: Awaited<ReturnType<typeof createActivatedSetupFixture>>,

@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
-import { api } from "../../_generated/api";
-import schema from "../../schema";
+import { api } from "../../convex/_generated/api";
+import schema from "../../convex/schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
