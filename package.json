@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:convex": "convex dev",
-    "dev:all": "pm2 start ecosystem.config.js",
+    "dev": "node scripts/run-remote-convex.mjs dev",
+    "dev:web": "next dev",
+    "convex:push": "node scripts/run-remote-convex.mjs push",
+    "logs:convex": "node scripts/run-remote-convex.mjs logs",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",

@@ -41,10 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# PM2 logs and process files
-logs/
-.pm2/
-
 .cursor
 
 .gsd-auto-logs

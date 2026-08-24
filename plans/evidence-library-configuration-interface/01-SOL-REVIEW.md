@@ -33,4 +33,4 @@ Both reviewers independently re-reviewed the final HEAD after all findings were 
 - `git diff --check`: **passed**
 - Generated schema/catalog bytes and hashes remain pinned to `4a07fd6176d827d3382b392f847639167ec741ed`.
 
-Plan 01 does not touch a pm2-deployed tree, so no Convex or Next.js pm2 gate applies. No push was performed.
+Plan 01 does not touch a currently deployed tree, so no Convex or Next.js runtime gate applies. No push was performed.

@@ -21,7 +21,7 @@ Long-running autonomous task. Expect 3–5 hours. Do not stop mid-plan to ask fo
 2. No legacy or compatibility code. This is pre-testing software; replace incorrect assumptions cleanly and remove dead code.
 3. If Convex enters scope, read `convex/_generated/ai/guidelines.md`; it overrides training knowledge.
 4. Use TDD for pure contract, provenance, path, digest, and registry logic. Test observable behavior, never CSS strings or implementation text.
-5. After every commit touching `convex/`, run `npx pm2 logs convex --lines 5 --nostream` and require `✔ Convex functions ready!`. After every commit touching `app/` or `components/`, run `npx pm2 logs next --lines 5 --nostream` and require a recent `✓ Compiled` with no compile error.
+5. After every commit touching `convex/`, run `npm run convex:push` and require `✔ Convex functions ready!`. After every commit touching `app/` or `components/`, run `npm run dev:web` and require a recent `✓ Compiled` with no compile error.
 6. Research before guessing: inspect installed package source and relevant skills; use primary current documentation for Ajv or framework behavior.
 7. Delegate investigations exceeding about three reads or greps, but keep TDD cycles, commits, plan revisions, and acceptance verification in the main session.
 8. Do not introduce application-state `useEffect`, compatibility shims, duplicated config literals, or a second configuration schema.
@@ -48,7 +48,7 @@ Use conventional commits scoped with `[plan-01]`. One Red → Green → Refactor
 
 ## WHEN TO STOP
 
-Stop only when every Plan 01 acceptance criterion is satisfied, targeted and repository checks are green, generated artifacts reproduce deterministically, and every touched deployed tree has a green pm2 gate. If an authoritative required source or API does not exist, follow the blocker protocol. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
+Stop only when every Plan 01 acceptance criterion is satisfied, targeted and repository checks are green, generated artifacts reproduce deterministically, and every touched deployed tree has a green runtime gate. If an authoritative required source or API does not exist, follow the blocker protocol. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
 
 ## DEVIATIONS
 
@@ -59,7 +59,7 @@ If the plan is wrong or incomplete: commit clean in-progress work, edit the numb
 1. Read the complete Plan 01 and `00-README.md`.
 2. At `/Users/mcharrad/Documents/Github/new-el-optimize` on branch `openscholar`, read the authoritative schema, catalogs, artifact generator, and tests, then pin the exact source SHA.
 3. Run `git status --short --branch` and protect unrelated work.
-4. Run `npx pm2 logs convex --lines 5 --nostream` to ensure the existing dev push is healthy before any commit; also inspect Next logs if scope expands into a deployed frontend tree.
+4. Run `npm run convex:push` to ensure the existing dev push is healthy before any commit; also inspect Next logs if scope expands into a deployed frontend tree.
 5. Begin the first failing test for deterministic artifact provenance.
 
 Go.
@@ -84,7 +84,7 @@ Long-running autonomous task. Expect 6–9 hours. Do not stop mid-plan to ask fo
 2. No legacy or compatibility paths. Dev data is disposable; use the destructive migration stance in the plan.
 3. Read `convex/_generated/ai/guidelines.md` before touching Convex. Its guidance overrides training knowledge.
 4. Use TDD for organization role mapping, authorization decisions, revision transitions, optimistic-concurrency conflicts, and credential metadata. Assert results and errors, not source text.
-5. After every Convex-touching commit, run `npx pm2 logs convex --lines 5 --nostream`; require the newest deployment to show `✔ Convex functions ready!` with no recent `✖ Error`. Check `npx convex function-spec | rg 'evidenceLibraries'` for every new public function and validator.
+5. After every Convex-touching commit, run `npm run convex:push`; require the newest deployment to show `✔ Convex functions ready!` with no recent `✖ Error`. Check `npx convex function-spec | rg 'evidenceLibraries'` for every new public function and validator.
 6. Use the live-grounded Clerk contract in `02-PREREQUISITES.md`: Convex receives `identity.o.id` and `identity.o.rol`, with roles exactly `org:admin` / `org:member`. Preserve the signed Clerk body `timestamp` and `instance_id`; never order events by `svix-timestamp`, add Clerk v1 fallbacks, or guess a payload.
 7. Remove the global `schemaValidation: false` before adding Plan 02 tables. Dev data is disposable: delete only reported invalid rows rather than widening validators or adding compatibility shims.
 8. Delegate broad caller mapping and documentation research, but retain TDD cycles, commits, plan edits, and final deployed-spec verification in the main session.
@@ -105,7 +105,7 @@ Work first in the authorization and revision helpers named by the plan under `co
 4. Add library, draft, immutable revision, section, operation, and credential functions.
 5. Add public function validators, indexes, authorization integration, and focused integration tests.
 
-Commit each logical unit separately and close every Convex commit with the pm2 and function-spec gates.
+Commit each logical unit separately and close every Convex commit with the remote-push and function-spec gates.
 
 ## COMMIT DISCIPLINE
 
@@ -113,7 +113,7 @@ Use conventional commits scoped with `[plan-02]`. Commit each TDD green separate
 
 ## WHEN TO STOP
 
-Stop only when Plan 02 acceptance criteria pass, unauthorized users are rejected server-side, revisions are immutable, draft conflicts are observable, tests pass, public validators match source, and pm2 shows `✔ Convex functions ready!` for the final state. Use the blocker protocol for a truly absent required Clerk or Convex capability. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
+Stop only when Plan 02 acceptance criteria pass, unauthorized users are rejected server-side, revisions are immutable, draft conflicts are observable, tests pass, public validators match source, and the remote push shows `✔ Convex functions ready!` for the final state. Use the blocker protocol for a truly absent required Clerk or Convex capability. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
 
 ## DEVIATIONS
 
@@ -125,7 +125,7 @@ For a clear correction, commit clean work, revise Plan 02 with rationale, commit
 2. Read `convex/_generated/ai/guidelines.md`, the named auth/access/encryption donors, and current installed Clerk organization documentation.
 3. Verify Organizations are enabled, inspect and record the exact JWT claim names, and verify one development org with `org:admin` and `org:member` test identities; if any prerequisite is unavailable, follow the Plan 02 blocker protocol before schema work.
 4. Run `git status --short --branch`; preserve unrelated changes.
-5. Run `npx pm2 logs convex --lines 5 --nostream` and require a healthy boot deployment, then begin the first authorization-policy failing test.
+5. Run `npm run convex:push` and require a healthy boot deployment, then begin the first authorization-policy failing test.
 
 Go.
 ```
@@ -149,7 +149,7 @@ Long-running autonomous task. Expect 5–8 hours. Do not stop mid-plan to ask fo
 2. No legacy or compatibility behavior. Delete obsolete scaffolding encountered in the owned slice instead of preserving two shells.
 3. Read `convex/_generated/ai/guidelines.md` before using Convex and the relevant guide under `node_modules/next/dist/docs/` before writing routes, layouts, loading, errors, or navigation.
 4. Use TDD for section/rail derivation and behavioral component tests for roles, landmarks, hash targets, active state, permission state, and focus behavior. Never assert Tailwind classes.
-5. After every commit touching `app/` or `components/`, run `npx pm2 logs next --lines 5 --nostream` and require a recent `✓ Compiled` with no `Module not found`, type error, or failed compile. Run the Convex gate after any backend commit.
+5. After every commit touching `app/` or `components/`, run `npm run dev:web` and require a recent `✓ Compiled` with no `Module not found`, type error, or failed compile. Run the Convex gate after any backend commit.
 6. Research installed Next.js APIs and browser behavior before choosing a pattern; do not guess from older Next.js knowledge.
 7. Delegate broad route/donor mapping, but keep TDD cycles, commits, plan revisions, and browser acceptance verification in the main session.
 8. No application-state `useEffect`. Use native anchor behavior and derived state. Only a smallest-leaf, fully cleaned-up IntersectionObserver bridge is eligible if the plan's evidence proves it necessary.
@@ -168,7 +168,7 @@ Start in `lib/evidence-libraries/configuration/` with section grouping, ordered 
 3. Add section framing, issue summary, draft/revision header, and save-status semantics.
 4. Add component tests and a focused browser smoke for navigation, focus, and read-only behavior.
 
-Commit each logical unit separately and run the Next pm2 gate after every frontend commit.
+Commit each logical unit separately and run the Next browser gate after every frontend commit.
 
 ## COMMIT DISCIPLINE
 
@@ -187,7 +187,7 @@ Commit clean work, revise Plan 03 with the corrected design and rationale, commi
 1. Read Plan 03 and `00-README.md` completely.
 2. Read the relevant installed Next.js guides plus the named shell, sidebar, gate, and UI donors.
 3. Run `git status --short --branch`; protect unrelated work.
-4. Run `npx pm2 logs convex --lines 5 --nostream` to confirm the backend push is healthy, then `npx pm2 logs next --lines 5 --nostream` to confirm the frontend baseline.
+4. Run `npm run convex:push` to confirm the backend push is healthy, then `npm run dev:web` to confirm the frontend baseline.
 5. Begin the first failing section-grouping test.
 
 Go.
@@ -212,7 +212,7 @@ Long-running autonomous task. Expect 8–12 hours. Do not stop mid-plan to ask f
 2. No legacy or prototype compatibility. Correct invalid Anchor rail values instead of accepting aliases such as `boxed`.
 3. Read `convex/_generated/ai/guidelines.md` before backend work and relevant installed Next.js docs before route/component behavior.
 4. Use TDD for pointer transforms, field coercion, collection ordering, validation mapping, and dirty-patch creation. Test semantic state through roles, labels, ARIA, data attributes, and stored values, never class strings.
-5. Run `npx pm2 logs convex --lines 5 --nostream` after every backend commit and `npx pm2 logs next --lines 5 --nostream` after every frontend commit. Require `✔ Convex functions ready!` and a recent `✓ Compiled` respectively.
+5. Run `npm run convex:push` after every backend commit and `npm run dev:web` after every frontend commit. Require `✔ Convex functions ready!` and a recent `✓ Compiled` respectively.
 6. Research schema formats and installed form/control APIs before guessing; generated constraints are authoritative.
 7. Delegate broad field/donor mapping and isolated editor implementation only after contracts are locked. Main session owns TDD, commits, deviations, and final acceptance.
 8. No autosave or mirroring `useEffect`. Create patches in user event handlers; derive values and validation summaries during render.
@@ -231,15 +231,15 @@ Work in the plan-named `lib/evidence-libraries/configuration/` helpers. Write fa
 3. Implement contact, legal, localization, content, collections, and gap-map sections.
 4. Connect explicit save events, inline validation, read-only states, and focused component/browser tests.
 
-Commit per logical unit and close every deployed-tree commit with its pm2 gate.
+Commit per logical unit and close every deployed-tree commit with its runtime gate.
 
 ## COMMIT DISCIPLINE
 
-Use conventional commits scoped with `[plan-04]`. One green per pure-logic commit and one editor/concern per integration commit. Never commit red tests or a broken pm2 deployment. Never bypass hooks. Commit deviations before dependent code. Never push.
+Use conventional commits scoped with `[plan-04]`. One green per pure-logic commit and one editor/concern per integration commit. Never commit red tests or a broken remote deployment. Never bypass hooks. Commit deviations before dependent code. Never push.
 
 ## WHEN TO STOP
 
-Stop only when all eleven Plan 04 sections round-trip through the authoritative pointers, explicit saves persist minimal patches, invalid values are accessible and blocked, read-only users cannot mutate, all tests pass, and pm2 is green for every touched tree. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
+Stop only when all eleven Plan 04 sections round-trip through the authoritative pointers, explicit saves persist minimal patches, invalid values are accessible and blocked, read-only users cannot mutate, all tests pass, and the runtime check passes for every touched tree. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
 
 ## DEVIATIONS
 
@@ -250,7 +250,7 @@ Commit clean work, update Plan 04 with the corrected approach and rationale, com
 1. Read Plan 04 and `00-README.md` completely.
 2. Read the generated schema/catalog artifacts and the named field/repeater/draft donors.
 3. Read `convex/_generated/ai/guidelines.md` and the relevant installed Next.js form/rendering guide.
-4. Run `git status --short --branch`, `npx pm2 logs convex --lines 5 --nostream`, and `npx pm2 logs next --lines 5 --nostream`; require healthy baselines.
+4. Run `git status --short --branch`, `npm run convex:push`, and `npm run dev:web`; require healthy baselines.
 5. Begin the first failing JSON-pointer patch test.
 
 Go.
@@ -275,7 +275,7 @@ Long-running autonomous task. Expect 9–14 hours. Do not stop mid-plan to ask f
 2. No legacy/prototype aliases. Reject `fulltext`, `openrouter`, `no-pdf`, processing actions `append` and `replace-system-instruction` (the valid action is `append-system-instruction`), path-bearing base URLs, braced CSS, and non-HTML gap-map URLs.
 3. Read `convex/_generated/ai/guidelines.md` before backend work and relevant installed Next.js docs before UI work.
 4. Use TDD for catalog filtering, origin-only URL checks, CSS-declaration validation, source/secret state, and patch generation. Assert semantic outcomes, ARIA, and data contracts—not CSS classes.
-5. After each backend commit require `npx pm2 logs convex --lines 5 --nostream` → `✔ Convex functions ready!`, and verify new public validators with `npx convex function-spec | rg 'evidenceLibraries'`. After each frontend commit require a recent `✓ Compiled` from `npx pm2 logs next --lines 5 --nostream`.
+5. After each backend commit require `npm run convex:push` → `✔ Convex functions ready!`, and verify new public validators with `npx convex function-spec | rg 'evidenceLibraries'`. After each frontend commit require a recent `✓ Compiled` from `npm run dev:web`.
 6. Research catalog/provider and validation behavior in current source or primary docs before guessing.
 7. Delegate broad provider/source mapping and isolated editor units after the shared contract is fixed. Main session owns TDD, commits, deviations, and acceptance.
 8. No secret/query/form synchronization through `useEffect`. Submit credential changes from explicit events and derive status from Convex query results.
@@ -294,7 +294,7 @@ Start with pure helpers under `lib/evidence-libraries/configuration/` for origin
 3. Implement analytics, authentication, email, generation, and processing.
 4. Wire separate credential commands/status, explicit saves, read-only behavior, and component/browser tests.
 
-Commit each concern separately and run the correct pm2/function-spec gate after every deployed-tree commit.
+Commit each concern separately and run the correct remote-push and function-spec gate after every deployed-tree commit.
 
 ## COMMIT DISCIPLINE
 
@@ -302,7 +302,7 @@ Use conventional commits scoped with `[plan-05]`. One TDD green per Phase A comm
 
 ## WHEN TO STOP
 
-Stop only when all thirteen Plan 05 sections use authoritative catalogs and constraints, `sources` exists, synthetic Meta does not, credentials are separate from config payloads, all behavioral tests pass, deployed validators match, and both relevant pm2 gates are green. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
+Stop only when all thirteen Plan 05 sections use authoritative catalogs and constraints, `sources` exists, synthetic Meta does not, credentials are separate from config payloads, all behavioral tests pass, deployed validators match, and both relevant runtime gates are green. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
 
 ## DEVIATIONS
 
@@ -313,7 +313,7 @@ Commit clean work, revise Plan 05 with rationale, commit `docs: [plan-05] revise
 1. Read Plan 05 and `00-README.md` completely.
 2. Read generated catalogs/schema plus the named catalog, credential, and shared-editor donors.
 3. Read `convex/_generated/ai/guidelines.md` and relevant installed Next.js docs.
-4. Run `git status --short --branch`, then confirm healthy Convex and Next baselines with the required pm2 log commands.
+4. Run `git status --short --branch`, then confirm healthy Convex and Next baselines with the required remote and browser commands.
 5. Begin the first failing origin-only URL test.
 
 Go.
@@ -338,7 +338,7 @@ Long-running autonomous task. Expect 6–10 hours if the remote activation contr
 2. No legacy or fake-success path. If the required remote validation/activation/receipt-and-digest-bearing-health contract does not exist, invoke the explicit blocker protocol; never simulate publication.
 3. Read `convex/_generated/ai/guidelines.md` before Convex changes and relevant installed Next.js docs before UI/route changes.
 4. Use TDD for canonical serialization, validation-error mapping, publish-state transitions, idempotency, revision matching, rejection, and rollback selection.
-5. After every Convex commit require `✔ Convex functions ready!` via `npx pm2 logs convex --lines 5 --nostream` and inspect public validators with `npx convex function-spec | rg 'evidenceLibraries'`. After every frontend commit require a recent error-free `✓ Compiled` via the Next pm2 logs.
+5. After every Convex commit require `✔ Convex functions ready!` via `npm run convex:push` and inspect public validators with `npx convex function-spec | rg 'evidenceLibraries'`. After every frontend commit require a recent error-free `✓ Compiled` in the local Next.js terminal.
 6. Inspect the actual Evidence Library checkout, current health contract, and current transport/API before assuming an endpoint, authentication method, or retry behavior.
 7. Delegate cross-repository contract auditing, but keep protocol decisions, TDD, commits, plan revisions, and final end-to-end verification in the main session.
 8. No publish-on-state-change `useEffect`. Validate and publish only from explicit authorized event handlers/actions; derive operation UI from queries.
@@ -357,7 +357,7 @@ Work in the plan-named serializer, validation-mapper, and operation-state helper
 3. Implement receipt-first replay handling, publish request/idempotency/operation tracking, and revision+digest active confirmation.
 4. Implement rejection, retry, rollback, authorized UI commands, and end-to-end tests using Plan 02's isolated-runtime seed.
 
-Commit each logical unit separately and close each deployed-tree commit with its exact pm2/function-spec gate.
+Commit each logical unit separately and close each deployed-tree commit with its exact remote-push and function-spec gate.
 
 ## COMMIT DISCIPLINE
 
@@ -365,7 +365,7 @@ Use conventional commits scoped with `[plan-06]`. Commit each pure-logic green a
 
 ## WHEN TO STOP
 
-Stop successfully only when every Plan 06 acceptance criterion passes, authoritative validation and activation are real, operation states are recoverable, the active health revision matches the published immutable revision, rollback is proven, tests pass, and all touched-tree pm2 gates are green. Stop blocked only under the documented missing-API protocol. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
+Stop successfully only when every Plan 06 acceptance criterion passes, authoritative validation and activation are real, operation states are recoverable, the active health revision matches the published immutable revision, rollback is proven, tests pass, and all touched-tree runtime gates are green. Stop blocked only under the documented missing-API protocol. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
 
 ## DEVIATIONS
 
@@ -376,7 +376,7 @@ For a correctable plan issue, commit clean work, revise Plan 06 with rationale, 
 1. Read Plan 06 and `00-README.md` completely.
 2. Read `convex/_generated/ai/guidelines.md`, relevant installed Next.js docs, and at `/Users/mcharrad/Documents/Github/new-el-optimize` read `source.ts`, `activation.ts`, the validation/activation CLI wrappers, and the current revision-only health route.
 3. Run `git status --short --branch` in OpenScholar and read-only status in Evidence Library; protect both repositories' unrelated work.
-4. Run `npx pm2 logs convex --lines 5 --nostream` and `npx pm2 logs next --lines 5 --nostream`; require healthy baselines.
+4. Run `npm run convex:push` and `npm run dev:web`; require healthy baselines.
 5. Begin by proving whether the remote validation/activation transport exists, then write the first canonical-serialization failing test if it does.
 
 Go.
@@ -401,7 +401,7 @@ Long-running autonomous task. Expect 5–8 hours. Do not stop mid-plan to ask fo
 2. No legacy acceptance path or knowingly deferred critical defect. Remove dead prototype assumptions and fix owned accessibility failures cleanly.
 3. Read `convex/_generated/ai/guidelines.md` for backend fixes and relevant installed Next.js docs before route/render fixes.
 4. Use behavioral tests and real browser assertions for keyboard flow, landmarks, errors, focus, responsive layout, permissions, save, publish, rejection, and rollback. Never assert CSS classes; use screenshots only for real visual contracts.
-5. After every backend fix require `✔ Convex functions ready!`; after every frontend fix require a recent error-free `✓ Compiled`. The final gate includes build, focused Playwright, pm2 logs, and deployed function spec.
+5. After every backend fix require `✔ Convex functions ready!`; after every frontend fix require a recent error-free `✓ Compiled`. The final gate includes build, focused Playwright, remote Convex logs and the local Next.js terminal, and deployed function spec.
 6. Research current accessibility/browser/library behavior before guessing. Reproduce defects in the real interface.
 7. Delegate independent browser matrices or accessibility audits, but the main session owns triage, code fixes, commits, deviations, and final acceptance.
 8. Do not add application-state `useEffect` while repairing interaction behavior. Prefer native semantics, derived state, events, CSS, and declarative React patterns.
@@ -418,17 +418,17 @@ For any newly exposed pure behavior defect, add the failing test in the closest 
 1. Add the focused configuration Playwright journey and stable semantic selectors.
 2. Audit and fix keyboard, focus, landmarks, validation announcements, and read-only semantics.
 3. Validate responsive behavior and permitted visual-regression snapshots.
-4. Run build, targeted/unit/integration/e2e suites, pm2 gates, deployed function spec, and produce the release evidence.
+4. Run build, targeted/unit/integration/e2e suites, runtime gates, deployed function spec, and produce the release evidence.
 
 Commit each logical test/fix unit separately and rerun the appropriate deployed-tree gate after every commit.
 
 ## COMMIT DISCIPLINE
 
-Use conventional commits scoped with `[plan-07]`. One reproduced defect and green fix per commit; keep test and behavior change in the same slice. Never commit red tests, broken pm2 state, or hook bypasses. Commit any plan deviation first. Never push.
+Use conventional commits scoped with `[plan-07]`. One reproduced defect and green fix per commit; keep test and behavior change in the same slice. Never commit red tests, broken remote or browser state, or hook bypasses. Commit any plan deviation first. Never push.
 
 ## WHEN TO STOP
 
-Stop only when every Plan 07 acceptance criterion is evidenced, the complete keyboard and role matrix passes, `npm run build` is green, `npx playwright test e2e/evidence-library-configuration.spec.ts --config=playwright.config.ts` passes, public validators are correct, and both final pm2 gates are green. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
+Stop only when every Plan 07 acceptance criterion is evidenced, the complete keyboard and role matrix passes, `npm run build` is green, `npx playwright test e2e/evidence-library-configuration.spec.ts --config=playwright.config.ts` passes, public validators are correct, and both final runtime gates are green. You may NOT stop for ambiguity resolvable by re-reading the plan, worry about token usage, or an impulse to check with the user.
 
 ## DEVIATIONS
 
@@ -439,7 +439,7 @@ Commit clean work, revise Plan 07 with the changed acceptance strategy and ratio
 1. Read Plan 07 and `00-README.md` completely.
 2. Read the current Playwright config/helpers, relevant installed Next.js docs, Convex guidelines if backend fixes are possible, and every prior plan's acceptance criteria.
 3. Run `git status --short --branch`; preserve unrelated work.
-4. Run `npx pm2 logs convex --lines 5 --nostream` and `npx pm2 logs next --lines 5 --nostream`; a stuck baseline blocks all later commits.
+4. Run `npm run convex:push` and `npm run dev:web`; a stuck baseline blocks all later commits.
 5. Begin the real browser happy-path test from authorized route entry through draft validation and publish confirmation.
 
 Go.

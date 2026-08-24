@@ -54,7 +54,7 @@ None. No schema changes. Remove temporary placeholder section bodies when Plans 
 ```bash
 npm test -- tests/public-routes-auth.test.ts tests/components/evidence-libraries
 npm run build
-npx pm2 logs next --lines 5 --nostream
+npm run dev:web
 ```
 
 Add a focused Playwright smoke for authenticated owner/member routing once the shell exists.
@@ -64,7 +64,7 @@ Add a focused Playwright smoke for authenticated owner/member routing once the s
 After every `app/` or `components/` commit:
 
 ```bash
-npx pm2 logs next --lines 5 --nostream
+npm run dev:web
 ```
 
 Require a recent `✓ Compiled` or clean Turbopack `✓ Ready` plus HTTP 200 for the route, with no newer `Module not found`, `Type error`, `Failed to compile` or unhandled stack.
@@ -77,7 +77,7 @@ Require a recent `✓ Compiled` or clean Turbopack `✓ Ready` plus HTTP 200 for
 - Deep links, keyboard navigation, current-section semantics and responsive rail work.
 - Page/layout remain server-first; no broad client boundary.
 - No forbidden `useEffect` exists.
-- Target tests, build and Next PM2 gate pass.
+- Target tests, build and Next runtime gate pass.
 
 ## Known pitfalls
 

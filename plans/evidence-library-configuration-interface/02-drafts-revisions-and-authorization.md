@@ -68,7 +68,7 @@ Breaking/new tables and strict global schema validation. No legacy model exists.
 npm test -- convex/evidenceLibraries convex/webhooks
 npx convex function-spec > /tmp/openscholar-plan02-function-spec.json
 rg 'evidenceLibraries|webhooks' /tmp/openscholar-plan02-function-spec.json
-npx pm2 logs convex --lines 5 --nostream
+npm run convex:push
 ```
 
 Inspect deployed function specs for exact args and returns validators after the dev deployment accepts the source.
@@ -78,7 +78,7 @@ Inspect deployed function specs for exact args and returns validators after the 
 After every backend-touching commit:
 
 ```bash
-npx pm2 logs convex --lines 5 --nostream
+npm run convex:push
 ```
 
 Latest output must contain `✔ Convex functions ready!` and no newer `✖ Error`. New module names use camelCase only. Deployed function specs must expose the intended validators.

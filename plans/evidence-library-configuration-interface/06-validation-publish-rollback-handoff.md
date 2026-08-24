@@ -54,15 +54,15 @@ No compatibility transport. This is the first contract. Development operation/re
 npm test -- lib/evidence-libraries/configuration convex/evidenceLibraries tests/components/evidence-libraries
 npx playwright test e2e/evidence-library-configuration.spec.ts --config=playwright.config.ts
 npx convex function-spec | rg 'evidenceLibraries'
-npx pm2 logs convex --lines 5 --nostream
-npx pm2 logs next --lines 5 --nostream
+npm run convex:push
+npm run dev:web
 ```
 
 Run the Evidence Library's relevant schema and activation tests plus a real isolated runtime acceptance target.
 
 ## Deployability gate
 
-After every backend commit, run `npx pm2 logs convex --lines 5 --nostream` and require `✔ Convex functions ready!` with no newer `✖ Error`; inspect new public validators with `npx convex function-spec | rg 'evidenceLibraries'`. After every UI commit, run `npx pm2 logs next --lines 5 --nostream` and require a recent `✓ Compiled` with no module/type/compile error. A real publish is accepted only when the new receiving-runtime health contract reports the exact expected revision and digest and no newer rejected candidate displaced the last valid manifest.
+After every backend commit, run `npm run convex:push` and require `✔ Convex functions ready!` with no newer `✖ Error`; inspect new public validators with `npx convex function-spec | rg 'evidenceLibraries'`. After every UI commit, run `npm run dev:web` and require a recent `✓ Compiled` with no module/type/compile error. A real publish is accepted only when the new receiving-runtime health contract reports the exact expected revision and digest and no newer rejected candidate displaced the last valid manifest.
 
 ## Acceptance criteria
 
@@ -72,7 +72,7 @@ After every backend commit, run `npx pm2 logs convex --lines 5 --nostream` and r
 - Failed validation/activation never changes the active revision.
 - Operation receipt/state survives reload.
 - Rollback creates and activates a new revision while preserving history.
-- Real-service acceptance and both PM2 gates pass.
+- Real-service acceptance and both runtime gates pass.
 
 ## Known pitfalls
 

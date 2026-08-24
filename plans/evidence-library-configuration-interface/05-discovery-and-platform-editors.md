@@ -53,15 +53,15 @@ Breaking cleanup only. If Plan 02 created an incorrect credential shape, revise 
 ```bash
 npm test -- lib/evidence-libraries/configuration tests/components/evidence-libraries convex/evidenceLibraries
 npx convex function-spec | rg 'evidenceLibraries'
-npx pm2 logs convex --lines 5 --nostream
-npx pm2 logs next --lines 5 --nostream
+npm run convex:push
+npm run dev:web
 ```
 
 Explicitly test that serialized queries, DOM, logs and draft section JSON do not contain submitted secrets.
 
 ## Deployability gate
 
-After every backend commit, run `npx pm2 logs convex --lines 5 --nostream` and require `✔ Convex functions ready!` with no newer `✖ Error`. After every UI commit, run `npx pm2 logs next --lines 5 --nostream` and require a recent `✓ Compiled` with no module/type/compile error. Inspect deployed args/returns validators for every new credential function with `npx convex function-spec | rg 'evidenceLibraries'`.
+After every backend commit, run `npm run convex:push` and require `✔ Convex functions ready!` with no newer `✖ Error`. After every UI commit, run `npm run dev:web` and require a recent `✓ Compiled` with no module/type/compile error. Inspect deployed args/returns validators for every new credential function with `npx convex function-spec | rg 'evidenceLibraries'`.
 
 ## Acceptance criteria
 
@@ -71,7 +71,7 @@ After every backend commit, run `npx pm2 logs convex --lines 5 --nostream` and r
 - Secrets can be set/replaced/revoked but never read back or stored in section JSON.
 - Unsupported prototype values are absent and rejected.
 - Admin/member authorization is enforced server-side.
-- Tests, locale checks, function spec and both PM2 gates pass.
+- Tests, locale checks, function spec and both runtime gates pass.
 
 ## Known pitfalls
 

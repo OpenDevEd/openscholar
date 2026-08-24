@@ -138,8 +138,8 @@ Execution order is strict: `01 -> 02 -> 03 -> 04 -> 05 -> 06 -> 07`.
 - Exploration was split into UI donors, cross-repository contract mapping, and test/plan conventions.
 - During execution, one agent owns one numbered plan at a time.
 - Do not execute plans 04 and 05 concurrently if they touch the same generic field or registry files.
-- The main session owns plan deviations, commits, PM2 gates and final acceptance.
-- Every agent touching `convex/`, `app/` or `components/` must report both tests and the required PM2 success lines.
+- The main session owns plan deviations, commits, runtime gates and final acceptance.
+- Every agent touching `convex/`, `app/` or `components/` must report both tests and the required runtime results.
 
 ## Cross-repository boundary
 
@@ -214,4 +214,4 @@ Current primary documentation:
 
 ## Completion definition
 
-This plan set is complete only when an authenticated organization admin can open the real Anchor rail, edit all owner-controlled sections, see managed fields without exposed secrets, save and reload a durable draft, validate against the authoritative contract, publish idempotently to the correct Evidence Library, observe exact activation health, roll back by creating a new revision, and pass all unit, Convex, accessibility, browser and PM2 gates.
+This plan set is complete only when an authenticated organization admin can open the real Anchor rail, edit all owner-controlled sections, see managed fields without exposed secrets, save and reload a durable draft, validate against the authoritative contract, publish idempotently to the correct Evidence Library, observe exact activation health, roll back by creating a new revision, and pass all unit, Convex, accessibility, browser and runtime gates.

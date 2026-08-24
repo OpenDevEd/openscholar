@@ -33,7 +33,7 @@ This repository is **OpenScholar**. It is more than academic search. It covers r
 
 OpenScholar is also where people and organizations will pay for, create, configure, and manage their Evidence Libraries.
 
-The Evidence Library runtime lives in `OpenDevEd/new-el` on branch `openscholar`. It owns the public library, the `/admin` record editor, published records, files, runtime configuration, search indexing, source imports, and Zotero writeback.
+The Evidence Library runtime lives in `OpenDevEd/new-el` on branch `main`. It owns the public library, the `/admin` record editor, published records, files, runtime configuration, search indexing, source imports, and Zotero writeback.
 
 Do not rebuild Evidence Library runtime features here. The repositories must talk through a clear API that is authenticated, versioned, and safe to retry.
 
@@ -63,7 +63,7 @@ For product, architecture, roadmap, or cross-repository work:
 2. Read the Start page.
 3. Read the OpenScholar current-state page.
 4. Read only the other pages needed for the task.
-5. Check claims about current behavior against this branch, tests, pm2 logs, and the running app.
+5. Check claims about current behavior against this branch, tests, remote Convex logs, and the running app.
 
 If Outline is down, continue only when the repository gives you enough information. Say clearly that Outline could not be read. Never claim an Outline update worked until you read the page again.
 
@@ -91,9 +91,9 @@ When two sources disagree, use this order:
 
 The BeeWriter `roadmap.qmd` is still the main Evidence Library and self-service roadmap. Ignore its obsolete warning. In that roadmap, the “subscription website” means OpenScholar. `roadmap-v2.qmd` is a smaller Discover-to-Publish pilot, not a replacement for the full roadmap.
 
-The old rule that branch-only work “does not exist” was only used to rebuild a clean GitHub milestone list from `main`. It is not a general progress rule. Read OpenScholar progress from `dev` and Evidence Library progress from `new-el/openscholar`.
+The old rule that branch-only work “does not exist” was only used to rebuild a clean GitHub milestone list from `main`. It is not a general progress rule. Read OpenScholar progress from `dev` and Evidence Library progress from `new-el/main`.
 
-Zotero sync and writeback already work in `new-el/openscholar`. This includes source collection membership writeback. Never plan them as untouched future work.
+Zotero sync and writeback already work in `new-el/main`. This includes source collection membership writeback. Never plan them as untouched future work.
 
 <!-- BEGIN:nextjs-agent-rules -->
 ## Check the installed Next.js docs
@@ -113,7 +113,35 @@ npx convex ai-files install
 ```
 <!-- convex-ai-end -->
 
-The Convex and Next.js development servers run in pm2. Check their logs often. Tests passing does not prove the running app accepted the change.
+## Development uses the hosted Convex service
+
+Work from `/Users/mcharrad/Documents/Github/openscholar/dev-self`. Do not run OpenScholar development from a temporary worktree. Only one checkout may upload Convex code to the shared development deployment.
+
+Convex and Clerk stay hosted. Never start a local Convex backend, select a local Convex deployment, or run a bare `npx convex dev`. Never use PM2 for this repository.
+
+Use these commands:
+
+```sh
+npm run dev          # remote Convex watcher and logs, plus local Next.js
+npm run dev:web      # local Next.js only
+npm run convex:push  # upload Convex functions once, then exit
+npm run logs:convex  # stream remote function logs; stop with Ctrl-C
+```
+
+The wrapper refuses any Convex URL except `https://convex.opendev.space` and requires the `openscholar-dev` admin key. The matching HTTP-actions URL is `https://convex-site.opendev.space`. The remote dashboard is `https://openscholar-dashboard.opendev.space`.
+
+Use the Convex log command or dashboard for function errors, data, schedules, and deployed functions. Use Coolify service `jqlwqa7jatuq5n3e6nvc6xwh`, sub-service `backend`, only for container, network, disk, or startup failures. Other Coolify services have similar names. Do not use them.
+
+Read the last 200 backend container lines through the supported Coolify API:
+
+```sh
+coolify_token_for_logs="$(coolify context list --format json 2>/dev/null | jq -r '.[] | select(.default == true) | .token')"
+curl -sS -H "Authorization: Bearer $coolify_token_for_logs" "https://coolify.opendeved.net/api/v1/services/jqlwqa7jatuq5n3e6nvc6xwh/logs?sub_service_name=backend&lines=200&show_timestamps=true" | jq -r '.logs'
+```
+
+Tests passing does not prove that the remote deployment or running app accepted the change.
+
+Any PM2 command in an older plan is stale. Update that plan to use the commands above before executing it.
 
 ## Do not use `useEffect` for app state
 
@@ -188,23 +216,23 @@ Explain the goal, scope, design, test-first steps, and files that will change.
 
 Also include the migration choice, exact tests, deployment check, completion rules, and known risks.
 
-If the plan touches `convex/`, `app/`, `components/`, or another folder watched by pm2, add a **Deployability gate**. Name the exact pm2 command and the success line you expect.
+If the plan touches `convex/`, `app/`, or `components/`, add a **Deployability gate**. Name the exact remote or browser check and the success result.
 
 For Convex, use:
 
 ```sh
-npx pm2 logs convex --lines 5 --nostream
+npm run convex:push
 ```
 
 The success line is `✔ Convex functions ready!`.
 
-For Next.js, use:
+For Next.js, start the web app in the foreground:
 
 ```sh
-npx pm2 logs next --lines 5 --nostream
+npm run dev:web
 ```
 
-Look for a recent `✓ Compiled` and no module, type, compile, or unhandled errors.
+Open the changed page in a browser. The terminal must show a successful compile with no module, type, compile, or unhandled errors. Stop the process when the check is done.
 
 ### What goes in `PROMPTS.md`
 
@@ -214,15 +242,15 @@ Start each prompt with:
 
 1. The plan path, README path, and any plan it depends on.
 2. A clear time estimate and instructions to keep working without asking unnecessary questions.
-3. A numbered `STANDING RULES` block covering reuse, no legacy code, Convex rules, tests, pm2 checks, research, and agent use.
+3. A numbered `STANDING RULES` block covering reuse, no legacy code, Convex rules, tests, remote deployment checks, research, and agent use.
 4. An `EXECUTION RHYTHM` block: test-first pure logic, then test-after integration work, with a commit after every working unit.
 
 Finish each prompt with:
 
 1. A `COMMIT DISCIPLINE` block using the rules below.
-2. A `WHEN TO STOP` block. Do not stop for an answer that is already in the plan, token worry, or the urge to ask the user. The pm2 checks must be green before stopping.
+2. A `WHEN TO STOP` block. Do not stop for an answer that is already in the plan, token worry, or the urge to ask the user. The remote deployment and browser checks must pass before stopping.
 3. A `DEVIATIONS` block using the change-of-plan rules below.
-4. A `START NOW` block that reads the plan and README, reads Convex rules when needed, checks `git status` and pm2, and starts the first unit.
+4. A `START NOW` block that reads the plan and README, reads Convex rules when needed, checks `git status`, confirms no other Convex uploader is running, and starts the first unit.
 5. `Go.` on its own line.
 
 ## Plans must use real evidence
@@ -233,7 +261,7 @@ Use the right skill when the task matches one. If you write “likely,” “pro
 
 For Next.js work, read `node_modules/next/dist/docs/`. For Convex work, read `convex/_generated/ai/guidelines.md`.
 
-Check the relevant pm2 logs before, during, and after work that can affect the running app. A plan based on memory or guesses is not ready.
+Check the remote Convex logs and the local Next.js terminal before, during, and after work that can affect the running app. A plan based on memory or guesses is not ready.
 
 ## Tests are required
 
@@ -247,14 +275,14 @@ Do not call work complete until the right tests pass. If a test cannot run, say 
 
 ## Check that the running app accepted the change
 
-Passing Vitest and TypeScript does not prove that pm2 deployed the code.
+Passing Vitest and TypeScript does not prove that the remote Convex deployment or local browser accepted the code.
 
 ### After a Convex commit
 
-1. Run `npx pm2 logs convex --lines 5 --nostream`.
-2. Confirm the newest status says `✔ Convex functions ready!` or the same clear success.
-3. Confirm there is no recent `✖ Error`.
-4. If the push is stuck or broken, stop and fix it before making another Convex commit.
+1. Run `npm run convex:push` from `dev-self`.
+2. Confirm it ends with `✔ Convex functions ready!` or the same clear success.
+3. Run the changed function or browser flow against the remote deployment.
+4. Use `npm run logs:convex` during that check and confirm there is no matching failure. Stop the log stream with `Ctrl-C`.
 
 Common Convex failures:
 
@@ -264,17 +292,17 @@ Common Convex failures:
 
 ### After an `app/` or `components/` commit
 
-1. Run `npx pm2 logs next --lines 5 --nostream`.
-2. Confirm there is a recent `✓ Compiled` line.
-3. Confirm there is no `Module not found`, type error, compile failure, or unhandled error.
+1. Run `npm run dev:web` from `dev-self`.
+2. Open the changed page and test the real browser behavior.
+3. Confirm the terminal has no `Module not found`, type error, compile failure, or unhandled error. Stop the process afterward.
 
 ### Every matching plan must include this
 
-- Add a `Deployability gate` with the pm2 command and expected success line.
+- Add a `Deployability gate` with the exact remote or browser command and expected result.
 - Put the same check in the plan’s completion rules.
 - For a new public Convex function, check the deployed function definition and its real validator.
 
-Any agent that changes `convex/` or `app/` must run the matching pm2 check before reporting success. “Tests pass” is not enough.
+Any agent that changes `convex/` or `app/` must run the matching remote or browser check before reporting success. “Tests pass” is not enough.
 
 ## Git rules
 
@@ -330,7 +358,7 @@ Start independent agents together in one message so they can run at the same tim
 3. The exact answer format, including file and line references when needed.
 4. Whether it may edit code or must only research.
 
-An agent that changes `convex/` or `app/` must finish by running the matching pm2 check and reporting the exact result.
+An agent that changes `convex/` or `app/` must finish by running the matching remote or browser check and reporting the exact result.
 
 If the main session becomes too full and quality drops, pause. Commit safe work, add a short resume note to the plan, run `/clear`, and restart from the matching prompt in `PROMPTS.md`.
 

@@ -50,8 +50,8 @@ None unless the exact Plan 02 mutation contract is wrong. Any required schema de
 
 ```bash
 npm test -- lib/evidence-libraries/configuration tests/components/evidence-libraries convex/evidenceLibraries
-npx pm2 logs convex --lines 5 --nostream
-npx pm2 logs next --lines 5 --nostream
+npm run convex:push
+npm run dev:web
 ```
 
 Add axe coverage for representative scalar, repeater and invalid-section states.
@@ -71,7 +71,7 @@ This plan touches `components/` and may touch `convex/`:
 - Every invalid control is connected through `aria-invalid` and `aria-describedby`.
 - Repeaters are fully keyboard operable with predictable focus.
 - No prototype-only value or fake secret is present.
-- Locale completeness, component tests, axe and PM2 gates pass.
+- Locale completeness, component tests, axe and runtime gates pass.
 
 ## Known pitfalls
 

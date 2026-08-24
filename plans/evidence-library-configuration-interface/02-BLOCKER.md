@@ -23,7 +23,7 @@ service credentials. No production Evidence Library was reused or changed.
 
 - `npm test`: 363 files and 3,547 tests passed.
 - The deployed function spec contains the public Evidence Library mutations, queries, credential action and provisioning action with explicit args and return validators.
-- `npx pm2 logs convex --lines 5 --nostream` shows the latest `✔ Convex functions ready!` deployment.
+- `npm run convex:push` shows the latest `✔ Convex functions ready!` deployment.
 
 ### Isolated Evidence Library runtime
 
@@ -286,7 +286,7 @@ Final proof:
 - `npx tsc --noEmit`: passed.
 - `npx convex function-spec`: the Plan 02 public functions have explicit
   argument and return validators.
-- `npx pm2 logs convex --lines 5 --nostream`: no current deployment error; the
+- `npm run convex:push`: no current deployment error; the
   newest deploy result is `✔ 14:12:59 Convex functions ready!`.
 
 The isolated runtime blocker is closed. Fable reviewed the complete Plan 02

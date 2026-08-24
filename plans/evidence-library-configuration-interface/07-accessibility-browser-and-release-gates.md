@@ -8,7 +8,7 @@ Close the interface with full keyboard, accessibility, responsive, authenticated
 
 - Audit and repair all editor states and 24 sections.
 - Add complete axe/component/Playwright coverage.
-- Verify production build behavior, real PM2 processes and isolated Evidence Library activation.
+- Verify the production build, the remote Convex deployment, the local Next.js app, and isolated Evidence Library activation.
 - Remove placeholders, obsolete prototype assumptions and dead code.
 - Record final verification evidence.
 
@@ -30,7 +30,7 @@ Close the interface with full keyboard, accessibility, responsive, authenticated
 5. Red/green validate/publish/idempotent replay/failure/rollback with isolated runtime.
 6. Capture and review visual screenshots; fix source, then rerun behavioral suites.
 7. Search for placeholder values, duplicate schema catalogs, forbidden effects, class-string assertions and dead components; delete them.
-8. Run final build, full targeted suites and PM2/readback gates.
+8. Run the final build, targeted suites, remote deployment checks, and browser readback.
 
 ## Files touched
 
@@ -51,8 +51,8 @@ npm test -- lib/evidence-libraries/configuration convex/evidenceLibraries tests/
 npm run build
 npx playwright test e2e/evidence-library-configuration.spec.ts --config=playwright.config.ts
 npx convex function-spec | rg 'evidenceLibraries'
-npx pm2 logs convex --lines 5 --nostream
-npx pm2 logs next --lines 5 --nostream
+npm run convex:push
+npm run dev:web
 ```
 
 Run Playwright against the production build for final acceptance, not only the Turbopack dev server.
@@ -73,12 +73,12 @@ Run Playwright against the production build for final acceptance, not only the T
 - Save/reload/conflict/validate/publish/replay/failure/rollback journeys pass.
 - No secret appears in DOM, serialized query output, logs or screenshots.
 - No forbidden application-state `useEffect`, manual schema copy, prototype fake value, dead code or class-string test remains.
-- All build, browser, function-spec and PM2/runtime gates pass.
+- All build, browser, function-spec and runtime gates pass.
 
 ## Known pitfalls
 
 - JSDOM cannot prove sticky positioning, scroll spy or responsive overflow.
 - Dev-server success does not prove production-build behavior.
 - Axe cannot replace keyboard and screen-reader semantics review.
-- Historical PM2 errors must be distinguished from the latest success line.
+- Historical log errors must be distinguished from the latest success line.
 - Do not weaken tests to match implementation defects.

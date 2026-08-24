@@ -62,9 +62,9 @@ It's designed for systematic reviews and complex queries, not just keyword match
    ```
 
    You'll need credentials for:
-   - **Convex:** `NEXT_PUBLIC_CONVEX_URL`
-   - **Convex CLI target (for remote billing live tests):** `CONVEX_DEPLOYMENT` (or `CONVEX_DEPLOYMENT_NAME`)
-   - **Convex HTTP (optional/custom domain):** `NEXT_PUBLIC_CONVEX_SITE_URL`
+   - **Convex:** `NEXT_PUBLIC_CONVEX_URL=https://convex.opendev.space`
+   - **Convex CLI:** `CONVEX_SELF_HOSTED_URL=https://convex.opendev.space`, plus the `openscholar-dev` admin key
+   - **Convex HTTP:** `NEXT_PUBLIC_CONVEX_SITE_URL=https://convex-site.opendev.space`
    - **Clerk (Next.js):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
    - **Clerk (Convex):** `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
    - **App URL (for billing + redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
@@ -132,13 +132,23 @@ It's designed for systematic reviews and complex queries, not just keyword match
      - Webhook push is primary.
      - Hourly pull reconciliation (`internal.credits.actions.reconcileRecentPaidInvoicesFromStripe`) backfills missed eligible invoice grants.
 
-4. **Run the development server**
+4. **Run OpenScholar against the hosted development services**
 
    ```bash
    npm run dev
    ```
 
-   This starts the Next.js app and the Convex dev server.
+   This starts Next.js on this machine. It also watches `convex/`, uploads changes to the existing `openscholar-dev` Convex deployment on Coolify, and prints remote function logs. It refuses to start if `.env.local` points anywhere else. Clerk also stays hosted. Nothing starts a local Clerk or Convex server.
+
+   Useful commands:
+
+   ```bash
+   npm run dev:web       # Next.js only
+   npm run convex:push   # upload Convex code once, then exit
+   npm run logs:convex   # stream remote Convex function logs
+   ```
+
+   The remote dashboard is `https://openscholar-dashboard.opendev.space`. For Convex container failures, open Coolify service `jqlwqa7jatuq5n3e6nvc6xwh` and read the `backend` logs. Stop local development with `Ctrl-C`.
 
 ## Auth E2E + CI
 
