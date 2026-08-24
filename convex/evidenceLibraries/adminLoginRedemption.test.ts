@@ -195,6 +195,40 @@ describe("Evidence Library admin login redemption", () => {
     ]);
   });
 
+  it("returns Editor for a current Clerk member", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, membershipId, owner, t } =
+      await seedRedemptionScenario();
+    const machineCredential = await owner.action(
+      api.evidenceLibraries.credentialActions.rotateServiceCredential,
+      { libraryId },
+    );
+    await updateMembership(t, membershipId, { role: "org:member" });
+    const editor = t.withIdentity({
+      subject: "user_admin_login_redemption",
+      o: { id: "org_admin_login_redemption", rol: "org:member" },
+    });
+    const loginCode = await editor.action(
+      api.evidenceLibraries.adminLoginCodeActions.issueAdminLoginCode,
+      { libraryId },
+    );
+
+    const response = await redeem(t, {
+      libraryId,
+      machineCredential: machineCredential.credential,
+      code: loginCode.code,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      libraryId,
+      clerkUserId: "user_admin_login_redemption",
+      clerkOrganizationId: "org_admin_login_redemption",
+      role: "editor",
+      consumedAt: expect.any(Number),
+    });
+  });
+
   it("rejects a replay and records one redemption", async () => {
     vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
     const { libraryId, owner, t } = await seedRedemptionScenario();
