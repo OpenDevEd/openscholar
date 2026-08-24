@@ -106,7 +106,7 @@ function parseDatabaseSetupResult(payload: unknown): DatabaseSetupResult {
     (databaseUrl.protocol !== "postgres:" &&
       databaseUrl.protocol !== "postgresql:") ||
     !databaseUrl.hostname ||
-    !databaseUrl.username ||
+    decodeURIComponent(databaseUrl.username) !== payload.loginName ||
     !databaseUrl.password ||
     databaseUrl.pathname !== `/${payload.databaseName}`
   ) {
