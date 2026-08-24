@@ -3,7 +3,7 @@
 import { createError } from "../lib/errors";
 
 const POSTGRES_IDENTIFIER = /^[a-z0-9_]{1,63}$/u;
-const ERROR_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u;
+const ERROR_CODE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
 const MAX_ERROR_MESSAGE_LENGTH = 500;
 const REQUEST_TIMEOUT_MS = 8 * 60 * 1_000;
 

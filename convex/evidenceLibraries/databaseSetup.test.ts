@@ -170,7 +170,10 @@ describe("Evidence Library database setup", () => {
       if (shouldFail) {
         return new Response(
           JSON.stringify({
-            error: { code: "DATABASE_BUSY", message: "PostgreSQL is busy" },
+            error: {
+              code: "database_owner_conflict",
+              message: "The library database is owned by another login.",
+            },
           }),
           { status: 503, headers: { "content-type": "application/json" } },
         );
@@ -202,8 +205,8 @@ describe("Evidence Library database setup", () => {
     );
     expect(failed).toMatchObject({
       error: {
-        code: "DATABASE_BUSY",
-        message: "PostgreSQL is busy",
+        code: "database_owner_conflict",
+        message: "The library database is owned by another login.",
         stage: "database",
       },
       status: "failed",
