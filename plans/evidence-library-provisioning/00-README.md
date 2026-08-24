@@ -15,6 +15,10 @@ five agreed setup steps or keep the receipts needed for a safe retry.
   where a retry should resume.
 - PostgreSQL is shared, with a separate restricted database and login per
   library.
+- The PostgreSQL administrator login stays inside one small Evidence Library
+  provisioner service. OpenScholar sends a library ID and the saved library
+  password to one fixed endpoint. It cannot send SQL, database names, runtime
+  hosts, or administrator credentials.
 - Storage is shared, with one private and one public bucket per library.
 - Each library gets one Coolify Compose application and one private
   Meilisearch service.
@@ -35,7 +39,7 @@ five agreed setup steps or keep the receipts needed for a safe retry.
 ## Plan
 
 1. [Fixed setup operation](01-fixed-setup-operation.md)
-2. Issue #27 supplies the database step with the Evidence Library provisioner.
+2. [Shared PostgreSQL database](02-shared-postgresql-database.md)
 3. Issue #28 supplies storage, Coolify, deployment, and health checks.
 4. Issue #30 adds the small status and Retry interface.
 
@@ -52,6 +56,8 @@ state, lock, receipts, and final atomic transition.
 - `convex/evidenceLibraries/credentials.ts`
 - `convex/evidenceLibraries/validators.ts`
 - Evidence Library `src/lib/deployment/library-database.ts`
+- Evidence Library `tools/provisionLibraryDatabase.ts`
+- Evidence Library `tools/verifyLibraryDatabaseProvisioning.ts`
 - Evidence Library `docker/compose.library.yaml`
 - Evidence Library `docs/evidence-library-operations.md`
 
