@@ -1,4 +1,6 @@
-# Fable 5 adversarial review
+# Fable 5 review record
+
+Historical record. This review covered the broader interface and rollback plan. The 2026-08-24 README and Plans 03–07 replace that scope.
 
 - Reviewed: **2026-08-11 10:07:59 +01**
 - Reviewer: Claude Code CLI, model `claude-fable-5`, effort `max`

@@ -1,82 +1,49 @@
-# Plan 04 — Brand, Content, and Collection Editors
+# Plan 04: essential configuration fields
 
 ## Goal
 
-Implement the owner-editable brand/content half of the real configuration contract with reusable accessible controls and explicit section saves.
+Let the owner edit only the fields approved in issue #32.
 
-## Scope
+## Fields
 
-Sections: `identity`, `institutions`, `theme`, `navigation`, `footer`, `contact`, `legal`, `localization`, `content`, `collections`, and `gapMaps`.
+- Identity: `identity.name` and `identity.shortName`.
+- Public address: `identity.baseUrl`, generated from the runtime binding and shown read-only.
+- Assets: `identity.assets.logoDark`, optional `logoLight`, and `favicon` as URL fields supported by the runtime schema.
+- Branding: `theme.colors.accent` and `theme.colors.tertiary`, labelled Accent and Secondary.
+- Languages: `localization.locales` and `localization.defaultLocale` from the generated locale catalog.
 
-- Build reusable field, error, repeater, reorder and catalog-choice primitives.
-- Render constraints/options from the generated contract and presentation registry.
-- Save one section at a time with optimistic edit-version checking.
-- Show structural validation without reproducing Evidence Library cross-field rules.
+File upload is not part of this issue. Do not invent an asset-storage service behind the URL fields.
 
 ## Design
 
-1. Each section is a keyed editor initialized from the queried draft snapshot. Do not mirror later Convex results into local state.
-2. Scalar controls use native/uncontrolled form values where practical. Dynamic arrays use a local reducer whose state is owned only by that section editor.
-3. Save is an explicit submit handler. It builds a section payload, validates structurally, calls one mutation with expected `editVersion`, and displays the returned version/conflict.
-4. Generic primitives are presentation-only and use JSON Pointer metadata; section-specific assemblers own domain wording and compound rules.
-5. Repeaters provide add/remove/reorder keyboard actions, deterministic focus movement and stable item keys.
-6. Invalid prototype values are not preserved: `baseUrl` is origin-only, `logoStyles` is declarations-only, layout/catalog values come from the generated catalog, and gap maps require HTML URLs.
-7. All visible copy is localized in every existing locale. Missing translations fail tests rather than falling back silently.
+Use the pinned schema and catalogs for limits, URI checks, colour formats, and locale options. Use named React components for the three field groups. Do not build a general schema-form renderer.
 
-## TDD sequence
+The default language must always be one of the selected languages. The form shows a clear field error before save when that rule fails.
 
-1. Red/green pure path-to-control and form-value coercion tests; commit.
-2. Red/green generic scalar field behavior and accessible error linkage; commit.
-3. Red/green dynamic-list add/remove/reorder/focus behavior; commit.
-4. Red/green Identity/Institutions/Theme editors and section-save persistence; commit per section group.
-5. Red/green Navigation/Footer/Contact/Legal/Localization/Content editors; commit per logical group.
-6. Red/green Collections/Gap maps editors, including catalog/live-value boundaries.
-7. Run axe/component suites, then refactor repeated assemblers.
+## Test-first steps
 
-## Files touched
+1. Test schema-derived limits and the language relationship.
+2. Add reusable labelled field and error components only where the repository does not already have them.
+3. Add the identity and read-only address fields.
+4. Add logo, favicon, and colour fields.
+5. Add the locale picker and default-language field.
+6. Test keyboard use, accessible errors, and owner-only editing.
 
-- `components/evidence-libraries/configuration/{field,field-error,dynamic-list,catalog-select,section-save-status}.tsx`
-- section editors under `components/evidence-libraries/configuration/sections/`
-- `lib/evidence-libraries/configuration/{form-data,path-operations,section-codecs}.ts`
-- `convex/evidenceLibraries/mutations.ts` only if section-save contract needs a planned adjustment
-- component/pure/Convex tests
-- `messages/{en-GB,en-US,fr,hi,ja,zh}.json`
+## Files
 
-## Migration stance
+- `components/evidence-libraries/configuration/`
+- `lib/evidence-libraries/configuration/`
+- component and pure behavior tests
+- locale files touched by the fields
 
-None unless the exact Plan 02 mutation contract is wrong. Any required schema deviation must update Plan 02 first and be committed before code changes.
+## Tests
 
-## Test plan
-
-```bash
-npm test -- lib/evidence-libraries/configuration tests/components/evidence-libraries convex/evidenceLibraries
-npm run convex:push
-npm run dev:web
+```sh
+npm test -- lib/evidence-libraries/configuration tests/components/evidence-libraries
+npx tsc --noEmit
+npm run dev
 ```
 
-Add axe coverage for representative scalar, repeater and invalid-section states.
+## Completion
 
-## Deployability gate
-
-This plan touches `components/` and may touch `convex/`:
-
-- Convex: latest `✔ Convex functions ready!`, no newer `✖ Error`.
-- Next: recent `✓ Compiled`/clean `✓ Ready`, no module/type/compile error.
-- Recheck both gates after every relevant commit.
-
-## Acceptance criteria
-
-- All 11 scoped sections render from real contract/catalog metadata.
-- Save/reload preserves each section and stale saves yield an actionable conflict.
-- Every invalid control is connected through `aria-invalid` and `aria-describedby`.
-- Repeaters are fully keyboard operable with predictable focus.
-- No prototype-only value or fake secret is present.
-- Locale completeness, component tests, axe and runtime gates pass.
-
-## Known pitfalls
-
-- Do not build a universal JSON Schema form renderer; the product needs intentional UI.
-- Do not assert CSS classes.
-- Live collection/institution values are runtime data, not static catalog enums.
-- Avoid unstable array-index keys.
-- Do not call mutations from validation effects or watched state.
+Every approved field renders from the real contract. Invalid values show linked errors. No deferred field, raw JSON editor, fake option, or secret appears.

@@ -291,4 +291,4 @@ Final proof:
 
 The isolated runtime blocker is closed. Fable reviewed the complete Plan 02
 stage and approved it with no blocking findings. The next major step is Plan
-03, the real configuration route shell and 24-section Anchor rail.
+03, the owner-only configuration route with the three approved groups.

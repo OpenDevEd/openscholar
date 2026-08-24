@@ -1,88 +1,47 @@
-# Plan 03 — Route Shell and Anchor Rail
+# Plan 03: configuration route and page shell
 
 ## Goal
 
-Ship the real authenticated Evidence Library configuration route, header, exact 24-section Anchor rail and empty/loading/error/read-only states using production OpenScholar components.
+Add the owner-only configuration page with three visible groups: identity, branding, and languages.
 
 ## Scope
 
-- Add Evidence Libraries navigation and index/configuration routes.
-- Extract/generalize the existing settings shell visual donor.
-- Build server-first page/layout boundaries and small interactive leaves.
-- Implement native fragment navigation, responsive rail and current-section semantics.
-- Render section frames from the registry; editors arrive in Plans 04–05.
+- Add `/evidence-libraries/[libraryId]/configuration`.
+- Show the library name, draft state, and active revision.
+- Add links for Identity, Branding, and Languages.
+- Show Save, Validate, Preview, and Activate actions.
+- Reject members and users from another organization. Do not build a read-only configuration page for them.
 
 ## Design
 
-1. Routes: `/evidence-libraries` and `/evidence-libraries/[libraryId]/configuration`; preserve `/library` for personal research.
-2. Page/layout are Server Components rendering static structure. Authenticated Convex data loads in small client leaves via the repository's supported `useProtectedQuery` pattern from `lib/auth/use-auth-query.ts`, behind `AuthRouteGate`; no async Client Components. Introducing authenticated server-side `preloadQuery` token flow is out of scope unless grounded against current code/docs and committed as a plan deviation first.
-3. The header shows library identity, draft/active revision status and explicit Save/Validate/Publish/Rollback affordance states. Envelope metadata is not a rail section.
-4. The rail is registry-driven and contains exactly 24 anchors. Desktop is sticky; narrow screens use an accessible horizontal overflow rail.
-5. Native `#section` URLs are authoritative. A dedicated leaf hook may bridge `IntersectionObserver` for visual scroll-spy state only, with cleanup, exhaustive dependencies and the required external-system comment. It must not mutate router/nuqs/form/backend state.
-6. `aria-current="location"`, skip links, focus targets and reduced-motion behavior are first-class.
-7. Members receive the same readable document with all mutation controls disabled and an explicit read-only status.
+Use Server Components for the page shell. Put protected Convex reads in the smallest client components that need them. Reuse `AuthRouteGate`, `useProtectedQuery`, the existing settings rail styles, and `components/ui/`.
 
-## TDD sequence
+The three links use native fragment URLs. The page has one heading and one heading per group. Do not add the 21 deferred runtime sections to the page.
 
-1. Red: route/auth tests prove unauthenticated redirect, missing library, cross-tenant denial and member read-only state.
-2. Green: add routes/server boundaries and app-sidebar entry; commit.
-3. Red: registry-render test proves 24 ordered unique headings/anchors, Sources present, Meta absent and one page H1.
-4. Green: implement shell/header/section frames; commit.
-5. Red: rail interaction tests cover fragment navigation, `aria-current`, keyboard focus and responsive overflow contract.
-6. Green: implement Anchor rail and smallest-leaf observer; commit.
-7. Red/green loading, error, conflict and empty states.
-8. Refactor shared shell only after both settings and Evidence Library route tests are green.
+## Test-first steps
 
-## Files touched
+1. Test signed-out, wrong-organization, member, owner, missing-library, loading, and error states.
+2. Add the route and server-first shell.
+3. Test the three ordered links, headings, focus targets, and action labels.
+4. Add the small responsive rail and header actions.
+5. Run the route in the real browser with hosted Clerk and hosted Convex.
 
-- `app/evidence-libraries/{page,loading,error}.tsx`
-- `app/evidence-libraries/[libraryId]/layout.tsx`
-- `app/evidence-libraries/[libraryId]/configuration/{page,loading,error}.tsx`
-- `components/evidence-libraries/configuration/{configuration-shell,anchor-rail,publish-header,configuration-section}.tsx`
-- optional generalized shell under `components/settings/`
+## Files
+
+- `app/evidence-libraries/[libraryId]/configuration/`
+- `components/evidence-libraries/configuration/`
 - `components/app-sidebar.tsx`
-- `lib/auth/public-routes.ts` only if route policy requires it
-- component/route/auth tests
-- locale files for route/shell text
+- route and component tests
+- locale files touched by the new page
 
-## Migration stance
+## Tests
 
-None. No schema changes. Remove temporary placeholder section bodies when Plans 04–05 land; do not keep dual renderers.
-
-## Test plan
-
-```bash
+```sh
 npm test -- tests/public-routes-auth.test.ts tests/components/evidence-libraries
-npm run build
-npm run dev:web
+npx tsc --noEmit
+npm run dev
 ```
 
-Add a focused Playwright smoke for authenticated owner/member routing once the shell exists.
+## Completion
 
-## Deployability gate
-
-After every `app/` or `components/` commit:
-
-```bash
-npm run dev:web
-```
-
-Require a recent `✓ Compiled` or clean Turbopack `✓ Ready` plus HTTP 200 for the route, with no newer `Module not found`, `Type error`, `Failed to compile` or unhandled stack.
-
-## Acceptance criteria
-
-- Routes are distinct from personal `/library` and existing `/settings`.
-- Owner and member states render correctly; forbidden users learn nothing about library existence.
-- Exact 24-section order is registry-derived.
-- Deep links, keyboard navigation, current-section semantics and responsive rail work.
-- Page/layout remain server-first; no broad client boundary.
-- No forbidden `useEffect` exists.
-- Target tests, build and Next runtime gate pass.
-
-## Known pitfalls
-
-- Do not nest the existing settings sidebar.
-- Do not copy prototype CSS variables or standalone markup.
-- Avoid hydration mismatch from reading `location.hash` during render.
-- Observer callbacks must not synchronize application state.
-- Async Server Component behavior belongs in Playwright, not forced into JSDOM.
+The owner can open the page and move between the three groups. Everyone else is denied on the server. The page works at desktop and mobile widths and has no application-state effect.

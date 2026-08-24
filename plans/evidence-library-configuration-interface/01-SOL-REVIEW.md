@@ -1,4 +1,6 @@
-# Plan 01 — GPT-5.6 Sol Review
+# Plan 01 review record
+
+Historical record. This review covered the broader 24-section interface. The 2026-08-24 README and Plans 03–07 now define the smaller first version.
 
 Date: **2026-08-11**  
 Reviewed range: `105ba308..89c7ff0c`  
