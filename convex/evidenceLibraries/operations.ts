@@ -9,10 +9,10 @@ import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import {
   type EvidenceLibraryOperationKind,
+  evidenceLibraryConfigRunningStageValidator,
   evidenceLibraryOperationErrorInputValidator,
   evidenceLibraryOperationReceiptValidator,
   evidenceLibraryRequestableOperationKindValidator,
-  evidenceLibraryRunningStageValidator,
 } from "./validators";
 
 type RunningStage = "assembling" | "validating" | "publishing" | "activating";
@@ -69,9 +69,9 @@ function validateOperationReceipt(
   return normalized;
 }
 
-function sanitizeOperationError(
+export function sanitizeOperationError(
   error: { code: string; message: string },
-  stage: RunningStage,
+  stage: string,
 ) {
   const code = error.code.trim();
   const message = error.message.trim();
@@ -248,14 +248,14 @@ export async function applyOperationTransition(
   if (!operation || operation.libraryId !== args.libraryId) {
     throw createError("NOT_FOUND", "Evidence Library operation not found");
   }
+  if (operation.kind === "setup") {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library setup uses the fixed setup transitions",
+    );
+  }
   const now = Date.now();
   if (args.transition === "start") {
-    if (operation.kind === "setup" && !operation.revisionId) {
-      throw createError(
-        "CONFLICT",
-        "Evidence Library setup requires an activated revision",
-      );
-    }
     if (operation.status !== "queued" && operation.status !== "failed") {
       throw createError(
         "CONFLICT",
@@ -331,7 +331,7 @@ export const startOperation = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
-    stage: evidenceLibraryRunningStageValidator,
+    stage: evidenceLibraryConfigRunningStageValidator,
   },
   returns: transitionReturnValidator,
   handler: async (ctx, args) =>
