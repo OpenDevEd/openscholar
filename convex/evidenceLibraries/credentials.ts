@@ -23,6 +23,32 @@ export function resolveCredentialPath(concretePath: string, instanceKey?: string
 
 export const LIBRARY_SERVICE_CREDENTIAL_KEY = "library-service";
 
+type ServiceCredentialAuthCtx = Pick<QueryCtx | MutationCtx, "db">;
+
+export async function authenticateLibraryServiceCredential(
+  ctx: ServiceCredentialAuthCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    credentialDigest: string;
+  },
+) {
+  const credential = await ctx.db
+    .query("evidenceLibraryCredentials")
+    .withIndex("by_libraryId_and_credentialKey", (query) =>
+      query
+        .eq("libraryId", args.libraryId)
+        .eq("credentialKey", LIBRARY_SERVICE_CREDENTIAL_KEY),
+    )
+    .unique();
+  if (!credential || credential.credentialDigest !== args.credentialDigest) {
+    throw createError(
+      "FORBIDDEN",
+      "Evidence Library service authentication failed",
+    );
+  }
+  return { credentialId: credential._id, libraryId: credential.libraryId };
+}
+
 export async function storeEvidenceLibraryCredential(
   ctx: MutationCtx,
   args: {
