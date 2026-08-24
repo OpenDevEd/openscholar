@@ -16,10 +16,7 @@ import {
   evidenceLibrarySetupIdentityFields,
   sectionKeyValidator,
 } from "./validators";
-import {
-  readCurrentEvidenceLibrarySetup,
-  readEvidenceLibrarySetupIdentity,
-} from "./setupNaming";
+import { readEvidenceLibrarySetupIdentity } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 
 export async function readEvidenceLibraries(ctx: QueryCtx) {
@@ -116,37 +113,15 @@ export const getSetupDraft = query({
   handler: readEvidenceLibrarySetup,
 });
 
-export const getCurrentSetupDraft = query({
-  args: {},
-  returns: v.union(
-    v.null(),
-    v.object({
-      draftId: v.id("evidenceLibraryConfigDrafts"),
-      ...evidenceLibrarySetupIdentityFields,
-      libraryId: v.id("evidenceLibraries"),
-    }),
-  ),
-  handler: async (ctx) => {
-    const access = await requireOrganizationAccess(ctx, "manage");
-    const current = await readCurrentEvidenceLibrarySetup(
-      ctx,
-      access.organization._id,
-    );
-    if (!current) return null;
-
-    return {
-      draftId: current.setup.draft._id,
-      ...current.identity,
-      libraryId: current.setup.library._id,
-    };
-  },
-});
-
 export async function readEvidenceLibraryDraft(
   ctx: QueryCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "read",
+  );
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))

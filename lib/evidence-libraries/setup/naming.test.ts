@@ -51,9 +51,7 @@ describe("Evidence Library setup naming", () => {
         "climate-evidence",
         TEST_PLATFORM_DOMAIN,
       ),
-    ).toBe(
-      "https://climate-evidence-lib.libraries.example.test",
-    );
+    ).toBe("https://climate-evidence-lib.libraries.example.test");
     expect(validateEvidenceLibraryPlatformDomain(" Example.TEST ")).toBe(
       "example.test",
     );
@@ -72,5 +70,18 @@ describe("Evidence Library setup naming", () => {
     expect(() => validateEvidenceLibraryPlatformDomain("127.0.0.1")).toThrow(
       /DNS hostname/,
     );
+  });
+
+  it("accepts a 253-character hostname and rejects the next character", () => {
+    const validDomain = `${"a".repeat(63)}.${"b".repeat(63)}.${"c".repeat(56)}.test`;
+    const tooLongDomain = `${"a".repeat(63)}.${"b".repeat(63)}.${"c".repeat(57)}.test`;
+
+    expect(
+      new URL(createEvidenceLibraryPublicAddress("s".repeat(59), validDomain))
+        .hostname,
+    ).toHaveLength(253);
+    expect(() =>
+      createEvidenceLibraryPublicAddress("s".repeat(59), tooLongDomain),
+    ).toThrow(/253 characters/);
   });
 });

@@ -24,22 +24,54 @@ export type EvidenceLibrarySetupIdentity = {
   slug: string;
 };
 
+type EvidenceLibraryIdentityPayload = {
+  baseUrl: string;
+  name: string;
+  shortName: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function validateEvidenceLibrarySetupName(value: string): string {
   const name = normalizeEvidenceLibraryName(value);
-  if (
-    !name ||
-    Array.from(name).length > MAX_EVIDENCE_LIBRARY_NAME_LENGTH
-  ) {
+  if (!name || Array.from(name).length > MAX_EVIDENCE_LIBRARY_NAME_LENGTH) {
     throw createError(
       "VALIDATION_ERROR",
       "Evidence Library name must be between 1 and 100 characters",
     );
   }
   return name;
+}
+
+export function validateEvidenceLibraryIdentityPayload(
+  value: unknown,
+  expectedBaseUrl: string,
+  errorCode: "INVALID_DATA" | "VALIDATION_ERROR",
+): EvidenceLibraryIdentityPayload {
+  if (
+    !isRecord(value) ||
+    typeof value.name !== "string" ||
+    !value.name.trim() ||
+    Array.from(value.name).length > MAX_EVIDENCE_LIBRARY_NAME_LENGTH ||
+    typeof value.shortName !== "string" ||
+    !value.shortName.trim() ||
+    Array.from(value.shortName).length >
+      MAX_EVIDENCE_LIBRARY_SHORT_NAME_LENGTH ||
+    value.baseUrl !== expectedBaseUrl
+  ) {
+    throw createError(
+      errorCode,
+      "Evidence Library identity requires a valid name, short name, and the reserved platform address",
+    );
+  }
+
+  return {
+    baseUrl: value.baseUrl,
+    name: value.name,
+    shortName: value.shortName,
+  };
 }
 
 export function requireEvidenceLibraryPlatformDomain(
@@ -104,58 +136,40 @@ export async function readEvidenceLibrarySetupIdentity(
       query.eq("draftId", setup.draft._id).eq("sectionKey", "identity"),
     )
     .unique();
-  const payload = identitySection?.payload;
-  if (
-    !identitySection ||
-    identitySection.kind !== "draft" ||
-    !isRecord(payload) ||
-    payload.name !== setup.library.name ||
-    Array.from(setup.library.name).length >
-      MAX_EVIDENCE_LIBRARY_NAME_LENGTH ||
-    typeof payload.shortName !== "string" ||
-    !payload.shortName.trim() ||
-    Array.from(payload.shortName).length >
-      MAX_EVIDENCE_LIBRARY_SHORT_NAME_LENGTH ||
-    payload.baseUrl !== setup.publicAddress
-  ) {
+  if (!identitySection || identitySection.kind !== "draft") {
     throw createError(
       "INVALID_DATA",
       "Evidence Library setup identity is incomplete",
     );
   }
+  const payload = validateEvidenceLibraryIdentityPayload(
+    identitySection.payload,
+    setup.publicAddress,
+    "INVALID_DATA",
+  );
 
   return {
-    name: setup.library.name,
+    name: payload.name,
     publicAddress: setup.publicAddress,
     shortName: payload.shortName,
     slug: setup.library.slug,
   };
 }
 
-export async function readCurrentEvidenceLibrarySetup(
+export async function readProvisioningEvidenceLibrarySetupByName(
   ctx: SetupNamingCtx,
-  organizationId: Id<"organizations">,
+  args: { organizationId: Id<"organizations">; name: string },
 ) {
-  const libraries = await ctx.db
+  const library = await ctx.db
     .query("evidenceLibraries")
-    .withIndex("by_organizationId", (query) =>
-      query.eq("organizationId", organizationId),
+    .withIndex("by_organizationId_and_name_and_state", (query) =>
+      query
+        .eq("organizationId", args.organizationId)
+        .eq("name", args.name)
+        .eq("state", "provisioning"),
     )
-    .take(2);
-  if (libraries.length > 1) {
-    throw createError(
-      "INVALID_DATA",
-      "Organization has more than one Evidence Library setup draft",
-    );
-  }
-  const library = libraries[0];
+    .unique();
   if (!library) return null;
-  if (library.state !== "provisioning") {
-    throw createError(
-      "CONFLICT",
-      "Organization already has an Evidence Library",
-    );
-  }
 
   const setup = await readEvidenceLibrarySetupRecords(ctx, library);
   return {

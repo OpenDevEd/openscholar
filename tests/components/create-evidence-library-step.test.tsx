@@ -3,6 +3,7 @@
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -33,7 +34,7 @@ vi.mock("@/convex/_generated/api", () => ({
     evidenceLibraries: {
       mutations: { createSetupDraft: "createSetupDraft" },
       queries: {
-        getCurrentSetupDraft: "getCurrentSetupDraft",
+        getSetupDraft: "getSetupDraft",
       },
     },
   },
@@ -56,6 +57,16 @@ const activeAdminOrganization = {
   organization: { id: "org_climate", name: "Climate Team" },
 };
 
+const savedSetup = {
+  identity: {
+    name: "Saved Library",
+    publicAddress: "https://saved-library-lib.libraries.example.test",
+    shortName: "Saved Library",
+    slug: "saved-library",
+  },
+  library: { _id: "library_123" },
+};
+
 describe("<CreateEvidenceLibraryStep>", () => {
   beforeEach(() => {
     mocks.createSetupDraft.mockReset();
@@ -74,63 +85,94 @@ describe("<CreateEvidenceLibraryStep>", () => {
 
     expect(screen.getByText("Climate Team")).toBeVisible();
     expect(screen.queryByLabelText("libraryNameLabel")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "continue" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "continue" }),
+    ).not.toBeInTheDocument();
     expect(mocks.query).not.toHaveBeenCalled();
   });
 
-  it("creates once with only the name and continues to configuration", async () => {
+  it("reserves once, shows the saved values, and continues separately", async () => {
     mocks.useOrganization.mockReturnValue(activeAdminOrganization);
-    mocks.query.mockImplementation((query: string) => {
-      if (query === "getCurrentSetupDraft") return { data: null };
+    mocks.query.mockImplementation((query: string, args: unknown) => {
+      if (
+        query === "getSetupDraft" &&
+        typeof args === "object" &&
+        args !== null &&
+        "libraryId" in args
+      ) {
+        return { data: savedSetup };
+      }
       return { data: undefined };
     });
     mocks.createSetupDraft.mockResolvedValue({ libraryId: "library_123" });
+    const urlUpdates: URLSearchParams[] = [];
     const user = userEvent.setup();
 
-    render(<CreateEvidenceLibraryStep />);
+    render(
+      <NuqsTestingAdapter
+        searchParams=""
+        hasMemory
+        onUrlUpdate={(event) => urlUpdates.push(event.searchParams)}
+      >
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
     await user.type(
       screen.getByLabelText("libraryNameLabel"),
       "Climate Evidence",
     );
-    expect(screen.queryByLabelText("publicAddressLabel")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("publicAddressLabel"),
+    ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "continue" }));
+    await user.click(screen.getByRole("button"));
 
     await waitFor(() => {
       expect(mocks.createSetupDraft).toHaveBeenCalledTimes(1);
       expect(mocks.createSetupDraft).toHaveBeenCalledWith({
         name: "Climate Evidence",
       });
-      expect(mocks.push).toHaveBeenCalledWith(
-        "/evidence-libraries/library_123/configuration",
-      );
+      expect(urlUpdates.at(-1)?.get("libraryId")).toBe("library_123");
     });
-    expect(
-      new Set(mocks.query.mock.calls.map(([query]) => query)),
-    ).toEqual(new Set(["getCurrentSetupDraft"]));
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("libraryNameLabel")).toHaveValue(
+      "Saved Library",
+    );
+    expect(screen.getByLabelText("libraryNameLabel")).toHaveAttribute(
+      "readonly",
+    );
+    expect(screen.getByLabelText("shortNameLabel")).toHaveValue(
+      "Saved Library",
+    );
+    expect(screen.getByLabelText("shortNameLabel")).toHaveAttribute("readonly");
+    const savedAddress = screen.getByLabelText("publicAddressLabel");
+    expect(savedAddress).toHaveValue(
+      "https://saved-library-lib.libraries.example.test",
+    );
+    expect(savedAddress).toHaveAttribute("readonly");
+
+    await user.click(screen.getByRole("button"));
+
+    expect(mocks.push).toHaveBeenCalledOnce();
+    expect(mocks.push).toHaveBeenCalledWith(
+      "/evidence-libraries/library_123/configuration",
+    );
   });
 
-  it("renders the saved draft after the page mounts again", () => {
+  it("reopens the exact saved draft from the URL", () => {
     mocks.useOrganization.mockReturnValue(activeAdminOrganization);
-    mocks.query.mockImplementation((query: string) => {
-      if (query === "getCurrentSetupDraft") {
-        return {
-          data: {
-            draftId: "draft_123",
-            libraryId: "library_123",
-            name: "Saved Library",
-            publicAddress:
-              "https://saved-library-lib.libraries.example.test",
-            shortName: "Saved Library",
-            slug: "saved-library",
-          },
-        };
-      }
-      return { data: undefined };
+    mocks.query.mockReturnValue({ data: savedSetup });
+
+    render(
+      <NuqsTestingAdapter searchParams="?libraryId=library_123">
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    expect(mocks.query).toHaveBeenCalledWith("getSetupDraft", {
+      libraryId: "library_123",
     });
-
-    render(<CreateEvidenceLibraryStep />);
-
+    expect(mocks.createSetupDraft).not.toHaveBeenCalled();
     expect(screen.getByLabelText("libraryNameLabel")).toHaveValue(
       "Saved Library",
     );
@@ -139,6 +181,9 @@ describe("<CreateEvidenceLibraryStep>", () => {
     );
     expect(screen.getByLabelText("publicAddressLabel")).toHaveValue(
       "https://saved-library-lib.libraries.example.test",
+    );
+    expect(screen.getByLabelText("publicAddressLabel")).toHaveAttribute(
+      "readonly",
     );
   });
 });

@@ -6,8 +6,7 @@ export const MAX_EVIDENCE_LIBRARY_SLUG_LENGTH = 59;
 export const MAX_EVIDENCE_LIBRARY_ADDRESS_CANDIDATES = 100;
 
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-const EVIDENCE_LIBRARY_SLUG_PATTERN =
-  /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const EVIDENCE_LIBRARY_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function validateEvidenceLibraryPlatformDomain(
   value: string | undefined,
@@ -95,5 +94,11 @@ export function createEvidenceLibraryPublicAddress(
   ) {
     throw new RangeError("Evidence Library slug is not a valid DNS label");
   }
-  return `https://${slug}-lib.${validateEvidenceLibraryPlatformDomain(platformDomain)}`;
+  const hostname = `${slug}-lib.${validateEvidenceLibraryPlatformDomain(platformDomain)}`;
+  if (hostname.length > 253) {
+    throw new RangeError(
+      "Evidence Library hostname must not exceed 253 characters",
+    );
+  }
+  return `https://${hostname}`;
 }

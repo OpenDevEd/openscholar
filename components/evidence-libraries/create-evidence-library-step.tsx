@@ -4,8 +4,10 @@ import { useOrganization } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { parseAsString, useQueryState } from "nuqs";
 import { FormEvent, useState } from "react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,14 +46,18 @@ function AdminCreateEvidenceLibraryForm() {
   const createSetupDraft = useMutation(
     api.evidenceLibraries.mutations.createSetupDraft,
   );
-  const currentSetupQuery = useProtectedQuery(
-    api.evidenceLibraries.queries.getCurrentSetupDraft,
-    {},
+  const [libraryId, setLibraryId] = useQueryState(
+    "libraryId",
+    parseAsString.withOptions({ history: "replace" }),
+  );
+  const selectedSetupQuery = useProtectedQuery(
+    api.evidenceLibraries.queries.getSetupDraft,
+    libraryId ? { libraryId: libraryId as Id<"evidenceLibraries"> } : "skip",
   );
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const currentSetup = currentSetupQuery.data;
+  const selectedSetup = selectedSetupQuery.data;
   const normalizedName = name.trim();
   const canCreate =
     normalizedName.length > 0 &&
@@ -61,9 +67,9 @@ function AdminCreateEvidenceLibraryForm() {
     event.preventDefault();
     if (isSubmitting) return;
 
-    if (currentSetup) {
+    if (selectedSetup) {
       router.push(
-        `/evidence-libraries/${currentSetup.libraryId}/configuration`,
+        `/evidence-libraries/${selectedSetup.library._id}/configuration`,
       );
       return;
     }
@@ -72,10 +78,8 @@ function AdminCreateEvidenceLibraryForm() {
     setIsSubmitting(true);
     setSubmitError(null);
     void createSetupDraft({ name: normalizedName })
-      .then((created) => {
-        router.push(
-          `/evidence-libraries/${created.libraryId}/configuration`,
-        );
+      .then(async (created) => {
+        await setLibraryId(created.libraryId);
       })
       .catch(() => {
         setSubmitError(t("createError"));
@@ -85,11 +89,11 @@ function AdminCreateEvidenceLibraryForm() {
       });
   }
 
-  if (currentSetup === undefined) {
+  if (libraryId && selectedSetup === undefined) {
     return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
   }
 
-  const isSavedDraft = currentSetup !== null;
+  const isSavedDraft = selectedSetup !== undefined;
   const canContinue = (isSavedDraft || canCreate) && !isSubmitting;
 
   return (
@@ -109,7 +113,7 @@ function AdminCreateEvidenceLibraryForm() {
             <Input
               id="evidence-library-name"
               name="name"
-              value={isSavedDraft ? currentSetup.name : name}
+              value={isSavedDraft ? selectedSetup.identity.name : name}
               onChange={(event) => setName(event.target.value)}
               maxLength={MAX_EVIDENCE_LIBRARY_NAME_LENGTH}
               readOnly={isSavedDraft}
@@ -129,7 +133,7 @@ function AdminCreateEvidenceLibraryForm() {
                 </Label>
                 <Input
                   id="evidence-library-short-name"
-                  value={currentSetup.shortName}
+                  value={selectedSetup.identity.shortName}
                   readOnly
                   aria-describedby="evidence-library-short-name-help"
                 />
@@ -147,7 +151,7 @@ function AdminCreateEvidenceLibraryForm() {
                 </Label>
                 <Input
                   id="evidence-library-public-address"
-                  value={currentSetup.publicAddress}
+                  value={selectedSetup.identity.publicAddress}
                   readOnly
                   aria-describedby="evidence-library-public-address-help"
                 />
@@ -169,7 +173,11 @@ function AdminCreateEvidenceLibraryForm() {
         </CardContent>
         <CardFooter className="mt-6 justify-end border-t">
           <Button type="submit" disabled={!canContinue}>
-            {isSubmitting ? t("continuing") : t("continue")}
+            {isSavedDraft
+              ? t("continue")
+              : isSubmitting
+                ? t("reserving")
+                : t("reserveAddress")}
           </Button>
         </CardFooter>
       </form>

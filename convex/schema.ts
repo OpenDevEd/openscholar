@@ -66,6 +66,11 @@ export default defineSchema({
 
   evidenceLibraries: defineTable(evidenceLibraryFields)
     .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_and_name_and_state", [
+      "organizationId",
+      "name",
+      "state",
+    ])
     .index("by_organizationId_and_slug", ["organizationId", "slug"])
     .index("by_organizationId_and_state", ["organizationId", "state"]),
 

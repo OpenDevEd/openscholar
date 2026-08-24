@@ -21,8 +21,9 @@ import {
 } from "./sectionPayload";
 import {
   findAvailableEvidenceLibrarySetupIdentity,
-  readCurrentEvidenceLibrarySetup,
+  readProvisioningEvidenceLibrarySetupByName,
   readEvidenceLibrarySetupIdentity,
+  validateEvidenceLibraryIdentityPayload,
   validateEvidenceLibrarySetupName,
   type EvidenceLibrarySetupIdentity,
 } from "./setupNaming";
@@ -172,17 +173,11 @@ async function createEvidenceLibrarySetupFromName(
 ) {
   const access = await requireOrganizationAccess(ctx, "manage");
   const name = validateEvidenceLibrarySetupName(args.name);
-  const current = await readCurrentEvidenceLibrarySetup(
-    ctx,
-    access.organization._id,
-  );
+  const current = await readProvisioningEvidenceLibrarySetupByName(ctx, {
+    organizationId: access.organization._id,
+    name,
+  });
   if (current) {
-    if (current.identity.name !== name) {
-      throw createError(
-        "CONFLICT",
-        "Organization already has a different Evidence Library setup draft",
-      );
-    }
     return toSetupDraftResult(current.setup, current.identity);
   }
 
@@ -220,6 +215,23 @@ export async function saveEvidenceLibraryDraftSection(
     draft.editVersion,
     args.expectedEditVersion,
   );
+  if (args.sectionKey === "identity") {
+    const runtimeBindingId = access.library.runtimeBindingId;
+    const runtimeBinding = runtimeBindingId
+      ? await ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId)
+      : null;
+    if (!runtimeBinding || runtimeBinding.libraryId !== args.libraryId) {
+      throw createError(
+        "INVALID_DATA",
+        "Evidence Library runtime binding not found",
+      );
+    }
+    validateEvidenceLibraryIdentityPayload(
+      args.payload,
+      runtimeBinding.targetBaseUrl,
+      "VALIDATION_ERROR",
+    );
+  }
   const payloadByteLength = validateSectionPayload(args.payload);
   assertNoCredentialMaterial(args.sectionKey, args.payload);
   const sections = await ctx.db

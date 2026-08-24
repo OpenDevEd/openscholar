@@ -14,9 +14,11 @@ import {
   readEvidenceLibraryRevision,
 } from "./queries";
 
+const modules = import.meta.glob("/convex/**/*.ts");
+
 describe("Evidence Library draft storage", () => {
   it("stores one provenance-locked draft with section rows", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     const stored = await t.run(async (ctx) => {
       const organizationId = await ctx.db.insert("organizations", {
         clerkOrganizationId: "org_123",
@@ -48,13 +50,18 @@ describe("Evidence Library draft storage", () => {
         createdAt: 3,
         updatedAt: 3,
       });
+      const identityPayload = {
+        baseUrl: "https://climate-evidence.example.org",
+        name: "Climate Evidence",
+        shortName: "Climate Evidence",
+      };
       await ctx.db.insert("evidenceLibraryConfigSections", {
         kind: "draft",
         libraryId,
         draftId,
         sectionKey: "identity",
-        payload: { name: "Climate Evidence" },
-        payloadByteLength: 27,
+        payload: identityPayload,
+        payloadByteLength: Buffer.byteLength(JSON.stringify(identityPayload)),
         contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
         updatedByClerkUserId: "user_123",
         updatedAt: 3,
@@ -71,8 +78,86 @@ describe("Evidence Library draft storage", () => {
     });
   });
 
+  it("rejects incomplete identity saves and changes to the reserved address", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const organizationId = await ctx.db.insert("organizations", {
+        clerkOrganizationId: "org_identity_contract",
+        name: "Identity Team",
+        slug: "identity-team",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("organizationMemberships", {
+        organizationId,
+        clerkMembershipId: "orgmem_identity_contract",
+        clerkUserId: "user_identity_contract",
+        role: "org:admin",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+    const admin = t.withIdentity({
+      subject: "user_identity_contract",
+      o: { id: "org_identity_contract", rol: "org:admin" },
+    });
+    const created = await admin.run((ctx) =>
+      createEvidenceLibrarySetup(ctx, {
+        name: "Identity Library",
+        slug: "identity-library",
+        publicAddress: "https://identity-library.example.org",
+      }),
+    );
+
+    await expect(
+      admin.run((ctx) =>
+        saveEvidenceLibraryDraftSection(ctx, {
+          libraryId: created.libraryId,
+          sectionKey: "identity",
+          payload: { name: "Incomplete identity" },
+          expectedEditVersion: 0,
+        }),
+      ),
+    ).rejects.toThrow(/VALIDATION_ERROR/);
+    await expect(
+      admin.run((ctx) =>
+        saveEvidenceLibraryDraftSection(ctx, {
+          libraryId: created.libraryId,
+          sectionKey: "identity",
+          payload: {
+            baseUrl: "https://changed-address.example.org",
+            name: "Edited identity",
+            shortName: "Edited identity",
+          },
+          expectedEditVersion: 0,
+        }),
+      ),
+    ).rejects.toThrow(/VALIDATION_ERROR/);
+
+    const stored = await admin.run((ctx) =>
+      readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
+    );
+    expect(stored.draft.editVersion).toBe(0);
+    expect(stored.sections).toEqual([
+      expect.objectContaining({
+        sectionKey: "identity",
+        payload: {
+          baseUrl: "https://identity-library.example.org",
+          name: "Identity Library",
+          shortName: "Identity Library",
+        },
+      }),
+    ]);
+  });
+
   it("creates, saves, reloads, and rejects a stale draft edit", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       const organizationId = await ctx.db.insert("organizations", {
         clerkOrganizationId: "org_123",
@@ -127,7 +212,11 @@ describe("Evidence Library draft storage", () => {
       saveEvidenceLibraryDraftSection(ctx, {
         libraryId: created.libraryId,
         sectionKey: "identity",
-        payload: { name: "Climate Evidence" },
+        payload: {
+          baseUrl: "https://climate-evidence.example.org",
+          name: "Climate Evidence",
+          shortName: "Climate Evidence",
+        },
         expectedEditVersion: 0,
       }),
     );
@@ -147,7 +236,14 @@ describe("Evidence Library draft storage", () => {
       draft: { editVersion: 1 },
       library: { name: "Climate Evidence" },
       sections: [
-        { sectionKey: "identity", payload: { name: "Climate Evidence" } },
+        {
+          sectionKey: "identity",
+          payload: {
+            baseUrl: "https://climate-evidence.example.org",
+            name: "Climate Evidence",
+            shortName: "Climate Evidence",
+          },
+        },
       ],
     });
     await expect(
@@ -155,7 +251,11 @@ describe("Evidence Library draft storage", () => {
         saveEvidenceLibraryDraftSection(ctx, {
           libraryId: created.libraryId,
           sectionKey: "identity",
-          payload: { name: "Stale overwrite" },
+          payload: {
+            baseUrl: "https://climate-evidence.example.org",
+            name: "Stale overwrite",
+            shortName: "Stale overwrite",
+          },
           expectedEditVersion: 0,
         }),
       ),
@@ -163,7 +263,7 @@ describe("Evidence Library draft storage", () => {
   });
 
   it("copies a draft into an immutable revision while later draft edits stay separate", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       const organizationId = await ctx.db.insert("organizations", {
         clerkOrganizationId: "org_revision",
@@ -217,7 +317,11 @@ describe("Evidence Library draft storage", () => {
       saveEvidenceLibraryDraftSection(ctx, {
         libraryId: created.libraryId,
         sectionKey: "identity",
-        payload: { name: "Published name" },
+        payload: {
+          baseUrl: "https://revision-library.example.org",
+          name: "Published name",
+          shortName: "Published name",
+        },
         expectedEditVersion: 0,
       }),
     );
@@ -234,7 +338,11 @@ describe("Evidence Library draft storage", () => {
       saveEvidenceLibraryDraftSection(ctx, {
         libraryId: created.libraryId,
         sectionKey: "identity",
-        payload: { name: "Unpublished edit" },
+        payload: {
+          baseUrl: "https://revision-library.example.org",
+          name: "Unpublished edit",
+          shortName: "Unpublished edit",
+        },
         expectedEditVersion: 2,
       }),
     );
@@ -254,7 +362,11 @@ describe("Evidence Library draft storage", () => {
     expect(revision.sections).toEqual([
       expect.objectContaining({
         sectionKey: "identity",
-        payload: { name: "Published name" },
+        payload: {
+          baseUrl: "https://revision-library.example.org",
+          name: "Published name",
+          shortName: "Published name",
+        },
       }),
     ]);
     expect(revision.revision).not.toHaveProperty("updatedAt");
