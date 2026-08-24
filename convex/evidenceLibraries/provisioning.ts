@@ -79,7 +79,7 @@ export async function createPendingRuntimeBinding(
       .withIndex("by_targetBaseUrl", (query) =>
         query.eq("targetBaseUrl", targetBaseUrl),
       )
-      .first(),
+      .unique(),
   ]);
   if (existing) {
     throw createError(
@@ -184,12 +184,7 @@ export async function seedDevelopmentRuntimeBinding(
       "Evidence Library public address does not match its runtime binding",
     );
   }
-  if (
-    existing.targetRuntimeId !== undefined ||
-    existing.databaseCredentialId !== undefined ||
-    existing.searchCredentialId !== undefined ||
-    existing.storageCredentialId !== undefined
-  ) {
+  if (existing.state !== "pending" || "targetRuntimeId" in existing) {
     throw createError(
       "CONFLICT",
       "Evidence Library runtime binding is already seeded",

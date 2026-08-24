@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
 
+const modules = import.meta.glob("/convex/**/*.ts");
+
 async function seedOrganization(
   t: ReturnType<typeof convexTest>,
   args: {
@@ -46,7 +48,7 @@ const setupArgs = {
 
 describe("Evidence Library setup draft", () => {
   it("creates, reopens, and retries one linked setup draft", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await seedOrganization(t, {
       clerkOrganizationId: "org_setup",
       clerkUserId: "user_setup_admin",
@@ -69,6 +71,13 @@ describe("Evidence Library setup draft", () => {
       api.evidenceLibraries.mutations.createSetupDraft,
       setupArgs,
     );
+    await expect(
+      admin.mutation(api.evidenceLibraries.operations.queueOperation, {
+        libraryId: created.libraryId,
+        kind: "setup" as never,
+        idempotencyKey: "another-setup-operation",
+      }),
+    ).rejects.toThrow(/ArgumentValidationError|Validator/);
     const counts = await t.run(async (ctx) => ({
       drafts: (await ctx.db.query("evidenceLibraryConfigDrafts").collect())
         .length,
@@ -132,7 +141,7 @@ describe("Evidence Library setup draft", () => {
   });
 
   it("rejects a changed retry and an occupied public address", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await seedOrganization(t, {
       clerkOrganizationId: "org_first",
       clerkUserId: "user_first",
@@ -192,8 +201,98 @@ describe("Evidence Library setup draft", () => {
     });
   });
 
+  it("rejects partial pending and ready bindings and requires failed errors", async () => {
+    const t = convexTest(schema, modules);
+    await seedOrganization(t, {
+      clerkOrganizationId: "org_binding_states",
+      clerkUserId: "user_binding_states",
+      role: "org:admin",
+    });
+    const admin = t.withIdentity({
+      subject: "user_binding_states",
+      o: { id: "org_binding_states", rol: "org:admin" },
+    });
+    const created = await admin.mutation(
+      api.evidenceLibraries.mutations.createSetupDraft,
+      setupArgs,
+    );
+    const incompleteReadyBinding = {
+      libraryId: created.libraryId,
+      targetBaseUrl: "https://incomplete-ready.example.org",
+      state: "ready",
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const partialPendingBinding = {
+      libraryId: created.libraryId,
+      targetRuntimeId: "runtime_without_services",
+      targetBaseUrl: "https://partial-pending.example.org",
+      state: "pending",
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const failedBindingWithoutError = {
+      libraryId: created.libraryId,
+      targetBaseUrl: "https://failed-without-error.example.org",
+      state: "failed",
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
+    await expect(
+      t.run((ctx) =>
+        ctx.db.insert(
+          "evidenceLibraryRuntimeBindings",
+          partialPendingBinding as never,
+        ),
+      ),
+    ).rejects.toThrow(/Validator error/);
+    await expect(
+      t.run((ctx) =>
+        ctx.db.insert(
+          "evidenceLibraryRuntimeBindings",
+          incompleteReadyBinding as never,
+        ),
+      ),
+    ).rejects.toThrow(/Validator error/);
+    await expect(
+      t.run((ctx) =>
+        ctx.db.insert(
+          "evidenceLibraryRuntimeBindings",
+          failedBindingWithoutError as never,
+        ),
+      ),
+    ).rejects.toThrow(/Validator error/);
+
+    await t.run((ctx) =>
+      ctx.db.replace(
+        "evidenceLibraryRuntimeBindings",
+        created.runtimeBindingId,
+        {
+          ...failedBindingWithoutError,
+          state: "failed",
+          error: {
+            code: "runtime-unavailable",
+            message: "The runtime could not be reached",
+          },
+        } as never,
+      ),
+    );
+    expect(
+      await t.run((ctx) =>
+        ctx.db.get("evidenceLibraryRuntimeBindings", created.runtimeBindingId),
+      ),
+    ).toMatchObject({
+      state: "failed",
+      error: {
+        code: "runtime-unavailable",
+        message: "The runtime could not be reached",
+      },
+    });
+  });
+
   it("allows only an active organization admin to create or reopen setup", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     const organizationId = await seedOrganization(t, {
       clerkOrganizationId: "org_access",
       clerkUserId: "user_access_admin",

@@ -12,7 +12,7 @@ import {
   evidenceLibraryConfigRevisionFields,
   evidenceLibraryFields,
   evidenceLibraryOperationFields,
-  evidenceLibraryRuntimeBindingFields,
+  evidenceLibraryRuntimeBindingVariantFields,
   sectionKeyValidator,
 } from "./validators";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
@@ -74,11 +74,33 @@ export const getSetupDraft = query({
       _creationTime: v.number(),
       ...evidenceLibraryOperationFields,
     }),
-    runtimeBinding: v.object({
-      _id: v.id("evidenceLibraryRuntimeBindings"),
-      _creationTime: v.number(),
-      ...evidenceLibraryRuntimeBindingFields,
-    }),
+    runtimeBinding: v.union(
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.pendingUnassigned,
+      }),
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.pendingProvisioned,
+      }),
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.ready,
+      }),
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.failedUnassigned,
+      }),
+      v.object({
+        _id: v.id("evidenceLibraryRuntimeBindings"),
+        _creationTime: v.number(),
+        ...evidenceLibraryRuntimeBindingVariantFields.failedProvisioned,
+      }),
+    ),
     publicAddress: v.string(),
   }),
   handler: readEvidenceLibrarySetup,
@@ -88,11 +110,7 @@ export async function readEvidenceLibraryDraft(
   ctx: QueryCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
 ) {
-  const access = await requireEvidenceLibraryAccess(
-    ctx,
-    args.libraryId,
-    "manage",
-  );
+  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
@@ -128,7 +146,7 @@ export async function readEvidenceLibraryRevision(
     revisionId: Id<"evidenceLibraryConfigRevisions">;
   },
 ) {
-  await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
   const revision = await ctx.db.get(
     "evidenceLibraryConfigRevisions",
     args.revisionId,

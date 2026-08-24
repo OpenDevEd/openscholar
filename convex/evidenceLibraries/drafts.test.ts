@@ -131,7 +131,7 @@ describe("Evidence Library draft storage", () => {
         expectedEditVersion: 0,
       }),
     );
-    const reloaded = await asAdmin.run((ctx) =>
+    const reloaded = await asMember.run((ctx) =>
       readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
     );
     const libraries = await asMember.run((ctx) => readEvidenceLibraries(ctx));
@@ -150,11 +150,6 @@ describe("Evidence Library draft storage", () => {
         { sectionKey: "identity", payload: { name: "Climate Evidence" } },
       ],
     });
-    await expect(
-      asMember.run((ctx) =>
-        readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
-      ),
-    ).rejects.toThrow(/FORBIDDEN/);
     await expect(
       asAdmin.run((ctx) =>
         saveEvidenceLibraryDraftSection(ctx, {
@@ -191,10 +186,25 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
+      await ctx.db.insert("organizationMemberships", {
+        organizationId,
+        clerkMembershipId: "orgmem_revision_member",
+        clerkUserId: "user_revision_member",
+        role: "org:member",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
     });
     const admin = t.withIdentity({
       subject: "user_revision",
       o: { id: "org_revision", rol: "org:admin" },
+    });
+    const member = t.withIdentity({
+      subject: "user_revision_member",
+      o: { id: "org_revision", rol: "org:member" },
     });
     const created = await admin.run((ctx) =>
       createEvidenceLibrarySetup(ctx, {
@@ -228,7 +238,7 @@ describe("Evidence Library draft storage", () => {
         expectedEditVersion: 2,
       }),
     );
-    const revision = await admin.run((ctx) =>
+    const revision = await member.run((ctx) =>
       readEvidenceLibraryRevision(ctx, {
         libraryId: created.libraryId,
         revisionId: finalized.revisionId,

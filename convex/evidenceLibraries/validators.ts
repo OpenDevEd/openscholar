@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 
 export const organizationStateValidator = v.union(
@@ -174,25 +174,68 @@ export const evidenceLibraryConfigSectionValidator = v.union(
   }),
 );
 
-export const evidenceLibraryRuntimeBindingFields = {
+export const evidenceLibraryOperationErrorInputValidator = v.object({
+  code: v.string(),
+  message: v.string(),
+});
+
+const evidenceLibraryRuntimeBindingBaseFields = {
   libraryId: v.id("evidenceLibraries"),
-  targetRuntimeId: v.optional(v.string()),
   targetBaseUrl: v.string(),
-  state: v.union(v.literal("pending"), v.literal("ready"), v.literal("failed")),
-  searchHost: v.optional(v.string()),
-  searchIndex: v.optional(v.string()),
-  storageUrl: v.optional(v.string()),
-  storageDocumentsBucket: v.optional(v.string()),
-  storageImagesBucket: v.optional(v.string()),
-  storageMaxPdfBytes: v.optional(v.number()),
-  zoteroTranslationUrl: v.optional(v.string()),
-  databaseCredentialId: v.optional(v.id("evidenceLibraryCredentials")),
-  searchCredentialId: v.optional(v.id("evidenceLibraryCredentials")),
-  storageCredentialId: v.optional(v.id("evidenceLibraryCredentials")),
-  lastVerifiedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
+
+const evidenceLibraryRuntimeBindingProvisionedFields = {
+  targetRuntimeId: v.string(),
+  searchHost: v.string(),
+  searchIndex: v.string(),
+  storageUrl: v.string(),
+  storageDocumentsBucket: v.string(),
+  storageImagesBucket: v.string(),
+  storageMaxPdfBytes: v.number(),
+  zoteroTranslationUrl: v.optional(v.string()),
+  databaseCredentialId: v.id("evidenceLibraryCredentials"),
+  searchCredentialId: v.id("evidenceLibraryCredentials"),
+  storageCredentialId: v.id("evidenceLibraryCredentials"),
+  lastVerifiedAt: v.optional(v.number()),
+};
+
+export const evidenceLibraryRuntimeBindingVariantFields = {
+  pendingUnassigned: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    state: v.literal("pending"),
+  },
+  pendingProvisioned: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    ...evidenceLibraryRuntimeBindingProvisionedFields,
+    state: v.literal("pending"),
+  },
+  ready: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    ...evidenceLibraryRuntimeBindingProvisionedFields,
+    state: v.literal("ready"),
+  },
+  failedUnassigned: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    state: v.literal("failed"),
+    error: evidenceLibraryOperationErrorInputValidator,
+  },
+  failedProvisioned: {
+    ...evidenceLibraryRuntimeBindingBaseFields,
+    ...evidenceLibraryRuntimeBindingProvisionedFields,
+    state: v.literal("failed"),
+    error: evidenceLibraryOperationErrorInputValidator,
+  },
+};
+
+export const evidenceLibraryRuntimeBindingValidator = v.union(
+  v.object(evidenceLibraryRuntimeBindingVariantFields.pendingUnassigned),
+  v.object(evidenceLibraryRuntimeBindingVariantFields.pendingProvisioned),
+  v.object(evidenceLibraryRuntimeBindingVariantFields.ready),
+  v.object(evidenceLibraryRuntimeBindingVariantFields.failedUnassigned),
+  v.object(evidenceLibraryRuntimeBindingVariantFields.failedProvisioned),
+);
 
 export const evidenceLibraryCredentialFields = {
   libraryId: v.id("evidenceLibraries"),
@@ -225,12 +268,19 @@ export const evidenceLibraryAdminLoginCodeFields = {
   consumedAt: v.optional(v.number()),
 };
 
-export const evidenceLibraryOperationKindValidator = v.union(
-  v.literal("setup"),
+export const evidenceLibraryRequestableOperationKindValidator = v.union(
   v.literal("validate"),
   v.literal("publish"),
   v.literal("rollback"),
 );
+
+export const evidenceLibraryOperationKindValidator = v.union(
+  v.literal("setup"),
+  evidenceLibraryRequestableOperationKindValidator,
+);
+export type EvidenceLibraryOperationKind = Infer<
+  typeof evidenceLibraryOperationKindValidator
+>;
 
 export const evidenceLibraryRunningStageValidator = v.union(
   v.literal("assembling"),
@@ -244,11 +294,6 @@ export const evidenceLibraryOperationReceiptValidator = v.object({
   targetConfigSha256: v.optional(v.string()),
   runtimeReceiptId: v.optional(v.string()),
   activatedAt: v.optional(v.number()),
-});
-
-export const evidenceLibraryOperationErrorInputValidator = v.object({
-  code: v.string(),
-  message: v.string(),
 });
 
 export const evidenceLibraryOperationFields = {
