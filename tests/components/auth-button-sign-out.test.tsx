@@ -146,4 +146,15 @@ describe("<AuthButton> sign out", () => {
 
     expect(mocks.signOut).toHaveBeenCalledWith({ redirectUrl: "/" });
   });
+
+  it("returns to home when signing out from another route", async () => {
+    mocks.pathname = "/settings/ai";
+    mocks.searchParams = new URLSearchParams({ tab: "models" });
+    const user = userEvent.setup();
+
+    render(<AuthButton />);
+    await user.click(screen.getByRole("button", { name: "signOut" }));
+
+    expect(mocks.signOut).toHaveBeenCalledWith({ redirectUrl: "/" });
+  });
 });

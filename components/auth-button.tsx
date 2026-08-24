@@ -57,17 +57,16 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
 
   const isInitializing = phase === "initializing";
   const isSignedIn = phase === "authenticated";
-  const safePathname = pathname.startsWith("/") ? pathname : "/";
   const queryString = searchParams.toString();
-  const currentRelativeUrl = queryString
-    ? `${safePathname}?${queryString}`
-    : safePathname;
-  const signOutRedirectUrl =
-    currentRelativeUrl === "/"
-      ? "/"
-      : `/sign-in?${new URLSearchParams({
-          redirect_url: currentRelativeUrl,
-        }).toString()}`;
+  const shouldPreserveSetupUrl =
+    pathname === "/evidence-libraries/new" &&
+    searchParams.has("libraryId") &&
+    searchParams.has("organizationId");
+  const signOutRedirectUrl = shouldPreserveSetupUrl
+    ? `/sign-in?${new URLSearchParams({
+        redirect_url: `${pathname}?${queryString}`,
+      }).toString()}`
+    : "/";
 
   const subscriptionState = useSubscriptionState();
   const isSubscriptionLoading = subscriptionState.isSettling;
