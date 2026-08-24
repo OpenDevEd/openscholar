@@ -113,13 +113,15 @@ npx convex ai-files install
 ```
 <!-- convex-ai-end -->
 
-## Development uses the hosted Convex service
+## Development uses hosted Convex services
 
-Work from `/Users/mcharrad/Documents/Github/openscholar/dev-self`. Do not run OpenScholar development from a temporary worktree. Only one checkout may upload Convex code to the shared development deployment.
+Convex and Clerk stay hosted. Never start a local Convex backend or use PM2 for this repository.
 
-Convex and Clerk stay hosted. Never start a local Convex backend, select a local Convex deployment, or run a bare `npx convex dev`. Never use PM2 for this repository.
+### Merged integration work
 
-Use these commands:
+`/Users/mcharrad/Documents/Github/openscholar/dev-self` is the integration checkout. It is the only checkout allowed to upload to the shared self-hosted development deployment.
+
+The integration owner uses these commands:
 
 ```sh
 npm run dev          # remote Convex watcher and logs, plus local Next.js
@@ -141,7 +143,25 @@ curl -sS -H "Authorization: Bearer $coolify_token_for_logs" "https://coolify.ope
 
 Tests passing does not prove that the remote deployment or running app accepted the change.
 
-Any PM2 command in an older plan is stale. Update that plan to use the commands above before executing it.
+### Parallel agent work
+
+An implementation agent works from a stable Git worktree and receives one named Convex Cloud development deployment. The agent may upload only to that deployment. It must not select or change the shared self-hosted deployment, another agent's deployment, the Convex production deployment, or another Coolify application.
+
+Each agent worktree has its own `.env.local` with its assigned `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, and `NEXT_PUBLIC_CONVEX_SITE_URL`. Clerk remains hosted and uses the same development Clerk instance. Do not copy `CONVEX_SELF_HOSTED_URL` or `CONVEX_SELF_HOSTED_ADMIN_KEY` into an agent worktree.
+
+Use these commands in an agent worktree:
+
+```sh
+npx convex dev --once      # upload once to the assigned cloud deployment
+npx convex logs --history 200
+npm run dev:web            # run the local Next.js app
+```
+
+The integration owner creates agent deployments, gives each one an expiry date and usage limit, and removes it after the workstream is merged. Only the runtime workstream may create uniquely named test libraries in the development Coolify environment. Other workstreams test the Evidence Library locally and must not change Coolify.
+
+After a PR merges, the integration owner uploads merged `dev` through `npm run convex:push` from `dev-self` and checks the shared deployment. Agents do not upload their feature branches to the shared deployment.
+
+Any PM2 command or conflicting deployment instruction in an older plan is stale. Update that plan before executing it.
 
 ## Do not use `useEffect` for app state
 
