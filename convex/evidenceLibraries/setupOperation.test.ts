@@ -305,6 +305,9 @@ describe("fixed Evidence Library setup operation", () => {
         searchCredentialId,
         storageCredentialId,
       });
+      await ctx.db.patch(fixture.created.setupOperationId, {
+        setupEncryptedDatabasePassword: "encrypted-database-password",
+      });
       return { databaseCredentialId, searchCredentialId, storageCredentialId };
     });
     expect(Object.values(credentialIds)).toHaveLength(3);
@@ -425,5 +428,8 @@ describe("fixed Evidence Library setup operation", () => {
         runtimeReceiptId: "coolify-deploy-1",
       },
     });
+    expect(completed.operation).not.toHaveProperty(
+      "setupEncryptedDatabasePassword",
+    );
   });
 });

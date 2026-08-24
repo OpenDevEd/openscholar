@@ -399,6 +399,7 @@ export async function recordEvidenceLibrarySetupStep(
     completedAt: now,
     setupAttemptToken: undefined,
     setupLeaseExpiresAt: undefined,
+    setupEncryptedDatabasePassword: undefined,
     updatedAt: now,
   });
   await ctx.db.replace(setup.runtimeBinding._id, {

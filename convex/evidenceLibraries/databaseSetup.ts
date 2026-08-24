@@ -81,10 +81,6 @@ export const completeDatabaseSetup = internalMutation({
         loginName: args.loginName,
       },
     });
-    await ctx.db.patch(setup.setupOperation._id, {
-      setupEncryptedDatabasePassword: undefined,
-      updatedAt: Date.now(),
-    });
     return {
       credentialId,
       nextStep: transition.nextStep as "storage",

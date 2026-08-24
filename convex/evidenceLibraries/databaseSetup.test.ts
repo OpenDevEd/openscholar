@@ -36,7 +36,7 @@ describe("Evidence Library database setup", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps one encrypted password across retries and clears it after success", async () => {
+  it("keeps one encrypted password across database and later-step retries", async () => {
     const fixture = await createActivatedSetupFixture("database-secret");
     await claim(fixture, "attempt-1");
 
@@ -117,10 +117,8 @@ describe("Evidence Library database setup", () => {
       encryptedValue: "encrypted-database-url",
       validationState: "valid",
     });
-    expect(saved.operation).not.toHaveProperty(
-      "setupEncryptedDatabasePassword",
-    );
     expect(saved.operation).toMatchObject({
+      setupEncryptedDatabasePassword: "encrypted-password-1",
       setupReceipts: {
         database: {
           databaseName: "el_123",
@@ -244,5 +242,9 @@ describe("Evidence Library database setup", () => {
       decrypt(saved.credential!.encryptedValue, ENCRYPTION_KEY),
     ).toBe("postgresql://el_456_user:secret@postgres:5432/el_456");
     expect(saved.operation).toMatchObject({ stage: "storage" });
+    expect(saved.operation).toHaveProperty(
+      "setupEncryptedDatabasePassword",
+      expect.any(String),
+    );
   });
 });
