@@ -34,6 +34,10 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+vi.mock("@clerk/nextjs", () => ({
+  OrganizationSwitcher: () => null,
+}));
+
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     screening: {
