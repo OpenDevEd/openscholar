@@ -5,6 +5,7 @@ import {
   WRITE_ONLY_POINTER_PATTERNS,
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { jsonPointerPatternMatches } from "../../lib/evidence-libraries/configuration/json-pointer";
+import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 
@@ -22,6 +23,46 @@ export function resolveCredentialPath(concretePath: string, instanceKey?: string
 }
 
 export const LIBRARY_SERVICE_CREDENTIAL_KEY = "library-service";
+
+type ServiceCredentialAuthCtx = Pick<QueryCtx | MutationCtx, "db">;
+
+export async function findMatchingLibraryServiceCredential(
+  ctx: ServiceCredentialAuthCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    credentialDigest: string;
+  },
+) {
+  const credential = await ctx.db
+    .query("evidenceLibraryCredentials")
+    .withIndex("by_libraryId_and_credentialKey", (query) =>
+      query
+        .eq("libraryId", args.libraryId)
+        .eq("credentialKey", LIBRARY_SERVICE_CREDENTIAL_KEY),
+    )
+    .unique();
+  if (!credential || credential.credentialDigest !== args.credentialDigest) {
+    return null;
+  }
+  return { credentialId: credential._id, libraryId: credential.libraryId };
+}
+
+export async function authenticateLibraryServiceCredential(
+  ctx: ServiceCredentialAuthCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    credentialDigest: string;
+  },
+) {
+  const credential = await findMatchingLibraryServiceCredential(ctx, args);
+  if (!credential) {
+    throw createError(
+      "FORBIDDEN",
+      "Evidence Library service authentication failed",
+    );
+  }
+  return credential;
+}
 
 export async function storeEvidenceLibraryCredential(
   ctx: MutationCtx,
@@ -95,19 +136,28 @@ export async function storeLibraryServiceCredential(
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
   };
+  let credentialId: Id<"evidenceLibraryCredentials">;
   if (existing) {
     await ctx.db.replace("evidenceLibraryCredentials", existing._id, {
       ...fields,
       createdByClerkUserId: existing.createdByClerkUserId,
       createdAt: existing.createdAt,
     });
-    return existing._id;
+    credentialId = existing._id;
+  } else {
+    credentialId = await ctx.db.insert("evidenceLibraryCredentials", {
+      ...fields,
+      createdByClerkUserId: access.clerkUserId,
+      createdAt: now,
+    });
   }
-  return await ctx.db.insert("evidenceLibraryCredentials", {
-    ...fields,
-    createdByClerkUserId: access.clerkUserId,
-    createdAt: now,
+
+  await writeAuditLogRecord(ctx, {
+    action: "evidence_library.service_credential.rotated",
+    userId: access.clerkUserId,
+    metadata: { credentialId, libraryId: args.libraryId },
   });
+  return credentialId;
 }
 
 export async function readCredentialMetadata(

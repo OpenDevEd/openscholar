@@ -16,7 +16,7 @@ Long-running autonomous task. Expect 1–2 hours. Continue through the full plan
 2. No legacy or second credential store.
 3. Read `convex/_generated/ai/guidelines.md`; it overrides training.
 4. Use one behavioral failing test, one minimal green, then clean up.
-5. After each Convex commit, run `npm run convex:push` from `dev-self` and require `✔ Convex functions ready!`.
+5. After each green Convex unit, run `npx convex dev --once` against this worktree's assigned cloud deployment, inspect `npx convex logs --history 200`, and exercise the changed function.
 6. Check current primary docs before guessing.
 7. Delegate broad maps only; keep TDD and commits in this session.
 
@@ -35,7 +35,7 @@ Commit safe work, update and commit the plan before changing direction. For a re
 
 ## START NOW
 1. Read the plan, README, Convex rules, and named donors.
-2. Check `git status`, confirm no other Convex uploader is running, and run `npm run convex:push`.
+2. Check `git status`, confirm `.env.local` targets the assigned cloud deployment, and run `npx convex dev --once`.
 3. Write the first failing rotation test.
 
 Go.
@@ -55,7 +55,7 @@ Long-running autonomous task. Expect 1–2 hours. Continue through the full plan
 2. No legacy token format, compatibility path, or second membership model.
 3. Read the Convex rules first.
 4. Use red → green for every issue and denial behavior.
-5. Run `npm run convex:push` after every backend commit.
+5. After each green Convex unit, run `npx convex dev --once`, inspect `npx convex logs --history 200`, and exercise the changed function on the assigned cloud deployment.
 6. Use current primary docs before guessing.
 7. Keep TDD and commits in the main session.
 
@@ -74,7 +74,7 @@ Update and commit the plan before changing direction. Write `02-BLOCKER.md` only
 
 ## START NOW
 1. Read the plan, README, Convex rules, access helper, and Clerk prerequisite record.
-2. Check Git, confirm no other Convex uploader is running, and run `npm run convex:push`.
+2. Check Git, confirm `.env.local` targets the assigned cloud deployment, and run `npx convex dev --once`.
 3. Write the first failing Owner issue test.
 
 Go.
@@ -94,7 +94,7 @@ Long-running autonomous task. Expect 1–2 hours. Finish the atomic redemption a
 2. No second session system or general API gateway.
 3. Read Convex rules before coding.
 4. Test the public request and one-time result, not internal calls.
-5. Run `npm run convex:push` after each commit.
+5. After each green Convex unit, run `npx convex dev --once`, inspect `npx convex logs --history 200`, and exercise the changed function or HTTP route on the assigned cloud deployment.
 6. Follow current Convex HTTP and transaction docs.
 7. Keep TDD, commits, and final smoke here.
 
@@ -113,7 +113,7 @@ Commit safe work and revise the plan first. Write `03-BLOCKER.md` for a real blo
 
 ## START NOW
 1. Read the plan, README, Convex rules, and current HTTP router.
-2. Check Git, confirm no other Convex uploader is running, and run `npm run convex:push`.
+2. Check Git, confirm `.env.local` targets the assigned cloud deployment, and run `npx convex dev --once`.
 3. Write the first failing successful-redemption test.
 
 Go.

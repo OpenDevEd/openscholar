@@ -46,7 +46,7 @@ npx vitest run convex/evidenceLibraries/adminLoginRedemption.test.ts
 
 ## Deployability gate
 
-Run `npm run convex:push` from `dev-self` and require `✔ Convex functions ready!`. Check the deployed HTTP route and the internal mutation validator. Then call the deployed endpoint with one test credential and confirm one success followed by one rejected replay.
+Run `npx convex dev --once` in this worktree against `dev:spotted-woodpecker-546`, then inspect `npx convex logs --history 200`. Check `npx convex function-spec` for the internal mutation validator. Call the assigned deployment's HTTP route with one test credential and confirm one success followed by one rejected replay. Do not use `npm run convex:push`, the shared self-hosted deployment, or Coolify.
 
 ## Completion rules
 

@@ -58,7 +58,9 @@ The public seams are:
 
 Tests check returned values, stored rows, clear failure responses, and one-time behavior. They do not assert internal call order or source text.
 
-Use red → green for token policy, rotation, code issue, and redemption. Each Convex change must pass its focused test and `npm run convex:push` from `dev-self`.
+Use red → green for token policy, rotation, code issue, and redemption. After each green Convex unit, upload it to the worktree's assigned cloud deployment with `npx convex dev --once`, inspect `npx convex logs --history 200`, and exercise the changed function or HTTP boundary.
+
+This worktree targets `dev:spotted-woodpecker-546`. Do not run `npm run convex:push`, select the shared self-hosted deployment, or change Coolify. If a local browser check is needed, run `npm run dev:web -- --port 3011`.
 
 ## Migration
 
