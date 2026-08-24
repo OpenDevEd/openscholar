@@ -8,22 +8,55 @@ import {
   requireOrganizationAccess,
 } from "./access";
 import { nextDraftEditVersion } from "./draftVersion";
+import { queueEvidenceLibraryOperation } from "./operations";
+import {
+  createPendingRuntimeBinding,
+  validateTargetBaseUrl,
+} from "./provisioning";
 import {
   assertDraftPayloadBudget,
   assertNoCredentialMaterial,
   validateSectionPayload,
 } from "./sectionPayload";
+import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import { sectionKeyValidator, type SectionKey } from "./validators";
 
-export async function createEvidenceLibrary(
+const SETUP_OPERATION_IDEMPOTENCY_KEY = "library-setup";
+
+function toSetupDraftResult(
+  setup: Awaited<ReturnType<typeof readEvidenceLibrarySetupRecords>>,
+) {
+  if (setup.library.state !== "provisioning") {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library setup is no longer a draft",
+    );
+  }
+  return {
+    draftId: setup.draft._id,
+    editVersion: setup.draft.editVersion,
+    libraryId: setup.library._id,
+    publicAddress: setup.publicAddress,
+    revisionId: setup.revision._id,
+    runtimeBindingId: setup.runtimeBinding._id,
+    setupOperationId: setup.setupOperation._id,
+    state: "provisioning" as const,
+  };
+}
+
+export async function createEvidenceLibrarySetup(
   ctx: MutationCtx,
-  args: { name: string; slug: string },
+  args: { name: string; slug: string; publicAddress: string },
 ) {
   const access = await requireOrganizationAccess(ctx, "manage");
   const name = args.name.trim();
   const slug = args.slug.trim();
+  const publicAddress = validateTargetBaseUrl(args.publicAddress);
   if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-    throw createError("VALIDATION_ERROR", "Invalid Evidence Library name or slug");
+    throw createError(
+      "VALIDATION_ERROR",
+      "Invalid Evidence Library name or slug",
+    );
   }
   const existing = await ctx.db
     .query("evidenceLibraries")
@@ -32,7 +65,14 @@ export async function createEvidenceLibrary(
     )
     .unique();
   if (existing) {
-    throw createError("CONFLICT", "Evidence Library slug already exists");
+    const setup = await readEvidenceLibrarySetupRecords(ctx, existing);
+    if (existing.name !== name || setup.publicAddress !== publicAddress) {
+      throw createError(
+        "CONFLICT",
+        "Evidence Library setup retry does not match the original request",
+      );
+    }
+    return toSetupDraftResult(setup);
   }
 
   const now = Date.now();
@@ -46,9 +86,19 @@ export async function createEvidenceLibrary(
     createdAt: now,
     updatedAt: now,
   });
+  const revisionId = await ctx.db.insert("evidenceLibraryConfigRevisions", {
+    libraryId,
+    revisionKey: "r1",
+    revisionNumber: 1,
+    basedOnRevisionId: null,
+    rollbackOfRevisionId: null,
+    contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+    createdByClerkUserId: access.clerkUserId,
+    createdAt: now,
+  });
   const draftId = await ctx.db.insert("evidenceLibraryConfigDrafts", {
     libraryId,
-    baseRevisionId: null,
+    baseRevisionId: revisionId,
     editVersion: 0,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     createdByClerkUserId: access.clerkUserId,
@@ -56,7 +106,28 @@ export async function createEvidenceLibrary(
     createdAt: now,
     updatedAt: now,
   });
-  return { draftId, editVersion: 0, libraryId };
+  const setupOperation = await queueEvidenceLibraryOperation(ctx, {
+    libraryId,
+    kind: "setup",
+    idempotencyKey: SETUP_OPERATION_IDEMPOTENCY_KEY,
+  });
+  const runtimeBinding = await createPendingRuntimeBinding(ctx, {
+    libraryId,
+    publicAddress,
+  });
+  await ctx.db.patch("evidenceLibraries", libraryId, {
+    draftId,
+    latestRevisionId: revisionId,
+    runtimeBindingId: runtimeBinding.bindingId,
+    setupOperationId: setupOperation.operationId,
+  });
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  if (!library) {
+    throw new Error("Created Evidence Library could not be read");
+  }
+  return toSetupDraftResult(
+    await readEvidenceLibrarySetupRecords(ctx, library),
+  );
 }
 
 export async function saveEvidenceLibraryDraftSection(
@@ -68,7 +139,11 @@ export async function saveEvidenceLibraryDraftSection(
     expectedEditVersion: number;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
@@ -88,7 +163,9 @@ export async function saveEvidenceLibraryDraftSection(
       query.eq("draftId", draft._id),
     )
     .collect();
-  const existing = sections.find((section) => section.sectionKey === args.sectionKey);
+  const existing = sections.find(
+    (section) => section.sectionKey === args.sectionKey,
+  );
   const totalByteLength =
     sections.reduce((total, section) => total + section.payloadByteLength, 0) -
     (existing?.payloadByteLength ?? 0) +
@@ -108,7 +185,11 @@ export async function saveEvidenceLibraryDraftSection(
     updatedAt: now,
   };
   if (existing) {
-    await ctx.db.replace("evidenceLibraryConfigSections", existing._id, sectionFields);
+    await ctx.db.replace(
+      "evidenceLibraryConfigSections",
+      existing._id,
+      sectionFields,
+    );
   } else {
     await ctx.db.insert("evidenceLibraryConfigSections", sectionFields);
   }
@@ -128,7 +209,11 @@ export async function finalizeEvidenceLibraryDraft(
     expectedEditVersion: number;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
@@ -189,17 +274,27 @@ export async function finalizeEvidenceLibraryDraft(
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
   });
+  await ctx.db.patch("evidenceLibraries", args.libraryId, {
+    latestRevisionId: revisionId,
+    updatedByClerkUserId: access.clerkUserId,
+    updatedAt: now,
+  });
   return { editVersion, revisionId, revisionKey, revisionNumber };
 }
 
-export const createLibrary = mutation({
-  args: { name: v.string(), slug: v.string() },
+export const createSetupDraft = mutation({
+  args: { name: v.string(), slug: v.string(), publicAddress: v.string() },
   returns: v.object({
     draftId: v.id("evidenceLibraryConfigDrafts"),
     editVersion: v.number(),
     libraryId: v.id("evidenceLibraries"),
+    publicAddress: v.string(),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+    runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
+    setupOperationId: v.id("evidenceLibraryConfigOperations"),
+    state: v.literal("provisioning"),
   }),
-  handler: createEvidenceLibrary,
+  handler: createEvidenceLibrarySetup,
 });
 
 export const saveDraftSection = mutation({

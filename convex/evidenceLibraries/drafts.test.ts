@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import schema from "../schema";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
-  createEvidenceLibrary,
+  createEvidenceLibrarySetup,
   finalizeEvidenceLibraryDraft,
   saveEvidenceLibraryDraftSection,
 } from "./mutations";
@@ -61,9 +61,7 @@ describe("Evidence Library draft storage", () => {
       });
       return await ctx.db
         .query("evidenceLibraryConfigDrafts")
-        .withIndex("by_libraryId", (query) =>
-          query.eq("libraryId", libraryId),
-        )
+        .withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId))
         .unique();
     });
 
@@ -119,9 +117,10 @@ describe("Evidence Library draft storage", () => {
     });
 
     const created = await asAdmin.run((ctx) =>
-      createEvidenceLibrary(ctx, {
+      createEvidenceLibrarySetup(ctx, {
         name: "Climate Evidence",
         slug: "climate-evidence",
+        publicAddress: "https://climate-evidence.example.org",
       }),
     );
     const saved = await asAdmin.run((ctx) =>
@@ -132,14 +131,17 @@ describe("Evidence Library draft storage", () => {
         expectedEditVersion: 0,
       }),
     );
-    const reloaded = await asMember.run((ctx) =>
+    const reloaded = await asAdmin.run((ctx) =>
       readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
     );
     const libraries = await asMember.run((ctx) => readEvidenceLibraries(ctx));
 
     expect(saved.editVersion).toBe(1);
     expect(libraries).toEqual([
-      expect.objectContaining({ _id: created.libraryId, slug: "climate-evidence" }),
+      expect.objectContaining({
+        _id: created.libraryId,
+        slug: "climate-evidence",
+      }),
     ]);
     expect(reloaded).toMatchObject({
       draft: { editVersion: 1 },
@@ -148,6 +150,11 @@ describe("Evidence Library draft storage", () => {
         { sectionKey: "identity", payload: { name: "Climate Evidence" } },
       ],
     });
+    await expect(
+      asMember.run((ctx) =>
+        readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
+      ),
+    ).rejects.toThrow(/FORBIDDEN/);
     await expect(
       asAdmin.run((ctx) =>
         saveEvidenceLibraryDraftSection(ctx, {
@@ -190,7 +197,11 @@ describe("Evidence Library draft storage", () => {
       o: { id: "org_revision", rol: "org:admin" },
     });
     const created = await admin.run((ctx) =>
-      createEvidenceLibrary(ctx, { name: "Revision Library", slug: "revision-library" }),
+      createEvidenceLibrarySetup(ctx, {
+        name: "Revision Library",
+        slug: "revision-library",
+        publicAddress: "https://revision-library.example.org",
+      }),
     );
     await admin.run((ctx) =>
       saveEvidenceLibraryDraftSection(ctx, {
@@ -224,8 +235,11 @@ describe("Evidence Library draft storage", () => {
       }),
     );
 
-    expect(finalized).toMatchObject({ revisionKey: "r1", revisionNumber: 1 });
-    expect(libraryAfterFinalize).toMatchObject({ state: "provisioning" });
+    expect(finalized).toMatchObject({ revisionKey: "r2", revisionNumber: 2 });
+    expect(libraryAfterFinalize).toMatchObject({
+      latestRevisionId: finalized.revisionId,
+      state: "provisioning",
+    });
     expect(libraryAfterFinalize).not.toHaveProperty("activeRevisionId");
     expect(revision.sections).toEqual([
       expect.objectContaining({

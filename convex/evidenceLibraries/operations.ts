@@ -10,7 +10,7 @@ import {
   evidenceLibraryRunningStageValidator,
 } from "./validators";
 
-type OperationKind = "validate" | "publish" | "rollback";
+type OperationKind = "setup" | "validate" | "publish" | "rollback";
 type RunningStage = "assembling" | "validating" | "publishing" | "activating";
 type OperationReceipt = {
   revisionKey?: string;

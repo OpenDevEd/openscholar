@@ -98,6 +98,7 @@ export default defineSchema({
   evidenceLibraryRuntimeBindings: defineTable(evidenceLibraryRuntimeBindingFields)
     .index("by_libraryId", ["libraryId"])
     .index("by_targetRuntimeId", ["targetRuntimeId"])
+    .index("by_targetBaseUrl", ["targetBaseUrl"])
     .index("by_state", ["state"]),
 
   evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)
