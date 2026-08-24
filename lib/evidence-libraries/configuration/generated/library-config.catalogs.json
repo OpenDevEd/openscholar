@@ -242,6 +242,14 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "search.embedder.source",
+				"values": [
+					"openAi",
+					"rest"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "search.scopes[]",
 				"values": [
 					"title_abstract_author_and_keywords",
@@ -252,6 +260,14 @@
 					"fields",
 					"documents",
 					"everywhere"
+				]
+			},
+			{
+				"allowCustom": false,
+				"path": "services.publication.zenodo.defaultIdentifierPolicy",
+				"values": [
+					"reuse-crossref",
+					"mint-zenodo"
 				]
 			},
 			{
@@ -268,6 +284,7 @@
 				"path": "theme.fonts.body.family",
 				"values": [
 					"Montserrat",
+					"Poppins",
 					"Ubuntu"
 				]
 			},
@@ -292,6 +309,7 @@
 				"path": "theme.fonts.heading.family",
 				"values": [
 					"Montserrat",
+					"Poppins",
 					"Ubuntu"
 				]
 			},
@@ -345,14 +363,20 @@
 		],
 		"writeOnlyPaths": [
 			"ai.providers[].apiKey",
+			"authentication.adminPassword",
 			"authentication.google.clientId",
 			"authentication.google.clientSecret",
 			"authentication.secret",
 			"email.smtp.password",
 			"email.smtp.username",
+			"search.embedder.apiKey",
 			"services.database.url",
+			"services.publication.crossref.loginId",
+			"services.publication.crossref.password",
+			"services.publication.zenodo.token",
 			"services.search.key",
-			"services.storage.serviceRoleKey"
+			"services.storage.serviceRoleKey",
+			"sources[].apiKey"
 		]
 	},
 	"options": {
@@ -413,9 +437,7 @@
 				"key": "fields",
 				"name": "All metadata",
 				"attributesToSearchOn": [
-					"title",
-					"abstractNote",
-					"fullNames",
+					"metadataSearch",
 					"tags"
 				]
 			},
@@ -430,7 +452,9 @@
 				"key": "everywhere",
 				"name": "Everywhere",
 				"attributesToSearchOn": [
-					"*"
+					"metadataSearch",
+					"tags",
+					"fullTextPDFs.fullTextPDF.text"
 				]
 			}
 		],
@@ -461,6 +485,15 @@
 		"fonts": [
 			{
 				"family": "Montserrat",
+				"weights": [
+					300,
+					400,
+					500,
+					700
+				]
+			},
+			{
+				"family": "Poppins",
 				"weights": [
 					300,
 					400,

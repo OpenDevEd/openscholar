@@ -247,6 +247,7 @@
 											"type": "string",
 											"enum": [
 												"Montserrat",
+												"Poppins",
 												"Ubuntu"
 											]
 										}
@@ -311,6 +312,7 @@
 											"type": "string",
 											"enum": [
 												"Montserrat",
+												"Poppins",
 												"Ubuntu"
 											]
 										}
@@ -953,10 +955,6 @@
 					"default": true,
 					"type": "boolean"
 				},
-				"embeddings": {
-					"default": true,
-					"type": "boolean"
-				},
 				"scopes": {
 					"minItems": 1,
 					"maxItems": 8,
@@ -986,6 +984,109 @@
 						"fields",
 						"documents",
 						"everywhere"
+					]
+				},
+				"embedder": {
+					"default": null,
+					"anyOf": [
+						{
+							"oneOf": [
+								{
+									"type": "object",
+									"properties": {
+										"source": {
+											"type": "string",
+											"const": "openAi"
+										},
+										"model": {
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 128
+										},
+										"apiKey": {
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 512,
+											"writeOnly": true
+										},
+										"dimensions": {
+											"type": "integer",
+											"minimum": 1,
+											"maximum": 65536
+										}
+									},
+									"required": [
+										"source",
+										"model",
+										"apiKey"
+									],
+									"additionalProperties": false
+								},
+								{
+									"type": "object",
+									"properties": {
+										"source": {
+											"type": "string",
+											"const": "rest"
+										},
+										"url": {
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 2048,
+											"format": "uri"
+										},
+										"apiKey": {
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 512,
+											"writeOnly": true
+										},
+										"dimensions": {
+											"type": "integer",
+											"minimum": 1,
+											"maximum": 65536
+										},
+										"request": {
+											"type": "object",
+											"propertyNames": {
+												"type": "string"
+											},
+											"additionalProperties": {}
+										},
+										"response": {
+											"type": "object",
+											"propertyNames": {
+												"type": "string"
+											},
+											"additionalProperties": {}
+										},
+										"headers": {
+											"type": "object",
+											"propertyNames": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 128
+											},
+											"additionalProperties": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 1024
+											}
+										}
+									},
+									"required": [
+										"source",
+										"url",
+										"request",
+										"response"
+									],
+									"additionalProperties": false
+								}
+							]
+						},
+						{
+							"type": "null"
+						}
 					]
 				}
 			},
@@ -1355,13 +1456,77 @@
 						"minLength": 1,
 						"maxLength": 64
 					},
+					"provider": {
+						"type": "string",
+						"const": "zotero"
+					},
+					"groupId": {
+						"type": "string",
+						"maxLength": 512,
+						"pattern": "^\\d+$"
+					},
+					"apiKey": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 512,
+						"writeOnly": true
+					},
+					"enabled": {
+						"default": true,
+						"type": "boolean"
+					},
 					"writebackEnabled": {
 						"default": false,
 						"type": "boolean"
+					},
+					"settings": {
+						"default": {},
+						"type": "object",
+						"properties": {
+							"apiBaseUrl": {
+								"default": "https://api.zotero.org",
+								"type": "string",
+								"format": "uri"
+							},
+							"attachmentDownloadTimeoutMs": {
+								"default": 120000,
+								"type": "integer",
+								"minimum": 1000,
+								"maximum": 900000
+							},
+							"maxConsistencyRetries": {
+								"default": 4,
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 10
+							},
+							"maxRecordsPerBatch": {
+								"default": 500,
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 1000
+							},
+							"maxSnapshotRecords": {
+								"default": 100000,
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 1000000
+							},
+							"requestTimeoutMs": {
+								"default": 30000,
+								"type": "integer",
+								"minimum": 1000,
+								"maximum": 120000
+							}
+						},
+						"additionalProperties": false
 					}
 				},
 				"required": [
-					"key"
+					"key",
+					"provider",
+					"groupId",
+					"apiKey"
 				],
 				"additionalProperties": false
 			}
@@ -1465,6 +1630,139 @@
 							"minLength": 1,
 							"maxLength": 2048,
 							"format": "uri"
+						}
+					},
+					"additionalProperties": false
+				},
+				"publication": {
+					"default": {},
+					"type": "object",
+					"properties": {
+						"crossref": {
+							"default": {},
+							"type": "object",
+							"properties": {
+								"enabled": {
+									"default": false,
+									"type": "boolean"
+								},
+								"environment": {
+									"default": "test",
+									"type": "string",
+									"const": "test"
+								},
+								"loginId": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 255,
+									"writeOnly": true
+								},
+								"depositorName": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 255
+								},
+								"email": {
+									"type": "string",
+									"maxLength": 254,
+									"format": "email",
+									"pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+								},
+								"password": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 512,
+									"writeOnly": true
+								},
+								"registrant": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 255
+								},
+								"prefix": {
+									"type": "string",
+									"pattern": "^10\\.\\d{4,9}$"
+								},
+								"suffixNamespace": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 64,
+									"pattern": "^[a-z0-9][a-z0-9._-]*$"
+								}
+							},
+							"additionalProperties": false
+						},
+						"zenodo": {
+							"default": {},
+							"type": "object",
+							"properties": {
+								"enabled": {
+									"default": false,
+									"type": "boolean"
+								},
+								"environment": {
+									"default": "sandbox",
+									"type": "string",
+									"const": "sandbox"
+								},
+								"token": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 2048,
+									"writeOnly": true
+								},
+								"defaultIdentifierPolicy": {
+									"default": "reuse-crossref",
+									"type": "string",
+									"enum": [
+										"reuse-crossref",
+										"mint-zenodo"
+									]
+								},
+								"accessRight": {
+									"default": "open",
+									"type": "string",
+									"const": "open"
+								},
+								"license": {
+									"default": "cc-by-4.0",
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 128,
+									"pattern": "^[a-z0-9][a-z0-9.-]*$"
+								}
+							},
+							"additionalProperties": false
+						},
+						"worker": {
+							"default": {},
+							"type": "object",
+							"properties": {
+								"batchSize": {
+									"default": 25,
+									"type": "integer",
+									"minimum": 1,
+									"maximum": 500
+								},
+								"leaseSeconds": {
+									"default": 900,
+									"type": "integer",
+									"minimum": 30,
+									"maximum": 3600
+								},
+								"retryLimit": {
+									"default": 8,
+									"type": "integer",
+									"minimum": 1,
+									"maximum": 20
+								},
+								"nightlyUtcTime": {
+									"default": "02:00",
+									"type": "string",
+									"pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+								}
+							},
+							"additionalProperties": false
 						}
 					},
 					"additionalProperties": false
@@ -1610,6 +1908,12 @@
 			"default": {},
 			"type": "object",
 			"properties": {
+				"adminPassword": {
+					"type": "string",
+					"minLength": 12,
+					"maxLength": 512,
+					"writeOnly": true
+				},
 				"google": {
 					"default": {},
 					"type": "object",

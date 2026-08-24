@@ -11,6 +11,28 @@ import {
 } from "./section-registry";
 
 describe("Evidence Library section registry", () => {
+  test("resolves fields inside schema alternatives", () => {
+    const alternativeSchema = {
+      properties: {
+        search: {
+          anyOf: [
+            {
+              oneOf: [
+                { properties: { apiKey: { type: "string" } } },
+                { properties: { url: { type: "string" } } },
+              ],
+            },
+            { type: "null" },
+          ],
+        },
+      },
+    };
+
+    expect(resolveSchemaPointer(alternativeSchema, "/search/apiKey")).toEqual({
+      type: "string",
+    });
+  });
+
   test("covers the generated runtime contract exactly and derives credential paths", () => {
     const generatedSections = Object.keys(schema.properties).filter(
       (key) =>

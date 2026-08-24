@@ -12,7 +12,7 @@ import {
 } from "../lib/evidence-libraries/configuration/contract-sync.mjs";
 
 const EXPECTED_REPOSITORY = "https://github.com/OpenDevEd/new-el";
-const EXPECTED_BRANCH = "openscholar";
+const EXPECTED_BRANCH = "main";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function parseArgs(argv) {

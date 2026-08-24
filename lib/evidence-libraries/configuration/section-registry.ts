@@ -212,6 +212,30 @@ export const WRITE_ONLY_POINTER_PATTERNS = catalogs.fields.writeOnlyPaths.map(
   writeOnlyPathToPointerPattern,
 );
 
+function resolveSchemaToken(schema: unknown, token: string): unknown {
+  if (!schema || typeof schema !== "object") return undefined;
+
+  const node = schema as {
+    properties?: Record<string, unknown>;
+    items?: unknown;
+    allOf?: unknown[];
+    anyOf?: unknown[];
+    oneOf?: unknown[];
+  };
+  const direct = token === "*" ? node.items : node.properties?.[token];
+  if (direct !== undefined) return direct;
+
+  for (const alternatives of [node.allOf, node.anyOf, node.oneOf]) {
+    if (!alternatives) continue;
+    for (const alternative of alternatives) {
+      const resolved = resolveSchemaToken(alternative, token);
+      if (resolved !== undefined) return resolved;
+    }
+  }
+
+  return undefined;
+}
+
 export function resolveSchemaPointer(
   schema: unknown,
   pointer: string,
@@ -222,16 +246,8 @@ export function resolveSchemaPointer(
   let current: unknown = schema;
   for (const rawToken of pointer.slice(1).split("/")) {
     const token = unescapeJsonPointerToken(rawToken);
-    if (!current || typeof current !== "object") return undefined;
-    const node = current as {
-      properties?: Record<string, unknown>;
-      items?: unknown;
-    };
-    if (token === "*") {
-      current = node.items;
-      continue;
-    }
-    current = node.properties?.[token];
+    current = resolveSchemaToken(current, token);
+    if (current === undefined) return undefined;
   }
   return current;
 }
