@@ -1,4 +1,4 @@
-import { EvidenceLibraryAdminLaunch } from "@/components/evidence-libraries/evidence-library-admin-launch";
+import { AdminLaunch } from "@/components/evidence-libraries/mock/admin-launch";
 import { PageWrapper } from "@/components/PageWrapper";
 
 export default async function EvidenceLibraryAdminPage({
@@ -10,9 +10,7 @@ export default async function EvidenceLibraryAdminPage({
 
   return (
     <PageWrapper>
-      <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:py-14">
-        <EvidenceLibraryAdminLaunch libraryId={libraryId} />
-      </main>
+      <AdminLaunch libraryId={libraryId} />
     </PageWrapper>
   );
 }

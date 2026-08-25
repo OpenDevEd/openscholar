@@ -43,6 +43,7 @@ import {
   ListChecks,
   Clock,
   Database,
+  Layers,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
@@ -450,6 +451,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const getCurrentPage = () => {
     if (!pathname) return null;
     if (pathname === "/") return "home";
+    if (pathname.startsWith("/evidence-libraries")) return "evidence-libraries";
     if (pathname.includes("/bookmarks")) return "bookmarks";
     if (pathname.includes("/library")) return "library";
     if (pathname.includes("/history")) return "history";
@@ -549,6 +551,16 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               index={4}
             />
           )}
+
+          <NavItem
+            href="/evidence-libraries"
+            icon={Layers}
+            label={tc("evidenceLibraries")}
+            isActive={currentPageValue === "evidence-libraries"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
+            index={5}
+          />
         </motion.div>
       </div>
 
