@@ -459,16 +459,24 @@ describe("Evidence Library operation state", () => {
           query.eq("revisionId", activated.revisionId),
         )
         .collect(),
+      scheduledFunctions: await ctx.db.system
+        .query("_scheduled_functions")
+        .collect(),
     }));
 
     expect(activated).toMatchObject({
       kind: "setup",
       operationId: created.setupOperationId,
       revisionKey: "r2",
-      status: "queued",
+      status: "running",
     });
     expect(retried).toEqual(activated);
     expect(stored.operations).toHaveLength(1);
+    expect(
+      stored.scheduledFunctions.filter((scheduled) =>
+        scheduled.name.includes("runDatabaseSetup"),
+      ),
+    ).toHaveLength(1);
     expect(stored.operations[0]).toMatchObject({
       _id: created.setupOperationId,
       activationEditVersion: saved.editVersion,

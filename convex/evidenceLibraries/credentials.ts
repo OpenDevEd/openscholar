@@ -1,20 +1,29 @@
-import { internalMutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import {
+  internalMutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import {
-  WRITE_ONLY_POINTER_PATTERNS,
-} from "../../lib/evidence-libraries/configuration/section-registry";
+import { WRITE_ONLY_POINTER_PATTERNS } from "../../lib/evidence-libraries/configuration/section-registry";
 import { jsonPointerPatternMatches } from "../../lib/evidence-libraries/configuration/json-pointer";
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 
-export function resolveCredentialPath(concretePath: string, instanceKey?: string) {
+export function resolveCredentialPath(
+  concretePath: string,
+  instanceKey?: string,
+) {
   const pathPattern = WRITE_ONLY_POINTER_PATTERNS.find((pattern) =>
     jsonPointerPatternMatches(pattern, concretePath),
   );
   if (!pathPattern) {
-    throw createError("VALIDATION_ERROR", "Invalid Evidence Library credential path");
+    throw createError(
+      "VALIDATION_ERROR",
+      "Invalid Evidence Library credential path",
+    );
   }
   return {
     credentialKey: instanceKey ? `${pathPattern}:${instanceKey}` : pathPattern,
@@ -74,7 +83,11 @@ export async function storeEvidenceLibraryCredential(
     maskedHint?: string;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
   return await writeEvidenceLibraryCredentialRecord(ctx, {
     ...args,
     clerkUserId: access.clerkUserId,
@@ -135,7 +148,35 @@ export async function storeLibraryServiceCredential(
     maskedHint: string;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
+  const credentialId = await writeLibraryServiceCredentialRecord(ctx, {
+    ...args,
+    clerkUserId: access.clerkUserId,
+    validationState: "untested",
+  });
+  await writeAuditLogRecord(ctx, {
+    action: "evidence_library.service_credential.rotated",
+    userId: access.clerkUserId,
+    metadata: { credentialId, libraryId: args.libraryId },
+  });
+  return credentialId;
+}
+
+export async function writeLibraryServiceCredentialRecord(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    encryptedValue: string;
+    credentialDigest: string;
+    maskedHint: string;
+    clerkUserId: string;
+    validationState: "untested" | "valid" | "invalid";
+  },
+) {
   const existing = await ctx.db
     .query("evidenceLibraryCredentials")
     .withIndex("by_libraryId_and_credentialKey", (query) =>
@@ -151,8 +192,8 @@ export async function storeLibraryServiceCredential(
     encryptedValue: args.encryptedValue,
     credentialDigest: args.credentialDigest,
     maskedHint: args.maskedHint,
-    validationState: "untested" as const,
-    updatedByClerkUserId: access.clerkUserId,
+    validationState: args.validationState,
+    updatedByClerkUserId: args.clerkUserId,
     updatedAt: now,
   };
   let credentialId: Id<"evidenceLibraryCredentials">;
@@ -166,16 +207,11 @@ export async function storeLibraryServiceCredential(
   } else {
     credentialId = await ctx.db.insert("evidenceLibraryCredentials", {
       ...fields,
-      createdByClerkUserId: access.clerkUserId,
+      createdByClerkUserId: args.clerkUserId,
       createdAt: now,
     });
   }
 
-  await writeAuditLogRecord(ctx, {
-    action: "evidence_library.service_credential.rotated",
-    userId: access.clerkUserId,
-    metadata: { credentialId, libraryId: args.libraryId },
-  });
   return credentialId;
 }
 

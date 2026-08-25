@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -68,5 +68,111 @@ export async function createActivatedSetupFixture(suffix: string) {
       expectedEditVersion: saved.editVersion,
     },
   );
-  return { activated, admin, created, t };
+  const operation = await t.run((ctx) => ctx.db.get(created.setupOperationId));
+  if (!operation?.setupAttemptToken) {
+    throw new Error("Activated setup did not start an attempt");
+  }
+  return {
+    activated,
+    admin,
+    created,
+    t,
+    attemptToken: operation.setupAttemptToken,
+    attemptCount: operation.attemptCount,
+  };
+}
+
+export async function createDeployedSetupFixture(suffix: string) {
+  const fixture = await createActivatedSetupFixture(suffix);
+  await fixture.t.mutation(
+    internal.evidenceLibraries.databaseSetup.completeDatabaseSetup,
+    {
+      libraryId: fixture.created.libraryId,
+      operationId: fixture.created.setupOperationId,
+      attemptToken: fixture.attemptToken,
+      attemptCount: fixture.attemptCount,
+      encryptedDatabaseUrl: "encrypted-database-url",
+      outcome: "created",
+      databaseName: `el_${suffix}`,
+      loginName: `el_${suffix}_user`,
+    },
+  );
+  await fixture.t.mutation(
+    internal.evidenceLibraries.storageSetup.completeStorageSetup,
+    {
+      libraryId: fixture.created.libraryId,
+      operationId: fixture.created.setupOperationId,
+      attemptToken: fixture.attemptToken,
+      attemptCount: fixture.attemptCount,
+      encryptedServiceRoleKey: "encrypted-storage-key",
+      outcome: "created",
+      privateBucket: `el-private-${suffix}`,
+      publicBucket: `el-public-${suffix}`,
+    },
+  );
+  const prepared = await fixture.t.mutation(
+    internal.evidenceLibraries.applicationSetup.prepareApplicationSetup,
+    {
+      libraryId: fixture.created.libraryId,
+      operationId: fixture.created.setupOperationId,
+      attemptToken: fixture.attemptToken,
+      attemptCount: fixture.attemptCount,
+      candidateEncryptedSearchKey: "encrypted-search",
+      candidateEncryptedAuthenticationSecret: "encrypted-auth",
+      candidateEncryptedMachineCredential: "encrypted-machine",
+      candidateMachineCredentialDigest: "machine-digest",
+      candidateMachineCredentialHint: "els_key...",
+      candidateRuntimeCommit: "a".repeat(40),
+    },
+  );
+  await fixture.t.mutation(
+    internal.evidenceLibraries.applicationSetup.completeApplicationSetup,
+    {
+      libraryId: fixture.created.libraryId,
+      operationId: fixture.created.setupOperationId,
+      attemptToken: fixture.attemptToken,
+      attemptCount: fixture.attemptCount,
+      outcome: "created",
+      applicationId: `coolify-${suffix}`,
+      runtimeCommit: prepared.runtimeCommit,
+      runtimeConfigSha256: "b".repeat(64),
+      coolifyConfigHash: "c".repeat(64),
+      searchHost: "http://meilisearch:7700",
+      searchIndex: "evidence_library",
+      storageUrl: "https://storage.example.test",
+      storagePrivateBucket: prepared.storagePrivateBucket,
+      storagePublicBucket: prepared.storagePublicBucket,
+      storageMaxPdfBytes: 52_428_800,
+      databaseCredentialId: prepared.databaseCredentialId,
+      searchCredentialId: prepared.searchCredentialId,
+      storageCredentialId: prepared.storageCredentialId,
+    },
+  );
+  await fixture.t.mutation(
+    internal.evidenceLibraries.deploymentSetup.saveDeploymentSetupId,
+    {
+      libraryId: fixture.created.libraryId,
+      operationId: fixture.created.setupOperationId,
+      attemptToken: fixture.attemptToken,
+      attemptCount: fixture.attemptCount,
+      deploymentId: `deployment-${suffix}`,
+      outcome: "created",
+    },
+  );
+  await fixture.t.mutation(
+    internal.evidenceLibraries.deploymentSetup.completeDeploymentSetup,
+    {
+      libraryId: fixture.created.libraryId,
+      operationId: fixture.created.setupOperationId,
+      attemptToken: fixture.attemptToken,
+      attemptCount: fixture.attemptCount,
+      deploymentId: `deployment-${suffix}`,
+    },
+  );
+  return {
+    ...fixture,
+    prepared,
+    applicationId: `coolify-${suffix}`,
+    deploymentId: `deployment-${suffix}`,
+  };
 }

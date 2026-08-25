@@ -229,8 +229,8 @@ const evidenceLibraryRuntimeBindingProvisionedFields = {
   searchHost: v.string(),
   searchIndex: v.string(),
   storageUrl: v.string(),
-  storageDocumentsBucket: v.string(),
-  storageImagesBucket: v.string(),
+  storagePrivateBucket: v.string(),
+  storagePublicBucket: v.string(),
   storageMaxPdfBytes: v.number(),
   zoteroTranslationUrl: v.optional(v.string()),
   databaseCredentialId: v.id("evidenceLibraryCredentials"),
@@ -337,7 +337,7 @@ export const evidenceLibraryReconcileOutcomeValidator = v.union(
   v.literal("updated"),
 );
 
-const evidenceLibraryDeploymentOutcomeValidator = v.union(
+export const evidenceLibraryDeploymentOutcomeValidator = v.union(
   v.literal("created"),
   v.literal("matched"),
 );
@@ -359,12 +359,18 @@ const evidenceLibrarySetupResultVariantFields = {
     outcome: evidenceLibraryReconcileOutcomeValidator,
     step: v.literal("application"),
     applicationId: v.string(),
+    runtimeCommit: v.string(),
+    runtimeConfigSha256: v.string(),
+    coolifyConfigHash: v.string(),
   },
   deployment: {
     outcome: evidenceLibraryDeploymentOutcomeValidator,
     step: v.literal("deployment"),
     applicationId: v.string(),
     deploymentId: v.string(),
+    runtimeCommit: v.string(),
+    runtimeConfigSha256: v.string(),
+    coolifyConfigHash: v.string(),
   },
   healthCheck: {
     outcome: v.literal("matched"),
@@ -465,6 +471,10 @@ export const evidenceLibraryOperationFields = {
   setupAttemptToken: v.optional(v.string()),
   setupLeaseExpiresAt: v.optional(v.number()),
   setupEncryptedDatabasePassword: v.optional(v.string()),
+  setupRuntimeCommit: v.optional(v.string()),
+  setupDeploymentId: v.optional(v.string()),
+  setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
+  setupDeploymentPollCount: v.optional(v.number()),
   status: v.union(
     v.literal("queued"),
     v.literal("running"),

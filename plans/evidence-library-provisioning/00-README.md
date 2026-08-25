@@ -40,8 +40,10 @@ five agreed setup steps or keep the receipts needed for a safe retry.
 
 1. [Fixed setup operation](01-fixed-setup-operation.md)
 2. [Shared PostgreSQL database](02-shared-postgresql-database.md)
-3. Issue #28 supplies storage, Coolify, deployment, and health checks.
-4. Issue #30 adds the small status and Retry interface.
+3. [Shared storage and scheduling](03-shared-storage-and-scheduling.md)
+4. [Coolify application and deployment](04-coolify-application-and-deployment.md)
+5. [Runtime readiness](05-runtime-readiness.md)
+6. Issue #30 adds the small status and Retry interface.
 
 Issue #26 remains open until the steps from #27 and #28 run together against a
 disposable development library. This foundation covers only the operation
@@ -60,6 +62,9 @@ state, lock, receipts, and final atomic transition.
 - Evidence Library `tools/verifyLibraryDatabaseProvisioning.ts`
 - Evidence Library `docker/compose.library.yaml`
 - Evidence Library `docs/evidence-library-operations.md`
+- Evidence Library `tools/runRuntimeAcceptance.ts`
+- Supabase Storage's bucket API
+- Coolify's private GitHub application, environment, deployment, and application APIs
 
 ## Tests
 

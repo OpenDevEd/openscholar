@@ -19,8 +19,8 @@ export type ManagedEvidenceLibraryConfiguration = {
   searchIndex: string;
   storageUrl: string;
   storageServiceRoleKey: string;
-  storageDocumentsBucket: string;
-  storageImagesBucket: string;
+  storagePrivateBucket: string;
+  storagePublicBucket: string;
   storageMaxPdfBytes: number;
   zoteroTranslationUrl?: string;
 };
@@ -78,7 +78,7 @@ function applyGeneratedDefaults(
   now: Date,
 ): unknown {
   const source =
-    value === undefined && Object.hasOwn(node, "default")
+    value === undefined && Object.prototype.hasOwnProperty.call(node, "default")
       ? cloneJson(node.default)
       : value === undefined && node["x-dynamicDefault"] === "currentUtcYear"
         ? now.getUTCFullYear()
@@ -141,8 +141,8 @@ export function assembleEvidenceLibraryConfiguration({
         storage: {
           url: managed.storageUrl,
           serviceRoleKey: managed.storageServiceRoleKey,
-          privateBucket: managed.storageDocumentsBucket,
-          publicBucket: managed.storageImagesBucket,
+          privateBucket: managed.storagePrivateBucket,
+          publicBucket: managed.storagePublicBucket,
           maxPdfBytes: managed.storageMaxPdfBytes,
         },
         zotero: managed.zoteroTranslationUrl

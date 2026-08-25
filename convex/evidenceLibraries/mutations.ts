@@ -17,6 +17,7 @@ import {
   attachRevisionToSetupOperation,
   queueEvidenceLibraryOperation,
 } from "./operations";
+import { claimAndScheduleEvidenceLibrarySetupOperation } from "./setupOperation";
 import {
   createPendingRuntimeBinding,
   validateTargetBaseUrl,
@@ -583,13 +584,22 @@ export async function activateEvidenceLibraryConfiguration(
         "Evidence Library setup operation not found",
       );
     }
-    const operation = await attachRevisionToSetupOperation(ctx, {
+    await attachRevisionToSetupOperation(ctx, {
       libraryId: args.libraryId,
       operationId: setupOperationId,
       revisionId: frozen.revisionId,
       activationEditVersion: args.expectedEditVersion,
     });
-    return { ...frozen, kind: "setup" as const, ...operation };
+    const started = await claimAndScheduleEvidenceLibrarySetupOperation(ctx, {
+      libraryId: args.libraryId,
+      operationId: setupOperationId,
+    });
+    return {
+      ...frozen,
+      kind: "setup" as const,
+      operationId: setupOperationId,
+      status: started.status,
+    };
   }
   const operation = await queueEvidenceLibraryOperation(ctx, {
     libraryId: args.libraryId,

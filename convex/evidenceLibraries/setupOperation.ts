@@ -1,4 +1,5 @@
 import { internalMutation, type MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
@@ -25,6 +26,7 @@ export const EVIDENCE_LIBRARY_SETUP_STEPS = [
 ] as const satisfies readonly EvidenceLibrarySetupStage[];
 
 export const EVIDENCE_LIBRARY_SETUP_LEASE_MS = 20 * 60 * 1_000;
+export const EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS = 1_000;
 
 function setupStagePosition(step: EvidenceLibrarySetupStage): number {
   return EVIDENCE_LIBRARY_SETUP_STEPS.indexOf(step);
@@ -39,6 +41,28 @@ function requireSetupResourceIdentity(field: string, value: string): string {
     );
   }
   return normalized;
+}
+
+function requireRuntimeCommit(value: string): string {
+  const commit = requireSetupResourceIdentity("runtimeCommit", value);
+  if (!/^[a-f0-9]{40}$/u.test(commit)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "runtimeCommit must be a lowercase 40-character commit",
+    );
+  }
+  return commit;
+}
+
+function requireSha256(field: string, value: string): string {
+  const digest = requireSetupResourceIdentity(field, value);
+  if (!/^[a-f0-9]{64}$/u.test(digest)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `${field} must be a lowercase 64-character digest`,
+    );
+  }
+  return digest;
 }
 
 function validateSetupReceipt(
@@ -77,6 +101,15 @@ function validateSetupReceipt(
           "applicationId",
           result.applicationId,
         ),
+        runtimeCommit: requireRuntimeCommit(result.runtimeCommit),
+        runtimeConfigSha256: requireSha256(
+          "runtimeConfigSha256",
+          result.runtimeConfigSha256,
+        ),
+        coolifyConfigHash: requireSha256(
+          "coolifyConfigHash",
+          result.coolifyConfigHash,
+        ),
       };
     case "deployment":
       return {
@@ -89,6 +122,15 @@ function validateSetupReceipt(
         deploymentId: requireSetupResourceIdentity(
           "deploymentId",
           result.deploymentId,
+        ),
+        runtimeCommit: requireRuntimeCommit(result.runtimeCommit),
+        runtimeConfigSha256: requireSha256(
+          "runtimeConfigSha256",
+          result.runtimeConfigSha256,
+        ),
+        coolifyConfigHash: requireSha256(
+          "coolifyConfigHash",
+          result.coolifyConfigHash,
         ),
       };
     case "health_check":
@@ -149,8 +191,8 @@ function provisionedRuntimeBindingFields(
     searchHost: binding.searchHost,
     searchIndex: binding.searchIndex,
     storageUrl: binding.storageUrl,
-    storageDocumentsBucket: binding.storageDocumentsBucket,
-    storageImagesBucket: binding.storageImagesBucket,
+    storagePrivateBucket: binding.storagePrivateBucket,
+    storagePublicBucket: binding.storagePublicBucket,
     storageMaxPdfBytes: binding.storageMaxPdfBytes,
     databaseCredentialId: binding.databaseCredentialId,
     searchCredentialId: binding.searchCredentialId,
@@ -198,7 +240,7 @@ export async function claimEvidenceLibrarySetupOperation(
   args: {
     libraryId: Id<"evidenceLibraries">;
     operationId: Id<"evidenceLibraryConfigOperations">;
-    attemptToken: string;
+    attemptToken?: string;
   },
 ) {
   const setup = await readLinkedSetup(ctx, args);
@@ -206,7 +248,8 @@ export async function claimEvidenceLibrarySetupOperation(
   const now = Date.now();
   const attemptToken = requireSetupResourceIdentity(
     "attemptToken",
-    args.attemptToken,
+    args.attemptToken ??
+      `elsetup_${operation._id}_${operation.attemptCount + 1}`,
   );
   if (
     operation.status === "running" &&
@@ -235,6 +278,9 @@ export async function claimEvidenceLibrarySetupOperation(
     completedAt: undefined,
     setupAttemptToken: attemptToken,
     setupLeaseExpiresAt,
+    setupDeploymentId: undefined,
+    setupDeploymentOutcome: undefined,
+    setupDeploymentPollCount: 0,
     updatedAt: now,
   });
   if (setup.runtimeBinding.state === "failed") {
@@ -261,6 +307,28 @@ export async function claimEvidenceLibrarySetupOperation(
     attemptToken,
     setupLeaseExpiresAt,
   };
+}
+
+export async function claimAndScheduleEvidenceLibrarySetupOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+    attemptToken?: string;
+  },
+) {
+  const claimed = await claimEvidenceLibrarySetupOperation(ctx, args);
+  await ctx.scheduler.runAfter(
+    EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS,
+    internal.evidenceLibraries.databaseSetupActions.runDatabaseSetup,
+    {
+      libraryId: args.libraryId,
+      operationId: args.operationId,
+      attemptToken: claimed.attemptToken,
+      attemptCount: claimed.attemptCount,
+    },
+  );
+  return { ...claimed, status: "running" as const };
 }
 
 function requireCurrentSetupAttempt(
@@ -300,10 +368,7 @@ export async function requireCurrentEvidenceLibrarySetupAttempt(
     args.attemptToken,
     args.attemptCount,
   );
-  if (
-    args.expectedStage &&
-    setup.setupOperation.stage !== args.expectedStage
-  ) {
+  if (args.expectedStage && setup.setupOperation.stage !== args.expectedStage) {
     throw createError(
       "CONFLICT",
       `Evidence Library setup is running ${setup.setupOperation.stage}, not ${args.expectedStage}`,
@@ -370,6 +435,9 @@ export async function recordEvidenceLibrarySetupStep(
   if (
     application.applicationId !== setup.runtimeBinding.targetRuntimeId ||
     deployment.applicationId !== application.applicationId ||
+    deployment.runtimeCommit !== application.runtimeCommit ||
+    deployment.runtimeConfigSha256 !== application.runtimeConfigSha256 ||
+    deployment.coolifyConfigHash !== application.coolifyConfigHash ||
     receipt.applicationId !== application.applicationId ||
     receipt.deploymentId !== deployment.deploymentId
   ) {
@@ -379,8 +447,8 @@ export async function recordEvidenceLibrarySetupStep(
     );
   }
   if (
-    storage.privateBucket !== setup.runtimeBinding.storageDocumentsBucket ||
-    storage.publicBucket !== setup.runtimeBinding.storageImagesBucket
+    storage.privateBucket !== setup.runtimeBinding.storagePrivateBucket ||
+    storage.publicBucket !== setup.runtimeBinding.storagePublicBucket
   ) {
     throw createError(
       "CONFLICT",
@@ -400,6 +468,10 @@ export async function recordEvidenceLibrarySetupStep(
     setupAttemptToken: undefined,
     setupLeaseExpiresAt: undefined,
     setupEncryptedDatabasePassword: undefined,
+    setupRuntimeCommit: undefined,
+    setupDeploymentId: undefined,
+    setupDeploymentOutcome: undefined,
+    setupDeploymentPollCount: undefined,
     updatedAt: now,
   });
   await ctx.db.replace(setup.runtimeBinding._id, {
@@ -497,8 +569,9 @@ export const claimSetupOperation = internalMutation({
     step: evidenceLibrarySetupStageValidator,
     attemptToken: v.string(),
     setupLeaseExpiresAt: v.number(),
+    status: v.literal("running"),
   }),
-  handler: claimEvidenceLibrarySetupOperation,
+  handler: claimAndScheduleEvidenceLibrarySetupOperation,
 });
 
 export const recordSetupStep = internalMutation({
