@@ -491,6 +491,7 @@ export const evidenceLibraryOperationFields = {
   setupRuntimeCommit: v.optional(v.string()),
   setupDeploymentId: v.optional(v.string()),
   setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
+  setupDeploymentNotBefore: v.optional(v.number()),
   setupDeploymentPollCount: v.optional(v.number()),
   setupReadinessPollCount: v.optional(v.number()),
   configurationDeploymentTarget: v.optional(
