@@ -166,8 +166,10 @@ function createCoolifyServer(
     environments?: FakeEnvironment[];
     deployments?: FakeDeployment[];
     deploymentCount?: number;
+    createPreviewEnvironmentOnCreate?: boolean;
     ignoreApplicationWrites?: boolean;
     ignoreEnvironmentWrites?: boolean;
+    staleEnvironmentReadsAfterWrite?: number;
   } = {},
 ) {
   let revision = 1;
@@ -176,6 +178,8 @@ function createCoolifyServer(
     : null;
   const tags = new Set(input.tags ?? []);
   let environments = structuredClone(input.environments ?? []);
+  let staleEnvironments: FakeEnvironment[] | null = null;
+  let staleEnvironmentReadsRemaining = 0;
   const deployments = structuredClone(input.deployments ?? []);
   const requests: RecordedRequest[] = [];
 
@@ -340,13 +344,19 @@ function createCoolifyServer(
       }
 
       if (url.pathname === `${applicationPath}/envs`) {
-        if (method === "GET")
+        if (method === "GET") {
+          if (staleEnvironments && staleEnvironmentReadsRemaining > 0) {
+            staleEnvironmentReadsRemaining -= 1;
+            return jsonResponse(structuredClone(staleEnvironments));
+          }
           return jsonResponse(structuredClone(environments));
+        }
         const write = body as Omit<
           FakeEnvironment,
           "uuid" | "is_coolify" | "is_buildpack_control" | "is_shared"
         >;
         if (!input.ignoreEnvironmentWrites) {
+          staleEnvironments = structuredClone(environments);
           if (method === "POST") {
             environments.push(
               environment(write.key, write.value, {
@@ -354,6 +364,15 @@ function createCoolifyServer(
                 uuid: `env-created-${environments.length + 1}`,
               }),
             );
+            if (input.createPreviewEnvironmentOnCreate) {
+              environments.push(
+                environment(write.key, write.value, {
+                  ...write,
+                  uuid: `env-created-preview-${environments.length + 1}`,
+                  is_preview: true,
+                }),
+              );
+            }
           } else if (method === "PATCH") {
             environments = environments.map((current) =>
               current.key === write.key &&
@@ -362,6 +381,8 @@ function createCoolifyServer(
                 : current,
             );
           }
+          staleEnvironmentReadsRemaining =
+            input.staleEnvironmentReadsAfterWrite ?? 0;
           bumpConfigHash();
         }
         const saved = environments.find(
@@ -381,7 +402,10 @@ function createCoolifyServer(
           url.pathname.slice(envDeletePrefix.length),
         );
         if (!input.ignoreEnvironmentWrites) {
+          staleEnvironments = structuredClone(environments);
           environments = environments.filter(({ uuid }) => uuid !== envUuid);
+          staleEnvironmentReadsRemaining =
+            input.staleEnvironmentReadsAfterWrite ?? 0;
           bumpConfigHash();
         }
         return jsonResponse({ message: "Environment variable deleted" });
@@ -843,18 +867,44 @@ describe("Coolify Evidence Library client", () => {
   });
 
   it("fails when an environment write does not survive readback", async () => {
+    vi.useFakeTimers();
     const server = createCoolifyServer({
       application: expectedApplication(),
       tags: [createCoolifyLibraryTag(LIBRARY_ID)],
       ignoreEnvironmentWrites: true,
     });
 
-    await expect(
-      createClient(server.fetchImpl).reconcileApplication(reconcileInput()),
-    ).rejects.toMatchObject({
+    const reconciliation = createClient(server.fetchImpl).reconcileApplication(
+      reconcileInput(),
+    );
+    const rejected = expect(reconciliation).rejects.toMatchObject({
       code: "COOLIFY_ENVIRONMENT_MISMATCH",
       message: "Coolify did not save the required environment variables",
     });
+    await vi.runAllTimersAsync();
+    await rejected;
+  });
+
+  it("accepts an environment write after Coolify briefly returns stale data", async () => {
+    vi.useFakeTimers();
+    const server = createCoolifyServer({
+      application: expectedApplication(),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      createPreviewEnvironmentOnCreate: true,
+      staleEnvironmentReadsAfterWrite: 1,
+    });
+
+    const reconciliation = createClient(server.fetchImpl).reconcileApplication(
+      reconcileInput(),
+    );
+    await vi.runAllTimersAsync();
+    await expect(reconciliation).resolves.toMatchObject({
+      outcome: "updated",
+      applicationUuid: APPLICATION_UUID,
+    });
+    expect(server.environments.some(({ is_preview }) => is_preview)).toBe(
+      false,
+    );
   });
 
   it("adopts a deployment only when the app, commit, and Coolify hash all match", async () => {
