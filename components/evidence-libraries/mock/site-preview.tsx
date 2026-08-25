@@ -1,11 +1,11 @@
 "use client";
 
-import { Lock, Search } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { initialsOf, type LibraryConfig } from "@/lib/evidence-libraries/mock/data";
 
-/** Fake browser window used by the preview sheet and the admin "new tab" dialog. */
+/** Fake browser window used by the admin "new tab" dialog. */
 export function BrowserFrame({ url, children }: { url: string; children: ReactNode }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border/50 bg-background">
