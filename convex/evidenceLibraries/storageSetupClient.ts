@@ -147,7 +147,24 @@ async function requestStorage(
       );
     }
 
-    if (request.method === "GET" && response.status === 404) return null;
+    if (request.method === "GET") {
+      if (response.status === 404) return null;
+      if (response.status === 400) {
+        let errorPayload: unknown;
+        try {
+          errorPayload = await response.json();
+        } catch {
+          errorPayload = null;
+        }
+        if (
+          isRecord(errorPayload) &&
+          errorPayload.code === "NoSuchBucket" &&
+          (errorPayload.statusCode === "404" || errorPayload.statusCode === 404)
+        ) {
+          return null;
+        }
+      }
+    }
     if (!response.ok) {
       throw new StorageSetupError(
         "STORAGE_REQUEST_FAILED",

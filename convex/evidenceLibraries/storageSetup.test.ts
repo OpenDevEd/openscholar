@@ -142,10 +142,20 @@ describe("Evidence Library storage setup", () => {
             url.pathname.slice("/storage/v1/bucket/".length),
           );
           const bucket = buckets.get(name);
-          return new Response(bucket ? JSON.stringify(bucket) : "{}", {
-            status: bucket ? 200 : 404,
-            headers: { "content-type": "application/json" },
-          });
+          return new Response(
+            bucket
+              ? JSON.stringify(bucket)
+              : JSON.stringify({
+                  code: "NoSuchBucket",
+                  error: "Bucket not found",
+                  message: "Bucket not found",
+                  statusCode: "404",
+                }),
+            {
+              status: bucket ? 200 : 400,
+              headers: { "content-type": "application/json" },
+            },
+          );
         }
         const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
         buckets.set(String(body.id), body);
