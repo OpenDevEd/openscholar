@@ -225,7 +225,7 @@ function Workspace({ library }: { library: MockLibrary }) {
           <aside className="w-full border-b border-border/40 bg-muted/20 md:w-60 md:border-b-0 md:border-r md:bg-transparent">
             <nav
               aria-label={t("railThisVersion")}
-              className="space-y-5 p-4 md:sticky md:top-36 md:px-4 md:pb-5 md:pt-3"
+              className="space-y-5 p-4 md:sticky md:top-24 md:p-5"
             >
               <RailGroup label={t("railThisVersion")}>
                 {EDITABLE_SECTIONS.map((key) => {
