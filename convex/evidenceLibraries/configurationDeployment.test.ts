@@ -94,6 +94,7 @@ function createRuntimeNetwork(input: {
       connect_to_docker_network: false,
       inject_build_args_to_dockerfile: false,
       include_source_commit_in_build: false,
+      is_container_label_escape_enabled: false,
     },
   });
 

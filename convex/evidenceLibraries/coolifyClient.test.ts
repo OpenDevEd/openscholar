@@ -55,6 +55,7 @@ type FakeApplication = {
     connect_to_docker_network: boolean;
     inject_build_args_to_dockerfile: boolean;
     include_source_commit_in_build: boolean;
+    is_container_label_escape_enabled: boolean;
   };
 };
 
@@ -132,6 +133,7 @@ function expectedApplication(
       connect_to_docker_network: false,
       inject_build_args_to_dockerfile: false,
       include_source_commit_in_build: false,
+      is_container_label_escape_enabled: false,
     },
     ...structuredClone(overrides),
   };
@@ -268,6 +270,9 @@ function createCoolifyServer(
               include_source_commit_in_build: Boolean(
                 create.include_source_commit_in_build,
               ),
+              is_container_label_escape_enabled: Boolean(
+                create.is_container_label_escape_enabled,
+              ),
             },
           });
           for (const tag of create.tags as string[]) tags.add(tag);
@@ -318,6 +323,7 @@ function createCoolifyServer(
             "connect_to_docker_network",
             "inject_build_args_to_dockerfile",
             "include_source_commit_in_build",
+            "is_container_label_escape_enabled",
           ] as const) {
             if (key in patch) application.settings[key] = Boolean(patch[key]);
           }
@@ -538,6 +544,7 @@ describe("Coolify Evidence Library client", () => {
         connect_to_docker_network: false,
         inject_build_args_to_dockerfile: false,
         include_source_commit_in_build: false,
+        is_container_label_escape_enabled: false,
       },
     });
     expect(
@@ -612,6 +619,7 @@ describe("Coolify Evidence Library client", () => {
       autogenerate_domain: false,
       inject_build_args_to_dockerfile: false,
       include_source_commit_in_build: false,
+      is_container_label_escape_enabled: false,
     });
     for (const request of server.requests) {
       expect(request.headers.get("authorization")).toBe(
@@ -643,6 +651,7 @@ describe("Coolify Evidence Library client", () => {
           connect_to_docker_network: true,
           inject_build_args_to_dockerfile: true,
           include_source_commit_in_build: true,
+          is_container_label_escape_enabled: true,
         },
       }),
       tags: [createCoolifyLibraryTag(LIBRARY_ID)],
