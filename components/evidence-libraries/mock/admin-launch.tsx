@@ -1,20 +1,12 @@
 "use client";
 
-import { AlertTriangle, ExternalLink, KeyRound, Play, Rocket, Settings, ShieldCheck } from "lucide-react";
+import { ExternalLink, KeyRound, Play, Rocket, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,15 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/spinner";
 import {
   selectLibrary,
   useEvidenceLibraryMockStore,
 } from "@/lib/evidence-libraries/mock/store";
 import { LibraryNotFound } from "./library-not-found";
-import { LibraryStatusBadge } from "./library-status-badge";
+import { LibraryStatusBadge, StatusChip } from "./library-status-badge";
+import { PanelHeader } from "./panel-header";
 import { PrototypeBadge } from "./prototype-badge";
+import { InlineNotice, SectionCard } from "./section-card";
 import { AdminSitePreview } from "./site-preview";
 
 const CODE_DELAY_MS = 1000;
@@ -59,111 +52,98 @@ export function AdminLaunch({ libraryId }: { libraryId: string }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:py-10">
+    <div className="container mx-auto max-w-6xl p-4 sm:p-6">
       <div className="mb-4 flex justify-end">
         <PrototypeBadge />
       </div>
-      <PageHeader
-        title={t("title")}
-        description={t("description", { name: library.name })}
-        icon={KeyRound}
-      />
+      <CommandCenterContainer>
+        <PanelHeader
+          icon={KeyRound}
+          title={t("title")}
+          description={t("description", { name: library.name })}
+        >
+          <LibraryStatusBadge library={library} />
+        </PanelHeader>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>{library.name}</CardTitle>
-            <LibraryStatusBadge library={library} />
+        <div className="max-w-2xl space-y-4 p-4 md:p-6">
+          <div className="rounded-xl border border-border/50 bg-muted/30 p-4">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+              <dt className="text-muted-foreground">{t("publicAddress")}</dt>
+              <dd>
+                <a
+                  className="font-mono text-sm hover:underline"
+                  href={`https://${library.address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {library.address}
+                </a>
+              </dd>
+              <dt className="text-muted-foreground">{t("adminAddress")}</dt>
+              <dd className="font-mono text-sm">https://{library.address}/admin</dd>
+              <dt className="text-muted-foreground">{t("activeRevision")}</dt>
+              <dd>
+                {library.activeRev ? (
+                  <StatusChip tone="success" className="font-mono normal-case tracking-normal">
+                    {library.activeRev}
+                  </StatusChip>
+                ) : (
+                  <span className="text-muted-foreground">{t("noneYet")}</span>
+                )}
+              </dd>
+              <dt className="text-muted-foreground">{t("yourRole")}</dt>
+              <dd>
+                {tm("roleOwner")}{" "}
+                <code className="text-xs font-mono text-muted-foreground">org:admin</code>
+              </dd>
+            </dl>
           </div>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">{t("publicAddress")}</dt>
-            <dd>
-              <a
-                className="font-mono hover:underline"
-                href={`https://${library.address}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {library.address}
-              </a>
-            </dd>
-            <dt className="text-muted-foreground">{t("adminAddress")}</dt>
-            <dd className="font-mono">https://{library.address}/admin</dd>
-            <dt className="text-muted-foreground">{t("activeRevision")}</dt>
-            <dd>
-              {library.activeRev ? (
-                <Badge variant="secondary" className="bg-emerald-600/15 font-mono text-emerald-700 dark:text-emerald-400">
-                  {library.activeRev}
-                </Badge>
-              ) : (
-                <span className="text-muted-foreground">{t("noneYet")}</span>
-              )}
-            </dd>
-            <dt className="text-muted-foreground">{t("yourRole")}</dt>
-            <dd>
-              {tm("roleOwner")} <span className="font-mono">org:admin</span>
-            </dd>
-          </dl>
-        </CardContent>
-      </Card>
 
-      {ready ? (
-        <Card data-admin-state="ready">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <KeyRound className="size-4 text-primary" />
-              {t("signInTitle")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Alert>
-              <ShieldCheck />
-              <AlertDescription>{t("codeExplain")}</AlertDescription>
-            </Alert>
-          </CardContent>
-          <CardFooter className="justify-end gap-2">
-            <Button asChild variant="outline">
-              <Link href={`${base}/configuration`}>
-                <Settings />
-                {t("configure")}
-              </Link>
-            </Button>
-            <Button onClick={openAdmin} disabled={creatingCode}>
-              {creatingCode ? <Spinner /> : <ExternalLink />}
-              {creatingCode ? t("creatingCode") : t("openAdmin")}
-            </Button>
-          </CardFooter>
-        </Card>
-      ) : (
-        <Card data-admin-state="not-ready">
-          <CardContent className="pt-6">
-            <Alert>
-              <AlertTriangle />
-              <AlertTitle>{t("notReadyTitle")}</AlertTitle>
-              <AlertDescription>{t("notReadyHint")}</AlertDescription>
-            </Alert>
-          </CardContent>
-          <CardFooter className="justify-end">
-            {library.status === "draft" ? (
-              <Button asChild>
-                <Link href={`${base}/configuration`}>
-                  <Play />
-                  {t("continueSetup")}
-                </Link>
-              </Button>
-            ) : (
-              <Button asChild>
-                <Link href={`${base}/setup`}>
-                  <Rocket />
-                  {t("viewSetup")}
-                </Link>
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-      )}
+          {ready ? (
+            <SectionCard icon={KeyRound} title={t("signInTitle")} data-admin-state="ready">
+              <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-background p-3 text-sm text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                <span>{t("codeExplain")}</span>
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button asChild variant="outline">
+                  <Link href={`${base}/configuration`}>
+                    <Settings />
+                    {t("configure")}
+                  </Link>
+                </Button>
+                <Button onClick={openAdmin} disabled={creatingCode}>
+                  {creatingCode ? <Spinner /> : <ExternalLink />}
+                  {creatingCode ? t("creatingCode") : t("openAdmin")}
+                </Button>
+              </div>
+            </SectionCard>
+          ) : (
+            <div className="space-y-4" data-admin-state="not-ready">
+              <InlineNotice tone="warning" title={t("notReadyTitle")}>
+                {t("notReadyHint")}
+              </InlineNotice>
+              <div className="flex justify-end">
+                {library.status === "draft" ? (
+                  <Button asChild>
+                    <Link href={`${base}/configuration`}>
+                      <Play />
+                      {t("continueSetup")}
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button asChild>
+                    <Link href={`${base}/setup`}>
+                      <Rocket />
+                      {t("viewSetup")}
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </CommandCenterContainer>
 
       <Dialog open={tabOpen} onOpenChange={setTabOpen}>
         <DialogContent className="sm:max-w-3xl">

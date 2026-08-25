@@ -18,7 +18,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -30,11 +30,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { CommandCenterContainer } from "@/components/command-center/command-center-container";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -70,7 +71,10 @@ import {
 } from "@/lib/evidence-libraries/mock/store";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { LibraryNotFound } from "./library-not-found";
+import { STATUS_DOT, StatusChip, type StatusTone } from "./library-status-badge";
+import { PanelHeader } from "./panel-header";
 import { PrototypeBadge } from "./prototype-badge";
+import { Field, FieldError, SectionCard } from "./section-card";
 import { MiniNavbarPreview, PublicSitePreview } from "./site-preview";
 
 const NAME_MAX = 100;
@@ -93,16 +97,10 @@ const SECTION_ICONS: Record<SectionKey, LucideIcon> = {
   languages: Languages,
 };
 
-const STATE_DOT: Record<SectionState, string> = {
-  complete: "bg-emerald-500",
-  edited: "bg-amber-500",
-  attention: "bg-destructive",
-};
-
-const STATE_BADGE: Record<SectionState, string> = {
-  complete: "bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
-  edited: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-  attention: "bg-destructive/15 text-destructive",
+const STATE_TONE: Record<SectionState, StatusTone> = {
+  complete: "success",
+  edited: "warning",
+  attention: "danger",
 };
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -184,49 +182,45 @@ function Workspace({ library }: { library: MockLibrary }) {
 
   return (
     <div className="w-full pb-16">
-      {/* Sticky header: full width, content aligned to the page column */}
-      <div className="sticky top-14 z-20 border-b bg-background/95 px-4 pt-4 backdrop-blur sm:px-6 lg:top-0">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-start justify-between gap-4 pb-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10">
-              <Library className="size-5 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-xl font-semibold tracking-tight">
-                  {draft.name || t("untitled")}
-                </h1>
-                <Badge variant="outline" className="gap-1 font-normal">
+      {/* Sticky header: full width, same bar treatment as other sticky bars in the app */}
+      <div className="sticky top-14 z-20 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:top-0">
+        <div className="container mx-auto max-w-6xl px-4 sm:px-6">
+          <PanelHeader
+            icon={Library}
+            className="border-b-0 px-0 md:px-0"
+            title={
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="truncate">{draft.name || t("untitled")}</span>
+                <PrototypeBadge />
+              </span>
+            }
+            eyebrow={`https://${library.address}`}
+            description={
+              <span className="flex flex-wrap items-center gap-1.5">
+                <StatusChip tone="neutral" className="bg-background font-mono normal-case tracking-normal">
                   <GitBranch />
-                  {t("draftRev")} <span className="font-mono">{library.draftRev}</span>
-                </Badge>
+                  {t("draftRev")} {library.draftRev}
+                </StatusChip>
                 {library.activeRev ? (
-                  <Badge variant="secondary" className="gap-1 bg-emerald-600/15 font-normal text-emerald-700 dark:text-emerald-400">
+                  <StatusChip tone="success" className="font-mono normal-case tracking-normal">
                     <Check />
-                    {t("activeRev")} <span className="font-mono">{library.activeRev}</span>
-                  </Badge>
+                    {t("activeRev")} {library.activeRev}
+                  </StatusChip>
                 ) : (
-                  <Badge variant="secondary" className="gap-1 font-normal">
+                  <StatusChip tone="neutral" className="normal-case tracking-normal font-medium">
                     <GitBranch />
                     {t("notActive")}
-                  </Badge>
+                  </StatusChip>
                 )}
                 {dirty ? (
-                  <Badge
-                    variant="secondary"
-                    className="gap-1 bg-amber-500/15 font-normal text-amber-700 dark:text-amber-400"
-                    data-unsaved
-                  >
+                  <StatusChip tone="warning" className="normal-case tracking-normal font-medium" data-unsaved>
                     <AlertTriangle />
                     {t("unsaved")}
-                  </Badge>
+                  </StatusChip>
                 ) : null}
-                <PrototypeBadge />
-              </div>
-              <p className="font-mono text-xs text-muted-foreground">https://{library.address}</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+              </span>
+            }
+          >
             <Button variant="outline" disabled={!dirty || saving} onClick={handleSave}>
               {saving ? <Spinner /> : <Save />}
               {saving ? t("saving") : t("save")}
@@ -245,184 +239,296 @@ function Workspace({ library }: { library: MockLibrary }) {
             ) : (
               activateButton
             )}
-          </div>
-        </div>
-        {activation ? (
-          <div className="mx-auto w-full max-w-6xl">
+          </PanelHeader>
+          {activation ? (
             <ActivationBanner stageIndex={activation.stageIndex} rev={activation.rev} />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 pt-6 sm:px-6 lg:grid-cols-[220px_1fr]">
-        {/* Anchor rail */}
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <nav aria-label={t("railThisVersion")} className="space-y-5">
-            <RailGroup label={t("railThisVersion")}>
-              {EDITABLE_SECTIONS.map((key) => {
-                const state = sectionState(library, key);
-                return (
-                  <RailLink key={key} href={`#sec-${key}`} active={section === key} onClick={() => jumpTo(key)}>
-                    <span>{t(`sections.${key}`)}</span>
-                    <span
-                      className={cn("size-2 rounded-full", STATE_DOT[state])}
-                      data-state={state}
-                      title={t(`sectionState.${state}`)}
-                      aria-label={t(`sectionState.${state}`)}
-                      role="img"
-                    />
-                  </RailLink>
-                );
-              })}
-            </RailGroup>
-            <RailGroup label={t("railLater")}>
-              {LATER_SECTIONS.map((key) => (
-                <Tooltip key={key}>
-                  <TooltipTrigger asChild>
-                    <span
-                      tabIndex={0}
-                      aria-disabled="true"
-                      className="flex cursor-not-allowed items-center justify-between rounded-md px-3 py-1.5 text-sm text-muted-foreground/60"
-                    >
-                      <span>{t(`later.${key}`)}</span>
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground/70">
-                        {t("laterTag")}
-                      </Badge>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{t("laterTip")}</TooltipContent>
-                </Tooltip>
-              ))}
-            </RailGroup>
-            <RailGroup label={t("railDanger")}>
-              <RailLink href="#sec-danger" active={section === "danger"} onClick={() => jumpTo("danger")} danger>
-                <span>{t("sections.danger")}</span>
-              </RailLink>
-            </RailGroup>
-          </nav>
-        </aside>
-
-        {/* Sections */}
-        <div className="min-w-0 space-y-8">
-          <Section id="sec-identity" icon={SECTION_ICONS.identity} title={t("sections.identity")} description={t("identityDescription")} state={sectionState(library, "identity")}>
-            <Field label={t("nameLabel")} counter={`${draft.name.length} / ${NAME_MAX}`} error={!draft.name.trim() ? t("nameError") : null}>
-              {(id, invalid) => (
-                <Input id={id} maxLength={NAME_MAX} value={draft.name} aria-invalid={invalid || undefined} onChange={(e) => patch({ name: e.target.value })} />
-              )}
-            </Field>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label={t("shortNameLabel")} hint={t("shortNameHint")}>
-                {(id) => <Input id={id} className="font-mono" value={draft.shortName} readOnly />}
-              </Field>
-              <Field label={t("addressLabel")} hint={t("addressHint")}>
-                {(id) => (
-                  <div className="flex gap-2">
-                    <Input id={id} className="font-mono" value={`https://${library.address}`} readOnly />
-                    <Button type="button" variant="outline" size="icon" aria-label={t("copyAddress")} onClick={copyAddress}>
-                      <Copy />
-                    </Button>
-                  </div>
-                )}
-              </Field>
-            </div>
-          </Section>
-
-          <Section id="sec-branding" icon={SECTION_ICONS.branding} title={t("sections.branding")} description={t("brandingDescription")} state={sectionState(library, "branding")}>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label={t("logoDarkLabel")} error={!draft.logoDark.trim() ? t("logoDarkError") : null}>
-                {(id, invalid) => (
-                  <Input id={id} className="font-mono" value={draft.logoDark} aria-invalid={invalid || undefined} placeholder="https://…/logo-dark.svg" onChange={(e) => patch({ logoDark: e.target.value })} />
-                )}
-              </Field>
-              <Field label={t("logoLightLabel")} suffix={t("optional")}>
-                {(id) => (
-                  <Input id={id} className="font-mono" value={draft.logoLight} placeholder="https://…/logo-light.svg" onChange={(e) => patch({ logoLight: e.target.value })} />
-                )}
-              </Field>
-            </div>
-            <Field label={t("faviconLabel")} error={!draft.favicon.trim() ? t("faviconError") : null}>
-              {(id, invalid) => (
-                <Input id={id} className="font-mono" value={draft.favicon} aria-invalid={invalid || undefined} placeholder="https://…/favicon.ico" onChange={(e) => patch({ favicon: e.target.value })} />
-              )}
-            </Field>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <ColourField label={t("accentLabel")} hint={t("accentHint")} pickerLabel={t("pickAccent")} value={draft.accent} onChange={(accent) => patch({ accent })} />
-              <ColourField label={t("secondaryLabel")} hint={t("secondaryHint")} pickerLabel={t("pickSecondary")} value={draft.secondary} onChange={(secondary) => patch({ secondary })} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label>{t("livePreview")}</Label>
-                <PrototypeBadge variant="mock" />
-              </div>
-              <MiniNavbarPreview config={draft} />
-            </div>
-          </Section>
-
-          <Section id="sec-languages" icon={SECTION_ICONS.languages} title={t("sections.languages")} description={t("languagesDescription")} state={sectionState(library, "languages")}>
-            <div className="space-y-2">
-              <Label>{t("availableLanguages")}</Label>
-              <div className="flex flex-wrap gap-2" role="group" aria-label={t("availableLanguages")}>
-                {MOCK_LANGUAGES.map((lang) => {
-                  const checked = draft.languages.includes(lang.code);
+      <div className="container mx-auto max-w-6xl p-4 sm:p-6">
+        <CommandCenterContainer allowOverflow className="flex flex-col md:flex-row">
+          {/* Anchor rail, same look as the settings sidebar */}
+          <aside className="w-full border-b border-border/40 bg-muted/20 md:w-60 md:border-b-0 md:border-r md:bg-transparent">
+            <nav
+              aria-label={t("railThisVersion")}
+              className="space-y-5 p-4 md:sticky md:top-36 md:p-5"
+            >
+              <RailGroup label={t("railThisVersion")}>
+                {EDITABLE_SECTIONS.map((key) => {
+                  const state = sectionState(library, key);
+                  const Icon = SECTION_ICONS[key];
                   return (
-                    <Label
-                      key={lang.code}
-                      className={cn(
-                        "flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-normal transition-colors",
-                        checked ? "border-primary/60 bg-primary/10" : "hover:bg-muted",
-                      )}
+                    <RailLink
+                      key={key}
+                      href={`#sec-${key}`}
+                      icon={Icon}
+                      active={section === key}
+                      onClick={() => jumpTo(key)}
                     >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(next) =>
-                          patch({
-                            languages:
-                              next === true
-                                ? MOCK_LANGUAGES.filter((l) => l.code === lang.code || draft.languages.includes(l.code)).map((l) => l.code)
-                                : draft.languages.filter((c) => c !== lang.code),
-                          })
-                        }
+                      <span className="flex-1">{t(`sections.${key}`)}</span>
+                      <span
+                        className={cn("size-2 shrink-0 rounded-full", STATUS_DOT[STATE_TONE[state]])}
+                        data-state={state}
+                        title={t(`sectionState.${state}`)}
+                        aria-label={t(`sectionState.${state}`)}
+                        role="img"
                       />
-                      <span className="font-mono text-xs text-muted-foreground">{lang.code}</span>
-                      <span>{lang.name}</span>
-                    </Label>
+                    </RailLink>
                   );
                 })}
-              </div>
-              {draft.languages.length === 0 ? (
-                <p className="text-xs text-destructive" role="alert">{t("languagesError")}</p>
-              ) : null}
-            </div>
-            <Field label={t("defaultLanguage")} hint={t("defaultLanguageHint")} className="max-w-xs">
-              {(id) => (
-                <Select value={draft.defaultLanguage || undefined} disabled={draft.languages.length === 0} onValueChange={(defaultLanguage) => patch({ defaultLanguage })}>
-                  <SelectTrigger id={id} className="w-full">
-                    <SelectValue placeholder={t("selectLanguageFirst")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {draft.languages.map((code) => (
-                      <SelectItem key={code} value={code}>
-                        {code} — {MOCK_LANGUAGES.find((l) => l.code === code)?.name ?? code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </Field>
-          </Section>
+              </RailGroup>
+              <RailGroup label={t("railLater")}>
+                {LATER_SECTIONS.map((key) => (
+                  <Tooltip key={key}>
+                    <TooltipTrigger asChild>
+                      <span
+                        tabIndex={0}
+                        aria-disabled="true"
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "sm" }),
+                          "w-full cursor-not-allowed justify-between font-normal text-muted-foreground/60 hover:bg-transparent hover:text-muted-foreground/60",
+                        )}
+                      >
+                        <span>{t(`later.${key}`)}</span>
+                        <span className="rounded-full border border-border/50 px-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                          {t("laterTag")}
+                        </span>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{t("laterTip")}</TooltipContent>
+                  </Tooltip>
+                ))}
+              </RailGroup>
+              <RailGroup label={t("railDanger")}>
+                <RailLink
+                  href="#sec-danger"
+                  icon={Trash2}
+                  active={section === "danger"}
+                  onClick={() => jumpTo("danger")}
+                  danger
+                >
+                  <span className="flex-1">{t("sections.danger")}</span>
+                </RailLink>
+              </RailGroup>
+            </nav>
+          </aside>
 
-          <section id="sec-danger" className="scroll-mt-40 rounded-xl border border-destructive/40 bg-card p-6 shadow-xs">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-destructive">
-              <Trash2 className="size-4" />
-              {t("dangerTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("dangerDescription")}</p>
-            <Button variant="outline" className="mt-4 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 />
-              {t("dangerTitle")}
-            </Button>
-          </section>
-        </div>
+          {/* Sections */}
+          <div className="min-w-0 flex-1 space-y-4 p-4 md:p-6">
+            <SectionCard
+              id="sec-identity"
+              className="scroll-mt-40"
+              icon={SECTION_ICONS.identity}
+              title={t("sections.identity")}
+              description={t("identityDescription")}
+              aside={<SectionStateChip state={sectionState(library, "identity")} />}
+              data-section-state={sectionState(library, "identity")}
+            >
+              <Field
+                label={t("nameLabel")}
+                counter={`${draft.name.length} / ${NAME_MAX}`}
+                error={!draft.name.trim() ? t("nameError") : null}
+              >
+                {(id, invalid) => (
+                  <Input
+                    id={id}
+                    maxLength={NAME_MAX}
+                    className="bg-background"
+                    value={draft.name}
+                    aria-invalid={invalid || undefined}
+                    onChange={(e) => patch({ name: e.target.value })}
+                  />
+                )}
+              </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("shortNameLabel")} hint={t("shortNameHint")}>
+                  {(id) => (
+                    <Input id={id} className="bg-background font-mono text-sm" value={draft.shortName} readOnly />
+                  )}
+                </Field>
+                <Field label={t("addressLabel")} hint={t("addressHint")}>
+                  {(id) => (
+                    <div className="flex gap-1.5">
+                      <Input
+                        id={id}
+                        className="bg-background font-mono text-sm"
+                        value={`https://${library.address}`}
+                        readOnly
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label={t("copyAddress")}
+                        onClick={copyAddress}
+                      >
+                        <Copy />
+                      </Button>
+                    </div>
+                  )}
+                </Field>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="sec-branding"
+              className="scroll-mt-40"
+              icon={SECTION_ICONS.branding}
+              title={t("sections.branding")}
+              description={t("brandingDescription")}
+              aside={<SectionStateChip state={sectionState(library, "branding")} />}
+              data-section-state={sectionState(library, "branding")}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("logoDarkLabel")} error={!draft.logoDark.trim() ? t("logoDarkError") : null}>
+                  {(id, invalid) => (
+                    <Input
+                      id={id}
+                      className="bg-background font-mono text-sm"
+                      value={draft.logoDark}
+                      aria-invalid={invalid || undefined}
+                      placeholder="https://…/logo-dark.svg"
+                      onChange={(e) => patch({ logoDark: e.target.value })}
+                    />
+                  )}
+                </Field>
+                <Field label={t("logoLightLabel")} suffix={t("optional")}>
+                  {(id) => (
+                    <Input
+                      id={id}
+                      className="bg-background font-mono text-sm"
+                      value={draft.logoLight}
+                      placeholder="https://…/logo-light.svg"
+                      onChange={(e) => patch({ logoLight: e.target.value })}
+                    />
+                  )}
+                </Field>
+              </div>
+              <Field label={t("faviconLabel")} error={!draft.favicon.trim() ? t("faviconError") : null}>
+                {(id, invalid) => (
+                  <Input
+                    id={id}
+                    className="bg-background font-mono text-sm"
+                    value={draft.favicon}
+                    aria-invalid={invalid || undefined}
+                    placeholder="https://…/favicon.ico"
+                    onChange={(e) => patch({ favicon: e.target.value })}
+                  />
+                )}
+              </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColourField
+                  label={t("accentLabel")}
+                  hint={t("accentHint")}
+                  pickerLabel={t("pickAccent")}
+                  value={draft.accent}
+                  onChange={(accent) => patch({ accent })}
+                />
+                <ColourField
+                  label={t("secondaryLabel")}
+                  hint={t("secondaryHint")}
+                  pickerLabel={t("pickSecondary")}
+                  value={draft.secondary}
+                  onChange={(secondary) => patch({ secondary })}
+                />
+              </div>
+              <div className="space-y-2.5 rounded-xl border border-border/50 bg-muted/30 p-3">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <Eye className="h-3 w-3" />
+                  {t("livePreview")}
+                  <PrototypeBadge variant="mock" className="ml-auto" />
+                </div>
+                <MiniNavbarPreview config={draft} />
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              id="sec-languages"
+              className="scroll-mt-40"
+              icon={SECTION_ICONS.languages}
+              title={t("sections.languages")}
+              description={t("languagesDescription")}
+              aside={<SectionStateChip state={sectionState(library, "languages")} />}
+              data-section-state={sectionState(library, "languages")}
+            >
+              <div className="space-y-1.5">
+                <Label>{t("availableLanguages")}</Label>
+                <div className="flex flex-wrap gap-2" role="group" aria-label={t("availableLanguages")}>
+                  {MOCK_LANGUAGES.map((lang) => {
+                    const checked = draft.languages.includes(lang.code);
+                    return (
+                      <Label
+                        key={lang.code}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-all",
+                          checked
+                            ? "border-primary/40 bg-primary/5"
+                            : "border-border/50 hover:border-border/80 hover:bg-muted/30",
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(next) =>
+                            patch({
+                              languages:
+                                next === true
+                                  ? MOCK_LANGUAGES.filter(
+                                      (l) => l.code === lang.code || draft.languages.includes(l.code),
+                                    ).map((l) => l.code)
+                                  : draft.languages.filter((c) => c !== lang.code),
+                            })
+                          }
+                        />
+                        <code className="text-xs font-mono text-muted-foreground">{lang.code}</code>
+                        <span>{lang.name}</span>
+                      </Label>
+                    );
+                  })}
+                </div>
+                {draft.languages.length === 0 ? <FieldError>{t("languagesError")}</FieldError> : null}
+              </div>
+              <Field label={t("defaultLanguage")} hint={t("defaultLanguageHint")} className="max-w-xs">
+                {(id) => (
+                  <Select
+                    value={draft.defaultLanguage || undefined}
+                    disabled={draft.languages.length === 0}
+                    onValueChange={(defaultLanguage) => patch({ defaultLanguage })}
+                  >
+                    <SelectTrigger id={id} className="w-full bg-background">
+                      <SelectValue placeholder={t("selectLanguageFirst")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {draft.languages.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          {code} — {MOCK_LANGUAGES.find((l) => l.code === code)?.name ?? code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </Field>
+            </SectionCard>
+
+            <SectionCard
+              id="sec-danger"
+              className="scroll-mt-40"
+              tone="danger"
+              icon={Trash2}
+              title={t("dangerTitle")}
+              description={t("dangerDescription")}
+            >
+              <Button
+                variant="outline"
+                className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 />
+                {t("dangerTitle")}
+              </Button>
+            </SectionCard>
+          </div>
+        </CommandCenterContainer>
       </div>
 
       {/* Preview slide-over */}
@@ -432,10 +538,10 @@ function Workspace({ library }: { library: MockLibrary }) {
             <SheetTitle className="flex flex-wrap items-center gap-2">
               {t("previewTitle", { name: draft.name || t("untitled") })}
               <PrototypeBadge variant="mock" />
-              <Badge variant="outline" className="gap-1 font-mono font-normal">
+              <StatusChip tone="neutral" className="font-mono normal-case tracking-normal">
                 <GitBranch />
                 {library.draftRev}
-              </Badge>
+              </StatusChip>
             </SheetTitle>
             <SheetDescription>{t("previewHint")}</SheetDescription>
           </SheetHeader>
@@ -449,7 +555,9 @@ function Workspace({ library }: { library: MockLibrary }) {
       <AlertDialog open={activateOpen} onOpenChange={setActivateOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{isDraftLibrary ? t("activateDraftTitle") : t("activateTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isDraftLibrary ? t("activateDraftTitle") : t("activateTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {isDraftLibrary
                 ? t("activateDraftBody", { name: library.name, address: library.address })
@@ -476,26 +584,51 @@ function Workspace({ library }: { library: MockLibrary }) {
   );
 }
 
+function SectionStateChip({ state }: { state: SectionState }) {
+  const t = useTranslations("evidenceLibraryMock.config");
+  return <StatusChip tone={STATE_TONE[state]}>{t(`sectionState.${state}`)}</StatusChip>;
+}
+
 function ActivationBanner({ stageIndex, rev }: { stageIndex: number; rev: string }) {
   const t = useTranslations("evidenceLibraryMock.config");
   const live = stageIndex >= ACTIVATION_STAGES.length - 1;
+  const percent = Math.round((Math.min(stageIndex, ACTIVATION_STAGES.length) / ACTIVATION_STAGES.length) * 100);
   return (
-    <div role="status" aria-live="polite" data-activation-stage={ACTIVATION_STAGES[stageIndex]} className="mb-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        {live ? <Check className="size-4 text-emerald-600" /> : <Spinner />}
-        <span className="font-mono">{live ? t("isLive", { rev }) : t("applying", { rev })}</span>
+    <div
+      role="status"
+      aria-live="polite"
+      data-activation-stage={ACTIVATION_STAGES[stageIndex]}
+      className="mb-4 rounded-xl border border-border/50 bg-muted/30 p-4"
+    >
+      <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+        <span className="flex items-center gap-2 font-medium">
+          {live ? (
+            <Check className="h-4 w-4 text-emerald-500" />
+          ) : (
+            <Spinner className="h-4 w-4 text-primary" />
+          )}
+          <span className="font-mono">{live ? t("isLive", { rev }) : t("applying", { rev })}</span>
+        </span>
+        <span className="font-medium tabular-nums">{percent}%</span>
       </div>
-      <ol className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <Progress
+        value={percent}
+        className={cn(live && "bg-emerald-500/20 [&>[data-slot=progress-indicator]]:bg-emerald-500")}
+      />
+      <ol className="mt-3 flex flex-wrap items-center gap-2">
         {ACTIVATION_STAGES.map((stage, i) => {
           const done = i < stageIndex || live;
           const now = i === stageIndex && !live;
           return (
-            <li key={stage} className="flex items-center gap-2">
-              <span className={cn("flex items-center gap-1 rounded-full px-2 py-0.5", done && "bg-emerald-600/15 text-emerald-700 dark:text-emerald-400", now && "bg-primary/15 text-primary", !done && !now && "text-muted-foreground")}>
-                {done ? <Check className="size-3" /> : now ? <Spinner className="size-3" /> : null}
+            <li key={stage}>
+              <StatusChip
+                tone={done ? "success" : now ? "running" : "neutral"}
+                className="normal-case tracking-normal font-medium"
+                data-stage-state={done ? "done" : now ? "now" : "waiting"}
+              >
+                {done ? <Check /> : now ? <Spinner /> : null}
                 {t(`stages.${stage}`)}
-              </span>
-              {i < ACTIVATION_STAGES.length - 1 ? <span className="text-muted-foreground">→</span> : null}
+              </StatusChip>
             </li>
           );
         })}
@@ -507,13 +640,29 @@ function ActivationBanner({ stageIndex, rev }: { stageIndex: number; rev: string
 function RailGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="space-y-0.5">{children}</div>
+      <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <div className="space-y-1">{children}</div>
     </div>
   );
 }
 
-function RailLink({ href, active, onClick, danger, children }: { href: string; active: boolean; onClick: () => void; danger?: boolean; children: ReactNode }) {
+function RailLink({
+  href,
+  icon: Icon,
+  active,
+  onClick,
+  danger,
+  children,
+}: {
+  href: string;
+  icon: LucideIcon;
+  active: boolean;
+  onClick: () => void;
+  danger?: boolean;
+  children: ReactNode;
+}) {
   return (
     <a
       href={href}
@@ -523,67 +672,59 @@ function RailLink({ href, active, onClick, danger, children }: { href: string; a
         onClick();
       }}
       className={cn(
-        "relative flex items-center justify-between rounded-md px-3 py-1.5 text-sm transition-colors",
-        active ? "bg-sidebar-accent/80 font-medium text-sidebar-primary" : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground",
+        buttonVariants({ variant: "ghost", size: "sm" }),
+        "group relative w-full justify-start gap-3 overflow-hidden transition-all duration-200",
+        active
+          ? "bg-sidebar-accent/80 font-medium text-sidebar-primary shadow-sm hover:bg-sidebar-accent/90"
+          : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground",
         danger && "text-destructive hover:text-destructive",
       )}
     >
-      {active ? <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" /> : null}
+      {active ? (
+        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary/80 to-primary/50" />
+      ) : null}
+      <Icon
+        className={cn(
+          "h-4 w-4 shrink-0 transition-colors",
+          active ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
+          danger && "text-destructive group-hover:text-destructive",
+        )}
+      />
       {children}
     </a>
   );
 }
 
-function Section({ id, icon: Icon, title, description, state, children }: { id: string; icon: LucideIcon; title: string; description: string; state: SectionState; children: ReactNode }) {
-  const t = useTranslations("evidenceLibraryMock.config");
-  return (
-    <section id={id} data-section-state={state} className="scroll-mt-40 rounded-xl border bg-card p-6 shadow-xs">
-      <div className="mb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Icon className="size-4 text-primary" />
-            {title}
-          </h2>
-          <Badge variant="secondary" className={STATE_BADGE[state]}>{t(`sectionState.${state}`)}</Badge>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      <div className="space-y-5">{children}</div>
-    </section>
-  );
-}
-
-function Field({ label, hint, error, counter, suffix, className, children }: { label: string; hint?: string; error?: string | null; counter?: string; suffix?: string; className?: string; children: (id: string, invalid: boolean) => ReactNode }) {
-  const id = useId();
-  const invalid = Boolean(error);
-  return (
-    <div className={cn("space-y-2", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={id}>
-          {label}
-          {suffix ? <span className="ml-1 text-xs font-normal text-muted-foreground">{suffix}</span> : null}
-        </Label>
-        {counter ? <span className="font-mono text-xs text-muted-foreground">{counter}</span> : null}
-      </div>
-      {children(id, invalid)}
-      {error ? <p className="text-xs text-destructive" role="alert">{error}</p> : hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-    </div>
-  );
-}
-
-function ColourField({ label, hint, pickerLabel, value, onChange }: { label: string; hint: string; pickerLabel: string; value: string; onChange: (value: string) => void }) {
+function ColourField({
+  label,
+  hint,
+  pickerLabel,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  pickerLabel: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   return (
     <Field label={label} hint={hint}>
       {(id) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <input
             type="color"
             aria-label={pickerLabel}
             value={HEX.test(value) ? value : "#000000"}
             onChange={(e) => onChange(e.target.value)}
-            className="size-9 shrink-0 cursor-pointer rounded-md border bg-transparent p-0.5"
+            className="size-9 shrink-0 cursor-pointer rounded-md border border-border/50 bg-background p-0.5"
           />
-          <Input id={id} className="font-mono" value={value} onChange={(e) => onChange(e.target.value)} />
+          <Input
+            id={id}
+            className="bg-background font-mono text-sm"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
         </div>
       )}
     </Field>

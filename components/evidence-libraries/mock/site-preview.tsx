@@ -8,14 +8,14 @@ import { initialsOf, type LibraryConfig } from "@/lib/evidence-libraries/mock/da
 /** Fake browser window used by the preview sheet and the admin "new tab" dialog. */
 export function BrowserFrame({ url, children }: { url: string; children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
-      <div className="flex items-center gap-3 border-b bg-muted/50 px-3 py-2">
+    <div className="overflow-hidden rounded-xl border border-border/50 bg-background">
+      <div className="flex items-center gap-3 border-b border-border/40 bg-muted/30 px-3 py-2">
         <div className="flex gap-1.5" aria-hidden="true">
           <i className="size-2.5 rounded-full bg-red-400" />
           <i className="size-2.5 rounded-full bg-amber-400" />
           <i className="size-2.5 rounded-full bg-emerald-400" />
         </div>
-        <div className="flex h-7 flex-1 items-center gap-2 rounded-md border bg-background px-2 font-mono text-xs text-muted-foreground">
+        <div className="flex h-7 flex-1 items-center gap-2 rounded-md border border-border/50 bg-background px-2 font-mono text-xs text-muted-foreground">
           <Lock className="size-3" />
           <span className="truncate">{url}</span>
         </div>
@@ -71,7 +71,7 @@ export function MiniNavbarPreview({ config }: { config: LibraryConfig }) {
   return (
     <div
       aria-label={tc("livePreviewAria")}
-      className="overflow-hidden rounded-lg border bg-background"
+      className="overflow-hidden rounded-xl border border-border/50 bg-background"
       data-mini-preview
     >
       <SiteNav
