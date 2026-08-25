@@ -286,6 +286,7 @@ export async function claimEvidenceLibrarySetupOperation(
     setupDeploymentId: undefined,
     setupDeploymentOutcome: undefined,
     setupDeploymentPollCount: 0,
+    setupReadinessPollCount: 0,
     updatedAt: now,
   });
   if (setup.runtimeBinding.state === "failed") {
@@ -476,6 +477,7 @@ export async function recordEvidenceLibrarySetupStep(
     setupDeploymentId: undefined,
     setupDeploymentOutcome: undefined,
     setupDeploymentPollCount: undefined,
+    setupReadinessPollCount: undefined,
     updatedAt: now,
   });
   await ctx.db.replace(setup.runtimeBinding._id, {
@@ -521,6 +523,7 @@ export async function failEvidenceLibrarySetupOperation(
     completedAt: now,
     setupAttemptToken: undefined,
     setupLeaseExpiresAt: undefined,
+    setupReadinessPollCount: undefined,
     updatedAt: now,
   });
   if (isProvisionedBinding(setup.runtimeBinding)) {
