@@ -29,6 +29,7 @@ const APPLICATION_SETTING_KEYS = [
   "connect_to_docker_network",
   "inject_build_args_to_dockerfile",
   "include_source_commit_in_build",
+  "is_container_label_escape_enabled",
 ] as const;
 
 const ENVIRONMENT_VALUES = [
@@ -874,6 +875,7 @@ async function createApplication(
       autogenerate_domain: false,
       inject_build_args_to_dockerfile: false,
       include_source_commit_in_build: false,
+      is_container_label_escape_enabled: false,
     },
   });
   if (!isRecord(payload)) {
