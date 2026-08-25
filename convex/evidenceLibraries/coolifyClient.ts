@@ -9,6 +9,7 @@ const MAX_APPLICATION_MATCHES = 2;
 const MAX_GITHUB_APPS = 100;
 const MAX_ENVIRONMENT_VARIABLES = 256;
 const MAX_DEPLOYMENTS = 100;
+const ENVIRONMENT_READBACK_DELAYS_MS = [100, 250, 500, 1_000] as const;
 const UUID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -984,6 +985,20 @@ async function readEnvironments(
   );
 }
 
+async function readEnvironmentsUntil(
+  client: CoolifyTransport,
+  applicationUuid: string,
+  predicate: (environments: CoolifyEnvironment[]) => boolean,
+): Promise<CoolifyEnvironment[] | null> {
+  for (let attempt = 0; ; attempt += 1) {
+    const environments = await readEnvironments(client, applicationUuid);
+    if (predicate(environments)) return environments;
+    const delay = ENVIRONMENT_READBACK_DELAYS_MS[attempt];
+    if (delay === undefined) return null;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+
 function environmentBody(desired: DesiredEnvironment): Record<string, unknown> {
   return {
     key: desired.key,
@@ -1035,18 +1050,45 @@ async function requireEnvironmentReadback(
   applicationUuid: string,
   desired: DesiredEnvironment,
 ): Promise<CoolifyEnvironment[]> {
-  const environments = await readEnvironments(client, applicationUuid);
-  const matches = environments.filter(
-    (environment) =>
-      !isPlatformEnvironment(environment) &&
-      !environment.isShared &&
-      environment.key === desired.key &&
-      environment.isPreview === false,
+  const environments = await readEnvironmentsUntil(
+    client,
+    applicationUuid,
+    (current) => {
+      const matches = current.filter(
+        (environment) =>
+          !isPlatformEnvironment(environment) &&
+          !environment.isShared &&
+          environment.key === desired.key &&
+          environment.isPreview === false,
+      );
+      return (
+        matches.length === 1 && hasExpectedEnvironment(matches[0]!, desired)
+      );
+    },
   );
-  if (matches.length !== 1 || !hasExpectedEnvironment(matches[0]!, desired)) {
+  if (!environments) {
     throw new CoolifyClientError(
       "COOLIFY_ENVIRONMENT_MISMATCH",
       "Coolify did not save the required environment variables",
+    );
+  }
+  return environments;
+}
+
+async function requireEnvironmentRemoved(
+  client: CoolifyTransport,
+  applicationUuid: string,
+  environmentUuid: string,
+): Promise<CoolifyEnvironment[]> {
+  const environments = await readEnvironmentsUntil(
+    client,
+    applicationUuid,
+    (current) => !current.some(({ uuid }) => uuid === environmentUuid),
+  );
+  if (!environments) {
+    throw new CoolifyClientError(
+      "COOLIFY_ENVIRONMENT_MISMATCH",
+      "Coolify did not remove an unsupported environment variable",
     );
   }
   return environments;
@@ -1108,33 +1150,34 @@ async function reconcileEnvironments(
   desiredValues: DesiredEnvironment[],
 ): Promise<boolean> {
   let changed = false;
-  let environments = await readEnvironments(client, applicationUuid);
+  const removeUnsupportedEnvironments = async (): Promise<void> => {
+    const environments = await readEnvironments(client, applicationUuid);
+    for (const environment of environments) {
+      if (isPlatformEnvironment(environment)) continue;
+      if (environment.isShared) {
+        throw new CoolifyClientError(
+          "COOLIFY_ENVIRONMENT_CONFLICT",
+          "The Coolify application inherits an unsupported shared variable",
+        );
+      }
+      if (isDesiredEnvironmentKey(environment.key) && !environment.isPreview) {
+        continue;
+      }
+      await requestCoolify(client, {
+        expectedStatus: 200,
+        method: "DELETE",
+        path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}/envs/${encodeURIComponent(environment.uuid)}`,
+      });
+      await requireEnvironmentRemoved(
+        client,
+        applicationUuid,
+        environment.uuid,
+      );
+      changed = true;
+    }
+  };
 
-  for (const environment of [...environments]) {
-    if (isPlatformEnvironment(environment)) continue;
-    if (environment.isShared) {
-      throw new CoolifyClientError(
-        "COOLIFY_ENVIRONMENT_CONFLICT",
-        "The Coolify application inherits an unsupported shared variable",
-      );
-    }
-    if (isDesiredEnvironmentKey(environment.key) && !environment.isPreview) {
-      continue;
-    }
-    await requestCoolify(client, {
-      expectedStatus: 200,
-      method: "DELETE",
-      path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}/envs/${encodeURIComponent(environment.uuid)}`,
-    });
-    environments = await readEnvironments(client, applicationUuid);
-    if (environments.some(({ uuid }) => uuid === environment.uuid)) {
-      throw new CoolifyClientError(
-        "COOLIFY_ENVIRONMENT_MISMATCH",
-        "Coolify did not remove an unsupported environment variable",
-      );
-    }
-    changed = true;
-  }
+  await removeUnsupportedEnvironments();
 
   for (const desired of desiredValues) {
     changed =
@@ -1142,22 +1185,36 @@ async function reconcileEnvironments(
       changed;
   }
 
-  environments = await readEnvironments(client, applicationUuid);
-  const localEnvironments = environments.filter(
-    (environment) =>
-      !isPlatformEnvironment(environment) && !environment.isShared,
-  );
+  // Coolify can create a preview twin when a production value is first added.
+  // Remove it after writes so the application has one managed value per key.
+  await removeUnsupportedEnvironments();
+
+  const hasExactEnvironmentSet = (
+    environments: CoolifyEnvironment[],
+  ): boolean => {
+    const localEnvironments = environments.filter(
+      (environment) =>
+        !isPlatformEnvironment(environment) && !environment.isShared,
+    );
+    return (
+      localEnvironments.length === desiredValues.length &&
+      desiredValues.every((desired) => {
+        const matches = localEnvironments.filter(
+          (environment) =>
+            environment.key === desired.key && environment.isPreview === false,
+        );
+        return (
+          matches.length === 1 && hasExpectedEnvironment(matches[0]!, desired)
+        );
+      })
+    );
+  };
   if (
-    localEnvironments.length !== desiredValues.length ||
-    desiredValues.some((desired) => {
-      const matches = localEnvironments.filter(
-        (environment) =>
-          environment.key === desired.key && environment.isPreview === false,
-      );
-      return (
-        matches.length !== 1 || !hasExpectedEnvironment(matches[0]!, desired)
-      );
-    })
+    !(await readEnvironmentsUntil(
+      client,
+      applicationUuid,
+      hasExactEnvironmentSet,
+    ))
   ) {
     throw new CoolifyClientError(
       "COOLIFY_ENVIRONMENT_MISMATCH",
