@@ -45,6 +45,13 @@ export type CoolifyApplicationResult = {
   coolifyConfigHash: string;
 };
 
+export type CoolifyConfigurationUpdateResult = {
+  applicationUuid: string;
+  runtimeCommit: string;
+  runtimeConfigSha256: string;
+  coolifyConfigHash: string;
+};
+
 export type CoolifyDeploymentStatus =
   | "queued"
   | "in_progress"
@@ -745,6 +752,27 @@ function hasExpectedApplication(
   );
 }
 
+function hasExpectedBoundApplication(
+  application: CoolifyApplication,
+  applicationTag: string,
+  publicDomain: string,
+): boolean {
+  return (
+    application.name === applicationTag &&
+    application.gitRepository === GIT_REPOSITORY &&
+    application.gitBranch === GIT_BRANCH &&
+    COMMIT.test(application.gitCommitSha) &&
+    application.buildPack === BUILD_PACK &&
+    application.portsExposes === PORTS_EXPOSES &&
+    (application.fqdn === null || application.fqdn === "") &&
+    application.composePath === COMPOSE_PATH &&
+    hasExpectedComposeDomain(application.composeDomains, publicDomain) &&
+    application.sourceType === GITHUB_SOURCE_TYPE &&
+    application.sourceId !== null &&
+    APPLICATION_SETTING_KEYS.every((key) => application.settings[key] === false)
+  );
+}
+
 function applicationPatch(
   application: CoolifyApplication,
   desired: DesiredApplication,
@@ -1004,6 +1032,56 @@ async function requireEnvironmentReadback(
   return environments;
 }
 
+async function reconcileEnvironmentValue(
+  client: CoolifyTransport,
+  applicationUuid: string,
+  desired: DesiredEnvironment,
+): Promise<boolean> {
+  const environments = await readEnvironments(client, applicationUuid);
+  if (
+    environments.some(
+      (environment) => environment.isShared && environment.key === desired.key,
+    )
+  ) {
+    throw new CoolifyClientError(
+      "COOLIFY_ENVIRONMENT_CONFLICT",
+      "The Coolify application inherits the managed environment variable",
+    );
+  }
+  const matches = environments.filter(
+    (environment) =>
+      !isPlatformEnvironment(environment) &&
+      !environment.isShared &&
+      environment.key === desired.key &&
+      environment.isPreview === false,
+  );
+  if (matches.length > 1) {
+    throw new CoolifyClientError(
+      "COOLIFY_ENVIRONMENT_CONFLICT",
+      "Coolify returned duplicate production environment variables",
+    );
+  }
+  if (matches.length === 1 && hasExpectedEnvironment(matches[0]!, desired)) {
+    return false;
+  }
+  const payload = await requestCoolify(client, {
+    expectedStatus: 201,
+    method: matches.length === 0 ? "POST" : "PATCH",
+    path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}/envs`,
+    body: environmentBody(desired),
+  });
+  if (!isRecord(payload)) {
+    invalidResponse("Coolify returned an invalid environment response");
+  }
+  responseUuid(
+    payload,
+    "uuid",
+    "Coolify returned an invalid environment response",
+  );
+  await requireEnvironmentReadback(client, applicationUuid, desired);
+  return true;
+}
+
 async function reconcileEnvironments(
   client: CoolifyTransport,
   applicationUuid: string,
@@ -1039,43 +1117,9 @@ async function reconcileEnvironments(
   }
 
   for (const desired of desiredValues) {
-    const matches = environments.filter(
-      (environment) =>
-        !isPlatformEnvironment(environment) &&
-        !environment.isShared &&
-        environment.key === desired.key &&
-        environment.isPreview === false,
-    );
-    if (matches.length > 1) {
-      throw new CoolifyClientError(
-        "COOLIFY_ENVIRONMENT_CONFLICT",
-        "Coolify returned duplicate production environment variables",
-      );
-    }
-    if (matches.length === 1 && hasExpectedEnvironment(matches[0]!, desired)) {
-      continue;
-    }
-    const method = matches.length === 0 ? "POST" : "PATCH";
-    const payload = await requestCoolify(client, {
-      expectedStatus: 201,
-      method,
-      path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}/envs`,
-      body: environmentBody(desired),
-    });
-    if (!isRecord(payload)) {
-      invalidResponse("Coolify returned an invalid environment response");
-    }
-    responseUuid(
-      payload,
-      "uuid",
-      "Coolify returned an invalid environment response",
-    );
-    environments = await requireEnvironmentReadback(
-      client,
-      applicationUuid,
-      desired,
-    );
-    changed = true;
+    changed =
+      (await reconcileEnvironmentValue(client, applicationUuid, desired)) ||
+      changed;
   }
 
   environments = await readEnvironments(client, applicationUuid);
@@ -1320,6 +1364,64 @@ export function createCoolifyClient(input: {
         outcome,
         applicationUuid,
         applicationTag,
+        runtimeConfigSha256: createHash("sha256")
+          .update(libraryConfigJson)
+          .digest("hex"),
+        coolifyConfigHash: finalApplication.configHash,
+      };
+    },
+
+    async updateApplicationConfiguration(input: {
+      applicationUuid: string;
+      libraryId: Id<"evidenceLibraries">;
+      publicDomain: string;
+      libraryConfigJson: string;
+    }): Promise<CoolifyConfigurationUpdateResult> {
+      const applicationUuid = requireInputIdentifier(
+        "Coolify application UUID",
+        input.applicationUuid,
+      );
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const publicDomain = requirePublicDomain(input.publicDomain);
+      const libraryConfigJson = requireLibraryConfigJson(
+        input.libraryConfigJson,
+      );
+      const application = await readApplication(client, applicationUuid);
+      const tags = await readTags(client, applicationUuid);
+      if (
+        application.uuid !== applicationUuid ||
+        !tags.includes(applicationTag) ||
+        !hasExpectedBoundApplication(application, applicationTag, publicDomain)
+      ) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The bound Coolify application no longer matches this library",
+        );
+      }
+      await reconcileEnvironmentValue(client, applicationUuid, {
+        key: "LIBRARY_CONFIG_JSON",
+        value: libraryConfigJson,
+      });
+      const finalApplication = await readApplication(client, applicationUuid);
+      const finalTags = await readTags(client, applicationUuid);
+      if (
+        finalApplication.uuid !== applicationUuid ||
+        finalApplication.gitCommitSha !== application.gitCommitSha ||
+        !finalTags.includes(applicationTag) ||
+        !hasExpectedBoundApplication(
+          finalApplication,
+          applicationTag,
+          publicDomain,
+        )
+      ) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The bound Coolify application changed during configuration update",
+        );
+      }
+      return {
+        applicationUuid,
+        runtimeCommit: application.gitCommitSha,
         runtimeConfigSha256: createHash("sha256")
           .update(libraryConfigJson)
           .digest("hex"),

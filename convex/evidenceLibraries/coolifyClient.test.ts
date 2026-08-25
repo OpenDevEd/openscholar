@@ -24,6 +24,10 @@ const LIBRARY_CONFIG_JSON = JSON.stringify({
   revision: "rev-1",
   services: { search: { host: "http://meilisearch:7700" } },
 });
+const UPDATED_LIBRARY_CONFIG_JSON = JSON.stringify({
+  revision: "rev-2",
+  services: { search: { host: "http://meilisearch:7700" } },
+});
 const MEILISEARCH_MASTER_KEY = "meilisearch-key";
 
 type FakeApplication = {
@@ -694,6 +698,62 @@ describe("Coolify Evidence Library client", () => {
       },
     ]);
     expect(server.environments).toContainEqual(coolifyOwned);
+  });
+
+  it("updates only the bound app configuration and preserves its runtime commit", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication({ git_commit_sha: OTHER_COMMIT }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      environments: [
+        environment("LIBRARY_CONFIG_JSON", LIBRARY_CONFIG_JSON),
+        environment("MEILISEARCH_MASTER_KEY", MEILISEARCH_MASTER_KEY),
+        environment("KEEP_EXISTING_VALUE", "unchanged"),
+      ],
+    });
+
+    const result = await createClient(
+      server.fetchImpl,
+    ).updateApplicationConfiguration({
+      applicationUuid: APPLICATION_UUID,
+      libraryId: LIBRARY_ID,
+      publicDomain: PUBLIC_DOMAIN,
+      libraryConfigJson: UPDATED_LIBRARY_CONFIG_JSON,
+    });
+
+    expect(result).toEqual({
+      applicationUuid: APPLICATION_UUID,
+      runtimeCommit: OTHER_COMMIT,
+      runtimeConfigSha256: createHash("sha256")
+        .update(UPDATED_LIBRARY_CONFIG_JSON)
+        .digest("hex"),
+      coolifyConfigHash: server.application?.config_hash,
+    });
+
+    expect(server.application?.git_commit_sha).toBe(OTHER_COMMIT);
+    expect(
+      server.environments.map(({ key, value }) => ({ key, value })),
+    ).toEqual([
+      { key: "LIBRARY_CONFIG_JSON", value: UPDATED_LIBRARY_CONFIG_JSON },
+      { key: "MEILISEARCH_MASTER_KEY", value: MEILISEARCH_MASTER_KEY },
+      { key: "KEEP_EXISTING_VALUE", value: "unchanged" },
+    ]);
+    expect(
+      server.requests.filter(
+        ({ method, path }) =>
+          method === "POST" &&
+          path === "/api/v1/applications/private-github-app",
+      ),
+    ).toHaveLength(0);
+    expect(
+      server.requests.filter(
+        ({ method, path }) =>
+          method === "PATCH" &&
+          path === `/api/v1/applications/${APPLICATION_UUID}`,
+      ),
+    ).toHaveLength(0);
+    expect(
+      server.requests.filter(({ method }) => method === "DELETE"),
+    ).toHaveLength(0);
   });
 
   it("stops when one deterministic tag resolves to two applications", async () => {

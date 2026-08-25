@@ -458,6 +458,8 @@ export const evidenceLibraryOperationReceiptValidator = v.object({
   revisionKey: v.optional(v.string()),
   targetConfigSha256: v.optional(v.string()),
   runtimeReceiptId: v.optional(v.string()),
+  runtimeCommit: v.optional(v.string()),
+  coolifyConfigHash: v.optional(v.string()),
   activatedAt: v.optional(v.number()),
 });
 

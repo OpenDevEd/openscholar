@@ -132,12 +132,46 @@ async function createActivationFixture(
     }),
   );
   if (state === "active") {
-    await admin.run((ctx) =>
-      ctx.db.patch(created.libraryId, {
+    await admin.run(async (ctx) => {
+      const insertCredential = async (credentialKey: string) =>
+        await ctx.db.insert("evidenceLibraryCredentials", {
+          libraryId: created.libraryId,
+          credentialKey,
+          encryptedValue: `encrypted-${credentialKey}`,
+          validationState: "valid",
+          createdByClerkUserId: clerkUserId,
+          updatedByClerkUserId: clerkUserId,
+          createdAt: 1,
+          updatedAt: 1,
+        });
+      const [databaseCredentialId, searchCredentialId, storageCredentialId] =
+        await Promise.all([
+          insertCredential("/services/database/url"),
+          insertCredential("/services/search/key"),
+          insertCredential("/services/storage/serviceRoleKey"),
+        ]);
+      await ctx.db.replace(created.runtimeBindingId, {
+        libraryId: created.libraryId,
+        targetBaseUrl: created.publicAddress,
+        targetRuntimeId: "coolify-activation-app",
+        searchHost: "http://meilisearch:7700",
+        searchIndex: "evidence_library",
+        storageUrl: "https://storage.example.test",
+        storagePrivateBucket: "private-activation",
+        storagePublicBucket: "public-activation",
+        storageMaxPdfBytes: 52_428_800,
+        databaseCredentialId,
+        searchCredentialId,
+        storageCredentialId,
+        state: "ready",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.patch(created.libraryId, {
         state,
         activeRevisionId: created.revisionId,
-      }),
-    );
+      });
+    });
   }
   return { admin, created };
 }
@@ -494,7 +528,7 @@ describe("Evidence Library operation state", () => {
     expect(stored.library).not.toHaveProperty("activeRevisionId");
   });
 
-  it("queues one publish revision for a running library without changing the active revision", async () => {
+  it("starts one publish revision for a running library without changing the active revision", async () => {
     const t = convexTest(schema, modules);
     const { admin, created } = await createActivationFixture(
       t,
@@ -557,7 +591,7 @@ describe("Evidence Library operation state", () => {
     expect(activated).toMatchObject({
       kind: "publish",
       revisionKey: "r2",
-      status: "queued",
+      status: "running",
     });
     expect(retried).toEqual(activated);
     expect(
@@ -565,9 +599,11 @@ describe("Evidence Library operation state", () => {
         ctx.db.get("evidenceLibraryConfigOperations", activated.operationId),
       ),
     ).toMatchObject({
+      attemptCount: 1,
       idempotencyKey: `activate:${saved.editVersion}`,
       kind: "publish",
       revisionId: activated.revisionId,
+      stage: "assembling",
     });
     expect(await t.run((ctx) => ctx.db.get(created.libraryId))).toMatchObject({
       activeRevisionId: created.revisionId,

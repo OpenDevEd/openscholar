@@ -20,10 +20,12 @@ type OperationReceipt = {
   revisionKey?: string;
   targetConfigSha256?: string;
   runtimeReceiptId?: string;
+  runtimeCommit?: string;
+  coolifyConfigHash?: string;
   activatedAt?: number;
 };
 
-function validateOperationReceipt(
+export function validateOperationReceipt(
   receipt: OperationReceipt | undefined,
 ): OperationReceipt | undefined {
   if (!receipt) return undefined;
@@ -56,6 +58,24 @@ function validateOperationReceipt(
       );
     }
     normalized.runtimeReceiptId = runtimeReceiptId;
+  }
+  if (receipt.runtimeCommit !== undefined) {
+    if (!/^[a-f0-9]{40}$/u.test(receipt.runtimeCommit)) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt runtimeCommit must be a lowercase 40-character commit",
+      );
+    }
+    normalized.runtimeCommit = receipt.runtimeCommit;
+  }
+  if (receipt.coolifyConfigHash !== undefined) {
+    if (!/^[a-f0-9]{64}$/iu.test(receipt.coolifyConfigHash)) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt coolifyConfigHash must be a 64-character digest",
+      );
+    }
+    normalized.coolifyConfigHash = receipt.coolifyConfigHash.toLowerCase();
   }
   if (receipt.activatedAt !== undefined) {
     if (!Number.isFinite(receipt.activatedAt) || receipt.activatedAt < 0) {
