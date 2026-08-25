@@ -4,11 +4,7 @@ import { useOrganization } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import {
-  parseAsString,
-  useQueryStates,
-  type UseQueryStatesReturn,
-} from "nuqs";
+import { parseAsString, useQueryStates, type UseQueryStatesReturn } from "nuqs";
 import { FormEvent, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -25,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { MAX_EVIDENCE_LIBRARY_NAME_LENGTH } from "@/lib/evidence-libraries/setup/naming";
+import { EvidenceLibrarySetupStatus } from "@/components/evidence-libraries/evidence-library-setup-status";
 
 type ActiveOrganizationProps = {
   name: string;
@@ -86,6 +83,15 @@ function AdminCreateEvidenceLibraryForm({
     normalizedName.length > 0 &&
     Array.from(normalizedName).length <= MAX_EVIDENCE_LIBRARY_NAME_LENGTH;
 
+  if (selectedSetup && selectedSetup.setupOperation.status !== "queued") {
+    return (
+      <EvidenceLibrarySetupStatus
+        libraryId={selectedSetup.library._id}
+        operation={selectedSetup.setupOperation}
+      />
+    );
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSubmitting) return;
@@ -109,8 +115,8 @@ function AdminCreateEvidenceLibraryForm({
         });
         const created = await createSetupDraft({ name: normalizedName });
         await setSetupSelection((current) =>
-          (current.organizationId ??
-            claimedSelection.get("organizationId")) === requestOrganizationId
+          (current.organizationId ?? claimedSelection.get("organizationId")) ===
+          requestOrganizationId
             ? { libraryId: created.libraryId }
             : {},
         );

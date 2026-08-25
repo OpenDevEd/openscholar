@@ -7,6 +7,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const queryMock = vi.hoisted(() => vi.fn());
 const mutationMock = vi.hoisted(() => vi.fn());
+const pushMock = vi.hoisted(() => vi.fn());
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+}));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -75,7 +80,11 @@ function renderShell() {
 function draftResult(sections = savedSections) {
   return {
     data: {
-      library: { _id: "library_123", name: "Saved Evidence Library" },
+      library: {
+        _id: "library_123",
+        name: "Saved Evidence Library",
+        organizationId: "organization_123",
+      },
       draft: { _id: "draft_123", editVersion: 4 },
       sections: Object.entries(sections).map(([sectionKey, payload]) => ({
         sectionKey,
@@ -90,6 +99,7 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
   beforeEach(() => {
     queryMock.mockReset();
     mutationMock.mockReset();
+    pushMock.mockReset();
   });
 
   it("saves labelled visible fields while keeping the reserved address read-only", async () => {
@@ -181,6 +191,9 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
         libraryId: "library_123",
         expectedEditVersion: 4,
       }),
+    );
+    expect(pushMock).toHaveBeenCalledWith(
+      "/evidence-libraries/new?libraryId=library_123&organizationId=organization_123",
     );
 
     await user.clear(screen.getByLabelText("libraryNameLabel"));

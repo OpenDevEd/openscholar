@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "convex/react";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -214,13 +215,16 @@ function EssentialConfigurationForm({
   initialConfiguration,
   initialEditVersion,
   libraryId,
+  organizationId,
 }: {
   formContract: EssentialConfigurationFormContract;
   initialConfiguration: EssentialConfigurationSections;
   initialEditVersion: number;
   libraryId: Id<"evidenceLibraries">;
+  organizationId: string;
 }) {
   const t = useTranslations("evidenceLibraryConfigurationShell");
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const saveConfiguration = useMutation(
     api.evidenceLibraries.mutations.saveEssentialConfiguration,
@@ -312,11 +316,16 @@ function EssentialConfigurationForm({
     void activateConfiguration({ libraryId, expectedEditVersion: editVersion })
       .then((result) => {
         setEditVersion(result.editVersion);
+        if (result.kind === "setup") {
+          const search = new URLSearchParams({
+            libraryId,
+            organizationId,
+          });
+          router.push(`/evidence-libraries/new?${search.toString()}`);
+          return;
+        }
         setStatus({
-          message:
-            result.kind === "setup"
-              ? t("setupQueued")
-              : t("redeploymentQueued"),
+          message: t("redeploymentQueued"),
           result: "activation-success",
         });
       })
@@ -722,7 +731,7 @@ export function EvidenceLibraryConfigurationShell({
     return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
   }
 
-  const { draft, sections } = draftQuery.data;
+  const { draft, library, sections } = draftQuery.data;
   const initialConfiguration = readInitialConfiguration(
     sections,
     formContract.locales,
@@ -743,6 +752,7 @@ export function EvidenceLibraryConfigurationShell({
         initialConfiguration={initialConfiguration}
         initialEditVersion={draft.editVersion}
         libraryId={libraryId as Id<"evidenceLibraries">}
+        organizationId={library.organizationId}
       />
     </main>
   );

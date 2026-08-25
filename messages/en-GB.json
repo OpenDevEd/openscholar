@@ -2151,6 +2151,24 @@
     "reserving": "Reserving…",
     "continue": "Continue",
     "createError": "The library could not be saved. Try again.",
+    "status": {
+      "settingUpTitle": "Setting up",
+      "currentStepLabel": "Current step",
+      "readyTitle": "Ready",
+      "readyDescription": "Your Evidence Library is ready.",
+      "failedTitle": "Setup failed",
+      "failedStepLabel": "Failed step",
+      "retry": "Retry",
+      "retrying": "Retrying…",
+      "retryError": "Setup could not be restarted. Try again.",
+      "steps": {
+        "database": "Setting up the database",
+        "storage": "Setting up file storage",
+        "application": "Creating the application",
+        "deployment": "Deploying the library",
+        "healthCheck": "Checking that the library is ready"
+      }
+    },
     "noActiveOrganizationTitle": "Choose an organisation",
     "noActiveOrganizationDescription": "Select or create an organisation with the Clerk organisation switcher, then return here.",
     "adminOnlyTitle": "Organisation admin required",
@@ -2200,7 +2218,6 @@
     "previewDescription": "This preview shows the last saved values. It does not deploy the library.",
     "activate": "Activate",
     "activating": "Activating…",
-    "setupQueued": "Configuration saved as a revision. Library setup is ready to continue.",
     "redeploymentQueued": "Configuration saved as a revision. Redeployment is queued.",
     "activationError": "The saved configuration could not be activated. Check the marked field and try again."
   }
