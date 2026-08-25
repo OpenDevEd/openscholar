@@ -192,11 +192,12 @@ function requireOrigin(value: string): URL {
   } catch {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Coolify URL must be a valid HTTPS origin",
+      "Coolify URL must be an HTTPS origin or the private Coolify service",
     );
   }
+  const isPrivateCoolifyService = url.origin === "http://coolify:8080";
   if (
-    url.protocol !== "https:" ||
+    (url.protocol !== "https:" && !isPrivateCoolifyService) ||
     url.origin === "null" ||
     url.pathname !== "/" ||
     url.search ||
@@ -206,7 +207,7 @@ function requireOrigin(value: string): URL {
   ) {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Coolify URL must be a valid HTTPS origin",
+      "Coolify URL must be an HTTPS origin or the private Coolify service",
     );
   }
   return new URL(url.origin);
