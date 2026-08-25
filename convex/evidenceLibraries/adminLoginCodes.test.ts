@@ -7,6 +7,7 @@ import schema from "../schema";
 import {
   createDeployedSetupFixture,
   createReadySetupFixture,
+  essentialSetupSections,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -240,6 +241,56 @@ describe("Evidence Library admin login codes", () => {
       ctx.db.query("evidenceLibraryAdminLoginCodes").take(1),
     );
     expect(rows).toHaveLength(0);
+  });
+
+  it("keeps the active runtime launchable while a newer revision waits for deployment", async () => {
+    const fixture = await createReadySetupFixture(
+      "admin_login_code_pending_revision",
+    );
+    const activeRevisionId = fixture.activated.revisionId;
+    const saved = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      {
+        libraryId: fixture.created.libraryId,
+        sections: {
+          ...essentialSetupSections,
+          identity: {
+            ...essentialSetupSections.identity,
+            shortName: "Updated Climate",
+          },
+        },
+        expectedEditVersion: fixture.activated.editVersion,
+      },
+    );
+    const pending = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId: fixture.created.libraryId,
+        expectedEditVersion: saved.editVersion,
+      },
+    );
+
+    expect(pending).toMatchObject({ kind: "publish", status: "queued" });
+    const library = await fixture.t.run((ctx) =>
+      ctx.db.get("evidenceLibraries", fixture.created.libraryId),
+    );
+    expect(library).toMatchObject({
+      activeRevisionId,
+      latestRevisionId: pending.revisionId,
+    });
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.queries.getAdminLaunchState, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ status: "ready" });
+    await expect(
+      fixture.admin.action(
+        api.evidenceLibraries.adminLoginCodeActions.issueAdminLoginCode,
+        { libraryId: fixture.created.libraryId },
+      ),
+    ).resolves.toMatchObject({
+      launchUrl: expect.stringContaining("/api/admin/session?code="),
+    });
   });
 
   it.each([
