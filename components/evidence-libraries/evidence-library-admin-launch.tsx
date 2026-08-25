@@ -1,9 +1,9 @@
 "use client";
 
 import { useAction } from "convex/react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, LibraryBig } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { openAdminLaunchUrl } from "@/lib/evidence-libraries/open-admin-launch";
 
 export function EvidenceLibraryAdminLaunch({
   libraryId,
@@ -41,7 +43,7 @@ export function EvidenceLibraryAdminLaunch({
     setOpenError(null);
     void issueAdminLoginCode({ libraryId: library.libraryId })
       .then(({ launchUrl }) => {
-        window.location.href = launchUrl;
+        openAdminLaunchUrl(launchUrl);
       })
       .catch(() => {
         setOpenError(t("openError"));
@@ -49,22 +51,19 @@ export function EvidenceLibraryAdminLaunch({
       });
   }
 
+  let content: ReactNode;
   if (!launchState.isReady || launchState.data === undefined) {
-    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
-  }
-
-  if (launchState.data === null) {
-    return (
+    content = <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+  } else if (launchState.data === null) {
+    content = (
       <AuthStatePanel
         variant="no_access"
         title={t("noAccessTitle")}
         description={t("noAccessDescription")}
       />
     );
-  }
-
-  if (launchState.data.status === "not_ready") {
-    return (
+  } else if (launchState.data.status === "not_ready") {
+    content = (
       <Card>
         <CardHeader>
           <CardTitle>{t("notReadyTitle")}</CardTitle>
@@ -75,29 +74,40 @@ export function EvidenceLibraryAdminLaunch({
         </CardContent>
       </Card>
     );
+  } else {
+    content = (
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {t("readyTitle", { libraryName: launchState.data.libraryName })}
+          </CardTitle>
+          <CardDescription>{t("readyDescription")}</CardDescription>
+        </CardHeader>
+        {openError ? (
+          <CardContent>
+            <p role="alert" className="text-sm text-destructive">
+              {openError}
+            </p>
+          </CardContent>
+        ) : null}
+        <CardFooter className="justify-end">
+          <Button type="button" onClick={handleOpenAdmin} disabled={isOpening}>
+            <ExternalLink aria-hidden />
+            {isOpening ? t("openingAdmin") : t("openAdmin")}
+          </Button>
+        </CardFooter>
+      </Card>
+    );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {t("readyTitle", { libraryName: launchState.data.libraryName })}
-        </CardTitle>
-        <CardDescription>{t("readyDescription")}</CardDescription>
-      </CardHeader>
-      {openError ? (
-        <CardContent>
-          <p role="alert" className="text-sm text-destructive">
-            {openError}
-          </p>
-        </CardContent>
-      ) : null}
-      <CardFooter className="justify-end">
-        <Button type="button" onClick={handleOpenAdmin} disabled={isOpening}>
-          <ExternalLink aria-hidden />
-          {isOpening ? t("openingAdmin") : t("openAdmin")}
-        </Button>
-      </CardFooter>
-    </Card>
+    <>
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        icon={LibraryBig}
+      />
+      {content}
+    </>
   );
 }

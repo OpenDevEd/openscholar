@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   issueCode: vi.fn(),
+  navigate: vi.fn(),
   query: vi.fn(),
 }));
 
@@ -32,6 +33,10 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     mocks.query(query, args),
 }));
 
+vi.mock("@/lib/evidence-libraries/open-admin-launch", () => ({
+  openAdminLaunchUrl: mocks.navigate,
+}));
+
 vi.mock("@/components/auth/auth-state-panel", () => ({
   AuthStatePanel: ({ variant }: { variant: string }) => <p>{variant}</p>,
 }));
@@ -41,6 +46,7 @@ import { EvidenceLibraryAdminLaunch } from "@/components/evidence-libraries/evid
 describe("<EvidenceLibraryAdminLaunch>", () => {
   beforeEach(() => {
     mocks.issueCode.mockReset();
+    mocks.navigate.mockReset();
     mocks.query.mockReset();
   });
 
@@ -64,7 +70,27 @@ describe("<EvidenceLibraryAdminLaunch>", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("issues a code from the ready library action", async () => {
+  it("opens the exact launch URL issued for the ready library", async () => {
+    const user = userEvent.setup();
+    const launchUrl =
+      "https://climate.example.test/api/admin/session?code=elc_test";
+    mocks.query.mockReturnValue({
+      data: {
+        libraryId: "library_123",
+        libraryName: "Climate Evidence",
+        status: "ready",
+      },
+      isReady: true,
+    });
+    mocks.issueCode.mockResolvedValue({ launchUrl });
+
+    render(<EvidenceLibraryAdminLaunch libraryId="library_123" />);
+    await user.click(screen.getByRole("button", { name: "openAdmin" }));
+
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith(launchUrl));
+  });
+
+  it("shows an alert and allows retry after issuing a code fails", async () => {
     const user = userEvent.setup();
     mocks.query.mockReturnValue({
       data: {
@@ -74,16 +100,12 @@ describe("<EvidenceLibraryAdminLaunch>", () => {
       },
       isReady: true,
     });
-    mocks.issueCode.mockReturnValue(new Promise(() => undefined));
+    mocks.issueCode.mockRejectedValue(new Error("Connection failed"));
 
     render(<EvidenceLibraryAdminLaunch libraryId="library_123" />);
     await user.click(screen.getByRole("button", { name: "openAdmin" }));
 
-    await waitFor(() =>
-      expect(mocks.issueCode).toHaveBeenCalledWith({
-        libraryId: "library_123",
-      }),
-    );
-    expect(screen.getByRole("button", { name: "openingAdmin" })).toBeDisabled();
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "openAdmin" })).toBeEnabled();
   });
 });
