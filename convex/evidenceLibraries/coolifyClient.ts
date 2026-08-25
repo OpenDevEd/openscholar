@@ -77,6 +77,7 @@ export type CoolifyDeployment = {
   deploymentUuid: string;
   runtimeCommit: string;
   coolifyConfigHash: string | null;
+  createdAt?: number;
   status: CoolifyDeploymentStatus;
   state: CoolifyDeploymentState;
 };
@@ -289,6 +290,16 @@ function requireConfigHash(value: string): string {
     );
   }
   return value;
+}
+
+function requireAdoptionBoundary(value: number): number {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new CoolifyClientError(
+      "INVALID_COOLIFY_CONFIG",
+      "Deployment adoption boundary is invalid",
+    );
+  }
+  return Math.floor(value / 1_000) * 1_000;
 }
 
 function requirePublicDomain(value: string): string {
@@ -1258,10 +1269,19 @@ function parseDeployment(payload: unknown): CoolifyDeployment {
   ) {
     invalidResponse(message);
   }
+  const createdAtPayload = payload.created_at;
+  const createdAt =
+    createdAtPayload === undefined
+      ? undefined
+      : typeof createdAtPayload === "string" &&
+          Number.isFinite(Date.parse(createdAtPayload))
+        ? Date.parse(createdAtPayload)
+        : invalidResponse(message);
   return {
     deploymentUuid,
     runtimeCommit,
     coolifyConfigHash,
+    ...(createdAt === undefined ? {} : { createdAt }),
     status: statusPayload,
     state: deploymentState(statusPayload),
   };
@@ -1605,6 +1625,7 @@ export function createCoolifyClient(input: {
       applicationUuid: string;
       runtimeCommit: string;
       coolifyConfigHash: string;
+      notBefore?: number;
     }): Promise<CoolifyDeploymentSelection> {
       const applicationUuid = requireInputIdentifier(
         "Coolify application UUID",
@@ -1612,6 +1633,10 @@ export function createCoolifyClient(input: {
       );
       const runtimeCommit = requireCommit(input.runtimeCommit);
       const coolifyConfigHash = requireConfigHash(input.coolifyConfigHash);
+      const notBefore =
+        input.notBefore === undefined
+          ? undefined
+          : requireAdoptionBoundary(input.notBefore);
       const application = await readApplication(client, applicationUuid);
       if (
         application.uuid !== applicationUuid ||
@@ -1635,6 +1660,13 @@ export function createCoolifyClient(input: {
       const listed = await listApplicationDeployments(client, applicationUuid);
       let missingConfigurationHash = false;
       for (const deployment of listed.deployments) {
+        if (
+          notBefore !== undefined &&
+          (deployment.createdAt === undefined ||
+            deployment.createdAt < notBefore)
+        ) {
+          continue;
+        }
         if (deployment.runtimeCommit !== runtimeCommit) continue;
         if (
           deployment.coolifyConfigHash === null &&

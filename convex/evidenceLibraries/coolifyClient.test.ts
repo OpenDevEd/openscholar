@@ -78,6 +78,7 @@ type FakeDeployment = {
   deployment_uuid: string;
   commit: string;
   configuration_hash?: string | null;
+  created_at?: string;
   status: string;
 };
 
@@ -970,6 +971,37 @@ describe("Coolify Evidence Library client", () => {
       },
     });
     expect(server.deployments).toHaveLength(3);
+  });
+
+  it("does not adopt a matching deployment older than the saved target", async () => {
+    const configHash = hashForRevision(1);
+    const server = createCoolifyServer({
+      application: expectedApplication({ config_hash: configHash }),
+      deployments: [
+        {
+          deployment_uuid: "deployment-before-config-save",
+          commit: RUNTIME_COMMIT,
+          configuration_hash: configHash,
+          created_at: "2026-08-25T00:00:00.000000Z",
+          status: "finished",
+        },
+      ],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).startOrAdoptDeployment({
+        applicationUuid: APPLICATION_UUID,
+        runtimeCommit: RUNTIME_COMMIT,
+        coolifyConfigHash: configHash,
+        notBefore: Date.parse("2026-08-25T00:00:05.500Z"),
+      }),
+    ).resolves.toEqual({
+      outcome: "started",
+      applicationUuid: APPLICATION_UUID,
+      deploymentUuid: "deployment-started-2",
+      runtimeCommit: RUNTIME_COMMIT,
+      coolifyConfigHash: configHash,
+    });
   });
 
   it("starts directly when Coolify still reports a legacy MD5 hash", async () => {
