@@ -183,10 +183,10 @@ function Workspace({ library }: { library: MockLibrary }) {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">
-      {/* Sticky header */}
-      <div className="sticky top-14 z-20 -mx-4 border-b bg-background/95 px-4 pt-4 backdrop-blur sm:-mx-6 sm:px-6 lg:top-0">
-        <div className="flex flex-wrap items-start justify-between gap-4 pb-3">
+    <div className="w-full pb-16">
+      {/* Sticky header: full width, content aligned to the page column */}
+      <div className="sticky top-14 z-20 border-b bg-background/95 px-4 pt-4 backdrop-blur sm:px-6 lg:top-0">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-start justify-between gap-4 pb-3">
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10">
               <Library className="size-5 text-primary" />
@@ -247,10 +247,14 @@ function Workspace({ library }: { library: MockLibrary }) {
             )}
           </div>
         </div>
-        {activation ? <ActivationBanner stageIndex={activation.stageIndex} rev={activation.rev} /> : null}
+        {activation ? (
+          <div className="mx-auto w-full max-w-6xl">
+            <ActivationBanner stageIndex={activation.stageIndex} rev={activation.rev} />
+          </div>
+        ) : null}
       </div>
 
-      <div className="grid gap-8 pt-6 lg:grid-cols-[220px_1fr]">
+      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 pt-6 sm:px-6 lg:grid-cols-[220px_1fr]">
         {/* Anchor rail */}
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <nav aria-label={t("railThisVersion")} className="space-y-5">
