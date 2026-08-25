@@ -1,14 +1,13 @@
 "use client";
 
 import {
-  AlertTriangle,
   Check,
   Copy,
   Eye,
   GitBranch,
   Globe,
   Languages,
-  Library,
+  Layers,
   Palette,
   Rocket,
   Save,
@@ -73,7 +72,6 @@ import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { LibraryNotFound } from "./library-not-found";
 import { STATUS_DOT, StatusChip, type StatusTone } from "./library-status-badge";
 import { PanelHeader } from "./panel-header";
-import { PrototypeBadge } from "./prototype-badge";
 import { Field, FieldError, SectionCard } from "./section-card";
 import { MiniNavbarPreview, PublicSitePreview } from "./site-preview";
 
@@ -183,44 +181,19 @@ function Workspace({ library }: { library: MockLibrary }) {
   return (
     <div className="w-full pb-16">
       {/* Sticky header: full width, same bar treatment as other sticky bars in the app */}
-      <div className="sticky top-14 z-20 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:top-0">
+      <div className="sticky top-14 z-20 border-b border-border/40 bg-background lg:top-0">
         <div className="container mx-auto max-w-6xl px-4 sm:px-6">
           <PanelHeader
-            icon={Library}
+            icon={Layers}
             className="border-b-0 px-0 md:px-0"
-            title={
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="truncate">{draft.name || t("untitled")}</span>
-                <PrototypeBadge />
-              </span>
-            }
+            title={draft.name || t("untitled")}
             eyebrow={`https://${library.address}`}
-            description={
-              <span className="flex flex-wrap items-center gap-1.5">
-                <StatusChip tone="neutral" className="bg-background font-mono normal-case tracking-normal">
-                  <GitBranch />
-                  {t("draftRev")} {library.draftRev}
-                </StatusChip>
-                {library.activeRev ? (
-                  <StatusChip tone="success" className="font-mono normal-case tracking-normal">
-                    <Check />
-                    {t("activeRev")} {library.activeRev}
-                  </StatusChip>
-                ) : (
-                  <StatusChip tone="neutral" className="normal-case tracking-normal font-medium">
-                    <GitBranch />
-                    {t("notActive")}
-                  </StatusChip>
-                )}
-                {dirty ? (
-                  <StatusChip tone="warning" className="normal-case tracking-normal font-medium" data-unsaved>
-                    <AlertTriangle />
-                    {t("unsaved")}
-                  </StatusChip>
-                ) : null}
-              </span>
-            }
           >
+            {dirty ? (
+              <span className="text-xs text-muted-foreground" data-unsaved>
+                {t("unsaved")}
+              </span>
+            ) : null}
             <Button variant="outline" disabled={!dirty || saving} onClick={handleSave}>
               {saving ? <Spinner /> : <Save />}
               {saving ? t("saving") : t("save")}
@@ -437,7 +410,6 @@ function Workspace({ library }: { library: MockLibrary }) {
                 <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                   <Eye className="h-3 w-3" />
                   {t("livePreview")}
-                  <PrototypeBadge variant="mock" className="ml-auto" />
                 </div>
                 <MiniNavbarPreview config={draft} />
               </div>
@@ -537,7 +509,6 @@ function Workspace({ library }: { library: MockLibrary }) {
           <SheetHeader>
             <SheetTitle className="flex flex-wrap items-center gap-2">
               {t("previewTitle", { name: draft.name || t("untitled") })}
-              <PrototypeBadge variant="mock" />
               <StatusChip tone="neutral" className="font-mono normal-case tracking-normal">
                 <GitBranch />
                 {library.draftRev}

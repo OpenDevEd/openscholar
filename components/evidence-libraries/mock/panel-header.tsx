@@ -32,7 +32,6 @@ export function PanelHeader({
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 shadow-sm md:h-12 md:w-12">
               <Icon className="h-5 w-5 text-primary md:h-6 md:w-6" />
             </div>
-            <div className="absolute inset-0 -z-10 rounded-xl bg-primary/10 blur-xl" />
           </div>
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-foreground md:text-2xl">{title}</h1>

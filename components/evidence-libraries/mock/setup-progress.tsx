@@ -35,7 +35,6 @@ import {
 import { LibraryNotFound } from "./library-not-found";
 import { LibraryStatusBadge, StatusChip } from "./library-status-badge";
 import { PanelHeader } from "./panel-header";
-import { PrototypeBadge } from "./prototype-badge";
 import { InlineNotice, SectionCard } from "./section-card";
 
 const STEP_ICONS: Record<SetupStepKey, LucideIcon> = {
@@ -74,7 +73,6 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
   return (
     <div className="container mx-auto max-w-6xl p-4 sm:p-6">
       <div className="mb-4 flex justify-end">
-        <PrototypeBadge />
       </div>
       <CommandCenterContainer>
         <PanelHeader

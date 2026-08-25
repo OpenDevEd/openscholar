@@ -20,7 +20,6 @@ import {
 import { FieldError, SectionCard } from "./section-card";
 import { OrgAvatar } from "./org-avatar";
 import { PanelHeader } from "./panel-header";
-import { PrototypeBadge } from "./prototype-badge";
 
 const NAME_MAX = 100;
 
@@ -89,7 +88,6 @@ export function NewLibraryForm() {
   return (
     <div className="container mx-auto max-w-6xl p-4 sm:p-6">
       <div className="mb-4 flex justify-end">
-        <PrototypeBadge />
       </div>
       <CommandCenterContainer>
         <PanelHeader icon={Plus} title={t("title")} description={t("description")} />

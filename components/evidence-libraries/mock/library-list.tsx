@@ -40,7 +40,6 @@ import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { LibraryStatusBadge } from "./library-status-badge";
 import { MockOrgSwitcher } from "./mock-org-switcher";
 import { PanelHeader } from "./panel-header";
-import { PrototypeBadge } from "./prototype-badge";
 
 export function LibraryList() {
   const t = useTranslations("evidenceLibraryMock.list");
@@ -54,7 +53,6 @@ export function LibraryList() {
   return (
     <div className="container mx-auto max-w-6xl p-4 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-        <PrototypeBadge />
         <MockOrgSwitcher />
       </div>
       <CommandCenterContainer>
