@@ -2131,6 +2131,20 @@
     "adminOnlyTitle": "संगठन एडमिन आवश्यक है",
     "adminOnlyDescription": "केवल संगठन एडमिन उसकी एविडेंस लाइब्रेरी बना सकता है।"
   },
+  "evidenceLibraryAdminLaunch": {
+    "eyebrow": "एविडेंस लाइब्रेरी",
+    "title": "लाइब्रेरी एडमिन क्षेत्र खोलें",
+    "description": "इस एविडेंस लाइब्रेरी का रिकॉर्ड एडिटर खोलें।",
+    "noAccessTitle": "लाइब्रेरी उपलब्ध नहीं है",
+    "noAccessDescription": "इस लाइब्रेरी के मालिक संगठन को चुनें, फिर दोबारा कोशिश करें।",
+    "notReadyTitle": "लाइब्रेरी अभी तैयार नहीं है",
+    "notReadyDescription": "सेटअप पूरा होने के बाद आप एडमिन क्षेत्र खोल सकते हैं।",
+    "readyTitle": "{libraryName} खोलें",
+    "readyDescription": "OpenScholar आपके मौजूदा संगठन रोल के अनुसार आपको Owner या Editor के रूप में साइन इन करेगा।",
+    "openAdmin": "एडमिन क्षेत्र खोलें",
+    "openingAdmin": "एडमिन क्षेत्र खुल रहा है…",
+    "openError": "एडमिन क्षेत्र नहीं खुल सका। जाँचें कि लाइब्रेरी तैयार है, फिर दोबारा कोशिश करें।"
+  },
   "evidenceLibraryConfigurationShell": {
     "eyebrow": "एविडेंस लाइब्रेरी",
     "description": "लोगों को दिखने वाला नाम, ब्रांड और भाषाएँ चुनें।",

@@ -2156,6 +2156,20 @@
     "adminOnlyTitle": "Organisation admin required",
     "adminOnlyDescription": "Only an organisation admin can create its Evidence Library."
   },
+  "evidenceLibraryAdminLaunch": {
+    "eyebrow": "Evidence Library",
+    "title": "Open the library admin area",
+    "description": "Open the record editor for this Evidence Library.",
+    "noAccessTitle": "Library not available",
+    "noAccessDescription": "Choose the organisation that owns this library, then try again.",
+    "notReadyTitle": "The library is not ready yet",
+    "notReadyDescription": "You can open the admin area after setup finishes.",
+    "readyTitle": "Open {libraryName}",
+    "readyDescription": "OpenScholar will sign you in as an Owner or Editor using your current organisation role.",
+    "openAdmin": "Open admin area",
+    "openingAdmin": "Opening admin area…",
+    "openError": "The admin area could not be opened. Check that the library is ready, then try again."
+  },
   "evidenceLibraryConfigurationShell": {
     "eyebrow": "Evidence Library",
     "description": "Choose the identity, branding, and languages people will see.",
