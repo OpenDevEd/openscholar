@@ -61,7 +61,7 @@ has separately proved that a new deployment is required.
    stale, Meilisearch is public, or config health reports a rejected revision.
 5. Run one disposable library through activation twice. Prove one app, one
    volume, two buckets, one database, six services, one active revision, and a
-   successful second reconciliation. Remove the disposable resources.
+   successful second reconciliation. Remove every resource through Plan 06.
 
 ## Files
 
@@ -111,9 +111,10 @@ npm run schema:check:evidence-library-config
 
 Deploy the verifier only to the development Coolify environment. Read back its
 commit, token settings, and healthy state. Run the disposable end-to-end setup,
-inspect the six host-side service results and three HTTP results, then remove
-the disposable app, volume, buckets, database, login, and test records. Leave
-the singleton provisioner and verifier running for later sprints.
+inspect the six host-side service results and three HTTP results, then run the
+Plan 06 teardown and prove the app, volume, buckets, database, login, and
+Convex library records are gone. Leave the singleton provisioner and verifier
+running for later sprints.
 
 ## Completion rules
 

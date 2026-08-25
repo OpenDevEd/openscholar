@@ -2,9 +2,10 @@
 
 ## Gap
 
-Activation now freezes one configuration revision and attaches it to the one
-setup operation created with the library. The operation does not yet run the
-five agreed setup steps or keep the receipts needed for a safe retry.
+The five setup steps, status, Retry, and configuration redeployment now work
+and passed a live development proof. That proof still left its database,
+Storage buckets, and Convex rows behind because the product has no supported
+development teardown operation.
 
 ## Fixed decisions
 
@@ -34,7 +35,9 @@ five agreed setup steps or keep the receipts needed for a safe retry.
 - Readiness uses the saved Coolify deployment, exact host-side Compose service
   state, the configuration health endpoint, the public library page, and
   `/admin`.
-- Automatic cleanup and a general workflow engine are out of scope.
+- A general workflow engine is out of scope. Development teardown is part of
+  this plan. It removes one named development library through the same
+  supported service APIs used to create it.
 
 ## Plan
 
@@ -43,11 +46,11 @@ five agreed setup steps or keep the receipts needed for a safe retry.
 3. [Shared storage and scheduling](03-shared-storage-and-scheduling.md)
 4. [Coolify application and deployment](04-coolify-application-and-deployment.md)
 5. [Runtime readiness](05-runtime-readiness.md)
-6. Issue #30 adds the small status and Retry interface.
+6. [Development library teardown](06-development-library-teardown.md)
+7. The status and Retry interface from issue #30 is implemented.
 
-Issue #26 remains open until the steps from #27 and #28 run together against a
-disposable development library. This foundation covers only the operation
-state, lock, receipts, and final atomic transition.
+Issues #26 and #28 remain open until Plan 06 removes the disposable proof
+library without manual service commands.
 
 ## Existing code to reuse
 
@@ -71,6 +74,11 @@ state, lock, receipts, and final atomic transition.
 Use Convex behavior tests for the operation lock, step order, saved receipts,
 failure, retry, and final activation. Later issues must add live checks for the
 actual PostgreSQL, storage, Coolify, Compose, and HTTP boundaries.
+
+Teardown tests must prove that OpenScholar checks the exact saved resource
+identities, treats already removed resources as complete, keeps the library
+records after a partial failure, and deletes those records only after the
+Coolify application, both buckets, database, and login are gone.
 
 The host-side readiness bridge accepts only a validated Coolify application
 UUID and returns the six expected Compose services with their state and health.

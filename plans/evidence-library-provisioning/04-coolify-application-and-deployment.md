@@ -136,8 +136,8 @@ npm run schema:check:evidence-library-config
 In the development Coolify project, create one disposable application through
 the same client, repeat application and deployment reconciliation, and read
 back the repository, commit, Compose path, web-only domain, two allowed
-environment values, deployment UUID, and final status. Remove only that named
-disposable application afterward.
+environment values, deployment UUID, and final status. Remove it through Plan
+06. Do not use a separate cleanup command.
 
 ## Completion rules
 

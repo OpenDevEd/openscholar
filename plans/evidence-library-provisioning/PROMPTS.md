@@ -234,3 +234,29 @@ shared Convex deployment, read remote logs, and request a final Sol review.
 Commit each working unit with `[plan-05]`. Close #26 and #28 only after the live
 flow and cleanup pass.
 ```
+
+## Plan 06 - Development library teardown
+
+```text
+Implement plans/evidence-library-provisioning/06-development-library-teardown.md
+across OpenScholar and Evidence Library. Read the provisioning README, plans 01
+through 05, both AGENTS.md files, both test-quality guides, and the Convex rules
+first.
+
+This is development cleanup, not a future production task. Reuse the saved
+setup receipts and supported service clients. Add one Owner-only,
+non-production teardown operation. Delete the exact saved Coolify application
+first, then both Storage buckets, then the library database and login. Delete
+Convex rows only after every outside system confirms removal. Missing
+resources are complete. Mismatched resources are hard failures. Retry must
+never recreate a resource.
+
+Use test-decision before changing tests. Test the real boundary and saved
+state, not private call counts. Commit the corrected plan before code. Commit
+every working unit with `[plan-06]`. Do not push or touch production. Deploy
+only to the named development services for the live proof. Run one disposable
+library through setup, add real disposable data, interrupt one teardown step,
+retry, and prove the app, volume, buckets, database, login, and Convex rows are
+gone. Leave shared services and unrelated libraries unchanged. Stop all local
+test processes and containers before reporting completion.
+```
