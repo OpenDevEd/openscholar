@@ -67,6 +67,7 @@ function AdminCreateEvidenceLibraryForm({
     api.evidenceLibraries.mutations.createSetupDraft,
   );
   const selectedLibraryId =
+    !setupSelection.organizationId ||
     setupSelection.organizationId === activeOrganizationId
       ? setupSelection.libraryId
       : null;

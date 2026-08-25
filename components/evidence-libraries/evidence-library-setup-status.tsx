@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "convex/react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -42,6 +43,7 @@ export function EvidenceLibrarySetupStatus({
   operation: SetupOperation;
 }) {
   const t = useTranslations("evidenceLibrarySetup");
+  const tAdmin = useTranslations("evidenceLibraryAdminLaunch");
   const retrySetup = useMutation(api.evidenceLibraries.mutations.retrySetup);
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
@@ -64,6 +66,13 @@ export function EvidenceLibrarySetupStatus({
             {t("status.readyDescription")}
           </CardDescription>
         </CardHeader>
+        <CardFooter className="justify-end border-t">
+          <Button asChild>
+            <Link href={`/evidence-libraries/${libraryId}/admin`}>
+              {tAdmin("openAdmin")}
+            </Link>
+          </Button>
+        </CardFooter>
       </Card>
     );
   }

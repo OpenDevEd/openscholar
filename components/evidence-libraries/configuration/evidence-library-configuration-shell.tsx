@@ -215,13 +215,11 @@ function EssentialConfigurationForm({
   initialConfiguration,
   initialEditVersion,
   libraryId,
-  organizationId,
 }: {
   formContract: EssentialConfigurationFormContract;
   initialConfiguration: EssentialConfigurationSections;
   initialEditVersion: number;
   libraryId: Id<"evidenceLibraries">;
-  organizationId: string;
 }) {
   const t = useTranslations("evidenceLibraryConfigurationShell");
   const router = useRouter();
@@ -317,10 +315,7 @@ function EssentialConfigurationForm({
       .then((result) => {
         setEditVersion(result.editVersion);
         if (result.kind === "setup") {
-          const search = new URLSearchParams({
-            libraryId,
-            organizationId,
-          });
+          const search = new URLSearchParams({ libraryId });
           router.push(`/evidence-libraries/new?${search.toString()}`);
           return;
         }
@@ -731,7 +726,7 @@ export function EvidenceLibraryConfigurationShell({
     return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
   }
 
-  const { draft, library, sections } = draftQuery.data;
+  const { draft, sections } = draftQuery.data;
   const initialConfiguration = readInitialConfiguration(
     sections,
     formContract.locales,
@@ -752,7 +747,6 @@ export function EvidenceLibraryConfigurationShell({
         initialConfiguration={initialConfiguration}
         initialEditVersion={draft.editVersion}
         libraryId={libraryId as Id<"evidenceLibraries">}
-        organizationId={library.organizationId}
       />
     </main>
   );

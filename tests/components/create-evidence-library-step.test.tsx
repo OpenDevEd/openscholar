@@ -348,6 +348,10 @@ describe("<CreateEvidenceLibraryStep>", () => {
     expect(
       screen.queryByRole("button", { name: "Retry" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "openAdmin" })).toHaveAttribute(
+      "href",
+      "/evidence-libraries/library_123/admin",
+    );
   });
 
   it("shows the saved failed step and error, then retries that library", async () => {

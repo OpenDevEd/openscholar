@@ -193,7 +193,7 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
       }),
     );
     expect(pushMock).toHaveBeenCalledWith(
-      "/evidence-libraries/new?libraryId=library_123&organizationId=organization_123",
+      "/evidence-libraries/new?libraryId=library_123",
     );
 
     await user.clear(screen.getByLabelText("libraryNameLabel"));
