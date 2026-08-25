@@ -300,7 +300,6 @@ export const runConfigurationDeployment = internalAction({
         runtimeCommit: readiness.runtimeCommit,
         revisionKey: readiness.revisionKey,
         targetBaseUrl: readiness.targetBaseUrl,
-        defaultLocale: readiness.defaultLocale,
         verifierUrl: requireRuntimeHttpsOrigin(
           "EL_RUNTIME_VERIFIER_URL",
           invalidConfiguration,

@@ -37,7 +37,6 @@ describe("Evidence Library readiness completion", () => {
       coolifyConfigHash: "d".repeat(64),
       revisionKey: fixture.activated.revisionKey,
       targetBaseUrl: fixture.created.publicAddress,
-      defaultLocale: "en-GB",
     });
 
     expect(

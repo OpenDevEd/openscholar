@@ -46,7 +46,6 @@ function input(fetchImpl: typeof fetch) {
     runtimeCommit: RUNTIME_COMMIT,
     revisionKey: REVISION,
     targetBaseUrl: "https://climate.libraries.example.test",
-    defaultLocale: "en-GB",
     verifierUrl: "https://runtime-verifier.example.test",
     verifierToken: "verifier-token-value",
     fetchImpl,
@@ -76,7 +75,7 @@ describe("Evidence Library readiness client", () => {
     expect(requests.map(({ url }) => url)).toEqual([
       "https://runtime-verifier.example.test/v1/library-runtime/readiness",
       "https://climate.libraries.example.test/api/library-config/health",
-      "https://climate.libraries.example.test/en-GB/lib",
+      "https://climate.libraries.example.test/lib",
       "https://climate.libraries.example.test/admin",
     ]);
     const verifierRequest = requests[0]!.init!;
