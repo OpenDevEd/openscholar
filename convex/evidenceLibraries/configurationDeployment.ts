@@ -11,6 +11,7 @@ import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { sanitizeOperationError, validateOperationReceipt } from "./operations";
+import { readRevisionDefaultLocale } from "./revisionConfiguration";
 import {
   AUTHENTICATION_SECRET_PATH,
   DATABASE_URL_PATH,
@@ -19,29 +20,60 @@ import {
 } from "./runtimeCredentials";
 import {
   essentialConfigurationSectionsValidator,
+  evidenceLibraryConfigurationDeploymentTargetValidator,
   evidenceLibraryOperationErrorInputValidator,
 } from "./validators";
 
+export const CONFIGURATION_DEPLOYMENT_LEASE_MS = 20 * 60 * 1_000;
 const CONFIGURATION_DEPLOYMENT_POLL_DELAY_MS = 5_000;
 const MAX_CONFIGURATION_DEPLOYMENT_POLLS = 120;
+
+type ReadyRuntimeBinding = Extract<
+  Doc<"evidenceLibraryRuntimeBindings">,
+  { state: "ready" }
+>;
 
 type CurrentDeployment = {
   library: Doc<"evidenceLibraries">;
   operation: Doc<"evidenceLibraryConfigOperations">;
   revision: Doc<"evidenceLibraryConfigRevisions">;
-  runtimeBinding: Extract<
-    Doc<"evidenceLibraryRuntimeBindings">,
-    { state: "ready" }
-  >;
+  runtimeBinding: ReadyRuntimeBinding;
 };
 
 function isReadyRuntimeBinding(
   binding: Doc<"evidenceLibraryRuntimeBindings">,
-): binding is Extract<
-  Doc<"evidenceLibraryRuntimeBindings">,
-  { state: "ready" }
-> {
+): binding is ReadyRuntimeBinding {
   return binding.state === "ready" && "targetRuntimeId" in binding;
+}
+
+function requireNonBlank(field: string, value: string): string {
+  const normalized = value.trim();
+  if (!normalized || normalized.length > 900_000) {
+    throw createError("VALIDATION_ERROR", `${field} is missing or too large`);
+  }
+  return normalized;
+}
+
+function requireDigest(field: string, value: string): string {
+  const digest = requireNonBlank(field, value);
+  if (!/^[a-f0-9]{64}$/u.test(digest)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `${field} must be a lowercase SHA-256 digest`,
+    );
+  }
+  return digest;
+}
+
+function requireCommit(value: string): string {
+  const commit = requireNonBlank("runtimeCommit", value);
+  if (!/^[a-f0-9]{40}$/u.test(commit)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "runtimeCommit must be a lowercase 40-character commit",
+    );
+  }
+  return commit;
 }
 
 async function readConfigurationDeployment(
@@ -62,6 +94,7 @@ async function readConfigurationDeployment(
     !operation ||
     operation.libraryId !== args.libraryId ||
     operation.kind !== "publish" ||
+    operation.activationEditVersion === undefined ||
     !operation.revisionId
   ) {
     throw createError(
@@ -78,12 +111,6 @@ async function readConfigurationDeployment(
   if (!revision || revision.libraryId !== args.libraryId) {
     throw createError("INVALID_DATA", "Evidence Library revision not found");
   }
-  if (library.latestRevisionId !== revision._id) {
-    throw createError(
-      "CONFLICT",
-      "A newer Evidence Library configuration revision is available",
-    );
-  }
   if (
     !runtimeBinding ||
     runtimeBinding.libraryId !== args.libraryId ||
@@ -94,7 +121,39 @@ async function readConfigurationDeployment(
       "Evidence Library ready runtime binding not found",
     );
   }
+  const target = operation.configurationDeploymentTarget;
+  if (
+    target &&
+    (library.runtimeBindingId !== target.runtimeBindingId ||
+      runtimeBinding._id !== target.runtimeBindingId ||
+      runtimeBinding.targetRuntimeId !== target.applicationId ||
+      runtimeBinding.targetBaseUrl !== target.targetBaseUrl ||
+      revision.revisionKey !== target.revisionKey)
+  ) {
+    throw createError(
+      "CONFLICT",
+      "The saved configuration target no longer matches its runtime binding",
+    );
+  }
   return { library, operation, revision, runtimeBinding };
+}
+
+function requireCurrentAttempt(
+  deployment: CurrentDeployment,
+  args: { attemptToken: string; attemptCount: number },
+) {
+  if (
+    deployment.operation.status !== "running" ||
+    deployment.operation.attemptCount !== args.attemptCount ||
+    deployment.operation.configurationAttemptToken !== args.attemptToken ||
+    !deployment.operation.configurationLeaseExpiresAt ||
+    deployment.operation.configurationLeaseExpiresAt <= Date.now()
+  ) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library configuration deployment attempt is no longer active",
+    );
+  }
 }
 
 async function requireCurrentConfigurationDeployment(
@@ -102,25 +161,19 @@ async function requireCurrentConfigurationDeployment(
   args: {
     libraryId: Id<"evidenceLibraries">;
     operationId: Id<"evidenceLibraryConfigOperations">;
+    attemptToken: string;
     attemptCount: number;
   },
 ) {
   const deployment = await readConfigurationDeployment(ctx, args);
-  if (
-    deployment.operation.status !== "running" ||
-    deployment.operation.attemptCount !== args.attemptCount
-  ) {
-    throw createError(
-      "CONFLICT",
-      "Evidence Library configuration deployment attempt is no longer active",
-    );
-  }
+  requireCurrentAttempt(deployment, args);
   return deployment;
 }
 
 export async function requireNoActiveConfigurationDeployment(
   ctx: MutationCtx,
   libraryId: Id<"evidenceLibraries">,
+  exceptOperationId?: Id<"evidenceLibraryConfigOperations">,
 ) {
   for (const status of ["queued", "running"] as const) {
     const operations = ctx.db
@@ -129,7 +182,11 @@ export async function requireNoActiveConfigurationDeployment(
         query.eq("libraryId", libraryId).eq("status", status),
       );
     for await (const operation of operations) {
-      if (operation.kind === "publish") {
+      if (
+        operation._id !== exceptOperationId &&
+        operation.kind === "publish" &&
+        operation.activationEditVersion !== undefined
+      ) {
         throw createError(
           "CONFLICT",
           "Another Evidence Library configuration deployment is already running",
@@ -147,25 +204,43 @@ export async function claimAndScheduleConfigurationDeployment(
   },
 ) {
   await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  await requireNoActiveConfigurationDeployment(
+    ctx,
+    args.libraryId,
+    args.operationId,
+  );
   const deployment = await readConfigurationDeployment(ctx, args);
+  const now = Date.now();
   if (
-    deployment.operation.status !== "queued" &&
-    deployment.operation.status !== "failed"
+    deployment.operation.status === "running" &&
+    (!deployment.operation.configurationLeaseExpiresAt ||
+      deployment.operation.configurationLeaseExpiresAt > now)
   ) {
     throw createError(
       "CONFLICT",
-      "Evidence Library configuration deployment cannot be started",
+      "Evidence Library configuration deployment is already running",
     );
   }
-  const now = Date.now();
+  if (deployment.operation.status === "succeeded") {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library configuration deployment is already complete",
+    );
+  }
   const attemptCount = deployment.operation.attemptCount + 1;
+  const attemptToken = `elconfig_${deployment.operation._id}_${attemptCount}`;
   await ctx.db.patch(deployment.operation._id, {
     status: "running",
-    stage: "assembling",
+    stage: deployment.operation.configurationDeploymentTarget
+      ? "publishing"
+      : "assembling",
     attemptCount,
     error: undefined,
     startedAt: now,
     completedAt: undefined,
+    configurationAttemptToken: attemptToken,
+    configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+    configurationDeploymentPollCount: 0,
     updatedAt: now,
   });
   await ctx.scheduler.runAfter(
@@ -175,8 +250,8 @@ export async function claimAndScheduleConfigurationDeployment(
     {
       libraryId: args.libraryId,
       operationId: args.operationId,
+      attemptToken,
       attemptCount,
-      pollCount: 0,
     },
   );
   return {
@@ -205,40 +280,84 @@ function requireCredential(
   return credential;
 }
 
+function runtimeBindingFingerprint(binding: ReadyRuntimeBinding): string {
+  return JSON.stringify({
+    targetRuntimeId: binding.targetRuntimeId,
+    targetBaseUrl: binding.targetBaseUrl,
+    searchHost: binding.searchHost,
+    searchIndex: binding.searchIndex,
+    storageUrl: binding.storageUrl,
+    storagePrivateBucket: binding.storagePrivateBucket,
+    storagePublicBucket: binding.storagePublicBucket,
+    storageMaxPdfBytes: binding.storageMaxPdfBytes,
+    zoteroTranslationUrl: binding.zoteroTranslationUrl,
+    databaseCredentialId: binding.databaseCredentialId,
+    searchCredentialId: binding.searchCredentialId,
+    storageCredentialId: binding.storageCredentialId,
+  });
+}
+
+const sourceCredentialValidator = v.object({
+  id: v.id("evidenceLibraryCredentials"),
+  encryptedValue: v.string(),
+  updatedAt: v.number(),
+});
+
+const savedDeploymentValidator = v.object({
+  deploymentId: v.string(),
+  coolifyConfigHash: v.string(),
+});
+
 export const prepareConfigurationDeployment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
     attemptCount: v.number(),
   },
-  returns: v.object({
-    applicationId: v.string(),
-    targetBaseUrl: v.string(),
-    revisionKey: v.string(),
-    revisionCreatedAt: v.number(),
-    sections: essentialConfigurationSectionsValidator,
-    encryptedMachineCredential: v.string(),
-    encryptedAuthenticationSecret: v.string(),
-    encryptedDatabaseUrl: v.string(),
-    searchHost: v.string(),
-    encryptedSearchKey: v.string(),
-    searchIndex: v.string(),
-    storageUrl: v.string(),
-    encryptedStorageServiceRoleKey: v.string(),
-    storagePrivateBucket: v.string(),
-    storagePublicBucket: v.string(),
-    storageMaxPdfBytes: v.number(),
-    zoteroTranslationUrl: v.optional(v.string()),
-    savedReceipt: v.optional(
-      v.object({
-        revisionKey: v.string(),
-        runtimeConfigSha256: v.string(),
-        deploymentId: v.string(),
-        runtimeCommit: v.string(),
-        coolifyConfigHash: v.string(),
+  returns: v.union(
+    v.object({
+      state: v.literal("saved"),
+      target: evidenceLibraryConfigurationDeploymentTargetValidator,
+      deployment: v.optional(savedDeploymentValidator),
+    }),
+    v.object({
+      state: v.literal("new"),
+      applicationId: v.string(),
+      targetBaseUrl: v.string(),
+      revision: v.object({ key: v.string(), createdAt: v.number() }),
+      sections: essentialConfigurationSectionsValidator,
+      credentials: v.object({
+        encryptedMachine: v.string(),
+        encryptedAuthentication: v.string(),
+        encryptedDatabaseUrl: v.string(),
       }),
-    ),
-  }),
+      search: v.object({
+        host: v.string(),
+        encryptedKey: v.string(),
+        index: v.string(),
+      }),
+      storage: v.object({
+        url: v.string(),
+        encryptedServiceRoleKey: v.string(),
+        privateBucket: v.string(),
+        publicBucket: v.string(),
+        maxPdfBytes: v.number(),
+      }),
+      zoteroTranslationUrl: v.optional(v.string()),
+      source: v.object({
+        runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
+        bindingUpdatedAt: v.number(),
+        bindingFingerprint: v.string(),
+        machine: sourceCredentialValidator,
+        authentication: sourceCredentialValidator,
+        database: sourceCredentialValidator,
+        search: sourceCredentialValidator,
+        storage: sourceCredentialValidator,
+      }),
+      defaultLocale: v.string(),
+    }),
+  ),
   handler: async (ctx, args) => {
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
     if (
@@ -249,6 +368,35 @@ export const prepareConfigurationDeployment = internalMutation({
         "CONFLICT",
         "Evidence Library configuration deployment is not publishing",
       );
+    }
+    const savedTarget = deployment.operation.configurationDeploymentTarget;
+    if (savedTarget) {
+      const receipt = deployment.operation.receipt;
+      if (
+        receipt &&
+        (receipt.revisionKey !== savedTarget.revisionKey ||
+          receipt.targetConfigSha256 !== savedTarget.runtimeConfigSha256 ||
+          receipt.runtimeCommit !== savedTarget.runtimeCommit ||
+          !receipt.runtimeReceiptId ||
+          !receipt.coolifyConfigHash)
+      ) {
+        throw createError(
+          "INVALID_DATA",
+          "Evidence Library deployment receipt is incomplete",
+        );
+      }
+      return {
+        state: "saved" as const,
+        target: savedTarget,
+        ...(receipt
+          ? {
+              deployment: {
+                deploymentId: receipt.runtimeReceiptId!,
+                coolifyConfigHash: receipt.coolifyConfigHash!,
+              },
+            }
+          : {}),
+      };
     }
     const [sectionRows, authentication, machine, database, search, storage] =
       await Promise.all([
@@ -290,72 +438,195 @@ export const prepareConfigurationDeployment = internalMutation({
         "Evidence Library revision configuration is incomplete",
       );
     }
-    const receipt = deployment.operation.receipt;
-    const savedReceipt =
-      receipt?.revisionKey &&
-      receipt.targetConfigSha256 &&
-      receipt.runtimeReceiptId &&
-      receipt.runtimeCommit &&
-      receipt.coolifyConfigHash
-        ? {
-            revisionKey: receipt.revisionKey,
-            runtimeConfigSha256: receipt.targetConfigSha256,
-            deploymentId: receipt.runtimeReceiptId,
-            runtimeCommit: receipt.runtimeCommit,
-            coolifyConfigHash: receipt.coolifyConfigHash,
-          }
-        : undefined;
-    if (receipt && !savedReceipt) {
-      throw createError(
-        "INVALID_DATA",
-        "Evidence Library deployment receipt is incomplete",
-      );
-    }
-    return {
-      applicationId: deployment.runtimeBinding.targetRuntimeId,
-      targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
-      revisionKey: deployment.revision.revisionKey,
-      revisionCreatedAt: deployment.revision.createdAt,
-      sections: validated.value,
-      encryptedMachineCredential: requireCredential(
+    const required = {
+      machine: requireCredential(
         machine,
         args.libraryId,
         LIBRARY_SERVICE_CREDENTIAL_KEY,
-      ).encryptedValue,
-      encryptedAuthenticationSecret: requireCredential(
+      ),
+      authentication: requireCredential(
         authentication,
         args.libraryId,
         AUTHENTICATION_SECRET_PATH,
-      ).encryptedValue,
-      encryptedDatabaseUrl: requireCredential(
-        database,
-        args.libraryId,
-        DATABASE_URL_PATH,
-      ).encryptedValue,
-      searchHost: deployment.runtimeBinding.searchHost,
-      encryptedSearchKey: requireCredential(
-        search,
-        args.libraryId,
-        SEARCH_KEY_PATH,
-      ).encryptedValue,
-      searchIndex: deployment.runtimeBinding.searchIndex,
-      storageUrl: deployment.runtimeBinding.storageUrl,
-      encryptedStorageServiceRoleKey: requireCredential(
+      ),
+      database: requireCredential(database, args.libraryId, DATABASE_URL_PATH),
+      search: requireCredential(search, args.libraryId, SEARCH_KEY_PATH),
+      storage: requireCredential(
         storage,
         args.libraryId,
         STORAGE_SERVICE_KEY_PATH,
-      ).encryptedValue,
-      storagePrivateBucket: deployment.runtimeBinding.storagePrivateBucket,
-      storagePublicBucket: deployment.runtimeBinding.storagePublicBucket,
-      storageMaxPdfBytes: deployment.runtimeBinding.storageMaxPdfBytes,
+      ),
+    };
+    return {
+      state: "new" as const,
+      applicationId: deployment.runtimeBinding.targetRuntimeId,
+      targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
+      revision: {
+        key: deployment.revision.revisionKey,
+        createdAt: deployment.revision.createdAt,
+      },
+      sections: validated.value,
+      credentials: {
+        encryptedMachine: required.machine.encryptedValue,
+        encryptedAuthentication: required.authentication.encryptedValue,
+        encryptedDatabaseUrl: required.database.encryptedValue,
+      },
+      search: {
+        host: deployment.runtimeBinding.searchHost,
+        encryptedKey: required.search.encryptedValue,
+        index: deployment.runtimeBinding.searchIndex,
+      },
+      storage: {
+        url: deployment.runtimeBinding.storageUrl,
+        encryptedServiceRoleKey: required.storage.encryptedValue,
+        privateBucket: deployment.runtimeBinding.storagePrivateBucket,
+        publicBucket: deployment.runtimeBinding.storagePublicBucket,
+        maxPdfBytes: deployment.runtimeBinding.storageMaxPdfBytes,
+      },
       ...(deployment.runtimeBinding.zoteroTranslationUrl === undefined
         ? {}
         : {
             zoteroTranslationUrl:
               deployment.runtimeBinding.zoteroTranslationUrl,
           }),
-      ...(savedReceipt === undefined ? {} : { savedReceipt }),
+      source: {
+        runtimeBindingId: deployment.runtimeBinding._id,
+        bindingUpdatedAt: deployment.runtimeBinding.updatedAt,
+        bindingFingerprint: runtimeBindingFingerprint(
+          deployment.runtimeBinding,
+        ),
+        machine: {
+          id: required.machine._id,
+          encryptedValue: required.machine.encryptedValue,
+          updatedAt: required.machine.updatedAt,
+        },
+        authentication: {
+          id: required.authentication._id,
+          encryptedValue: required.authentication.encryptedValue,
+          updatedAt: required.authentication.updatedAt,
+        },
+        database: {
+          id: required.database._id,
+          encryptedValue: required.database.encryptedValue,
+          updatedAt: required.database.updatedAt,
+        },
+        search: {
+          id: required.search._id,
+          encryptedValue: required.search.encryptedValue,
+          updatedAt: required.search.updatedAt,
+        },
+        storage: {
+          id: required.storage._id,
+          encryptedValue: required.storage.encryptedValue,
+          updatedAt: required.storage.updatedAt,
+        },
+      },
+      defaultLocale: await readRevisionDefaultLocale(
+        ctx,
+        deployment.revision._id,
+      ),
     };
+  },
+});
+
+export const saveConfigurationDeploymentTarget = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+    attemptCount: v.number(),
+    source: v.object({
+      runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
+      bindingUpdatedAt: v.number(),
+      bindingFingerprint: v.string(),
+      machine: sourceCredentialValidator,
+      authentication: sourceCredentialValidator,
+      database: sourceCredentialValidator,
+      search: sourceCredentialValidator,
+      storage: sourceCredentialValidator,
+    }),
+    target: v.object({
+      applicationId: v.string(),
+      targetBaseUrl: v.string(),
+      revisionKey: v.string(),
+      defaultLocale: v.string(),
+      runtimeCommit: v.string(),
+      encryptedRuntimeConfig: v.string(),
+      runtimeConfigSha256: v.string(),
+    }),
+  },
+  returns: evidenceLibraryConfigurationDeploymentTargetValidator,
+  handler: async (ctx, args) => {
+    const deployment = await requireCurrentConfigurationDeployment(ctx, args);
+    if (deployment.operation.configurationDeploymentTarget) {
+      throw createError(
+        "CONFLICT",
+        "Evidence Library configuration target is already saved",
+      );
+    }
+    const sourceVersions = [
+      args.source.machine,
+      args.source.authentication,
+      args.source.database,
+      args.source.search,
+      args.source.storage,
+    ];
+    const sourceCredentials = await Promise.all(
+      sourceVersions.map(({ id }) => ctx.db.get(id)),
+    );
+    if (
+      deployment.runtimeBinding._id !== args.source.runtimeBindingId ||
+      deployment.runtimeBinding.updatedAt !== args.source.bindingUpdatedAt ||
+      runtimeBindingFingerprint(deployment.runtimeBinding) !==
+        args.source.bindingFingerprint ||
+      sourceCredentials.some(
+        (credential, index) =>
+          !credential ||
+          credential.encryptedValue !== sourceVersions[index]!.encryptedValue ||
+          credential.updatedAt !== sourceVersions[index]!.updatedAt,
+      ) ||
+      args.target.applicationId !== deployment.runtimeBinding.targetRuntimeId ||
+      args.target.targetBaseUrl !== deployment.runtimeBinding.targetBaseUrl ||
+      args.target.revisionKey !== deployment.revision.revisionKey
+    ) {
+      throw createError(
+        "CONFLICT",
+        "Evidence Library runtime inputs changed before the target was saved",
+      );
+    }
+    const now = Date.now();
+    const target = {
+      applicationId: requireNonBlank(
+        "applicationId",
+        args.target.applicationId,
+      ),
+      runtimeBindingId: deployment.runtimeBinding._id,
+      targetBaseUrl: requireNonBlank(
+        "targetBaseUrl",
+        args.target.targetBaseUrl,
+      ),
+      revisionKey: requireNonBlank("revisionKey", args.target.revisionKey),
+      defaultLocale: requireNonBlank(
+        "defaultLocale",
+        args.target.defaultLocale,
+      ),
+      runtimeCommit: requireCommit(args.target.runtimeCommit),
+      encryptedRuntimeConfig: requireNonBlank(
+        "encryptedRuntimeConfig",
+        args.target.encryptedRuntimeConfig,
+      ),
+      runtimeConfigSha256: requireDigest(
+        "runtimeConfigSha256",
+        args.target.runtimeConfigSha256,
+      ),
+      savedAt: now,
+    };
+    await ctx.db.patch(deployment.operation._id, {
+      configurationDeploymentTarget: target,
+      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      updatedAt: now,
+    });
+    return target;
   },
 });
 
@@ -363,48 +634,47 @@ export const saveConfigurationDeploymentReceipt = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
     attemptCount: v.number(),
     deploymentId: v.string(),
-    runtimeCommit: v.string(),
-    runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
     replacesDeploymentId: v.optional(v.string()),
   },
   returns: v.object({ status: v.literal("running") }),
   handler: async (ctx, args) => {
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
-    if (
-      deployment.operation.stage !== "assembling" &&
-      deployment.operation.stage !== "publishing"
-    ) {
+    const target = deployment.operation.configurationDeploymentTarget;
+    if (!target) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration deployment is not publishing",
+        "Evidence Library configuration target is not saved",
       );
     }
     const receipt = validateOperationReceipt({
-      revisionKey: deployment.revision.revisionKey,
-      targetConfigSha256: args.runtimeConfigSha256,
+      revisionKey: target.revisionKey,
+      targetConfigSha256: target.runtimeConfigSha256,
       runtimeReceiptId: args.deploymentId,
-      runtimeCommit: args.runtimeCommit,
+      runtimeCommit: target.runtimeCommit,
       coolifyConfigHash: args.coolifyConfigHash,
     })!;
     const existingDeploymentId = deployment.operation.receipt?.runtimeReceiptId;
     if (
       existingDeploymentId &&
       existingDeploymentId !== receipt.runtimeReceiptId &&
-      (args.replacesDeploymentId !== existingDeploymentId ||
-        deployment.operation.attemptCount < 2)
+      args.replacesDeploymentId !== existingDeploymentId
     ) {
       throw createError(
         "CONFLICT",
         "Evidence Library configuration deployment already saved another deployment",
       );
     }
+    const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       receipt,
       stage: "publishing",
-      updatedAt: Date.now(),
+      configurationDeploymentPollCount: 0,
+      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      updatedAt: now,
     });
     return { status: "running" as const };
   },
@@ -414,8 +684,8 @@ export const scheduleConfigurationDeploymentPoll = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
     attemptCount: v.number(),
-    pollCount: v.number(),
   },
   returns: v.object({ pollCount: v.number(), status: v.literal("running") }),
   handler: async (ctx, args) => {
@@ -429,19 +699,25 @@ export const scheduleConfigurationDeploymentPoll = internalMutation({
         "Evidence Library configuration deployment is not ready to poll",
       );
     }
-    const pollCount = args.pollCount + 1;
+    const pollCount =
+      (deployment.operation.configurationDeploymentPollCount ?? 0) + 1;
     if (pollCount > MAX_CONFIGURATION_DEPLOYMENT_POLLS) {
       throw createError(
         "CONFLICT",
         "Evidence Library configuration deployment did not finish in time",
       );
     }
-    await ctx.db.patch(deployment.operation._id, { updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(deployment.operation._id, {
+      configurationDeploymentPollCount: pollCount,
+      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      updatedAt: now,
+    });
     await ctx.scheduler.runAfter(
       CONFIGURATION_DEPLOYMENT_POLL_DELAY_MS,
       internal.evidenceLibraries.configurationDeploymentActions
         .runConfigurationDeployment,
-      { ...args, pollCount },
+      args,
     );
     return { pollCount, status: "running" as const };
   },
@@ -451,6 +727,7 @@ export const prepareConfigurationActivation = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
     attemptCount: v.number(),
   },
   returns: v.object({
@@ -464,20 +741,14 @@ export const prepareConfigurationActivation = internalMutation({
   }),
   handler: async (ctx, args) => {
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
-    if (
-      deployment.operation.stage !== "publishing" &&
-      deployment.operation.stage !== "activating"
-    ) {
-      throw createError(
-        "CONFLICT",
-        "Evidence Library configuration deployment is not ready for activation",
-      );
-    }
+    const target = deployment.operation.configurationDeploymentTarget;
     const receipt = deployment.operation.receipt;
     if (
-      receipt?.revisionKey !== deployment.revision.revisionKey ||
+      !target ||
+      receipt?.revisionKey !== target.revisionKey ||
+      receipt.targetConfigSha256 !== target.runtimeConfigSha256 ||
+      receipt.runtimeCommit !== target.runtimeCommit ||
       !receipt.runtimeReceiptId ||
-      !receipt.runtimeCommit ||
       !receipt.coolifyConfigHash
     ) {
       throw createError(
@@ -485,41 +756,20 @@ export const prepareConfigurationActivation = internalMutation({
         "Evidence Library deployment receipt is incomplete",
       );
     }
-    const localization = await ctx.db
-      .query("evidenceLibraryConfigSections")
-      .withIndex("by_revisionId_and_sectionKey", (query) =>
-        query
-          .eq("revisionId", deployment.revision._id)
-          .eq("sectionKey", "localization"),
-      )
-      .unique();
-    const payload = localization?.payload;
-    if (
-      localization?.kind !== "revision" ||
-      !payload ||
-      typeof payload !== "object" ||
-      Array.isArray(payload) ||
-      typeof (payload as Record<string, unknown>).defaultLocale !== "string"
-    ) {
-      throw createError(
-        "INVALID_DATA",
-        "Evidence Library default language is missing",
-      );
-    }
-    if (deployment.operation.stage !== "activating") {
-      await ctx.db.patch(deployment.operation._id, {
-        stage: "activating",
-        updatedAt: Date.now(),
-      });
-    }
+    const now = Date.now();
+    await ctx.db.patch(deployment.operation._id, {
+      stage: "activating",
+      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      updatedAt: now,
+    });
     return {
-      applicationId: deployment.runtimeBinding.targetRuntimeId,
+      applicationId: target.applicationId,
       deploymentId: receipt.runtimeReceiptId,
-      runtimeCommit: receipt.runtimeCommit,
+      runtimeCommit: target.runtimeCommit,
       coolifyConfigHash: receipt.coolifyConfigHash,
-      revisionKey: deployment.revision.revisionKey,
-      targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
-      defaultLocale: (payload as Record<string, string>).defaultLocale,
+      revisionKey: target.revisionKey,
+      targetBaseUrl: target.targetBaseUrl,
+      defaultLocale: target.defaultLocale,
     };
   },
 });
@@ -528,6 +778,7 @@ export const completeConfigurationDeployment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
     attemptCount: v.number(),
     checkedAt: v.number(),
   },
@@ -544,15 +795,17 @@ export const completeConfigurationDeployment = internalMutation({
         "Evidence Library configuration deployment is not ready to complete",
       );
     }
+    const target = deployment.operation.configurationDeploymentTarget;
     const receipt = validateOperationReceipt({
       ...deployment.operation.receipt,
       activatedAt: args.checkedAt,
     });
     if (
-      receipt?.revisionKey !== deployment.revision.revisionKey ||
-      !receipt.targetConfigSha256 ||
+      !target ||
+      receipt?.revisionKey !== target.revisionKey ||
+      receipt.targetConfigSha256 !== target.runtimeConfigSha256 ||
+      receipt.runtimeCommit !== target.runtimeCommit ||
       !receipt.runtimeReceiptId ||
-      !receipt.runtimeCommit ||
       !receipt.coolifyConfigHash
     ) {
       throw createError(
@@ -566,6 +819,9 @@ export const completeConfigurationDeployment = internalMutation({
       stage: "completed",
       receipt,
       completedAt: now,
+      configurationAttemptToken: undefined,
+      configurationLeaseExpiresAt: undefined,
+      configurationDeploymentPollCount: undefined,
       updatedAt: now,
     });
     await ctx.db.patch(deployment.runtimeBinding._id, {
@@ -574,6 +830,7 @@ export const completeConfigurationDeployment = internalMutation({
     });
     await ctx.db.patch(deployment.library._id, {
       activeRevisionId: deployment.revision._id,
+      activeDeploymentOperationId: deployment.operation._id,
       updatedByClerkUserId: deployment.operation.requestedByClerkUserId,
       updatedAt: now,
     });
@@ -585,6 +842,7 @@ export const failConfigurationDeployment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
     attemptCount: v.number(),
     error: evidenceLibraryOperationErrorInputValidator,
   },
@@ -595,8 +853,10 @@ export const failConfigurationDeployment = internalMutation({
       !operation ||
       operation.libraryId !== args.libraryId ||
       operation.kind !== "publish" ||
+      operation.activationEditVersion === undefined ||
       operation.status !== "running" ||
-      operation.attemptCount !== args.attemptCount
+      operation.attemptCount !== args.attemptCount ||
+      operation.configurationAttemptToken !== args.attemptToken
     ) {
       return "ignored" as const;
     }
@@ -605,6 +865,8 @@ export const failConfigurationDeployment = internalMutation({
       status: "failed",
       error: sanitizeOperationError(args.error, operation.stage),
       completedAt: now,
+      configurationAttemptToken: undefined,
+      configurationLeaseExpiresAt: undefined,
       updatedAt: now,
     });
     return "failed" as const;

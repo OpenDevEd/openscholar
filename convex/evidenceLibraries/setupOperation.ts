@@ -65,6 +65,17 @@ function requireSha256(field: string, value: string): string {
   return digest;
 }
 
+function requireCoolifyConfigHash(value: string): string {
+  const digest = requireSetupResourceIdentity("coolifyConfigHash", value);
+  if (!/^(?:[a-f0-9]{32}|[a-f0-9]{64})$/u.test(digest)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "coolifyConfigHash must be a lowercase MD5 or SHA-256 digest",
+    );
+  }
+  return digest;
+}
+
 function validateSetupReceipt(
   result: EvidenceLibrarySetupResult,
   checkedAt: number,
@@ -106,10 +117,7 @@ function validateSetupReceipt(
           "runtimeConfigSha256",
           result.runtimeConfigSha256,
         ),
-        coolifyConfigHash: requireSha256(
-          "coolifyConfigHash",
-          result.coolifyConfigHash,
-        ),
+        coolifyConfigHash: requireCoolifyConfigHash(result.coolifyConfigHash),
       };
     case "deployment":
       return {
@@ -128,10 +136,7 @@ function validateSetupReceipt(
           "runtimeConfigSha256",
           result.runtimeConfigSha256,
         ),
-        coolifyConfigHash: requireSha256(
-          "coolifyConfigHash",
-          result.coolifyConfigHash,
-        ),
+        coolifyConfigHash: requireCoolifyConfigHash(result.coolifyConfigHash),
       };
     case "health_check":
       return {
@@ -437,7 +442,6 @@ export async function recordEvidenceLibrarySetupStep(
     deployment.applicationId !== application.applicationId ||
     deployment.runtimeCommit !== application.runtimeCommit ||
     deployment.runtimeConfigSha256 !== application.runtimeConfigSha256 ||
-    deployment.coolifyConfigHash !== application.coolifyConfigHash ||
     receipt.applicationId !== application.applicationId ||
     receipt.deploymentId !== deployment.deploymentId
   ) {
@@ -483,6 +487,7 @@ export async function recordEvidenceLibrarySetupStep(
   await ctx.db.patch(setup.library._id, {
     state: "active",
     activeRevisionId: setup.revision._id,
+    activeDeploymentOperationId: operation._id,
     updatedByClerkUserId: operation.requestedByClerkUserId,
     updatedAt: now,
   });

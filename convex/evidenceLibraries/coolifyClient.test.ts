@@ -31,7 +31,6 @@ const UPDATED_LIBRARY_CONFIG_JSON = JSON.stringify({
 const MEILISEARCH_MASTER_KEY = "meilisearch-key";
 
 type FakeApplication = {
-  id: number;
   uuid: string;
   name: string;
   config_hash: string;
@@ -76,7 +75,6 @@ type FakeEnvironment = {
 };
 
 type FakeDeployment = {
-  application_id: string;
   deployment_uuid: string;
   commit: string;
   configuration_hash?: string | null;
@@ -107,7 +105,6 @@ function expectedApplication(
   overrides: Partial<FakeApplication> = {},
 ): FakeApplication {
   return {
-    id: 42,
     uuid: APPLICATION_UUID,
     name: createCoolifyLibraryTag(LIBRARY_ID),
     config_hash: hashForRevision(1),
@@ -403,7 +400,6 @@ function createCoolifyServer(
       if (method === "POST" && url.pathname === "/api/v1/deploy") {
         const deploymentUuid = `deployment-started-${deployments.length + 1}`;
         deployments.unshift({
-          application_id: "42",
           deployment_uuid: deploymentUuid,
           commit: application?.git_commit_sha ?? RUNTIME_COMMIT,
           configuration_hash: application?.config_hash ?? hashForRevision(1),
@@ -718,6 +714,7 @@ describe("Coolify Evidence Library client", () => {
       libraryId: LIBRARY_ID,
       publicDomain: PUBLIC_DOMAIN,
       libraryConfigJson: UPDATED_LIBRARY_CONFIG_JSON,
+      expectedRuntimeCommit: OTHER_COMMIT,
     });
 
     expect(result).toEqual({
@@ -754,6 +751,33 @@ describe("Coolify Evidence Library client", () => {
     expect(
       server.requests.filter(({ method }) => method === "DELETE"),
     ).toHaveLength(0);
+  });
+
+  it("rejects a changed runtime commit before writing the environment", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication({ git_commit_sha: OTHER_COMMIT }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      environments: [
+        environment("LIBRARY_CONFIG_JSON", LIBRARY_CONFIG_JSON),
+        environment("MEILISEARCH_MASTER_KEY", MEILISEARCH_MASTER_KEY),
+      ],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).updateApplicationConfiguration({
+        applicationUuid: APPLICATION_UUID,
+        libraryId: LIBRARY_ID,
+        publicDomain: PUBLIC_DOMAIN,
+        libraryConfigJson: UPDATED_LIBRARY_CONFIG_JSON,
+        expectedRuntimeCommit: RUNTIME_COMMIT,
+      }),
+    ).rejects.toMatchObject({ code: "COOLIFY_APPLICATION_CONFLICT" });
+    expect(
+      server.requests.filter(
+        ({ method, path }) => method === "PATCH" && path.endsWith("/envs"),
+      ),
+    ).toHaveLength(0);
+    expect(server.environments[0]?.value).toBe(LIBRARY_CONFIG_JSON);
   });
 
   it("stops when one deterministic tag resolves to two applications", async () => {
@@ -840,21 +864,18 @@ describe("Coolify Evidence Library client", () => {
       tags: [createCoolifyLibraryTag(LIBRARY_ID)],
       deployments: [
         {
-          application_id: "42",
           deployment_uuid: "deployment-wrong-hash",
           commit: RUNTIME_COMMIT,
           configuration_hash: hashForRevision(9),
           status: "finished",
         },
         {
-          application_id: "42",
           deployment_uuid: "deployment-failed",
           commit: RUNTIME_COMMIT,
           configuration_hash: configHash,
           status: "failed",
         },
         {
-          application_id: "42",
           deployment_uuid: "deployment-active",
           commit: RUNTIME_COMMIT,
           configuration_hash: configHash,
@@ -874,7 +895,6 @@ describe("Coolify Evidence Library client", () => {
       outcome: "adopted",
       applicationUuid: APPLICATION_UUID,
       deployment: {
-        applicationId: "42",
         deploymentUuid: "deployment-active",
         runtimeCommit: RUNTIME_COMMIT,
         coolifyConfigHash: configHash,
@@ -885,6 +905,42 @@ describe("Coolify Evidence Library client", () => {
     expect(server.deployments).toHaveLength(3);
   });
 
+  it("starts directly when Coolify still reports a legacy MD5 hash", async () => {
+    const configHash = "1".repeat(32);
+    const server = createCoolifyServer({
+      application: expectedApplication({ config_hash: configHash }),
+      deployments: [
+        {
+          deployment_uuid: "deployment-old-snapshot",
+          commit: RUNTIME_COMMIT,
+          configuration_hash: hashForRevision(1),
+          status: "finished",
+        },
+      ],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).startOrAdoptDeployment({
+        applicationUuid: APPLICATION_UUID,
+        runtimeCommit: RUNTIME_COMMIT,
+        coolifyConfigHash: configHash,
+      }),
+    ).resolves.toEqual({
+      outcome: "started",
+      applicationUuid: APPLICATION_UUID,
+      deploymentUuid: "deployment-started-2",
+      runtimeCommit: RUNTIME_COMMIT,
+      coolifyConfigHash: configHash,
+    });
+    expect(
+      server.requests.some(
+        ({ method, path }) =>
+          method === "GET" &&
+          path === `/api/v1/deployments/applications/${APPLICATION_UUID}`,
+      ),
+    ).toBe(false);
+  });
+
   it.each(["failed", "cancelled-by-user"])(
     "starts a replacement after a matching %s deployment",
     async (status) => {
@@ -893,7 +949,6 @@ describe("Coolify Evidence Library client", () => {
         application: expectedApplication({ config_hash: configHash }),
         deployments: [
           {
-            application_id: "42",
             deployment_uuid: `deployment-${status}`,
             commit: RUNTIME_COMMIT,
             configuration_hash: configHash,
@@ -932,7 +987,6 @@ describe("Coolify Evidence Library client", () => {
       application: expectedApplication({ config_hash: configHash }),
       deployments: [
         {
-          application_id: "42",
           deployment_uuid: "deployment-without-hash",
           commit: RUNTIME_COMMIT,
           status: "queued",
@@ -954,11 +1008,17 @@ describe("Coolify Evidence Library client", () => {
     expect(server.deployments).toHaveLength(1);
   });
 
-  it("does not start from a deployment history that exceeds the bounded response", async () => {
+  it("starts a new deployment when bounded history cannot prove a match", async () => {
     const configHash = hashForRevision(1);
     const server = createCoolifyServer({
       application: expectedApplication({ config_hash: configHash }),
-      deployments: [],
+      deployments: [
+        {
+          deployment_uuid: "old-deployment-without-hash",
+          commit: RUNTIME_COMMIT,
+          status: "queued",
+        },
+      ],
       deploymentCount: 101,
     });
 
@@ -969,11 +1029,13 @@ describe("Coolify Evidence Library client", () => {
         coolifyConfigHash: configHash,
       }),
     ).resolves.toEqual({
-      outcome: "adoption-unavailable",
+      outcome: "started",
       applicationUuid: APPLICATION_UUID,
-      reason: "deployment-history-truncated",
+      deploymentUuid: "deployment-started-2",
+      runtimeCommit: RUNTIME_COMMIT,
+      coolifyConfigHash: configHash,
     });
-    expect(server.deployments).toHaveLength(0);
+    expect(server.deployments).toHaveLength(2);
   });
 
   it.each([
@@ -989,7 +1051,6 @@ describe("Coolify Evidence Library client", () => {
       application: expectedApplication({ config_hash: configHash }),
       deployments: [
         {
-          application_id: "42",
           deployment_uuid: deploymentUuid,
           commit: RUNTIME_COMMIT,
           configuration_hash: configHash,
@@ -1001,7 +1062,6 @@ describe("Coolify Evidence Library client", () => {
     await expect(
       createClient(server.fetchImpl).readDeployment(deploymentUuid),
     ).resolves.toEqual({
-      applicationId: "42",
       deploymentUuid,
       runtimeCommit: RUNTIME_COMMIT,
       coolifyConfigHash: configHash,
@@ -1010,13 +1070,12 @@ describe("Coolify Evidence Library client", () => {
     });
   });
 
-  it("requires a finished deployment that belongs to the saved application", async () => {
+  it("requires a finished deployment without a numeric application ID", async () => {
     const configHash = hashForRevision(1);
     const server = createCoolifyServer({
-      application: expectedApplication({ id: 42, config_hash: configHash }),
+      application: expectedApplication({ config_hash: configHash }),
       deployments: [
         {
-          application_id: "42",
           deployment_uuid: "deployment-finished",
           commit: RUNTIME_COMMIT,
           configuration_hash: configHash,
@@ -1027,13 +1086,11 @@ describe("Coolify Evidence Library client", () => {
 
     await expect(
       createClient(server.fetchImpl).requireFinishedDeployment({
-        applicationUuid: APPLICATION_UUID,
         deploymentUuid: "deployment-finished",
         runtimeCommit: RUNTIME_COMMIT,
         coolifyConfigHash: configHash,
       }),
     ).resolves.toEqual({
-      applicationId: "42",
       deploymentUuid: "deployment-finished",
       runtimeCommit: RUNTIME_COMMIT,
       coolifyConfigHash: configHash,
@@ -1042,40 +1099,11 @@ describe("Coolify Evidence Library client", () => {
     });
   });
 
-  it("rejects a finished deployment that belongs to another application", async () => {
-    const configHash = hashForRevision(1);
-    const server = createCoolifyServer({
-      application: expectedApplication({ id: 42, config_hash: configHash }),
-      deployments: [
-        {
-          application_id: "43",
-          deployment_uuid: "deployment-other-application",
-          commit: RUNTIME_COMMIT,
-          configuration_hash: configHash,
-          status: "finished",
-        },
-      ],
-    });
-
-    await expect(
-      createClient(server.fetchImpl).requireFinishedDeployment({
-        applicationUuid: APPLICATION_UUID,
-        deploymentUuid: "deployment-other-application",
-        runtimeCommit: RUNTIME_COMMIT,
-        coolifyConfigHash: configHash,
-      }),
-    ).rejects.toMatchObject({
-      code: "COOLIFY_DEPLOYMENT_CONFLICT",
-      message: "The Coolify deployment belongs to another application",
-    });
-  });
-
   it("rejects an unknown deployment status instead of treating it as active", async () => {
     const server = createCoolifyServer({
       application: expectedApplication(),
       deployments: [
         {
-          application_id: "42",
           deployment_uuid: "deployment-unknown",
           commit: RUNTIME_COMMIT,
           configuration_hash: hashForRevision(1),
@@ -1118,7 +1146,6 @@ describe("Coolify Evidence Library client", () => {
     const server = createCoolifyServer({
       deployments: [
         {
-          application_id: "42",
           deployment_uuid: "deployment-private-network",
           commit: RUNTIME_COMMIT,
           configuration_hash: hashForRevision(1),

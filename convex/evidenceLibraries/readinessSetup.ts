@@ -1,6 +1,7 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
+import { readRevisionDefaultLocale } from "./revisionConfiguration";
 import {
   recordEvidenceLibrarySetupStep,
   requireCurrentEvidenceLibrarySetupAttempt,
@@ -43,36 +44,19 @@ export const prepareReadinessSetup = internalMutation({
       expectedStage: "health_check",
     });
     const { application, deployment } = requireReadinessReceipts(setup);
-    const localization = await ctx.db
-      .query("evidenceLibraryConfigSections")
-      .withIndex("by_revisionId_and_sectionKey", (query) =>
-        query
-          .eq("revisionId", setup.revision._id)
-          .eq("sectionKey", "localization"),
-      )
-      .unique();
-    const payload = localization?.payload;
-    if (
-      localization?.kind !== "revision" ||
-      !payload ||
-      typeof payload !== "object" ||
-      Array.isArray(payload) ||
-      typeof (payload as Record<string, unknown>).defaultLocale !== "string"
-    ) {
-      throw createError(
-        "INVALID_DATA",
-        "Evidence Library default language is missing",
-      );
-    }
+    const defaultLocale = await readRevisionDefaultLocale(
+      ctx,
+      setup.revision._id,
+    );
     return {
       applicationId: application.applicationId,
       deploymentId: deployment.deploymentId,
       runtimeCommit: application.runtimeCommit,
       runtimeConfigSha256: application.runtimeConfigSha256,
-      coolifyConfigHash: application.coolifyConfigHash,
+      coolifyConfigHash: deployment.coolifyConfigHash,
       revisionKey: setup.revision.revisionKey,
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
-      defaultLocale: (payload as Record<string, string>).defaultLocale,
+      defaultLocale,
     };
   },
 });

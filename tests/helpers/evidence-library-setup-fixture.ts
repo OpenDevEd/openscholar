@@ -172,6 +172,7 @@ export async function createDeployedSetupFixture(suffix: string) {
       attemptToken: fixture.attemptToken,
       attemptCount: fixture.attemptCount,
       deploymentId: `deployment-${suffix}`,
+      coolifyConfigHash: "d".repeat(64),
     },
   );
   return {

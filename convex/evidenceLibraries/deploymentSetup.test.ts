@@ -160,6 +160,7 @@ describe("Evidence Library deployment setup", () => {
           attemptToken: fixture.attemptToken,
           attemptCount: fixture.attemptCount,
           deploymentId: "deployment-1",
+          coolifyConfigHash: "d".repeat(64),
         },
       ),
     ).toEqual({ nextStep: "health_check", status: "running" });
@@ -177,7 +178,7 @@ describe("Evidence Library deployment setup", () => {
           deploymentId: "deployment-1",
           runtimeCommit: "a".repeat(40),
           runtimeConfigSha256: "b".repeat(64),
-          coolifyConfigHash: "c".repeat(64),
+          coolifyConfigHash: "d".repeat(64),
         },
       },
     });

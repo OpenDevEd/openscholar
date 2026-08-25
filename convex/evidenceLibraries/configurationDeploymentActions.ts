@@ -1,88 +1,47 @@
 "use node";
 
+import { createHash } from "node:crypto";
 import { internal } from "../_generated/api";
+import type { Doc } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
+import { decrypt, encrypt } from "../lib/crypto";
 import {
   CoolifyClientError,
   createCoolifyClient,
+  requireMatchingCoolifyDeployment,
+  type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
 import {
   ReadinessClientError,
   requireLibraryRuntimeReady,
 } from "./readinessClient";
+import {
+  requireRuntimeEnvironment,
+  requireRuntimeHttpsOrigin,
+} from "./runtimeActionConfig";
 import { assembleEvidenceLibraryRuntimePayload } from "./runtimeConfiguration";
 
-function requireEnvironmentValue(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new CoolifyClientError(
-      "INVALID_CONFIGURATION_DEPLOYMENT_CONFIG",
-      `${name} is not configured`,
-    );
-  }
-  return value;
-}
-
-function requireHttpsOrigin(name: string): string {
-  const value = requireEnvironmentValue(name);
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new CoolifyClientError(
-      "INVALID_CONFIGURATION_DEPLOYMENT_CONFIG",
-      `${name} must be a valid HTTPS origin`,
-    );
-  }
-  if (
-    url.protocol !== "https:" ||
-    url.pathname !== "/" ||
-    url.search ||
-    url.hash ||
-    url.username ||
-    url.password
-  ) {
-    throw new CoolifyClientError(
-      "INVALID_CONFIGURATION_DEPLOYMENT_CONFIG",
-      `${name} must be a valid HTTPS origin`,
-    );
-  }
-  return url.origin;
-}
-
-function requireMatchingDeployment(
-  deployment: CoolifyDeployment,
-  expected: {
-    runtimeCommit: string;
-    coolifyConfigHash: string;
-  },
-) {
-  if (
-    deployment.runtimeCommit !== expected.runtimeCommit ||
-    (deployment.coolifyConfigHash !== null &&
-      deployment.coolifyConfigHash !== expected.coolifyConfigHash)
-  ) {
-    throw new CoolifyClientError(
-      "COOLIFY_DEPLOYMENT_CONFLICT",
-      "Coolify deployed another Evidence Library configuration",
-    );
-  }
-}
+const invalidConfiguration = (message: string) =>
+  new CoolifyClientError("INVALID_CONFIGURATION_DEPLOYMENT_CONFIG", message);
 
 type ConfigurationDeploymentActionResult =
   | { status: "failed" }
   | { pollCount: number; status: "running" }
   | { status: "succeeded" };
 
+type ConfigurationDeploymentTarget = NonNullable<
+  Doc<"evidenceLibraryConfigOperations">["configurationDeploymentTarget"]
+>;
+
 export const runConfigurationDeployment = internalAction({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
     attemptCount: v.number(),
-    pollCount: v.number(),
   },
   returns: v.union(
     v.object({ status: v.literal("failed") }),
@@ -91,62 +50,132 @@ export const runConfigurationDeployment = internalAction({
   ),
   handler: async (ctx, args): Promise<ConfigurationDeploymentActionResult> => {
     try {
+      const encryptionKey = requireRuntimeEnvironment(
+        "ENCRYPTION_KEY",
+        invalidConfiguration,
+      );
+      const coolify = createCoolifyClient({
+        origin: requireRuntimeEnvironment(
+          "EL_COOLIFY_URL",
+          invalidConfiguration,
+        ),
+        token: requireRuntimeEnvironment(
+          "EL_COOLIFY_TOKEN",
+          invalidConfiguration,
+        ),
+      });
       const prepared = await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .prepareConfigurationDeployment,
         args,
       );
-      const configuration = assembleEvidenceLibraryRuntimePayload({
-        encryptionKey: requireEnvironmentValue("ENCRYPTION_KEY"),
-        libraryId: args.libraryId,
-        revisionKey: prepared.revisionKey,
-        revisionCreatedAt: prepared.revisionCreatedAt,
-        appOrigin: requireHttpsOrigin("EL_OPENSCHOLAR_URL"),
-        convexSiteUrl: requireHttpsOrigin("EL_CONVEX_SITE_URL"),
-        sections: prepared.sections,
-        encryptedMachineCredential: prepared.encryptedMachineCredential,
-        encryptedAuthenticationSecret: prepared.encryptedAuthenticationSecret,
-        encryptedDatabaseUrl: prepared.encryptedDatabaseUrl,
-        searchHost: prepared.searchHost,
-        encryptedSearchKey: prepared.encryptedSearchKey,
-        searchIndex: prepared.searchIndex,
-        storageUrl: prepared.storageUrl,
-        encryptedStorageServiceRoleKey: prepared.encryptedStorageServiceRoleKey,
-        storagePrivateBucket: prepared.storagePrivateBucket,
-        storagePublicBucket: prepared.storagePublicBucket,
-        storageMaxPdfBytes: prepared.storageMaxPdfBytes,
-        zoteroTranslationUrl: prepared.zoteroTranslationUrl,
-      });
-      const coolify = createCoolifyClient({
-        origin: requireHttpsOrigin("EL_COOLIFY_URL"),
-        token: requireEnvironmentValue("EL_COOLIFY_TOKEN"),
-      });
-      const application = await coolify.updateApplicationConfiguration({
-        applicationUuid: prepared.applicationId,
-        libraryId: args.libraryId,
-        publicDomain: prepared.targetBaseUrl,
-        libraryConfigJson: configuration.runtimeConfigJson,
-      });
-      if (
-        prepared.savedReceipt &&
-        (prepared.savedReceipt.revisionKey !== prepared.revisionKey ||
-          prepared.savedReceipt.runtimeConfigSha256 !==
-            application.runtimeConfigSha256 ||
-          prepared.savedReceipt.runtimeCommit !== application.runtimeCommit ||
-          prepared.savedReceipt.coolifyConfigHash !==
-            application.coolifyConfigHash)
-      ) {
-        throw new CoolifyClientError(
-          "COOLIFY_DEPLOYMENT_CONFLICT",
-          "The bound Coolify application changed after deployment started",
+
+      let target: ConfigurationDeploymentTarget;
+      const savedDeployment =
+        prepared.state === "saved" ? prepared.deployment : undefined;
+      if (prepared.state === "saved") {
+        target = prepared.target;
+      } else {
+        const application = await coolify.readBoundApplication({
+          applicationUuid: prepared.applicationId,
+          libraryId: args.libraryId,
+          publicDomain: prepared.targetBaseUrl,
+        });
+        const payload = assembleEvidenceLibraryRuntimePayload({
+          encryptionKey,
+          libraryId: args.libraryId,
+          revision: prepared.revision,
+          origins: {
+            app: requireRuntimeHttpsOrigin(
+              "EL_OPENSCHOLAR_URL",
+              invalidConfiguration,
+            ),
+            convexSite: requireRuntimeHttpsOrigin(
+              "EL_CONVEX_SITE_URL",
+              invalidConfiguration,
+            ),
+          },
+          sections: prepared.sections,
+          credentials: prepared.credentials,
+          search: prepared.search,
+          storage: prepared.storage,
+          zoteroTranslationUrl: prepared.zoteroTranslationUrl,
+        });
+        target = await ctx.runMutation(
+          internal.evidenceLibraries.configurationDeployment
+            .saveConfigurationDeploymentTarget,
+          {
+            ...args,
+            source: prepared.source,
+            target: {
+              applicationId: prepared.applicationId,
+              targetBaseUrl: prepared.targetBaseUrl,
+              revisionKey: prepared.revision.key,
+              defaultLocale: prepared.defaultLocale,
+              runtimeCommit: application.runtimeCommit,
+              encryptedRuntimeConfig: encrypt(
+                payload.runtimeConfigJson,
+                encryptionKey,
+              ),
+              runtimeConfigSha256: payload.runtimeConfigSha256,
+            },
+          },
         );
       }
 
+      const runtimeConfigJson = decrypt(
+        target.encryptedRuntimeConfig,
+        encryptionKey,
+      );
+      const runtimeConfigSha256 = createHash("sha256")
+        .update(runtimeConfigJson)
+        .digest("hex");
+      if (runtimeConfigSha256 !== target.runtimeConfigSha256) {
+        throw new CoolifyClientError(
+          "CONFIGURATION_TARGET_INVALID",
+          "The saved Evidence Library configuration target is invalid",
+        );
+      }
+
+      let application: CoolifyConfigurationUpdateResult;
+      if (savedDeployment) {
+        const current = await coolify.requireBoundApplicationConfiguration({
+          applicationUuid: target.applicationId,
+          libraryId: args.libraryId,
+          publicDomain: target.targetBaseUrl,
+          runtimeCommit: target.runtimeCommit,
+          libraryConfigJson: runtimeConfigJson,
+        });
+        application = {
+          applicationUuid: target.applicationId,
+          runtimeCommit: target.runtimeCommit,
+          runtimeConfigSha256: target.runtimeConfigSha256,
+          coolifyConfigHash: current.coolifyConfigHash,
+        };
+      } else {
+        application = await coolify.updateApplicationConfiguration({
+          applicationUuid: target.applicationId,
+          libraryId: args.libraryId,
+          publicDomain: target.targetBaseUrl,
+          libraryConfigJson: runtimeConfigJson,
+          expectedRuntimeCommit: target.runtimeCommit,
+        });
+        if (
+          application.runtimeCommit !== target.runtimeCommit ||
+          application.runtimeConfigSha256 !== target.runtimeConfigSha256
+        ) {
+          throw new CoolifyClientError(
+            "COOLIFY_DEPLOYMENT_CONFLICT",
+            "Coolify did not save the requested Evidence Library configuration",
+          );
+        }
+      }
+
       let deployment: CoolifyDeployment;
-      let deploymentId = prepared.savedReceipt?.deploymentId;
+      let deploymentId = savedDeployment?.deploymentId;
       if (deploymentId) {
         deployment = await coolify.readDeployment(deploymentId);
-        requireMatchingDeployment(deployment, application);
+        requireMatchingCoolifyDeployment(deployment, application);
         if (deployment.state === "failed" || deployment.state === "cancelled") {
           if (args.attemptCount < 2) {
             throw new CoolifyClientError(
@@ -156,8 +185,8 @@ export const runConfigurationDeployment = internalAction({
           }
           const replacedDeploymentId = deploymentId;
           const selected = await coolify.startOrAdoptDeployment({
-            applicationUuid: prepared.applicationId,
-            runtimeCommit: application.runtimeCommit,
+            applicationUuid: target.applicationId,
+            runtimeCommit: target.runtimeCommit,
             coolifyConfigHash: application.coolifyConfigHash,
           });
           if (selected.outcome === "adoption-unavailable") {
@@ -174,12 +203,8 @@ export const runConfigurationDeployment = internalAction({
             internal.evidenceLibraries.configurationDeployment
               .saveConfigurationDeploymentReceipt,
             {
-              libraryId: args.libraryId,
-              operationId: args.operationId,
-              attemptCount: args.attemptCount,
+              ...args,
               deploymentId,
-              runtimeCommit: application.runtimeCommit,
-              runtimeConfigSha256: application.runtimeConfigSha256,
               coolifyConfigHash: application.coolifyConfigHash,
               replacesDeploymentId: replacedDeploymentId,
             },
@@ -191,8 +216,8 @@ export const runConfigurationDeployment = internalAction({
         }
       } else {
         const selected = await coolify.startOrAdoptDeployment({
-          applicationUuid: prepared.applicationId,
-          runtimeCommit: application.runtimeCommit,
+          applicationUuid: target.applicationId,
+          runtimeCommit: target.runtimeCommit,
           coolifyConfigHash: application.coolifyConfigHash,
         });
         if (selected.outcome === "adoption-unavailable") {
@@ -209,12 +234,8 @@ export const runConfigurationDeployment = internalAction({
           internal.evidenceLibraries.configurationDeployment
             .saveConfigurationDeploymentReceipt,
           {
-            libraryId: args.libraryId,
-            operationId: args.operationId,
-            attemptCount: args.attemptCount,
+            ...args,
             deploymentId,
-            runtimeCommit: application.runtimeCommit,
-            runtimeConfigSha256: application.runtimeConfigSha256,
             coolifyConfigHash: application.coolifyConfigHash,
           },
         );
@@ -224,7 +245,7 @@ export const runConfigurationDeployment = internalAction({
             : await coolify.readDeployment(deploymentId);
       }
 
-      requireMatchingDeployment(deployment, application);
+      requireMatchingCoolifyDeployment(deployment, application);
       if (deployment.state === "active") {
         return await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment
@@ -238,24 +259,35 @@ export const runConfigurationDeployment = internalAction({
           "Coolify could not deploy the Evidence Library",
         );
       }
-      if (deployment.coolifyConfigHash !== application.coolifyConfigHash) {
+      if (!deployment.coolifyConfigHash) {
         throw new CoolifyClientError(
           "COOLIFY_DEPLOYMENT_CONFLICT",
-          "Coolify did not report the deployed configuration",
+          "Coolify did not report the finished deployment configuration",
         );
       }
+      await coolify.requireBoundApplicationConfiguration({
+        applicationUuid: target.applicationId,
+        libraryId: args.libraryId,
+        publicDomain: target.targetBaseUrl,
+        runtimeCommit: target.runtimeCommit,
+        libraryConfigJson: runtimeConfigJson,
+      });
+      await ctx.runMutation(
+        internal.evidenceLibraries.configurationDeployment
+          .saveConfigurationDeploymentReceipt,
+        {
+          ...args,
+          deploymentId,
+          coolifyConfigHash: deployment.coolifyConfigHash,
+        },
+      );
 
       const readiness = await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .prepareConfigurationActivation,
-        {
-          libraryId: args.libraryId,
-          operationId: args.operationId,
-          attemptCount: args.attemptCount,
-        },
+        args,
       );
       await coolify.requireFinishedDeployment({
-        applicationUuid: readiness.applicationId,
         deploymentUuid: readiness.deploymentId,
         runtimeCommit: readiness.runtimeCommit,
         coolifyConfigHash: readiness.coolifyConfigHash,
@@ -266,18 +298,19 @@ export const runConfigurationDeployment = internalAction({
         revisionKey: readiness.revisionKey,
         targetBaseUrl: readiness.targetBaseUrl,
         defaultLocale: readiness.defaultLocale,
-        verifierUrl: requireHttpsOrigin("EL_RUNTIME_VERIFIER_URL"),
-        verifierToken: requireEnvironmentValue("EL_RUNTIME_VERIFIER_TOKEN"),
+        verifierUrl: requireRuntimeHttpsOrigin(
+          "EL_RUNTIME_VERIFIER_URL",
+          invalidConfiguration,
+        ),
+        verifierToken: requireRuntimeEnvironment(
+          "EL_RUNTIME_VERIFIER_TOKEN",
+          invalidConfiguration,
+        ),
       });
       return await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .completeConfigurationDeployment,
-        {
-          libraryId: args.libraryId,
-          operationId: args.operationId,
-          attemptCount: args.attemptCount,
-          checkedAt: Date.now(),
-        },
+        { ...args, checkedAt: Date.now() },
       );
     } catch (error) {
       const safeError =
@@ -297,12 +330,7 @@ export const runConfigurationDeployment = internalAction({
       await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .failConfigurationDeployment,
-        {
-          libraryId: args.libraryId,
-          operationId: args.operationId,
-          attemptCount: args.attemptCount,
-          error: safeError,
-        },
+        { ...args, error: safeError },
       );
       return { status: "failed" as const };
     }

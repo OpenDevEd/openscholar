@@ -36,6 +36,7 @@ export const prepareDeploymentSetup = internalMutation({
   },
   returns: v.object({
     applicationId: v.string(),
+    targetBaseUrl: v.string(),
     runtimeCommit: v.string(),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
@@ -51,6 +52,7 @@ export const prepareDeploymentSetup = internalMutation({
     const application = requireApplicationReceipt(setup);
     return {
       applicationId: application.applicationId,
+      targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
       runtimeCommit: application.runtimeCommit,
       runtimeConfigSha256: application.runtimeConfigSha256,
       coolifyConfigHash: application.coolifyConfigHash,
@@ -157,6 +159,7 @@ export const completeDeploymentSetup = internalMutation({
     attemptToken: v.string(),
     attemptCount: v.number(),
     deploymentId: v.string(),
+    coolifyConfigHash: v.string(),
   },
   returns: v.object({
     nextStep: v.literal("health_check"),
@@ -189,7 +192,10 @@ export const completeDeploymentSetup = internalMutation({
         deploymentId: args.deploymentId,
         runtimeCommit: application.runtimeCommit,
         runtimeConfigSha256: application.runtimeConfigSha256,
-        coolifyConfigHash: application.coolifyConfigHash,
+        coolifyConfigHash: requireNonBlankProvisioningValue(
+          "coolifyConfigHash",
+          args.coolifyConfigHash,
+        ),
       },
     });
     await ctx.scheduler.runAfter(

@@ -74,6 +74,8 @@ import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js
 import type * as evidenceLibraries_readinessClient from "../evidenceLibraries/readinessClient.js";
 import type * as evidenceLibraries_readinessSetup from "../evidenceLibraries/readinessSetup.js";
 import type * as evidenceLibraries_readinessSetupActions from "../evidenceLibraries/readinessSetupActions.js";
+import type * as evidenceLibraries_revisionConfiguration from "../evidenceLibraries/revisionConfiguration.js";
+import type * as evidenceLibraries_runtimeActionConfig from "../evidenceLibraries/runtimeActionConfig.js";
 import type * as evidenceLibraries_runtimeConfiguration from "../evidenceLibraries/runtimeConfiguration.js";
 import type * as evidenceLibraries_runtimeCredentials from "../evidenceLibraries/runtimeCredentials.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
@@ -307,6 +309,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/readinessClient": typeof evidenceLibraries_readinessClient;
   "evidenceLibraries/readinessSetup": typeof evidenceLibraries_readinessSetup;
   "evidenceLibraries/readinessSetupActions": typeof evidenceLibraries_readinessSetupActions;
+  "evidenceLibraries/revisionConfiguration": typeof evidenceLibraries_revisionConfiguration;
+  "evidenceLibraries/runtimeActionConfig": typeof evidenceLibraries_runtimeActionConfig;
   "evidenceLibraries/runtimeConfiguration": typeof evidenceLibraries_runtimeConfiguration;
   "evidenceLibraries/runtimeCredentials": typeof evidenceLibraries_runtimeCredentials;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;

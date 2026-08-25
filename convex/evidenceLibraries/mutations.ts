@@ -15,6 +15,7 @@ import {
 import { nextDraftEditVersion } from "./draftVersion";
 import {
   attachRevisionToSetupOperation,
+  queueConfigurationDeploymentOperation,
   queueEvidenceLibraryOperation,
 } from "./operations";
 import {
@@ -608,11 +609,11 @@ export async function activateEvidenceLibraryConfiguration(
       status: started.status,
     };
   }
-  const operation = await queueEvidenceLibraryOperation(ctx, {
+  const operation = await queueConfigurationDeploymentOperation(ctx, {
     libraryId: args.libraryId,
-    kind: "publish",
     revisionId: frozen.revisionId,
     idempotencyKey: `activate:${args.expectedEditVersion}`,
+    activationEditVersion: args.expectedEditVersion,
   });
   const started = await claimAndScheduleConfigurationDeployment(ctx, {
     libraryId: args.libraryId,

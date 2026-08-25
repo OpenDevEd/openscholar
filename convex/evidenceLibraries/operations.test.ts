@@ -6,6 +6,7 @@ import { api, internal } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
   applyOperationTransition,
+  queueConfigurationDeploymentOperation,
   queueEvidenceLibraryOperation,
 } from "./operations";
 import { createEvidenceLibrarySetup } from "./mutations";
@@ -292,31 +293,31 @@ describe("Evidence Library operation state", () => {
     const second = await createOperationFixture(t, "second");
     const firstCommand = {
       libraryId: first.libraryId,
-      kind: "publish" as const,
       idempotencyKey: "shared-key",
       revisionId: first.revisionIds[0],
+      activationEditVersion: 1,
     };
     const firstOperation = await first.admin.run((ctx) =>
-      queueEvidenceLibraryOperation(ctx, firstCommand),
+      queueConfigurationDeploymentOperation(ctx, firstCommand),
     );
     const secondOperation = await second.admin.run((ctx) =>
-      queueEvidenceLibraryOperation(ctx, {
+      queueConfigurationDeploymentOperation(ctx, {
         libraryId: second.libraryId,
-        kind: "publish",
         idempotencyKey: "shared-key",
         revisionId: second.revisionIds[0],
+        activationEditVersion: 1,
       }),
     );
 
     expect(secondOperation.operationId).not.toBe(firstOperation.operationId);
     expect(
       await first.admin.run((ctx) =>
-        queueEvidenceLibraryOperation(ctx, firstCommand),
+        queueConfigurationDeploymentOperation(ctx, firstCommand),
       ),
     ).toEqual(firstOperation);
     await expect(
       first.admin.run((ctx) =>
-        queueEvidenceLibraryOperation(ctx, {
+        queueConfigurationDeploymentOperation(ctx, {
           ...firstCommand,
           revisionId: first.revisionIds[1],
         }),
@@ -324,15 +325,15 @@ describe("Evidence Library operation state", () => {
     ).rejects.toThrow(/CONFLICT.*idempotency/);
     await expect(
       first.admin.run((ctx) =>
-        queueEvidenceLibraryOperation(ctx, {
+        queueConfigurationDeploymentOperation(ctx, {
           ...firstCommand,
-          kind: "rollback",
+          activationEditVersion: 2,
         }),
       ),
     ).rejects.toThrow(/CONFLICT.*idempotency/);
     await expect(
       first.admin.run((ctx) =>
-        queueEvidenceLibraryOperation(ctx, {
+        queueConfigurationDeploymentOperation(ctx, {
           ...firstCommand,
           idempotencyKey: "wrong-revision-owner",
           revisionId: second.revisionIds[0],
@@ -341,13 +342,28 @@ describe("Evidence Library operation state", () => {
     ).rejects.toThrow(/NOT_FOUND/);
     await expect(
       first.admin.run((ctx) =>
-        queueEvidenceLibraryOperation(ctx, {
+        // @ts-expect-error Runtime validation still rejects a missing revision.
+        queueConfigurationDeploymentOperation(ctx, {
           libraryId: first.libraryId,
-          kind: "publish",
           idempotencyKey: "missing-revision",
+          activationEditVersion: 2,
         }),
       ),
     ).rejects.toThrow(/VALIDATION_ERROR.*revision/);
+  });
+
+  it("does not expose configuration deployment through the generic queue", async () => {
+    const t = convexTest(schema, modules);
+    const fixture = await createOperationFixture(t, "public_publish_queue");
+    await expect(
+      fixture.admin.mutation(api.evidenceLibraries.operations.queueOperation, {
+        libraryId: fixture.libraryId,
+        // @ts-expect-error Publish is intentionally not a public queue kind.
+        kind: "publish",
+        idempotencyKey: "publish:legacy",
+        revisionId: fixture.revisionIds[0],
+      }),
+    ).rejects.toThrow(/Validator error/);
   });
 
   it("deduplicates queue requests and enforces terminal transitions", async () => {
