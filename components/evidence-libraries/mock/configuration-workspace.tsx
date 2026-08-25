@@ -3,7 +3,6 @@
 import {
   Check,
   Copy,
-  Eye,
   GitBranch,
   Globe,
   Languages,
@@ -42,13 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -73,7 +65,6 @@ import { LibraryNotFound } from "./library-not-found";
 import { STATUS_DOT, StatusChip, type StatusTone } from "./library-status-badge";
 import { PanelHeader } from "./panel-header";
 import { Field, FieldError, SectionCard } from "./section-card";
-import { MiniNavbarPreview, PublicSitePreview } from "./site-preview";
 
 const NAME_MAX = 100;
 const RAIL_SECTIONS = ["identity", "branding", "languages", "danger"] as const;
@@ -125,7 +116,6 @@ function Workspace({ library }: { library: MockLibrary }) {
     "section",
     parseAsStringLiteral(RAIL_SECTIONS).withDefault("identity"),
   );
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -197,10 +187,6 @@ function Workspace({ library }: { library: MockLibrary }) {
             <Button variant="outline" disabled={!dirty || saving} onClick={handleSave}>
               {saving ? <Spinner /> : <Save />}
               {saving ? t("saving") : t("save")}
-            </Button>
-            <Button variant="outline" onClick={() => setPreviewOpen(true)}>
-              <Eye />
-              {t("preview")}
             </Button>
             {errors ? (
               <Tooltip>
@@ -406,13 +392,6 @@ function Workspace({ library }: { library: MockLibrary }) {
                   onChange={(secondary) => patch({ secondary })}
                 />
               </div>
-              <div className="space-y-2.5 rounded-xl border border-border/50 bg-muted/30 p-3">
-                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  <Eye className="h-3 w-3" />
-                  {t("livePreview")}
-                </div>
-                <MiniNavbarPreview config={draft} />
-              </div>
             </SectionCard>
 
             <SectionCard
@@ -502,25 +481,6 @@ function Workspace({ library }: { library: MockLibrary }) {
           </div>
         </CommandCenterContainer>
       </div>
-
-      {/* Preview slide-over */}
-      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-          <SheetHeader>
-            <SheetTitle className="flex flex-wrap items-center gap-2">
-              {t("previewTitle", { name: draft.name || t("untitled") })}
-              <StatusChip tone="neutral" className="font-mono normal-case tracking-normal">
-                <GitBranch />
-                {library.draftRev}
-              </StatusChip>
-            </SheetTitle>
-            <SheetDescription>{t("previewHint")}</SheetDescription>
-          </SheetHeader>
-          <div className="px-4 pb-6">
-            <PublicSitePreview config={draft} address={library.address} />
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {/* Activate confirm */}
       <AlertDialog open={activateOpen} onOpenChange={setActivateOpen}>
