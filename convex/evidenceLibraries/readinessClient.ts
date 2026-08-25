@@ -14,6 +14,22 @@ export class ReadinessClientError extends Error {
   }
 }
 
+const RETRYABLE_READINESS_CODES = new Set([
+  "READINESS_UNAVAILABLE",
+  "RUNTIME_NOT_READY",
+  "CONFIG_NOT_READY",
+  "PAGE_NOT_READY",
+]);
+
+export function isRetryableReadinessError(
+  error: unknown,
+): error is ReadinessClientError {
+  return (
+    error instanceof ReadinessClientError &&
+    RETRYABLE_READINESS_CODES.has(error.code)
+  );
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -27,6 +27,8 @@ import {
 export const CONFIGURATION_DEPLOYMENT_LEASE_MS = 20 * 60 * 1_000;
 const CONFIGURATION_DEPLOYMENT_POLL_DELAY_MS = 5_000;
 const MAX_CONFIGURATION_DEPLOYMENT_POLLS = 120;
+const CONFIGURATION_READINESS_POLL_DELAY_MS = 5_000;
+const MAX_CONFIGURATION_READINESS_POLLS = 24;
 
 type ReadyRuntimeBinding = Extract<
   Doc<"evidenceLibraryRuntimeBindings">,
@@ -241,6 +243,7 @@ export async function claimAndScheduleConfigurationDeployment(
     configurationAttemptToken: attemptToken,
     configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
     configurationDeploymentPollCount: 0,
+    configurationReadinessPollCount: 0,
     updatedAt: now,
   });
   await ctx.scheduler.runAfter(
@@ -362,7 +365,8 @@ export const prepareConfigurationDeployment = internalMutation({
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
     if (
       deployment.operation.stage !== "assembling" &&
-      deployment.operation.stage !== "publishing"
+      deployment.operation.stage !== "publishing" &&
+      deployment.operation.stage !== "activating"
     ) {
       throw createError(
         "CONFLICT",
@@ -774,6 +778,46 @@ export const prepareConfigurationActivation = internalMutation({
   },
 });
 
+export const scheduleConfigurationReadinessPoll = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+    attemptCount: v.number(),
+  },
+  returns: v.union(
+    v.object({ pollCount: v.number(), status: v.literal("running") }),
+    v.object({ status: v.literal("exhausted") }),
+  ),
+  handler: async (ctx, args) => {
+    const deployment = await requireCurrentConfigurationDeployment(ctx, args);
+    if (deployment.operation.stage !== "activating") {
+      throw createError(
+        "CONFLICT",
+        "Evidence Library configuration is not waiting for readiness",
+      );
+    }
+    const pollCount =
+      (deployment.operation.configurationReadinessPollCount ?? 0) + 1;
+    if (pollCount > MAX_CONFIGURATION_READINESS_POLLS) {
+      return { status: "exhausted" as const };
+    }
+    const now = Date.now();
+    await ctx.db.patch(deployment.operation._id, {
+      configurationReadinessPollCount: pollCount,
+      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(
+      CONFIGURATION_READINESS_POLL_DELAY_MS,
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      args,
+    );
+    return { pollCount, status: "running" as const };
+  },
+});
+
 export const completeConfigurationDeployment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -822,6 +866,7 @@ export const completeConfigurationDeployment = internalMutation({
       configurationAttemptToken: undefined,
       configurationLeaseExpiresAt: undefined,
       configurationDeploymentPollCount: undefined,
+      configurationReadinessPollCount: undefined,
       updatedAt: now,
     });
     await ctx.db.patch(deployment.runtimeBinding._id, {
@@ -867,6 +912,7 @@ export const failConfigurationDeployment = internalMutation({
       completedAt: now,
       configurationAttemptToken: undefined,
       configurationLeaseExpiresAt: undefined,
+      configurationReadinessPollCount: undefined,
       updatedAt: now,
     });
     return "failed" as const;

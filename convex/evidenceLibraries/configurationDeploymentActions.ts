@@ -15,6 +15,7 @@ import {
   type CoolifyDeployment,
 } from "./coolifyClient";
 import {
+  isRetryableReadinessError,
   ReadinessClientError,
   requireLibraryRuntimeReady,
 } from "./readinessClient";
@@ -313,6 +314,14 @@ export const runConfigurationDeployment = internalAction({
         { ...args, checkedAt: Date.now() },
       );
     } catch (error) {
+      if (isRetryableReadinessError(error)) {
+        const retry = await ctx.runMutation(
+          internal.evidenceLibraries.configurationDeployment
+            .scheduleConfigurationReadinessPoll,
+          args,
+        );
+        if (retry.status === "running") return retry;
+      }
       const safeError =
         error instanceof CoolifyClientError ||
         error instanceof ReadinessClientError

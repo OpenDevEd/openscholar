@@ -5,6 +5,7 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
+  isRetryableReadinessError,
   ReadinessClientError,
   requireLibraryRuntimeReady,
 } from "./readinessClient";
@@ -15,6 +16,7 @@ const invalidReadinessConfig = (message: string) =>
 
 type ReadinessSetupActionResult =
   | { status: "failed" }
+  | { pollCount: number; status: "running" }
   | { status: "succeeded" };
 
 export const runReadinessSetup = internalAction({
@@ -26,6 +28,7 @@ export const runReadinessSetup = internalAction({
   },
   returns: v.union(
     v.object({ status: v.literal("failed") }),
+    v.object({ pollCount: v.number(), status: v.literal("running") }),
     v.object({ status: v.literal("succeeded") }),
   ),
   handler: async (ctx, args): Promise<ReadinessSetupActionResult> => {
@@ -69,6 +72,13 @@ export const runReadinessSetup = internalAction({
         args,
       );
     } catch (error) {
+      if (isRetryableReadinessError(error)) {
+        const retry = await ctx.runMutation(
+          internal.evidenceLibraries.readinessSetup.scheduleReadinessPoll,
+          args,
+        );
+        if (retry.status === "running") return retry;
+      }
       const safeError =
         error instanceof CoolifyClientError ||
         error instanceof ReadinessClientError

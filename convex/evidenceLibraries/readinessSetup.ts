@@ -1,11 +1,16 @@
+import { internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { readRevisionDefaultLocale } from "./revisionConfiguration";
 import {
+  EVIDENCE_LIBRARY_SETUP_LEASE_MS,
   recordEvidenceLibrarySetupStep,
   requireCurrentEvidenceLibrarySetupAttempt,
 } from "./setupOperation";
+
+const READINESS_POLL_DELAY_MS = 5_000;
+const MAX_READINESS_POLLS = 24;
 
 function requireReadinessReceipts(
   setup: Awaited<ReturnType<typeof requireCurrentEvidenceLibrarySetupAttempt>>,
@@ -58,6 +63,41 @@ export const prepareReadinessSetup = internalMutation({
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
       defaultLocale,
     };
+  },
+});
+
+export const scheduleReadinessPoll = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+    attemptCount: v.number(),
+  },
+  returns: v.union(
+    v.object({ pollCount: v.number(), status: v.literal("running") }),
+    v.object({ status: v.literal("exhausted") }),
+  ),
+  handler: async (ctx, args) => {
+    const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, {
+      ...args,
+      expectedStage: "health_check",
+    });
+    const pollCount = (setup.setupOperation.setupReadinessPollCount ?? 0) + 1;
+    if (pollCount > MAX_READINESS_POLLS) {
+      return { status: "exhausted" as const };
+    }
+    const now = Date.now();
+    await ctx.db.patch(setup.setupOperation._id, {
+      setupReadinessPollCount: pollCount,
+      setupLeaseExpiresAt: now + EVIDENCE_LIBRARY_SETUP_LEASE_MS,
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(
+      READINESS_POLL_DELAY_MS,
+      internal.evidenceLibraries.readinessSetupActions.runReadinessSetup,
+      args,
+    );
+    return { pollCount, status: "running" as const };
   },
 });
 

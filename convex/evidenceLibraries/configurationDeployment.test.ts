@@ -216,6 +216,9 @@ function createRuntimeNetwork(input: {
     failReadiness() {
       activeRevision = "another-revision";
     },
+    restoreReadiness() {
+      activeRevision = input.revisionKey;
+    },
   };
 }
 
@@ -443,7 +446,7 @@ describe("Evidence Library configuration deployment", () => {
     ).resolves.toMatchObject({ status: "ready" });
   });
 
-  it("keeps the previous active revision when runtime verification fails", async () => {
+  it("keeps the previous revision active while runtime readiness catches up", async () => {
     const deployment = await activateChangedConfiguration("action-failure");
     const previousRevisionId = deployment.fixture.activated.revisionId;
     const network = createRuntimeNetwork({
@@ -472,18 +475,27 @@ describe("Evidence Library configuration deployment", () => {
           .runConfigurationDeployment,
         actionArgs,
       ),
-    ).toEqual({ status: "failed" });
-    const failed = await deployment.fixture.t.run(async (ctx) => ({
+    ).toEqual({ pollCount: 1, status: "running" });
+    const waiting = await deployment.fixture.t.run(async (ctx) => ({
       library: await ctx.db.get(deployment.fixture.created.libraryId),
       binding: await ctx.db.get(deployment.fixture.created.runtimeBindingId),
       operation: await ctx.db.get(deployment.activated.operationId),
     }));
-    expect(failed.library?.activeRevisionId).toBe(previousRevisionId);
-    expect(failed.binding).toMatchObject({ state: "ready" });
-    expect(failed.operation).toMatchObject({
-      status: "failed",
-      error: { code: "CONFIG_NOT_READY", stage: "activating" },
+    expect(waiting.library?.activeRevisionId).toBe(previousRevisionId);
+    expect(waiting.binding).toMatchObject({ state: "ready" });
+    expect(waiting.operation).toMatchObject({
+      status: "running",
+      stage: "activating",
+      configurationReadinessPollCount: 1,
     });
+    network.restoreReadiness();
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
   });
 
   it("does not steal an active lease and reclaims an expired one", async () => {
