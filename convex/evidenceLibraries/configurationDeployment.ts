@@ -741,7 +741,6 @@ export const prepareConfigurationActivation = internalMutation({
     coolifyConfigHash: v.string(),
     revisionKey: v.string(),
     targetBaseUrl: v.string(),
-    defaultLocale: v.string(),
   }),
   handler: async (ctx, args) => {
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
@@ -773,7 +772,6 @@ export const prepareConfigurationActivation = internalMutation({
       coolifyConfigHash: receipt.coolifyConfigHash,
       revisionKey: target.revisionKey,
       targetBaseUrl: target.targetBaseUrl,
-      defaultLocale: target.defaultLocale,
     };
   },
 });

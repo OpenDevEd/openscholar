@@ -2,7 +2,6 @@ import { internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { readRevisionDefaultLocale } from "./revisionConfiguration";
 import {
   EVIDENCE_LIBRARY_SETUP_LEASE_MS,
   recordEvidenceLibrarySetupStep,
@@ -41,7 +40,6 @@ export const prepareReadinessSetup = internalMutation({
     coolifyConfigHash: v.string(),
     revisionKey: v.string(),
     targetBaseUrl: v.string(),
-    defaultLocale: v.string(),
   }),
   handler: async (ctx, args) => {
     const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, {
@@ -49,10 +47,6 @@ export const prepareReadinessSetup = internalMutation({
       expectedStage: "health_check",
     });
     const { application, deployment } = requireReadinessReceipts(setup);
-    const defaultLocale = await readRevisionDefaultLocale(
-      ctx,
-      setup.revision._id,
-    );
     return {
       applicationId: application.applicationId,
       deploymentId: deployment.deploymentId,
@@ -61,7 +55,6 @@ export const prepareReadinessSetup = internalMutation({
       coolifyConfigHash: deployment.coolifyConfigHash,
       revisionKey: setup.revision.revisionKey,
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
-      defaultLocale,
     };
   },
 });

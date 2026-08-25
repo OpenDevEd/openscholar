@@ -2,7 +2,6 @@ const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const APPLICATION_UUID = /^[a-z0-9]{24}$/u;
-const LOCALE = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/u;
 
 export class ReadinessClientError extends Error {
   constructor(
@@ -77,12 +76,6 @@ function requireInput(input: ReadinessCheckInput) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
       "Evidence Library revision is missing",
-    );
-  }
-  if (!LOCALE.test(input.defaultLocale)) {
-    throw new ReadinessClientError(
-      "READINESS_CONFIG_INVALID",
-      "Evidence Library default language is invalid",
     );
   }
   if (!input.verifierToken.trim()) {
@@ -258,7 +251,6 @@ export type ReadinessCheckInput = {
   runtimeCommit: string;
   revisionKey: string;
   targetBaseUrl: string;
-  defaultLocale: string;
   verifierUrl: string;
   verifierToken: string;
   fetchImpl?: typeof fetch;
@@ -282,7 +274,7 @@ export async function requireLibraryRuntimeReady(
   await Promise.all([
     requirePage(
       fetchImpl,
-      new URL(`/${input.defaultLocale}/lib`, targetOrigin),
+      new URL("/lib", targetOrigin),
       "public page",
     ),
     requirePage(fetchImpl, new URL("/admin", targetOrigin), "admin page"),

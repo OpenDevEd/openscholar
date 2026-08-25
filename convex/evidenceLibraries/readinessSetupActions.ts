@@ -57,7 +57,6 @@ export const runReadinessSetup = internalAction({
         runtimeCommit: prepared.runtimeCommit,
         revisionKey: prepared.revisionKey,
         targetBaseUrl: prepared.targetBaseUrl,
-        defaultLocale: prepared.defaultLocale,
         verifierUrl: requireRuntimeEnvironment(
           "EL_RUNTIME_VERIFIER_URL",
           invalidReadinessConfig,

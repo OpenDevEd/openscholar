@@ -197,7 +197,7 @@ function createRuntimeNetwork(input: {
       if (
         url.origin === new URL(input.publicAddress).origin &&
         method === "GET" &&
-        (url.pathname === "/en-GB/lib" || url.pathname === "/admin")
+        (url.pathname === "/lib" || url.pathname === "/admin")
       ) {
         return new Response("ready", { status: 200 });
       }
