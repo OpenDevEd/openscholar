@@ -160,7 +160,7 @@ export const runApplicationSetup = internalAction({
         .update(runtimeConfigJson)
         .digest("hex");
       const application = await reconcileCoolifyApplication({
-        coolifyUrl: requireHttpsOrigin("EL_COOLIFY_URL"),
+        coolifyUrl: requireEnvironmentValue("EL_COOLIFY_URL"),
         token: requireEnvironmentValue("EL_COOLIFY_TOKEN"),
         serverUuid: requireEnvironmentValue("EL_COOLIFY_SERVER_UUID"),
         projectUuid: requireEnvironmentValue("EL_COOLIFY_PROJECT_UUID"),

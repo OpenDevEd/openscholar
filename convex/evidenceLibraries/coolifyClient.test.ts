@@ -1034,6 +1034,8 @@ describe("Coolify Evidence Library client", () => {
 
   it.each([
     "http://coolify.example.test",
+    "http://coolify",
+    "http://coolify:8000",
     "https://coolify.example.test/api/v1",
     "https://coolify.example.test?team=other",
     "https://user:password@coolify.example.test",
@@ -1045,10 +1047,46 @@ describe("Coolify Evidence Library client", () => {
     ).toThrowError(
       expect.objectContaining({
         code: "INVALID_COOLIFY_CONFIG",
-        message: "Coolify URL must be a valid HTTPS origin",
+        message:
+          "Coolify URL must be an HTTPS origin or the private Coolify service",
       }),
     );
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("uses the private Coolify service from the hosted development backend", async () => {
+    const server = createCoolifyServer({
+      deployments: [
+        {
+          application_id: "42",
+          deployment_uuid: "deployment-private-network",
+          commit: RUNTIME_COMMIT,
+          configuration_hash: hashForRevision(1),
+          status: "finished",
+        },
+      ],
+    });
+    const client = createCoolifyClient({
+      origin: "http://coolify:8080",
+      token: COOLIFY_TOKEN,
+      fetchImpl: server.fetchImpl,
+    });
+
+    const deployment = await client.readDeployment(
+      "deployment-private-network",
+    );
+
+    expect(deployment).toMatchObject({
+      deploymentUuid: "deployment-private-network",
+      runtimeCommit: RUNTIME_COMMIT,
+      state: "finished",
+    });
+    expect(server.requests).toContainEqual(
+      expect.objectContaining({
+        method: "GET",
+        path: "/api/v1/deployments/deployment-private-network",
+      }),
+    );
   });
 
   it("times out a hanging request and hides the token and remote error", async () => {
