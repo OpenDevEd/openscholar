@@ -28,7 +28,7 @@ type StorageBucket = {
 
 type StorageRequest = {
   body?: Record<string, unknown>;
-  method: "GET" | "POST" | "PUT";
+  method: "DELETE" | "GET" | "POST" | "PUT";
   path: string;
 };
 
@@ -42,10 +42,15 @@ export type StorageSetupResult = BucketNames & {
   outcome: StorageReconcileOutcome;
 };
 
+export type StorageDeletionResult = BucketNames & {
+  outcome: "absent" | "deleted" | "pending";
+};
+
 export class StorageSetupError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    readonly status?: number,
   ) {
     super(message);
     this.name = "StorageSetupError";
@@ -169,6 +174,7 @@ async function requestStorage(
       throw new StorageSetupError(
         "STORAGE_REQUEST_FAILED",
         "Supabase Storage rejected the bucket request",
+        response.status,
       );
     }
     if (request.method !== "GET") return null;
@@ -352,5 +358,56 @@ export async function reconcileLibraryStorage(input: {
   return {
     ...names,
     outcome: combineOutcomes(privateOutcome, publicOutcome),
+  };
+}
+
+async function emptyAndDeleteBucket(client: StorageClient, name: string) {
+  if (!(await readBucket(client, name))) return "absent" as const;
+  await requestStorage(client, {
+    method: "POST",
+    path: `/storage/v1/bucket/${encodeURIComponent(name)}/empty`,
+  });
+  try {
+    await requestStorage(client, {
+      method: "DELETE",
+      path: `/storage/v1/bucket/${encodeURIComponent(name)}`,
+    });
+  } catch (error) {
+    if (
+      error instanceof StorageSetupError &&
+      (error.status === 400 || error.status === 409)
+    ) {
+      return "pending" as const;
+    }
+    throw error;
+  }
+  return (await readBucket(client, name))
+    ? ("pending" as const)
+    : ("deleted" as const);
+}
+
+export async function deleteLibraryStorage(input: {
+  storageUrl: string;
+  serviceRoleKey: string;
+  libraryId: Id<"evidenceLibraries">;
+  fetchImpl?: typeof fetch;
+}): Promise<StorageDeletionResult> {
+  const client: StorageClient = {
+    fetchImpl: input.fetchImpl ?? fetch,
+    origin: requireStorageOrigin(input.storageUrl),
+    serviceRoleKey: requireServiceRoleKey(input.serviceRoleKey),
+  };
+  const names = createLibraryStorageBucketNames(input.libraryId);
+  const outcomes = await Promise.all([
+    emptyAndDeleteBucket(client, names.privateBucket),
+    emptyAndDeleteBucket(client, names.publicBucket),
+  ]);
+  return {
+    ...names,
+    outcome: outcomes.includes("pending")
+      ? "pending"
+      : outcomes.includes("deleted")
+        ? "deleted"
+        : "absent",
   };
 }

@@ -287,6 +287,12 @@ function createCoolifyServer(
           : jsonResponse({ message: "Application not found" }, 404);
       }
 
+      if (method === "DELETE" && url.pathname === applicationPath) {
+        application = null;
+        tags.clear();
+        return jsonResponse({ message: "Application deleted." });
+      }
+
       if (method === "PATCH" && url.pathname === applicationPath) {
         if (!application) return jsonResponse({ message: "Not found" }, 404);
         if (!input.ignoreApplicationWrites) {
@@ -506,6 +512,83 @@ afterEach(() => {
 });
 
 describe("Coolify Evidence Library client", () => {
+  it("deletes only the bound development application and verifies it is gone", async () => {
+    const tag = createCoolifyLibraryTag(LIBRARY_ID);
+    const server = createCoolifyServer({
+      application: expectedApplication(),
+      tags: [tag],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).deleteLibraryApplication({
+        applicationUuid: APPLICATION_UUID,
+        environmentName: ENVIRONMENT_NAME,
+        libraryId: LIBRARY_ID,
+        projectUuid: PROJECT_UUID,
+        publicDomain: PUBLIC_DOMAIN,
+        serverUuid: SERVER_UUID,
+      }),
+    ).resolves.toEqual({
+      applicationUuid: APPLICATION_UUID,
+      outcome: "deleted",
+    });
+    expect(server.application).toBeNull();
+    expect(
+      server.requests.find(({ method }) => method === "DELETE"),
+    ).toMatchObject({
+      path: `/api/v1/applications/${APPLICATION_UUID}`,
+      search:
+        "?delete_configurations=true&delete_volumes=true&docker_cleanup=true&delete_connected_networks=true",
+    });
+  });
+
+  it("finds a tagged application when setup stopped before saving its UUID", async () => {
+    const tag = createCoolifyLibraryTag(LIBRARY_ID);
+    const server = createCoolifyServer({
+      application: expectedApplication(),
+      tags: [tag],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).deleteLibraryApplication({
+        environmentName: ENVIRONMENT_NAME,
+        libraryId: LIBRARY_ID,
+        projectUuid: PROJECT_UUID,
+        publicDomain: PUBLIC_DOMAIN,
+        serverUuid: SERVER_UUID,
+      }),
+    ).resolves.toEqual({
+      applicationUuid: APPLICATION_UUID,
+      outcome: "deleted",
+    });
+  });
+
+  it("refuses to delete an application from another Coolify project", async () => {
+    const tag = createCoolifyLibraryTag(LIBRARY_ID);
+    const server = createCoolifyServer({
+      application: expectedApplication({
+        environment: {
+          name: ENVIRONMENT_NAME,
+          project: { uuid: "another-project" },
+        },
+      }),
+      tags: [tag],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).deleteLibraryApplication({
+        applicationUuid: APPLICATION_UUID,
+        environmentName: ENVIRONMENT_NAME,
+        libraryId: LIBRARY_ID,
+        projectUuid: PROJECT_UUID,
+        publicDomain: PUBLIC_DOMAIN,
+        serverUuid: SERVER_UUID,
+      }),
+    ).rejects.toMatchObject({ code: "COOLIFY_APPLICATION_CONFLICT" });
+    expect(server.requests).not.toContainEqual(
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
   it("creates one fixed Compose app, writes its three runtime values, and reads everything back", async () => {
     const server = createCoolifyServer();
     const client = createClient(server.fetchImpl);

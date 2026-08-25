@@ -2147,7 +2147,17 @@
     "noActiveOrganizationTitle": "組織を選択してください",
     "noActiveOrganizationDescription": "Clerk の組織スイッチャーで組織を選択または作成してから、ここに戻ってください。",
     "adminOnlyTitle": "組織管理者が必要です",
-    "adminOnlyDescription": "エビデンスライブラリを作成できるのは組織管理者だけです。"
+    "adminOnlyDescription": "エビデンスライブラリを作成できるのは組織管理者だけです。",
+    "teardownRunningTitle": "ライブラリを削除しています",
+    "teardownRunningDescription": "OpenScholar がアプリ、ファイル、データベース、ログイン、保存済みレコードを削除しています。",
+    "teardownCompleteTitle": "ライブラリを削除しました",
+    "teardownCompleteDescription": "開発用ライブラリとそのすべてのリソースを削除しました。",
+    "teardownFailedTitle": "削除を停止しました",
+    "teardownFailedDescription": "削除できないリソースがありました。設定ページに戻って再試行してください。",
+    "teardownRetry": "戻って再試行",
+    "teardownCreateAnother": "別のライブラリを作成",
+    "teardownNotFoundTitle": "削除状況が見つかりません",
+    "teardownNotFoundDescription": "この開発用ライブラリを所有していた組織を選び、もう一度お試しください。"
   },
   "evidenceLibraryAdminLaunch": {
     "title": "ライブラリの管理画面を開く",
@@ -2194,6 +2204,16 @@
     "activate": "有効化",
     "activating": "有効化中…",
     "redeploymentQueued": "設定をリビジョンとして保存しました。再デプロイを待機中です。",
-    "activationError": "保存済みの設定を有効化できませんでした。印の付いた項目を確認して、もう一度お試しください。"
+    "activationError": "保存済みの設定を有効化できませんでした。印の付いた項目を確認して、もう一度お試しください。",
+    "deleteTitle": "開発用ライブラリを削除",
+    "deleteDescription": "このライブラリの Coolify アプリ、ファイルバケット、データベース、ログイン、OpenScholar レコードを削除します。",
+    "deleteAction": "開発用ライブラリを削除",
+    "deleteConfirmTitle": "この開発用ライブラリを削除しますか？",
+    "deleteConfirmDescription": "確認のため {libraryName} と入力してください。この操作は取り消せません。",
+    "deleteConfirmLabel": "ライブラリ名",
+    "deleteConfirmAction": "ライブラリを削除",
+    "deleteCancel": "キャンセル",
+    "deleting": "削除を開始しています…",
+    "deleteError": "削除を開始できませんでした。実行中のライブラリ操作が終わってから、もう一度お試しください。"
   }
 }

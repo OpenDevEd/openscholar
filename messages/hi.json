@@ -2147,7 +2147,17 @@
     "noActiveOrganizationTitle": "संगठन चुनें",
     "noActiveOrganizationDescription": "Clerk संगठन स्विचर से संगठन चुनें या बनाएँ, फिर यहाँ लौटें।",
     "adminOnlyTitle": "संगठन एडमिन आवश्यक है",
-    "adminOnlyDescription": "केवल संगठन एडमिन उसकी एविडेंस लाइब्रेरी बना सकता है।"
+    "adminOnlyDescription": "केवल संगठन एडमिन उसकी एविडेंस लाइब्रेरी बना सकता है।",
+    "teardownRunningTitle": "लाइब्रेरी हटाई जा रही है",
+    "teardownRunningDescription": "OpenScholar ऐप, फ़ाइलें, डेटाबेस, लॉगिन और सेव किए गए लाइब्रेरी रिकॉर्ड हटा रहा है।",
+    "teardownCompleteTitle": "लाइब्रेरी हटा दी गई",
+    "teardownCompleteDescription": "डेवलपमेंट लाइब्रेरी और उसके सभी संसाधन हटा दिए गए।",
+    "teardownFailedTitle": "हटाने की प्रक्रिया रुक गई",
+    "teardownFailedDescription": "एक संसाधन नहीं हट सका। कॉन्फ़िगरेशन पेज पर लौटें और फिर कोशिश करें।",
+    "teardownRetry": "लौटें और फिर कोशिश करें",
+    "teardownCreateAnother": "दूसरी लाइब्रेरी बनाएँ",
+    "teardownNotFoundTitle": "हटाने की स्थिति नहीं मिली",
+    "teardownNotFoundDescription": "उस संगठन को चुनें जिसकी यह डेवलपमेंट लाइब्रेरी थी, फिर कोशिश करें।"
   },
   "evidenceLibraryAdminLaunch": {
     "title": "लाइब्रेरी एडमिन क्षेत्र खोलें",
@@ -2194,6 +2204,16 @@
     "activate": "सक्रिय करें",
     "activating": "सक्रिय किया जा रहा है…",
     "redeploymentQueued": "कॉन्फ़िगरेशन को संशोधन के रूप में सहेजा गया। दोबारा डिप्लॉय होना कतार में है।",
-    "activationError": "सहेजा गया कॉन्फ़िगरेशन सक्रिय नहीं हो सका। चिह्नित फ़ील्ड जाँचें और फिर प्रयास करें।"
+    "activationError": "सहेजा गया कॉन्फ़िगरेशन सक्रिय नहीं हो सका। चिह्नित फ़ील्ड जाँचें और फिर प्रयास करें।",
+    "deleteTitle": "डेवलपमेंट लाइब्रेरी हटाएँ",
+    "deleteDescription": "इस लाइब्रेरी का Coolify ऐप, फ़ाइल बकेट, डेटाबेस, लॉगिन और OpenScholar रिकॉर्ड हटाएँ।",
+    "deleteAction": "डेवलपमेंट लाइब्रेरी हटाएँ",
+    "deleteConfirmTitle": "यह डेवलपमेंट लाइब्रेरी हटाएँ?",
+    "deleteConfirmDescription": "पुष्टि के लिए {libraryName} लिखें। इसे वापस नहीं किया जा सकता।",
+    "deleteConfirmLabel": "लाइब्रेरी का नाम",
+    "deleteConfirmAction": "लाइब्रेरी हटाएँ",
+    "deleteCancel": "रद्द करें",
+    "deleting": "हटाना शुरू हो रहा है…",
+    "deleteError": "हटाने की प्रक्रिया शुरू नहीं हुई। चल रही लाइब्रेरी प्रक्रिया पूरी होने दें, फिर कोशिश करें।"
   }
 }

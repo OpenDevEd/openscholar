@@ -330,9 +330,10 @@ describe("fixed Evidence Library setup operation", () => {
     await record(fixture, database);
     await record(fixture, storage);
     await record(fixture, application);
-    const firstCutoff = await fixture.t.run(async (ctx) =>
-      (await ctx.db.get(fixture.created.setupOperationId))
-        ?.setupDeploymentNotBefore,
+    const firstCutoff = await fixture.t.run(
+      async (ctx) =>
+        (await ctx.db.get(fixture.created.setupOperationId))
+          ?.setupDeploymentNotBefore,
     );
     expect(firstCutoff).toBe(Date.now());
 
@@ -364,7 +365,7 @@ describe("fixed Evidence Library setup operation", () => {
       ctx.db.get(fixture.created.setupOperationId),
     );
     expect(retried?.setupDeploymentNotBefore).toBe(firstCutoff);
-    expect(retried?.setupReceipts?.application.checkedAt).toBe(Date.now());
+    expect(retried?.setupReceipts?.application?.checkedAt).toBe(Date.now());
   });
 
   it("activates only after readiness proves the requested revision", async () => {

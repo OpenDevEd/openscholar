@@ -2147,7 +2147,17 @@
     "noActiveOrganizationTitle": "Choisissez une organisation",
     "noActiveOrganizationDescription": "Sélectionnez ou créez une organisation avec le sélecteur Clerk, puis revenez ici.",
     "adminOnlyTitle": "Administration de l'organisation requise",
-    "adminOnlyDescription": "Seul un administrateur de l'organisation peut créer sa bibliothèque."
+    "adminOnlyDescription": "Seul un administrateur de l'organisation peut créer sa bibliothèque.",
+    "teardownRunningTitle": "Suppression de la bibliothèque",
+    "teardownRunningDescription": "OpenScholar supprime l'application, les fichiers, la base de données, le compte et les données enregistrées.",
+    "teardownCompleteTitle": "Bibliothèque supprimée",
+    "teardownCompleteDescription": "La bibliothèque de développement et toutes ses ressources ont été supprimées.",
+    "teardownFailedTitle": "Suppression interrompue",
+    "teardownFailedDescription": "Une ressource n'a pas pu être supprimée. Revenez à la page de configuration et réessayez.",
+    "teardownRetry": "Revenir et réessayer",
+    "teardownCreateAnother": "Créer une autre bibliothèque",
+    "teardownNotFoundTitle": "État de suppression introuvable",
+    "teardownNotFoundDescription": "Choisissez l'organisation propriétaire de cette bibliothèque de développement, puis réessayez."
   },
   "evidenceLibraryAdminLaunch": {
     "title": "Ouvrir l'administration de la bibliothèque",
@@ -2194,6 +2204,16 @@
     "activate": "Activer",
     "activating": "Activation…",
     "redeploymentQueued": "La configuration a été enregistrée comme révision. Le redéploiement est en attente.",
-    "activationError": "La configuration enregistrée n'a pas pu être activée. Vérifiez le champ indiqué et réessayez."
+    "activationError": "La configuration enregistrée n'a pas pu être activée. Vérifiez le champ indiqué et réessayez.",
+    "deleteTitle": "Supprimer la bibliothèque de développement",
+    "deleteDescription": "Supprimez l'application Coolify, les espaces de fichiers, la base de données, le compte et les données OpenScholar de cette bibliothèque.",
+    "deleteAction": "Supprimer la bibliothèque de développement",
+    "deleteConfirmTitle": "Supprimer cette bibliothèque de développement ?",
+    "deleteConfirmDescription": "Saisissez {libraryName} pour confirmer. Cette action est irréversible.",
+    "deleteConfirmLabel": "Nom de la bibliothèque",
+    "deleteConfirmAction": "Supprimer la bibliothèque",
+    "deleteCancel": "Annuler",
+    "deleting": "Démarrage de la suppression…",
+    "deleteError": "La suppression n'a pas pu démarrer. Attendez la fin des opérations en cours, puis réessayez."
   }
 }

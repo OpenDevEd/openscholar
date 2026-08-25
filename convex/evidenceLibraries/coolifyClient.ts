@@ -130,6 +130,7 @@ export function requireMatchingCoolifyDeployment(
 }
 
 type CoolifyRequest = {
+  allowNotFound?: boolean;
   body?: Record<string, unknown>;
   expectedStatus: number;
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -431,6 +432,7 @@ async function requestCoolify(
       );
     }
     if (response.status !== request.expectedStatus) {
+      if (request.allowNotFound && response.status === 404) return null;
       throw new CoolifyClientError(
         "COOLIFY_REQUEST_FAILED",
         "Coolify rejected the request",
@@ -596,6 +598,19 @@ async function readApplication(
       path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
     }),
   );
+}
+
+async function readApplicationIfExists(
+  client: CoolifyTransport,
+  applicationUuid: string,
+): Promise<CoolifyApplication | null> {
+  const payload = await requestCoolify(client, {
+    allowNotFound: true,
+    expectedStatus: 200,
+    method: "GET",
+    path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
+  });
+  return payload === null ? null : parseApplication(payload);
 }
 
 async function readGithubAppId(
@@ -1368,6 +1383,97 @@ export function createCoolifyClient(input: {
   };
 
   return {
+    async deleteLibraryApplication(input: {
+      applicationUuid?: string;
+      environmentName: string;
+      libraryId: Id<"evidenceLibraries">;
+      projectUuid: string;
+      publicDomain: string;
+      serverUuid: string;
+    }): Promise<{
+      applicationUuid: string | null;
+      outcome: "absent" | "deleted";
+    }> {
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const savedApplicationUuid = input.applicationUuid
+        ? requireInputIdentifier(
+            "Coolify application UUID",
+            input.applicationUuid,
+          )
+        : undefined;
+      const taggedApplications = await listTaggedApplications(
+        client,
+        applicationTag,
+      );
+      if (
+        savedApplicationUuid &&
+        taggedApplications.length === 1 &&
+        taggedApplications[0] !== savedApplicationUuid
+      ) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The saved Coolify application does not match this library tag",
+        );
+      }
+      const applicationUuid = savedApplicationUuid ?? taggedApplications[0];
+      if (!applicationUuid) return { applicationUuid: null, outcome: "absent" };
+      const environmentName = requireInputText(
+        "Coolify environment name",
+        input.environmentName,
+      );
+      const projectUuid = requireInputIdentifier(
+        "Coolify project UUID",
+        input.projectUuid,
+      );
+      const publicDomain = requirePublicDomain(input.publicDomain);
+      const serverUuid = requireInputIdentifier(
+        "Coolify server UUID",
+        input.serverUuid,
+      );
+      const existing = await readApplicationIfExists(client, applicationUuid);
+      if (!existing) return { applicationUuid, outcome: "absent" };
+      const application = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain,
+      });
+      if (
+        application.environmentName !== environmentName ||
+        application.projectUuid !== projectUuid ||
+        application.serverUuid !== serverUuid
+      ) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The bound Coolify application no longer matches this library",
+        );
+      }
+      const url = new URL(
+        `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
+        client.origin,
+      );
+      for (const key of [
+        "delete_configurations",
+        "delete_volumes",
+        "docker_cleanup",
+        "delete_connected_networks",
+      ]) {
+        url.searchParams.set(key, "true");
+      }
+      await requestCoolify(client, {
+        allowNotFound: true,
+        expectedStatus: 200,
+        method: "DELETE",
+        path: `${url.pathname}${url.search}`,
+      });
+      if (await readApplicationIfExists(client, applicationUuid)) {
+        throw new CoolifyClientError(
+          "COOLIFY_DELETE_FAILED",
+          "Coolify still contains the Evidence Library application",
+        );
+      }
+      return { applicationUuid, outcome: "deleted" };
+    },
+
     async reconcileApplication(input: {
       libraryId: Id<"evidenceLibraries">;
       serverUuid: string;

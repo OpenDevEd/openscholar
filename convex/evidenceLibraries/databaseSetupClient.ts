@@ -13,6 +13,12 @@ export type DatabaseSetupResult = {
   databaseUrl: string;
 };
 
+export type DatabaseDeletionResult = {
+  outcome: "absent" | "deleted";
+  databaseName: string;
+  loginName: string;
+};
+
 export class DatabaseProvisionerError extends Error {
   constructor(
     readonly code: string,
@@ -57,8 +63,7 @@ function requireProvisionerOrigin(value: string): URL {
 const SAFE_PROVISIONER_ERRORS: Record<string, string> = {
   database_object_owner_conflict:
     "The library database contains objects owned by another login.",
-  database_owner_conflict:
-    "The library database is owned by another login.",
+  database_owner_conflict: "The library database is owned by another login.",
   extension_owner_conflict:
     "A required database extension is owned by another login.",
   login_database_conflict: "The library login owns another database.",
@@ -73,7 +78,8 @@ function parseSafeServiceError(payload: unknown): DatabaseProvisionerError {
     ERROR_CODE.test(payload.error.code)
   ) {
     const message = SAFE_PROVISIONER_ERRORS[payload.error.code];
-    if (message) return new DatabaseProvisionerError(payload.error.code, message);
+    if (message)
+      return new DatabaseProvisionerError(payload.error.code, message);
   }
   return new DatabaseProvisionerError(
     "DATABASE_PROVISIONER_FAILED",
@@ -142,6 +148,31 @@ function parseDatabaseSetupResult(
   };
 }
 
+function parseDatabaseDeletionResult(
+  payload: unknown,
+  expectedLibraryId: string,
+): DatabaseDeletionResult {
+  if (
+    !isRecord(payload) ||
+    payload.libraryId !== expectedLibraryId ||
+    (payload.outcome !== "absent" && payload.outcome !== "deleted") ||
+    typeof payload.databaseName !== "string" ||
+    !POSTGRES_IDENTIFIER.test(payload.databaseName) ||
+    typeof payload.loginName !== "string" ||
+    !POSTGRES_IDENTIFIER.test(payload.loginName)
+  ) {
+    throw new DatabaseProvisionerError(
+      "DATABASE_PROVISIONER_INVALID_RESPONSE",
+      "Database provisioner returned an invalid response",
+    );
+  }
+  return {
+    outcome: payload.outcome,
+    databaseName: payload.databaseName,
+    loginName: payload.loginName,
+  };
+}
+
 export async function reconcileLibraryDatabase(input: {
   provisionerUrl: string;
   token: string;
@@ -176,4 +207,36 @@ export async function reconcileLibraryDatabase(input: {
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw parseSafeServiceError(payload);
   return parseDatabaseSetupResult(payload, input.libraryId, input.password);
+}
+
+export async function deleteLibraryDatabase(input: {
+  provisionerUrl: string;
+  token: string;
+  libraryId: string;
+  fetchImpl?: typeof fetch;
+}): Promise<DatabaseDeletionResult> {
+  const origin = requireProvisionerOrigin(input.provisionerUrl);
+  if (!input.token.trim()) {
+    throw createError("INVALID_DATA", "Database provisioner token is missing");
+  }
+  const response = await (input.fetchImpl ?? fetch)(
+    new URL("/v1/library-databases/delete", origin),
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${input.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ libraryId: input.libraryId }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    },
+  ).catch(() => {
+    throw new DatabaseProvisionerError(
+      "DATABASE_PROVISIONER_UNAVAILABLE",
+      "Database provisioner could not be reached",
+    );
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw parseSafeServiceError(payload);
+  return parseDatabaseDeletionResult(payload, input.libraryId);
 }

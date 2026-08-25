@@ -2172,7 +2172,17 @@
     "noActiveOrganizationTitle": "Choose an organisation",
     "noActiveOrganizationDescription": "Select or create an organisation with the Clerk organisation switcher, then return here.",
     "adminOnlyTitle": "Organisation admin required",
-    "adminOnlyDescription": "Only an organisation admin can create its Evidence Library."
+    "adminOnlyDescription": "Only an organisation admin can create its Evidence Library.",
+    "teardownRunningTitle": "Deleting the library",
+    "teardownRunningDescription": "OpenScholar is removing the application, files, database, login, and saved library records.",
+    "teardownCompleteTitle": "Library deleted",
+    "teardownCompleteDescription": "The development library and all of its resources were removed.",
+    "teardownFailedTitle": "Deletion stopped",
+    "teardownFailedDescription": "One resource could not be removed. Return to the configuration page and retry.",
+    "teardownRetry": "Return and retry",
+    "teardownCreateAnother": "Create another library",
+    "teardownNotFoundTitle": "Deletion status not found",
+    "teardownNotFoundDescription": "Choose the organisation that owned this development library, then try again."
   },
   "evidenceLibraryAdminLaunch": {
     "title": "Open the library admin area",
@@ -2219,6 +2229,16 @@
     "activate": "Activate",
     "activating": "Activating…",
     "redeploymentQueued": "Configuration saved as a revision. Redeployment is queued.",
-    "activationError": "The saved configuration could not be activated. Check the marked field and try again."
+    "activationError": "The saved configuration could not be activated. Check the marked field and try again.",
+    "deleteTitle": "Delete development library",
+    "deleteDescription": "Remove this library's Coolify application, file buckets, database, login, and OpenScholar records.",
+    "deleteAction": "Delete development library",
+    "deleteConfirmTitle": "Delete this development library?",
+    "deleteConfirmDescription": "Enter {libraryName} to confirm. This cannot be undone.",
+    "deleteConfirmLabel": "Library name",
+    "deleteConfirmAction": "Delete library",
+    "deleteCancel": "Cancel",
+    "deleting": "Starting deletion…",
+    "deleteError": "Deletion could not be started. Finish any running library operation, then try again."
   }
 }

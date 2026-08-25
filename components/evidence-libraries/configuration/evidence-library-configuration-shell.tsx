@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -207,6 +208,99 @@ function SavedConfigurationPreview({
         </p>
       </section>
     </div>
+  );
+}
+
+function DevelopmentTeardownPanel({
+  libraryId,
+  libraryName,
+}: {
+  libraryId: Id<"evidenceLibraries">;
+  libraryName: string;
+}) {
+  const t = useTranslations("evidenceLibraryConfigurationShell");
+  const router = useRouter();
+  const requestTeardown = useMutation(
+    api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+  );
+  const [open, setOpen] = useState(false);
+  const [confirmationName, setConfirmationName] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleDelete(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isDeleting || confirmationName !== libraryName) return;
+    setIsDeleting(true);
+    setError(null);
+    void requestTeardown({ libraryId, confirmationName })
+      .then((result) => {
+        router.push(
+          `/evidence-libraries/new?teardownOperationId=${result.operationId}`,
+        );
+      })
+      .catch(() => setError(t("deleteError")))
+      .finally(() => setIsDeleting(false));
+  }
+
+  return (
+    <Card className="border-destructive/50">
+      <CardHeader>
+        <CardTitle>{t("deleteTitle")}</CardTitle>
+        <CardDescription>{t("deleteDescription")}</CardDescription>
+      </CardHeader>
+      <CardFooter className="justify-end">
+        <Button
+          variant="destructive"
+          type="button"
+          onClick={() => setOpen(true)}
+        >
+          {t("deleteAction")}
+        </Button>
+      </CardFooter>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <form onSubmit={handleDelete} className="space-y-5">
+            <DialogHeader>
+              <DialogTitle>{t("deleteConfirmTitle")}</DialogTitle>
+              <DialogDescription>
+                {t("deleteConfirmDescription", { libraryName })}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="delete-library-confirmation">
+                {t("deleteConfirmLabel")}
+              </Label>
+              <Input
+                id="delete-library-confirmation"
+                value={confirmationName}
+                onChange={(event) => setConfirmationName(event.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            {error ? (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  {t("deleteCancel")}
+                </Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={confirmationName !== libraryName || isDeleting}
+              >
+                {isDeleting ? t("deleting") : t("deleteConfirmAction")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }
 
@@ -748,6 +842,12 @@ export function EvidenceLibraryConfigurationShell({
         initialEditVersion={draft.editVersion}
         libraryId={libraryId as Id<"evidenceLibraries">}
       />
+      <div className="mt-8">
+        <DevelopmentTeardownPanel
+          libraryId={libraryId as Id<"evidenceLibraries">}
+          libraryName={initialConfiguration.identity.name}
+        />
+      </div>
     </main>
   );
 }

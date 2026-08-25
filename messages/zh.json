@@ -2147,7 +2147,17 @@
     "noActiveOrganizationTitle": "请选择组织",
     "noActiveOrganizationDescription": "请使用 Clerk 组织切换器选择或创建组织，然后返回此页面。",
     "adminOnlyTitle": "需要组织管理员权限",
-    "adminOnlyDescription": "只有组织管理员可以创建该组织的证据库。"
+    "adminOnlyDescription": "只有组织管理员可以创建该组织的证据库。",
+    "teardownRunningTitle": "正在删除证据库",
+    "teardownRunningDescription": "OpenScholar 正在删除应用、文件、数据库、登录账号和已保存的证据库记录。",
+    "teardownCompleteTitle": "证据库已删除",
+    "teardownCompleteDescription": "开发证据库及其所有资源均已删除。",
+    "teardownFailedTitle": "删除已停止",
+    "teardownFailedDescription": "有一项资源无法删除。请返回配置页面重试。",
+    "teardownRetry": "返回并重试",
+    "teardownCreateAnother": "创建另一个证据库",
+    "teardownNotFoundTitle": "找不到删除状态",
+    "teardownNotFoundDescription": "请选择之前拥有此开发证据库的组织，然后重试。"
   },
   "evidenceLibraryAdminLaunch": {
     "title": "打开证据库管理区",
@@ -2194,6 +2204,16 @@
     "activate": "激活",
     "activating": "正在激活…",
     "redeploymentQueued": "配置已保存为一个修订版本。重新部署已进入队列。",
-    "activationError": "无法激活已保存的配置。请检查标记的字段后重试。"
+    "activationError": "无法激活已保存的配置。请检查标记的字段后重试。",
+    "deleteTitle": "删除开发证据库",
+    "deleteDescription": "删除此证据库的 Coolify 应用、文件存储桶、数据库、登录账号和 OpenScholar 记录。",
+    "deleteAction": "删除开发证据库",
+    "deleteConfirmTitle": "删除此开发证据库？",
+    "deleteConfirmDescription": "请输入 {libraryName} 以确认。此操作无法撤销。",
+    "deleteConfirmLabel": "证据库名称",
+    "deleteConfirmAction": "删除证据库",
+    "deleteCancel": "取消",
+    "deleting": "正在开始删除…",
+    "deleteError": "无法开始删除。请等待当前证据库操作完成后重试。"
   }
 }

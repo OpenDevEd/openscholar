@@ -2,6 +2,7 @@ import type { Id } from "../_generated/dataModel";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createLibraryStorageBucketNames,
+  deleteLibraryStorage,
   reconcileLibraryStorage,
   StorageSetupError,
 } from "./storageSetupClient";
@@ -37,7 +38,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 function createStorageServer(
   initialBuckets: StoredBucket[] = [],
-  options: { persistWrites?: boolean } = {},
+  options: { persistDeletes?: boolean; persistWrites?: boolean } = {},
 ) {
   const buckets = new Map(
     initialBuckets.map((bucket) => [bucket.id, structuredClone(bucket)]),
@@ -67,7 +68,9 @@ function createStorageServer(
 
       if (method === "GET") {
         const prefix = "/storage/v1/bucket/";
-        const bucket = buckets.get(decodeURIComponent(url.pathname.slice(prefix.length)));
+        const bucket = buckets.get(
+          decodeURIComponent(url.pathname.slice(prefix.length)),
+        );
         return bucket
           ? jsonResponse(structuredClone(bucket))
           : jsonResponse({ message: "remote details must stay private" }, 404);
@@ -77,6 +80,17 @@ function createStorageServer(
         const write = body as StoredBucket;
         if (persistWrites) buckets.set(write.id, structuredClone(write));
         return jsonResponse({ name: write.name });
+      }
+
+      if (method === "POST" && url.pathname.endsWith("/empty")) {
+        return jsonResponse({ message: "Emptying bucket" });
+      }
+
+      if (method === "DELETE") {
+        const prefix = "/storage/v1/bucket/";
+        const name = decodeURIComponent(url.pathname.slice(prefix.length));
+        if (options.persistDeletes ?? true) buckets.delete(name);
+        return jsonResponse({ message: "Bucket deleted" });
       }
 
       if (method === "PUT") {
@@ -159,10 +173,18 @@ describe("Supabase storage setup client", () => {
       `GET /storage/v1/bucket/${names.publicBucket}`,
     ]);
     expect(
-      server.requests.filter(({ method }) => method === "POST").map(({ body }) => body),
+      server.requests
+        .filter(({ method }) => method === "POST")
+        .map(({ body }) => body),
     ).toEqual([
-      expectedBucket(names.privateBucket, false, ["application/pdf", "image/png"]),
-      expectedBucket(names.publicBucket, true, ["application/pdf", "image/png"]),
+      expectedBucket(names.privateBucket, false, [
+        "application/pdf",
+        "image/png",
+      ]),
+      expectedBucket(names.publicBucket, true, [
+        "application/pdf",
+        "image/png",
+      ]),
     ]);
     for (const request of server.requests) {
       expect(request.headers.get("apikey")).toBe(SERVICE_ROLE_KEY);
@@ -176,8 +198,14 @@ describe("Supabase storage setup client", () => {
   it("matches buckets that already have the fixed policies", async () => {
     const names = createLibraryStorageBucketNames(LIBRARY_ID);
     const server = createStorageServer([
-      expectedBucket(names.privateBucket, false, ["application/pdf", "image/png"]),
-      expectedBucket(names.publicBucket, true, ["application/pdf", "image/png"]),
+      expectedBucket(names.privateBucket, false, [
+        "application/pdf",
+        "image/png",
+      ]),
+      expectedBucket(names.publicBucket, true, [
+        "application/pdf",
+        "image/png",
+      ]),
     ]);
 
     await expect(reconcile(server.fetchImpl)).resolves.toEqual({
@@ -185,6 +213,60 @@ describe("Supabase storage setup client", () => {
       ...names,
     });
     expect(server.requests.map(({ method }) => method)).toEqual(["GET", "GET"]);
+  });
+
+  it("empties and deletes both derived buckets, then treats a retry as complete", async () => {
+    const names = createLibraryStorageBucketNames(LIBRARY_ID);
+    const server = createStorageServer([
+      expectedBucket(names.privateBucket, false, [
+        "application/pdf",
+        "image/png",
+      ]),
+      expectedBucket(names.publicBucket, true, [
+        "application/pdf",
+        "image/png",
+      ]),
+    ]);
+
+    await expect(
+      deleteLibraryStorage({
+        fetchImpl: server.fetchImpl,
+        libraryId: LIBRARY_ID,
+        serviceRoleKey: SERVICE_ROLE_KEY,
+        storageUrl: STORAGE_ORIGIN,
+      }),
+    ).resolves.toEqual({ outcome: "deleted", ...names });
+    await expect(
+      deleteLibraryStorage({
+        fetchImpl: server.fetchImpl,
+        libraryId: LIBRARY_ID,
+        serviceRoleKey: SERVICE_ROLE_KEY,
+        storageUrl: STORAGE_ORIGIN,
+      }),
+    ).resolves.toEqual({ outcome: "absent", ...names });
+    expect(server.buckets.size).toBe(0);
+  });
+
+  it("reports pending while Storage still retains an emptied bucket", async () => {
+    const names = createLibraryStorageBucketNames(LIBRARY_ID);
+    const server = createStorageServer(
+      [
+        expectedBucket(names.privateBucket, false, [
+          "application/pdf",
+          "image/png",
+        ]),
+      ],
+      { persistDeletes: false },
+    );
+
+    await expect(
+      deleteLibraryStorage({
+        fetchImpl: server.fetchImpl,
+        libraryId: LIBRARY_ID,
+        serviceRoleKey: SERVICE_ROLE_KEY,
+        storageUrl: STORAGE_ORIGIN,
+      }),
+    ).resolves.toEqual({ outcome: "pending", ...names });
   });
 
   it("updates wrong policies and reads both corrections back", async () => {
@@ -199,10 +281,12 @@ describe("Supabase storage setup client", () => {
       ...names,
     });
     expect(
-      server.requests.filter(({ method }) => method === "PUT").map((request) => ({
-        body: request.body,
-        path: request.path,
-      })),
+      server.requests
+        .filter(({ method }) => method === "PUT")
+        .map((request) => ({
+          body: request.body,
+          path: request.path,
+        })),
     ).toEqual([
       {
         body: expectedBucket(names.privateBucket, false, [

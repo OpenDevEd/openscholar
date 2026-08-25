@@ -317,6 +317,7 @@ export const evidenceLibraryRequestableOperationKindValidator = v.union(
 export const evidenceLibraryOperationKindValidator = v.union(
   v.literal("setup"),
   v.literal("publish"),
+  v.literal("teardown"),
   evidenceLibraryRequestableOperationKindValidator,
 );
 export type EvidenceLibraryOperationKind = Infer<
@@ -518,6 +519,8 @@ export const evidenceLibraryOperationFields = {
     v.literal("application"),
     v.literal("deployment"),
     v.literal("health_check"),
+    v.literal("coolify"),
+    v.literal("convex"),
     v.literal("completed"),
   ),
   attemptCount: v.number(),

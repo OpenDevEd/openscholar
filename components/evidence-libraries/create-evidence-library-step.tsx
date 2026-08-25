@@ -30,6 +30,7 @@ type ActiveOrganizationProps = {
 const setupSelectionParsers = {
   libraryId: parseAsString,
   organizationId: parseAsString,
+  teardownOperationId: parseAsString,
 };
 
 type SetupSelectionState = UseQueryStatesReturn<
@@ -229,10 +230,17 @@ function AdminCreateEvidenceLibraryForm({
 
 export function CreateEvidenceLibraryStep() {
   const t = useTranslations("evidenceLibrarySetup");
+  const router = useRouter();
   const { isLoaded, membership, organization } = useOrganization();
   const [setupSelection, setSetupSelection] = useQueryStates(
     setupSelectionParsers,
     { history: "replace" },
+  );
+  const teardownQuery = useProtectedQuery(
+    api.evidenceLibraries.teardown.getDevelopmentTeardownStatus,
+    setupSelection.teardownOperationId
+      ? { operationId: setupSelection.teardownOperationId }
+      : "skip",
   );
 
   if (!isLoaded) {
@@ -246,6 +254,67 @@ export function CreateEvidenceLibraryStep() {
         title={t("noActiveOrganizationTitle")}
         description={t("noActiveOrganizationDescription")}
       />
+    );
+  }
+
+  if (setupSelection.teardownOperationId) {
+    if (!teardownQuery.isReady || teardownQuery.data === undefined) {
+      return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+    }
+    if (teardownQuery.data === null) {
+      return (
+        <AuthStatePanel
+          variant="no_access"
+          title={t("teardownNotFoundTitle")}
+          description={t("teardownNotFoundDescription")}
+        />
+      );
+    }
+    const teardown = teardownQuery.data;
+    const complete = teardown.status === "complete";
+    const failed = teardown.status === "failed";
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {complete
+              ? t("teardownCompleteTitle")
+              : failed
+                ? t("teardownFailedTitle")
+                : t("teardownRunningTitle")}
+          </CardTitle>
+          <CardDescription>
+            {complete
+              ? t("teardownCompleteDescription")
+              : failed
+                ? t("teardownFailedDescription")
+                : t("teardownRunningDescription")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="justify-end">
+          {failed ? (
+            <Button
+              type="button"
+              onClick={() =>
+                router.push(
+                  `/evidence-libraries/${teardown.libraryId}/configuration`,
+                )
+              }
+            >
+              {t("teardownRetry")}
+            </Button>
+          ) : complete ? (
+            <Button
+              type="button"
+              onClick={() =>
+                void setSetupSelection({ teardownOperationId: null })
+              }
+            >
+              {t("teardownCreateAnother")}
+            </Button>
+          ) : null}
+        </CardFooter>
+      </Card>
     );
   }
 

@@ -21,6 +21,7 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
       queries: { getDraft: "getDraft" },
+      teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       mutations: {
         activateConfiguration: "activateConfiguration",
         saveEssentialConfiguration: "saveEssentialConfiguration",
@@ -227,6 +228,40 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
     expect(screen.getByLabelText("logoLabel")).toHaveAttribute(
       "aria-invalid",
       "true",
+    );
+  });
+
+  it("requires the exact library name before queuing development teardown", async () => {
+    const user = userEvent.setup();
+    let teardownInput: unknown;
+    queryMock.mockReturnValue(draftResult());
+    mutationMock.mockImplementation((mutation) =>
+      mutation === "requestDevelopmentTeardown"
+        ? async (input: unknown) => {
+            teardownInput = input;
+            return { operationId: "operation_123", status: "queued" };
+          }
+        : async () => ({}),
+    );
+
+    renderShell();
+    await user.click(screen.getByRole("button", { name: "deleteAction" }));
+    const confirm = screen.getByLabelText("deleteConfirmLabel");
+    const deleteButton = screen.getByRole("button", {
+      name: "deleteConfirmAction",
+    });
+    expect(deleteButton).toBeDisabled();
+    await user.type(confirm, "Saved Evidence Library");
+    await user.click(deleteButton);
+
+    await waitFor(() =>
+      expect(teardownInput).toEqual({
+        libraryId: "library_123",
+        confirmationName: "Saved Evidence Library",
+      }),
+    );
+    expect(pushMock).toHaveBeenCalledWith(
+      "/evidence-libraries/new?teardownOperationId=operation_123",
     );
   });
 });

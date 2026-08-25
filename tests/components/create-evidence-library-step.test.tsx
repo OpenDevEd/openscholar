@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type SetupSelection = {
   libraryId: string | null;
   organizationId: string | null;
+  teardownOperationId?: string | null;
 };
 
 type SetupSelectionUpdate =
@@ -26,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   latestSetupSelection: {
     libraryId: null,
     organizationId: null,
+    teardownOperationId: null,
   } as SetupSelection,
   push: vi.fn(),
   query: vi.fn(),
@@ -81,13 +83,18 @@ vi.mock("@/convex/_generated/api", () => ({
         getSetupDraft: "getSetupDraft",
         getSetupDraftSelection: "getSetupDraftSelection",
       },
+      teardown: {
+        getDevelopmentTeardownStatus: "getDevelopmentTeardownStatus",
+      },
     },
   },
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: unknown, args: unknown) =>
-    mocks.query(query, args),
+    query === "getDevelopmentTeardownStatus"
+      ? { data: undefined, isReady: true }
+      : mocks.query(query, args),
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
