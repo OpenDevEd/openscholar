@@ -499,7 +499,7 @@ afterEach(() => {
 });
 
 describe("Coolify Evidence Library client", () => {
-  it("creates one fixed Compose app, writes only the two runtime values, and reads everything back", async () => {
+  it("creates one fixed Compose app, writes its three runtime values, and reads everything back", async () => {
     const server = createCoolifyServer();
     const client = createClient(server.fetchImpl);
 
@@ -564,6 +564,14 @@ describe("Coolify Evidence Library client", () => {
       {
         key: "MEILISEARCH_MASTER_KEY",
         value: MEILISEARCH_MASTER_KEY,
+        is_preview: false,
+        is_literal: true,
+        is_runtime: true,
+        is_buildtime: true,
+      },
+      {
+        key: "SOURCE_COMMIT",
+        value: RUNTIME_COMMIT,
         is_preview: false,
         is_literal: true,
         is_runtime: true,
@@ -716,6 +724,14 @@ describe("Coolify Evidence Library client", () => {
         is_runtime: true,
         is_buildtime: true,
       },
+      {
+        key: "SOURCE_COMMIT",
+        value: RUNTIME_COMMIT,
+        is_preview: false,
+        is_literal: true,
+        is_runtime: true,
+        is_buildtime: true,
+      },
     ]);
     expect(server.environments).toContainEqual(coolifyOwned);
   });
@@ -757,6 +773,7 @@ describe("Coolify Evidence Library client", () => {
       { key: "LIBRARY_CONFIG_JSON", value: UPDATED_LIBRARY_CONFIG_JSON },
       { key: "MEILISEARCH_MASTER_KEY", value: MEILISEARCH_MASTER_KEY },
       { key: "KEEP_EXISTING_VALUE", value: "unchanged" },
+      { key: "SOURCE_COMMIT", value: OTHER_COMMIT },
     ]);
     expect(
       server.requests.filter(

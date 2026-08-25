@@ -34,6 +34,7 @@ const APPLICATION_SETTING_KEYS = [
 const ENVIRONMENT_VALUES = [
   "LIBRARY_CONFIG_JSON",
   "MEILISEARCH_MASTER_KEY",
+  "SOURCE_COMMIT",
 ] as const;
 
 export type CoolifyReconcileOutcome = "created" | "matched" | "updated";
@@ -1421,6 +1422,7 @@ export function createCoolifyClient(input: {
         [
           { key: "LIBRARY_CONFIG_JSON", value: libraryConfigJson },
           { key: "MEILISEARCH_MASTER_KEY", value: meilisearchMasterKey },
+          { key: "SOURCE_COMMIT", value: runtimeCommit },
         ],
       );
       const finalApplication = await readApplication(client, applicationUuid);
@@ -1503,6 +1505,10 @@ export function createCoolifyClient(input: {
         key: "LIBRARY_CONFIG_JSON",
         value: libraryConfigJson,
       });
+      await requireEnvironmentReadback(client, applicationUuid, {
+        key: "SOURCE_COMMIT",
+        value: runtimeCommit,
+      });
       const finalApplication = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
@@ -1552,6 +1558,10 @@ export function createCoolifyClient(input: {
       await reconcileEnvironmentValue(client, applicationUuid, {
         key: "LIBRARY_CONFIG_JSON",
         value: libraryConfigJson,
+      });
+      await reconcileEnvironmentValue(client, applicationUuid, {
+        key: "SOURCE_COMMIT",
+        value: expectedRuntimeCommit,
       });
       const finalApplication = await readExpectedBoundApplication(client, {
         applicationUuid,
