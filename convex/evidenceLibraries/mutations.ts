@@ -622,6 +622,32 @@ export async function activateEvidenceLibraryConfiguration(
   return { ...frozen, kind: "publish" as const, ...started };
 }
 
+export async function retryEvidenceLibrarySetup(
+  ctx: MutationCtx,
+  args: { libraryId: Id<"evidenceLibraries"> },
+) {
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
+  const setup = await readEvidenceLibrarySetupRecords(ctx, access.library);
+  if (setup.setupOperation.status !== "failed") {
+    throw createError(
+      "CONFLICT",
+      "Only a failed Evidence Library setup can be retried",
+    );
+  }
+  const started = await claimAndScheduleEvidenceLibrarySetupOperation(ctx, {
+    libraryId: args.libraryId,
+    operationId: setup.setupOperation._id,
+  });
+  return {
+    operationId: setup.setupOperation._id,
+    status: started.status,
+  };
+}
+
 export const createSetupDraft = mutation({
   args: { name: v.string() },
   returns: v.object({
@@ -667,4 +693,13 @@ export const activateConfiguration = mutation({
     ),
   }),
   handler: activateEvidenceLibraryConfiguration,
+});
+
+export const retrySetup = mutation({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.object({
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    status: v.literal("running"),
+  }),
+  handler: retryEvidenceLibrarySetup,
 });

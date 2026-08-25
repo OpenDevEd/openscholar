@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -53,7 +54,75 @@ describe("Evidence Library setup draft", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
+  });
+
+  it("reads a saved failure and retries the same setup operation", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-25T00:00:00Z"));
+    const fixture = await createActivatedSetupFixture("saved_status_retry");
+    await fixture.t.mutation(
+      internal.evidenceLibraries.setupOperation.failSetupOperation,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: fixture.created.setupOperationId,
+        attemptToken: fixture.attemptToken,
+        attemptCount: fixture.attemptCount,
+        expectedStage: "database",
+        error: {
+          code: "DATABASE_UNAVAILABLE",
+          message: "The library database could not be reached.",
+        },
+      },
+    );
+
+    const failed = await fixture.admin.query(
+      api.evidenceLibraries.queries.getSetupDraftSelection,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(failed?.setupOperation).toMatchObject({
+      _id: fixture.created.setupOperationId,
+      attemptCount: 1,
+      status: "failed",
+      stage: "database",
+      error: {
+        code: "DATABASE_UNAVAILABLE",
+        message: "The library database could not be reached.",
+        stage: "database",
+      },
+    });
+
+    await expect(
+      fixture.admin.mutation(api.evidenceLibraries.mutations.retrySetup, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toEqual({
+      operationId: fixture.created.setupOperationId,
+      status: "running",
+    });
+
+    const refreshed = await fixture.admin.query(
+      api.evidenceLibraries.queries.getSetupDraftSelection,
+      { libraryId: fixture.created.libraryId },
+    );
+    const operations = await fixture.t.run((ctx) =>
+      ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_createdAt", (query) =>
+          query.eq("libraryId", fixture.created.libraryId),
+        )
+        .take(2),
+    );
+    expect(refreshed?.setupOperation).toMatchObject({
+      _id: fixture.created.setupOperationId,
+      attemptCount: 2,
+      status: "running",
+      stage: "database",
+    });
+    expect(refreshed?.setupOperation).not.toHaveProperty("error");
+    expect(operations).toHaveLength(1);
+    expect(operations[0]?._id).toBe(fixture.created.setupOperationId);
   });
 
   it("creates, reopens, and retries one linked setup draft", async () => {
@@ -549,6 +618,11 @@ describe("Evidence Library setup draft", () => {
     ).rejects.toThrow(/FORBIDDEN/);
     await expect(
       member.query(api.evidenceLibraries.queries.getSetupDraft, {
+        libraryId: created.libraryId,
+      }),
+    ).rejects.toThrow(/FORBIDDEN/);
+    await expect(
+      member.mutation(api.evidenceLibraries.mutations.retrySetup, {
         libraryId: created.libraryId,
       }),
     ).rejects.toThrow(/FORBIDDEN/);

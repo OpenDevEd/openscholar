@@ -2126,6 +2126,24 @@
     "reserving": "確保中…",
     "continue": "続行",
     "createError": "ライブラリを保存できませんでした。もう一度お試しください。",
+    "status": {
+      "settingUpTitle": "セットアップ中",
+      "currentStepLabel": "現在のステップ",
+      "readyTitle": "準備完了",
+      "readyDescription": "エビデンスライブラリの準備ができました。",
+      "failedTitle": "セットアップに失敗しました",
+      "failedStepLabel": "失敗したステップ",
+      "retry": "再試行",
+      "retrying": "再試行中…",
+      "retryError": "セットアップを再開できませんでした。もう一度お試しください。",
+      "steps": {
+        "database": "データベースを設定しています",
+        "storage": "ファイルストレージを設定しています",
+        "application": "アプリケーションを作成しています",
+        "deployment": "ライブラリをデプロイしています",
+        "healthCheck": "ライブラリの準備状況を確認しています"
+      }
+    },
     "noActiveOrganizationTitle": "組織を選択してください",
     "noActiveOrganizationDescription": "Clerk の組織スイッチャーで組織を選択または作成してから、ここに戻ってください。",
     "adminOnlyTitle": "組織管理者が必要です",
@@ -2175,7 +2193,6 @@
     "previewDescription": "最後に保存した値を表示します。ライブラリはデプロイされません。",
     "activate": "有効化",
     "activating": "有効化中…",
-    "setupQueued": "設定をリビジョンとして保存しました。ライブラリのセットアップを続行できます。",
     "redeploymentQueued": "設定をリビジョンとして保存しました。再デプロイを待機中です。",
     "activationError": "保存済みの設定を有効化できませんでした。印の付いた項目を確認して、もう一度お試しください。"
   }

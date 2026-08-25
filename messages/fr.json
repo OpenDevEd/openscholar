@@ -2126,6 +2126,24 @@
     "reserving": "Réservation…",
     "continue": "Continuer",
     "createError": "La bibliothèque n'a pas pu être enregistrée. Réessayez.",
+    "status": {
+      "settingUpTitle": "Configuration en cours",
+      "currentStepLabel": "Étape en cours",
+      "readyTitle": "Prête",
+      "readyDescription": "Votre bibliothèque de données probantes est prête.",
+      "failedTitle": "Échec de la configuration",
+      "failedStepLabel": "Étape ayant échoué",
+      "retry": "Réessayer",
+      "retrying": "Nouvelle tentative…",
+      "retryError": "La configuration n'a pas pu redémarrer. Réessayez.",
+      "steps": {
+        "database": "Configuration de la base de données",
+        "storage": "Configuration du stockage de fichiers",
+        "application": "Création de l'application",
+        "deployment": "Déploiement de la bibliothèque",
+        "healthCheck": "Vérification de la bibliothèque"
+      }
+    },
     "noActiveOrganizationTitle": "Choisissez une organisation",
     "noActiveOrganizationDescription": "Sélectionnez ou créez une organisation avec le sélecteur Clerk, puis revenez ici.",
     "adminOnlyTitle": "Administration de l'organisation requise",
@@ -2175,7 +2193,6 @@
     "previewDescription": "Cet aperçu montre les dernières valeurs enregistrées. Il ne déploie pas la bibliothèque.",
     "activate": "Activer",
     "activating": "Activation…",
-    "setupQueued": "La configuration a été enregistrée comme révision. La création de la bibliothèque peut continuer.",
     "redeploymentQueued": "La configuration a été enregistrée comme révision. Le redéploiement est en attente.",
     "activationError": "La configuration enregistrée n'a pas pu être activée. Vérifiez le champ indiqué et réessayez."
   }

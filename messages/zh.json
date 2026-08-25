@@ -2126,6 +2126,24 @@
     "reserving": "正在预留…",
     "continue": "继续",
     "createError": "无法保存证据库，请重试。",
+    "status": {
+      "settingUpTitle": "正在设置",
+      "currentStepLabel": "当前步骤",
+      "readyTitle": "已就绪",
+      "readyDescription": "您的证据库已就绪。",
+      "failedTitle": "设置失败",
+      "failedStepLabel": "失败步骤",
+      "retry": "重试",
+      "retrying": "正在重试…",
+      "retryError": "无法重新启动设置，请重试。",
+      "steps": {
+        "database": "正在设置数据库",
+        "storage": "正在设置文件存储",
+        "application": "正在创建应用",
+        "deployment": "正在部署证据库",
+        "healthCheck": "正在检查证据库是否就绪"
+      }
+    },
     "noActiveOrganizationTitle": "请选择组织",
     "noActiveOrganizationDescription": "请使用 Clerk 组织切换器选择或创建组织，然后返回此页面。",
     "adminOnlyTitle": "需要组织管理员权限",
@@ -2175,7 +2193,6 @@
     "previewDescription": "此预览显示最近保存的值，不会部署证据库。",
     "activate": "激活",
     "activating": "正在激活…",
-    "setupQueued": "配置已保存为一个修订版本。现在可以继续设置证据库。",
     "redeploymentQueued": "配置已保存为一个修订版本。重新部署已进入队列。",
     "activationError": "无法激活已保存的配置。请检查标记的字段后重试。"
   }

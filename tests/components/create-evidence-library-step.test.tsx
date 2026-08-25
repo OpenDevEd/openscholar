@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   } as SetupSelection,
   push: vi.fn(),
   query: vi.fn(),
+  retrySetup: vi.fn(),
   setupSelectionOverride: null as null | SetupSelectionSetter,
   useOrganization: vi.fn(),
 }));
@@ -38,7 +39,8 @@ vi.mock("@clerk/nextjs", () => ({
 }));
 
 vi.mock("convex/react", () => ({
-  useMutation: () => mocks.createSetupDraft,
+  useMutation: (mutation: string) =>
+    mutation === "retrySetup" ? mocks.retrySetup : mocks.createSetupDraft,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -46,7 +48,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string) =>
+    ({
+      "status.retry": "Retry",
+      "status.retrying": "Retrying",
+    })[key] ?? key,
 }));
 
 vi.mock("nuqs", async (importOriginal) => {
@@ -67,7 +73,10 @@ vi.mock("nuqs", async (importOriginal) => {
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      mutations: { createSetupDraft: "createSetupDraft" },
+      mutations: {
+        createSetupDraft: "createSetupDraft",
+        retrySetup: "retrySetup",
+      },
       queries: {
         getSetupDraft: "getSetupDraft",
         getSetupDraftSelection: "getSetupDraftSelection",
@@ -101,7 +110,34 @@ const savedSetup = {
     slug: "saved-library",
   },
   library: { _id: "library_123" },
+  setupOperation: {
+    _id: "setup_operation_123",
+    status: "queued",
+    stage: "queued",
+  },
 };
+
+function savedSetupAt(
+  status: "running" | "succeeded" | "failed",
+  stage:
+    | "database"
+    | "storage"
+    | "application"
+    | "deployment"
+    | "health_check"
+    | "completed",
+  error?: { code: string; message: string; stage: string },
+) {
+  return {
+    ...savedSetup,
+    setupOperation: {
+      ...savedSetup.setupOperation,
+      status,
+      stage,
+      ...(error ? { error } : {}),
+    },
+  };
+}
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
@@ -134,6 +170,7 @@ describe("<CreateEvidenceLibraryStep>", () => {
     mocks.createSetupDraft.mockReset();
     mocks.push.mockReset();
     mocks.query.mockReset();
+    mocks.retrySetup.mockReset();
     mocks.latestSetupSelection = {
       libraryId: null,
       organizationId: null,
@@ -263,6 +300,93 @@ describe("<CreateEvidenceLibraryStep>", () => {
     expect(screen.getByLabelText("publicAddressLabel")).toHaveAttribute(
       "readonly",
     );
+  });
+
+  it.each([
+    "database",
+    "storage",
+    "application",
+    "deployment",
+    "health_check",
+  ] as const)("shows the saved running %s step", (stage) => {
+    mocks.useOrganization.mockReturnValue(activeAdminOrganization);
+    mocks.query.mockReturnValue({
+      data: savedSetupAt("running", stage),
+      isReady: true,
+    });
+
+    render(
+      <NuqsTestingAdapter searchParams="?libraryId=library_123&organizationId=org_climate">
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("data-setup-status", "running");
+    expect(status).toHaveAttribute("data-setup-step", stage);
+    expect(status).toHaveAccessibleDescription(/.+/);
+    expect(screen.queryByLabelText("libraryNameLabel")).not.toBeInTheDocument();
+  });
+
+  it("shows Ready from the saved completed operation", () => {
+    mocks.useOrganization.mockReturnValue(activeAdminOrganization);
+    mocks.query.mockReturnValue({
+      data: savedSetupAt("succeeded", "completed"),
+      isReady: true,
+    });
+
+    render(
+      <NuqsTestingAdapter searchParams="?libraryId=library_123&organizationId=org_climate">
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    expect(screen.getByRole("status")).toHaveAttribute(
+      "data-setup-status",
+      "ready",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "openAdmin" })).toHaveAttribute(
+      "href",
+      "/evidence-libraries/library_123/admin",
+    );
+  });
+
+  it("shows the saved failed step and error, then retries that library", async () => {
+    mocks.useOrganization.mockReturnValue(activeAdminOrganization);
+    mocks.query.mockReturnValue({
+      data: savedSetupAt("failed", "storage", {
+        code: "STORAGE_UNAVAILABLE",
+        message: "File storage could not be reached.",
+        stage: "storage",
+      }),
+      isReady: true,
+    });
+    mocks.retrySetup.mockResolvedValue({
+      operationId: "setup_operation_123",
+      status: "running",
+    });
+    const user = userEvent.setup();
+
+    render(
+      <NuqsTestingAdapter searchParams="?libraryId=library_123&organizationId=org_climate">
+        <CreateEvidenceLibraryStep />
+      </NuqsTestingAdapter>,
+    );
+
+    const failure = screen.getByRole("alert");
+    expect(failure).toHaveAttribute("data-setup-status", "failed");
+    expect(failure).toHaveAttribute("data-setup-step", "storage");
+    expect(failure).toHaveTextContent("File storage could not be reached.");
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(mocks.retrySetup).toHaveBeenCalledOnce();
+    expect(mocks.retrySetup).toHaveBeenCalledWith({
+      libraryId: "library_123",
+    });
   });
 
   it("treats a stale setup selection as a fresh form", () => {
@@ -420,7 +544,9 @@ describe("<CreateEvidenceLibraryStep>", () => {
     await user.type(screen.getByLabelText("libraryNameLabel"), "Library A");
     await user.click(screen.getByRole("button"));
     await waitFor(() => {
-      expect(mocks.createSetupDraft).toHaveBeenCalledWith({ name: "Library A" });
+      expect(mocks.createSetupDraft).toHaveBeenCalledWith({
+        name: "Library A",
+      });
     });
 
     mocks.useOrganization.mockReturnValue(organizationB);
@@ -432,7 +558,9 @@ describe("<CreateEvidenceLibraryStep>", () => {
     await user.type(screen.getByLabelText("libraryNameLabel"), "Library B");
     await user.click(screen.getByRole("button"));
     await waitFor(() => {
-      expect(mocks.createSetupDraft).toHaveBeenCalledWith({ name: "Library B" });
+      expect(mocks.createSetupDraft).toHaveBeenCalledWith({
+        name: "Library B",
+      });
     });
 
     await act(async () => {
