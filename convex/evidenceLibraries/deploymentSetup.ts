@@ -40,7 +40,7 @@ export const prepareDeploymentSetup = internalMutation({
     runtimeCommit: v.string(),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
-    applicationCheckedAt: v.number(),
+    deploymentNotBefore: v.number(),
     deploymentId: v.optional(v.string()),
     deploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
     pollCount: v.number(),
@@ -57,7 +57,8 @@ export const prepareDeploymentSetup = internalMutation({
       runtimeCommit: application.runtimeCommit,
       runtimeConfigSha256: application.runtimeConfigSha256,
       coolifyConfigHash: application.coolifyConfigHash,
-      applicationCheckedAt: application.checkedAt,
+      deploymentNotBefore:
+        setup.setupOperation.setupDeploymentNotBefore ?? application.checkedAt,
       ...(setup.setupOperation.setupDeploymentId === undefined
         ? {}
         : { deploymentId: setup.setupOperation.setupDeploymentId }),

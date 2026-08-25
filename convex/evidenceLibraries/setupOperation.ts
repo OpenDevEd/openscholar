@@ -407,6 +407,19 @@ export async function recordEvidenceLibrarySetupStep(
     operation.setupReceipts ?? {},
     receipt,
   );
+  let setupDeploymentNotBefore = operation.setupDeploymentNotBefore;
+  if (receipt.step === "application") {
+    const previous = operation.setupReceipts?.application;
+    const sameTarget =
+      previous?.applicationId === receipt.applicationId &&
+      previous.runtimeCommit === receipt.runtimeCommit &&
+      previous.runtimeConfigSha256 === receipt.runtimeConfigSha256 &&
+      previous.coolifyConfigHash === receipt.coolifyConfigHash;
+    setupDeploymentNotBefore =
+      receipt.outcome === "matched" && sameTarget
+        ? (setupDeploymentNotBefore ?? previous.checkedAt)
+        : receipt.checkedAt;
+  }
   const position = setupStagePosition(receipt.step);
   const nextStep = EVIDENCE_LIBRARY_SETUP_STEPS[position + 1] ?? null;
 
@@ -415,6 +428,9 @@ export async function recordEvidenceLibrarySetupStep(
       setupReceipts,
       stage: nextStep!,
       setupLeaseExpiresAt: now + EVIDENCE_LIBRARY_SETUP_LEASE_MS,
+      ...(receipt.step === "application"
+        ? { setupDeploymentNotBefore }
+        : {}),
       updatedAt: now,
     });
     return { nextStep, status: "running" as const };
@@ -476,6 +492,7 @@ export async function recordEvidenceLibrarySetupStep(
     setupRuntimeCommit: undefined,
     setupDeploymentId: undefined,
     setupDeploymentOutcome: undefined,
+    setupDeploymentNotBefore: undefined,
     setupDeploymentPollCount: undefined,
     setupReadinessPollCount: undefined,
     updatedAt: now,

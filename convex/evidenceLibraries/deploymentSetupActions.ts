@@ -69,7 +69,7 @@ export const runDeploymentSetup = internalAction({
           applicationUuid: prepared.applicationId,
           runtimeCommit: prepared.runtimeCommit,
           coolifyConfigHash: application.coolifyConfigHash,
-          notBefore: prepared.applicationCheckedAt,
+          notBefore: prepared.deploymentNotBefore,
         });
         if (selected.outcome === "adoption-unavailable") {
           throw new CoolifyClientError(

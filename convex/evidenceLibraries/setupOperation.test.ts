@@ -89,6 +89,7 @@ describe("fixed Evidence Library setup operation", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
   });
 
@@ -300,6 +301,70 @@ describe("fixed Evidence Library setup operation", () => {
         2,
       ),
     ).toEqual({ nextStep: "storage", status: "running" });
+  });
+
+  it("keeps the deployment cutoff when a retry finds the same application", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-25T10:00:00.000Z"));
+    const fixture = await createActivatedSetupFixture("deployment-cutoff");
+    const database = {
+      step: "database" as const,
+      outcome: "created" as const,
+      databaseName: "climate_library",
+      loginName: "climate_library",
+    };
+    const storage = {
+      step: "storage" as const,
+      outcome: "created" as const,
+      privateBucket: "climate-private",
+      publicBucket: "climate-public",
+    };
+    const application = {
+      step: "application" as const,
+      outcome: "created" as const,
+      applicationId: "coolify-app-cutoff",
+      runtimeCommit,
+      runtimeConfigSha256,
+      coolifyConfigHash,
+    };
+    await record(fixture, database);
+    await record(fixture, storage);
+    await record(fixture, application);
+    const firstCutoff = await fixture.t.run(async (ctx) =>
+      (await ctx.db.get(fixture.created.setupOperationId))
+        ?.setupDeploymentNotBefore,
+    );
+    expect(firstCutoff).toBe(Date.now());
+
+    await fixture.t.mutation(
+      internal.evidenceLibraries.setupOperation.failSetupOperation,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: fixture.created.setupOperationId,
+        attemptToken: fixture.attemptToken,
+        attemptCount: fixture.attemptCount,
+        expectedStage: "deployment",
+        error: {
+          code: "READINESS_FAILED",
+          message: "The first deployment was not ready",
+        },
+      },
+    );
+    vi.advanceTimersByTime(60_000);
+    await claim(fixture, "attempt-2");
+    await record(fixture, { ...database, outcome: "matched" }, "attempt-2", 2);
+    await record(fixture, { ...storage, outcome: "matched" }, "attempt-2", 2);
+    await record(
+      fixture,
+      { ...application, outcome: "matched" },
+      "attempt-2",
+      2,
+    );
+    const retried = await fixture.t.run(async (ctx) =>
+      ctx.db.get(fixture.created.setupOperationId),
+    );
+    expect(retried?.setupDeploymentNotBefore).toBe(firstCutoff);
+    expect(retried?.setupReceipts?.application.checkedAt).toBe(Date.now());
   });
 
   it("activates only after readiness proves the requested revision", async () => {
