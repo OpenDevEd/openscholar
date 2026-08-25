@@ -21,11 +21,12 @@ import {
   essentialConfigurationSectionsValidator,
   evidenceLibraryReconcileOutcomeValidator,
 } from "./validators";
-
-const SEARCH_KEY_PATH = "/services/search/key";
-const AUTHENTICATION_SECRET_PATH = "/authentication/secret";
-const DATABASE_URL_PATH = "/services/database/url";
-const STORAGE_SERVICE_KEY_PATH = "/services/storage/serviceRoleKey";
+import {
+  AUTHENTICATION_SECRET_PATH,
+  DATABASE_URL_PATH,
+  SEARCH_KEY_PATH,
+  STORAGE_SERVICE_KEY_PATH,
+} from "./runtimeCredentials";
 
 function requireRuntimeCommit(value: string): string {
   const commit = requireNonBlankProvisioningValue("runtimeCommit", value);

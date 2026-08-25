@@ -1,15 +1,11 @@
 "use node";
 
-import { createHash } from "node:crypto";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import {
-  assembleEvidenceLibraryConfiguration,
-  ConfigurationAssemblyError,
-} from "../../lib/evidence-libraries/configuration/assembly";
-import { decrypt, encrypt, getKeyPrefix } from "../lib/crypto";
+import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
+import { encrypt, getKeyPrefix } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import { generateOpaqueToken } from "../lib/opaqueToken";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
@@ -17,9 +13,11 @@ import {
   CoolifyClientError,
   reconcileCoolifyApplication,
 } from "./coolifyClient";
-
-const SEARCH_HOST = "http://meilisearch:7700";
-const SEARCH_INDEX = "evidence_library";
+import {
+  assembleEvidenceLibraryRuntimePayload,
+  EVIDENCE_LIBRARY_SEARCH_HOST,
+  EVIDENCE_LIBRARY_SEARCH_INDEX,
+} from "./runtimeConfiguration";
 
 function requireEnvironmentValue(name: string): string {
   const value = process.env[name]?.trim();
@@ -115,50 +113,29 @@ export const runApplicationSetup = internalAction({
       const storageMaxPdfBytes = requirePositiveIntegerEnvironment(
         "EL_STORAGE_MAX_PDF_BYTES",
       );
-      const resolvedSearchKey = decrypt(
-        prepared.encryptedSearchKey,
+      const configuration = assembleEvidenceLibraryRuntimePayload({
         encryptionKey,
-      );
-      const configuration = assembleEvidenceLibraryConfiguration({
+        libraryId: args.libraryId,
+        revisionKey: prepared.revisionKey,
+        revisionCreatedAt: prepared.revisionCreatedAt,
+        appOrigin,
+        convexSiteUrl: requireHttpsOrigin("EL_CONVEX_SITE_URL"),
         sections: prepared.sections,
-        managed: {
-          revision: prepared.revisionKey,
-          updatedAt: new Date(prepared.revisionCreatedAt).toISOString(),
-          libraryId: args.libraryId,
-          convexSiteUrl: requireHttpsOrigin("EL_CONVEX_SITE_URL"),
-          loginPageUrl: new URL(
-            `/evidence-libraries/${encodeURIComponent(args.libraryId)}/admin`,
-            appOrigin,
-          ).toString(),
-          machineCredential: decrypt(
-            prepared.encryptedMachineCredential,
-            encryptionKey,
-          ),
-          authenticationSecret: decrypt(
-            prepared.encryptedAuthenticationSecret,
-            encryptionKey,
-          ),
-          databaseUrl: decrypt(prepared.encryptedDatabaseUrl, encryptionKey),
-          searchHost: SEARCH_HOST,
-          searchKey: resolvedSearchKey,
-          searchIndex: SEARCH_INDEX,
-          storageUrl,
-          storageServiceRoleKey: decrypt(
-            prepared.encryptedStorageServiceRoleKey,
-            encryptionKey,
-          ),
-          storagePrivateBucket: prepared.storagePrivateBucket,
-          storagePublicBucket: prepared.storagePublicBucket,
-          storageMaxPdfBytes,
-          zoteroTranslationUrl: optionalEnvironmentValue(
-            "EL_ZOTERO_TRANSLATION_URL",
-          ),
-        },
+        encryptedMachineCredential: prepared.encryptedMachineCredential,
+        encryptedAuthenticationSecret: prepared.encryptedAuthenticationSecret,
+        encryptedDatabaseUrl: prepared.encryptedDatabaseUrl,
+        searchHost: EVIDENCE_LIBRARY_SEARCH_HOST,
+        encryptedSearchKey: prepared.encryptedSearchKey,
+        searchIndex: EVIDENCE_LIBRARY_SEARCH_INDEX,
+        storageUrl,
+        encryptedStorageServiceRoleKey: prepared.encryptedStorageServiceRoleKey,
+        storagePrivateBucket: prepared.storagePrivateBucket,
+        storagePublicBucket: prepared.storagePublicBucket,
+        storageMaxPdfBytes,
+        zoteroTranslationUrl: optionalEnvironmentValue(
+          "EL_ZOTERO_TRANSLATION_URL",
+        ),
       });
-      const runtimeConfigJson = JSON.stringify(configuration);
-      const runtimeConfigSha256 = createHash("sha256")
-        .update(runtimeConfigJson)
-        .digest("hex");
       const application = await reconcileCoolifyApplication({
         coolifyUrl: requireEnvironmentValue("EL_COOLIFY_URL"),
         token: requireEnvironmentValue("EL_COOLIFY_TOKEN"),
@@ -169,8 +146,8 @@ export const runApplicationSetup = internalAction({
         libraryId: args.libraryId,
         targetBaseUrl: prepared.targetBaseUrl,
         runtimeCommit: prepared.runtimeCommit,
-        runtimeConfigJson,
-        searchKey: resolvedSearchKey,
+        runtimeConfigJson: configuration.runtimeConfigJson,
+        searchKey: configuration.configuration.services.search.key,
       });
       return await ctx.runMutation(
         internal.evidenceLibraries.applicationSetup.completeApplicationSetup,
@@ -179,10 +156,10 @@ export const runApplicationSetup = internalAction({
           outcome: application.outcome,
           applicationId: application.applicationId,
           runtimeCommit: prepared.runtimeCommit,
-          runtimeConfigSha256,
+          runtimeConfigSha256: configuration.runtimeConfigSha256,
           coolifyConfigHash: application.coolifyConfigHash,
-          searchHost: SEARCH_HOST,
-          searchIndex: SEARCH_INDEX,
+          searchHost: EVIDENCE_LIBRARY_SEARCH_HOST,
+          searchIndex: EVIDENCE_LIBRARY_SEARCH_INDEX,
           storageUrl,
           storagePrivateBucket: prepared.storagePrivateBucket,
           storagePublicBucket: prepared.storagePublicBucket,
