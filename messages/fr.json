@@ -2131,6 +2131,19 @@
     "adminOnlyTitle": "Administration de l'organisation requise",
     "adminOnlyDescription": "Seul un administrateur de l'organisation peut créer sa bibliothèque."
   },
+  "evidenceLibraryAdminLaunch": {
+    "title": "Ouvrir l'administration de la bibliothèque",
+    "description": "Ouvrez l'éditeur de notices de cette bibliothèque.",
+    "noAccessTitle": "Bibliothèque indisponible",
+    "noAccessDescription": "Choisissez l'organisation propriétaire de cette bibliothèque, puis réessayez.",
+    "notReadyTitle": "La bibliothèque n'est pas encore prête",
+    "notReadyDescription": "Vous pourrez ouvrir l'administration une fois la configuration terminée.",
+    "readyTitle": "Ouvrir {libraryName}",
+    "readyDescription": "OpenScholar vous connectera comme propriétaire ou éditeur selon votre rôle actuel dans l'organisation.",
+    "openAdmin": "Ouvrir l'administration",
+    "openingAdmin": "Ouverture de l'administration…",
+    "openError": "OpenScholar n'a pas pu ouvrir l'administration. Vérifiez votre connexion et votre session, puis réessayez. Si le problème persiste, demandez à un administrateur de vérifier la bibliothèque et le serveur."
+  },
   "evidenceLibraryConfigurationShell": {
     "eyebrow": "Bibliothèque de données probantes",
     "description": "Choisissez l'identité, l'apparence et les langues visibles par le public.",

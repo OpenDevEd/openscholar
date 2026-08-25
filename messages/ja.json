@@ -2131,6 +2131,19 @@
     "adminOnlyTitle": "組織管理者が必要です",
     "adminOnlyDescription": "エビデンスライブラリを作成できるのは組織管理者だけです。"
   },
+  "evidenceLibraryAdminLaunch": {
+    "title": "ライブラリの管理画面を開く",
+    "description": "このエビデンスライブラリのレコード編集画面を開きます。",
+    "noAccessTitle": "ライブラリを利用できません",
+    "noAccessDescription": "このライブラリを所有する組織を選択して、もう一度お試しください。",
+    "notReadyTitle": "ライブラリはまだ準備中です",
+    "notReadyDescription": "セットアップが完了すると管理画面を開けます。",
+    "readyTitle": "{libraryName} を開く",
+    "readyDescription": "OpenScholar が現在の組織ロールに基づいて、所有者または編集者としてサインインします。",
+    "openAdmin": "管理画面を開く",
+    "openingAdmin": "管理画面を開いています…",
+    "openError": "OpenScholar で管理画面を開けませんでした。接続とサインインを確認して、もう一度お試しください。解決しない場合は、管理者にライブラリとサーバーの確認を依頼してください。"
+  },
   "evidenceLibraryConfigurationShell": {
     "eyebrow": "エビデンスライブラリ",
     "description": "公開する名前、ブランド、言語を選びます。",

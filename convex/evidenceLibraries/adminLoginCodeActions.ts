@@ -14,14 +14,19 @@ export const issueAdminLoginCode = action({
   returns: v.object({
     code: v.string(),
     expiresAt: v.number(),
+    launchUrl: v.string(),
   }),
-  handler: async (ctx, args): Promise<{ code: string; expiresAt: number }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ code: string; expiresAt: number; launchUrl: string }> => {
     const code = generateOpaqueToken("elc_");
     const issuedAt = Date.now();
     const stored: {
       codeId: Id<"evidenceLibraryAdminLoginCodes">;
       expiresAt: number;
       role: "owner" | "editor";
+      targetBaseUrl: string;
     } = await ctx.runMutation(
       internal.evidenceLibraries.adminLoginCodes.storeIssuedCode,
       {
@@ -31,6 +36,12 @@ export const issueAdminLoginCode = action({
         expiresAt: issuedAt + ADMIN_LOGIN_CODE_TTL_MS,
       },
     );
-    return { code, expiresAt: stored.expiresAt };
+    const launchUrl = new URL("/api/admin/session", stored.targetBaseUrl);
+    launchUrl.searchParams.set("code", code);
+    return {
+      code,
+      expiresAt: stored.expiresAt,
+      launchUrl: launchUrl.toString(),
+    };
   },
 });

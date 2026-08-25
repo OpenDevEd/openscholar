@@ -15,10 +15,19 @@ export async function readEvidenceLibrarySetupRecords(
   ctx: SetupReadCtx,
   library: Doc<"evidenceLibraries">,
 ) {
+  const setup = await findEvidenceLibrarySetupRecords(ctx, library);
+  if (!setup) return incompleteSetup();
+  return setup;
+}
+
+export async function findEvidenceLibrarySetupRecords(
+  ctx: SetupReadCtx,
+  library: Doc<"evidenceLibraries">,
+) {
   const { draftId, latestRevisionId, runtimeBindingId, setupOperationId } =
     library;
   if (!draftId || !latestRevisionId || !runtimeBindingId || !setupOperationId) {
-    return incompleteSetup();
+    return null;
   }
 
   const [draft, revision, runtimeBinding, setupOperation] = await Promise.all([
@@ -39,7 +48,7 @@ export async function readEvidenceLibrarySetupRecords(
     setupOperation.libraryId !== library._id ||
     setupOperation.kind !== "setup"
   ) {
-    return incompleteSetup();
+    return null;
   }
 
   return {
@@ -50,4 +59,46 @@ export async function readEvidenceLibrarySetupRecords(
     runtimeBinding,
     setupOperation,
   };
+}
+
+export async function readEvidenceLibraryAdminLaunchTarget(
+  ctx: SetupReadCtx,
+  library: Doc<"evidenceLibraries">,
+): Promise<string | null> {
+  const { activeRevisionId, runtimeBindingId, setupOperationId } = library;
+  if (
+    library.state !== "active" ||
+    !activeRevisionId ||
+    !runtimeBindingId ||
+    !setupOperationId
+  ) {
+    return null;
+  }
+
+  const [activeRevision, runtimeBinding, deploymentOperation] =
+    await Promise.all([
+      ctx.db.get("evidenceLibraryConfigRevisions", activeRevisionId),
+      ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId),
+      ctx.db.get("evidenceLibraryConfigOperations", setupOperationId),
+    ]);
+  if (
+    !activeRevision ||
+    activeRevision.libraryId !== library._id ||
+    !runtimeBinding ||
+    runtimeBinding.libraryId !== library._id ||
+    runtimeBinding.state !== "ready" ||
+    !deploymentOperation ||
+    deploymentOperation.libraryId !== library._id ||
+    deploymentOperation.kind !== "setup" ||
+    deploymentOperation.revisionId !== activeRevision._id ||
+    deploymentOperation.status !== "succeeded" ||
+    deploymentOperation.stage !== "completed" ||
+    deploymentOperation.receipt?.revisionKey !== activeRevision.revisionKey ||
+    !deploymentOperation.receipt.runtimeReceiptId ||
+    deploymentOperation.receipt.activatedAt === undefined
+  ) {
+    return null;
+  }
+
+  return runtimeBinding.targetBaseUrl;
 }

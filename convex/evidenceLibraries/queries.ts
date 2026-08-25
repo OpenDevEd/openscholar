@@ -17,7 +17,10 @@ import {
   sectionKeyValidator,
 } from "./validators";
 import { readEvidenceLibrarySetupIdentity } from "./setupNaming";
-import { readEvidenceLibrarySetupRecords } from "./setupRecords";
+import {
+  readEvidenceLibraryAdminLaunchTarget,
+  readEvidenceLibrarySetupRecords,
+} from "./setupRecords";
 
 const {
   setupEncryptedDatabasePassword: _encryptedDatabasePasswordValidator,
@@ -44,6 +47,37 @@ export const listLibraries = query({
     }),
   ),
   handler: readEvidenceLibraries,
+});
+
+export const getAdminLaunchState = query({
+  args: { libraryId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      libraryId: v.id("evidenceLibraries"),
+      libraryName: v.string(),
+      status: v.union(v.literal("not_ready"), v.literal("ready")),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const access = await requireOrganizationAccess(ctx, "read");
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
+    if (!libraryId) return null;
+
+    const library = await ctx.db.get("evidenceLibraries", libraryId);
+    if (!library || library.organizationId !== access.organization._id) {
+      return null;
+    }
+    const targetBaseUrl = await readEvidenceLibraryAdminLaunchTarget(
+      ctx,
+      library,
+    );
+    return {
+      libraryId,
+      libraryName: library.name,
+      status: targetBaseUrl ? ("ready" as const) : ("not_ready" as const),
+    };
+  },
 });
 
 const evidenceLibrarySetupResultValidator = v.object({

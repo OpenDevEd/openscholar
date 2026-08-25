@@ -22,7 +22,7 @@ export async function createActivatedSetupFixture(suffix: string) {
   const t = convexTest(schema, modules);
   const clerkOrganizationId = `org_${suffix}`;
   const clerkUserId = `user_${suffix}`;
-  await t.run(async (ctx) => {
+  const { membershipId, organizationId } = await t.run(async (ctx) => {
     const organizationId = await ctx.db.insert("organizations", {
       clerkOrganizationId,
       name: `Team ${suffix}`,
@@ -33,7 +33,7 @@ export async function createActivatedSetupFixture(suffix: string) {
       createdAt: 1,
       updatedAt: 1,
     });
-    await ctx.db.insert("organizationMemberships", {
+    const membershipId = await ctx.db.insert("organizationMemberships", {
       organizationId,
       clerkMembershipId: `orgmem_${suffix}`,
       clerkUserId,
@@ -44,6 +44,7 @@ export async function createActivatedSetupFixture(suffix: string) {
       createdAt: 1,
       updatedAt: 1,
     });
+    return { membershipId, organizationId };
   });
   const admin = t.withIdentity({
     subject: clerkUserId,
@@ -75,7 +76,11 @@ export async function createActivatedSetupFixture(suffix: string) {
   return {
     activated,
     admin,
+    clerkOrganizationId,
+    clerkUserId,
     created,
+    membershipId,
+    organizationId,
     t,
     attemptToken: operation.setupAttemptToken,
     attemptCount: operation.attemptCount,
@@ -175,4 +180,18 @@ export async function createDeployedSetupFixture(suffix: string) {
     applicationId: `coolify-${suffix}`,
     deploymentId: `deployment-${suffix}`,
   };
+}
+
+export async function createReadySetupFixture(suffix: string) {
+  const fixture = await createDeployedSetupFixture(suffix);
+  await fixture.t.mutation(
+    internal.evidenceLibraries.readinessSetup.completeReadinessSetup,
+    {
+      libraryId: fixture.created.libraryId,
+      operationId: fixture.created.setupOperationId,
+      attemptToken: fixture.attemptToken,
+      attemptCount: fixture.attemptCount,
+    },
+  );
+  return fixture;
 }

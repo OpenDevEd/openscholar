@@ -2131,6 +2131,19 @@
     "adminOnlyTitle": "需要组织管理员权限",
     "adminOnlyDescription": "只有组织管理员可以创建该组织的证据库。"
   },
+  "evidenceLibraryAdminLaunch": {
+    "title": "打开证据库管理区",
+    "description": "打开此证据库的记录编辑器。",
+    "noAccessTitle": "无法访问证据库",
+    "noAccessDescription": "请选择拥有此证据库的组织，然后重试。",
+    "notReadyTitle": "证据库尚未就绪",
+    "notReadyDescription": "设置完成后即可打开管理区。",
+    "readyTitle": "打开 {libraryName}",
+    "readyDescription": "OpenScholar 会根据您当前的组织角色，以所有者或编辑者身份登录。",
+    "openAdmin": "打开管理区",
+    "openingAdmin": "正在打开管理区…",
+    "openError": "OpenScholar 无法打开管理区。请检查网络连接和登录状态，然后重试。如果仍然失败，请让管理员检查证据库和服务器。"
+  },
   "evidenceLibraryConfigurationShell": {
     "eyebrow": "证据库",
     "description": "选择向用户显示的名称、品牌和语言。",
