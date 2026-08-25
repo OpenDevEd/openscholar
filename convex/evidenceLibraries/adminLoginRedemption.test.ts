@@ -1,51 +1,21 @@
 /// <reference types="vite/client" />
 import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const encryptionKey = "ab".repeat(32);
 const redemptionPath = "/api/v1/evidence-libraries/admin-login/redeem";
 
 async function seedRedemptionScenario() {
-  const t = convexTest(schema, modules);
-  const seeded = await t.run(async (ctx) => {
-    const organizationId = await ctx.db.insert("organizations", {
-      clerkOrganizationId: "org_admin_login_redemption",
-      name: "Admin Login Redemption Team",
-      slug: "admin-login-redemption-team",
-      state: "active",
-      clerkCreatedAt: 1,
-      clerkUpdatedAt: 1,
-      createdAt: 1,
-      updatedAt: 1,
-    });
-    const membershipId = await ctx.db.insert("organizationMemberships", {
-      organizationId,
-      clerkMembershipId: "orgmem_admin_login_redemption",
-      clerkUserId: "user_admin_login_redemption",
-      role: "org:admin",
-      state: "active",
-      clerkCreatedAt: 1,
-      clerkUpdatedAt: 1,
-      createdAt: 1,
-      updatedAt: 1,
-    });
-    const libraryId = await ctx.db.insert("evidenceLibraries", {
-      organizationId,
-      name: "Admin Login Redemption Library",
-      slug: "admin-login-redemption-library",
-      state: "active",
-      createdByClerkUserId: "user_admin_login_redemption",
-      updatedByClerkUserId: "user_admin_login_redemption",
-      createdAt: 1,
-      updatedAt: 1,
-    });
+  const fixture = await createReadySetupFixture("admin_login_redemption");
+  const secondLibraryId = await fixture.t.run(async (ctx) => {
     const secondLibraryId = await ctx.db.insert("evidenceLibraries", {
-      organizationId,
+      organizationId: fixture.organizationId,
       name: "Second Admin Login Redemption Library",
       slug: "second-admin-login-redemption-library",
       state: "active",
@@ -54,13 +24,16 @@ async function seedRedemptionScenario() {
       createdAt: 1,
       updatedAt: 1,
     });
-    return { libraryId, membershipId, organizationId, secondLibraryId };
+    return secondLibraryId;
   });
-  const owner = t.withIdentity({
-    subject: "user_admin_login_redemption",
-    o: { id: "org_admin_login_redemption", rol: "org:admin" },
-  });
-  return { owner, t, ...seeded };
+  return {
+    libraryId: fixture.created.libraryId,
+    membershipId: fixture.membershipId,
+    organizationId: fixture.organizationId,
+    owner: fixture.admin,
+    secondLibraryId,
+    t: fixture.t,
+  };
 }
 
 async function issueRedemptionPair(
@@ -113,7 +86,9 @@ async function readCodeRow(
 
 async function updateMembership(
   t: Awaited<ReturnType<typeof seedRedemptionScenario>>["t"],
-  membershipId: Awaited<ReturnType<typeof seedRedemptionScenario>>["membershipId"],
+  membershipId: Awaited<
+    ReturnType<typeof seedRedemptionScenario>
+  >["membershipId"],
   updates: {
     role?: "org:admin" | "org:member";
     state?: "active" | "revoked";
@@ -125,6 +100,10 @@ async function updateMembership(
 }
 
 describe("Evidence Library admin login redemption", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
   });
@@ -274,9 +253,16 @@ describe("Evidence Library admin login redemption", () => {
       code: loginCode.code,
     };
 
-    const responses = await Promise.all([redeem(t, request), redeem(t, request)]);
-    expect(responses.map((response) => response.status).sort()).toEqual([200, 400]);
-    const bodies = await Promise.all(responses.map((response) => response.json()));
+    const responses = await Promise.all([
+      redeem(t, request),
+      redeem(t, request),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      200, 400,
+    ]);
+    const bodies = await Promise.all(
+      responses.map((response) => response.json()),
+    );
     expect(bodies).toContainEqual({ error: "invalid_login_code" });
 
     const auditRows = await t.run(async (ctx) =>
@@ -310,7 +296,9 @@ describe("Evidence Library admin login redemption", () => {
     await expect(rejected.json()).resolves.toEqual({
       error: "invalid_service_credential",
     });
-    expect((await readCodeRow(t, libraryId, loginCode.code)).consumedAt).toBeUndefined();
+    expect(
+      (await readCodeRow(t, libraryId, loginCode.code)).consumedAt,
+    ).toBeUndefined();
 
     const accepted = await redeem(t, {
       libraryId,
@@ -342,7 +330,9 @@ describe("Evidence Library admin login redemption", () => {
     await expect(rejected.json()).resolves.toEqual({
       error: "invalid_login_code",
     });
-    expect((await readCodeRow(t, libraryId, loginCode.code)).consumedAt).toBeUndefined();
+    expect(
+      (await readCodeRow(t, libraryId, loginCode.code)).consumedAt,
+    ).toBeUndefined();
 
     const accepted = await redeem(t, {
       libraryId,
@@ -376,7 +366,9 @@ describe("Evidence Library admin login redemption", () => {
     await expect(rejected.json()).resolves.toEqual({
       error: "invalid_login_code",
     });
-    expect((await readCodeRow(t, libraryId, loginCode.code)).consumedAt).toBeUndefined();
+    expect(
+      (await readCodeRow(t, libraryId, loginCode.code)).consumedAt,
+    ).toBeUndefined();
   });
 
   it.each([
@@ -409,7 +401,9 @@ describe("Evidence Library admin login redemption", () => {
     await expect(rejected.json()).resolves.toEqual({
       error: "invalid_login_code",
     });
-    expect((await readCodeRow(t, libraryId, loginCode.code)).consumedAt).toBeUndefined();
+    expect(
+      (await readCodeRow(t, libraryId, loginCode.code)).consumedAt,
+    ).toBeUndefined();
 
     await updateMembership(t, membershipId, scenario.restoreWith);
     const accepted = await redeem(t, {

@@ -2,11 +2,13 @@ import { internalMutation, type MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { writeAuditLogRecord } from "../lib/audit";
+import { createError } from "../lib/errors";
 import {
   mapOrganizationRoleToAdminRole,
   requireEvidenceLibraryAccess,
 } from "./access";
 import { findMatchingLibraryServiceCredential } from "./credentials";
+import { readEvidenceLibraryAdminLaunchTarget } from "./setupRecords";
 import { evidenceLibraryAdminRoleValidator } from "./validators";
 
 export type AdminLoginRedemptionResult =
@@ -31,7 +33,18 @@ export async function storeIssuedAdminLoginCode(
     expiresAt: number;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "read",
+  );
+  const targetBaseUrl = await readEvidenceLibraryAdminLaunchTarget(
+    ctx,
+    access.library,
+  );
+  if (!targetBaseUrl) {
+    throw createError("CONFLICT", "Evidence Library is not ready");
+  }
   const role = mapOrganizationRoleToAdminRole(access.role);
   const codeId = await ctx.db.insert("evidenceLibraryAdminLoginCodes", {
     libraryId: args.libraryId,
@@ -52,7 +65,7 @@ export async function storeIssuedAdminLoginCode(
       role,
     },
   });
-  return { codeId, expiresAt: args.expiresAt, role };
+  return { codeId, expiresAt: args.expiresAt, role, targetBaseUrl };
 }
 
 export const storeIssuedCode = internalMutation({
@@ -66,6 +79,7 @@ export const storeIssuedCode = internalMutation({
     codeId: v.id("evidenceLibraryAdminLoginCodes"),
     expiresAt: v.number(),
     role: evidenceLibraryAdminRoleValidator,
+    targetBaseUrl: v.string(),
   }),
   handler: storeIssuedAdminLoginCode,
 });
@@ -129,7 +143,9 @@ export async function redeemAdminLoginCode(
     return { kind: "invalid_code" };
   }
 
-  await ctx.db.patch("evidenceLibraryAdminLoginCodes", code._id, { consumedAt });
+  await ctx.db.patch("evidenceLibraryAdminLoginCodes", code._id, {
+    consumedAt,
+  });
   await writeAuditLogRecord(ctx, {
     action: "evidence_library.admin_login_code.redeemed",
     userId: code.clerkUserId,

@@ -1,9 +1,13 @@
 /// <reference types="vite/client" />
 import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import {
+  createDeployedSetupFixture,
+  createReadySetupFixture,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -53,15 +57,35 @@ async function seedMember(
   return { member, t, ...seeded };
 }
 
+async function seedReadyMember(role: "org:admin" | "org:member") {
+  const fixture = await createReadySetupFixture("admin_login_code");
+  if (role === "org:member") {
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.membershipId, { role });
+    });
+  }
+  const member = fixture.t.withIdentity({
+    subject: fixture.clerkUserId,
+    o: { id: fixture.clerkOrganizationId, rol: role },
+  });
+  return { ...fixture, libraryId: fixture.created.libraryId, member };
+}
+
 describe("Evidence Library admin login codes", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+  });
+
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   it("issues an opaque five-minute Owner code and stores only its digest", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-24T14:00:00.000Z"));
-    const { libraryId, member, organizationId, t } = await seedMember("org:admin");
+    const { created, libraryId, member, organizationId, t } =
+      await seedReadyMember("org:admin");
 
     const issued = await member.action(
       api.evidenceLibraries.adminLoginCodeActions.issueAdminLoginCode,
@@ -70,6 +94,10 @@ describe("Evidence Library admin login codes", () => {
 
     expect(issued.code).toMatch(/^elc_[A-Za-z0-9_-]{43}$/);
     expect(issued.expiresAt).toBe(Date.now() + 5 * 60 * 1000);
+    const launchUrl = new URL(issued.launchUrl);
+    expect(launchUrl.origin).toBe(new URL(created.publicAddress).origin);
+    expect(launchUrl.pathname).toBe("/api/admin/session");
+    expect(launchUrl.searchParams.get("code")).toBe(issued.code);
 
     const rows = await t.run(async (ctx) =>
       ctx.db
@@ -120,7 +148,7 @@ describe("Evidence Library admin login codes", () => {
   });
 
   it("binds an active Editor code to the mapped Editor role", async () => {
-    const { libraryId, member, t } = await seedMember("org:member");
+    const { libraryId, member, t } = await seedReadyMember("org:member");
 
     const issued = await member.action(
       api.evidenceLibraries.adminLoginCodeActions.issueAdminLoginCode,
@@ -141,6 +169,77 @@ describe("Evidence Library admin login codes", () => {
         .take(2),
     );
     expect(rows).toEqual([expect.objectContaining({ role: "editor" })]);
+  });
+
+  it("shows launch readiness to the owning organization without exposing another organization's library", async () => {
+    const { libraryId, member, t } = await seedReadyMember("org:member");
+
+    await expect(
+      member.query(api.evidenceLibraries.queries.getAdminLaunchState, {
+        libraryId,
+      }),
+    ).resolves.toEqual({
+      libraryId,
+      libraryName: "Climate Evidence",
+      status: "ready",
+    });
+
+    const otherLibraryId = await t.run(async (ctx) => {
+      const otherOrganizationId = await ctx.db.insert("organizations", {
+        clerkOrganizationId: "org_hidden",
+        name: "Hidden Team",
+        slug: "hidden-team",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      return await ctx.db.insert("evidenceLibraries", {
+        organizationId: otherOrganizationId,
+        name: "Hidden Library",
+        slug: "hidden-library",
+        state: "active",
+        createdByClerkUserId: "user_hidden",
+        updatedByClerkUserId: "user_hidden",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+
+    await expect(
+      member.query(api.evidenceLibraries.queries.getAdminLaunchState, {
+        libraryId: otherLibraryId,
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it("does not issue or advertise a code before the library runtime is ready", async () => {
+    const fixture = await createDeployedSetupFixture(
+      "admin_login_code_not_ready",
+    );
+    const libraryId = fixture.created.libraryId;
+
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.queries.getAdminLaunchState, {
+        libraryId,
+      }),
+    ).resolves.toEqual({
+      libraryId,
+      libraryName: "Climate Evidence",
+      status: "not_ready",
+    });
+    await expect(
+      fixture.admin.action(
+        api.evidenceLibraries.adminLoginCodeActions.issueAdminLoginCode,
+        { libraryId },
+      ),
+    ).rejects.toThrow(/Evidence Library is not ready/);
+
+    const rows = await fixture.t.run(async (ctx) =>
+      ctx.db.query("evidenceLibraryAdminLoginCodes").take(1),
+    );
+    expect(rows).toHaveLength(0);
   });
 
   it.each([
