@@ -91,6 +91,7 @@ describe("Evidence Library deployment setup", () => {
       ),
     ).toMatchObject({
       applicationId: "coolify-application-deployment",
+      applicationCheckedAt: expect.any(Number),
       runtimeCommit: "a".repeat(40),
       runtimeConfigSha256: "b".repeat(64),
       coolifyConfigHash: "c".repeat(64),

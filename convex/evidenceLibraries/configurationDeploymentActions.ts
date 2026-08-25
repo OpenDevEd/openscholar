@@ -189,6 +189,7 @@ export const runConfigurationDeployment = internalAction({
             applicationUuid: target.applicationId,
             runtimeCommit: target.runtimeCommit,
             coolifyConfigHash: application.coolifyConfigHash,
+            notBefore: target.savedAt,
           });
           if (selected.outcome === "adoption-unavailable") {
             throw new CoolifyClientError(
@@ -220,6 +221,7 @@ export const runConfigurationDeployment = internalAction({
           applicationUuid: target.applicationId,
           runtimeCommit: target.runtimeCommit,
           coolifyConfigHash: application.coolifyConfigHash,
+          notBefore: target.savedAt,
         });
         if (selected.outcome === "adoption-unavailable") {
           throw new CoolifyClientError(
