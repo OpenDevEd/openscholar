@@ -12,8 +12,8 @@ const MAX_DEPLOYMENTS = 100;
 const UUID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
-const NUMERIC_ID = /^[1-9][0-9]*$/u;
-const LIBRARY_ID = /^[a-z0-9]{1,64}$/u;
+const COOLIFY_CONFIG_HASH = /^(?:[a-f0-9]{32}|[a-f0-9]{64})$/u;
+const LIBRARY_ID = /^[A-Za-z0-9]{1,64}$/u;
 
 const GIT_REPOSITORY = "OpenDevEd/new-el";
 const GIT_BRANCH = "main";
@@ -45,6 +45,19 @@ export type CoolifyApplicationResult = {
   coolifyConfigHash: string;
 };
 
+export type CoolifyConfigurationUpdateResult = {
+  applicationUuid: string;
+  runtimeCommit: string;
+  runtimeConfigSha256: string;
+  coolifyConfigHash: string;
+};
+
+export type CoolifyBoundApplication = {
+  applicationUuid: string;
+  runtimeCommit: string;
+  coolifyConfigHash: string;
+};
+
 export type CoolifyDeploymentStatus =
   | "queued"
   | "in_progress"
@@ -59,7 +72,6 @@ export type CoolifyDeploymentState =
   | "cancelled";
 
 export type CoolifyDeployment = {
-  applicationId: string;
   deploymentUuid: string;
   runtimeCommit: string;
   coolifyConfigHash: string | null;
@@ -83,7 +95,7 @@ export type CoolifyDeploymentSelection =
   | {
       outcome: "adoption-unavailable";
       applicationUuid: string;
-      reason: "configuration-hash-missing" | "deployment-history-truncated";
+      reason: "configuration-hash-missing";
     };
 
 export type CoolifyDeploymentList = {
@@ -98,6 +110,18 @@ export class CoolifyClientError extends Error {
   ) {
     super(message);
     this.name = "CoolifyClientError";
+  }
+}
+
+export function requireMatchingCoolifyDeployment(
+  deployment: CoolifyDeployment,
+  expected: { runtimeCommit: string },
+): void {
+  if (deployment.runtimeCommit !== expected.runtimeCommit) {
+    throw new CoolifyClientError(
+      "COOLIFY_DEPLOYMENT_CONFLICT",
+      "Coolify deployed another Evidence Library release",
+    );
   }
 }
 
@@ -125,7 +149,6 @@ type ApplicationSettings = Record<
 >;
 
 type CoolifyApplication = {
-  id: string;
   uuid: string;
   name: string;
   configHash: string;
@@ -257,10 +280,10 @@ function requireCommit(value: string): string {
 }
 
 function requireConfigHash(value: string): string {
-  if (!SHA256.test(value)) {
+  if (!COOLIFY_CONFIG_HASH.test(value)) {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Coolify configuration hash must be a lowercase SHA-256 value",
+      "Coolify configuration hash must be a lowercase MD5 or SHA-256 value",
     );
   }
   return value;
@@ -365,30 +388,6 @@ function responseNullableString(
 ): string | null {
   const value = record[key];
   if (value !== null && typeof value !== "string") invalidResponse(message);
-  return value;
-}
-
-function responseIntegerId(
-  record: Record<string, unknown>,
-  key: string,
-  message: string,
-): string {
-  const value = record[key];
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
-    invalidResponse(message);
-  }
-  return String(value);
-}
-
-function responseNumericStringId(
-  record: Record<string, unknown>,
-  key: string,
-  message: string,
-): string {
-  const value = responseString(record, key, message);
-  if (!NUMERIC_ID.test(value) || !Number.isSafeInteger(Number(value))) {
-    invalidResponse(message);
-  }
   return value;
 }
 
@@ -533,7 +532,7 @@ function parseApplication(payload: unknown): CoolifyApplication {
     invalidResponse(message);
   }
   const configHash = responseString(payload, "config_hash", message);
-  if (!SHA256.test(configHash)) invalidResponse(message);
+  if (!COOLIFY_CONFIG_HASH.test(configHash)) invalidResponse(message);
   const sourceId = payload.source_id;
   if (
     sourceId !== null &&
@@ -552,7 +551,6 @@ function parseApplication(payload: unknown): CoolifyApplication {
   ) as ApplicationSettings;
 
   return {
-    id: responseIntegerId(payload, "id", message),
     uuid: responseUuid(payload, "uuid", message),
     name: responseString(payload, "name", message),
     configHash,
@@ -743,6 +741,56 @@ function hasExpectedApplication(
     ) &&
     APPLICATION_SETTING_KEYS.every((key) => application.settings[key] === false)
   );
+}
+
+function hasExpectedBoundApplication(
+  application: CoolifyApplication,
+  applicationTag: string,
+  publicDomain: string,
+): boolean {
+  return (
+    application.name === applicationTag &&
+    application.gitRepository === GIT_REPOSITORY &&
+    application.gitBranch === GIT_BRANCH &&
+    COMMIT.test(application.gitCommitSha) &&
+    application.buildPack === BUILD_PACK &&
+    application.portsExposes === PORTS_EXPOSES &&
+    (application.fqdn === null || application.fqdn === "") &&
+    application.composePath === COMPOSE_PATH &&
+    hasExpectedComposeDomain(application.composeDomains, publicDomain) &&
+    application.sourceType === GITHUB_SOURCE_TYPE &&
+    application.sourceId !== null &&
+    APPLICATION_SETTING_KEYS.every((key) => application.settings[key] === false)
+  );
+}
+
+async function readExpectedBoundApplication(
+  client: CoolifyTransport,
+  input: {
+    applicationUuid: string;
+    applicationTag: string;
+    publicDomain: string;
+  },
+): Promise<CoolifyApplication> {
+  const [application, tags] = await Promise.all([
+    readApplication(client, input.applicationUuid),
+    readTags(client, input.applicationUuid),
+  ]);
+  if (
+    application.uuid !== input.applicationUuid ||
+    !tags.includes(input.applicationTag) ||
+    !hasExpectedBoundApplication(
+      application,
+      input.applicationTag,
+      input.publicDomain,
+    )
+  ) {
+    throw new CoolifyClientError(
+      "COOLIFY_APPLICATION_CONFLICT",
+      "The bound Coolify application no longer matches this library",
+    );
+  }
+  return application;
 }
 
 function applicationPatch(
@@ -1004,6 +1052,56 @@ async function requireEnvironmentReadback(
   return environments;
 }
 
+async function reconcileEnvironmentValue(
+  client: CoolifyTransport,
+  applicationUuid: string,
+  desired: DesiredEnvironment,
+): Promise<boolean> {
+  const environments = await readEnvironments(client, applicationUuid);
+  if (
+    environments.some(
+      (environment) => environment.isShared && environment.key === desired.key,
+    )
+  ) {
+    throw new CoolifyClientError(
+      "COOLIFY_ENVIRONMENT_CONFLICT",
+      "The Coolify application inherits the managed environment variable",
+    );
+  }
+  const matches = environments.filter(
+    (environment) =>
+      !isPlatformEnvironment(environment) &&
+      !environment.isShared &&
+      environment.key === desired.key &&
+      environment.isPreview === false,
+  );
+  if (matches.length > 1) {
+    throw new CoolifyClientError(
+      "COOLIFY_ENVIRONMENT_CONFLICT",
+      "Coolify returned duplicate production environment variables",
+    );
+  }
+  if (matches.length === 1 && hasExpectedEnvironment(matches[0]!, desired)) {
+    return false;
+  }
+  const payload = await requestCoolify(client, {
+    expectedStatus: 201,
+    method: matches.length === 0 ? "POST" : "PATCH",
+    path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}/envs`,
+    body: environmentBody(desired),
+  });
+  if (!isRecord(payload)) {
+    invalidResponse("Coolify returned an invalid environment response");
+  }
+  responseUuid(
+    payload,
+    "uuid",
+    "Coolify returned an invalid environment response",
+  );
+  await requireEnvironmentReadback(client, applicationUuid, desired);
+  return true;
+}
+
 async function reconcileEnvironments(
   client: CoolifyTransport,
   applicationUuid: string,
@@ -1039,43 +1137,9 @@ async function reconcileEnvironments(
   }
 
   for (const desired of desiredValues) {
-    const matches = environments.filter(
-      (environment) =>
-        !isPlatformEnvironment(environment) &&
-        !environment.isShared &&
-        environment.key === desired.key &&
-        environment.isPreview === false,
-    );
-    if (matches.length > 1) {
-      throw new CoolifyClientError(
-        "COOLIFY_ENVIRONMENT_CONFLICT",
-        "Coolify returned duplicate production environment variables",
-      );
-    }
-    if (matches.length === 1 && hasExpectedEnvironment(matches[0]!, desired)) {
-      continue;
-    }
-    const method = matches.length === 0 ? "POST" : "PATCH";
-    const payload = await requestCoolify(client, {
-      expectedStatus: 201,
-      method,
-      path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}/envs`,
-      body: environmentBody(desired),
-    });
-    if (!isRecord(payload)) {
-      invalidResponse("Coolify returned an invalid environment response");
-    }
-    responseUuid(
-      payload,
-      "uuid",
-      "Coolify returned an invalid environment response",
-    );
-    environments = await requireEnvironmentReadback(
-      client,
-      applicationUuid,
-      desired,
-    );
-    changed = true;
+    changed =
+      (await reconcileEnvironmentValue(client, applicationUuid, desired)) ||
+      changed;
   }
 
   environments = await readEnvironments(client, applicationUuid);
@@ -1122,7 +1186,8 @@ function parseDeployment(payload: unknown): CoolifyDeployment {
   const coolifyConfigHash =
     configHashPayload === undefined || configHashPayload === null
       ? null
-      : typeof configHashPayload === "string" && SHA256.test(configHashPayload)
+      : typeof configHashPayload === "string" &&
+          COOLIFY_CONFIG_HASH.test(configHashPayload)
         ? configHashPayload
         : invalidResponse(message);
   const statusPayload = payload.status;
@@ -1136,7 +1201,6 @@ function parseDeployment(payload: unknown): CoolifyDeployment {
     invalidResponse(message);
   }
   return {
-    applicationId: responseNumericStringId(payload, "application_id", message),
     deploymentUuid,
     runtimeCommit,
     coolifyConfigHash,
@@ -1327,6 +1391,140 @@ export function createCoolifyClient(input: {
       };
     },
 
+    async readBoundApplication(input: {
+      applicationUuid: string;
+      libraryId: Id<"evidenceLibraries">;
+      publicDomain: string;
+    }): Promise<CoolifyBoundApplication> {
+      const applicationUuid = requireInputIdentifier(
+        "Coolify application UUID",
+        input.applicationUuid,
+      );
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const publicDomain = requirePublicDomain(input.publicDomain);
+      const application = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain,
+      });
+      return {
+        applicationUuid,
+        runtimeCommit: application.gitCommitSha,
+        coolifyConfigHash: application.configHash,
+      };
+    },
+
+    async requireBoundApplicationConfiguration(input: {
+      applicationUuid: string;
+      libraryId: Id<"evidenceLibraries">;
+      publicDomain: string;
+      runtimeCommit: string;
+      libraryConfigJson: string;
+    }): Promise<CoolifyBoundApplication> {
+      const applicationUuid = requireInputIdentifier(
+        "Coolify application UUID",
+        input.applicationUuid,
+      );
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const publicDomain = requirePublicDomain(input.publicDomain);
+      const runtimeCommit = requireCommit(input.runtimeCommit);
+      const libraryConfigJson = requireLibraryConfigJson(
+        input.libraryConfigJson,
+      );
+      const application = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain,
+      });
+      if (application.gitCommitSha !== runtimeCommit) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The bound Coolify application changed after deployment started",
+        );
+      }
+      await requireEnvironmentReadback(client, applicationUuid, {
+        key: "LIBRARY_CONFIG_JSON",
+        value: libraryConfigJson,
+      });
+      const finalApplication = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain,
+      });
+      if (finalApplication.gitCommitSha !== runtimeCommit) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The bound Coolify application changed during configuration readback",
+        );
+      }
+      return {
+        applicationUuid,
+        runtimeCommit,
+        coolifyConfigHash: finalApplication.configHash,
+      };
+    },
+
+    async updateApplicationConfiguration(input: {
+      applicationUuid: string;
+      libraryId: Id<"evidenceLibraries">;
+      publicDomain: string;
+      libraryConfigJson: string;
+      expectedRuntimeCommit: string;
+    }): Promise<CoolifyConfigurationUpdateResult> {
+      const applicationUuid = requireInputIdentifier(
+        "Coolify application UUID",
+        input.applicationUuid,
+      );
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const publicDomain = requirePublicDomain(input.publicDomain);
+      const libraryConfigJson = requireLibraryConfigJson(
+        input.libraryConfigJson,
+      );
+      const expectedRuntimeCommit = requireCommit(input.expectedRuntimeCommit);
+      const application = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain,
+      });
+      if (application.gitCommitSha !== expectedRuntimeCommit) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The bound Coolify application no longer matches this library",
+        );
+      }
+      await reconcileEnvironmentValue(client, applicationUuid, {
+        key: "LIBRARY_CONFIG_JSON",
+        value: libraryConfigJson,
+      });
+      const finalApplication = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain,
+      });
+      if (
+        finalApplication.uuid !== applicationUuid ||
+        finalApplication.gitCommitSha !== application.gitCommitSha ||
+        !hasExpectedBoundApplication(
+          finalApplication,
+          applicationTag,
+          publicDomain,
+        )
+      ) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The bound Coolify application changed during configuration update",
+        );
+      }
+      return {
+        applicationUuid,
+        runtimeCommit: application.gitCommitSha,
+        runtimeConfigSha256: createHash("sha256")
+          .update(libraryConfigJson)
+          .digest("hex"),
+        coolifyConfigHash: finalApplication.configHash,
+      };
+    },
+
     async listApplicationDeployments(
       applicationUuid: string,
     ): Promise<CoolifyDeploymentList> {
@@ -1358,23 +1556,18 @@ export function createCoolifyClient(input: {
           "The Coolify application changed before deployment",
         );
       }
-      const listed = await listApplicationDeployments(client, applicationUuid);
-      if (!listed.complete) {
+      if (coolifyConfigHash.length === 32) {
         return {
-          outcome: "adoption-unavailable",
+          outcome: "started",
           applicationUuid,
-          reason: "deployment-history-truncated",
+          deploymentUuid: await startDeployment(client, applicationUuid),
+          runtimeCommit,
+          coolifyConfigHash,
         };
       }
-
+      const listed = await listApplicationDeployments(client, applicationUuid);
       let missingConfigurationHash = false;
       for (const deployment of listed.deployments) {
-        if (deployment.applicationId !== application.id) {
-          throw new CoolifyClientError(
-            "COOLIFY_DEPLOYMENT_CONFLICT",
-            "The Coolify deployment belongs to another application",
-          );
-        }
         if (deployment.runtimeCommit !== runtimeCommit) continue;
         if (
           deployment.coolifyConfigHash === null &&
@@ -1395,7 +1588,7 @@ export function createCoolifyClient(input: {
           };
         }
       }
-      if (missingConfigurationHash) {
+      if (missingConfigurationHash && listed.complete) {
         return {
           outcome: "adoption-unavailable",
           applicationUuid,
@@ -1420,39 +1613,17 @@ export function createCoolifyClient(input: {
     },
 
     async requireFinishedDeployment(input: {
-      applicationUuid: string;
       deploymentUuid: string;
       runtimeCommit: string;
       coolifyConfigHash: string;
     }): Promise<CoolifyDeployment> {
-      const applicationUuid = requireInputIdentifier(
-        "Coolify application UUID",
-        input.applicationUuid,
-      );
       const deploymentUuid = requireInputIdentifier(
         "Coolify deployment UUID",
         input.deploymentUuid,
       );
       const runtimeCommit = requireCommit(input.runtimeCommit);
       const coolifyConfigHash = requireConfigHash(input.coolifyConfigHash);
-      const application = await readApplication(client, applicationUuid);
-      if (
-        application.uuid !== applicationUuid ||
-        application.gitCommitSha !== runtimeCommit ||
-        application.configHash !== coolifyConfigHash
-      ) {
-        throw new CoolifyClientError(
-          "COOLIFY_DEPLOYMENT_CONFLICT",
-          "The Coolify application changed before readiness",
-        );
-      }
       const deployment = await readDeployment(client, deploymentUuid);
-      if (deployment.applicationId !== application.id) {
-        throw new CoolifyClientError(
-          "COOLIFY_DEPLOYMENT_CONFLICT",
-          "The Coolify deployment belongs to another application",
-        );
-      }
       if (
         deployment.runtimeCommit !== runtimeCommit ||
         deployment.coolifyConfigHash !== coolifyConfigHash

@@ -15,8 +15,13 @@ import {
 import { nextDraftEditVersion } from "./draftVersion";
 import {
   attachRevisionToSetupOperation,
+  queueConfigurationDeploymentOperation,
   queueEvidenceLibraryOperation,
 } from "./operations";
+import {
+  claimAndScheduleConfigurationDeployment,
+  requireNoActiveConfigurationDeployment,
+} from "./configurationDeployment";
 import { claimAndScheduleEvidenceLibrarySetupOperation } from "./setupOperation";
 import {
   createPendingRuntimeBinding,
@@ -571,6 +576,9 @@ export async function activateEvidenceLibraryConfiguration(
       { pointer: issue.pointer },
     );
   }
+  if (access.library.state === "active") {
+    await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+  }
 
   const frozen = await finalizeEvidenceLibraryDraft(ctx, {
     ...args,
@@ -601,13 +609,17 @@ export async function activateEvidenceLibraryConfiguration(
       status: started.status,
     };
   }
-  const operation = await queueEvidenceLibraryOperation(ctx, {
+  const operation = await queueConfigurationDeploymentOperation(ctx, {
     libraryId: args.libraryId,
-    kind: "publish",
     revisionId: frozen.revisionId,
     idempotencyKey: `activate:${args.expectedEditVersion}`,
+    activationEditVersion: args.expectedEditVersion,
   });
-  return { ...frozen, kind: "publish" as const, ...operation };
+  const started = await claimAndScheduleConfigurationDeployment(ctx, {
+    libraryId: args.libraryId,
+    operationId: operation.operationId,
+  });
+  return { ...frozen, kind: "publish" as const, ...started };
 }
 
 export const createSetupDraft = mutation({

@@ -25,7 +25,7 @@ describe("Evidence Library readiness completion", () => {
       deploymentId: fixture.deploymentId,
       runtimeCommit: "a".repeat(40),
       runtimeConfigSha256: "b".repeat(64),
-      coolifyConfigHash: "c".repeat(64),
+      coolifyConfigHash: "d".repeat(64),
       revisionKey: fixture.activated.revisionKey,
       targetBaseUrl: fixture.created.publicAddress,
       defaultLocale: "en-GB",

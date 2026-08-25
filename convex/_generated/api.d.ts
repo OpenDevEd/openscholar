@@ -56,6 +56,8 @@ import type * as evidenceLibraries_adminLoginCodeActions from "../evidenceLibrar
 import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/adminLoginCodes.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
+import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
+import type * as evidenceLibraries_configurationDeploymentActions from "../evidenceLibraries/configurationDeploymentActions.js";
 import type * as evidenceLibraries_coolifyClient from "../evidenceLibraries/coolifyClient.js";
 import type * as evidenceLibraries_credentialActions from "../evidenceLibraries/credentialActions.js";
 import type * as evidenceLibraries_credentials from "../evidenceLibraries/credentials.js";
@@ -72,6 +74,10 @@ import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js
 import type * as evidenceLibraries_readinessClient from "../evidenceLibraries/readinessClient.js";
 import type * as evidenceLibraries_readinessSetup from "../evidenceLibraries/readinessSetup.js";
 import type * as evidenceLibraries_readinessSetupActions from "../evidenceLibraries/readinessSetupActions.js";
+import type * as evidenceLibraries_revisionConfiguration from "../evidenceLibraries/revisionConfiguration.js";
+import type * as evidenceLibraries_runtimeActionConfig from "../evidenceLibraries/runtimeActionConfig.js";
+import type * as evidenceLibraries_runtimeConfiguration from "../evidenceLibraries/runtimeConfiguration.js";
+import type * as evidenceLibraries_runtimeCredentials from "../evidenceLibraries/runtimeCredentials.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
 import type * as evidenceLibraries_serviceHttp from "../evidenceLibraries/serviceHttp.js";
 import type * as evidenceLibraries_setupNaming from "../evidenceLibraries/setupNaming.js";
@@ -285,6 +291,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/adminLoginCodes": typeof evidenceLibraries_adminLoginCodes;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
+  "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
+  "evidenceLibraries/configurationDeploymentActions": typeof evidenceLibraries_configurationDeploymentActions;
   "evidenceLibraries/coolifyClient": typeof evidenceLibraries_coolifyClient;
   "evidenceLibraries/credentialActions": typeof evidenceLibraries_credentialActions;
   "evidenceLibraries/credentials": typeof evidenceLibraries_credentials;
@@ -301,6 +309,10 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/readinessClient": typeof evidenceLibraries_readinessClient;
   "evidenceLibraries/readinessSetup": typeof evidenceLibraries_readinessSetup;
   "evidenceLibraries/readinessSetupActions": typeof evidenceLibraries_readinessSetupActions;
+  "evidenceLibraries/revisionConfiguration": typeof evidenceLibraries_revisionConfiguration;
+  "evidenceLibraries/runtimeActionConfig": typeof evidenceLibraries_runtimeActionConfig;
+  "evidenceLibraries/runtimeConfiguration": typeof evidenceLibraries_runtimeConfiguration;
+  "evidenceLibraries/runtimeCredentials": typeof evidenceLibraries_runtimeCredentials;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
   "evidenceLibraries/serviceHttp": typeof evidenceLibraries_serviceHttp;
   "evidenceLibraries/setupNaming": typeof evidenceLibraries_setupNaming;

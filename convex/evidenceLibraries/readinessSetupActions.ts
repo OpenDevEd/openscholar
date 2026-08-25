@@ -8,17 +8,10 @@ import {
   ReadinessClientError,
   requireLibraryRuntimeReady,
 } from "./readinessClient";
+import { requireRuntimeEnvironment } from "./runtimeActionConfig";
 
-function requireEnvironmentValue(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new ReadinessClientError(
-      "READINESS_CONFIG_INVALID",
-      `${name} is not configured`,
-    );
-  }
-  return value;
-}
+const invalidReadinessConfig = (message: string) =>
+  new ReadinessClientError("READINESS_CONFIG_INVALID", message);
 
 type ReadinessSetupActionResult =
   | { status: "failed" }
@@ -42,11 +35,16 @@ export const runReadinessSetup = internalAction({
         args,
       );
       const coolify = createCoolifyClient({
-        origin: requireEnvironmentValue("EL_COOLIFY_URL"),
-        token: requireEnvironmentValue("EL_COOLIFY_TOKEN"),
+        origin: requireRuntimeEnvironment(
+          "EL_COOLIFY_URL",
+          invalidReadinessConfig,
+        ),
+        token: requireRuntimeEnvironment(
+          "EL_COOLIFY_TOKEN",
+          invalidReadinessConfig,
+        ),
       });
       await coolify.requireFinishedDeployment({
-        applicationUuid: prepared.applicationId,
         deploymentUuid: prepared.deploymentId,
         runtimeCommit: prepared.runtimeCommit,
         coolifyConfigHash: prepared.coolifyConfigHash,
@@ -57,8 +55,14 @@ export const runReadinessSetup = internalAction({
         revisionKey: prepared.revisionKey,
         targetBaseUrl: prepared.targetBaseUrl,
         defaultLocale: prepared.defaultLocale,
-        verifierUrl: requireEnvironmentValue("EL_RUNTIME_VERIFIER_URL"),
-        verifierToken: requireEnvironmentValue("EL_RUNTIME_VERIFIER_TOKEN"),
+        verifierUrl: requireRuntimeEnvironment(
+          "EL_RUNTIME_VERIFIER_URL",
+          invalidReadinessConfig,
+        ),
+        verifierToken: requireRuntimeEnvironment(
+          "EL_RUNTIME_VERIFIER_TOKEN",
+          invalidReadinessConfig,
+        ),
       });
       return await ctx.runMutation(
         internal.evidenceLibraries.readinessSetup.completeReadinessSetup,

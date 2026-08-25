@@ -20,10 +20,12 @@ type OperationReceipt = {
   revisionKey?: string;
   targetConfigSha256?: string;
   runtimeReceiptId?: string;
+  runtimeCommit?: string;
+  coolifyConfigHash?: string;
   activatedAt?: number;
 };
 
-function validateOperationReceipt(
+export function validateOperationReceipt(
   receipt: OperationReceipt | undefined,
 ): OperationReceipt | undefined {
   if (!receipt) return undefined;
@@ -57,6 +59,24 @@ function validateOperationReceipt(
     }
     normalized.runtimeReceiptId = runtimeReceiptId;
   }
+  if (receipt.runtimeCommit !== undefined) {
+    if (!/^[a-f0-9]{40}$/u.test(receipt.runtimeCommit)) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt runtimeCommit must be a lowercase 40-character commit",
+      );
+    }
+    normalized.runtimeCommit = receipt.runtimeCommit;
+  }
+  if (receipt.coolifyConfigHash !== undefined) {
+    if (!/^(?:[a-f0-9]{32}|[a-f0-9]{64})$/iu.test(receipt.coolifyConfigHash)) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt coolifyConfigHash must be a 32- or 64-character digest",
+      );
+    }
+    normalized.coolifyConfigHash = receipt.coolifyConfigHash.toLowerCase();
+  }
   if (receipt.activatedAt !== undefined) {
     if (!Number.isFinite(receipt.activatedAt) || receipt.activatedAt < 0) {
       throw createError(
@@ -88,13 +108,14 @@ export function sanitizeOperationError(
   };
 }
 
-export async function queueEvidenceLibraryOperation(
+async function queueOperationRecord(
   ctx: MutationCtx,
   args: {
     libraryId: Id<"evidenceLibraries">;
     kind: EvidenceLibraryOperationKind;
     idempotencyKey: string;
     revisionId?: Id<"evidenceLibraryConfigRevisions">;
+    activationEditVersion?: number;
   },
 ) {
   const access = await requireEvidenceLibraryAccess(
@@ -131,7 +152,9 @@ export async function queueEvidenceLibraryOperation(
   if (existing) {
     if (
       existing.kind !== args.kind ||
-      (existing.revisionId ?? null) !== (args.revisionId ?? null)
+      (existing.revisionId ?? null) !== (args.revisionId ?? null) ||
+      (existing.activationEditVersion ?? null) !==
+        (args.activationEditVersion ?? null)
     ) {
       throw createError(
         "CONFLICT",
@@ -145,6 +168,7 @@ export async function queueEvidenceLibraryOperation(
     libraryId: args.libraryId,
     kind: args.kind,
     idempotencyKey: args.idempotencyKey,
+    activationEditVersion: args.activationEditVersion,
     revisionId: args.revisionId,
     status: "queued",
     stage: "queued",
@@ -154,6 +178,30 @@ export async function queueEvidenceLibraryOperation(
     updatedAt: now,
   });
   return { operationId, status: "queued" as const };
+}
+
+export async function queueEvidenceLibraryOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    kind: Exclude<EvidenceLibraryOperationKind, "publish">;
+    idempotencyKey: string;
+    revisionId?: Id<"evidenceLibraryConfigRevisions">;
+  },
+) {
+  return await queueOperationRecord(ctx, args);
+}
+
+export async function queueConfigurationDeploymentOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    idempotencyKey: string;
+    revisionId: Id<"evidenceLibraryConfigRevisions">;
+    activationEditVersion: number;
+  },
+) {
+  return await queueOperationRecord(ctx, { ...args, kind: "publish" });
 }
 
 export async function attachRevisionToSetupOperation(

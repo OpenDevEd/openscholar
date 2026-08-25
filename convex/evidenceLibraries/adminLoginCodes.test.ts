@@ -244,6 +244,8 @@ describe("Evidence Library admin login codes", () => {
   });
 
   it("keeps the active runtime launchable while a newer revision waits for deployment", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-25T00:00:00Z"));
     const fixture = await createReadySetupFixture(
       "admin_login_code_pending_revision",
     );
@@ -270,7 +272,7 @@ describe("Evidence Library admin login codes", () => {
       },
     );
 
-    expect(pending).toMatchObject({ kind: "publish", status: "queued" });
+    expect(pending).toMatchObject({ kind: "publish", status: "running" });
     const library = await fixture.t.run((ctx) =>
       ctx.db.get("evidenceLibraries", fixture.created.libraryId),
     );

@@ -121,6 +121,9 @@ export const evidenceLibraryFields = {
   setupOperationId: v.optional(v.id("evidenceLibraryConfigOperations")),
   runtimeBindingId: v.optional(v.id("evidenceLibraryRuntimeBindings")),
   activeRevisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
+  activeDeploymentOperationId: v.optional(
+    v.id("evidenceLibraryConfigOperations"),
+  ),
   createdByClerkUserId: v.string(),
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
@@ -308,12 +311,12 @@ export const evidenceLibraryAdminLoginCodeFields = {
 
 export const evidenceLibraryRequestableOperationKindValidator = v.union(
   v.literal("validate"),
-  v.literal("publish"),
   v.literal("rollback"),
 );
 
 export const evidenceLibraryOperationKindValidator = v.union(
   v.literal("setup"),
+  v.literal("publish"),
   evidenceLibraryRequestableOperationKindValidator,
 );
 export type EvidenceLibraryOperationKind = Infer<
@@ -458,7 +461,21 @@ export const evidenceLibraryOperationReceiptValidator = v.object({
   revisionKey: v.optional(v.string()),
   targetConfigSha256: v.optional(v.string()),
   runtimeReceiptId: v.optional(v.string()),
+  runtimeCommit: v.optional(v.string()),
+  coolifyConfigHash: v.optional(v.string()),
   activatedAt: v.optional(v.number()),
+});
+
+export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
+  applicationId: v.string(),
+  runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
+  targetBaseUrl: v.string(),
+  revisionKey: v.string(),
+  defaultLocale: v.string(),
+  runtimeCommit: v.string(),
+  encryptedRuntimeConfig: v.string(),
+  runtimeConfigSha256: v.string(),
+  savedAt: v.number(),
 });
 
 export const evidenceLibraryOperationFields = {
@@ -475,6 +492,12 @@ export const evidenceLibraryOperationFields = {
   setupDeploymentId: v.optional(v.string()),
   setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
   setupDeploymentPollCount: v.optional(v.number()),
+  configurationDeploymentTarget: v.optional(
+    evidenceLibraryConfigurationDeploymentTargetValidator,
+  ),
+  configurationAttemptToken: v.optional(v.string()),
+  configurationLeaseExpiresAt: v.optional(v.number()),
+  configurationDeploymentPollCount: v.optional(v.number()),
   status: v.union(
     v.literal("queued"),
     v.literal("running"),

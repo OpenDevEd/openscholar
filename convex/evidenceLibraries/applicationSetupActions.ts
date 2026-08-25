@@ -1,15 +1,11 @@
 "use node";
 
-import { createHash } from "node:crypto";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import {
-  assembleEvidenceLibraryConfiguration,
-  ConfigurationAssemblyError,
-} from "../../lib/evidence-libraries/configuration/assembly";
-import { decrypt, encrypt, getKeyPrefix } from "../lib/crypto";
+import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
+import { encrypt, getKeyPrefix } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import { generateOpaqueToken } from "../lib/opaqueToken";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
@@ -17,48 +13,19 @@ import {
   CoolifyClientError,
   reconcileCoolifyApplication,
 } from "./coolifyClient";
+import {
+  assembleEvidenceLibraryRuntimePayload,
+  EVIDENCE_LIBRARY_SEARCH_HOST,
+  EVIDENCE_LIBRARY_SEARCH_INDEX,
+} from "./runtimeConfiguration";
+import {
+  optionalRuntimeEnvironment,
+  requirePositiveRuntimeInteger,
+  requireRuntimeEnvironment,
+  requireRuntimeHttpsOrigin,
+} from "./runtimeActionConfig";
 
-const SEARCH_HOST = "http://meilisearch:7700";
-const SEARCH_INDEX = "evidence_library";
-
-function requireEnvironmentValue(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) throw createError("INVALID_DATA", `${name} is not configured`);
-  return value;
-}
-
-function optionalEnvironmentValue(name: string): string | undefined {
-  return process.env[name]?.trim() || undefined;
-}
-
-function requirePositiveIntegerEnvironment(name: string): number {
-  const value = Number(requireEnvironmentValue(name));
-  if (!Number.isSafeInteger(value) || value <= 0) {
-    throw createError("INVALID_DATA", `${name} must be a positive integer`);
-  }
-  return value;
-}
-
-function requireHttpsOrigin(name: string): string {
-  const value = requireEnvironmentValue(name);
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw createError("INVALID_DATA", `${name} must be a valid HTTPS origin`);
-  }
-  if (
-    url.protocol !== "https:" ||
-    url.pathname !== "/" ||
-    url.search ||
-    url.hash ||
-    url.username ||
-    url.password
-  ) {
-    throw createError("INVALID_DATA", `${name} must be a valid HTTPS origin`);
-  }
-  return url.origin;
-}
+const invalidData = (message: string) => createError("INVALID_DATA", message);
 
 type ApplicationSetupActionResult =
   | { status: "failed" }
@@ -85,7 +52,10 @@ export const runApplicationSetup = internalAction({
   ),
   handler: async (ctx, args): Promise<ApplicationSetupActionResult> => {
     try {
-      const encryptionKey = requireEnvironmentValue("ENCRYPTION_KEY");
+      const encryptionKey = requireRuntimeEnvironment(
+        "ENCRYPTION_KEY",
+        invalidData,
+      );
       const searchKey = generateOpaqueToken("elsearch_");
       const authenticationSecret = generateOpaqueToken("elauth_");
       const machineCredential = generateOpaqueToken("els_");
@@ -105,72 +75,84 @@ export const runApplicationSetup = internalAction({
           candidateMachineCredentialDigest:
             await digestOpaqueToken(machineCredential),
           candidateMachineCredentialHint: getKeyPrefix(machineCredential),
-          candidateRuntimeCommit: requireEnvironmentValue(
+          candidateRuntimeCommit: requireRuntimeEnvironment(
             "EL_RUNTIME_COMMIT_SHA",
+            invalidData,
           ),
         },
       );
-      const appOrigin = requireHttpsOrigin("EL_OPENSCHOLAR_URL");
-      const storageUrl = requireHttpsOrigin("EL_STORAGE_URL");
-      const storageMaxPdfBytes = requirePositiveIntegerEnvironment(
+      const appOrigin = requireRuntimeHttpsOrigin(
+        "EL_OPENSCHOLAR_URL",
+        invalidData,
+      );
+      const storageUrl = requireRuntimeHttpsOrigin(
+        "EL_STORAGE_URL",
+        invalidData,
+      );
+      const storageMaxPdfBytes = requirePositiveRuntimeInteger(
         "EL_STORAGE_MAX_PDF_BYTES",
+        invalidData,
       );
-      const resolvedSearchKey = decrypt(
-        prepared.encryptedSearchKey,
+      const configuration = assembleEvidenceLibraryRuntimePayload({
         encryptionKey,
-      );
-      const configuration = assembleEvidenceLibraryConfiguration({
-        sections: prepared.sections,
-        managed: {
-          revision: prepared.revisionKey,
-          updatedAt: new Date(prepared.revisionCreatedAt).toISOString(),
-          libraryId: args.libraryId,
-          convexSiteUrl: requireHttpsOrigin("EL_CONVEX_SITE_URL"),
-          loginPageUrl: new URL(
-            `/evidence-libraries/${encodeURIComponent(args.libraryId)}/admin`,
-            appOrigin,
-          ).toString(),
-          machineCredential: decrypt(
-            prepared.encryptedMachineCredential,
-            encryptionKey,
-          ),
-          authenticationSecret: decrypt(
-            prepared.encryptedAuthenticationSecret,
-            encryptionKey,
-          ),
-          databaseUrl: decrypt(prepared.encryptedDatabaseUrl, encryptionKey),
-          searchHost: SEARCH_HOST,
-          searchKey: resolvedSearchKey,
-          searchIndex: SEARCH_INDEX,
-          storageUrl,
-          storageServiceRoleKey: decrypt(
-            prepared.encryptedStorageServiceRoleKey,
-            encryptionKey,
-          ),
-          storagePrivateBucket: prepared.storagePrivateBucket,
-          storagePublicBucket: prepared.storagePublicBucket,
-          storageMaxPdfBytes,
-          zoteroTranslationUrl: optionalEnvironmentValue(
-            "EL_ZOTERO_TRANSLATION_URL",
+        libraryId: args.libraryId,
+        revision: {
+          key: prepared.revisionKey,
+          createdAt: prepared.revisionCreatedAt,
+        },
+        origins: {
+          app: appOrigin,
+          convexSite: requireRuntimeHttpsOrigin(
+            "EL_CONVEX_SITE_URL",
+            invalidData,
           ),
         },
+        sections: prepared.sections,
+        credentials: {
+          encryptedMachine: prepared.encryptedMachineCredential,
+          encryptedAuthentication: prepared.encryptedAuthenticationSecret,
+          encryptedDatabaseUrl: prepared.encryptedDatabaseUrl,
+        },
+        search: {
+          host: EVIDENCE_LIBRARY_SEARCH_HOST,
+          encryptedKey: prepared.encryptedSearchKey,
+          index: EVIDENCE_LIBRARY_SEARCH_INDEX,
+        },
+        storage: {
+          url: storageUrl,
+          encryptedServiceRoleKey: prepared.encryptedStorageServiceRoleKey,
+          privateBucket: prepared.storagePrivateBucket,
+          publicBucket: prepared.storagePublicBucket,
+          maxPdfBytes: storageMaxPdfBytes,
+        },
+        zoteroTranslationUrl: optionalRuntimeEnvironment(
+          "EL_ZOTERO_TRANSLATION_URL",
+        ),
       });
-      const runtimeConfigJson = JSON.stringify(configuration);
-      const runtimeConfigSha256 = createHash("sha256")
-        .update(runtimeConfigJson)
-        .digest("hex");
       const application = await reconcileCoolifyApplication({
-        coolifyUrl: requireEnvironmentValue("EL_COOLIFY_URL"),
-        token: requireEnvironmentValue("EL_COOLIFY_TOKEN"),
-        serverUuid: requireEnvironmentValue("EL_COOLIFY_SERVER_UUID"),
-        projectUuid: requireEnvironmentValue("EL_COOLIFY_PROJECT_UUID"),
-        environmentName: requireEnvironmentValue("EL_COOLIFY_ENVIRONMENT"),
-        githubAppUuid: requireEnvironmentValue("EL_COOLIFY_GITHUB_APP_UUID"),
+        coolifyUrl: requireRuntimeEnvironment("EL_COOLIFY_URL", invalidData),
+        token: requireRuntimeEnvironment("EL_COOLIFY_TOKEN", invalidData),
+        serverUuid: requireRuntimeEnvironment(
+          "EL_COOLIFY_SERVER_UUID",
+          invalidData,
+        ),
+        projectUuid: requireRuntimeEnvironment(
+          "EL_COOLIFY_PROJECT_UUID",
+          invalidData,
+        ),
+        environmentName: requireRuntimeEnvironment(
+          "EL_COOLIFY_ENVIRONMENT",
+          invalidData,
+        ),
+        githubAppUuid: requireRuntimeEnvironment(
+          "EL_COOLIFY_GITHUB_APP_UUID",
+          invalidData,
+        ),
         libraryId: args.libraryId,
         targetBaseUrl: prepared.targetBaseUrl,
         runtimeCommit: prepared.runtimeCommit,
-        runtimeConfigJson,
-        searchKey: resolvedSearchKey,
+        runtimeConfigJson: configuration.runtimeConfigJson,
+        searchKey: configuration.runtimeConfig.services.search.key,
       });
       return await ctx.runMutation(
         internal.evidenceLibraries.applicationSetup.completeApplicationSetup,
@@ -179,15 +161,15 @@ export const runApplicationSetup = internalAction({
           outcome: application.outcome,
           applicationId: application.applicationId,
           runtimeCommit: prepared.runtimeCommit,
-          runtimeConfigSha256,
+          runtimeConfigSha256: configuration.runtimeConfigSha256,
           coolifyConfigHash: application.coolifyConfigHash,
-          searchHost: SEARCH_HOST,
-          searchIndex: SEARCH_INDEX,
+          searchHost: EVIDENCE_LIBRARY_SEARCH_HOST,
+          searchIndex: EVIDENCE_LIBRARY_SEARCH_INDEX,
           storageUrl,
           storagePrivateBucket: prepared.storagePrivateBucket,
           storagePublicBucket: prepared.storagePublicBucket,
           storageMaxPdfBytes,
-          zoteroTranslationUrl: optionalEnvironmentValue(
+          zoteroTranslationUrl: optionalRuntimeEnvironment(
             "EL_ZOTERO_TRANSLATION_URL",
           ),
           databaseCredentialId: prepared.databaseCredentialId,

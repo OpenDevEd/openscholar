@@ -6,40 +6,13 @@ import { v } from "convex/values";
 import {
   CoolifyClientError,
   createCoolifyClient,
+  requireMatchingCoolifyDeployment,
   type CoolifyDeployment,
 } from "./coolifyClient";
+import { requireRuntimeEnvironment } from "./runtimeActionConfig";
 
-function requireEnvironmentValue(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new CoolifyClientError(
-      "INVALID_COOLIFY_CONFIG",
-      `${name} is not configured`,
-    );
-  }
-  return value;
-}
-
-function requireExpectedDeployment(
-  deployment: CoolifyDeployment,
-  expected: { runtimeCommit: string; coolifyConfigHash: string },
-) {
-  if (deployment.runtimeCommit !== expected.runtimeCommit) {
-    throw new CoolifyClientError(
-      "COOLIFY_DEPLOYMENT_CONFLICT",
-      "Coolify deployed another Evidence Library release",
-    );
-  }
-  if (
-    deployment.coolifyConfigHash !== null &&
-    deployment.coolifyConfigHash !== expected.coolifyConfigHash
-  ) {
-    throw new CoolifyClientError(
-      "COOLIFY_DEPLOYMENT_CONFLICT",
-      "Coolify deployed another Evidence Library configuration",
-    );
-  }
-}
+const invalidCoolifyConfig = (message: string) =>
+  new CoolifyClientError("INVALID_COOLIFY_CONFIG", message);
 
 type DeploymentSetupActionResult =
   | { status: "failed" }
@@ -68,9 +41,26 @@ export const runDeploymentSetup = internalAction({
         args,
       );
       const client = createCoolifyClient({
-        origin: requireEnvironmentValue("EL_COOLIFY_URL"),
-        token: requireEnvironmentValue("EL_COOLIFY_TOKEN"),
+        origin: requireRuntimeEnvironment(
+          "EL_COOLIFY_URL",
+          invalidCoolifyConfig,
+        ),
+        token: requireRuntimeEnvironment(
+          "EL_COOLIFY_TOKEN",
+          invalidCoolifyConfig,
+        ),
       });
+      const application = await client.readBoundApplication({
+        applicationUuid: prepared.applicationId,
+        libraryId: args.libraryId,
+        publicDomain: prepared.targetBaseUrl,
+      });
+      if (application.runtimeCommit !== prepared.runtimeCommit) {
+        throw new CoolifyClientError(
+          "COOLIFY_DEPLOYMENT_CONFLICT",
+          "The bound Coolify application changed before deployment",
+        );
+      }
 
       let deploymentId = prepared.deploymentId;
       let deployment: CoolifyDeployment;
@@ -78,7 +68,7 @@ export const runDeploymentSetup = internalAction({
         const selected = await client.startOrAdoptDeployment({
           applicationUuid: prepared.applicationId,
           runtimeCommit: prepared.runtimeCommit,
-          coolifyConfigHash: prepared.coolifyConfigHash,
+          coolifyConfigHash: application.coolifyConfigHash,
         });
         if (selected.outcome === "adoption-unavailable") {
           throw new CoolifyClientError(
@@ -106,7 +96,7 @@ export const runDeploymentSetup = internalAction({
         deployment = await client.readDeployment(deploymentId);
       }
 
-      requireExpectedDeployment(deployment, prepared);
+      requireMatchingCoolifyDeployment(deployment, prepared);
       if (deployment.state === "active") {
         return await ctx.runMutation(
           internal.evidenceLibraries.deploymentSetup.scheduleDeploymentPoll,
@@ -119,15 +109,19 @@ export const runDeploymentSetup = internalAction({
           "Coolify could not deploy the Evidence Library",
         );
       }
-      if (deployment.coolifyConfigHash !== prepared.coolifyConfigHash) {
+      if (!deployment.coolifyConfigHash) {
         throw new CoolifyClientError(
           "COOLIFY_DEPLOYMENT_CONFLICT",
-          "Coolify did not report the deployed configuration",
+          "Coolify did not report the finished deployment configuration",
         );
       }
       return await ctx.runMutation(
         internal.evidenceLibraries.deploymentSetup.completeDeploymentSetup,
-        { ...args, deploymentId },
+        {
+          ...args,
+          deploymentId,
+          coolifyConfigHash: deployment.coolifyConfigHash,
+        },
       );
     } catch (error) {
       const safeError =

@@ -65,12 +65,13 @@ export async function readEvidenceLibraryAdminLaunchTarget(
   ctx: SetupReadCtx,
   library: Doc<"evidenceLibraries">,
 ): Promise<string | null> {
-  const { activeRevisionId, runtimeBindingId, setupOperationId } = library;
+  const { activeRevisionId, activeDeploymentOperationId, runtimeBindingId } =
+    library;
   if (
     library.state !== "active" ||
     !activeRevisionId ||
     !runtimeBindingId ||
-    !setupOperationId
+    !activeDeploymentOperationId
   ) {
     return null;
   }
@@ -79,7 +80,10 @@ export async function readEvidenceLibraryAdminLaunchTarget(
     await Promise.all([
       ctx.db.get("evidenceLibraryConfigRevisions", activeRevisionId),
       ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId),
-      ctx.db.get("evidenceLibraryConfigOperations", setupOperationId),
+      ctx.db.get(
+        "evidenceLibraryConfigOperations",
+        activeDeploymentOperationId,
+      ),
     ]);
   if (
     !activeRevision ||
@@ -89,7 +93,8 @@ export async function readEvidenceLibraryAdminLaunchTarget(
     runtimeBinding.state !== "ready" ||
     !deploymentOperation ||
     deploymentOperation.libraryId !== library._id ||
-    deploymentOperation.kind !== "setup" ||
+    (deploymentOperation.kind !== "setup" &&
+      deploymentOperation.kind !== "publish") ||
     deploymentOperation.revisionId !== activeRevision._id ||
     deploymentOperation.status !== "succeeded" ||
     deploymentOperation.stage !== "completed" ||
