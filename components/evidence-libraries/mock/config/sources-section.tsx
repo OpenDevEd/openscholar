@@ -122,7 +122,7 @@ export function SourcesSection({ library, patch }: SectionProps) {
             />
           }
         >
-          {t("groupsHeading")} · {t("groupsCount", { count: sources.groups.length })}
+          {t("groupsHeading")} ({t("groupsCount", { count: sources.groups.length })})
         </SubHeading>
 
         {sources.groups.length === 0 ? (
@@ -177,7 +177,7 @@ export function SourcesSection({ library, patch }: SectionProps) {
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+          className="h-7 px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
           aria-expanded={advancedOpen}
           onClick={() => setAdvancedOpen((open) => !open)}
         >
@@ -263,7 +263,7 @@ function AccountPanel({ library, patch }: SectionProps) {
         Z
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("accountHeading")}</p>
+        <p className="text-xs font-medium text-muted-foreground">{t("accountHeading")}</p>
         {account.method === "zotero" ? (
           <p className="text-sm font-medium">{t("connectedAs", { handle: account.handle })}</p>
         ) : account.method === "apiKey" ? (

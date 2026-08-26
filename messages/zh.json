@@ -2868,7 +2868,7 @@
         "keyHint": "Create one at zotero.org/settings/keys with read access to your groups.",
         "keyConnected": "Using an API key",
         "groupsHeading": "Groups",
-        "groupsCount": "{count, plural, =0 {No groups yet} one {# group} other {# groups}}",
+        "groupsCount": "{count, plural, =0 {none yet} one {#} other {#}}",
         "addGroups": "Add groups",
         "pasteLink": "Or paste a public group link",
         "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",

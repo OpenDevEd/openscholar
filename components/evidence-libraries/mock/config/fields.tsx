@@ -651,7 +651,7 @@ export function ResetButton({ onClick }: { onClick: () => void }) {
 export function SubHeading({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2 pt-1">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{children}</p>
+      <p className="text-sm font-semibold">{children}</p>
       {action}
     </div>
   );

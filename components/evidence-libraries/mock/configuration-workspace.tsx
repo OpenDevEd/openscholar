@@ -373,7 +373,7 @@ function ActivationBanner({ stageIndex, rev }: { stageIndex: number; rev: string
             <li key={stage}>
               <StatusChip
                 tone={done ? "success" : now ? "running" : "neutral"}
-                className="normal-case tracking-normal font-medium"
+                className="font-medium"
                 data-stage-state={done ? "done" : now ? "now" : "waiting"}
               >
                 {done ? <Check /> : now ? <Spinner /> : null}
@@ -390,7 +390,7 @@ function ActivationBanner({ stageIndex, rev }: { stageIndex: number; rev: string
 function RailGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="mb-1.5 px-3 text-xs font-medium text-muted-foreground">
         {label}
       </p>
       <div className="space-y-1">{children}</div>

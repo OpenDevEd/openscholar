@@ -123,7 +123,7 @@ export function FooterSection({ library, patch }: SectionProps) {
               </Field>
               <div className="space-y-2 rounded-lg border border-border/50 bg-muted/30 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     {t("sectionLinks", {
                       count: section.links.length,
                       max: MAX_NAV_LINKS,

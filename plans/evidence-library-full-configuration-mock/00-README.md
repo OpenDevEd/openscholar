@@ -99,3 +99,16 @@ the Draft library shows every empty state.
 
 Gap maps, statistics page toggle, custom font uploads, password visibility,
 transfer to another organisation, Owner role grants.
+
+## Type and weight rules (decided 2026-08-26)
+
+No forced uppercase anywhere. Sentence case for every label and chip.
+
+1. Page title: `text-xl md:text-2xl font-bold`. The only bold on the page.
+2. Section card title: `text-sm font-semibold` in the tinted header strip; description `text-xs text-muted-foreground`.
+3. Group heading inside a card (SubHeading): `text-sm font-semibold`.
+4. Field label: `text-sm font-medium` (shadcn Label). Row titles (a group, a collection): `text-sm font-medium`.
+5. Small labels — rail groups, nested list labels, eyebrows: `text-xs font-medium text-muted-foreground`. Same as the app sidebar.
+6. Help, meta and counts: `text-xs text-muted-foreground`. Codes and URLs add `font-mono`.
+7. Chips: `text-xs font-medium`, rounded-full, tinted tone. No tracking.
+8. Colour carries meaning only: emerald = done or healthy, amber = changed or waiting, destructive = wrong or dangerous, primary = active or running.
