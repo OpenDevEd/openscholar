@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   cardForRow,
   collectionOptions,
+  exportUrl,
+  featureBlock,
+  settleFeatures,
   SEARCH_SCOPES,
   changedSectionRows,
   isDirty,
@@ -61,6 +64,9 @@ const savedRows = [
   { sectionKey: "filters", payload: {} },
   { sectionKey: "sources", payload: [] },
   { sectionKey: "content", payload: {} },
+  { sectionKey: "citations", payload: {} },
+  { sectionKey: "exports", payload: {} },
+  { sectionKey: "analytics", payload: {} },
 ] as const;
 
 function savedDraft() {
@@ -512,12 +518,12 @@ describe("changedSectionRows for the content sections", () => {
   it("resets the navigation card including the navbar search switch", () => {
     const draft = readDraft(contentRows);
     draft.features.navbarSearch = true;
-    draft.features.downloads = true;
+    draft.features.themeSwitcher = true;
     draft.navigation.links = [];
     const reset = resetSection(draft, contentRows, "navigation");
     expect(reset.navigation.links).toHaveLength(1);
     expect(reset.features.navbarSearch).toBe(false);
-    expect(reset.features.downloads).toBe(true);
+    expect(reset.features.themeSwitcher).toBe(true);
   });
 
   it("counts funder logos as uploads", () => {
@@ -529,7 +535,7 @@ describe("changedSectionRows for the content sections", () => {
   it("points an email issue at the contact card", () => {
     expect(cardForRow("email")).toBe("contact");
     expect(cardForRow("legal")).toBe("contact");
-    expect(cardForRow("features")).toBe("navigation");
+    expect(cardForRow("features")).toBe("features");
     expect(cardForRow("services")).toBeNull();
   });
 });
@@ -680,5 +686,157 @@ describe("legal text chosen but not uploaded yet", () => {
     draft.legal.terms = { kind: "text", text: "" };
     expect(sectionProblems(draft, "contact")).toEqual(["legalText"]);
     expect(changedSectionRows(draft, contentRows)).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Plan 06: citations & exports, features, languages, analytics        */
+/* ------------------------------------------------------------------ */
+
+const platformRows = [
+  ...savedRows.filter((row) => !["features", "localization", "search", "filters", "citations", "exports", "analytics"].includes(row.sectionKey)),
+  { sectionKey: "search", payload: { country: false } },
+  { sectionKey: "filters", payload: { years: { enabled: false } } },
+  { sectionKey: "features", payload: { collections: true, collectionNotes: true, downloads: true } },
+  { sectionKey: "citations", payload: { showUrl: true } },
+  { sectionKey: "exports", payload: { ris: "https://saved-library.libraries.example.test/lib/export/ris" } },
+  { sectionKey: "localization", payload: { locales: ["fr", "en-GB"], defaultLocale: "en-GB", localePriority: ["en-GB"] } },
+  { sectionKey: "analytics", payload: { posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" } } },
+] as const;
+
+describe("readDraft for the platform sections", () => {
+  it("reads export switches, languages and the analytics provider", () => {
+    const draft = readDraft(platformRows);
+    expect(draft.citations.showUrl).toBe(true);
+    expect(draft.exports).toEqual({ ris: true, bibtex: false, atom: false });
+    expect(draft.localization).toEqual({
+      locales: ["fr", "en-GB"],
+      defaultLocale: "en-GB",
+      detectLocale: false,
+      localePriority: ["en-GB", "fr"],
+    });
+    expect(draft.analytics).toEqual({
+      provider: "posthog",
+      posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+      google: { measurementId: "" },
+    });
+    expect(readDraft(savedRows).analytics.posthog.host).toBe("");
+    expect(readDraft(savedRows).analytics.provider).toBe("none");
+    expect(readDraft(savedRows).exports).toEqual({ ris: false, bibtex: false, atom: false });
+  });
+});
+
+describe("feature rules", () => {
+  it("explains why a feature cannot be on and flags the card", () => {
+    const draft = readDraft(platformRows);
+    expect(featureBlock(draft, "countryFocus")).toEqual({ kind: "search", option: "country" });
+    expect(featureBlock(draft, "yearsDropdown")).toEqual({ kind: "years" });
+    expect(featureBlock(draft, "atomFeed")).toEqual({ kind: "atom" });
+    expect(featureBlock(draft, "downloads")).toBeNull();
+    expect(featureBlock(draft, "languageSwitcher")).toBeNull();
+    expect(sectionProblems(draft, "features")).toEqual([]);
+    draft.exports.ris = false;
+    expect(featureBlock(draft, "downloads")).toEqual({ kind: "exports" });
+    expect(sectionProblems(draft, "features")).toEqual(["featureDependency"]);
+  });
+
+  it("turns dependants off when a reset takes their requirement away", () => {
+    const draft = readDraft(platformRows);
+    draft.exports.atom = true;
+    draft.features.atomFeed = true;
+    draft.localization.locales = ["en-GB", "fr"];
+    draft.features.languageSwitcher = true;
+    const afterCitations = resetSection(draft, platformRows, "citations");
+    expect(afterCitations.features.atomFeed).toBe(false);
+    expect(afterCitations.features.languageSwitcher).toBe(true);
+    const savedOneLanguage = platformRows.map((row) =>
+      row.sectionKey === "localization"
+        ? { sectionKey: "localization", payload: { locales: ["en-GB"], defaultLocale: "en-GB" } }
+        : row,
+    );
+    expect(resetSection(draft, savedOneLanguage, "languages").features.languageSwitcher).toBe(false);
+  });
+
+  it("turns dependent features off when their requirement goes away", () => {
+    const draft = readDraft(platformRows);
+    draft.features.collections = false;
+    draft.exports.ris = false;
+    settleFeatures(draft);
+    expect(draft.features.collectionNotes).toBe(false);
+    expect(draft.features.downloads).toBe(false);
+    expect(sectionProblems(draft, "features")).toEqual([]);
+  });
+});
+
+describe("changedSectionRows for the platform sections", () => {
+  it("writes export URLs from the public address when a format is on", () => {
+    const draft = readDraft(platformRows);
+    draft.exports.atom = true;
+    draft.citations.showUrl = false;
+    const rows = changedSectionRows(draft, platformRows);
+    expect(rows).toEqual([
+      { sectionKey: "citations", payload: { showUrl: false } },
+      {
+        sectionKey: "exports",
+        payload: {
+          ris: "https://saved-library.libraries.example.test/lib/export/ris",
+          atom: "https://saved-library.libraries.example.test/lib/atom.xml",
+        },
+      },
+    ]);
+    expect(exportUrl("https://x.test/", "bibtex")).toBe("https://x.test/lib/export/bibtex");
+  });
+
+  it("keeps the navbar search flag on the Navigation card and the rest on Features", () => {
+    const draft = readDraft(platformRows);
+    draft.features.navbarSearch = false;
+    expect(sectionState(draft, platformRows, "navigation")).toBe("edited");
+    expect(sectionState(draft, platformRows, "features")).toBe("complete");
+    draft.features.themeSwitcher = true;
+    expect(sectionState(draft, platformRows, "features")).toBe("edited");
+    expect(changedSectionRows(draft, platformRows).map((row) => row.sectionKey)).toEqual(["features"]);
+    const reset = resetSection(draft, platformRows, "features");
+    expect(reset.features.themeSwitcher).toBe(false);
+    expect(reset.features.navbarSearch).toBe(false);
+  });
+
+  it("writes languages and flags a default that is not offered", () => {
+    const draft = readDraft(platformRows);
+    draft.localization.locales = ["fr"];
+    draft.localization.localePriority = ["fr"];
+    expect(sectionProblems(draft, "languages")).toEqual(["languages"]);
+    draft.localization.defaultLocale = "fr";
+    draft.localization.detectLocale = true;
+    expect(sectionProblems(draft, "languages")).toEqual([]);
+    expect(changedSectionRows(draft, platformRows)).toEqual([
+      {
+        sectionKey: "localization",
+        payload: { locales: ["fr"], defaultLocale: "fr", detectLocale: true, localePriority: ["fr"] },
+      },
+    ]);
+  });
+
+  it("writes only the chosen analytics provider and checks its keys", () => {
+    const draft = readDraft(platformRows);
+    draft.analytics.provider = "google";
+    draft.analytics.google.measurementId = "G-12AB";
+    expect(sectionProblems(draft, "analytics")).toEqual([]);
+    expect(changedSectionRows(draft, platformRows)).toEqual([
+      { sectionKey: "analytics", payload: { google: { measurementId: "G-12AB" } } },
+    ]);
+    draft.analytics.google.measurementId = "UA-1";
+    expect(sectionProblems(draft, "analytics")).toEqual(["google"]);
+    draft.analytics.provider = "posthog";
+    draft.analytics.posthog.key = "nope";
+    expect(sectionProblems(draft, "analytics")).toEqual(["posthog"]);
+    draft.analytics.posthog.key = "phc_short";
+    expect(sectionProblems(draft, "analytics")).toEqual(["posthog"]);
+    draft.analytics.posthog.key = "phc_12345678901234567890";
+    expect(sectionProblems(draft, "analytics")).toEqual([]);
+    draft.analytics.provider = "none";
+    expect(changedSectionRows(draft, platformRows)).toEqual([{ sectionKey: "analytics", payload: {} }]);
+    expect(cardForRow("exports")).toBe("citations");
+    expect(cardForRow("localization")).toBe("languages");
+    expect(cardForRow("features")).toBe("features");
   });
 });

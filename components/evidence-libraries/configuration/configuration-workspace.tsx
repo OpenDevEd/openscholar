@@ -6,19 +6,23 @@ import type { FunctionReturnType } from "convex/server";
 import {
   AlertCircle,
   ArrowUp,
+  BarChart3,
   Building2,
   Database,
   FolderTree,
   Globe,
+  Languages,
   Layers,
   type LucideIcon,
   Mail,
   Menu,
   Palette,
   PanelBottom,
+  Quote,
   Rocket,
   Save,
   Search,
+  ToggleRight,
   Trash2,
   Users,
 } from "lucide-react";
@@ -65,13 +69,17 @@ import {
   staleUploads,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { cn } from "@/lib/utils";
+import { AnalyticsSection } from "./sections/analytics-section";
+import { CitationsSection } from "./sections/citations-section";
 import { CollectionsSection } from "./sections/collections-section";
 import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
+import { FeaturesSection } from "./sections/features-section";
 import { FooterSection } from "./sections/footer-section";
 import { IdentitySection } from "./sections/identity-section";
 import { InstitutionsSection } from "./sections/institutions-section";
+import { LanguagesSection } from "./sections/languages-section";
 import { NavigationSection } from "./sections/navigation-section";
 import { SearchSection } from "./sections/search-section";
 import { SourcesSection } from "./sections/sources-section";
@@ -102,12 +110,13 @@ function isOperationRunning(operation: Operation): operation is NonNullable<Oper
 /** Rail entries: the page cards in their groups, then the team and the danger zone. */
 type RailKey = PageSectionKey | "team" | "danger";
 const RAIL_GROUPS: {
-  key: "brand" | "content" | "discovery" | "team" | "danger";
+  key: "brand" | "content" | "discovery" | "platform" | "team" | "danger";
   sections: readonly RailKey[];
 }[] = [
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["navigation", "footer", "contact", "collections"] },
-  { key: "discovery", sections: ["search", "sources"] },
+  { key: "discovery", sections: ["search", "citations", "features", "sources"] },
+  { key: "platform", sections: ["languages", "analytics"] },
   { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
@@ -122,6 +131,10 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   collections: FolderTree,
   search: Search,
   sources: Database,
+  citations: Quote,
+  features: ToggleRight,
+  languages: Languages,
+  analytics: BarChart3,
   team: Users,
   danger: Trash2,
 };
@@ -139,6 +152,10 @@ const SECTION_COMPONENTS: Record<
   collections: CollectionsSection,
   search: SearchSection,
   sources: SourcesSection,
+  citations: CitationsSection,
+  features: FeaturesSection,
+  languages: LanguagesSection,
+  analytics: AnalyticsSection,
 };
 
 const LIBRARIES_HREF = "/evidence-libraries/new";
