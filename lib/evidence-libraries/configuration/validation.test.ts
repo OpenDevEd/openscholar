@@ -144,9 +144,16 @@ describe("validateOwnerSections", () => {
     const partial = validateOwnerSections([
       { sectionKey: "footer", payload: ownerSections.footer },
       { sectionKey: "footer", payload: ownerSections.footer },
+      { sectionKey: "services", payload: {} },
+      { sectionKey: "authentication", payload: {} },
     ]);
     expect(partial.issues).toEqual([
       expect.objectContaining({ pointer: "/footer", keyword: "duplicate" }),
+      expect.objectContaining({ pointer: "/services", keyword: "platformSection" }),
+      expect.objectContaining({
+        pointer: "/authentication",
+        keyword: "platformSection",
+      }),
     ]);
     const complete = validateOwnerSections(
       [

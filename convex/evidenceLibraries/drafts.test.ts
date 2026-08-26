@@ -288,6 +288,16 @@ describe("Evidence Library draft storage", () => {
     await expect(
       admin.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
         libraryId: created.libraryId,
+        sections: [
+          { sectionKey: "footer", payload: footer },
+          { sectionKey: "services", payload: { publication: {} } },
+        ],
+        expectedEditVersion: 1,
+      }),
+    ).rejects.toThrow(/VALIDATION_ERROR.*\/services: This section is set by the platform/);
+    await expect(
+      admin.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
+        libraryId: created.libraryId,
         sections: [{ sectionKey: "footer", payload: footer }],
         expectedEditVersion: 0,
       }),

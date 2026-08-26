@@ -3,7 +3,7 @@ import {
   type ValidationIssue,
   validateLibraryConfigStructure,
 } from "./generated-validation";
-import { PLATFORM_SECTION_KEYS, type SectionKey } from "./section-registry";
+import { type SectionKey, isPlatformSection } from "./section-registry";
 
 export type ManagedEvidenceLibraryConfiguration = {
   revision: string;
@@ -146,8 +146,7 @@ export function assembleEvidenceLibraryConfiguration({
   const owner = Object.fromEntries(
     Object.entries(sections).filter(
       ([key, payload]) =>
-        payload !== undefined &&
-        !(PLATFORM_SECTION_KEYS as readonly string[]).includes(key),
+        payload !== undefined && !isPlatformSection(key as SectionKey),
     ),
   );
   const withDefaults = applyGeneratedDefaults(

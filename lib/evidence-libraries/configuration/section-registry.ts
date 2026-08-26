@@ -175,8 +175,8 @@ export const SECTION_REGISTRY = [
     key: "authentication",
     pointer: "/authentication",
     label: "Authentication",
-    description: "Catalog-backed sign-in capabilities.",
-    authority: "catalogDerived",
+    description: "Platform sign-in wiring and secret.",
+    authority: "platformProvisioned",
   },
   {
     key: "email",
@@ -205,24 +205,31 @@ export type SectionKey = (typeof SECTION_REGISTRY)[number]["key"];
 
 const SECTION_KEYS = new Set<string>(SECTION_REGISTRY.map((section) => section.key));
 
-export function isSectionKey(value: unknown): value is SectionKey {
+function isSectionKey(value: unknown): value is SectionKey {
   return typeof value === "string" && SECTION_KEYS.has(value);
 }
 
-// Sections whose values come from the platform at assembly time. Owners never
-// write them; the runtime credentials and service addresses live here.
-export const PLATFORM_SECTION_KEYS = [
-  "services",
-  "authentication",
-] as const satisfies readonly SectionKey[];
+export function getSectionAuthority(sectionKey: SectionKey): FieldAuthority {
+  return SECTION_REGISTRY.find((section) => section.key === sectionKey)!
+    .authority;
+}
+
+// Sections the platform fills at assembly time. Owners never save them.
+export const PLATFORM_SECTION_KEYS = SECTION_REGISTRY.filter(
+  (section) => section.authority === "platformProvisioned",
+).map((section) => section.key);
+
+export function isPlatformSection(sectionKey: SectionKey): boolean {
+  return getSectionAuthority(sectionKey) === "platformProvisioned";
+}
 
 // Owner sections the runtime schema marks as required at the root. Read from
 // the schema so the list never needs a hand-written copy.
 export const REQUIRED_OWNER_SECTION_KEYS = schema.required.filter(
-  (key): key is Exclude<SectionKey, (typeof PLATFORM_SECTION_KEYS)[number]> =>
+  (key): key is SectionKey =>
     isSectionKey(key) &&
     !(ENVELOPE_FIELDS as readonly string[]).includes(key) &&
-    !(PLATFORM_SECTION_KEYS as readonly string[]).includes(key),
+    !isPlatformSection(key),
 );
 
 export function writeOnlyPathToPointerPattern(path: string): `/${string}` {

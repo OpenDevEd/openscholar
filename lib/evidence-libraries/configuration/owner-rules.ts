@@ -5,6 +5,7 @@ import {
 import {
   REQUIRED_OWNER_SECTION_KEYS,
   type SectionKey,
+  isPlatformSection,
 } from "./section-registry";
 
 export type OwnerSectionRow = { sectionKey: SectionKey; payload: unknown };
@@ -86,6 +87,15 @@ export function validateOwnerSections(
       continue;
     }
     seen.add(row.sectionKey);
+    if (isPlatformSection(row.sectionKey)) {
+      issues.push({
+        pointer: `/${row.sectionKey}`,
+        section: row.sectionKey,
+        keyword: "platformSection",
+        message: "This section is set by the platform and cannot be saved.",
+      });
+      continue;
+    }
     issues.push(...validateOwnerSection(row.sectionKey, row.payload, options).issues);
   }
   if (options.requireComplete) {
