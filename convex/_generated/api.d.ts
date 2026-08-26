@@ -241,6 +241,9 @@ import type * as zotero_libraryGroupValidators from "../zotero/libraryGroupValid
 import type * as zotero_libraryGroups from "../zotero/libraryGroups.js";
 import type * as zotero_mutations from "../zotero/mutations.js";
 import type * as zotero_queries from "../zotero/queries.js";
+import type * as zotero_runtimeReadActions from "../zotero/runtimeReadActions.js";
+import type * as zotero_runtimeReadClient from "../zotero/runtimeReadClient.js";
+import type * as zotero_runtimeReads from "../zotero/runtimeReads.js";
 import type * as zotero_sourceCredentials from "../zotero/sourceCredentials.js";
 
 import type {
@@ -483,6 +486,9 @@ declare const fullApi: ApiFromModules<{
   "zotero/libraryGroups": typeof zotero_libraryGroups;
   "zotero/mutations": typeof zotero_mutations;
   "zotero/queries": typeof zotero_queries;
+  "zotero/runtimeReadActions": typeof zotero_runtimeReadActions;
+  "zotero/runtimeReadClient": typeof zotero_runtimeReadClient;
+  "zotero/runtimeReads": typeof zotero_runtimeReads;
   "zotero/sourceCredentials": typeof zotero_sourceCredentials;
 }>;
 

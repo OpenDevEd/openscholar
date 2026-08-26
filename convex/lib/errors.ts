@@ -67,7 +67,9 @@ export type ErrorCode =
   | "ZOTERO_OAUTH_NOT_CONFIGURED"
   | "ZOTERO_REQUEST_TOKEN_FAILED"
   | "ZOTERO_INVALID_RESPONSE"
-  | "ZOTERO_API_ERROR";
+  | "ZOTERO_API_ERROR"
+  // Evidence Library runtime
+  | "EVIDENCE_LIBRARY_RUNTIME_ERROR";
 
 export type ErrorData = { code: ErrorCode; message?: string };
 
