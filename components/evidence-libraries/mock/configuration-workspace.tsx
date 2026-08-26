@@ -20,6 +20,7 @@ import {
   Rocket,
   Save,
   Search,
+  Sparkles,
   ToggleRight,
   Trash2,
   Users,
@@ -60,6 +61,7 @@ import {
   selectLibrary,
   useEvidenceLibraryMockStore,
 } from "@/lib/evidence-libraries/mock/store";
+import { AiSection } from "./config/ai-section";
 import { AnalyticsSection } from "./config/analytics-section";
 import { CitationsSection } from "./config/citations-section";
 import { CollectionsSection } from "./config/collections-section";
@@ -96,6 +98,7 @@ const SECTION_ICONS: Record<SectionKey, LucideIcon> = {
   search: Search,
   citations: Quote,
   features: ToggleRight,
+  ai: Sparkles,
   sources: Database,
   languages: Languages,
   analytics: BarChart3,
@@ -119,6 +122,7 @@ const SECTION_COMPONENTS: Record<
   search: SearchSection,
   citations: CitationsSection,
   features: FeaturesSection,
+  ai: AiSection,
   sources: SourcesSection,
   languages: LanguagesSection,
   analytics: AnalyticsSection,

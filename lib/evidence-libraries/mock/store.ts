@@ -38,13 +38,11 @@ const DELETE_INTERVAL_MS = 1000;
 const SAVE_MS = 800;
 const RESERVE_MS = 1000;
 const UPLOAD_MS = 1200;
-const SYNC_MS = 700;
 const DNS_MS = 1800;
 const INVITE_MS = 3000;
 const PAUSE_MS = 1500;
 
 export type UploadResult = { ok: true; file: MockFile } | { ok: false; error: "type" | "size" };
-export type SyncRun = { percent: number; sourceId: string };
 
 type MockState = {
   orgId: string;
@@ -59,8 +57,6 @@ type MockState = {
   reserving: boolean;
   /** upload slot key -> percent */
   uploads: Record<string, number>;
-  /** libraryId -> running Zotero sync */
-  syncing: Record<string, SyncRun>;
   /** libraryId -> pause/unpause in flight */
   pausing: Record<string, boolean>;
 
@@ -70,7 +66,6 @@ type MockState = {
   updateDraft: (libraryId: string, update: (draft: LibraryConfig) => LibraryConfig) => void;
   resetSection: (libraryId: string, key: SectionKey) => void;
   uploadFile: (slot: string, kind: FileKind, file: File) => Promise<UploadResult>;
-  syncSource: (libraryId: string, sourceId: string) => void;
   checkDns: (libraryId: string) => void;
   invite: (libraryId: string, grantId: string) => void;
   restoreVersion: (libraryId: string, rev: string) => void;
@@ -192,7 +187,6 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
     saving: {},
     reserving: false,
     uploads: {},
-    syncing: {},
     pausing: {},
 
     switchOrganization(orgId) {
@@ -304,56 +298,6 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
           }
         }, UPLOAD_MS);
       });
-    },
-
-    syncSource(libraryId, sourceId) {
-      if (get().syncing[libraryId]) return;
-      set((state) => ({ syncing: { ...state.syncing, [libraryId]: { percent: 0, sourceId } } }));
-      const timer = setInterval(() => {
-        const run = get().syncing[libraryId];
-        if (!run) {
-          clearInterval(timer);
-          return;
-        }
-        const percent = Math.min(100, run.percent + 20);
-        if (percent >= 100) {
-          clearInterval(timer);
-          let name = "";
-          const at = dateStamp();
-          set((state) => {
-            const syncing = { ...state.syncing };
-            delete syncing[libraryId];
-            return {
-              syncing,
-              libraries: patchLibrary(state.libraries, libraryId, (l) => {
-                const bump = (c: LibraryConfig) => ({
-                  ...c,
-                  sources: {
-                    ...c.sources,
-                    groups: c.sources.groups.map((g) => {
-                      if (g.id !== sourceId) return g;
-                      name = g.name;
-                      return { ...g, lastSync: at, items: g.items + 3, lastError: null };
-                    }),
-                  },
-                });
-                return {
-                  ...l,
-                  draft: bump(l.draft),
-                  saved: bump(l.saved),
-                  syncLog: [
-                    { id: newId("ev"), at, groupName: name, message: "Imported 3 new records.", tone: "ok" as const },
-                    ...l.syncLog,
-                  ].slice(0, 8),
-                };
-              }),
-            };
-          });
-          toast.success("Sync finished", { description: `${name}: 3 new records.` });
-          return;
-        }
-        set((state) => ({ syncing: { ...state.syncing, [libraryId]: { ...run, percent } } }));
-      }, SYNC_MS);
     },
 
     checkDns(libraryId) {

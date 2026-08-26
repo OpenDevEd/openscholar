@@ -97,7 +97,7 @@ export function AdminSitePreview({
     <BrowserFrame url={`https://${address}/admin?code=••••••••••••`}>
       <SiteNav
         config={config}
-        title={`${config.identity.name} · ${t("adminSuffix")}`}
+        title={`${config.identity.name} ${t("adminSuffix")}`}
         links={[t("signedInAs")]}
       />
       <div className="grid sm:grid-cols-[160px_1fr]">

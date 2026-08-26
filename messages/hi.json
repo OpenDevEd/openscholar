@@ -2218,7 +2218,7 @@
     "deleteError": "हटाने की प्रक्रिया शुरू नहीं हुई। चल रही लाइब्रेरी प्रक्रिया पूरी होने दें, फिर कोशिश करें।"
   },
   "evidenceLibraryMock": {
-    "prototypeBadge": "Prototype · fake data",
+    "prototypeBadge": "Prototype with fake data",
     "mockBadge": "Mock",
     "organizationLabel": "Organisation",
     "switchedOrganization": "Switched organisation",
@@ -2384,7 +2384,8 @@
         "team": "Team & visibility",
         "domain": "Domain",
         "versions": "Versions",
-        "danger": "Danger zone"
+        "danger": "Danger zone",
+        "ai": "AI"
       },
       "identityDescription": "The name people see, and the address they visit.",
       "nameLabel": "Name",
@@ -2658,7 +2659,6 @@
         "groups": {
           "appearance": "Appearance",
           "accounts": "Accounts",
-          "ai": "AI",
           "discovery": "Discovery",
           "exports": "Exports"
         },
@@ -2669,7 +2669,7 @@
           "googleSignIn": "Google sign-in",
           "userCollections": "Personal collections",
           "ai": "AI answers",
-          "aiSearch": "AI search (semantic)",
+          "aiSearch": "AI search",
           "deepResearch": "Deep research",
           "relatedResources": "Related records",
           "collections": "Collections",
@@ -2688,7 +2688,7 @@
           "googleSignIn": "Let people sign in with a Google account.",
           "userCollections": "Signed-in people can save records to their own lists.",
           "ai": "Answer questions using records in the library.",
-          "aiSearch": "Find records by meaning, not just matching words.",
+          "aiSearch": "Search the library by talking to the AI.",
           "deepResearch": "Long AI reports built from many records.",
           "relatedResources": "Show similar records on each record page.",
           "collections": "Show collections in the library.",
@@ -2703,35 +2703,7 @@
         "needs": "Turn on {feature} first.",
         "needsLanguages": "Add at least two languages in the Languages section first.",
         "needsExports": "Turn on RIS or BibTeX in Citations & Exports first.",
-        "needsAtom": "Turn on the Atom feed in Citations & Exports first.",
-        "billingHeading": "How AI is paid for",
-        "billing": {
-          "credits": "OpenScholar credits",
-          "openrouter": "My OpenRouter key",
-          "providers": "My own provider keys"
-        },
-        "billingHint": {
-          "credits": "Charged to the owner's OpenScholar account. Nothing to set up.",
-          "openrouter": "Your OpenRouter account pays. All models on the list work.",
-          "providers": "You pay each provider directly. Only models from providers with a key work."
-        },
-        "balance": "Balance: {credits} credits",
-        "topUp": "Top up",
-        "topUpToast": "Buying credits is not part of this prototype.",
-        "openRouterKey": "OpenRouter key",
-        "openRouterKeyHint": "Stored only in the library's private settings. Never shown again.",
-        "providerKey": "{provider} key",
-        "providerNames": {
-          "openai": "OpenAI",
-          "google": "Google",
-          "xai": "xAI"
-        },
-        "modelsHeading": "Models visitors can pick",
-        "modelsHint": "The list comes from OpenScholar. Visitors choose one of these in the chat.",
-        "needsKey": "Add a {provider} key first",
-        "defaultModel": "Default model",
-        "defaultModelPlaceholder": "Enable a model first",
-        "embeddingsNote": "AI search and related records use OpenScholar's shared embedding model. Nothing to set up."
+        "needsAtom": "Turn on the Atom feed in Citations & Exports first."
       },
       "navigation": {
         "description": "The links in the top bar of the public site.",
@@ -2875,28 +2847,13 @@
         "pasteDuplicate": "That group is already added.",
         "noGroups": "No groups yet.",
         "connectFirst": "Connect a Zotero account to see your groups.",
-        "health": {
-          "healthy": "Healthy",
-          "syncing": "Syncing",
-          "paused": "Paused",
-          "error": "Failed",
-          "new": "Not synced yet"
-        },
         "items": "{count} records",
         "public": "Public",
         "private": "Private",
-        "schedule": "Sync",
-        "schedules": {
-          "manual": "Manually",
-          "hourly": "Every hour",
-          "daily": "Every day"
-        },
         "writeback": "Write back",
         "writebackHint": "Send edits made in the library back to Zotero.",
         "lastSync": "Last sync {when}",
         "neverSynced": "Never synced",
-        "syncNow": "Sync now",
-        "syncingPercent": "Syncing {percent}%",
         "pause": "Pause",
         "resume": "Resume",
         "remove": "Remove group",
@@ -2934,7 +2891,16 @@
           "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
           "cancel": "Cancel",
           "addPicked": "{count, plural, =0 {Add} one {Add # group} other {Add # groups}}"
-        }
+        },
+        "health": {
+          "healthy": "Healthy",
+          "paused": "Paused",
+          "error": "Failed",
+          "new": "Not synced yet"
+        },
+        "recordsLabel": "Records",
+        "lastSyncLabel": "Last sync",
+        "groupIdLabel": "Group"
       },
       "languages": {
         "description": "Which languages the public site offers, which one it opens in, and the order it tries them.",
@@ -2995,7 +2961,7 @@
           "active": "Active",
           "invited": "Invited"
         },
-        "orgMembers": "Organisation · {members} members",
+        "orgMembers": "{members} members",
         "removeAccess": "Remove access for {name}",
         "removeTitle": "Remove {name}?",
         "removeBody": "They lose access as soon as you activate the next version.",
@@ -3016,7 +2982,8 @@
         "orgNoMatch": "No organisation matches.",
         "orgMissing": "Choose an organisation first.",
         "orgDuplicate": "This organisation already has access.",
-        "inviteConfirm": "Invite"
+        "inviteConfirm": "Invite",
+        "orgChip": "Organisation"
       },
       "domain": {
         "description": "Use your own web address for the library.",
@@ -3076,6 +3043,61 @@
         "deleteTitle": "Delete the library",
         "deleteHint": "Removes the site, address and settings.",
         "deleteButton": "Delete library"
+      },
+      "ai": {
+        "description": "Answer questions from the library's records. Choose who pays and which models visitors can use.",
+        "master": "AI answers",
+        "masterHint": "Visitors can ask questions and get answers built from the records.",
+        "offNotice": "Turn on AI answers to choose models and how they are paid for.",
+        "billingHeading": "Who pays",
+        "billing": {
+          "credits": "OpenScholar credits",
+          "openrouter": "My OpenRouter key",
+          "providers": "My own provider keys"
+        },
+        "billingHint": {
+          "credits": "Charged to the owner's account. Nothing to set up.",
+          "openrouter": "Your OpenRouter account pays. Every model on the list works.",
+          "providers": "You pay each provider directly. Only their models work."
+        },
+        "balance": "{credits} credits available",
+        "balanceUnknown": "Sign in to see your balance",
+        "topUp": "Top up",
+        "keyLabel": "{provider} key",
+        "keyHint": "Stored in the library's private settings and never shown again.",
+        "getKey": "Get a key from {provider}",
+        "keySaved": "Key added",
+        "keyMissing": "No key yet",
+        "modelsHeading": "Models",
+        "modelsHint": "From OpenScholar's model list. Visitors choose one of these in the chat.",
+        "addModels": "Add models",
+        "noModels": "No models yet.",
+        "default": "Default",
+        "makeDefault": "Make default",
+        "removeModel": "Remove model",
+        "needsKey": "Add a {provider} key to use this model.",
+        "free": "Free",
+        "capabilitiesHeading": "What visitors can do",
+        "picker": {
+          "title": "Add models",
+          "description": "OpenScholar's model list. Prices are per million tokens.",
+          "search": "Search models…",
+          "all": "All providers",
+          "other": "Other",
+          "colModel": "Model",
+          "colPrice": "Price",
+          "colContext": "Context",
+          "added": "Added",
+          "noMatch": "No model matches.",
+          "loading": "Loading the model list…",
+          "failed": "The model list could not be loaded.",
+          "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
+          "cancel": "Cancel",
+          "addPicked": "{count, plural, =0 {Add} one {Add # model} other {Add # models}}",
+          "free": "Free"
+        },
+        "priceLabel": "Per 1M tokens",
+        "contextLabel": "Context"
       }
     },
     "site": {
@@ -3086,15 +3108,15 @@
       "searchPlaceholder": "Search {name}…",
       "browse": "Browse the evidence",
       "heroTitle": "Find the evidence on {topic}",
-      "heroMeta": "{count, plural, one {# language} other {# languages}} · 1,284 records · updated weekly from Zotero",
+      "heroMeta": "{count, plural, one {# language} other {# languages}}, 1,284 records, updated weekly from Zotero",
       "heroSearch": "Try \"teacher training\" or \"learning outcomes\"",
       "heroGo": "Search",
       "card1": "Teacher professional development",
-      "card1Meta": "212 records · systematic reviews and RCTs",
+      "card1Meta": "212 records on systematic reviews and RCTs",
       "card2": "Technology in classrooms",
-      "card2Meta": "168 records · low- and middle-income countries",
+      "card2Meta": "168 records on low- and middle-income countries",
       "card3": "Foundational literacy",
-      "card3Meta": "301 records · 2015 onwards",
+      "card3Meta": "301 records from 2015 onwards",
       "card4": "Evidence gap map",
       "card4Meta": "Where research is missing, by topic and region",
       "tagCollection": "Collection",
@@ -3124,7 +3146,7 @@
       "signedIn": "Signed in",
       "signedInDescription": "Opened the admin area in a new tab (mocked).",
       "newTab": "New tab",
-      "newTabMock": "Mock · this opens in a real new tab in the product",
+      "newTabMock": "This opens in a real new tab in the product.",
       "close": "Close",
       "adminSuffix": "Admin",
       "signedInAs": "Signed in as Owner",
@@ -3144,9 +3166,9 @@
       "statSync": "Last Zotero sync",
       "statSyncValue": "2h ago",
       "row1": "Effects of teacher coaching on early-grade reading",
-      "row1Meta": "Imported from Zotero · needs a summary",
+      "row1Meta": "Imported from Zotero, needs a summary",
       "row2": "Mobile learning in refugee settings: a scoping review",
-      "row2Meta": "PDF attached · 3 tags",
+      "row2Meta": "PDF attached, 3 tags",
       "row3": "Cost-effectiveness of structured pedagogy programmes",
       "row3Meta": "Duplicate check pending",
       "review": "Review",

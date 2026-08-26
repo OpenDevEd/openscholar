@@ -26,6 +26,7 @@ import {
   Check,
   FileText,
   GripVertical,
+  type LucideIcon,
   ImageIcon,
   Lock,
   Plus,
@@ -785,6 +786,30 @@ export function PanelRow({
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </Panel>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Meta                                                                */
+/* ------------------------------------------------------------------ */
+
+export type MetaItem = { key: string; label?: ReactNode; value: ReactNode; icon?: LucideIcon };
+
+/**
+ * Small facts under a title: "Records 1,284   Last sync 2026-08-26". Labels are
+ * muted, values are not. Spacing separates the facts; never a dot.
+ */
+export function MetaList({ items, className }: { items: MetaItem[]; className?: string }) {
+  return (
+    <dl className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 text-xs", className)}>
+      {items.map(({ key, label, value, icon: Icon }) => (
+        <div key={key} className="inline-flex items-center gap-1.5">
+          {Icon ? <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden /> : null}
+          {label ? <dt className="text-muted-foreground">{label}</dt> : null}
+          <dd className="text-foreground">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

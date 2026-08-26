@@ -4,7 +4,6 @@
  */
 
 import {
-  AI_MODELS,
   CURRENT_YEAR,
   DRAFT_SECTIONS,
   FEATURE_DEPENDENCIES,
@@ -273,8 +272,8 @@ export function makeConfig(
         billing: "credits",
         openRouterKey: "",
         providerKeys: {},
-        models: ["openai/gpt-5.6-luna", "google/gemini-3.7-flash", "x-ai/grok-4.6"],
-        defaultModel: "openai/gpt-5.6-luna",
+        models: [],
+        defaultModel: "",
       },
     },
     sources: {
@@ -389,15 +388,15 @@ function fullConfig(): LibraryConfig {
       billing: "openrouter",
       openRouterKey: "sk-or-v1-8f3a…c21e",
       providerKeys: {},
-      models: ["openai/gpt-5.6-luna", "google/gemini-3.7-flash"],
-      defaultModel: "openai/gpt-5.6-luna",
+      models: ["openai/gpt-5.4", "anthropic/claude-sonnet-4.6", "google/gemini-3.1-pro-preview"],
+      defaultModel: "openai/gpt-5.4",
     },
   };
   c.sources.account = { method: "zotero", handle: "@aiined" };
   c.sources.groups = [
-    { id: "src_1", groupId: "2405685", name: "AI in Education", isPublic: true, items: 1284, schedule: "hourly", writeback: true, paused: false, lastSync: "2026-08-26 06:00", lastError: null },
-    { id: "src_2", groupId: "5133907", name: "Partner submissions", isPublic: false, items: 212, schedule: "daily", writeback: false, paused: false, lastSync: "2026-08-25 22:15", lastError: null },
-    { id: "src_3", groupId: "4488120", name: "Legacy archive (2019)", isPublic: false, items: 388, schedule: "manual", writeback: false, paused: true, lastSync: "2026-07-30 09:12", lastError: null },
+    { id: "src_1", groupId: "2405685", name: "AI in Education", isPublic: true, items: 1284, writeback: true, paused: false, lastSync: "2026-08-26 06:00", lastError: null },
+    { id: "src_2", groupId: "5133907", name: "Partner submissions", isPublic: false, items: 212, writeback: false, paused: false, lastSync: "2026-08-25 22:15", lastError: null },
+    { id: "src_3", groupId: "4488120", name: "Legacy archive (2019)", isPublic: false, items: 388, writeback: false, paused: true, lastSync: "2026-07-30 09:12", lastError: null },
   ];
   c.localization = { locales: ["en-GB", "fr", "ar"], defaultLocale: "en-GB", detect: true, priority: ["en-GB", "fr", "ar"] };
   c.analytics = { provider: "posthog", host: "https://eu.i.posthog.com", key: "phc_4kd92hs8dksjJ2kd8s7dhsk29sJk" };
@@ -581,18 +580,18 @@ export function sectionProblems(c: LibraryConfig, key: SectionKey): string[] {
       break;
     case "features":
       for (const [k, deps] of Object.entries(FEATURE_DEPENDENCIES) as [FeatureKey, FeatureKey[]][]) {
+        if ((AI_FEATURES as readonly string[]).includes(k)) continue;
         if (c.features[k] && deps.some((d) => !c.features[d])) out.push("dependency");
       }
+      break;
+    case "ai":
       if (c.features.ai) {
         const ai = c.features.aiSettings;
         if (ai.billing === "openrouter" && !ai.openRouterKey.trim()) out.push("aiKey");
-        const usable = ai.models.filter((id) => {
-          if (ai.billing !== "providers") return true;
-          const provider = AI_MODELS.find((m) => m.id === id)?.provider;
-          return Boolean(provider && ai.providerKeys[provider]?.trim());
-        });
+        const usable = ai.models.filter((id) => aiModelUsable(c, id));
         if (usable.length === 0) out.push("aiModels");
         if (ai.defaultModel && !usable.includes(ai.defaultModel)) out.push("aiDefault");
+        if (c.features.deepResearch && !c.features.aiSearch) out.push("dependency");
       }
       if (c.features.languageSwitcher && c.localization.locales.length < 2) out.push("languageSwitcher");
       if (c.features.downloads && !c.citations.ris && !c.citations.bibtex) out.push("downloads");
@@ -623,6 +622,20 @@ export function sectionProblems(c: LibraryConfig, key: SectionKey): string[] {
   return out;
 }
 
+/** In "own keys" mode a model only works when its provider has a key. */
+export function aiModelUsable(c: LibraryConfig, modelId: string): boolean {
+  const ai = c.features.aiSettings;
+  if (ai.billing !== "providers") return true;
+  const provider = modelId.split("/")[0] as keyof typeof ai.providerKeys;
+  return Boolean(ai.providerKeys[provider]?.trim());
+}
+
+const AI_FEATURES = ["ai", "aiSearch", "deepResearch", "relatedResources"] as const;
+const aiSlice = (c: LibraryConfig) => ({
+  ...Object.fromEntries(AI_FEATURES.map((k) => [k, c.features[k]])),
+  settings: c.features.aiSettings,
+});
+
 const SECTION_SLICE: Record<Exclude<SectionKey, "versions" | "danger">, (c: LibraryConfig) => unknown> = {
   identity: (c) => c.identity,
   theme: (c) => c.theme,
@@ -633,7 +646,11 @@ const SECTION_SLICE: Record<Exclude<SectionKey, "versions" | "danger">, (c: Libr
   collections: (c) => c.collections,
   search: (c) => c.search,
   citations: (c) => c.citations,
-  features: (c) => c.features,
+  features: (c) => {
+    const { aiSettings: _settings, ai: _ai, aiSearch: _s, deepResearch: _d, relatedResources: _r, ...rest } = c.features;
+    return rest;
+  },
+  ai: aiSlice,
   sources: (c) => c.sources,
   languages: (c) => c.localization,
   analytics: (c) => c.analytics,
@@ -660,6 +677,15 @@ export function resetSection(library: MockLibrary, key: SectionKey): LibraryConf
   switch (key) {
     case "languages":
       draft.localization = structuredClone(saved.localization);
+      break;
+    case "ai":
+      for (const k of AI_FEATURES) draft.features[k] = saved.features[k];
+      draft.features.aiSettings = structuredClone(saved.features.aiSettings);
+      break;
+    case "features":
+      for (const k of FEATURE_KEYS) {
+        if (!(AI_FEATURES as readonly string[]).includes(k)) draft.features[k] = saved.features[k];
+      }
       break;
     case "versions":
     case "danger":

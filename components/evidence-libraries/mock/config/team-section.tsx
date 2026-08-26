@@ -264,7 +264,10 @@ function GrantSubject({ grant }: { grant: AccessGrant }) {
         <AvatarFallback className="text-xs">{initialsOf(name)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{name}</p>
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <span className="truncate">{name}</span>
+          {s.kind === "organization" ? <StatusChip tone="neutral">{t("orgChip")}</StatusChip> : null}
+        </p>
         <p className="truncate text-xs text-muted-foreground">{secondary}</p>
       </div>
     </div>

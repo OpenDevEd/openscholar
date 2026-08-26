@@ -95,16 +95,8 @@ export type SearchScope = (typeof SEARCH_SCOPES)[number];
 
 export type InstitutionFacetMode = "hidden" | "facet" | "facet-with-featured-value";
 
-/** OpenScholar's model list. Visitors pick from the models the owner enables. */
-export const AI_MODELS = [
-  { id: "openai/gpt-5.6-luna", name: "GPT-5.6 Luna", provider: "openai" },
-  { id: "google/gemini-3.7-flash", name: "Gemini 3.7 Flash", provider: "google" },
-  { id: "x-ai/grok-4.6", name: "Grok 4.6", provider: "xai" },
-] as const;
-export type AiModelId = (typeof AI_MODELS)[number]["id"];
-
-/** Providers an owner may bring their own key for. */
-export const AI_KEY_PROVIDERS = ["openai", "google", "xai"] as const;
+/** Providers an owner may bring their own key for. Matches OpenScholar's provider configs. */
+export const AI_KEY_PROVIDERS = ["openai", "google", "anthropic", "deepseek"] as const;
 export type AiKeyProvider = (typeof AI_KEY_PROVIDERS)[number];
 
 /** How AI answers are paid for. Exactly one path per library. */
@@ -114,9 +106,9 @@ export type AiSettings = {
   billing: AiBilling;
   openRouterKey: string;
   providerKeys: Partial<Record<AiKeyProvider, string>>;
-  /** Models visitors can choose from. */
-  models: AiModelId[];
-  defaultModel: AiModelId | "";
+  /** OpenRouter model ids from OpenScholar's catalog that visitors can choose. */
+  models: string[];
+  defaultModel: string;
 };
 
 export const FEATURE_KEYS = [
@@ -143,7 +135,6 @@ export type FeatureKey = (typeof FEATURE_KEYS)[number];
 export const FEATURE_GROUPS: { key: string; features: FeatureKey[] }[] = [
   { key: "appearance", features: ["themeSwitcher", "languageSwitcher"] },
   { key: "accounts", features: ["login", "googleSignIn", "userCollections"] },
-  { key: "ai", features: ["ai", "aiSearch", "deepResearch", "relatedResources"] },
   {
     key: "discovery",
     features: [
@@ -158,8 +149,7 @@ export const FEATURE_GROUPS: { key: string; features: FeatureKey[] }[] = [
   { key: "exports", features: ["downloads", "atomFeed"] },
 ];
 
-export type SyncSchedule = "manual" | "hourly" | "daily";
-export type GroupHealth = "healthy" | "syncing" | "paused" | "error" | "new";
+export type GroupHealth = "healthy" | "paused" | "error" | "new";
 
 /** A Zotero group the library imports from. Name and counts come from Zotero. */
 export type ZoteroGroupSource = {
@@ -169,7 +159,6 @@ export type ZoteroGroupSource = {
   isPublic: boolean;
   /** Records in the library database from this group. */
   items: number;
-  schedule: SyncSchedule;
   writeback: boolean;
   paused: boolean;
   lastSync: string | null;
@@ -336,6 +325,7 @@ export type SectionKey =
   | "search"
   | "citations"
   | "features"
+  | "ai"
   | "sources"
   | "languages"
   | "analytics"
@@ -347,7 +337,7 @@ export type SectionKey =
 export const RAIL_GROUPS: { key: string; sections: SectionKey[] }[] = [
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["navigation", "footer", "contact", "collections"] },
-  { key: "discovery", sections: ["search", "citations", "features", "sources"] },
+  { key: "discovery", sections: ["search", "citations", "features", "ai", "sources"] },
   { key: "platform", sections: ["languages", "analytics", "team"] },
   { key: "publishing", sections: ["domain", "versions"] },
   { key: "danger", sections: ["danger"] },
@@ -365,6 +355,7 @@ export const DRAFT_SECTIONS: Exclude<SectionKey, "versions" | "danger">[] = [
   "search",
   "citations",
   "features",
+  "ai",
   "sources",
   "languages",
   "analytics",

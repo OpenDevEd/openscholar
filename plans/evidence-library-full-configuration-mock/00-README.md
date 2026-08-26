@@ -145,3 +145,11 @@ Use these; do not hand-roll a look-alike.
 - `Panel` / `PanelRow`: the only bordered box. `muted` for information, `plain` for content in a list, `danger` for destructive actions. Always `rounded-lg`, padding 12px.
 - `ListRow` inside `SortableList`: reorderable items. `EmptyList`: the dashed empty state.
 - `FieldGroup`: every titled group of fields.
+
+## AI section (revised 2026-08-26)
+
+AI is its own section. One master toggle "AI answers". Then: who pays (OpenScholar credits with the real balance from `api.credits.queries.getMyBalance`; an OpenRouter key; or the owner's own provider keys using the app's provider icons and `getProviderConfig` links), the models visitors may pick (chosen from OpenScholar's live catalog `api.models.queries.listCatalogOptions` in a picker with search, provider filter, price and context; one is the default), and what visitors can do (AI search = search by talking to the AI, deep research, related records). Nothing about embeddings is shown to owners. No model list is hardcoded.
+
+## Facts, not dots (decided 2026-08-26)
+
+Never join facts with "·". Use `MetaList` (muted label, plain value, spaced apart) or a chip. Zotero group rows show only what the database knows: public or private, records, last sync, health; actions are Write back, Pause/Resume and Remove. Sync cadence is set by OpenScholar, not the owner; there is no "Sync now".

@@ -9,7 +9,6 @@ import {
   Pause,
   Play,
   Plus,
-  RefreshCw,
   Search,
   Trash2,
 } from "lucide-react";
@@ -37,9 +36,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -47,16 +43,14 @@ import { cn } from "@/lib/utils";
 import {
   type GroupHealth,
   newId,
-  type SyncSchedule,
   TAG_RULE_KEYS,
   type TagRuleKey,
   type ZoteroGroupOption,
   type ZoteroGroupSource,
 } from "@/lib/evidence-libraries/mock/config";
-import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
 import { StatusChip, type StatusTone } from "../library-status-badge";
 import { Field, FieldError } from "../section-card";
-import { ChipInput, EmptyList, FieldGroup, Panel } from "./fields";
+import { ChipInput, EmptyList, FieldGroup, MetaList, Panel } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const TAG_RULE_COPY: Record<TagRuleKey, { label: string; hint: string }> = {
@@ -70,13 +64,11 @@ const TAG_RULE_COPY: Record<TagRuleKey, { label: string; hint: string }> = {
 
 const HEALTH_TONE: Record<GroupHealth, StatusTone> = {
   healthy: "success",
-  syncing: "running",
   paused: "neutral",
   error: "danger",
   new: "warning",
 };
 
-const SCHEDULES: SyncSchedule[] = ["manual", "hourly", "daily"];
 const GROUP_LINK = /zotero\.org\/groups\/(\d+)/;
 
 export function SourcesSection({ library, patch }: SectionProps) {
@@ -96,7 +88,6 @@ export function SourcesSection({ library, patch }: SectionProps) {
           name: o.name,
           isPublic: o.isPublic,
           items: 0,
-          schedule: "daily",
           writeback: false,
           paused: false,
           lastSync: null,
@@ -129,7 +120,6 @@ export function SourcesSection({ library, patch }: SectionProps) {
             {sources.groups.map((group) => (
               <GroupRow
                 key={group.id}
-                libraryId={library.id}
                 group={group}
                 onChange={(fn) =>
                   patch((d) => {
@@ -338,75 +328,45 @@ function AccountPanel({ library, patch }: SectionProps) {
 /* ------------------------------------------------------------------ */
 
 function GroupRow({
-  libraryId,
   group,
   onChange,
   onRemove,
 }: {
-  libraryId: string;
   group: ZoteroGroupSource;
   onChange: (fn: (row: ZoteroGroupSource) => void) => void;
   onRemove: () => void;
 }) {
   const t = useTranslations("evidenceLibraryMock.config.sources");
-  const syncSource = useEvidenceLibraryMockStore((s) => s.syncSource);
-  const run = useEvidenceLibraryMockStore((s) => s.syncing[libraryId]);
-  const syncing = run?.sourceId === group.id;
-  const health: GroupHealth = syncing
-    ? "syncing"
-    : group.paused
-      ? "paused"
-      : group.lastError
-        ? "error"
-        : group.lastSync
-          ? "healthy"
-          : "new";
+  const health: GroupHealth = group.paused
+    ? "paused"
+    : group.lastError
+      ? "error"
+      : group.lastSync
+        ? "healthy"
+        : "new";
 
   return (
-    <div className={cn("space-y-2 p-4", group.paused && "bg-muted/20")} data-group-id={group.groupId} data-health={health}>
+    <div className={cn("space-y-2 p-4", group.paused && "bg-muted/30")} data-group-id={group.groupId} data-health={health}>
       <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn("text-sm font-medium", group.paused && "text-muted-foreground")}>{group.name}</span>
-            <StatusChip tone={HEALTH_TONE[health]}>
-              {syncing ? <Spinner /> : null}
-              {t(`health.${health}`)}
-            </StatusChip>
+            <StatusChip tone={HEALTH_TONE[health]}>{t(`health.${health}`)}</StatusChip>
           </div>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              {group.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-              {group.isPublic ? t("public") : t("private")}
-            </span>
-            <span>·</span>
-            <span className="font-mono">{t("items", { count: group.items.toLocaleString() })}</span>
-            <span>·</span>
-            <span>{group.lastSync ? t("lastSync", { when: group.lastSync }) : t("neverSynced")}</span>
-          </p>
+          <MetaList
+            items={[
+              {
+                key: "visibility",
+                icon: group.isPublic ? Globe : Lock,
+                value: group.isPublic ? t("public") : t("private"),
+              },
+              { key: "records", label: t("recordsLabel"), value: group.items.toLocaleString() },
+              { key: "sync", label: t("lastSyncLabel"), value: group.lastSync ?? t("neverSynced") },
+            ]}
+          />
         </div>
 
         <div className="flex items-center gap-2">
-          <Select
-            value={group.schedule}
-            onValueChange={(v) =>
-              onChange((row) => {
-                row.schedule = v as SyncSchedule;
-              })
-            }
-          >
-            <SelectTrigger size="sm" className="w-40 bg-background" aria-label={t("schedule")}>
-              <span className="text-muted-foreground">{t("schedule")}</span>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SCHEDULES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {t(`schedules.${s}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
           <Tooltip>
             <TooltipTrigger asChild>
               <label className="flex h-8 items-center gap-2 rounded-md border border-border/50 bg-background px-2.5 text-xs">
@@ -424,29 +384,18 @@ function GroupRow({
             </TooltipTrigger>
             <TooltipContent>{t("writebackHint")}</TooltipContent>
           </Tooltip>
-
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={run !== undefined || group.paused}
-            onClick={() => syncSource(libraryId, group.id)}
-          >
-            {syncing ? <Spinner /> : <RefreshCw />}
-            {syncing ? t("syncingPercent", { percent: run.percent }) : t("syncNow")}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={group.paused ? t("resume") : t("pause")}
             onClick={() =>
               onChange((row) => {
                 row.paused = !row.paused;
               })
             }
           >
-            {group.paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            {group.paused ? <Play /> : <Pause />}
+            {group.paused ? t("resume") : t("pause")}
           </Button>
           <Button
             type="button"
@@ -460,7 +409,6 @@ function GroupRow({
           </Button>
         </div>
       </div>
-      {syncing ? <Progress value={run.percent} /> : null}
       {group.lastError ? <FieldError>{group.lastError}</FieldError> : null}
     </div>
   );
@@ -556,10 +504,13 @@ function GroupPicker({
                       </TableCell>
                       <TableCell>
                         <p className="font-medium">{o.name}</p>
-                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                          {o.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                          {o.isPublic ? t("public") : t("private")} · <span className="font-mono">{o.groupId}</span>
-                        </p>
+                        <MetaList
+                          className="text-muted-foreground"
+                          items={[
+                            { key: "vis", icon: o.isPublic ? Globe : Lock, value: o.isPublic ? t("public") : t("private") },
+                            { key: "id", label: t("groupIdLabel"), value: <span className="font-mono">{o.groupId}</span> },
+                          ]}
+                        />
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs tabular-nums">{o.items.toLocaleString()}</TableCell>
                       <TableCell className="text-right font-mono text-xs tabular-nums">{o.members}</TableCell>
