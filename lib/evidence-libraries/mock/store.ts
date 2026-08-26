@@ -230,7 +230,6 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
             paused: false,
             databaseCollections: [],
             zoteroGroups: ZOTERO_GROUP_OPTIONS,
-            syncLog: [],
           },
         ],
       }));

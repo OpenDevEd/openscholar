@@ -124,12 +124,10 @@ export type MockLibrary = {
   databaseCollections: DatabaseCollection[];
   /** Groups the connected Zotero account can see. */
   zoteroGroups: ZoteroGroupOption[];
-  /** Recent import activity, newest first. */
-  syncLog: SyncEvent[];
 };
 
 export type { LibraryVersion } from "./config";
-import type { DatabaseCollection, LibraryVersion, SyncEvent, ZoteroGroupOption } from "./config";
+import type { DatabaseCollection, LibraryVersion, ZoteroGroupOption } from "./config";
 
 export type ActivationRun = { stageIndex: number; rev: string };
 
@@ -443,13 +441,6 @@ export const ZOTERO_GROUP_OPTIONS: ZoteroGroupOption[] = [
   { groupId: "2877310", name: "Conference papers 2026", isPublic: true, items: 73, members: 3 },
 ];
 
-const AIED_SYNC_LOG: SyncEvent[] = [
-  { id: "ev_1", at: "2026-08-26 06:00", groupName: "AI in Education", message: "Imported 3 new records, updated 12.", tone: "ok" },
-  { id: "ev_2", at: "2026-08-25 22:15", groupName: "Partner submissions", message: "Imported 1 new record.", tone: "ok" },
-  { id: "ev_3", at: "2026-08-25 06:00", groupName: "AI in Education", message: "Nothing new.", tone: "ok" },
-  { id: "ev_4", at: "2026-08-24 06:00", groupName: "AI in Education", message: "Wrote 2 collection changes back to Zotero.", tone: "ok" },
-];
-
 function seedLibrary(base: Omit<MockLibrary, "draft" | "address">): MockLibrary {
   return { ...base, address: addressFor(base.shortName), draft: structuredClone(base.saved) };
 }
@@ -478,7 +469,6 @@ export function seedLibraries(): MockLibrary[] {
       paused: false,
       databaseCollections: AIED_DATABASE_COLLECTIONS,
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
-      syncLog: AIED_SYNC_LOG,
       versions: [
         { rev: "rev_8sm1e94", at: "2026-08-19 14:02", by: "You", sections: ["theme", "navigation"], status: "live" },
         { rev: "rev_5pq0d11", at: "2026-08-12 09:41", by: "Sara Kim", sections: ["sources", "collections"], status: "previous" },
@@ -502,7 +492,6 @@ export function seedLibraries(): MockLibrary[] {
       paused: false,
       databaseCollections: HEALTH_DATABASE_COLLECTIONS,
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
-      syncLog: [],
       versions: [],
     }),
     seedLibrary({
@@ -521,7 +510,6 @@ export function seedLibraries(): MockLibrary[] {
       paused: false,
       databaseCollections: [],
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
-      syncLog: [],
       versions: [],
     }),
   ];

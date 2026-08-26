@@ -66,7 +66,7 @@ Exports: downloads, Atom feed. A toggle whose dependency is off is disabled
 with the reason.
 
 Sources: multiple Zotero groups. Connect with Zotero sign-in or API key, group
-ID, enabled, writeback, last sync, Sync now (mock progress), remove. Advanced
+ID, enabled, writeback, last sync, remove. Advanced
 (collapsed): Zotero tag rules as chip inputs.
 
 Languages: locales, default, detect from browser, priority order.
@@ -78,7 +78,7 @@ Team & Visibility: visibility Public / Members only. Access list: rows of
 person or organisation, role Editor / Viewer, status Active / Invited, remove.
 Owners come from the owning Clerk organisation and are shown read-only.
 Invite dialog with Person (email) and Organisation (search) tabs. Person grants
-win over organisation grants. Read-only "Plan: Free · Manage" line.
+win over organisation grants. 
 
 Domain: custom domain field, DNS table (CNAME + TXT), Check DNS with mocked
 pending → verified, TLS chip, redirect platform address toggle.

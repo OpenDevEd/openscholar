@@ -3,7 +3,6 @@
 import { Trash2, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -198,21 +197,6 @@ export function TeamSection({ library, patch }: SectionProps) {
         )}
         <InlineNotice tone="info">{t("roleRule")}</InlineNotice>
       </FieldGroup>
-
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/30 p-3">
-        <p className="text-sm">
-          {t("planLabel")}{" "}
-          <span className="font-medium">{t("planFree")}</span>
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => toast(t("manageToast"))}
-        >
-          {t("manage")}
-        </Button>
-      </div>
 
       <InviteDialog
         open={inviteOpen}

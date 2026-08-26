@@ -171,8 +171,6 @@ export type ZoteroAccount =
   | { method: "zotero"; handle: string }
   | { method: "apiKey"; apiKey: string };
 
-export type SyncEvent = { id: string; at: string; groupName: string; message: string; tone: "ok" | "error" };
-
 /** Groups visible to the connected account (mock). */
 export type ZoteroGroupOption = { groupId: string; name: string; isPublic: boolean; items: number; members: number };
 

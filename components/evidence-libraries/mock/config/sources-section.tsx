@@ -142,22 +142,6 @@ export function SourcesSection({ library, patch }: SectionProps) {
         />
       </FieldGroup>
 
-      <FieldGroup title={t("activityHeading")}>
-        {library.syncLog.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t("noActivity")}</p>
-        ) : (
-          <ol className="space-y-1.5" data-sync-log>
-            {library.syncLog.slice(0, 5).map((ev) => (
-              <li key={ev.id} className="flex items-baseline gap-3 text-xs">
-                <span className="w-32 shrink-0 font-mono text-muted-foreground">{ev.at}</span>
-                <span className={cn("font-medium", ev.tone === "error" && "text-destructive")}>{ev.groupName}</span>
-                <span className="text-muted-foreground">{ev.message}</span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </FieldGroup>
-
       <div className="space-y-3 border-t border-border/50 pt-5">
         <Button
           type="button"
