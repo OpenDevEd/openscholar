@@ -104,7 +104,7 @@ function InstitutionCombobox({ libraryId, value, onChange, id, allowNew, allowNo
             {list.status === "not-set-up" ? (
               <p className="p-3 text-sm text-muted-foreground" data-picker-state="not-set-up">{t("notSetUp")}</p>
             ) : null}
-            <CommandEmpty>{t("empty")}</CommandEmpty>
+            {list.status === "ready" ? <CommandEmpty>{t("empty")}</CommandEmpty> : null}
             <CommandGroup>
               {allowNone ? (
                 <CommandItem value="__none" onSelect={() => choose("")}>
