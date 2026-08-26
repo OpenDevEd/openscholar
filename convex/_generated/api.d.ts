@@ -88,6 +88,9 @@ import type * as evidenceLibraries_storageSetupActions from "../evidenceLibrarie
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
 import type * as evidenceLibraries_teardown from "../evidenceLibraries/teardown.js";
 import type * as evidenceLibraries_teardownActions from "../evidenceLibraries/teardownActions.js";
+import type * as evidenceLibraries_uploadActions from "../evidenceLibraries/uploadActions.js";
+import type * as evidenceLibraries_uploads from "../evidenceLibraries/uploads.js";
+import type * as evidenceLibraries_uploadsClient from "../evidenceLibraries/uploadsClient.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
@@ -325,6 +328,9 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;
   "evidenceLibraries/teardown": typeof evidenceLibraries_teardown;
   "evidenceLibraries/teardownActions": typeof evidenceLibraries_teardownActions;
+  "evidenceLibraries/uploadActions": typeof evidenceLibraries_uploadActions;
+  "evidenceLibraries/uploads": typeof evidenceLibraries_uploads;
+  "evidenceLibraries/uploadsClient": typeof evidenceLibraries_uploadsClient;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
