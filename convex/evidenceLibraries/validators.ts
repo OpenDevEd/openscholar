@@ -278,6 +278,21 @@ export const evidenceLibraryRuntimeBindingValidator = v.union(
   v.object(evidenceLibraryRuntimeBindingVariantFields.failedProvisioned),
 );
 
+// One commit between the software a library runs and the newest software.
+export const runtimeReleaseChangeValidator = v.object({
+  sha: v.string(),
+  message: v.string(),
+});
+
+// The newest Evidence Library software commit, checked against GitHub and
+// kept for ten minutes. One row per running commit.
+export const evidenceLibraryRuntimeReleaseFields = {
+  running: v.string(),
+  latest: v.string(),
+  changes: v.array(runtimeReleaseChangeValidator),
+  checkedAt: v.number(),
+};
+
 export const evidenceLibraryCredentialFields = {
   libraryId: v.id("evidenceLibraries"),
   credentialKey: v.string(),

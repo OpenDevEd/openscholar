@@ -78,6 +78,7 @@ import type * as evidenceLibraries_revisionConfiguration from "../evidenceLibrar
 import type * as evidenceLibraries_runtimeActionConfig from "../evidenceLibraries/runtimeActionConfig.js";
 import type * as evidenceLibraries_runtimeConfiguration from "../evidenceLibraries/runtimeConfiguration.js";
 import type * as evidenceLibraries_runtimeCredentials from "../evidenceLibraries/runtimeCredentials.js";
+import type * as evidenceLibraries_runtimeReleases from "../evidenceLibraries/runtimeReleases.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
 import type * as evidenceLibraries_serviceHttp from "../evidenceLibraries/serviceHttp.js";
 import type * as evidenceLibraries_setupNaming from "../evidenceLibraries/setupNaming.js";
@@ -88,6 +89,7 @@ import type * as evidenceLibraries_storageSetupActions from "../evidenceLibrarie
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
 import type * as evidenceLibraries_teardown from "../evidenceLibraries/teardown.js";
 import type * as evidenceLibraries_teardownActions from "../evidenceLibraries/teardownActions.js";
+import type * as evidenceLibraries_updates from "../evidenceLibraries/updates.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
@@ -315,6 +317,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/runtimeActionConfig": typeof evidenceLibraries_runtimeActionConfig;
   "evidenceLibraries/runtimeConfiguration": typeof evidenceLibraries_runtimeConfiguration;
   "evidenceLibraries/runtimeCredentials": typeof evidenceLibraries_runtimeCredentials;
+  "evidenceLibraries/runtimeReleases": typeof evidenceLibraries_runtimeReleases;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
   "evidenceLibraries/serviceHttp": typeof evidenceLibraries_serviceHttp;
   "evidenceLibraries/setupNaming": typeof evidenceLibraries_setupNaming;
@@ -325,6 +328,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;
   "evidenceLibraries/teardown": typeof evidenceLibraries_teardown;
   "evidenceLibraries/teardownActions": typeof evidenceLibraries_teardownActions;
+  "evidenceLibraries/updates": typeof evidenceLibraries_updates;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
