@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -58,7 +57,7 @@ import {
 import { StatusChip } from "../library-status-badge";
 import { OrgAvatar } from "../org-avatar";
 import { Field, InlineNotice } from "../section-card";
-import { AddButton, EmptyList, FieldError, FieldGroup } from "./fields";
+import { AddButton, ChoiceCards, EmptyList, FieldError, FieldGroup } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const ROLES: AccessRole[] = ["editor", "viewer"];
@@ -110,32 +109,22 @@ export function TeamSection({ library, patch }: SectionProps) {
   return (
     <SectionShell sectionKey="team" icon={Users} description={t("description")} library={library}>
       <FieldGroup title={t("visibilityHeading")}>
-        <RadioGroup
+        <ChoiceCards
+          columns={2}
           value={team.visibility}
-          onValueChange={(v) =>
+          ariaLabel={t("visibilityHeading")}
+          onChange={(v) =>
             patch((d) => {
-              d.team.visibility = v as Visibility;
+              d.team.visibility = v;
               return d;
             })
           }
-          className="grid gap-2 sm:grid-cols-2"
-        >
-          {VISIBILITIES.map((value) => (
-            <label
-              key={value}
-              className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-lg border border-border/50 bg-background p-3",
-                team.visibility === value && "border-primary/50 bg-primary/5",
-              )}
-            >
-              <RadioGroupItem value={value} className="mt-0.5" />
-              <span className="space-y-0.5">
-                <span className="block text-sm font-medium">{t(`visibility.${value}`)}</span>
-                <span className="block text-xs text-muted-foreground">{t(`visibilityHint.${value}`)}</span>
-              </span>
-            </label>
-          ))}
-        </RadioGroup>
+          options={VISIBILITIES.map((value) => ({
+            value,
+            label: t(`visibility.${value}`),
+            hint: t(`visibilityHint.${value}`),
+          }))}
+        />
       </FieldGroup>
 
       <FieldGroup title={t("ownersHeading")}>

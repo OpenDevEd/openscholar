@@ -2,7 +2,6 @@
 
 import { Languages } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -11,10 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { MOCK_LANGUAGES } from "@/lib/evidence-libraries/mock/data";
 import { Field, FieldError } from "../section-card";
 import {
+  ChoiceChips,
   EmptyList,
   ListRow,
   move,
@@ -64,37 +63,21 @@ export function LanguagesSection({ library, patch }: SectionProps) {
     >
       <div className="space-y-1.5">
         <div className="flex min-h-5 items-center"><Label className="font-normal">{tc("availableLanguages")}</Label></div>
-        <div
-          className="flex flex-wrap gap-2"
-          role="group"
-          aria-label={tc("availableLanguages")}
-        >
-          {MOCK_LANGUAGES.map((lang) => {
-            const checked = localization.locales.includes(lang.code);
-            return (
-              <Label
-                key={lang.code}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-all",
-                  checked
-                    ? "border-primary/40 bg-primary/5"
-                    : "border-border/50 hover:border-border/80 hover:bg-muted/30",
-                )}
-              >
-                <Checkbox
-                  checked={checked}
-                  onCheckedChange={(next) =>
-                    toggleLocale(lang.code, next === true)
-                  }
-                />
-                <code className="text-xs font-mono text-muted-foreground">
-                  {lang.code}
-                </code>
-                <span>{lang.name}</span>
-              </Label>
-            );
-          })}
-        </div>
+        <ChoiceChips
+          ariaLabel={tc("availableLanguages")}
+          values={localization.locales}
+          onChange={(next) => {
+            const added = next.find((code) => !localization.locales.includes(code));
+            const removed = localization.locales.find((code) => !next.includes(code));
+            if (added) toggleLocale(added, true);
+            else if (removed) toggleLocale(removed, false);
+          }}
+          options={MOCK_LANGUAGES.map((lang) => ({
+            value: lang.code,
+            code: lang.code,
+            label: lang.name,
+          }))}
+        />
         {localization.locales.length === 0 ? (
           <FieldError>{tc("languagesError")}</FieldError>
         ) : null}

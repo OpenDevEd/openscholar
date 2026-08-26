@@ -38,8 +38,10 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -134,7 +136,7 @@ export function UploadField({
           data-upload-state={uploading ? "uploading" : value ? "filled" : "empty"}
           aria-invalid={invalid || undefined}
           className={cn(
-            "rounded-xl border-2 border-dashed transition-colors",
+            "rounded-lg border-2 border-dashed transition-colors",
             isDragActive
               ? "border-primary bg-primary/5"
               : invalid
@@ -598,6 +600,191 @@ export function ChipInput({
         </div>
       )}
     </Field>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Choices                                                             */
+/* ------------------------------------------------------------------ */
+
+export type ChoiceOption<V extends string> = {
+  value: V;
+  label: ReactNode;
+  hint?: ReactNode;
+  /** Small mono code shown before the label (chips only). */
+  code?: string;
+  disabled?: boolean;
+  /** Shown as a tooltip / title when disabled. */
+  disabledReason?: string;
+};
+
+/** One highlighted-card look for single choices that need an explanation. */
+export function ChoiceCards<V extends string>({
+  value,
+  onChange,
+  options,
+  columns = 2,
+  ariaLabel,
+  className,
+}: {
+  value: V;
+  onChange: (value: V) => void;
+  options: ChoiceOption<V>[];
+  columns?: 1 | 2 | 3;
+  ariaLabel?: string;
+  className?: string;
+}) {
+  return (
+    <RadioGroup
+      value={value}
+      onValueChange={(v) => onChange(v as V)}
+      aria-label={ariaLabel}
+      className={cn(
+        "grid gap-2",
+        columns === 2 && "sm:grid-cols-2",
+        columns === 3 && "sm:grid-cols-3",
+        className,
+      )}
+    >
+      {options.map((o) => {
+        const selected = o.value === value;
+        return (
+          <Label
+            key={o.value}
+            data-value={o.value}
+            data-selected={selected}
+            className={cn(
+              "flex items-start gap-2.5 rounded-lg border-2 px-3 py-2.5 font-normal transition-colors",
+              o.disabled
+                ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+                : selected
+                  ? "cursor-pointer border-primary/40 bg-primary/5"
+                  : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
+            )}
+            title={o.disabled ? o.disabledReason : undefined}
+          >
+            <RadioGroupItem value={o.value} disabled={o.disabled} className="mt-0.5" />
+            <span className="min-w-0 space-y-0.5">
+              <span className="block text-sm font-medium">{o.label}</span>
+              {o.hint ? <span className="block text-xs text-muted-foreground">{o.hint}</span> : null}
+            </span>
+          </Label>
+        );
+      })}
+    </RadioGroup>
+  );
+}
+
+/** One chip look for multi-select lists (languages, scopes, models). */
+export function ChoiceChips<V extends string>({
+  values,
+  onChange,
+  options,
+  ariaLabel,
+  className,
+}: {
+  values: V[];
+  onChange: (values: V[]) => void;
+  options: ChoiceOption<V>[];
+  ariaLabel: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-wrap gap-2", className)} role="group" aria-label={ariaLabel}>
+      {options.map((o) => {
+        const checked = values.includes(o.value);
+        return (
+          <Label
+            key={o.value}
+            data-value={o.value}
+            data-checked={checked}
+            data-disabled={o.disabled || undefined}
+            title={o.disabled ? o.disabledReason : undefined}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-colors",
+              o.disabled
+                ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+                : checked
+                  ? "cursor-pointer border-primary/40 bg-primary/5"
+                  : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
+            )}
+          >
+            <Checkbox
+              checked={checked}
+              disabled={o.disabled}
+              onCheckedChange={(next) =>
+                onChange(
+                  next === true
+                    ? options.filter((x) => x.value === o.value || values.includes(x.value)).map((x) => x.value)
+                    : values.filter((v) => v !== o.value),
+                )
+              }
+            />
+            {o.code ? <code className="font-mono text-xs text-muted-foreground">{o.code}</code> : null}
+            <span>{o.label}</span>
+          </Label>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Surfaces                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The one bordered box. `muted` for information (an account, an owner line,
+ * a balance), `plain` for a piece of content that sits in a list, `danger`
+ * for destructive actions.
+ */
+export function Panel({
+  tone = "muted",
+  className,
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement> & { tone?: "muted" | "plain" | "danger" }) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border p-3",
+        tone === "muted" && "border-border/50 bg-muted/30",
+        tone === "plain" && "border-border/50 bg-background",
+        tone === "danger" && "border-destructive/20 bg-destructive/5",
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Panel content laid out as "text on the left, action on the right". */
+export function PanelRow({
+  tone,
+  title,
+  hint,
+  action,
+  leading,
+  className,
+  ...rest
+}: Omit<React.HTMLAttributes<HTMLDivElement>, "title"> & {
+  tone?: "muted" | "plain" | "danger";
+  title: ReactNode;
+  hint?: ReactNode;
+  action?: ReactNode;
+  leading?: ReactNode;
+}) {
+  return (
+    <Panel tone={tone} className={cn("flex flex-wrap items-center gap-3", className)} {...rest}>
+      {leading}
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-sm font-medium">{title}</p>
+        {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </Panel>
   );
 }
 

@@ -29,6 +29,7 @@ import {
   EmptyList,
   ListRow,
   move,
+  Panel,
   SortableList,
   ToggleRow,
 } from "./fields";
@@ -339,7 +340,7 @@ export function NavigationSection({ library, patch }: SectionProps) {
                   setLinks((l) => l.map((x) => (x.id === link.id ? next : x)))
                 }
               />
-              <div className="space-y-2 rounded-lg border border-border/50 bg-muted/30 p-3">
+              <Panel tone="muted" className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium text-muted-foreground">
                     {t("childrenHeading", {
@@ -422,7 +423,7 @@ export function NavigationSection({ library, patch }: SectionProps) {
                     </ListRow>
                   ))}
                 </SortableList>
-              </div>
+              </Panel>
             </ListRow>
           ))}
         </SortableList>

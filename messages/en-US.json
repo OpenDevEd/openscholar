@@ -2987,7 +2987,12 @@
         "measurementIdLabel": "Measurement ID",
         "measurementIdHint": "Find it in Google Analytics under Data streams.",
         "measurementIdError": "Use an ID like G-XXXXXXXXXX.",
-        "gdprNotice": "GDPR mode is always on. Visitors are not tracked until they accept cookies."
+        "gdprNotice": "GDPR mode is always on. Visitors are not tracked until they accept cookies.",
+        "providerHint": {
+          "none": "No visitor statistics.",
+          "posthog": "Self-hosted or EU cloud PostHog.",
+          "google": "Google Analytics 4."
+        }
       },
       "team": {
         "description": "Who can see the library, and who can change it.",

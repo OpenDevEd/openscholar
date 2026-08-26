@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -20,7 +19,7 @@ import {
   type LibraryConfig,
 } from "@/lib/evidence-libraries/mock/config";
 import { Field } from "../section-card";
-import { ColourField, FieldGroup, UploadField } from "./fields";
+import { ChoiceCards, ColourField, FieldGroup, UploadField } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 type Theme = LibraryConfig["theme"];
@@ -52,25 +51,17 @@ export function ThemeSection({ library, patch }: SectionProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <div className="flex min-h-5 items-center"><Label className="font-normal">{t("layoutLabel")}</Label></div>
-          <RadioGroup
+          <ChoiceCards
+            columns={1}
             value={theme.layout}
-            onValueChange={(v) => set("layout", v as Theme["layout"])}
-            className="gap-2"
-          >
-            {LAYOUTS.map((layout) => (
-              <label
-                key={layout}
-                className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border/50 bg-background px-3 py-2.5"
-                data-checked={theme.layout === layout}
-              >
-                <RadioGroupItem value={layout} className="mt-0.5" />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium">{t(`layout.${layout}`)}</span>
-                  <span className="block text-xs text-muted-foreground">{t(`layoutHint.${layout}`)}</span>
-                </span>
-              </label>
-            ))}
-          </RadioGroup>
+            onChange={(v) => set("layout", v)}
+            ariaLabel={t("layoutLabel")}
+            options={LAYOUTS.map((layout) => ({
+              value: layout,
+              label: t(`layout.${layout}`),
+              hint: t(`layoutHint.${layout}`),
+            }))}
+          />
         </div>
 
         <Field label={t("modeLabel")} hint={t("modeHint")}>

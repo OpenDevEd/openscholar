@@ -133,3 +133,15 @@ Four levels, each one step apart in size or weight, never the same:
 3. Field label: `text-sm font-normal`, in a 20px-high row so paired columns align even with an "optional" suffix.
 4. Hint, meta: `text-xs text-muted-foreground`.
 Row titles inside list rows and toggle rows use `text-sm font-medium` (they are values, not labels).
+
+## Shared controls (decided 2026-08-26)
+
+Use these; do not hand-roll a look-alike.
+- `ChoiceCards`: a single choice that needs an explanation (layout, visibility, how AI is paid, analytics provider). Selected = primary tint.
+- `ChoiceChips`: a multi-select list (languages, search scopes, AI models). Disabled = dashed and muted, with the reason on hover.
+- `Tabs`: a short inline choice with no explanation (legal page: None / Upload a file / External link).
+- `Select`: a long list or a choice inside a row.
+- `ToggleRow`: one on/off with a title and hint.
+- `Panel` / `PanelRow`: the only bordered box. `muted` for information, `plain` for content in a list, `danger` for destructive actions. Always `rounded-lg`, padding 12px.
+- `ListRow` inside `SortableList`: reorderable items. `EmptyList`: the dashed empty state.
+- `FieldGroup`: every titled group of fields.

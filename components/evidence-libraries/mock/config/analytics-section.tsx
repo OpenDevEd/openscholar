@@ -4,9 +4,9 @@ import { BarChart3 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { LibraryConfig } from "@/lib/evidence-libraries/mock/config";
 import { Field, InlineNotice } from "../section-card";
+import { ChoiceCards } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 type Analytics = LibraryConfig["analytics"];
@@ -33,23 +33,22 @@ export function AnalyticsSection({ library, patch }: SectionProps) {
     <SectionShell sectionKey="analytics" icon={BarChart3} description={t("description")} library={library}>
       <div className="space-y-1.5">
         <div className="flex min-h-5 items-center"><Label className="font-normal">{t("providerLabel")}</Label></div>
-        <RadioGroup
+        <ChoiceCards
+          columns={3}
           value={analytics.provider}
-          className="gap-2"
-          onValueChange={(provider) =>
+          ariaLabel={t("providerLabel")}
+          onChange={(provider) =>
             patch((d) => {
-              d.analytics = emptyFor(provider as Provider);
+              d.analytics = emptyFor(provider);
               return d;
             })
           }
-        >
-          {PROVIDERS.map((provider) => (
-            <Label key={provider} className="flex items-center gap-2 font-normal">
-              <RadioGroupItem value={provider} />
-              {t(`provider.${provider}`)}
-            </Label>
-          ))}
-        </RadioGroup>
+          options={PROVIDERS.map((provider) => ({
+            value: provider,
+            label: t(`provider.${provider}`),
+            hint: t(`providerHint.${provider}`),
+          }))}
+        />
       </div>
 
       {analytics.provider === "posthog" ? (

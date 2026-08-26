@@ -56,7 +56,7 @@ import {
 import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
 import { StatusChip, type StatusTone } from "../library-status-badge";
 import { Field, FieldError } from "../section-card";
-import { ChipInput, EmptyList, FieldGroup } from "./fields";
+import { ChipInput, EmptyList, FieldGroup, Panel } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const TAG_RULE_COPY: Record<TagRuleKey, { label: string; hint: string }> = {
@@ -125,7 +125,7 @@ export function SourcesSection({ library, patch }: SectionProps) {
         {sources.groups.length === 0 ? (
           <EmptyList>{connected ? t("noGroups") : t("connectFirst")}</EmptyList>
         ) : (
-          <div className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/50 bg-background">
+          <div className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background">
             {sources.groups.map((group) => (
               <GroupRow
                 key={group.id}
@@ -181,7 +181,7 @@ export function SourcesSection({ library, patch }: SectionProps) {
           {t("advanced")}
         </Button>
         {advancedOpen ? (
-          <div className="space-y-4 rounded-lg border border-border/50 bg-muted/30 p-3">
+          <Panel tone="muted" className="space-y-4">
             <div className="space-y-0.5">
               <p className="text-sm font-medium">{t("tagRulesHeading")}</p>
               <p className="text-xs text-muted-foreground">{t("tagRulesIntro")}</p>
@@ -204,7 +204,7 @@ export function SourcesSection({ library, patch }: SectionProps) {
                 />
               ))}
             </div>
-          </div>
+          </Panel>
         ) : null}
       </div>
 
@@ -251,41 +251,38 @@ function AccountPanel({ library, patch }: SectionProps) {
     });
 
   return (
-    <div
-      className="flex flex-wrap items-center gap-3 rounded-xl border border-border/50 bg-muted/30 p-4"
-      data-account={account.method}
-    >
+    <Panel tone="muted" className="flex flex-wrap items-center gap-3" data-account={account.method}>
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[#cc2936] text-sm font-bold text-white" aria-hidden>
         Z
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-muted-foreground">{t("accountHeading")}</p>
-        {account.method === "zotero" ? (
-          <p className="text-sm font-medium">{t("connectedAs", { handle: account.handle })}</p>
-        ) : account.method === "apiKey" ? (
-          <p className="text-sm font-medium">{t("keyConnected")}</p>
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-sm font-medium">
+          {account.method === "zotero"
+            ? t("connectedAs", { handle: account.handle })
+            : account.method === "apiKey"
+              ? t("keyConnected")
+              : t("notConnected")}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {account.method === "none" ? t("notConnectedHint") : t("accountHeading")}
+        </p>
+      </div>
+      <div className="shrink-0">
+        {account.method === "none" ? (
+          <div className="flex items-center gap-2">
+            <Button type="button" onClick={() => set({ method: "zotero", handle: "@aiined" })}>
+              {t("connect")}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => set({ method: "apiKey", apiKey: "" })}>
+              {t("useKeyInstead")}
+            </Button>
+          </div>
         ) : (
-          <p className="text-sm">
-            <span className="font-medium">{t("notConnected")}</span>
-            <span className="text-muted-foreground"> · {t("notConnectedHint")}</span>
-          </p>
+          <Button type="button" variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
+            {t("disconnect")}
+          </Button>
         )}
       </div>
-
-      {account.method === "none" ? (
-        <div className="flex items-center gap-2">
-          <Button type="button" onClick={() => set({ method: "zotero", handle: "@aiined" })}>
-            {t("connect")}
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => set({ method: "apiKey", apiKey: "" })}>
-            {t("useKeyInstead")}
-          </Button>
-        </div>
-      ) : (
-        <Button type="button" variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
-          {t("disconnect")}
-        </Button>
-      )}
 
       {account.method === "apiKey" ? (
         <div className="flex w-full flex-wrap items-end gap-3 border-t border-border/50 pt-3">
@@ -332,7 +329,7 @@ function AccountPanel({ library, patch }: SectionProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Panel>
   );
 }
 
@@ -397,7 +394,7 @@ function GroupRow({
               })
             }
           >
-            <SelectTrigger size="sm" className="w-36 bg-background" aria-label={t("schedule")}>
+            <SelectTrigger size="sm" className="w-40 bg-background" aria-label={t("schedule")}>
               <span className="text-muted-foreground">{t("schedule")}</span>
               <SelectValue />
             </SelectTrigger>

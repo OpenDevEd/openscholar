@@ -26,6 +26,7 @@ import {
   ListRow,
   move,
   FieldGroup,
+  Panel,
   SortableList,
   ToggleRow,
   UploadField,
@@ -133,7 +134,7 @@ export function FooterSection({ library, patch }: SectionProps) {
                   />
                 )}
               </Field>
-              <div className="space-y-2 rounded-lg border border-border/50 bg-muted/30 p-3">
+              <Panel tone="muted" className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium text-muted-foreground">
                     {t("sectionLinks", {
@@ -215,7 +216,7 @@ export function FooterSection({ library, patch }: SectionProps) {
                     </ListRow>
                   ))}
                 </SortableList>
-              </div>
+              </Panel>
             </ListRow>
           ))}
         </SortableList>

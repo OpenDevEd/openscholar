@@ -18,7 +18,7 @@ import type { DnsStatus } from "@/lib/evidence-libraries/mock/config";
 import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
 import { StatusChip, type StatusTone } from "../library-status-badge";
 import { Field } from "../section-card";
-import { FieldGroup, ReadOnlyValue, ToggleRow } from "./fields";
+import { FieldGroup, Panel, ReadOnlyValue, ToggleRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const VERIFY_TOKEN = "os-verify=7f3a9c1e5b2d4a8f";
@@ -123,7 +123,7 @@ export function DomainSection({ library, patch }: SectionProps) {
         </FieldGroup>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/30 p-3">
+      <Panel tone="muted" className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusChip tone={STATUS_TONE[domain.status]} data-dns-status={domain.status}>
             {checking ? <Spinner /> : null}
@@ -141,7 +141,7 @@ export function DomainSection({ library, patch }: SectionProps) {
           {checking ? <Spinner /> : null}
           {t("checkDns")}
         </Button>
-      </div>
+      </Panel>
 
       <ToggleRow
         label={t("redirectLabel")}

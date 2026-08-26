@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { LegalSource } from "@/lib/evidence-libraries/mock/config";
 import { Field } from "../section-card";
-import { FieldGroup, UploadField } from "./fields";
+import { FieldGroup, Panel, UploadField } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const LEGAL_KEYS = ["privacy", "cookie", "terms"] as const;
@@ -152,9 +152,10 @@ export function ContactSection({ library, patch }: SectionProps) {
           const source = contact[key];
           const shownKind: LegalKind = source.kind === "none" && pendingFile[key] ? "file" : source.kind;
           return (
-            <div
+            <Panel
               key={key}
-              className="space-y-3 rounded-lg border border-border/50 bg-background p-3"
+              tone="plain"
+              className="space-y-3"
               data-legal={key}
               data-legal-kind={shownKind}
             >
@@ -199,7 +200,7 @@ export function ContactSection({ library, patch }: SectionProps) {
               {shownKind === "none" ? (
                 <p className="text-xs text-muted-foreground">{t("legalNone")}</p>
               ) : null}
-            </div>
+            </Panel>
           );
         })}
       </FieldGroup>

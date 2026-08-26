@@ -4,12 +4,8 @@ import { ToggleRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import {
   AI_KEY_PROVIDERS,
   AI_MODELS,
@@ -21,7 +17,7 @@ import {
   type LibraryConfig,
 } from "@/lib/evidence-libraries/mock/config";
 import { Field, InlineNotice } from "../section-card";
-import { FieldGroup, ToggleRow } from "./fields";
+import { ChoiceCards, ChoiceChips, FieldGroup, ToggleRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const BILLING: AiBilling[] = ["credits", "openrouter", "providers"];
@@ -130,27 +126,17 @@ function AiSettingsFields({ library, patch }: SectionProps) {
   return (
     <div className="space-y-4 rounded-lg border border-border/50 bg-muted/30 p-3" data-ai-settings>
       <FieldGroup title={t("billingHeading")}>
-        <RadioGroup
+        <ChoiceCards
+          columns={3}
           value={ai.billing}
-          onValueChange={(value) => update((a) => { a.billing = value as AiBilling; })}
-          className="grid gap-2 sm:grid-cols-3"
-        >
-          {BILLING.map((billing) => (
-            <Label
-              key={billing}
-              className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-lg border-2 bg-background p-3 font-normal transition-all",
-                ai.billing === billing ? "border-primary/40 bg-primary/5" : "border-border/50 hover:border-border/80",
-              )}
-            >
-              <RadioGroupItem value={billing} className="mt-0.5" />
-              <span className="space-y-0.5">
-                <span className="block text-sm font-medium">{t(`billing.${billing}`)}</span>
-                <span className="block text-xs text-muted-foreground">{t(`billingHint.${billing}`)}</span>
-              </span>
-            </Label>
-          ))}
-        </RadioGroup>
+          ariaLabel={t("billingHeading")}
+          onChange={(value) => update((a) => { a.billing = value; })}
+          options={BILLING.map((billing) => ({
+            value: billing,
+            label: t(`billing.${billing}`),
+            hint: t(`billingHint.${billing}`),
+          }))}
+        />
 
         {ai.billing === "credits" ? (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-background px-3 py-2.5 text-sm">
@@ -199,42 +185,21 @@ function AiSettingsFields({ library, patch }: SectionProps) {
       </FieldGroup>
 
       <FieldGroup title={t("modelsHeading")} hint={t("modelsHint")}>
-        <div className="flex flex-wrap gap-2" role="group" aria-label={t("modelsHeading")}>
-          {AI_MODELS.map((model) => {
-            const checked = ai.models.includes(model.id);
+        <ChoiceChips
+          ariaLabel={t("modelsHeading")}
+          values={ai.models}
+          onChange={(models) => update((a) => { a.models = models; })}
+          options={AI_MODELS.map((model) => {
             const ok = usable(model.id);
-            return (
-              <Label
-                key={model.id}
-                data-model={model.id}
-                data-usable={ok}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-all",
-                  !ok
-                    ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
-                    : checked
-                      ? "cursor-pointer border-primary/40 bg-primary/5"
-                      : "cursor-pointer border-border/50 hover:border-border/80 hover:bg-muted/30",
-                )}
-                title={!ok ? t("needsKey", { provider: t(`providerNames.${model.provider}`) }) : undefined}
-              >
-                <Checkbox
-                  checked={checked}
-                  disabled={!ok}
-                  onCheckedChange={(next) =>
-                    update((a) => {
-                      a.models = next === true
-                        ? AI_MODELS.filter((m) => m.id === model.id || a.models.includes(m.id)).map((m) => m.id)
-                        : a.models.filter((id) => id !== model.id);
-                    })
-                  }
-                />
-                <span>{model.name}</span>
-                <code className="font-mono text-xs text-muted-foreground">{model.id}</code>
-              </Label>
-            );
+            return {
+              value: model.id,
+              code: model.id,
+              label: model.name,
+              disabled: !ok,
+              disabledReason: ok ? undefined : t("needsKey", { provider: t(`providerNames.${model.provider}`) }),
+            };
           })}
-        </div>
+        />
 
         <Field label={t("defaultModel")} className="max-w-xs">
           {(id) => (

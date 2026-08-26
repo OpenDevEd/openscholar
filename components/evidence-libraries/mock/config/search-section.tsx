@@ -2,9 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CURRENT_YEAR,
@@ -12,9 +10,8 @@ import {
   SEARCH_SCOPES,
   type SearchScope,
 } from "@/lib/evidence-libraries/mock/config";
-import { cn } from "@/lib/utils";
 import { Field } from "../section-card";
-import { FieldError, FieldGroup, ToggleRow } from "./fields";
+import { ChoiceChips, FieldError, FieldGroup, ToggleRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const INSTITUTION_MODES: InstitutionFacetMode[] = ["hidden", "facet", "facet-with-featured-value"];
@@ -86,40 +83,20 @@ export function SearchSection({ library, patch }: SectionProps) {
 
       <FieldGroup title={t("scopesHeading")}>
         <div className="space-y-1.5">
-          <div className="flex flex-wrap gap-2" role="group" aria-label={t("scopesHeading")}>
-            {SEARCH_SCOPES.map((scope) => {
-              const checked = search.scopes.includes(scope);
+          <ChoiceChips
+            ariaLabel={t("scopesHeading")}
+            values={search.scopes}
+            onChange={setScopes}
+            options={SEARCH_SCOPES.map((scope) => {
               const disabled = scope === "documents" && !search.fullText;
-              return (
-                <Label
-                  key={scope}
-                  data-scope={scope}
-                  data-checked={checked}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-all",
-                    disabled
-                      ? "cursor-not-allowed border-border/40 opacity-60"
-                      : checked
-                        ? "cursor-pointer border-primary/40 bg-primary/5"
-                        : "cursor-pointer border-border/50 hover:border-border/80 hover:bg-muted/30",
-                  )}
-                >
-                  <Checkbox
-                    checked={checked}
-                    disabled={disabled}
-                    onCheckedChange={(next) =>
-                      setScopes(
-                        next === true
-                          ? SEARCH_SCOPES.filter((s) => s === scope || search.scopes.includes(s))
-                          : search.scopes.filter((s) => s !== scope),
-                      )
-                    }
-                  />
-                  <span>{t(`scope.${scope}`)}</span>
-                </Label>
-              );
+              return {
+                value: scope,
+                label: t(`scope.${scope}`),
+                disabled,
+                disabledReason: disabled ? t("documentsNeedsFullText") : undefined,
+              };
             })}
-          </div>
+          />
           {search.scopes.length === 0 ? (
             <FieldError>{t("scopesError")}</FieldError>
           ) : !search.fullText ? (

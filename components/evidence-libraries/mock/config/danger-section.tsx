@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
 import { InlineNotice } from "../section-card";
+import { PanelRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const DANGER_BUTTON = "border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive";
@@ -37,33 +38,35 @@ export function DangerSection({ library, onDelete }: SectionProps & { onDelete: 
         </InlineNotice>
       ) : null}
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/20 p-3">
-        <div className="min-w-0 space-y-0.5">
-          <p className="text-sm font-medium">{t("pauseTitle")}</p>
-          <p className="text-xs text-muted-foreground">{t("pauseHint")}</p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          className={DANGER_BUTTON}
-          disabled={pausing}
-          onClick={() => setPauseOpen(true)}
-        >
-          {pausing ? <Spinner /> : paused ? <Play /> : <Pause />}
-          {paused ? t("resume") : t("pause")}
-        </Button>
-      </div>
+      <PanelRow
+        tone="danger"
+        title={t("pauseTitle")}
+        hint={t("pauseHint")}
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            className={DANGER_BUTTON}
+            disabled={pausing}
+            onClick={() => setPauseOpen(true)}
+          >
+            {pausing ? <Spinner /> : paused ? <Play /> : <Pause />}
+            {paused ? t("resume") : t("pause")}
+          </Button>
+        }
+      />
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/20 p-3">
-        <div className="min-w-0 space-y-0.5">
-          <p className="text-sm font-medium">{t("deleteTitle")}</p>
-          <p className="text-xs text-muted-foreground">{t("deleteHint")}</p>
-        </div>
-        <Button type="button" variant="outline" className={DANGER_BUTTON} onClick={onDelete}>
-          <Trash2 />
-          {t("deleteButton")}
-        </Button>
-      </div>
+      <PanelRow
+        tone="danger"
+        title={t("deleteTitle")}
+        hint={t("deleteHint")}
+        action={
+          <Button type="button" variant="outline" className={DANGER_BUTTON} onClick={onDelete}>
+            <Trash2 />
+            {t("deleteButton")}
+          </Button>
+        }
+      />
 
       <AlertDialog open={pauseOpen} onOpenChange={setPauseOpen}>
         <AlertDialogContent>
