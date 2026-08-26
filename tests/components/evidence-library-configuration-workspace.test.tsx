@@ -38,6 +38,7 @@ vi.mock("@/convex/_generated/api", () => ({
         activateConfiguration: "activateConfiguration",
         saveDraftSections: "saveDraftSections",
       },
+      teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
     },
   },
 }));
@@ -316,5 +317,31 @@ describe("<ConfigurationWorkspace>", () => {
     expect(banner).toHaveAttribute("role", "status");
     expect(banner).toHaveTextContent("stages.deployment");
     expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
+  });
+
+  it("requires the exact library name before queuing development teardown", async () => {
+    const user = userEvent.setup();
+    const teardowns: unknown[] = [];
+    mutationMock.mockImplementation((reference: unknown) =>
+      reference === "requestDevelopmentTeardown"
+        ? async (input: unknown) => {
+            teardowns.push(input);
+            return { operationId: "operation_123", status: "queued" };
+          }
+        : async () => ({}),
+    );
+    renderWorkspace();
+
+    await user.click(screen.getByRole("button", { name: "danger.deleteButton" }));
+    const confirm = screen.getByRole("button", { name: "deleteDialog.confirm" });
+    expect(confirm).toBeDisabled();
+    await user.type(screen.getByLabelText("deleteDialog.typeToConfirm"), "Saved Library");
+    expect(confirm).toBeEnabled();
+    await user.click(confirm);
+
+    await waitFor(() =>
+      expect(teardowns).toEqual([{ libraryId: "library_123", confirmationName: "Saved Library" }]),
+    );
+    expect(pushMock).toHaveBeenCalledWith("/evidence-libraries/new?teardownOperationId=operation_123");
   });
 });

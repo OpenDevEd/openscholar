@@ -13,6 +13,7 @@ import {
   Palette,
   Rocket,
   Save,
+  Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -55,6 +56,8 @@ import {
   sectionState,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { cn } from "@/lib/utils";
+import { DangerSection } from "./sections/danger-section";
+import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { IdentitySection } from "./sections/identity-section";
 import { InstitutionsSection } from "./sections/institutions-section";
 import { ThemeSection } from "./sections/theme-section";
@@ -70,15 +73,18 @@ type DraftResult = NonNullable<
 >;
 type Operation = DraftResult["operation"];
 
-/** Rail groups. Only the sections this version supports are listed. */
-const RAIL_GROUPS: { key: "brand"; sections: readonly PageSectionKey[] }[] = [
+/** Rail entries: the draft sections this version supports, then the danger zone. */
+type RailKey = PageSectionKey | "danger";
+const RAIL_GROUPS: { key: "brand" | "danger"; sections: readonly RailKey[] }[] = [
   { key: "brand", sections: PAGE_SECTION_KEYS },
+  { key: "danger", sections: ["danger"] },
 ];
 
-const SECTION_ICONS: Record<PageSectionKey, LucideIcon> = {
+const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   identity: Globe,
   theme: Palette,
   institutions: Building2,
+  danger: Trash2,
 };
 
 const SECTION_COMPONENTS: Record<
@@ -104,6 +110,8 @@ function isPageSection(value: string): value is PageSectionKey {
   return (PAGE_SECTION_KEYS as readonly string[]).includes(value);
 }
 
+const RAIL_KEYS: readonly RailKey[] = [...PAGE_SECTION_KEYS, "danger"];
+
 export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
     libraryId: libraryId as Id<"evidenceLibraries">,
@@ -117,6 +125,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
     <Workspace
       key={`${draft._id}:${draft.editVersion}`}
       libraryId={draft.libraryId}
+      libraryName={library.name}
       libraryState={library.state}
       editVersion={draft.editVersion}
       saved={sections}
@@ -127,12 +136,14 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
 
 function Workspace({
   libraryId,
+  libraryName,
   libraryState,
   editVersion,
   saved,
   operation,
 }: {
   libraryId: Id<"evidenceLibraries">;
+  libraryName: string;
   libraryState: DraftResult["library"]["state"];
   editVersion: number;
   saved: readonly SectionRow[];
@@ -154,16 +165,14 @@ function Workspace({
   const [saving, setSaving] = useState(false);
   const [activating, setActivating] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [section, setSection] = useQueryState(
     "section",
-    parseAsStringLiteral(PAGE_SECTION_KEYS).withDefault("identity"),
+    parseAsStringLiteral(RAIL_KEYS).withDefault("identity"),
   );
   // Matches the sections' scroll-mt-40 (160px) so a clicked section is the one highlighted.
-  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(
-    PAGE_SECTION_KEYS,
-    160,
-  );
+  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS, 160);
   const current = spied ?? section;
 
   const dirty = isDirty(draft, saved);
@@ -179,7 +188,7 @@ function Workspace({
   const reset: SectionProps["reset"] = (sectionKey) =>
     setDraft((current) => resetSection(current, saved, sectionKey));
 
-  function jumpTo(key: PageSectionKey) {
+  function jumpTo(key: RailKey) {
     void setSection(key);
     scrollToSection(key);
   }
@@ -303,26 +312,31 @@ function Workspace({
                 {RAIL_GROUPS.map((group) => (
                   <RailGroup key={group.key} label={t(`rail.${group.key}`)}>
                     {group.sections.map((key) => {
-                      const state = sectionState(draft, saved, key);
+                      const state = isPageSection(key)
+                        ? sectionState(draft, saved, key)
+                        : null;
                       return (
                         <RailLink
                           key={key}
                           href={`#sec-${key}`}
                           icon={SECTION_ICONS[key]}
                           active={current === key}
+                          danger={key === "danger"}
                           onClick={() => jumpTo(key)}
                         >
                           <span className="flex-1">{t(`sections.${key}`)}</span>
-                          <span
-                            className={cn(
-                              "size-2 shrink-0 rounded-full",
-                              STATUS_DOT[STATE_TONE[state]],
-                            )}
-                            data-state={state}
-                            title={t(`sectionState.${state}`)}
-                            aria-label={t(`sectionState.${state}`)}
-                            role="img"
-                          />
+                          {state ? (
+                            <span
+                              className={cn(
+                                "size-2 shrink-0 rounded-full",
+                                STATUS_DOT[STATE_TONE[state]],
+                              )}
+                              data-state={state}
+                              title={t(`sectionState.${state}`)}
+                              aria-label={t(`sectionState.${state}`)}
+                              role="img"
+                            />
+                          ) : null}
                         </RailLink>
                       );
                     })}
@@ -345,6 +359,7 @@ function Workspace({
                   />
                 );
               })}
+              <DangerSection onDelete={() => setDeleteOpen(true)} />
             </div>
           </CommandCenterContainer>
         </div>
@@ -387,6 +402,14 @@ function Workspace({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <DeleteLibraryDialog
+          libraryId={libraryId}
+          name={libraryName}
+          address={draft.identity.baseUrl}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+        />
       </div>
     </FileUploadsProvider>
   );
@@ -486,12 +509,14 @@ function RailLink({
   href,
   icon: Icon,
   active,
+  danger,
   onClick,
   children,
 }: {
   href: string;
   icon: LucideIcon;
   active: boolean;
+  danger?: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -509,6 +534,7 @@ function RailLink({
         active
           ? "bg-sidebar-accent/80 font-medium text-sidebar-primary shadow-sm hover:bg-sidebar-accent/90"
           : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground",
+        danger && "text-destructive hover:text-destructive",
       )}
     >
       {active ? (
@@ -520,6 +546,7 @@ function RailLink({
           active
             ? "text-primary"
             : "text-muted-foreground group-hover:text-foreground",
+          danger && "text-destructive group-hover:text-destructive",
         )}
       />
       {children}

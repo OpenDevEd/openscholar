@@ -2225,12 +2225,14 @@
     "backToTop": "Back to top",
     "rail": {
       "aria": "Configuration sections",
-      "brand": "Brand"
+      "brand": "Brand",
+      "danger": "Danger zone"
     },
     "sections": {
       "identity": "Identity",
       "theme": "Theme",
-      "institutions": "Institutions"
+      "institutions": "Institutions",
+      "danger": "Danger zone"
     },
     "sectionState": {
       "complete": "Complete",
@@ -2363,6 +2365,21 @@
       "logoLabel": "Logo",
       "remove": "Remove institution",
       "add": "Add institution"
+    },
+    "danger": {
+      "description": "Delete this library. Be careful here.",
+      "deleteTitle": "Delete the library",
+      "deleteHint": "Removes the site, address and settings.",
+      "deleteButton": "Delete library"
+    },
+    "deleteDialog": {
+      "title": "Delete this library?",
+      "body": "This removes {name}, its app, its files, and its address {address}. This is a development library, so nothing public is lost. You cannot undo this.",
+      "typeToConfirm": "Type {name} to confirm",
+      "confirm": "Delete library",
+      "startedTitle": "Deleting library",
+      "startedDescription": "{name} is being removed. Takes a few seconds.",
+      "error": "The library could not be deleted. Finish any running library operation, then try again."
     }
   }
 }
