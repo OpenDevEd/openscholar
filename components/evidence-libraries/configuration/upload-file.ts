@@ -5,35 +5,16 @@
  * `uploadActions.ts`): get a temporary upload URL, POST the file to it, then
  * run the `upload` action that checks the file, stores it in the platform
  * bucket and returns its public URL. `remove` deletes a stored file.
- *
- * The references are typed by hand until plan 03 is on `dev`; swap them for
- * `api.evidenceLibraries.uploads.*` / `api.evidenceLibraries.uploadActions.*`
- * once the generated types include them.
  */
 
-import { makeFunctionReference } from "convex/server";
 import { ConvexError } from "convex/values";
 import type { Id } from "@/convex/_generated/dataModel";
+import {
+  checkEvidenceLibraryUpload,
+  type EvidenceLibraryUploadKind,
+} from "@/lib/evidence-libraries/configuration/uploads";
 
-export const FILE_LIMITS = {
-  image: {
-    accept: ["image/svg+xml", "image/png", "image/webp"],
-    extensions: [".svg", ".png", ".webp"],
-    maxBytes: 1024 * 1024,
-  },
-  shareImage: {
-    accept: ["image/png", "image/jpeg", "image/webp"],
-    extensions: [".png", ".jpg", ".jpeg", ".webp"],
-    maxBytes: 2 * 1024 * 1024,
-  },
-  legal: {
-    accept: ["text/markdown", "text/plain"],
-    extensions: [".md", ".txt"],
-    maxBytes: 200 * 1024,
-  },
-} as const;
-
-export type UploadKind = keyof typeof FILE_LIMITS;
+export type UploadKind = EvidenceLibraryUploadKind;
 export type UploadError = "type" | "size" | "failed";
 
 export type UploadActionResult =
@@ -45,42 +26,13 @@ export type UploadResult =
   | { ok: true; kind: "text"; text: string; name: string }
   | { ok: false; error: UploadError };
 
-export const uploadFunctions = {
-  generateUploadUrl: makeFunctionReference<
-    "mutation",
-    { libraryId: Id<"evidenceLibraries"> },
-    string
-  >("evidenceLibraries/uploads:generateUploadUrl"),
-  upload: makeFunctionReference<
-    "action",
-    {
-      libraryId: Id<"evidenceLibraries">;
-      kind: UploadKind;
-      name: string;
-      storageId: Id<"_storage">;
-    },
-    UploadActionResult
-  >("evidenceLibraries/uploadActions:upload"),
-  remove: makeFunctionReference<
-    "action",
-    { libraryId: Id<"evidenceLibraries">; url: string },
-    null
-  >("evidenceLibraries/uploadActions:remove"),
-};
-
-/** Returns why a file is not allowed before it leaves the browser, or null when it is fine. */
+/** Returns why a file is not allowed before it leaves the browser, or null when it is fine. Same rule as the platform. */
 export function checkUploadFile(
   kind: UploadKind,
-  file: { name: string; type: string; size: number },
+  file: { name: string; size: number },
 ): Exclude<UploadError, "failed"> | null {
-  const limit = FILE_LIMITS[kind];
-  const lowerName = file.name.toLowerCase();
-  const typeAllowed =
-    (limit.accept as readonly string[]).includes(file.type) ||
-    limit.extensions.some((extension) => lowerName.endsWith(extension));
-  if (!typeAllowed) return "type";
-  if (file.size > limit.maxBytes) return "size";
-  return null;
+  const check = checkEvidenceLibraryUpload({ kind, name: file.name, bytes: file.size });
+  return check.ok ? null : check.reason;
 }
 
 /** The name shown for a stored file: the last path segment of its URL. */

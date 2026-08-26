@@ -51,7 +51,11 @@ import { cn } from "@/lib/utils";
 import { HEX_COLOUR } from "@/lib/evidence-libraries/configuration/rules";
 import { COLOUR_PRESETS, contrastRatio } from "./colours";
 import { Field, FieldError, labelId } from "./section-card";
-import { FILE_LIMITS, fileNameFromUrl, type UploadError, type UploadKind } from "./upload-file";
+import {
+  EVIDENCE_LIBRARY_UPLOAD_ACCEPT,
+  EVIDENCE_LIBRARY_UPLOAD_LIMITS,
+} from "@/lib/evidence-libraries/configuration/uploads";
+import { fileNameFromUrl, type UploadError, type UploadKind } from "./upload-file";
 import { useFileUploads } from "./use-file-uploads";
 
 /* ------------------------------------------------------------------ */
@@ -86,7 +90,7 @@ export function UploadField({
   const { uploadFile, removeFile } = useFileUploads();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<UploadError | null>(null);
-  const limit = FILE_LIMITS[kind];
+  const maxBytes = EVIDENCE_LIBRARY_UPLOAD_LIMITS[kind];
 
   async function handleFiles(files: File[]) {
     const file = files[0];
@@ -118,6 +122,7 @@ export function UploadField({
   }
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    accept: EVIDENCE_LIBRARY_UPLOAD_ACCEPT[kind],
     multiple: false,
     noClick: Boolean(value),
     disabled: uploading,
@@ -129,7 +134,7 @@ export function UploadField({
     error === "type"
       ? t("wrongType", { accepts })
       : error === "size"
-        ? t("tooBig", { max: formatBytes(limit.maxBytes) })
+        ? t("tooBig", { max: formatBytes(maxBytes) })
         : error === "failed"
           ? t("uploadFailed")
           : required && !value && !uploading

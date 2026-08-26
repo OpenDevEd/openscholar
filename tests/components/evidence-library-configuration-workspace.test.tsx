@@ -39,6 +39,8 @@ vi.mock("@/convex/_generated/api", () => ({
         saveDraftSections: "saveDraftSections",
       },
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
+      uploads: { generateUploadUrl: "generateUploadUrl" },
+      uploadActions: { upload: "upload", remove: "remove" },
     },
   },
 }));

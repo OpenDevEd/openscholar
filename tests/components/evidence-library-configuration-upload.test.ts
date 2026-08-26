@@ -26,22 +26,20 @@ function client(overrides: Partial<UploadClient> = {}): UploadClient {
 }
 
 describe("checkUploadFile", () => {
-  it("accepts allowed types by MIME type or extension", () => {
-    expect(checkUploadFile("image", { name: "logo.svg", type: "image/svg+xml", size: 10 })).toBeNull();
-    expect(checkUploadFile("image", { name: "logo.webp", type: "", size: 10 })).toBeNull();
-    expect(checkUploadFile("shareImage", { name: "card.jpg", type: "image/jpeg", size: 10 })).toBeNull();
+  it("accepts the platform's allowed types", () => {
+    expect(checkUploadFile("image", { name: "logo.svg", size: 10 })).toBeNull();
+    expect(checkUploadFile("image", { name: "logo.webp", size: 10 })).toBeNull();
+    expect(checkUploadFile("shareImage", { name: "card.jpeg", size: 10 })).toBeNull();
   });
 
   it("rejects the wrong type before the size", () => {
-    expect(checkUploadFile("image", { name: "photo.gif", type: "image/gif", size: 10 })).toBe("type");
-    expect(checkUploadFile("shareImage", { name: "card.svg", type: "image/svg+xml", size: 10 })).toBe("type");
+    expect(checkUploadFile("image", { name: "photo.gif", size: 10 })).toBe("type");
+    expect(checkUploadFile("shareImage", { name: "card.svg", size: 10 })).toBe("type");
   });
 
   it("rejects files over the limit", () => {
-    expect(
-      checkUploadFile("image", { name: "logo.png", type: "image/png", size: 1024 * 1024 + 1 }),
-    ).toBe("size");
-    expect(checkUploadFile("image", { name: "logo.png", type: "image/png", size: 1024 * 1024 })).toBeNull();
+    expect(checkUploadFile("image", { name: "logo.png", size: 1024 * 1024 + 1 })).toBe("size");
+    expect(checkUploadFile("image", { name: "logo.png", size: 1024 * 1024 })).toBeNull();
   });
 });
 

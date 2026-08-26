@@ -2,13 +2,9 @@
 
 import { useAction, useMutation } from "convex/react";
 import { createContext, type ReactNode, useContext } from "react";
+import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import {
-  type UploadKind,
-  type UploadResult,
-  uploadFile,
-  uploadFunctions,
-} from "./upload-file";
+import { type UploadKind, type UploadResult, uploadFile } from "./upload-file";
 
 type FileUploads = {
   uploadFile: (kind: UploadKind, file: File) => Promise<UploadResult>;
@@ -26,9 +22,9 @@ export function FileUploadsProvider({
   libraryId: Id<"evidenceLibraries">;
   children: ReactNode;
 }) {
-  const generateUploadUrl = useMutation(uploadFunctions.generateUploadUrl);
-  const upload = useAction(uploadFunctions.upload);
-  const remove = useAction(uploadFunctions.remove);
+  const generateUploadUrl = useMutation(api.evidenceLibraries.uploads.generateUploadUrl);
+  const upload = useAction(api.evidenceLibraries.uploadActions.upload);
+  const remove = useAction(api.evidenceLibraries.uploadActions.remove);
   const value: FileUploads = {
     uploadFile: (kind, file) =>
       uploadFile({ generateUploadUrl, upload, remove }, libraryId, kind, file),
