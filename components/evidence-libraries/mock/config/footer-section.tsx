@@ -23,7 +23,7 @@ import {
   ListRow,
   move,
   FieldGroup,
-  Panel,
+  NestedList,
   SortableList,
   ToggleRow,
   UploadField,
@@ -132,34 +132,20 @@ export function FooterSection({ library, patch }: SectionProps) {
                   />
                 )}
               </Field>
-              <Panel tone="muted" className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {t("sectionLinks", {
-                      count: section.links.length,
-                      max: MAX_NAV_LINKS,
-                    })}
-                  </p>
-                  <AddButton
-                    disabled={section.links.length >= MAX_NAV_LINKS}
-                    onClick={() =>
-                      setSections((s) =>
-                        s.map((x) =>
-                          x.id === section.id
-                            ? { ...x, links: [...x.links, newNavLink()] }
-                            : x,
-                        ),
-                      )
-                    }
-                  >
-                    {t("addSectionLink")}
-                  </AddButton>
-                </div>
-                {section.links.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    {t("sectionLinksEmpty")}
-                  </p>
-                ) : null}
+              <NestedList
+                label={t("sectionLinks")}
+                addLabel={t("addSectionLink")}
+                disabled={section.links.length >= MAX_NAV_LINKS}
+                onAdd={() =>
+                  setSections((s) =>
+                    s.map((x) =>
+                      x.id === section.id
+                        ? { ...x, links: [...x.links, newNavLink()] }
+                        : x,
+                    ),
+                  )
+                }
+              >
                 <SortableList
                   ids={section.links.map((l) => l.id)}
                   onMove={(from, to) =>
@@ -214,7 +200,7 @@ export function FooterSection({ library, patch }: SectionProps) {
                     </ListRow>
                   ))}
                 </SortableList>
-              </Panel>
+              </NestedList>
             </ListRow>
           ))}
         </SortableList>

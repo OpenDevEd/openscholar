@@ -213,6 +213,8 @@ function Workspace({ library }: { library: MockLibrary }) {
             className="border-b-0 px-0 md:px-0"
             title={draft.identity.name || t("untitled")}
             eyebrow={`https://${library.address}`}
+            backHref="/evidence-libraries"
+            backLabel={t("backToLibraries")}
           >
             {updateAvailable && !activating ? (
               <Button variant="outline" onClick={() => jumpTo("versions")} data-runtime-update>

@@ -29,7 +29,7 @@ import {
   EmptyList,
   ListRow,
   move,
-  Panel,
+  NestedList,
   SortableList,
   ToggleRow,
 } from "./fields";
@@ -340,34 +340,20 @@ export function NavigationSection({ library, patch }: SectionProps) {
                   setLinks((l) => l.map((x) => (x.id === link.id ? next : x)))
                 }
               />
-              <Panel tone="muted" className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {t("childrenHeading", {
-                      count: link.children.length,
-                      max: MAX_NAV_LINKS,
-                    })}
-                  </p>
-                  <AddButton
-                    disabled={link.children.length >= MAX_NAV_LINKS}
-                    onClick={() =>
-                      setLinks((l) =>
-                        l.map((x) =>
-                          x.id === link.id
-                            ? { ...x, children: [...x.children, newNavLink()] }
-                            : x,
-                        ),
-                      )
-                    }
-                  >
-                    {t("addChild")}
-                  </AddButton>
-                </div>
-                {link.children.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    {t("childrenEmpty")}
-                  </p>
-                ) : null}
+              <NestedList
+                label={t("childrenHeading")}
+                addLabel={t("addChild")}
+                disabled={link.children.length >= MAX_NAV_LINKS}
+                onAdd={() =>
+                  setLinks((l) =>
+                    l.map((x) =>
+                      x.id === link.id
+                        ? { ...x, children: [...x.children, newNavLink()] }
+                        : x,
+                    ),
+                  )
+                }
+              >
                 <SortableList
                   ids={link.children.map((c) => c.id)}
                   onMove={(from, to) =>
@@ -423,7 +409,7 @@ export function NavigationSection({ library, patch }: SectionProps) {
                     </ListRow>
                   ))}
                 </SortableList>
-              </Panel>
+              </NestedList>
             </ListRow>
           ))}
         </SortableList>

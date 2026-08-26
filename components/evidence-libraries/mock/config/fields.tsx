@@ -792,6 +792,42 @@ export function PanelRow({
   );
 }
 
+/**
+ * Child items under a list row (dropdown links under a nav link, links under
+ * a footer section). A thin left rule and an indent instead of a box; the
+ * add action is a quiet text button and there is no empty-state sentence.
+ */
+export function NestedList({
+  label,
+  addLabel,
+  onAdd,
+  disabled,
+  children,
+}: {
+  label: string;
+  addLabel: string;
+  onAdd: () => void;
+  disabled?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="ml-1 space-y-2 border-l-2 border-border/50 pl-4" role="group" aria-label={label}>
+      {children}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={disabled}
+        className="-ml-2 h-7 text-xs text-muted-foreground hover:text-foreground"
+        onClick={onAdd}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        {addLabel}
+      </Button>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Meta                                                                */
 /* ------------------------------------------------------------------ */

@@ -2767,8 +2767,7 @@
         "newTab": "Open in new tab",
         "visible": "Visible",
         "childrenHeading": "Dropdown links",
-        "childrenEmpty": "No dropdown links.",
-        "addChild": "Add link",
+        "addChild": "Add dropdown link",
         "removeChild": "Remove link"
       },
       "footer": {
@@ -2781,7 +2780,6 @@
         "sectionTitlePlaceholder": "For example: About",
         "sectionTitleError": "Give this section a title.",
         "sectionLinks": "Links",
-        "sectionLinksEmpty": "No links yet.",
         "addSectionLink": "Add link",
         "removeSectionLink": "Remove link",
         "socialHeading": "Social links",
