@@ -6,6 +6,7 @@ import type { api } from "@/convex/_generated/api";
 import { getProviderIcon } from "@/components/icons/provider-icons";
 import type { AIProvider } from "@/lib/types/ai.types";
 import { cn } from "@/lib/utils";
+import { XaiIcon } from "../social-icons";
 
 export type CatalogModel = FunctionReturnType<typeof api.models.queries.listCatalogOptions>[number];
 
@@ -28,6 +29,7 @@ export const providerName = (provider: string) =>
 
 /** The app's provider icon when it has one; a neutral bot otherwise. */
 export function ProviderMark({ provider, className }: { provider: string; className?: string }) {
+  if (provider === "x-ai") return <XaiIcon className={className} />;
   if (ICON_PROVIDERS.has(provider as AIProvider)) {
     const Icon = getProviderIcon(provider as AIProvider);
     return <Icon className={className} />;

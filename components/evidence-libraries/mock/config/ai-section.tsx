@@ -196,7 +196,10 @@ function KeyField({
   required?: boolean;
 }) {
   const t = useTranslations("evidenceLibraryMock.config.ai");
-  const config = getProviderConfig(provider);
+  const config =
+    provider === "x-ai"
+      ? { name: "xAI", apiKeyPlaceholder: "Enter your xAI API key", apiKeyUrl: "https://console.x.ai" }
+      : getProviderConfig(provider);
   const filled = value.trim().length > 0;
   return (
     <Field

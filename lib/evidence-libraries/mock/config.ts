@@ -96,7 +96,7 @@ export type SearchScope = (typeof SEARCH_SCOPES)[number];
 export type InstitutionFacetMode = "hidden" | "facet" | "facet-with-featured-value";
 
 /** Providers an owner may bring their own key for. Matches OpenScholar's provider configs. */
-export const AI_KEY_PROVIDERS = ["openai", "google", "anthropic", "deepseek"] as const;
+export const AI_KEY_PROVIDERS = ["openai", "google", "anthropic", "x-ai"] as const;
 export type AiKeyProvider = (typeof AI_KEY_PROVIDERS)[number];
 
 /** How AI answers are paid for. Exactly one path per library. */

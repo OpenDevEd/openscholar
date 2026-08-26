@@ -17,6 +17,7 @@ export function PanelHeader({
   eyebrow,
   backHref,
   backLabel,
+  titleAside,
   children,
   className,
 }: {
@@ -28,6 +29,8 @@ export function PanelHeader({
   /** Where the back chevron goes. */
   backHref?: string;
   backLabel?: string;
+  /** Small chip shown next to the title, such as a state. */
+  titleAside?: ReactNode;
   children?: ReactNode;
   className?: string;
 }) {
@@ -48,7 +51,10 @@ export function PanelHeader({
             </div>
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-foreground md:text-2xl">{title}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold text-foreground md:text-2xl">{title}</h1>
+              {titleAside}
+            </div>
             {description ? (
               <p className="text-sm text-muted-foreground">{description}</p>
             ) : null}

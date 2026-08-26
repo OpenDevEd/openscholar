@@ -215,17 +215,13 @@ function Workspace({ library }: { library: MockLibrary }) {
             eyebrow={`https://${library.address}`}
             backHref="/evidence-libraries"
             backLabel={t("backToLibraries")}
+            titleAside={dirty ? <StatusChip tone="warning" data-unsaved>{t("unsaved")}</StatusChip> : null}
           >
             {updateAvailable && !activating ? (
               <Button variant="outline" onClick={() => jumpTo("versions")} data-runtime-update>
                 <span className="size-2 rounded-full bg-amber-500" aria-hidden />
                 {tu("availableShort")}
               </Button>
-            ) : null}
-            {dirty ? (
-              <span className="text-xs text-muted-foreground" data-unsaved>
-                {t("unsaved")}
-              </span>
             ) : null}
             <Button variant="outline" disabled={!dirty || saving} onClick={handleSave}>
               {saving ? <Spinner /> : <Save />}
