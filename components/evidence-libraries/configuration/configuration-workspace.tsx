@@ -17,6 +17,7 @@ import {
   Rocket,
   Save,
   Trash2,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -68,6 +69,7 @@ import { FooterSection } from "./sections/footer-section";
 import { IdentitySection } from "./sections/identity-section";
 import { InstitutionsSection } from "./sections/institutions-section";
 import { NavigationSection } from "./sections/navigation-section";
+import { TeamSection } from "./sections/team-section";
 import { ThemeSection } from "./sections/theme-section";
 import { InlineNotice } from "./section-card";
 import { STATE_TONE, type SectionProps } from "./section-shell";
@@ -91,11 +93,15 @@ function isOperationRunning(operation: Operation): operation is NonNullable<Oper
   return operation.status === "queued" || operation.status === "running";
 }
 
-/** Rail entries: the page cards in their groups, then the danger zone. */
-type RailKey = PageSectionKey | "danger";
-const RAIL_GROUPS: { key: "brand" | "content" | "danger"; sections: readonly RailKey[] }[] = [
+/** Rail entries: the page cards in their groups, then the team and the danger zone. */
+type RailKey = PageSectionKey | "team" | "danger";
+const RAIL_GROUPS: {
+  key: "brand" | "content" | "team" | "danger";
+  sections: readonly RailKey[];
+}[] = [
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["navigation", "footer", "contact"] },
+  { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
 
@@ -106,6 +112,7 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   navigation: Menu,
   footer: PanelBottom,
   contact: Mail,
+  team: Users,
   danger: Trash2,
 };
 
@@ -135,7 +142,7 @@ function isPageSection(value: string): value is PageSectionKey {
   return (PAGE_SECTION_KEYS as readonly string[]).includes(value);
 }
 
-const RAIL_KEYS: readonly RailKey[] = [...PAGE_SECTION_KEYS, "danger"];
+const RAIL_KEYS: readonly RailKey[] = [...PAGE_SECTION_KEYS, "team", "danger"];
 
 export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
@@ -392,6 +399,7 @@ function Workspace({
                   />
                 );
               })}
+              <TeamSection />
               <DangerSection onDelete={() => setDeleteOpen(true)} />
             </div>
           </CommandCenterContainer>
