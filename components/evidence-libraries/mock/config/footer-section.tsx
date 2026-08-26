@@ -1,12 +1,9 @@
 "use client";
 
 import {
-  AtSign,
   Github,
   Linkedin,
-  type LucideIcon,
   PanelBottom,
-  X,
   Youtube,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -32,6 +29,7 @@ import {
   UploadField,
 } from "./fields";
 import { LinkEditor, MAX_NAV_LINKS, newNavLink } from "./navigation-section";
+import { BlueskyIcon, XIcon } from "../social-icons";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const MAX_SECTIONS = 6;
@@ -39,12 +37,12 @@ const MAX_FUNDERS = 20;
 const DISCLAIMER_MAX = 2000;
 const ATTRIBUTION_MAX = 500;
 
-const SOCIAL_ICONS: Record<SocialProvider, LucideIcon> = {
+const SOCIAL_ICONS: Record<SocialProvider, React.ComponentType<{ className?: string }>> = {
   github: Github,
-  twitter: X,
+  twitter: XIcon,
   linkedin: Linkedin,
   youtube: Youtube,
-  bluesky: AtSign,
+  bluesky: BlueskyIcon,
 };
 
 const isHttps = (v: string) => /^https:\/\/\S+$/.test(v);
