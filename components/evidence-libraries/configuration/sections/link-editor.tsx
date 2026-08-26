@@ -1,9 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useId } from "react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   BUILT_IN_PAGES,
   type BuiltInPageKey,
@@ -22,11 +19,13 @@ import {
   type NavIcon,
 } from "@/lib/evidence-libraries/configuration/links";
 import { SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
+import { InlineSwitch } from "../fields";
+import { NAV_ICON_GLYPHS } from "../nav-icons";
 import { Field } from "../section-card";
 
 const NO_ICON = "__none";
 
-export type CollectionOption = { id: string; title: string };
+type CollectionOption = { id: string; title: string };
 
 /** Switching the kind clears the other target's value. */
 function retarget(kind: LinkTarget["kind"], collections: CollectionOption[]): LinkTarget {
@@ -185,49 +184,33 @@ export function LinkEditor({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_ICON}>{t("noIcon")}</SelectItem>
-                  {NAV_ICONS.map((icon) => (
-                    <SelectItem key={icon} value={icon}>
-                      <span className="font-mono text-xs">{icon}</span>
-                    </SelectItem>
-                  ))}
+                  {NAV_ICONS.map((icon) => {
+                    const Glyph = NAV_ICON_GLYPHS[icon];
+                    return (
+                      <SelectItem key={icon} value={icon}>
+                        <Glyph className="h-4 w-4 text-muted-foreground" aria-hidden />
+                        {t(`icons.${icon}`)}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             )}
           </Field>
         ) : null}
         {target.kind === "url" ? (
-          <SmallSwitch
+          <InlineSwitch
             label={t("newTab")}
             checked={link.newTab}
             onChange={(newTab) => onChange({ ...link, newTab })}
           />
         ) : null}
-        <SmallSwitch
+        <InlineSwitch
           label={t("visible")}
           checked={link.visible}
           onChange={(visible) => onChange({ ...link, visible })}
         />
       </div>
-    </div>
-  );
-}
-
-function SmallSwitch({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  const id = useId();
-  return (
-    <div className="flex h-9 items-center gap-2">
-      <Switch id={id} checked={checked} onCheckedChange={onChange} className="scale-90" />
-      <Label htmlFor={id} className="text-xs font-normal">
-        {label}
-      </Label>
     </div>
   );
 }

@@ -658,3 +658,12 @@ describe("changedSectionRows for the discovery sections", () => {
     expect(cardForRow("content")).toBe("sources");
   });
 });
+
+describe("legal text chosen but not uploaded yet", () => {
+  it("flags the section and writes nothing for that page", () => {
+    const draft = readDraft(contentRows);
+    draft.legal.terms = { kind: "text", text: "" };
+    expect(sectionProblems(draft, "contact")).toEqual(["legalText"]);
+    expect(changedSectionRows(draft, contentRows)).toEqual([]);
+  });
+});

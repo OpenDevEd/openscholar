@@ -2314,7 +2314,8 @@
       "brand": "Brand",
       "danger": "Danger zone",
       "content": "Content",
-      "discovery": "Discovery"
+      "discovery": "Discovery",
+      "team": "Team"
     },
     "sections": {
       "identity": "Identity",
@@ -2326,7 +2327,8 @@
       "contact": "Contact & legal",
       "collections": "Collections",
       "search": "Search & filters",
-      "sources": "Sources"
+      "sources": "Sources",
+      "team": "Team"
     },
     "sectionState": {
       "complete": "Complete",
@@ -2371,7 +2373,8 @@
       "defaultScope": "The default scope must be one of the chosen scopes.",
       "featuredInstitution": "Name the pinned institution.",
       "years": "Use whole years between 1900 and this year, first year before last year.",
-      "publishTag": "Keep at least one publish tag."
+      "publishTag": "Keep at least one publish tag.",
+      "legalText": "Upload a file for every legal page set to Upload a file."
     },
     "fields": {
       "optional": "optional",
@@ -2533,7 +2536,24 @@
       "iconLabel": "Icon",
       "noIcon": "No icon",
       "newTab": "Open in new tab",
-      "visible": "Visible"
+      "visible": "Visible",
+      "icons": {
+        "AboutUs": "About us",
+        "EvidenceLibrary": "Evidence library",
+        "Programs": "Programs",
+        "Blog": "Blog",
+        "Team": "Team",
+        "ContactUs": "Contact us",
+        "TeamFill": "Team (solid)",
+        "ToolsFill": "Tools",
+        "BookOpenFill": "Open book",
+        "Bookshelf": "Bookshelf",
+        "ChatRightDotsFill": "Chat",
+        "BsMapFill": "Map",
+        "LuX": "X",
+        "FaQuestionCircle": "Question",
+        "IoStatsChart": "Statistics"
+      }
     },
     "navigation": {
       "description": "The links in the top bar of the public site.",
@@ -2613,7 +2633,7 @@
       },
       "legalSourceLabel": "Source for {page}",
       "legalKinds": {
-        "none": "Built-in",
+        "none": "None",
         "text": "Upload a file",
         "url": "External link"
       },
@@ -2677,6 +2697,16 @@
       "yearFuture": "The last year cannot be in the future.",
       "collectionsExpanded": "Open the collections filter by default",
       "collectionsExpandedHint": "When off, people click to open the list of collections."
+    },
+    "team": {
+      "description": "Who can manage and edit this library.",
+      "ownersTitle": "Owners",
+      "ownersHint": "Admins of {org}.",
+      "editorsTitle": "Editors",
+      "editorsHint": "Members of {org}.",
+      "manageTitle": "People",
+      "manageHint": "Manage people in the organisation settings.",
+      "manageButton": "Open organisation settings"
     }
   }
 }

@@ -30,6 +30,12 @@ vi.mock("next-intl", () => ({
 
 vi.mock("sonner", () => ({ toast: toastMock }));
 
+// The Team section reads the organisation name and opens Clerk's organisation modal.
+vi.mock("@clerk/nextjs", () => ({
+  useOrganization: () => ({ isLoaded: true, organization: { name: "Test Org" } }),
+  useClerk: () => ({ openOrganizationProfile: vi.fn() }),
+}));
+
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
