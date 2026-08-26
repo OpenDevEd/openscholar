@@ -10,12 +10,25 @@ Institutions pickers read the library's real data.
 ## Scope
 
 1. Table `evidenceLibraryZoteroGroups`: `libraryId`, `groupId`, `name`,
-   `isPublic`, `connectedByUserId`, `connectedAt`, `scopes: { read, write }`,
-   `credentialKey`. The `sources` draft section stores only
-   `{ groupId, enabled, writebackEnabled }` per group; names, scopes and
-   who-connected come from this table; the key is a library credential
-   `zotero-group:<groupId>` (encrypted copy of the owner's key, see
-   `convex/zotero/internal.ts` for the source).
+   `isPublic`, `connectedByClerkUserId`, `connectedByZoteroUsername`,
+   `connectedAt`, `scopes: { read, write }`, `credentialKey`. The `sources`
+   draft section stores the schema shape without the key:
+   `{ key: "zotero-<groupId>", provider: "zotero", groupId, enabled,
+   writebackEnabled }` per group; names, scopes and who-connected come from
+   this table; the key is a library credential `zotero-group:<groupId>`
+   (encrypted copy of the owner's key, see `convex/zotero/internal.ts` for
+   the source).
+
+   Revised 2026-08-26: the pinned section validator marks `sources[].apiKey`
+   as required, and drafts may never carry credentials
+   (`assertNoCredentialMaterial`). Draft validation therefore skips
+   "required" issues for write-only paths (`owner-rules.ts`); the full
+   validator at assembly still requires the key, which the hook injects.
+   The existing OAuth start asks Zotero for `all_groups=read`, so no owner
+   key could ever carry group write access; `startOAuth` now asks for
+   `all_groups=write` (the owner can still refuse on the Zotero consent
+   page). `startOAuth` also accepts an optional `returnTo` path so the
+   owner comes back to the configuration page after connecting.
 2. Actions: `listMyZoteroGroups({ libraryId })` (owner's connection →
    `fetchGroups`, marks already-added), `connectZoteroGroup({ libraryId, groupId })`
    (checks `keys/current` for `library` and `write` on that group, stores
@@ -30,16 +43,52 @@ Institutions pickers read the library's real data.
    and `listRecordInstitutions({ libraryId })` call plan 01's endpoints on
    `runtimeBinding.targetBaseUrl`. Cached five minutes in a table. Draft
    libraries (no binding) return empty lists with `reason: "not-set-up"`.
+
+   Revised 2026-08-26: the runtime reads `cursor`, `pageSize` and `query`
+   (no `limit`) and answers `{ items: [{ id, title, parentId, source, count }],
+   nextCursor }` for collections and `{ items: [{ name, count }] }` for
+   institutions. A library counts as set up when
+   `readEvidenceLibraryAdminLaunchTarget` returns its address.
 5. Page sections (owned by this lane): Sources (account line "Connected as
    <handle>" from the current owner's connection, groups picker, rows with
    health, public/private, records, last sync, Write back, Pause = `enabled`,
    Remove; Advanced tag rules → `content.tags`), Collections (picker dialog
    → `collections[]` with order + title override), Institutions name picker
-   and the Search section's pinned-institution picker (hand these two
-   components to lane C through a small shared module).
+   and the featured-institution picker (hand these two components to lane C
+   through a small shared module).
+
+   Revised 2026-08-26: the pinned contract keeps the featured institution
+   at `filters.institution.featuredValue` (mode
+   `facet-with-featured-value`), not under `search`. Plan 05 has not merged,
+   so the sections are exported as field bodies with `{ value, onChange }`
+   props from `components/evidence-libraries/configuration/sections/` and
+   use their own small controls in that folder; lane C wraps them in its
+   section shell. Files outside the lane B write-set that this plan must
+   touch, each with the smallest change: `convex/schema.ts` (two tables),
+   `convex/evidenceLibraries/configurationDeployment.ts` (return group
+   credentials from `prepareConfigurationDeployment`),
+   `convex/evidenceLibraries/runtimeConfiguration.ts` (pass the hook),
+   `lib/evidence-libraries/configuration/owner-rules.ts` (write-only
+   required rule), `convex/http.ts` (OAuth `returnTo`), and a new
+   `evidenceLibrarySources` namespace in `messages/*.json`.
 6. Sync status: the runtime has no endpoint for last sync yet; show the
    `sources[]` presence and `enabled` state only, and record a follow-up in
    `docs/` for a status endpoint.
+
+   Revised 2026-08-26 (resumed session): two more files outside the lane B
+   write-set needed the smallest change: `convex/lib/errors.ts` (one new
+   error code, `EVIDENCE_LIBRARY_RUNTIME_ERROR`, for a library that refuses
+   or breaks a read) and `convex/zotero/sourceEntry.ts` (new; the draft entry
+   shape shared by the page and the deploy pipeline so the page does not pull
+   the schema validator into the browser bundle). The runtime read code lives
+   in `convex/zotero/runtimeRead*.ts` because that folder is the lane's
+   Convex write-set. Lane C's shared controls (`fields.tsx`,
+   `section-shell.tsx`) were still uncommitted in its worktree, so the three
+   field bodies use `components/ui/*` only and take `{ value, onChange }`
+   props: `SourcesField` (plus `tags`/`onTagsChange` for `content.tags`),
+   `CollectionsField`, `InstitutionNamePicker`, `FeaturedInstitutionPicker`.
+   Lane C already has a `sections/institutions-section.tsx`; lane B's file is
+   `sections/institution-pickers.tsx`, so the names do not collide.
 
 ## Tests
 
