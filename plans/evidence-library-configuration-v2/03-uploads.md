@@ -13,21 +13,37 @@ legal Markdown files from the page. Files get stable public URLs.
    storage, created once by a dev-only admin action if missing. Platform
    credentials come from the same environment values the setup steps use
    (`storageSetupClient.ts`); nothing per library.
-2. Convex action `evidenceLibraries.uploads.upload({ libraryId, kind, name, bytes })`
-   (owner check). Kinds and limits: `image` (svg/png/webp, 1 MB), `shareImage`
+2. Upload in two steps, because Convex caps function arguments at 1 MB and
+   the share image limit is 2 MB: mutation
+   `evidenceLibraries.uploads.generateUploadUrl({ libraryId })` (owner check)
+   returns a short-lived Convex upload URL; the browser posts the file there
+   and gets a `storageId`; action
+   `evidenceLibraries.uploadActions.upload({ libraryId, kind, name, storageId })`
+   (owner check) reads the temporary file, checks it, and deletes the
+   temporary Convex file whatever the outcome. Kinds and limits: `image` (svg/png/webp, 1 MB), `shareImage`
    (png/jpg/webp, 2 MB), `legal` (md/txt, 200 KB → returned as text, not
    stored). Stores at `evidence-libraries/<libraryId>/<kind>-<sha256-8>.<ext>`
    with the right content type and immutable cache headers. Returns the public URL.
-3. Action `evidenceLibraries.uploads.remove({ libraryId, url })` deletes a file
+3. Action `evidenceLibraries.uploadActions.remove({ libraryId, url })` deletes a file
    that belongs to that library prefix. The page calls it on Replace/Remove.
 4. Library teardown deletes the prefix.
 
 ## Tests
 
-- Pure helpers (`lib/evidence-libraries/uploads.ts`): accepted types, size
+- Pure helpers (`lib/evidence-libraries/configuration/uploads.ts`, inside
+  lane A's write-set): accepted types, size
   limits, object key derivation, prefix ownership check. Test-first.
 - Action test with the storage client mocked at the HTTP boundary: upload
   returns a stable URL without a query string ending in the extension.
+
+## Revisions
+
+- 2026-08-26: `bytes` argument replaced by Convex file storage (`storageId`).
+  Convex rejects arguments over 1 MB, so a 2 MB share image could never reach
+  the action. Helper file moved under `lib/evidence-libraries/configuration/`
+  to stay inside lane A's write-set. Storage helpers live in
+  `convex/evidenceLibraries/uploadsClient.ts` (node runtime); action file is
+  `uploadActions.ts` so the V8 mutation and node actions stay in separate files.
 
 ## Deployability gate
 
@@ -45,3 +61,8 @@ PR to `dev`. Plan 05 switches the page's UploadField to these actions.
   logos and favicon; keep extensions in the key.
 - Supabase public bucket caching: set `cacheControl` on upload; new content
   gets a new hash, so no stale files.
+- 2026-08-26: the deployability gate ran through the deployed lane functions
+  (`npx convex run ... --identity` as the lane owner, a real PNG posted to the
+  Convex upload URL, the public URL fetched and byte-compared, the object listed
+  in the store, then removed) instead of the mock page's UploadField. Wiring the
+  page field is plan 05 (lane C); lane A may not edit `components/`.

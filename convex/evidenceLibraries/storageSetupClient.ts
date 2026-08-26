@@ -13,7 +13,7 @@ type BucketNames = {
   publicBucket: string;
 };
 
-type BucketPolicy = {
+export type BucketPolicy = {
   allowedMimeTypes: string[];
   fileSizeLimit: number;
   name: string;
@@ -32,7 +32,7 @@ type StorageRequest = {
   path: string;
 };
 
-type StorageClient = {
+export type StorageClient = {
   fetchImpl: typeof fetch;
   origin: URL;
   serviceRoleKey: string;
@@ -107,6 +107,18 @@ function requireMaxPdfBytes(value: number): number {
     );
   }
   return value;
+}
+
+export function createStorageClient(input: {
+  storageUrl: string;
+  serviceRoleKey: string;
+  fetchImpl?: typeof fetch;
+}): StorageClient {
+  return {
+    fetchImpl: input.fetchImpl ?? fetch,
+    origin: requireStorageOrigin(input.storageUrl),
+    serviceRoleKey: requireServiceRoleKey(input.serviceRoleKey),
+  };
 }
 
 export function createLibraryStorageBucketNames(
@@ -289,7 +301,7 @@ function requireSavedPolicy(
   }
 }
 
-async function reconcileBucket(
+export async function reconcileBucket(
   client: StorageClient,
   policy: BucketPolicy,
 ): Promise<StorageReconcileOutcome> {
