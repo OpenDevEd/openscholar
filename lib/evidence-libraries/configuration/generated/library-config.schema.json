@@ -885,6 +885,21 @@
 							"format": "uri"
 						}
 					]
+				},
+				"privacyMarkdown": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 200000
+				},
+				"cookieMarkdown": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 200000
+				},
+				"termsMarkdown": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 200000
 				}
 			},
 			"additionalProperties": false
