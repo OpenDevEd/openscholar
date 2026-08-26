@@ -132,8 +132,9 @@ runtime acceptance; endpoints checked against a development library.
 
 ## Cleanup (plan 08, enforced)
 
-Delete the Convex Cloud lanes and worktrees, confirm `docker ps` shows no
-sprint containers and no orphan `runSearchIndexer`, remove
+Delete the Convex Cloud lanes and worktrees, confirm no sprint containers
+(`el-*` acceptance stacks) are left running — never touch the user's own
+containers such as `what2` or `minio` — and no orphan `runSearchIndexer`, remove
 `components/evidence-libraries/mock/` and branch `feat/library-interface-mock`
 once the real page has replaced it.
 

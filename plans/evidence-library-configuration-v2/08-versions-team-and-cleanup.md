@@ -24,7 +24,9 @@ panel states the organisation rule; the sprint leaves nothing behind.
    decisions with commits and proof; `docs/PROJECT_STATE.md`.
 5. Cleanup checklist, run by the integration owner and recorded in the PR:
    delete Convex Cloud lanes (`npx convex deployment delete ...`), remove
-   worktrees (`git worktree remove`), `docker ps` clean, no orphan
+   worktrees (`git worktree remove`), no sprint containers left running
+   (only containers this sprint created — `el-*` acceptance stacks; never
+   touch the user's own containers such as `what2` or `minio`), no orphan
    `runSearchIndexer`, delete `components/evidence-libraries/mock/`,
    `lib/evidence-libraries/mock/`, `app/evidence-libraries/*` mock wrappers,
    and branch `feat/library-interface-mock` after the real page is on `dev`.
