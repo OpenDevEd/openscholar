@@ -14,6 +14,7 @@ import {
   Rocket,
   Save,
   Trash2,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -61,6 +62,7 @@ import { DangerSection } from "./sections/danger-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { IdentitySection } from "./sections/identity-section";
 import { InstitutionsSection } from "./sections/institutions-section";
+import { TeamSection } from "./sections/team-section";
 import { ThemeSection } from "./sections/theme-section";
 import { InlineNotice } from "./section-card";
 import { STATE_TONE, type SectionProps } from "./section-shell";
@@ -84,10 +86,11 @@ function isOperationRunning(operation: Operation): operation is NonNullable<Oper
   return operation.status === "queued" || operation.status === "running";
 }
 
-/** Rail entries: the draft sections this version supports, then the danger zone. */
-type RailKey = PageSectionKey | "danger";
-const RAIL_GROUPS: { key: "brand" | "danger"; sections: readonly RailKey[] }[] = [
+/** Rail entries: the draft sections this version supports, then the team and the danger zone. */
+type RailKey = PageSectionKey | "team" | "danger";
+const RAIL_GROUPS: { key: "brand" | "team" | "danger"; sections: readonly RailKey[] }[] = [
   { key: "brand", sections: PAGE_SECTION_KEYS },
+  { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
 
@@ -95,6 +98,7 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   identity: Globe,
   theme: Palette,
   institutions: Building2,
+  team: Users,
   danger: Trash2,
 };
 
@@ -121,7 +125,7 @@ function isPageSection(value: string): value is PageSectionKey {
   return (PAGE_SECTION_KEYS as readonly string[]).includes(value);
 }
 
-const RAIL_KEYS: readonly RailKey[] = [...PAGE_SECTION_KEYS, "danger"];
+const RAIL_KEYS: readonly RailKey[] = [...PAGE_SECTION_KEYS, "team", "danger"];
 
 export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
@@ -378,6 +382,7 @@ function Workspace({
                   />
                 );
               })}
+              <TeamSection />
               <DangerSection onDelete={() => setDeleteOpen(true)} />
             </div>
           </CommandCenterContainer>
