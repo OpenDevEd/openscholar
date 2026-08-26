@@ -92,7 +92,12 @@ http.route({
         );
       }
 
-      return Response.redirect(`${frontendUrl}/?zotero_connected=true`, 302);
+      const returnPath = result.returnTo ?? "/";
+      const separator = returnPath.includes("?") ? "&" : "?";
+      return Response.redirect(
+        `${frontendUrl}${returnPath}${separator}zotero_connected=true`,
+        302,
+      );
     } catch (error) {
       console.error("Zotero OAuth callback error:", error);
       return Response.redirect(

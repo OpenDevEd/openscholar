@@ -2226,5 +2226,91 @@
     "deleteCancel": "キャンセル",
     "deleting": "削除を開始しています…",
     "deleteError": "削除を開始できませんでした。実行中のライブラリ操作が終わってから、もう一度お試しください。"
+  },
+  "evidenceLibrarySources": {
+    "account": {
+      "connectedAs": "{handle} として接続中",
+      "notConnected": "グループを追加するには Zotero アカウントを接続してください。",
+      "connect": "Zotero を接続",
+      "connectFailed": "Zotero の接続を開始できませんでした。もう一度お試しください。"
+    },
+    "addGroup": "グループを追加",
+    "add": "追加",
+    "listLabel": "接続済みグループ",
+    "pickerTitle": "Zotero グループを追加",
+    "pickerDescription": "あなたの Zotero アカウントで見えるグループです。",
+    "pickerLoading": "グループを読み込んでいます",
+    "pickerFailed": "グループを読み込めませんでした。もう一度お試しください。",
+    "pickerNoGroups": "Zotero アカウントにグループがありません。",
+    "pickerAllAdded": "すべてのグループが追加済みです。",
+    "connectFailed": "このグループを接続できませんでした。",
+    "reconnected": "{name} はあなたの Zotero キーを使うようになりました。",
+    "removeFailed": "このグループを削除できませんでした。もう一度お試しください。",
+    "public": "公開",
+    "private": "非公開",
+    "recordsCount": "{count} 件",
+    "connectedBy": "接続者",
+    "health": {
+      "label": "状態",
+      "ready": "準備完了",
+      "readOnly": "読み取り専用",
+      "paused": "一時停止"
+    },
+    "syncUnknown": "同期の詳細はライブラリの管理画面で確認できます。",
+    "writeBack": "書き戻し",
+    "writeBackHint": "ライブラリでの編集を Zotero に書き戻します。",
+    "writeBackUnavailable": "あなたの Zotero キーはこのグループに書き込めません。再接続して書き込みを許可してください。",
+    "pause": "一時停止",
+    "pauseHint": "このグループの同期を止めます。取り込み済みのレコードは残ります。",
+    "reconnect": "再接続",
+    "remove": "削除",
+    "empty": "まだグループがありません。追加してライブラリを満たし始めましょう。",
+    "tagRules": {
+      "title": "タグの詳細ルール",
+      "hint": "レコードの表示を変える Zotero タグです。タグはカンマで区切ってください。",
+      "publish": "公開",
+      "comingSoon": "近日公開",
+      "internal": "内部",
+      "hidden": "非表示",
+      "description": "カテゴリの説明",
+      "redirects": "リダイレクト",
+      "publishEmpty": "公開タグを 1 つ以上追加してください。",
+      "tooMany": "タグは 10 個までです。",
+      "tooLong": "各タグは 128 文字以内にしてください。"
+    }
+  },
+  "evidenceLibraryCollections": {
+    "add": "コレクションを追加",
+    "listLabel": "選択したコレクション",
+    "pickerTitle": "コレクションを追加",
+    "pickerDescription": "このライブラリのコレクションです。",
+    "search": "コレクションを検索",
+    "searchPlaceholder": "入力して検索",
+    "notSetUp": "コレクションはライブラリのセットアップと同期の後に表示されます。",
+    "loading": "コレクションを読み込んでいます",
+    "failed": "コレクションを読み込めませんでした。もう一度お試しください。",
+    "empty": "一致するコレクションがありません。",
+    "loadMore": "さらに読み込む",
+    "added": "追加済み",
+    "recordsCount": "{count} 件",
+    "titleLabel": "表示名",
+    "shown": "表示",
+    "moveUp": "上へ",
+    "moveDown": "下へ",
+    "remove": "削除",
+    "emptyList": "コレクションが選ばれていません。ライブラリはすべてのコレクションを独自の順序で表示します。"
+  },
+  "evidenceLibraryInstitutions": {
+    "picker": {
+      "placeholder": "機関を選択",
+      "search": "機関を検索",
+      "loading": "機関を読み込んでいます",
+      "failed": "機関を読み込めませんでした。もう一度お試しください。",
+      "notSetUp": "レコードの機関名はライブラリのセットアップ後に表示されます。",
+      "empty": "一致する機関がありません。",
+      "none": "なし",
+      "useTyped": "「{name}」を使う",
+      "records": "{count} 件"
+    }
   }
 }

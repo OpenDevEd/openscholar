@@ -2226,5 +2226,91 @@
     "deleteCancel": "Annuler",
     "deleting": "Démarrage de la suppression…",
     "deleteError": "La suppression n'a pas pu démarrer. Attendez la fin des opérations en cours, puis réessayez."
+  },
+  "evidenceLibrarySources": {
+    "account": {
+      "connectedAs": "Connecté en tant que {handle}",
+      "notConnected": "Connectez votre compte Zotero pour ajouter des groupes.",
+      "connect": "Connecter Zotero",
+      "connectFailed": "Impossible de démarrer la connexion Zotero. Réessayez."
+    },
+    "addGroup": "Ajouter un groupe",
+    "add": "Ajouter",
+    "listLabel": "Groupes connectés",
+    "pickerTitle": "Ajouter un groupe Zotero",
+    "pickerDescription": "Les groupes visibles par votre compte Zotero.",
+    "pickerLoading": "Chargement de vos groupes",
+    "pickerFailed": "Impossible de charger vos groupes. Réessayez.",
+    "pickerNoGroups": "Votre compte Zotero n'a aucun groupe.",
+    "pickerAllAdded": "Tous vos groupes sont déjà ajoutés.",
+    "connectFailed": "Impossible de connecter ce groupe.",
+    "reconnected": "{name} utilise maintenant votre clé Zotero.",
+    "removeFailed": "Impossible de retirer ce groupe. Réessayez.",
+    "public": "Public",
+    "private": "Privé",
+    "recordsCount": "{count} notices",
+    "connectedBy": "Connecté par",
+    "health": {
+      "label": "État",
+      "ready": "Prêt",
+      "readOnly": "Lecture seule",
+      "paused": "En pause"
+    },
+    "syncUnknown": "Les détails de synchronisation sont dans l'administration de la bibliothèque.",
+    "writeBack": "Réécriture",
+    "writeBackHint": "Renvoyer vers Zotero les modifications faites dans la bibliothèque.",
+    "writeBackUnavailable": "Votre clé Zotero ne peut pas écrire dans ce groupe. Reconnectez-vous et autorisez l'écriture.",
+    "pause": "Pause",
+    "pauseHint": "Arrêter la synchronisation de ce groupe. Les notices déjà importées restent.",
+    "reconnect": "Reconnecter",
+    "remove": "Retirer",
+    "empty": "Aucun groupe pour l'instant. Ajoutez-en un pour commencer à remplir la bibliothèque.",
+    "tagRules": {
+      "title": "Règles de tags avancées",
+      "hint": "Tags Zotero qui changent l'affichage d'une notice. Séparez les tags par des virgules.",
+      "publish": "Publier",
+      "comingSoon": "Bientôt disponible",
+      "internal": "Interne",
+      "hidden": "Masqué",
+      "description": "Description de catégorie",
+      "redirects": "Redirections",
+      "publishEmpty": "Ajoutez au moins un tag de publication.",
+      "tooMany": "Utilisez au plus 10 tags.",
+      "tooLong": "Chaque tag doit faire 128 caractères ou moins."
+    }
+  },
+  "evidenceLibraryCollections": {
+    "add": "Ajouter des collections",
+    "listLabel": "Collections choisies",
+    "pickerTitle": "Ajouter des collections",
+    "pickerDescription": "Les collections de cette bibliothèque.",
+    "search": "Rechercher des collections",
+    "searchPlaceholder": "Tapez pour rechercher",
+    "notSetUp": "Les collections apparaissent une fois la bibliothèque installée et synchronisée.",
+    "loading": "Chargement des collections",
+    "failed": "Impossible de charger les collections. Réessayez.",
+    "empty": "Aucune collection ne correspond.",
+    "loadMore": "Charger plus",
+    "added": "Ajoutée",
+    "recordsCount": "{count} notices",
+    "titleLabel": "Affichée comme",
+    "shown": "Afficher",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "remove": "Retirer",
+    "emptyList": "Aucune collection choisie. La bibliothèque affiche toutes les collections dans son propre ordre."
+  },
+  "evidenceLibraryInstitutions": {
+    "picker": {
+      "placeholder": "Choisir une institution",
+      "search": "Rechercher des institutions",
+      "loading": "Chargement des institutions",
+      "failed": "Impossible de charger les institutions. Réessayez.",
+      "notSetUp": "Les noms issus des notices apparaissent une fois la bibliothèque installée.",
+      "empty": "Aucune institution ne correspond.",
+      "none": "Aucune",
+      "useTyped": "Utiliser « {name} »",
+      "records": "{count} notices"
+    }
   }
 }

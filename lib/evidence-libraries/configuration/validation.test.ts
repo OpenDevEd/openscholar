@@ -132,6 +132,25 @@ describe("validateOwnerSection", () => {
       }).issues.map((issue) => issue.pointer),
     ).toEqual(["/identity/baseUrl"]);
   });
+
+  test("lets a draft carry a source without its write-only key", () => {
+    expect(
+      validateOwnerSection("sources", [
+        {
+          key: "zotero-42",
+          provider: "zotero",
+          groupId: "42",
+          enabled: true,
+          writebackEnabled: false,
+        },
+      ]).issues,
+    ).toEqual([]);
+    expect(
+      validateOwnerSection("sources", [{ groupId: "42" }]).issues.map(
+        (issue) => issue.pointer,
+      ),
+    ).toEqual(["/sources/0/key", "/sources/0/provider"]);
+  });
 });
 
 describe("validateOwnerSections", () => {
