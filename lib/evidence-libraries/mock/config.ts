@@ -181,9 +181,19 @@ export const TAG_RULE_KEYS = [
 ] as const;
 export type TagRuleKey = (typeof TAG_RULE_KEYS)[number];
 
+/** A collection that exists in the library's database, from any source. */
+export type DatabaseCollection = {
+  id: string;
+  title: string;
+  count: number;
+  /** Where it came from, e.g. the Zotero group name. */
+  source: string;
+};
+
+/** A database collection the owner chose to show on the site. */
 export type CollectionSetting = {
   id: string;
-  /** Title from Zotero, read-only. */
+  /** Title in the database, read-only. */
   sourceTitle: string;
   title: string;
   enabled: boolean;

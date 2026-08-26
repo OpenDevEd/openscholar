@@ -2582,14 +2582,20 @@
         "count": "{count} of {max} institutions"
       },
       "collections": {
-        "description": "Choose how collections from Zotero appear in the library.",
-        "introHint": "Collections come from Zotero. Only how they are shown is set here. The order below is the display order.",
-        "empty": "No collections yet. Connect a Zotero source and sync to see them here.",
+        "description": "Choose which collections from the library's database appear on the site, and in what order.",
+        "introHint": "The database holds every collection from every source. Add the ones visitors should see. The order below is the display order.",
+        "empty": "No collections are shown yet. Use Add collection to pick some.",
+        "noneInDatabase": "The database has no collections yet. Connect a source and sync first.",
+        "add": "Add collection",
+        "searchPlaceholder": "Search collections…",
+        "noMatch": "No collection matches.",
+        "allAdded": "Every collection is already shown.",
         "records": "{count} records",
-        "titleLabel": "Title override",
-        "titleHint": "Leave empty to use the Zotero name",
-        "show": "Show",
-        "featured": "Featured on home page"
+        "titleLabel": "Title on the site",
+        "titleHint": "Leave empty to use the database name.",
+        "featured": "Featured on home page",
+        "remove": "Stop showing this collection",
+        "shownCount": "{shown} of {total} shown"
       },
       "search": {
         "description": "Choose what people can search and which filters they see.",

@@ -232,6 +232,7 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
             draft: structuredClone(saved),
             versions: [],
             paused: false,
+            databaseCollections: [],
           },
         ],
       }));

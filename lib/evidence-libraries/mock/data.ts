@@ -121,10 +121,12 @@ export type MockLibrary = {
   draft: LibraryConfig;
   versions: LibraryVersion[];
   paused: boolean;
+  /** Every collection in the library's database. */
+  databaseCollections: DatabaseCollection[];
 };
 
 export type { LibraryVersion } from "./config";
-import type { LibraryVersion } from "./config";
+import type { DatabaseCollection, LibraryVersion } from "./config";
 
 export type ActivationRun = { stageIndex: number; rev: string };
 
@@ -312,7 +314,6 @@ function fullConfig(): LibraryConfig {
     { id: "col_2", sourceTitle: "Assessment", title: "Assessment & feedback", enabled: true, featured: true, count: 148 },
     { id: "col_3", sourceTitle: "Teacher professional development", title: "", enabled: true, featured: false, count: 96 },
     { id: "col_4", sourceTitle: "Policy", title: "", enabled: true, featured: false, count: 73 },
-    { id: "col_5", sourceTitle: "Drafts (internal)", title: "", enabled: false, featured: false, count: 41 },
   ];
   c.navigation.links = [
     { id: "nav_1", label: "Library", target: { kind: "page", page: "library" }, icon: "EvidenceLibrary", newTab: false, visible: true, children: [] },
@@ -406,6 +407,27 @@ function fullConfig(): LibraryConfig {
   return c;
 }
 
+const AIED_DATABASE_COLLECTIONS: DatabaseCollection[] = [
+  { id: "col_1", title: "Generative AI", count: 312, source: "AI in Education (main group)" },
+  { id: "col_2", title: "Assessment", count: 148, source: "AI in Education (main group)" },
+  { id: "col_3", title: "Teacher professional development", count: 96, source: "AI in Education (main group)" },
+  { id: "col_4", title: "Policy", count: 73, source: "AI in Education (main group)" },
+  { id: "col_5", title: "Drafts (internal)", count: 41, source: "AI in Education (main group)" },
+  { id: "col_6", title: "Adaptive learning", count: 58, source: "AI in Education (main group)" },
+  { id: "col_7", title: "Ethics and bias", count: 64, source: "AI in Education (main group)" },
+  { id: "col_8", title: "Early childhood", count: 27, source: "AI in Education (main group)" },
+  { id: "col_9", title: "Higher education", count: 119, source: "AI in Education (main group)" },
+  { id: "col_10", title: "Low-resource settings", count: 83, source: "Partner submissions" },
+  { id: "col_11", title: "Partner case studies", count: 35, source: "Partner submissions" },
+  { id: "col_12", title: "Tools and platforms", count: 92, source: "Partner submissions" },
+];
+
+const HEALTH_DATABASE_COLLECTIONS: DatabaseCollection[] = [
+  { id: "hcol_1", title: "Maternal health", count: 44, source: "Health Evidence group" },
+  { id: "hcol_2", title: "Nutrition", count: 31, source: "Health Evidence group" },
+  { id: "hcol_3", title: "Vaccination", count: 57, source: "Health Evidence group" },
+];
+
 function seedLibrary(base: Omit<MockLibrary, "draft" | "address">): MockLibrary {
   return { ...base, address: addressFor(base.shortName), draft: structuredClone(base.saved) };
 }
@@ -432,6 +454,7 @@ export function seedLibraries(): MockLibrary[] {
       failNextDeployment: false,
       saved: fullConfig(),
       paused: false,
+      databaseCollections: AIED_DATABASE_COLLECTIONS,
       versions: [
         { rev: "rev_8sm1e94", at: "2026-08-19 14:02", by: "You", sections: ["theme", "navigation"], status: "live" },
         { rev: "rev_5pq0d11", at: "2026-08-12 09:41", by: "Sara Kim", sections: ["sources", "collections"], status: "previous" },
@@ -453,6 +476,7 @@ export function seedLibraries(): MockLibrary[] {
       failNextDeployment: true,
       saved: makeConfig("Health Evidence Hub", "health-evidence-hub", { accent: "#1d9a6c", secondary: "#0f3d3e", link: "#047857" }),
       paused: false,
+      databaseCollections: HEALTH_DATABASE_COLLECTIONS,
       versions: [],
     }),
     seedLibrary({
@@ -469,6 +493,7 @@ export function seedLibraries(): MockLibrary[] {
       failNextDeployment: false,
       saved: makeConfig("Malaria Review", "malaria-review", { accent: "#7c3aed", secondary: "#3b0764", link: "#6d28d9" }),
       paused: false,
+      databaseCollections: [],
       versions: [],
     }),
   ];
