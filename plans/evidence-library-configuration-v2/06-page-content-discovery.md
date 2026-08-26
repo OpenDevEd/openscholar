@@ -16,7 +16,7 @@ Port each mock section and its rules; wire to the draft sections named:
 | Footer | `footer` (sections, social, funders, disclaimer, attribution; `poweredBy` locked on) |
 | Contact & legal | `contact`, `email.contactRecipient`, `email.takedownRecipient`, `legal` (links or Markdown text from the legal upload) |
 | Search & filters | `search` (fullText, tags, country, authorCountry, scopes, defaultScope), `filters` (institution mode/label/featuredValue, years, collectionsExpanded) |
-| Citations & exports | `citations.showUrl`, `exports.{ris,bibtex,atom}` as on/off → the platform fills the URLs (`https://<baseUrl>/api/export/<format>`) at assembly |
+| Citations & exports | `citations.showUrl`, `exports.{ris,bibtex,atom}` as on/off → the section writes the full URLs from `identity.baseUrl` using the runtime’s real paths `/lib/export/ris`, `/lib/export/bibtex`, `/lib/atom.xml` (new-el `src/proxy.ts`) |
 | Features | `features` Appearance (themeSwitcher, languageSwitcher), Discovery (collections, collectionNotes, countryFocus as "Country map page", authorFilter, authorLocation, yearsDropdown), Exports (downloads, atomFeed). AI and Accounts groups are not shown; document in the section description that they come later. |
 | Languages | `localization` (locales, defaultLocale, detectLocale, localePriority) |
 | Analytics | `analytics` (none / posthog host+key / google measurementId) |
