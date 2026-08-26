@@ -73,6 +73,16 @@ type DraftResult = NonNullable<
 >;
 type Operation = DraftResult["operation"];
 
+/**
+ * A new library's setup operation is created queued and only starts once the
+ * owner activates; until it holds a revision it is waiting, not running.
+ */
+function isOperationRunning(operation: Operation): operation is NonNullable<Operation> {
+  if (!operation) return false;
+  if (operation.kind === "setup" && !operation.revisionId) return false;
+  return operation.status === "queued" || operation.status === "running";
+}
+
 /** Rail entries: the draft sections this version supports, then the danger zone. */
 type RailKey = PageSectionKey | "danger";
 const RAIL_GROUPS: { key: "brand" | "danger"; sections: readonly RailKey[] }[] = [
@@ -177,9 +187,7 @@ function Workspace({
 
   const dirty = isDirty(draft, saved);
   const problems = hasProblems(draft);
-  const operationRunning =
-    operation !== null &&
-    (operation.status === "queued" || operation.status === "running");
+  const operationRunning = isOperationRunning(operation);
   const isDraftLibrary = libraryState === "provisioning";
   const canActivate = !activating && !saving && !problems && !operationRunning;
 
@@ -293,7 +301,11 @@ function Workspace({
               )}
             </PanelHeader>
             {operation ? (
-              <OperationBanner operation={operation} onJump={jumpTo} />
+              <OperationBanner
+                operation={operation}
+                running={operationRunning}
+                onJump={jumpTo}
+              />
             ) : null}
           </div>
         </div>
@@ -421,14 +433,14 @@ function Workspace({
  */
 function OperationBanner({
   operation,
+  running,
   onJump,
 }: {
   operation: NonNullable<Operation>;
+  running: boolean;
   onJump: (key: PageSectionKey) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
-  const running =
-    operation.status === "queued" || operation.status === "running";
   const issues = operation.issues ?? [];
   if (running) {
     return (

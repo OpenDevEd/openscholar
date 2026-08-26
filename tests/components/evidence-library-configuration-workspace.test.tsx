@@ -306,6 +306,18 @@ describe("<ConfigurationWorkspace>", () => {
     );
   });
 
+  it("lets a new library be set up while its setup operation waits for the owner", () => {
+    queryMock.mockReturnValue(
+      draftResult({
+        state: "provisioning",
+        operation: { _id: "operation_1", kind: "setup", status: "queued", stage: "queued" },
+      }),
+    );
+    renderWorkspace();
+    expect(document.querySelector("[data-operation-stage]")).toBeNull();
+    expect(screen.getByRole("button", { name: "setUpAndActivate" })).toBeEnabled();
+  });
+
   it("shows the running stage and blocks Activate while an operation runs", () => {
     queryMock.mockReturnValue(
       draftResult({
