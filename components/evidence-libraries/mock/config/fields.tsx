@@ -12,6 +12,7 @@ import {
   Check,
   FileText,
   ImageIcon,
+  Lock,
   Plus,
   RotateCcw,
   Trash2,
@@ -344,11 +345,14 @@ export function ToggleRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 rounded-lg border border-border/50 bg-background px-3 py-2.5",
-        disabled && "opacity-60",
+        "flex items-center justify-between gap-4 rounded-lg border px-3 py-2.5",
+        disabled || locked
+          ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+          : "border-border/50 bg-background",
         className,
       )}
       data-checked={checked}
+      data-disabled={disabled || locked || undefined}
       {...rest}
     >
       <div className="min-w-0 space-y-0.5">
@@ -369,7 +373,10 @@ export function ToggleRow({
       {locked && disabledReason ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span tabIndex={0}>{control}</span>
+            <span tabIndex={0} className="flex items-center gap-2">
+              <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+              {control}
+            </span>
           </TooltipTrigger>
           <TooltipContent>{disabledReason}</TooltipContent>
         </Tooltip>
@@ -553,6 +560,38 @@ export function ChipInput({
 /* ------------------------------------------------------------------ */
 /* Misc                                                                */
 /* ------------------------------------------------------------------ */
+
+/** A value the owner cannot change. Looks fixed: dashed, muted, with a lock. */
+export function ReadOnlyValue({
+  id,
+  value,
+  mono = true,
+  className,
+}: {
+  id?: string;
+  value: ReactNode;
+  mono?: boolean;
+  className?: string;
+}) {
+  const t = useTranslations("evidenceLibraryMock.fields");
+  return (
+    <div
+      id={id}
+      role="textbox"
+      aria-readonly="true"
+      tabIndex={0}
+      title={t("fixed")}
+      className={cn(
+        "flex h-9 w-full cursor-default items-center gap-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-3 text-sm text-muted-foreground",
+        mono && "font-mono",
+        className,
+      )}
+    >
+      <span className="min-w-0 flex-1 truncate">{value}</span>
+      <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+    </div>
+  );
+}
 
 export function ResetButton({ onClick }: { onClick: () => void }) {
   const t = useTranslations("evidenceLibraryMock.fields");

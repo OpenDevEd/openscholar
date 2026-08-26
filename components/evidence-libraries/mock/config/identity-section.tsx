@@ -8,7 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { newId } from "@/lib/evidence-libraries/mock/config";
 import { Field } from "../section-card";
-import { AddButton, EmptyList, ListRow, move, SubHeading, UploadField } from "./fields";
+import {
+  AddButton,
+  EmptyList,
+  ListRow,
+  move,
+  ReadOnlyValue,
+  SubHeading,
+  UploadField,
+} from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const NAME_MAX = 100;
@@ -53,13 +61,13 @@ export function IdentitySection({ library, patch }: SectionProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("shortNameLabel")} hint={t("shortNameHint")}>
           {(id) => (
-            <Input id={id} className="bg-background font-mono text-sm" value={identity.shortName} readOnly />
+            <ReadOnlyValue id={id} value={identity.shortName} />
           )}
         </Field>
         <Field label={t("addressLabel")} hint={t("addressHint")}>
           {(id) => (
             <div className="flex gap-1.5">
-              <Input id={id} className="bg-background font-mono text-sm" value={address} readOnly />
+              <ReadOnlyValue id={id} value={address} />
               <Button
                 type="button"
                 variant="outline"

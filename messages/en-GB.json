@@ -3119,7 +3119,8 @@
       "moveDown": "Move down",
       "removeChip": "Remove {value}",
       "reset": "Reset changes",
-      "add": "Add"
+      "add": "Add",
+      "fixed": "This value is fixed."
     }
   }
 }

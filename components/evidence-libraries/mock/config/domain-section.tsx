@@ -18,7 +18,7 @@ import type { DnsStatus } from "@/lib/evidence-libraries/mock/config";
 import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
 import { StatusChip, type StatusTone } from "../library-status-badge";
 import { Field } from "../section-card";
-import { SubHeading, ToggleRow } from "./fields";
+import { ReadOnlyValue, SubHeading, ToggleRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const VERIFY_TOKEN = "os-verify=7f3a9c1e5b2d4a8f";
@@ -68,7 +68,7 @@ export function DomainSection({ library, patch }: SectionProps) {
     <SectionShell sectionKey="domain" icon={Link2} description={t("description")} library={library}>
       <Field label={t("platformLabel")} hint={t("platformHint")}>
         {(id) => (
-          <Input id={id} className="bg-background font-mono text-sm" value={`https://${library.address}`} readOnly />
+          <ReadOnlyValue id={id} value={`https://${library.address}`} />
         )}
       </Field>
 
