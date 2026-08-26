@@ -1,5 +1,10 @@
 import { v, type Infer } from "convex/values";
-import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
+import {
+  SECTION_REGISTRY,
+  type SectionKey,
+} from "../../lib/evidence-libraries/configuration/section-registry";
+
+export type { SectionKey };
 
 export const organizationStateValidator = v.union(
   v.literal("active"),
@@ -87,7 +92,6 @@ export const organizationMembershipFields = {
 const sectionKeyValidators = SECTION_REGISTRY.map((section) =>
   v.literal(section.key),
 );
-export type SectionKey = (typeof SECTION_REGISTRY)[number]["key"];
 export const sectionKeyValidator = v.union(
   ...(sectionKeyValidators as [
     (typeof sectionKeyValidators)[number],
@@ -95,6 +99,19 @@ export const sectionKeyValidator = v.union(
     ...(typeof sectionKeyValidators)[number][],
   ]),
 );
+
+// One owner-edited section as it travels to and from the client. The payload
+// is checked in the mutation against the generated validator for its section.
+export const sectionRowValidator = v.object({
+  sectionKey: sectionKeyValidator,
+  payload: v.any(),
+});
+
+// One problem the full validator found while assembling a configuration.
+export const configurationIssueValidator = v.object({
+  pointer: v.string(),
+  message: v.string(),
+});
 
 export const configProvenanceValidator = v.object({
   repository: v.string(),
@@ -136,42 +153,6 @@ export const evidenceLibrarySetupIdentityFields = {
   shortName: v.string(),
   slug: v.string(),
 };
-
-export const essentialIdentitySectionValidator = v.object({
-  name: v.string(),
-  shortName: v.string(),
-  tagline: v.optional(v.string()),
-  description: v.optional(v.string()),
-  baseUrl: v.string(),
-  assets: v.object({
-    logoDark: v.string(),
-    favicon: v.string(),
-    shareImage: v.optional(v.string()),
-  }),
-});
-
-export const essentialThemeSectionValidator = v.object({
-  colors: v.object({
-    accent: v.string(),
-    tertiary: v.string(),
-  }),
-});
-
-export const essentialLocalizationSectionValidator = v.object({
-  locales: v.array(v.string()),
-  defaultLocale: v.string(),
-});
-
-export const essentialFooterSectionValidator = v.object({
-  poweredBy: v.boolean(),
-});
-
-export const essentialConfigurationSectionsValidator = v.object({
-  identity: essentialIdentitySectionValidator,
-  theme: essentialThemeSectionValidator,
-  localization: essentialLocalizationSectionValidator,
-  footer: essentialFooterSectionValidator,
-});
 
 export const evidenceLibraryConfigDraftFields = {
   libraryId: v.id("evidenceLibraries"),
@@ -226,6 +207,14 @@ export const evidenceLibraryConfigSectionValidator = v.union(
 export const evidenceLibraryOperationErrorInputValidator = v.object({
   code: v.string(),
   message: v.string(),
+});
+
+// What a failed pipeline step reports. Assembly failures add the list of
+// issues so the configuration page can show them.
+export const evidenceLibraryOperationFailureValidator = v.object({
+  code: v.string(),
+  message: v.string(),
+  issues: v.optional(v.array(configurationIssueValidator)),
 });
 
 const evidenceLibraryRuntimeBindingBaseFields = {
@@ -540,6 +529,7 @@ export const evidenceLibraryOperationFields = {
       stage: v.string(),
     }),
   ),
+  issues: v.optional(v.array(configurationIssueValidator)),
   requestedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),

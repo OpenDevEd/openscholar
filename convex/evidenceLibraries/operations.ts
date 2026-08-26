@@ -10,7 +10,7 @@ import { requireEvidenceLibraryAccess } from "./access";
 import {
   type EvidenceLibraryOperationKind,
   evidenceLibraryConfigRunningStageValidator,
-  evidenceLibraryOperationErrorInputValidator,
+  evidenceLibraryOperationFailureValidator,
   evidenceLibraryOperationReceiptValidator,
   evidenceLibraryRequestableOperationKindValidator,
 } from "./validators";
@@ -87,6 +87,20 @@ export function validateOperationReceipt(
     normalized.activatedAt = receipt.activatedAt;
   }
   return normalized;
+}
+
+const MAX_CONFIGURATION_ISSUES = 200;
+
+export type ConfigurationIssue = { pointer: string; message: string };
+
+export function sanitizeConfigurationIssues(
+  issues: readonly ConfigurationIssue[] | undefined,
+): ConfigurationIssue[] | undefined {
+  if (!issues || issues.length === 0) return undefined;
+  return issues.slice(0, MAX_CONFIGURATION_ISSUES).map((issue) => ({
+    pointer: issue.pointer.trim().slice(0, 500),
+    message: issue.message.trim().slice(0, 500),
+  }));
 }
 
 export function sanitizeOperationError(
@@ -280,7 +294,7 @@ type TransitionArgs = {
   | { transition: "succeed"; receipt?: OperationReceipt }
   | {
       transition: "fail";
-      error: { code: string; message: string };
+      error: { code: string; message: string; issues?: ConfigurationIssue[] };
     }
 );
 
@@ -315,6 +329,7 @@ export async function applyOperationTransition(
       stage: args.stage,
       attemptCount: operation.attemptCount + 1,
       error: undefined,
+      issues: undefined,
       startedAt: now,
       completedAt: undefined,
       updatedAt: now,
@@ -344,6 +359,7 @@ export async function applyOperationTransition(
   await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
     status: "failed",
     error: sanitizeOperationError(args.error, operation.stage),
+    issues: sanitizeConfigurationIssues(args.error.issues),
     completedAt: now,
     updatedAt: now,
   });
@@ -401,7 +417,7 @@ export const failOperation = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
-    error: evidenceLibraryOperationErrorInputValidator,
+    error: evidenceLibraryOperationFailureValidator,
   },
   returns: transitionReturnValidator,
   handler: async (ctx, args) =>

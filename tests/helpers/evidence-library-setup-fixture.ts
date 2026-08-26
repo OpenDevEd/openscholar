@@ -4,6 +4,14 @@ import schema from "../../convex/schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
+// Turns a { sectionKey: payload } record into the rows the save mutation takes.
+export function toSectionRows<T extends Record<string, unknown>>(sections: T) {
+  return Object.entries(sections).map(([sectionKey, payload]) => ({
+    sectionKey: sectionKey as keyof T & string,
+    payload,
+  }));
+}
+
 export const essentialSetupSections = {
   identity: {
     name: "Climate Evidence",
@@ -56,10 +64,10 @@ export async function createActivatedSetupFixture(suffix: string) {
     { name: essentialSetupSections.identity.name },
   );
   const saved = await admin.mutation(
-    api.evidenceLibraries.mutations.saveEssentialConfiguration,
+    api.evidenceLibraries.mutations.saveDraftSections,
     {
       libraryId: created.libraryId,
-      sections: essentialSetupSections,
+      sections: toSectionRows(essentialSetupSections),
       expectedEditVersion: 0,
     },
   );

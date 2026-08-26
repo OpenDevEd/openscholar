@@ -6,13 +6,12 @@ import {
   ConfigurationAssemblyError,
   assembleEvidenceLibraryConfiguration,
 } from "./assembly";
-import {
-  type EssentialConfigurationSections,
-  validateEssentialConfiguration,
-} from "./essential-configuration";
-import { validateLibraryConfigStructure } from "./validation";
+import { initialLocalizationPayload } from "./initial-sections";
+import { validateOwnerSection, validateOwnerSections } from "./owner-rules";
+import { REQUIRED_OWNER_SECTION_KEYS } from "./section-registry";
+import { validateLibraryConfigStructure } from "./generated-validation";
 
-const visibleConfiguration = {
+const ownerSections = {
   identity: {
     name: "Climate Evidence Library",
     shortName: "Climate Evidence",
@@ -25,18 +24,15 @@ const visibleConfiguration = {
       shareImage: "https://assets.example.test/climate-share.png",
     },
   },
-  theme: {
-    colors: {
-      accent: "#005A9C",
-      tertiary: "#F2A900",
-    },
+  theme: { colors: { accent: "#005A9C", tertiary: "#F2A900" } },
+  localization: { locales: ["en-GB", "fr"], defaultLocale: "en-GB" },
+  footer: { poweredBy: true, disclaimer: "Views are the authors' own." },
+  navigation: {
+    links: [{ id: "home", label: "Home", href: "/", target: "blank" }],
   },
-  localization: {
-    locales: ["en-GB", "fr"],
-    defaultLocale: "en-GB",
-  },
-  footer: { poweredBy: true },
-} satisfies EssentialConfigurationSections;
+  filters: { years: { minimum: 2000 } },
+  features: { collections: false, countryFocus: false },
+};
 
 const managedConfiguration = {
   revision: "r2",
@@ -65,17 +61,9 @@ describe("validateLibraryConfigStructure", () => {
       schemaVersion: 1,
       revision: "candidate-1",
       updatedAt: "2026-08-11T10:00:00Z",
-      identity: {
-        name: 42,
-        baseUrl: "not a uri",
-      },
-      theme: {
-        colors: {},
-        layout: "boxed",
-      },
-      localization: {
-        defaultLocale: "en-GB",
-      },
+      identity: { name: 42, baseUrl: "not a uri" },
+      theme: { colors: {}, layout: "boxed" },
+      localization: { defaultLocale: "en-GB" },
       services: {},
     });
 
@@ -109,10 +97,81 @@ describe("validateLibraryConfigStructure", () => {
       ]),
     );
   });
+});
 
-  test("assembles a complete structurally valid runtime configuration", () => {
+describe("validateOwnerSection", () => {
+  test("checks a payload against its own schema slice with root pointers", () => {
+    const result = validateOwnerSection("navigation", {
+      links: [{ id: "home", label: "Home", href: "/", target: "nowhere" }],
+      unexpected: true,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.pointer)).toEqual(
+      expect.arrayContaining([
+        "/navigation/links/0/target",
+        "/navigation/unexpected",
+      ]),
+    );
+    expect(validateOwnerSection("footer", ownerSections.footer).valid).toBe(
+      true,
+    );
+  });
+
+  test("keeps the footer credit on and the public address fixed", () => {
+    expect(
+      validateOwnerSection("footer", { poweredBy: false }).issues,
+    ).toContainEqual({
+      pointer: "/footer/poweredBy",
+      section: "footer",
+      keyword: "plan",
+      message: "Available on paid plans.",
+    });
+    expect(
+      validateOwnerSection("identity", ownerSections.identity, {
+        expectedBaseUrl: "https://other.libraries.example.test",
+      }).issues.map((issue) => issue.pointer),
+    ).toEqual(["/identity/baseUrl"]);
+  });
+});
+
+describe("validateOwnerSections", () => {
+  test("reports duplicate rows and, when asked, the required sections that are missing", () => {
+    expect(REQUIRED_OWNER_SECTION_KEYS).toEqual([
+      "identity",
+      "theme",
+      "localization",
+    ]);
+    const partial = validateOwnerSections([
+      { sectionKey: "footer", payload: ownerSections.footer },
+      { sectionKey: "footer", payload: ownerSections.footer },
+      { sectionKey: "services", payload: {} },
+      { sectionKey: "authentication", payload: {} },
+    ]);
+    expect(partial.issues).toEqual([
+      expect.objectContaining({ pointer: "/footer", keyword: "duplicate" }),
+      expect.objectContaining({ pointer: "/services", keyword: "platformSection" }),
+      expect.objectContaining({
+        pointer: "/authentication",
+        keyword: "platformSection",
+      }),
+    ]);
+    const complete = validateOwnerSections(
+      [
+        { sectionKey: "identity", payload: ownerSections.identity },
+        { sectionKey: "localization", payload: initialLocalizationPayload() },
+      ],
+      { requireComplete: true },
+    );
+    expect(complete.issues).toEqual([
+      expect.objectContaining({ pointer: "/theme", keyword: "required" }),
+    ]);
+  });
+});
+
+describe("assembleEvidenceLibraryConfiguration", () => {
+  test("merges every saved section over schema defaults and platform values", () => {
     const configuration = assembleEvidenceLibraryConfiguration({
-      sections: visibleConfiguration,
+      sections: ownerSections,
       managed: managedConfiguration,
       now: new Date("2026-08-24T19:00:00.000Z"),
     });
@@ -122,21 +181,23 @@ describe("validateLibraryConfigStructure", () => {
       issues: [],
     });
     expect(configuration).toMatchObject({
-      identity: visibleConfiguration.identity,
-      localization: visibleConfiguration.localization,
+      identity: ownerSections.identity,
+      localization: ownerSections.localization,
+      navigation: ownerSections.navigation,
+      footer: { poweredBy: true, disclaimer: "Views are the authors' own." },
+      filters: { years: { minimum: 2000, maximum: 2026 } },
+      features: { collections: false, countryFocus: false, login: false },
+      // Sections that were never saved come from the schema defaults.
+      institutions: [],
+      contact: {},
+      citations: { showUrl: false },
+      search: { embedder: null },
       services: {
         database: { url: managedConfiguration.databaseUrl },
         search: {
           host: managedConfiguration.searchHost,
           index: managedConfiguration.searchIndex,
           key: managedConfiguration.searchKey,
-        },
-        storage: {
-          url: managedConfiguration.storageUrl,
-          serviceRoleKey: managedConfiguration.storageServiceRoleKey,
-          privateBucket: managedConfiguration.storagePrivateBucket,
-          publicBucket: managedConfiguration.storagePublicBucket,
-          maxPdfBytes: managedConfiguration.storageMaxPdfBytes,
         },
         zotero: { translationUrl: managedConfiguration.zoteroTranslationUrl },
       },
@@ -149,93 +210,63 @@ describe("validateLibraryConfigStructure", () => {
         },
         secret: managedConfiguration.authenticationSecret,
       },
-      institutions: [],
-      navigation: {},
-      filters: { years: { maximum: 2026 } },
     });
 
     const withoutZotero = assembleEvidenceLibraryConfiguration({
-      sections: visibleConfiguration,
+      sections: ownerSections,
       managed: { ...managedConfiguration, zoteroTranslationUrl: undefined },
       now: new Date("2026-08-24T19:00:00.000Z"),
     });
     expect(
       (withoutZotero.services as Record<string, unknown>).zotero,
     ).not.toHaveProperty("translationUrl");
-    expect(configuration.footer.poweredBy).toBe(true);
   });
 
-  test("keeps the OpenScholar footer credit on until plans exist", () => {
-    const result = validateEssentialConfiguration({
-      ...visibleConfiguration,
-      footer: { poweredBy: false },
-    });
-    expect(result.valid).toBe(false);
-    expect(result.issues).toContainEqual({
-      pointer: "/footer/poweredBy",
-      section: "footer",
-      keyword: "plan",
-      message: "Available on paid plans.",
-    });
-    expect(validateEssentialConfiguration(visibleConfiguration).valid).toBe(
-      true,
-    );
-  });
-
-  test("reports visible and managed failures with field pointers", () => {
-    const invalidLanguages = validateEssentialConfiguration({
-      ...visibleConfiguration,
-      localization: {
-        locales: ["fr"],
-        defaultLocale: "not-supported",
+  test("ignores owner rows for platform sections and hands sources to the credential hook", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        services: { database: { url: "postgresql://owner-wrote-this" } },
+        sources: [
+          { key: "main", provider: "zotero", groupId: "12345" },
+        ],
       },
+      managed: managedConfiguration,
+      applySourceCredentials: (sources) =>
+        sources.map((source) => ({ ...source, apiKey: `key-${source.groupId}` })),
     });
-    expect(invalidLanguages.issues.map((issue) => issue.pointer)).toContain(
-      "/localization/defaultLocale",
+    expect(configuration.services.database.url).toBe(
+      managedConfiguration.databaseUrl,
     );
-
-    expect(() =>
-      assembleEvidenceLibraryConfiguration({
-        sections: {
-          ...visibleConfiguration,
-          identity: {
-            ...visibleConfiguration.identity,
-            assets: {
-              ...visibleConfiguration.identity.assets,
-              favicon: "not a URL",
-            },
-          },
-        },
-        managed: {
-          ...managedConfiguration,
-          authenticationSecret: "",
-        },
+    expect(configuration.sources).toEqual([
+      expect.objectContaining({
+        key: "main",
+        groupId: "12345",
+        apiKey: "key-12345",
+        enabled: true,
       }),
-    ).toThrow(ConfigurationAssemblyError);
+    ]);
+  });
 
+  test("reports owner and platform failures with field pointers", () => {
+    const broken = {
+      sections: {
+        ...ownerSections,
+        identity: {
+          ...ownerSections.identity,
+          assets: { ...ownerSections.identity.assets, favicon: "not a URL" },
+        },
+      },
+      managed: { ...managedConfiguration, authenticationSecret: "" },
+    };
+    expect(() => assembleEvidenceLibraryConfiguration(broken)).toThrow(
+      ConfigurationAssemblyError,
+    );
     try {
-      assembleEvidenceLibraryConfiguration({
-        sections: {
-          ...visibleConfiguration,
-          identity: {
-            ...visibleConfiguration.identity,
-            assets: {
-              ...visibleConfiguration.identity.assets,
-              favicon: "not a URL",
-            },
-          },
-        },
-        managed: {
-          ...managedConfiguration,
-          authenticationSecret: "",
-        },
-      });
+      assembleEvidenceLibraryConfiguration(broken);
     } catch (error) {
-      expect(error).toBeInstanceOf(ConfigurationAssemblyError);
       expect(
-        (error as ConfigurationAssemblyError).issues.map(
-          (issue) => issue.pointer,
-        ),
+        (error as ConfigurationAssemblyError).issues.map((issue) => issue.pointer),
       ).toEqual(
         expect.arrayContaining([
           "/authentication/secret",
@@ -243,5 +274,11 @@ describe("validateLibraryConfigStructure", () => {
         ]),
       );
     }
+    expect(() =>
+      assembleEvidenceLibraryConfiguration({
+        sections: { identity: ownerSections.identity },
+        managed: managedConfiguration,
+      }),
+    ).toThrow(ConfigurationAssemblyError);
   });
 });

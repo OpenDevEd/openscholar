@@ -1,70 +1,44 @@
 import "server-only";
 
-import catalogs from "./generated/library-config.catalogs.json";
 import schema from "./generated/library-config.schema.json";
 import { resolveSchemaPointer } from "./section-registry";
 
-type StringFieldContract = {
+export type StringFieldContract = {
   maxLength?: number;
   minLength?: number;
   pattern?: string;
 };
 
-export type EssentialConfigurationFormContract = {
-  fields: {
-    name: StringFieldContract;
-    shortName: StringFieldContract;
-    tagline: StringFieldContract;
-    description: StringFieldContract;
-    logo: StringFieldContract;
-    favicon: StringFieldContract;
-    shareImage: StringFieldContract;
-    colour: StringFieldContract;
-  };
-  locales: string[];
-};
-
-function readStringContract(pointer: string): StringFieldContract {
+function readSchemaNode(pointer: string): Record<string, unknown> {
   const value = resolveSchemaPointer(schema, pointer);
   if (!value || typeof value !== "object") {
     throw new Error(`Generated configuration contract is missing ${pointer}`);
   }
-  const contract = value as StringFieldContract;
+  return value as Record<string, unknown>;
+}
+
+export function readStringContract(pointer: string): StringFieldContract {
+  const node = readSchemaNode(pointer) as StringFieldContract;
   return {
-    maxLength: contract.maxLength,
-    minLength: contract.minLength,
-    pattern: contract.pattern,
+    maxLength: node.maxLength,
+    minLength: node.minLength,
+    pattern: node.pattern,
   };
 }
 
-function readLocales() {
-  const field = catalogs.fields.enums.find(
-    (entry) => entry.path === "localization.locales[]",
-  );
-  if (!field || field.values.length === 0) {
-    throw new Error("Generated configuration catalog has no languages");
-  }
-  const locales = field.values.filter(
-    (value): value is string => typeof value === "string",
-  );
-  if (locales.length !== field.values.length) {
-    throw new Error("Generated configuration catalog has an invalid language");
-  }
-  return locales;
-}
-
-export function getEssentialConfigurationFormContract(): EssentialConfigurationFormContract {
-  return {
-    fields: {
-      name: readStringContract("/identity/name"),
-      shortName: readStringContract("/identity/shortName"),
-      tagline: readStringContract("/identity/tagline"),
-      description: readStringContract("/identity/description"),
-      logo: readStringContract("/identity/assets/logoDark"),
-      favicon: readStringContract("/identity/assets/favicon"),
-      shareImage: readStringContract("/identity/assets/shareImage"),
-      colour: readStringContract("/theme/colors/accent"),
-    },
-    locales: readLocales(),
+// Returns the allowed values at a pointer. Works for an enum field and for an
+// array whose items are an enum (use the /items suffix or the array pointer).
+export function readEnum(pointer: string): string[] {
+  const node = readSchemaNode(pointer) as {
+    enum?: unknown[];
+    items?: { enum?: unknown[] };
   };
+  const values = node.enum ?? node.items?.enum;
+  if (!values || values.length === 0) {
+    throw new Error(`Generated configuration contract has no choices at ${pointer}`);
+  }
+  if (!values.every((value): value is string => typeof value === "string")) {
+    throw new Error(`Generated configuration contract has a non-text choice at ${pointer}`);
+  }
+  return values;
 }

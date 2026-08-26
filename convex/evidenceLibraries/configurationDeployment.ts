@@ -6,11 +6,15 @@ import {
   type MutationCtx,
 } from "../_generated/server";
 import { v } from "convex/values";
-import { validateEssentialConfiguration } from "../../lib/evidence-libraries/configuration/essential-configuration";
+import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
-import { sanitizeOperationError, validateOperationReceipt } from "./operations";
+import {
+  sanitizeConfigurationIssues,
+  sanitizeOperationError,
+  validateOperationReceipt,
+} from "./operations";
 import { readRevisionDefaultLocale } from "./revisionConfiguration";
 import {
   AUTHENTICATION_SECRET_PATH,
@@ -19,9 +23,9 @@ import {
   STORAGE_SERVICE_KEY_PATH,
 } from "./runtimeCredentials";
 import {
-  essentialConfigurationSectionsValidator,
   evidenceLibraryConfigurationDeploymentTargetValidator,
-  evidenceLibraryOperationErrorInputValidator,
+  evidenceLibraryOperationFailureValidator,
+  sectionRowValidator,
 } from "./validators";
 
 export const CONFIGURATION_DEPLOYMENT_LEASE_MS = 20 * 60 * 1_000;
@@ -238,6 +242,7 @@ export async function claimAndScheduleConfigurationDeployment(
       : "assembling",
     attemptCount,
     error: undefined,
+    issues: undefined,
     startedAt: now,
     completedAt: undefined,
     configurationAttemptToken: attemptToken,
@@ -329,7 +334,7 @@ export const prepareConfigurationDeployment = internalMutation({
       applicationId: v.string(),
       targetBaseUrl: v.string(),
       revision: v.object({ key: v.string(), createdAt: v.number() }),
-      sections: essentialConfigurationSectionsValidator,
+      sections: v.array(sectionRowValidator),
       credentials: v.object({
         encryptedMachine: v.string(),
         encryptedAuthentication: v.string(),
@@ -430,13 +435,15 @@ export const prepareConfigurationDeployment = internalMutation({
         ctx.db.get(deployment.runtimeBinding.searchCredentialId),
         ctx.db.get(deployment.runtimeBinding.storageCredentialId),
       ]);
-    const payloads = Object.fromEntries(
-      sectionRows.map((section) => [section.sectionKey, section.payload]),
-    );
-    const validated = validateEssentialConfiguration(payloads, {
+    const sections = sectionRows.map((section) => ({
+      sectionKey: section.sectionKey,
+      payload: section.payload,
+    }));
+    const validated = validateOwnerSections(sections, {
       expectedBaseUrl: deployment.runtimeBinding.targetBaseUrl,
+      requireComplete: true,
     });
-    if (!validated.valid || !validated.value) {
+    if (!validated.valid) {
       throw createError(
         "INVALID_DATA",
         "Evidence Library revision configuration is incomplete",
@@ -469,7 +476,7 @@ export const prepareConfigurationDeployment = internalMutation({
         key: deployment.revision.revisionKey,
         createdAt: deployment.revision.createdAt,
       },
-      sections: validated.value,
+      sections,
       credentials: {
         encryptedMachine: required.machine.encryptedValue,
         encryptedAuthentication: required.authentication.encryptedValue,
@@ -887,7 +894,7 @@ export const failConfigurationDeployment = internalMutation({
     operationId: v.id("evidenceLibraryConfigOperations"),
     attemptToken: v.string(),
     attemptCount: v.number(),
-    error: evidenceLibraryOperationErrorInputValidator,
+    error: evidenceLibraryOperationFailureValidator,
   },
   returns: v.union(v.literal("failed"), v.literal("ignored")),
   handler: async (ctx, args) => {
@@ -907,6 +914,7 @@ export const failConfigurationDeployment = internalMutation({
     await ctx.db.patch(operation._id, {
       status: "failed",
       error: sanitizeOperationError(args.error, operation.stage),
+      issues: sanitizeConfigurationIssues(args.error.issues),
       completedAt: now,
       configurationAttemptToken: undefined,
       configurationLeaseExpiresAt: undefined,

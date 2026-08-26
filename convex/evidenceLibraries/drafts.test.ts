@@ -10,6 +10,7 @@ import {
   readEvidenceLibraryDraft,
   readEvidenceLibraryRevision,
 } from "./queries";
+import { toSectionRows } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -138,36 +139,36 @@ describe("Evidence Library draft storage", () => {
 
     await expect(
       admin.mutation(
-        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        api.evidenceLibraries.mutations.saveDraftSections,
         {
           libraryId: created.libraryId,
-          sections: {
+          sections: toSectionRows({
             ...validSections,
             identity: {
               ...validSections.identity,
               assets: { ...validSections.identity.assets, logoDark: "" },
             },
-          },
+          }),
           expectedEditVersion: 0,
         },
       ),
-    ).rejects.toThrow(/VALIDATION_ERROR/);
+    ).rejects.toThrow(/VALIDATION_ERROR.*\/identity\/assets\/logoDark/);
     await expect(
       admin.mutation(
-        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        api.evidenceLibraries.mutations.saveDraftSections,
         {
           libraryId: created.libraryId,
-          sections: {
+          sections: toSectionRows({
             ...validSections,
             identity: {
               ...validSections.identity,
               baseUrl: "https://changed-address.example.org",
             },
-          },
+          }),
           expectedEditVersion: 0,
         },
       ),
-    ).rejects.toThrow(/VALIDATION_ERROR/);
+    ).rejects.toThrow(/VALIDATION_ERROR.*\/identity\/baseUrl/);
 
     const stored = await admin.run((ctx) =>
       readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
@@ -182,6 +183,141 @@ describe("Evidence Library draft storage", () => {
           shortName: "Identity Library",
         },
       }),
+      expect.objectContaining({
+        sectionKey: "localization",
+        payload: { locales: ["en-GB"], defaultLocale: "en-GB" },
+      }),
+    ]);
+  });
+
+  it("saves any registry section, rejects a payload that breaks its slice, and keeps secrets out", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const organizationId = await ctx.db.insert("organizations", {
+        clerkOrganizationId: "org_generic_sections",
+        name: "Generic Team",
+        slug: "generic-team",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("organizationMemberships", {
+        organizationId,
+        clerkMembershipId: "orgmem_generic_sections",
+        clerkUserId: "user_generic_sections",
+        role: "org:admin",
+        state: "active",
+        clerkCreatedAt: 1,
+        clerkUpdatedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+    const admin = t.withIdentity({
+      subject: "user_generic_sections",
+      o: { id: "org_generic_sections", rol: "org:admin" },
+    });
+    const created = await admin.run((ctx) =>
+      createEvidenceLibrarySetup(ctx, {
+        name: "Generic Library",
+        slug: "generic-library",
+        publicAddress: "https://generic-library.example.org",
+      }),
+    );
+    const navigation = {
+      links: [{ id: "home", label: "Home", href: "/", target: "blank" }],
+    };
+    const footer = { poweredBy: true, disclaimer: "Views are the authors' own." };
+
+    const saved = await admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: created.libraryId,
+        sections: [
+          { sectionKey: "navigation", payload: navigation },
+          { sectionKey: "footer", payload: footer },
+        ],
+        expectedEditVersion: 0,
+      },
+    );
+    const reloaded = await admin.query(api.evidenceLibraries.queries.getDraft, {
+      libraryId: created.libraryId,
+    });
+
+    expect(saved.editVersion).toBe(1);
+    expect(reloaded.operation).toMatchObject({ kind: "setup", status: "queued" });
+    expect(
+      Object.fromEntries(
+        reloaded.sections.map((section) => [
+          section.sectionKey,
+          section.payload,
+        ]),
+      ),
+    ).toMatchObject({ navigation, footer });
+
+    await expect(
+      admin.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
+        libraryId: created.libraryId,
+        sections: [
+          {
+            sectionKey: "navigation",
+            payload: {
+              links: [{ id: "home", label: "Home", href: "/", target: "popup" }],
+            },
+          },
+        ],
+        expectedEditVersion: 1,
+      }),
+    ).rejects.toThrow(/VALIDATION_ERROR.*\/navigation\/links\/0\/target/);
+    await expect(
+      admin.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
+        libraryId: created.libraryId,
+        sections: [
+          {
+            sectionKey: "sources",
+            payload: [
+              { key: "main", provider: "zotero", groupId: "123", apiKey: "secret" },
+            ],
+          },
+        ],
+        expectedEditVersion: 1,
+      }),
+    ).rejects.toThrow(/VALIDATION_ERROR.*\/sources/);
+    await expect(
+      admin.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
+        libraryId: created.libraryId,
+        sections: [
+          { sectionKey: "footer", payload: footer },
+          { sectionKey: "services", payload: { publication: {} } },
+        ],
+        expectedEditVersion: 1,
+      }),
+    ).rejects.toThrow(/VALIDATION_ERROR.*\/services: This section is set by the platform/);
+    await expect(
+      admin.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
+        libraryId: created.libraryId,
+        sections: [{ sectionKey: "footer", payload: footer }],
+        expectedEditVersion: 0,
+      }),
+    ).rejects.toThrow(/CONFLICT.*Draft changed since it was loaded/);
+    await expect(
+      admin.mutation(api.evidenceLibraries.mutations.activateConfiguration, {
+        libraryId: created.libraryId,
+        expectedEditVersion: 1,
+      }),
+    ).rejects.toThrow(/VALIDATION_ERROR.*\/identity\/assets/);
+
+    const unchanged = await admin.run((ctx) =>
+      readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
+    );
+    expect(unchanged.draft.editVersion).toBe(1);
+    expect(unchanged.sections.map((section) => section.sectionKey).sort()).toEqual([
+      "footer",
+      "identity",
+      "localization",
+      "navigation",
     ]);
   });
 
@@ -242,10 +378,10 @@ describe("Evidence Library draft storage", () => {
       "Climate Evidence",
     );
     const saved = await asAdmin.mutation(
-      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      api.evidenceLibraries.mutations.saveDraftSections,
       {
         libraryId: created.libraryId,
-        sections,
+        sections: toSectionRows(sections),
         expectedEditVersion: 0,
       },
     );
@@ -279,20 +415,20 @@ describe("Evidence Library draft storage", () => {
     ).rejects.toThrow(/FORBIDDEN/);
     await expect(
       asMember.mutation(
-        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        api.evidenceLibraries.mutations.saveDraftSections,
         {
           libraryId: created.libraryId,
-          sections,
+          sections: toSectionRows(sections),
           expectedEditVersion: 1,
         },
       ),
     ).rejects.toThrow(/FORBIDDEN/);
     await expect(
       asAdmin.mutation(
-        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        api.evidenceLibraries.mutations.saveDraftSections,
         {
           libraryId: created.libraryId,
-          sections,
+          sections: toSectionRows(sections),
           expectedEditVersion: 0,
         },
       ),
@@ -300,26 +436,26 @@ describe("Evidence Library draft storage", () => {
 
     await expect(
       asAdmin.mutation(
-        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        api.evidenceLibraries.mutations.saveDraftSections,
         {
           libraryId: created.libraryId,
-          sections: {
+          sections: toSectionRows({
             ...sections,
             localization: {
               locales: ["fr"],
               defaultLocale: "not-supported",
             },
-          },
+          }),
           expectedEditVersion: 1,
         },
       ),
     ).rejects.toThrow(/\/localization\/defaultLocale/);
     await expect(
       asAdmin.mutation(
-        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        api.evidenceLibraries.mutations.saveDraftSections,
         {
           libraryId: created.libraryId,
-          sections: { ...sections, footer: { poweredBy: false } },
+          sections: toSectionRows({ ...sections, footer: { poweredBy: false } }),
           expectedEditVersion: 1,
         },
       ),
@@ -382,10 +518,10 @@ describe("Evidence Library draft storage", () => {
       "Published name",
     );
     const saved = await admin.mutation(
-      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      api.evidenceLibraries.mutations.saveDraftSections,
       {
         libraryId: created.libraryId,
-        sections: published,
+        sections: toSectionRows(published),
         expectedEditVersion: 0,
       },
     );
@@ -400,12 +536,14 @@ describe("Evidence Library draft storage", () => {
       ctx.db.get(created.libraryId),
     );
     await admin.mutation(
-      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      api.evidenceLibraries.mutations.saveDraftSections,
       {
         libraryId: created.libraryId,
-        sections: configurationSections(
-          "https://revision-library.example.org",
-          "Unpublished edit",
+        sections: toSectionRows(
+          configurationSections(
+            "https://revision-library.example.org",
+            "Unpublished edit",
+          ),
         ),
         expectedEditVersion: finalized.editVersion,
       },

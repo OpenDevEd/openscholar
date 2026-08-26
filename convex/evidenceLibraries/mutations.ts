@@ -4,9 +4,13 @@ import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { createInitialEvidenceLibraryShortName } from "../../lib/evidence-libraries/setup/naming";
 import {
-  validateEssentialConfiguration,
-  type EssentialConfigurationSections,
-} from "../../lib/evidence-libraries/configuration/essential-configuration";
+  initialIdentityPayload,
+  initialLocalizationPayload,
+} from "../../lib/evidence-libraries/configuration/initial-sections";
+import {
+  type OwnerSectionRow,
+  validateOwnerSections,
+} from "../../lib/evidence-libraries/configuration/owner-rules";
 import { createError } from "../lib/errors";
 import {
   requireEvidenceLibraryAccess,
@@ -36,15 +40,14 @@ import {
   findAvailableEvidenceLibrarySetupIdentity,
   readProvisioningEvidenceLibrarySetupByName,
   readEvidenceLibrarySetupIdentity,
-  validateEvidenceLibraryIdentityPayload,
+  readEvidenceLibraryIdentityNames,
   validateEvidenceLibrarySetupName,
   type EvidenceLibrarySetupIdentity,
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import {
   evidenceLibrarySetupIdentityFields,
-  essentialConfigurationSectionsValidator,
-  type SectionKey,
+  sectionRowValidator,
 } from "./validators";
 
 const SETUP_OPERATION_IDEMPOTENCY_KEY = "library-setup";
@@ -140,18 +143,28 @@ export async function createEvidenceLibrarySetup(
     createdAt: now,
     updatedAt: now,
   });
-  const identityPayload = { baseUrl: publicAddress, name, shortName };
-  await ctx.db.insert("evidenceLibraryConfigSections", {
-    kind: "draft",
-    libraryId,
-    draftId,
-    sectionKey: "identity",
-    payload: identityPayload,
-    payloadByteLength: validateSectionPayload(identityPayload),
-    contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
-    updatedByClerkUserId: access.clerkUserId,
-    updatedAt: now,
-  });
+  // A new library starts with identity and localization only. Every other
+  // section is absent until the owner saves it and takes the schema defaults.
+  const seededSections: OwnerSectionRow[] = [
+    {
+      sectionKey: "identity",
+      payload: initialIdentityPayload({ baseUrl: publicAddress, name, shortName }),
+    },
+    { sectionKey: "localization", payload: initialLocalizationPayload() },
+  ];
+  for (const section of seededSections) {
+    await ctx.db.insert("evidenceLibraryConfigSections", {
+      kind: "draft",
+      libraryId,
+      draftId,
+      sectionKey: section.sectionKey,
+      payload: section.payload,
+      payloadByteLength: validateSectionPayload(section.payload),
+      contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+      updatedByClerkUserId: access.clerkUserId,
+      updatedAt: now,
+    });
+  }
   const [setupOperation, runtimeBinding] = await Promise.all([
     queueEvidenceLibraryOperation(ctx, {
       libraryId,
@@ -203,16 +216,50 @@ async function createEvidenceLibrarySetupFromName(
   );
 }
 
-async function saveEvidenceLibraryDraftSections(
+function throwFirstIssue(issues: { pointer: string; message: string }[]) {
+  const issue = issues[0];
+  if (!issue) return;
+  throw createError("VALIDATION_ERROR", `${issue.pointer}: ${issue.message}`, {
+    pointer: issue.pointer,
+  });
+}
+
+async function readRuntimeBindingBaseUrl(
+  ctx: MutationCtx,
+  library: Doc<"evidenceLibraries">,
+) {
+  const runtimeBindingId = library.runtimeBindingId;
+  const binding = runtimeBindingId
+    ? await ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId)
+    : null;
+  if (!binding || binding.libraryId !== library._id) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library runtime binding not found",
+    );
+  }
+  return binding.targetBaseUrl;
+}
+
+// The only way owner sections reach the draft. Each payload is checked
+// against the generated validator for its section plus the owner rules, may
+// not carry credential material, and must fit the size budgets.
+export async function saveEvidenceLibraryDraftSections(
   ctx: MutationCtx,
   args: {
-    access: Awaited<ReturnType<typeof requireEvidenceLibraryAccess>>;
     libraryId: Id<"evidenceLibraries">;
-    sections: Array<{ sectionKey: SectionKey; payload: unknown }>;
+    sections: OwnerSectionRow[];
     expectedEditVersion: number;
   },
 ) {
-  const { access } = args;
+  const access = await requireEvidenceLibraryAccess(
+    ctx,
+    args.libraryId,
+    "manage",
+  );
+  if (args.sections.length === 0) {
+    throw createError("VALIDATION_ERROR", "Nothing to save");
+  }
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
@@ -224,33 +271,31 @@ async function saveEvidenceLibraryDraftSections(
     draft.editVersion,
     args.expectedEditVersion,
   );
+  const expectedBaseUrl = await readRuntimeBindingBaseUrl(ctx, access.library);
+  throwFirstIssue(
+    validateOwnerSections(args.sections, { expectedBaseUrl }).issues,
+  );
   const identity = args.sections.find(
     (section) => section.sectionKey === "identity",
   );
-  if (identity) {
-    const runtimeBindingId = access.library.runtimeBindingId;
-    const runtimeBinding = runtimeBindingId
-      ? await ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId)
-      : null;
-    if (!runtimeBinding || runtimeBinding.libraryId !== args.libraryId) {
+  const identityPayload = identity
+    ? readEvidenceLibraryIdentityNames(identity.payload, "VALIDATION_ERROR")
+    : undefined;
+  for (const section of args.sections) {
+    try {
+      assertNoCredentialMaterial(section.sectionKey, section.payload);
+    } catch {
       throw createError(
-        "INVALID_DATA",
-        "Evidence Library runtime binding not found",
+        "VALIDATION_ERROR",
+        `/${section.sectionKey}: Keys and passwords are managed separately and cannot be saved here.`,
+        { pointer: `/${section.sectionKey}` },
       );
     }
-    validateEvidenceLibraryIdentityPayload(
-      identity.payload,
-      runtimeBinding.targetBaseUrl,
-      "VALIDATION_ERROR",
-    );
   }
   const writes = args.sections.map((section) => ({
     ...section,
     payloadByteLength: validateSectionPayload(section.payload),
   }));
-  for (const write of writes) {
-    assertNoCredentialMaterial(write.sectionKey, write.payload);
-  }
   const storedSections = await ctx.db
     .query("evidenceLibraryConfigSections")
     .withIndex("by_draftId_and_sectionKey", (query) =>
@@ -299,68 +344,22 @@ async function saveEvidenceLibraryDraftSections(
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
   });
-  return { editVersion, writes };
+  if (identityPayload) {
+    await ctx.db.patch("evidenceLibraries", args.libraryId, {
+      name: identityPayload.name,
+      updatedByClerkUserId: access.clerkUserId,
+      updatedAt: now,
+    });
+  }
+  return { editVersion };
 }
 
-export async function saveEssentialEvidenceLibraryConfiguration(
-  ctx: MutationCtx,
-  args: {
-    libraryId: Id<"evidenceLibraries">;
-    sections: EssentialConfigurationSections;
-    expectedEditVersion: number;
-  },
-) {
-  const access = await requireEvidenceLibraryAccess(
-    ctx,
-    args.libraryId,
-    "manage",
-  );
-  const runtimeBindingId = access.library.runtimeBindingId;
-  const binding = runtimeBindingId
-    ? await ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId)
-    : null;
-  if (!binding || binding.libraryId !== args.libraryId) {
-    throw createError(
-      "INVALID_DATA",
-      "Evidence Library runtime binding not found",
-    );
-  }
-  const validation = validateEssentialConfiguration(args.sections, {
-    expectedBaseUrl: binding.targetBaseUrl,
-  });
-  if (!validation.valid) {
-    const issue = validation.issues[0]!;
-    throw createError(
-      "VALIDATION_ERROR",
-      `${issue.pointer}: ${issue.message}`,
-      { pointer: issue.pointer },
-    );
-  }
-  const result = await saveEvidenceLibraryDraftSections(ctx, {
-    access,
-    libraryId: args.libraryId,
-    sections: [
-      { sectionKey: "identity", payload: args.sections.identity },
-      { sectionKey: "theme", payload: args.sections.theme },
-      { sectionKey: "localization", payload: args.sections.localization },
-      { sectionKey: "footer", payload: args.sections.footer },
-    ],
-    expectedEditVersion: args.expectedEditVersion,
-  });
-  await ctx.db.patch("evidenceLibraries", args.libraryId, {
-    name: validation.value!.identity.name,
-    updatedByClerkUserId: access.clerkUserId,
-    updatedAt: Date.now(),
-  });
-  return { editVersion: result.editVersion };
-}
-
+// Copies every draft row into a new frozen revision.
 async function finalizeEvidenceLibraryDraft(
   ctx: MutationCtx,
   args: {
     libraryId: Id<"evidenceLibraries">;
     expectedEditVersion: number;
-    sectionKeys?: SectionKey[];
   },
 ) {
   const access = await requireEvidenceLibraryAccess(
@@ -405,12 +404,7 @@ async function finalizeEvidenceLibraryDraft(
       query.eq("draftId", draft._id),
     )
     .collect();
-  const includedSections = args.sectionKeys
-    ? draftSections.filter((section) =>
-        args.sectionKeys!.includes(section.sectionKey),
-      )
-    : draftSections;
-  for (const section of includedSections) {
+  for (const section of draftSections) {
     if (section.kind !== "draft") {
       throw new Error("Draft section index returned a revision row");
     }
@@ -531,16 +525,7 @@ export async function activateEvidenceLibraryConfiguration(
       "Disabled Evidence Libraries cannot be activated",
     );
   }
-  const runtimeBindingId = access.library.runtimeBindingId;
-  const binding = runtimeBindingId
-    ? await ctx.db.get("evidenceLibraryRuntimeBindings", runtimeBindingId)
-    : null;
-  if (!binding || binding.libraryId !== args.libraryId) {
-    throw createError(
-      "INVALID_DATA",
-      "Evidence Library runtime binding not found",
-    );
-  }
+  const expectedBaseUrl = await readRuntimeBindingBaseUrl(ctx, access.library);
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
@@ -563,28 +548,19 @@ export async function activateEvidenceLibraryConfiguration(
       query.eq("draftId", draft._id),
     )
     .collect();
-  const payloads = Object.fromEntries(
-    rows.map((row) => [row.sectionKey, row.payload]),
+  // Every row must pass its own validator, and the sections the schema
+  // requires must be present. The full validator runs again at assembly.
+  throwFirstIssue(
+    validateOwnerSections(
+      rows.map((row) => ({ sectionKey: row.sectionKey, payload: row.payload })),
+      { expectedBaseUrl, requireComplete: true },
+    ).issues,
   );
-  const validation = validateEssentialConfiguration(payloads, {
-    expectedBaseUrl: binding.targetBaseUrl,
-  });
-  if (!validation.valid) {
-    const issue = validation.issues[0]!;
-    throw createError(
-      "VALIDATION_ERROR",
-      `${issue.pointer}: ${issue.message}`,
-      { pointer: issue.pointer },
-    );
-  }
   if (access.library.state === "active") {
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
   }
 
-  const frozen = await finalizeEvidenceLibraryDraft(ctx, {
-    ...args,
-    sectionKeys: ["identity", "theme", "localization", "footer"],
-  });
+  const frozen = await finalizeEvidenceLibraryDraft(ctx, args);
   if (access.library.state === "provisioning") {
     const setupOperationId = access.library.setupOperationId;
     if (!setupOperationId) {
@@ -664,14 +640,14 @@ export const createSetupDraft = mutation({
   handler: createEvidenceLibrarySetupFromName,
 });
 
-export const saveEssentialConfiguration = mutation({
+export const saveDraftSections = mutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
-    sections: essentialConfigurationSectionsValidator,
+    sections: v.array(sectionRowValidator),
     expectedEditVersion: v.number(),
   },
   returns: v.object({ editVersion: v.number() }),
-  handler: saveEssentialEvidenceLibraryConfiguration,
+  handler: saveEvidenceLibraryDraftSections,
 });
 
 export const activateConfiguration = mutation({

@@ -3,11 +3,15 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { sanitizeOperationError } from "./operations";
+import {
+  type ConfigurationIssue,
+  sanitizeConfigurationIssues,
+  sanitizeOperationError,
+} from "./operations";
 import { requireNonBlankProvisioningValue } from "./provisioning";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import {
-  evidenceLibraryOperationErrorInputValidator,
+  evidenceLibraryOperationFailureValidator,
   evidenceLibrarySetupResultValidator,
   evidenceLibrarySetupReceiptsValidator,
   evidenceLibrarySetupStageValidator,
@@ -279,6 +283,7 @@ export async function claimEvidenceLibrarySetupOperation(
     stage: "database",
     attemptCount: operation.attemptCount + 1,
     error: undefined,
+    issues: undefined,
     startedAt: now,
     completedAt: undefined,
     setupAttemptToken: attemptToken,
@@ -521,7 +526,7 @@ export async function failEvidenceLibrarySetupOperation(
     attemptToken: string;
     attemptCount: number;
     expectedStage: EvidenceLibrarySetupStage;
-    error: { code: string; message: string };
+    error: { code: string; message: string; issues?: ConfigurationIssue[] };
   },
 ) {
   const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, args);
@@ -537,6 +542,7 @@ export async function failEvidenceLibrarySetupOperation(
   await ctx.db.patch(operation._id, {
     status: "failed",
     error,
+    issues: sanitizeConfigurationIssues(args.error.issues),
     completedAt: now,
     setupAttemptToken: undefined,
     setupLeaseExpiresAt: undefined,
@@ -621,7 +627,7 @@ export const failSetupOperation = internalMutation({
     attemptToken: v.string(),
     attemptCount: v.number(),
     expectedStage: evidenceLibrarySetupStageValidator,
-    error: evidenceLibraryOperationErrorInputValidator,
+    error: evidenceLibraryOperationFailureValidator,
   },
   returns: v.literal("failed"),
   handler: failEvidenceLibrarySetupOperation,

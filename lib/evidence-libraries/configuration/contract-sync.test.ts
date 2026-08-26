@@ -17,7 +17,14 @@ const schemaText = `${JSON.stringify({
   type: "object",
   properties: {
     schemaVersion: { const: 1 },
-    identity: { type: "object" },
+    revision: { type: "string" },
+    updatedAt: { type: "string" },
+    identity: {
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+      additionalProperties: false,
+    },
     theme: { type: "object" },
     localization: { type: "object" },
     footer: { type: "object" },
@@ -126,6 +133,26 @@ test("writes exact artifact bytes and verifies them without rewriting", async ()
     await expect(
       readFile(join(outputRoot, "generated/library-config.validator.cjs"), "utf8"),
     ).resolves.toContain("exports.fullValidator");
+    const { createRequire } = await import("node:module");
+    const generated = createRequire(import.meta.url)(
+      join(outputRoot, "generated/library-config.validator.cjs"),
+    ) as {
+      fullValidator: (input: unknown) => boolean;
+      sectionValidators: Record<string, (input: unknown) => boolean>;
+    };
+    expect(Object.keys(generated.sectionValidators)).toEqual([
+      "identity",
+      "theme",
+      "localization",
+      "footer",
+    ]);
+    expect(generated.sectionValidators.identity!({ name: "Library" })).toBe(
+      true,
+    );
+    expect(
+      generated.sectionValidators.identity!({ name: "Library", nope: 1 }),
+    ).toBe(false);
+    expect(generated.fullValidator({ schemaVersion: 1 })).toBe(true);
     await expect(
       synchronizeContractSnapshot({
         snapshot,

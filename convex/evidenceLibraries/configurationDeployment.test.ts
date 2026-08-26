@@ -7,6 +7,7 @@ import { createCoolifyLibraryTag } from "./coolifyClient";
 import {
   createDeployedSetupFixture,
   essentialSetupSections,
+  toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const ENCRYPTION_KEY = "33".repeat(32);
@@ -277,10 +278,10 @@ async function activateChangedConfiguration(suffix: string) {
     },
   };
   const saved = await fixture.admin.mutation(
-    api.evidenceLibraries.mutations.saveEssentialConfiguration,
+    api.evidenceLibraries.mutations.saveDraftSections,
     {
       libraryId: fixture.created.libraryId,
-      sections,
+      sections: toSectionRows(sections),
       expectedEditVersion: fixture.activated.editVersion,
     },
   );
@@ -600,13 +601,13 @@ describe("Evidence Library configuration deployment", () => {
       });
     });
     const saved = await fixture.admin.mutation(
-      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      api.evidenceLibraries.mutations.saveDraftSections,
       {
         libraryId: fixture.created.libraryId,
-        sections: {
+        sections: toSectionRows({
           ...essentialSetupSections,
           identity: { ...essentialSetupSections.identity, name: "New name" },
-        },
+        }),
         expectedEditVersion: fixture.activated.editVersion,
       },
     );

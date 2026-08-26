@@ -24,12 +24,6 @@ export type EvidenceLibrarySetupIdentity = {
   slug: string;
 };
 
-type EvidenceLibraryIdentityPayload = {
-  baseUrl: string;
-  name: string;
-  shortName: string;
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -45,11 +39,11 @@ export function validateEvidenceLibrarySetupName(value: string): string {
   return name;
 }
 
-export function validateEvidenceLibraryIdentityPayload(
+// Setup only needs the names. The public address rule lives in owner-rules.
+export function readEvidenceLibraryIdentityNames(
   value: unknown,
-  expectedBaseUrl: string,
   errorCode: "INVALID_DATA" | "VALIDATION_ERROR",
-): EvidenceLibraryIdentityPayload {
+): { name: string; shortName: string } {
   if (
     !isRecord(value) ||
     typeof value.name !== "string" ||
@@ -57,21 +51,14 @@ export function validateEvidenceLibraryIdentityPayload(
     Array.from(value.name).length > MAX_EVIDENCE_LIBRARY_NAME_LENGTH ||
     typeof value.shortName !== "string" ||
     !value.shortName.trim() ||
-    Array.from(value.shortName).length >
-      MAX_EVIDENCE_LIBRARY_SHORT_NAME_LENGTH ||
-    value.baseUrl !== expectedBaseUrl
+    Array.from(value.shortName).length > MAX_EVIDENCE_LIBRARY_SHORT_NAME_LENGTH
   ) {
     throw createError(
       errorCode,
-      "Evidence Library identity requires a valid name, short name, and the reserved platform address",
+      "Evidence Library identity needs a name and a short name",
     );
   }
-
-  return {
-    baseUrl: value.baseUrl,
-    name: value.name,
-    shortName: value.shortName,
-  };
+  return { name: value.name, shortName: value.shortName };
 }
 
 export function requireEvidenceLibraryPlatformDomain(
@@ -142,9 +129,8 @@ export async function readEvidenceLibrarySetupIdentity(
       "Evidence Library setup identity is incomplete",
     );
   }
-  const payload = validateEvidenceLibraryIdentityPayload(
+  const payload = readEvidenceLibraryIdentityNames(
     identitySection.payload,
-    setup.publicAddress,
     "INVALID_DATA",
   );
 

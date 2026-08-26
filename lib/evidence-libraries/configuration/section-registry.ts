@@ -1,4 +1,5 @@
 import catalogs from "./generated/library-config.catalogs.json";
+import schema from "./generated/library-config.schema.json";
 import {
   escapeJsonPointerToken,
   jsonPointerPatternMatches,
@@ -174,8 +175,8 @@ export const SECTION_REGISTRY = [
     key: "authentication",
     pointer: "/authentication",
     label: "Authentication",
-    description: "Catalog-backed sign-in capabilities.",
-    authority: "catalogDerived",
+    description: "Platform sign-in wiring and secret.",
+    authority: "platformProvisioned",
   },
   {
     key: "email",
@@ -199,6 +200,37 @@ export const SECTION_REGISTRY = [
     authority: "catalogDerived",
   },
 ] as const satisfies readonly SectionDefinition[];
+
+export type SectionKey = (typeof SECTION_REGISTRY)[number]["key"];
+
+const SECTION_KEYS = new Set<string>(SECTION_REGISTRY.map((section) => section.key));
+
+function isSectionKey(value: unknown): value is SectionKey {
+  return typeof value === "string" && SECTION_KEYS.has(value);
+}
+
+export function getSectionAuthority(sectionKey: SectionKey): FieldAuthority {
+  return SECTION_REGISTRY.find((section) => section.key === sectionKey)!
+    .authority;
+}
+
+// Sections the platform fills at assembly time. Owners never save them.
+export const PLATFORM_SECTION_KEYS = SECTION_REGISTRY.filter(
+  (section) => section.authority === "platformProvisioned",
+).map((section) => section.key);
+
+export function isPlatformSection(sectionKey: SectionKey): boolean {
+  return getSectionAuthority(sectionKey) === "platformProvisioned";
+}
+
+// Owner sections the runtime schema marks as required at the root. Read from
+// the schema so the list never needs a hand-written copy.
+export const REQUIRED_OWNER_SECTION_KEYS = schema.required.filter(
+  (key): key is SectionKey =>
+    isSectionKey(key) &&
+    !(ENVELOPE_FIELDS as readonly string[]).includes(key) &&
+    !isPlatformSection(key),
+);
 
 export function writeOnlyPathToPointerPattern(path: string): `/${string}` {
   const tokens = path.split(".").flatMap((segment) => {

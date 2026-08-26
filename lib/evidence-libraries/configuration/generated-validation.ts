@@ -1,14 +1,14 @@
 import type { ErrorObject, ValidateFunction } from "ajv";
 import {
-  essentialValidator,
   fullValidator,
+  sectionValidators,
 } from "./generated/library-config.validator.cjs";
 import { escapeJsonPointerToken } from "./json-pointer";
-import { SECTION_REGISTRY } from "./section-registry";
+import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 
 export type ValidationIssue = {
   pointer: string;
-  section: (typeof SECTION_REGISTRY)[number]["key"] | null;
+  section: SectionKey | null;
   keyword: string;
   message: string;
 };
@@ -29,6 +29,9 @@ function issuePointer(error: ErrorObject) {
 
 function issueMessage(error: ErrorObject) {
   if (error.keyword === "required") return "Required field is missing.";
+  if (error.keyword === "additionalProperties") {
+    return "This field is not part of the configuration.";
+  }
   if (error.keyword === "format") {
     const { format } = error.params as { format: string };
     return `Value must match the ${format} format.`;
@@ -45,7 +48,7 @@ function issueMessage(error: ErrorObject) {
     const { allowedValue } = error.params as { allowedValue: unknown };
     return `Value must equal ${String(allowedValue)}.`;
   }
-  return "Value does not satisfy the configuration contract.";
+  return "This value is not allowed here.";
 }
 
 function sectionForPointer(pointer: string): ValidationIssue["section"] {
@@ -56,11 +59,12 @@ function sectionForPointer(pointer: string): ValidationIssue["section"] {
 function runValidator(
   validate: ValidateFunction<unknown>,
   input: unknown,
+  pointerPrefix = "",
 ): { valid: boolean; issues: ValidationIssue[] } {
   if (validate(input)) return { valid: true, issues: [] };
   const issues = (validate.errors ?? [])
     .map((error) => {
-      const pointer = issuePointer(error);
+      const pointer = `${pointerPrefix}${issuePointer(error)}`;
       return {
         pointer,
         section: sectionForPointer(pointer),
@@ -80,6 +84,19 @@ export function validateLibraryConfigStructure(input: unknown) {
   return runValidator(fullValidator as ValidateFunction<unknown>, input);
 }
 
-export function validateEssentialConfigStructure(input: unknown) {
-  return runValidator(essentialValidator as ValidateFunction<unknown>, input);
+// Checks one section payload against the schema slice for that section.
+// Pointers are reported from the configuration root, e.g. /identity/name.
+export function validateSectionStructure(
+  sectionKey: SectionKey,
+  payload: unknown,
+) {
+  const validate = sectionValidators[sectionKey];
+  if (!validate) {
+    throw new Error(`Generated contract has no validator for ${sectionKey}`);
+  }
+  return runValidator(
+    validate as ValidateFunction<unknown>,
+    payload,
+    `/${escapeJsonPointerToken(sectionKey)}`,
+  );
 }

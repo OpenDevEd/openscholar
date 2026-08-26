@@ -80,9 +80,12 @@ describe("Evidence Library application setup", () => {
       runtimeCommit: "a".repeat(40),
       revisionKey: fixture.activated.revisionKey,
       targetBaseUrl: fixture.created.publicAddress,
-      sections: expect.objectContaining({
-        identity: expect.objectContaining({ name: "Climate Evidence" }),
-      }),
+      sections: expect.arrayContaining([
+        {
+          sectionKey: "identity",
+          payload: expect.objectContaining({ name: "Climate Evidence" }),
+        },
+      ]),
     });
     const saved = await fixture.t.run((ctx) =>
       ctx.db

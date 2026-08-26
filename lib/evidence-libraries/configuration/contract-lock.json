@@ -22,8 +22,8 @@
     },
     "validator": {
       "path": "generated/library-config.validator.cjs",
-      "bytes": 526472,
-      "sha256": "3bfe49fb577ee65549369da4b482f672ff9cb7aecbca7d2f4dcc0ce383ed0f7e"
+      "bytes": 785769,
+      "sha256": "99786d767f768a6fc6d7bd44749d4a3a3fcd5ec33edaf3503c2907d9ce2d4b4e"
     }
   }
 }

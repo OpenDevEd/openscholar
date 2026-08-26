@@ -216,7 +216,19 @@ export async function readEvidenceLibraryDraft(
       updatedAt: section.updatedAt,
     };
   });
-  return { draft, library: access.library, sections };
+  // The newest operation carries the assembly issues the page lists.
+  const latestOperation = await ctx.db
+    .query("evidenceLibraryConfigOperations")
+    .withIndex("by_libraryId_and_createdAt", (query) =>
+      query.eq("libraryId", args.libraryId),
+    )
+    .order("desc")
+    .first();
+  const operation = latestOperation
+    ? (({ setupEncryptedDatabasePassword: _password, ...publicOperation }) =>
+        publicOperation)(latestOperation)
+    : null;
+  return { draft, library: access.library, operation, sections };
 }
 
 export async function readEvidenceLibraryRevision(
@@ -275,6 +287,14 @@ export const getDraft = query({
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
+    operation: v.union(
+      v.null(),
+      v.object({
+        _id: v.id("evidenceLibraryConfigOperations"),
+        _creationTime: v.number(),
+        ...evidenceLibraryPublicOperationFields,
+      }),
+    ),
     sections: v.array(
       v.object({
         sectionKey: sectionKeyValidator,

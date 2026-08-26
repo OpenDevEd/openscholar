@@ -68,3 +68,29 @@ development drafts are simply re-saved by the new page later.
   768 KB draft budget already enforced.
 - The precompiled validator bundle grows (24 validators). Measure the `.cjs`
   size; if it passes 1 MB, generate one validator that takes `(sectionKey, payload)`.
+
+## Deviations (2026-08-26, lane A)
+
+1. **Started from current `origin/dev`, not after plan 01.** Decided by the
+   integration owner. The contract is pinned at new-el `c353b55b`. Plan 01's
+   re-pin only regenerates the same artifact files with the same generator.
+2. **Two lane C files get a call-site edit.** The deployability gate says the
+   old shell must still save and activate on the lane. Deleting
+   `saveEssentialConfiguration`, `EssentialConfigurationSections` and the
+   form-contract field map breaks the shell's and page's imports, so
+   `components/evidence-libraries/configuration/evidence-library-configuration-shell.tsx`
+   and `app/evidence-libraries/[libraryId]/configuration/page.tsx` are changed
+   only where they call the removed code: the shell keeps its four-section
+   form type locally and sends `{ sectionKey, payload }` rows to
+   `saveDraftSections`; the page builds its field map from the generic
+   `readStringContract` and `readEnum` readers. Plan 05 replaces both files.
+3. **Activation checks the schema's required sections.** Assembly runs in a
+   Node action after the setup pipeline has already created the database, and
+   a failed setup operation cannot be re-activated. So activation also
+   rejects a draft that lacks a section the schema marks `required`
+   (`identity`, `theme`, `localization`, read from the schema, not written by
+   hand). Everything else still goes through the full validator at assembly
+   and is stored as `issues` on the operation.
+4. **`getLibrary` does not exist.** `getDraft` returns the library's latest
+   operation (with `issues`) as `operation`; `getSetupDraft` already returns
+   the setup operation, which carries the same field.
