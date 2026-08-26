@@ -5,7 +5,14 @@ import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { newId } from "@/lib/evidence-libraries/mock/config";
 import { Field } from "../section-card";
-import { AddButton, EmptyList, ListRow, move, UploadField } from "./fields";
+import {
+  AddButton,
+  EmptyList,
+  ListRow,
+  move,
+  SortableList,
+  UploadField,
+} from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const INSTITUTIONS_MAX = 200;
@@ -24,27 +31,33 @@ export function InstitutionsSection({ library, patch }: SectionProps) {
       {institutions.length === 0 ? (
         <EmptyList>{t("empty")}</EmptyList>
       ) : (
-        <div className="space-y-2">
-          {institutions.map((institution, index) => (
+        <SortableList
+          ids={institutions.map((i) => i.id)}
+          onMove={(from, to) =>
+            patch((d) => {
+              d.institutions = move(d.institutions, from, to);
+              return d;
+            })
+          }
+        >
+          {institutions.map((institution) => (
             <ListRow
               key={institution.id}
-              index={index}
-              count={institutions.length}
+              id={institution.id}
               removeLabel={t("remove")}
-              onMove={(from, to) =>
-                patch((d) => {
-                  d.institutions = move(d.institutions, from, to);
-                  return d;
-                })
-              }
               onRemove={() =>
                 patch((d) => {
-                  d.institutions = d.institutions.filter((i) => i.id !== institution.id);
+                  d.institutions = d.institutions.filter(
+                    (i) => i.id !== institution.id,
+                  );
                   return d;
                 })
               }
             >
-              <Field label={t("nameLabel")} error={!institution.name.trim() ? t("nameError") : null}>
+              <Field
+                label={t("nameLabel")}
+                error={!institution.name.trim() ? t("nameError") : null}
+              >
                 {(id, invalid) => (
                   <Input
                     id={id}
@@ -54,7 +67,9 @@ export function InstitutionsSection({ library, patch }: SectionProps) {
                     aria-invalid={invalid || undefined}
                     onChange={(e) =>
                       patch((d) => {
-                        const row = d.institutions.find((i) => i.id === institution.id);
+                        const row = d.institutions.find(
+                          (i) => i.id === institution.id,
+                        );
                         if (row) row.name = e.target.value;
                         return d;
                       })
@@ -70,7 +85,9 @@ export function InstitutionsSection({ library, patch }: SectionProps) {
                 value={institution.logo}
                 onChange={(file) =>
                   patch((d) => {
-                    const row = d.institutions.find((i) => i.id === institution.id);
+                    const row = d.institutions.find(
+                      (i) => i.id === institution.id,
+                    );
                     if (row) row.logo = file;
                     return d;
                   })
@@ -78,7 +95,7 @@ export function InstitutionsSection({ library, patch }: SectionProps) {
               />
             </ListRow>
           ))}
-        </div>
+        </SortableList>
       )}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">

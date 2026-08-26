@@ -24,7 +24,14 @@ import {
   newId,
 } from "@/lib/evidence-libraries/mock/config";
 import { Field } from "../section-card";
-import { AddButton, EmptyList, ListRow, move, ToggleRow } from "./fields";
+import {
+  AddButton,
+  EmptyList,
+  ListRow,
+  move,
+  SortableList,
+  ToggleRow,
+} from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 export const MAX_NAV_LINKS = 12;
@@ -45,9 +52,13 @@ export function newNavLink(): NavLink {
 
 const isHttps = (v: string) => /^https:\/\/\S+$/.test(v);
 
-function retarget(kind: NavTarget["kind"], collections: CollectionSetting[]): NavTarget {
+function retarget(
+  kind: NavTarget["kind"],
+  collections: CollectionSetting[],
+): NavTarget {
   if (kind === "page") return { kind: "page", page: "home" };
-  if (kind === "collection") return { kind: "collection", collectionId: collections[0]?.id ?? "" };
+  if (kind === "collection")
+    return { kind: "collection", collectionId: collections[0]?.id ?? "" };
   return { kind: "url", url: "" };
 }
 
@@ -68,14 +79,20 @@ export function LinkEditor({
 }) {
   const t = useTranslations("evidenceLibraryMock.config.navigation");
   const target = link.target;
-  const urlError = target.kind === "url" && !isHttps(target.url) ? t("urlError") : null;
+  const urlError =
+    target.kind === "url" && !isHttps(target.url) ? t("urlError") : null;
   const collectionError =
-    target.kind === "collection" && collections.length === 0 ? t("noCollections") : null;
+    target.kind === "collection" && collections.length === 0
+      ? t("noCollections")
+      : null;
 
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={t("labelLabel")} error={!link.label.trim() ? t("labelError") : null}>
+        <Field
+          label={t("labelLabel")}
+          error={!link.label.trim() ? t("labelError") : null}
+        >
           {(id, invalid) => (
             <Input
               id={id}
@@ -92,7 +109,10 @@ export function LinkEditor({
             <Select
               value={target.kind}
               onValueChange={(kind) =>
-                onChange({ ...link, target: retarget(kind as NavTarget["kind"], collections) })
+                onChange({
+                  ...link,
+                  target: retarget(kind as NavTarget["kind"], collections),
+                })
               }
             >
               <SelectTrigger id={id} className="w-full bg-background">
@@ -100,7 +120,9 @@ export function LinkEditor({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="page">{t("kinds.page")}</SelectItem>
-                <SelectItem value="collection">{t("kinds.collection")}</SelectItem>
+                <SelectItem value="collection">
+                  {t("kinds.collection")}
+                </SelectItem>
                 <SelectItem value="url">{t("kinds.url")}</SelectItem>
               </SelectContent>
             </Select>
@@ -114,7 +136,10 @@ export function LinkEditor({
             <Select
               value={target.page}
               onValueChange={(page) =>
-                onChange({ ...link, target: { kind: "page", page: page as BuiltInPageKey } })
+                onChange({
+                  ...link,
+                  target: { kind: "page", page: page as BuiltInPageKey },
+                })
               }
             >
               <SelectTrigger id={id} className="w-full bg-background">
@@ -124,7 +149,9 @@ export function LinkEditor({
                 {BUILT_IN_PAGES.map((p) => (
                   <SelectItem key={p.key} value={p.key}>
                     {t(`pages.${p.key}`)}
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">{p.path}</span>
+                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                      {p.path}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -140,10 +167,17 @@ export function LinkEditor({
               value={target.collectionId || undefined}
               disabled={collections.length === 0}
               onValueChange={(collectionId) =>
-                onChange({ ...link, target: { kind: "collection", collectionId } })
+                onChange({
+                  ...link,
+                  target: { kind: "collection", collectionId },
+                })
               }
             >
-              <SelectTrigger id={id} className="w-full bg-background" aria-invalid={invalid || undefined}>
+              <SelectTrigger
+                id={id}
+                className="w-full bg-background"
+                aria-invalid={invalid || undefined}
+              >
                 <SelectValue placeholder={t("collectionPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
@@ -168,7 +202,12 @@ export function LinkEditor({
               inputMode="url"
               placeholder="https://"
               aria-invalid={invalid || undefined}
-              onChange={(e) => onChange({ ...link, target: { kind: "url", url: e.target.value } })}
+              onChange={(e) =>
+                onChange({
+                  ...link,
+                  target: { kind: "url", url: e.target.value },
+                })
+              }
             />
           )}
         </Field>
@@ -181,7 +220,10 @@ export function LinkEditor({
               <Select
                 value={link.icon || NO_ICON}
                 onValueChange={(icon) =>
-                  onChange({ ...link, icon: icon === NO_ICON ? "" : (icon as NavIcon) })
+                  onChange({
+                    ...link,
+                    icon: icon === NO_ICON ? "" : (icon as NavIcon),
+                  })
                 }
               >
                 <SelectTrigger id={id} className="w-full bg-background">
@@ -228,7 +270,12 @@ function SmallSwitch({
   const id = useId();
   return (
     <div className="flex h-9 items-center gap-2">
-      <Switch id={id} checked={checked} onCheckedChange={onChange} className="scale-90" />
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
+        className="scale-90"
+      />
       <Label htmlFor={id} className="text-xs">
         {label}
       </Label>
@@ -248,7 +295,12 @@ export function NavigationSection({ library, patch }: SectionProps) {
     });
 
   return (
-    <SectionShell sectionKey="navigation" icon={Menu} description={t("description")} library={library}>
+    <SectionShell
+      sectionKey="navigation"
+      icon={Menu}
+      description={t("description")}
+      library={library}
+    >
       <ToggleRow
         label={t("showSearch")}
         hint={t("showSearchHint")}
@@ -266,83 +318,114 @@ export function NavigationSection({ library, patch }: SectionProps) {
           {t("linksHeading", { count: links.length, max: MAX_NAV_LINKS })}
         </p>
         {links.length === 0 ? <EmptyList>{t("empty")}</EmptyList> : null}
-        {links.map((link, index) => (
-          <ListRow
-            key={link.id}
-            index={index}
-            count={links.length}
-            removeLabel={t("removeLink")}
-            onMove={(from, to) => setLinks((l) => move(l, from, to))}
-            onRemove={() => setLinks((l) => l.filter((x) => x.id !== link.id))}
-            data-nav-link={link.id}
-          >
-            <LinkEditor
-              link={link}
-              collections={collections}
-              onChange={(next) => setLinks((l) => l.map((x) => (x.id === link.id ? next : x)))}
-            />
-            <div className="space-y-2 rounded-lg border border-border/50 bg-muted/30 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  {t("childrenHeading", { count: link.children.length, max: MAX_NAV_LINKS })}
-                </p>
-                <AddButton
-                  disabled={link.children.length >= MAX_NAV_LINKS}
-                  onClick={() =>
-                    setLinks((l) =>
-                      l.map((x) =>
-                        x.id === link.id ? { ...x, children: [...x.children, newNavLink()] } : x,
-                      ),
-                    )
-                  }
-                >
-                  {t("addChild")}
-                </AddButton>
-              </div>
-              {link.children.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t("childrenEmpty")}</p>
-              ) : null}
-              {link.children.map((child, childIndex) => (
-                <ListRow
-                  key={child.id}
-                  index={childIndex}
-                  count={link.children.length}
-                  removeLabel={t("removeChild")}
-                  onMove={(from, to) =>
-                    setLinks((l) =>
-                      l.map((x) => (x.id === link.id ? { ...x, children: move(x.children, from, to) } : x)),
-                    )
-                  }
-                  onRemove={() =>
-                    setLinks((l) =>
-                      l.map((x) =>
-                        x.id === link.id
-                          ? { ...x, children: x.children.filter((c) => c.id !== child.id) }
-                          : x,
-                      ),
-                    )
-                  }
-                  data-nav-child={child.id}
-                >
-                  <LinkEditor
-                    link={child}
-                    collections={collections}
-                    showIcon={false}
-                    onChange={(next) =>
+        <SortableList
+          ids={links.map((l) => l.id)}
+          onMove={(from, to) => setLinks((l) => move(l, from, to))}
+        >
+          {links.map((link) => (
+            <ListRow
+              key={link.id}
+              id={link.id}
+              removeLabel={t("removeLink")}
+              onRemove={() =>
+                setLinks((l) => l.filter((x) => x.id !== link.id))
+              }
+              data-nav-link={link.id}
+            >
+              <LinkEditor
+                link={link}
+                collections={collections}
+                onChange={(next) =>
+                  setLinks((l) => l.map((x) => (x.id === link.id ? next : x)))
+                }
+              />
+              <div className="space-y-2 rounded-lg border border-border/50 bg-muted/30 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {t("childrenHeading", {
+                      count: link.children.length,
+                      max: MAX_NAV_LINKS,
+                    })}
+                  </p>
+                  <AddButton
+                    disabled={link.children.length >= MAX_NAV_LINKS}
+                    onClick={() =>
                       setLinks((l) =>
                         l.map((x) =>
                           x.id === link.id
-                            ? { ...x, children: x.children.map((c) => (c.id === child.id ? next : c)) }
+                            ? { ...x, children: [...x.children, newNavLink()] }
                             : x,
                         ),
                       )
                     }
-                  />
-                </ListRow>
-              ))}
-            </div>
-          </ListRow>
-        ))}
+                  >
+                    {t("addChild")}
+                  </AddButton>
+                </div>
+                {link.children.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("childrenEmpty")}
+                  </p>
+                ) : null}
+                <SortableList
+                  ids={link.children.map((c) => c.id)}
+                  onMove={(from, to) =>
+                    setLinks((l) =>
+                      l.map((x) =>
+                        x.id === link.id
+                          ? { ...x, children: move(x.children, from, to) }
+                          : x,
+                      ),
+                    )
+                  }
+                >
+                  {link.children.map((child) => (
+                    <ListRow
+                      key={child.id}
+                      id={child.id}
+                      removeLabel={t("removeChild")}
+                      onRemove={() =>
+                        setLinks((l) =>
+                          l.map((x) =>
+                            x.id === link.id
+                              ? {
+                                  ...x,
+                                  children: x.children.filter(
+                                    (c) => c.id !== child.id,
+                                  ),
+                                }
+                              : x,
+                          ),
+                        )
+                      }
+                      data-nav-child={child.id}
+                    >
+                      <LinkEditor
+                        link={child}
+                        collections={collections}
+                        showIcon={false}
+                        onChange={(next) =>
+                          setLinks((l) =>
+                            l.map((x) =>
+                              x.id === link.id
+                                ? {
+                                    ...x,
+                                    children: x.children.map((c) =>
+                                      c.id === child.id ? next : c,
+                                    ),
+                                  }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    </ListRow>
+                  ))}
+                </SortableList>
+              </div>
+            </ListRow>
+          ))}
+        </SortableList>
         <AddButton
           disabled={links.length >= MAX_NAV_LINKS}
           onClick={() => setLinks((l) => [...l, newNavLink()])}
@@ -350,7 +433,9 @@ export function NavigationSection({ library, patch }: SectionProps) {
           {t("addLink")}
         </AddButton>
         {links.length >= MAX_NAV_LINKS ? (
-          <p className="text-xs text-muted-foreground">{t("maxReached", { max: MAX_NAV_LINKS })}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("maxReached", { max: MAX_NAV_LINKS })}
+          </p>
         ) : null}
       </div>
     </SectionShell>

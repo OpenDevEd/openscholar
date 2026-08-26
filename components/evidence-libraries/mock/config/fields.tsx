@@ -7,10 +7,25 @@
  */
 
 import {
-  ArrowDown,
-  ArrowUp,
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Check,
   FileText,
+  GripVertical,
   ImageIcon,
   Lock,
   Plus,
@@ -391,11 +406,44 @@ export function ToggleRow({
 /* Lists                                                               */
 /* ------------------------------------------------------------------ */
 
-/** Row chrome for editable list items: surface + move/remove controls. */
-export function ListRow({
-  index,
-  count,
+/**
+ * Drag-and-drop list. Wrap the rows; each row is a `ListRow` with a matching
+ * `id`. Uses dnd-kit (pointer + keyboard sensors) and calls `onMove(from, to)`.
+ */
+export function SortableList({
+  ids,
   onMove,
+  children,
+  className,
+}: {
+  ids: string[];
+  onMove: (from: number, to: number) => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={({ active, over }: DragEndEvent) => {
+        if (!over || active.id === over.id) return;
+        onMove(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+      }}
+    >
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        <div className={cn("space-y-2", className)}>{children}</div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+/** Row chrome for editable list items: surface, drag handle, remove. Must sit inside `SortableList`. */
+export function ListRow({
+  id,
   onRemove,
   removeLabel,
   hideRemove,
@@ -403,44 +451,37 @@ export function ListRow({
   className,
   ...rest
 }: React.HTMLAttributes<HTMLDivElement> & {
-  index: number;
-  count: number;
-  onMove: (from: number, to: number) => void;
+  id: string;
   onRemove: () => void;
   removeLabel: string;
   /** Rows that can be reordered but not removed (for example collections from Zotero). */
   hideRemove?: boolean;
 }) {
   const t = useTranslations("evidenceLibraryMock.fields");
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
   return (
     <div
-      className={cn("flex items-start gap-2 rounded-lg border border-border/50 bg-background p-3", className)}
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      data-dragging={isDragging || undefined}
+      className={cn(
+        "flex items-start gap-2 rounded-lg border border-border/50 bg-background p-3",
+        isDragging && "relative z-10 shadow-lg",
+        className,
+      )}
       {...rest}
     >
-      <div className="flex shrink-0 flex-col">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-6"
-          aria-label={t("moveUp")}
-          disabled={index === 0}
-          onClick={() => onMove(index, index - 1)}
-        >
-          <ArrowUp className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-6"
-          aria-label={t("moveDown")}
-          disabled={index === count - 1}
-          onClick={() => onMove(index, index + 1)}
-        >
-          <ArrowDown className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      <button
+        type="button"
+        ref={setActivatorNodeRef}
+        aria-label={t("dragHandle")}
+        className="mt-1 shrink-0 cursor-grab touch-none rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
       <div className="min-w-0 flex-1 space-y-3">{children}</div>
       {hideRemove ? null : (
         <Button

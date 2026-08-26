@@ -14,41 +14,61 @@ import {
 import { cn } from "@/lib/utils";
 import { MOCK_LANGUAGES } from "@/lib/evidence-libraries/mock/data";
 import { Field, FieldError } from "../section-card";
-import { EmptyList, ListRow, move, SubHeading, ToggleRow } from "./fields";
+import {
+  EmptyList,
+  ListRow,
+  move,
+  SortableList,
+  SubHeading,
+  ToggleRow,
+} from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
-const languageName = (code: string) => MOCK_LANGUAGES.find((l) => l.code === code)?.name ?? code;
+const languageName = (code: string) =>
+  MOCK_LANGUAGES.find((l) => l.code === code)?.name ?? code;
 
 export function LanguagesSection({ library, patch }: SectionProps) {
   const t = useTranslations("evidenceLibraryMock.config.languages");
   const tc = useTranslations("evidenceLibraryMock.config");
   const localization = library.draft.localization;
-  const priority = localization.priority.filter((code) => localization.locales.includes(code));
+  const priority = localization.priority.filter((code) =>
+    localization.locales.includes(code),
+  );
 
   function toggleLocale(code: string, on: boolean) {
     patch((d) => {
       const loc = d.localization;
       if (on) {
         // Keep the catalog order for the chosen list; append to priority.
-        loc.locales = MOCK_LANGUAGES.filter((l) => l.code === code || loc.locales.includes(l.code)).map(
-          (l) => l.code,
-        );
+        loc.locales = MOCK_LANGUAGES.filter(
+          (l) => l.code === code || loc.locales.includes(l.code),
+        ).map((l) => l.code);
         if (!loc.priority.includes(code)) loc.priority.push(code);
         if (!loc.defaultLocale) loc.defaultLocale = code;
       } else {
         loc.locales = loc.locales.filter((c) => c !== code);
         loc.priority = loc.priority.filter((c) => c !== code);
-        if (loc.defaultLocale === code) loc.defaultLocale = loc.locales[0] ?? "";
+        if (loc.defaultLocale === code)
+          loc.defaultLocale = loc.locales[0] ?? "";
       }
       return d;
     });
   }
 
   return (
-    <SectionShell sectionKey="languages" icon={Languages} description={t("description")} library={library}>
+    <SectionShell
+      sectionKey="languages"
+      icon={Languages}
+      description={t("description")}
+      library={library}
+    >
       <div className="space-y-1.5">
         <Label>{tc("availableLanguages")}</Label>
-        <div className="flex flex-wrap gap-2" role="group" aria-label={tc("availableLanguages")}>
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={tc("availableLanguages")}
+        >
           {MOCK_LANGUAGES.map((lang) => {
             const checked = localization.locales.includes(lang.code);
             return (
@@ -63,18 +83,28 @@ export function LanguagesSection({ library, patch }: SectionProps) {
               >
                 <Checkbox
                   checked={checked}
-                  onCheckedChange={(next) => toggleLocale(lang.code, next === true)}
+                  onCheckedChange={(next) =>
+                    toggleLocale(lang.code, next === true)
+                  }
                 />
-                <code className="text-xs font-mono text-muted-foreground">{lang.code}</code>
+                <code className="text-xs font-mono text-muted-foreground">
+                  {lang.code}
+                </code>
                 <span>{lang.name}</span>
               </Label>
             );
           })}
         </div>
-        {localization.locales.length === 0 ? <FieldError>{tc("languagesError")}</FieldError> : null}
+        {localization.locales.length === 0 ? (
+          <FieldError>{tc("languagesError")}</FieldError>
+        ) : null}
       </div>
 
-      <Field label={tc("defaultLanguage")} hint={tc("defaultLanguageHint")} className="max-w-xs">
+      <Field
+        label={tc("defaultLanguage")}
+        hint={tc("defaultLanguageHint")}
+        className="max-w-xs"
+      >
         {(id) => (
           <Select
             value={localization.defaultLocale || undefined}
@@ -118,32 +148,36 @@ export function LanguagesSection({ library, patch }: SectionProps) {
         {priority.length === 0 ? (
           <EmptyList>{t("priorityEmpty")}</EmptyList>
         ) : (
-          <ol className="space-y-2" aria-label={t("priorityHeading")}>
+          <SortableList
+            ids={priority}
+            onMove={(from, to) =>
+              patch((d) => {
+                d.localization.priority = move(priority, from, to);
+                return d;
+              })
+            }
+          >
             {priority.map((code, index) => (
-              <li key={code}>
-                <ListRow
-                  index={index}
-                  count={priority.length}
-                  hideRemove
-                  removeLabel=""
-                  onRemove={() => {}}
-                  className="items-center py-2"
-                  onMove={(from, to) =>
-                    patch((d) => {
-                      d.localization.priority = move(priority, from, to);
-                      return d;
-                    })
-                  }
-                >
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="w-5 text-xs font-mono text-muted-foreground">{index + 1}.</span>
-                    <code className="text-xs font-mono text-muted-foreground">{code}</code>
-                    <span>{languageName(code)}</span>
-                  </div>
-                </ListRow>
-              </li>
+              <ListRow
+                key={code}
+                id={code}
+                hideRemove
+                removeLabel=""
+                onRemove={() => {}}
+                className="items-center py-2"
+              >
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-5 text-xs font-mono text-muted-foreground">
+                    {index + 1}.
+                  </span>
+                  <code className="text-xs font-mono text-muted-foreground">
+                    {code}
+                  </code>
+                  <span>{languageName(code)}</span>
+                </div>
+              </ListRow>
             ))}
-          </ol>
+          </SortableList>
         )}
       </div>
     </SectionShell>

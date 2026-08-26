@@ -14,6 +14,7 @@ import {
   ListRow,
   move,
   ReadOnlyValue,
+  SortableList,
   SubHeading,
   UploadField,
 } from "./fields";
@@ -35,7 +36,12 @@ export function IdentitySection({ library, patch }: SectionProps) {
   }
 
   return (
-    <SectionShell sectionKey="identity" icon={Globe} description={t("description")} library={library}>
+    <SectionShell
+      sectionKey="identity"
+      icon={Globe}
+      description={t("description")}
+      library={library}
+    >
       <Field
         label={t("nameLabel")}
         counter={`${identity.name.length} / ${NAME_MAX}`}
@@ -60,14 +66,16 @@ export function IdentitySection({ library, patch }: SectionProps) {
 
       <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label={t("shortNameLabel")} hint={t("shortNameHint")}>
-          {(id) => (
-            <ReadOnlyValue id={id} value={identity.shortName} />
-          )}
+          {(id) => <ReadOnlyValue id={id} value={identity.shortName} />}
         </Field>
         <Field label={t("addressLabel")} hint={t("addressHint")}>
           {(id) => (
             <div className="flex min-w-0 gap-1.5">
-              <ReadOnlyValue id={id} value={address} className="min-w-0 flex-1" />
+              <ReadOnlyValue
+                id={id}
+                value={address}
+                className="min-w-0 flex-1"
+              />
               <Button
                 type="button"
                 variant="outline"
@@ -132,7 +140,10 @@ export function IdentitySection({ library, patch }: SectionProps) {
               disabled={identity.fundingPartners.length >= PARTNERS_MAX}
               onClick={() =>
                 patch((d) => {
-                  d.identity.fundingPartners.push({ id: newId("fp"), name: "" });
+                  d.identity.fundingPartners.push({
+                    id: newId("fp"),
+                    name: "",
+                  });
                   return d;
                 })
               }
@@ -143,26 +154,36 @@ export function IdentitySection({ library, patch }: SectionProps) {
         >
           {t("partnersHeading")}
         </SubHeading>
-        <p className="text-xs text-muted-foreground">{t("partnersHint", { max: PARTNERS_MAX })}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("partnersHint", { max: PARTNERS_MAX })}
+        </p>
         {identity.fundingPartners.length === 0 ? (
           <EmptyList>{t("noPartners")}</EmptyList>
         ) : (
-          <div className="space-y-2">
-            {identity.fundingPartners.map((partner, index) => (
+          <SortableList
+            ids={identity.fundingPartners.map((p) => p.id)}
+            onMove={(from, to) =>
+              patch((d) => {
+                d.identity.fundingPartners = move(
+                  d.identity.fundingPartners,
+                  from,
+                  to,
+                );
+                return d;
+              })
+            }
+          >
+            {identity.fundingPartners.map((partner) => (
               <ListRow
                 key={partner.id}
-                index={index}
-                count={identity.fundingPartners.length}
+                id={partner.id}
                 removeLabel={t("removePartner")}
-                onMove={(from, to) =>
-                  patch((d) => {
-                    d.identity.fundingPartners = move(d.identity.fundingPartners, from, to);
-                    return d;
-                  })
-                }
                 onRemove={() =>
                   patch((d) => {
-                    d.identity.fundingPartners = d.identity.fundingPartners.filter((p) => p.id !== partner.id);
+                    d.identity.fundingPartners =
+                      d.identity.fundingPartners.filter(
+                        (p) => p.id !== partner.id,
+                      );
                     return d;
                   })
                 }
@@ -174,7 +195,9 @@ export function IdentitySection({ library, patch }: SectionProps) {
                   placeholder={t("partnerPlaceholder")}
                   onChange={(e) =>
                     patch((d) => {
-                      const row = d.identity.fundingPartners.find((p) => p.id === partner.id);
+                      const row = d.identity.fundingPartners.find(
+                        (p) => p.id === partner.id,
+                      );
                       if (row) row.name = e.target.value;
                       return d;
                     })
@@ -182,7 +205,7 @@ export function IdentitySection({ library, patch }: SectionProps) {
                 />
               </ListRow>
             ))}
-          </div>
+          </SortableList>
         )}
       </div>
 

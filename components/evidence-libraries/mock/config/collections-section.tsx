@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CollectionPicker } from "./collection-picker";
-import type { CollectionSetting, DatabaseCollection } from "@/lib/evidence-libraries/mock/config";
-import { EmptyList, ListRow, move, SubHeading } from "./fields";
+import type {
+  CollectionSetting,
+  DatabaseCollection,
+} from "@/lib/evidence-libraries/mock/config";
+import { EmptyList, ListRow, move, SortableList, SubHeading } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 export function CollectionsSection({ library, patch }: SectionProps) {
@@ -39,7 +42,12 @@ export function CollectionsSection({ library, patch }: SectionProps) {
   }
 
   return (
-    <SectionShell sectionKey="collections" icon={FolderOpen} description={t("description")} library={library}>
+    <SectionShell
+      sectionKey="collections"
+      icon={FolderOpen}
+      description={t("description")}
+      library={library}
+    >
       <p className="text-xs text-muted-foreground">{t("introHint")}</p>
       <SubHeading
         action={
@@ -57,32 +65,38 @@ export function CollectionsSection({ library, patch }: SectionProps) {
       ) : shown.length === 0 ? (
         <EmptyList>{t("empty")}</EmptyList>
       ) : (
-        <div className="space-y-2">
-          {shown.map((collection, index) => (
+        <SortableList
+          ids={shown.map((c) => c.id)}
+          onMove={(from, to) =>
+            patch((d) => {
+              d.collections = move(d.collections, from, to);
+              return d;
+            })
+          }
+        >
+          {shown.map((collection) => (
             <ListRow
               key={collection.id}
-              index={index}
-              count={shown.length}
+              id={collection.id}
               removeLabel={t("remove")}
               onRemove={() =>
                 patch((d) => {
-                  d.collections = d.collections.filter((c) => c.id !== collection.id);
-                  return d;
-                })
-              }
-              onMove={(from, to) =>
-                patch((d) => {
-                  d.collections = move(d.collections, from, to);
+                  d.collections = d.collections.filter(
+                    (c) => c.id !== collection.id,
+                  );
                   return d;
                 })
               }
               data-collection-id={collection.id}
               data-featured={collection.featured}
             >
-              <CollectionRow collection={collection} onUpdate={(fn) => update(collection.id, fn)} />
+              <CollectionRow
+                collection={collection}
+                onUpdate={(fn) => update(collection.id, fn)}
+              />
             </ListRow>
           ))}
-        </div>
+        </SortableList>
       )}
     </SectionShell>
   );

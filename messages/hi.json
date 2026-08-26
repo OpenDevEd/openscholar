@@ -3164,12 +3164,11 @@
       "badHex": "Use a colour like #e68124.",
       "pickColour": "Pick a colour",
       "lowContrast": "Low contrast ({ratio}:1). Text in this colour will be hard to read.",
-      "moveUp": "Move up",
-      "moveDown": "Move down",
       "removeChip": "Remove {value}",
       "reset": "Reset changes",
       "add": "Add",
-      "fixed": "This value is fixed."
+      "fixed": "This value is fixed.",
+      "dragHandle": "Drag to reorder"
     }
   }
 }
