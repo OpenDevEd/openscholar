@@ -202,7 +202,6 @@ export type CollectionSetting = {
   sourceTitle: string;
   title: string;
   enabled: boolean;
-  featured: boolean;
   /** Records in this collection, read-only. */
   count: number;
 };

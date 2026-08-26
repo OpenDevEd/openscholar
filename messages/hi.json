@@ -2566,7 +2566,6 @@
         "records": "{count} records",
         "titleLabel": "Title on the site",
         "titleHint": "Leave empty to use the database name.",
-        "featured": "Featured on home page",
         "remove": "Remove collection",
         "picker": {
           "open": "Add collections",

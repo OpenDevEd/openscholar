@@ -314,10 +314,10 @@ function fullConfig(): LibraryConfig {
     { id: "inst_3", name: "OpenDevEd", logo: null },
   ];
   c.collections = [
-    { id: "col_1", sourceTitle: "Generative AI", title: "", enabled: true, featured: true, count: 312 },
-    { id: "col_2", sourceTitle: "Assessment", title: "Assessment & feedback", enabled: true, featured: true, count: 148 },
-    { id: "col_3", sourceTitle: "Teacher professional development", title: "", enabled: true, featured: false, count: 96 },
-    { id: "col_4", sourceTitle: "Policy", title: "", enabled: true, featured: false, count: 73 },
+    { id: "col_1", sourceTitle: "Generative AI", title: "", enabled: true, count: 312 },
+    { id: "col_2", sourceTitle: "Assessment", title: "Assessment & feedback", enabled: true, count: 148 },
+    { id: "col_3", sourceTitle: "Teacher professional development", title: "", enabled: true, count: 96 },
+    { id: "col_4", sourceTitle: "Policy", title: "", enabled: true, count: 73 },
   ];
   c.navigation.links = [
     { id: "nav_1", label: "Library", target: { kind: "page", page: "library" }, icon: "EvidenceLibrary", newTab: false, visible: true, children: [] },

@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useId } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { CollectionPicker } from "./collection-picker";
 import type {
   CollectionSetting,
@@ -34,7 +33,6 @@ export function CollectionsSection({ library, patch }: SectionProps) {
         sourceTitle: collection.title,
         title: "",
         enabled: true,
-        featured: false,
         count: collection.count,
       });
       return d;
@@ -87,8 +85,7 @@ export function CollectionsSection({ library, patch }: SectionProps) {
                   })
                 }
                 data-collection-id={collection.id}
-                data-featured={collection.featured}
-              >
+                >
                 <CollectionRow
                   collection={collection}
                   onUpdate={(fn) => update(collection.id, fn)}
@@ -119,8 +116,7 @@ function CollectionRow({
           {t("records", { count: collection.count })}
         </span>
       </div>
-      <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div className="space-y-1.5">
+      <div className="space-y-1.5">
           <div className="flex min-h-5 items-center"><Label htmlFor={`${id}-title`} className="font-normal">{t("titleLabel")}</Label></div>
           <Input
             id={`${id}-title`}
@@ -134,21 +130,6 @@ function CollectionRow({
             }
           />
           <p className="text-xs text-muted-foreground">{t("titleHint")}</p>
-        </div>
-        <div className="flex items-center gap-2 pb-6">
-          <Switch
-            id={`${id}-featured`}
-            checked={collection.featured}
-            onCheckedChange={(checked) =>
-              onUpdate((row) => {
-                row.featured = checked;
-              })
-            }
-          />
-          <Label htmlFor={`${id}-featured`} className="text-sm font-normal">
-            {t("featured")}
-          </Label>
-        </div>
       </div>
     </>
   );
