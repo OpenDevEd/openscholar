@@ -2812,11 +2812,11 @@
         "google": "Google Analytics 4."
       },
       "hostLabel": "PostHog host",
-      "hostHint": "Your PostHog address, for example https://eu.i.posthog.com.",
+      "hostHint": "Your PostHog address, for example https://us.i.posthog.com.",
       "hostError": "Use a full address that starts with https://.",
       "keyLabel": "Project API key",
       "keyHint": "Starts with phc_. Find it in PostHog under Project settings.",
-      "keyError": "The key must start with phc_.",
+      "keyError": "The key starts with phc_ and is at least 20 characters.",
       "measurementIdLabel": "Measurement ID",
       "measurementIdHint": "Find it in Google Analytics under Data streams.",
       "measurementIdError": "Use an ID like G-XXXXXXXXXX."

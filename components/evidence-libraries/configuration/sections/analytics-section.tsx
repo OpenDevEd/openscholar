@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { HTTPS_URL } from "@/lib/evidence-libraries/configuration/links";
 import {
   ANALYTICS_PROVIDERS,
+  isPosthogKey,
   MEASUREMENT_ID,
-  POSTHOG_KEY,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { Field } from "../section-card";
 import { ChoiceCards } from "../fields";
@@ -61,6 +61,7 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
                 id={id}
                 className="bg-background font-mono text-sm"
                 value={analytics.posthog.host}
+                placeholder="https://"
                 aria-invalid={invalid || undefined}
                 onChange={(e) =>
                   patch((d) => {
@@ -74,7 +75,7 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
           <Field
             label={t("keyLabel")}
             hint={t("keyHint")}
-            error={!POSTHOG_KEY.test(analytics.posthog.key) ? t("keyError") : null}
+            error={!isPosthogKey(analytics.posthog.key) ? t("keyError") : null}
           >
             {(id, invalid) => (
               <Input

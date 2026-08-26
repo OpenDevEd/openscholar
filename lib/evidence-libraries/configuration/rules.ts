@@ -191,7 +191,7 @@ export const LOCALES = schemaEnum<"en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" 
 );
 export type Locale = (typeof LOCALES)[number];
 export const EXPORT_FORMATS = ["ris", "bibtex", "atom"] as const;
-export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+type ExportFormat = (typeof EXPORT_FORMATS)[number];
 /** The public paths the runtime serves each export on (new-el `src/proxy.ts`). */
 const EXPORT_PATHS: Record<ExportFormat, string> = {
   ris: "/lib/export/ris",
@@ -200,11 +200,18 @@ const EXPORT_PATHS: Record<ExportFormat, string> = {
 };
 export const exportUrl = (baseUrl: string, format: ExportFormat) =>
   `${baseUrl.replace(/\/+$/, "")}${EXPORT_PATHS[format]}`;
-export const POSTHOG_KEY = schemaPattern("/analytics/posthog/key");
-export const POSTHOG_HOST_DEFAULT = "https://eu.i.posthog.com";
+const POSTHOG_KEY_PATTERN = schemaPattern("/analytics/posthog/key");
+const POSTHOG_KEY_MIN_LENGTH = (() => {
+  const value = schemaNode("/analytics/posthog/key").minLength;
+  if (typeof value !== "number") throw new Error("Configuration schema has no PostHog key length");
+  return value;
+})();
+/** A PostHog project key the runtime accepts: `phc_` prefix and the schema's minimum length. */
+export const isPosthogKey = (key: string) =>
+  POSTHOG_KEY_PATTERN.test(key) && key.length >= POSTHOG_KEY_MIN_LENGTH;
 export const MEASUREMENT_ID = schemaPattern("/analytics/google/measurementId");
 export const ANALYTICS_PROVIDERS = ["none", "posthog", "google"] as const;
-export type AnalyticsProvider = (typeof ANALYTICS_PROVIDERS)[number];
+type AnalyticsProvider = (typeof ANALYTICS_PROVIDERS)[number];
 
 export const SEARCH_SCOPES = schemaEnum<
   | "title_abstract_author_and_keywords"
@@ -363,13 +370,13 @@ export type FiltersDraft = {
 };
 type CollectionDraft = { id: string; title?: string; enabled?: boolean; order?: number };
 
-export type LocalizationDraft = {
+type LocalizationDraft = {
   locales: Locale[];
   defaultLocale: Locale;
   detectLocale: boolean;
   localePriority: Locale[];
 };
-export type AnalyticsDraft = {
+type AnalyticsDraft = {
   provider: AnalyticsProvider;
   posthog: { host: string; key: string };
   google: { measurementId: string };
@@ -409,7 +416,12 @@ export const FEATURE_GROUPS = [
 ] as const satisfies readonly { key: string; features: readonly FeatureKey[] }[];
 export type ShownFeature = (typeof FEATURE_GROUPS)[number]["features"][number];
 
-/** Why a feature cannot be on right now, or null. Mirrors the runtime's cross-field rules. */
+/**
+ * Why a feature cannot be on right now, or null. Each rule is one the runtime
+ * enforces at load time in new-el `src/config/library-config/schema.ts`
+ * (main, 7c269e10); the pinned JSON schema does not carry cross-field rules
+ * (`catalogs.validation.crossFieldRulesInJsonSchema` is false).
+ */
 export type FeatureBlock =
   | { kind: "feature"; feature: ShownFeature }
   | { kind: "search"; option: "country" | "authorCountry" }
@@ -421,18 +433,25 @@ export type FeatureBlock =
 export function featureBlock(draft: ConfigurationDraft, feature: ShownFeature): FeatureBlock | null {
   switch (feature) {
     case "collectionNotes":
+      // schema.ts:1702 "Collection notes require collections"
       return draft.features.collections ? null : { kind: "feature", feature: "collections" };
     case "countryFocus":
+      // schema.ts:1710 "Country focus requires country search"
       return draft.search.country ? null : { kind: "search", option: "country" };
     case "authorLocation":
+      // schema.ts:1718 "Author location requires author-country search"
       return draft.search.authorCountry ? null : { kind: "search", option: "authorCountry" };
     case "yearsDropdown":
+      // schema.ts:1726 "Years dropdown requires the years filter"
       return draft.filters.years.enabled ? null : { kind: "years" };
     case "downloads":
+      // schema.ts:1738 "Downloads require a RIS or BibTeX endpoint"
       return draft.exports.ris || draft.exports.bibtex ? null : { kind: "exports" };
     case "atomFeed":
+      // schema.ts:1746 "Atom feed requires an Atom endpoint"
       return draft.exports.atom ? null : { kind: "atom" };
     case "languageSwitcher":
+      // schema.ts:1595 "Language switcher requires at least two enabled locales"
       return draft.localization.locales.length >= 2 ? null : { kind: "languages" };
     default:
       return null;
@@ -765,7 +784,7 @@ function readAnalytics(payload: unknown): AnalyticsDraft {
   const measurementId = text(google.measurementId);
   return {
     provider: key ? "posthog" : measurementId ? "google" : "none",
-    posthog: { host: text(posthog.host, POSTHOG_HOST_DEFAULT), key },
+    posthog: { host: text(posthog.host), key },
     google: { measurementId },
   };
 }
@@ -1054,6 +1073,7 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
 
 /** The card that edits a runtime row, or null when the page has none for it. */
 export function cardForRow(rowKey: string): PageSectionKey | null {
+  // Two cards write `features` (Navigation owns navbarSearch); issues go to the Features card.
   if (rowKey === "features") return "features";
   return (
     PAGE_SECTION_KEYS.find((card) =>
@@ -1192,7 +1212,7 @@ export function sectionProblems(
     }
     case "analytics": {
       const { provider, posthog, google } = draft.analytics;
-      if (provider === "posthog" && (!HTTPS_URL.test(posthog.host) || !POSTHOG_KEY.test(posthog.key))) {
+      if (provider === "posthog" && (!HTTPS_URL.test(posthog.host) || !isPosthogKey(posthog.key))) {
         problems.push("posthog");
       }
       if (provider === "google" && !MEASUREMENT_ID.test(google.measurementId)) problems.push("google");

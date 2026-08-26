@@ -720,6 +720,7 @@ describe("readDraft for the platform sections", () => {
       posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
       google: { measurementId: "" },
     });
+    expect(readDraft(savedRows).analytics.posthog.host).toBe("");
     expect(readDraft(savedRows).analytics.provider).toBe("none");
     expect(readDraft(savedRows).exports).toEqual({ ris: false, bibtex: false, atom: false });
   });
@@ -811,6 +812,10 @@ describe("changedSectionRows for the platform sections", () => {
     draft.analytics.provider = "posthog";
     draft.analytics.posthog.key = "nope";
     expect(sectionProblems(draft, "analytics")).toEqual(["posthog"]);
+    draft.analytics.posthog.key = "phc_short";
+    expect(sectionProblems(draft, "analytics")).toEqual(["posthog"]);
+    draft.analytics.posthog.key = "phc_12345678901234567890";
+    expect(sectionProblems(draft, "analytics")).toEqual([]);
     draft.analytics.provider = "none";
     expect(changedSectionRows(draft, platformRows)).toEqual([{ sectionKey: "analytics", payload: {} }]);
     expect(cardForRow("exports")).toBe("citations");
