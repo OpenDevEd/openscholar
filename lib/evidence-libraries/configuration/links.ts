@@ -26,7 +26,25 @@ export type BuiltInPageKey = (typeof BUILT_IN_PAGES)[number]["key"];
 const LIBRARY_PATH = "/lib";
 const COLLECTIONS_PARAM = "collections";
 
-export const NAV_ICONS = (() => {
+export type NavIcon =
+  | "AboutUs"
+  | "EvidenceLibrary"
+  | "Programs"
+  | "Blog"
+  | "Team"
+  | "ContactUs"
+  | "TeamFill"
+  | "ToolsFill"
+  | "BookOpenFill"
+  | "Bookshelf"
+  | "ChatRightDotsFill"
+  | "BsMapFill"
+  | "LuX"
+  | "FaQuestionCircle"
+  | "IoStatsChart";
+
+/** Icon ids the runtime accepts, read from the pinned schema. */
+export const NAV_ICONS: readonly NavIcon[] = (() => {
   const node = resolveSchemaPointer(schema, "/navigation/links/*/icon") as
     | { anyOf?: { enum?: string[] }[] }
     | undefined;
@@ -34,9 +52,8 @@ export const NAV_ICONS = (() => {
   if (!values || values.length === 0) {
     throw new Error("Configuration schema has no navigation icon choices");
   }
-  return values;
+  return values as NavIcon[];
 })();
-export type NavIcon = (typeof NAV_ICONS)[number];
 
 export type LinkTarget =
   | { kind: "page"; page: BuiltInPageKey }
@@ -102,7 +119,7 @@ function record(value: unknown): Record<string, unknown> {
 /** Builds the page's link from a saved runtime link. `fallbackId` is used when the row has no id. */
 export function readLink(value: unknown, fallbackId = ""): LinkDraft {
   const link = record(value);
-  const icon = typeof link.icon === "string" && NAV_ICONS.includes(link.icon) ? link.icon : "";
+  const icon = NAV_ICONS.includes(link.icon as NavIcon) ? (link.icon as NavIcon) : "";
   return {
     id: typeof link.id === "string" && link.id ? link.id : fallbackId,
     label: typeof link.label === "string" ? link.label : "",

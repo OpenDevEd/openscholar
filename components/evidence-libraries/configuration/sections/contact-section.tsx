@@ -2,7 +2,6 @@
 
 import { Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,12 +27,6 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.contact");
   const tf = useTranslations("evidenceLibraryConfiguration.fields");
   const { contact, email, legal } = draft;
-  /** "Upload a file" chosen but nothing uploaded yet. The draft stays "none" until text lands. */
-  const [pendingText, setPendingText] = useState<Record<LegalKey, boolean>>({
-    privacy: false,
-    cookie: false,
-    terms: false,
-  });
 
   const setContact = <K extends keyof ContactDraft>(key: K, value: string) =>
     patch((d) => {
@@ -51,11 +44,12 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
       return d;
     });
 
-  /** Switching the source clears the other value. */
-  const chooseKind = (key: LegalKey, kind: LegalKind) => {
-    setPendingText((p) => ({ ...p, [key]: kind === "text" }));
-    setLegal(key, kind === "url" ? { kind: "url", url: "" } : { kind: "none" });
-  };
+  /** Switching the source clears the other value. Text stays empty until a file is uploaded. */
+  const chooseKind = (key: LegalKey, kind: LegalKind) =>
+    setLegal(
+      key,
+      kind === "url" ? { kind: "url", url: "" } : kind === "text" ? { kind: "text", text: "" } : { kind: "none" },
+    );
 
   const emailError = (value: string) => (value && !EMAIL.test(value) ? t("emailError") : null);
 
@@ -167,20 +161,18 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
       <FieldGroup title={t("legalHeading")} hint={t("legalHint")}>
         {LEGAL_KEYS.map((key) => {
           const source = legal[key];
-          const shownKind: LegalKind =
-            source.kind === "none" && pendingText[key] ? "text" : source.kind;
           return (
             <Panel
               key={key}
               tone="plain"
               className="space-y-3"
               data-legal={key}
-              data-legal-kind={shownKind}
+              data-legal-kind={source.kind}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium">{t(`legal.${key}`)}</p>
                 <Tabs
-                  value={shownKind}
+                  value={source.kind}
                   onValueChange={(kind) => chooseKind(key, kind as LegalKind)}
                 >
                   <TabsList aria-label={t("legalSourceLabel", { page: t(`legal.${key}`) })}>
@@ -192,15 +184,12 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
                   </TabsList>
                 </Tabs>
               </div>
-              {shownKind === "text" ? (
+              {source.kind === "text" ? (
                 <TextUploadField
                   label={t("legalFile")}
                   required
-                  value={source.kind === "text" ? source.text : null}
-                  onChange={(text) => {
-                    setPendingText((p) => ({ ...p, [key]: !text }));
-                    setLegal(key, text ? { kind: "text", text } : { kind: "none" });
-                  }}
+                  value={source.text || null}
+                  onChange={(text) => setLegal(key, { kind: "text", text: text ?? "" })}
                 />
               ) : null}
               {source.kind === "url" ? (
@@ -221,7 +210,7 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
                   )}
                 </Field>
               ) : null}
-              {shownKind === "none" ? (
+              {source.kind === "none" ? (
                 <p className="text-xs text-muted-foreground">{t("legalNone")}</p>
               ) : null}
             </Panel>

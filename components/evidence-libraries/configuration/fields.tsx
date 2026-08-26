@@ -557,6 +557,27 @@ export function ToggleRow({
   );
 }
 
+/** A small switch with its label beside it, for options inside a list row. */
+export function InlineSwitch({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex h-9 items-center gap-2">
+      <Switch id={id} checked={checked} onCheckedChange={onChange} className="scale-90" />
+      <Label htmlFor={id} className="text-xs font-normal">
+        {label}
+      </Label>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Lists                                                               */
 /* ------------------------------------------------------------------ */

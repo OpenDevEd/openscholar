@@ -2365,7 +2365,8 @@
       "contactRecipient": "The contact form recipient is not a valid email.",
       "contactEmail": "The contact email is not valid.",
       "phone": "Use the international phone format, for example +442012345678.",
-      "legalUrl": "Legal page links need a full address that starts with https://."
+      "legalUrl": "Legal page links need a full address that starts with https://.",
+      "legalText": "Upload a file for every legal page set to Upload a file."
     },
     "fields": {
       "optional": "optional",
@@ -2537,7 +2538,24 @@
       "iconLabel": "Icon",
       "noIcon": "No icon",
       "newTab": "Open in new tab",
-      "visible": "Visible"
+      "visible": "Visible",
+      "icons": {
+        "AboutUs": "About us",
+        "EvidenceLibrary": "Evidence library",
+        "Programs": "Programs",
+        "Blog": "Blog",
+        "Team": "Team",
+        "ContactUs": "Contact us",
+        "TeamFill": "Team (solid)",
+        "ToolsFill": "Tools",
+        "BookOpenFill": "Open book",
+        "Bookshelf": "Bookshelf",
+        "ChatRightDotsFill": "Chat",
+        "BsMapFill": "Map",
+        "LuX": "X",
+        "FaQuestionCircle": "Question",
+        "IoStatsChart": "Statistics"
+      }
     },
     "navigation": {
       "description": "The links in the top bar of the public site.",
@@ -2617,7 +2635,7 @@
       },
       "legalSourceLabel": "Source for {page}",
       "legalKinds": {
-        "none": "Built-in",
+        "none": "None",
         "text": "Upload a file",
         "url": "External link"
       },

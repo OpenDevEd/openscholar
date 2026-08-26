@@ -526,3 +526,12 @@ describe("changedSectionRows for the content sections", () => {
     expect(cardForRow("services")).toBeNull();
   });
 });
+
+describe("legal text chosen but not uploaded yet", () => {
+  it("flags the section and writes nothing for that page", () => {
+    const draft = readDraft(contentRows);
+    draft.legal.terms = { kind: "text", text: "" };
+    expect(sectionProblems(draft, "contact")).toEqual(["legalText"]);
+    expect(changedSectionRows(draft, contentRows)).toEqual([]);
+  });
+});

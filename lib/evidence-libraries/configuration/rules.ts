@@ -68,7 +68,8 @@ type SectionProblem =
   | "contactRecipient"
   | "contactEmail"
   | "phone"
-  | "legalUrl";
+  | "legalUrl"
+  | "legalText";
 
 /* ------------------------------------------------------------------ */
 /* Schema facts                                                        */
@@ -142,7 +143,6 @@ export const SCHEMA_LIMITS = {
   },
   contact: {
     address: schemaNumber("/contact/address", "maxLength"),
-    legalText: schemaNumber("/legal/privacyMarkdown", "maxLength"),
   },
 } as const;
 
@@ -254,7 +254,11 @@ export type FooterDraft = {
 export type ContactDraft = { email: string; phone: string; address: string };
 export type EmailDraft = { contactRecipient: string; takedownRecipient: string };
 
-/** Where a legal page comes from: nothing, uploaded text, or an address elsewhere. */
+/**
+ * Where a legal page comes from: nothing, uploaded text, or an address
+ * elsewhere. Text may be empty while the owner has chosen to upload a file
+ * but has not done so yet; nothing is written until the text arrives.
+ */
 export type LegalSource =
   | { kind: "none" }
   | { kind: "text"; text: string }
@@ -593,7 +597,7 @@ function legalPayload(legal: LegalDraft) {
   const payload: Record<string, string> = {};
   for (const key of LEGAL_KEYS) {
     const source = legal[key];
-    if (source.kind === "text") payload[LEGAL_FIELDS[key].markdown] = source.text;
+    if (source.kind === "text" && source.text) payload[LEGAL_FIELDS[key].markdown] = source.text;
     if (source.kind === "url") payload[LEGAL_FIELDS[key].link] = source.url;
   }
   return payload;
@@ -786,6 +790,9 @@ export function sectionProblems(
         })
       ) {
         problems.push("legalUrl");
+      }
+      if (LEGAL_KEYS.some((key) => legal[key].kind === "text" && !legal[key].text)) {
+        problems.push("legalText");
       }
       break;
     }
