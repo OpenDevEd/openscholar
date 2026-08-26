@@ -887,6 +887,76 @@ describe("Coolify Evidence Library client", () => {
     ).toHaveLength(0);
   });
 
+  it("moves the bound app to a new software commit and reads it back", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication({ git_commit_sha: RUNTIME_COMMIT }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+    });
+
+    const result = await createClient(server.fetchImpl).setApplicationCommit({
+      applicationUuid: APPLICATION_UUID,
+      libraryId: LIBRARY_ID,
+      publicDomain: PUBLIC_DOMAIN,
+      runtimeCommit: OTHER_COMMIT,
+    });
+
+    expect(result).toEqual({
+      applicationUuid: APPLICATION_UUID,
+      runtimeCommit: OTHER_COMMIT,
+      coolifyConfigHash: server.application?.config_hash,
+    });
+    expect(server.application?.git_commit_sha).toBe(OTHER_COMMIT);
+    const patches = server.requests.filter(
+      ({ method, path }) =>
+        method === "PATCH" &&
+        path === `/api/v1/applications/${APPLICATION_UUID}`,
+    );
+    expect(patches).toHaveLength(1);
+    expect(patches[0]?.body).toEqual({
+      git_commit_sha: OTHER_COMMIT,
+      instant_deploy: false,
+    });
+    expect(
+      server.requests.filter(({ method }) => method === "POST"),
+    ).toHaveLength(0);
+  });
+
+  it("does not write when the bound app already runs the requested commit", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication({ git_commit_sha: OTHER_COMMIT }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).setApplicationCommit({
+        applicationUuid: APPLICATION_UUID,
+        libraryId: LIBRARY_ID,
+        publicDomain: PUBLIC_DOMAIN,
+        runtimeCommit: OTHER_COMMIT,
+      }),
+    ).resolves.toMatchObject({ runtimeCommit: OTHER_COMMIT });
+    expect(
+      server.requests.filter(({ method }) => method === "PATCH"),
+    ).toHaveLength(0);
+  });
+
+  it("fails when Coolify does not keep the new software commit", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication({ git_commit_sha: RUNTIME_COMMIT }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      ignoreApplicationWrites: true,
+    });
+
+    await expect(
+      createClient(server.fetchImpl).setApplicationCommit({
+        applicationUuid: APPLICATION_UUID,
+        libraryId: LIBRARY_ID,
+        publicDomain: PUBLIC_DOMAIN,
+        runtimeCommit: OTHER_COMMIT,
+      }),
+    ).rejects.toMatchObject({ code: "COOLIFY_APPLICATION_MISMATCH" });
+  });
+
   it("rejects a changed runtime commit before writing the environment", async () => {
     const server = createCoolifyServer({
       application: expectedApplication({ git_commit_sha: OTHER_COMMIT }),
