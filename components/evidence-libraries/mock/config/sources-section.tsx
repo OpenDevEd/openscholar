@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, ChevronRight, Database, KeyRound, RefreshCw, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Database, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
@@ -15,9 +15,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import {
   newId,
@@ -29,7 +28,6 @@ import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store
 import { StatusChip } from "../library-status-badge";
 import { Field, InlineNotice } from "../section-card";
 import { AddButton, ChipInput, EmptyList, SubHeading, ToggleRow } from "./fields";
-import { cn } from "@/lib/utils";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 /** Stored in `apiKey` when the owner signed in with Zotero instead of pasting a key. */
@@ -200,18 +198,14 @@ function SourceCard({
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-border/50 bg-background"
+      className="space-y-4 rounded-xl border border-border/50 bg-background p-4"
       data-source-id={source.id}
       data-sync-state={thisSyncing ? "syncing" : source.enabled ? "on" : "off"}
     >
-      {/* Header: name, state, sync, remove */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-border/50 bg-muted/30 px-4 py-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#cc2936] text-xs font-bold text-white">
-          Z
-        </span>
+      <div className="flex items-center gap-2">
         <Input
           aria-label={t("labelLabel")}
-          className="h-8 max-w-xs bg-background text-sm font-medium"
+          className="max-w-xs bg-background font-medium"
           value={source.label}
           placeholder={t("labelPlaceholder")}
           onChange={(e) =>
@@ -221,10 +215,7 @@ function SourceCard({
           }
         />
         {thisSyncing ? (
-          <StatusChip tone="running">
-            <Spinner />
-            {t("statusSyncing")}
-          </StatusChip>
+          <StatusChip tone="running">{t("statusSyncing")}</StatusChip>
         ) : !ready ? (
           <StatusChip tone="warning">{t("statusIncomplete")}</StatusChip>
         ) : (
@@ -232,66 +223,55 @@ function SourceCard({
             {source.enabled ? t("statusOn") : t("statusOff")}
           </StatusChip>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground" data-last-sync={source.lastSync ?? "never"}>
-            {source.lastSync
-              ? t("lastSync", { when: source.lastSync, records: source.records })
-              : t("neverSynced")}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={anySyncing || !ready}
-            onClick={() => syncSource(libraryId, source.id)}
-          >
-            {thisSyncing ? <Spinner /> : <RefreshCw />}
-            {thisSyncing ? t("syncingPercent", { percent: run.percent }) : t("syncNow")}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-destructive"
-            aria-label={t("removeSource")}
-            onClick={onRemove}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-        {thisSyncing ? <Progress value={run.percent} className="basis-full" /> : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="ml-auto text-muted-foreground hover:text-destructive"
+          aria-label={t("removeSource")}
+          onClick={onRemove}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
 
-      {/* Body: three numbered steps */}
-      <div className="divide-y divide-border/50">
-        <Step number={1} title={t("stepConnect")} done={connected}>
-          <RadioGroup
-            value={source.auth}
-            onValueChange={(auth) =>
-              onChange((row) => {
-                row.auth = auth as ZoteroSource["auth"];
-                row.apiKey = "";
-              })
-            }
-            className="grid gap-2 sm:grid-cols-2"
-          >
-            <AuthOption
-              value="zotero"
-              selected={source.auth === "zotero"}
-              title={t("authZotero")}
-              hint={t("authZoteroHint")}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t("authLabel")}>
+          {(id) => (
+            <Select
+              value={source.auth}
+              onValueChange={(auth) =>
+                onChange((row) => {
+                  row.auth = auth as ZoteroSource["auth"];
+                  row.apiKey = "";
+                })
+              }
             >
-              {source.apiKey === ZOTERO_OAUTH ? (
-                <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400" data-zotero-connected>
-                  <Check className="h-3.5 w-3.5" />
+              <SelectTrigger id={id} className="w-full bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="zotero">{t("authZotero")}</SelectItem>
+                <SelectItem value="apiKey">{t("authApiKey")}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </Field>
+        {source.auth === "zotero" ? (
+          <Field label={t("accountLabel")}>
+            {() =>
+              source.apiKey === ZOTERO_OAUTH ? (
+                <p
+                  className="flex h-9 items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400"
+                  data-zotero-connected
+                >
+                  <Check className="h-4 w-4" />
                   {t("connectedAs", { handle: "@aiined" })}
                 </p>
               ) : (
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  disabled={source.auth !== "zotero"}
                   onClick={() =>
                     onChange((row) => {
                       row.apiKey = ZOTERO_OAUTH;
@@ -300,151 +280,88 @@ function SourceCard({
                 >
                   {t("connectZotero")}
                 </Button>
-              )}
-            </AuthOption>
-            <AuthOption
-              value="apiKey"
-              selected={source.auth === "apiKey"}
-              title={t("authApiKey")}
-              hint={t("apiKeyHint")}
-            >
-              <Field label={t("apiKeyLabel")} error={keyMissing ? t("apiKeyError") : null} className="space-y-1">
-                {(id, invalid) => (
-                  <div className="relative">
-                    <KeyRound className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id={id}
-                      type="password"
-                      autoComplete="off"
-                      disabled={source.auth !== "apiKey"}
-                      className="bg-background pl-8 font-mono text-sm"
-                      value={source.auth === "apiKey" ? source.apiKey : ""}
-                      aria-invalid={invalid || undefined}
-                      onChange={(e) =>
-                        onChange((row) => {
-                          row.apiKey = e.target.value;
-                        })
-                      }
-                    />
-                  </div>
-                )}
-              </Field>
-            </AuthOption>
-          </RadioGroup>
-        </Step>
-
-        <Step number={2} title={t("stepGroup")} done={!groupIdMissing}>
-          <Field label={t("groupIdLabel")} hint={t("groupIdHint")} error={groupIdMissing ? t("groupIdError") : null} className="max-w-sm">
+              )
+            }
+          </Field>
+        ) : (
+          <Field label={t("apiKeyLabel")} hint={t("apiKeyHint")} error={keyMissing ? t("apiKeyError") : null}>
             {(id, invalid) => (
-              <div className="flex items-center gap-2">
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">zotero.org/groups/</span>
-                <Input
-                  id={id}
-                  inputMode="numeric"
-                  className="bg-background font-mono text-sm"
-                  value={source.groupId}
-                  placeholder="2405685"
-                  aria-invalid={invalid || undefined}
-                  onChange={(e) =>
-                    onChange((row) => {
-                      row.groupId = e.target.value.replace(/\D/g, "");
-                    })
-                  }
-                />
-              </div>
+              <Input
+                id={id}
+                type="password"
+                autoComplete="off"
+                className="bg-background font-mono text-sm"
+                value={source.apiKey}
+                aria-invalid={invalid || undefined}
+                onChange={(e) =>
+                  onChange((row) => {
+                    row.apiKey = e.target.value;
+                  })
+                }
+              />
             )}
           </Field>
-        </Step>
-
-        <Step number={3} title={t("stepOptions")}>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <ToggleRow
-              label={t("enabledLabel")}
-              hint={t("enabledHint")}
-              checked={source.enabled}
-              onChange={(enabled) =>
+        )}
+        <Field label={t("groupIdLabel")} hint={t("groupIdHint")} error={groupIdMissing ? t("groupIdError") : null}>
+          {(id, invalid) => (
+            <Input
+              id={id}
+              inputMode="numeric"
+              className="bg-background font-mono text-sm"
+              value={source.groupId}
+              placeholder="2405685"
+              aria-invalid={invalid || undefined}
+              onChange={(e) =>
                 onChange((row) => {
-                  row.enabled = enabled;
+                  row.groupId = e.target.value.replace(/\D/g, "");
                 })
               }
             />
-            <ToggleRow
-              label={t("writebackLabel")}
-              hint={t("writebackHint")}
-              checked={source.writeback}
-              onChange={(writeback) =>
-                onChange((row) => {
-                  row.writeback = writeback;
-                })
-              }
-            />
-          </div>
-        </Step>
-      </div>
-    </div>
-  );
-}
-
-function Step({
-  number,
-  title,
-  done,
-  children,
-}: {
-  number: number;
-  title: string;
-  done?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid gap-3 p-4 sm:grid-cols-[10rem_1fr]" data-step-done={done}>
-      <div className="flex items-start gap-2.5">
-        <span
-          className={cn(
-            "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
-            done
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              : "border-border/60 bg-muted/40 text-muted-foreground",
           )}
-        >
-          {done ? <Check className="h-3.5 w-3.5" /> : number}
-        </span>
-        <span className="pt-0.5 text-sm font-medium">{title}</span>
+        </Field>
       </div>
-      <div className="min-w-0">{children}</div>
-    </div>
-  );
-}
 
-function AuthOption({
-  value,
-  selected,
-  title,
-  hint,
-  children,
-}: {
-  value: string;
-  selected: boolean;
-  title: string;
-  hint: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        "space-y-3 rounded-lg border-2 p-3 transition-all",
-        selected ? "border-primary/40 bg-primary/5" : "border-border/50 bg-muted/20 text-muted-foreground",
-      )}
-      data-selected={selected}
-    >
-      <Label className="flex cursor-pointer items-start gap-2.5 font-normal">
-        <RadioGroupItem value={value} className="mt-0.5" />
-        <span className="space-y-0.5">
-          <span className={cn("block text-sm font-medium", selected ? "text-foreground" : "")}>{title}</span>
-          <span className="block text-xs text-muted-foreground">{hint}</span>
-        </span>
-      </Label>
-      <div className="pl-6">{children}</div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <ToggleRow
+          label={t("enabledLabel")}
+          checked={source.enabled}
+          onChange={(enabled) =>
+            onChange((row) => {
+              row.enabled = enabled;
+            })
+          }
+        />
+        <ToggleRow
+          label={t("writebackLabel")}
+          checked={source.writeback}
+          onChange={(writeback) =>
+            onChange((row) => {
+              row.writeback = writeback;
+            })
+          }
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-xs text-muted-foreground" data-last-sync={source.lastSync ?? "never"}>
+            {source.lastSync
+              ? t("lastSync", { when: source.lastSync, records: source.records })
+              : t("neverSynced")}
+          </p>
+          {thisSyncing ? <Progress value={run.percent} className="max-w-xs" /> : null}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={anySyncing || !ready}
+          onClick={() => syncSource(libraryId, source.id)}
+        >
+          {thisSyncing ? <Spinner /> : <RefreshCw />}
+          {thisSyncing ? t("syncingPercent", { percent: run.percent }) : t("syncNow")}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -2901,11 +2901,7 @@
         "publishHint": "The attached PDF is made public. Keep at least one tag.",
         "publishError": "Keep at least one publish tag.",
         "statusIncomplete": "Not set up",
-        "stepConnect": "Connect",
-        "stepGroup": "Choose the group",
-        "stepOptions": "Options",
-        "authZoteroHint": "Sign in once. No key to copy.",
-        "enabledHint": "Turned off keeps the records but stops new imports."
+        "accountLabel": "Zotero account"
       },
       "languages": {
         "description": "Which languages the public site offers, which one it opens in, and the order it tries them.",
