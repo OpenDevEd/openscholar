@@ -359,6 +359,26 @@ export function changedSectionRows(
 export const isDirty = (draft: ConfigurationDraft, rows: readonly SectionRow[]) =>
   changedSectionRows(draft, rows).length > 0;
 
+/** Every uploaded file a draft points at: logos, favicon, share image, institution logos. */
+function uploadUrls(draft: ConfigurationDraft): string[] {
+  return [
+    ...Object.values(draft.identity.assets),
+    ...draft.institutions.map((institution) => institution.logoUrl),
+  ].filter((url) => url !== "");
+}
+
+/**
+ * Saved files the draft no longer uses. Delete them only after the draft is
+ * saved: until then the saved rows, and a live library, still point at them.
+ */
+export function staleUploads(
+  draft: ConfigurationDraft,
+  rows: readonly SectionRow[],
+): string[] {
+  const kept = new Set(uploadUrls(draft));
+  return [...new Set(uploadUrls(readDraft(rows)))].filter((url) => !kept.has(url));
+}
+
 /* ------------------------------------------------------------------ */
 /* What each card shows                                                */
 /* ------------------------------------------------------------------ */

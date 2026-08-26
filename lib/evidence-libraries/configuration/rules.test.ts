@@ -7,6 +7,7 @@ import {
   resetSection,
   sectionProblems,
   sectionState,
+  staleUploads,
   SCHEMA_LIMITS,
   THEME_DEFAULTS,
   type ConfigurationDraft,
@@ -233,5 +234,34 @@ describe("sectionState and reset", () => {
     expect(reset.theme.colors.accent).toBe("#e68124");
     expect(sectionState(reset, savedRows, "theme")).toBe("complete");
     expect(sectionState(reset, savedRows, "identity")).toBe("edited");
+  });
+});
+
+describe("staleUploads", () => {
+  it("lists saved files the draft no longer points at", () => {
+    const draft = savedDraft();
+    draft.identity.assets.logoDark = "https://assets.example.test/logo-dark-2.svg";
+    const rows = savedRows.map((row) =>
+      row.sectionKey === "institutions"
+        ? {
+            sectionKey: "institutions",
+            payload: [
+              { id: "inst_1", name: "EdTech Hub", logoUrl: "https://assets.example.test/edtech-hub.png" },
+            ],
+          }
+        : row,
+    );
+    draft.institutions = [];
+    expect(staleUploads(draft, rows)).toEqual([
+      "https://assets.example.test/logo-dark.svg",
+      "https://assets.example.test/edtech-hub.png",
+    ]);
+  });
+
+  it("keeps a file that is still used somewhere in the draft", () => {
+    const draft = savedDraft();
+    draft.identity.assets.logoLight = draft.identity.assets.logoDark;
+    draft.identity.assets.logoDark = "https://assets.example.test/logo-dark-2.svg";
+    expect(staleUploads(draft, savedRows)).toEqual([]);
   });
 });

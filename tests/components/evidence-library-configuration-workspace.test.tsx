@@ -5,7 +5,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const queryMock = vi.hoisted(() => vi.fn());
 const mutationMock = vi.hoisted(() => vi.fn());
@@ -357,5 +357,78 @@ describe("<ConfigurationWorkspace>", () => {
       expect(teardowns).toEqual([{ libraryId: "library_123", confirmationName: "Saved Library" }]),
     );
     expect(pushMock).toHaveBeenCalledWith("/evidence-libraries/new?teardownOperationId=operation_123");
+  });
+
+  describe("replaced files", () => {
+    const newLogo = "https://assets.example.test/logo-dark-2.png";
+    let removed: unknown[];
+
+    beforeEach(() => {
+      removed = [];
+      mutationMock.mockImplementation((reference: unknown) => {
+        if (reference === "saveDraftSections") {
+          return async (input: unknown) => {
+            saved.push(input);
+            return { editVersion: 5 };
+          };
+        }
+        if (reference === "generateUploadUrl") return async () => "https://upload.example.test/put";
+        if (reference === "upload") {
+          return async () => ({ kind: "file", bytes: 3, contentType: "image/png", name: "logo.png", url: newLogo });
+        }
+        if (reference === "remove") {
+          return async (input: unknown) => {
+            removed.push(input);
+            return null;
+          };
+        }
+        return async () => null;
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response(JSON.stringify({ storageId: "storage_1" }), { status: 200 })),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    async function replaceLogo(user: ReturnType<typeof userEvent.setup>) {
+      const theme = within(document.getElementById("sec-theme")!);
+      await user.upload(
+        theme.getByLabelText("theme.logoDarkLabel"),
+        new File(["png"], "logo.png", { type: "image/png" }),
+      );
+      await waitFor(() => expect(theme.getByText("logo-dark-2.png")).toBeInTheDocument());
+      return theme;
+    }
+
+    it("keeps the saved file when the owner replaces it and then resets", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      const theme = await replaceLogo(user);
+      expect(removed).toEqual([]);
+
+      await user.click(theme.getByRole("button", { name: "fields.reset" }));
+
+      expect(theme.getByText("logo-dark.svg")).toBeInTheDocument();
+      expect(removed).toEqual([]);
+    });
+
+    it("deletes the replaced file only after a successful save", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      await replaceLogo(user);
+
+      await user.click(screen.getByRole("button", { name: "save" }));
+
+      await waitFor(() => expect(saved).toHaveLength(1));
+      await waitFor(() =>
+        expect(removed).toEqual([
+          { libraryId: "library_123", url: "https://assets.example.test/logo-dark.svg" },
+        ]),
+      );
+    });
   });
 });

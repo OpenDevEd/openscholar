@@ -87,7 +87,7 @@ export function UploadField({
   className?: string;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.fields");
-  const { uploadFile, removeFile } = useFileUploads();
+  const { uploadFile } = useFileUploads();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<UploadError | null>(null);
   const maxBytes = EVIDENCE_LIBRARY_UPLOAD_LIMITS[kind];
@@ -107,18 +107,15 @@ export function UploadField({
         setError("type");
         return;
       }
-      const previous = value;
       onChange(result.url);
-      if (previous) void removeFile(previous);
     } finally {
       setUploading(false);
     }
   }
 
+  // The replaced file stays stored until the draft is saved; the page deletes it then.
   function handleRemove() {
-    const previous = value;
     onChange(null);
-    if (previous) void removeFile(previous);
   }
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({

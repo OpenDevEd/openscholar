@@ -8,8 +8,6 @@ import { type UploadKind, type UploadResult, uploadFile } from "./upload-file";
 
 type FileUploads = {
   uploadFile: (kind: UploadKind, file: File) => Promise<UploadResult>;
-  /** Best effort: deletes a stored file the owner replaced or removed. */
-  removeFile: (url: string) => Promise<void>;
 };
 
 const FileUploadsContext = createContext<FileUploads | null>(null);
@@ -24,11 +22,8 @@ export function FileUploadsProvider({
 }) {
   const generateUploadUrl = useMutation(api.evidenceLibraries.uploads.generateUploadUrl);
   const upload = useAction(api.evidenceLibraries.uploadActions.upload);
-  const remove = useAction(api.evidenceLibraries.uploadActions.remove);
   const value: FileUploads = {
-    uploadFile: (kind, file) =>
-      uploadFile({ generateUploadUrl, upload, remove }, libraryId, kind, file),
-    removeFile: (url) => remove({ libraryId, url }).then(() => undefined, () => undefined),
+    uploadFile: (kind, file) => uploadFile({ generateUploadUrl, upload }, libraryId, kind, file),
   };
   return (
     <FileUploadsContext.Provider value={value}>{children}</FileUploadsContext.Provider>

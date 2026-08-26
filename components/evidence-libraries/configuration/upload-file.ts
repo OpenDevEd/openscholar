@@ -1,10 +1,11 @@
 /**
  * Upload adapter for the configuration page.
  *
- * Three platform calls (plan 03, `convex/evidenceLibraries/uploads.ts` and
+ * Two platform calls (plan 03, `convex/evidenceLibraries/uploads.ts` and
  * `uploadActions.ts`): get a temporary upload URL, POST the file to it, then
  * run the `upload` action that checks the file, stores it in the platform
- * bucket and returns its public URL. `remove` deletes a stored file.
+ * bucket and returns its public URL. Replaced files are deleted by the page
+ * after a successful Save (`staleUploads` in rules.ts).
  */
 
 import { ConvexError } from "convex/values";
@@ -61,7 +62,6 @@ export type UploadClient = {
     name: string;
     storageId: Id<"_storage">;
   }) => Promise<UploadActionResult>;
-  remove: (args: { libraryId: Id<"evidenceLibraries">; url: string }) => Promise<null>;
 };
 
 export async function uploadFile(

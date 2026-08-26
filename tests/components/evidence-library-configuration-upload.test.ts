@@ -20,7 +20,6 @@ function client(overrides: Partial<UploadClient> = {}): UploadClient {
       name,
       url: `https://files.example.test/evidence-libraries/library_123/image-abc123.png`,
     }),
-    remove: async () => null,
     ...overrides,
   };
 }

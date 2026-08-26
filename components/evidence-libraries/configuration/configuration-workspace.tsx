@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexError } from "convex/values";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import {
   AlertCircle,
@@ -54,6 +54,7 @@ import {
   resetSection,
   type SectionRow,
   sectionState,
+  staleUploads,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { cn } from "@/lib/utils";
 import { DangerSection } from "./sections/danger-section";
@@ -168,6 +169,7 @@ function Workspace({
   const activateConfiguration = useMutation(
     api.evidenceLibraries.mutations.activateConfiguration,
   );
+  const removeUpload = useAction(api.evidenceLibraries.uploadActions.remove);
 
   const [draft, setDraft] = useState<ConfigurationDraft>(() =>
     readDraft(saved),
@@ -204,11 +206,16 @@ function Workspace({
   async function save(): Promise<number> {
     const sections = changedSectionRows(draft, saved);
     if (sections.length === 0) return editVersion;
+    const stale = staleUploads(draft, saved);
     const result = await saveDraftSections({
       libraryId,
       expectedEditVersion: editVersion,
       sections,
     });
+    // Only now do the saved rows stop pointing at the replaced files. Best effort.
+    for (const url of stale) {
+      void removeUpload({ libraryId, url }).catch(() => undefined);
+    }
     return result.editVersion;
   }
 
