@@ -227,15 +227,18 @@ export function ColourField({
   hint?: ReactNode;
   value: string;
   onChange: (value: string) => void;
-  /** Background colours to check WCAG AA (4.5:1) against. */
+  /** Background colours; warns when the colour fails WCAG AA (4.5:1) on all of them. */
   contrastAgainst?: string[];
   className?: string;
 }) {
   const t = useTranslations("evidenceLibraryMock.fields");
   const valid = HEX.test(value);
-  const low = valid
-    ? (contrastAgainst ?? []).filter((bg) => contrastRatio(value, bg) < 4.5)
-    : [];
+  // Warn only when the colour fails on every background, like the runtime check.
+  const backgrounds = contrastAgainst ?? [];
+  const low =
+    valid && backgrounds.length > 0 && backgrounds.every((bg) => contrastRatio(value, bg) < 4.5)
+      ? backgrounds
+      : [];
   return (
     <Field
       label={label}
@@ -388,6 +391,7 @@ export function ListRow({
   onMove,
   onRemove,
   removeLabel,
+  hideRemove,
   children,
   className,
   ...rest
@@ -397,6 +401,8 @@ export function ListRow({
   onMove: (from: number, to: number) => void;
   onRemove: () => void;
   removeLabel: string;
+  /** Rows that can be reordered but not removed (for example collections from Zotero). */
+  hideRemove?: boolean;
 }) {
   const t = useTranslations("evidenceLibraryMock.fields");
   return (
@@ -429,16 +435,18 @@ export function ListRow({
         </Button>
       </div>
       <div className="min-w-0 flex-1 space-y-3">{children}</div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="shrink-0 text-muted-foreground hover:text-destructive"
-        aria-label={removeLabel}
-        onClick={onRemove}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      {hideRemove ? null : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+          aria-label={removeLabel}
+          onClick={onRemove}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }

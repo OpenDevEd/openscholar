@@ -1,16 +1,28 @@
 "use client";
 
 import {
+  ArrowUp,
+  BarChart3,
+  Building2,
   Check,
-  Copy,
-  GitBranch,
+  Database,
+  FolderOpen,
   Globe,
+  History,
   Languages,
   Layers,
+  Link2,
+  Mail,
+  Menu,
   Palette,
+  PanelBottom,
+  Quote,
   Rocket,
   Save,
+  Search,
+  ToggleRight,
   Trash2,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -30,69 +42,89 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { RAIL_GROUPS } from "@/lib/evidence-libraries/mock/config";
 import {
   ACTIVATION_STAGES,
-  EDITABLE_SECTIONS,
   hasErrors,
   isDirty,
   type LibraryConfig,
-  MOCK_LANGUAGES,
   type MockLibrary,
   type SectionKey,
-  type SectionState,
   sectionState,
 } from "@/lib/evidence-libraries/mock/data";
 import {
   selectLibrary,
   useEvidenceLibraryMockStore,
 } from "@/lib/evidence-libraries/mock/store";
+import { AnalyticsSection } from "./config/analytics-section";
+import { CitationsSection } from "./config/citations-section";
+import { CollectionsSection } from "./config/collections-section";
+import { ContactSection } from "./config/contact-section";
+import { DangerSection } from "./config/danger-section";
+import { DomainSection } from "./config/domain-section";
+import { FeaturesSection } from "./config/features-section";
+import { FooterSection } from "./config/footer-section";
+import { IdentitySection } from "./config/identity-section";
+import { InstitutionsSection } from "./config/institutions-section";
+import { LanguagesSection } from "./config/languages-section";
+import { NavigationSection } from "./config/navigation-section";
+import { STATE_TONE, type SectionProps } from "./config/section-shell";
+import { SearchSection } from "./config/search-section";
+import { SourcesSection } from "./config/sources-section";
+import { TeamSection } from "./config/team-section";
+import { ThemeSection } from "./config/theme-section";
+import { VersionsSection } from "./config/versions-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { LibraryNotFound } from "./library-not-found";
-import { STATUS_DOT, StatusChip, type StatusTone } from "./library-status-badge";
+import { STATUS_DOT, StatusChip } from "./library-status-badge";
 import { PanelHeader } from "./panel-header";
-import { Field, FieldError, SectionCard } from "./section-card";
 
-const NAME_MAX = 100;
-const RAIL_SECTIONS = ["identity", "branding", "languages", "danger"] as const;
-type RailSection = (typeof RAIL_SECTIONS)[number];
-const LATER_SECTIONS = [
-  "navigation",
-  "discovery",
-  "content",
-  "integrations",
-  "platform",
-  "sources",
-  "domains",
-  "rollback",
-] as const;
-
+const SECTION_KEYS = RAIL_GROUPS.flatMap((g) => g.sections);
 const SECTION_ICONS: Record<SectionKey, LucideIcon> = {
   identity: Globe,
-  branding: Palette,
+  theme: Palette,
+  institutions: Building2,
+  navigation: Menu,
+  footer: PanelBottom,
+  contact: Mail,
+  collections: FolderOpen,
+  search: Search,
+  citations: Quote,
+  features: ToggleRight,
+  sources: Database,
   languages: Languages,
+  analytics: BarChart3,
+  team: Users,
+  domain: Link2,
+  versions: History,
+  danger: Trash2,
 };
 
-const STATE_TONE: Record<SectionState, StatusTone> = {
-  complete: "success",
-  edited: "warning",
-  attention: "danger",
+const SECTION_COMPONENTS: Record<
+  Exclude<SectionKey, "danger">,
+  (props: SectionProps) => ReactNode
+> = {
+  identity: IdentitySection,
+  theme: ThemeSection,
+  institutions: InstitutionsSection,
+  navigation: NavigationSection,
+  footer: FooterSection,
+  contact: ContactSection,
+  collections: CollectionsSection,
+  search: SearchSection,
+  citations: CitationsSection,
+  features: FeaturesSection,
+  sources: SourcesSection,
+  languages: LanguagesSection,
+  analytics: AnalyticsSection,
+  team: TeamSection,
+  domain: DomainSection,
+  versions: VersionsSection,
 };
-
-const HEX = /^#[0-9a-f]{6}$/i;
 
 export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const library = useEvidenceLibraryMockStore(selectLibrary(libraryId));
@@ -102,7 +134,6 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
 
 function Workspace({ library }: { library: MockLibrary }) {
   const t = useTranslations("evidenceLibraryMock.config");
-  const tm = useTranslations("evidenceLibraryMock");
   const tc = useTranslations("common");
   const router = useRouter();
   const saving = useEvidenceLibraryMockStore((s) => s.saving[library.id] ?? false);
@@ -114,7 +145,7 @@ function Workspace({ library }: { library: MockLibrary }) {
 
   const [section, setSection] = useQueryState(
     "section",
-    parseAsStringLiteral(RAIL_SECTIONS).withDefault("identity"),
+    parseAsStringLiteral(SECTION_KEYS).withDefault("identity"),
   );
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -127,9 +158,9 @@ function Workspace({ library }: { library: MockLibrary }) {
     !activating && !errors && (library.status === "active" || library.status === "draft");
   const isDraftLibrary = library.status === "draft";
 
-  const patch = (value: Partial<LibraryConfig>) => updateDraft(library.id, value);
+  const patch = (update: (d: LibraryConfig) => LibraryConfig) => updateDraft(library.id, update);
 
-  function jumpTo(key: RailSection) {
+  function jumpTo(key: SectionKey) {
     void setSection(key);
     document.getElementById(`sec-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -155,12 +186,6 @@ function Workspace({ library }: { library: MockLibrary }) {
     startActivation(library.id);
   }
 
-  function copyAddress() {
-    const url = `https://${library.address}`;
-    navigator.clipboard?.writeText(url).catch(() => {});
-    toast.success(t("copied"), { description: url });
-  }
-
   const activateButton = (
     <Button disabled={!canActivate} onClick={() => setActivateOpen(true)}>
       <Rocket />
@@ -176,7 +201,7 @@ function Workspace({ library }: { library: MockLibrary }) {
           <PanelHeader
             icon={Layers}
             className="border-b-0 px-0 md:px-0"
-            title={draft.name || t("untitled")}
+            title={draft.identity.name || t("untitled")}
             eyebrow={`https://${library.address}`}
           >
             {dirty ? (
@@ -210,277 +235,73 @@ function Workspace({ library }: { library: MockLibrary }) {
           {/* Anchor rail, same look as the settings sidebar */}
           <aside className="w-full border-b border-border/40 bg-muted/20 md:w-60 md:border-b-0 md:border-r md:bg-transparent">
             <nav
-              aria-label={t("railThisVersion")}
-              className="space-y-5 p-4 md:sticky md:top-24 md:p-5"
+              aria-label={t("rail.aria")}
+              className="space-y-5 p-4 md:sticky md:top-24 md:max-h-[calc(100vh-7rem)] md:overflow-y-auto md:p-5"
             >
-              <RailGroup label={t("railThisVersion")}>
-                {EDITABLE_SECTIONS.map((key) => {
-                  const state = sectionState(library, key);
-                  const Icon = SECTION_ICONS[key];
-                  return (
-                    <RailLink
-                      key={key}
-                      href={`#sec-${key}`}
-                      icon={Icon}
-                      active={section === key}
-                      onClick={() => jumpTo(key)}
-                    >
-                      <span className="flex-1">{t(`sections.${key}`)}</span>
-                      <span
-                        className={cn("size-2 shrink-0 rounded-full", STATUS_DOT[STATE_TONE[state]])}
-                        data-state={state}
-                        title={t(`sectionState.${state}`)}
-                        aria-label={t(`sectionState.${state}`)}
-                        role="img"
-                      />
-                    </RailLink>
-                  );
-                })}
-              </RailGroup>
-              <RailGroup label={t("railLater")}>
-                {LATER_SECTIONS.map((key) => (
-                  <Tooltip key={key}>
-                    <TooltipTrigger asChild>
-                      <span
-                        tabIndex={0}
-                        aria-disabled="true"
-                        className={cn(
-                          buttonVariants({ variant: "ghost", size: "sm" }),
-                          "w-full cursor-not-allowed justify-between font-normal text-muted-foreground/60 hover:bg-transparent hover:text-muted-foreground/60",
-                        )}
+              {RAIL_GROUPS.map((group) => (
+                <RailGroup key={group.key} label={t(`rail.${group.key as "brand"}`)}>
+                  {group.sections.map((key) => {
+                    const tracked = key !== "versions" && key !== "danger";
+                    const state = tracked ? sectionState(library, key) : null;
+                    return (
+                      <RailLink
+                        key={key}
+                        href={`#sec-${key}`}
+                        icon={SECTION_ICONS[key]}
+                        active={section === key}
+                        onClick={() => jumpTo(key)}
+                        danger={key === "danger"}
                       >
-                        <span>{t(`later.${key}`)}</span>
-                        <span className="rounded-full border border-border/50 px-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                          {t("laterTag")}
-                        </span>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{t("laterTip")}</TooltipContent>
-                  </Tooltip>
-                ))}
-              </RailGroup>
-              <RailGroup label={t("railDanger")}>
-                <RailLink
-                  href="#sec-danger"
-                  icon={Trash2}
-                  active={section === "danger"}
-                  onClick={() => jumpTo("danger")}
-                  danger
-                >
-                  <span className="flex-1">{t("sections.danger")}</span>
-                </RailLink>
-              </RailGroup>
+                        <span className="flex-1">{t(`sections.${key}`)}</span>
+                        {state ? (
+                          <span
+                            className={cn("size-2 shrink-0 rounded-full", STATUS_DOT[STATE_TONE[state]])}
+                            data-state={state}
+                            title={t(`sectionState.${state}`)}
+                            aria-label={t(`sectionState.${state}`)}
+                            role="img"
+                          />
+                        ) : null}
+                      </RailLink>
+                    );
+                  })}
+                </RailGroup>
+              ))}
             </nav>
           </aside>
 
           {/* Sections */}
           <div className="min-w-0 flex-1 space-y-4 p-4 md:p-6">
-            <SectionCard
-              id="sec-identity"
-              className="scroll-mt-40"
-              icon={SECTION_ICONS.identity}
-              title={t("sections.identity")}
-              description={t("identityDescription")}
-              aside={<SectionStateChip state={sectionState(library, "identity")} />}
-              data-section-state={sectionState(library, "identity")}
-            >
-              <Field
-                label={t("nameLabel")}
-                counter={`${draft.name.length} / ${NAME_MAX}`}
-                error={!draft.name.trim() ? t("nameError") : null}
-              >
-                {(id, invalid) => (
-                  <Input
-                    id={id}
-                    maxLength={NAME_MAX}
-                    className="bg-background"
-                    value={draft.name}
-                    aria-invalid={invalid || undefined}
-                    onChange={(e) => patch({ name: e.target.value })}
+            {SECTION_KEYS.map((key) => {
+              if (key === "danger") {
+                return (
+                  <DangerSection
+                    key={key}
+                    library={library}
+                    patch={patch}
+                    onDelete={() => setDeleteOpen(true)}
                   />
-                )}
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t("shortNameLabel")} hint={t("shortNameHint")}>
-                  {(id) => (
-                    <Input id={id} className="bg-background font-mono text-sm" value={draft.shortName} readOnly />
-                  )}
-                </Field>
-                <Field label={t("addressLabel")} hint={t("addressHint")}>
-                  {(id) => (
-                    <div className="flex gap-1.5">
-                      <Input
-                        id={id}
-                        className="bg-background font-mono text-sm"
-                        value={`https://${library.address}`}
-                        readOnly
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        aria-label={t("copyAddress")}
-                        onClick={copyAddress}
-                      >
-                        <Copy />
-                      </Button>
-                    </div>
-                  )}
-                </Field>
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              id="sec-branding"
-              className="scroll-mt-40"
-              icon={SECTION_ICONS.branding}
-              title={t("sections.branding")}
-              description={t("brandingDescription")}
-              aside={<SectionStateChip state={sectionState(library, "branding")} />}
-              data-section-state={sectionState(library, "branding")}
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t("logoDarkLabel")} error={!draft.logoDark.trim() ? t("logoDarkError") : null}>
-                  {(id, invalid) => (
-                    <Input
-                      id={id}
-                      className="bg-background font-mono text-sm"
-                      value={draft.logoDark}
-                      aria-invalid={invalid || undefined}
-                      placeholder="https://…/logo-dark.svg"
-                      onChange={(e) => patch({ logoDark: e.target.value })}
-                    />
-                  )}
-                </Field>
-                <Field label={t("logoLightLabel")} suffix={t("optional")}>
-                  {(id) => (
-                    <Input
-                      id={id}
-                      className="bg-background font-mono text-sm"
-                      value={draft.logoLight}
-                      placeholder="https://…/logo-light.svg"
-                      onChange={(e) => patch({ logoLight: e.target.value })}
-                    />
-                  )}
-                </Field>
-              </div>
-              <Field label={t("faviconLabel")} error={!draft.favicon.trim() ? t("faviconError") : null}>
-                {(id, invalid) => (
-                  <Input
-                    id={id}
-                    className="bg-background font-mono text-sm"
-                    value={draft.favicon}
-                    aria-invalid={invalid || undefined}
-                    placeholder="https://…/favicon.ico"
-                    onChange={(e) => patch({ favicon: e.target.value })}
-                  />
-                )}
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <ColourField
-                  label={t("accentLabel")}
-                  hint={t("accentHint")}
-                  pickerLabel={t("pickAccent")}
-                  value={draft.accent}
-                  onChange={(accent) => patch({ accent })}
-                />
-                <ColourField
-                  label={t("secondaryLabel")}
-                  hint={t("secondaryHint")}
-                  pickerLabel={t("pickSecondary")}
-                  value={draft.secondary}
-                  onChange={(secondary) => patch({ secondary })}
-                />
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              id="sec-languages"
-              className="scroll-mt-40"
-              icon={SECTION_ICONS.languages}
-              title={t("sections.languages")}
-              description={t("languagesDescription")}
-              aside={<SectionStateChip state={sectionState(library, "languages")} />}
-              data-section-state={sectionState(library, "languages")}
-            >
-              <div className="space-y-1.5">
-                <Label>{t("availableLanguages")}</Label>
-                <div className="flex flex-wrap gap-2" role="group" aria-label={t("availableLanguages")}>
-                  {MOCK_LANGUAGES.map((lang) => {
-                    const checked = draft.languages.includes(lang.code);
-                    return (
-                      <Label
-                        key={lang.code}
-                        className={cn(
-                          "flex cursor-pointer items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-all",
-                          checked
-                            ? "border-primary/40 bg-primary/5"
-                            : "border-border/50 hover:border-border/80 hover:bg-muted/30",
-                        )}
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(next) =>
-                            patch({
-                              languages:
-                                next === true
-                                  ? MOCK_LANGUAGES.filter(
-                                      (l) => l.code === lang.code || draft.languages.includes(l.code),
-                                    ).map((l) => l.code)
-                                  : draft.languages.filter((c) => c !== lang.code),
-                            })
-                          }
-                        />
-                        <code className="text-xs font-mono text-muted-foreground">{lang.code}</code>
-                        <span>{lang.name}</span>
-                      </Label>
-                    );
-                  })}
-                </div>
-                {draft.languages.length === 0 ? <FieldError>{t("languagesError")}</FieldError> : null}
-              </div>
-              <Field label={t("defaultLanguage")} hint={t("defaultLanguageHint")} className="max-w-xs">
-                {(id) => (
-                  <Select
-                    value={draft.defaultLanguage || undefined}
-                    disabled={draft.languages.length === 0}
-                    onValueChange={(defaultLanguage) => patch({ defaultLanguage })}
-                  >
-                    <SelectTrigger id={id} className="w-full bg-background">
-                      <SelectValue placeholder={t("selectLanguageFirst")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {draft.languages.map((code) => (
-                        <SelectItem key={code} value={code}>
-                          {code} — {MOCK_LANGUAGES.find((l) => l.code === code)?.name ?? code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </Field>
-            </SectionCard>
-
-            <SectionCard
-              id="sec-danger"
-              className="scroll-mt-40"
-              tone="danger"
-              icon={Trash2}
-              title={t("dangerTitle")}
-              description={t("dangerDescription")}
-            >
-              <Button
-                variant="outline"
-                className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 />
-                {t("dangerTitle")}
-              </Button>
-            </SectionCard>
+                );
+              }
+              const Section = SECTION_COMPONENTS[key];
+              return <Section key={key} library={library} patch={patch} />;
+            })}
           </div>
         </CommandCenterContainer>
       </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="fixed bottom-6 right-6 z-20 shadow-lg"
+        onClick={() => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          void setSection("identity");
+        }}
+      >
+        <ArrowUp />
+        {t("backToTop")}
+      </Button>
 
       {/* Activate confirm */}
       <AlertDialog open={activateOpen} onOpenChange={setActivateOpen}>
@@ -510,14 +331,8 @@ function Workspace({ library }: { library: MockLibrary }) {
         onOpenChange={setDeleteOpen}
         onDeleted={() => router.push("/evidence-libraries")}
       />
-      <span className="sr-only">{tm("prototypeBadge")}</span>
     </div>
   );
-}
-
-function SectionStateChip({ state }: { state: SectionState }) {
-  const t = useTranslations("evidenceLibraryMock.config");
-  return <StatusChip tone={STATE_TONE[state]}>{t(`sectionState.${state}`)}</StatusChip>;
 }
 
 function ActivationBanner({ stageIndex, rev }: { stageIndex: number; rev: string }) {
@@ -626,38 +441,3 @@ function RailLink({
   );
 }
 
-function ColourField({
-  label,
-  hint,
-  pickerLabel,
-  value,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  pickerLabel: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Field label={label} hint={hint}>
-      {(id) => (
-        <div className="flex items-center gap-1.5">
-          <input
-            type="color"
-            aria-label={pickerLabel}
-            value={HEX.test(value) ? value : "#000000"}
-            onChange={(e) => onChange(e.target.value)}
-            className="size-9 shrink-0 cursor-pointer rounded-md border border-border/50 bg-background p-0.5"
-          />
-          <Input
-            id={id}
-            className="bg-background font-mono text-sm"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-          />
-        </div>
-      )}
-    </Field>
-  );
-}
