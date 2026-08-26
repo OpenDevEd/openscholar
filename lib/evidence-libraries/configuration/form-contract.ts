@@ -14,8 +14,11 @@ export type EssentialConfigurationFormContract = {
   fields: {
     name: StringFieldContract;
     shortName: StringFieldContract;
+    tagline: StringFieldContract;
+    description: StringFieldContract;
     logo: StringFieldContract;
     favicon: StringFieldContract;
+    shareImage: StringFieldContract;
     colour: StringFieldContract;
   };
   locales: string[];
@@ -55,8 +58,11 @@ export function getEssentialConfigurationFormContract(): EssentialConfigurationF
     fields: {
       name: readStringContract("/identity/name"),
       shortName: readStringContract("/identity/shortName"),
+      tagline: readStringContract("/identity/tagline"),
+      description: readStringContract("/identity/description"),
       logo: readStringContract("/identity/assets/logoDark"),
       favicon: readStringContract("/identity/assets/favicon"),
+      shareImage: readStringContract("/identity/assets/shareImage"),
       colour: readStringContract("/theme/colors/accent"),
     },
     locales: readLocales(),

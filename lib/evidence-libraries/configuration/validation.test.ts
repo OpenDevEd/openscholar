@@ -16,10 +16,13 @@ const visibleConfiguration = {
   identity: {
     name: "Climate Evidence Library",
     shortName: "Climate Evidence",
+    tagline: "Evidence for climate decisions",
+    description: "A curated library of climate research.",
     baseUrl: "https://climate-lib.libraries.example.test",
     assets: {
       logoDark: "https://assets.example.test/climate-logo.svg",
       favicon: "https://assets.example.test/climate-favicon.ico",
+      shareImage: "https://assets.example.test/climate-share.png",
     },
   },
   theme: {
@@ -32,6 +35,7 @@ const visibleConfiguration = {
     locales: ["en-GB", "fr"],
     defaultLocale: "en-GB",
   },
+  footer: { poweredBy: true },
 } satisfies EssentialConfigurationSections;
 
 const managedConfiguration = {
@@ -158,6 +162,24 @@ describe("validateLibraryConfigStructure", () => {
     expect(
       (withoutZotero.services as Record<string, unknown>).zotero,
     ).not.toHaveProperty("translationUrl");
+    expect(configuration.footer.poweredBy).toBe(true);
+  });
+
+  test("keeps the OpenScholar footer credit on until plans exist", () => {
+    const result = validateEssentialConfiguration({
+      ...visibleConfiguration,
+      footer: { poweredBy: false },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual({
+      pointer: "/footer/poweredBy",
+      section: "footer",
+      keyword: "plan",
+      message: "Available on paid plans.",
+    });
+    expect(validateEssentialConfiguration(visibleConfiguration).valid).toBe(
+      true,
+    );
   });
 
   test("reports visible and managed failures with field pointers", () => {

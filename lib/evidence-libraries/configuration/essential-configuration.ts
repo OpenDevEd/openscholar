@@ -6,10 +6,13 @@ import {
 export type EssentialIdentitySection = {
   name: string;
   shortName: string;
+  tagline?: string;
+  description?: string;
   baseUrl: string;
   assets: {
     logoDark: string;
     favicon: string;
+    shareImage?: string;
   };
 };
 
@@ -25,10 +28,15 @@ export type EssentialLocalizationSection = {
   defaultLocale: string;
 };
 
+export type EssentialFooterSection = {
+  poweredBy: boolean;
+};
+
 export type EssentialConfigurationSections = {
   identity: EssentialIdentitySection;
   theme: EssentialThemeSection;
   localization: EssentialLocalizationSection;
+  footer: EssentialFooterSection;
 };
 
 export type EssentialConfigurationIssue = ValidationIssue;
@@ -49,7 +57,8 @@ export function validateEssentialConfiguration(
 } {
   const structural = validateEssentialConfigStructure(sections);
   const issues = [...structural.issues];
-  const identity = objectValue(objectValue(sections)?.identity);
+  const root = objectValue(sections);
+  const identity = objectValue(root?.identity);
   if (
     options.expectedBaseUrl !== undefined &&
     typeof identity?.baseUrl === "string" &&
@@ -60,6 +69,16 @@ export function validateEssentialConfiguration(
       section: "identity",
       keyword: "platformAddress",
       message: "The generated public address cannot be changed.",
+    });
+  }
+  // There is no plan model yet. Every library counts as a free plan, so the
+  // "Powered by OpenScholar" footer credit stays on. Plan gating comes later.
+  if (objectValue(root?.footer)?.poweredBy === false) {
+    issues.push({
+      pointer: "/footer/poweredBy",
+      section: "footer",
+      keyword: "plan",
+      message: "Available on paid plans.",
     });
   }
 

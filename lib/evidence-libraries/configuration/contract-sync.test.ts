@@ -20,6 +20,7 @@ const schemaText = `${JSON.stringify({
     identity: { type: "object" },
     theme: { type: "object" },
     localization: { type: "object" },
+    footer: { type: "object" },
   },
 })}\n`;
 

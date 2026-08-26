@@ -140,10 +140,13 @@ export const evidenceLibrarySetupIdentityFields = {
 export const essentialIdentitySectionValidator = v.object({
   name: v.string(),
   shortName: v.string(),
+  tagline: v.optional(v.string()),
+  description: v.optional(v.string()),
   baseUrl: v.string(),
   assets: v.object({
     logoDark: v.string(),
     favicon: v.string(),
+    shareImage: v.optional(v.string()),
   }),
 });
 
@@ -159,10 +162,15 @@ export const essentialLocalizationSectionValidator = v.object({
   defaultLocale: v.string(),
 });
 
+export const essentialFooterSectionValidator = v.object({
+  poweredBy: v.boolean(),
+});
+
 export const essentialConfigurationSectionsValidator = v.object({
   identity: essentialIdentitySectionValidator,
   theme: essentialThemeSectionValidator,
   localization: essentialLocalizationSectionValidator,
+  footer: essentialFooterSectionValidator,
 });
 
 export const evidenceLibraryConfigDraftFields = {

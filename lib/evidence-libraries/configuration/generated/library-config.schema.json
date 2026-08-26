@@ -30,6 +30,15 @@
 					"minLength": 1,
 					"maxLength": 40
 				},
+				"tagline": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 160
+				},
+				"description": {
+					"type": "string",
+					"maxLength": 300
+				},
 				"baseUrl": {
 					"type": "string",
 					"minLength": 1,
@@ -97,6 +106,12 @@
 						"logoStyles": {
 							"default": "",
 							"type": "string"
+						},
+						"shareImage": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 2048,
+							"format": "uri"
 						}
 					},
 					"required": [
@@ -790,6 +805,10 @@
 					"default": "",
 					"type": "string",
 					"maxLength": 500
+				},
+				"poweredBy": {
+					"default": true,
+					"type": "boolean"
 				}
 			},
 			"additionalProperties": false
