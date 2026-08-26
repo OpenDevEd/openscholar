@@ -146,3 +146,16 @@ once the real page has replaced it.
 - Runtime facts: `new-el` `main` at `c353b55b` (`src/config/library-config/schema.ts`,
   `docker/compose.library.yaml`, `src/lib/admin/http.ts`, `src/lib/policy-documents.ts`).
 - Previous sprint transcript lessons: see `docs/agent-sprint-lessons.md` (plan 08 writes it).
+
+## Sprint infrastructure (created 2026-08-26)
+
+| Lane | Worktree | Branch | Convex Cloud deployment | Port |
+|---|---|---|---|---|
+| A · Platform | `openscholar/platform-sprint` | `codex/generic-sections` (then uploads, runtime-updates) | `dev/agents/platform` = `lovable-clownfish-245` | 3011 |
+| B · Runtime | `new-el-runtime-api` | `codex/openscholar-read-api` | none | — |
+| B · Data | `openscholar/data-sprint` | `codex/lane-data` (renamed per plan) | `dev/agents/data` = `bright-stork-673` | 3012 |
+| C · Page | `openscholar/page-sprint` | `codex/lane-page` (renamed per plan) | `dev/agents/page` = `calm-labrador-815` | 3013 |
+
+All three lane deployments expire 2026-09-09, carry daily usage caps, and hold
+the cloud dev env plus the `EL_*` values (each with its own `EL_CONVEX_SITE_URL`).
+Delete them in plan 08.
