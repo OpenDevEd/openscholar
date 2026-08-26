@@ -740,6 +740,23 @@ describe("feature rules", () => {
     expect(sectionProblems(draft, "features")).toEqual(["featureDependency"]);
   });
 
+  it("turns dependants off when a reset takes their requirement away", () => {
+    const draft = readDraft(platformRows);
+    draft.exports.atom = true;
+    draft.features.atomFeed = true;
+    draft.localization.locales = ["en-GB", "fr"];
+    draft.features.languageSwitcher = true;
+    const afterCitations = resetSection(draft, platformRows, "citations");
+    expect(afterCitations.features.atomFeed).toBe(false);
+    expect(afterCitations.features.languageSwitcher).toBe(true);
+    const savedOneLanguage = platformRows.map((row) =>
+      row.sectionKey === "localization"
+        ? { sectionKey: "localization", payload: { locales: ["en-GB"], defaultLocale: "en-GB" } }
+        : row,
+    );
+    expect(resetSection(draft, savedOneLanguage, "languages").features.languageSwitcher).toBe(false);
+  });
+
   it("turns dependent features off when their requirement goes away", () => {
     const draft = readDraft(platformRows);
     draft.features.collections = false;

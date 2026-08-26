@@ -419,7 +419,7 @@ export type ShownFeature = (typeof FEATURE_GROUPS)[number]["features"][number];
 /**
  * Why a feature cannot be on right now, or null. Each rule is one the runtime
  * enforces at load time in new-el `src/config/library-config/schema.ts`
- * (main, 7c269e10); the pinned JSON schema does not carry cross-field rules
+ * lines 1569-1750 (main, 7c269e10); the pinned JSON schema does not carry cross-field rules
  * (`catalogs.validation.crossFieldRulesInJsonSchema` is false).
  */
 export type FeatureBlock =
@@ -1298,5 +1298,6 @@ export function resetSection(
       next.analytics = saved.analytics;
       break;
   }
-  return next;
+  // A reset can take away what a feature needs (an export, a second language, a search option).
+  return settleFeatures(next);
 }
