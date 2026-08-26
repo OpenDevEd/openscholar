@@ -4,6 +4,7 @@
  */
 
 import {
+  AI_MODELS,
   CURRENT_YEAR,
   DRAFT_SECTIONS,
   FEATURE_DEPENDENCIES,
@@ -262,8 +263,13 @@ export function makeConfig(
       ...(Object.fromEntries(FEATURE_KEYS.map((k) => [k, false])) as Record<FeatureKey, boolean>),
       collections: true,
       authorFilter: true,
-      aiProvider: "",
-      aiModel: "",
+      aiSettings: {
+        billing: "credits",
+        openRouterKey: "",
+        providerKeys: {},
+        models: ["openai/gpt-5.6-luna", "google/gemini-3.7-flash", "x-ai/grok-4.6"],
+        defaultModel: "openai/gpt-5.6-luna",
+      },
     },
     sources: {
       zotero: [],
@@ -373,8 +379,13 @@ function fullConfig(): LibraryConfig {
     mapPage: true,
     yearsDropdown: true,
     downloads: true,
-    aiProvider: "anthropic",
-    aiModel: "claude-sonnet-4-6",
+    aiSettings: {
+      billing: "openrouter",
+      openRouterKey: "sk-or-v1-8f3a…c21e",
+      providerKeys: {},
+      models: ["openai/gpt-5.6-luna", "google/gemini-3.7-flash"],
+      defaultModel: "openai/gpt-5.6-luna",
+    },
   };
   c.sources.zotero = [
     { id: "src_1", label: "AI in Education (main group)", auth: "zotero", groupId: "2405685", apiKey: "", enabled: true, writeback: true, lastSync: "2026-08-26 06:00", records: 1284 },
@@ -518,7 +529,17 @@ export function sectionProblems(c: LibraryConfig, key: SectionKey): string[] {
       for (const [k, deps] of Object.entries(FEATURE_DEPENDENCIES) as [FeatureKey, FeatureKey[]][]) {
         if (c.features[k] && deps.some((d) => !c.features[d])) out.push("dependency");
       }
-      if (c.features.ai && (!c.features.aiProvider || !c.features.aiModel)) out.push("aiModel");
+      if (c.features.ai) {
+        const ai = c.features.aiSettings;
+        if (ai.billing === "openrouter" && !ai.openRouterKey.trim()) out.push("aiKey");
+        const usable = ai.models.filter((id) => {
+          if (ai.billing !== "providers") return true;
+          const provider = AI_MODELS.find((m) => m.id === id)?.provider;
+          return Boolean(provider && ai.providerKeys[provider]?.trim());
+        });
+        if (usable.length === 0) out.push("aiModels");
+        if (ai.defaultModel && !usable.includes(ai.defaultModel)) out.push("aiDefault");
+      }
       if (c.features.languageSwitcher && c.localization.locales.length < 2) out.push("languageSwitcher");
       if (c.features.downloads && !c.citations.ris && !c.citations.bibtex) out.push("downloads");
       if (c.features.atomFeed && !c.citations.atom) out.push("atom");

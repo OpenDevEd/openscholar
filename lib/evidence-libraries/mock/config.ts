@@ -95,14 +95,29 @@ export type SearchScope = (typeof SEARCH_SCOPES)[number];
 
 export type InstitutionFacetMode = "hidden" | "facet" | "facet-with-featured-value";
 
-export const AI_PROVIDERS = {
-  openai: ["gpt-5.4", "gpt-5.4-mini"],
-  google: ["gemini-2.5-pro", "gemini-2.5-flash"],
-  anthropic: ["claude-sonnet-4-6", "claude-haiku-4-5"],
-  mistral: ["mistral-large-latest", "mistral-small-latest"],
-  deepseek: ["deepseek-v4-pro", "deepseek-v4-flash"],
-} as const;
-export type AiProvider = keyof typeof AI_PROVIDERS;
+/** OpenScholar's model list. Visitors pick from the models the owner enables. */
+export const AI_MODELS = [
+  { id: "openai/gpt-5.6-luna", name: "GPT-5.6 Luna", provider: "openai" },
+  { id: "google/gemini-3.7-flash", name: "Gemini 3.7 Flash", provider: "google" },
+  { id: "x-ai/grok-4.6", name: "Grok 4.6", provider: "xai" },
+] as const;
+export type AiModelId = (typeof AI_MODELS)[number]["id"];
+
+/** Providers an owner may bring their own key for. */
+export const AI_KEY_PROVIDERS = ["openai", "google", "xai"] as const;
+export type AiKeyProvider = (typeof AI_KEY_PROVIDERS)[number];
+
+/** How AI answers are paid for. Exactly one path per library. */
+export type AiBilling = "credits" | "openrouter" | "providers";
+
+export type AiSettings = {
+  billing: AiBilling;
+  openRouterKey: string;
+  providerKeys: Partial<Record<AiKeyProvider, string>>;
+  /** Models visitors can choose from. */
+  models: AiModelId[];
+  defaultModel: AiModelId | "";
+};
 
 export const FEATURE_KEYS = [
   "themeSwitcher",
@@ -260,10 +275,7 @@ export type LibraryConfig = {
     collectionsExpanded: boolean;
   };
   citations: { showUrl: boolean; ris: boolean; bibtex: boolean; atom: boolean };
-  features: Record<FeatureKey, boolean> & {
-    aiProvider: AiProvider | "";
-    aiModel: string;
-  };
+  features: Record<FeatureKey, boolean> & { aiSettings: AiSettings };
   sources: { zotero: ZoteroSource[]; tagRules: Record<TagRuleKey, string[]> };
   localization: {
     locales: string[];

@@ -2488,7 +2488,6 @@
         "featuredInstitution": "Name the featured institution.",
         "years": "The first year must be before the last year.",
         "dependency": "A feature is on but something it needs is off.",
-        "aiModel": "Choose an AI provider and model.",
         "languageSwitcher": "The language switcher needs at least two languages.",
         "downloads": "Downloads need RIS or BibTeX exports on.",
         "atom": "The Atom feed needs the Atom export on.",
@@ -2497,7 +2496,10 @@
         "locale": "Choose at least one language and a default.",
         "posthog": "PostHog needs a host and a key starting with phc_.",
         "google": "Use a Google ID like G-XXXXXXXX.",
-        "dns": "The DNS records were not found."
+        "dns": "The DNS records were not found.",
+        "aiKey": "Add your OpenRouter key.",
+        "aiModels": "Enable at least one model visitors can use.",
+        "aiDefault": "The default model must be one of the enabled models."
       },
       "identity": {
         "description": "The name people see, the address they visit, and how the library looks when shared.",
@@ -2706,19 +2708,34 @@
         "needsLanguages": "Add at least two languages in the Languages section first.",
         "needsExports": "Turn on RIS or BibTeX in Citations & Exports first.",
         "needsAtom": "Turn on the Atom feed in Citations & Exports first.",
-        "provider": "AI provider",
-        "providerPlaceholder": "Choose a provider",
-        "providerError": "Choose an AI provider and model.",
-        "providers": {
+        "billingHeading": "How AI is paid for",
+        "billing": {
+          "credits": "OpenScholar credits",
+          "openrouter": "My OpenRouter key",
+          "providers": "My own provider keys"
+        },
+        "billingHint": {
+          "credits": "Charged to the owner's OpenScholar account. Nothing to set up.",
+          "openrouter": "Your OpenRouter account pays. All models on the list work.",
+          "providers": "You pay each provider directly. Only models from providers with a key work."
+        },
+        "balance": "Balance: {credits} credits",
+        "topUp": "Top up",
+        "topUpToast": "Buying credits is not part of this prototype.",
+        "openRouterKey": "OpenRouter key",
+        "openRouterKeyHint": "Stored only in the library's private settings. Never shown again.",
+        "providerKey": "{provider} key",
+        "providerNames": {
           "openai": "OpenAI",
           "google": "Google",
-          "anthropic": "Anthropic",
-          "mistral": "Mistral",
-          "deepseek": "DeepSeek"
+          "xai": "xAI"
         },
-        "model": "Model",
-        "modelHint": "Changing the provider picks its first model.",
-        "modelPlaceholder": "Choose a provider first"
+        "modelsHeading": "Models visitors can pick",
+        "modelsHint": "The list comes from OpenScholar. Visitors choose one of these in the chat.",
+        "needsKey": "Add a {provider} key first",
+        "defaultModel": "Default model",
+        "defaultModelPlaceholder": "Enable a model first",
+        "embeddingsNote": "AI search and related records use OpenScholar's shared embedding model. Nothing to set up."
       },
       "navigation": {
         "description": "The links in the top bar of the public site.",
