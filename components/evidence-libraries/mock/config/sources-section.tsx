@@ -1,8 +1,11 @@
 "use client";
 
-import { Check, ChevronDown, ChevronRight, Database, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Database } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { cn } from "@/lib/utils";
+import { SOURCE_STYLES, type SourceStyle, SourceCardByStyle } from "./source-card-styles";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,24 +17,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
 import {
   newId,
   TAG_RULE_KEYS,
   type TagRuleKey,
   type ZoteroSource,
 } from "@/lib/evidence-libraries/mock/config";
-import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
-import { StatusChip } from "../library-status-badge";
-import { Field, InlineNotice } from "../section-card";
 import { AddButton, ChipInput, EmptyList, SubHeading, ToggleRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
-
-/** Stored in `apiKey` when the owner signed in with Zotero instead of pasting a key. */
-const ZOTERO_OAUTH = "zotero-oauth";
 
 const TAG_RULE_COPY: Record<TagRuleKey, { label: string; hint: string }> = {
   hidden: { label: "hiddenLabel", hint: "hiddenHint" },
@@ -47,6 +40,10 @@ export function SourcesSection({ library, patch }: SectionProps) {
   const sources = library.draft.sources;
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
+  const [style, setStyle] = useQueryState(
+    "sourceStyle",
+    parseAsStringLiteral(SOURCE_STYLES).withDefault("ledger"),
+  );
 
   function updateSource(id: string, update: (row: ZoteroSource) => void) {
     patch((d) => {
@@ -85,13 +82,34 @@ export function SourcesSection({ library, patch }: SectionProps) {
         >
           {t("groupsHeading")}
         </SubHeading>
+        {/* Mock-only: compare card styles */}
+        <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground" data-style-switch>
+          <span className="mr-1">Style:</span>
+          {SOURCE_STYLES.map((key, i) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={style === key}
+              onClick={() => void setStyle(key)}
+              className={cn(
+                "rounded-full border px-2 py-0.5 capitalize",
+                style === key
+                  ? "border-primary/40 bg-primary/10 font-medium text-primary"
+                  : "border-border/50 hover:text-foreground",
+              )}
+            >
+              {i + 1} · {key}
+            </button>
+          ))}
+        </div>
         {sources.zotero.length === 0 ? (
           <EmptyList>{t("noGroups")}</EmptyList>
         ) : (
           <div className="space-y-3">
             {sources.zotero.map((source) => (
-              <SourceCard
+              <SourceCardByStyle
                 key={source.id}
+                style={style as SourceStyle}
                 libraryId={library.id}
                 source={source}
                 onChange={(update) => updateSource(source.id, update)}
@@ -174,194 +192,3 @@ export function SourcesSection({ library, patch }: SectionProps) {
   );
 }
 
-function SourceCard({
-  libraryId,
-  source,
-  onChange,
-  onRemove,
-}: {
-  libraryId: string;
-  source: ZoteroSource;
-  onChange: (update: (row: ZoteroSource) => void) => void;
-  onRemove: () => void;
-}) {
-  const t = useTranslations("evidenceLibraryMock.config.sources");
-  const syncSource = useEvidenceLibraryMockStore((s) => s.syncSource);
-  const run = useEvidenceLibraryMockStore((s) => s.syncing[libraryId]);
-  const thisSyncing = run?.sourceId === source.id;
-  const anySyncing = run !== undefined;
-  const connected =
-    source.auth === "zotero" ? source.apiKey === ZOTERO_OAUTH : source.apiKey.trim().length > 0;
-  const groupIdMissing = !source.groupId.trim();
-  const keyMissing = source.auth === "apiKey" && !source.apiKey.trim();
-  const ready = connected && !groupIdMissing;
-
-  return (
-    <div
-      className="space-y-4 rounded-xl border border-border/50 bg-background p-4"
-      data-source-id={source.id}
-      data-sync-state={thisSyncing ? "syncing" : source.enabled ? "on" : "off"}
-    >
-      <div className="flex items-center gap-2">
-        <Input
-          aria-label={t("labelLabel")}
-          className="max-w-xs bg-background font-medium"
-          value={source.label}
-          placeholder={t("labelPlaceholder")}
-          onChange={(e) =>
-            onChange((row) => {
-              row.label = e.target.value;
-            })
-          }
-        />
-        {thisSyncing ? (
-          <StatusChip tone="running">{t("statusSyncing")}</StatusChip>
-        ) : !ready ? (
-          <StatusChip tone="warning">{t("statusIncomplete")}</StatusChip>
-        ) : (
-          <StatusChip tone={source.enabled ? "success" : "neutral"}>
-            {source.enabled ? t("statusOn") : t("statusOff")}
-          </StatusChip>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="ml-auto text-muted-foreground hover:text-destructive"
-          aria-label={t("removeSource")}
-          onClick={onRemove}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t("authLabel")}>
-          {(id) => (
-            <Select
-              value={source.auth}
-              onValueChange={(auth) =>
-                onChange((row) => {
-                  row.auth = auth as ZoteroSource["auth"];
-                  row.apiKey = "";
-                })
-              }
-            >
-              <SelectTrigger id={id} className="w-full bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="zotero">{t("authZotero")}</SelectItem>
-                <SelectItem value="apiKey">{t("authApiKey")}</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </Field>
-        {source.auth === "zotero" ? (
-          <Field label={t("accountLabel")}>
-            {() =>
-              source.apiKey === ZOTERO_OAUTH ? (
-                <p
-                  className="flex h-9 items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400"
-                  data-zotero-connected
-                >
-                  <Check className="h-4 w-4" />
-                  {t("connectedAs", { handle: "@aiined" })}
-                </p>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    onChange((row) => {
-                      row.apiKey = ZOTERO_OAUTH;
-                    })
-                  }
-                >
-                  {t("connectZotero")}
-                </Button>
-              )
-            }
-          </Field>
-        ) : (
-          <Field label={t("apiKeyLabel")} hint={t("apiKeyHint")} error={keyMissing ? t("apiKeyError") : null}>
-            {(id, invalid) => (
-              <Input
-                id={id}
-                type="password"
-                autoComplete="off"
-                className="bg-background font-mono text-sm"
-                value={source.apiKey}
-                aria-invalid={invalid || undefined}
-                onChange={(e) =>
-                  onChange((row) => {
-                    row.apiKey = e.target.value;
-                  })
-                }
-              />
-            )}
-          </Field>
-        )}
-        <Field label={t("groupIdLabel")} hint={t("groupIdHint")} error={groupIdMissing ? t("groupIdError") : null}>
-          {(id, invalid) => (
-            <Input
-              id={id}
-              inputMode="numeric"
-              className="bg-background font-mono text-sm"
-              value={source.groupId}
-              placeholder="2405685"
-              aria-invalid={invalid || undefined}
-              onChange={(e) =>
-                onChange((row) => {
-                  row.groupId = e.target.value.replace(/\D/g, "");
-                })
-              }
-            />
-          )}
-        </Field>
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        <ToggleRow
-          label={t("enabledLabel")}
-          checked={source.enabled}
-          onChange={(enabled) =>
-            onChange((row) => {
-              row.enabled = enabled;
-            })
-          }
-        />
-        <ToggleRow
-          label={t("writebackLabel")}
-          checked={source.writeback}
-          onChange={(writeback) =>
-            onChange((row) => {
-              row.writeback = writeback;
-            })
-          }
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3">
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="text-xs text-muted-foreground" data-last-sync={source.lastSync ?? "never"}>
-            {source.lastSync
-              ? t("lastSync", { when: source.lastSync, records: source.records })
-              : t("neverSynced")}
-          </p>
-          {thisSyncing ? <Progress value={run.percent} className="max-w-xs" /> : null}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={anySyncing || !ready}
-          onClick={() => syncSource(libraryId, source.id)}
-        >
-          {thisSyncing ? <Spinner /> : <RefreshCw />}
-          {thisSyncing ? t("syncingPercent", { percent: run.percent }) : t("syncNow")}
-        </Button>
-      </div>
-    </div>
-  );
-}

@@ -2926,7 +2926,19 @@
         "publishHint": "The attached PDF is made public. Keep at least one tag.",
         "publishError": "Keep at least one publish tag.",
         "statusIncomplete": "Not set up",
-        "accountLabel": "Zotero account"
+        "accountLabel": "Zotero account",
+        "collapse": "Hide details",
+        "expand": "Show details",
+        "stepConnect": "Connect",
+        "stepGroup": "Choose the group",
+        "stepOptions": "Options",
+        "writebackShort": "writes back",
+        "edit": "Edit source",
+        "editDescription": "Connection, group, and import options.",
+        "statRecords": "Records",
+        "statLastSync": "Last sync",
+        "statGroup": "Group ID",
+        "neverSyncedShort": "Never"
       },
       "languages": {
         "description": "Which languages the public site offers, which one it opens in, and the order it tries them.",
