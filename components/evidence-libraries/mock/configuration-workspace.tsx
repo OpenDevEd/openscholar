@@ -78,6 +78,7 @@ import { SourcesSection } from "./config/sources-section";
 import { TeamSection } from "./config/team-section";
 import { ThemeSection } from "./config/theme-section";
 import { VersionsSection } from "./config/versions-section";
+import { useScrollSpy } from "./config/use-scroll-spy";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { LibraryNotFound } from "./library-not-found";
 import { STATUS_DOT, StatusChip } from "./library-status-badge";
@@ -147,6 +148,9 @@ function Workspace({ library }: { library: MockLibrary }) {
     "section",
     parseAsStringLiteral(SECTION_KEYS).withDefault("identity"),
   );
+  // Matches the sections' scroll-mt-40 (160px) so a clicked section is the one highlighted.
+  const spied = useScrollSpy(SECTION_KEYS, 160);
+  const current = spied ?? section;
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -248,7 +252,7 @@ function Workspace({ library }: { library: MockLibrary }) {
                         key={key}
                         href={`#sec-${key}`}
                         icon={SECTION_ICONS[key]}
-                        active={section === key}
+                        active={current === key}
                         onClick={() => jumpTo(key)}
                         danger={key === "danger"}
                       >
