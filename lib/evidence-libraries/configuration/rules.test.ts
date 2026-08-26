@@ -518,12 +518,12 @@ describe("changedSectionRows for the content sections", () => {
   it("resets the navigation card including the navbar search switch", () => {
     const draft = readDraft(contentRows);
     draft.features.navbarSearch = true;
-    draft.features.downloads = true;
+    draft.features.themeSwitcher = true;
     draft.navigation.links = [];
     const reset = resetSection(draft, contentRows, "navigation");
     expect(reset.navigation.links).toHaveLength(1);
     expect(reset.features.navbarSearch).toBe(false);
-    expect(reset.features.downloads).toBe(true);
+    expect(reset.features.themeSwitcher).toBe(true);
   });
 
   it("counts funder logos as uploads", () => {
