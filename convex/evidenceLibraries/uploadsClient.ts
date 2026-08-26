@@ -46,8 +46,10 @@ async function requestObjects(
     headers?: Record<string, string>;
     method: "DELETE" | "POST";
     path: string;
+    /** Return null instead of throwing when the bucket does not exist. */
+    allowMissingBucket?: boolean;
   },
-): Promise<Response> {
+): Promise<Response | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -68,6 +70,12 @@ async function requestObjects(
         "STORAGE_UNAVAILABLE",
         "The file store could not be reached",
       );
+    }
+    if (
+      request.allowMissingBucket &&
+      (response.status === 400 || response.status === 404)
+    ) {
+      return null;
     }
     if (!response.ok) {
       throw new StorageSetupError(
@@ -174,7 +182,9 @@ async function listObjectNames(
       path: bucketPath(`list/${EVIDENCE_LIBRARY_UPLOAD_BUCKET}`),
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ prefix, limit: LIST_PAGE_SIZE, offset }),
+      allowMissingBucket: true,
     });
+    if (!response) return names;
     let payload: unknown;
     try {
       payload = await response.json();
@@ -201,7 +211,10 @@ async function listObjectNames(
   }
 }
 
-/** Removes every file the library uploaded. Used at teardown. */
+/**
+ * Removes every file the library uploaded. Used at teardown. A missing
+ * bucket means the library never uploaded anything.
+ */
 export async function deleteLibraryUploads(
   input: StorageInput & { libraryId: string },
 ): Promise<{ deleted: number }> {

@@ -222,6 +222,23 @@ describe("deleteLibraryUpload and deleteLibraryUploads", () => {
     expect(server.requests.filter((r) => r.path.endsWith("/list/openscholar"))).toHaveLength(2);
   });
 
+  it("treats a missing bucket as zero files so teardown can continue", async () => {
+    const fetchImpl: typeof fetch = vi.fn(async () =>
+      jsonResponse(
+        { statusCode: "404", error: "Bucket not found", message: "Bucket not found" },
+        400,
+      ),
+    );
+    const result = await deleteLibraryUploads({
+      storageUrl: STORAGE_ORIGIN,
+      serviceRoleKey: SERVICE_ROLE_KEY,
+      fetchImpl,
+      libraryId: LIBRARY_ID,
+    });
+    expect(result).toEqual({ deleted: 0 });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it("does nothing when the library has no files", async () => {
     const server = createObjectServer();
     const result = await deleteLibraryUploads({
