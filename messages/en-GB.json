@@ -2531,14 +2531,14 @@
       },
       "theme": {
         "description": "Layout, fonts, logos, and colours for the public site.",
-        "layoutLabel": "Layout",
+        "layoutLabel": "Navigation bar",
         "layout": {
-          "small": "Small",
-          "wide": "Wide"
+          "small": "Floating",
+          "wide": "Full width"
         },
         "layoutHint": {
-          "small": "Narrow reading column. Best for text.",
-          "wide": "Uses the full screen. Best for tables and maps."
+          "small": "Inset from the page edges with rounded corners.",
+          "wide": "Runs from edge to edge."
         },
         "modeLabel": "Default mode",
         "modeHint": "What visitors see first. They can switch if the theme switcher is on.",

@@ -23,7 +23,6 @@ import { ChoiceCards, ColourField, FieldGroup, UploadField } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 type Theme = LibraryConfig["theme"];
-const LAYOUTS: Theme["layout"][] = ["small", "wide"];
 const MODES: Theme["defaultMode"][] = ["light", "dark", "system"];
 const ADVANCED_COLOURS: ("backgroundDark" | "backgroundLight" | "cardDark" | "cardLight")[] = [
   "backgroundDark",
@@ -52,16 +51,16 @@ export function ThemeSection({ library, patch }: SectionProps) {
         <div className="space-y-1.5">
           <div className="flex min-h-5 items-center"><Label className="font-normal">{t("layoutLabel")}</Label></div>
           <ChoiceCards
-            columns={1}
-            value={theme.layout}
-            onChange={(v) => set("layout", v)}
-            ariaLabel={t("layoutLabel")}
-            options={LAYOUTS.map((layout) => ({
-              value: layout,
-              label: t(`layout.${layout}`),
-              hint: t(`layoutHint.${layout}`),
-            }))}
-          />
+              value={theme.layout}
+              onChange={(layout) => patch((d) => { d.theme.layout = layout; return d; })}
+              columns={1}
+              options={(["small", "wide"] as const).map((layout) => ({
+                value: layout,
+                label: t(`layout.${layout}`),
+                hint: t(`layoutHint.${layout}`),
+                preview: <NavbarPreview layout={layout} />,
+              }))}
+            />
         </div>
 
         <Field label={t("modeLabel")} hint={t("modeHint")}>
@@ -246,5 +245,35 @@ function FontSelect({
         </Select>
       )}
     </Field>
+  );
+}
+
+/**
+ * Just the navbar, drawn in the app's own tokens: "small" floats inset from
+ * the page edges with rounded corners; "wide" runs edge to edge.
+ */
+function NavbarPreview({ layout }: { layout: "small" | "wide" }) {
+  return (
+    <span
+      aria-hidden
+      data-layout-preview={layout}
+      className="block h-16 w-full overflow-hidden rounded-md border border-border/50 bg-muted/40"
+    >
+      <span
+        className={
+          layout === "small"
+            ? "mx-3 mt-2 flex h-6 items-center gap-2 rounded-md border border-border/60 bg-background px-2 shadow-xs"
+            : "flex h-7 items-center gap-2 border-b border-border/60 bg-background px-3"
+        }
+      >
+        <span className="h-2 w-10 rounded-sm bg-foreground/70" />
+        <span className="ml-auto flex items-center gap-1.5">
+          <span className="h-1.5 w-6 rounded-sm bg-muted-foreground/50" />
+          <span className="h-1.5 w-6 rounded-sm bg-muted-foreground/50" />
+          <span className="h-1.5 w-6 rounded-sm bg-primary/80" />
+          <span className="h-1.5 w-6 rounded-sm bg-muted-foreground/50" />
+        </span>
+      </span>
+    </span>
   );
 }

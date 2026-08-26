@@ -617,6 +617,8 @@ export type ChoiceOption<V extends string> = {
   disabled?: boolean;
   /** Shown as a tooltip / title when disabled. */
   disabledReason?: string;
+  /** Small illustration shown above the label (cards only). */
+  preview?: ReactNode;
 };
 
 /** One highlighted-card look for single choices that need an explanation. */
@@ -665,7 +667,8 @@ export function ChoiceCards<V extends string>({
             title={o.disabled ? o.disabledReason : undefined}
           >
             <RadioGroupItem value={o.value} disabled={o.disabled} className="mt-0.5" />
-            <span className="min-w-0 space-y-0.5">
+            <span className="min-w-0 flex-1 space-y-0.5">
+              {o.preview ? <span className="mb-2 block">{o.preview}</span> : null}
               <span className="block text-sm font-medium">{o.label}</span>
               {o.hint ? <span className="block text-xs text-muted-foreground">{o.hint}</span> : null}
             </span>
