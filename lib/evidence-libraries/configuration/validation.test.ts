@@ -8,11 +8,8 @@ import {
 } from "./assembly";
 import {
   type EssentialConfigurationSections,
-  omitFieldsMissingFromContract,
   validateEssentialConfiguration,
 } from "./essential-configuration";
-import schema from "./generated/library-config.schema.json";
-import { resolveSchemaPointer } from "./section-registry";
 import { validateLibraryConfigStructure } from "./validation";
 
 const visibleConfiguration = {
@@ -124,12 +121,8 @@ describe("validateLibraryConfigStructure", () => {
       valid: true,
       issues: [],
     });
-    const contractDeclaresNewFields =
-      resolveSchemaPointer(schema, "/footer/poweredBy") !== undefined;
     expect(configuration).toMatchObject({
-      identity: contractDeclaresNewFields
-        ? visibleConfiguration.identity
-        : omitFieldsMissingFromContract(visibleConfiguration).identity,
+      identity: visibleConfiguration.identity,
       localization: visibleConfiguration.localization,
       services: {
         database: { url: managedConfiguration.databaseUrl },
@@ -169,37 +162,7 @@ describe("validateLibraryConfigStructure", () => {
     expect(
       (withoutZotero.services as Record<string, unknown>).zotero,
     ).not.toHaveProperty("translationUrl");
-    expect(configuration.footer.poweredBy).toBe(
-      contractDeclaresNewFields ? true : undefined,
-    );
-  });
-
-  test("drops fields the pinned contract does not declare yet", () => {
-    const pinned = omitFieldsMissingFromContract(visibleConfiguration, {
-      properties: {
-        identity: { properties: { assets: { properties: {} } } },
-        footer: { properties: {} },
-      },
-    });
-    expect(pinned.identity).not.toHaveProperty("tagline");
-    expect(pinned.identity).not.toHaveProperty("description");
-    expect(pinned.identity.assets).not.toHaveProperty("shareImage");
-    expect(pinned).not.toHaveProperty("footer");
-    expect(pinned.identity.name).toBe(visibleConfiguration.identity.name);
-
-    const synced = omitFieldsMissingFromContract(visibleConfiguration, {
-      properties: {
-        identity: {
-          properties: {
-            tagline: {},
-            description: {},
-            assets: { properties: { shareImage: {} } },
-          },
-        },
-        footer: { properties: { poweredBy: {} } },
-      },
-    });
-    expect(synced).toEqual(visibleConfiguration);
+    expect(configuration.footer.poweredBy).toBe(true);
   });
 
   test("keeps the OpenScholar footer credit on until plans exist", () => {

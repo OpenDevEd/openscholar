@@ -1,7 +1,6 @@
 import schema from "./generated/library-config.schema.json";
 import {
   type EssentialConfigurationSections,
-  omitFieldsMissingFromContract,
 } from "./essential-configuration";
 import {
   type ValidationIssue,
@@ -126,7 +125,7 @@ export function assembleEvidenceLibraryConfiguration({
   managed: ManagedEvidenceLibraryConfiguration;
   now?: Date;
 }): AssembledEvidenceLibraryConfiguration {
-  const visible = omitFieldsMissingFromContract(sections);
+  const visible = sections;
   const candidate = applyGeneratedDefaults(
     schema as JsonSchemaNode,
     {
