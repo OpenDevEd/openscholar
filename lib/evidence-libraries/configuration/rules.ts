@@ -23,6 +23,12 @@ import {
 } from "./links";
 import { resolveSchemaPointer } from "./section-registry";
 import type { ZoteroSourceEntry } from "@/convex/zotero/sourceEntry";
+import {
+  TAG_RULE_KEYS,
+  type TagRuleKey,
+  type TagRules,
+  tagRuleIssue,
+} from "@/components/evidence-libraries/configuration/sections/tag-rules";
 
 export type SectionRow = { sectionKey: string; payload: unknown };
 
@@ -90,7 +96,7 @@ type SectionProblem =
   | "defaultScope"
   | "featuredInstitution"
   | "years"
-  | "publishTag"
+  | "tagRules"
   | "featureDependency"
   | "languages"
   | "posthog"
@@ -216,7 +222,7 @@ export const INSTITUTION_MODES = schemaEnum<"hidden" | "facet" | "facet-with-fea
 );
 export type InstitutionMode = (typeof INSTITUTION_MODES)[number];
 /** The runtime's default scope list: every scope, minus full text when full-text search is off. */
-export const defaultScopes = (fullText: boolean): SearchScope[] =>
+const defaultScopes = (fullText: boolean): SearchScope[] =>
   SEARCH_SCOPES.filter((scope) => fullText || scope !== "documents");
 export const currentYear = () => new Date().getUTCFullYear();
 
@@ -352,10 +358,10 @@ export type SearchDraft = {
 export type FiltersDraft = {
   institution: { mode: InstitutionMode; label: string; featuredValue: string };
   collectionsExpanded: boolean;
-  years: { enabled: boolean; minimum: number; maximum: number };
+  /** A cleared year box is undefined until the owner types a year again. */
+  years: { enabled: boolean; minimum: number | undefined; maximum: number | undefined };
 };
-export type CollectionDraft = { id: string; title?: string; enabled?: boolean; order?: number };
-export type TagRulesDraft = Partial<Record<string, string[]>>;
+type CollectionDraft = { id: string; title?: string; enabled?: boolean; order?: number };
 
 export type LocalizationDraft = {
   locales: Locale[];
@@ -384,7 +390,7 @@ export type ConfigurationDraft = {
   filters: FiltersDraft;
   sources: ZoteroSourceEntry[];
   /** `content.tags`: which Zotero tags mean hidden, coming soon, and so on. Edited on the Sources card. */
-  content: { tags: TagRulesDraft };
+  content: { tags: TagRules };
   citations: { showUrl: boolean };
   /** Which export endpoints are on. The URLs are built from the public address on save. */
   exports: Record<ExportFormat, boolean>;
@@ -693,15 +699,15 @@ function readSources(payload: unknown): ZoteroSourceEntry[] {
     }));
 }
 
+// Only the tag rules the runtime knows; anything else would fail the strict `content` row.
 function readContent(payload: unknown): ConfigurationDraft["content"] {
   const tags = record(record(payload).tags);
-  return {
-    tags: Object.fromEntries(
-      Object.entries(tags)
-        .filter(([, value]) => Array.isArray(value))
-        .map(([key, value]) => [key, (value as unknown[]).filter((tag): tag is string => typeof tag === "string")]),
-    ),
-  };
+  const known: TagRules = {};
+  for (const key of TAG_RULE_KEYS) {
+    const value = tags[key];
+    if (Array.isArray(value)) known[key] = value.filter((tag): tag is string => typeof tag === "string");
+  }
+  return { tags: known };
 }
 
 /** Builds the page draft from the saved rows. Missing rows get defaults. */
@@ -915,7 +921,7 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
               : undefined,
         }),
         collectionsExpanded: draft.filters.collectionsExpanded,
-        years: { ...draft.filters.years },
+        years: compact({ ...draft.filters.years }),
       };
     case "sources":
       return draft.sources.map((source) => ({ ...source }));
@@ -1151,7 +1157,9 @@ export function sectionProblems(
       const { minimum, maximum } = filters.years;
       if (
         filters.years.enabled &&
-        (minimum > maximum ||
+        (minimum === undefined ||
+          maximum === undefined ||
+          minimum > maximum ||
           minimum < SCHEMA_LIMITS.filters.yearMinimum ||
           maximum > currentYear() ||
           !Number.isInteger(minimum) ||
@@ -1162,8 +1170,12 @@ export function sectionProblems(
       break;
     }
     case "sources":
-      if ((draft.content.tags.publish ?? []).length === 0 && "publish" in draft.content.tags) {
-        problems.push("publishTag");
+      if (
+        (Object.entries(draft.content.tags) as [TagRuleKey, string[]][]).some(
+          ([key, tags]) => tagRuleIssue(key, tags) !== null,
+        )
+      ) {
+        problems.push("tagRules");
       }
       break;
     case "citations":

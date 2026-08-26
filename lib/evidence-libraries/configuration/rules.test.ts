@@ -609,10 +609,25 @@ describe("sectionProblems for the discovery sections", () => {
     expect(sectionProblems(draft, "search")).toEqual([]);
   });
 
-  it("flags an empty publish tag rule", () => {
+  it("flags a broken tag rule and drops tag keys the runtime does not know", () => {
     const draft = readDraft(discoveryRows);
     draft.content.tags.publish = [];
-    expect(sectionProblems(draft, "sources")).toEqual(["publishTag"]);
+    expect(sectionProblems(draft, "sources")).toEqual(["tagRules"]);
+    const stray = readDraft([
+      ...discoveryRows.filter((row) => row.sectionKey !== "content"),
+      { sectionKey: "content", payload: { tags: { hidden: ["hide"], bogus: ["x"] } } },
+    ]);
+    expect(stray.content.tags).toEqual({ hidden: ["hide"] });
+  });
+
+  it("treats a cleared year box as a problem and never writes it", () => {
+    const draft = readDraft(discoveryRows);
+    draft.filters.years.maximum = undefined;
+    expect(sectionProblems(draft, "search")).toEqual(["years"]);
+    draft.filters.years.enabled = false;
+    expect(sectionProblems(draft, "search")).toEqual([]);
+    const rows = changedSectionRows(draft, discoveryRows);
+    expect((rows[0]?.payload as { years: object }).years).toEqual({ enabled: false, minimum: 1990 });
   });
 });
 
