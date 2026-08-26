@@ -2248,7 +2248,6 @@
     "removeFailed": "无法移除此群组。请重试。",
     "public": "公开",
     "private": "私有",
-    "records": "记录",
     "recordsCount": "{count} 条记录",
     "connectedBy": "连接者",
     "health": {

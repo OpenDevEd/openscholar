@@ -2248,7 +2248,6 @@
     "removeFailed": "Impossible de retirer ce groupe. Réessayez.",
     "public": "Public",
     "private": "Privé",
-    "records": "Notices",
     "recordsCount": "{count} notices",
     "connectedBy": "Connecté par",
     "health": {

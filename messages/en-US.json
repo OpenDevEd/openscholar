@@ -2274,7 +2274,6 @@
     "removeFailed": "Could not remove this group. Try again.",
     "public": "Public",
     "private": "Private",
-    "records": "Records",
     "recordsCount": "{count} records",
     "connectedBy": "Connected by",
     "health": {

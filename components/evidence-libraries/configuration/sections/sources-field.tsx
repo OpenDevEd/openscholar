@@ -204,10 +204,6 @@ export function SourcesField({ libraryId, value, onChange, tags, onTagsChange }:
                           <div className="inline-flex gap-1.5">
                             <dd>{group.isPublic ? t("public") : t("private")}</dd>
                           </div>
-                          <div className="inline-flex gap-1.5">
-                            <dt className="text-muted-foreground">{t("records")}</dt>
-                            <dd>{group.itemCount.toLocaleString()}</dd>
-                          </div>
                           {group.connectedByZoteroUsername ? (
                             <div className="inline-flex gap-1.5">
                               <dt className="text-muted-foreground">{t("connectedBy")}</dt>
@@ -317,8 +313,9 @@ function GroupPickerList({
           >
             <span className="min-w-0">
               <span className="block truncate font-medium">{group.name}</span>
-              <span className="block text-xs text-muted-foreground">
-                {group.isPublic ? t("public") : t("private")} · {t("recordsCount", { count: group.itemCount })}
+              <span className="flex gap-3 text-xs text-muted-foreground">
+                <span>{group.isPublic ? t("public") : t("private")}</span>
+                <span>{t("recordsCount", { count: group.itemCount })}</span>
               </span>
             </span>
             {picker.connecting === group.id ? <Spinner className="h-4 w-4" /> : <Badge variant="outline">{t("add")}</Badge>}

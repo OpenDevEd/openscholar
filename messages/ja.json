@@ -2248,7 +2248,6 @@
     "removeFailed": "このグループを削除できませんでした。もう一度お試しください。",
     "public": "公開",
     "private": "非公開",
-    "records": "レコード",
     "recordsCount": "{count} 件",
     "connectedBy": "接続者",
     "health": {

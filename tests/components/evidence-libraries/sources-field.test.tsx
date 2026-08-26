@@ -132,7 +132,8 @@ describe("<SourcesField>", () => {
     const rows = screen.getAllByRole("listitem");
     expect(rows[0]).toHaveAttribute("data-health", "ready");
     expect(within(rows[0]).getByText("Climate evidence")).toBeInTheDocument();
-    expect(within(rows[0]).getByText("312")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("evidenceLibrarySources.public")).toBeInTheDocument();
+    expect(within(rows[0]).queryByText("312")).not.toBeInTheDocument();
     expect(rows[1]).toHaveAttribute("data-health", "paused");
 
     const writeBack77 = within(rows[1]).getByRole("switch", { name: "evidenceLibrarySources.writeBack" });

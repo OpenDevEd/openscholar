@@ -2248,7 +2248,6 @@
     "removeFailed": "यह समूह हटाया नहीं जा सका। फिर से कोशिश करें।",
     "public": "सार्वजनिक",
     "private": "निजी",
-    "records": "रिकॉर्ड",
     "recordsCount": "{count} रिकॉर्ड",
     "connectedBy": "जोड़ने वाला",
     "health": {
