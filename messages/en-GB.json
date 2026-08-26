@@ -2943,7 +2943,7 @@
           "google": "Google Analytics"
         },
         "hostLabel": "PostHog host",
-        "hostHint": "Usually https://eu.i.posthog.com or https://us.i.posthog.com.",
+        "hostHint": "Your PostHog address, for example https://us.i.posthog.com or https://eu.i.posthog.com.",
         "hostError": "Enter the PostHog host.",
         "keyLabel": "Project API key",
         "keyHint": "Starts with phc_. Find it in PostHog under Project settings.",
@@ -2954,7 +2954,7 @@
         "gdprNotice": "GDPR mode is always on. Visitors are not tracked until they accept cookies.",
         "providerHint": {
           "none": "No visitor statistics.",
-          "posthog": "Self-hosted or EU cloud PostHog.",
+          "posthog": "PostHog cloud or your own PostHog server.",
           "google": "Google Analytics 4."
         }
       },
