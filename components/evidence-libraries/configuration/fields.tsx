@@ -26,7 +26,6 @@ import {
   Check,
   FileText,
   GripVertical,
-  type LucideIcon,
   ImageIcon,
   Lock,
   Plus,
@@ -39,13 +38,11 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { HEX_COLOUR } from "@/lib/evidence-libraries/configuration/rules";
@@ -317,85 +314,6 @@ export function ColourField({
 }
 
 /* ------------------------------------------------------------------ */
-/* Toggle row                                                          */
-/* ------------------------------------------------------------------ */
-
-export function ToggleRow({
-  label,
-  hint,
-  checked,
-  onChange,
-  disabled,
-  disabledReason,
-  locked,
-  className,
-  ...rest
-}: Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> & {
-  label: ReactNode;
-  hint?: ReactNode;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-  disabledReason?: ReactNode;
-  /** Switch is shown but cannot change. */
-  locked?: boolean;
-}) {
-  const id = useId();
-  const control = (
-    <Switch
-      id={id}
-      checked={checked}
-      disabled={disabled || locked}
-      onCheckedChange={onChange}
-      aria-describedby={hint ? `${id}-hint` : undefined}
-    />
-  );
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-4 rounded-lg border px-3 py-2.5",
-        disabled || locked
-          ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
-          : "border-border/50 bg-background",
-        className,
-      )}
-      data-checked={checked}
-      data-disabled={disabled || locked || undefined}
-      {...rest}
-    >
-      <div className="min-w-0 space-y-0.5">
-        <Label htmlFor={id} className="text-sm font-medium">
-          {label}
-        </Label>
-        {hint ? (
-          <p id={`${id}-hint`} className="text-xs text-muted-foreground">
-            {hint}
-          </p>
-        ) : null}
-        {disabled && disabledReason ? (
-          <p className="text-xs text-amber-700 dark:text-amber-400" data-reason>
-            {disabledReason}
-          </p>
-        ) : null}
-      </div>
-      {locked && disabledReason ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0} className="flex items-center gap-2">
-              <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-              {control}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{disabledReason}</TooltipContent>
-        </Tooltip>
-      ) : (
-        control
-      )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Lists                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -521,84 +439,10 @@ export function EmptyList({ children }: { children: ReactNode }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Chips                                                               */
-/* ------------------------------------------------------------------ */
-
-export function ChipInput({
-  label,
-  hint,
-  values,
-  onChange,
-  placeholder,
-  error,
-}: {
-  label: ReactNode;
-  hint?: ReactNode;
-  values: string[];
-  onChange: (values: string[]) => void;
-  placeholder?: string;
-  error?: ReactNode | null;
-}) {
-  const t = useTranslations("evidenceLibraryConfiguration.fields");
-  const [text, setText] = useState("");
-  function commit() {
-    const v = text.trim();
-    if (v && !values.includes(v)) onChange([...values, v]);
-    setText("");
-  }
-  return (
-    <Field label={label} hint={hint} error={error}>
-      {(id, invalid) => (
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5",
-            invalid && "border-destructive/50",
-          )}
-        >
-          {values.map((v) => (
-            <span
-              key={v}
-              className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 font-mono text-xs"
-            >
-              {v}
-              <button
-                type="button"
-                aria-label={t("removeChip", { value: v })}
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => onChange(values.filter((x) => x !== v))}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-          <input
-            id={id}
-            value={text}
-            placeholder={placeholder}
-            className="min-w-24 flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
-            onChange={(e) => setText(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === ",") {
-                e.preventDefault();
-                commit();
-              }
-              if (e.key === "Backspace" && !text && values.length) {
-                onChange(values.slice(0, -1));
-              }
-            }}
-          />
-        </div>
-      )}
-    </Field>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Choices                                                             */
 /* ------------------------------------------------------------------ */
 
-export type ChoiceOption<V extends string> = {
+type ChoiceOption<V extends string> = {
   value: V;
   label: ReactNode;
   hint?: ReactNode;
@@ -669,60 +513,6 @@ export function ChoiceCards<V extends string>({
   );
 }
 
-/** One chip look for multi-select lists (languages, scopes, models). */
-export function ChoiceChips<V extends string>({
-  values,
-  onChange,
-  options,
-  ariaLabel,
-  className,
-}: {
-  values: V[];
-  onChange: (values: V[]) => void;
-  options: ChoiceOption<V>[];
-  ariaLabel: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex flex-wrap gap-2", className)} role="group" aria-label={ariaLabel}>
-      {options.map((o) => {
-        const checked = values.includes(o.value);
-        return (
-          <Label
-            key={o.value}
-            data-value={o.value}
-            data-checked={checked}
-            data-disabled={o.disabled || undefined}
-            title={o.disabled ? o.disabledReason : undefined}
-            className={cn(
-              "flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-colors",
-              o.disabled
-                ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
-                : checked
-                  ? "cursor-pointer border-primary/40 bg-primary/5"
-                  : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
-            )}
-          >
-            <Checkbox
-              checked={checked}
-              disabled={o.disabled}
-              onCheckedChange={(next) =>
-                onChange(
-                  next === true
-                    ? options.filter((x) => x.value === o.value || values.includes(x.value)).map((x) => x.value)
-                    : values.filter((v) => v !== o.value),
-                )
-              }
-            />
-            {o.code ? <code className="font-mono text-xs text-muted-foreground">{o.code}</code> : null}
-            <span>{o.label}</span>
-          </Label>
-        );
-      })}
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /* Surfaces                                                            */
 /* ------------------------------------------------------------------ */
@@ -779,66 +569,6 @@ export function PanelRow({
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </Panel>
-  );
-}
-
-/**
- * Child items under a list row (dropdown links under a nav link, links under
- * a footer section). A thin left rule and an indent instead of a box; the
- * add action is a quiet text button and there is no empty-state sentence.
- */
-export function NestedList({
-  label,
-  addLabel,
-  onAdd,
-  disabled,
-  children,
-}: {
-  label: string;
-  addLabel: string;
-  onAdd: () => void;
-  disabled?: boolean;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="ml-1 space-y-2 border-l-2 border-border/50 pl-4" role="group" aria-label={label}>
-      {children}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={disabled}
-        className="-ml-2 h-7 text-xs text-muted-foreground hover:text-foreground"
-        onClick={onAdd}
-      >
-        <Plus className="h-3.5 w-3.5" />
-        {addLabel}
-      </Button>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Meta                                                                */
-/* ------------------------------------------------------------------ */
-
-export type MetaItem = { key: string; label?: ReactNode; value: ReactNode; icon?: LucideIcon };
-
-/**
- * Small facts under a title: "Records 1,284   Last sync 2026-08-26". Labels are
- * muted, values are not. Spacing separates the facts; never a dot.
- */
-export function MetaList({ items, className }: { items: MetaItem[]; className?: string }) {
-  return (
-    <dl className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 text-xs", className)}>
-      {items.map(({ key, label, value, icon: Icon }) => (
-        <div key={key} className="inline-flex items-center gap-1.5">
-          {Icon ? <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden /> : null}
-          {label ? <dt className="text-muted-foreground">{label}</dt> : null}
-          <dd className="text-foreground">{value}</dd>
-        </div>
-      ))}
-    </dl>
   );
 }
 

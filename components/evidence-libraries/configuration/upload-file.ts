@@ -18,7 +18,7 @@ import {
 export type UploadKind = EvidenceLibraryUploadKind;
 export type UploadError = "type" | "size" | "failed";
 
-export type UploadActionResult =
+type UploadActionResult =
   | { kind: "file"; bytes: number; contentType: string; name: string; url: string }
   | { kind: "text"; bytes: number; name: string; text: string };
 
@@ -46,7 +46,7 @@ export function fileNameFromUrl(url: string): string {
   }
 }
 
-export function uploadErrorFrom(error: unknown): UploadError {
+function uploadErrorFrom(error: unknown): UploadError {
   if (error instanceof ConvexError) {
     const reason = (error.data as { reason?: unknown })?.reason;
     if (reason === "type" || reason === "size") return reason;

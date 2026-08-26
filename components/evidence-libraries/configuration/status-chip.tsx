@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * text, raw palette for success and warning, the destructive token for errors.
  * See `app/settings/billing/page.tsx` and `components/extraction/job-list-item.tsx`.
  */
-export const STATUS_TONE = {
+const STATUS_TONE = {
   neutral: "bg-muted text-muted-foreground border-border/50",
   running: "bg-primary/10 text-primary border-primary/20",
   success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",

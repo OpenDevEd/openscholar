@@ -18,7 +18,7 @@ export type PageSectionKey = (typeof PAGE_SECTION_KEYS)[number];
 
 export type SectionState = "complete" | "edited" | "attention";
 
-export type SectionProblem =
+type SectionProblem =
   | "nameMissing"
   | "partnerName"
   | "logoMissing"
@@ -77,17 +77,17 @@ export const SCHEMA_LIMITS = {
 } as const;
 
 export const THEME_LAYOUTS = schemaEnum<"small" | "wide">("/theme/layout");
-export type ThemeLayout = (typeof THEME_LAYOUTS)[number];
+type ThemeLayout = (typeof THEME_LAYOUTS)[number];
 
 export const THEME_MODES = schemaEnum<"light" | "dark" | "system">(
   "/theme/defaultMode",
 );
-export type ThemeMode = (typeof THEME_MODES)[number];
+type ThemeMode = (typeof THEME_MODES)[number];
 
 export const FONT_FAMILIES = schemaEnum<string>("/theme/fonts/heading/family");
 export type FontFamily = (typeof FONT_FAMILIES)[number];
 
-export const COLOUR_KEYS = [
+const COLOUR_KEYS = [
   "accent",
   "tertiary",
   "link",
@@ -124,9 +124,9 @@ export const THEME_DEFAULTS = {
 /* Draft shape                                                         */
 /* ------------------------------------------------------------------ */
 
-export type FundingPartner = { id: string; name: string };
+type FundingPartner = { id: string; name: string };
 
-export type IdentityDraft = {
+type IdentityDraft = {
   name: string;
   shortName: string;
   baseUrl: string;
@@ -148,7 +148,7 @@ export type ThemeDraft = {
   fonts: { heading: FontFamily; body: FontFamily };
 };
 
-export type InstitutionDraft = { id: string; name: string; logoUrl: string };
+type InstitutionDraft = { id: string; name: string; logoUrl: string };
 
 export type ConfigurationDraft = {
   identity: IdentityDraft;
@@ -320,7 +320,7 @@ function institutionsPayload(institutions: InstitutionDraft[]) {
   );
 }
 
-export function sectionPayload(
+function sectionPayload(
   draft: ConfigurationDraft,
   sectionKey: PageSectionKey,
 ): unknown {
