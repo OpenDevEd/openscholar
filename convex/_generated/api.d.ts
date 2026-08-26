@@ -90,6 +90,9 @@ import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries
 import type * as evidenceLibraries_teardown from "../evidenceLibraries/teardown.js";
 import type * as evidenceLibraries_teardownActions from "../evidenceLibraries/teardownActions.js";
 import type * as evidenceLibraries_updates from "../evidenceLibraries/updates.js";
+import type * as evidenceLibraries_uploadActions from "../evidenceLibraries/uploadActions.js";
+import type * as evidenceLibraries_uploads from "../evidenceLibraries/uploads.js";
+import type * as evidenceLibraries_uploadsClient from "../evidenceLibraries/uploadsClient.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
 import type * as evidenceLibraries_versions from "../evidenceLibraries/versions.js";
 import type * as extraction_access from "../extraction/access.js";
@@ -237,9 +240,18 @@ import type * as webhooks_eventOrdering from "../webhooks/eventOrdering.js";
 import type * as webhooks_projections from "../webhooks/projections.js";
 import type * as workpool from "../workpool.js";
 import type * as zotero_actions from "../zotero/actions.js";
+import type * as zotero_groupAccess from "../zotero/groupAccess.js";
 import type * as zotero_internal from "../zotero/internal.js";
+import type * as zotero_libraryGroupActions from "../zotero/libraryGroupActions.js";
+import type * as zotero_libraryGroupValidators from "../zotero/libraryGroupValidators.js";
+import type * as zotero_libraryGroups from "../zotero/libraryGroups.js";
 import type * as zotero_mutations from "../zotero/mutations.js";
 import type * as zotero_queries from "../zotero/queries.js";
+import type * as zotero_runtimeReadActions from "../zotero/runtimeReadActions.js";
+import type * as zotero_runtimeReadClient from "../zotero/runtimeReadClient.js";
+import type * as zotero_runtimeReads from "../zotero/runtimeReads.js";
+import type * as zotero_sourceCredentials from "../zotero/sourceCredentials.js";
+import type * as zotero_sourceEntry from "../zotero/sourceEntry.js";
 
 import type {
   ApiFromModules,
@@ -330,6 +342,9 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/teardown": typeof evidenceLibraries_teardown;
   "evidenceLibraries/teardownActions": typeof evidenceLibraries_teardownActions;
   "evidenceLibraries/updates": typeof evidenceLibraries_updates;
+  "evidenceLibraries/uploadActions": typeof evidenceLibraries_uploadActions;
+  "evidenceLibraries/uploads": typeof evidenceLibraries_uploads;
+  "evidenceLibraries/uploadsClient": typeof evidenceLibraries_uploadsClient;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
   "evidenceLibraries/versions": typeof evidenceLibraries_versions;
   "extraction/access": typeof extraction_access;
@@ -477,9 +492,18 @@ declare const fullApi: ApiFromModules<{
   "webhooks/projections": typeof webhooks_projections;
   workpool: typeof workpool;
   "zotero/actions": typeof zotero_actions;
+  "zotero/groupAccess": typeof zotero_groupAccess;
   "zotero/internal": typeof zotero_internal;
+  "zotero/libraryGroupActions": typeof zotero_libraryGroupActions;
+  "zotero/libraryGroupValidators": typeof zotero_libraryGroupValidators;
+  "zotero/libraryGroups": typeof zotero_libraryGroups;
   "zotero/mutations": typeof zotero_mutations;
   "zotero/queries": typeof zotero_queries;
+  "zotero/runtimeReadActions": typeof zotero_runtimeReadActions;
+  "zotero/runtimeReadClient": typeof zotero_runtimeReadClient;
+  "zotero/runtimeReads": typeof zotero_runtimeReads;
+  "zotero/sourceCredentials": typeof zotero_sourceCredentials;
+  "zotero/sourceEntry": typeof zotero_sourceEntry;
 }>;
 
 /**

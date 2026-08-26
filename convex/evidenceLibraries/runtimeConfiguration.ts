@@ -8,6 +8,8 @@ import {
 } from "../../lib/evidence-libraries/configuration/assembly";
 import type { Id } from "../_generated/dataModel";
 import { decrypt } from "../lib/crypto";
+import type { ZoteroGroupScopes } from "../zotero/groupAccess";
+import { createZoteroSourceCredentials } from "../zotero/sourceCredentials";
 
 export const EVIDENCE_LIBRARY_SEARCH_HOST = "http://meilisearch:7700";
 export const EVIDENCE_LIBRARY_SEARCH_INDEX = "evidence_library";
@@ -32,6 +34,11 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     maxPdfBytes: number;
   };
   zoteroTranslationUrl?: string;
+  zoteroGroups: {
+    groupId: string;
+    encryptedApiKey: string;
+    scopes: ZoteroGroupScopes;
+  }[];
 }): {
   runtimeConfig: AssembledEvidenceLibraryConfiguration;
   runtimeConfigJson: string;
@@ -73,6 +80,14 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       storageMaxPdfBytes: input.storage.maxPdfBytes,
       zoteroTranslationUrl: input.zoteroTranslationUrl,
     },
+    // Each Zotero source gets its group's key here and nowhere earlier.
+    applySourceCredentials: createZoteroSourceCredentials(
+      input.zoteroGroups.map((group) => ({
+        groupId: group.groupId,
+        apiKey: decrypt(group.encryptedApiKey, input.encryptionKey),
+        scopes: group.scopes,
+      })),
+    ),
   });
   const runtimeConfigJson = JSON.stringify(runtimeConfig);
   return {

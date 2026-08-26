@@ -2,11 +2,24 @@ import {
   type ValidationIssue,
   validateSectionStructure,
 } from "./generated-validation";
+import { jsonPointerPatternMatches } from "./json-pointer";
 import {
   REQUIRED_OWNER_SECTION_KEYS,
   type SectionKey,
+  WRITE_ONLY_POINTER_PATTERNS,
   isPlatformSection,
 } from "./section-registry";
+
+// Drafts never carry keys or passwords; the platform adds them at assembly.
+// A missing write-only value is therefore not a draft problem.
+function isMissingWriteOnlyValue(issue: ValidationIssue): boolean {
+  return (
+    issue.keyword === "required" &&
+    WRITE_ONLY_POINTER_PATTERNS.some((pattern) =>
+      jsonPointerPatternMatches(pattern, issue.pointer),
+    )
+  );
+}
 
 export type OwnerSectionRow = { sectionKey: SectionKey; payload: unknown };
 
@@ -64,7 +77,9 @@ export function validateOwnerSection(
   options: OwnerRuleOptions = {},
 ): { valid: boolean; issues: ValidationIssue[] } {
   const issues = [
-    ...validateSectionStructure(sectionKey, payload).issues,
+    ...validateSectionStructure(sectionKey, payload).issues.filter(
+      (issue) => !isMissingWriteOnlyValue(issue),
+    ),
     ...ownerRuleIssues(sectionKey, payload, options),
   ];
   return { valid: issues.length === 0, issues };

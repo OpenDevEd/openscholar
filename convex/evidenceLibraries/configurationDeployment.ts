@@ -10,6 +10,8 @@ import { validateOwnerSections } from "../../lib/evidence-libraries/configuratio
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
+import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
+import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
 import {
   sanitizeConfigurationIssues,
   sanitizeOperationError,
@@ -366,6 +368,13 @@ export const prepareConfigurationDeployment = internalMutation({
         maxPdfBytes: v.number(),
       }),
       zoteroTranslationUrl: v.optional(v.string()),
+      zoteroGroups: v.array(
+        v.object({
+          groupId: v.string(),
+          encryptedApiKey: v.string(),
+          scopes: zoteroGroupScopesValidator,
+        }),
+      ),
       source: v.object({
         runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
         bindingUpdatedAt: v.number(),
@@ -527,6 +536,10 @@ export const prepareConfigurationDeployment = internalMutation({
             zoteroTranslationUrl:
               deployment.runtimeBinding.zoteroTranslationUrl,
           }),
+      zoteroGroups: await readLibraryZoteroGroupCredentials(
+        ctx,
+        args.libraryId,
+      ),
       source: {
         runtimeBindingId: deployment.runtimeBinding._id,
         bindingUpdatedAt: deployment.runtimeBinding.updatedAt,

@@ -114,6 +114,7 @@ export const runConfigurationDeployment = internalAction({
           search: prepared.search,
           storage: prepared.storage,
           zoteroTranslationUrl: prepared.zoteroTranslationUrl,
+          zoteroGroups: prepared.zoteroGroups,
         });
         target = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment

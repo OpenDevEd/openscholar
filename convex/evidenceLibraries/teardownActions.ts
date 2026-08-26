@@ -13,6 +13,7 @@ import {
   deleteLibraryStorage,
   StorageSetupError,
 } from "./storageSetupClient";
+import { deleteLibraryUploads } from "./uploadsClient";
 
 function requireEnvironment(name: string) {
   const value = process.env[name]?.trim();
@@ -84,11 +85,13 @@ export const runDevelopmentTeardown = internalAction({
         internal.evidenceLibraries.teardown.setDevelopmentTeardownStage,
         { operationId: args.operationId, stage },
       );
-      const storage = await deleteLibraryStorage({
+      const storageAccess = {
         storageUrl: requireEnvironment("EL_STORAGE_URL"),
         serviceRoleKey: requireEnvironment("EL_STORAGE_SERVICE_KEY"),
         libraryId: args.libraryId,
-      });
+      };
+      await deleteLibraryUploads(storageAccess);
+      const storage = await deleteLibraryStorage(storageAccess);
       if (storage.outcome === "pending") {
         await ctx.runMutation(
           internal.evidenceLibraries.teardown.deferDevelopmentTeardown,

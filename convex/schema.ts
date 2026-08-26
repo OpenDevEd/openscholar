@@ -34,6 +34,10 @@ import {
   organizationFields,
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
+import {
+  evidenceLibraryRuntimeReadCacheFields,
+  evidenceLibraryZoteroGroupFields,
+} from "./zotero/libraryGroupValidators";
 
 export default defineSchema({
   clerkEventLogs: defineTable(clerkEventLogFields)
@@ -109,6 +113,18 @@ export default defineSchema({
 
   evidenceLibraryRuntimeReleases: defineTable(evidenceLibraryRuntimeReleaseFields)
     .index("by_running", ["running"]),
+
+  evidenceLibraryZoteroGroups: defineTable(evidenceLibraryZoteroGroupFields)
+    .index("by_libraryId", ["libraryId"])
+    .index("by_libraryId_and_groupId", ["libraryId", "groupId"]),
+
+  evidenceLibraryRuntimeReadCache: defineTable(
+    evidenceLibraryRuntimeReadCacheFields,
+  ).index("by_libraryId_and_kind_and_cacheKey", [
+    "libraryId",
+    "kind",
+    "cacheKey",
+  ]),
 
   evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)
     .index("by_libraryId_and_idempotencyKey", ["libraryId", "idempotencyKey"])
@@ -402,6 +418,8 @@ export default defineSchema({
     tokenSecret: v.string(),
     userId: v.id("users"),
     expiresAt: v.number(),
+    // Where to send the person after Zotero returns (a path on this app).
+    returnTo: v.optional(v.string()),
   })
     .index("by_token", ["token"])
     .index("by_user", ["userId"])
