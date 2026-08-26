@@ -2201,7 +2201,6 @@
       "readOnly": "只读",
       "paused": "已暂停"
     },
-    "syncUnknown": "同步详情显示在图书馆管理区域。",
     "writeBack": "回写",
     "writeBackHint": "将图书馆中的编辑发送回 Zotero。",
     "writeBackUnavailable": "您的 Zotero 密钥无法写入此群组。请重新连接并允许写入。",
@@ -2348,8 +2347,8 @@
       "defaultScope": "The default scope must be one of the chosen scopes.",
       "featuredInstitution": "Name the pinned institution.",
       "years": "Use whole years between 1900 and this year, first year before last year.",
-      "publishTag": "Keep at least one publish tag.",
-      "legalText": "Upload a file for every legal page set to Upload a file."
+      "legalText": "Upload a file for every legal page set to Upload a file.",
+      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters."
     },
     "fields": {
       "optional": "optional",
@@ -2462,7 +2461,6 @@
       "empty": "No institutions yet.",
       "nameLabel": "Name",
       "nameError": "Enter the institution's name.",
-      "namePlaceholder": "Institution name",
       "logoLabel": "Logo",
       "remove": "Remove institution",
       "add": "Add institution"
@@ -2671,7 +2669,8 @@
       "yearsError": "The first year must be before the last year.",
       "yearFuture": "The last year cannot be in the future.",
       "collectionsExpanded": "Open the collections filter by default",
-      "collectionsExpandedHint": "When off, people click to open the list of collections."
+      "collectionsExpandedHint": "When off, people click to open the list of collections.",
+      "yearRequired": "Enter a year."
     },
     "team": {
       "description": "Who can manage and edit this library.",

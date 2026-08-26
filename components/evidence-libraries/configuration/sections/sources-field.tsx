@@ -213,7 +213,6 @@ export function SourcesField({ libraryId, value, onChange, tags, onTagsChange }:
                         </>
                       ) : null}
                     </dl>
-                    <p className="text-xs text-muted-foreground">{t("syncUnknown")}</p>
                   </div>
                   <div className="flex shrink-0 gap-1.5">
                     <Button

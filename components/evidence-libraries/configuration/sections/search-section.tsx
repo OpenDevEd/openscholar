@@ -208,7 +208,13 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
               label={t("yearMin")}
               value={filters.years.minimum}
               max={yearMax}
-              error={filters.years.minimum > filters.years.maximum ? t("yearsError") : null}
+              error={
+                filters.years.minimum === undefined
+                  ? t("yearRequired")
+                  : filters.years.maximum !== undefined && filters.years.minimum > filters.years.maximum
+                    ? t("yearsError")
+                    : null
+              }
               onChange={(year) =>
                 setFilters((f) => {
                   f.years.minimum = year;
@@ -219,7 +225,13 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
               label={t("yearMax")}
               value={filters.years.maximum}
               max={yearMax}
-              error={filters.years.maximum > yearMax ? t("yearFuture") : null}
+              error={
+                filters.years.maximum === undefined
+                  ? t("yearRequired")
+                  : filters.years.maximum > yearMax
+                    ? t("yearFuture")
+                    : null
+              }
               onChange={(year) =>
                 setFilters((f) => {
                   f.years.maximum = year;
@@ -252,10 +264,10 @@ function YearField({
   onChange,
 }: {
   label: string;
-  value: number;
+  value: number | undefined;
   max: number;
   error: string | null;
-  onChange: (year: number) => void;
+  onChange: (year: number | undefined) => void;
 }) {
   return (
     <Field label={label} error={error}>
@@ -267,9 +279,13 @@ function YearField({
           min={YEAR_MIN}
           max={max}
           className="bg-background font-mono text-sm"
-          value={value}
+          value={value ?? ""}
           aria-invalid={invalid || undefined}
           onChange={(e) => {
+            if (e.target.value === "") {
+              onChange(undefined);
+              return;
+            }
             const next = Number(e.target.value);
             if (Number.isInteger(next)) onChange(next);
           }}
