@@ -75,6 +75,21 @@ Institutions pickers read the library's real data.
    `sources[]` presence and `enabled` state only, and record a follow-up in
    `docs/` for a status endpoint.
 
+   Revised 2026-08-26 (resumed session): two more files outside the lane B
+   write-set needed the smallest change: `convex/lib/errors.ts` (one new
+   error code, `EVIDENCE_LIBRARY_RUNTIME_ERROR`, for a library that refuses
+   or breaks a read) and `convex/zotero/sourceEntry.ts` (new; the draft entry
+   shape shared by the page and the deploy pipeline so the page does not pull
+   the schema validator into the browser bundle). The runtime read code lives
+   in `convex/zotero/runtimeRead*.ts` because that folder is the lane's
+   Convex write-set. Lane C's shared controls (`fields.tsx`,
+   `section-shell.tsx`) were still uncommitted in its worktree, so the three
+   field bodies use `components/ui/*` only and take `{ value, onChange }`
+   props: `SourcesField` (plus `tags`/`onTagsChange` for `content.tags`),
+   `CollectionsField`, `InstitutionNamePicker`, `FeaturedInstitutionPicker`.
+   Lane C already has a `sections/institutions-section.tsx`; lane B's file is
+   `sections/institution-pickers.tsx`, so the names do not collide.
+
 ## Tests
 
 - Pure: `keys/current` scope parsing; group → `sources[]` mapping;
