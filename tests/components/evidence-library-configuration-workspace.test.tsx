@@ -5,7 +5,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const queryMock = vi.hoisted(() => vi.fn());
 const mutationMock = vi.hoisted(() => vi.fn());
@@ -91,6 +91,12 @@ const savedRows = [
   { sectionKey: "theme", payload: savedTheme },
   { sectionKey: "institutions", payload: [{ id: "inst_1", name: "EdTech Hub" }] },
   { sectionKey: "localization", payload: { locales: ["en-GB"], defaultLocale: "en-GB" } },
+  { sectionKey: "navigation", payload: { links: [] } },
+  { sectionKey: "features", payload: {} },
+  { sectionKey: "footer", payload: {} },
+  { sectionKey: "contact", payload: {} },
+  { sectionKey: "email", payload: { takedownRecipient: "takedown@example.org" } },
+  { sectionKey: "legal", payload: {} },
 ];
 
 function draftResult(overrides: { operation?: unknown; state?: string } = {}) {
@@ -123,6 +129,15 @@ function renderWorkspace() {
 function identityCard() {
   return within(document.getElementById("sec-identity")!);
 }
+
+// Radix Select uses Pointer Events that JSDOM does not ship.
+beforeAll(() => {
+  for (const name of ["hasPointerCapture", "releasePointerCapture", "setPointerCapture"] as const) {
+    if (!Element.prototype[name]) {
+      Element.prototype[name] = (() => false) as never;
+    }
+  }
+});
 
 describe("<ConfigurationWorkspace>", () => {
   let saved: unknown[];
@@ -357,6 +372,114 @@ describe("<ConfigurationWorkspace>", () => {
       expect(teardowns).toEqual([{ libraryId: "library_123", confirmationName: "Saved Library" }]),
     );
     expect(pushMock).toHaveBeenCalledWith("/evidence-libraries/new?teardownOperationId=operation_123");
+  });
+
+  describe("content sections", () => {
+    const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
+
+    async function choose(user: ReturnType<typeof userEvent.setup>, trigger: HTMLElement, option: string) {
+      await user.click(trigger);
+      await user.click(await screen.findByRole("option", { name: option }));
+    }
+
+    it("writes the top bar search switch to the features row", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      await user.click(card("navigation").getByRole("switch", { name: "navigation.showSearch" }));
+      expect(card("navigation").getByText("sectionState.edited")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "save" }));
+
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+      expect(request.sections.map((row) => row.sectionKey)).toEqual(["features"]);
+      expect(request.sections[0]?.payload).toMatchObject({
+        navbarSearch: false,
+        collections: true,
+        downloads: false,
+      });
+    });
+
+    it("clears the other target when a link changes what it goes to", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      const navigation = card("navigation");
+      await user.click(navigation.getByRole("button", { name: "navigation.addLink" }));
+      const row = within(document.querySelector("[data-nav-link]") as HTMLElement);
+      expect(row.getByRole("alert")).toHaveTextContent("links.labelError");
+      await user.type(row.getByLabelText("links.labelLabel"), "About");
+
+      await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.url");
+      await user.type(row.getByLabelText("links.urlLabel"), "https://example.org/about");
+      expect(row.getByRole("switch", { name: "links.newTab" })).toBeInTheDocument();
+
+      await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.page");
+      expect(row.queryByLabelText("links.urlLabel")).not.toBeInTheDocument();
+      expect(row.queryByRole("switch", { name: "links.newTab" })).not.toBeInTheDocument();
+      expect(row.getByRole("combobox", { name: "links.pageLabel" })).toHaveTextContent("links.pages.home");
+
+      await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.url");
+      expect(row.getByLabelText("links.urlLabel")).toHaveValue("");
+      expect(row.getByRole("alert")).toHaveTextContent("links.urlError");
+      expect(navigation.getByText("sectionState.attention")).toBeInTheDocument();
+    });
+
+    it("keeps the OpenScholar credit switched on", () => {
+      renderWorkspace();
+      const credit = card("footer").getByRole("switch", { name: "footer.poweredBy" });
+      expect(credit).toBeChecked();
+      expect(credit).toBeDisabled();
+    });
+
+    it("switches a legal page between an address and uploaded text, then saves the text", async () => {
+      const user = userEvent.setup();
+      mutationMock.mockImplementation((reference: unknown) => {
+        if (reference === "saveDraftSections") {
+          return async (input: unknown) => {
+            saved.push(input);
+            return { editVersion: 5 };
+          };
+        }
+        if (reference === "generateUploadUrl") return async () => "https://upload.example.test/put";
+        if (reference === "upload") {
+          return async () => ({ kind: "text", bytes: 20, name: "privacy.md", text: "# Privacy\n\nWe keep little." });
+        }
+        return async () => null;
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response(JSON.stringify({ storageId: "storage_1" }), { status: 200 })),
+      );
+      try {
+        renderWorkspace();
+        const privacy = document.querySelector("[data-legal='privacy']") as HTMLElement;
+        expect(privacy).toHaveAttribute("data-legal-kind", "none");
+
+        await user.click(within(privacy).getByRole("tab", { name: "contact.legalKinds.url" }));
+        expect(privacy).toHaveAttribute("data-legal-kind", "url");
+        await user.type(within(privacy).getByLabelText("contact.legalUrl"), "https://example.org/privacy");
+
+        await user.click(within(privacy).getByRole("tab", { name: "contact.legalKinds.text" }));
+        expect(privacy).toHaveAttribute("data-legal-kind", "text");
+        expect(within(privacy).queryByLabelText("contact.legalUrl")).not.toBeInTheDocument();
+        expect(within(privacy).getByRole("alert")).toHaveTextContent("fields.required");
+
+        await user.upload(
+          within(privacy).getByLabelText("contact.legalFile"),
+          new File(["# Privacy"], "privacy.md", { type: "text/markdown" }),
+        );
+        await within(privacy).findByText("Privacy");
+        expect(within(privacy).getByRole("button", { name: "fields.view" })).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "save" }));
+        await waitFor(() => expect(saved).toHaveLength(1));
+        const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+        expect(request.sections).toEqual([
+          { sectionKey: "legal", payload: { privacyMarkdown: "# Privacy\n\nWe keep little." } },
+        ]);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
   });
 
   describe("replaced files", () => {

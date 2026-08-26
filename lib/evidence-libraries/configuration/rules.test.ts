@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cardForRow,
   changedSectionRows,
   isDirty,
   hasProblems,
@@ -13,7 +14,7 @@ import {
   type ConfigurationDraft,
 } from "./rules";
 
-const savedRows = [
+const brandRows = [
   {
     sectionKey: "identity",
     payload: {
@@ -43,6 +44,16 @@ const savedRows = [
     sectionKey: "localization",
     payload: { locales: ["en-GB"], defaultLocale: "en-GB" },
   },
+] as const;
+
+const savedRows = [
+  ...brandRows,
+  { sectionKey: "navigation", payload: { links: [] } },
+  { sectionKey: "features", payload: {} },
+  { sectionKey: "footer", payload: {} },
+  { sectionKey: "contact", payload: {} },
+  { sectionKey: "email", payload: { takedownRecipient: "takedown@example.org" } },
+  { sectionKey: "legal", payload: {} },
 ] as const;
 
 function savedDraft() {
@@ -263,5 +274,255 @@ describe("staleUploads", () => {
     draft.identity.assets.logoLight = draft.identity.assets.logoDark;
     draft.identity.assets.logoDark = "https://assets.example.test/logo-dark-2.svg";
     expect(staleUploads(draft, savedRows)).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Plan 06: navigation, footer, contact & legal                         */
+/* ------------------------------------------------------------------ */
+
+const contentRows = [
+  ...brandRows,
+  {
+    sectionKey: "navigation",
+    payload: {
+      links: [
+        {
+          id: "nav_1",
+          label: "Library",
+          href: "/lib",
+          icon: "EvidenceLibrary",
+          target: "self",
+          visible: true,
+          children: [
+            { id: "nav_1a", label: "AI", href: "/lib?collections=COL1", target: "self", visible: true },
+          ],
+        },
+      ],
+    },
+  },
+  { sectionKey: "features", payload: { navbarSearch: false, collections: true } },
+  {
+    sectionKey: "footer",
+    payload: {
+      sections: [{ id: "fs_1", title: "Explore", links: [{ id: "fl_1", label: "Map", href: "/map" }] }],
+      socialLinks: [{ provider: "github", href: "https://github.com/OpenDevEd" }],
+      funders: [{ id: "fu_1", name: "Jacobs Foundation", logoUrl: "https://assets.example.test/jacobs.svg" }],
+      disclaimer: "Views are the authors' own.",
+      attribution: "",
+      poweredBy: true,
+    },
+  },
+  { sectionKey: "contact", payload: { email: "hello@example.org", phone: "+442071234567" } },
+  { sectionKey: "email", payload: { takedownRecipient: "takedown@example.org" } },
+  {
+    sectionKey: "legal",
+    payload: {
+      privacyMarkdown: "# Privacy\n\nWe keep little.",
+      cookiePolicy: "https://example.org/cookies",
+    },
+  },
+] as const;
+
+describe("readDraft for the content sections", () => {
+  it("reads links as targets, the navbar search flag, and legal sources", () => {
+    const draft = readDraft(contentRows);
+    expect(draft.navigation.links[0]?.target).toEqual({ kind: "page", page: "library" });
+    expect(draft.navigation.links[0]?.children[0]?.target).toEqual({
+      kind: "collection",
+      collectionId: "COL1",
+    });
+    expect(draft.features.navbarSearch).toBe(false);
+    expect(draft.features.collections).toBe(true);
+    expect(draft.features.downloads).toBe(false);
+    expect(draft.footer.social).toEqual({ github: "https://github.com/OpenDevEd" });
+    expect(draft.footer.funders[0]).toEqual({
+      id: "fu_1",
+      name: "Jacobs Foundation",
+      logoUrl: "https://assets.example.test/jacobs.svg",
+      href: "",
+    });
+    expect(draft.contact.phone).toBe("+442071234567");
+    expect(draft.email.takedownRecipient).toBe("takedown@example.org");
+    expect(draft.legal.privacy).toEqual({ kind: "text", text: "# Privacy\n\nWe keep little." });
+    expect(draft.legal.cookie).toEqual({ kind: "url", url: "https://example.org/cookies" });
+    expect(draft.legal.terms).toEqual({ kind: "none" });
+  });
+
+  it("starts with the schema defaults when the rows are missing", () => {
+    const draft = readDraft(savedRows);
+    expect(draft.navigation.links).toEqual([]);
+    expect(draft.features.navbarSearch).toBe(true);
+    expect(draft.footer.poweredBy).toBe(true);
+    expect(draft.legal.privacy).toEqual({ kind: "none" });
+    expect(SCHEMA_LIMITS.navigation.links).toBe(12);
+    expect(SCHEMA_LIMITS.footer.sections).toBe(6);
+    expect(SCHEMA_LIMITS.footer.disclaimer).toBe(2000);
+  });
+});
+
+describe("sectionProblems for the content sections", () => {
+  it("flags links without a label, a bad address, or no collection", () => {
+    const draft = readDraft(contentRows);
+    draft.navigation.links[0]!.label = "";
+    draft.navigation.links[0]!.children[0]!.target = { kind: "collection", collectionId: "" };
+    draft.navigation.links.push({
+      id: "nav_2",
+      label: "About",
+      target: { kind: "url", url: "about" },
+      icon: "",
+      newTab: true,
+      visible: true,
+      children: [],
+    });
+    expect(sectionProblems(draft, "navigation")).toEqual(["linkLabel", "linkCollection", "linkUrl"]);
+  });
+
+  it("flags footer sections, social addresses and funders", () => {
+    const draft = readDraft(contentRows);
+    draft.footer.sections[0]!.title = " ";
+    draft.footer.social.twitter = "x.com/opendeved";
+    draft.footer.funders[0]!.name = "";
+    draft.footer.funders[0]!.href = "jacobsfoundation.org";
+    expect(sectionProblems(draft, "footer")).toEqual([
+      "footerTitle",
+      "socialUrl",
+      "funderName",
+      "funderUrl",
+    ]);
+  });
+
+  it("requires a takedown recipient and checks the other contact values", () => {
+    const draft = readDraft(contentRows);
+    draft.email.takedownRecipient = "";
+    draft.contact.email = "hello@";
+    draft.contact.phone = "020 7123 4567";
+    draft.legal.terms = { kind: "url", url: "example.org/terms" };
+    expect(sectionProblems(draft, "contact")).toEqual([
+      "takedownRecipient",
+      "contactEmail",
+      "phone",
+      "legalUrl",
+    ]);
+  });
+
+  it("accepts a complete contact section", () => {
+    expect(sectionProblems(readDraft(contentRows), "contact")).toEqual([]);
+    expect(sectionProblems(readDraft(contentRows), "footer")).toEqual([]);
+    expect(sectionProblems(readDraft(contentRows), "navigation")).toEqual([]);
+  });
+});
+
+describe("changedSectionRows for the content sections", () => {
+  it("writes the navbar search switch to the features row", () => {
+    const draft = readDraft(contentRows);
+    draft.features.navbarSearch = true;
+    const rows = changedSectionRows(draft, contentRows);
+    expect(rows.map((row) => row.sectionKey)).toEqual(["features"]);
+    expect(rows[0]?.payload).toMatchObject({ navbarSearch: true, collections: true, downloads: false });
+    expect(sectionState(draft, contentRows, "navigation")).toBe("edited");
+  });
+
+  it("writes links with runtime hrefs and dropdown children", () => {
+    const draft = readDraft(contentRows);
+    draft.navigation.links[0]!.children.push({
+      id: "nav_1b",
+      label: "About",
+      target: { kind: "url", url: "https://example.org/about" },
+      icon: "",
+      newTab: true,
+      visible: true,
+      children: [],
+    });
+    const rows = changedSectionRows(draft, contentRows);
+    expect(rows).toEqual([
+      {
+        sectionKey: "navigation",
+        payload: {
+          links: [
+            {
+              id: "nav_1",
+              label: "Library",
+              href: "/lib",
+              icon: "EvidenceLibrary",
+              target: "self",
+              visible: true,
+              children: [
+                { id: "nav_1a", label: "AI", href: "/lib?collections=COL1", target: "self", visible: true },
+                { id: "nav_1b", label: "About", href: "https://example.org/about", target: "blank", visible: true },
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it("writes the footer with social rows and keeps poweredBy on", () => {
+    const draft = readDraft(contentRows);
+    draft.footer.social.bluesky = "https://bsky.app/profile/opendeved";
+    delete draft.footer.social.github;
+    draft.footer.funders[0]!.href = "https://jacobsfoundation.org";
+    draft.footer.funders[0]!.logoUrl = "";
+    const rows = changedSectionRows(draft, contentRows);
+    expect(rows).toEqual([
+      {
+        sectionKey: "footer",
+        payload: {
+          sections: [
+            { id: "fs_1", title: "Explore", links: [{ id: "fl_1", label: "Map", href: "/map", target: "self", visible: true }] },
+          ],
+          socialLinks: [{ provider: "bluesky", href: "https://bsky.app/profile/opendeved" }],
+          funders: [{ id: "fu_1", name: "Jacobs Foundation", href: "https://jacobsfoundation.org" }],
+          disclaimer: "Views are the authors' own.",
+          attribution: "",
+          poweredBy: true,
+        },
+      },
+    ]);
+  });
+
+  it("writes contact, email and legal rows from the one card", () => {
+    const draft = readDraft(contentRows);
+    draft.contact.address = "";
+    draft.email.contactRecipient = "team@example.org";
+    draft.legal.privacy = { kind: "url", url: "https://example.org/privacy" };
+    draft.legal.cookie = { kind: "none" };
+    draft.legal.terms = { kind: "text", text: "# Terms" };
+    const rows = changedSectionRows(draft, contentRows);
+    expect(rows).toEqual([
+      {
+        sectionKey: "email",
+        payload: { contactRecipient: "team@example.org", takedownRecipient: "takedown@example.org" },
+      },
+      {
+        sectionKey: "legal",
+        payload: { privacyPolicy: "https://example.org/privacy", termsMarkdown: "# Terms" },
+      },
+    ]);
+  });
+
+  it("resets the navigation card including the navbar search switch", () => {
+    const draft = readDraft(contentRows);
+    draft.features.navbarSearch = true;
+    draft.features.downloads = true;
+    draft.navigation.links = [];
+    const reset = resetSection(draft, contentRows, "navigation");
+    expect(reset.navigation.links).toHaveLength(1);
+    expect(reset.features.navbarSearch).toBe(false);
+    expect(reset.features.downloads).toBe(true);
+  });
+
+  it("counts funder logos as uploads", () => {
+    const draft = readDraft(contentRows);
+    draft.footer.funders = [];
+    expect(staleUploads(draft, contentRows)).toEqual(["https://assets.example.test/jacobs.svg"]);
+  });
+
+  it("points an email issue at the contact card", () => {
+    expect(cardForRow("email")).toBe("contact");
+    expect(cardForRow("legal")).toBe("contact");
+    expect(cardForRow("features")).toBe("navigation");
+    expect(cardForRow("services")).toBeNull();
   });
 });
