@@ -25,6 +25,7 @@ import {
 import {
   evidenceLibraryConfigurationDeploymentTargetValidator,
   evidenceLibraryOperationFailureValidator,
+  evidenceLibraryRuntimeUpdateValidator,
   sectionRowValidator,
 } from "./validators";
 
@@ -50,6 +51,18 @@ function isReadyRuntimeBinding(
   binding: Doc<"evidenceLibraryRuntimeBindings">,
 ): binding is ReadyRuntimeBinding {
   return binding.state === "ready" && "targetRuntimeId" in binding;
+}
+
+// A publish operation the pipeline owns: either an activation of a draft
+// edit or a runtime update of the active revision.
+export function isConfigurationDeploymentOperation(
+  operation: Doc<"evidenceLibraryConfigOperations">,
+): boolean {
+  return (
+    operation.kind === "publish" &&
+    (operation.activationEditVersion !== undefined ||
+      operation.runtimeUpdate !== undefined)
+  );
 }
 
 function requireNonBlank(field: string, value: string): string {
@@ -99,8 +112,7 @@ async function readConfigurationDeployment(
   if (
     !operation ||
     operation.libraryId !== args.libraryId ||
-    operation.kind !== "publish" ||
-    operation.activationEditVersion === undefined ||
+    !isConfigurationDeploymentOperation(operation) ||
     !operation.revisionId
   ) {
     throw createError(
@@ -190,8 +202,7 @@ export async function requireNoActiveConfigurationDeployment(
     for await (const operation of operations) {
       if (
         operation._id !== exceptOperationId &&
-        operation.kind === "publish" &&
-        operation.activationEditVersion !== undefined
+        isConfigurationDeploymentOperation(operation)
       ) {
         throw createError(
           "CONFLICT",
@@ -328,9 +339,11 @@ export const prepareConfigurationDeployment = internalMutation({
       state: v.literal("saved"),
       target: evidenceLibraryConfigurationDeploymentTargetValidator,
       deployment: v.optional(savedDeploymentValidator),
+      runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
     }),
     v.object({
       state: v.literal("new"),
+      runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
       applicationId: v.string(),
       targetBaseUrl: v.string(),
       revision: v.object({ key: v.string(), createdAt: v.number() }),
@@ -397,6 +410,9 @@ export const prepareConfigurationDeployment = internalMutation({
       return {
         state: "saved" as const,
         target: savedTarget,
+        ...(deployment.operation.runtimeUpdate
+          ? { runtimeUpdate: deployment.operation.runtimeUpdate }
+          : {}),
         ...(receipt
           ? {
               deployment: {
@@ -406,6 +422,16 @@ export const prepareConfigurationDeployment = internalMutation({
             }
           : {}),
       };
+    }
+    const runtimeUpdate = deployment.operation.runtimeUpdate;
+    if (
+      runtimeUpdate &&
+      runtimeUpdate.from !== deployment.runtimeBinding.runtimeCommit
+    ) {
+      throw createError(
+        "CONFLICT",
+        "The library moved to other software after this update was requested",
+      );
     }
     const [sectionRows, authentication, machine, database, search, storage] =
       await Promise.all([
@@ -470,6 +496,7 @@ export const prepareConfigurationDeployment = internalMutation({
     };
     return {
       state: "new" as const,
+      ...(runtimeUpdate ? { runtimeUpdate } : {}),
       applicationId: deployment.runtimeBinding.targetRuntimeId,
       targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
       revision: {
@@ -903,8 +930,7 @@ export const failConfigurationDeployment = internalMutation({
     if (
       !operation ||
       operation.libraryId !== args.libraryId ||
-      operation.kind !== "publish" ||
-      operation.activationEditVersion === undefined ||
+      !isConfigurationDeploymentOperation(operation) ||
       operation.status !== "running" ||
       operation.attemptCount !== args.attemptCount ||
       operation.configurationAttemptToken !== args.attemptToken

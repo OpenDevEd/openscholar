@@ -14,6 +14,7 @@ const ENCRYPTION_KEY = "33".repeat(32);
 const APPLICATION_UUID = "app000000000000000000001";
 const COOLIFY_ORIGIN = "http://coolify:8080";
 const RUNTIME_COMMIT = "a".repeat(40);
+const NEWER_COMMIT = "b".repeat(40);
 const INITIAL_CONFIG_HASH = "1".repeat(32);
 const UPDATED_CONFIG_HASH = "2".repeat(32);
 const FINISHED_CONFIG_HASH = "3".repeat(64);
@@ -54,6 +55,7 @@ function createRuntimeNetwork(input: {
   publicAddress: string;
   revisionKey: string;
 }) {
+  let commit = RUNTIME_COMMIT;
   let configHash = INITIAL_CONFIG_HASH;
   let deployedConfigHash = INITIAL_CONFIG_HASH;
   let deploymentStatus = "queued";
@@ -74,7 +76,7 @@ function createRuntimeNetwork(input: {
     config_hash: configHash,
     git_repository: "OpenDevEd/new-el",
     git_branch: "main",
-    git_commit_sha: RUNTIME_COMMIT,
+    git_commit_sha: commit,
     build_pack: "dockercompose",
     ports_exposes: "80",
     fqdn: null,
@@ -117,6 +119,12 @@ function createRuntimeNetwork(input: {
         const applicationPath = `/api/v1/applications/${APPLICATION_UUID}`;
         if (method === "GET" && url.pathname === applicationPath) {
           return jsonResponse(application());
+        }
+        if (method === "PATCH" && url.pathname === applicationPath) {
+          const patch = body as { git_commit_sha?: string };
+          if (patch.git_commit_sha) commit = patch.git_commit_sha;
+          configHash = UPDATED_CONFIG_HASH;
+          return jsonResponse({ uuid: APPLICATION_UUID });
         }
         if (method === "GET" && url.pathname === `${applicationPath}/tags`) {
           return jsonResponse([
@@ -165,7 +173,7 @@ function createRuntimeNetwork(input: {
         ) {
           return jsonResponse({
             deployment_uuid: deploymentUuid,
-            commit: RUNTIME_COMMIT,
+            commit,
             configuration_hash: deployedConfigHash,
             status: deploymentStatus,
           });
@@ -180,7 +188,7 @@ function createRuntimeNetwork(input: {
         return jsonResponse({
           ready: true,
           applicationUuid: APPLICATION_UUID,
-          commit: RUNTIME_COMMIT,
+          commit,
           services: ["web", "worker", "search", "storage", "db", "proxy"],
         });
       }
@@ -210,6 +218,9 @@ function createRuntimeNetwork(input: {
     fetchImpl,
     requests,
     environments,
+    get commit() {
+      return commit;
+    },
     finishDeployment() {
       deploymentStatus = "finished";
       deployedConfigHash = FINISHED_CONFIG_HASH;
@@ -503,6 +514,144 @@ describe("Evidence Library configuration deployment", () => {
         actionArgs,
       ),
     ).resolves.toEqual({ status: "succeeded" });
+  });
+
+  it("updates the software commit first, deploys the active revision at it, and records it on the binding", async () => {
+    const fixture = await createReadyLibrary("runtime-update");
+    const activeRevision = await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: faster search" }],
+        checkedAt: Date.now(),
+      });
+      return await ctx.db.get(library!.activeRevisionId!);
+    });
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(started).toMatchObject({
+      status: "running",
+      revisionId: activeRevision!._id,
+      from: RUNTIME_COMMIT,
+      to: NEWER_COMMIT,
+    });
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    expect(operation).toMatchObject({
+      kind: "publish",
+      runtimeUpdate: { from: RUNTIME_COMMIT, to: NEWER_COMMIT },
+      revisionId: activeRevision!._id,
+    });
+    expect(operation).not.toHaveProperty("activationEditVersion");
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.versions.startRuntimeUpdate,
+        {
+          libraryId: fixture.created.libraryId,
+        },
+      ),
+    ).rejects.toThrow(/already running/);
+
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: activeRevision!.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const actionArgs = {
+      libraryId: fixture.created.libraryId,
+      operationId: started.operationId,
+      attemptToken: operation!.configurationAttemptToken!,
+      attemptCount: operation!.attemptCount,
+    };
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ pollCount: 1, status: "running" });
+    const writes = network.requests
+      .filter(({ method }) => method === "PATCH")
+      .map(({ url }) => url.pathname);
+    expect(writes[0]).toBe(`/api/v1/applications/${APPLICATION_UUID}`);
+    expect(writes.slice(1).every((path) => path.endsWith("/envs"))).toBe(true);
+    expect(network.commit).toBe(NEWER_COMMIT);
+    expect(
+      network.environments.find(({ key }) => key === "SOURCE_COMMIT")?.value,
+    ).toBe(NEWER_COMMIT);
+    expect(
+      JSON.parse(
+        network.environments.find(({ key }) => key === "LIBRARY_CONFIG_JSON")!
+          .value,
+      ),
+    ).toMatchObject({ revision: activeRevision!.revisionKey });
+
+    network.finishDeployment();
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ status: "succeeded" });
+    const completed = await fixture.t.run(async (ctx) => ({
+      library: await ctx.db.get(fixture.created.libraryId),
+      binding: await ctx.db.get(fixture.created.runtimeBindingId),
+      operation: await ctx.db.get(started.operationId),
+    }));
+    expect(completed.binding).toMatchObject({ runtimeCommit: NEWER_COMMIT });
+    expect(completed.library).toMatchObject({
+      activeRevisionId: activeRevision!._id,
+      activeDeploymentOperationId: started.operationId,
+    });
+    expect(completed.operation).toMatchObject({
+      status: "succeeded",
+      receipt: { runtimeCommit: NEWER_COMMIT },
+    });
+  });
+
+  it("refuses a software update without a fresh check or when already up to date", async () => {
+    const fixture = await createReadyLibrary("runtime-update-refused");
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.versions.startRuntimeUpdate,
+        {
+          libraryId: fixture.created.libraryId,
+        },
+      ),
+    ).rejects.toThrow(/Check for updates/);
+    await fixture.t.run((ctx) =>
+      ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: RUNTIME_COMMIT,
+        changes: [],
+        checkedAt: Date.now(),
+      }),
+    );
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.versions.startRuntimeUpdate,
+        {
+          libraryId: fixture.created.libraryId,
+        },
+      ),
+    ).rejects.toThrow(/latest software/);
+    const operations = await fixture.t.run((ctx) =>
+      ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_createdAt", (query) =>
+          query.eq("libraryId", fixture.created.libraryId),
+        )
+        .collect(),
+    );
+    expect(
+      operations.filter(({ runtimeUpdate }) => runtimeUpdate),
+    ).toHaveLength(0);
   });
 
   it("does not steal an active lease and reclaims an expired one", async () => {

@@ -494,11 +494,19 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   savedAt: v.number(),
 });
 
+// A publish that moves the library to newer Evidence Library software. The
+// sections stay the same; only the software commit changes.
+export const evidenceLibraryRuntimeUpdateValidator = v.object({
+  from: v.string(),
+  to: v.string(),
+});
+
 export const evidenceLibraryOperationFields = {
   libraryId: v.id("evidenceLibraries"),
   kind: evidenceLibraryOperationKindValidator,
   idempotencyKey: v.string(),
   activationEditVersion: v.optional(v.number()),
+  runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
   setupAttemptToken: v.optional(v.string()),

@@ -74,6 +74,7 @@ export const runConfigurationDeployment = internalAction({
       let target: ConfigurationDeploymentTarget;
       const savedDeployment =
         prepared.state === "saved" ? prepared.deployment : undefined;
+      const runtimeUpdate = prepared.runtimeUpdate;
       if (prepared.state === "saved") {
         target = prepared.target;
       } else {
@@ -82,6 +83,16 @@ export const runConfigurationDeployment = internalAction({
           libraryId: args.libraryId,
           publicDomain: prepared.targetBaseUrl,
         });
+        if (
+          runtimeUpdate &&
+          application.runtimeCommit !== runtimeUpdate.from &&
+          application.runtimeCommit !== runtimeUpdate.to
+        ) {
+          throw new CoolifyClientError(
+            "COOLIFY_APPLICATION_CONFLICT",
+            "The bound Coolify application runs unexpected software",
+          );
+        }
         const payload = assembleEvidenceLibraryRuntimePayload({
           encryptionKey,
           libraryId: args.libraryId,
@@ -115,7 +126,7 @@ export const runConfigurationDeployment = internalAction({
               targetBaseUrl: prepared.targetBaseUrl,
               revisionKey: prepared.revision.key,
               defaultLocale: prepared.defaultLocale,
-              runtimeCommit: application.runtimeCommit,
+              runtimeCommit: runtimeUpdate?.to ?? application.runtimeCommit,
               encryptedRuntimeConfig: encrypt(
                 payload.runtimeConfigJson,
                 encryptionKey,
@@ -156,6 +167,16 @@ export const runConfigurationDeployment = internalAction({
           coolifyConfigHash: current.coolifyConfigHash,
         };
       } else {
+        // A runtime update points the app at the new commit first, so the
+        // configuration write and the deployment both see that commit.
+        if (runtimeUpdate) {
+          await coolify.setApplicationCommit({
+            applicationUuid: target.applicationId,
+            libraryId: args.libraryId,
+            publicDomain: target.targetBaseUrl,
+            runtimeCommit: target.runtimeCommit,
+          });
+        }
         application = await coolify.updateApplicationConfiguration({
           applicationUuid: target.applicationId,
           libraryId: args.libraryId,

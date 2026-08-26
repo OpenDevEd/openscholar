@@ -91,6 +91,7 @@ import type * as evidenceLibraries_teardown from "../evidenceLibraries/teardown.
 import type * as evidenceLibraries_teardownActions from "../evidenceLibraries/teardownActions.js";
 import type * as evidenceLibraries_updates from "../evidenceLibraries/updates.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
+import type * as evidenceLibraries_versions from "../evidenceLibraries/versions.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
 import type * as extraction_aggregates from "../extraction/aggregates.js";
@@ -330,6 +331,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/teardownActions": typeof evidenceLibraries_teardownActions;
   "evidenceLibraries/updates": typeof evidenceLibraries_updates;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
+  "evidenceLibraries/versions": typeof evidenceLibraries_versions;
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
   "extraction/aggregates": typeof extraction_aggregates;
