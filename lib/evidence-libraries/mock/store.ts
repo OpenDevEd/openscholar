@@ -14,9 +14,12 @@ import {
   clockTime,
   colorForIndex,
   dateStamp,
+  changedSections,
   isDirty,
   type LibraryConfig,
   makeConfig,
+  resetSection,
+  type SectionKey,
   makeSteps,
   type MockLibrary,
   MOCK_ORGANIZATIONS,
@@ -25,12 +28,21 @@ import {
   seedLibraries,
   SETUP_STEP_KEYS,
 } from "./data";
+import { FILE_LIMITS, type FileKind, type MockFile } from "./config";
 
 const STEP_INTERVAL_MS = 1500;
 const ACTIVATION_INTERVAL_MS = 1500;
 const DELETE_INTERVAL_MS = 1000;
 const SAVE_MS = 800;
 const RESERVE_MS = 1000;
+const UPLOAD_MS = 1200;
+const SYNC_MS = 700;
+const DNS_MS = 1800;
+const INVITE_MS = 3000;
+const PAUSE_MS = 1500;
+
+export type UploadResult = { ok: true; file: MockFile } | { ok: false; error: "type" | "size" };
+export type SyncRun = { percent: number; sourceId: string };
 
 type MockState = {
   orgId: string;
@@ -43,11 +55,24 @@ type MockState = {
   saving: Record<string, boolean>;
   /** A reserve check is in flight on the create page. */
   reserving: boolean;
+  /** upload slot key -> percent */
+  uploads: Record<string, number>;
+  /** libraryId -> running Zotero sync */
+  syncing: Record<string, SyncRun>;
+  /** libraryId -> pause/unpause in flight */
+  pausing: Record<string, boolean>;
 
   switchOrganization: (orgId: string) => void;
   createLibrary: (name: string, shortName: string) => string;
   reserveAddress: (shortName: string) => Promise<{ taken: boolean }>;
-  updateDraft: (libraryId: string, patch: Partial<LibraryConfig>) => void;
+  updateDraft: (libraryId: string, update: (draft: LibraryConfig) => LibraryConfig) => void;
+  resetSection: (libraryId: string, key: SectionKey) => void;
+  uploadFile: (slot: string, kind: FileKind, file: File) => Promise<UploadResult>;
+  syncSource: (libraryId: string, sourceId: string) => void;
+  checkDns: (libraryId: string) => void;
+  invite: (libraryId: string, grantId: string) => void;
+  restoreVersion: (libraryId: string, rev: string) => void;
+  togglePause: (libraryId: string) => void;
   saveDraft: (libraryId: string) => void;
   startSetup: (libraryId: string) => void;
   retrySetup: (libraryId: string) => void;
@@ -164,6 +189,9 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
     deleting: {},
     saving: {},
     reserving: false,
+    uploads: {},
+    syncing: {},
+    pausing: {},
 
     switchOrganization(orgId) {
       set({ orgId });
@@ -202,22 +230,185 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
             failNextDeployment: false,
             saved,
             draft: structuredClone(saved),
+            versions: [],
+            paused: false,
           },
         ],
       }));
       return id;
     },
 
-    updateDraft(libraryId, patch) {
+    updateDraft(libraryId, update) {
       set((state) => ({
         libraries: patchLibrary(state.libraries, libraryId, (l) => {
-          const draft = { ...l.draft, ...patch };
-          if (!draft.languages.includes(draft.defaultLanguage)) {
-            draft.defaultLanguage = draft.languages[0] ?? "";
+          const draft = update(structuredClone(l.draft));
+          const loc = draft.localization;
+          if (!loc.locales.includes(loc.defaultLocale)) {
+            loc.defaultLocale = loc.locales[0] ?? "";
           }
+          loc.priority = [
+            ...loc.priority.filter((c) => loc.locales.includes(c)),
+            ...loc.locales.filter((c) => !loc.priority.includes(c)),
+          ];
           return { ...l, draft };
         }),
       }));
+    },
+
+    resetSection(libraryId, key) {
+      set((state) => ({
+        libraries: patchLibrary(state.libraries, libraryId, (l) => ({
+          ...l,
+          draft: resetSection(l, key),
+        })),
+      }));
+    },
+
+    uploadFile(slot, kind, file) {
+      const limit = FILE_LIMITS[kind];
+      const ext = "." + file.name.split(".").pop()?.toLowerCase();
+      const typeOk = (limit.accept as readonly string[]).some(
+        (a) => a === file.type || a === ext,
+      );
+      if (!typeOk) return Promise.resolve({ ok: false, error: "type" });
+      if (file.size > limit.maxBytes) return Promise.resolve({ ok: false, error: "size" });
+      set((state) => ({ uploads: { ...state.uploads, [slot]: 5 } }));
+      return new Promise((resolve) => {
+        const started = Date.now();
+        const timer = setInterval(() => {
+          const percent = Math.min(95, Math.round(((Date.now() - started) / UPLOAD_MS) * 100));
+          set((state) => ({ uploads: { ...state.uploads, [slot]: percent } }));
+        }, 100);
+        const finish = (text?: string) => {
+          clearInterval(timer);
+          set((state) => {
+            const uploads = { ...state.uploads };
+            delete uploads[slot];
+            return { uploads };
+          });
+          resolve({
+            ok: true,
+            file: { name: file.name, size: file.size, url: URL.createObjectURL(file), text },
+          });
+        };
+        setTimeout(() => {
+          if (kind === "legal") {
+            file.text().then((text) => finish(text));
+          } else {
+            finish();
+          }
+        }, UPLOAD_MS);
+      });
+    },
+
+    syncSource(libraryId, sourceId) {
+      if (get().syncing[libraryId]) return;
+      set((state) => ({ syncing: { ...state.syncing, [libraryId]: { percent: 0, sourceId } } }));
+      const timer = setInterval(() => {
+        const run = get().syncing[libraryId];
+        if (!run) {
+          clearInterval(timer);
+          return;
+        }
+        const percent = Math.min(100, run.percent + 20);
+        if (percent >= 100) {
+          clearInterval(timer);
+          let label = "";
+          set((state) => {
+            const syncing = { ...state.syncing };
+            delete syncing[libraryId];
+            return {
+              syncing,
+              libraries: patchLibrary(state.libraries, libraryId, (l) => {
+                const bump = (c: LibraryConfig) => ({
+                  ...c,
+                  sources: {
+                    ...c.sources,
+                    zotero: c.sources.zotero.map((z) => {
+                      if (z.id !== sourceId) return z;
+                      label = z.label;
+                      return { ...z, lastSync: dateStamp(), records: z.records + 3 };
+                    }),
+                  },
+                });
+                return { ...l, draft: bump(l.draft), saved: bump(l.saved) };
+              }),
+            };
+          });
+          toast.success("Sync finished", { description: `${label}: 3 new records.` });
+          return;
+        }
+        set((state) => ({ syncing: { ...state.syncing, [libraryId]: { ...run, percent } } }));
+      }, SYNC_MS);
+    },
+
+    checkDns(libraryId) {
+      const setStatus = (status: LibraryConfig["domain"]["status"]) =>
+        set((state) => ({
+          libraries: patchLibrary(state.libraries, libraryId, (l) => ({
+            ...l,
+            draft: { ...l.draft, domain: { ...l.draft.domain, status } },
+          })),
+        }));
+      setStatus("checking");
+      setTimeout(() => {
+        const library = find(libraryId);
+        const host = library?.draft.domain.custom ?? "";
+        // Anything ending in ".test" fails, so the failure state can be seen.
+        const ok = !host.endsWith(".test");
+        setStatus(ok ? "verified" : "failed");
+        if (ok) {
+          toast.success("Domain verified", { description: `${host} points to this library.` });
+        } else {
+          toast.error("DNS records not found", { description: `Add the records for ${host} and check again.` });
+        }
+      }, DNS_MS);
+    },
+
+    invite(libraryId, grantId) {
+      setTimeout(() => {
+        set((state) => ({
+          libraries: patchLibrary(state.libraries, libraryId, (l) => {
+            const accept = (c: LibraryConfig) => ({
+              ...c,
+              team: {
+                ...c.team,
+                grants: c.team.grants.map((g) =>
+                  g.id === grantId ? { ...g, status: "active" as const } : g,
+                ),
+              },
+            });
+            return { ...l, draft: accept(l.draft), saved: accept(l.saved) };
+          }),
+        }));
+      }, INVITE_MS);
+    },
+
+    restoreVersion(libraryId, rev) {
+      const library = find(libraryId);
+      if (!library) return;
+      set((state) => ({
+        libraries: patchLibrary(state.libraries, libraryId, (l) => ({ ...l, draftRev: rev })),
+      }));
+      get().startActivation(libraryId);
+    },
+
+    togglePause(libraryId) {
+      const library = find(libraryId);
+      if (!library) return;
+      set((state) => ({ pausing: { ...state.pausing, [libraryId]: true } }));
+      setTimeout(() => {
+        const paused = !library.paused;
+        set((state) => ({
+          pausing: { ...state.pausing, [libraryId]: false },
+          libraries: patchLibrary(state.libraries, libraryId, (l) => ({ ...l, paused })),
+        }));
+        toast.success(paused ? "Library paused" : "Library is back online", {
+          description: paused
+            ? `${library.address} now shows a holding page.`
+            : `${library.address} is serving the library again.`,
+        });
+      }, PAUSE_MS);
     },
 
     saveDraft(libraryId) {
@@ -231,7 +422,7 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
             return {
               ...l,
               saved: structuredClone(l.draft),
-              name: l.draft.name,
+              name: l.draft.identity.name,
               draftRev: savedRev,
             };
           }),
@@ -249,7 +440,7 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
           libraries: patchLibrary(state.libraries, libraryId, (l) => ({
             ...l,
             saved: structuredClone(l.draft),
-            name: l.draft.name,
+            name: l.draft.identity.name,
           })),
         }));
       }
@@ -272,11 +463,12 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
       const library = find(libraryId);
       if (!library || get().activation[libraryId]) return;
       const rev = library.draftRev;
+      const sections = changedSections(library);
       set((state) => ({
         activation: { ...state.activation, [libraryId]: { stageIndex: 0, rev } },
         libraries: patchLibrary(state.libraries, libraryId, (l) =>
           isDirty(l)
-            ? { ...l, saved: structuredClone(l.draft), name: l.draft.name }
+            ? { ...l, saved: structuredClone(l.draft), name: l.draft.identity.name }
             : l,
         ),
       }));
@@ -300,6 +492,18 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
                 draftRev: newRevisionId(),
                 lastActivated: dateStamp(),
                 saved: structuredClone(l.draft),
+                versions: [
+                  {
+                    rev,
+                    at: dateStamp(),
+                    by: "You",
+                    sections,
+                    status: "live" as const,
+                  },
+                  ...l.versions.map((v) =>
+                    v.status === "live" ? { ...v, status: "previous" as const } : v,
+                  ),
+                ],
               }))
             : state.libraries,
         }));

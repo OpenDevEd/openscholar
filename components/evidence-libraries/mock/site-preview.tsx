@@ -37,10 +37,10 @@ function SiteNav({
   return (
     <div
       className="flex items-center gap-3 px-4 py-2.5 text-white"
-      style={{ background: config.accent }}
+      style={{ background: config.theme.accent }}
     >
       <span className="flex size-7 items-center justify-center rounded-md bg-white/20 text-[10px] font-bold">
-        {initialsOf(config.name)}
+        {initialsOf(config.identity.name)}
       </span>
       <span className="truncate text-sm font-semibold">{title}</span>
       <span className="ml-auto hidden gap-3 text-xs opacity-90 sm:flex">
@@ -97,7 +97,7 @@ export function AdminSitePreview({
     <BrowserFrame url={`https://${address}/admin?code=••••••••••••`}>
       <SiteNav
         config={config}
-        title={`${config.name} · ${t("adminSuffix")}`}
+        title={`${config.identity.name} · ${t("adminSuffix")}`}
         links={[t("signedInAs")]}
       />
       <div className="grid sm:grid-cols-[160px_1fr]">
@@ -137,7 +137,7 @@ export function AdminSitePreview({
                   <p className="truncate font-medium">{row.title}</p>
                   <p className="text-muted-foreground">{row.meta}</p>
                 </div>
-                <Tag color={config.secondary}>{row.state}</Tag>
+                <Tag color={config.theme.secondary}>{row.state}</Tag>
               </div>
             ))}
           </div>
