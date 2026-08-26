@@ -3085,8 +3085,6 @@
         "contextLabel": "Context"
       },
       "runtimeUpdate": {
-        "available": "An Evidence Library update is available.",
-        "availableHint": "{count, plural, one {# change} other {# changes}} since this library was last built.",
         "update": "Update",
         "updating": "Updating the Evidence Library to {rev}…",
         "confirmTitle": "Update this library?",
@@ -3096,9 +3094,10 @@
         "runningLabel": "Running",
         "latestLabel": "Latest",
         "checkedLabel": "Checked",
-        "upToDate": "Up to date.",
         "changesHeading": "What changed",
-        "kindRuntime": "Software update"
+        "kindRuntime": "Software update",
+        "availableShort": "Update available",
+        "upToDateShort": "Up to date"
       }
     },
     "site": {

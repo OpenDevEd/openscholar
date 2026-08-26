@@ -19,7 +19,6 @@ import {
   Quote,
   Rocket,
   Save,
-  RefreshCw,
   Search,
   Sparkles,
   ToggleRight,
@@ -45,7 +44,6 @@ import {
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { InlineNotice } from "./section-card";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -149,8 +147,6 @@ function Workspace({ library }: { library: MockLibrary }) {
   const saveDraft = useEvidenceLibraryMockStore((s) => s.saveDraft);
   const startSetup = useEvidenceLibraryMockStore((s) => s.startSetup);
   const startActivation = useEvidenceLibraryMockStore((s) => s.startActivation);
-  const updateRuntime = useEvidenceLibraryMockStore((s) => s.updateRuntime);
-  const [updateOpen, setUpdateOpen] = useState(false);
   const tu = useTranslations("evidenceLibraryMock.config.runtimeUpdate");
   const updateAvailable = library.status === "active" && library.runtime.running !== library.runtime.latest;
 
@@ -218,6 +214,12 @@ function Workspace({ library }: { library: MockLibrary }) {
             title={draft.identity.name || t("untitled")}
             eyebrow={`https://${library.address}`}
           >
+            {updateAvailable && !activating ? (
+              <Button variant="outline" onClick={() => jumpTo("versions")} data-runtime-update>
+                <span className="size-2 rounded-full bg-amber-500" aria-hidden />
+                {tu("availableShort")}
+              </Button>
+            ) : null}
             {dirty ? (
               <span className="text-xs text-muted-foreground" data-unsaved>
                 {t("unsaved")}
@@ -240,21 +242,6 @@ function Workspace({ library }: { library: MockLibrary }) {
           </PanelHeader>
           {activation ? (
             <ActivationBanner stageIndex={activation.stageIndex} rev={activation.rev} kind={activation.kind} />
-          ) : updateAvailable ? (
-            <InlineNotice
-              tone="info"
-              className="mb-4"
-              data-runtime-update
-              title={tu("available")}
-              action={
-                <Button size="sm" onClick={() => setUpdateOpen(true)}>
-                  <RefreshCw />
-                  {tu("update")}
-                </Button>
-              }
-            >
-              {tu("availableHint", { count: library.runtime.changes.length })}
-            </InlineNotice>
           ) : null}
         </div>
       </div>
@@ -271,7 +258,11 @@ function Workspace({ library }: { library: MockLibrary }) {
                 <RailGroup key={group.key} label={t(`rail.${group.key as "brand"}`)}>
                   {group.sections.map((key) => {
                     const tracked = key !== "versions" && key !== "danger";
-                    const state = tracked ? sectionState(library, key) : null;
+                    const state = tracked
+                      ? sectionState(library, key)
+                      : key === "versions" && updateAvailable
+                        ? "edited"
+                        : null;
                     return (
                       <RailLink
                         key={key}
@@ -349,26 +340,6 @@ function Workspace({ library }: { library: MockLibrary }) {
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmActivate}>
               {isDraftLibrary ? t("activateDraftConfirm") : t("activateConfirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={updateOpen} onOpenChange={setUpdateOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{tu("confirmTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{tu("confirmBody")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setUpdateOpen(false);
-                updateRuntime(library.id);
-              }}
-            >
-              {tu("confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

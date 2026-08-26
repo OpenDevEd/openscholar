@@ -41,6 +41,7 @@ export function VersionsSection({ library }: SectionProps) {
   const restoreVersion = useEvidenceLibraryMockStore((s) => s.restoreVersion);
   const activating = useEvidenceLibraryMockStore((s) => Boolean(s.activation[library.id]));
   const updateRuntime = useEvidenceLibraryMockStore((s) => s.updateRuntime);
+  const [updateOpen, setUpdateOpen] = useState(false);
   const tu = useTranslations("evidenceLibraryMock.config.runtimeUpdate");
   const runtime = library.runtime;
   const updateAvailable = runtime.running !== runtime.latest;
@@ -57,7 +58,7 @@ export function VersionsSection({ library }: SectionProps) {
         title={tu("heading")}
         action={
           updateAvailable ? (
-            <Button type="button" size="sm" disabled={activating} onClick={() => updateRuntime(library.id)}>
+            <Button type="button" size="sm" disabled={activating} onClick={() => setUpdateOpen(true)}>
               <RefreshCw />
               {tu("update")}
             </Button>
@@ -65,6 +66,11 @@ export function VersionsSection({ library }: SectionProps) {
         }
       >
         <Panel tone="muted" className="space-y-3" data-runtime-state={updateAvailable ? "update-available" : "up-to-date"}>
+          {updateAvailable ? (
+            <StatusChip tone="warning">{tu("availableShort")}</StatusChip>
+          ) : (
+            <StatusChip tone="success">{tu("upToDateShort")}</StatusChip>
+          )}
           <MetaList
             items={[
               { key: "running", label: tu("runningLabel"), value: <span className="font-mono">{runtime.running}</span> },
@@ -81,9 +87,7 @@ export function VersionsSection({ library }: SectionProps) {
                 ))}
               </ul>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">{tu("upToDate")}</p>
-          )}
+          ) : null}
         </Panel>
       </FieldGroup>
 
@@ -135,6 +139,26 @@ export function VersionsSection({ library }: SectionProps) {
         </div>
       )}
       </FieldGroup>
+
+      <AlertDialog open={updateOpen} onOpenChange={setUpdateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tu("confirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{tu("confirmBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setUpdateOpen(false);
+                updateRuntime(library.id);
+              }}
+            >
+              {tu("confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={restoring !== null} onOpenChange={(open) => !open && setRestoring(null)}>
         <AlertDialogContent>
