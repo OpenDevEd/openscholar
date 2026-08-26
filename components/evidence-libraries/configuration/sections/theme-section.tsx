@@ -169,12 +169,12 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
                 p.link === theme.colors.link;
               return (
                 <Button
-                  key={p.name}
+                  key={p.key}
                   type="button"
                   variant="outline"
                   size="sm"
                   aria-pressed={active}
-                  data-preset={p.name}
+                  data-preset={p.key}
                   className="gap-2"
                   onClick={() =>
                     patch((d) => {
@@ -194,7 +194,7 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
                       />
                     ))}
                   </span>
-                  {p.name}
+                  {t(`presets.${p.key}`)}
                 </Button>
               );
             })}

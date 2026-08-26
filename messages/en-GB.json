@@ -2354,6 +2354,16 @@
         "backgroundLight": "Background (light mode)",
         "cardDark": "Card (dark mode)",
         "cardLight": "Card (light mode)"
+      },
+      "presets": {
+        "sunrise": "Sunrise",
+        "forest": "Forest",
+        "ocean": "Ocean",
+        "violet": "Violet",
+        "rose": "Rose",
+        "slate": "Slate",
+        "amber": "Amber",
+        "teal": "Teal"
       }
     },
     "institutions": {

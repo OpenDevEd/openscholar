@@ -238,6 +238,7 @@ export function ColourField({
   className?: string;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.fields");
+  const tp = useTranslations("evidenceLibraryConfiguration.theme.presets");
   const valid = HEX_COLOUR.test(value);
   // Warn only when the colour fails on every background, like the runtime check.
   const backgrounds = contrastAgainst ?? [];
@@ -274,11 +275,11 @@ export function ColourField({
                 />
                 <div className="grid grid-cols-8 gap-1.5">
                   {COLOUR_PRESETS.map((p) => (
-                    <Tooltip key={p.name}>
+                    <Tooltip key={p.key}>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          aria-label={p.name}
+                          aria-label={tp(p.key)}
                           onClick={() => onChange(p.accent)}
                           className="flex size-6 items-center justify-center rounded-md border border-border/40"
                           style={{ background: p.accent }}
@@ -288,7 +289,7 @@ export function ColourField({
                           ) : null}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>{p.name}</TooltipContent>
+                      <TooltipContent>{tp(p.key)}</TooltipContent>
                     </Tooltip>
                   ))}
                 </div>
