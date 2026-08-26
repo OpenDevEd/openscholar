@@ -225,8 +225,8 @@ describe("Evidence Library uploads", () => {
     expect(store.objects.size).toBe(0);
   });
 
-  it("refuses uploads from members", async () => {
-    stubFileStore();
+  it("refuses uploads from members and still drops the temporary file", async () => {
+    const store = stubFileStore();
     const { caller, libraryId, t } = await seedLibrary("org:member");
     const storageId = await t.run((ctx) =>
       ctx.storage.store(new Blob(["x"], { type: "image/png" })),
@@ -239,6 +239,8 @@ describe("Evidence Library uploads", () => {
         storageId,
       }),
     ).rejects.toThrow(/access denied/);
+    expect(await t.run((ctx) => ctx.storage.get(storageId))).toBeNull();
+    expect(store.objects.size).toBe(0);
   });
 
   it("removes only files inside the library prefix", async () => {

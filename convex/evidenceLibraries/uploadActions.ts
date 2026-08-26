@@ -77,13 +77,13 @@ export const upload = action({
   },
   returns: uploadResultValidator,
   handler: async (ctx, args): Promise<UploadResult> => {
-    await ctx.runQuery(internal.evidenceLibraries.uploads.requireUploadOwner, {
-      libraryId: args.libraryId,
-    });
     const name = args.name.trim();
-    if (!name) rejectUpload("type", args.kind);
     let bytes: ArrayBuffer;
     try {
+      await ctx.runQuery(internal.evidenceLibraries.uploads.requireUploadOwner, {
+        libraryId: args.libraryId,
+      });
+      if (!name) rejectUpload("type", args.kind);
       const blob = await ctx.storage.get(args.storageId);
       if (!blob) throw createError("NOT_FOUND", "The uploaded file was not found");
       bytes = await blob.arrayBuffer();
