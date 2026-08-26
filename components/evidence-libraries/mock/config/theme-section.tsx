@@ -47,39 +47,37 @@ export function ThemeSection({ library, patch }: SectionProps) {
 
   return (
     <SectionShell sectionKey="theme" icon={Palette} description={t("description")} library={library}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <div className="flex min-h-5 items-center"><Label className="font-normal">{t("layoutLabel")}</Label></div>
-          <ChoiceCards
-              value={theme.layout}
-              onChange={(layout) => patch((d) => { d.theme.layout = layout; return d; })}
-              columns={1}
-              options={(["small", "wide"] as const).map((layout) => ({
-                value: layout,
-                label: t(`layout.${layout}`),
-                hint: t(`layoutHint.${layout}`),
-                preview: <NavbarPreview layout={layout} />,
-              }))}
-            />
-        </div>
-
-        <Field label={t("modeLabel")} hint={t("modeHint")}>
-          {(id) => (
-            <Select value={theme.defaultMode} onValueChange={(v) => set("defaultMode", v as Theme["defaultMode"])}>
-              <SelectTrigger id={id} className="w-full bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MODES.map((mode) => (
-                  <SelectItem key={mode} value={mode}>
-                    {t(`mode.${mode}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </Field>
+      <div className="space-y-1.5">
+        <div className="flex min-h-5 items-center"><Label className="font-normal">{t("layoutLabel")}</Label></div>
+        <ChoiceCards
+          value={theme.layout}
+          onChange={(layout) => patch((d) => { d.theme.layout = layout; return d; })}
+          columns={2}
+          options={(["small", "wide"] as const).map((layout) => ({
+            value: layout,
+            label: t(`layout.${layout}`),
+            hint: t(`layoutHint.${layout}`),
+            preview: <NavbarPreview layout={layout} />,
+          }))}
+        />
       </div>
+
+      <Field label={t("modeLabel")} hint={t("modeHint")} className="max-w-sm">
+        {(id) => (
+          <Select value={theme.defaultMode} onValueChange={(v) => set("defaultMode", v as Theme["defaultMode"])}>
+            <SelectTrigger id={id} className="w-full bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MODES.map((mode) => (
+                <SelectItem key={mode} value={mode}>
+                  {t(`mode.${mode}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </Field>
 
       <FieldGroup title={t("fontsHeading")}>
         <div className="grid gap-4 sm:grid-cols-2">
