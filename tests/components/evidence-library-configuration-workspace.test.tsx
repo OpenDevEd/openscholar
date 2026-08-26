@@ -9,6 +9,15 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 const queryMock = vi.hoisted(() => vi.fn());
 const mutationMock = vi.hoisted(() => vi.fn());
+// The Versions section checks for software updates when the page opens.
+const checkMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    running: "aaaaaaa1234",
+    latest: "aaaaaaa1234",
+    changes: [],
+    checkedAt: Date.UTC(2026, 7, 26, 12, 0),
+  })),
+);
 const pushMock = vi.hoisted(() => vi.fn());
 const toastMock = vi.hoisted(() => {
   const toast = Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() });
@@ -26,6 +35,7 @@ vi.mock("next-intl", () => ({
     const prefix = "evidenceLibraryConfiguration.";
     return full.startsWith(prefix) ? full.slice(prefix.length) : full;
   },
+  useFormatter: () => ({ dateTime: (date: Date) => date.toISOString() }),
 }));
 
 vi.mock("sonner", () => ({ toast: toastMock }));
@@ -47,6 +57,12 @@ vi.mock("@/convex/_generated/api", () => ({
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
+      updates: { check: "check" },
+      versions: {
+        listVersions: "listVersions",
+        startRuntimeUpdate: "startRuntimeUpdate",
+        restoreRevision: "restoreRevision",
+      },
     },
     zotero: {
       actions: { startOAuth: "startOAuth" },
@@ -63,14 +79,15 @@ vi.mock("@/convex/_generated/api", () => ({
 
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
-  useAction: (action: unknown) => mutationMock(action),
+  useAction: (action: unknown) =>
+    action === "check" ? checkMock : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: unknown, args: unknown) =>
     query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
-      : query === "listLibraryZoteroGroups"
+      : query === "listLibraryZoteroGroups" || query === "listVersions"
         ? { data: [], isReady: true }
         : queryMock(query, args),
 }));
@@ -375,6 +392,30 @@ describe("<ConfigurationWorkspace>", () => {
     expect(banner).toHaveAttribute("role", "status");
     expect(banner).toHaveTextContent("stages.deployment");
     expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
+  });
+
+  it("names the software update while it runs and blocks Activate", () => {
+    queryMock.mockReturnValue(
+      draftResult({
+        operation: {
+          _id: "operation_123",
+          kind: "publish",
+          status: "running",
+          stage: "deployment",
+          revisionId: "revision_123",
+          runtimeUpdate: { from: "aaaaaaa1234", to: "bbbbbbb1234" },
+        },
+      }),
+    );
+    renderWorkspace();
+    const banner = document.querySelector("[data-operation-stage]");
+    expect(banner).toHaveTextContent("updatingSoftware");
+    expect(banner).toHaveAttribute("data-operation-stage", "deployment");
+    expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "sections.versions" })).toHaveAttribute(
+      "href",
+      "#sec-versions",
+    );
   });
 
   it("requires the exact library name before queuing development teardown", async () => {

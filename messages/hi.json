@@ -2307,7 +2307,8 @@
       "citations": "Citations & exports",
       "features": "Features",
       "languages": "Languages",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "versions": "Versions"
     },
     "sectionState": {
       "complete": "Complete",
@@ -2795,6 +2796,50 @@
       "measurementIdLabel": "Measurement ID",
       "measurementIdHint": "Find it in Google Analytics under Data streams.",
       "measurementIdError": "Use an ID like G-XXXXXXXXXX."
+    },
+    "updatingSoftware": "Updating the Evidence Library software to {rev}",
+    "versions": {
+      "description": "Every activation makes a version. Restore an older one at any time.",
+      "softwareHeading": "Evidence Library software",
+      "checking": "Checking for updates…",
+      "checkAgain": "Check again",
+      "checkError": "Updates could not be checked. Try again.",
+      "notRunning": "Available once the library is live.",
+      "updateAvailable": "Update available",
+      "upToDate": "Up to date",
+      "runningLabel": "Running",
+      "latestLabel": "Latest",
+      "checkedLabel": "Checked",
+      "changesHeading": "What changed",
+      "update": "Update",
+      "updateTitle": "Update this library?",
+      "updateBody": "The library is rebuilt on the latest Evidence Library software. Records, settings and the address stay the same. It takes about a minute.",
+      "updateConfirm": "Update now",
+      "updateStarted": "Update started",
+      "updateStartedDescription": "Moving to {rev}…",
+      "updateError": "The update could not start. Try again.",
+      "historyHeading": "Published versions",
+      "loading": "Loading versions…",
+      "empty": "Nothing published yet.",
+      "colVersion": "Version",
+      "colWhen": "When",
+      "colBy": "By",
+      "colChanged": "Changed",
+      "colStatus": "Status",
+      "everything": "Everything",
+      "softwareUpdate": "Software update",
+      "status": {
+        "live": "Live",
+        "previous": "Previous",
+        "failed": "Failed",
+        "deploying": "Applying"
+      },
+      "restore": "Restore",
+      "restoreTitle": "Restore {rev}?",
+      "restoreBody": "This publishes it as a new version.",
+      "restoreStarted": "Restore started",
+      "restoreStartedDescription": "Applying {rev} as {next}…",
+      "restoreError": "The version could not be restored. Try again."
     }
   }
 }
