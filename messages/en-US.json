@@ -2313,12 +2313,14 @@
     "rail": {
       "aria": "Configuration sections",
       "brand": "Brand",
+      "team": "Team",
       "danger": "Danger zone"
     },
     "sections": {
       "identity": "Identity",
       "theme": "Theme",
       "institutions": "Institutions",
+      "team": "Team",
       "danger": "Danger zone"
     },
     "sectionState": {
@@ -2462,6 +2464,16 @@
       "logoLabel": "Logo",
       "remove": "Remove institution",
       "add": "Add institution"
+    },
+    "team": {
+      "description": "Who can manage and edit this library.",
+      "ownersTitle": "Owners",
+      "ownersHint": "Admins of {org}.",
+      "editorsTitle": "Editors",
+      "editorsHint": "Members of {org}.",
+      "manageTitle": "People",
+      "manageHint": "Manage people in the organisation settings.",
+      "manageButton": "Open organisation settings"
     },
     "danger": {
       "description": "Delete this library. Be careful here.",
