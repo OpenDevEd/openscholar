@@ -1,6 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import {
@@ -17,6 +18,7 @@ import { InlineNotice, SectionCard } from "./section-card";
 import { ResetButton } from "./fields";
 
 export type SectionProps = {
+  libraryId: Id<"evidenceLibraries">;
   draft: ConfigurationDraft;
   /** The rows last saved on the platform. */
   saved: readonly SectionRow[];

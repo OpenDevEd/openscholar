@@ -22,6 +22,13 @@ import {
   readLink,
 } from "./links";
 import { resolveSchemaPointer } from "./section-registry";
+import type { ZoteroSourceEntry } from "@/convex/zotero/sourceEntry";
+import {
+  TAG_RULE_KEYS,
+  type TagRuleKey,
+  type TagRules,
+  tagRuleIssue,
+} from "@/components/evidence-libraries/configuration/sections/tag-rules";
 
 export type SectionRow = { sectionKey: string; payload: unknown };
 
@@ -33,6 +40,9 @@ export const PAGE_SECTION_KEYS = [
   "navigation",
   "footer",
   "contact",
+  "collections",
+  "search",
+  "sources",
 ] as const;
 export type PageSectionKey = (typeof PAGE_SECTION_KEYS)[number];
 
@@ -47,6 +57,11 @@ const ROW_KEYS = [
   "contact",
   "email",
   "legal",
+  "collections",
+  "search",
+  "filters",
+  "sources",
+  "content",
 ] as const;
 type RowKey = (typeof ROW_KEYS)[number];
 
@@ -69,6 +84,11 @@ type SectionProblem =
   | "contactEmail"
   | "phone"
   | "legalUrl"
+  | "searchScopes"
+  | "defaultScope"
+  | "featuredInstitution"
+  | "years"
+  | "tagRules"
   | "legalText";
 
 /* ------------------------------------------------------------------ */
@@ -144,7 +164,35 @@ export const SCHEMA_LIMITS = {
   contact: {
     address: schemaNumber("/contact/address", "maxLength"),
   },
+  filters: {
+    institutionLabel: schemaNumber("/filters/institution/label", "maxLength"),
+    yearMinimum: (() => {
+      const value = schemaNode("/filters/years/minimum").minimum;
+      if (typeof value !== "number") throw new Error("Configuration schema has no minimum year");
+      return value;
+    })(),
+  },
 } as const;
+
+export const SEARCH_SCOPES = schemaEnum<
+  | "title_abstract_author_and_keywords"
+  | "title_abstract_and_keywords"
+  | "title_and_abstract"
+  | "title"
+  | "authors"
+  | "fields"
+  | "documents"
+  | "everywhere"
+>("/search/scopes/*");
+export type SearchScope = (typeof SEARCH_SCOPES)[number];
+export const INSTITUTION_MODES = schemaEnum<"hidden" | "facet" | "facet-with-featured-value">(
+  "/filters/institution/mode",
+);
+export type InstitutionMode = (typeof INSTITUTION_MODES)[number];
+/** The runtime's default scope list: every scope, minus full text when full-text search is off. */
+const defaultScopes = (fullText: boolean): SearchScope[] =>
+  SEARCH_SCOPES.filter((scope) => fullText || scope !== "documents");
+export const currentYear = () => new Date().getUTCFullYear();
 
 /** An email address the runtime accepts. */
 export const EMAIL = schemaPattern("/contact/email");
@@ -267,6 +315,22 @@ export const LEGAL_KEYS = ["privacy", "cookie", "terms"] as const;
 export type LegalKey = (typeof LEGAL_KEYS)[number];
 export type LegalDraft = Record<LegalKey, LegalSource>;
 
+export type SearchDraft = {
+  fullText: boolean;
+  tags: boolean;
+  country: boolean;
+  authorCountry: boolean;
+  scopes: SearchScope[];
+  defaultScope: SearchScope;
+};
+export type FiltersDraft = {
+  institution: { mode: InstitutionMode; label: string; featuredValue: string };
+  collectionsExpanded: boolean;
+  /** A cleared year box is undefined until the owner types a year again. */
+  years: { enabled: boolean; minimum: number | undefined; maximum: number | undefined };
+};
+type CollectionDraft = { id: string; title?: string; enabled?: boolean; order?: number };
+
 export type ConfigurationDraft = {
   identity: IdentityDraft;
   theme: ThemeDraft;
@@ -277,9 +341,17 @@ export type ConfigurationDraft = {
   contact: ContactDraft;
   email: EmailDraft;
   legal: LegalDraft;
-  /** Collections the owner shows, read so links can point at them. Written by the Collections card. */
-  collections: { id: string; title: string }[];
+  collections: CollectionDraft[];
+  search: SearchDraft;
+  filters: FiltersDraft;
+  sources: ZoteroSourceEntry[];
+  /** `content.tags`: which Zotero tags mean hidden, coming soon, and so on. Edited on the Sources card. */
+  content: { tags: TagRules };
 };
+
+/** Collections as link targets: the shown title, or the id when none was set. */
+export const collectionOptions = (draft: ConfigurationDraft) =>
+  draft.collections.map((collection) => ({ id: collection.id, title: collection.title || collection.id }));
 
 export const newId = (prefix: string) =>
   `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
@@ -463,12 +535,79 @@ function readLegal(payload: unknown): LegalDraft {
   ) as LegalDraft;
 }
 
-function readCollections(payload: unknown): ConfigurationDraft["collections"] {
+function readCollections(payload: unknown): CollectionDraft[] {
   return list(payload).map((entry) => {
     const row = record(entry);
-    const id = text(row.id);
-    return { id, title: text(row.title) || id };
+    return compact({
+      id: text(row.id),
+      title: optional(text(row.title)),
+      enabled: typeof row.enabled === "boolean" ? row.enabled : undefined,
+      order: typeof row.order === "number" ? row.order : undefined,
+    });
   });
+}
+
+function flag(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function readSearch(payload: unknown): SearchDraft {
+  const search = record(payload);
+  const fullText = flag(search.fullText, true);
+  const scopes = Array.isArray(search.scopes)
+    ? search.scopes.filter((scope): scope is SearchScope => SEARCH_SCOPES.includes(scope))
+    : defaultScopes(fullText);
+  return {
+    fullText,
+    tags: flag(search.tags, true),
+    country: flag(search.country, true),
+    authorCountry: flag(search.authorCountry, true),
+    scopes,
+    defaultScope: choice(search.defaultScope, SEARCH_SCOPES, scopes[0] ?? SEARCH_SCOPES[0]!),
+  };
+}
+
+function readFilters(payload: unknown): FiltersDraft {
+  const filters = record(payload);
+  const institution = record(filters.institution);
+  const years = record(filters.years);
+  return {
+    institution: {
+      mode: choice(institution.mode, INSTITUTION_MODES, "facet"),
+      label: text(institution.label, schemaDefault("/filters/institution/label")),
+      featuredValue: text(institution.featuredValue),
+    },
+    collectionsExpanded: flag(filters.collectionsExpanded, true),
+    years: {
+      enabled: flag(years.enabled, true),
+      minimum: typeof years.minimum === "number" ? years.minimum : SCHEMA_LIMITS.filters.yearMinimum,
+      maximum: typeof years.maximum === "number" ? years.maximum : currentYear(),
+    },
+  };
+}
+
+function readSources(payload: unknown): ZoteroSourceEntry[] {
+  return list(payload)
+    .map((entry) => record(entry))
+    .filter((row) => typeof row.groupId === "string" && row.groupId !== "")
+    .map((row) => ({
+      key: text(row.key) || `zotero-${text(row.groupId)}`,
+      provider: "zotero" as const,
+      groupId: text(row.groupId),
+      enabled: flag(row.enabled, true),
+      writebackEnabled: flag(row.writebackEnabled, false),
+    }));
+}
+
+// Only the tag rules the runtime knows; anything else would fail the strict `content` row.
+function readContent(payload: unknown): ConfigurationDraft["content"] {
+  const tags = record(record(payload).tags);
+  const known: TagRules = {};
+  for (const key of TAG_RULE_KEYS) {
+    const value = tags[key];
+    if (Array.isArray(value)) known[key] = value.filter((tag): tag is string => typeof tag === "string");
+  }
+  return { tags: known };
 }
 
 /** Builds the page draft from the saved rows. Missing rows get defaults. */
@@ -484,6 +623,10 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     email: readEmail(payloadOf(rows, "email")),
     legal: readLegal(payloadOf(rows, "legal")),
     collections: readCollections(payloadOf(rows, "collections")),
+    search: readSearch(payloadOf(rows, "search")),
+    filters: readFilters(payloadOf(rows, "filters")),
+    sources: readSources(payloadOf(rows, "sources")),
+    content: readContent(payloadOf(rows, "content")),
   };
 }
 
@@ -623,6 +766,27 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
       return emailPayload(draft.email);
     case "legal":
       return legalPayload(draft.legal);
+    case "collections":
+      return draft.collections.map((collection) => compact({ ...collection }));
+    case "search":
+      return { ...draft.search, scopes: [...draft.search.scopes] };
+    case "filters":
+      return {
+        institution: compact({
+          mode: draft.filters.institution.mode,
+          label: draft.filters.institution.label,
+          featuredValue:
+            draft.filters.institution.mode === "facet-with-featured-value"
+              ? optional(draft.filters.institution.featuredValue)
+              : undefined,
+        }),
+        collectionsExpanded: draft.filters.collectionsExpanded,
+        years: compact({ ...draft.filters.years }),
+      };
+    case "sources":
+      return draft.sources.map((source) => ({ ...source }));
+    case "content":
+      return { tags: { ...draft.content.tags } };
   }
 }
 
@@ -695,6 +859,12 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
       return draft.footer;
     case "contact":
       return { contact: draft.contact, email: draft.email, legal: draft.legal };
+    case "collections":
+      return draft.collections;
+    case "search":
+      return { search: draft.search, filters: draft.filters };
+    case "sources":
+      return { sources: draft.sources, tags: draft.content.tags };
   }
 }
 
@@ -705,6 +875,9 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
   navigation: ["navigation", "features"],
   footer: ["footer"],
   contact: ["contact", "email", "legal"],
+  collections: ["collections"],
+  search: ["search", "filters"],
+  sources: ["sources", "content"],
 };
 
 /** The card that edits a runtime row, or null when the page has none for it. */
@@ -796,6 +969,42 @@ export function sectionProblems(
       }
       break;
     }
+    case "collections":
+      break;
+    case "search": {
+      const { search, filters } = draft;
+      if (search.scopes.length === 0) problems.push("searchScopes");
+      else if (!search.scopes.includes(search.defaultScope)) problems.push("defaultScope");
+      if (
+        filters.institution.mode === "facet-with-featured-value" &&
+        !filters.institution.featuredValue.trim()
+      ) {
+        problems.push("featuredInstitution");
+      }
+      const { minimum, maximum } = filters.years;
+      if (
+        filters.years.enabled &&
+        (minimum === undefined ||
+          maximum === undefined ||
+          minimum > maximum ||
+          minimum < SCHEMA_LIMITS.filters.yearMinimum ||
+          maximum > currentYear() ||
+          !Number.isInteger(minimum) ||
+          !Number.isInteger(maximum))
+      ) {
+        problems.push("years");
+      }
+      break;
+    }
+    case "sources":
+      if (
+        (Object.entries(draft.content.tags) as [TagRuleKey, string[]][]).some(
+          ([key, tags]) => tagRuleIssue(key, tags) !== null,
+        )
+      ) {
+        problems.push("tagRules");
+      }
+      break;
   }
   return unique(problems);
 }
@@ -850,6 +1059,17 @@ export function resetSection(
       next.contact = saved.contact;
       next.email = saved.email;
       next.legal = saved.legal;
+      break;
+    case "collections":
+      next.collections = saved.collections;
+      break;
+    case "search":
+      next.search = saved.search;
+      next.filters = saved.filters;
+      break;
+    case "sources":
+      next.sources = saved.sources;
+      next.content = saved.content;
       break;
   }
   return next;

@@ -2201,7 +2201,6 @@
       "readOnly": "केवल पढ़ने योग्य",
       "paused": "रुका हुआ"
     },
-    "syncUnknown": "सिंक का विवरण लाइब्रेरी के एडमिन क्षेत्र में दिखता है।",
     "writeBack": "वापस लिखें",
     "writeBackHint": "लाइब्रेरी में किए गए बदलाव Zotero में वापस भेजें।",
     "writeBackUnavailable": "आपकी Zotero कुंजी इस समूह में लिख नहीं सकती। फिर से जोड़ें और लिखने की अनुमति दें।",
@@ -2287,19 +2286,23 @@
     "rail": {
       "aria": "Configuration sections",
       "brand": "Brand",
-      "team": "Team",
       "danger": "Danger zone",
-      "content": "Content"
+      "content": "Content",
+      "discovery": "Discovery",
+      "team": "Team"
     },
     "sections": {
       "identity": "Identity",
       "theme": "Theme",
       "institutions": "Institutions",
-      "team": "Team",
       "danger": "Danger zone",
       "navigation": "Navigation",
       "footer": "Footer",
-      "contact": "Contact & legal"
+      "contact": "Contact & legal",
+      "collections": "Collections",
+      "search": "Search & filters",
+      "sources": "Sources",
+      "team": "Team"
     },
     "sectionState": {
       "complete": "Complete",
@@ -2340,7 +2343,12 @@
       "contactEmail": "The contact email is not valid.",
       "phone": "Use the international phone format, for example +442012345678.",
       "legalUrl": "Legal page links need a full address that starts with https://.",
-      "legalText": "Upload a file for every legal page set to Upload a file."
+      "searchScopes": "Choose at least one search scope.",
+      "defaultScope": "The default scope must be one of the chosen scopes.",
+      "featuredInstitution": "Name the pinned institution.",
+      "years": "Use whole years between 1900 and this year, first year before last year.",
+      "legalText": "Upload a file for every legal page set to Upload a file.",
+      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters."
     },
     "fields": {
       "optional": "optional",
@@ -2453,20 +2461,9 @@
       "empty": "No institutions yet.",
       "nameLabel": "Name",
       "nameError": "Enter the institution's name.",
-      "namePlaceholder": "Institution name",
       "logoLabel": "Logo",
       "remove": "Remove institution",
       "add": "Add institution"
-    },
-    "team": {
-      "description": "Who can manage and edit this library.",
-      "ownersTitle": "Owners",
-      "ownersHint": "Admins of {org}.",
-      "editorsTitle": "Editors",
-      "editorsHint": "Members of {org}.",
-      "manageTitle": "People",
-      "manageHint": "Manage people in the organisation settings.",
-      "manageButton": "Open organisation settings"
     },
     "danger": {
       "description": "Delete this library. Be careful here.",
@@ -2617,6 +2614,73 @@
       "legalUrl": "Address",
       "legalUrlError": "Use a full address that starts with https://.",
       "legalNone": "The site shows its standard page."
+    },
+    "collections": {
+      "description": "Which collections the site shows, in what order, and under what title."
+    },
+    "sources": {
+      "description": "The Zotero groups this library imports records from."
+    },
+    "search": {
+      "description": "Choose what people can search and which filters they see.",
+      "whatHeading": "What people can search",
+      "fullText": "Full text",
+      "fullTextHint": "Search inside the text of attached documents.",
+      "tags": "Tags",
+      "tagsHint": "Let people filter by Zotero tags.",
+      "country": "Country",
+      "countryHint": "Let people filter by the country a record is about.",
+      "authorCountry": "Author country",
+      "authorCountryHint": "Let people filter by where the authors are based.",
+      "scopesHeading": "Search scopes",
+      "scope": {
+        "title_abstract_author_and_keywords": "Title, abstract, authors and keywords",
+        "title_abstract_and_keywords": "Title, abstract and keywords",
+        "title_and_abstract": "Title and abstract",
+        "title": "Title only",
+        "authors": "Authors",
+        "fields": "All record fields",
+        "documents": "Full text of documents",
+        "everywhere": "Everywhere"
+      },
+      "scopesError": "Choose at least one search scope.",
+      "documentsNeedsFullText": "Turn on Full text to search the full text of documents.",
+      "defaultScope": "Default scope",
+      "defaultScopeHint": "The scope selected when someone opens the search page.",
+      "defaultScopePlaceholder": "Choose a scope first",
+      "defaultScopeError": "The default scope must be one of the chosen scopes.",
+      "filtersHeading": "Filters",
+      "institutionMode": "Institution filter",
+      "institutionModeHint": "Lets visitors narrow results to the institutions behind the records.",
+      "institutionModes": {
+        "hidden": "Hidden",
+        "facet": "Shown as a checkbox list",
+        "facet-with-featured-value": "Shown, with one institution pinned at the top"
+      },
+      "institutionLabel": "Filter heading",
+      "institutionLabelHint": "The heading above the list, for example Institutions or Partners.",
+      "featuredInstitution": "Pinned institution",
+      "featuredInstitutionHint": "Shown first so visitors can pick it in one click. Must match an institution on the records.",
+      "featuredInstitutionError": "Name the pinned institution.",
+      "years": "Year range filter",
+      "yearsHint": "Let people narrow results to a range of years.",
+      "yearMin": "First year",
+      "yearMax": "Last year",
+      "yearsError": "The first year must be before the last year.",
+      "yearFuture": "The last year cannot be in the future.",
+      "collectionsExpanded": "Open the collections filter by default",
+      "collectionsExpandedHint": "When off, people click to open the list of collections.",
+      "yearRequired": "Enter a year."
+    },
+    "team": {
+      "description": "Who can manage and edit this library.",
+      "ownersTitle": "Owners",
+      "ownersHint": "Admins of {org}.",
+      "editorsTitle": "Editors",
+      "editorsHint": "Members of {org}.",
+      "manageTitle": "People",
+      "manageHint": "Manage people in the organisation settings.",
+      "manageButton": "Open organisation settings"
     }
   }
 }

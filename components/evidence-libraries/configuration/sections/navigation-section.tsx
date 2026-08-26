@@ -3,7 +3,7 @@
 import { Menu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type LinkDraft, newLink } from "@/lib/evidence-libraries/configuration/links";
-import { newId, SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
+import { collectionOptions, newId, SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
 import {
   AddButton,
   EmptyList,
@@ -22,7 +22,7 @@ const LIMITS = SCHEMA_LIMITS.navigation;
 export function NavigationSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.navigation");
   const links = draft.navigation.links;
-  const collections = draft.collections;
+  const collections = collectionOptions(draft);
 
   const setLinks = (update: (links: LinkDraft[]) => LinkDraft[]) =>
     patch((d) => {
