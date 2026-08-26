@@ -7,6 +7,8 @@ import {
   AlertCircle,
   ArrowUp,
   Building2,
+  Database,
+  FolderTree,
   Globe,
   Layers,
   type LucideIcon,
@@ -16,6 +18,7 @@ import {
   PanelBottom,
   Rocket,
   Save,
+  Search,
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -61,6 +64,7 @@ import {
   staleUploads,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { cn } from "@/lib/utils";
+import { CollectionsSection } from "./sections/collections-section";
 import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
@@ -68,6 +72,8 @@ import { FooterSection } from "./sections/footer-section";
 import { IdentitySection } from "./sections/identity-section";
 import { InstitutionsSection } from "./sections/institutions-section";
 import { NavigationSection } from "./sections/navigation-section";
+import { SearchSection } from "./sections/search-section";
+import { SourcesSection } from "./sections/sources-section";
 import { ThemeSection } from "./sections/theme-section";
 import { InlineNotice } from "./section-card";
 import { STATE_TONE, type SectionProps } from "./section-shell";
@@ -93,9 +99,13 @@ function isOperationRunning(operation: Operation): operation is NonNullable<Oper
 
 /** Rail entries: the page cards in their groups, then the danger zone. */
 type RailKey = PageSectionKey | "danger";
-const RAIL_GROUPS: { key: "brand" | "content" | "danger"; sections: readonly RailKey[] }[] = [
+const RAIL_GROUPS: {
+  key: "brand" | "content" | "discovery" | "danger";
+  sections: readonly RailKey[];
+}[] = [
   { key: "brand", sections: ["identity", "theme", "institutions"] },
-  { key: "content", sections: ["navigation", "footer", "contact"] },
+  { key: "content", sections: ["navigation", "footer", "contact", "collections"] },
+  { key: "discovery", sections: ["search", "sources"] },
   { key: "danger", sections: ["danger"] },
 ];
 
@@ -106,6 +116,9 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   navigation: Menu,
   footer: PanelBottom,
   contact: Mail,
+  collections: FolderTree,
+  search: Search,
+  sources: Database,
   danger: Trash2,
 };
 
@@ -119,6 +132,9 @@ const SECTION_COMPONENTS: Record<
   navigation: NavigationSection,
   footer: FooterSection,
   contact: ContactSection,
+  collections: CollectionsSection,
+  search: SearchSection,
+  sources: SourcesSection,
 };
 
 const LIBRARIES_HREF = "/evidence-libraries/new";
@@ -385,6 +401,7 @@ function Workspace({
                 return (
                   <Section
                     key={key}
+                    libraryId={libraryId}
                     draft={draft}
                     saved={saved}
                     patch={patch}

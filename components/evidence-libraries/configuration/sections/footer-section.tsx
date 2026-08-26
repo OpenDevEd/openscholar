@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { HTTPS_URL, newLink } from "@/lib/evidence-libraries/configuration/links";
 import {
+  collectionOptions,
   type FooterSectionDraft,
   type FunderDraft,
   newId,
@@ -43,7 +44,7 @@ export function FooterSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.footer");
   const tf = useTranslations("evidenceLibraryConfiguration.fields");
   const footer = draft.footer;
-  const collections = draft.collections;
+  const collections = collectionOptions(draft);
 
   const setSections = (update: (sections: FooterSectionDraft[]) => FooterSectionDraft[]) =>
     patch((d) => {

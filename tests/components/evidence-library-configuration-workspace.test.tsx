@@ -42,6 +42,16 @@ vi.mock("@/convex/_generated/api", () => ({
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
     },
+    zotero: {
+      actions: { startOAuth: "startOAuth" },
+      queries: { getConnectionStatus: "getConnectionStatus" },
+      libraryGroups: { listLibraryZoteroGroups: "listLibraryZoteroGroups", removeZoteroGroup: "removeZoteroGroup" },
+      libraryGroupActions: { listMyZoteroGroups: "listMyZoteroGroups", connectZoteroGroup: "connectZoteroGroup" },
+      runtimeReadActions: {
+        listLibraryCollections: "listLibraryCollections",
+        listRecordInstitutions: "listRecordInstitutions",
+      },
+    },
   },
 }));
 
@@ -51,7 +61,12 @@ vi.mock("convex/react", () => ({
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: (query: unknown, args: unknown) => queryMock(query, args),
+  useProtectedQuery: (query: unknown, args: unknown) =>
+    query === "getConnectionStatus"
+      ? { data: { connected: false }, isReady: true }
+      : query === "listLibraryZoteroGroups"
+        ? { data: [], isReady: true }
+        : queryMock(query, args),
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
@@ -97,6 +112,11 @@ const savedRows = [
   { sectionKey: "contact", payload: {} },
   { sectionKey: "email", payload: { takedownRecipient: "takedown@example.org" } },
   { sectionKey: "legal", payload: {} },
+  { sectionKey: "collections", payload: [] },
+  { sectionKey: "search", payload: {} },
+  { sectionKey: "filters", payload: {} },
+  { sectionKey: "sources", payload: [] },
+  { sectionKey: "content", payload: {} },
 ];
 
 function draftResult(overrides: { operation?: unknown; state?: string } = {}) {
@@ -479,6 +499,53 @@ describe("<ConfigurationWorkspace>", () => {
       } finally {
         vi.unstubAllGlobals();
       }
+    });
+  });
+
+  describe("discovery sections", () => {
+    const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
+
+    it("drops the full-text scope when full-text search is turned off and saves the search row", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      const search = card("search");
+      const documents = search.getByRole("checkbox", { name: "search.scope.documents" });
+      expect(documents).toBeChecked();
+      await user.click(search.getByRole("switch", { name: "search.fullText" }));
+      expect(documents).toBeDisabled();
+      expect(documents).not.toBeChecked();
+      await user.click(screen.getByRole("button", { name: "save" }));
+
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+      expect(request.sections.map((row) => row.sectionKey)).toEqual(["search"]);
+      expect(request.sections[0]?.payload).toMatchObject({ fullText: false });
+      expect((request.sections[0]?.payload as { scopes: string[] }).scopes).not.toContain("documents");
+    });
+
+    it("asks for a pinned institution only in the featured mode", async () => {
+      const user = userEvent.setup();
+      mutationMock.mockImplementation((reference: unknown) =>
+        reference === "listRecordInstitutions"
+          ? async () => ({ reason: "not-set-up", items: [] })
+          : async () => null,
+      );
+      renderWorkspace();
+      const search = card("search");
+      expect(search.queryByRole("combobox", { name: "search.featuredInstitution" })).not.toBeInTheDocument();
+      await user.click(search.getByRole("combobox", { name: "search.institutionMode" }));
+      await user.click(await screen.findByRole("option", { name: "search.institutionModes.facet-with-featured-value" }));
+      expect(search.getByText("sectionState.attention")).toBeInTheDocument();
+      expect(search.getByRole("alert")).toHaveTextContent("search.featuredInstitutionError");
+      await user.click(search.getByRole("combobox", { name: "search.featuredInstitution" }));
+      expect(await screen.findByText("evidenceLibraryInstitutions.picker.notSetUp")).toBeInTheDocument();
+    });
+
+    it("shows the Zotero sources and the collections picker inside their cards", () => {
+      renderWorkspace();
+      expect(card("sources").getByRole("button", { name: "evidenceLibrarySources.account.connect" })).toBeInTheDocument();
+      expect(card("collections").getByRole("button", { name: "evidenceLibraryCollections.add" })).toBeInTheDocument();
+      expect(card("institutions").getByRole("combobox", { name: "institutions.nameLabel" })).toBeInTheDocument();
     });
   });
 

@@ -2,7 +2,6 @@
 
 import { Building2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
 import { newId, SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
 import { Field } from "../section-card";
 import {
@@ -14,12 +13,11 @@ import {
   UploadField,
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { InstitutionNamePicker } from "./institution-pickers";
 
 const LIMITS = SCHEMA_LIMITS.institutions;
 
-// The name is a text input until plan 07 adds the picker fed by the
-// library's records (`listRecordInstitutions`).
-export function InstitutionsSection({ draft, saved, patch, reset }: SectionProps) {
+export function InstitutionsSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.institutions");
   const institutions = draft.institutions;
 
@@ -60,18 +58,15 @@ export function InstitutionsSection({ draft, saved, patch, reset }: SectionProps
                 label={t("nameLabel")}
                 error={!institution.name.trim() ? t("nameError") : null}
               >
-                {(id, invalid) => (
-                  <Input
+                {(id) => (
+                  <InstitutionNamePicker
                     id={id}
-                    className="bg-background"
-                    maxLength={LIMITS.name}
+                    libraryId={libraryId}
                     value={institution.name}
-                    placeholder={t("namePlaceholder")}
-                    aria-invalid={invalid || undefined}
-                    onChange={(e) =>
+                    onChange={(name) =>
                       patch((d) => {
                         const row = d.institutions.find((i) => i.id === institution.id);
-                        if (row) row.name = e.target.value;
+                        if (row) row.name = name.slice(0, LIMITS.name);
                         return d;
                       })
                     }

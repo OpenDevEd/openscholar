@@ -38,6 +38,7 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useState } from "react";
 import { type DropzoneState, useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -790,6 +791,61 @@ export function ChoiceCards<V extends string>({
         );
       })}
     </RadioGroup>
+  );
+}
+
+/** One chip look for multi-select lists (search scopes, languages). */
+export function ChoiceChips<V extends string>({
+  values,
+  onChange,
+  options,
+  ariaLabel,
+  className,
+}: {
+  values: V[];
+  onChange: (values: V[]) => void;
+  options: ChoiceOption<V>[];
+  ariaLabel: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-wrap gap-2", className)} role="group" aria-label={ariaLabel}>
+      {options.map((o) => {
+        const checked = values.includes(o.value);
+        return (
+          <Label
+            key={o.value}
+            data-value={o.value}
+            data-checked={checked}
+            data-disabled={o.disabled || undefined}
+            title={o.disabled ? o.disabledReason : undefined}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-colors",
+              o.disabled
+                ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+                : checked
+                  ? "cursor-pointer border-primary/40 bg-primary/5"
+                  : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
+            )}
+          >
+            <Checkbox
+              checked={checked}
+              disabled={o.disabled}
+              aria-label={typeof o.label === "string" ? o.label : undefined}
+              onCheckedChange={(next) =>
+                onChange(
+                  next === true
+                    ? options.filter((x) => x.value === o.value || values.includes(x.value)).map((x) => x.value)
+                    : values.filter((v) => v !== o.value),
+                )
+              }
+            />
+            {o.code ? <code className="font-mono text-xs text-muted-foreground">{o.code}</code> : null}
+            <span>{o.label}</span>
+          </Label>
+        );
+      })}
+    </div>
   );
 }
 
