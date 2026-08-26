@@ -40,7 +40,6 @@ const RESERVE_MS = 1000;
 const UPLOAD_MS = 1200;
 const DNS_MS = 1800;
 const INVITE_MS = 3000;
-const PAUSE_MS = 1500;
 
 export type UploadResult = { ok: true; file: MockFile } | { ok: false; error: "type" | "size" };
 
@@ -57,8 +56,6 @@ type MockState = {
   reserving: boolean;
   /** upload slot key -> percent */
   uploads: Record<string, number>;
-  /** libraryId -> pause/unpause in flight */
-  pausing: Record<string, boolean>;
 
   switchOrganization: (orgId: string) => void;
   createLibrary: (name: string, shortName: string) => string;
@@ -69,7 +66,6 @@ type MockState = {
   checkDns: (libraryId: string) => void;
   invite: (libraryId: string, grantId: string) => void;
   restoreVersion: (libraryId: string, rev: string) => void;
-  togglePause: (libraryId: string) => void;
   saveDraft: (libraryId: string) => void;
   startSetup: (libraryId: string) => void;
   retrySetup: (libraryId: string) => void;
@@ -187,7 +183,6 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
     saving: {},
     reserving: false,
     uploads: {},
-    pausing: {},
 
     switchOrganization(orgId) {
       set({ orgId });
@@ -227,7 +222,6 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
             saved,
             draft: structuredClone(saved),
             versions: [],
-            paused: false,
             databaseCollections: [],
             zoteroGroups: ZOTERO_GROUP_OPTIONS,
           },
@@ -350,23 +344,6 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
       get().startActivation(libraryId);
     },
 
-    togglePause(libraryId) {
-      const library = find(libraryId);
-      if (!library) return;
-      set((state) => ({ pausing: { ...state.pausing, [libraryId]: true } }));
-      setTimeout(() => {
-        const paused = !library.paused;
-        set((state) => ({
-          pausing: { ...state.pausing, [libraryId]: false },
-          libraries: patchLibrary(state.libraries, libraryId, (l) => ({ ...l, paused })),
-        }));
-        toast.success(paused ? "Library paused" : "Library is back online", {
-          description: paused
-            ? `${library.address} now shows a holding page.`
-            : `${library.address} is serving the library again.`,
-        });
-      }, PAUSE_MS);
-    },
 
     saveDraft(libraryId) {
       set((state) => ({ saving: { ...state.saving, [libraryId]: true } }));

@@ -119,7 +119,6 @@ export type MockLibrary = {
   saved: LibraryConfig;
   draft: LibraryConfig;
   versions: LibraryVersion[];
-  paused: boolean;
   /** Every collection in the library's database. */
   databaseCollections: DatabaseCollection[];
   /** Groups the connected Zotero account can see. */
@@ -466,7 +465,6 @@ export function seedLibraries(): MockLibrary[] {
       steps: makeSteps(6, false),
       failNextDeployment: false,
       saved: fullConfig(),
-      paused: false,
       databaseCollections: AIED_DATABASE_COLLECTIONS,
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
       versions: [
@@ -489,7 +487,6 @@ export function seedLibraries(): MockLibrary[] {
       steps: settingUpSteps,
       failNextDeployment: true,
       saved: makeConfig("Health Evidence Hub", "health-evidence-hub", { accent: "#1d9a6c", secondary: "#0f3d3e", link: "#047857" }),
-      paused: false,
       databaseCollections: HEALTH_DATABASE_COLLECTIONS,
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
       versions: [],
@@ -507,7 +504,6 @@ export function seedLibraries(): MockLibrary[] {
       steps: makeSteps(0, false),
       failNextDeployment: false,
       saved: makeConfig("Malaria Review", "malaria-review", { accent: "#7c3aed", secondary: "#3b0764", link: "#6d28d9" }),
-      paused: false,
       databaseCollections: [],
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
       versions: [],

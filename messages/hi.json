@@ -3023,16 +3023,7 @@
         "restoreBody": "This publishes it as a new version."
       },
       "danger": {
-        "description": "Pause or delete this library. Be careful here.",
-        "pausedNotice": "This library is paused. {address} shows a holding page.",
-        "pauseTitle": "Pause the library",
-        "pauseHint": "Visitors see a holding page. Nothing is deleted.",
-        "pause": "Pause",
-        "resume": "Resume",
-        "pauseConfirmTitle": "Pause the library?",
-        "pauseConfirmBody": "{address} will show a holding page until you resume it.",
-        "resumeConfirmTitle": "Resume the library?",
-        "resumeConfirmBody": "{address} will serve the library again.",
+        "description": "Delete this library. Be careful here.",
         "deleteTitle": "Delete the library",
         "deleteHint": "Removes the site, address and settings.",
         "deleteButton": "Delete library"

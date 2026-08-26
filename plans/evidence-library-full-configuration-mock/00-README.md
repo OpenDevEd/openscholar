@@ -86,7 +86,7 @@ pending → verified, TLS chip, redirect platform address toggle.
 Versions: list (date, who, changed sections, Live / Previous / Failed),
 Restore with confirm, runs the activation banner.
 
-Danger: Pause library (holding page), Delete library.
+Danger: Delete library. (Pausing is per Zotero group in Sources: it stops import and write-back for that group.)
 
 ## Behaviour
 
