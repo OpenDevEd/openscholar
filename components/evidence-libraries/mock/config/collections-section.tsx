@@ -58,7 +58,7 @@ export function CollectionsSection({ library, patch }: SectionProps) {
           />
         }
       >
-        {t("shownCount", { shown: shown.length, total: database.length })}
+        {t("shownHeading")}
       </SubHeading>
       {database.length === 0 ? (
         <EmptyList>{t("noneInDatabase")}</EmptyList>

@@ -97,10 +97,7 @@ export function InstitutionsSection({ library, patch }: SectionProps) {
           ))}
         </SortableList>
       )}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          {t("count", { count: institutions.length, max: INSTITUTIONS_MAX })}
-        </p>
+      <div className="flex items-center justify-end gap-2">
         <AddButton
           disabled={institutions.length >= INSTITUTIONS_MAX}
           onClick={() =>

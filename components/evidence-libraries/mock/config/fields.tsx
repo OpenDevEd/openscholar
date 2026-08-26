@@ -110,7 +110,7 @@ export function UploadField({
     onDrop: handleFiles,
   });
 
-  const accepts = kind === "legal" ? ".md, .txt" : kind === "shareImage" ? "PNG" : "SVG, PNG, WEBP";
+  const accepts = kind === "legal" ? "Markdown or text file" : kind === "shareImage" ? "PNG" : "SVG, PNG or WEBP";
   const errorText =
     error === "type"
       ? t("wrongType", { accepts })
@@ -123,7 +123,7 @@ export function UploadField({
   return (
     <Field
       label={label}
-      hint={hint ?? t("limits", { accepts, max: formatBytes(limit.maxBytes) })}
+      hint={hint ?? t("limits", { accepts })}
       error={errorText}
       suffix={optional ? t("optional") : undefined}
       className={className}

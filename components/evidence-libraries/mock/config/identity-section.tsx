@@ -154,9 +154,7 @@ export function IdentitySection({ library, patch }: SectionProps) {
         >
           {t("partnersHeading")}
         </SubHeading>
-        <p className="text-xs text-muted-foreground">
-          {t("partnersHint", { max: PARTNERS_MAX })}
-        </p>
+        <p className="text-xs text-muted-foreground">{t("partnersHint")}</p>
         {identity.fundingPartners.length === 0 ? (
           <EmptyList>{t("noPartners")}</EmptyList>
         ) : (

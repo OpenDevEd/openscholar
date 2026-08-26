@@ -112,3 +112,11 @@ No forced uppercase anywhere. Sentence case for every label and chip.
 6. Help, meta and counts: `text-xs text-muted-foreground`. Codes and URLs add `font-mono`.
 7. Chips: `text-xs font-medium`, rounded-full, tinted tone. No tracking.
 8. Colour carries meaning only: emerald = done or healthy, amber = changed or waiting, destructive = wrong or dangerous, primary = active or running.
+
+## Copy rules (decided 2026-08-26)
+
+1. Show a number only when it changes what the owner does: records in a collection or group, "3 selected" in a picker, a limit message when the limit is hit. Never "3 of 200", "Links (5 of 12)", "Groups (3)", or "up to 20" in a hint.
+2. One word for one thing. "Advanced" (never "Advanced colours"). "Remove" takes something out of a list; "Delete" is only for the library. "Add <thing>" for a single inline add; "Add <things>" opens a picker. A picker button and its dialog title use the same words.
+3. Empty states are one short sentence: "No links yet." The add button beside it is the instruction.
+4. File hints name the accepted types only ("SVG, PNG or WEBP."). Sizes appear only in the error when a file is too big.
+5. Section chips: Complete · Changed · Needs attention. The header says "Unsaved changes".

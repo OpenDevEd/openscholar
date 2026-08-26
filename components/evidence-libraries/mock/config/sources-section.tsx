@@ -122,7 +122,7 @@ export function SourcesSection({ library, patch }: SectionProps) {
             />
           }
         >
-          {t("groupsHeading")} ({t("groupsCount", { count: sources.groups.length })})
+          {t("groupsHeading")}
         </SubHeading>
 
         {sources.groups.length === 0 ? (

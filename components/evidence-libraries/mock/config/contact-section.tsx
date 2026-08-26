@@ -87,7 +87,7 @@ export function ContactSection({ library, patch }: SectionProps) {
             )}
           </Field>
         </div>
-        <Field label={t("address")} hint={t("addressHint", { lines: ADDRESS_MAX_LINES })} suffix={t("optional")}>
+        <Field label={t("address")} hint={t("addressHint")} suffix={t("optional")}>
           {(id) => (
             <Textarea
               id={id}
