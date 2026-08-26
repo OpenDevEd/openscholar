@@ -119,7 +119,8 @@ describe("storeLibraryUpload", () => {
     const upload = server.requests[0];
     expect(upload.method).toBe("POST");
     expect(upload.headers.get("content-type")).toBe("image/png");
-    expect(upload.headers.get("cache-control")).toBe("max-age=31536000");
+    // Protocol contract: the runtime and browsers may cache the file forever.
+    expect(upload.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
     expect(upload.headers.get("apikey")).toBe(SERVICE_ROLE_KEY);
   });
 

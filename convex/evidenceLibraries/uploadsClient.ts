@@ -17,8 +17,8 @@ import {
 } from "../../lib/evidence-libraries/configuration/uploads";
 
 const REQUEST_TIMEOUT_MS = 15_000;
-/** One year. New content gets a new hash, so files never go stale. */
-const CACHE_MAX_AGE_SECONDS = 31_536_000;
+/** One year, immutable. New content gets a new hash, so files never go stale. */
+const CACHE_CONTROL = "public, max-age=31536000, immutable";
 const LIST_PAGE_SIZE = 100;
 
 type StorageInput = {
@@ -132,7 +132,7 @@ export async function storeLibraryUpload(
     method: "POST",
     path: bucketPath(`${EVIDENCE_LIBRARY_UPLOAD_BUCKET}/${key}`),
     headers: {
-      "cache-control": `max-age=${CACHE_MAX_AGE_SECONDS}`,
+      "cache-control": CACHE_CONTROL,
       "content-type": input.contentType,
       "x-upsert": "true",
     },
