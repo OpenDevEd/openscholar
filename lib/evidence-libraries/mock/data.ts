@@ -389,7 +389,7 @@ function fullConfig(): LibraryConfig {
     },
   };
   c.sources.zotero = [
-    { id: "src_1", label: "AI in Education (main group)", auth: "zotero", groupId: "2405685", apiKey: "", enabled: true, writeback: true, lastSync: "2026-08-26 06:00", records: 1284 },
+    { id: "src_1", label: "AI in Education (main group)", auth: "zotero", groupId: "2405685", apiKey: "zotero-oauth", enabled: true, writeback: true, lastSync: "2026-08-26 06:00", records: 1284 },
     { id: "src_2", label: "Partner submissions", auth: "apiKey", groupId: "5133907", apiKey: "P9x4kq…", enabled: true, writeback: false, lastSync: "2026-08-25 22:15", records: 212 },
   ];
   c.localization = { locales: ["en-GB", "fr", "ar"], defaultLocale: "en-GB", detect: true, priority: ["en-GB", "fr", "ar"] };

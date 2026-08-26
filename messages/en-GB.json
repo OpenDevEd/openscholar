@@ -2586,16 +2586,30 @@
         "introHint": "The database holds every collection from every source. Add the ones visitors should see. The order below is the display order.",
         "empty": "No collections are shown yet. Use Add collection to pick some.",
         "noneInDatabase": "The database has no collections yet. Connect a source and sync first.",
-        "add": "Add collection",
-        "searchPlaceholder": "Search collections…",
-        "noMatch": "No collection matches.",
-        "allAdded": "Every collection is already shown.",
         "records": "{count} records",
         "titleLabel": "Title on the site",
         "titleHint": "Leave empty to use the database name.",
         "featured": "Featured on home page",
         "remove": "Stop showing this collection",
-        "shownCount": "{shown} of {total} shown"
+        "shownCount": "{shown} of {total} shown",
+        "picker": {
+          "open": "Add collections",
+          "title": "Add collections",
+          "description": "{total} collections in the library database. Tick the ones to show on the site.",
+          "search": "Search by name or source…",
+          "clear": "Clear search",
+          "allSources": "All sources",
+          "hideShown": "Hide collections already shown",
+          "selectAll": "Select all",
+          "colTitle": "Collection",
+          "colSource": "Source",
+          "colRecords": "Records",
+          "noMatch": "No collection matches.",
+          "shown": "Shown",
+          "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
+          "cancel": "Cancel",
+          "addPicked": "{count, plural, =0 {Add} one {Add # collection} other {Add # collections}}"
+        }
       },
       "search": {
         "description": "Choose what people can search and which filters they see.",
@@ -2910,7 +2924,13 @@
         "redirectsHint": "Records with this tag define redirects for the site.",
         "publishLabel": "Publish the PDF",
         "publishHint": "The attached PDF is made public. Keep at least one tag.",
-        "publishError": "Keep at least one publish tag."
+        "publishError": "Keep at least one publish tag.",
+        "statusIncomplete": "Not set up",
+        "stepConnect": "Connect",
+        "stepGroup": "Choose the group",
+        "stepOptions": "Options",
+        "authZoteroHint": "Sign in once. No key to copy.",
+        "enabledHint": "Turned off keeps the records but stops new imports."
       },
       "languages": {
         "description": "Which languages the public site offers, which one it opens in, and the order it tries them.",

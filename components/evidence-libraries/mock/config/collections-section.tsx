@@ -1,21 +1,12 @@
 "use client";
 
-import { FolderOpen, Plus } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { useId } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { CollectionPicker } from "./collection-picker";
 import type { CollectionSetting, DatabaseCollection } from "@/lib/evidence-libraries/mock/config";
 import { EmptyList, ListRow, move, SubHeading } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
@@ -24,7 +15,6 @@ export function CollectionsSection({ library, patch }: SectionProps) {
   const t = useTranslations("evidenceLibraryMock.config.collections");
   const shown = library.draft.collections;
   const database = library.databaseCollections;
-  const available = database.filter((c) => !shown.some((s) => s.id === c.id));
 
   function update(id: string, fn: (row: CollectionSetting) => void) {
     patch((d) => {
@@ -53,10 +43,10 @@ export function CollectionsSection({ library, patch }: SectionProps) {
       <p className="text-xs text-muted-foreground">{t("introHint")}</p>
       <SubHeading
         action={
-          <AddCollection
-            available={available}
-            databaseEmpty={database.length === 0}
-            onAdd={add}
+          <CollectionPicker
+            database={database}
+            shownIds={shown.map((c) => c.id)}
+            onAdd={(items) => items.forEach(add)}
           />
         }
       >
@@ -95,59 +85,6 @@ export function CollectionsSection({ library, patch }: SectionProps) {
         </div>
       )}
     </SectionShell>
-  );
-}
-
-function AddCollection({
-  available,
-  databaseEmpty,
-  onAdd,
-}: {
-  available: DatabaseCollection[];
-  databaseEmpty: boolean;
-  onAdd: (collection: DatabaseCollection) => void;
-}) {
-  const t = useTranslations("evidenceLibraryMock.config.collections");
-  const [open, setOpen] = useState(false);
-  const sources = [...new Set(available.map((c) => c.source))];
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" disabled={databaseEmpty}>
-          <Plus />
-          {t("add")}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0">
-        <Command>
-          <CommandInput placeholder={t("searchPlaceholder")} autoFocus />
-          <CommandList>
-            <CommandEmpty>{available.length === 0 ? t("allAdded") : t("noMatch")}</CommandEmpty>
-            {sources.map((source) => (
-              <CommandGroup key={source} heading={source}>
-                {available
-                  .filter((c) => c.source === source)
-                  .map((collection) => (
-                    <CommandItem
-                      key={collection.id}
-                      value={`${collection.title} ${collection.source}`}
-                      onSelect={() => {
-                        onAdd(collection);
-                        setOpen(false);
-                      }}
-                    >
-                      <span className="flex-1 truncate">{collection.title}</span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {t("records", { count: collection.count })}
-                      </span>
-                    </CommandItem>
-                  ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
   );
 }
 
