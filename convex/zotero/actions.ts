@@ -437,14 +437,23 @@ async function fetchAllTopItemsForCollection(
 /**
  * Start OAuth flow - get request token and return authorize URL.
  */
+// A path on this app the callback may send the person back to.
+export function isSafeReturnPath(value: string): boolean {
+  return value.startsWith("/") && !value.startsWith("//") && !value.includes("\\");
+}
+
 export const startOAuth = action({
   args: {
     callbackUrl: v.string(),
+    returnTo: v.optional(v.string()),
   },
   returns: v.object({
     authorizeUrl: v.string(),
   }),
-  handler: async (ctx, { callbackUrl }) => {
+  handler: async (ctx, { callbackUrl, returnTo }) => {
+    if (returnTo !== undefined && !isSafeReturnPath(returnTo)) {
+      throw createError("VALIDATION_ERROR", "returnTo must be a path on this app");
+    }
     const userId = await requireCurrentUserId(ctx);
     const consumerKey = process.env.ZOTERO_CLIENT_KEY;
     const consumerSecret = process.env.ZOTERO_CLIENT_SECRET;
@@ -507,10 +516,12 @@ export const startOAuth = action({
       token: oauthToken,
       tokenSecret: oauthTokenSecret,
       userId,
+      returnTo,
     });
 
-    // Return authorize URL
-    const authorizeUrl = `${ZOTERO_AUTHORIZE_URL}?oauth_token=${oauthToken}&library_access=1&notes_access=1&write_access=0&all_groups=read`;
+    // Return authorize URL. Group write access lets Evidence Libraries write
+    // back to a group; the person can still refuse it on the Zotero page.
+    const authorizeUrl = `${ZOTERO_AUTHORIZE_URL}?oauth_token=${oauthToken}&library_access=1&notes_access=1&write_access=0&all_groups=write`;
 
     return { authorizeUrl };
   },
@@ -527,8 +538,12 @@ export const completeOAuth = internalAction({
   returns: v.object({
     success: v.boolean(),
     error: v.optional(v.string()),
+    returnTo: v.optional(v.string()),
   }),
-  handler: async (ctx, { oauthToken, oauthVerifier }) => {
+  handler: async (
+    ctx,
+    { oauthToken, oauthVerifier },
+  ): Promise<{ success: boolean; error?: string; returnTo?: string }> => {
     const consumerKey = process.env.ZOTERO_CLIENT_KEY;
     const consumerSecret = process.env.ZOTERO_CLIENT_SECRET;
 
@@ -537,7 +552,11 @@ export const completeOAuth = internalAction({
     }
 
     // Get stored request token
-    const stored = await ctx.runMutation(internal.zotero.mutations.getRequestToken, {
+    const stored: {
+      tokenSecret: string;
+      userId: Id<"users">;
+      returnTo?: string;
+    } | null = await ctx.runMutation(internal.zotero.mutations.getRequestToken, {
       token: oauthToken,
     });
 
@@ -545,7 +564,7 @@ export const completeOAuth = internalAction({
       return { success: false, error: "OAuth session expired or invalid" };
     }
 
-    const { tokenSecret, userId } = stored;
+    const { tokenSecret, userId, returnTo } = stored;
 
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonce = generateNonce();
@@ -619,7 +638,7 @@ export const completeOAuth = internalAction({
       username: username || undefined,
     });
 
-    return { success: true };
+    return { success: true, returnTo };
   },
 });
 

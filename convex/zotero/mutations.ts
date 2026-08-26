@@ -13,9 +13,10 @@ export const storeRequestToken = internalMutation({
     token: v.string(),
     tokenSecret: v.string(),
     userId: v.id("users"),
+    returnTo: v.optional(v.string()),
   },
   returns: v.null(),
-  handler: async (ctx, { token, tokenSecret, userId }) => {
+  handler: async (ctx, { token, tokenSecret, userId, returnTo }) => {
     // Cardinality: 1 OAuth token per user
     const existing = await ctx.db
       .query("zoteroOAuthTokens")
@@ -30,6 +31,7 @@ export const storeRequestToken = internalMutation({
       tokenSecret,
       userId,
       expiresAt: Date.now() + 10 * 60 * 1000,
+      returnTo,
     });
 
     return null;
@@ -47,6 +49,7 @@ export const getRequestToken = internalMutation({
     v.object({
       tokenSecret: v.string(),
       userId: v.id("users"),
+      returnTo: v.optional(v.string()),
     }),
     v.null()
   ),
@@ -68,6 +71,7 @@ export const getRequestToken = internalMutation({
     return {
       tokenSecret: stored.tokenSecret,
       userId: stored.userId,
+      returnTo: stored.returnTo,
     };
   },
 });

@@ -130,6 +130,7 @@ export const runApplicationSetup = internalAction({
         zoteroTranslationUrl: optionalRuntimeEnvironment(
           "EL_ZOTERO_TRANSLATION_URL",
         ),
+        zoteroGroups: prepared.zoteroGroups,
       });
       const application = await reconcileCoolifyApplication({
         coolifyUrl: requireRuntimeEnvironment("EL_COOLIFY_URL", invalidData),

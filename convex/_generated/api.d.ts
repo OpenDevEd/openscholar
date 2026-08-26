@@ -234,9 +234,14 @@ import type * as webhooks_eventOrdering from "../webhooks/eventOrdering.js";
 import type * as webhooks_projections from "../webhooks/projections.js";
 import type * as workpool from "../workpool.js";
 import type * as zotero_actions from "../zotero/actions.js";
+import type * as zotero_groupAccess from "../zotero/groupAccess.js";
 import type * as zotero_internal from "../zotero/internal.js";
+import type * as zotero_libraryGroupActions from "../zotero/libraryGroupActions.js";
+import type * as zotero_libraryGroupValidators from "../zotero/libraryGroupValidators.js";
+import type * as zotero_libraryGroups from "../zotero/libraryGroups.js";
 import type * as zotero_mutations from "../zotero/mutations.js";
 import type * as zotero_queries from "../zotero/queries.js";
+import type * as zotero_sourceCredentials from "../zotero/sourceCredentials.js";
 
 import type {
   ApiFromModules,
@@ -471,9 +476,14 @@ declare const fullApi: ApiFromModules<{
   "webhooks/projections": typeof webhooks_projections;
   workpool: typeof workpool;
   "zotero/actions": typeof zotero_actions;
+  "zotero/groupAccess": typeof zotero_groupAccess;
   "zotero/internal": typeof zotero_internal;
+  "zotero/libraryGroupActions": typeof zotero_libraryGroupActions;
+  "zotero/libraryGroupValidators": typeof zotero_libraryGroupValidators;
+  "zotero/libraryGroups": typeof zotero_libraryGroups;
   "zotero/mutations": typeof zotero_mutations;
   "zotero/queries": typeof zotero_queries;
+  "zotero/sourceCredentials": typeof zotero_sourceCredentials;
 }>;
 
 /**

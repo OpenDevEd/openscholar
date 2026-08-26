@@ -27,6 +27,8 @@ import {
   SEARCH_KEY_PATH,
   STORAGE_SERVICE_KEY_PATH,
 } from "./runtimeCredentials";
+import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
+import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
 
 function requireRuntimeCommit(value: string): string {
   const commit = requireNonBlankProvisioningValue("runtimeCommit", value);
@@ -70,6 +72,13 @@ export const prepareApplicationSetup = internalMutation({
     revisionCreatedAt: v.number(),
     targetBaseUrl: v.string(),
     sections: v.array(sectionRowValidator),
+    zoteroGroups: v.array(
+      v.object({
+        groupId: v.string(),
+        encryptedApiKey: v.string(),
+        scopes: zoteroGroupScopesValidator,
+      }),
+    ),
   }),
   handler: async (ctx, args) => {
     const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, {
@@ -248,6 +257,10 @@ export const prepareApplicationSetup = internalMutation({
       revisionCreatedAt: setup.revision.createdAt,
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
       sections,
+      zoteroGroups: await readLibraryZoteroGroupCredentials(
+        ctx,
+        args.libraryId,
+      ),
     };
   },
 });
