@@ -2310,10 +2310,10 @@
       "ownerHint": "You are an owner of this organisation."
     },
     "setup": {
-      "stoppedHint": "Coolify, the service that hosts the library, did not finish the build. Retry repeats this step and the steps after it.",
-      "deploymentError": "Coolify did not finish the deployment.",
+      "stoppedHint": "The build did not finish. Retry repeats this step and the steps after it.",
+      "deploymentError": "The build did not finish.",
       "retryingTitle": "Retrying",
-      "retryingDescription": "Starting again from the deployment step.",
+      "retryingDescription": "Starting again from the build step.",
       "backToLibraries": "Back to libraries",
       "startSetup": "Start setup",
       "configure": "Configure",
@@ -2333,15 +2333,15 @@
         },
         "application": {
           "name": "Application",
-          "waiting": "Creating the library app in Coolify.",
-          "running": "Creating the library app in Coolify…",
-          "done": "Created the library app in Coolify."
+          "waiting": "Creating the library app.",
+          "running": "Creating the library app…",
+          "done": "Created the library app."
         },
         "deployment": {
-          "name": "Deployment",
-          "waiting": "Building and starting the library.",
-          "running": "Building and starting the library…",
-          "done": "Built and started the library."
+          "name": "Build",
+          "waiting": "Building the library and putting it online.",
+          "running": "Building the library and putting it online…",
+          "done": "Built the library and put it online."
         },
         "readiness": {
           "name": "Readiness",
@@ -2431,10 +2431,10 @@
       "dangerTitle": "Delete this library",
       "dangerDescription": "Development libraries can be removed completely. This deletes the app, files, database, and address.",
       "activateDraftTitle": "Set up and activate this library?",
-      "activateDraftBody": "This creates the database, storage, and app for {name}, then deploys it at {address}. Takes about 2 minutes.",
+      "activateDraftBody": "This sets up {name} and puts it online at {address}. Takes about 2 minutes.",
       "activateDraftConfirm": "Start setup",
       "activateTitle": "Activate this revision?",
-      "activateBody": "This redeploys the library. Takes about 2 minutes.",
+      "activateBody": "This publishes the new version. Takes about 2 minutes.",
       "activateBodyUnsaved": "Your unsaved changes will be saved first.",
       "activateConfirm": "Activate",
       "activationStarted": "Activation started",
@@ -2443,7 +2443,7 @@
       "isLive": "{rev} is live",
       "stages": {
         "queued": "Queued",
-        "deploying": "Deploying",
+        "deploying": "Building",
         "checking": "Checking the library page",
         "live": "Live"
       },
