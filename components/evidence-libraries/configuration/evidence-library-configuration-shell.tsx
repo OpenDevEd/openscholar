@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import type { EssentialConfigurationFormContract } from "@/lib/evidence-libraries/configuration/form-contract";
 import type { EssentialConfigurationSections } from "@/lib/evidence-libraries/configuration/essential-configuration";
@@ -34,8 +36,12 @@ import type { EssentialConfigurationSections } from "@/lib/evidence-libraries/co
 type FieldName =
   | "name"
   | "shortName"
+  | "tagline"
+  | "description"
   | "logo"
   | "favicon"
+  | "shareImage"
+  | "poweredBy"
   | "accent"
   | "tertiary"
   | "availableLanguages"
@@ -44,8 +50,12 @@ type FieldName =
 const pointerToField: Record<string, FieldName> = {
   "/identity/name": "name",
   "/identity/shortName": "shortName",
+  "/identity/tagline": "tagline",
+  "/identity/description": "description",
   "/identity/assets/logoDark": "logo",
   "/identity/assets/favicon": "favicon",
+  "/identity/assets/shareImage": "shareImage",
+  "/footer/poweredBy": "poweredBy",
   "/theme/colors/accent": "accent",
   "/theme/colors/tertiary": "tertiary",
   "/localization/locales": "availableLanguages",
@@ -94,10 +104,13 @@ function readInitialConfiguration(
     identity: {
       name: stringValue(identity.name),
       shortName: stringValue(identity.shortName),
+      tagline: stringValue(identity.tagline),
+      description: stringValue(identity.description),
       baseUrl: stringValue(identity.baseUrl),
       assets: {
         logoDark: stringValue(assets.logoDark),
         favicon: stringValue(assets.favicon),
+        shareImage: stringValue(assets.shareImage),
       },
     },
     theme: {
@@ -112,6 +125,10 @@ function readInitialConfiguration(
         ? savedDefaultLocale
         : availableLocales[0]!,
     },
+    // There is no plan model yet. Every library is treated as a free plan,
+    // so the "Powered by OpenScholar" credit is locked on. Plan gating comes
+    // later; the server rejects false as well.
+    footer: { poweredBy: true },
   };
 }
 
@@ -128,7 +145,31 @@ function cloneConfiguration(
       locales: [...configuration.localization.locales],
       defaultLocale: configuration.localization.defaultLocale,
     },
+    footer: { ...configuration.footer },
   };
+}
+
+function optionalText(value: string | undefined) {
+  const trimmed = value?.trim() ?? "";
+  return trimmed === "" ? undefined : trimmed;
+}
+
+export function toSavedSections(
+  configuration: EssentialConfigurationSections,
+): EssentialConfigurationSections {
+  const saved = cloneConfiguration(configuration);
+  saved.identity.tagline = optionalText(configuration.identity.tagline);
+  saved.identity.description = optionalText(configuration.identity.description);
+  saved.identity.assets.shareImage = optionalText(
+    configuration.identity.assets.shareImage,
+  );
+  for (const key of ["tagline", "description"] as const) {
+    if (saved.identity[key] === undefined) delete saved.identity[key];
+  }
+  if (saved.identity.assets.shareImage === undefined) {
+    delete saved.identity.assets.shareImage;
+  }
+  return saved;
 }
 
 function fieldFromError(error: unknown): FieldName | undefined {
@@ -166,6 +207,14 @@ function SavedConfigurationPreview({
             <dd>{configuration.identity.shortName}</dd>
           </div>
           <div>
+            <dt className="text-muted-foreground">{t("taglineLabel")}</dt>
+            <dd>{configuration.identity.tagline}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("descriptionLabel")}</dt>
+            <dd>{configuration.identity.description}</dd>
+          </div>
+          <div>
             <dt className="text-muted-foreground">{t("publicAddressLabel")}</dt>
             <dd className="break-all">{configuration.identity.baseUrl}</dd>
           </div>
@@ -187,6 +236,12 @@ function SavedConfigurationPreview({
             </dd>
           </div>
           <div>
+            <dt className="text-muted-foreground">{t("shareImageLabel")}</dt>
+            <dd className="break-all">
+              {configuration.identity.assets.shareImage}
+            </dd>
+          </div>
+          <div>
             <dt className="text-muted-foreground">{t("accentColourLabel")}</dt>
             <dd>{configuration.theme.colors.accent}</dd>
           </div>
@@ -205,6 +260,14 @@ function SavedConfigurationPreview({
           {t("defaultLanguagePreview", {
             language: configuration.localization.defaultLocale,
           })}
+        </p>
+      </section>
+      <section>
+        <h3 className="font-medium">{t("footerTitle")}</h3>
+        <p className="mt-2">
+          {configuration.footer.poweredBy
+            ? t("poweredByOn")
+            : t("poweredByOff")}
         </p>
       </section>
     </div>
@@ -361,9 +424,15 @@ function EssentialConfigurationForm({
 
   function validateVisibleFields(form: HTMLFormElement) {
     const controls = Array.from(form.elements).filter(
-      (control): control is HTMLInputElement | HTMLSelectElement =>
+      (
+        control,
+      ): control is
+        | HTMLInputElement
+        | HTMLSelectElement
+        | HTMLTextAreaElement =>
         control instanceof HTMLInputElement ||
-        control instanceof HTMLSelectElement,
+        control instanceof HTMLSelectElement ||
+        control instanceof HTMLTextAreaElement,
     );
     const firstInvalid = controls.find((control) => !control.checkValidity());
     if (!firstInvalid) return true;
@@ -382,7 +451,7 @@ function EssentialConfigurationForm({
     void saveConfiguration({
       libraryId,
       expectedEditVersion: editVersion,
-      sections: configuration,
+      sections: toSavedSections(configuration),
     })
       .then((result) => {
         setEditVersion(result.editVersion);
@@ -521,6 +590,84 @@ function EssentialConfigurationForm({
                 {t("publicAddressHelp")}
               </p>
             </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="configuration-tagline">{t("taglineLabel")}</Label>
+              <Input
+                id="configuration-tagline"
+                name="tagline"
+                value={configuration.identity.tagline ?? ""}
+                maxLength={formContract.fields.tagline.maxLength}
+                aria-invalid={Boolean(errors.tagline)}
+                aria-describedby={
+                  errors.tagline
+                    ? "configuration-tagline-count configuration-tagline-error"
+                    : "configuration-tagline-count"
+                }
+                onChange={(event) => {
+                  clearError("tagline");
+                  setConfiguration((current) => ({
+                    ...current,
+                    identity: {
+                      ...current.identity,
+                      tagline: event.target.value,
+                    },
+                  }));
+                }}
+              />
+              <p
+                id="configuration-tagline-count"
+                className="text-sm text-muted-foreground"
+              >
+                {t("characterCount", {
+                  count: configuration.identity.tagline?.length ?? 0,
+                  max: formContract.fields.tagline.maxLength ?? 0,
+                })}
+              </p>
+              <FieldError
+                id="configuration-tagline-error"
+                message={errors.tagline}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="configuration-description">
+                {t("descriptionLabel")}
+              </Label>
+              <Textarea
+                id="configuration-description"
+                name="description"
+                value={configuration.identity.description ?? ""}
+                maxLength={formContract.fields.description.maxLength}
+                aria-invalid={Boolean(errors.description)}
+                aria-describedby={
+                  errors.description
+                    ? "configuration-description-count configuration-description-error"
+                    : "configuration-description-count"
+                }
+                onChange={(event) => {
+                  clearError("description");
+                  setConfiguration((current) => ({
+                    ...current,
+                    identity: {
+                      ...current.identity,
+                      description: event.target.value,
+                    },
+                  }));
+                }}
+              />
+              <p
+                id="configuration-description-count"
+                className="text-sm text-muted-foreground"
+              >
+                {t("characterCount", {
+                  count: configuration.identity.description?.length ?? 0,
+                  max: formContract.fields.description.maxLength ?? 0,
+                })}
+              </p>
+              <FieldError
+                id="configuration-description-error"
+                message={errors.description}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -593,6 +740,47 @@ function EssentialConfigurationForm({
                 message={errors.favicon}
               />
             </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="configuration-share-image">
+                {t("shareImageLabel")}
+              </Label>
+              <Input
+                id="configuration-share-image"
+                name="shareImage"
+                type="url"
+                value={configuration.identity.assets.shareImage ?? ""}
+                maxLength={formContract.fields.shareImage.maxLength}
+                aria-invalid={Boolean(errors.shareImage)}
+                aria-describedby={
+                  errors.shareImage
+                    ? "configuration-share-image-help configuration-share-image-error"
+                    : "configuration-share-image-help"
+                }
+                onChange={(event) => {
+                  clearError("shareImage");
+                  setConfiguration((current) => ({
+                    ...current,
+                    identity: {
+                      ...current.identity,
+                      assets: {
+                        ...current.identity.assets,
+                        shareImage: event.target.value,
+                      },
+                    },
+                  }));
+                }}
+              />
+              <p
+                id="configuration-share-image-help"
+                className="text-sm text-muted-foreground"
+              >
+                {t("shareImageHelp")}
+              </p>
+              <FieldError
+                id="configuration-share-image-error"
+                message={errors.shareImage}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="configuration-accent-colour">
                 {t("accentColourLabel")}
@@ -656,6 +844,34 @@ function EssentialConfigurationForm({
                 id="configuration-tertiary-error"
                 message={errors.tertiary}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("footerTitle")}</CardTitle>
+            <CardDescription>{t("footerDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-start gap-3">
+            {/* Locked on until a plan model exists. The server also rejects false. */}
+            <Switch
+              id="configuration-powered-by"
+              name="poweredBy"
+              checked={configuration.footer.poweredBy}
+              disabled
+              aria-describedby="configuration-powered-by-help"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="configuration-powered-by">
+                {t("poweredByLabel")}
+              </Label>
+              <p
+                id="configuration-powered-by-help"
+                className="text-sm text-muted-foreground"
+              >
+                {t("poweredByHelp")}
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -26,6 +26,19 @@ if (typeof globalThis.Element !== "undefined") {
   }
 }
 
+// JSDOM lacks ResizeObserver; Radix Switch and Checkbox read it when they
+// render inside a <form>. Polyfill a no-op once globally.
+if (
+  typeof globalThis.window !== "undefined" &&
+  typeof globalThis.ResizeObserver === "undefined"
+) {
+  globalThis.ResizeObserver = class ResizeObserverPolyfill {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 // Cleanup React Testing Library renders after each test
 // Only runs when a DOM environment is active (jsdom)
 afterEach(async () => {

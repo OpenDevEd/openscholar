@@ -63,8 +63,11 @@ const formContract = {
   fields: {
     name: { minLength: 1, maxLength: 100 },
     shortName: { minLength: 1, maxLength: 40 },
+    tagline: { maxLength: 160 },
+    description: { maxLength: 300 },
     logo: { minLength: 1, maxLength: 2048 },
     favicon: { minLength: 1, maxLength: 2048 },
+    shareImage: { minLength: 1, maxLength: 2048 },
     colour: { pattern: "^#[0-9A-Fa-f]{6}$" },
   },
   locales: ["en-GB", "en-US", "de", "ar", "hi", "fr", "cn", "sw", "pt"],
@@ -125,6 +128,19 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
     const address = screen.getByLabelText("publicAddressLabel");
     expect(address).toHaveValue(savedSections.identity.baseUrl);
     expect(address).toHaveAttribute("readonly");
+    const poweredBy = screen.getByRole("switch", { name: "poweredByLabel" });
+    expect(poweredBy).toBeChecked();
+    expect(poweredBy).toBeDisabled();
+    expect(poweredBy).toHaveAccessibleDescription("poweredByHelp");
+
+    await user.type(
+      screen.getByLabelText("taglineLabel"),
+      "Evidence for climate decisions",
+    );
+    await user.type(
+      screen.getByLabelText("shareImageLabel"),
+      "https://assets.example.test/share.png",
+    );
 
     await user.clear(screen.getByLabelText("libraryNameLabel"));
     await user.type(
@@ -145,7 +161,15 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
         expectedEditVersion: 4,
         sections: {
           ...savedSections,
-          identity: { ...savedSections.identity, name: "Edited Library" },
+          identity: {
+            ...savedSections.identity,
+            name: "Edited Library",
+            tagline: "Evidence for climate decisions",
+            assets: {
+              ...savedSections.identity.assets,
+              shareImage: "https://assets.example.test/share.png",
+            },
+          },
           theme: {
             colors: { ...savedSections.theme.colors, accent: "#123456" },
           },
