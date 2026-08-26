@@ -59,7 +59,7 @@ export function SectionCard({
           ) : null}
           <h3
             className={cn(
-              "flex-1 text-sm font-semibold",
+              "flex-1 text-base font-semibold",
               tone === "danger" && "text-destructive",
             )}
           >
@@ -163,11 +163,11 @@ export function Field({
   const invalid = Boolean(error);
   return (
     <div className={cn("space-y-1.5", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={id}>
+      <div className="flex min-h-5 items-center justify-between gap-2">
+        <Label htmlFor={id} className="font-normal">
           {label}
           {suffix ? (
-            <span className="text-xs font-normal text-muted-foreground">{suffix}</span>
+            <span className="text-xs leading-none text-muted-foreground">{suffix}</span>
           ) : null}
         </Label>
         {counter ? (

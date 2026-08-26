@@ -476,7 +476,7 @@ function RoleField({ value, onChange }: { value: AccessRole; onChange: (role: Ac
   const t = useTranslations("evidenceLibraryMock.config.team");
   return (
     <div className="space-y-1.5">
-      <Label>{t("colRole")}</Label>
+      <div className="flex min-h-5 items-center"><Label className="font-normal">{t("colRole")}</Label></div>
       <Select value={value} onValueChange={(v) => onChange(v as AccessRole)}>
         <SelectTrigger className="w-full bg-background" aria-label={t("colRole")}>
           <SelectValue />

@@ -51,7 +51,7 @@ export function ThemeSection({ library, patch }: SectionProps) {
     <SectionShell sectionKey="theme" icon={Palette} description={t("description")} library={library}>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>{t("layoutLabel")}</Label>
+          <div className="flex min-h-5 items-center"><Label className="font-normal">{t("layoutLabel")}</Label></div>
           <RadioGroup
             value={theme.layout}
             onValueChange={(v) => set("layout", v as Theme["layout"])}

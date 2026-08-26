@@ -124,3 +124,12 @@ No forced uppercase anywhere. Sentence case for every label and chip.
 ## Grouping rule (decided 2026-08-26)
 
 Fields inside a section card sit in `FieldGroup`s: a divider above (none on the first), a `text-sm font-semibold` heading with optional hint and a right-side action, then the fields with one 16px gap. A bare heading followed by siblings is not allowed. "Advanced" disclosures use the same divider and padding.
+
+## Hierarchy scale (revised 2026-08-26)
+
+Four levels, each one step apart in size or weight, never the same:
+1. Section card title: `text-base font-semibold` in the tinted strip.
+2. Group heading (FieldGroup): `text-sm font-semibold`, divider above.
+3. Field label: `text-sm font-normal`, in a 20px-high row so paired columns align even with an "optional" suffix.
+4. Hint, meta: `text-xs text-muted-foreground`.
+Row titles inside list rows and toggle rows use `text-sm font-medium` (they are values, not labels).

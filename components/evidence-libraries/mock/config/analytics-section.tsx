@@ -32,7 +32,7 @@ export function AnalyticsSection({ library, patch }: SectionProps) {
   return (
     <SectionShell sectionKey="analytics" icon={BarChart3} description={t("description")} library={library}>
       <div className="space-y-1.5">
-        <Label>{t("providerLabel")}</Label>
+        <div className="flex min-h-5 items-center"><Label className="font-normal">{t("providerLabel")}</Label></div>
         <RadioGroup
           value={analytics.provider}
           className="gap-2"

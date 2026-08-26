@@ -276,7 +276,7 @@ function SmallSwitch({
         onCheckedChange={onChange}
         className="scale-90"
       />
-      <Label htmlFor={id} className="text-xs">
+      <Label htmlFor={id} className="text-xs font-normal">
         {label}
       </Label>
     </div>

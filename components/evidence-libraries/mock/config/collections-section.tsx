@@ -121,7 +121,7 @@ function CollectionRow({
       </div>
       <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
         <div className="space-y-1.5">
-          <Label htmlFor={`${id}-title`}>{t("titleLabel")}</Label>
+          <div className="flex min-h-5 items-center"><Label htmlFor={`${id}-title`} className="font-normal">{t("titleLabel")}</Label></div>
           <Input
             id={`${id}-title`}
             className="bg-background"

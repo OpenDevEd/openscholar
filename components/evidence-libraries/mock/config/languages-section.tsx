@@ -63,7 +63,7 @@ export function LanguagesSection({ library, patch }: SectionProps) {
       library={library}
     >
       <div className="space-y-1.5">
-        <Label>{tc("availableLanguages")}</Label>
+        <div className="flex min-h-5 items-center"><Label className="font-normal">{tc("availableLanguages")}</Label></div>
         <div
           className="flex flex-wrap gap-2"
           role="group"
