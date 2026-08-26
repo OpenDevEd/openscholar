@@ -421,12 +421,15 @@ export function SortableList({
   children: ReactNode;
   className?: string;
 }) {
+  // Stable id so dnd-kit's aria-describedby matches between server and client render.
+  const id = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   return (
     <DndContext
+      id={id}
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={({ active, over }: DragEndEvent) => {
