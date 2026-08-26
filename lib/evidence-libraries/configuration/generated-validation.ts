@@ -48,7 +48,7 @@ function issueMessage(error: ErrorObject) {
     const { allowedValue } = error.params as { allowedValue: unknown };
     return `Value must equal ${String(allowedValue)}.`;
   }
-  return "Value does not satisfy the configuration contract.";
+  return "This value is not allowed here.";
 }
 
 function sectionForPointer(pointer: string): ValidationIssue["section"] {
