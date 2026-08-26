@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { LibraryConfig } from "@/lib/evidence-libraries/mock/config";
-import { Field, InlineNotice } from "../section-card";
+import { Field } from "../section-card";
 import { ChoiceCards } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
@@ -119,9 +119,6 @@ export function AnalyticsSection({ library, patch }: SectionProps) {
         </Field>
       ) : null}
 
-      <InlineNotice tone="info" data-gdpr="always-on">
-        {t("gdprNotice")}
-      </InlineNotice>
     </SectionShell>
   );
 }

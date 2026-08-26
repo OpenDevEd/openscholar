@@ -2920,7 +2920,7 @@
         "priorityEmpty": "Choose at least one language to set the order."
       },
       "analytics": {
-        "description": "Where visitor statistics go. Tracking only starts after visitors accept cookies.",
+        "description": "Where visitor statistics go. Nothing is recorded until a visitor accepts cookies.",
         "providerLabel": "Provider",
         "provider": {
           "none": "None",
@@ -2936,7 +2936,6 @@
         "measurementIdLabel": "Measurement ID",
         "measurementIdHint": "Find it in Google Analytics under Data streams.",
         "measurementIdError": "Use an ID like G-XXXXXXXXXX.",
-        "gdprNotice": "GDPR mode is always on. Visitors are not tracked until they accept cookies.",
         "providerHint": {
           "none": "No visitor statistics.",
           "posthog": "PostHog cloud or your own PostHog server.",
