@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Settings } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
