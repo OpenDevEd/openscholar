@@ -149,7 +149,7 @@ function Workspace({ library }: { library: MockLibrary }) {
     parseAsStringLiteral(SECTION_KEYS).withDefault("identity"),
   );
   // Matches the sections' scroll-mt-40 (160px) so a clicked section is the one highlighted.
-  const spied = useScrollSpy(SECTION_KEYS, 160);
+  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(SECTION_KEYS, 160);
   const current = spied ?? section;
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -166,7 +166,7 @@ function Workspace({ library }: { library: MockLibrary }) {
 
   function jumpTo(key: SectionKey) {
     void setSection(key);
-    document.getElementById(`sec-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollToSection(key);
   }
 
   function handleSave() {
