@@ -123,6 +123,9 @@ const savedRows = [
   { sectionKey: "filters", payload: {} },
   { sectionKey: "sources", payload: [] },
   { sectionKey: "content", payload: {} },
+  { sectionKey: "citations", payload: {} },
+  { sectionKey: "exports", payload: {} },
+  { sectionKey: "analytics", payload: {} },
 ];
 
 function draftResult(overrides: { operation?: unknown; state?: string } = {}) {
@@ -552,6 +555,67 @@ describe("<ConfigurationWorkspace>", () => {
       expect(card("sources").getByRole("button", { name: "evidenceLibrarySources.account.connect" })).toBeInTheDocument();
       expect(card("collections").getByRole("button", { name: "evidenceLibraryCollections.add" })).toBeInTheDocument();
       expect(card("institutions").getByRole("combobox", { name: "institutions.nameLabel" })).toBeInTheDocument();
+    });
+  });
+
+  describe("platform sections", () => {
+    const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
+
+    it("disables a feature with the reason and switches it off again when its export goes", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      const features = card("features");
+      const downloads = features.getByRole("switch", { name: "features.labels.downloads" });
+      expect(downloads).toBeDisabled();
+      expect(features.getByText("features.needsExports")).toBeInTheDocument();
+
+      await user.click(card("citations").getByRole("switch", { name: "citations.formats.ris" }));
+      expect(downloads).toBeEnabled();
+      await user.click(downloads);
+      expect(downloads).toBeChecked();
+
+      await user.click(card("citations").getByRole("switch", { name: "citations.formats.ris" }));
+      expect(downloads).toBeDisabled();
+      expect(downloads).not.toBeChecked();
+      expect(features.getByText("sectionState.complete")).toBeInTheDocument();
+    });
+
+    it("writes the export URL from the public address when a format is turned on", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      await user.click(card("citations").getByRole("switch", { name: "citations.formats.atom" }));
+      await user.click(screen.getByRole("button", { name: "save" }));
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+      expect(request.sections).toEqual([
+        { sectionKey: "exports", payload: { atom: `${savedIdentity.baseUrl}/lib/atom.xml` } },
+      ]);
+    });
+
+    it("keeps the language switch off until two languages are offered", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      const languageSwitch = card("features").getByRole("switch", { name: "features.labels.languageSwitcher" });
+      expect(languageSwitch).toBeDisabled();
+      await user.click(card("languages").getByRole("checkbox", { name: "languages.names.fr" }));
+      expect(languageSwitch).toBeEnabled();
+      expect(card("languages").getByText("sectionState.edited")).toBeInTheDocument();
+    });
+
+    it("saves only the chosen analytics provider and checks its key", async () => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      const analytics = card("analytics");
+      await user.click(analytics.getByRole("radio", { name: /analytics\.provider\.google/ }));
+      expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
+      await user.type(analytics.getByLabelText("analytics.measurementIdLabel"), "g-abcd12");
+      expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "save" }));
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+      expect(request.sections).toEqual([
+        { sectionKey: "analytics", payload: { google: { measurementId: "G-ABCD12" } } },
+      ]);
     });
   });
 

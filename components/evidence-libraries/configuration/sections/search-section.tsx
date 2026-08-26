@@ -19,6 +19,7 @@ import {
   SEARCH_SCOPES,
   type SearchDraft,
   type SearchScope,
+  settleFeatures,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { Field, FieldError } from "../section-card";
 import { ChoiceChips, FieldGroup, ToggleRow } from "../fields";
@@ -33,15 +34,16 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
   const featuredMode = filters.institution.mode === "facet-with-featured-value";
   const yearMax = currentYear();
 
+  // Some features need a search option or filter; they switch off with it.
   const setSearch = <K extends keyof SearchDraft>(key: K, value: SearchDraft[K]) =>
     patch((d) => {
       d.search[key] = value;
-      return d;
+      return settleFeatures(d);
     });
   const setFilters = (update: (filters: FiltersDraft) => void) =>
     patch((d) => {
       update(d.filters);
-      return d;
+      return settleFeatures(d);
     });
 
   return (

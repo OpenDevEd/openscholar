@@ -36,7 +36,11 @@ export const PAGE_SECTION_KEYS = [
   "contact",
   "collections",
   "search",
+  "citations",
+  "features",
   "sources",
+  "languages",
+  "analytics",
 ] as const;
 export type PageSectionKey = (typeof PAGE_SECTION_KEYS)[number];
 
@@ -56,6 +60,10 @@ const ROW_KEYS = [
   "filters",
   "sources",
   "content",
+  "citations",
+  "exports",
+  "localization",
+  "analytics",
 ] as const;
 type RowKey = (typeof ROW_KEYS)[number];
 
@@ -83,6 +91,10 @@ type SectionProblem =
   | "featuredInstitution"
   | "years"
   | "publishTag"
+  | "featureDependency"
+  | "languages"
+  | "posthog"
+  | "google"
   | "legalText";
 
 /* ------------------------------------------------------------------ */
@@ -167,6 +179,26 @@ export const SCHEMA_LIMITS = {
     })(),
   },
 } as const;
+
+export const LOCALES = schemaEnum<"en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" | "cn" | "sw" | "pt">(
+  "/localization/locales/*",
+);
+export type Locale = (typeof LOCALES)[number];
+export const EXPORT_FORMATS = ["ris", "bibtex", "atom"] as const;
+export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+/** The public paths the runtime serves each export on (new-el `src/proxy.ts`). */
+const EXPORT_PATHS: Record<ExportFormat, string> = {
+  ris: "/lib/export/ris",
+  bibtex: "/lib/export/bibtex",
+  atom: "/lib/atom.xml",
+};
+export const exportUrl = (baseUrl: string, format: ExportFormat) =>
+  `${baseUrl.replace(/\/+$/, "")}${EXPORT_PATHS[format]}`;
+export const POSTHOG_KEY = schemaPattern("/analytics/posthog/key");
+export const POSTHOG_HOST_DEFAULT = "https://eu.i.posthog.com";
+export const MEASUREMENT_ID = schemaPattern("/analytics/google/measurementId");
+export const ANALYTICS_PROVIDERS = ["none", "posthog", "google"] as const;
+export type AnalyticsProvider = (typeof ANALYTICS_PROVIDERS)[number];
 
 export const SEARCH_SCOPES = schemaEnum<
   | "title_abstract_author_and_keywords"
@@ -325,6 +357,18 @@ export type FiltersDraft = {
 export type CollectionDraft = { id: string; title?: string; enabled?: boolean; order?: number };
 export type TagRulesDraft = Partial<Record<string, string[]>>;
 
+export type LocalizationDraft = {
+  locales: Locale[];
+  defaultLocale: Locale;
+  detectLocale: boolean;
+  localePriority: Locale[];
+};
+export type AnalyticsDraft = {
+  provider: AnalyticsProvider;
+  posthog: { host: string; key: string };
+  google: { measurementId: string };
+};
+
 export type ConfigurationDraft = {
   identity: IdentityDraft;
   theme: ThemeDraft;
@@ -341,7 +385,63 @@ export type ConfigurationDraft = {
   sources: ZoteroSourceEntry[];
   /** `content.tags`: which Zotero tags mean hidden, coming soon, and so on. Edited on the Sources card. */
   content: { tags: TagRulesDraft };
+  citations: { showUrl: boolean };
+  /** Which export endpoints are on. The URLs are built from the public address on save. */
+  exports: Record<ExportFormat, boolean>;
+  localization: LocalizationDraft;
+  analytics: AnalyticsDraft;
 };
+
+/** Feature switches the page shows, in their groups. Accounts and AI come later. */
+export const FEATURE_GROUPS = [
+  { key: "appearance", features: ["themeSwitcher", "languageSwitcher"] },
+  {
+    key: "discovery",
+    features: ["collections", "collectionNotes", "countryFocus", "authorFilter", "authorLocation", "yearsDropdown"],
+  },
+  { key: "exports", features: ["downloads", "atomFeed"] },
+] as const satisfies readonly { key: string; features: readonly FeatureKey[] }[];
+export type ShownFeature = (typeof FEATURE_GROUPS)[number]["features"][number];
+
+/** Why a feature cannot be on right now, or null. Mirrors the runtime's cross-field rules. */
+export type FeatureBlock =
+  | { kind: "feature"; feature: ShownFeature }
+  | { kind: "search"; option: "country" | "authorCountry" }
+  | { kind: "years" }
+  | { kind: "exports" }
+  | { kind: "atom" }
+  | { kind: "languages" };
+
+export function featureBlock(draft: ConfigurationDraft, feature: ShownFeature): FeatureBlock | null {
+  switch (feature) {
+    case "collectionNotes":
+      return draft.features.collections ? null : { kind: "feature", feature: "collections" };
+    case "countryFocus":
+      return draft.search.country ? null : { kind: "search", option: "country" };
+    case "authorLocation":
+      return draft.search.authorCountry ? null : { kind: "search", option: "authorCountry" };
+    case "yearsDropdown":
+      return draft.filters.years.enabled ? null : { kind: "years" };
+    case "downloads":
+      return draft.exports.ris || draft.exports.bibtex ? null : { kind: "exports" };
+    case "atomFeed":
+      return draft.exports.atom ? null : { kind: "atom" };
+    case "languageSwitcher":
+      return draft.localization.locales.length >= 2 ? null : { kind: "languages" };
+    default:
+      return null;
+  }
+}
+
+const SHOWN_FEATURES = FEATURE_GROUPS.flatMap((group) => group.features) as ShownFeature[];
+
+/** Turns off every shown feature whose requirement no longer holds. Call after a change that can break one. */
+export function settleFeatures(draft: ConfigurationDraft): ConfigurationDraft {
+  for (const feature of SHOWN_FEATURES) {
+    if (draft.features[feature] && featureBlock(draft, feature)) draft.features[feature] = false;
+  }
+  return draft;
+}
 
 /** Collections as link targets: the shown title, or the id when none was set. */
 export const collectionOptions = (draft: ConfigurationDraft) =>
@@ -621,6 +721,46 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     filters: readFilters(payloadOf(rows, "filters")),
     sources: readSources(payloadOf(rows, "sources")),
     content: readContent(payloadOf(rows, "content")),
+    citations: { showUrl: flag(record(payloadOf(rows, "citations")).showUrl, false) },
+    exports: readExports(payloadOf(rows, "exports")),
+    localization: readLocalization(payloadOf(rows, "localization")),
+    analytics: readAnalytics(payloadOf(rows, "analytics")),
+  };
+}
+
+function readExports(payload: unknown): Record<ExportFormat, boolean> {
+  const exports = record(payload);
+  return Object.fromEntries(
+    EXPORT_FORMATS.map((format) => [format, typeof exports[format] === "string" && exports[format] !== ""]),
+  ) as Record<ExportFormat, boolean>;
+}
+
+function readLocales(value: unknown): Locale[] {
+  return list(value).filter((locale): locale is Locale => LOCALES.includes(locale as Locale));
+}
+
+function readLocalization(payload: unknown): LocalizationDraft {
+  const localization = record(payload);
+  const locales = readLocales(localization.locales);
+  const priority = readLocales(localization.localePriority).filter((locale) => locales.includes(locale));
+  return {
+    locales,
+    defaultLocale: choice(localization.defaultLocale, LOCALES, locales[0] ?? LOCALES[0]!),
+    detectLocale: flag(localization.detectLocale, false),
+    localePriority: [...priority, ...locales.filter((locale) => !priority.includes(locale))],
+  };
+}
+
+function readAnalytics(payload: unknown): AnalyticsDraft {
+  const analytics = record(payload);
+  const posthog = record(analytics.posthog);
+  const google = record(analytics.google);
+  const key = text(posthog.key);
+  const measurementId = text(google.measurementId);
+  return {
+    provider: key ? "posthog" : measurementId ? "google" : "none",
+    posthog: { host: text(posthog.host, POSTHOG_HOST_DEFAULT), key },
+    google: { measurementId },
   };
 }
 
@@ -781,6 +921,26 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
       return draft.sources.map((source) => ({ ...source }));
     case "content":
       return { tags: { ...draft.content.tags } };
+    case "citations":
+      return { showUrl: draft.citations.showUrl };
+    case "exports":
+      return Object.fromEntries(
+        EXPORT_FORMATS.filter((format) => draft.exports[format]).map((format) => [
+          format,
+          exportUrl(draft.identity.baseUrl, format),
+        ]),
+      );
+    case "localization": {
+      const { locales, defaultLocale, detectLocale, localePriority } = draft.localization;
+      return { locales: [...locales], defaultLocale, detectLocale, localePriority: [...localePriority] };
+    }
+    case "analytics": {
+      const { provider, posthog, google } = draft.analytics;
+      return compact({
+        posthog: provider === "posthog" ? { host: posthog.host, key: posthog.key } : undefined,
+        google: provider === "google" ? { measurementId: google.measurementId } : undefined,
+      });
+    }
   }
 }
 
@@ -849,6 +1009,14 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
       return draft.institutions;
     case "navigation":
       return { links: draft.navigation.links, navbarSearch: draft.features.navbarSearch };
+    case "citations":
+      return { citations: draft.citations, exports: draft.exports };
+    case "features":
+      return SHOWN_FEATURES.map((feature) => draft.features[feature]);
+    case "languages":
+      return draft.localization;
+    case "analytics":
+      return draft.analytics;
     case "footer":
       return draft.footer;
     case "contact":
@@ -872,10 +1040,15 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
   collections: ["collections"],
   search: ["search", "filters"],
   sources: ["sources", "content"],
+  citations: ["citations", "exports"],
+  features: ["features"],
+  languages: ["localization"],
+  analytics: ["analytics"],
 };
 
 /** The card that edits a runtime row, or null when the page has none for it. */
 export function cardForRow(rowKey: string): PageSectionKey | null {
+  if (rowKey === "features") return "features";
   return (
     PAGE_SECTION_KEYS.find((card) =>
       (ROWS_FOR_CARD[card] as readonly string[]).includes(rowKey),
@@ -993,6 +1166,26 @@ export function sectionProblems(
         problems.push("publishTag");
       }
       break;
+    case "citations":
+      break;
+    case "features":
+      if (SHOWN_FEATURES.some((feature) => draft.features[feature] && featureBlock(draft, feature))) {
+        problems.push("featureDependency");
+      }
+      break;
+    case "languages": {
+      const { locales, defaultLocale } = draft.localization;
+      if (locales.length === 0 || !locales.includes(defaultLocale)) problems.push("languages");
+      break;
+    }
+    case "analytics": {
+      const { provider, posthog, google } = draft.analytics;
+      if (provider === "posthog" && (!HTTPS_URL.test(posthog.host) || !POSTHOG_KEY.test(posthog.key))) {
+        problems.push("posthog");
+      }
+      if (provider === "google" && !MEASUREMENT_ID.test(google.measurementId)) problems.push("google");
+      break;
+    }
   }
   return unique(problems);
 }
@@ -1058,6 +1251,19 @@ export function resetSection(
     case "sources":
       next.sources = saved.sources;
       next.content = saved.content;
+      break;
+    case "citations":
+      next.citations = saved.citations;
+      next.exports = saved.exports;
+      break;
+    case "features":
+      for (const feature of SHOWN_FEATURES) next.features[feature] = saved.features[feature];
+      break;
+    case "languages":
+      next.localization = saved.localization;
+      break;
+    case "analytics":
+      next.analytics = saved.analytics;
       break;
   }
   return next;
