@@ -10,6 +10,7 @@ import {
   queueEvidenceLibraryOperation,
 } from "./operations";
 import { createEvidenceLibrarySetup } from "./mutations";
+import { toSectionRows } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -468,10 +469,10 @@ describe("Evidence Library operation state", () => {
       "provisioning",
     );
     const saved = await admin.mutation(
-      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      api.evidenceLibraries.mutations.saveDraftSections,
       {
         libraryId: created.libraryId,
-        sections: essentialSections,
+        sections: toSectionRows(essentialSections),
         expectedEditVersion: 0,
       },
     );
@@ -545,6 +546,65 @@ describe("Evidence Library operation state", () => {
     expect(stored.library).not.toHaveProperty("activeRevisionId");
   });
 
+  it("stores assembly issues on the failed publish operation and exposes them through the draft", async () => {
+    const t = convexTest(schema, modules);
+    const { admin, created } = await createActivationFixture(
+      t,
+      "publish_issues",
+      "active",
+    );
+    const saved = await admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: created.libraryId,
+        sections: toSectionRows(essentialSections),
+        expectedEditVersion: 0,
+      },
+    );
+    const activated = await admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId: created.libraryId,
+        expectedEditVersion: saved.editVersion,
+      },
+    );
+    const running = await t.run((ctx) =>
+      ctx.db.get("evidenceLibraryConfigOperations", activated.operationId),
+    );
+    const issues = [
+      { pointer: "/authentication/secret", message: "Required field is missing." },
+      { pointer: "/identity/assets/favicon", message: "Value must match the uri format." },
+    ];
+
+    await expect(
+      t.mutation(
+        internal.evidenceLibraries.configurationDeployment
+          .failConfigurationDeployment,
+        {
+          libraryId: created.libraryId,
+          operationId: activated.operationId,
+          attemptToken: running!.configurationAttemptToken!,
+          attemptCount: running!.attemptCount,
+          error: {
+            code: "CONFIGURATION_ASSEMBLY_FAILED",
+            message: "Evidence Library configuration could not be assembled",
+            issues,
+          },
+        },
+      ),
+    ).resolves.toBe("failed");
+
+    const draft = await admin.query(api.evidenceLibraries.queries.getDraft, {
+      libraryId: created.libraryId,
+    });
+    expect(draft.operation).toMatchObject({
+      _id: activated.operationId,
+      status: "failed",
+      error: { code: "CONFIGURATION_ASSEMBLY_FAILED", stage: "assembling" },
+      issues,
+    });
+  });
+
   it("starts one publish revision for a running library without changing the active revision", async () => {
     const t = convexTest(schema, modules);
     const { admin, created } = await createActivationFixture(
@@ -553,10 +613,10 @@ describe("Evidence Library operation state", () => {
       "active",
     );
     const saved = await admin.mutation(
-      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      api.evidenceLibraries.mutations.saveDraftSections,
       {
         libraryId: created.libraryId,
-        sections: essentialSections,
+        sections: toSectionRows(essentialSections),
         expectedEditVersion: 0,
       },
     );

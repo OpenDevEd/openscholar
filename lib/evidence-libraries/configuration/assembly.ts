@@ -1,11 +1,9 @@
 import schema from "./generated/library-config.schema.json";
 import {
-  type EssentialConfigurationSections,
-} from "./essential-configuration";
-import {
   type ValidationIssue,
   validateLibraryConfigStructure,
 } from "./generated-validation";
+import { PLATFORM_SECTION_KEYS, type SectionKey } from "./section-registry";
 
 export type ManagedEvidenceLibraryConfiguration = {
   revision: string;
@@ -25,12 +23,24 @@ export type ManagedEvidenceLibraryConfiguration = {
   storagePublicBucket: string;
   storageMaxPdfBytes: number;
   zoteroTranslationUrl?: string;
+  // The platform decides the search embedder. Owners never write it.
+  searchEmbedder?: Record<string, unknown> | null;
 };
 
+export type OwnerSections = Partial<Record<SectionKey, unknown>>;
+
+export type SourceEntry = Record<string, unknown>;
+
+// Plan 07 fills this: each Zotero source receives the key of the owner who
+// connected its group. Plan 02 leaves the hook as a pass-through.
+export type ApplySourceCredentials = (
+  sources: readonly SourceEntry[],
+) => SourceEntry[];
+
+export const passThroughSourceCredentials: ApplySourceCredentials = (sources) =>
+  sources.map((source) => ({ ...source }));
+
 export type AssembledEvidenceLibraryConfiguration = Record<string, unknown> & {
-  identity: EssentialConfigurationSections["identity"];
-  footer: Record<string, unknown>;
-  localization: EssentialConfigurationSections["localization"];
   services: {
     database: { url: string };
     search: { host: string; key: string; index: string };
@@ -116,26 +126,37 @@ function uniqueIssues(issues: ValidationIssue[]) {
   });
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+// Merge order: schema defaults, then every owner section, then platform
+// values, then per-source credentials. The full validator decides at the end.
 export function assembleEvidenceLibraryConfiguration({
   sections,
   managed,
   now = new Date(),
+  applySourceCredentials = passThroughSourceCredentials,
 }: {
-  sections: EssentialConfigurationSections;
+  sections: OwnerSections;
   managed: ManagedEvidenceLibraryConfiguration;
   now?: Date;
+  applySourceCredentials?: ApplySourceCredentials;
 }): AssembledEvidenceLibraryConfiguration {
-  const visible = sections;
-  const candidate = applyGeneratedDefaults(
+  const owner = Object.fromEntries(
+    Object.entries(sections).filter(
+      ([key, payload]) =>
+        payload !== undefined &&
+        !(PLATFORM_SECTION_KEYS as readonly string[]).includes(key),
+    ),
+  );
+  const withDefaults = applyGeneratedDefaults(
     schema as JsonSchemaNode,
     {
       schemaVersion: 1,
       revision: managed.revision,
       updatedAt: managed.updatedAt,
-      identity: visible.identity,
-      theme: visible.theme,
-      localization: visible.localization,
-      footer: visible.footer,
+      ...owner,
       services: {
         database: { url: managed.databaseUrl },
         search: {
@@ -167,7 +188,19 @@ export function assembleEvidenceLibraryConfiguration({
       },
     },
     now,
-  );
+  ) as Record<string, unknown>;
+  const candidate: Record<string, unknown> = {
+    ...withDefaults,
+    search: {
+      ...(isObject(withDefaults.search) ? withDefaults.search : {}),
+      embedder: managed.searchEmbedder ?? null,
+    },
+  };
+  if (Array.isArray(candidate.sources)) {
+    candidate.sources = applySourceCredentials(
+      candidate.sources.filter(isObject),
+    );
+  }
   const structuralValidation = validateLibraryConfigStructure(candidate);
   const issues = uniqueIssues(structuralValidation.issues);
   if (issues.length > 0) throw new ConfigurationAssemblyError(issues);

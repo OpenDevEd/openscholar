@@ -30,8 +30,36 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import type { EssentialConfigurationFormContract } from "@/lib/evidence-libraries/configuration/form-contract";
-import type { EssentialConfigurationSections } from "@/lib/evidence-libraries/configuration/essential-configuration";
+import type { StringFieldContract } from "@/lib/evidence-libraries/configuration/form-contract";
+
+// This shell edits four sections until plan 05 replaces it with the full page.
+export type EssentialConfigurationFormContract = {
+  fields: {
+    name: StringFieldContract;
+    shortName: StringFieldContract;
+    tagline: StringFieldContract;
+    description: StringFieldContract;
+    logo: StringFieldContract;
+    favicon: StringFieldContract;
+    shareImage: StringFieldContract;
+    colour: StringFieldContract;
+  };
+  locales: string[];
+};
+
+type EssentialConfigurationSections = {
+  identity: {
+    name: string;
+    shortName: string;
+    tagline?: string;
+    description?: string;
+    baseUrl: string;
+    assets: { logoDark: string; favicon: string; shareImage?: string };
+  };
+  theme: { colors: { accent: string; tertiary: string } };
+  localization: { locales: string[]; defaultLocale: string };
+  footer: { poweredBy: boolean };
+};
 
 type FieldName =
   | "name"
@@ -154,9 +182,7 @@ function optionalText(value: string | undefined) {
   return trimmed === "" ? undefined : trimmed;
 }
 
-export function toSavedSections(
-  configuration: EssentialConfigurationSections,
-): EssentialConfigurationSections {
+export function toSavedSections(configuration: EssentialConfigurationSections) {
   const saved = cloneConfiguration(configuration);
   saved.identity.tagline = optionalText(configuration.identity.tagline);
   saved.identity.description = optionalText(configuration.identity.description);
@@ -169,7 +195,9 @@ export function toSavedSections(
   if (saved.identity.assets.shareImage === undefined) {
     delete saved.identity.assets.shareImage;
   }
-  return saved;
+  return (["identity", "theme", "localization", "footer"] as const).map(
+    (sectionKey) => ({ sectionKey, payload: saved[sectionKey] }),
+  );
 }
 
 function fieldFromError(error: unknown): FieldName | undefined {
@@ -382,7 +410,7 @@ function EssentialConfigurationForm({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const saveConfiguration = useMutation(
-    api.evidenceLibraries.mutations.saveEssentialConfiguration,
+    api.evidenceLibraries.mutations.saveDraftSections,
   );
   const activateConfiguration = useMutation(
     api.evidenceLibraries.mutations.activateConfiguration,

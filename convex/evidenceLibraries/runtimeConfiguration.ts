@@ -4,8 +4,8 @@ import { createHash } from "node:crypto";
 import {
   assembleEvidenceLibraryConfiguration,
   type AssembledEvidenceLibraryConfiguration,
+  type OwnerSections,
 } from "../../lib/evidence-libraries/configuration/assembly";
-import type { EssentialConfigurationSections } from "../../lib/evidence-libraries/configuration/essential-configuration";
 import type { Id } from "../_generated/dataModel";
 import { decrypt } from "../lib/crypto";
 
@@ -17,7 +17,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
   libraryId: Id<"evidenceLibraries">;
   revision: { key: string; createdAt: number };
   origins: { app: string; convexSite: string };
-  sections: EssentialConfigurationSections;
+  sections: OwnerSections;
   credentials: {
     encryptedMachine: string;
     encryptedAuthentication: string;

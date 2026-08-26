@@ -24,7 +24,7 @@ vi.mock("@/convex/_generated/api", () => ({
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       mutations: {
         activateConfiguration: "activateConfiguration",
-        saveEssentialConfiguration: "saveEssentialConfiguration",
+        saveDraftSections: "saveDraftSections",
       },
     },
   },
@@ -112,7 +112,7 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
     let savedInput: unknown;
     queryMock.mockReturnValue(draftResult());
     mutationMock.mockImplementation((mutation) =>
-      mutation === "saveEssentialConfiguration"
+      mutation === "saveDraftSections"
         ? async (input: unknown) => {
             savedInput = input;
             return { editVersion: 5 };
@@ -159,25 +159,31 @@ describe("<EvidenceLibraryConfigurationShell>", () => {
       expect(savedInput).toEqual({
         libraryId: "library_123",
         expectedEditVersion: 4,
-        sections: {
-          ...savedSections,
-          identity: {
-            ...savedSections.identity,
-            name: "Edited Library",
-            tagline: "Evidence for climate decisions",
-            assets: {
-              ...savedSections.identity.assets,
-              shareImage: "https://assets.example.test/share.png",
+        sections: [
+          {
+            sectionKey: "identity",
+            payload: {
+              ...savedSections.identity,
+              name: "Edited Library",
+              tagline: "Evidence for climate decisions",
+              assets: {
+                ...savedSections.identity.assets,
+                shareImage: "https://assets.example.test/share.png",
+              },
             },
           },
-          theme: {
-            colors: { ...savedSections.theme.colors, accent: "#123456" },
+          {
+            sectionKey: "theme",
+            payload: {
+              colors: { ...savedSections.theme.colors, accent: "#123456" },
+            },
           },
-          localization: {
-            locales: ["en-GB", "fr"],
-            defaultLocale: "fr",
+          {
+            sectionKey: "localization",
+            payload: { locales: ["en-GB", "fr"], defaultLocale: "fr" },
           },
-        },
+          { sectionKey: "footer", payload: savedSections.footer },
+        ],
       }),
     );
   });

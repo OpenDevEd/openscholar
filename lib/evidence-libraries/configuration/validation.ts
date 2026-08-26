@@ -1,7 +1,7 @@
 import "server-only";
 
 export {
-  validateEssentialConfigStructure,
   validateLibraryConfigStructure,
+  validateSectionStructure,
 } from "./generated-validation";
 export type { ValidationIssue } from "./generated-validation";

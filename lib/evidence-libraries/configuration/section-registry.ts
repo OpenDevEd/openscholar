@@ -1,4 +1,5 @@
 import catalogs from "./generated/library-config.catalogs.json";
+import schema from "./generated/library-config.schema.json";
 import {
   escapeJsonPointerToken,
   jsonPointerPatternMatches,
@@ -199,6 +200,30 @@ export const SECTION_REGISTRY = [
     authority: "catalogDerived",
   },
 ] as const satisfies readonly SectionDefinition[];
+
+export type SectionKey = (typeof SECTION_REGISTRY)[number]["key"];
+
+const SECTION_KEYS = new Set<string>(SECTION_REGISTRY.map((section) => section.key));
+
+export function isSectionKey(value: unknown): value is SectionKey {
+  return typeof value === "string" && SECTION_KEYS.has(value);
+}
+
+// Sections whose values come from the platform at assembly time. Owners never
+// write them; the runtime credentials and service addresses live here.
+export const PLATFORM_SECTION_KEYS = [
+  "services",
+  "authentication",
+] as const satisfies readonly SectionKey[];
+
+// Owner sections the runtime schema marks as required at the root. Read from
+// the schema so the list never needs a hand-written copy.
+export const REQUIRED_OWNER_SECTION_KEYS = schema.required.filter(
+  (key): key is Exclude<SectionKey, (typeof PLATFORM_SECTION_KEYS)[number]> =>
+    isSectionKey(key) &&
+    !(ENVELOPE_FIELDS as readonly string[]).includes(key) &&
+    !(PLATFORM_SECTION_KEYS as readonly string[]).includes(key),
+);
 
 export function writeOnlyPathToPointerPattern(path: string): `/${string}` {
   const tokens = path.split(".").flatMap((segment) => {

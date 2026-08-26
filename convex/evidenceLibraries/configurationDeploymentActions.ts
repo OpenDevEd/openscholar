@@ -96,7 +96,9 @@ export const runConfigurationDeployment = internalAction({
               invalidConfiguration,
             ),
           },
-          sections: prepared.sections,
+          sections: Object.fromEntries(
+            prepared.sections.map((row) => [row.sectionKey, row.payload]),
+          ),
           credentials: prepared.credentials,
           search: prepared.search,
           storage: prepared.storage,
@@ -332,6 +334,10 @@ export const runConfigurationDeployment = internalAction({
                 code: "CONFIGURATION_ASSEMBLY_FAILED",
                 message:
                   "Evidence Library configuration could not be assembled",
+                issues: error.issues.map(({ pointer, message }) => ({
+                  pointer,
+                  message,
+                })),
               }
             : {
                 code: "CONFIGURATION_DEPLOYMENT_FAILED",

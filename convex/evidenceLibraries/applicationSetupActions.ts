@@ -107,7 +107,9 @@ export const runApplicationSetup = internalAction({
             invalidData,
           ),
         },
-        sections: prepared.sections,
+        sections: Object.fromEntries(
+          prepared.sections.map((row) => [row.sectionKey, row.payload]),
+        ),
         credentials: {
           encryptedMachine: prepared.encryptedMachineCredential,
           encryptedAuthentication: prepared.encryptedAuthenticationSecret,
@@ -186,6 +188,10 @@ export const runApplicationSetup = internalAction({
                 code: "APPLICATION_CONFIG_INVALID",
                 message:
                   "Evidence Library configuration could not be assembled",
+                issues: error.issues.map(({ pointer, message }) => ({
+                  pointer,
+                  message,
+                })),
               }
             : {
                 code: "APPLICATION_SETUP_FAILED",

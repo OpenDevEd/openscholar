@@ -8,6 +8,7 @@ import {
   createDeployedSetupFixture,
   createReadySetupFixture,
   essentialSetupSections,
+  toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -251,16 +252,16 @@ describe("Evidence Library admin login codes", () => {
     );
     const activeRevisionId = fixture.activated.revisionId;
     const saved = await fixture.admin.mutation(
-      api.evidenceLibraries.mutations.saveEssentialConfiguration,
+      api.evidenceLibraries.mutations.saveDraftSections,
       {
         libraryId: fixture.created.libraryId,
-        sections: {
+        sections: toSectionRows({
           ...essentialSetupSections,
           identity: {
             ...essentialSetupSections.identity,
             shortName: "Updated Climate",
           },
-        },
+        }),
         expectedEditVersion: fixture.activated.editVersion,
       },
     );

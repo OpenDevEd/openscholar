@@ -233,8 +233,13 @@ describe("Evidence Library setup draft", () => {
       revisions: 1,
       runtimeBindings: 1,
     });
-    expect(counts.sections).toHaveLength(1);
-    expect(counts.sections[0]).toMatchObject({
+    expect(counts.sections).toHaveLength(2);
+    expect(
+      counts.sections.map((section) => section.sectionKey).sort(),
+    ).toEqual(["identity", "localization"]);
+    expect(
+      counts.sections.find((section) => section.sectionKey === "identity"),
+    ).toMatchObject({
       draftId: created.draftId,
       kind: "draft",
       libraryId: created.libraryId,
@@ -299,7 +304,7 @@ describe("Evidence Library setup draft", () => {
     expect(state.operations).toHaveLength(2);
     expect(state.revisions).toHaveLength(2);
     expect(state.runtimeBindings).toHaveLength(2);
-    expect(state.sections).toHaveLength(2);
+    expect(state.sections).toHaveLength(4);
     expect(new Set(state.libraries.map((library) => library.draftId))).toEqual(
       new Set([first.draftId, second.draftId]),
     );

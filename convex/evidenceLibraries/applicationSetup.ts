@@ -2,7 +2,7 @@ import { internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { validateEssentialConfiguration } from "../../lib/evidence-libraries/configuration/essential-configuration";
+import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import {
   LIBRARY_SERVICE_CREDENTIAL_KEY,
   writeEvidenceLibraryCredentialRecord,
@@ -18,8 +18,8 @@ import {
   requireCurrentEvidenceLibrarySetupAttempt,
 } from "./setupOperation";
 import {
-  essentialConfigurationSectionsValidator,
   evidenceLibraryReconcileOutcomeValidator,
+  sectionRowValidator,
 } from "./validators";
 import {
   AUTHENTICATION_SECRET_PATH,
@@ -69,7 +69,7 @@ export const prepareApplicationSetup = internalMutation({
     revisionKey: v.string(),
     revisionCreatedAt: v.number(),
     targetBaseUrl: v.string(),
-    sections: essentialConfigurationSectionsValidator,
+    sections: v.array(sectionRowValidator),
   }),
   handler: async (ctx, args) => {
     const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, {
@@ -145,13 +145,15 @@ export const prepareApplicationSetup = internalMutation({
         "Evidence Library storage receipt is missing",
       );
     }
-    const payloads = Object.fromEntries(
-      sectionRows.map((section) => [section.sectionKey, section.payload]),
-    );
-    const validatedSections = validateEssentialConfiguration(payloads, {
+    const sections = sectionRows.map((section) => ({
+      sectionKey: section.sectionKey,
+      payload: section.payload,
+    }));
+    const validatedSections = validateOwnerSections(sections, {
       expectedBaseUrl: setup.runtimeBinding.targetBaseUrl,
+      requireComplete: true,
     });
-    if (!validatedSections.valid || !validatedSections.value) {
+    if (!validatedSections.valid) {
       throw createError(
         "INVALID_DATA",
         "Evidence Library revision configuration is incomplete",
@@ -245,7 +247,7 @@ export const prepareApplicationSetup = internalMutation({
       revisionKey: setup.revision.revisionKey,
       revisionCreatedAt: setup.revision.createdAt,
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
-      sections: validatedSections.value,
+      sections,
     };
   },
 });
