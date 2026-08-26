@@ -61,3 +61,8 @@ PR to `dev`. Plan 05 switches the page's UploadField to these actions.
   logos and favicon; keep extensions in the key.
 - Supabase public bucket caching: set `cacheControl` on upload; new content
   gets a new hash, so no stale files.
+- 2026-08-26: the deployability gate ran through the deployed lane functions
+  (`npx convex run ... --identity` as the lane owner, a real PNG posted to the
+  Convex upload URL, the public URL fetched and byte-compared, the object listed
+  in the store, then removed) instead of the mock page's UploadField. Wiring the
+  page field is plan 05 (lane C); lane A may not edit `components/`.
