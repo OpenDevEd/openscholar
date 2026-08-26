@@ -26,6 +26,7 @@ import {
   newLibraryId,
   newRevisionId,
   seedLibraries,
+  LATEST_RUNTIME,
   ZOTERO_GROUP_OPTIONS,
   newId,
   SETUP_STEP_KEYS,
@@ -41,6 +42,7 @@ const UPLOAD_MS = 1200;
 const DNS_MS = 1800;
 const INVITE_MS = 3000;
 
+export type ActivationKind = "config" | "runtime";
 export type UploadResult = { ok: true; file: MockFile } | { ok: false; error: "type" | "size" };
 
 type MockState = {
@@ -69,7 +71,8 @@ type MockState = {
   saveDraft: (libraryId: string) => void;
   startSetup: (libraryId: string) => void;
   retrySetup: (libraryId: string) => void;
-  startActivation: (libraryId: string) => void;
+  startActivation: (libraryId: string, kind?: ActivationKind) => void;
+  updateRuntime: (libraryId: string) => void;
   deleteLibrary: (libraryId: string) => void;
 };
 
@@ -224,6 +227,7 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
             versions: [],
             databaseCollections: [],
             zoteroGroups: ZOTERO_GROUP_OPTIONS,
+            runtime: { running: LATEST_RUNTIME, latest: LATEST_RUNTIME, changes: [], checkedAt: dateStamp() },
           },
         ],
       }));
@@ -393,13 +397,18 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
       startSetup(libraryId);
     },
 
-    startActivation(libraryId) {
+    updateRuntime(libraryId) {
+      get().startActivation(libraryId, "runtime");
+    },
+
+    startActivation(libraryId, kind = "config") {
       const library = find(libraryId);
       if (!library || get().activation[libraryId]) return;
-      const rev = library.draftRev;
+      const runtime = kind === "runtime";
+      const rev = runtime ? `runtime@${library.runtime.latest}` : library.draftRev;
       const sections = changedSections(library);
       set((state) => ({
-        activation: { ...state.activation, [libraryId]: { stageIndex: 0, rev } },
+        activation: { ...state.activation, [libraryId]: { stageIndex: 0, rev, kind } },
         libraries: patchLibrary(state.libraries, libraryId, (l) =>
           isDirty(l)
             ? { ...l, saved: structuredClone(l.draft), name: l.draft.identity.name }
@@ -422,10 +431,13 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
           libraries: live
             ? patchLibrary(state.libraries, libraryId, (l) => ({
                 ...l,
-                activeRev: rev,
-                draftRev: newRevisionId(),
+                activeRev: runtime ? l.activeRev : rev,
+                draftRev: runtime ? l.draftRev : newRevisionId(),
                 lastActivated: dateStamp(),
                 saved: structuredClone(l.draft),
+                runtime: runtime
+                  ? { ...l.runtime, running: l.runtime.latest, changes: [] }
+                  : l.runtime,
                 versions: [
                   {
                     rev,
@@ -433,6 +445,7 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
                     by: "You",
                     sections,
                     status: "live" as const,
+                    kind,
                   },
                   ...l.versions.map((v) =>
                     v.status === "live" ? { ...v, status: "previous" as const } : v,
@@ -444,7 +457,7 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
         if (live) {
           clearInterval(timer);
           const current = find(libraryId);
-          toast.success("Library updated", {
+          toast.success(runtime ? "Evidence Library updated" : "Library updated", {
             description: `${rev} is live at ${current?.address ?? ""}`,
           });
           setTimeout(() => {

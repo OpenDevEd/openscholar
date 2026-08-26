@@ -1,6 +1,6 @@
 "use client";
 
-import { History } from "lucide-react";
+import { History, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
@@ -25,7 +25,7 @@ import {
 import type { LibraryVersion, SectionKey } from "@/lib/evidence-libraries/mock/config";
 import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
 import { StatusChip, type StatusTone } from "../library-status-badge";
-import { EmptyList } from "./fields";
+import { EmptyList, FieldGroup, MetaList, Panel } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const VERSION_TONE: Record<LibraryVersion["status"], StatusTone> = {
@@ -40,6 +40,10 @@ export function VersionsSection({ library }: SectionProps) {
   const tc = useTranslations("common");
   const restoreVersion = useEvidenceLibraryMockStore((s) => s.restoreVersion);
   const activating = useEvidenceLibraryMockStore((s) => Boolean(s.activation[library.id]));
+  const updateRuntime = useEvidenceLibraryMockStore((s) => s.updateRuntime);
+  const tu = useTranslations("evidenceLibraryMock.config.runtimeUpdate");
+  const runtime = library.runtime;
+  const updateAvailable = runtime.running !== runtime.latest;
   const [restoring, setRestoring] = useState<string | null>(null);
 
   const sectionNames = (keys: string[]) =>
@@ -49,6 +53,41 @@ export function VersionsSection({ library }: SectionProps) {
 
   return (
     <SectionShell sectionKey="versions" icon={History} description={t("description")} library={library}>
+      <FieldGroup
+        title={tu("heading")}
+        action={
+          updateAvailable ? (
+            <Button type="button" size="sm" disabled={activating} onClick={() => updateRuntime(library.id)}>
+              <RefreshCw />
+              {tu("update")}
+            </Button>
+          ) : null
+        }
+      >
+        <Panel tone="muted" className="space-y-3" data-runtime-state={updateAvailable ? "update-available" : "up-to-date"}>
+          <MetaList
+            items={[
+              { key: "running", label: tu("runningLabel"), value: <span className="font-mono">{runtime.running}</span> },
+              { key: "latest", label: tu("latestLabel"), value: <span className="font-mono">{runtime.latest}</span> },
+              { key: "checked", label: tu("checkedLabel"), value: runtime.checkedAt },
+            ]}
+          />
+          {updateAvailable ? (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">{tu("changesHeading")}</p>
+              <ul className="list-disc space-y-0.5 pl-4 text-sm">
+                {runtime.changes.map((change) => (
+                  <li key={change}>{change}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{tu("upToDate")}</p>
+          )}
+        </Panel>
+      </FieldGroup>
+
+      <FieldGroup title={t("historyHeading")}>
       {library.versions.length === 0 ? (
         <EmptyList>{t("empty")}</EmptyList>
       ) : (
@@ -72,7 +111,7 @@ export function VersionsSection({ library }: SectionProps) {
                   <TableCell className="font-mono text-xs">{version.rev}</TableCell>
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{version.at}</TableCell>
                   <TableCell className="text-sm">{version.by}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{sectionNames(version.sections)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{version.kind === "runtime" ? tu("kindRuntime") : sectionNames(version.sections)}</TableCell>
                   <TableCell>
                     <StatusChip tone={VERSION_TONE[version.status]}>{t(`status.${version.status}`)}</StatusChip>
                   </TableCell>
@@ -95,6 +134,7 @@ export function VersionsSection({ library }: SectionProps) {
           </Table>
         </div>
       )}
+      </FieldGroup>
 
       <AlertDialog open={restoring !== null} onOpenChange={(open) => !open && setRestoring(null)}>
         <AlertDialogContent>

@@ -153,3 +153,15 @@ AI is its own section. One master toggle "AI answers". Then: who pays (OpenSchol
 ## Facts, not dots (decided 2026-08-26)
 
 Never join facts with "·". Use `MetaList` (muted label, plain value, spaced apart) or a chip. Zotero group rows show only what the database knows: public or private, records, last sync, health; actions are Write back, Pause/Resume and Remove. Sync cadence is set by OpenScholar, not the owner; there is no "Sync now".
+
+## How libraries get Evidence Library updates (decided 2026-08-26)
+
+Keep it simple. No CI job, no fleet rollout.
+
+1. Every library records which `new-el` commit its Coolify app was built from (on the runtime binding).
+2. OpenScholar checks the current `new-el/main` commit with one GitHub API call (a Convex cron, cached; also refreshed when the configuration page opens).
+3. When latest is newer than running, the library's configuration page shows "An Evidence Library update is available" with an **Update** button, and the Versions section lists the commit messages since the running build.
+4. Clicking Update runs the existing redeploy operation (the same one activation uses) at the new commit. Records, database, settings and address are untouched. The owner sees the same progress banner; the result is a version row marked "Software update".
+5. The pinned configuration contract is separate. A runtime update that adds a config field still installs immediately (new fields have defaults); the new owner controls appear after OpenScholar re-pins the contract. Re-pinning is only needed for schema changes.
+
+Runtime updates are opt-in per library and never forced.

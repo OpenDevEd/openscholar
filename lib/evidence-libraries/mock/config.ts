@@ -223,6 +223,17 @@ export type LibraryVersion = {
   by: string;
   sections: string[];
   status: "live" | "previous" | "failed";
+  /** "runtime" when the version only updated the Evidence Library software. */
+  kind?: "config" | "runtime";
+};
+
+/** Which build of the Evidence Library runtime a library runs, and what is on new-el main. */
+export type RuntimeState = {
+  running: string;
+  latest: string;
+  /** Commit messages between running and latest, newest first. */
+  changes: string[];
+  checkedAt: string;
 };
 
 export type LibraryConfig = {

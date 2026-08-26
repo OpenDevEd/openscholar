@@ -19,6 +19,7 @@ import {
   Quote,
   Rocket,
   Save,
+  RefreshCw,
   Search,
   Sparkles,
   ToggleRight,
@@ -44,6 +45,7 @@ import {
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { InlineNotice } from "./section-card";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -147,6 +149,10 @@ function Workspace({ library }: { library: MockLibrary }) {
   const saveDraft = useEvidenceLibraryMockStore((s) => s.saveDraft);
   const startSetup = useEvidenceLibraryMockStore((s) => s.startSetup);
   const startActivation = useEvidenceLibraryMockStore((s) => s.startActivation);
+  const updateRuntime = useEvidenceLibraryMockStore((s) => s.updateRuntime);
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const tu = useTranslations("evidenceLibraryMock.config.runtimeUpdate");
+  const updateAvailable = library.status === "active" && library.runtime.running !== library.runtime.latest;
 
   const [section, setSection] = useQueryState(
     "section",
@@ -233,7 +239,22 @@ function Workspace({ library }: { library: MockLibrary }) {
             )}
           </PanelHeader>
           {activation ? (
-            <ActivationBanner stageIndex={activation.stageIndex} rev={activation.rev} />
+            <ActivationBanner stageIndex={activation.stageIndex} rev={activation.rev} kind={activation.kind} />
+          ) : updateAvailable ? (
+            <InlineNotice
+              tone="info"
+              className="mb-4"
+              data-runtime-update
+              title={tu("available")}
+              action={
+                <Button size="sm" onClick={() => setUpdateOpen(true)}>
+                  <RefreshCw />
+                  {tu("update")}
+                </Button>
+              }
+            >
+              {tu("availableHint", { count: library.runtime.changes.length })}
+            </InlineNotice>
           ) : null}
         </div>
       </div>
@@ -333,6 +354,26 @@ function Workspace({ library }: { library: MockLibrary }) {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={updateOpen} onOpenChange={setUpdateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tu("confirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{tu("confirmBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setUpdateOpen(false);
+                updateRuntime(library.id);
+              }}
+            >
+              {tu("confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <DeleteLibraryDialog
         library={library}
         open={deleteOpen}
@@ -343,8 +384,9 @@ function Workspace({ library }: { library: MockLibrary }) {
   );
 }
 
-function ActivationBanner({ stageIndex, rev }: { stageIndex: number; rev: string }) {
+function ActivationBanner({ stageIndex, rev, kind }: { stageIndex: number; rev: string; kind: "config" | "runtime" }) {
   const t = useTranslations("evidenceLibraryMock.config");
+  const tu = useTranslations("evidenceLibraryMock.config.runtimeUpdate");
   const live = stageIndex >= ACTIVATION_STAGES.length - 1;
   const percent = Math.round((Math.min(stageIndex, ACTIVATION_STAGES.length) / ACTIVATION_STAGES.length) * 100);
   return (
@@ -361,7 +403,9 @@ function ActivationBanner({ stageIndex, rev }: { stageIndex: number; rev: string
           ) : (
             <Spinner className="h-4 w-4 text-primary" />
           )}
-          <span className="font-mono">{live ? t("isLive", { rev }) : t("applying", { rev })}</span>
+          <span className="font-mono">
+            {live ? t("isLive", { rev }) : kind === "runtime" ? tu("updating", { rev }) : t("applying", { rev })}
+          </span>
         </span>
         <span className="font-medium tabular-nums">{percent}%</span>
       </div>

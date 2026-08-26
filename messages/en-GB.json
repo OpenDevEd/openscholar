@@ -3045,7 +3045,8 @@
         },
         "restore": "Restore",
         "restoreTitle": "Restore {rev}?",
-        "restoreBody": "This publishes it as a new version."
+        "restoreBody": "This publishes it as a new version.",
+        "historyHeading": "Published versions"
       },
       "danger": {
         "description": "Delete this library. Be careful here.",
@@ -3107,6 +3108,22 @@
         },
         "priceLabel": "Per 1M tokens",
         "contextLabel": "Context"
+      },
+      "runtimeUpdate": {
+        "available": "An Evidence Library update is available.",
+        "availableHint": "{count, plural, one {# change} other {# changes}} since this library was last built.",
+        "update": "Update",
+        "updating": "Updating the Evidence Library to {rev}…",
+        "confirmTitle": "Update this library?",
+        "confirmBody": "The library is rebuilt on the latest Evidence Library software. Records, settings and the address stay the same. It takes about a minute.",
+        "confirm": "Update now",
+        "heading": "Evidence Library software",
+        "runningLabel": "Running",
+        "latestLabel": "Latest",
+        "checkedLabel": "Checked",
+        "upToDate": "Up to date.",
+        "changesHeading": "What changed",
+        "kindRuntime": "Software update"
       }
     },
     "site": {
