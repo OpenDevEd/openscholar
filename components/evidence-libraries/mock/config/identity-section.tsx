@@ -58,7 +58,7 @@ export function IdentitySection({ library, patch }: SectionProps) {
         )}
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label={t("shortNameLabel")} hint={t("shortNameHint")}>
           {(id) => (
             <ReadOnlyValue id={id} value={identity.shortName} />
@@ -66,8 +66,8 @@ export function IdentitySection({ library, patch }: SectionProps) {
         </Field>
         <Field label={t("addressLabel")} hint={t("addressHint")}>
           {(id) => (
-            <div className="flex gap-1.5">
-              <ReadOnlyValue id={id} value={address} />
+            <div className="flex min-w-0 gap-1.5">
+              <ReadOnlyValue id={id} value={address} className="min-w-0 flex-1" />
               <Button
                 type="button"
                 variant="outline"

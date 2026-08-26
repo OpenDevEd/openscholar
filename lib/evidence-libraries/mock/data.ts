@@ -123,10 +123,14 @@ export type MockLibrary = {
   paused: boolean;
   /** Every collection in the library's database. */
   databaseCollections: DatabaseCollection[];
+  /** Groups the connected Zotero account can see. */
+  zoteroGroups: ZoteroGroupOption[];
+  /** Recent import activity, newest first. */
+  syncLog: SyncEvent[];
 };
 
 export type { LibraryVersion } from "./config";
-import type { DatabaseCollection, LibraryVersion } from "./config";
+import type { DatabaseCollection, LibraryVersion, SyncEvent, ZoteroGroupOption } from "./config";
 
 export type ActivationRun = { stageIndex: number; rev: string };
 
@@ -274,7 +278,8 @@ export function makeConfig(
       },
     },
     sources: {
-      zotero: [],
+      account: { method: "none" },
+      groups: [],
       tagRules: {
         hidden: ["hide"],
         internal: ["internal"],
@@ -388,9 +393,11 @@ function fullConfig(): LibraryConfig {
       defaultModel: "openai/gpt-5.6-luna",
     },
   };
-  c.sources.zotero = [
-    { id: "src_1", label: "AI in Education (main group)", auth: "zotero", groupId: "2405685", apiKey: "zotero-oauth", enabled: true, writeback: true, lastSync: "2026-08-26 06:00", records: 1284 },
-    { id: "src_2", label: "Partner submissions", auth: "apiKey", groupId: "5133907", apiKey: "P9x4kq…", enabled: true, writeback: false, lastSync: "2026-08-25 22:15", records: 212 },
+  c.sources.account = { method: "zotero", handle: "@aiined" };
+  c.sources.groups = [
+    { id: "src_1", groupId: "2405685", name: "AI in Education", isPublic: true, items: 1284, schedule: "hourly", writeback: true, paused: false, lastSync: "2026-08-26 06:00", lastError: null },
+    { id: "src_2", groupId: "5133907", name: "Partner submissions", isPublic: false, items: 212, schedule: "daily", writeback: false, paused: false, lastSync: "2026-08-25 22:15", lastError: null },
+    { id: "src_3", groupId: "4488120", name: "Legacy archive (2019)", isPublic: false, items: 388, schedule: "manual", writeback: false, paused: true, lastSync: "2026-07-30 09:12", lastError: null },
   ];
   c.localization = { locales: ["en-GB", "fr", "ar"], defaultLocale: "en-GB", detect: true, priority: ["en-GB", "fr", "ar"] };
   c.analytics = { provider: "posthog", host: "https://eu.i.posthog.com", key: "phc_4kd92hs8dksjJ2kd8s7dhsk29sJk" };
@@ -428,6 +435,22 @@ const HEALTH_DATABASE_COLLECTIONS: DatabaseCollection[] = [
   { id: "hcol_3", title: "Vaccination", count: 57, source: "Health Evidence group" },
 ];
 
+export const ZOTERO_GROUP_OPTIONS: ZoteroGroupOption[] = [
+  { groupId: "2405685", name: "AI in Education", isPublic: true, items: 1284, members: 9 },
+  { groupId: "5133907", name: "Partner submissions", isPublic: false, items: 212, members: 4 },
+  { groupId: "4488120", name: "Legacy archive (2019)", isPublic: false, items: 388, members: 2 },
+  { groupId: "3120077", name: "EdTech Hub reading list", isPublic: true, items: 540, members: 21 },
+  { groupId: "6019432", name: "Assessment working group", isPublic: false, items: 96, members: 6 },
+  { groupId: "2877310", name: "Conference papers 2026", isPublic: true, items: 73, members: 3 },
+];
+
+const AIED_SYNC_LOG: SyncEvent[] = [
+  { id: "ev_1", at: "2026-08-26 06:00", groupName: "AI in Education", message: "Imported 3 new records, updated 12.", tone: "ok" },
+  { id: "ev_2", at: "2026-08-25 22:15", groupName: "Partner submissions", message: "Imported 1 new record.", tone: "ok" },
+  { id: "ev_3", at: "2026-08-25 06:00", groupName: "AI in Education", message: "Nothing new.", tone: "ok" },
+  { id: "ev_4", at: "2026-08-24 06:00", groupName: "AI in Education", message: "Wrote 2 collection changes back to Zotero.", tone: "ok" },
+];
+
 function seedLibrary(base: Omit<MockLibrary, "draft" | "address">): MockLibrary {
   return { ...base, address: addressFor(base.shortName), draft: structuredClone(base.saved) };
 }
@@ -455,6 +478,8 @@ export function seedLibraries(): MockLibrary[] {
       saved: fullConfig(),
       paused: false,
       databaseCollections: AIED_DATABASE_COLLECTIONS,
+      zoteroGroups: ZOTERO_GROUP_OPTIONS,
+      syncLog: AIED_SYNC_LOG,
       versions: [
         { rev: "rev_8sm1e94", at: "2026-08-19 14:02", by: "You", sections: ["theme", "navigation"], status: "live" },
         { rev: "rev_5pq0d11", at: "2026-08-12 09:41", by: "Sara Kim", sections: ["sources", "collections"], status: "previous" },
@@ -477,6 +502,8 @@ export function seedLibraries(): MockLibrary[] {
       saved: makeConfig("Health Evidence Hub", "health-evidence-hub", { accent: "#1d9a6c", secondary: "#0f3d3e", link: "#047857" }),
       paused: false,
       databaseCollections: HEALTH_DATABASE_COLLECTIONS,
+      zoteroGroups: ZOTERO_GROUP_OPTIONS,
+      syncLog: [],
       versions: [],
     }),
     seedLibrary({
@@ -494,6 +521,8 @@ export function seedLibraries(): MockLibrary[] {
       saved: makeConfig("Malaria Review", "malaria-review", { accent: "#7c3aed", secondary: "#3b0764", link: "#6d28d9" }),
       paused: false,
       databaseCollections: [],
+      zoteroGroups: ZOTERO_GROUP_OPTIONS,
+      syncLog: [],
       versions: [],
     }),
   ];
@@ -570,8 +599,9 @@ export function sectionProblems(c: LibraryConfig, key: SectionKey): string[] {
       if (c.features.atomFeed && !c.citations.atom) out.push("atom");
       break;
     case "sources":
-      if (c.sources.zotero.some((s) => !s.groupId.trim() || (s.auth === "apiKey" && !s.apiKey.trim())))
-        out.push("source");
+      if (c.sources.groups.length > 0 && c.sources.account.method === "none") out.push("sourceAccount");
+      if (c.sources.account.method === "apiKey" && !c.sources.account.apiKey.trim()) out.push("sourceKey");
+      if (c.sources.groups.some((g) => g.lastError)) out.push("sourceError");
       if (c.sources.tagRules.publish.length === 0) out.push("publishTag");
       break;
     case "languages":

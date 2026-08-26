@@ -26,6 +26,8 @@ import {
   newLibraryId,
   newRevisionId,
   seedLibraries,
+  ZOTERO_GROUP_OPTIONS,
+  newId,
   SETUP_STEP_KEYS,
 } from "./data";
 import { FILE_LIMITS, type FileKind, type MockFile } from "./config";
@@ -233,6 +235,8 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
             versions: [],
             paused: false,
             databaseCollections: [],
+            zoteroGroups: ZOTERO_GROUP_OPTIONS,
+            syncLog: [],
           },
         ],
       }));
@@ -314,7 +318,8 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
         const percent = Math.min(100, run.percent + 20);
         if (percent >= 100) {
           clearInterval(timer);
-          let label = "";
+          let name = "";
+          const at = dateStamp();
           set((state) => {
             const syncing = { ...state.syncing };
             delete syncing[libraryId];
@@ -325,18 +330,26 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
                   ...c,
                   sources: {
                     ...c.sources,
-                    zotero: c.sources.zotero.map((z) => {
-                      if (z.id !== sourceId) return z;
-                      label = z.label;
-                      return { ...z, lastSync: dateStamp(), records: z.records + 3 };
+                    groups: c.sources.groups.map((g) => {
+                      if (g.id !== sourceId) return g;
+                      name = g.name;
+                      return { ...g, lastSync: at, items: g.items + 3, lastError: null };
                     }),
                   },
                 });
-                return { ...l, draft: bump(l.draft), saved: bump(l.saved) };
+                return {
+                  ...l,
+                  draft: bump(l.draft),
+                  saved: bump(l.saved),
+                  syncLog: [
+                    { id: newId("ev"), at, groupName: name, message: "Imported 3 new records.", tone: "ok" as const },
+                    ...l.syncLog,
+                  ].slice(0, 8),
+                };
               }),
             };
           });
-          toast.success("Sync finished", { description: `${label}: 3 new records.` });
+          toast.success("Sync finished", { description: `${name}: 3 new records.` });
           return;
         }
         set((state) => ({ syncing: { ...state.syncing, [libraryId]: { ...run, percent } } }));

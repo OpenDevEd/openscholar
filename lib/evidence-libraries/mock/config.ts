@@ -158,18 +158,34 @@ export const FEATURE_GROUPS: { key: string; features: FeatureKey[] }[] = [
   { key: "exports", features: ["downloads", "atomFeed"] },
 ];
 
-export type ZoteroSource = {
+export type SyncSchedule = "manual" | "hourly" | "daily";
+export type GroupHealth = "healthy" | "syncing" | "paused" | "error" | "new";
+
+/** A Zotero group the library imports from. Name and counts come from Zotero. */
+export type ZoteroGroupSource = {
   id: string;
-  label: string;
-  auth: "zotero" | "apiKey";
   groupId: string;
-  apiKey: string;
-  enabled: boolean;
+  name: string;
+  isPublic: boolean;
+  /** Records in the library database from this group. */
+  items: number;
+  schedule: SyncSchedule;
   writeback: boolean;
+  paused: boolean;
   lastSync: string | null;
-  /** Records synced last time; shown in the row. */
-  records: number;
+  lastError: string | null;
 };
+
+/** One Zotero connection per library. */
+export type ZoteroAccount =
+  | { method: "none" }
+  | { method: "zotero"; handle: string }
+  | { method: "apiKey"; apiKey: string };
+
+export type SyncEvent = { id: string; at: string; groupName: string; message: string; tone: "ok" | "error" };
+
+/** Groups visible to the connected account (mock). */
+export type ZoteroGroupOption = { groupId: string; name: string; isPublic: boolean; items: number; members: number };
 
 export const TAG_RULE_KEYS = [
   "hidden",
@@ -286,7 +302,11 @@ export type LibraryConfig = {
   };
   citations: { showUrl: boolean; ris: boolean; bibtex: boolean; atom: boolean };
   features: Record<FeatureKey, boolean> & { aiSettings: AiSettings };
-  sources: { zotero: ZoteroSource[]; tagRules: Record<TagRuleKey, string[]> };
+  sources: {
+    account: ZoteroAccount;
+    groups: ZoteroGroupSource[];
+    tagRules: Record<TagRuleKey, string[]>;
+  };
   localization: {
     locales: string[];
     defaultLocale: string;
