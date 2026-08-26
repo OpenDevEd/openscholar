@@ -9,12 +9,6 @@ export type StringFieldContract = {
   pattern?: string;
 };
 
-export type NumberFieldContract = {
-  minimum?: number;
-  maximum?: number;
-  integer: boolean;
-};
-
 function readSchemaNode(pointer: string): Record<string, unknown> {
   const value = resolveSchemaPointer(schema, pointer);
   if (!value || typeof value !== "object") {
@@ -29,19 +23,6 @@ export function readStringContract(pointer: string): StringFieldContract {
     maxLength: node.maxLength,
     minLength: node.minLength,
     pattern: node.pattern,
-  };
-}
-
-export function readNumber(pointer: string): NumberFieldContract {
-  const node = readSchemaNode(pointer) as {
-    minimum?: number;
-    maximum?: number;
-    type?: string;
-  };
-  return {
-    minimum: node.minimum,
-    maximum: node.maximum,
-    integer: node.type === "integer",
   };
 }
 

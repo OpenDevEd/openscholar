@@ -9,7 +9,7 @@ import {
 import { initialLocalizationPayload } from "./initial-sections";
 import { validateOwnerSection, validateOwnerSections } from "./owner-rules";
 import { REQUIRED_OWNER_SECTION_KEYS } from "./section-registry";
-import { validateLibraryConfigStructure } from "./validation";
+import { validateLibraryConfigStructure } from "./generated-validation";
 
 const ownerSections = {
   identity: {
