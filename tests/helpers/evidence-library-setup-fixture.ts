@@ -16,6 +16,7 @@ export const essentialSetupSections = {
   },
   theme: { colors: { accent: "#005A9C", tertiary: "#F2A900" } },
   localization: { locales: ["en-GB"], defaultLocale: "en-GB" },
+  footer: { poweredBy: true },
 };
 
 export async function createActivatedSetupFixture(suffix: string) {

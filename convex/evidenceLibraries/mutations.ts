@@ -343,6 +343,7 @@ export async function saveEssentialEvidenceLibraryConfiguration(
       { sectionKey: "identity", payload: args.sections.identity },
       { sectionKey: "theme", payload: args.sections.theme },
       { sectionKey: "localization", payload: args.sections.localization },
+      { sectionKey: "footer", payload: args.sections.footer },
     ],
     expectedEditVersion: args.expectedEditVersion,
   });
@@ -582,7 +583,7 @@ export async function activateEvidenceLibraryConfiguration(
 
   const frozen = await finalizeEvidenceLibraryDraft(ctx, {
     ...args,
-    sectionKeys: ["identity", "theme", "localization"],
+    sectionKeys: ["identity", "theme", "localization", "footer"],
   });
   if (access.library.state === "provisioning") {
     const setupOperationId = access.library.setupOperationId;

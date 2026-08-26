@@ -8,18 +8,24 @@ import {
 } from "./assembly";
 import {
   type EssentialConfigurationSections,
+  omitFieldsMissingFromContract,
   validateEssentialConfiguration,
 } from "./essential-configuration";
+import schema from "./generated/library-config.schema.json";
+import { resolveSchemaPointer } from "./section-registry";
 import { validateLibraryConfigStructure } from "./validation";
 
 const visibleConfiguration = {
   identity: {
     name: "Climate Evidence Library",
     shortName: "Climate Evidence",
+    tagline: "Evidence for climate decisions",
+    description: "A curated library of climate research.",
     baseUrl: "https://climate-lib.libraries.example.test",
     assets: {
       logoDark: "https://assets.example.test/climate-logo.svg",
       favicon: "https://assets.example.test/climate-favicon.ico",
+      shareImage: "https://assets.example.test/climate-share.png",
     },
   },
   theme: {
@@ -32,6 +38,7 @@ const visibleConfiguration = {
     locales: ["en-GB", "fr"],
     defaultLocale: "en-GB",
   },
+  footer: { poweredBy: true },
 } satisfies EssentialConfigurationSections;
 
 const managedConfiguration = {
@@ -117,8 +124,12 @@ describe("validateLibraryConfigStructure", () => {
       valid: true,
       issues: [],
     });
+    const contractDeclaresNewFields =
+      resolveSchemaPointer(schema, "/footer/poweredBy") !== undefined;
     expect(configuration).toMatchObject({
-      identity: visibleConfiguration.identity,
+      identity: contractDeclaresNewFields
+        ? visibleConfiguration.identity
+        : omitFieldsMissingFromContract(visibleConfiguration).identity,
       localization: visibleConfiguration.localization,
       services: {
         database: { url: managedConfiguration.databaseUrl },
@@ -158,6 +169,54 @@ describe("validateLibraryConfigStructure", () => {
     expect(
       (withoutZotero.services as Record<string, unknown>).zotero,
     ).not.toHaveProperty("translationUrl");
+    expect(configuration.footer.poweredBy).toBe(
+      contractDeclaresNewFields ? true : undefined,
+    );
+  });
+
+  test("drops fields the pinned contract does not declare yet", () => {
+    const pinned = omitFieldsMissingFromContract(visibleConfiguration, {
+      properties: {
+        identity: { properties: { assets: { properties: {} } } },
+        footer: { properties: {} },
+      },
+    });
+    expect(pinned.identity).not.toHaveProperty("tagline");
+    expect(pinned.identity).not.toHaveProperty("description");
+    expect(pinned.identity.assets).not.toHaveProperty("shareImage");
+    expect(pinned).not.toHaveProperty("footer");
+    expect(pinned.identity.name).toBe(visibleConfiguration.identity.name);
+
+    const synced = omitFieldsMissingFromContract(visibleConfiguration, {
+      properties: {
+        identity: {
+          properties: {
+            tagline: {},
+            description: {},
+            assets: { properties: { shareImage: {} } },
+          },
+        },
+        footer: { properties: { poweredBy: {} } },
+      },
+    });
+    expect(synced).toEqual(visibleConfiguration);
+  });
+
+  test("keeps the OpenScholar footer credit on until plans exist", () => {
+    const result = validateEssentialConfiguration({
+      ...visibleConfiguration,
+      footer: { poweredBy: false },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual({
+      pointer: "/footer/poweredBy",
+      section: "footer",
+      keyword: "plan",
+      message: "Available on paid plans.",
+    });
+    expect(validateEssentialConfiguration(visibleConfiguration).valid).toBe(
+      true,
+    );
   });
 
   test("reports visible and managed failures with field pointers", () => {

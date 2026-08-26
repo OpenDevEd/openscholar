@@ -1,5 +1,8 @@
 import schema from "./generated/library-config.schema.json";
-import type { EssentialConfigurationSections } from "./essential-configuration";
+import {
+  type EssentialConfigurationSections,
+  omitFieldsMissingFromContract,
+} from "./essential-configuration";
 import {
   type ValidationIssue,
   validateLibraryConfigStructure,
@@ -27,6 +30,7 @@ export type ManagedEvidenceLibraryConfiguration = {
 
 export type AssembledEvidenceLibraryConfiguration = Record<string, unknown> & {
   identity: EssentialConfigurationSections["identity"];
+  footer: Record<string, unknown>;
   localization: EssentialConfigurationSections["localization"];
   services: {
     database: { url: string };
@@ -122,15 +126,17 @@ export function assembleEvidenceLibraryConfiguration({
   managed: ManagedEvidenceLibraryConfiguration;
   now?: Date;
 }): AssembledEvidenceLibraryConfiguration {
+  const visible = omitFieldsMissingFromContract(sections);
   const candidate = applyGeneratedDefaults(
     schema as JsonSchemaNode,
     {
       schemaVersion: 1,
       revision: managed.revision,
       updatedAt: managed.updatedAt,
-      identity: sections.identity,
-      theme: sections.theme,
-      localization: sections.localization,
+      identity: visible.identity,
+      theme: visible.theme,
+      localization: visible.localization,
+      footer: visible.footer,
       services: {
         database: { url: managed.databaseUrl },
         search: {

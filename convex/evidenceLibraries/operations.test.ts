@@ -25,6 +25,7 @@ const essentialSections = {
   },
   theme: { colors: { accent: "#005A9C", tertiary: "#F2A900" } },
   localization: { locales: ["en-GB", "fr"], defaultLocale: "en-GB" },
+  footer: { poweredBy: true },
 };
 
 async function createOperationFixture(

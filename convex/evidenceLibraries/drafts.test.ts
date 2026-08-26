@@ -19,13 +19,17 @@ function configurationSections(baseUrl: string, name: string) {
       baseUrl,
       name,
       shortName: name,
+      tagline: "Evidence for climate decisions",
+      description: "A curated library of climate research.",
       assets: {
         logoDark: "https://assets.example.org/library-logo.svg",
         favicon: "https://assets.example.org/library-favicon.ico",
+        shareImage: "https://assets.example.org/library-share.png",
       },
     },
     theme: { colors: { accent: "#005A9C", tertiary: "#F2A900" } },
     localization: { locales: ["en-GB", "fr"], defaultLocale: "en-GB" },
+    footer: { poweredBy: true },
   };
 }
 
@@ -310,6 +314,16 @@ describe("Evidence Library draft storage", () => {
         },
       ),
     ).rejects.toThrow(/\/localization\/defaultLocale/);
+    await expect(
+      asAdmin.mutation(
+        api.evidenceLibraries.mutations.saveEssentialConfiguration,
+        {
+          libraryId: created.libraryId,
+          sections: { ...sections, footer: { poweredBy: false } },
+          expectedEditVersion: 1,
+        },
+      ),
+    ).rejects.toThrow(/\/footer\/poweredBy/);
   });
 
   it("copies a draft into an immutable revision while later draft edits stay separate", async () => {
@@ -418,7 +432,7 @@ describe("Evidence Library draft storage", () => {
       state: "provisioning",
     });
     expect(libraryAfterFinalize).not.toHaveProperty("activeRevisionId");
-    expect(revision.sections).toHaveLength(3);
+    expect(revision.sections).toHaveLength(4);
     expect(
       revision.sections.find((section) => section.sectionKey === "identity"),
     ).toMatchObject({
