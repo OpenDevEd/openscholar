@@ -36,13 +36,14 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { type DropzoneState, useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { HEX_COLOUR } from "@/lib/evidence-libraries/configuration/rules";
@@ -144,27 +145,14 @@ export function UploadField({
       className={className}
     >
       {(id, invalid) => (
-        <div
-          {...getRootProps()}
-          data-upload-state={uploading ? "uploading" : value ? "filled" : "empty"}
-          aria-invalid={invalid || undefined}
-          className={cn(
-            "rounded-lg border-2 border-dashed transition-colors",
-            isDragActive
-              ? "border-primary bg-primary/5"
-              : invalid
-                ? "border-destructive/40"
-                : "border-border/60",
-            !value && !uploading && "cursor-pointer hover:border-primary/50 hover:bg-muted/30",
-          )}
+        <UploadSurface
+          id={id}
+          invalid={invalid}
+          uploading={uploading}
+          filled={Boolean(value)}
+          dropzone={{ getRootProps, getInputProps, isDragActive }}
         >
-          <input {...getInputProps()} id={id} />
-          {uploading ? (
-            <div className="flex items-center gap-3 p-4">
-              <Spinner className="h-4 w-4 text-primary" />
-              <p className="text-sm font-medium">{t("uploading")}</p>
-            </div>
-          ) : value ? (
+          {value ? (
             <div className="flex items-center gap-3 p-3">
               <FileThumb url={value} kind={kind} />
               <div className="min-w-0 flex-1">
@@ -183,17 +171,192 @@ export function UploadField({
                 <X />
               </Button>
             </div>
-          ) : (
-            <div className="flex items-center gap-3 p-4 text-center sm:text-left">
-              <Upload className="h-5 w-5 shrink-0 text-muted-foreground" />
-              <p className="text-sm">
-                <span className="font-medium">{isDragActive ? t("dropHere") : t("dropOrClick")}</span>
-              </p>
-            </div>
-          )}
-        </div>
+          ) : null}
+        </UploadSurface>
       )}
     </Field>
+  );
+}
+
+/**
+ * Upload for a Markdown or text file whose content is stored in the section
+ * itself (legal pages). The value is the text, not a file address.
+ */
+export function TextUploadField({
+  label,
+  hint,
+  value,
+  onChange,
+  required,
+  className,
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  /** The stored text, or null when empty. */
+  value: string | null;
+  onChange: (text: string | null) => void;
+  /** Show the "missing" error when empty. */
+  required?: boolean;
+  className?: string;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration.fields");
+  const { uploadFile } = useFileUploads();
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<UploadError | null>(null);
+  const kind = "legal";
+
+  async function handleFiles(files: File[]) {
+    const file = files[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const result = await uploadFile(kind, file);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      if (result.kind !== "text") {
+        setError("type");
+        return;
+      }
+      onChange(result.text);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    accept: EVIDENCE_LIBRARY_UPLOAD_ACCEPT[kind],
+    multiple: false,
+    noClick: Boolean(value),
+    disabled: uploading,
+    onDrop: handleFiles,
+  });
+
+  const accepts = t(`accepts.${kind}`);
+  const errorText =
+    error === "type"
+      ? t("wrongType", { accepts })
+      : error === "size"
+        ? t("tooBig", { max: formatBytes(EVIDENCE_LIBRARY_UPLOAD_LIMITS[kind]) })
+        : error === "failed"
+          ? t("uploadFailed")
+          : required && !value && !uploading
+            ? t("required")
+            : null;
+
+  return (
+    <Field
+      label={label}
+      hint={hint ?? t("limits", { accepts })}
+      error={errorText}
+      className={className}
+    >
+      {(id, invalid) => (
+        <UploadSurface
+          id={id}
+          invalid={invalid}
+          uploading={uploading}
+          filled={Boolean(value)}
+          dropzone={{ getRootProps, getInputProps, isDragActive }}
+        >
+          {value ? (
+            <div className="flex items-center gap-3 p-3">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{textTitle(value) ?? t("textFile")}</p>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm">
+                    {t("view")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-96 p-0">
+                  <pre className="max-h-72 overflow-auto whitespace-pre-wrap p-3 font-sans text-xs">
+                    {value}
+                  </pre>
+                </PopoverContent>
+              </Popover>
+              <Button type="button" variant="outline" size="sm" onClick={open}>
+                {t("replace")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t("remove")}
+                onClick={() => onChange(null)}
+              >
+                <X />
+              </Button>
+            </div>
+          ) : null}
+        </UploadSurface>
+      )}
+    </Field>
+  );
+}
+
+/** The first Markdown heading of an uploaded text, if it has one. */
+function textTitle(text: string): string | null {
+  const heading = text.split(/\r?\n/).find((line) => /^#{1,6}\s+\S/.test(line));
+  return heading ? heading.replace(/^#{1,6}\s+/, "").trim() : null;
+}
+
+/** The dashed drop zone every upload uses: empty, uploading, or filled with `children`. */
+function UploadSurface({
+  id,
+  invalid,
+  uploading,
+  filled,
+  dropzone,
+  children,
+}: {
+  id: string;
+  invalid: boolean;
+  uploading: boolean;
+  filled: boolean;
+  dropzone: Pick<DropzoneState, "getRootProps" | "getInputProps" | "isDragActive">;
+  children: ReactNode;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration.fields");
+  const { getRootProps, getInputProps, isDragActive } = dropzone;
+  return (
+    <div
+      {...getRootProps()}
+      data-upload-state={uploading ? "uploading" : filled ? "filled" : "empty"}
+      aria-invalid={invalid || undefined}
+      className={cn(
+        "rounded-lg border-2 border-dashed transition-colors",
+        isDragActive
+          ? "border-primary bg-primary/5"
+          : invalid
+            ? "border-destructive/40"
+            : "border-border/60",
+        !filled && !uploading && "cursor-pointer hover:border-primary/50 hover:bg-muted/30",
+      )}
+    >
+      <input {...getInputProps()} id={id} />
+      {uploading ? (
+        <div className="flex items-center gap-3 p-4">
+          <Spinner className="h-4 w-4 text-primary" />
+          <p className="text-sm font-medium">{t("uploading")}</p>
+        </div>
+      ) : filled ? (
+        children
+      ) : (
+        <div className="flex items-center gap-3 p-4 text-center sm:text-left">
+          <Upload className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <p className="text-sm">
+            <span className="font-medium">{isDragActive ? t("dropHere") : t("dropOrClick")}</span>
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -311,6 +474,107 @@ export function ColourField({
         </div>
       )}
     </Field>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Toggle row                                                          */
+/* ------------------------------------------------------------------ */
+
+export function ToggleRow({
+  label,
+  hint,
+  checked,
+  onChange,
+  disabled,
+  disabledReason,
+  locked,
+  className,
+  ...rest
+}: Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> & {
+  label: ReactNode;
+  hint?: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  /** Why the switch cannot change right now. Shown under the hint, or as a tooltip when locked. */
+  disabledReason?: ReactNode;
+  /** Switch is shown but cannot change. */
+  locked?: boolean;
+}) {
+  const id = useId();
+  const control = (
+    <Switch
+      id={id}
+      checked={checked}
+      disabled={disabled || locked}
+      onCheckedChange={onChange}
+      aria-describedby={hint ? `${id}-hint` : undefined}
+    />
+  );
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-4 rounded-lg border px-3 py-2.5",
+        disabled || locked
+          ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+          : "border-border/50 bg-background",
+        className,
+      )}
+      data-checked={checked}
+      data-disabled={disabled || locked || undefined}
+      {...rest}
+    >
+      <div className="min-w-0 space-y-0.5">
+        <Label htmlFor={id} className="text-sm font-medium">
+          {label}
+        </Label>
+        {hint ? (
+          <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+            {hint}
+          </p>
+        ) : null}
+        {disabled && disabledReason ? (
+          <p className="text-xs text-amber-700 dark:text-amber-400" data-reason>
+            {disabledReason}
+          </p>
+        ) : null}
+      </div>
+      {locked && disabledReason ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span tabIndex={0} className="flex items-center gap-2">
+              <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+              {control}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{disabledReason}</TooltipContent>
+        </Tooltip>
+      ) : (
+        control
+      )}
+    </div>
+  );
+}
+
+/** A small switch with its label beside it, for options inside a list row. */
+export function InlineSwitch({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex h-9 items-center gap-2">
+      <Switch id={id} checked={checked} onCheckedChange={onChange} className="scale-90" />
+      <Label htmlFor={id} className="text-xs font-normal">
+        {label}
+      </Label>
+    </div>
   );
 }
 
@@ -436,6 +700,42 @@ export function EmptyList({ children }: { children: ReactNode }) {
     <p className="rounded-lg border border-dashed border-border/60 px-3 py-4 text-center text-sm text-muted-foreground">
       {children}
     </p>
+  );
+}
+
+/**
+ * Child items under a list row (dropdown links under a nav link, links under
+ * a footer section). A thin left rule and an indent instead of a box; the
+ * add action is a quiet text button and there is no empty-state sentence.
+ */
+export function NestedList({
+  label,
+  addLabel,
+  onAdd,
+  disabled,
+  children,
+}: {
+  label: string;
+  addLabel: string;
+  onAdd: () => void;
+  disabled?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="ml-1 space-y-2 border-l-2 border-border/50 pl-4" role="group" aria-label={label}>
+      {children}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={disabled}
+        className="-ml-2 h-7 text-xs text-muted-foreground hover:text-foreground"
+        onClick={onAdd}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        {addLabel}
+      </Button>
+    </div>
   );
 }
 

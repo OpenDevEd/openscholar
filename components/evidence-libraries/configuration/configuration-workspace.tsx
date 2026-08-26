@@ -10,7 +10,10 @@ import {
   Globe,
   Layers,
   type LucideIcon,
+  Mail,
+  Menu,
   Palette,
+  PanelBottom,
   Rocket,
   Save,
   Trash2,
@@ -45,6 +48,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
   type ConfigurationDraft,
+  cardForRow,
   changedSectionRows,
   cloneDraft,
   hasProblems,
@@ -58,10 +62,13 @@ import {
   staleUploads,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { cn } from "@/lib/utils";
+import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
+import { FooterSection } from "./sections/footer-section";
 import { IdentitySection } from "./sections/identity-section";
 import { InstitutionsSection } from "./sections/institutions-section";
+import { NavigationSection } from "./sections/navigation-section";
 import { TeamSection } from "./sections/team-section";
 import { ThemeSection } from "./sections/theme-section";
 import { InlineNotice } from "./section-card";
@@ -86,10 +93,14 @@ function isOperationRunning(operation: Operation): operation is NonNullable<Oper
   return operation.status === "queued" || operation.status === "running";
 }
 
-/** Rail entries: the draft sections this version supports, then the team and the danger zone. */
+/** Rail entries: the page cards in their groups, then the team and the danger zone. */
 type RailKey = PageSectionKey | "team" | "danger";
-const RAIL_GROUPS: { key: "brand" | "team" | "danger"; sections: readonly RailKey[] }[] = [
-  { key: "brand", sections: PAGE_SECTION_KEYS },
+const RAIL_GROUPS: {
+  key: "brand" | "content" | "team" | "danger";
+  sections: readonly RailKey[];
+}[] = [
+  { key: "brand", sections: ["identity", "theme", "institutions"] },
+  { key: "content", sections: ["navigation", "footer", "contact"] },
   { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
@@ -98,6 +109,9 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   identity: Globe,
   theme: Palette,
   institutions: Building2,
+  navigation: Menu,
+  footer: PanelBottom,
+  contact: Mail,
   team: Users,
   danger: Trash2,
 };
@@ -109,6 +123,9 @@ const SECTION_COMPONENTS: Record<
   identity: IdentitySection,
   theme: ThemeSection,
   institutions: InstitutionsSection,
+  navigation: NavigationSection,
+  footer: FooterSection,
+  contact: ContactSection,
 };
 
 const LIBRARIES_HREF = "/evidence-libraries/new";
@@ -480,8 +497,7 @@ function OperationBanner({
       {issues.length > 0 ? (
         <ul className="mt-1 space-y-1">
           {issues.map((issue) => {
-            const sectionKey = issue.pointer.split("/")[1] ?? "";
-            const target = isPageSection(sectionKey) ? sectionKey : null;
+            const target = cardForRow(issue.pointer.split("/")[1] ?? "");
             return (
               <li
                 key={`${issue.pointer}:${issue.message}`}

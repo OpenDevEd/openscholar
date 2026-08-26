@@ -5,16 +5,50 @@
  * rules here decide which sections changed, which have problems, and what
  * gets sent to `saveDraftSections`. Limits, choices and defaults come from
  * the pinned runtime schema so nothing is written by hand twice.
+ *
+ * Two lists matter: the cards the page shows (`PAGE_SECTION_KEYS`) and the
+ * runtime rows they write (`ROW_KEYS`). A card can write more than one row
+ * (Contact & legal writes `contact`, `email` and `legal`) and a row can be
+ * shared by cards (the Navigation card owns `features.navbarSearch`).
  */
 
 import schema from "./generated/library-config.schema.json";
+import {
+  HTTPS_URL,
+  type LinkDraft,
+  type LinkProblem,
+  linkPayload,
+  linkProblems,
+  readLink,
+} from "./links";
 import { resolveSchemaPointer } from "./section-registry";
 
 export type SectionRow = { sectionKey: string; payload: unknown };
 
-/** Sections this version of the page edits, in rail order. */
-export const PAGE_SECTION_KEYS = ["identity", "theme", "institutions"] as const;
+/** Cards this version of the page shows, in rail order. */
+export const PAGE_SECTION_KEYS = [
+  "identity",
+  "theme",
+  "institutions",
+  "navigation",
+  "footer",
+  "contact",
+] as const;
 export type PageSectionKey = (typeof PAGE_SECTION_KEYS)[number];
+
+/** Runtime rows the page writes. */
+const ROW_KEYS = [
+  "identity",
+  "theme",
+  "institutions",
+  "navigation",
+  "features",
+  "footer",
+  "contact",
+  "email",
+  "legal",
+] as const;
+type RowKey = (typeof ROW_KEYS)[number];
 
 export type SectionState = "complete" | "edited" | "attention";
 
@@ -24,7 +58,18 @@ type SectionProblem =
   | "logoMissing"
   | "faviconMissing"
   | "badColour"
-  | "institutionName";
+  | "institutionName"
+  | LinkProblem
+  | "footerTitle"
+  | "socialUrl"
+  | "funderName"
+  | "funderUrl"
+  | "takedownRecipient"
+  | "contactRecipient"
+  | "contactEmail"
+  | "phone"
+  | "legalUrl"
+  | "legalText";
 
 /* ------------------------------------------------------------------ */
 /* Schema facts                                                        */
@@ -54,6 +99,14 @@ function schemaDefault(pointer: string): string {
   return value;
 }
 
+function schemaPattern(pointer: string): RegExp {
+  const value = schemaNode(pointer).pattern;
+  if (typeof value !== "string") {
+    throw new Error(`Configuration schema has no pattern at ${pointer}`);
+  }
+  return new RegExp(value);
+}
+
 function schemaEnum<T extends string>(pointer: string): readonly T[] {
   const values = schemaNode(pointer).enum;
   if (!Array.isArray(values) || values.length === 0) {
@@ -74,7 +127,29 @@ export const SCHEMA_LIMITS = {
     items: schemaNumber("/institutions", "maxItems"),
     name: schemaNumber("/institutions/*/name", "maxLength"),
   },
+  navigation: {
+    links: schemaNumber("/navigation/links", "maxItems"),
+    children: schemaNumber("/navigation/links/*/children", "maxItems"),
+    label: schemaNumber("/navigation/links/*/label", "maxLength"),
+  },
+  footer: {
+    sections: schemaNumber("/footer/sections", "maxItems"),
+    sectionTitle: schemaNumber("/footer/sections/*/title", "maxLength"),
+    sectionLinks: schemaNumber("/footer/sections/*/links", "maxItems"),
+    funders: schemaNumber("/footer/funders", "maxItems"),
+    funderName: schemaNumber("/footer/funders/*/name", "maxLength"),
+    disclaimer: schemaNumber("/footer/disclaimer", "maxLength"),
+    attribution: schemaNumber("/footer/attribution", "maxLength"),
+  },
+  contact: {
+    address: schemaNumber("/contact/address", "maxLength"),
+  },
 } as const;
+
+/** An email address the runtime accepts. */
+export const EMAIL = schemaPattern("/contact/email");
+/** A phone number in international format, as the runtime requires. */
+export const PHONE = schemaPattern("/contact/phone");
 
 export const THEME_LAYOUTS = schemaEnum<"small" | "wide">("/theme/layout");
 type ThemeLayout = (typeof THEME_LAYOUTS)[number];
@@ -86,6 +161,11 @@ type ThemeMode = (typeof THEME_MODES)[number];
 
 export const FONT_FAMILIES = schemaEnum<string>("/theme/fonts/heading/family");
 export type FontFamily = (typeof FONT_FAMILIES)[number];
+
+export const SOCIAL_PROVIDERS = schemaEnum<
+  "github" | "twitter" | "linkedin" | "youtube" | "bluesky"
+>("/footer/socialLinks/*/provider");
+export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
 
 const COLOUR_KEYS = [
   "accent",
@@ -120,6 +200,16 @@ export const THEME_DEFAULTS = {
   fonts: { heading: "Montserrat", body: "Ubuntu" },
 } as const;
 
+/** Every runtime feature switch with its schema default. */
+export type FeatureKey = keyof typeof schema.properties.features.properties;
+const FEATURE_DEFAULTS = Object.fromEntries(
+  Object.entries(schema.properties.features.properties).map(([key, node]) => [
+    key,
+    (node as { default?: boolean }).default === true,
+  ]),
+) as Record<FeatureKey, boolean>;
+export const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];
+
 /* ------------------------------------------------------------------ */
 /* Draft shape                                                         */
 /* ------------------------------------------------------------------ */
@@ -150,10 +240,45 @@ export type ThemeDraft = {
 
 type InstitutionDraft = { id: string; name: string; logoUrl: string };
 
+export type FooterSectionDraft = { id: string; title: string; links: LinkDraft[] };
+export type FunderDraft = { id: string; name: string; logoUrl: string; href: string };
+export type FooterDraft = {
+  sections: FooterSectionDraft[];
+  social: Partial<Record<SocialProvider, string>>;
+  funders: FunderDraft[];
+  disclaimer: string;
+  attribution: string;
+  poweredBy: boolean;
+};
+
+export type ContactDraft = { email: string; phone: string; address: string };
+export type EmailDraft = { contactRecipient: string; takedownRecipient: string };
+
+/**
+ * Where a legal page comes from: nothing, uploaded text, or an address
+ * elsewhere. Text may be empty while the owner has chosen to upload a file
+ * but has not done so yet; nothing is written until the text arrives.
+ */
+export type LegalSource =
+  | { kind: "none" }
+  | { kind: "text"; text: string }
+  | { kind: "url"; url: string };
+export const LEGAL_KEYS = ["privacy", "cookie", "terms"] as const;
+export type LegalKey = (typeof LEGAL_KEYS)[number];
+export type LegalDraft = Record<LegalKey, LegalSource>;
+
 export type ConfigurationDraft = {
   identity: IdentityDraft;
   theme: ThemeDraft;
   institutions: InstitutionDraft[];
+  navigation: { links: LinkDraft[] };
+  features: Record<FeatureKey, boolean>;
+  footer: FooterDraft;
+  contact: ContactDraft;
+  email: EmailDraft;
+  legal: LegalDraft;
+  /** Collections the owner shows, read so links can point at them. Written by the Collections card. */
+  collections: { id: string; title: string }[];
 };
 
 export const newId = (prefix: string) =>
@@ -169,6 +294,10 @@ function record(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function list(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
 function text(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
@@ -181,19 +310,17 @@ function choice<T extends string>(
   return allowed.includes(value as T) ? (value as T) : fallback;
 }
 
-function payloadOf(rows: readonly SectionRow[], sectionKey: PageSectionKey) {
+function payloadOf(rows: readonly SectionRow[], sectionKey: string) {
   return rows.find((row) => row.sectionKey === sectionKey)?.payload;
 }
 
 function readIdentity(payload: unknown): IdentityDraft {
   const identity = record(payload);
   const assets = record(identity.assets);
-  const partners = Array.isArray(identity.fundingPartners)
-    ? identity.fundingPartners.map((partner) => {
-        const row = record(partner);
-        return { id: text(row.id) || newId("fp"), name: text(row.name) };
-      })
-    : [];
+  const partners = list(identity.fundingPartners).map((partner) => {
+    const row = record(partner);
+    return { id: text(row.id) || newId("fp"), name: text(row.name) };
+  });
   return {
     name: text(identity.name),
     shortName: text(identity.shortName),
@@ -237,8 +364,7 @@ function readTheme(payload: unknown): ThemeDraft {
 }
 
 function readInstitutions(payload: unknown): InstitutionDraft[] {
-  if (!Array.isArray(payload)) return [];
-  return payload.map((item) => {
+  return list(payload).map((item) => {
     const row = record(item);
     return {
       id: text(row.id) || newId("inst"),
@@ -248,12 +374,116 @@ function readInstitutions(payload: unknown): InstitutionDraft[] {
   });
 }
 
+function readLinks(value: unknown, prefix: string): LinkDraft[] {
+  return list(value).map((link) => readLink(link, newId(prefix)));
+}
+
+function readFeatures(payload: unknown): Record<FeatureKey, boolean> {
+  const features = record(payload);
+  return Object.fromEntries(
+    FEATURE_KEYS.map((key) => [
+      key,
+      typeof features[key] === "boolean" ? features[key] : FEATURE_DEFAULTS[key],
+    ]),
+  ) as Record<FeatureKey, boolean>;
+}
+
+function readFooter(payload: unknown): FooterDraft {
+  const footer = record(payload);
+  const social: FooterDraft["social"] = {};
+  for (const entry of list(footer.socialLinks)) {
+    const row = record(entry);
+    if (SOCIAL_PROVIDERS.includes(row.provider as SocialProvider)) {
+      social[row.provider as SocialProvider] = text(row.href);
+    }
+  }
+  return {
+    sections: list(footer.sections).map((entry) => {
+      const row = record(entry);
+      return {
+        id: text(row.id) || newId("fs"),
+        title: text(row.title),
+        links: readLinks(row.links, "fl"),
+      };
+    }),
+    social,
+    funders: list(footer.funders).map((entry) => {
+      const row = record(entry);
+      return {
+        id: text(row.id) || newId("fu"),
+        name: text(row.name),
+        logoUrl: text(row.logoUrl),
+        href: text(row.href),
+      };
+    }),
+    disclaimer: text(footer.disclaimer),
+    attribution: text(footer.attribution),
+    // There is no plan model yet; the credit stays on (owner-rules.ts).
+    poweredBy: true,
+  };
+}
+
+function readContact(payload: unknown): ContactDraft {
+  const contact = record(payload);
+  return {
+    email: text(contact.email),
+    phone: text(contact.phone),
+    address: text(contact.address),
+  };
+}
+
+function readEmail(payload: unknown): EmailDraft {
+  const email = record(payload);
+  return {
+    contactRecipient: text(email.contactRecipient),
+    takedownRecipient: text(email.takedownRecipient),
+  };
+}
+
+// Runtime field names per legal page: the link and the uploaded text.
+const LEGAL_FIELDS: Record<LegalKey, { link: string; markdown: string }> = {
+  privacy: { link: "privacyPolicy", markdown: "privacyMarkdown" },
+  cookie: { link: "cookiePolicy", markdown: "cookieMarkdown" },
+  terms: { link: "termsOfService", markdown: "termsMarkdown" },
+};
+
+function readLegal(payload: unknown): LegalDraft {
+  const legal = record(payload);
+  return Object.fromEntries(
+    LEGAL_KEYS.map((key) => {
+      const markdown = text(legal[LEGAL_FIELDS[key].markdown]);
+      const link = text(legal[LEGAL_FIELDS[key].link]);
+      const source: LegalSource = markdown
+        ? { kind: "text", text: markdown }
+        : HTTPS_URL.test(link)
+          ? { kind: "url", url: link }
+          : { kind: "none" };
+      return [key, source];
+    }),
+  ) as LegalDraft;
+}
+
+function readCollections(payload: unknown): ConfigurationDraft["collections"] {
+  return list(payload).map((entry) => {
+    const row = record(entry);
+    const id = text(row.id);
+    return { id, title: text(row.title) || id };
+  });
+}
+
 /** Builds the page draft from the saved rows. Missing rows get defaults. */
 export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
   return {
     identity: readIdentity(payloadOf(rows, "identity")),
     theme: readTheme(payloadOf(rows, "theme")),
     institutions: readInstitutions(payloadOf(rows, "institutions")),
+    navigation: { links: readLinks(record(payloadOf(rows, "navigation")).links, "nav") },
+    features: readFeatures(payloadOf(rows, "features")),
+    footer: readFooter(payloadOf(rows, "footer")),
+    contact: readContact(payloadOf(rows, "contact")),
+    email: readEmail(payloadOf(rows, "email")),
+    legal: readLegal(payloadOf(rows, "legal")),
+    collections: readCollections(payloadOf(rows, "collections")),
   };
 }
 
@@ -320,50 +550,109 @@ function institutionsPayload(institutions: InstitutionDraft[]) {
   );
 }
 
-function sectionPayload(
-  draft: ConfigurationDraft,
-  sectionKey: PageSectionKey,
-): unknown {
-  switch (sectionKey) {
+function navigationPayload(navigation: ConfigurationDraft["navigation"]) {
+  return { links: navigation.links.map((link) => linkPayload(link, { children: true })) };
+}
+
+function footerPayload(footer: FooterDraft) {
+  return {
+    sections: footer.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      links: section.links.map((link) => linkPayload(link, { children: false })),
+    })),
+    socialLinks: SOCIAL_PROVIDERS.filter((provider) => footer.social[provider]).map(
+      (provider) => ({ provider, href: footer.social[provider] }),
+    ),
+    funders: footer.funders.map((funder) =>
+      compact({
+        id: funder.id,
+        name: funder.name,
+        logoUrl: optional(funder.logoUrl),
+        href: optional(funder.href),
+      }),
+    ),
+    disclaimer: footer.disclaimer,
+    attribution: footer.attribution,
+    poweredBy: true,
+  };
+}
+
+function contactPayload(contact: ContactDraft) {
+  return compact({
+    email: optional(contact.email),
+    phone: optional(contact.phone),
+    address: optional(contact.address),
+  });
+}
+
+function emailPayload(email: EmailDraft) {
+  return compact({
+    contactRecipient: optional(email.contactRecipient),
+    takedownRecipient: optional(email.takedownRecipient),
+  });
+}
+
+function legalPayload(legal: LegalDraft) {
+  const payload: Record<string, string> = {};
+  for (const key of LEGAL_KEYS) {
+    const source = legal[key];
+    if (source.kind === "text" && source.text) payload[LEGAL_FIELDS[key].markdown] = source.text;
+    if (source.kind === "url") payload[LEGAL_FIELDS[key].link] = source.url;
+  }
+  return payload;
+}
+
+function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
+  switch (rowKey) {
     case "identity":
       return identityPayload(draft.identity);
     case "theme":
       return themePayload(draft.theme);
     case "institutions":
       return institutionsPayload(draft.institutions);
+    case "navigation":
+      return navigationPayload(draft.navigation);
+    case "features":
+      return { ...draft.features };
+    case "footer":
+      return footerPayload(draft.footer);
+    case "contact":
+      return contactPayload(draft.contact);
+    case "email":
+      return emailPayload(draft.email);
+    case "legal":
+      return legalPayload(draft.legal);
   }
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-function hasRow(rows: readonly SectionRow[], sectionKey: PageSectionKey) {
-  return rows.some((row) => row.sectionKey === sectionKey);
+function hasRow(rows: readonly SectionRow[], rowKey: RowKey) {
+  return rows.some((row) => row.sectionKey === rowKey);
 }
 
-/** Rows to send on Save: every page section whose payload differs from its saved row. */
+/** Rows to send on Save: every row whose payload differs from its saved row. */
 export function changedSectionRows(
   draft: ConfigurationDraft,
   rows: readonly SectionRow[],
-): { sectionKey: PageSectionKey; payload: unknown }[] {
+): { sectionKey: RowKey; payload: unknown }[] {
   const saved = readDraft(rows);
-  return PAGE_SECTION_KEYS.filter(
-    (sectionKey) =>
-      !hasRow(rows, sectionKey) ||
-      !same(sectionPayload(draft, sectionKey), sectionPayload(saved, sectionKey)),
-  ).map((sectionKey) => ({
-    sectionKey,
-    payload: sectionPayload(draft, sectionKey),
-  }));
+  return ROW_KEYS.filter(
+    (rowKey) =>
+      !hasRow(rows, rowKey) || !same(rowPayload(draft, rowKey), rowPayload(saved, rowKey)),
+  ).map((rowKey) => ({ sectionKey: rowKey, payload: rowPayload(draft, rowKey) }));
 }
 
 export const isDirty = (draft: ConfigurationDraft, rows: readonly SectionRow[]) =>
   changedSectionRows(draft, rows).length > 0;
 
-/** Every uploaded file a draft points at: logos, favicon, share image, institution logos. */
+/** Every uploaded file a draft points at: logos, favicon, share image, institution and funder logos. */
 function uploadUrls(draft: ConfigurationDraft): string[] {
   return [
     ...Object.values(draft.identity.assets),
     ...draft.institutions.map((institution) => institution.logoUrl),
+    ...draft.footer.funders.map((funder) => funder.logoUrl),
   ].filter((url) => url !== "");
 }
 
@@ -400,14 +689,32 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
       };
     case "institutions":
       return draft.institutions;
+    case "navigation":
+      return { links: draft.navigation.links, navbarSearch: draft.features.navbarSearch };
+    case "footer":
+      return draft.footer;
+    case "contact":
+      return { contact: draft.contact, email: draft.email, legal: draft.legal };
   }
 }
 
-const ROWS_FOR_CARD: Record<PageSectionKey, readonly PageSectionKey[]> = {
+const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
   identity: ["identity"],
   theme: ["theme", "identity"],
   institutions: ["institutions"],
+  navigation: ["navigation", "features"],
+  footer: ["footer"],
+  contact: ["contact", "email", "legal"],
 };
+
+/** The card that edits a runtime row, or null when the page has none for it. */
+export function cardForRow(rowKey: string): PageSectionKey | null {
+  return (
+    PAGE_SECTION_KEYS.find((card) =>
+      (ROWS_FOR_CARD[card] as readonly string[]).includes(rowKey),
+    ) ?? null
+  );
+}
 
 export function sectionChanged(
   draft: ConfigurationDraft,
@@ -416,6 +723,14 @@ export function sectionChanged(
 ): boolean {
   if (ROWS_FOR_CARD[sectionKey].some((key) => !hasRow(rows, key))) return true;
   return !same(cardSlice(draft, sectionKey), cardSlice(readDraft(rows), sectionKey));
+}
+
+function allLinkProblems(links: readonly LinkDraft[]): LinkProblem[] {
+  return links.flatMap((link) => [...linkProblems(link), ...allLinkProblems(link.children)]);
+}
+
+function unique<T>(items: T[]): T[] {
+  return [...new Set(items)];
 }
 
 export function sectionProblems(
@@ -442,8 +757,47 @@ export function sectionProblems(
         problems.push("institutionName");
       }
       break;
+    case "navigation":
+      problems.push(...allLinkProblems(draft.navigation.links));
+      break;
+    case "footer": {
+      const footer = draft.footer;
+      if (footer.sections.some((section) => !section.title.trim())) {
+        problems.push("footerTitle");
+      }
+      problems.push(...allLinkProblems(footer.sections.flatMap((section) => section.links)));
+      if (Object.values(footer.social).some((url) => url && !HTTPS_URL.test(url))) {
+        problems.push("socialUrl");
+      }
+      if (footer.funders.some((funder) => !funder.name.trim())) problems.push("funderName");
+      if (footer.funders.some((funder) => funder.href && !HTTPS_URL.test(funder.href))) {
+        problems.push("funderUrl");
+      }
+      break;
+    }
+    case "contact": {
+      const { contact, email, legal } = draft;
+      if (!EMAIL.test(email.takedownRecipient)) problems.push("takedownRecipient");
+      if (email.contactRecipient && !EMAIL.test(email.contactRecipient)) {
+        problems.push("contactRecipient");
+      }
+      if (contact.email && !EMAIL.test(contact.email)) problems.push("contactEmail");
+      if (contact.phone && !PHONE.test(contact.phone)) problems.push("phone");
+      if (
+        LEGAL_KEYS.some((key) => {
+          const source = legal[key];
+          return source.kind === "url" && !HTTPS_URL.test(source.url);
+        })
+      ) {
+        problems.push("legalUrl");
+      }
+      if (LEGAL_KEYS.some((key) => legal[key].kind === "text" && !legal[key].text)) {
+        problems.push("legalText");
+      }
+      break;
+    }
   }
-  return problems;
+  return unique(problems);
 }
 
 export function sectionState(
@@ -484,6 +838,18 @@ export function resetSection(
       break;
     case "institutions":
       next.institutions = saved.institutions;
+      break;
+    case "navigation":
+      next.navigation = saved.navigation;
+      next.features.navbarSearch = saved.features.navbarSearch;
+      break;
+    case "footer":
+      next.footer = saved.footer;
+      break;
+    case "contact":
+      next.contact = saved.contact;
+      next.email = saved.email;
+      next.legal = saved.legal;
       break;
   }
   return next;

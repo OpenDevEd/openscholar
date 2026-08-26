@@ -2288,14 +2288,18 @@
       "aria": "Configuration sections",
       "brand": "Brand",
       "team": "Team",
-      "danger": "Danger zone"
+      "danger": "Danger zone",
+      "content": "Content"
     },
     "sections": {
       "identity": "Identity",
       "theme": "Theme",
       "institutions": "Institutions",
       "team": "Team",
-      "danger": "Danger zone"
+      "danger": "Danger zone",
+      "navigation": "Navigation",
+      "footer": "Footer",
+      "contact": "Contact & legal"
     },
     "sectionState": {
       "complete": "Complete",
@@ -2323,7 +2327,20 @@
       "logoMissing": "Upload a logo for dark backgrounds.",
       "faviconMissing": "Upload a favicon.",
       "badColour": "One of the colours is not valid.",
-      "institutionName": "Every institution needs a name."
+      "institutionName": "Every institution needs a name.",
+      "linkLabel": "Every link needs a label.",
+      "linkUrl": "Every external link needs a full address that starts with https://.",
+      "linkCollection": "Choose a collection for every collection link.",
+      "footerTitle": "Every footer section needs a title.",
+      "socialUrl": "Social links need a full address that starts with https://.",
+      "funderName": "Every funder needs a name.",
+      "funderUrl": "Funder links need a full address that starts with https://.",
+      "takedownRecipient": "Add an email for takedown requests.",
+      "contactRecipient": "The contact form recipient is not a valid email.",
+      "contactEmail": "The contact email is not valid.",
+      "phone": "Use the international phone format, for example +442012345678.",
+      "legalUrl": "Legal page links need a full address that starts with https://.",
+      "legalText": "Upload a file for every legal page set to Upload a file."
     },
     "fields": {
       "optional": "optional",
@@ -2348,7 +2365,9 @@
       "reset": "Reset changes",
       "fixed": "This value is fixed.",
       "dragHandle": "Drag to reorder",
-      "uploadFailed": "The file could not be uploaded. Try again."
+      "uploadFailed": "The file could not be uploaded. Try again.",
+      "view": "View",
+      "textFile": "Uploaded text"
     },
     "identity": {
       "description": "The name people see, the address they visit, and how the library looks when shared.",
@@ -2463,6 +2482,141 @@
       "startedTitle": "Deleting library",
       "startedDescription": "{name} is being removed. Takes a few seconds.",
       "error": "The library could not be deleted. Finish any running library operation, then try again."
+    },
+    "links": {
+      "labelLabel": "Label",
+      "labelPlaceholder": "For example: About",
+      "labelError": "Give this link a label.",
+      "kindLabel": "Goes to",
+      "kinds": {
+        "page": "Page",
+        "collection": "Collection",
+        "url": "External link"
+      },
+      "pageLabel": "Page",
+      "pages": {
+        "home": "Home",
+        "library": "Library",
+        "map": "Map",
+        "contact": "Contact",
+        "privacy": "Privacy",
+        "cookiePolicy": "Cookie policy",
+        "terms": "Terms of use",
+        "takedown": "Takedown"
+      },
+      "collectionLabel": "Collection",
+      "collectionPlaceholder": "Choose a collection",
+      "noCollections": "Add collections in the Collections section first.",
+      "urlLabel": "Address",
+      "urlError": "Use a full address that starts with https://.",
+      "iconLabel": "Icon",
+      "noIcon": "No icon",
+      "newTab": "Open in new tab",
+      "visible": "Visible",
+      "icons": {
+        "AboutUs": "About us",
+        "EvidenceLibrary": "Evidence library",
+        "Programs": "Programs",
+        "Blog": "Blog",
+        "Team": "Team",
+        "ContactUs": "Contact us",
+        "TeamFill": "Team (solid)",
+        "ToolsFill": "Tools",
+        "BookOpenFill": "Open book",
+        "Bookshelf": "Bookshelf",
+        "ChatRightDotsFill": "Chat",
+        "BsMapFill": "Map",
+        "LuX": "X",
+        "FaQuestionCircle": "Question",
+        "IoStatsChart": "Statistics"
+      }
+    },
+    "navigation": {
+      "description": "The links in the top bar of the public site.",
+      "showSearch": "Show search in the top bar",
+      "showSearchHint": "Adds a search box to the top bar on every page.",
+      "linksHeading": "Links",
+      "empty": "No links yet.",
+      "addLink": "Add link",
+      "removeLink": "Remove link",
+      "maxReached": "This is the most links the top bar can hold.",
+      "childrenHeading": "Dropdown links",
+      "addChild": "Add dropdown link",
+      "removeChild": "Remove link"
+    },
+    "footer": {
+      "description": "Links, social profiles, funders, and small print at the bottom of every page.",
+      "sectionsHeading": "Link sections",
+      "sectionsEmpty": "No link sections yet.",
+      "addSection": "Add section",
+      "removeSection": "Remove section",
+      "sectionTitle": "Section title",
+      "sectionTitlePlaceholder": "For example: About",
+      "sectionTitleError": "Give this section a title.",
+      "sectionLinks": "Links",
+      "addSectionLink": "Add link",
+      "removeSectionLink": "Remove link",
+      "socialHeading": "Social links",
+      "social": {
+        "github": "GitHub",
+        "twitter": "X",
+        "linkedin": "LinkedIn",
+        "youtube": "YouTube",
+        "bluesky": "Bluesky"
+      },
+      "socialError": "Use a full address that starts with https://.",
+      "fundersHeading": "Funders",
+      "fundersEmpty": "No funders yet.",
+      "addFunder": "Add funder",
+      "removeFunder": "Remove funder",
+      "funderName": "Name",
+      "funderNameError": "Give this funder a name.",
+      "funderUrl": "Link",
+      "funderLogo": "Logo",
+      "textHeading": "Text",
+      "disclaimer": "Disclaimer",
+      "disclaimerHint": "Shown in small print at the bottom of every page.",
+      "attribution": "Attribution",
+      "attributionHint": "One line, for example who runs the library.",
+      "poweredBy": "Powered by OpenScholar",
+      "poweredByHint": "A small line that links back to OpenScholar.",
+      "poweredByLocked": "Available on paid plans."
+    },
+    "contact": {
+      "description": "How people reach you, and the legal pages the site shows.",
+      "contactHeading": "Contact",
+      "email": "Email",
+      "emailHint": "Shown on the contact page.",
+      "emailError": "Use an email like name@example.org.",
+      "phone": "Phone",
+      "phoneHint": "International format, for example +442012345678.",
+      "phoneError": "Use the international format, for example +442012345678.",
+      "address": "Address",
+      "addressHint": "Postal address, one line per row.",
+      "recipientsHeading": "Where messages go",
+      "contactRecipient": "Contact form messages go to",
+      "contactRecipientHint": "Leave empty to use the contact email.",
+      "contactRecipientPlaceholder": "Same as the contact email",
+      "takedownRecipient": "Takedown requests go to",
+      "takedownRecipientHint": "Required. People use this to ask for a record to be removed.",
+      "takedownRequired": "Add an email for takedown requests.",
+      "legalHeading": "Legal pages",
+      "legalHint": "Upload a Markdown or text file, or link to a page on your own site.",
+      "legal": {
+        "privacy": "Privacy policy",
+        "cookie": "Cookie policy",
+        "terms": "Terms of use"
+      },
+      "legalSourceLabel": "Source for {page}",
+      "legalKinds": {
+        "none": "None",
+        "text": "Upload a file",
+        "url": "External link"
+      },
+      "legalFile": "File",
+      "legalUrl": "Address",
+      "legalUrlError": "Use a full address that starts with https://.",
+      "legalNone": "The site shows its standard page."
     }
   }
 }
