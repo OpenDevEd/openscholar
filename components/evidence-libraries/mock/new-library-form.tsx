@@ -168,7 +168,7 @@ export function NewLibraryForm() {
               >
                 {(id) => (
                   <div className="flex flex-col gap-1.5 sm:flex-row">
-                    <ReadOnlyValue id={id} value={address} className="min-w-0 flex-1" />
+                    <ReadOnlyValue id={id} value={address} locked={false} className="min-w-0 flex-1" />
                     <Button
                       type="button"
                       variant="outline"

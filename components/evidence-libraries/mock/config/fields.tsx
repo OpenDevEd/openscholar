@@ -861,11 +861,14 @@ export function ReadOnlyValue({
   id,
   value,
   mono = true,
+  locked = true,
   className,
 }: {
   id?: string;
   value: ReactNode;
   mono?: boolean;
+  /** Show the lock. Off for values that are only derived, not yet fixed. */
+  locked?: boolean;
   className?: string;
 }) {
   const t = useTranslations("evidenceLibraryMock.fields");
@@ -883,7 +886,7 @@ export function ReadOnlyValue({
       )}
     >
       <span className="min-w-0 flex-1 truncate">{value}</span>
-      <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      {locked ? <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
     </div>
   );
 }
