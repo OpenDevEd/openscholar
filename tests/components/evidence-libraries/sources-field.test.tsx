@@ -1,15 +1,16 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { TagRules } from "@/components/evidence-libraries/configuration/sections/tag-rules";
 
 const mocks = vi.hoisted(() => ({
   listMyGroups: vi.fn(),
   connectGroup: vi.fn(),
-  reconnectGroup: vi.fn(),
   removeGroup: vi.fn(),
   startOAuth: vi.fn(),
   query: vi.fn(),
@@ -20,7 +21,6 @@ vi.mock("convex/react", () => ({
     ({
       listMyZoteroGroups: mocks.listMyGroups,
       connectZoteroGroup: mocks.connectGroup,
-      reconnectZoteroGroup: mocks.reconnectGroup,
       startOAuth: mocks.startOAuth,
     })[ref],
   useMutation: () => mocks.removeGroup,
@@ -40,7 +40,6 @@ vi.mock("@/convex/_generated/api", () => ({
       libraryGroupActions: {
         listMyZoteroGroups: "listMyZoteroGroups",
         connectZoteroGroup: "connectZoteroGroup",
-        reconnectZoteroGroup: "reconnectZoteroGroup",
       },
     },
   },
@@ -157,14 +156,35 @@ describe("<SourcesField>", () => {
     expect(mocks.removeGroup).toHaveBeenCalledWith({ libraryId, groupId: "42" });
   });
 
-  it("edits tag rules as comma-separated lists and flags an empty publish rule", async () => {
+  it("edits tag rules as comma-separated lists, flags an empty publish rule, and follows a reset", async () => {
     queries({ connected: true, groups: [] });
     const onTagsChange = vi.fn();
-    render(<SourcesField libraryId={libraryId} value={[]} onChange={vi.fn()} tags={{ publish: [] }} onTagsChange={onTagsChange} />);
+    // The page owns the tags; this stands in for its draft state and reset.
+    let setTags: (tags: TagRules) => void = () => {};
+    function Harness() {
+      const [tags, set] = useState<TagRules>({ publish: [] });
+      setTags = set;
+      return (
+        <SourcesField
+          libraryId={libraryId}
+          value={[]}
+          onChange={vi.fn()}
+          tags={tags}
+          onTagsChange={(next) => {
+            onTagsChange(next);
+            set(next);
+          }}
+        />
+      );
+    }
+    render(<Harness />);
     const publish = screen.getByLabelText("evidenceLibrarySources.tagRules.publish");
     expect(publish).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText("evidenceLibrarySources.tagRules.publishEmpty")).toBeInTheDocument();
     await userEvent.type(publish, "_publish, publishPDF");
     expect(onTagsChange).toHaveBeenLastCalledWith({ publish: ["_publish", "publishPDF"] });
+    expect(publish).toHaveValue("_publish, publishPDF");
+    act(() => setTags({ publish: ["_publish"] }));
+    expect(publish).toHaveValue("_publish");
   });
 });

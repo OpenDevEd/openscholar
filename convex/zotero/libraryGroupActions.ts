@@ -48,12 +48,11 @@ function toSummary(group: ZoteroGroupResponse): ZoteroGroupSummary {
 async function readOwner(
   ctx: ActionCtx,
   libraryId: Id<"evidenceLibraries">,
-): Promise<{ owner: OwnerConnection; apiKey: string | null }> {
+): Promise<{ owner: OwnerConnection; apiKey: string | null; encryptionKey: string }> {
   const owner: OwnerConnection = await ctx.runQuery(
     internal.zotero.libraryGroups.readOwnerZoteroConnection,
     { libraryId },
   );
-  if (!owner.connection) return { owner, apiKey: null };
   const encryptionKey = process.env.ENCRYPTION_KEY;
   if (!encryptionKey) {
     throw createError(
@@ -61,6 +60,7 @@ async function readOwner(
       "Encryption key not configured",
     );
   }
+  if (!owner.connection) return { owner, apiKey: null, encryptionKey };
   const apiKey = decryptApiKey(owner.connection.encryptedApiKey, encryptionKey, {
     userId: owner.connection.userId,
     purpose: "evidence-library-zotero-group",
@@ -70,7 +70,7 @@ async function readOwner(
     userId: owner.connection.userId,
     metadata: { purpose: "evidence-library-zotero-group", libraryId },
   });
-  return { owner, apiKey };
+  return { owner, apiKey, encryptionKey };
 }
 
 async function zoteroGet(path: string, apiKey: string): Promise<unknown> {
@@ -165,7 +165,7 @@ async function connectGroup(
   if (!/^\d+$/.test(args.groupId)) {
     throw createError("VALIDATION_ERROR", "Zotero group ids are numbers");
   }
-  const { owner, apiKey } = await readOwner(ctx, args.libraryId);
+  const { owner, apiKey, encryptionKey } = await readOwner(ctx, args.libraryId);
   if (!owner.connection || !apiKey) {
     throw createError("ZOTERO_NOT_CONNECTED", "Connect your Zotero account first");
   }
@@ -182,7 +182,6 @@ async function connectGroup(
   const group = toSummary(
     (await zoteroGet(`/groups/${args.groupId}`, apiKey)) as ZoteroGroupResponse,
   );
-  const encryptionKey = process.env.ENCRYPTION_KEY!;
   await ctx.runMutation(internal.zotero.libraryGroups.saveLibraryZoteroGroup, {
     libraryId: args.libraryId,
     groupId: args.groupId,
@@ -205,15 +204,10 @@ async function connectGroup(
 }
 
 // Copies the signed-in owner's key for one group after checking, through
-// Zotero, that the key can read it and whether it can write to it.
+// Zotero, that the key can read it and whether it can write to it. Calling
+// it again for a connected group replaces the stored key with the caller's
+// own (reconnect).
 export const connectZoteroGroup = action({
-  args: { libraryId: v.id("evidenceLibraries"), groupId: v.string() },
-  returns: connectResultValidator,
-  handler: connectGroup,
-});
-
-// Any owner can replace the stored key with their own.
-export const reconnectZoteroGroup = action({
   args: { libraryId: v.id("evidenceLibraries"), groupId: v.string() },
   returns: connectResultValidator,
   handler: connectGroup,

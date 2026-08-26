@@ -26,6 +26,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
   DEFAULT_TAG_RULES,
   TAG_RULE_KEYS,
+  type TagRuleKey,
   type TagRules,
   parseTagList,
   tagRuleIssue,
@@ -69,7 +70,6 @@ export function SourcesField({ libraryId, value, onChange, tags, onTagsChange }:
   const groups = useProtectedQuery(api.zotero.libraryGroups.listLibraryZoteroGroups, { libraryId });
   const listMyGroups = useAction(api.zotero.libraryGroupActions.listMyZoteroGroups);
   const connectGroup = useAction(api.zotero.libraryGroupActions.connectZoteroGroup);
-  const reconnectGroup = useAction(api.zotero.libraryGroupActions.reconnectZoteroGroup);
   const removeGroup = useMutation(api.zotero.libraryGroups.removeZoteroGroup);
   const startOAuth = useAction(api.zotero.actions.startOAuth);
   const [picker, setPicker] = useState<PickerState>({ status: "closed" });
@@ -127,7 +127,7 @@ export function SourcesField({ libraryId, value, onChange, tags, onTagsChange }:
   async function reconnect(groupId: string) {
     setBusyGroupId(groupId);
     try {
-      const result = await reconnectGroup({ libraryId, groupId });
+      const result = await connectGroup({ libraryId, groupId });
       toast.success(t("reconnected", { name: result.name }));
     } catch (error) {
       toast.error(t("connectFailed"), { description: errorMessage(error) });
@@ -354,9 +354,12 @@ function SwitchRow({
   );
 }
 
+// Controlled: the text follows `tags`, so a draft reset updates the inputs.
+// Text that is not yet a clean list ("a, ") is kept per field while typing.
 function TagRulesEditor({ tags, onChange }: { tags: TagRules; onChange: (tags: TagRules) => void }) {
   const t = useTranslations("evidenceLibrarySources.tagRules");
   const id = useId();
+  const [typing, setTyping] = useState<Partial<Record<TagRuleKey, { text: string; tags: string[] }>>>({});
   return (
     <details className="rounded-lg border border-border/50 p-4">
       <summary className="cursor-pointer text-sm font-medium">{t("title")}</summary>
@@ -366,16 +369,25 @@ function TagRulesEditor({ tags, onChange }: { tags: TagRules; onChange: (tags: T
           const current = tags[key] ?? DEFAULT_TAG_RULES[key];
           const issue = tagRuleIssue(key, current);
           const inputId = `${id}-${key}`;
+          const draft = typing[key];
+          const text =
+            draft && draft.tags.join("\u0000") === current.join("\u0000")
+              ? draft.text
+              : current.join(", ");
           return (
             <div key={key} className="space-y-1">
               <Label htmlFor={inputId} className="text-xs">{t(key)}</Label>
               <Input
                 id={inputId}
                 className="bg-background"
-                defaultValue={current.join(", ")}
+                value={text}
                 aria-invalid={issue ? true : undefined}
                 aria-describedby={issue ? `${inputId}-issue` : undefined}
-                onChange={(event) => onChange({ ...tags, [key]: parseTagList(event.target.value) })}
+                onChange={(event) => {
+                  const next = parseTagList(event.target.value);
+                  setTyping({ ...typing, [key]: { text: event.target.value, tags: next } });
+                  onChange({ ...tags, [key]: next });
+                }}
               />
               {issue ? (
                 <p id={`${inputId}-issue`} className="text-xs text-destructive">{t(issue)}</p>
