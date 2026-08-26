@@ -40,7 +40,7 @@ import {
   findAvailableEvidenceLibrarySetupIdentity,
   readProvisioningEvidenceLibrarySetupByName,
   readEvidenceLibrarySetupIdentity,
-  validateEvidenceLibraryIdentityPayload,
+  readEvidenceLibraryIdentityNames,
   validateEvidenceLibrarySetupName,
   type EvidenceLibrarySetupIdentity,
 } from "./setupNaming";
@@ -279,11 +279,7 @@ export async function saveEvidenceLibraryDraftSections(
     (section) => section.sectionKey === "identity",
   );
   const identityPayload = identity
-    ? validateEvidenceLibraryIdentityPayload(
-        identity.payload,
-        expectedBaseUrl,
-        "VALIDATION_ERROR",
-      )
+    ? readEvidenceLibraryIdentityNames(identity.payload, "VALIDATION_ERROR")
     : undefined;
   for (const section of args.sections) {
     try {
