@@ -171,6 +171,9 @@ export type ZoteroAccount =
   | { method: "zotero"; handle: string }
   | { method: "apiKey"; apiKey: string };
 
+/** An institution name found on imported records, with how many records carry it. */
+export type RecordInstitution = { name: string; count: number };
+
 /** Groups visible to the connected account (mock). */
 export type ZoteroGroupOption = { groupId: string; name: string; isPublic: boolean; items: number; members: number };
 

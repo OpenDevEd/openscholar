@@ -2575,11 +2575,11 @@
         }
       },
       "institutions": {
-        "description": "Organisations behind the library. Shown on the home page and used as a search filter.",
+        "description": "Institutions found on the records. Add a logo for the ones you want shown on record pages.",
         "empty": "No institutions yet.",
         "nameLabel": "Name",
-        "nameError": "Enter a name.",
-        "namePlaceholder": "University of Example",
+        "nameError": "Choose an institution.",
+        "namePlaceholder": "Choose an institution from the records",
         "logoLabel": "Logo",
         "remove": "Remove institution",
         "add": "Add institution"
@@ -2661,7 +2661,9 @@
         "yearMax": "Last year",
         "yearsError": "The first year must be before the last year.",
         "collectionsExpanded": "Open the collections filter by default",
-        "collectionsExpandedHint": "When off, people click to open the list of collections."
+        "collectionsExpandedHint": "When off, people click to open the list of collections.",
+        "pickInstitution": "Choose an institution",
+        "noRecordInstitutions": "No institutions found on the records yet."
       },
       "citations": {
         "description": "Choose how citations look and which export formats people can download.",

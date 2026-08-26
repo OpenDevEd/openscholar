@@ -188,18 +188,34 @@ export function SearchSection({ library, patch }: SectionProps) {
             error={!search.featuredInstitution.trim() ? t("featuredInstitutionError") : null}
           >
             {(id, invalid) => (
-              <Input
-                id={id}
-                className="bg-background"
-                value={search.featuredInstitution}
-                aria-invalid={invalid || undefined}
-                onChange={(e) =>
+              <Select
+                value={search.featuredInstitution || undefined}
+                disabled={library.recordInstitutions.length === 0}
+                onValueChange={(value) =>
                   patch((d) => {
-                    d.search.featuredInstitution = e.target.value;
+                    d.search.featuredInstitution = value;
                     return d;
                   })
                 }
-              />
+              >
+                <SelectTrigger id={id} className="w-full bg-background" aria-invalid={invalid || undefined}>
+                  <SelectValue
+                    placeholder={
+                      library.recordInstitutions.length === 0 ? t("noRecordInstitutions") : t("pickInstitution")
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {library.recordInstitutions.map((inst) => (
+                    <SelectItem key={inst.name} value={inst.name}>
+                      <span className="flex items-center gap-2">
+                        {inst.name}
+                        <span className="font-mono text-xs text-muted-foreground">{inst.count}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </Field>
         ) : null}

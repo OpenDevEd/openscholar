@@ -2,7 +2,7 @@
 
 import { Building2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { newId } from "@/lib/evidence-libraries/mock/config";
 import { Field } from "../section-card";
 import {
@@ -59,22 +59,36 @@ export function InstitutionsSection({ library, patch }: SectionProps) {
                 error={!institution.name.trim() ? t("nameError") : null}
               >
                 {(id, invalid) => (
-                  <Input
-                    id={id}
-                    className="bg-background"
-                    value={institution.name}
-                    placeholder={t("namePlaceholder")}
-                    aria-invalid={invalid || undefined}
-                    onChange={(e) =>
+                  <Select
+                    value={institution.name || undefined}
+                    onValueChange={(value) =>
                       patch((d) => {
-                        const row = d.institutions.find(
-                          (i) => i.id === institution.id,
-                        );
-                        if (row) row.name = e.target.value;
+                        const row = d.institutions.find((i) => i.id === institution.id);
+                        if (row) row.name = value;
                         return d;
                       })
                     }
-                  />
+                  >
+                    <SelectTrigger id={id} className="w-full bg-background" aria-invalid={invalid || undefined}>
+                      <SelectValue placeholder={t("namePlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {library.recordInstitutions
+                        .filter(
+                          (inst) =>
+                            inst.name === institution.name ||
+                            !institutions.some((i) => i.name === inst.name),
+                        )
+                        .map((inst) => (
+                          <SelectItem key={inst.name} value={inst.name}>
+                            <span className="flex items-center gap-2">
+                              {inst.name}
+                              <span className="font-mono text-xs text-muted-foreground">{inst.count}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </Field>
               <UploadField

@@ -228,6 +228,7 @@ export const useEvidenceLibraryMockStore = create<MockState>((set, get) => {
             databaseCollections: [],
             zoteroGroups: ZOTERO_GROUP_OPTIONS,
             runtime: { running: LATEST_RUNTIME, latest: LATEST_RUNTIME, changes: [], checkedAt: dateStamp() },
+            recordInstitutions: [],
           },
         ],
       }));

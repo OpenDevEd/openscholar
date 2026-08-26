@@ -124,10 +124,12 @@ export type MockLibrary = {
   /** Groups the connected Zotero account can see. */
   zoteroGroups: ZoteroGroupOption[];
   runtime: RuntimeState;
+  /** Institution names the search index found on the records. */
+  recordInstitutions: RecordInstitution[];
 };
 
 export type { LibraryVersion } from "./config";
-import type { DatabaseCollection, LibraryVersion, RuntimeState, ZoteroGroupOption } from "./config";
+import type { DatabaseCollection, LibraryVersion, RecordInstitution, RuntimeState, ZoteroGroupOption } from "./config";
 
 export type ActivationRun = { stageIndex: number; rev: string; kind: "config" | "runtime" };
 
@@ -441,6 +443,14 @@ export const ZOTERO_GROUP_OPTIONS: ZoteroGroupOption[] = [
   { groupId: "2877310", name: "Conference papers 2026", isPublic: true, items: 73, members: 3 },
 ];
 
+const AIED_RECORD_INSTITUTIONS: RecordInstitution[] = [
+  { name: "EdTech Hub", count: 412 },
+  { name: "OpenDevEd", count: 220 },
+  { name: "University of Cambridge", count: 96 },
+  { name: "UNESCO", count: 58 },
+  { name: "World Bank", count: 31 },
+];
+
 export const LATEST_RUNTIME = "9c1d4e2";
 const LATEST_CHANGES = [
   "feat: tagline, description, share image and powered-by settings",
@@ -476,6 +486,7 @@ export function seedLibraries(): MockLibrary[] {
       databaseCollections: AIED_DATABASE_COLLECTIONS,
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
       runtime: { running: "56db7c6", latest: LATEST_RUNTIME, changes: LATEST_CHANGES, checkedAt: "2026-08-26 13:50" },
+      recordInstitutions: AIED_RECORD_INSTITUTIONS,
       versions: [
         { rev: "rev_8sm1e94", at: "2026-08-19 14:02", by: "You", sections: ["theme", "navigation"], status: "live" },
         { rev: "rev_5pq0d11", at: "2026-08-12 09:41", by: "Sara Kim", sections: ["sources", "collections"], status: "previous" },
@@ -499,6 +510,7 @@ export function seedLibraries(): MockLibrary[] {
       databaseCollections: HEALTH_DATABASE_COLLECTIONS,
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
       runtime: { running: LATEST_RUNTIME, latest: LATEST_RUNTIME, changes: [], checkedAt: "2026-08-26 13:50" },
+      recordInstitutions: [],
       versions: [],
     }),
     seedLibrary({
@@ -517,6 +529,7 @@ export function seedLibraries(): MockLibrary[] {
       databaseCollections: [],
       zoteroGroups: ZOTERO_GROUP_OPTIONS,
       runtime: { running: LATEST_RUNTIME, latest: LATEST_RUNTIME, changes: [], checkedAt: "2026-08-26 13:50" },
+      recordInstitutions: [],
       versions: [],
     }),
   ];
