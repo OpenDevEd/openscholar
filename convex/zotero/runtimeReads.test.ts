@@ -131,9 +131,12 @@ describe("Evidence Library runtime reads", () => {
     await expect(read()).resolves.toEqual({ items: [{ name: "Makerere University", count: 9 }] });
   });
 
-  it("refuses readers who cannot manage the library", async () => {
+  it("refuses readers who cannot manage the library, even when the cache is warm", async () => {
     const fixture = await readyLibrary("reads_member");
     vi.stubGlobal("fetch", runtime().fetchImpl);
+    await fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
+      libraryId: fixture.created.libraryId,
+    });
     const outsider = fixture.t.withIdentity({
       subject: "user_outsider",
       o: { id: "org_other", rol: "org:admin" },

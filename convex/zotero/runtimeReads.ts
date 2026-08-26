@@ -36,6 +36,8 @@ export const readRuntimeReadTarget = internalQuery({
   },
 });
 
+// Checks that the caller may manage the library before answering from the
+// cache, so a warm cache never leaks another library's data.
 export const readRuntimeReadCache = internalQuery({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -44,6 +46,7 @@ export const readRuntimeReadCache = internalQuery({
   },
   returns: v.union(v.null(), v.any()),
   handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const row = await ctx.db
       .query("evidenceLibraryRuntimeReadCache")
       .withIndex("by_libraryId_and_kind_and_cacheKey", (q) =>
