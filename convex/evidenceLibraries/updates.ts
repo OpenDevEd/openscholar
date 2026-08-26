@@ -95,7 +95,9 @@ async function refreshRuntimeRelease(
 ): Promise<RuntimeUpdateState> {
   const token = process.env.GITHUB_TOKEN?.trim();
   if (!token) {
-    throw createError("INVALID_DATA", "GITHUB_TOKEN is not configured");
+    // The owner sees a plain message; the setup detail stays in the log.
+    console.error("GITHUB_TOKEN is not configured on this deployment");
+    throw createError("INVALID_DATA", "Updates cannot be checked right now.");
   }
   let release;
   try {

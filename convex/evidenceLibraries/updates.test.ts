@@ -214,6 +214,28 @@ describe("Evidence Library update check", () => {
     expect(rows[0]).toMatchObject({ running: RUNNING, latest: LATEST });
   });
 
+  it("tells the owner plainly when the deployment cannot reach GitHub", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "");
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fixture = await createReadySetupFixture("update-check-no-token");
+    const github = createGithub({ latest: LATEST });
+    vi.stubGlobal("fetch", github.fetchImpl);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.updates.check, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).rejects.toThrow(/Updates cannot be checked right now\./);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.updates.check, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).rejects.not.toThrow(/GITHUB_TOKEN/);
+    expect(logged).toHaveBeenCalledWith(
+      expect.stringContaining("GITHUB_TOKEN"),
+    );
+    expect(github.requests).toHaveLength(0);
+  });
+
   it("refuses the check for a member who cannot manage the library", async () => {
     const fixture = await createReadySetupFixture("update-check-denied");
     const github = createGithub({ latest: LATEST });
