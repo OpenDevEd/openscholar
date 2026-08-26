@@ -98,7 +98,7 @@ export function NewLibraryForm() {
 
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
         <CommandCenterContainer>
-          <form onSubmit={handleSubmit} noValidate className="max-w-2xl space-y-5 p-4 md:p-6">
+          <form onSubmit={handleSubmit} noValidate className="space-y-5 p-4 md:p-6">
             <FieldGroup title={t("ownerTitle")}>
               <PanelRow
                 leading={<OrgAvatar initials={org.initials} color={org.color} />}
@@ -135,6 +135,7 @@ export function NewLibraryForm() {
                 )}
               </Field>
 
+              <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
               <Field label={t("shortNameLabel")} hint={isReserved ? undefined : t("shortNameHint")}>
                 {(id) =>
                   isReserved ? (
@@ -167,7 +168,7 @@ export function NewLibraryForm() {
               >
                 {(id) => (
                   <div className="flex flex-col gap-1.5 sm:flex-row">
-                    <ReadOnlyValue id={id} value={address} className="flex-1" />
+                    <ReadOnlyValue id={id} value={address} className="min-w-0 flex-1" />
                     <Button
                       type="button"
                       variant="outline"
@@ -180,6 +181,7 @@ export function NewLibraryForm() {
                   </div>
                 )}
               </Field>
+              </div>
               {takenAlt ? (
                 <FieldError
                   action={
