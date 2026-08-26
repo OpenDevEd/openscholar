@@ -226,6 +226,9 @@ const evidenceLibraryRuntimeBindingBaseFields = {
 
 const evidenceLibraryRuntimeBindingProvisionedFields = {
   targetRuntimeId: v.string(),
+  // The Evidence Library software commit the library runs. Setup writes it;
+  // every completed publish rewrites it from the operation receipt.
+  runtimeCommit: v.string(),
   searchHost: v.string(),
   searchIndex: v.string(),
   storageUrl: v.string(),

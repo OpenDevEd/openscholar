@@ -400,11 +400,16 @@ describe("Evidence Library configuration deployment", () => {
     ).toEqual({ status: "succeeded" });
     const completed = await deployment.fixture.t.run(async (ctx) => ({
       library: await ctx.db.get(deployment.fixture.created.libraryId),
+      binding: await ctx.db.get(deployment.fixture.created.runtimeBindingId),
       operation: await ctx.db.get(deployment.activated.operationId),
     }));
     expect(completed.library?.activeRevisionId).toBe(
       deployment.activated.revisionId,
     );
+    expect(completed.binding).toMatchObject({
+      state: "ready",
+      runtimeCommit: RUNTIME_COMMIT,
+    });
     expect(completed.library?.activeDeploymentOperationId).toBe(
       deployment.activated.operationId,
     );

@@ -157,6 +157,7 @@ async function createActivationFixture(
         libraryId: created.libraryId,
         targetBaseUrl: created.publicAddress,
         targetRuntimeId: "coolify-activation-app",
+        runtimeCommit: "a".repeat(40),
         searchHost: "http://meilisearch:7700",
         searchIndex: "evidence_library",
         storageUrl: "https://storage.example.test",

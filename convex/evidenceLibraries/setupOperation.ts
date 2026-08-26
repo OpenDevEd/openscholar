@@ -197,6 +197,7 @@ function provisionedRuntimeBindingFields(
   return {
     ...baseRuntimeBindingFields(binding),
     targetRuntimeId: binding.targetRuntimeId,
+    runtimeCommit: binding.runtimeCommit,
     searchHost: binding.searchHost,
     searchIndex: binding.searchIndex,
     storageUrl: binding.storageUrl,

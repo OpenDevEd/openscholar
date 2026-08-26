@@ -875,6 +875,7 @@ export const completeConfigurationDeployment = internalMutation({
       updatedAt: now,
     });
     await ctx.db.patch(deployment.runtimeBinding._id, {
+      runtimeCommit: receipt.runtimeCommit,
       lastVerifiedAt: args.checkedAt,
       updatedAt: now,
     });
