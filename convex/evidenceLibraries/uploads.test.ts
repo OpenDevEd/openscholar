@@ -163,7 +163,7 @@ describe("Evidence Library uploads", () => {
       name: "privacy.md",
       text: "# Privacy\n\nWe keep little.",
     });
-    expect(store.fetchImpl).not.toHaveBeenCalled();
+    expect(store.objects.size).toBe(0);
   });
 
   it("rejects the wrong type with a reason and still drops the temporary file", async () => {

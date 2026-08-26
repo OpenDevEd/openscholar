@@ -138,7 +138,7 @@ export function createLibraryStorageBucketNames(
   };
 }
 
-export async function requestStorage(
+async function requestStorage(
   client: StorageClient,
   request: StorageRequest,
 ): Promise<unknown> {

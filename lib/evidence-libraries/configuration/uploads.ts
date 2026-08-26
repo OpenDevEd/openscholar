@@ -8,6 +8,7 @@
 
 export const EVIDENCE_LIBRARY_UPLOAD_BUCKET = "openscholar";
 
+/** Used by the page's upload field (lane C, plan 05) to build its controls. */
 export const EVIDENCE_LIBRARY_UPLOAD_KINDS = [
   "image",
   "shareImage",
@@ -51,7 +52,7 @@ const EXTENSION_ALIASES: Record<string, string> = {
   markdown: "md",
 };
 
-/** Browser `accept` values per kind, for the upload field. */
+/** Browser `accept` values per kind, used by the page's upload field (lane C, plan 05). */
 export const EVIDENCE_LIBRARY_UPLOAD_ACCEPT: Record<
   EvidenceLibraryUploadKind,
   Record<string, string[]>

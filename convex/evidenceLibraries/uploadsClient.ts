@@ -27,7 +27,7 @@ type StorageInput = {
   fetchImpl?: typeof fetch;
 };
 
-export type StoredUpload = {
+type StoredUpload = {
   bytes: number;
   contentType: string;
   key: string;
