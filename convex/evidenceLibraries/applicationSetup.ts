@@ -389,6 +389,7 @@ export const completeApplicationSetup = internalMutation({
       libraryId: args.libraryId,
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
       targetRuntimeId: applicationId,
+      runtimeCommit: args.runtimeCommit,
       searchHost,
       searchIndex,
       storageUrl,

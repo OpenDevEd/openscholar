@@ -1655,6 +1655,55 @@ export function createCoolifyClient(input: {
       };
     },
 
+    // Points the bound application at another Evidence Library commit. The
+    // next deployment builds that commit. Nothing is deployed here.
+    async setApplicationCommit(input: {
+      applicationUuid: string;
+      libraryId: Id<"evidenceLibraries">;
+      publicDomain: string;
+      runtimeCommit: string;
+    }): Promise<CoolifyBoundApplication> {
+      const applicationUuid = requireInputIdentifier(
+        "Coolify application UUID",
+        input.applicationUuid,
+      );
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const publicDomain = requirePublicDomain(input.publicDomain);
+      const runtimeCommit = requireCommit(input.runtimeCommit);
+      let application = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain,
+      });
+      if (application.gitCommitSha !== runtimeCommit) {
+        parseUuidResponse(
+          await requestCoolify(client, {
+            expectedStatus: 200,
+            method: "PATCH",
+            path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
+            body: { git_commit_sha: runtimeCommit, instant_deploy: false },
+          }),
+          applicationUuid,
+        );
+        application = await readExpectedBoundApplication(client, {
+          applicationUuid,
+          applicationTag,
+          publicDomain,
+        });
+        if (application.gitCommitSha !== runtimeCommit) {
+          throw new CoolifyClientError(
+            "COOLIFY_APPLICATION_MISMATCH",
+            "Coolify did not save the requested Evidence Library commit",
+          );
+        }
+      }
+      return {
+        applicationUuid,
+        runtimeCommit,
+        coolifyConfigHash: application.configHash,
+      };
+    },
+
     async updateApplicationConfiguration(input: {
       applicationUuid: string;
       libraryId: Id<"evidenceLibraries">;

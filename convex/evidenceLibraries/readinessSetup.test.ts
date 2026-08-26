@@ -62,6 +62,7 @@ describe("Evidence Library readiness completion", () => {
     expect(saved.binding).toMatchObject({
       state: "ready",
       targetRuntimeId: fixture.applicationId,
+      runtimeCommit: fixture.prepared.runtimeCommit,
     });
     expect(saved.operation).toMatchObject({
       status: "succeeded",

@@ -387,6 +387,7 @@ describe("fixed Evidence Library setup operation", () => {
       const storageCredentialId = await makeCredential("storage");
       await ctx.db.patch(fixture.created.runtimeBindingId, {
         targetRuntimeId: "coolify-app-1",
+        runtimeCommit: "a".repeat(40),
         searchHost: "http://meilisearch:7700",
         searchIndex: "evidence",
         storageUrl: "https://storage.example.test",

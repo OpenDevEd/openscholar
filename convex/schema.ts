@@ -30,6 +30,7 @@ import {
   evidenceLibraryFields,
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingValidator,
+  evidenceLibraryRuntimeReleaseFields,
   organizationFields,
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
@@ -109,6 +110,9 @@ export default defineSchema({
     .index("by_targetRuntimeId", ["targetRuntimeId"])
     .index("by_targetBaseUrl", ["targetBaseUrl"])
     .index("by_state", ["state"]),
+
+  evidenceLibraryRuntimeReleases: defineTable(evidenceLibraryRuntimeReleaseFields)
+    .index("by_running", ["running"]),
 
   evidenceLibraryZoteroGroups: defineTable(evidenceLibraryZoteroGroupFields)
     .index("by_libraryId", ["libraryId"])

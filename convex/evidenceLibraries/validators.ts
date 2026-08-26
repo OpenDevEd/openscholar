@@ -226,6 +226,9 @@ const evidenceLibraryRuntimeBindingBaseFields = {
 
 const evidenceLibraryRuntimeBindingProvisionedFields = {
   targetRuntimeId: v.string(),
+  // The Evidence Library software commit the library runs. Setup writes it;
+  // every completed publish rewrites it from the operation receipt.
+  runtimeCommit: v.string(),
   searchHost: v.string(),
   searchIndex: v.string(),
   storageUrl: v.string(),
@@ -274,6 +277,21 @@ export const evidenceLibraryRuntimeBindingValidator = v.union(
   v.object(evidenceLibraryRuntimeBindingVariantFields.failedUnassigned),
   v.object(evidenceLibraryRuntimeBindingVariantFields.failedProvisioned),
 );
+
+// One commit between the software a library runs and the newest software.
+export const runtimeReleaseChangeValidator = v.object({
+  sha: v.string(),
+  message: v.string(),
+});
+
+// The newest Evidence Library software commit, checked against GitHub and
+// kept for ten minutes. One row per running commit.
+export const evidenceLibraryRuntimeReleaseFields = {
+  running: v.string(),
+  latest: v.string(),
+  changes: v.array(runtimeReleaseChangeValidator),
+  checkedAt: v.number(),
+};
 
 export const evidenceLibraryCredentialFields = {
   libraryId: v.id("evidenceLibraries"),
@@ -476,11 +494,19 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   savedAt: v.number(),
 });
 
+// A publish that moves the library to newer Evidence Library software. The
+// sections stay the same; only the software commit changes.
+export const evidenceLibraryRuntimeUpdateValidator = v.object({
+  from: v.string(),
+  to: v.string(),
+});
+
 export const evidenceLibraryOperationFields = {
   libraryId: v.id("evidenceLibraries"),
   kind: evidenceLibraryOperationKindValidator,
   idempotencyKey: v.string(),
   activationEditVersion: v.optional(v.number()),
+  runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
   setupAttemptToken: v.optional(v.string()),

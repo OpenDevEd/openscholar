@@ -130,6 +130,7 @@ async function queueOperationRecord(
     idempotencyKey: string;
     revisionId?: Id<"evidenceLibraryConfigRevisions">;
     activationEditVersion?: number;
+    runtimeUpdate?: { from: string; to: string };
   },
 ) {
   const access = await requireEvidenceLibraryAccess(
@@ -168,7 +169,10 @@ async function queueOperationRecord(
       existing.kind !== args.kind ||
       (existing.revisionId ?? null) !== (args.revisionId ?? null) ||
       (existing.activationEditVersion ?? null) !==
-        (args.activationEditVersion ?? null)
+        (args.activationEditVersion ?? null) ||
+      (existing.runtimeUpdate?.from ?? null) !==
+        (args.runtimeUpdate?.from ?? null) ||
+      (existing.runtimeUpdate?.to ?? null) !== (args.runtimeUpdate?.to ?? null)
     ) {
       throw createError(
         "CONFLICT",
@@ -183,6 +187,7 @@ async function queueOperationRecord(
     kind: args.kind,
     idempotencyKey: args.idempotencyKey,
     activationEditVersion: args.activationEditVersion,
+    runtimeUpdate: args.runtimeUpdate,
     revisionId: args.revisionId,
     status: "queued",
     stage: "queued",
@@ -213,6 +218,21 @@ export async function queueConfigurationDeploymentOperation(
     idempotencyKey: string;
     revisionId: Id<"evidenceLibraryConfigRevisions">;
     activationEditVersion: number;
+  },
+) {
+  return await queueOperationRecord(ctx, { ...args, kind: "publish" });
+}
+
+// A runtime update publishes the active revision again at a newer
+// Evidence Library commit. No draft edit happened, so it carries the commit
+// pair instead of an activation edit version.
+export async function queueRuntimeUpdateOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    idempotencyKey: string;
+    revisionId: Id<"evidenceLibraryConfigRevisions">;
+    runtimeUpdate: { from: string; to: string };
   },
 ) {
   return await queueOperationRecord(ctx, { ...args, kind: "publish" });

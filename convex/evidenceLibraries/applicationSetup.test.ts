@@ -157,6 +157,7 @@ describe("Evidence Library application setup", () => {
     expect(runtime.binding).toMatchObject({
       state: "pending",
       targetRuntimeId: "coolify-application-1",
+      runtimeCommit: first.runtimeCommit,
       searchHost: "http://meilisearch:7700",
       searchIndex: "evidence_library",
       storagePrivateBucket: first.storagePrivateBucket,
