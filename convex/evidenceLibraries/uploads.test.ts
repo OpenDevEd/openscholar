@@ -112,7 +112,7 @@ describe("Evidence Library uploads", () => {
   it("stores an image, returns its public URL and drops the temporary file", async () => {
     const store = stubFileStore();
     const { caller, libraryId, t } = await seedLibrary("org:admin");
-    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     const storageId = await t.run((ctx) =>
       ctx.storage.store(new Blob([png], { type: "image/png" })),
     );
@@ -184,6 +184,45 @@ describe("Evidence Library uploads", () => {
       ),
     ).toMatchObject({ code: "VALIDATION_ERROR", reason: "type" });
     expect(await t.run((ctx) => ctx.storage.get(storageId))).toBeNull();
+  });
+
+  it("rejects a file whose bytes do not match its name", async () => {
+    const store = stubFileStore();
+    const { caller, libraryId, t } = await seedLibrary("org:admin");
+    const svgNamedPng = await t.run((ctx) =>
+      ctx.storage.store(
+        new Blob(['<svg xmlns="http://www.w3.org/2000/svg"/>'], { type: "image/png" }),
+      ),
+    );
+    expect(
+      await errorData(
+        caller.action(api.evidenceLibraries.uploadActions.upload, {
+          libraryId,
+          kind: "image",
+          name: "logo.png",
+          storageId: svgNamedPng,
+        }),
+      ),
+    ).toMatchObject({ code: "VALIDATION_ERROR", reason: "type" });
+
+    const scriptSvg = await t.run((ctx) =>
+      ctx.storage.store(
+        new Blob(['<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>'], {
+          type: "image/svg+xml",
+        }),
+      ),
+    );
+    expect(
+      await errorData(
+        caller.action(api.evidenceLibraries.uploadActions.upload, {
+          libraryId,
+          kind: "image",
+          name: "logo.svg",
+          storageId: scriptSvg,
+        }),
+      ),
+    ).toMatchObject({ code: "VALIDATION_ERROR", reason: "type" });
+    expect(store.objects.size).toBe(0);
   });
 
   it("refuses uploads from members", async () => {

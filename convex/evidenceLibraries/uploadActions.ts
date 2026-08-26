@@ -6,7 +6,7 @@ import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import {
   EVIDENCE_LIBRARY_UPLOAD_LIMITS,
-  checkEvidenceLibraryUpload,
+  checkEvidenceLibraryUploadContent,
   parseOwnedEvidenceLibraryUploadUrl,
 } from "../../lib/evidence-libraries/configuration/uploads";
 import { requireRuntimeEnvironment } from "./runtimeActionConfig";
@@ -63,16 +63,6 @@ function rejectUpload(reason: "type" | "size", kind: "image" | "shareImage" | "l
   );
 }
 
-function decodeLegalText(bytes: ArrayBuffer): string {
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    throw createError("VALIDATION_ERROR", "This file is not plain text", {
-      reason: "type",
-    });
-  }
-}
-
 /**
  * Step two of an owner upload. Reads the temporary Convex file, checks it,
  * stores images in the platform bucket, and returns legal text as text.
@@ -101,10 +91,10 @@ export const upload = action({
       await ctx.storage.delete(args.storageId).catch(() => undefined);
     }
 
-    const check = checkEvidenceLibraryUpload({
+    const check = checkEvidenceLibraryUploadContent({
       kind: args.kind,
       name,
-      bytes: bytes.byteLength,
+      content: new Uint8Array(bytes),
     });
     if (!check.ok) rejectUpload(check.reason, args.kind);
 
@@ -113,7 +103,7 @@ export const upload = action({
         kind: "text",
         bytes: bytes.byteLength,
         name,
-        text: decodeLegalText(bytes),
+        text: new TextDecoder("utf-8").decode(bytes),
       };
     }
 
@@ -122,7 +112,8 @@ export const upload = action({
         ...storageConfig(),
         libraryId: args.libraryId,
         kind: args.kind,
-        name,
+        extension: check.extension,
+        contentType: check.contentType,
         bytes,
       });
       return {

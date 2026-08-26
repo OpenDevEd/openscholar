@@ -100,7 +100,8 @@ describe("storeLibraryUpload", () => {
       fetchImpl: server.fetchImpl,
       libraryId: LIBRARY_ID,
       kind: "image",
-      name: "Logo Dark.PNG",
+      extension: "png",
+      contentType: "image/png",
       bytes: pngBytes(1),
     });
 
@@ -130,37 +131,17 @@ describe("storeLibraryUpload", () => {
       fetchImpl: server.fetchImpl,
       libraryId: LIBRARY_ID,
       kind: "shareImage" as const,
+      extension: "jpg",
+      contentType: "image/jpeg",
     };
-    const first = await storeLibraryUpload({ ...base, name: "a.jpeg", bytes: pngBytes(1) });
-    const same = await storeLibraryUpload({ ...base, name: "b.jpg", bytes: pngBytes(1) });
-    const changed = await storeLibraryUpload({ ...base, name: "a.jpeg", bytes: pngBytes(2) });
+    const first = await storeLibraryUpload({ ...base, bytes: pngBytes(1) });
+    const same = await storeLibraryUpload({ ...base, bytes: pngBytes(1) });
+    const changed = await storeLibraryUpload({ ...base, bytes: pngBytes(2) });
 
     expect(same.key).toBe(first.key);
     expect(changed.key).not.toBe(first.key);
     expect(first.key.endsWith(".jpg")).toBe(true);
     expect(server.objects.size).toBe(2);
-  });
-
-  it("rejects the wrong type and oversized files before contacting the store", async () => {
-    const server = createObjectServer();
-    const base = {
-      storageUrl: STORAGE_ORIGIN,
-      serviceRoleKey: SERVICE_ROLE_KEY,
-      fetchImpl: server.fetchImpl,
-      libraryId: LIBRARY_ID,
-    };
-    await expect(
-      storeLibraryUpload({ ...base, kind: "image", name: "logo.gif", bytes: pngBytes(1) }),
-    ).rejects.toMatchObject({ code: "UPLOAD_WRONG_TYPE" });
-    await expect(
-      storeLibraryUpload({
-        ...base,
-        kind: "image",
-        name: "logo.png",
-        bytes: new ArrayBuffer(1024 * 1024 + 1),
-      }),
-    ).rejects.toMatchObject({ code: "UPLOAD_TOO_BIG" });
-    expect(server.requests).toHaveLength(0);
   });
 
   it("reports a rejected write as a storage error with the status", async () => {
@@ -174,7 +155,8 @@ describe("storeLibraryUpload", () => {
         fetchImpl,
         libraryId: LIBRARY_ID,
         kind: "image",
-        name: "logo.png",
+        extension: "png",
+        contentType: "image/png",
         bytes: pngBytes(1),
       }),
     ).rejects.toSatisfy(

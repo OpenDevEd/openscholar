@@ -10,7 +10,6 @@ import {
 import {
   EVIDENCE_LIBRARY_UPLOAD_BUCKET,
   EVIDENCE_LIBRARY_UPLOAD_LIMITS,
-  checkEvidenceLibraryUpload,
   createEvidenceLibraryUploadKey,
   evidenceLibraryUploadPrefix,
   evidenceLibraryUploadUrl,
@@ -107,49 +106,41 @@ export async function ensureUploadBucket(input: StorageInput) {
   });
 }
 
+/**
+ * Writes an already-checked file (see `checkEvidenceLibraryUploadContent`)
+ * under the library prefix and returns its public URL.
+ */
 export async function storeLibraryUpload(
   input: StorageInput & {
     libraryId: string;
     kind: Exclude<EvidenceLibraryUploadKind, "legal">;
-    name: string;
+    extension: string;
+    contentType: string;
     bytes: ArrayBuffer;
   },
 ): Promise<StoredUpload> {
   const client = createStorageClient(input);
-  const check = checkEvidenceLibraryUpload({
-    kind: input.kind,
-    name: input.name,
-    bytes: input.bytes.byteLength,
-  });
-  if (!check.ok) {
-    throw new StorageSetupError(
-      check.reason === "type" ? "UPLOAD_WRONG_TYPE" : "UPLOAD_TOO_BIG",
-      check.reason === "type"
-        ? "This file type is not accepted"
-        : "This file is too big",
-    );
-  }
   const key = createEvidenceLibraryUploadKey({
     libraryId: input.libraryId,
     kind: input.kind,
     contentHashHex: createHash("sha256")
       .update(Buffer.from(input.bytes))
       .digest("hex"),
-    extension: check.extension,
+    extension: input.extension,
   });
   await requestObjects(client, {
     method: "POST",
     path: bucketPath(`${EVIDENCE_LIBRARY_UPLOAD_BUCKET}/${key}`),
     headers: {
       "cache-control": `max-age=${CACHE_MAX_AGE_SECONDS}`,
-      "content-type": check.contentType,
+      "content-type": input.contentType,
       "x-upsert": "true",
     },
     body: input.bytes,
   });
   return {
     bytes: input.bytes.byteLength,
-    contentType: check.contentType,
+    contentType: input.contentType,
     key,
     url: evidenceLibraryUploadUrl({ storageOrigin: client.origin.origin, key }),
   };

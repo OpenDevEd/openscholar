@@ -159,3 +159,97 @@ export function parseOwnedEvidenceLibraryUploadUrl(input: {
   }
   return key;
 }
+
+export type EvidenceLibraryUploadContent =
+  | "png"
+  | "jpg"
+  | "webp"
+  | "svg"
+  | "text";
+
+function startsWithBytes(content: Uint8Array, prefix: number[], at = 0) {
+  if (content.length < at + prefix.length) return false;
+  return prefix.every((byte, index) => content[at + index] === byte);
+}
+
+function decodeText(content: Uint8Array): string | null {
+  if (content.includes(0)) return null;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(content);
+  } catch {
+    return null;
+  }
+}
+
+/** Strips the XML declaration, comments, doctype and processing instructions. */
+function stripXmlProlog(text: string): string {
+  return text
+    .replace(/^\uFEFF/, "")
+    .replace(/<\?[\s\S]*?\?>/g, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<!DOCTYPE[^>]*>/gi, "")
+    .trim();
+}
+
+/**
+ * A safe SVG: the root element is `<svg>` (any namespace prefix), no
+ * `<script>` elements, no event attributes, no `javascript:` links.
+ */
+function isSafeSvg(text: string): boolean {
+  const body = stripXmlProlog(text);
+  if (!/^<(?:[A-Za-z_][\w.-]*:)?svg[\s/>]/.test(body)) return false;
+  if (/<\/?(?:[A-Za-z_][\w.-]*:)?script[\s/>]/i.test(body)) return false;
+  if (/\son[a-z]+\s*=/i.test(body)) return false;
+  if (/(?:href|xlink:href)\s*=\s*["']?\s*javascript:/i.test(body)) return false;
+  return true;
+}
+
+/** Reads the real type from the bytes, not the file name. */
+export function detectEvidenceLibraryUploadContent(
+  content: Uint8Array,
+): EvidenceLibraryUploadContent | null {
+  if (startsWithBytes(content, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
+    return "png";
+  }
+  if (startsWithBytes(content, [0xff, 0xd8, 0xff])) return "jpg";
+  if (
+    startsWithBytes(content, [0x52, 0x49, 0x46, 0x46]) &&
+    startsWithBytes(content, [0x57, 0x45, 0x42, 0x50], 8)
+  ) {
+    return "webp";
+  }
+  const text = decodeText(content);
+  if (text === null) return null;
+  return isSafeSvg(text) ? "svg" : "text";
+}
+
+const CONTENT_FOR_EXTENSION: Record<string, EvidenceLibraryUploadContent> = {
+  png: "png",
+  jpg: "jpg",
+  webp: "webp",
+  svg: "svg",
+  md: "text",
+  txt: "text",
+};
+
+/**
+ * Full check for the server: name and size rules, then the bytes must be
+ * what the name says they are.
+ */
+export function checkEvidenceLibraryUploadContent(input: {
+  kind: EvidenceLibraryUploadKind;
+  name: string;
+  content: Uint8Array;
+}): EvidenceLibraryUploadCheck {
+  const check = checkEvidenceLibraryUpload({
+    kind: input.kind,
+    name: input.name,
+    bytes: input.content.byteLength,
+  });
+  if (!check.ok) return check;
+  const detected = detectEvidenceLibraryUploadContent(input.content);
+  if (detected === null || detected !== CONTENT_FOR_EXTENSION[check.extension]) {
+    return { ok: false, reason: "type" };
+  }
+  return check;
+}
