@@ -14,7 +14,7 @@ import {
 } from "@/lib/evidence-libraries/mock/config";
 import { cn } from "@/lib/utils";
 import { Field } from "../section-card";
-import { FieldError, SubHeading, ToggleRow } from "./fields";
+import { FieldError, FieldGroup, ToggleRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const INSTITUTION_MODES: InstitutionFacetMode[] = ["hidden", "facet", "facet-with-featured-value"];
@@ -34,8 +34,7 @@ export function SearchSection({ library, patch }: SectionProps) {
 
   return (
     <SectionShell sectionKey="search" icon={Search} description={t("description")} library={library}>
-      <div className="space-y-2">
-        <SubHeading>{t("whatHeading")}</SubHeading>
+      <FieldGroup title={t("whatHeading")}>
         <ToggleRow
           label={t("fullText")}
           hint={t("fullTextHint")}
@@ -83,10 +82,9 @@ export function SearchSection({ library, patch }: SectionProps) {
             })
           }
         />
-      </div>
+      </FieldGroup>
 
-      <div className="space-y-3">
-        <SubHeading>{t("scopesHeading")}</SubHeading>
+      <FieldGroup title={t("scopesHeading")}>
         <div className="space-y-1.5">
           <div className="flex flex-wrap gap-2" role="group" aria-label={t("scopesHeading")}>
             {SEARCH_SCOPES.map((scope) => {
@@ -158,10 +156,9 @@ export function SearchSection({ library, patch }: SectionProps) {
             </Select>
           )}
         </Field>
-      </div>
+      </FieldGroup>
 
-      <div className="space-y-3">
-        <SubHeading>{t("filtersHeading")}</SubHeading>
+      <FieldGroup title={t("filtersHeading")}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("institutionMode")} hint={t("institutionModeHint")}>
             {(id) => (
@@ -279,7 +276,7 @@ export function SearchSection({ library, patch }: SectionProps) {
             })
           }
         />
-      </div>
+      </FieldGroup>
     </SectionShell>
   );
 }

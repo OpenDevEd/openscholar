@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { LegalSource } from "@/lib/evidence-libraries/mock/config";
 import { Field } from "../section-card";
-import { SubHeading, UploadField } from "./fields";
+import { FieldGroup, UploadField } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const LEGAL_KEYS = ["privacy", "cookie", "terms"] as const;
@@ -54,8 +54,7 @@ export function ContactSection({ library, patch }: SectionProps) {
 
   return (
     <SectionShell sectionKey="contact" icon={Mail} description={t("description")} library={library}>
-      <div className="space-y-3">
-        <SubHeading>{t("contactHeading")}</SubHeading>
+      <FieldGroup title={t("contactHeading")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field
             label={t("email")}
@@ -101,10 +100,9 @@ export function ContactSection({ library, patch }: SectionProps) {
             />
           )}
         </Field>
-      </div>
+      </FieldGroup>
 
-      <div className="space-y-3">
-        <SubHeading>{t("recipientsHeading")}</SubHeading>
+      <FieldGroup title={t("recipientsHeading")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field
             label={t("contactRecipient")}
@@ -147,11 +145,9 @@ export function ContactSection({ library, patch }: SectionProps) {
             )}
           </Field>
         </div>
-      </div>
+      </FieldGroup>
 
-      <div className="space-y-3">
-        <SubHeading>{t("legalHeading")}</SubHeading>
-        <p className="text-xs text-muted-foreground">{t("legalHint")}</p>
+      <FieldGroup title={t("legalHeading")} hint={t("legalHint")}>
         {LEGAL_KEYS.map((key) => {
           const source = contact[key];
           const shownKind: LegalKind = source.kind === "none" && pendingFile[key] ? "file" : source.kind;
@@ -206,7 +202,7 @@ export function ContactSection({ library, patch }: SectionProps) {
             </div>
           );
         })}
-      </div>
+      </FieldGroup>
     </SectionShell>
   );
 }

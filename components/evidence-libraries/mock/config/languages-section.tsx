@@ -18,8 +18,8 @@ import {
   EmptyList,
   ListRow,
   move,
+  FieldGroup,
   SortableList,
-  SubHeading,
   ToggleRow,
 } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
@@ -142,9 +142,7 @@ export function LanguagesSection({ library, patch }: SectionProps) {
         }
       />
 
-      <div className="space-y-3">
-        <SubHeading>{t("priorityHeading")}</SubHeading>
-        <p className="text-xs text-muted-foreground">{t("priorityHint")}</p>
+      <FieldGroup title={t("priorityHeading")} hint={t("priorityHint")}>
         {priority.length === 0 ? (
           <EmptyList>{t("priorityEmpty")}</EmptyList>
         ) : (
@@ -179,7 +177,7 @@ export function LanguagesSection({ library, patch }: SectionProps) {
             ))}
           </SortableList>
         )}
-      </div>
+      </FieldGroup>
     </SectionShell>
   );
 }

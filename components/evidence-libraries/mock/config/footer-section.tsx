@@ -25,8 +25,8 @@ import {
   EmptyList,
   ListRow,
   move,
+  FieldGroup,
   SortableList,
-  SubHeading,
   ToggleRow,
   UploadField,
 } from "./fields";
@@ -74,13 +74,25 @@ export function FooterSection({ library, patch }: SectionProps) {
       library={library}
     >
       {/* Link sections */}
-      <div className="space-y-2">
-        <SubHeading>
-          {t("sectionsHeading", {
-            count: footer.sections.length,
-            max: MAX_SECTIONS,
-          })}
-        </SubHeading>
+      <FieldGroup
+        title={t("sectionsHeading", {
+          count: footer.sections.length,
+          max: MAX_SECTIONS,
+        })}
+        action={
+          <AddButton
+            disabled={footer.sections.length >= MAX_SECTIONS}
+            onClick={() =>
+              setSections((s) => [
+                ...s,
+                { id: newId("fs"), title: "", links: [] },
+              ])
+            }
+          >
+            {t("addSection")}
+          </AddButton>
+        }
+      >
         {footer.sections.length === 0 ? (
           <EmptyList>{t("sectionsEmpty")}</EmptyList>
         ) : null}
@@ -207,22 +219,10 @@ export function FooterSection({ library, patch }: SectionProps) {
             </ListRow>
           ))}
         </SortableList>
-        <AddButton
-          disabled={footer.sections.length >= MAX_SECTIONS}
-          onClick={() =>
-            setSections((s) => [
-              ...s,
-              { id: newId("fs"), title: "", links: [] },
-            ])
-          }
-        >
-          {t("addSection")}
-        </AddButton>
-      </div>
+      </FieldGroup>
 
       {/* Social links */}
-      <div className="space-y-2">
-        <SubHeading>{t("socialHeading")}</SubHeading>
+      <FieldGroup title={t("socialHeading")}>
         <div className="grid gap-3 sm:grid-cols-2">
           {SOCIAL_PROVIDERS.map((provider) => {
             const Icon = SOCIAL_ICONS[provider];
@@ -259,16 +259,28 @@ export function FooterSection({ library, patch }: SectionProps) {
             );
           })}
         </div>
-      </div>
+      </FieldGroup>
 
       {/* Funders */}
-      <div className="space-y-2">
-        <SubHeading>
-          {t("fundersHeading", {
-            count: footer.funders.length,
-            max: MAX_FUNDERS,
-          })}
-        </SubHeading>
+      <FieldGroup
+        title={t("fundersHeading", {
+          count: footer.funders.length,
+          max: MAX_FUNDERS,
+        })}
+        action={
+          <AddButton
+            disabled={footer.funders.length >= MAX_FUNDERS}
+            onClick={() =>
+              setFunders((f) => [
+                ...f,
+                { id: newId("fund"), name: "", logo: null, url: "" },
+              ])
+            }
+          >
+            {t("addFunder")}
+          </AddButton>
+        }
+      >
         {footer.funders.length === 0 ? (
           <EmptyList>{t("fundersEmpty")}</EmptyList>
         ) : null}
@@ -352,22 +364,10 @@ export function FooterSection({ library, patch }: SectionProps) {
             </ListRow>
           ))}
         </SortableList>
-        <AddButton
-          disabled={footer.funders.length >= MAX_FUNDERS}
-          onClick={() =>
-            setFunders((f) => [
-              ...f,
-              { id: newId("fund"), name: "", logo: null, url: "" },
-            ])
-          }
-        >
-          {t("addFunder")}
-        </AddButton>
-      </div>
+      </FieldGroup>
 
       {/* Text */}
-      <div className="space-y-3">
-        <SubHeading>{t("textHeading")}</SubHeading>
+      <FieldGroup title={t("textHeading")}>
         <Field
           label={t("disclaimer")}
           hint={t("disclaimerHint")}
@@ -414,7 +414,7 @@ export function FooterSection({ library, patch }: SectionProps) {
             />
           )}
         </Field>
-      </div>
+      </FieldGroup>
 
       <ToggleRow
         label={t("poweredBy")}

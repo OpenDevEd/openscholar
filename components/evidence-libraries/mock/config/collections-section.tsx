@@ -11,7 +11,7 @@ import type {
   CollectionSetting,
   DatabaseCollection,
 } from "@/lib/evidence-libraries/mock/config";
-import { EmptyList, ListRow, move, SortableList, SubHeading } from "./fields";
+import { EmptyList, ListRow, move, FieldGroup, SortableList } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 export function CollectionsSection({ library, patch }: SectionProps) {
@@ -48,8 +48,9 @@ export function CollectionsSection({ library, patch }: SectionProps) {
       description={t("description")}
       library={library}
     >
-      <p className="text-xs text-muted-foreground">{t("introHint")}</p>
-      <SubHeading
+      <FieldGroup
+        title={t("shownHeading")}
+        hint={t("introHint")}
         action={
           <CollectionPicker
             database={database}
@@ -58,46 +59,45 @@ export function CollectionsSection({ library, patch }: SectionProps) {
           />
         }
       >
-        {t("shownHeading")}
-      </SubHeading>
-      {database.length === 0 ? (
-        <EmptyList>{t("noneInDatabase")}</EmptyList>
-      ) : shown.length === 0 ? (
-        <EmptyList>{t("empty")}</EmptyList>
-      ) : (
-        <SortableList
-          ids={shown.map((c) => c.id)}
-          onMove={(from, to) =>
-            patch((d) => {
-              d.collections = move(d.collections, from, to);
-              return d;
-            })
-          }
-        >
-          {shown.map((collection) => (
-            <ListRow
-              key={collection.id}
-              id={collection.id}
-              removeLabel={t("remove")}
-              onRemove={() =>
-                patch((d) => {
-                  d.collections = d.collections.filter(
-                    (c) => c.id !== collection.id,
-                  );
-                  return d;
-                })
-              }
-              data-collection-id={collection.id}
-              data-featured={collection.featured}
-            >
-              <CollectionRow
-                collection={collection}
-                onUpdate={(fn) => update(collection.id, fn)}
-              />
-            </ListRow>
-          ))}
-        </SortableList>
-      )}
+        {database.length === 0 ? (
+          <EmptyList>{t("noneInDatabase")}</EmptyList>
+        ) : shown.length === 0 ? (
+          <EmptyList>{t("empty")}</EmptyList>
+        ) : (
+          <SortableList
+            ids={shown.map((c) => c.id)}
+            onMove={(from, to) =>
+              patch((d) => {
+                d.collections = move(d.collections, from, to);
+                return d;
+              })
+            }
+          >
+            {shown.map((collection) => (
+              <ListRow
+                key={collection.id}
+                id={collection.id}
+                removeLabel={t("remove")}
+                onRemove={() =>
+                  patch((d) => {
+                    d.collections = d.collections.filter(
+                      (c) => c.id !== collection.id,
+                    );
+                    return d;
+                  })
+                }
+                data-collection-id={collection.id}
+                data-featured={collection.featured}
+              >
+                <CollectionRow
+                  collection={collection}
+                  onUpdate={(fn) => update(collection.id, fn)}
+                />
+              </ListRow>
+            ))}
+          </SortableList>
+        )}
+      </FieldGroup>
     </SectionShell>
   );
 }

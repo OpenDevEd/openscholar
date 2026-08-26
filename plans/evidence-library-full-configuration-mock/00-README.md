@@ -120,3 +120,7 @@ No forced uppercase anywhere. Sentence case for every label and chip.
 3. Empty states are one short sentence: "No links yet." The add button beside it is the instruction.
 4. File hints name the accepted types only ("SVG, PNG or WEBP."). Sizes appear only in the error when a file is too big.
 5. Section chips: Complete · Changed · Needs attention. The header says "Unsaved changes".
+
+## Grouping rule (decided 2026-08-26)
+
+Fields inside a section card sit in `FieldGroup`s: a divider above (none on the first), a `text-sm font-semibold` heading with optional hint and a right-side action, then the fields with one 16px gap. A bare heading followed by siblings is not allowed. "Advanced" disclosures use the same divider and padding.

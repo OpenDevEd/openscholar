@@ -58,7 +58,7 @@ import {
 import { StatusChip } from "../library-status-badge";
 import { OrgAvatar } from "../org-avatar";
 import { Field, InlineNotice } from "../section-card";
-import { AddButton, EmptyList, FieldError, SubHeading } from "./fields";
+import { AddButton, EmptyList, FieldError, FieldGroup } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const ROLES: AccessRole[] = ["editor", "viewer"];
@@ -109,102 +109,106 @@ export function TeamSection({ library, patch }: SectionProps) {
 
   return (
     <SectionShell sectionKey="team" icon={Users} description={t("description")} library={library}>
-      <SubHeading>{t("visibilityHeading")}</SubHeading>
-      <RadioGroup
-        value={team.visibility}
-        onValueChange={(v) =>
-          patch((d) => {
-            d.team.visibility = v as Visibility;
-            return d;
-          })
-        }
-        className="grid gap-2 sm:grid-cols-2"
-      >
-        {VISIBILITIES.map((value) => (
-          <label
-            key={value}
-            className={cn(
-              "flex cursor-pointer items-start gap-3 rounded-lg border border-border/50 bg-background p-3",
-              team.visibility === value && "border-primary/50 bg-primary/5",
-            )}
-          >
-            <RadioGroupItem value={value} className="mt-0.5" />
-            <span className="space-y-0.5">
-              <span className="block text-sm font-medium">{t(`visibility.${value}`)}</span>
-              <span className="block text-xs text-muted-foreground">{t(`visibilityHint.${value}`)}</span>
-            </span>
-          </label>
-        ))}
-      </RadioGroup>
+      <FieldGroup title={t("visibilityHeading")}>
+        <RadioGroup
+          value={team.visibility}
+          onValueChange={(v) =>
+            patch((d) => {
+              d.team.visibility = v as Visibility;
+              return d;
+            })
+          }
+          className="grid gap-2 sm:grid-cols-2"
+        >
+          {VISIBILITIES.map((value) => (
+            <label
+              key={value}
+              className={cn(
+                "flex cursor-pointer items-start gap-3 rounded-lg border border-border/50 bg-background p-3",
+                team.visibility === value && "border-primary/50 bg-primary/5",
+              )}
+            >
+              <RadioGroupItem value={value} className="mt-0.5" />
+              <span className="space-y-0.5">
+                <span className="block text-sm font-medium">{t(`visibility.${value}`)}</span>
+                <span className="block text-xs text-muted-foreground">{t(`visibilityHint.${value}`)}</span>
+              </span>
+            </label>
+          ))}
+        </RadioGroup>
+      </FieldGroup>
 
-      <SubHeading>{t("ownersHeading")}</SubHeading>
-      <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 p-3">
-        <OrgAvatar initials={organization.initials} color={organization.color} />
-        <p className="text-sm">{t("ownersLine", { org: organization.name })}</p>
-      </div>
-
-      <SubHeading action={<AddButton onClick={() => setInviteOpen(true)}>{t("invite")}</AddButton>}>
-        {t("accessHeading")}
-      </SubHeading>
-      {team.grants.length === 0 ? (
-        <EmptyList>{t("noGrants")}</EmptyList>
-      ) : (
-        <div className="rounded-lg border border-border/50 bg-background">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("colWho")}</TableHead>
-                <TableHead className="w-36">{t("colRole")}</TableHead>
-                <TableHead className="w-28">{t("colStatus")}</TableHead>
-                <TableHead className="w-12">
-                  <span className="sr-only">{tc("remove")}</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {team.grants.map((grant) => (
-                <TableRow key={grant.id} data-grant-status={grant.status}>
-                  <TableCell>
-                    <GrantSubject grant={grant} />
-                  </TableCell>
-                  <TableCell>
-                    <Select value={grant.role} onValueChange={(v) => setRole(grant.id, v as AccessRole)}>
-                      <SelectTrigger size="sm" className="w-full bg-background" aria-label={t("colRole")}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            {t(`role.${role}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <StatusChip tone={grant.status === "active" ? "success" : "warning"}>
-                      {t(`status.${grant.status}`)}
-                    </StatusChip>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive"
-                      aria-label={t("removeAccess", { name: subjectName(grant) })}
-                      onClick={() => setRemoving(grant)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      <FieldGroup title={t("ownersHeading")}>
+        <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 p-3">
+          <OrgAvatar initials={organization.initials} color={organization.color} />
+          <p className="text-sm">{t("ownersLine", { org: organization.name })}</p>
         </div>
-      )}
-      <InlineNotice tone="info">{t("roleRule")}</InlineNotice>
+      </FieldGroup>
+
+      <FieldGroup
+        title={t("accessHeading")}
+        action={<AddButton onClick={() => setInviteOpen(true)}>{t("invite")}</AddButton>}
+      >
+        {team.grants.length === 0 ? (
+          <EmptyList>{t("noGrants")}</EmptyList>
+        ) : (
+          <div className="rounded-lg border border-border/50 bg-background">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("colWho")}</TableHead>
+                  <TableHead className="w-36">{t("colRole")}</TableHead>
+                  <TableHead className="w-28">{t("colStatus")}</TableHead>
+                  <TableHead className="w-12">
+                    <span className="sr-only">{tc("remove")}</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {team.grants.map((grant) => (
+                  <TableRow key={grant.id} data-grant-status={grant.status}>
+                    <TableCell>
+                      <GrantSubject grant={grant} />
+                    </TableCell>
+                    <TableCell>
+                      <Select value={grant.role} onValueChange={(v) => setRole(grant.id, v as AccessRole)}>
+                        <SelectTrigger size="sm" className="w-full bg-background" aria-label={t("colRole")}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((role) => (
+                            <SelectItem key={role} value={role}>
+                              {t(`role.${role}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <StatusChip tone={grant.status === "active" ? "success" : "warning"}>
+                        {t(`status.${grant.status}`)}
+                      </StatusChip>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        aria-label={t("removeAccess", { name: subjectName(grant) })}
+                        onClick={() => setRemoving(grant)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        <InlineNotice tone="info">{t("roleRule")}</InlineNotice>
+      </FieldGroup>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/30 p-3">
         <p className="text-sm">

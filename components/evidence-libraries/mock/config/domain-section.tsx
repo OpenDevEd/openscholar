@@ -18,7 +18,7 @@ import type { DnsStatus } from "@/lib/evidence-libraries/mock/config";
 import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
 import { StatusChip, type StatusTone } from "../library-status-badge";
 import { Field } from "../section-card";
-import { ReadOnlyValue, SubHeading, ToggleRow } from "./fields";
+import { FieldGroup, ReadOnlyValue, ToggleRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const VERIFY_TOKEN = "os-verify=7f3a9c1e5b2d4a8f";
@@ -85,9 +85,7 @@ export function DomainSection({ library, patch }: SectionProps) {
       </Field>
 
       {custom ? (
-        <div className="space-y-3">
-          <SubHeading>{t("recordsHeading")}</SubHeading>
-          <p className="text-xs text-muted-foreground">{t("recordsHint")}</p>
+        <FieldGroup title={t("recordsHeading")} hint={t("recordsHint")}>
           <div className="rounded-lg border border-border/50 bg-background">
             <Table>
               <TableHeader>
@@ -122,7 +120,7 @@ export function DomainSection({ library, patch }: SectionProps) {
               </TableBody>
             </Table>
           </div>
-        </div>
+        </FieldGroup>
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/30 p-3">

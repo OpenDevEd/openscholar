@@ -2,7 +2,7 @@
 
 import { Quote } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { SubHeading, ToggleRow } from "./fields";
+import { FieldGroup, ToggleRow } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const EXPORT_FORMATS = ["ris", "bibtex", "atom"] as const;
@@ -24,8 +24,7 @@ export function CitationsSection({ library, patch }: SectionProps) {
           })
         }
       />
-      <div className="space-y-2">
-        <SubHeading>{t("exportsHeading")}</SubHeading>
+      <FieldGroup title={t("exportsHeading")}>
         {EXPORT_FORMATS.map((format) => (
           <ToggleRow
             key={format}
@@ -41,7 +40,7 @@ export function CitationsSection({ library, patch }: SectionProps) {
             }
           />
         ))}
-      </div>
+      </FieldGroup>
     </SectionShell>
   );
 }

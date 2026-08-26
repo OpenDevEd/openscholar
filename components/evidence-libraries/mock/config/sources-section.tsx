@@ -56,7 +56,7 @@ import {
 import { useEvidenceLibraryMockStore } from "@/lib/evidence-libraries/mock/store";
 import { StatusChip, type StatusTone } from "../library-status-badge";
 import { Field, FieldError } from "../section-card";
-import { ChipInput, EmptyList, SubHeading } from "./fields";
+import { ChipInput, EmptyList, FieldGroup } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 const TAG_RULE_COPY: Record<TagRuleKey, { label: string; hint: string }> = {
@@ -111,20 +111,17 @@ export function SourcesSection({ library, patch }: SectionProps) {
     <SectionShell sectionKey="sources" icon={Database} description={t("description")} library={library}>
       <AccountPanel library={library} patch={patch} />
 
-      <div className="space-y-3">
-        <SubHeading
-          action={
-            <GroupPicker
-              options={library.zoteroGroups}
-              addedIds={sources.groups.map((g) => g.groupId)}
-              disabled={!connected}
-              onAdd={addGroups}
-            />
-          }
-        >
-          {t("groupsHeading")}
-        </SubHeading>
-
+      <FieldGroup
+        title={t("groupsHeading")}
+        action={
+          <GroupPicker
+            options={library.zoteroGroups}
+            addedIds={sources.groups.map((g) => g.groupId)}
+            disabled={!connected}
+            onAdd={addGroups}
+          />
+        }
+      >
         {sources.groups.length === 0 ? (
           <EmptyList>{connected ? t("noGroups") : t("connectFirst")}</EmptyList>
         ) : (
@@ -153,10 +150,9 @@ export function SourcesSection({ library, patch }: SectionProps) {
           options={library.zoteroGroups}
           onAdd={(o) => addGroups([o])}
         />
-      </div>
+      </FieldGroup>
 
-      <div className="space-y-2">
-        <SubHeading>{t("activityHeading")}</SubHeading>
+      <FieldGroup title={t("activityHeading")}>
         {library.syncLog.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t("noActivity")}</p>
         ) : (
@@ -170,14 +166,14 @@ export function SourcesSection({ library, patch }: SectionProps) {
             ))}
           </ol>
         )}
-      </div>
+      </FieldGroup>
 
-      <div className="space-y-3">
+      <div className="space-y-3 border-t border-border/50 pt-5">
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+          className="-ml-2 h-7 px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
           aria-expanded={advancedOpen}
           onClick={() => setAdvancedOpen((open) => !open)}
         >

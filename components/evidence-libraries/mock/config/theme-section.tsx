@@ -20,7 +20,7 @@ import {
   type LibraryConfig,
 } from "@/lib/evidence-libraries/mock/config";
 import { Field } from "../section-card";
-import { ColourField, SubHeading, UploadField } from "./fields";
+import { ColourField, FieldGroup, UploadField } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
 
 type Theme = LibraryConfig["theme"];
@@ -91,117 +91,120 @@ export function ThemeSection({ library, patch }: SectionProps) {
         </Field>
       </div>
 
-      <SubHeading>{t("fontsHeading")}</SubHeading>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FontSelect label={t("headingFontLabel")} value={theme.headingFont} onChange={(v) => set("headingFont", v)} />
-        <FontSelect label={t("bodyFontLabel")} value={theme.bodyFont} onChange={(v) => set("bodyFont", v)} />
-      </div>
-      <div className="rounded-lg border border-border/50 bg-background p-4" data-font-sample>
-        <p className="text-lg font-semibold" style={{ fontFamily: fontStack(theme.headingFont) }}>
-          {t("sampleHeading", { name: library.draft.identity.name || library.name })}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground" style={{ fontFamily: fontStack(theme.bodyFont) }}>
-          {t("sampleBody")}
-        </p>
-      </div>
-
-      <SubHeading>{t("logosHeading")}</SubHeading>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <UploadField
-          label={t("logoDarkLabel")}
-          kind="image"
-          required
-          slot={`${library.id}:logoDark`}
-          value={theme.logoDark}
-          onChange={(file) => set("logoDark", file)}
-        />
-        <UploadField
-          label={t("logoLightLabel")}
-          kind="image"
-          optional
-          slot={`${library.id}:logoLight`}
-          value={theme.logoLight}
-          onChange={(file) => set("logoLight", file)}
-        />
-        <UploadField
-          label={t("faviconLabel")}
-          hint={t("faviconHint")}
-          kind="image"
-          required
-          slot={`${library.id}:favicon`}
-          value={theme.favicon}
-          onChange={(file) => set("favicon", file)}
-        />
-      </div>
-
-      <SubHeading>{t("coloursHeading")}</SubHeading>
-      <div className="space-y-1.5">
-        <p className="text-xs text-muted-foreground">{t("presetsLabel")}</p>
-        <div className="flex flex-wrap gap-2" role="group" aria-label={t("presetsLabel")}>
-          {COLOUR_PRESETS.map((p) => {
-            const active =
-              p.accent === theme.accent && p.secondary === theme.secondary && p.link === theme.link;
-            return (
-              <Button
-                key={p.name}
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-pressed={active}
-                data-preset={p.name}
-                className="gap-2"
-                onClick={() =>
-                  patch((d) => {
-                    d.theme.accent = p.accent;
-                    d.theme.secondary = p.secondary;
-                    d.theme.link = p.link;
-                    return d;
-                  })
-                }
-              >
-                <span className="flex gap-0.5">
-                  {[p.accent, p.secondary, p.link].map((c, i) => (
-                    <span
-                      key={i}
-                      className="size-3 rounded-sm border border-border/40"
-                      style={{ background: c }}
-                    />
-                  ))}
-                </span>
-                {p.name}
-              </Button>
-            );
-          })}
+      <FieldGroup title={t("fontsHeading")}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FontSelect label={t("headingFontLabel")} value={theme.headingFont} onChange={(v) => set("headingFont", v)} />
+          <FontSelect label={t("bodyFontLabel")} value={theme.bodyFont} onChange={(v) => set("bodyFont", v)} />
         </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <ColourField
-          label={t("accentLabel")}
-          hint={t("accentHint")}
-          value={theme.accent}
-          onChange={(v) => set("accent", v)}
-        />
-        <ColourField
-          label={t("secondaryLabel")}
-          hint={t("secondaryHint")}
-          value={theme.secondary}
-          onChange={(v) => set("secondary", v)}
-        />
-        <ColourField
-          label={t("linkLabel")}
-          hint={t("linkHint")}
-          value={theme.link}
-          contrastAgainst={[theme.backgroundDark, theme.backgroundLight]}
-          onChange={(v) => set("link", v)}
-        />
-      </div>
+        <div className="rounded-lg border border-border/50 bg-background p-4" data-font-sample>
+          <p className="text-lg font-semibold" style={{ fontFamily: fontStack(theme.headingFont) }}>
+            {t("sampleHeading", { name: library.draft.identity.name || library.name })}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground" style={{ fontFamily: fontStack(theme.bodyFont) }}>
+            {t("sampleBody")}
+          </p>
+        </div>
+      </FieldGroup>
 
-      <div className="space-y-3">
+      <FieldGroup title={t("logosHeading")}>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <UploadField
+            label={t("logoDarkLabel")}
+            kind="image"
+            required
+            slot={`${library.id}:logoDark`}
+            value={theme.logoDark}
+            onChange={(file) => set("logoDark", file)}
+          />
+          <UploadField
+            label={t("logoLightLabel")}
+            kind="image"
+            optional
+            slot={`${library.id}:logoLight`}
+            value={theme.logoLight}
+            onChange={(file) => set("logoLight", file)}
+          />
+          <UploadField
+            label={t("faviconLabel")}
+            hint={t("faviconHint")}
+            kind="image"
+            required
+            slot={`${library.id}:favicon`}
+            value={theme.favicon}
+            onChange={(file) => set("favicon", file)}
+          />
+        </div>
+      </FieldGroup>
+
+      <FieldGroup title={t("coloursHeading")}>
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">{t("presetsLabel")}</p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t("presetsLabel")}>
+            {COLOUR_PRESETS.map((p) => {
+              const active =
+                p.accent === theme.accent && p.secondary === theme.secondary && p.link === theme.link;
+              return (
+                <Button
+                  key={p.name}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={active}
+                  data-preset={p.name}
+                  className="gap-2"
+                  onClick={() =>
+                    patch((d) => {
+                      d.theme.accent = p.accent;
+                      d.theme.secondary = p.secondary;
+                      d.theme.link = p.link;
+                      return d;
+                    })
+                  }
+                >
+                  <span className="flex gap-0.5">
+                    {[p.accent, p.secondary, p.link].map((c, i) => (
+                      <span
+                        key={i}
+                        className="size-3 rounded-sm border border-border/40"
+                        style={{ background: c }}
+                      />
+                    ))}
+                  </span>
+                  {p.name}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <ColourField
+            label={t("accentLabel")}
+            hint={t("accentHint")}
+            value={theme.accent}
+            onChange={(v) => set("accent", v)}
+          />
+          <ColourField
+            label={t("secondaryLabel")}
+            hint={t("secondaryHint")}
+            value={theme.secondary}
+            onChange={(v) => set("secondary", v)}
+          />
+          <ColourField
+            label={t("linkLabel")}
+            hint={t("linkHint")}
+            value={theme.link}
+            contrastAgainst={[theme.backgroundDark, theme.backgroundLight]}
+            onChange={(v) => set("link", v)}
+          />
+        </div>
+      </FieldGroup>
+
+      <div className="space-y-3 border-t border-border/50 pt-5">
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="-ml-2 h-7 text-xs"
+          className="-ml-2 h-7 text-xs font-medium text-muted-foreground hover:text-foreground"
           aria-expanded={advancedOpen}
           aria-controls="theme-advanced"
           onClick={() => setAdvancedOpen((open) => !open)}

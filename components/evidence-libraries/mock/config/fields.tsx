@@ -647,13 +647,41 @@ export function ResetButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** Small subsection heading inside a card. */
-export function SubHeading({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/**
+ * A titled group of fields inside a section card. Gives every group the same
+ * shape: a divider above (except the first), a heading row with an optional
+ * hint and action, then the fields with one fixed gap. Use this instead of a
+ * bare heading followed by siblings.
+ */
+export function FieldGroup({
+  title,
+  hint,
+  action,
+  children,
+  className,
+  ...rest
+}: React.HTMLAttributes<HTMLElement> & {
+  title: ReactNode;
+  hint?: ReactNode;
+  action?: ReactNode;
+}) {
   return (
-    <div className="flex items-center justify-between gap-2 pt-1">
-      <p className="text-sm font-semibold">{children}</p>
-      {action}
-    </div>
+    <section
+      className={cn(
+        "border-t border-border/50 pt-5 first:border-t-0 first:pt-0",
+        className,
+      )}
+      {...rest}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-0.5">
+          <h4 className="text-sm font-semibold">{title}</h4>
+          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      <div className="space-y-4">{children}</div>
+    </section>
   );
 }
 

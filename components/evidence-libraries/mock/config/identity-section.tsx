@@ -14,8 +14,8 @@ import {
   ListRow,
   move,
   ReadOnlyValue,
+  FieldGroup,
   SortableList,
-  SubHeading,
   UploadField,
 } from "./fields";
 import { SectionShell, type SectionProps } from "./section-shell";
@@ -133,28 +133,26 @@ export function IdentitySection({ library, patch }: SectionProps) {
         )}
       </Field>
 
-      <div className="space-y-3">
-        <SubHeading
-          action={
-            <AddButton
-              disabled={identity.fundingPartners.length >= PARTNERS_MAX}
-              onClick={() =>
-                patch((d) => {
-                  d.identity.fundingPartners.push({
-                    id: newId("fp"),
-                    name: "",
-                  });
-                  return d;
-                })
-              }
-            >
-              {t("addPartner")}
-            </AddButton>
-          }
-        >
-          {t("partnersHeading")}
-        </SubHeading>
-        <p className="text-xs text-muted-foreground">{t("partnersHint")}</p>
+      <FieldGroup
+        title={t("partnersHeading")}
+        hint={t("partnersHint")}
+        action={
+          <AddButton
+            disabled={identity.fundingPartners.length >= PARTNERS_MAX}
+            onClick={() =>
+              patch((d) => {
+                d.identity.fundingPartners.push({
+                  id: newId("fp"),
+                  name: "",
+                });
+                return d;
+              })
+            }
+          >
+            {t("addPartner")}
+          </AddButton>
+        }
+      >
         {identity.fundingPartners.length === 0 ? (
           <EmptyList>{t("noPartners")}</EmptyList>
         ) : (
@@ -205,7 +203,7 @@ export function IdentitySection({ library, patch }: SectionProps) {
             ))}
           </SortableList>
         )}
-      </div>
+      </FieldGroup>
 
       <UploadField
         label={t("shareImageLabel")}
