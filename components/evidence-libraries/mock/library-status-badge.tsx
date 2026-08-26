@@ -54,7 +54,7 @@ export function StatusChip({
   );
 }
 
-const LIBRARY_TONE: Record<LibraryStatus, StatusTone> = {
+export const LIBRARY_TONE: Record<LibraryStatus, StatusTone> = {
   draft: "neutral",
   setting_up: "running",
   active: "success",

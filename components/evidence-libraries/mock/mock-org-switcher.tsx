@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Plus, Settings } from "lucide-react";
+import { Check, ChevronDown, Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -10,7 +10,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MOCK_ORGANIZATIONS } from "@/lib/evidence-libraries/mock/data";
@@ -37,10 +36,6 @@ export function MockOrgSwitcher() {
     router.push("/evidence-libraries");
   }
 
-  function notInPrototype() {
-    toast(t("notInPrototype"));
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -64,15 +59,6 @@ export function MockOrgSwitcher() {
             {o.id === org.id ? <Check className="size-4 text-primary" /> : null}
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={notInPrototype}>
-          <Settings className="size-4" />
-          {t("manageOrganization")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={notInPrototype}>
-          <Plus className="size-4" />
-          {t("createOrganization")}
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

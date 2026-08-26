@@ -1,31 +1,30 @@
 "use client";
 
-import { Building2, Check, ChevronRight, Layers, Lock, Plus } from "lucide-react";
+import { Check, Layers, Lock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
 import { addressFor, slugify } from "@/lib/evidence-libraries/mock/data";
 import {
   selectOrganization,
   useEvidenceLibraryMockStore,
 } from "@/lib/evidence-libraries/mock/store";
-import { FieldError, SectionCard } from "./section-card";
+import { FieldGroup, PanelRow, ReadOnlyValue } from "./config/fields";
+import { StatusChip } from "./library-status-badge";
 import { OrgAvatar } from "./org-avatar";
 import { PanelHeader } from "./panel-header";
+import { Field, FieldError } from "./section-card";
 
 const NAME_MAX = 100;
 
 export function NewLibraryForm() {
   const t = useTranslations("evidenceLibraryMock.new");
-  const tm = useTranslations("evidenceLibraryMock");
   const tc = useTranslations("common");
   const router = useRouter();
   const org = useEvidenceLibraryMockStore(selectOrganization);
@@ -38,10 +37,6 @@ export function NewLibraryForm() {
   const [reserved, setReserved] = useState<string | null>(null);
   const [takenAlt, setTakenAlt] = useState<string | null>(null);
   const [showNameError, setShowNameError] = useState(false);
-
-  const nameId = useId();
-  const shortId = useId();
-  const addressId = useId();
 
   // The short name follows the name until the owner edits it by hand.
   const shortName = slugify(shortNameInput ?? name);
@@ -86,96 +81,105 @@ export function NewLibraryForm() {
   const nameError = showNameError && !name.trim();
 
   return (
-    <div className="container mx-auto max-w-6xl p-4 sm:p-6">
-      <div className="mb-4 flex justify-end">
+    <div className="w-full pb-16">
+      {/* Sticky header: same bar as the configuration page */}
+      <div className="sticky top-14 z-20 border-b border-border/40 bg-background lg:top-0">
+        <div className="container mx-auto max-w-6xl px-4 sm:px-6">
+          <PanelHeader
+            icon={Layers}
+            className="border-b-0 px-0 md:px-0"
+            title={t("title")}
+            description={t("description")}
+            backHref="/evidence-libraries"
+            backLabel={t("backToLibraries")}
+          />
+        </div>
       </div>
-      <CommandCenterContainer>
-        <PanelHeader icon={Plus} title={t("title")} description={t("description")} />
 
-        <form onSubmit={handleSubmit} noValidate className="max-w-2xl space-y-4 p-4 md:p-6">
-          <SectionCard icon={Building2} title={t("ownerTitle")} description={t("ownerDescription")}>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">{tm("organizationLabel")}</dt>
-              <dd className="flex items-center gap-2 font-medium">
-                <OrgAvatar initials={org.initials} color={org.color} className="size-5 text-[9px]" />
-                {org.name}
-              </dd>
-              <dt className="text-muted-foreground">{t("yourRole")}</dt>
-              <dd>
-                {tm("roleOwner")}{" "}
-                <code className="text-xs font-mono text-muted-foreground">org:admin</code>
-              </dd>
-            </dl>
-          </SectionCard>
-
-          <SectionCard icon={Layers} title={t("libraryTitle")} description={t("libraryDescription")}>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor={nameId}>{t("nameLabel")}</Label>
-                <span className="text-xs font-mono text-muted-foreground" aria-live="polite">
-                  {name.length} / {NAME_MAX}
-                </span>
-              </div>
-              <Input
-                id={nameId}
-                autoFocus
-                autoComplete="off"
-                maxLength={NAME_MAX}
-                className="bg-background"
-                placeholder={t("namePlaceholder")}
-                value={name}
-                aria-invalid={nameError || undefined}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setShowNameError(false);
-                }}
+      <div className="container mx-auto max-w-6xl p-4 sm:p-6">
+        <CommandCenterContainer>
+          <form onSubmit={handleSubmit} noValidate className="max-w-2xl space-y-5 p-4 md:p-6">
+            <FieldGroup title={t("ownerTitle")}>
+              <PanelRow
+                leading={<OrgAvatar initials={org.initials} color={org.color} />}
+                title={t("ownedBy", { organization: org.name })}
+                hint={t("ownerHint")}
               />
-              {nameError ? <FieldError>{t("nameError")}</FieldError> : null}
-            </div>
+            </FieldGroup>
 
-            <div className="space-y-1.5">
-              <Label htmlFor={shortId}>{t("shortNameLabel")}</Label>
-              <Input
-                id={shortId}
-                className="bg-background font-mono text-sm"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder={t("shortNamePlaceholder")}
-                value={shortNameInput ?? shortName}
-                readOnly={isReserved}
-                onChange={(e) => setShortNameInput(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">{t("shortNameHint")}</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor={addressId}>{t("addressLabel")}</Label>
-              <div className="flex flex-col gap-1.5 sm:flex-row">
-                <div className="relative flex-1">
+            <FieldGroup title={t("libraryTitle")} hint={t("libraryDescription")}>
+              <Field
+                label={t("nameLabel")}
+                error={nameError ? t("nameError") : null}
+                counter={
+                  <span aria-live="polite">
+                    {name.length} / {NAME_MAX}
+                  </span>
+                }
+              >
+                {(id, invalid) => (
                   <Input
-                    id={addressId}
-                    readOnly
-                    value={address}
-                    data-address-state={isReserved ? "reserved" : "open"}
-                    className={cn(
-                      "bg-background pr-9 font-mono text-sm",
-                      isReserved && "border-emerald-500/40 bg-emerald-500/5",
-                    )}
+                    id={id}
+                    autoFocus
+                    autoComplete="off"
+                    maxLength={NAME_MAX}
+                    className="bg-background"
+                    placeholder={t("namePlaceholder")}
+                    value={name}
+                    aria-invalid={invalid || undefined}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setShowNameError(false);
+                    }}
                   />
-                  {isReserved ? (
-                    <Check className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
-                  ) : null}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!shortName || isReserved || reserving}
-                  onClick={handleReserve}
-                >
-                  {reserving ? <Spinner /> : <Lock />}
-                  {reserving ? t("checking") : t("reserve")}
-                </Button>
-              </div>
+                )}
+              </Field>
+
+              <Field label={t("shortNameLabel")} hint={isReserved ? undefined : t("shortNameHint")}>
+                {(id) =>
+                  isReserved ? (
+                    <ReadOnlyValue id={id} value={shortName} />
+                  ) : (
+                    <Input
+                      id={id}
+                      className="bg-background font-mono text-sm"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder={t("shortNamePlaceholder")}
+                      value={shortNameInput ?? shortName}
+                      onChange={(e) => setShortNameInput(e.target.value)}
+                    />
+                  )
+                }
+              </Field>
+
+              <Field
+                label={t("addressLabel")}
+                hint={isReserved || takenAlt ? undefined : t("addressHint")}
+                counter={
+                  isReserved ? (
+                    <StatusChip tone="success" role="status" data-address-state="reserved">
+                      <Check />
+                      {t("reserved")}
+                    </StatusChip>
+                  ) : null
+                }
+              >
+                {(id) => (
+                  <div className="flex flex-col gap-1.5 sm:flex-row">
+                    <ReadOnlyValue id={id} value={address} className="flex-1" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!shortName || isReserved || reserving}
+                      onClick={handleReserve}
+                    >
+                      {reserving ? <Spinner /> : <Lock />}
+                      {reserving ? t("checking") : t("reserve")}
+                    </Button>
+                  </div>
+                )}
+              </Field>
               {takenAlt ? (
                 <FieldError
                   action={
@@ -186,31 +190,20 @@ export function NewLibraryForm() {
                 >
                   {t("taken", { alt: takenAlt })}
                 </FieldError>
-              ) : isReserved ? (
-                <p
-                  className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400"
-                  role="status"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  {t("reserved")}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">{t("addressHint")}</p>
-              )}
-            </div>
-          </SectionCard>
+              ) : null}
+            </FieldGroup>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button asChild type="button" variant="ghost">
-              <Link href="/evidence-libraries">{tc("cancel")}</Link>
-            </Button>
-            <Button type="submit" disabled={!canContinue}>
-              {tc("continue")}
-              <ChevronRight />
-            </Button>
-          </div>
-        </form>
-      </CommandCenterContainer>
+            <div className="flex justify-end gap-2 border-t border-border/50 pt-5">
+              <Button asChild type="button" variant="ghost">
+                <Link href="/evidence-libraries">{tc("cancel")}</Link>
+              </Button>
+              <Button type="submit" disabled={!canContinue}>
+                {tc("continue")}
+              </Button>
+            </div>
+          </form>
+        </CommandCenterContainer>
+      </div>
     </div>
   );
 }
