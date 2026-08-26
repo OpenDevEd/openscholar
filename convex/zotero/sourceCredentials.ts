@@ -5,28 +5,7 @@ import {
 } from "../../lib/evidence-libraries/configuration/assembly";
 import type { ZoteroGroupScopes } from "./groupAccess";
 
-export type ZoteroSourceEntry = {
-  key: string;
-  provider: "zotero";
-  groupId: string;
-  enabled: boolean;
-  writebackEnabled: boolean;
-};
-
-export function zoteroSourceKey(groupId: string): string {
-  return `zotero-${groupId}`;
-}
-
-// The draft shape of one connected group. The key is added at deploy time.
-export function zoteroSourceEntry(groupId: string): ZoteroSourceEntry {
-  return {
-    key: zoteroSourceKey(groupId),
-    provider: "zotero",
-    groupId,
-    enabled: true,
-    writebackEnabled: false,
-  };
-}
+export { type ZoteroSourceEntry, zoteroSourceEntry, zoteroSourceKey } from "./sourceEntry";
 
 export type ConnectedZoteroGroup = {
   groupId: string;

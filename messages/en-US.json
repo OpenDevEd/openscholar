@@ -2252,5 +2252,92 @@
     "deleteCancel": "Cancel",
     "deleting": "Starting deletion…",
     "deleteError": "Deletion could not be started. Finish any running library operation, then try again."
+  },
+  "evidenceLibrarySources": {
+    "account": {
+      "connectedAs": "Connected as {handle}",
+      "notConnected": "Connect your Zotero account to add groups.",
+      "connect": "Connect Zotero",
+      "connectFailed": "Could not start the Zotero connection. Try again."
+    },
+    "addGroup": "Add group",
+    "add": "Add",
+    "listLabel": "Connected groups",
+    "pickerTitle": "Add a Zotero group",
+    "pickerDescription": "Groups your Zotero account can see.",
+    "pickerLoading": "Loading your groups",
+    "pickerFailed": "Could not load your groups. Try again.",
+    "pickerNoGroups": "Your Zotero account has no groups.",
+    "pickerAllAdded": "All your groups are already added.",
+    "connectFailed": "Could not connect this group.",
+    "reconnected": "{name} now uses your Zotero key.",
+    "removeFailed": "Could not remove this group. Try again.",
+    "public": "Public",
+    "private": "Private",
+    "records": "Records",
+    "recordsCount": "{count} records",
+    "connectedBy": "Connected by",
+    "health": {
+      "label": "Status",
+      "ready": "Ready",
+      "readOnly": "Read only",
+      "paused": "Paused"
+    },
+    "syncUnknown": "Sync details show in the library admin area.",
+    "writeBack": "Write back",
+    "writeBackHint": "Send edits made in the library back to Zotero.",
+    "writeBackUnavailable": "Your Zotero key cannot write to this group. Reconnect and allow write access.",
+    "pause": "Pause",
+    "pauseHint": "Stop syncing this group. Records already imported stay.",
+    "reconnect": "Reconnect",
+    "remove": "Remove",
+    "empty": "No groups yet. Add one to start filling the library.",
+    "tagRules": {
+      "title": "Advanced tag rules",
+      "hint": "Zotero tags that change how a record is shown. Separate tags with commas.",
+      "publish": "Publish",
+      "comingSoon": "Coming soon",
+      "internal": "Internal",
+      "hidden": "Hidden",
+      "description": "Category description",
+      "redirects": "Redirects",
+      "publishEmpty": "Add at least one publish tag.",
+      "tooMany": "Use at most 10 tags.",
+      "tooLong": "Each tag must be 128 characters or fewer."
+    }
+  },
+  "evidenceLibraryCollections": {
+    "add": "Add collections",
+    "listLabel": "Chosen collections",
+    "pickerTitle": "Add collections",
+    "pickerDescription": "Collections in this library.",
+    "search": "Search collections",
+    "searchPlaceholder": "Type to search",
+    "notSetUp": "Collections appear after the library is set up and has synced.",
+    "loading": "Loading collections",
+    "failed": "Could not load collections. Try again.",
+    "empty": "No collections match.",
+    "loadMore": "Load more",
+    "added": "Added",
+    "recordsCount": "{count} records",
+    "titleLabel": "Shown as",
+    "shown": "Show",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove",
+    "emptyList": "No collections chosen. The library shows all collections in its own order."
+  },
+  "evidenceLibraryInstitutions": {
+    "picker": {
+      "placeholder": "Pick an institution",
+      "search": "Search institutions",
+      "loading": "Loading institutions",
+      "failed": "Could not load institutions. Try again.",
+      "notSetUp": "Names from records appear after the library is set up.",
+      "empty": "No matching institution.",
+      "none": "None",
+      "useTyped": "Use \"{name}\"",
+      "records": "{count} records"
+    }
   }
 }
