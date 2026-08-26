@@ -236,6 +236,42 @@ describe("Evidence Library update check", () => {
     expect(github.requests).toHaveLength(0);
   });
 
+  it("keeps working when two cold checks left two rows for the same commit", async () => {
+    const fixture = await createReadySetupFixture("update-check-duplicate");
+    const github = createGithub({ latest: LATEST });
+    vi.stubGlobal("fetch", github.fetchImpl);
+    const stale = Date.now() - RUNTIME_RELEASE_CACHE_MS - 1;
+    await fixture.t.run(async (ctx) => {
+      for (const latest of [RUNNING, LATEST]) {
+        await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+          running: RUNNING,
+          latest,
+          changes: [],
+          checkedAt: stale,
+        });
+      }
+    });
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.updates.check, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ latest: LATEST, checkedAt: Date.now() });
+    const rows = await fixture.t.run((ctx) =>
+      ctx.db
+        .query("evidenceLibraryRuntimeReleases")
+        .withIndex("by_running", (query) => query.eq("running", RUNNING))
+        .collect(),
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ latest: LATEST, checkedAt: Date.now() });
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.updates.check, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ latest: LATEST, checkedAt: Date.now() });
+    expect(github.requests).toHaveLength(2);
+  });
+
   it("refuses the check for a member who cannot manage the library", async () => {
     const fixture = await createReadySetupFixture("update-check-denied");
     const github = createGithub({ latest: LATEST });

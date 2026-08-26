@@ -68,7 +68,7 @@ export async function startEvidenceLibraryRuntimeUpdate(
   const release = await ctx.db
     .query("evidenceLibraryRuntimeReleases")
     .withIndex("by_running", (query) => query.eq("running", from))
-    .unique();
+    .first();
   if (!release || !isFreshRuntimeRelease(release.checkedAt, Date.now())) {
     throw createError("CONFLICT", "Check for updates before updating");
   }

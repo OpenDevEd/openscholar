@@ -56,7 +56,7 @@ export const readRunningRelease = internalQuery({
     const cached = await ctx.db
       .query("evidenceLibraryRuntimeReleases")
       .withIndex("by_running", (query) => query.eq("running", running))
-      .unique();
+      .first();
     return {
       running,
       cached:
@@ -76,12 +76,14 @@ export const saveRuntimeRelease = internalMutation({
   args: runtimeUpdateStateValidator,
   returns: v.null(),
   handler: async (ctx, args) => {
+    // Two cold checks can race here. Reading the first row and patching it
+    // keeps the later reads deterministic even if a second row exists.
     const existing = await ctx.db
       .query("evidenceLibraryRuntimeReleases")
       .withIndex("by_running", (query) => query.eq("running", args.running))
-      .unique();
+      .first();
     if (existing) {
-      await ctx.db.replace(existing._id, args);
+      await ctx.db.patch(existing._id, args);
     } else {
       await ctx.db.insert("evidenceLibraryRuntimeReleases", args);
     }
