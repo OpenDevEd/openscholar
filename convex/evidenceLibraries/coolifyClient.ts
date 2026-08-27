@@ -10,6 +10,14 @@ const MAX_GITHUB_APPS = 100;
 const MAX_ENVIRONMENT_VARIABLES = 256;
 const MAX_DEPLOYMENTS = 100;
 const ENVIRONMENT_READBACK_DELAYS_MS = [100, 250, 500, 1_000] as const;
+// Coolify deletes an application in the background. Wait up to about 60 s.
+const APPLICATION_DELETE_DELAYS_MS = [
+  500,
+  1_000,
+  1_500,
+  2_000,
+  ...Array.from({ length: 22 }, () => 2_500),
+] as const;
 const UUID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -611,6 +619,19 @@ async function readApplicationIfExists(
     path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
   });
   return payload === null ? null : parseApplication(payload);
+}
+
+async function waitForApplicationAbsent(
+  client: CoolifyTransport,
+  applicationUuid: string,
+): Promise<boolean> {
+  for (let attempt = 0; ; attempt += 1) {
+    const application = await readApplicationIfExists(client, applicationUuid);
+    if (!application) return true;
+    const delay = APPLICATION_DELETE_DELAYS_MS[attempt];
+    if (delay === undefined) return false;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
 }
 
 async function readGithubAppId(
@@ -1465,7 +1486,7 @@ export function createCoolifyClient(input: {
         method: "DELETE",
         path: `${url.pathname}${url.search}`,
       });
-      if (await readApplicationIfExists(client, applicationUuid)) {
+      if (!(await waitForApplicationAbsent(client, applicationUuid))) {
         throw new CoolifyClientError(
           "COOLIFY_DELETE_FAILED",
           "Coolify still contains the Evidence Library application",
