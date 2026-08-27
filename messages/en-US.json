@@ -2999,7 +2999,8 @@
         "copied": "Address copied",
         "openLibrary": "Open library",
         "settingUp": "Setting up {name}",
-        "stopped": "Setup stopped"
+        "stopped": "Setup stopped",
+        "copyFailed": "Could not copy the address"
       }
     },
     "admin": {

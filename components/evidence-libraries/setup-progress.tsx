@@ -2,15 +2,13 @@
 
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Check, ExternalLink, RefreshCw, Settings, X } from "lucide-react";
+import { ExternalLink, Settings } from "lucide-react";
 import Link from "next/link";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
@@ -69,7 +67,8 @@ export function SetupProgressView({
   });
   const percent = setupPercent(steps);
   const current = steps.find((s) => s.status === "running" || s.status === "failed") ?? steps[5];
-  const hero = status === "setting_up" || status === "setup_failed" || status === "active";
+  // Building, stopped and live share one surface; a draft has not started and keeps the plain list.
+  const hero = status === "setting_up" || failed || active;
 
   function retry() {
     if (retrying) return;
@@ -129,28 +128,9 @@ export function SetupProgressView({
             onRetry={retry}
             retrying={retrying}
           />
-        ) : null}
-
-        {hero ? null : (
-        <FieldGroup title={t("groupTitle")}>
-          <div className="space-y-4">
-            {active ? null : (
-              <div>
-                <div className="mb-2 flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t(`steps.${current.key}.name`)}</span>
-                  <span className="tabular-nums">{percent}%</span>
-                </div>
-                <Progress
-                  value={percent}
-                  aria-label={t("groupTitle")}
-                  className={cn(
-                    failed && "bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive",
-                  )}
-                />
-              </div>
-            )}
-
-            {status === "draft" ? (
+        ) : (
+          <FieldGroup title={t("groupTitle")}>
+            <div className="space-y-4">
               <InlineNotice
                 tone="info"
                 action={
@@ -161,105 +141,31 @@ export function SetupProgressView({
               >
                 {t("draftHint")}
               </InlineNotice>
-            ) : null}
-
-            <ol className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background">
-              {steps.filter((step) => !(active && step.key === "active")).map((step) => (
-                <StepRow
-                  key={step.key}
-                  step={step}
-                  errorMessage={
-                    step.status === "failed" ? setup.setupOperation.error?.message : undefined
-                  }
-                  onRetry={retry}
-                  retrying={retrying}
-                />
-              ))}
-            </ol>
-          </div>
-        </FieldGroup>
+              <ol className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background">
+                {steps.map((step) => (
+                  <DraftStepRow key={step.key} step={step} />
+                ))}
+              </ol>
+            </div>
+          </FieldGroup>
         )}
       </div>
     </LibraryPageShell>
   );
 }
 
-function StepMark({ status }: { status: SetupStep["status"] }) {
-  if (status === "done") {
-    return (
-      <span className="flex size-5 shrink-0 items-center justify-center text-emerald-600 dark:text-emerald-400">
-        <Check className="size-4" />
-      </span>
-    );
-  }
-  if (status === "running") {
-    return (
-      <span className="flex size-5 shrink-0 items-center justify-center text-primary">
-        <Spinner className="size-4" />
-      </span>
-    );
-  }
-  if (status === "failed") {
-    return (
-      <span className="flex size-5 shrink-0 items-center justify-center text-destructive">
-        <X className="size-4" />
-      </span>
-    );
-  }
-  return (
-    <span className="flex size-5 shrink-0 items-center justify-center">
-      <span className="size-2 rounded-full bg-muted-foreground/50" />
-    </span>
-  );
-}
-
-function StepRow({
-  step,
-  errorMessage,
-  onRetry,
-  retrying,
-}: {
-  step: SetupStep;
-  errorMessage: string | undefined;
-  onRetry: () => void;
-  retrying: boolean;
-}) {
+/** One step of a draft library: nothing has run yet, so every row is waiting. */
+function DraftStepRow({ step }: { step: SetupStep }) {
   const t = useTranslations("evidenceLibraries.setup");
-  const format = useFormatter();
-  const line =
-    step.status === "failed"
-      ? (errorMessage ?? t("deploymentError"))
-      : t(`steps.${step.key}.${step.status}`);
-
   return (
-    <li data-step={step.key} data-state={step.status} className="space-y-3 p-3">
-      <div className="flex items-start gap-3">
-        <StepMark status={step.status} />
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <p className={cn("text-sm font-medium", step.status === "waiting" && "text-muted-foreground")}>
-            {t(`steps.${step.key}.name`)}
-          </p>
-          <p className="text-xs text-muted-foreground">{line}</p>
-        </div>
-        {step.at ? (
-          <span className="text-xs font-mono text-muted-foreground tabular-nums">
-            {format.dateTime(new Date(step.at), { timeStyle: "medium" })}
-          </span>
-        ) : null}
+    <li data-step={step.key} data-state={step.status} className="flex items-start gap-3 p-3">
+      <span className="flex size-5 shrink-0 items-center justify-center">
+        <span className="size-2 rounded-full bg-muted-foreground/50" />
+      </span>
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-sm font-medium text-muted-foreground">{t(`steps.${step.key}.name`)}</p>
+        <p className="text-xs text-muted-foreground">{t(`steps.${step.key}.waiting`)}</p>
       </div>
-      {step.status === "failed" ? (
-        <InlineNotice
-          tone="danger"
-          action={
-            <Button size="sm" variant="outline" className="h-7" onClick={onRetry} disabled={retrying}>
-              <RefreshCw />
-              {t("retry")}
-            </Button>
-          }
-        >
-          {t("stoppedHint")}
-        </InlineNotice>
-      ) : null}
     </li>
   );
 }

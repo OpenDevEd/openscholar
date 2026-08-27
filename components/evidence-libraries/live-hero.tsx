@@ -2,7 +2,7 @@
 
 import { Check, Copy, ExternalLink, RefreshCw, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -49,15 +49,23 @@ export function SetupHero({
   const tl = useTranslations("evidenceLibraries.setup.live");
   const format = useFormatter();
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const host = address.replace(/^https?:\/\//, "");
   const live = status === "active";
   const failed = status === "setup_failed";
 
-  function copyAddress() {
-    navigator.clipboard?.writeText(address).catch(() => {});
+  async function copyAddress() {
+    try {
+      if (!navigator.clipboard) throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(address);
+    } catch {
+      toast.error(tl("copyFailed"), { description: address });
+      return;
+    }
     setCopied(true);
     toast.success(tl("copied"), { description: address });
-    setTimeout(() => setCopied(false), 2000);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), 2000);
   }
 
   return (
@@ -94,9 +102,9 @@ export function SetupHero({
         </span>
 
         <div className="el-hero-rise space-y-2" style={{ animationDelay: live ? "560ms" : "0ms" }}>
-          <h3 id="library-live-title" className="text-2xl font-semibold tracking-tight">
+          <h2 id="library-live-title" className="text-2xl font-semibold tracking-tight">
             {live ? tl("title", { name }) : failed ? tl("stopped") : tl("settingUp", { name })}
-          </h3>
+          </h2>
           <p className={cn("text-sm", failed ? "text-destructive" : "text-muted-foreground")}>
             {live
               ? tl("hint")
@@ -132,7 +140,7 @@ export function SetupHero({
         ) : failed ? (
           <div className="el-hero-rise flex flex-col items-center gap-3">
             <Button size="lg" className="rounded-full" onClick={onRetry} disabled={retrying} data-retry>
-              {retrying ? <Spinner /> : <RefreshCw />}
+              {retrying ? <Spinner role="presentation" aria-label={undefined} className="motion-reduce:animate-none" /> : <RefreshCw />}
               {t("retry")}
             </Button>
             <p className="text-xs text-muted-foreground">{t("stoppedHint")}</p>
@@ -199,7 +207,7 @@ function Mark({ status }: { status: SetupHeroStatus }) {
   return (
     <span className="relative flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary ring-8 ring-primary/5">
       <span aria-hidden className="el-hero-orbit absolute inset-0 rounded-full border-2 border-transparent border-t-primary" />
-      <Spinner className="size-7" />
+      <Spinner role="presentation" aria-label={undefined} className="size-7 motion-reduce:animate-none" />
     </span>
   );
 }
@@ -214,7 +222,9 @@ function StepMark({ status, emphasis }: { status: SetupStep["status"]; emphasis:
       />
     );
   }
-  if (status === "running") return <Spinner className="size-3.5 text-primary" />;
+  if (status === "running") {
+    return <Spinner role="presentation" aria-label={undefined} className="size-3.5 text-primary motion-reduce:animate-none" />;
+  }
   if (status === "failed") return <X className="size-3.5 text-destructive" strokeWidth={3} aria-hidden />;
   return <span aria-hidden className="mx-1 size-1.5 rounded-full bg-muted-foreground/50" />;
 }

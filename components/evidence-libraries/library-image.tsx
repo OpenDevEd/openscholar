@@ -18,12 +18,13 @@ export function LibraryImage({
   imageClassName: string;
   fallback: ReactNode;
 }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <>{fallback}</>;
+  // Remember which URL failed, so a replacement favicon still gets its chance.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (failedSrc === src) return <>{fallback}</>;
   return (
     <div className={className}>
       {/* eslint-disable-next-line @next/next/no-img-element -- owner-hosted image, any domain */}
-      <img src={src} alt="" className={imageClassName} data-library-image onError={() => setFailed(true)} />
+      <img src={src} alt="" className={imageClassName} data-library-image onError={() => setFailedSrc(src)} />
     </div>
   );
 }
