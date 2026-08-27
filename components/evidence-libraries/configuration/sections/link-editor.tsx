@@ -1,6 +1,8 @@
 "use client";
 
+import { ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -22,6 +24,7 @@ import { SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
 import { InlineSwitch } from "../fields";
 import { NAV_ICON_GLYPHS } from "../nav-icons";
 import { Field } from "../section-card";
+import { localPickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 
 const NO_ICON = "__none";
 
@@ -34,6 +37,11 @@ function retarget(kind: LinkTarget["kind"], collections: CollectionOption[]): Li
     return { kind: "collection", collectionId: collections[0]?.id ?? "" };
   }
   return { kind: "url", url: "" };
+}
+
+/** The title of the chosen collection, or empty when none is chosen. */
+function chosenTitle(collectionId: string, collections: CollectionOption[]): string {
+  return collections.find((collection) => collection.id === collectionId)?.title ?? "";
 }
 
 /**
@@ -127,28 +135,45 @@ export function LinkEditor({
       {target.kind === "collection" ? (
         <Field label={t("collectionLabel")} error={collectionError}>
           {(id, invalid) => (
-            <Select
-              value={target.collectionId || undefined}
-              disabled={collections.length === 0}
-              onValueChange={(collectionId) =>
-                onChange({ ...link, target: { kind: "collection", collectionId } })
+            <RemotePickerDialog
+              mode="single"
+              value={target.collectionId}
+              onChoose={(row) =>
+                onChange({ ...link, target: { kind: "collection", collectionId: row?.id ?? "" } })
               }
-            >
-              <SelectTrigger
-                id={id}
-                className="w-full bg-background"
-                aria-invalid={invalid || undefined}
-              >
-                <SelectValue placeholder={t("collectionPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {collections.map((collection) => (
-                  <SelectItem key={collection.id} value={collection.id}>
-                    {collection.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              trigger={
+                <Button
+                  id={id}
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  disabled={collections.length === 0}
+                  aria-invalid={invalid || undefined}
+                  className="w-full justify-between bg-background font-normal"
+                >
+                  <span
+                    className={
+                      chosenTitle(target.collectionId, collections)
+                        ? "truncate"
+                        : "truncate text-muted-foreground"
+                    }
+                  >
+                    {chosenTitle(target.collectionId, collections) || t("collectionPlaceholder")}
+                  </span>
+                  <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
+                </Button>
+              }
+              title={t("collectionPicker.title")}
+              description={t("collectionPicker.description")}
+              searchLabel={t("collectionPicker.search")}
+              columns={{ title: t("collectionPicker.colTitle") }}
+              source={localPickerSource(
+                collections.map((collection) => ({ id: collection.id, title: collection.title })),
+              )}
+              emptyLabel={t("collectionPicker.empty")}
+              noMatchLabel={t("collectionPicker.noMatch")}
+              notSetUpLabel={t("collectionPicker.empty")}
+            />
           )}
         </Field>
       ) : null}
