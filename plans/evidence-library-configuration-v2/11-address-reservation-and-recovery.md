@@ -112,6 +112,21 @@ PR B2 — live libraries:
   "Move to a new address" → same re-address operation.
 - Tests: state stored, button runs the operation, disabled while running.
 
+Revised 2026-08-27 while building B2:
+- The pages read the stored `addressState` through a query, not the update
+  check's answer. A GitHub outage makes the software check fail, and the
+  address warning must survive that. `updates.check` writes the row; the row
+  is what the list and the Versions panel show, so a finished move clears the
+  warning by itself.
+- A live library moves by publishing its live revision again at the new
+  address: the binding, the draft and the revision take the address, the
+  operation carries `addressMove`, and the publish pipeline changes the
+  Coolify compose domain first (`setApplicationDomain`, next to the existing
+  `setApplicationCommit`) before the normal deploy and readiness run.
+- Files outside the first write-set, all additions: `operations.ts` gains
+  `queueAddressMoveOperation`, `coolifyClient.ts` gains
+  `setApplicationDomain`. Neither is a function lane A owns.
+
 ## Migration
 
 None. Existing drafts keep their addresses. The public `createSetupDraft`
