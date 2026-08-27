@@ -24,16 +24,6 @@ export const DEFAULT_TAG_RULES: Record<TagRuleKey, string[]> = {
   redirects: ["_redirects"],
 };
 
-// "a, b ,, c" -> ["a", "b", "c"]; repeated tags are kept once.
-export function parseTagList(text: string): string[] {
-  const seen = new Set<string>();
-  for (const part of text.split(",")) {
-    const tag = part.trim();
-    if (tag) seen.add(tag);
-  }
-  return [...seen];
-}
-
 export type TagRuleIssue = "publishEmpty" | "tooMany" | "tooLong";
 
 export function tagRuleIssue(key: TagRuleKey, tags: readonly string[]): TagRuleIssue | null {

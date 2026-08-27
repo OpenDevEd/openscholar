@@ -2109,78 +2109,6 @@
     "hoursAgo": "il y a {count}h",
     "daysAgo": "il y a {count}j"
   },
-  "evidenceLibrarySources": {
-    "account": {
-      "connectedAs": "Connecté en tant que {handle}",
-      "notConnected": "Connectez votre compte Zotero pour ajouter des groupes.",
-      "connect": "Connecter Zotero",
-      "connectFailed": "Impossible de démarrer la connexion Zotero. Réessayez."
-    },
-    "addGroup": "Ajouter un groupe",
-    "add": "Ajouter",
-    "listLabel": "Groupes connectés",
-    "pickerTitle": "Ajouter un groupe Zotero",
-    "pickerDescription": "Les groupes visibles par votre compte Zotero.",
-    "pickerLoading": "Chargement de vos groupes",
-    "pickerFailed": "Impossible de charger vos groupes. Réessayez.",
-    "pickerNoGroups": "Votre compte Zotero n'a aucun groupe.",
-    "pickerAllAdded": "Tous vos groupes sont déjà ajoutés.",
-    "connectFailed": "Impossible de connecter ce groupe.",
-    "reconnected": "{name} utilise maintenant votre clé Zotero.",
-    "removeFailed": "Impossible de retirer ce groupe. Réessayez.",
-    "public": "Public",
-    "private": "Privé",
-    "recordsCount": "{count} notices",
-    "connectedBy": "Connecté par",
-    "health": {
-      "label": "État",
-      "ready": "Prêt",
-      "readOnly": "Lecture seule",
-      "paused": "En pause"
-    },
-    "writeBack": "Réécriture",
-    "writeBackHint": "Renvoyer vers Zotero les modifications faites dans la bibliothèque.",
-    "writeBackUnavailable": "Votre clé Zotero ne peut pas écrire dans ce groupe. Reconnectez-vous et autorisez l'écriture.",
-    "pause": "Pause",
-    "pauseHint": "Arrêter la synchronisation de ce groupe. Les notices déjà importées restent.",
-    "reconnect": "Reconnecter",
-    "remove": "Retirer",
-    "empty": "Aucun groupe pour l'instant. Ajoutez-en un pour commencer à remplir la bibliothèque.",
-    "tagRules": {
-      "title": "Règles de tags avancées",
-      "hint": "Tags Zotero qui changent l'affichage d'une notice. Séparez les tags par des virgules.",
-      "publish": "Publier",
-      "comingSoon": "Bientôt disponible",
-      "internal": "Interne",
-      "hidden": "Masqué",
-      "description": "Description de catégorie",
-      "redirects": "Redirections",
-      "publishEmpty": "Ajoutez au moins un tag de publication.",
-      "tooMany": "Utilisez au plus 10 tags.",
-      "tooLong": "Chaque tag doit faire 128 caractères ou moins."
-    }
-  },
-  "evidenceLibraryCollections": {
-    "add": "Ajouter des collections",
-    "listLabel": "Collections choisies",
-    "pickerTitle": "Ajouter des collections",
-    "pickerDescription": "Les collections de cette bibliothèque.",
-    "search": "Rechercher des collections",
-    "searchPlaceholder": "Tapez pour rechercher",
-    "notSetUp": "Les collections apparaissent une fois la bibliothèque installée et synchronisée.",
-    "loading": "Chargement des collections",
-    "failed": "Impossible de charger les collections. Réessayez.",
-    "empty": "Aucune collection ne correspond.",
-    "loadMore": "Charger plus",
-    "added": "Ajoutée",
-    "recordsCount": "{count} notices",
-    "titleLabel": "Affichée comme",
-    "shown": "Afficher",
-    "moveUp": "Monter",
-    "moveDown": "Descendre",
-    "remove": "Retirer",
-    "emptyList": "Aucune collection choisie. La bibliothèque affiche toutes les collections dans son propre ordre."
-  },
   "evidenceLibraryInstitutions": {
     "picker": {
       "placeholder": "Choisir une institution",
@@ -2565,10 +2493,132 @@
       "legalNone": "The site shows its standard page."
     },
     "collections": {
-      "description": "Which collections the site shows, in what order, and under what title."
+      "description": "Choose which collections from the library's database appear on the site, and in what order.",
+      "shownHeading": "Shown on the site",
+      "introHint": "Collections come from every connected source. Add the ones visitors should see; the order here is the order on the site.",
+      "loading": "Loading collections…",
+      "failed": "Could not load the library's collections.",
+      "tryAgain": "Try again",
+      "notSetUp": "Collections appear after the library is set up and has synced.",
+      "noneInDatabase": "No collections in the database yet. Connect a source and sync first.",
+      "empty": "No collections shown yet.",
+      "records": "{count} records",
+      "titleLabel": "Title on the site",
+      "titleHint": "Leave empty to use the database name.",
+      "remove": "Remove collection",
+      "picker": {
+        "open": "Add collections",
+        "title": "Add collections",
+        "description": "{total} collections in the library database. Tick the ones to show on the site.",
+        "search": "Search by name or source…",
+        "clear": "Clear search",
+        "allSources": "All sources",
+        "hideShown": "Hide collections already shown",
+        "selectAll": "Select all",
+        "colTitle": "Collection",
+        "colSource": "Source",
+        "colRecords": "Records",
+        "noMatch": "No collection matches.",
+        "shown": "Shown",
+        "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
+        "cancel": "Cancel",
+        "addPicked": "{count, plural, =0 {Add} one {Add # collection} other {Add # collections}}",
+        "truncated": "Only the first {total} are listed; search inside the library for the rest."
+      }
     },
     "sources": {
-      "description": "The Zotero groups this library imports records from."
+      "description": "Where the library's records come from.",
+      "accountHeading": "Zotero account",
+      "notConnected": "Not connected",
+      "notConnectedHint": "Sign in once. Your groups then appear in the picker.",
+      "connect": "Sign in with Zotero",
+      "connectedAs": "Connected as {handle}",
+      "connectAccountFailed": "Could not start the Zotero sign-in. Try again.",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect Zotero?",
+      "disconnectBody": "Your Zotero account is disconnected from OpenScholar. Groups already connected keep importing with the key they were given; new groups need you to sign in again.",
+      "disconnectFailed": "Could not disconnect. Try again.",
+      "groupsHeading": "Groups",
+      "addGroups": "Add groups",
+      "pasteLink": "Or paste a group link",
+      "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
+      "pasteAdd": "Add",
+      "pasteInvalid": "That is not a Zotero group link.",
+      "pasteDuplicate": "That group is already added.",
+      "noGroups": "No groups yet.",
+      "connectFirst": "Connect a Zotero account to see your groups.",
+      "connectFailed": "Could not connect this group.",
+      "reconnected": "{name} now uses your Zotero key.",
+      "reconnect": "Reconnect",
+      "removeFailed": "Could not remove this group. Try again.",
+      "public": "Public",
+      "private": "Private",
+      "recordsLabel": "Records",
+      "connectedBy": "Connected by",
+      "groupIdLabel": "Group",
+      "writeback": "Write back",
+      "writebackHint": "Send edits made in the library back to Zotero.",
+      "writebackUnavailable": "Your Zotero key cannot write to this group. Reconnect and allow write access.",
+      "pause": "Pause",
+      "resume": "Resume",
+      "remove": "Remove group",
+      "removeTitle": "Remove this group?",
+      "removeBody": "Records already imported stay in the library. New changes will not be imported.",
+      "removeConfirm": "Remove",
+      "health": {
+        "connected": "Connected",
+        "paused": "Paused"
+      },
+      "advanced": "Advanced",
+      "tagRulesHeading": "Zotero tag rules",
+      "tagRulesIntro": "Tags on a Zotero record change how the library treats it.",
+      "tagPlaceholder": "Add a tag…",
+      "tagRules": {
+        "hidden": {
+          "label": "Hide the record",
+          "hint": "Records with these tags are not shown."
+        },
+        "internal": {
+          "label": "Internal only",
+          "hint": "Shown only to signed-in editors."
+        },
+        "comingSoon": {
+          "label": "Mark as coming soon",
+          "hint": "Shown with a coming-soon label."
+        },
+        "description": {
+          "label": "Use as collection description",
+          "hint": "The record's abstract becomes the collection text."
+        },
+        "redirects": {
+          "label": "Redirect rules",
+          "hint": "Records that redirect to another page."
+        },
+        "publish": {
+          "label": "Publish the PDF",
+          "hint": "Records with these tags publish their PDF."
+        },
+        "issues": {
+          "publishEmpty": "Keep at least one publish tag.",
+          "tooMany": "Use at most 10 tags.",
+          "tooLong": "Each tag must be 128 characters or fewer."
+        }
+      },
+      "picker": {
+        "title": "Add groups",
+        "description": "Groups your Zotero account can see. Tick the ones to import.",
+        "search": "Search groups…",
+        "loading": "Loading your groups…",
+        "failed": "Could not load your groups. Try again.",
+        "noGroups": "Your Zotero account has no groups.",
+        "colGroup": "Group",
+        "colItems": "Records",
+        "added": "Added",
+        "noMatch": "No group matches.",
+        "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
+        "cancel": "Cancel",
+        "addPicked": "{count, plural, =0 {Add} one {Add # group} other {Add # groups}}"
+      }
     },
     "search": {
       "description": "Choose what people can search and which filters they see.",
@@ -2780,7 +2830,7 @@
       "addressMoveBody": "The library takes the next free address. Records and settings stay the same. Anyone using the old address will not reach it.",
       "addressMoveConfirm": "Move now",
       "addressMoveStarted": "Move started",
-      "addressMoveStartedDescription": "Moving to {address}\u2026",
+      "addressMoveStartedDescription": "Moving to {address}…",
       "addressMoveError": "The library could not be moved. Try again.",
       "restoreError": "The version could not be restored. Try again."
     }

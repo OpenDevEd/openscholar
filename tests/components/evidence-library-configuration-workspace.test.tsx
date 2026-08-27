@@ -66,6 +66,7 @@ vi.mock("@/convex/_generated/api", () => ({
     },
     zotero: {
       actions: { startOAuth: "startOAuth" },
+      mutations: { disconnect: "disconnect" },
       queries: { getConnectionStatus: "getConnectionStatus" },
       libraryGroups: { listLibraryZoteroGroups: "listLibraryZoteroGroups", removeZoteroGroup: "removeZoteroGroup" },
       libraryGroupActions: { listMyZoteroGroups: "listMyZoteroGroups", connectZoteroGroup: "connectZoteroGroup" },
@@ -635,8 +636,8 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("shows the Zotero sources and the collections picker inside their cards", async () => {
       await renderWorkspace();
-      expect(card("sources").getByRole("button", { name: "evidenceLibrarySources.account.connect" })).toBeInTheDocument();
-      expect(card("collections").getByRole("button", { name: "evidenceLibraryCollections.add" })).toBeInTheDocument();
+      expect(card("sources").getByRole("button", { name: "sources.connect" })).toBeInTheDocument();
+      expect(await card("collections").findByRole("button", { name: "collections.picker.open" })).toBeInTheDocument();
       expect(card("institutions").getByRole("combobox", { name: "institutions.nameLabel" })).toBeInTheDocument();
     });
   });

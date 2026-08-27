@@ -692,6 +692,81 @@ export function AddButton({ onClick, children, disabled }: { onClick: () => void
   );
 }
 
+/** Tags typed one at a time; Enter, comma or blur adds one, Backspace removes the last. */
+export function ChipInput({
+  label,
+  hint,
+  values,
+  onChange,
+  placeholder,
+  error,
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  values: string[];
+  onChange: (values: string[]) => void;
+  placeholder?: string;
+  error?: ReactNode | null;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration.fields");
+  const [text, setText] = useState("");
+  // Unfinished text belongs to the values it was typed against; a reset or
+  // outside change replaces `values`, so the text is dropped with it.
+  const [typedFor, setTypedFor] = useState(values.join("\0"));
+  const current = values.join("\0");
+  if (typedFor !== current) {
+    setTypedFor(current);
+    if (text) setText("");
+  }
+  function commit() {
+    const v = text.trim();
+    if (v && !values.includes(v)) onChange([...values, v]);
+    setText("");
+  }
+  return (
+    <Field label={label} hint={hint} error={error}>
+      {(id, invalid) => (
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5",
+            invalid && "border-destructive/50",
+          )}
+        >
+          {values.map((v) => (
+            <span key={v} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 font-mono text-xs">
+              {v}
+              <button
+                type="button"
+                aria-label={t("removeChip", { value: v })}
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => onChange(values.filter((x) => x !== v))}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            id={id}
+            value={text}
+            placeholder={placeholder}
+            aria-invalid={invalid || undefined}
+            className="min-w-24 flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === ",") {
+                e.preventDefault();
+                commit();
+              }
+              if (e.key === "Backspace" && !text && values.length) onChange(values.slice(0, -1));
+            }}
+          />
+        </div>
+      )}
+    </Field>
+  );
+}
+
 export function EmptyList({ children }: { children: ReactNode }) {
   return (
     <p className="rounded-lg border border-dashed border-border/60 px-3 py-4 text-center text-sm text-muted-foreground">

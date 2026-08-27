@@ -2109,78 +2109,6 @@
     "hoursAgo": "{count} घंटे पहले",
     "daysAgo": "{count} दिन पहले"
   },
-  "evidenceLibrarySources": {
-    "account": {
-      "connectedAs": "{handle} के रूप में जुड़ा है",
-      "notConnected": "समूह जोड़ने के लिए अपना Zotero खाता जोड़ें।",
-      "connect": "Zotero जोड़ें",
-      "connectFailed": "Zotero कनेक्शन शुरू नहीं हो सका। फिर से कोशिश करें।"
-    },
-    "addGroup": "समूह जोड़ें",
-    "add": "जोड़ें",
-    "listLabel": "जुड़े हुए समूह",
-    "pickerTitle": "Zotero समूह जोड़ें",
-    "pickerDescription": "वे समूह जो आपका Zotero खाता देख सकता है।",
-    "pickerLoading": "आपके समूह लोड हो रहे हैं",
-    "pickerFailed": "आपके समूह लोड नहीं हो सके। फिर से कोशिश करें।",
-    "pickerNoGroups": "आपके Zotero खाते में कोई समूह नहीं है।",
-    "pickerAllAdded": "आपके सभी समूह पहले से जोड़े जा चुके हैं।",
-    "connectFailed": "यह समूह जोड़ा नहीं जा सका।",
-    "reconnected": "{name} अब आपकी Zotero कुंजी का उपयोग करता है।",
-    "removeFailed": "यह समूह हटाया नहीं जा सका। फिर से कोशिश करें।",
-    "public": "सार्वजनिक",
-    "private": "निजी",
-    "recordsCount": "{count} रिकॉर्ड",
-    "connectedBy": "जोड़ने वाला",
-    "health": {
-      "label": "स्थिति",
-      "ready": "तैयार",
-      "readOnly": "केवल पढ़ने योग्य",
-      "paused": "रुका हुआ"
-    },
-    "writeBack": "वापस लिखें",
-    "writeBackHint": "लाइब्रेरी में किए गए बदलाव Zotero में वापस भेजें।",
-    "writeBackUnavailable": "आपकी Zotero कुंजी इस समूह में लिख नहीं सकती। फिर से जोड़ें और लिखने की अनुमति दें।",
-    "pause": "रोकें",
-    "pauseHint": "इस समूह का सिंक रोकें। पहले से आयातित रिकॉर्ड बने रहेंगे।",
-    "reconnect": "फिर से जोड़ें",
-    "remove": "हटाएँ",
-    "empty": "अभी कोई समूह नहीं है। लाइब्रेरी भरना शुरू करने के लिए एक जोड़ें।",
-    "tagRules": {
-      "title": "उन्नत टैग नियम",
-      "hint": "Zotero टैग जो बदलते हैं कि रिकॉर्ड कैसे दिखे। टैग अल्पविराम से अलग करें।",
-      "publish": "प्रकाशित",
-      "comingSoon": "जल्द आ रहा है",
-      "internal": "आंतरिक",
-      "hidden": "छिपा हुआ",
-      "description": "श्रेणी विवरण",
-      "redirects": "रीडायरेक्ट",
-      "publishEmpty": "कम से कम एक प्रकाशन टैग जोड़ें।",
-      "tooMany": "अधिकतम 10 टैग उपयोग करें।",
-      "tooLong": "हर टैग 128 अक्षर या उससे कम होना चाहिए।"
-    }
-  },
-  "evidenceLibraryCollections": {
-    "add": "संग्रह जोड़ें",
-    "listLabel": "चुने गए संग्रह",
-    "pickerTitle": "संग्रह जोड़ें",
-    "pickerDescription": "इस लाइब्रेरी के संग्रह।",
-    "search": "संग्रह खोजें",
-    "searchPlaceholder": "खोजने के लिए टाइप करें",
-    "notSetUp": "लाइब्रेरी सेट अप और सिंक होने के बाद संग्रह दिखेंगे।",
-    "loading": "संग्रह लोड हो रहे हैं",
-    "failed": "संग्रह लोड नहीं हो सके। फिर से कोशिश करें।",
-    "empty": "कोई संग्रह मेल नहीं खाता।",
-    "loadMore": "और लोड करें",
-    "added": "जोड़ा गया",
-    "recordsCount": "{count} रिकॉर्ड",
-    "titleLabel": "इस नाम से दिखाएँ",
-    "shown": "दिखाएँ",
-    "moveUp": "ऊपर ले जाएँ",
-    "moveDown": "नीचे ले जाएँ",
-    "remove": "हटाएँ",
-    "emptyList": "कोई संग्रह नहीं चुना गया। लाइब्रेरी सभी संग्रह अपने क्रम में दिखाती है।"
-  },
   "evidenceLibraryInstitutions": {
     "picker": {
       "placeholder": "एक संस्थान चुनें",
@@ -2565,10 +2493,132 @@
       "legalNone": "The site shows its standard page."
     },
     "collections": {
-      "description": "Which collections the site shows, in what order, and under what title."
+      "description": "Choose which collections from the library's database appear on the site, and in what order.",
+      "shownHeading": "Shown on the site",
+      "introHint": "Collections come from every connected source. Add the ones visitors should see; the order here is the order on the site.",
+      "loading": "Loading collections…",
+      "failed": "Could not load the library's collections.",
+      "tryAgain": "Try again",
+      "notSetUp": "Collections appear after the library is set up and has synced.",
+      "noneInDatabase": "No collections in the database yet. Connect a source and sync first.",
+      "empty": "No collections shown yet.",
+      "records": "{count} records",
+      "titleLabel": "Title on the site",
+      "titleHint": "Leave empty to use the database name.",
+      "remove": "Remove collection",
+      "picker": {
+        "open": "Add collections",
+        "title": "Add collections",
+        "description": "{total} collections in the library database. Tick the ones to show on the site.",
+        "search": "Search by name or source…",
+        "clear": "Clear search",
+        "allSources": "All sources",
+        "hideShown": "Hide collections already shown",
+        "selectAll": "Select all",
+        "colTitle": "Collection",
+        "colSource": "Source",
+        "colRecords": "Records",
+        "noMatch": "No collection matches.",
+        "shown": "Shown",
+        "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
+        "cancel": "Cancel",
+        "addPicked": "{count, plural, =0 {Add} one {Add # collection} other {Add # collections}}",
+        "truncated": "Only the first {total} are listed; search inside the library for the rest."
+      }
     },
     "sources": {
-      "description": "The Zotero groups this library imports records from."
+      "description": "Where the library's records come from.",
+      "accountHeading": "Zotero account",
+      "notConnected": "Not connected",
+      "notConnectedHint": "Sign in once. Your groups then appear in the picker.",
+      "connect": "Sign in with Zotero",
+      "connectedAs": "Connected as {handle}",
+      "connectAccountFailed": "Could not start the Zotero sign-in. Try again.",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect Zotero?",
+      "disconnectBody": "Your Zotero account is disconnected from OpenScholar. Groups already connected keep importing with the key they were given; new groups need you to sign in again.",
+      "disconnectFailed": "Could not disconnect. Try again.",
+      "groupsHeading": "Groups",
+      "addGroups": "Add groups",
+      "pasteLink": "Or paste a group link",
+      "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
+      "pasteAdd": "Add",
+      "pasteInvalid": "That is not a Zotero group link.",
+      "pasteDuplicate": "That group is already added.",
+      "noGroups": "No groups yet.",
+      "connectFirst": "Connect a Zotero account to see your groups.",
+      "connectFailed": "Could not connect this group.",
+      "reconnected": "{name} now uses your Zotero key.",
+      "reconnect": "Reconnect",
+      "removeFailed": "Could not remove this group. Try again.",
+      "public": "Public",
+      "private": "Private",
+      "recordsLabel": "Records",
+      "connectedBy": "Connected by",
+      "groupIdLabel": "Group",
+      "writeback": "Write back",
+      "writebackHint": "Send edits made in the library back to Zotero.",
+      "writebackUnavailable": "Your Zotero key cannot write to this group. Reconnect and allow write access.",
+      "pause": "Pause",
+      "resume": "Resume",
+      "remove": "Remove group",
+      "removeTitle": "Remove this group?",
+      "removeBody": "Records already imported stay in the library. New changes will not be imported.",
+      "removeConfirm": "Remove",
+      "health": {
+        "connected": "Connected",
+        "paused": "Paused"
+      },
+      "advanced": "Advanced",
+      "tagRulesHeading": "Zotero tag rules",
+      "tagRulesIntro": "Tags on a Zotero record change how the library treats it.",
+      "tagPlaceholder": "Add a tag…",
+      "tagRules": {
+        "hidden": {
+          "label": "Hide the record",
+          "hint": "Records with these tags are not shown."
+        },
+        "internal": {
+          "label": "Internal only",
+          "hint": "Shown only to signed-in editors."
+        },
+        "comingSoon": {
+          "label": "Mark as coming soon",
+          "hint": "Shown with a coming-soon label."
+        },
+        "description": {
+          "label": "Use as collection description",
+          "hint": "The record's abstract becomes the collection text."
+        },
+        "redirects": {
+          "label": "Redirect rules",
+          "hint": "Records that redirect to another page."
+        },
+        "publish": {
+          "label": "Publish the PDF",
+          "hint": "Records with these tags publish their PDF."
+        },
+        "issues": {
+          "publishEmpty": "Keep at least one publish tag.",
+          "tooMany": "Use at most 10 tags.",
+          "tooLong": "Each tag must be 128 characters or fewer."
+        }
+      },
+      "picker": {
+        "title": "Add groups",
+        "description": "Groups your Zotero account can see. Tick the ones to import.",
+        "search": "Search groups…",
+        "loading": "Loading your groups…",
+        "failed": "Could not load your groups. Try again.",
+        "noGroups": "Your Zotero account has no groups.",
+        "colGroup": "Group",
+        "colItems": "Records",
+        "added": "Added",
+        "noMatch": "No group matches.",
+        "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
+        "cancel": "Cancel",
+        "addPicked": "{count, plural, =0 {Add} one {Add # group} other {Add # groups}}"
+      }
     },
     "search": {
       "description": "Choose what people can search and which filters they see.",
@@ -2780,7 +2830,7 @@
       "addressMoveBody": "The library takes the next free address. Records and settings stay the same. Anyone using the old address will not reach it.",
       "addressMoveConfirm": "Move now",
       "addressMoveStarted": "Move started",
-      "addressMoveStartedDescription": "Moving to {address}\u2026",
+      "addressMoveStartedDescription": "Moving to {address}…",
       "addressMoveError": "The library could not be moved. Try again.",
       "restoreError": "The version could not be restored. Try again."
     }

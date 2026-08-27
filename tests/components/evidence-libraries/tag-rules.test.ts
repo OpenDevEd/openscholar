@@ -1,18 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  parseTagList,
+
   tagRuleIssue,
 } from "@/components/evidence-libraries/configuration/sections/tag-rules";
-
-describe("parseTagList", () => {
-  it("splits on commas, trims, drops blanks and repeats", () => {
-    expect(parseTagList(" _publish, publishPDF ,, publishPDF ")).toEqual([
-      "_publish",
-      "publishPDF",
-    ]);
-    expect(parseTagList("")).toEqual([]);
-  });
-});
 
 describe("tagRuleIssue", () => {
   it("requires at least one publish tag and caps the others", () => {
