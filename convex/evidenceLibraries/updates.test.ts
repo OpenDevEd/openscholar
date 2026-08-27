@@ -316,7 +316,7 @@ describe("Evidence Library address notices", () => {
     vi.unstubAllEnvs();
   });
 
-  it("reports the new address of a library that was moved while setting up", async () => {
+  it("reports the old address of a library that was moved while setting up", async () => {
     const fixture = await createDeployedSetupFixture("address-notice");
     const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
 
@@ -337,7 +337,12 @@ describe("Evidence Library address notices", () => {
 
     await expect(
       fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([{ libraryId: fixture.created.libraryId, movedTo }]);
+    ).resolves.toEqual([
+      {
+        libraryId: fixture.created.libraryId,
+        movedFrom: fixture.created.publicAddress,
+      },
+    ]);
   });
 
   it("says nothing once the library is live at its address", async () => {

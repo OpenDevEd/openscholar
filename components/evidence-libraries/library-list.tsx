@@ -53,7 +53,7 @@ export function LibraryList() {
   const movedAddresses = new Map(
     (addressNotices.data ?? []).map((notice) => [
       notice.libraryId,
-      notice.movedTo,
+      notice.movedFrom,
     ]),
   );
 
@@ -105,7 +105,7 @@ export function LibraryList() {
               key={library._id}
               library={library}
               isOwner={isOwner}
-              movedTo={movedAddresses.get(library._id) ?? null}
+              movedFrom={movedAddresses.get(library._id) ?? null}
               onDelete={() => setDeleteTarget(library)}
             />
           ))}
@@ -160,13 +160,13 @@ function OrganisationPill({ name }: { name: string }) {
 function LibraryRow({
   library,
   isOwner,
-  movedTo,
+  movedFrom,
   onDelete,
 }: {
   library: Overview;
   isOwner: boolean;
-  /** The address the platform moved this library to while it sets up. */
-  movedTo: string | null;
+  /** The address this library was moved away from while it sets up. */
+  movedFrom: string | null;
   onDelete: () => void;
 }) {
   const t = useTranslations("evidenceLibraries.list");
@@ -198,13 +198,13 @@ function LibraryRow({
         }
       : { key: "activated", value: t("neverActivated") },
   ];
-  if (movedTo) {
+  if (movedFrom) {
     meta.push({
       key: "moved",
-      label: t("movedToLabel"),
+      label: t("movedFromLabel"),
       value: (
-        <span className="font-mono" data-moved-to={movedTo}>
-          {movedTo.replace(/^https?:\/\//, "")}
+        <span className="font-mono" data-moved-from={movedFrom}>
+          {movedFrom.replace(/^https?:\/\//, "")}
         </span>
       ),
     });
