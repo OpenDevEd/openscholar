@@ -232,7 +232,8 @@ export const readServedHostsCache = internalQuery({
     v.object({ hosts: v.array(v.string()), fetchedAt: v.number() }),
   ),
   handler: async (ctx) => {
-    await requireOrganizationAccess(ctx, "manage");
+    // Internal only, and the same for everybody: the hosts Coolify serves.
+    // Address recovery reads it with no signed-in owner behind the request.
     const row = await ctx.db
       .query("evidenceLibraryServedHosts")
       .withIndex("by_source", (query) => query.eq("source", "coolify"))

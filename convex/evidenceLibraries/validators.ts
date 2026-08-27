@@ -509,12 +509,25 @@ export const evidenceLibraryRuntimeUpdateValidator = v.object({
   to: v.string(),
 });
 
+// Where the platform sent a library after another site answered its address.
+// `from` is the address it started on, `to` the one it runs on now.
+export const evidenceLibraryAddressMoveValidator = v.object({
+  from: v.string(),
+  to: v.string(),
+  movedAt: v.number(),
+  count: v.number(),
+  // Whether the records already carry `to`. Setup writes them straight away
+  // and reconciles Coolify right after.
+  applied: v.boolean(),
+});
+
 export const evidenceLibraryOperationFields = {
   libraryId: v.id("evidenceLibraries"),
   kind: evidenceLibraryOperationKindValidator,
   idempotencyKey: v.string(),
   activationEditVersion: v.optional(v.number()),
   runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
+  addressMove: v.optional(evidenceLibraryAddressMoveValidator),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
   setupAttemptToken: v.optional(v.string()),

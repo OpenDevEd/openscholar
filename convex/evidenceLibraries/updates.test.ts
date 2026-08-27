@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createDeployedSetupFixture,
+  createReadySetupFixture,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 import {
   fetchRuntimeRelease,
   isFreshRuntimeRelease,
@@ -301,5 +304,64 @@ describe("Evidence Library update check", () => {
       ctx.db.query("evidenceLibraryRuntimeReleases").collect(),
     );
     expect(rows).toHaveLength(1);
+  });
+});
+
+describe("Evidence Library address notices", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("reports the old address of a library that was moved while setting up", async () => {
+    const fixture = await createDeployedSetupFixture("address-notice");
+    const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
+
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
+    ).resolves.toEqual([]);
+
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.setupOperationId, {
+        addressMove: {
+          from: fixture.created.publicAddress,
+          to: movedTo,
+          movedAt: Date.now(),
+          count: 1,
+          applied: true,
+        },
+      });
+    });
+
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
+    ).resolves.toEqual([
+      {
+        libraryId: fixture.created.libraryId,
+        movedFrom: fixture.created.publicAddress,
+      },
+    ]);
+  });
+
+  it("says nothing once the library is live at its address", async () => {
+    const fixture = await createReadySetupFixture("address-notice-live");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.setupOperationId, {
+        addressMove: {
+          from: fixture.created.publicAddress,
+          to: "https://climate-evidence-2-lib.libraries.example.test",
+          movedAt: Date.now(),
+          count: 1,
+          applied: true,
+        },
+      });
+    });
+
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
+    ).resolves.toEqual([]);
   });
 });

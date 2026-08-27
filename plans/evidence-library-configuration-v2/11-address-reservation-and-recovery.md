@@ -87,9 +87,22 @@ PR B1 — detect and re-address at deploy:
   candidate rules (until A1 merges, use the database rule; then rebase and
   call the shared check), update the runtime binding `targetBaseUrl`, the
   identity `baseUrl`, the Coolify compose domain, redeploy, re-run
-  readiness. Record the old and new address on the operation; toast and list
-  show "Moved to <new address>".
+  readiness. Record the old and new address on the operation.
 - Tests with the fake Coolify and a fake host prober.
+
+Revised 2026-08-27 while building B1:
+- The move happens on the server while nobody clicked anything, so there is
+  no action to fire a toast from and an effect that watches the query is
+  banned. The list row carries the fact instead: "Moved to <new address>",
+  shown while the library is still setting up. The toast belongs to the
+  manual move in B2, where a click starts it.
+- New files, so lanes A and C keep their write-sets: candidate walk and the
+  move itself in `convex/evidenceLibraries/addressRecovery.ts`, the list
+  query in `convex/evidenceLibraries/updates.ts`, and a development-only
+  seeding mutation in `convex/testing/evidenceLibraryAddresses.ts` (no test
+  deployment can make a real host answer as another site).
+- `queries.ts` stays lane A's: the list reads the notice from a second query
+  in `updates.ts` instead of a new field on the overview.
 
 PR B2 — live libraries:
 - The existing update check (`updates.ts`) also runs the ownership check per

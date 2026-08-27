@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { requireLibraryRuntimeReady } from "./readinessClient";
+import {
+  classifyEvidenceLibraryAddress,
+  probeEvidenceLibraryAddress,
+  requireLibraryRuntimeReady,
+} from "./readinessClient";
 
 const APPLICATION_UUID = "a1b2c3d4e5f6g7h8i9j0k1l2";
 const RUNTIME_COMMIT = "a".repeat(40);
@@ -133,6 +137,54 @@ describe("Evidence Library readiness client", () => {
     });
   });
 
+  it("reports an address served by another site instead of waiting", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      if (String(request).includes("runtime-verifier")) {
+        return json(readyVerifierBody());
+      }
+      return new Response("<!doctype html><title>Another site</title>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    });
+
+    await expect(
+      requireLibraryRuntimeReady(input(fetchImpl)),
+    ).rejects.toMatchObject({
+      code: "ADDRESS_NOT_OURS",
+      message: "Another site answers this Evidence Library address",
+    });
+  });
+
+  it("treats a redirect away from the address as another site", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      if (String(request).includes("runtime-verifier")) {
+        return json(readyVerifierBody());
+      }
+      return new Response(null, {
+        status: 307,
+        headers: { location: "https://docs.example.test/" },
+      });
+    });
+
+    await expect(
+      requireLibraryRuntimeReady(input(fetchImpl)),
+    ).rejects.toMatchObject({ code: "ADDRESS_NOT_OURS" });
+  });
+
+  it("keeps waiting while the proxy has no server for the address", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      if (String(request).includes("runtime-verifier")) {
+        return json(readyVerifierBody());
+      }
+      return new Response("no available server", { status: 503 });
+    });
+
+    await expect(
+      requireLibraryRuntimeReady(input(fetchImpl)),
+    ).rejects.toMatchObject({ code: "CONFIG_NOT_READY" });
+  });
+
   it("stops a readiness request after the fixed timeout", async () => {
     vi.useFakeTimers();
     const fetchImpl = vi.fn<typeof fetch>(
@@ -150,5 +202,90 @@ describe("Evidence Library readiness client", () => {
     });
     await vi.advanceTimersByTimeAsync(15_000);
     await result;
+  });
+});
+
+describe("Evidence Library address ownership", () => {
+  it("reads our own health answer as ours and keeps the revision", () => {
+    expect(
+      classifyEvidenceLibraryAddress({
+        kind: "answer",
+        status: 200,
+        body: JSON.stringify(activeHealth()),
+      }),
+    ).toEqual({ state: "ours", revision: REVISION, activeAndAccepted: true });
+  });
+
+  it("still reads our health answer as ours while it rejects a revision", () => {
+    expect(
+      classifyEvidenceLibraryAddress({
+        kind: "answer",
+        status: 200,
+        body: JSON.stringify({
+          state: "rejected",
+          active: null,
+          rejected: { revision: "revision-8", reason: "invalid" },
+        }),
+      }),
+    ).toEqual({ state: "ours", revision: null, activeAndAccepted: false });
+  });
+
+  it("reads the free-address signal as nothing serving the host yet", () => {
+    expect(
+      classifyEvidenceLibraryAddress({
+        kind: "answer",
+        status: 503,
+        body: "no available server",
+      }),
+    ).toMatchObject({ state: "unreachable" });
+  });
+
+  it("reads a network failure as unreachable", () => {
+    expect(classifyEvidenceLibraryAddress({ kind: "unreachable" })).toMatchObject(
+      { state: "unreachable" },
+    );
+  });
+
+  it.each([
+    ["a page from another site", 200, "<!doctype html><html></html>"],
+    ["another API answering JSON", 200, JSON.stringify({ ok: true })],
+    ["a redirect", 307, ""],
+    ["another site's not-found page", 404, "Not found"],
+    ["another server's error page", 502, "Bad gateway"],
+  ])("reads %s as not ours", (_label, status, body) => {
+    expect(
+      classifyEvidenceLibraryAddress({ kind: "answer", status, body }),
+    ).toMatchObject({ state: "not-ours" });
+  });
+
+  it("probes the health route of a live library address", async () => {
+    const requests: string[] = [];
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      requests.push(String(request));
+      return json(activeHealth("revision-12"));
+    });
+
+    expect(
+      await probeEvidenceLibraryAddress({
+        targetBaseUrl: "https://climate.libraries.example.test",
+        fetchImpl,
+      }),
+    ).toMatchObject({ state: "ours", revision: "revision-12" });
+    expect(requests).toEqual([
+      "https://climate.libraries.example.test/api/library-config/health",
+    ]);
+  });
+
+  it("probes an unreachable address without throwing", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      throw new Error("connect ECONNREFUSED");
+    });
+
+    expect(
+      await probeEvidenceLibraryAddress({
+        targetBaseUrl: "https://gone.libraries.example.test",
+        fetchImpl,
+      }),
+    ).toMatchObject({ state: "unreachable" });
   });
 });

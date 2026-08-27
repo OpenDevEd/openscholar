@@ -2811,6 +2811,7 @@
       "neverActivated": "Never activated",
       "failedAtLabel": "Failed at",
       "currentStepLabel": "Step",
+      "movedFromLabel": "Moved from",
       "continueSetup": "Continue setup",
       "viewProgress": "View progress",
       "configure": "Configure",

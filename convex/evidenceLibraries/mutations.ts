@@ -622,7 +622,8 @@ export const writeServedHostsCache = internalMutation({
   args: { hosts: v.array(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireOrganizationAccess(ctx, "manage");
+    // Internal only, and the same for everybody: address recovery writes it
+    // with no signed-in owner behind the request.
     const fields = {
       source: "coolify" as const,
       hosts: args.hosts,

@@ -29,6 +29,19 @@ export function isRetryableReadinessError(
   );
 }
 
+// Something other than this library answers the address. Waiting will not fix
+// it, so the platform moves the library to a free address instead.
+export const ADDRESS_NOT_OURS_CODE = "ADDRESS_NOT_OURS";
+
+export function isAddressNotOursError(
+  error: unknown,
+): error is ReadinessClientError {
+  return (
+    error instanceof ReadinessClientError &&
+    error.code === ADDRESS_NOT_OURS_CODE
+  );
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -109,7 +122,10 @@ async function fetchWithTimeout(
   }
 }
 
-async function readBoundedJson(response: Response): Promise<unknown> {
+async function readBoundedText(
+  response: Response,
+  { allowEmpty = false } = {},
+): Promise<string> {
   const declaredLength = Number(response.headers.get("content-length"));
   if (
     Number.isFinite(declaredLength) &&
@@ -122,6 +138,7 @@ async function readBoundedJson(response: Response): Promise<unknown> {
   }
   const reader = response.body?.getReader();
   if (!reader) {
+    if (allowEmpty) return "";
     throw new ReadinessClientError(
       "READINESS_INVALID_RESPONSE",
       "A readiness service returned an empty response",
@@ -142,9 +159,18 @@ async function readBoundedJson(response: Response): Promise<unknown> {
     }
     chunks.push(value);
   }
-  const serialized = new TextDecoder("utf-8", { fatal: true }).decode(
-    Buffer.concat(chunks),
-  );
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(
+      Buffer.concat(chunks),
+    );
+  } catch {
+    // Bytes that are not text cannot be our JSON answer.
+    return "";
+  }
+}
+
+async function readBoundedJson(response: Response): Promise<unknown> {
+  const serialized = await readBoundedText(response);
   try {
     return JSON.parse(serialized);
   } catch {
@@ -153,6 +179,108 @@ async function readBoundedJson(response: Response): Promise<unknown> {
       "A readiness service returned invalid JSON",
     );
   }
+}
+
+// Our proxy answers this when no container serves the host yet.
+const FREE_ADDRESS_SIGNAL = "no available server";
+
+export type EvidenceLibraryAddressState = "ours" | "not-ours" | "unreachable";
+
+export type EvidenceLibraryAddressProbe =
+  | { kind: "unreachable" }
+  | { kind: "answer"; status: number; body: string };
+
+export type EvidenceLibraryAddressAnswer = {
+  /** Whose site answers this address. */
+  state: EvidenceLibraryAddressState;
+  /** The configuration revision the library reports, when it is ours. */
+  revision: string | null;
+  /** The library answered with an accepted, active configuration. */
+  activeAndAccepted: boolean;
+};
+
+const UNREACHABLE_ADDRESS: EvidenceLibraryAddressAnswer = {
+  state: "unreachable",
+  revision: null,
+  activeAndAccepted: false,
+};
+
+/**
+ * Reads one answer from `/api/library-config/health`. Only our own health
+ * answer counts as ours. Nothing serving the host yet stays "unreachable";
+ * any other answer means another site holds the address.
+ */
+export function classifyEvidenceLibraryAddress(
+  probe: EvidenceLibraryAddressProbe,
+): EvidenceLibraryAddressAnswer {
+  if (probe.kind === "unreachable") return UNREACHABLE_ADDRESS;
+  if (
+    probe.status === 503 &&
+    probe.body.trimStart().toLowerCase().startsWith(FREE_ADDRESS_SIGNAL)
+  ) {
+    return UNREACHABLE_ADDRESS;
+  }
+  if (probe.status !== 200) {
+    return { state: "not-ours", revision: null, activeAndAccepted: false };
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(probe.body);
+  } catch {
+    return { state: "not-ours", revision: null, activeAndAccepted: false };
+  }
+  if (
+    !isRecord(body) ||
+    typeof body.state !== "string" ||
+    !("active" in body) ||
+    !("rejected" in body)
+  ) {
+    return { state: "not-ours", revision: null, activeAndAccepted: false };
+  }
+  const active = isRecord(body.active) ? body.active : null;
+  const revision =
+    typeof active?.revision === "string" ? active.revision : null;
+  return {
+    state: "ours",
+    revision,
+    activeAndAccepted:
+      body.state === "active" && body.rejected === null && revision !== null,
+  };
+}
+
+/** Asks one address who serves it. Never throws; a failure is "unreachable". */
+export async function probeEvidenceLibraryAddress(input: {
+  targetBaseUrl: string;
+  fetchImpl?: typeof fetch;
+}): Promise<EvidenceLibraryAddressAnswer> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  let origin: URL;
+  try {
+    origin = requireHttpsOrigin("Evidence Library URL", input.targetBaseUrl);
+  } catch {
+    return UNREACHABLE_ADDRESS;
+  }
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      fetchImpl,
+      new URL("/api/library-config/health", origin),
+      { headers: { accept: "application/json" }, method: "GET" },
+    );
+  } catch {
+    return UNREACHABLE_ADDRESS;
+  }
+  let body: string;
+  try {
+    body = await readBoundedText(response, { allowEmpty: true });
+  } catch {
+    return UNREACHABLE_ADDRESS;
+  }
+  return classifyEvidenceLibraryAddress({
+    kind: "answer",
+    status: response.status,
+    body,
+  });
 }
 
 async function requireVerifierReady(
@@ -198,30 +326,33 @@ async function requireVerifierReady(
   }
 }
 
+/**
+ * The address must answer as this library. The Coolify application is already
+ * running by the time this runs, so an answer from anything else means the
+ * address belongs to another site and the library has to move.
+ */
 async function requireActiveRevision(
   fetchImpl: typeof fetch,
   targetOrigin: URL,
   revisionKey: string,
 ) {
-  const response = await fetchWithTimeout(
+  const address = await probeEvidenceLibraryAddress({
+    targetBaseUrl: targetOrigin.origin,
     fetchImpl,
-    new URL("/api/library-config/health", targetOrigin),
-    { headers: { accept: "application/json" }, method: "GET" },
-  );
-  if (response.status !== 200) {
+  });
+  if (address.state === "not-ours") {
+    throw new ReadinessClientError(
+      ADDRESS_NOT_OURS_CODE,
+      "Another site answers this Evidence Library address",
+    );
+  }
+  if (address.state === "unreachable") {
     throw new ReadinessClientError(
       "CONFIG_NOT_READY",
       "The Evidence Library configuration is not active",
     );
   }
-  const body = await readBoundedJson(response);
-  if (
-    !isRecord(body) ||
-    body.state !== "active" ||
-    body.rejected !== null ||
-    !isRecord(body.active) ||
-    body.active.revision !== revisionKey
-  ) {
+  if (!address.activeAndAccepted || address.revision !== revisionKey) {
     throw new ReadinessClientError(
       "CONFIG_NOT_READY",
       "The Evidence Library has not activated the requested revision",

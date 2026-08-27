@@ -53,6 +53,7 @@ import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
 import type * as evidenceLibraries_addressActions from "../evidenceLibraries/addressActions.js";
+import type * as evidenceLibraries_addressRecovery from "../evidenceLibraries/addressRecovery.js";
 import type * as evidenceLibraries_adminLoginCodeActions from "../evidenceLibraries/adminLoginCodeActions.js";
 import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/adminLoginCodes.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
@@ -218,6 +219,7 @@ import type * as subscriptions_lib_selectCanonicalSubscription from "../subscrip
 import type * as subscriptions_lib_stripeStatus from "../subscriptions/lib/stripeStatus.js";
 import type * as subscriptions_queries from "../subscriptions/queries.js";
 import type * as testing_billing from "../testing/billing.js";
+import type * as testing_evidenceLibraryAddresses from "../testing/evidenceLibraryAddresses.js";
 import type * as userAiConfig_mutations from "../userAiConfig/mutations.js";
 import type * as userAiConfig_queries from "../userAiConfig/queries.js";
 import type * as users_internal from "../users/internal.js";
@@ -307,6 +309,7 @@ declare const fullApi: ApiFromModules<{
   debug_papers: typeof debug_papers;
   "evidenceLibraries/access": typeof evidenceLibraries_access;
   "evidenceLibraries/addressActions": typeof evidenceLibraries_addressActions;
+  "evidenceLibraries/addressRecovery": typeof evidenceLibraries_addressRecovery;
   "evidenceLibraries/adminLoginCodeActions": typeof evidenceLibraries_adminLoginCodeActions;
   "evidenceLibraries/adminLoginCodes": typeof evidenceLibraries_adminLoginCodes;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
@@ -472,6 +475,7 @@ declare const fullApi: ApiFromModules<{
   "subscriptions/lib/stripeStatus": typeof subscriptions_lib_stripeStatus;
   "subscriptions/queries": typeof subscriptions_queries;
   "testing/billing": typeof testing_billing;
+  "testing/evidenceLibraryAddresses": typeof testing_evidenceLibraryAddresses;
   "userAiConfig/mutations": typeof userAiConfig_mutations;
   "userAiConfig/queries": typeof userAiConfig_queries;
   "users/internal": typeof users_internal;

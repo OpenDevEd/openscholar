@@ -146,6 +146,27 @@ async function readServedHosts(ctx: ActionCtx): Promise<Set<string>> {
   return hosts;
 }
 
+/**
+ * The first candidate nothing else holds: not served by Coolify and not
+ * answering on the host itself. Returns null when every candidate is taken.
+ * Throws when a check could not run, so nothing is ever taken blindly.
+ * Shared by the new-library page and by address recovery.
+ */
+export async function findFreeEvidenceLibraryAddress(
+  ctx: ActionCtx,
+  candidates: readonly { publicAddress: string; slug: string }[],
+): Promise<{ publicAddress: string; slug: string } | null> {
+  const servedHosts = await readServedHosts(ctx);
+  for (const candidate of candidates) {
+    const host = new URL(candidate.publicAddress).hostname.toLowerCase();
+    if (servedHosts.has(host)) continue;
+    if ((await probeAddress(candidate.publicAddress)) === "free") {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 async function checkEvidenceLibraryAddress(
   ctx: ActionCtx,
   args: { name: string },
@@ -156,25 +177,20 @@ async function checkEvidenceLibraryAddress(
   );
   if (state.status === "name-taken") return state;
 
+  let free: { publicAddress: string; slug: string } | null;
   try {
-    const servedHosts = await readServedHosts(ctx);
-
-    for (const candidate of state.candidates) {
-      const host = new URL(candidate.publicAddress).hostname.toLowerCase();
-      if (servedHosts.has(host)) continue;
-      const probe = await probeAddress(candidate.publicAddress);
-      if (probe === "free") {
-        return {
-          status: "available",
-          name: state.name,
-          publicAddress: candidate.publicAddress,
-          shortName: state.shortName,
-          slug: candidate.slug,
-        };
-      }
-    }
+    free = await findFreeEvidenceLibraryAddress(ctx, state.candidates);
   } catch {
     return { status: "unavailable", reason: "check-failed" };
+  }
+  if (free) {
+    return {
+      status: "available",
+      name: state.name,
+      publicAddress: free.publicAddress,
+      shortName: state.shortName,
+      slug: free.slug,
+    };
   }
 
   return { status: "unavailable", reason: "no-address" };

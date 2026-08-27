@@ -190,3 +190,216 @@ describe("Evidence Library readiness completion", () => {
     ).resolves.toEqual({ status: "succeeded" });
   });
 });
+
+describe("Evidence Library address recovery during setup", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+    vi.stubEnv("EL_COOLIFY_URL", "http://coolify:8080");
+    vi.stubEnv("EL_COOLIFY_TOKEN", "coolify-token");
+    vi.stubEnv("EL_RUNTIME_VERIFIER_URL", "https://verifier.example.test");
+    vi.stubEnv("EL_RUNTIME_VERIFIER_TOKEN", "verifier-token");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  /** A deployed library whose public address answers as some other website. */
+  async function createHijackedAddressFixture(suffix: string) {
+    const fixture = await createDeployedSetupFixture(suffix);
+    const applicationId = "app000000000000000000009";
+    await fixture.t.run(async (ctx) => {
+      const operation = await ctx.db.get(fixture.created.setupOperationId);
+      const binding = await ctx.db.get(fixture.created.runtimeBindingId);
+      if (
+        !operation?.setupReceipts?.application ||
+        !operation.setupReceipts.deployment ||
+        !binding
+      ) {
+        throw new Error("Deployment receipts are missing");
+      }
+      await ctx.db.patch(operation._id, {
+        setupReceipts: {
+          ...operation.setupReceipts,
+          application: {
+            ...operation.setupReceipts.application,
+            applicationId,
+          },
+          deployment: {
+            ...operation.setupReceipts.deployment,
+            applicationId,
+          },
+        },
+      });
+      await ctx.db.patch(binding._id, { targetRuntimeId: applicationId });
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (request) => {
+        const url = new URL(String(request));
+        if (url.origin === "http://coolify:8080") {
+          // Coolify serves nothing else, so only the host answers decide.
+          if (
+            url.pathname === "/api/v1/applications" ||
+            url.pathname === "/api/v1/services"
+          ) {
+            return new Response("[]", {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+          }
+          return new Response(
+            JSON.stringify({
+              deployment_uuid: fixture.deploymentId,
+              commit: "a".repeat(40),
+              configuration_hash: "d".repeat(64),
+              status: "finished",
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        // Every numbered address is free: the proxy has no server there.
+        if (
+          url.origin !== "https://verifier.example.test" &&
+          url.hostname !== new URL(fixture.created.publicAddress).hostname
+        ) {
+          return new Response("no available server", { status: 503 });
+        }
+        if (url.origin === "https://verifier.example.test") {
+          return new Response(
+            JSON.stringify({
+              applicationUuid: applicationId,
+              commit: "a".repeat(40),
+              ready: true,
+              services: [
+                "web",
+                "search-indexer",
+                "source-sync",
+                "source-writeback",
+                "publication-worker",
+                "meilisearch",
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        // The address is served by a different website.
+        return new Response("<!doctype html><title>Other site</title>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        });
+      }),
+    );
+    return {
+      ...fixture,
+      args: {
+        libraryId: fixture.created.libraryId,
+        operationId: fixture.created.setupOperationId,
+        attemptToken: fixture.attemptToken,
+        attemptCount: fixture.attemptCount,
+      },
+    };
+  }
+
+  it("moves the library to the next free address and starts Coolify again", async () => {
+    const fixture = await createHijackedAddressFixture("address-move");
+    const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
+
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.readinessSetupActions.runReadinessSetup,
+        fixture.args,
+      ),
+    ).resolves.toEqual({ movedTo, status: "moving" });
+
+    const saved = await fixture.t.run(async (ctx) => {
+      const operation = await ctx.db.get(fixture.created.setupOperationId);
+      const binding = await ctx.db.get(fixture.created.runtimeBindingId);
+      const revisionIdentity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", fixture.activated.revisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      const draftIdentity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query
+            .eq("draftId", fixture.created.draftId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      return { binding, draftIdentity, operation, revisionIdentity };
+    });
+    expect(saved.binding).toMatchObject({ targetBaseUrl: movedTo });
+    expect(saved.operation).toMatchObject({
+      stage: "application",
+      status: "running",
+      addressMove: {
+        from: fixture.created.publicAddress,
+        to: movedTo,
+        count: 1,
+      },
+    });
+    expect(saved.revisionIdentity?.payload).toMatchObject({ baseUrl: movedTo });
+    expect(saved.draftIdentity?.payload).toMatchObject({ baseUrl: movedTo });
+  });
+
+  it("keeps the name and only numbers the address", async () => {
+    const fixture = await createHijackedAddressFixture("address-name");
+    await fixture.t.action(
+      internal.evidenceLibraries.readinessSetupActions.runReadinessSetup,
+      fixture.args,
+    );
+    const identity = await fixture.t.run(async (ctx) => {
+      const section = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query
+            .eq("draftId", fixture.created.draftId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      return section?.payload as { name: string; shortName: string };
+    });
+    expect(identity).toMatchObject({
+      name: "Climate Evidence",
+      shortName: "Climate",
+    });
+  });
+
+  it("stops moving and fails after three moves", async () => {
+    const fixture = await createHijackedAddressFixture("address-limit");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.setupOperationId, {
+        addressMove: {
+          from: fixture.created.publicAddress,
+          to: fixture.created.publicAddress,
+          movedAt: Date.now(),
+          count: 3,
+          applied: true,
+        },
+      });
+    });
+
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.readinessSetupActions.runReadinessSetup,
+        fixture.args,
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.setupOperationId),
+    );
+    expect(operation).toMatchObject({
+      status: "failed",
+      error: {
+        code: "ADDRESS_NOT_OURS",
+        message: "Another site answers this Evidence Library address",
+      },
+    });
+  });
+});
