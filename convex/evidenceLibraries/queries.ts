@@ -8,6 +8,7 @@ import { type Infer, v } from "convex/values";
 import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import { createError } from "../lib/errors";
 import {
+  parseOrganizationClaims,
   requireEvidenceLibraryAccess,
   requireOrganizationAccess,
 } from "./access";
@@ -169,6 +170,49 @@ async function readLibraryOverview(
       typeof themeColors?.accent === "string" ? themeColors.accent : null,
   };
 }
+
+/**
+ * Whether the active organisation may use the Evidence Library owner pages.
+ * The sidebar renders on every page and the pages render before anyone picks
+ * an organisation, so this never throws: no sign-in, no active organisation,
+ * or no membership all answer "off".
+ */
+export const getEvidenceLibrariesAccess = query({
+  args: {},
+  returns: v.object({ enabled: v.boolean() }),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const claims = parseOrganizationClaims(identity);
+    if (!identity || !claims || typeof identity.subject !== "string") {
+      return { enabled: false };
+    }
+
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("by_clerkOrganizationId", (query) =>
+        query.eq("clerkOrganizationId", claims.organizationId),
+      )
+      .unique();
+    if (!organization || organization.state !== "active") {
+      return { enabled: false };
+    }
+
+    const memberships = await ctx.db
+      .query("organizationMemberships")
+      .withIndex("by_organizationId_and_clerkUserId_and_state", (query) =>
+        query
+          .eq("organizationId", organization._id)
+          .eq("clerkUserId", identity.subject)
+          .eq("state", "active"),
+      )
+      .take(2);
+    if (memberships.length !== 1) {
+      return { enabled: false };
+    }
+
+    return { enabled: organization.evidenceLibrariesEnabled === true };
+  },
+});
 
 export const listLibraryOverviews = query({
   args: {},
