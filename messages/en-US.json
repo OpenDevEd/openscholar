@@ -2868,7 +2868,8 @@
       "reservedToast": "Address reserved",
       "reservedToastDescription": "{address} is yours.",
       "nameTaken": "You already have a library named {name}.",
-      "checkFailed": "Could not check the address. Try again."
+      "checkFailed": "Could not check the address. Try again.",
+      "addressTaken": "Someone reserved this address just now. Check again."
     },
     "setup": {
       "backToLibraries": "Back to libraries",

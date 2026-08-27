@@ -104,8 +104,7 @@ export function createEvidenceLibraryPublicAddress(
 }
 
 // The address a name gets at a given position. Position 1 has no number
-// suffix. The server walks positions until one is free; the new-library form
-// shows position 1 instantly and swaps in the server answer if it differs.
+// suffix. The server walks positions until it finds one nothing else holds.
 export function createEvidenceLibraryAddressCandidate(
   name: string,
   platformDomain: string,

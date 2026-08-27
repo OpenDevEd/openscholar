@@ -99,6 +99,10 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
           toast.error(t("nameTaken", { name: trimmed }));
           return;
         }
+        if (result.status === "address-taken") {
+          toast.error(t("addressTaken"));
+          return;
+        }
         if (result.status === "unavailable") {
           toast.error(t("checkFailed"));
           return;

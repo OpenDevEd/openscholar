@@ -47,7 +47,7 @@ export async function reserveLibraryAddressByName(
 
 // Reserves an address the way the address action does, without the Coolify
 // and HTTP checks that only the action can run.
-export async function reserveLibraryAddress(
+async function reserveLibraryAddress(
   as: TestClient,
   args: { name: string; publicAddress: string; slug: string },
 ) {

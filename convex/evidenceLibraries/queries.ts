@@ -5,6 +5,7 @@ import {
 } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { type Infer, v } from "convex/values";
+import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import { createError } from "../lib/errors";
 import {
   requireEvidenceLibraryAccess,
@@ -205,7 +206,7 @@ export const readAddressCandidates = internalQuery({
     const access = await requireOrganizationAccess(ctx, "manage");
     const named = await readEvidenceLibraryByName(ctx, {
       organizationId: access.organization._id,
-      name: args.name.trim().replace(/\s+/gu, " "),
+      name: normalizeEvidenceLibraryName(args.name),
     });
     if (named) {
       return { status: "name-taken" as const, libraryId: named._id };
@@ -217,6 +218,26 @@ export const readAddressCandidates = internalQuery({
         name: args.name,
       })),
     };
+  },
+});
+
+/**
+ * The hosts Coolify served when it was last asked, with the time it was
+ * asked. The address action decides whether that is recent enough.
+ */
+export const readServedHostsCache = internalQuery({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({ hosts: v.array(v.string()), fetchedAt: v.number() }),
+  ),
+  handler: async (ctx) => {
+    await requireOrganizationAccess(ctx, "manage");
+    const row = await ctx.db
+      .query("evidenceLibraryServedHosts")
+      .withIndex("by_source", (query) => query.eq("source", "coolify"))
+      .unique();
+    return row ? { hosts: row.hosts, fetchedAt: row.fetchedAt } : null;
   },
 });
 

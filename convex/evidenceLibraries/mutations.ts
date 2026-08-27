@@ -615,6 +615,33 @@ export async function retryEvidenceLibrarySetup(
 }
 
 /**
+ * Keeps the hosts Coolify serves for the next check.
+ * `evidenceLibraries.addressActions` is the only caller.
+ */
+export const writeServedHostsCache = internalMutation({
+  args: { hosts: v.array(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireOrganizationAccess(ctx, "manage");
+    const fields = {
+      source: "coolify" as const,
+      hosts: args.hosts,
+      fetchedAt: Date.now(),
+    };
+    const existing = await ctx.db
+      .query("evidenceLibraryServedHosts")
+      .withIndex("by_source", (query) => query.eq("source", "coolify"))
+      .unique();
+    if (existing) {
+      await ctx.db.replace("evidenceLibraryServedHosts", existing._id, fields);
+    } else {
+      await ctx.db.insert("evidenceLibraryServedHosts", fields);
+    }
+    return null;
+  },
+});
+
+/**
  * Takes the address the check found free. The same checks run again inside
  * this transaction, so two people reserving at once cannot both win.
  * `evidenceLibraries.addressActions.reserveAddress` is the only caller.

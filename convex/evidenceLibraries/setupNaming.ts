@@ -61,7 +61,7 @@ export function readEvidenceLibraryIdentityNames(
   return { name: value.name, shortName: value.shortName };
 }
 
-export function requireEvidenceLibraryPlatformDomain(
+function requireEvidenceLibraryPlatformDomain(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
   return validateEvidenceLibraryPlatformDomain(

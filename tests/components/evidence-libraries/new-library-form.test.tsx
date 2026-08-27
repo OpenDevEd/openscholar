@@ -107,6 +107,19 @@ describe("<NewLibraryForm>", () => {
     expect(screen.getByRole("button", { name: "reserve" })).toBeEnabled();
   });
 
+  it("says so when someone else took the address just now", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+    mocks.reserveAddress.mockResolvedValue({ status: "address-taken" });
+
+    render(<NewLibraryForm />);
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+    await user.click(screen.getByRole("button", { name: "reserve" }));
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("addressTaken"));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
   it("keeps the form when the address could not be checked", async () => {
     const user = userEvent.setup();
     mocks.organization.mockReturnValue(owner);
