@@ -206,7 +206,6 @@ describe("Evidence Library update check", () => {
         { sha: "d".repeat(40), message: "fix: trim whitespace" },
       ],
       checkedAt: Date.now(),
-      addressState: "ours",
     });
     expect(github.requests).toHaveLength(2);
 
@@ -396,11 +395,9 @@ describe("Evidence Library address ownership check", () => {
     });
     vi.stubGlobal("fetch", github.fetchImpl);
 
-    await expect(
-      fixture.admin.action(api.evidenceLibraries.updates.check, {
-        libraryId: fixture.created.libraryId,
-      }),
-    ).resolves.toMatchObject({ addressState: "not-ours" });
+    await fixture.admin.action(api.evidenceLibraries.updates.check, {
+      libraryId: fixture.created.libraryId,
+    });
 
     const binding = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.runtimeBindingId),
@@ -425,11 +422,13 @@ describe("Evidence Library address ownership check", () => {
     });
     vi.stubGlobal("fetch", github.fetchImpl);
 
-    await expect(
-      fixture.admin.action(api.evidenceLibraries.updates.check, {
-        libraryId: fixture.created.libraryId,
-      }),
-    ).resolves.toMatchObject({ addressState: "unreachable" });
+    await fixture.admin.action(api.evidenceLibraries.updates.check, {
+      libraryId: fixture.created.libraryId,
+    });
+    const binding = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    expect(binding).toMatchObject({ addressState: "unreachable" });
   });
 
   it("says nothing to the list while the address answers as ours", async () => {

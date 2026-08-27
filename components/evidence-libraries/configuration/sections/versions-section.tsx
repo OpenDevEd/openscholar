@@ -147,6 +147,15 @@ export function VersionsSection({
     api.evidenceLibraries.versions.listVersions,
     { libraryId },
   );
+  // The address answer the last check stored. It stays right even when the
+  // software check cannot reach GitHub, and clears itself once a move lands.
+  const addressNotices = useProtectedQuery(
+    api.evidenceLibraries.updates.listAddressNotices,
+    live ? {} : "skip",
+  );
+  const addressState =
+    addressNotices.data?.find((notice) => notice.libraryId === libraryId)
+      ?.addressState ?? null;
 
   // Opening the page checks for updates once; "Check again" asks once more.
   const [, setCheckCount] = useState(0);
@@ -229,6 +238,28 @@ export function VersionsSection({
       title={t("sections.versions")}
       description={t("versions.description")}
     >
+      {addressState ? (
+        <Panel
+          tone="muted"
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3"
+          data-address-state={addressState}
+        >
+          <p className="text-sm text-destructive">
+            {t("versions.addressNotReachable")}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={blocked}
+            onClick={() => setMoveOpen(true)}
+          >
+            {t("versions.addressMove")}
+          </Button>
+        </Panel>
+      ) : null}
+
       <FieldGroup
         title={t("versions.softwareHeading")}
         action={
@@ -263,7 +294,6 @@ export function VersionsSection({
               promise={checkPromise}
               blocked={blocked}
               onUpdate={() => setUpdateOpen(true)}
-              onMove={() => setMoveOpen(true)}
             />
           </Suspense>
         ) : (
@@ -365,12 +395,10 @@ function SoftwarePanel({
   promise,
   blocked,
   onUpdate,
-  onMove,
 }: {
   promise: Promise<RuntimeCheck>;
   blocked: boolean;
   onUpdate: () => void;
-  onMove: () => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const format = useFormatter();
@@ -382,95 +410,67 @@ function SoftwarePanel({
       </Panel>
     );
   }
-  const { running, latest, changes, checkedAt, addressState } = result.state;
+  const { running, latest, changes, checkedAt } = result.state;
   const state = runtimeUpdateState({ running, latest });
   const updateAvailable = state === "update-available";
   return (
-    <>
-      {addressState === "ours" ? null : (
-        <Panel
-          tone="muted"
-          role="alert"
-          className="mb-3 flex flex-wrap items-center justify-between gap-3"
-          data-address-state={addressState}
-        >
-          <p className="text-sm text-destructive">
-            {t("versions.addressNotReachable")}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={blocked}
-            onClick={onMove}
-          >
-            {t("versions.addressMove")}
+    <Panel tone="muted" className="space-y-3" data-runtime-state={state}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {updateAvailable ? (
+          <StatusChip tone="warning">
+            {t("versions.updateAvailable")}
+          </StatusChip>
+        ) : (
+          <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
+        )}
+        {updateAvailable ? (
+          <Button type="button" size="sm" disabled={blocked} onClick={onUpdate}>
+            <RefreshCw />
+            {t("versions.update")}
           </Button>
-        </Panel>
-      )}
-      <Panel tone="muted" className="space-y-3" data-runtime-state={state}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {updateAvailable ? (
-            <StatusChip tone="warning">
-              {t("versions.updateAvailable")}
-            </StatusChip>
-          ) : (
-            <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
-          )}
-          {updateAvailable ? (
-            <Button
-              type="button"
-              size="sm"
-              disabled={blocked}
-              onClick={onUpdate}
-            >
-              <RefreshCw />
-              {t("versions.update")}
-            </Button>
-          ) : null}
-        </div>
-        <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-          <dt className="text-xs font-medium text-muted-foreground">
-            {t("versions.runningLabel")}
-          </dt>
-          <dd className="font-mono" data-running={running}>
-            {shortCommit(running)}
-          </dd>
-          <dt className="text-xs font-medium text-muted-foreground">
-            {t("versions.latestLabel")}
-          </dt>
-          <dd className="font-mono" data-latest={latest}>
-            {shortCommit(latest)}
-          </dd>
-          <dt className="text-xs font-medium text-muted-foreground">
-            {t("versions.checkedLabel")}
-          </dt>
-          <dd>
-            {format.dateTime(new Date(checkedAt), {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
-          </dd>
-        </dl>
-        {updateAvailable && changes.length > 0 ? (
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
-              {t("versions.changesHeading")}
-            </p>
-            <ul className="list-disc space-y-0.5 pl-4 text-sm">
-              {changes.map((change) => (
-                <li key={change.sha}>
-                  <span className="mr-2 font-mono text-xs text-muted-foreground">
-                    {shortCommit(change.sha)}
-                  </span>
-                  {change.message}
-                </li>
-              ))}
-            </ul>
-          </div>
         ) : null}
-      </Panel>
-    </>
+      </div>
+      <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+        <dt className="text-xs font-medium text-muted-foreground">
+          {t("versions.runningLabel")}
+        </dt>
+        <dd className="font-mono" data-running={running}>
+          {shortCommit(running)}
+        </dd>
+        <dt className="text-xs font-medium text-muted-foreground">
+          {t("versions.latestLabel")}
+        </dt>
+        <dd className="font-mono" data-latest={latest}>
+          {shortCommit(latest)}
+        </dd>
+        <dt className="text-xs font-medium text-muted-foreground">
+          {t("versions.checkedLabel")}
+        </dt>
+        <dd>
+          {format.dateTime(new Date(checkedAt), {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
+        </dd>
+      </dl>
+      {updateAvailable && changes.length > 0 ? (
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">
+            {t("versions.changesHeading")}
+          </p>
+          <ul className="list-disc space-y-0.5 pl-4 text-sm">
+            {changes.map((change) => (
+              <li key={change.sha}>
+                <span className="mr-2 font-mono text-xs text-muted-foreground">
+                  {shortCommit(change.sha)}
+                </span>
+                {change.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </Panel>
   );
 }
 

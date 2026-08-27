@@ -11,13 +11,17 @@ const mocks = vi.hoisted(() => ({
   startAddressMove: vi.fn(),
   restoreRevision: vi.fn(),
   listVersions: vi.fn(),
+  addressNotices: vi.fn(),
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      updates: { check: "check" },
+      updates: {
+        check: "check",
+        listAddressNotices: "listAddressNotices",
+      },
       versions: {
         listVersions: "listVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
@@ -43,7 +47,13 @@ vi.mock("convex/react", () => ({
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: () => ({ data: mocks.listVersions(), isReady: true }),
+  useProtectedQuery: (reference: string) => ({
+    data:
+      reference === "listAddressNotices"
+        ? mocks.addressNotices()
+        : mocks.listVersions(),
+    isReady: true,
+  }),
 }));
 
 vi.mock("next-intl", () => ({
@@ -129,6 +139,8 @@ describe("<VersionsSection>", () => {
     mocks.startAddressMove.mockReset();
     mocks.restoreRevision.mockReset();
     mocks.listVersions.mockReset();
+    mocks.addressNotices.mockReset();
+    mocks.addressNotices.mockReturnValue([]);
     mocks.toast.mockReset();
     mocks.toast.error.mockReset();
     mocks.check.mockResolvedValue({
@@ -136,7 +148,6 @@ describe("<VersionsSection>", () => {
       latest: "bbbbbbb1234",
       changes: [{ sha: "bbbbbbb1234", message: "Faster search" }],
       checkedAt: Date.UTC(2026, 7, 26, 12, 0),
-      addressState: "ours",
     });
     mocks.listVersions.mockReturnValue(rows);
   });
@@ -177,7 +188,6 @@ describe("<VersionsSection>", () => {
       latest: "aaaaaaa1234",
       changes: [],
       checkedAt: Date.UTC(2026, 7, 26, 12, 0),
-      addressState: "ours",
     });
     await renderSection();
     expect(screen.getByText("versions.upToDate")).toBeInTheDocument();
@@ -226,13 +236,9 @@ describe("<VersionsSection>", () => {
 
   it("offers a move when another site answers the address", async () => {
     const user = userEvent.setup();
-    mocks.check.mockResolvedValue({
-      running: "aaaaaaa1234",
-      latest: "aaaaaaa1234",
-      changes: [],
-      checkedAt: Date.UTC(2026, 7, 26, 12, 0),
-      addressState: "not-ours",
-    });
+    mocks.addressNotices.mockReturnValue([
+      { libraryId: "library_123", movedTo: null, addressState: "not-ours" },
+    ]);
     mocks.startAddressMove.mockResolvedValue({
       movedFrom: "https://climate-lib.example.test",
       movedTo: "https://climate-2-lib.example.test",
@@ -261,13 +267,9 @@ describe("<VersionsSection>", () => {
   });
 
   it("does not offer a move while an operation runs", async () => {
-    mocks.check.mockResolvedValue({
-      running: "aaaaaaa1234",
-      latest: "aaaaaaa1234",
-      changes: [],
-      checkedAt: Date.UTC(2026, 7, 26, 12, 0),
-      addressState: "unreachable",
-    });
+    mocks.addressNotices.mockReturnValue([
+      { libraryId: "library_123", movedTo: null, addressState: "unreachable" },
+    ]);
     await renderSection({ operationRunning: true });
     expect(
       screen.getByRole("button", { name: "versions.addressMove" }),

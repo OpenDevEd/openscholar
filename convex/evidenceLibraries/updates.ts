@@ -11,10 +11,7 @@ import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import { readEvidenceLibraries } from "./queries";
-import {
-  probeEvidenceLibraryAddress,
-  type EvidenceLibraryAddressState,
-} from "./readinessClient";
+import { probeEvidenceLibraryAddress } from "./readinessClient";
 import { evidenceLibraryAddressStateValidator } from "./validators";
 import {
   fetchRuntimeRelease,
@@ -30,25 +27,11 @@ const runtimeUpdateStateValidator = v.object({
   checkedAt: v.number(),
 });
 
-// What the configuration page reads when it opens: the software the library
-// runs, and who answers its public address.
-const libraryCheckValidator = v.object({
-  running: v.string(),
-  latest: v.string(),
-  changes: v.array(runtimeReleaseChangeValidator),
-  checkedAt: v.number(),
-  addressState: evidenceLibraryAddressStateValidator,
-});
-
 type RuntimeUpdateState = {
   running: string;
   latest: string;
   changes: { sha: string; message: string }[];
   checkedAt: number;
-};
-
-type LibraryCheckState = RuntimeUpdateState & {
-  addressState: EvidenceLibraryAddressState;
 };
 
 export const readRunningRelease = internalQuery({
@@ -168,13 +151,14 @@ export const saveAddressState = internalMutation({
 
 /**
  * Called when the configuration page opens. The software answer comes from
- * the release row while it is under ten minutes old; the address is asked
- * every time, because an address can be taken over at any moment.
+ * the release row while it is under ten minutes old. The address is asked
+ * every time, because an address can be taken over at any moment; the answer
+ * is stored on the binding, which the pages read.
  */
 export const check = action({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: libraryCheckValidator,
-  handler: async (ctx, args): Promise<LibraryCheckState> => {
+  returns: runtimeUpdateStateValidator,
+  handler: async (ctx, args): Promise<RuntimeUpdateState> => {
     const state = await ctx.runQuery(
       internal.evidenceLibraries.updates.readRunningRelease,
       args,
@@ -190,9 +174,7 @@ export const check = action({
         checkedAt: Date.now(),
       },
     );
-    const release =
-      state.cached ?? (await refreshRuntimeRelease(ctx, state.running));
-    return { ...release, addressState: address.state };
+    return state.cached ?? (await refreshRuntimeRelease(ctx, state.running));
   },
 });
 

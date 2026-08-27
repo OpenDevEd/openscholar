@@ -56,7 +56,7 @@ vi.mock("@/convex/_generated/api", () => ({
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
-      updates: { check: "check" },
+      updates: { check: "check", listAddressNotices: "listAddressNotices" },
       versions: {
         listVersions: "listVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
@@ -90,7 +90,9 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: unknown, args: unknown) =>
     query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
-      : query === "listLibraryZoteroGroups" || query === "listVersions"
+      : query === "listLibraryZoteroGroups" ||
+          query === "listVersions" ||
+          query === "listAddressNotices"
         ? { data: [], isReady: true }
         : query === "listTeam"
           ? { data: { organizationName: "Test Org", owners: [], editors: [] }, isReady: true }
