@@ -97,10 +97,17 @@ const GROUPS_PAGE_SIZE = 100;
 // Zotero's server refuses start values above 1000, so this is the hard end.
 const GROUPS_MAX_START = 1000;
 
-/** Every page of the owner's groups, following Zotero's start/limit paging. */
-async function listAllUserGroups(zoteroUserId: string, apiKey: string): Promise<ZoteroGroupResponse[]> {
+/**
+ * Every page of the owner's groups, following Zotero's start/limit paging.
+ * `capped` says Zotero's own ceiling stopped the list before its end.
+ */
+async function listAllUserGroups(
+  zoteroUserId: string,
+  apiKey: string,
+): Promise<{ groups: ZoteroGroupResponse[]; capped: boolean }> {
   const groups: ZoteroGroupResponse[] = [];
-  for (let start = 0; start <= GROUPS_MAX_START; start += GROUPS_PAGE_SIZE) {
+  for (let start = 0; ; start += GROUPS_PAGE_SIZE) {
+    if (start > GROUPS_MAX_START) return { groups, capped: true };
     const response = await zoteroFetch(`/users/${zoteroUserId}/groups`, apiKey, {
       start: String(start),
       limit: String(GROUPS_PAGE_SIZE),
@@ -108,9 +115,8 @@ async function listAllUserGroups(zoteroUserId: string, apiKey: string): Promise<
     const page = (await response.json()) as ZoteroGroupResponse[];
     groups.push(...page);
     const total = Number(response.headers.get("Total-Results") ?? page.length);
-    if (groups.length >= total || page.length === 0) break;
+    if (groups.length >= total || page.length === 0) return { groups, capped: false };
   }
-  return groups;
 }
 
 const groupSummaryValidator = v.object({
@@ -132,6 +138,7 @@ export const listMyZoteroGroups = action({
       username: v.optional(v.string()),
       zoteroUserId: v.string(),
       groups: v.array(groupSummaryValidator),
+      capped: v.boolean(),
     }),
   ),
   handler: async (
@@ -144,16 +151,18 @@ export const listMyZoteroGroups = action({
         username?: string;
         zoteroUserId: string;
         groups: ZoteroGroupSummary[];
+        capped: boolean;
       }
   > => {
     const { owner, apiKey } = await readOwner(ctx, args.libraryId);
     if (!owner.connection || !apiKey) return { connected: false as const };
-    const groups = await listAllUserGroups(owner.connection.zoteroUserId, apiKey);
+    const { groups, capped } = await listAllUserGroups(owner.connection.zoteroUserId, apiKey);
     return {
       connected: true as const,
       username: owner.connection.username,
       zoteroUserId: owner.connection.zoteroUserId,
       groups: groups.map((group) => toSummary(group)),
+      capped,
     };
   },
 });

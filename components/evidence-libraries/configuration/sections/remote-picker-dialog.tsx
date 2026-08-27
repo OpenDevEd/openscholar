@@ -27,7 +27,14 @@ import { cn } from "@/lib/utils";
 import { StatusChip } from "../status-chip";
 
 /** One row in a picker: what the owner reads before choosing. */
-export type PickerRow = { id: string; title: string; meta?: string; count?: number };
+export type PickerRow = {
+  id: string;
+  title: string;
+  meta?: string;
+  count?: number;
+  /** Extra facts under the title, such as a group's visibility and id. */
+  detail?: ReactNode;
+};
 
 export type PickerPage = {
   items: PickerRow[];
@@ -430,6 +437,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                             <p className="truncate font-medium" title={row.title}>
                               {row.title}
                             </p>
+                            {row.detail}
                           </TableCell>
                           {columns.meta ? (
                             <TableCell className="min-w-0">

@@ -28,19 +28,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -51,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { ChipInput, EmptyList, FieldGroup, MetaList, Panel } from "../fields";
 import { FieldError } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
+import { localPickerSource, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 import { DEFAULT_TAG_RULES, type TagRuleKey, type TagRules, tagRuleIssue } from "./tag-rules";
 
 type ConnectedGroup = {
@@ -63,12 +54,6 @@ type ConnectedGroup = {
 };
 
 type PickerGroup = { id: string; name: string; isPublic: boolean; itemCount: number };
-
-type PickerState =
-  | { status: "loading" }
-  | { status: "failed" }
-  | { status: "not-connected" }
-  | { status: "ready"; groups: PickerGroup[] };
 
 type GroupHealth = "connected" | "paused";
 
@@ -491,169 +476,74 @@ function GroupPicker({
 }: {
   disabled: boolean;
   addedIds: string[];
-  load: () => Promise<{ connected: false } | { connected: true; groups: PickerGroup[] }>;
+  load: () => Promise<
+    { connected: false } | { connected: true; groups: PickerGroup[]; capped: boolean }
+  >;
   onAdd: (groupIds: string[]) => Promise<string[]>;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
-  const [open, setOpen] = useState(false);
-  const [state, setState] = useState<PickerState>({ status: "loading" });
-  const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [adding, setAdding] = useState(false);
-  const requestCount = useRef(0);
-  const q = query.trim().toLowerCase();
-  const rows =
-    state.status === "ready"
-      ? state.groups.filter((o) => !q || o.name.toLowerCase().includes(q) || o.id.includes(q))
-      : [];
+  // Zotero has no group search, so the account's groups are read once per
+  // open and then paged in the browser.
+  const mine = useRef<ReturnType<typeof load> | null>(null);
+  const [capped, setCapped] = useState(false);
 
-  async function reset(next: boolean) {
-    setOpen(next);
-    setPicked(new Set());
-    setQuery("");
-    if (!next) return;
-    const request = ++requestCount.current;
-    setState({ status: "loading" });
-    try {
-      const mine = await load();
-      if (request !== requestCount.current) return;
-      setState(mine.connected ? { status: "ready", groups: mine.groups } : { status: "not-connected" });
-    } catch {
-      if (request === requestCount.current) setState({ status: "failed" });
-    }
-  }
+  const readPage: PickerSource = async (input) => {
+    mine.current ??= load();
+    const answer = await mine.current;
+    if (!answer.connected) return { items: [], nextCursor: null, reason: "not-set-up" };
+    setCapped(answer.capped);
+    const rows = answer.groups.map((group) => ({
+      id: group.id,
+      title: group.name,
+      count: group.itemCount,
+      detail: (
+        <MetaList
+          className="text-muted-foreground"
+          items={[
+            {
+              key: "vis",
+              icon: group.isPublic ? Globe : Lock,
+              value: group.isPublic ? t("public") : t("private"),
+            },
+            {
+              key: "id",
+              label: t("groupIdLabel"),
+              value: <span className="font-mono">{group.id}</span>,
+            },
+          ]}
+        />
+      ),
+    }));
+    return localPickerSource(rows)(input);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => void reset(next)}>
-      <DialogTrigger asChild>
+    <RemotePickerDialog
+      mode="multi"
+      trigger={
         <Button type="button" variant="outline" size="sm" disabled={disabled}>
           <Plus />
           {t("addGroups")}
         </Button>
-      </DialogTrigger>
-      <DialogContent className="flex max-h-[80vh] flex-col gap-0 p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-border/50 px-5 py-4">
-          <DialogTitle>{t("picker.title")}</DialogTitle>
-          <DialogDescription>{t("picker.description")}</DialogDescription>
-        </DialogHeader>
-        <div className="border-b border-border/50 bg-muted/30 px-5 py-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              autoFocus
-              value={query}
-              aria-label={t("picker.search")}
-              placeholder={t("picker.search")}
-              className="bg-background pl-8"
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="min-h-0 flex-1 overflow-auto">
-          {state.status === "loading" ? (
-            <p className="flex items-center gap-2 px-5 py-10 text-sm text-muted-foreground" role="status">
-              <Spinner className="h-4 w-4" />
-              {t("picker.loading")}
-            </p>
-          ) : state.status === "failed" ? (
-            <p className="px-5 py-10 text-sm text-destructive" role="alert">
-              {t("picker.failed")}
-            </p>
-          ) : state.status === "not-connected" ? (
-            <p className="px-5 py-10 text-sm text-muted-foreground">{t("connectFirst")}</p>
-          ) : (
-            <Table aria-label={t("picker.title")} className="w-full table-fixed">
-              <TableHeader className="sticky top-0 z-10 bg-background">
-                <TableRow>
-                  <TableHead className="w-10" />
-                  <TableHead>{t("picker.colGroup")}</TableHead>
-                  <TableHead className="w-24 text-right">{t("picker.colItems")}</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
-                      {state.groups.length === 0 ? t("picker.noGroups") : t("picker.noMatch")}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((o) => {
-                    const added = addedIds.includes(o.id);
-                    const checked = picked.has(o.id);
-                    const toggle = () =>
-                      setPicked((p) => {
-                        const next = new Set(p);
-                        if (next.has(o.id)) next.delete(o.id);
-                        else next.add(o.id);
-                        return next;
-                      });
-                    return (
-                      <TableRow
-                        key={o.id}
-                        data-group-id={o.id}
-                        className={cn("cursor-pointer", added && "cursor-default opacity-60", checked && "bg-primary/5")}
-                        onClick={() => !added && toggle()}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox aria-label={o.name} checked={checked} disabled={added} onCheckedChange={toggle} />
-                        </TableCell>
-                        <TableCell className="min-w-0">
-                          <p className="truncate font-medium" title={o.name}>{o.name}</p>
-                          <MetaList
-                            className="text-muted-foreground"
-                            items={[
-                              { key: "vis", icon: o.isPublic ? Globe : Lock, value: o.isPublic ? t("public") : t("private") },
-                              { key: "id", label: t("groupIdLabel"), value: <span className="font-mono">{o.id}</span> },
-                            ]}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs tabular-nums">
-                          {o.itemCount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>{added ? <StatusChip tone="neutral">{t("picker.added")}</StatusChip> : null}</TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-        <DialogFooter className="items-center border-t border-border/50 px-5 py-3 sm:justify-between">
-          <span className="text-sm text-muted-foreground" data-picked-count={picked.size}>
-            {t("picker.pickedCount", { count: picked.size })}
-          </span>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => void reset(false)}>
-              {t("picker.cancel")}
-            </Button>
-            <Button
-              type="button"
-              disabled={picked.size === 0 || adding}
-              onClick={async () => {
-                setAdding(true);
-                let failed: string[] = [];
-                try {
-                  failed = await onAdd([...picked]);
-                } finally {
-                  setAdding(false);
-                }
-                if (failed.length > 0) {
-                  setPicked(new Set(failed));
-                  return;
-                }
-                void reset(false);
-              }}
-            >
-              {adding ? <Spinner className="h-4 w-4" /> : <Plus />}
-              {t("picker.addPicked", { count: picked.size })}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      }
+      title={t("picker.title")}
+      description={t("picker.description")}
+      searchLabel={t("picker.search")}
+      columns={{ title: t("picker.colGroup"), count: t("picker.colItems") }}
+      source={readPage}
+      usedIds={addedIds}
+      usedLabel={t("picker.added")}
+      emptyLabel={t("picker.noGroups")}
+      noMatchLabel={t("picker.noMatch")}
+      notSetUpLabel={t("connectFirst")}
+      note={capped ? t("picker.capped") : null}
+      onOpenChange={(open) => {
+        mine.current = null;
+        if (!open) setCapped(false);
+      }}
+      confirmLabel={(count) => t("picker.addPicked", { count })}
+      onConfirm={(rows) => onAdd(rows.map((row) => row.id))}
+    />
   );
 }
 
