@@ -64,6 +64,23 @@ answer machine calls yet, so pickers have nothing to read.
 12. No autosave. Save writes changed sections; Activate freezes all sections.
     Per-section "Reset changes" reads the last saved row.
 
+## The plans
+
+| Plan | File | What it covers |
+|---|---|---|
+| 01 | `01-runtime-read-api-and-legal-markdown.md` | Runtime read API and legal markdown |
+| 02 | `02-generic-sections.md` | Generic configuration sections |
+| 03 | `03-uploads.md` | Owner uploads |
+| 04 | `04-update-and-restore.md` | Runtime update and revision restore |
+| 05 | `05-page-shell-and-brand.md` | Page shell and brand |
+| 06 | `06-page-content-discovery.md` | Page content and discovery |
+| 07 | `07-sources-and-data-pickers.md` | Sources and data pickers |
+| 08 | `08-versions-team-and-cleanup.md` | Versions, team and cleanup |
+| 09 | `09-library-pages.md` | Library pages |
+| 10 | `10-defaults-and-team.md` | Defaults and team |
+| 11 | `11-address-reservation-and-recovery.md` | Address reservation and recovery |
+| 12 | `12-organisation-gate.md` | Evidence Libraries switched on per organisation in Clerk |
+
 ## Lanes and order
 
 Three lanes with disjoint write-sets. The integration owner (this session)

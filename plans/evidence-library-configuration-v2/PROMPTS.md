@@ -564,3 +564,34 @@ REPORT: PR URLs, commits, check tails, lane proof (screenshots for pages, logs f
 
 Go.
 ```
+
+## Plan 12 — organisation gate
+
+```text
+Implement plans/evidence-library-configuration-v2/12-organisation-gate.md.
+Read plans/evidence-library-configuration-v2/00-README.md, AGENTS.md, and convex/_generated/ai/guidelines.md first.
+Depends on: plans 01–11 merged (they are).
+
+Worktree /Users/mcharrad/Documents/Github/openscholar/org-gate, branch codex/org-gate from origin/dev. Run `npm ci` first. Convex lane in .env.local (lovable-clownfish-245). Next port 3014. Allow about three hours and keep working without asking questions the plan already answers.
+
+STANDING RULES:
+1. Reuse first: the Clerk webhook mappers and projections, `requireOrganizationAccess` in convex/evidenceLibraries/access.ts, `AuthStatePanel`, and the existing configuration primitives. Do not build a second gate.
+2. No legacy code: no environment allowlist, no compatibility read, no second source of truth for the switch.
+3. Convex rules: validators on args and returns; a returned field must be in the `returns` validator or Convex drops it; check how a schema push behaves against existing rows before choosing required or optional.
+4. Tests: run the `test-decision` skill; behaviour only; never assert Tailwind classes.
+5. Deployment checks: upload only with `npx convex dev --once` to the lane; never `npm run convex:push`; never touch the shared deployment or Coolify.
+6. Research instead of guessing: read the code, the Convex guidelines, and the installed Next.js docs under node_modules/next/dist/docs/.
+7. Use other agents for any investigation over about three file reads.
+
+EXECUTION RHYTHM: test-first for the mapper and the access rules, then test-after for the query and the pages. Commit after every working unit with `[plan-12]`.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-12]` on every commit; commit the plan before the code that depends on it; never commit while relevant tests fail; never use --no-verify or another hook bypass; push and open a PR to dev; do not merge.
+
+WHEN TO STOP: only for a real blocker. Do not stop for an answer the plan already gives, for token worry, or for the urge to ask. `npx tsc --noEmit`, the vitest sets named in the plan, `npx convex dev --once`, and the browser check on port 3014 must all pass first.
+
+DEVIATIONS: if the plan is wrong, commit safe work, fix the numbered plan, commit `docs: [plan-12] revise <section> — <reason>`, then continue from the corrected plan. Never change direction silently.
+
+START NOW: read the plan and the README, read convex/_generated/ai/guidelines.md, run `git status`, confirm no other Convex uploader is running, then start the first unit.
+
+Go.
+```
