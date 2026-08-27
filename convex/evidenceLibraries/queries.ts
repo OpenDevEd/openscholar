@@ -19,6 +19,7 @@ import {
 import {
   findAvailableEvidenceLibrarySetupIdentity,
   readEvidenceLibrarySetupIdentity,
+  requireEvidenceLibraryPlatformDomain,
 } from "./setupNaming";
 import {
   readEvidenceLibraryAdminLaunchTarget,
@@ -175,9 +176,20 @@ export const listLibraryOverviews = query({
   },
 });
 
+// The new-library form builds the short name and address preview on the
+// client with the shared naming helpers. It only needs the platform domain.
+export const readSetupPlatformDomain = query({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    await requireOrganizationAccess(ctx, "manage");
+    return requireEvidenceLibraryPlatformDomain();
+  },
+});
+
 /**
- * The short name and platform address a new library would get for this name,
- * so the new-library page can show them before the owner reserves the address.
+ * The first free short name and platform address for this name. The
+ * new-library form uses it only to learn when the address is already taken.
  */
 export const previewSetupIdentity = query({
   args: { name: v.string() },
