@@ -1,7 +1,7 @@
 "use client";
 
 import { useOrganization } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { Check, Lock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,11 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { initialsOf } from "@/lib/evidence-libraries/initials";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
-  createEvidenceLibraryAddressCandidate,
   createInitialEvidenceLibraryShortName,
   MAX_EVIDENCE_LIBRARY_NAME_LENGTH,
   normalizeEvidenceLibraryName,
@@ -71,7 +68,9 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
   const t = useTranslations("evidenceLibraries.new");
   const tc = useTranslations("common");
   const router = useRouter();
-  const createSetupDraft = useMutation(api.evidenceLibraries.mutations.createSetupDraft);
+  const reserveAddress = useAction(
+    api.evidenceLibraries.addressActions.reserveAddress,
+  );
 
   const [name, setName] = useState("");
   const [reserving, setReserving] = useState(false);
@@ -79,35 +78,12 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
   const [showNameError, setShowNameError] = useState(false);
 
   const trimmed = normalizeEvidenceLibraryName(name);
-  // The server only tells us the platform domain and whether the address
-  // is already taken. Everything else is derived here, so the preview never
-  // disappears while a query is loading.
-  const platformDomain = useProtectedQuery(
-    api.evidenceLibraries.queries.readSetupPlatformDomain,
-    reserved ? "skip" : {},
-  ).data;
-  // Ask the server once typing pauses, not on every keystroke.
-  const checkedName = useDebouncedValue(trimmed, 300);
-  const availability = useProtectedQuery(
-    api.evidenceLibraries.queries.previewSetupIdentity,
-    checkedName && !reserved ? { name: checkedName } : "skip",
-  ).data;
-  const derived = trimmed
-    ? {
-        shortName: createInitialEvidenceLibraryShortName(trimmed),
-        publicAddress: platformDomain
-          ? createEvidenceLibraryAddressCandidate(trimmed, platformDomain)
-          : "",
-      }
-    : null;
-  const shortName = reserved?.shortName ?? derived?.shortName ?? "";
-  const address = (
-    reserved?.publicAddress ??
-    (availability && availability.name === trimmed
-      ? availability.publicAddress
-      : derived?.publicAddress) ??
-    ""
-  ).replace(/^https?:\/\//, "");
+  // The short name follows the typed name straight away. The address is
+  // only ever the one the server says is free.
+  const shortName =
+    reserved?.shortName ??
+    (trimmed ? createInitialEvidenceLibraryShortName(trimmed) : "");
+  const address = (reserved?.publicAddress ?? "").replace(/^https?:\/\//, "");
   const nameError = showNameError && !trimmed;
 
   function handleReserve() {
@@ -117,19 +93,31 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
       return;
     }
     setReserving(true);
-    void createSetupDraft({ name: trimmed })
-      .then((created) => {
+    void reserveAddress({ name: trimmed })
+      .then((result) => {
+        if (result.status === "name-taken") {
+          toast.error(t("nameTaken", { name: trimmed }));
+          return;
+        }
+        if (result.status === "address-taken") {
+          toast.error(t("addressTaken"));
+          return;
+        }
+        if (result.status === "unavailable") {
+          toast.error(t("checkFailed"));
+          return;
+        }
         setReserved({
-          libraryId: created.libraryId,
-          name: created.name,
-          shortName: created.shortName,
-          publicAddress: created.publicAddress,
+          libraryId: result.libraryId,
+          name: result.name,
+          shortName: result.shortName,
+          publicAddress: result.publicAddress,
         });
         toast.success(t("reservedToast"), {
-          description: t("reservedToastDescription", { address: created.publicAddress }),
+          description: t("reservedToastDescription", { address: result.publicAddress }),
         });
       })
-      .catch(() => toast.error(t("reserveError")))
+      .catch(() => toast.error(t("checkFailed")))
       .finally(() => setReserving(false));
   }
 

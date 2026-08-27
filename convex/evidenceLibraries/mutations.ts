@@ -1,4 +1,8 @@
-import { mutation, type MutationCtx } from "../_generated/server";
+import {
+  internalMutation,
+  mutation,
+  type MutationCtx,
+} from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
@@ -38,8 +42,8 @@ import {
   validateSectionPayload,
 } from "./sectionPayload";
 import {
-  findAvailableEvidenceLibrarySetupIdentity,
-  readProvisioningEvidenceLibrarySetupByName,
+  isEvidenceLibraryAddressFree,
+  readEvidenceLibraryByName,
   readEvidenceLibrarySetupIdentity,
   readEvidenceLibraryIdentityNames,
   validateEvidenceLibrarySetupName,
@@ -191,29 +195,6 @@ export async function createEvidenceLibrarySetup(
   return toSetupDraftResult(
     setup,
     await readEvidenceLibrarySetupIdentity(ctx, setup),
-  );
-}
-
-async function createEvidenceLibrarySetupFromName(
-  ctx: MutationCtx,
-  args: { name: string },
-) {
-  const access = await requireOrganizationAccess(ctx, "manage");
-  const name = validateEvidenceLibrarySetupName(args.name);
-  const current = await readProvisioningEvidenceLibrarySetupByName(ctx, {
-    organizationId: access.organization._id,
-    name,
-  });
-  if (current) {
-    return toSetupDraftResult(current.setup, current.identity);
-  }
-
-  return await createEvidenceLibrarySetup(
-    ctx,
-    await findAvailableEvidenceLibrarySetupIdentity(ctx, {
-      organizationId: access.organization._id,
-      name,
-    }),
   );
 }
 
@@ -633,19 +614,90 @@ export async function retryEvidenceLibrarySetup(
   };
 }
 
-export const createSetupDraft = mutation({
-  args: { name: v.string() },
-  returns: v.object({
-    draftId: v.id("evidenceLibraryConfigDrafts"),
-    editVersion: v.number(),
-    ...evidenceLibrarySetupIdentityFields,
-    libraryId: v.id("evidenceLibraries"),
-    revisionId: v.id("evidenceLibraryConfigRevisions"),
-    runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
-    setupOperationId: v.id("evidenceLibraryConfigOperations"),
-    state: v.literal("provisioning"),
-  }),
-  handler: createEvidenceLibrarySetupFromName,
+/**
+ * Keeps the hosts Coolify serves for the next check.
+ * `evidenceLibraries.addressActions` is the only caller.
+ */
+export const writeServedHostsCache = internalMutation({
+  args: { hosts: v.array(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireOrganizationAccess(ctx, "manage");
+    const fields = {
+      source: "coolify" as const,
+      hosts: args.hosts,
+      fetchedAt: Date.now(),
+    };
+    const existing = await ctx.db
+      .query("evidenceLibraryServedHosts")
+      .withIndex("by_source", (query) => query.eq("source", "coolify"))
+      .unique();
+    if (existing) {
+      await ctx.db.replace("evidenceLibraryServedHosts", existing._id, fields);
+    } else {
+      await ctx.db.insert("evidenceLibraryServedHosts", fields);
+    }
+    return null;
+  },
+});
+
+/**
+ * Takes the address the check found free. The same checks run again inside
+ * this transaction, so two people reserving at once cannot both win.
+ * `evidenceLibraries.addressActions.reserveAddress` is the only caller.
+ */
+export const reserveAddress = internalMutation({
+  args: {
+    name: v.string(),
+    publicAddress: v.string(),
+    slug: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      status: v.literal("reserved"),
+      draftId: v.id("evidenceLibraryConfigDrafts"),
+      editVersion: v.number(),
+      ...evidenceLibrarySetupIdentityFields,
+      libraryId: v.id("evidenceLibraries"),
+      revisionId: v.id("evidenceLibraryConfigRevisions"),
+      runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
+      setupOperationId: v.id("evidenceLibraryConfigOperations"),
+      state: v.literal("provisioning"),
+    }),
+    v.object({
+      status: v.literal("name-taken"),
+      libraryId: v.id("evidenceLibraries"),
+    }),
+    v.object({ status: v.literal("address-taken") }),
+  ),
+  handler: async (ctx, args) => {
+    const access = await requireOrganizationAccess(ctx, "manage");
+    const name = validateEvidenceLibrarySetupName(args.name);
+    const named = await readEvidenceLibraryByName(ctx, {
+      organizationId: access.organization._id,
+      name,
+    });
+    if (named) {
+      return { status: "name-taken" as const, libraryId: named._id };
+    }
+    if (
+      !(await isEvidenceLibraryAddressFree(ctx, {
+        organizationId: access.organization._id,
+        publicAddress: args.publicAddress,
+        slug: args.slug,
+      }))
+    ) {
+      return { status: "address-taken" as const };
+    }
+    return {
+      status: "reserved" as const,
+      ...(await createEvidenceLibrarySetup(ctx, {
+        name,
+        publicAddress: args.publicAddress,
+        slug: args.slug,
+      })),
+    };
+  },
 });
 
 export const saveDraftSections = mutation({

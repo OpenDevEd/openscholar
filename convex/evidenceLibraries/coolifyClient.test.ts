@@ -1577,4 +1577,64 @@ describe("Coolify Evidence Library client", () => {
       message: "Coolify returned too much data",
     });
   });
+
+  it("lists every host Coolify serves from applications and services", async () => {
+    const fetchImpl: typeof fetch = vi.fn(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/api/v1/applications") {
+        return Response.json([
+          { fqdn: "https://beewriter.opendev.space" },
+          {
+            fqdn: "https://Migrated.opendev.space,https://educationevidence.io",
+          },
+          {
+            fqdn: null,
+            docker_compose_domains:
+              '{"web":{"domain":"https://docs-pen.opendev.space","redirect":"both"}}',
+          },
+          { fqdn: "", docker_compose_domains: null },
+        ]);
+      }
+      if (path === "/api/v1/services") {
+        return Response.json([
+          {
+            fqdn: null,
+            applications: [
+              { fqdn: "https://outline.opendev.space" },
+              { fqdn: "https://backend-abc.opendev.space:3210" },
+              { fqdn: null },
+            ],
+          },
+          { fqdn: "https://noco.opendev.space" },
+        ]);
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    const hosts = await createClient(fetchImpl).listServedHosts();
+
+    expect([...hosts].sort()).toEqual([
+      "backend-abc.opendev.space",
+      "beewriter.opendev.space",
+      "docs-pen.opendev.space",
+      "educationevidence.io",
+      "migrated.opendev.space",
+      "noco.opendev.space",
+      "outline.opendev.space",
+    ]);
+  });
+
+  it("refuses to answer which hosts are served when Coolify cannot be reached", async () => {
+    const fetchImpl: typeof fetch = vi.fn(async () => {
+      throw new Error("offline");
+    });
+
+    await expect(
+      createClient(fetchImpl).listServedHosts(),
+    ).rejects.toMatchObject({
+      code: "COOLIFY_UNAVAILABLE",
+      message: "Coolify could not be reached",
+    });
+  });
+
 });

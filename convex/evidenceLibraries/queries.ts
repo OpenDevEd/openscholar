@@ -1,6 +1,11 @@
-import { query, type QueryCtx } from "../_generated/server";
+import {
+  internalQuery,
+  query,
+  type QueryCtx,
+} from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { type Infer, v } from "convex/values";
+import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import { createError } from "../lib/errors";
 import {
   requireEvidenceLibraryAccess,
@@ -17,9 +22,9 @@ import {
   sectionKeyValidator,
 } from "./validators";
 import {
-  findAvailableEvidenceLibrarySetupIdentity,
+  readEvidenceLibraryAddressCandidates,
+  readEvidenceLibraryByName,
   readEvidenceLibrarySetupIdentity,
-  requireEvidenceLibraryPlatformDomain,
 } from "./setupNaming";
 import {
   readEvidenceLibraryAdminLaunchTarget,
@@ -176,31 +181,63 @@ export const listLibraryOverviews = query({
   },
 });
 
-// The new-library form builds the short name and address preview on the
-// client with the shared naming helpers. It only needs the platform domain.
-export const readSetupPlatformDomain = query({
-  args: {},
-  returns: v.string(),
-  handler: async (ctx) => {
-    await requireOrganizationAccess(ctx, "manage");
-    return requireEvidenceLibraryPlatformDomain();
+/**
+ * What our own database says about a wanted library name: the library that
+ * already has the name, or the addresses the name could still take. The
+ * address action checks Coolify and the host itself before answering.
+ */
+export const readAddressCandidates = internalQuery({
+  args: { name: v.string() },
+  returns: v.union(
+    v.object({
+      status: v.literal("name-taken"),
+      libraryId: v.id("evidenceLibraries"),
+    }),
+    v.object({
+      status: v.literal("candidates"),
+      name: v.string(),
+      shortName: v.string(),
+      candidates: v.array(
+        v.object({ publicAddress: v.string(), slug: v.string() }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const access = await requireOrganizationAccess(ctx, "manage");
+    const named = await readEvidenceLibraryByName(ctx, {
+      organizationId: access.organization._id,
+      name: normalizeEvidenceLibraryName(args.name),
+    });
+    if (named) {
+      return { status: "name-taken" as const, libraryId: named._id };
+    }
+    return {
+      status: "candidates" as const,
+      ...(await readEvidenceLibraryAddressCandidates(ctx, {
+        organizationId: access.organization._id,
+        name: args.name,
+      })),
+    };
   },
 });
 
 /**
- * The first free short name and platform address for this name. The
- * new-library form uses it only to learn when the address is already taken.
+ * The hosts Coolify served when it was last asked, with the time it was
+ * asked. The address action decides whether that is recent enough.
  */
-export const previewSetupIdentity = query({
-  args: { name: v.string() },
-  returns: v.union(v.null(), v.object(evidenceLibrarySetupIdentityFields)),
-  handler: async (ctx, args) => {
-    const access = await requireOrganizationAccess(ctx, "manage");
-    if (args.name.trim().length === 0) return null;
-    return await findAvailableEvidenceLibrarySetupIdentity(ctx, {
-      organizationId: access.organization._id,
-      name: args.name,
-    });
+export const readServedHostsCache = internalQuery({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({ hosts: v.array(v.string()), fetchedAt: v.number() }),
+  ),
+  handler: async (ctx) => {
+    await requireOrganizationAccess(ctx, "manage");
+    const row = await ctx.db
+      .query("evidenceLibraryServedHosts")
+      .withIndex("by_source", (query) => query.eq("source", "coolify"))
+      .unique();
+    return row ? { hosts: row.hosts, fetchedAt: row.fetchedAt } : null;
   },
 });
 
