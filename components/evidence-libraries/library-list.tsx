@@ -3,7 +3,13 @@
 import { OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ExternalLink, MoreHorizontal, Plus, RotateCcw, Trash2 } from "lucide-react";
+import {
+  ExternalLink,
+  MoreHorizontal,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -30,8 +36,15 @@ type Overview = FunctionReturnType<
   typeof api.evidenceLibraries.queries.listLibraryOverviews
 >[number];
 
+type AddressNotice = FunctionReturnType<
+  typeof api.evidenceLibraries.updates.listAddressNotices
+>[number];
+
 /** How far the teardown is, by the stage it reports. */
-const TEARDOWN_PERCENT: Record<NonNullable<Overview["teardownStage"]>, number> = {
+const TEARDOWN_PERCENT: Record<
+  NonNullable<Overview["teardownStage"]>,
+  number
+> = {
   queued: 5,
   coolify: 35,
   convex: 80,
@@ -50,11 +63,8 @@ export function LibraryList() {
     organization ? {} : "skip",
   );
   const [deleteTarget, setDeleteTarget] = useState<Overview | null>(null);
-  const movedAddresses = new Map(
-    (addressNotices.data ?? []).map((notice) => [
-      notice.libraryId,
-      notice.movedTo,
-    ]),
+  const notices = new Map(
+    (addressNotices.data ?? []).map((notice) => [notice.libraryId, notice]),
   );
 
   if (!isLoaded) {
@@ -96,7 +106,9 @@ export function LibraryList() {
       ) : overviews.data.length === 0 ? (
         <div className="space-y-3 p-4 md:p-6" data-library-empty>
           <EmptyList>{t("empty")}</EmptyList>
-          {isOwner ? <div className="flex justify-center">{newButton}</div> : null}
+          {isOwner ? (
+            <div className="flex justify-center">{newButton}</div>
+          ) : null}
         </div>
       ) : (
         <ul className="divide-y divide-border/50" data-library-list>
@@ -105,7 +117,7 @@ export function LibraryList() {
               key={library._id}
               library={library}
               isOwner={isOwner}
-              movedTo={movedAddresses.get(library._id) ?? null}
+              notice={notices.get(library._id) ?? null}
               onDelete={() => setDeleteTarget(library)}
             />
           ))}
@@ -148,7 +160,8 @@ function OrganisationPill({ name }: { name: string }) {
             organizationSwitcherTrigger:
               "h-9 rounded-md px-2 pl-0 text-sm font-medium text-foreground hover:bg-accent focus:shadow-none",
             organizationPreviewAvatarBox: { display: "none" },
-            organizationPreviewMainIdentifier: "text-sm font-medium text-foreground",
+            organizationPreviewMainIdentifier:
+              "text-sm font-medium text-foreground",
             organizationSwitcherTriggerIcon: "text-muted-foreground",
           },
         }}
@@ -160,13 +173,13 @@ function OrganisationPill({ name }: { name: string }) {
 function LibraryRow({
   library,
   isOwner,
-  movedTo,
+  notice,
   onDelete,
 }: {
   library: Overview;
   isOwner: boolean;
-  /** The address the platform moved this library to while it sets up. */
-  movedTo: string | null;
+  /** What the last address check found for this library, if anything. */
+  notice: AddressNotice | null;
   onDelete: () => void;
 }) {
   const t = useTranslations("evidenceLibraries.list");
@@ -198,13 +211,26 @@ function LibraryRow({
         }
       : { key: "activated", value: t("neverActivated") },
   ];
-  if (movedTo) {
+  if (notice?.movedTo) {
     meta.push({
       key: "moved",
       label: t("movedToLabel"),
       value: (
-        <span className="font-mono" data-moved-to={movedTo}>
-          {movedTo.replace(/^https?:\/\//, "")}
+        <span className="font-mono" data-moved-to={notice.movedTo}>
+          {notice.movedTo.replace(/^https?:\/\//, "")}
+        </span>
+      ),
+    });
+  }
+  if (notice?.addressState) {
+    meta.push({
+      key: "address-state",
+      value: (
+        <span
+          className="text-destructive"
+          data-address-state={notice.addressState}
+        >
+          {t("addressNotReachable")}
         </span>
       ),
     });
@@ -212,7 +238,10 @@ function LibraryRow({
   if (library.setupStage) {
     meta.push({
       key: "step",
-      label: library.status === "setup_failed" ? t("failedAtLabel") : t("currentStepLabel"),
+      label:
+        library.status === "setup_failed"
+          ? t("failedAtLabel")
+          : t("currentStepLabel"),
       value: tStages(library.setupStage),
     });
   }
@@ -221,7 +250,10 @@ function LibraryRow({
     <li
       data-library-row={library._id}
       data-status={library.status}
-      className={cn("flex flex-wrap items-center gap-3 p-4", isDeleting && "bg-muted/30")}
+      className={cn(
+        "flex flex-wrap items-center gap-3 p-4",
+        isDeleting && "bg-muted/30",
+      )}
     >
       <div
         aria-hidden="true"
@@ -229,7 +261,9 @@ function LibraryRow({
           "flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white",
           !library.accentColor && "bg-primary",
         )}
-        style={library.accentColor ? { background: library.accentColor } : undefined}
+        style={
+          library.accentColor ? { background: library.accentColor } : undefined
+        }
       >
         {initialsOf(library.name)}
       </div>
@@ -237,11 +271,19 @@ function LibraryRow({
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
           {titleHref && !isDeleting ? (
-            <Link href={titleHref} className="truncate text-sm font-medium hover:underline">
+            <Link
+              href={titleHref}
+              className="truncate text-sm font-medium hover:underline"
+            >
               {library.name}
             </Link>
           ) : (
-            <span className={cn("truncate text-sm font-medium", isDeleting && "text-muted-foreground")}>
+            <span
+              className={cn(
+                "truncate text-sm font-medium",
+                isDeleting && "text-muted-foreground",
+              )}
+            >
               {library.name}
             </span>
           )}
@@ -251,7 +293,11 @@ function LibraryRow({
         {isDeleting ? (
           <Progress
             aria-label={t("deleting")}
-            value={library.teardownStage ? TEARDOWN_PERCENT[library.teardownStage] : 5}
+            value={
+              library.teardownStage
+                ? TEARDOWN_PERCENT[library.teardownStage]
+                : 5
+            }
             className="h-1.5 max-w-xs bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive"
           />
         ) : null}
@@ -341,7 +387,11 @@ function OwnerActions({
       ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={t("moreActions", { name: library.name })}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("moreActions", { name: library.name })}
+          >
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>

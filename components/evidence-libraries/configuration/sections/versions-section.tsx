@@ -41,7 +41,9 @@ import { EmptyList, FieldGroup, Panel } from "../fields";
 import { SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
 
-type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
+type RuntimeState = FunctionReturnType<
+  typeof api.evidenceLibraries.updates.check
+>;
 type VersionRow = FunctionReturnType<
   typeof api.evidenceLibraries.versions.listVersions
 >[number];
@@ -79,7 +81,9 @@ function settle(
   );
 }
 
-type CheckAction = (args: { libraryId: Id<"evidenceLibraries"> }) => Promise<RuntimeState>;
+type CheckAction = (args: {
+  libraryId: Id<"evidenceLibraries">;
+}) => Promise<RuntimeState>;
 
 /**
  * One update check per page open, shared with `use()` across renders. The
@@ -88,7 +92,10 @@ type CheckAction = (args: { libraryId: Id<"evidenceLibraries"> }) => Promise<Run
  * render reuses the first call. "Check again" and a started update replace
  * the entry.
  */
-const runtimeChecks = new WeakMap<CheckAction, Map<string, Promise<RuntimeCheck>>>();
+const runtimeChecks = new WeakMap<
+  CheckAction,
+  Map<string, Promise<RuntimeCheck>>
+>();
 
 function runtimeCheck(
   check: CheckAction,
@@ -130,6 +137,9 @@ export function VersionsSection({
   const startRuntimeUpdate = useMutation(
     api.evidenceLibraries.versions.startRuntimeUpdate,
   );
+  const startAddressMove = useMutation(
+    api.evidenceLibraries.versions.startAddressMove,
+  );
   const restoreRevision = useMutation(
     api.evidenceLibraries.versions.restoreRevision,
   );
@@ -145,6 +155,7 @@ export function VersionsSection({
     : null;
   const [busy, setBusy] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [restoring, setRestoring] = useState<VersionRow | null>(null);
 
   const blocked = busy || operationRunning;
@@ -168,6 +179,24 @@ export function VersionsSection({
       })
       .catch((error: unknown) =>
         toast.error(errorMessage(error, t("versions.updateError"))),
+      )
+      .finally(() => setBusy(false));
+  }
+
+  function confirmMove() {
+    setMoveOpen(false);
+    setBusy(true);
+    void startAddressMove({ libraryId })
+      .then((result) => {
+        checkAgain();
+        toast(t("versions.addressMoveStarted"), {
+          description: t("versions.addressMoveStartedDescription", {
+            address: result.movedTo.replace(/^https?:\/\//, ""),
+          }),
+        });
+      })
+      .catch((error: unknown) =>
+        toast.error(errorMessage(error, t("versions.addressMoveError"))),
       )
       .finally(() => setBusy(false));
   }
@@ -234,6 +263,7 @@ export function VersionsSection({
               promise={checkPromise}
               blocked={blocked}
               onUpdate={() => setUpdateOpen(true)}
+              onMove={() => setMoveOpen(true)}
             />
           </Suspense>
         ) : (
@@ -283,6 +313,25 @@ export function VersionsSection({
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("versions.addressMoveTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("versions.addressMoveBody")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMove}>
+              {t("versions.addressMoveConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog
         open={restoring !== null}
         onOpenChange={(open) => {
@@ -292,7 +341,9 @@ export function VersionsSection({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("versions.restoreTitle", { rev: restoring?.revisionKey ?? "" })}
+              {t("versions.restoreTitle", {
+                rev: restoring?.revisionKey ?? "",
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("versions.restoreBody")}
@@ -314,10 +365,12 @@ function SoftwarePanel({
   promise,
   blocked,
   onUpdate,
+  onMove,
 }: {
   promise: Promise<RuntimeCheck>;
   blocked: boolean;
   onUpdate: () => void;
+  onMove: () => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const format = useFormatter();
@@ -329,65 +382,95 @@ function SoftwarePanel({
       </Panel>
     );
   }
-  const { running, latest, changes, checkedAt } = result.state;
+  const { running, latest, changes, checkedAt, addressState } = result.state;
   const state = runtimeUpdateState({ running, latest });
   const updateAvailable = state === "update-available";
   return (
-    <Panel tone="muted" className="space-y-3" data-runtime-state={state}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {updateAvailable ? (
-          <StatusChip tone="warning">{t("versions.updateAvailable")}</StatusChip>
-        ) : (
-          <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
-        )}
-        {updateAvailable ? (
-          <Button type="button" size="sm" disabled={blocked} onClick={onUpdate}>
-            <RefreshCw />
-            {t("versions.update")}
-          </Button>
-        ) : null}
-      </div>
-      <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-        <dt className="text-xs font-medium text-muted-foreground">
-          {t("versions.runningLabel")}
-        </dt>
-        <dd className="font-mono" data-running={running}>
-          {shortCommit(running)}
-        </dd>
-        <dt className="text-xs font-medium text-muted-foreground">
-          {t("versions.latestLabel")}
-        </dt>
-        <dd className="font-mono" data-latest={latest}>
-          {shortCommit(latest)}
-        </dd>
-        <dt className="text-xs font-medium text-muted-foreground">
-          {t("versions.checkedLabel")}
-        </dt>
-        <dd>
-          {format.dateTime(new Date(checkedAt), {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </dd>
-      </dl>
-      {updateAvailable && changes.length > 0 ? (
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">
-            {t("versions.changesHeading")}
+    <>
+      {addressState === "ours" ? null : (
+        <Panel
+          tone="muted"
+          role="alert"
+          className="mb-3 flex flex-wrap items-center justify-between gap-3"
+          data-address-state={addressState}
+        >
+          <p className="text-sm text-destructive">
+            {t("versions.addressNotReachable")}
           </p>
-          <ul className="list-disc space-y-0.5 pl-4 text-sm">
-            {changes.map((change) => (
-              <li key={change.sha}>
-                <span className="mr-2 font-mono text-xs text-muted-foreground">
-                  {shortCommit(change.sha)}
-                </span>
-                {change.message}
-              </li>
-            ))}
-          </ul>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={blocked}
+            onClick={onMove}
+          >
+            {t("versions.addressMove")}
+          </Button>
+        </Panel>
+      )}
+      <Panel tone="muted" className="space-y-3" data-runtime-state={state}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {updateAvailable ? (
+            <StatusChip tone="warning">
+              {t("versions.updateAvailable")}
+            </StatusChip>
+          ) : (
+            <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
+          )}
+          {updateAvailable ? (
+            <Button
+              type="button"
+              size="sm"
+              disabled={blocked}
+              onClick={onUpdate}
+            >
+              <RefreshCw />
+              {t("versions.update")}
+            </Button>
+          ) : null}
         </div>
-      ) : null}
-    </Panel>
+        <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+          <dt className="text-xs font-medium text-muted-foreground">
+            {t("versions.runningLabel")}
+          </dt>
+          <dd className="font-mono" data-running={running}>
+            {shortCommit(running)}
+          </dd>
+          <dt className="text-xs font-medium text-muted-foreground">
+            {t("versions.latestLabel")}
+          </dt>
+          <dd className="font-mono" data-latest={latest}>
+            {shortCommit(latest)}
+          </dd>
+          <dt className="text-xs font-medium text-muted-foreground">
+            {t("versions.checkedLabel")}
+          </dt>
+          <dd>
+            {format.dateTime(new Date(checkedAt), {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+          </dd>
+        </dl>
+        {updateAvailable && changes.length > 0 ? (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("versions.changesHeading")}
+            </p>
+            <ul className="list-disc space-y-0.5 pl-4 text-sm">
+              {changes.map((change) => (
+                <li key={change.sha}>
+                  <span className="mr-2 font-mono text-xs text-muted-foreground">
+                    {shortCommit(change.sha)}
+                  </span>
+                  {change.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </Panel>
+    </>
   );
 }
 
@@ -437,7 +520,9 @@ function VersionTable({
               data-version-status={row.status}
               data-revision={row.revisionKey}
             >
-              <TableCell className="font-mono text-xs">{row.revisionKey}</TableCell>
+              <TableCell className="font-mono text-xs">
+                {row.revisionKey}
+              </TableCell>
               <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                 {format.dateTime(new Date(row.createdAt), {
                   dateStyle: "medium",

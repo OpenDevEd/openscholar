@@ -2798,6 +2798,14 @@
       "restoreBody": "This publishes it as a new version.",
       "restoreStarted": "Restore started",
       "restoreStartedDescription": "Applying {rev} as {next}…",
+      "addressNotReachable": "Address not reachable",
+      "addressMove": "Move to a new address",
+      "addressMoveTitle": "Move this library to a new address?",
+      "addressMoveBody": "The library takes the next free address. Records and settings stay the same. Anyone using the old address will not reach it.",
+      "addressMoveConfirm": "Move now",
+      "addressMoveStarted": "Move started",
+      "addressMoveStartedDescription": "Moving to {address}\u2026",
+      "addressMoveError": "The library could not be moved. Try again.",
       "restoreError": "The version could not be restored. Try again."
     }
   },
@@ -2812,6 +2820,7 @@
       "failedAtLabel": "Failed at",
       "currentStepLabel": "Step",
       "movedToLabel": "Moved to",
+      "addressNotReachable": "Address not reachable",
       "continueSetup": "Continue setup",
       "viewProgress": "View progress",
       "configure": "Configure",

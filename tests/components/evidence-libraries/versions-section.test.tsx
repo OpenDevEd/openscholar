@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   check: vi.fn(),
   startRuntimeUpdate: vi.fn(),
+  startAddressMove: vi.fn(),
   restoreRevision: vi.fn(),
   listVersions: vi.fn(),
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
@@ -20,6 +21,7 @@ vi.mock("@/convex/_generated/api", () => ({
       versions: {
         listVersions: "listVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
+        startAddressMove: "startAddressMove",
         restoreRevision: "restoreRevision",
       },
     },
@@ -35,7 +37,9 @@ vi.mock("convex/react", () => ({
   useMutation: (reference: string) =>
     reference === "startRuntimeUpdate"
       ? mocks.startRuntimeUpdate
-      : mocks.restoreRevision,
+      : reference === "startAddressMove"
+        ? mocks.startAddressMove
+        : mocks.restoreRevision,
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
@@ -122,6 +126,7 @@ describe("<VersionsSection>", () => {
     checkAction = (args) => mocks.check(args);
     mocks.check.mockReset();
     mocks.startRuntimeUpdate.mockReset();
+    mocks.startAddressMove.mockReset();
     mocks.restoreRevision.mockReset();
     mocks.listVersions.mockReset();
     mocks.toast.mockReset();
@@ -131,6 +136,7 @@ describe("<VersionsSection>", () => {
       latest: "bbbbbbb1234",
       changes: [{ sha: "bbbbbbb1234", message: "Faster search" }],
       checkedAt: Date.UTC(2026, 7, 26, 12, 0),
+      addressState: "ours",
     });
     mocks.listVersions.mockReturnValue(rows);
   });
@@ -171,6 +177,7 @@ describe("<VersionsSection>", () => {
       latest: "aaaaaaa1234",
       changes: [],
       checkedAt: Date.UTC(2026, 7, 26, 12, 0),
+      addressState: "ours",
     });
     await renderSection();
     expect(screen.getByText("versions.upToDate")).toBeInTheDocument();
@@ -209,6 +216,62 @@ describe("<VersionsSection>", () => {
     expect(mocks.toast).toHaveBeenCalledWith("versions.restoreStarted", {
       description: "versions.restoreStartedDescription:r1,r4",
     });
+  });
+
+  it("says nothing about the address while the library answers at it", async () => {
+    await renderSection();
+    expect(screen.queryByText("versions.addressNotReachable")).toBeNull();
+    expect(screen.queryByRole("button", { name: "versions.addressMove" })).toBeNull();
+  });
+
+  it("offers a move when another site answers the address", async () => {
+    const user = userEvent.setup();
+    mocks.check.mockResolvedValue({
+      running: "aaaaaaa1234",
+      latest: "aaaaaaa1234",
+      changes: [],
+      checkedAt: Date.UTC(2026, 7, 26, 12, 0),
+      addressState: "not-ours",
+    });
+    mocks.startAddressMove.mockResolvedValue({
+      movedFrom: "https://climate-lib.example.test",
+      movedTo: "https://climate-2-lib.example.test",
+    });
+    await renderSection();
+
+    expect(screen.getByText("versions.addressNotReachable")).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-address-state="not-ours"]'),
+    ).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "versions.addressMove" }));
+    await user.click(
+      screen.getByRole("button", { name: "versions.addressMoveConfirm" }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.startAddressMove).toHaveBeenCalledWith({
+        libraryId: "library_123",
+      }),
+    );
+    expect(mocks.toast).toHaveBeenCalledWith("versions.addressMoveStarted", {
+      description:
+        "versions.addressMoveStartedDescription:climate-2-lib.example.test",
+    });
+  });
+
+  it("does not offer a move while an operation runs", async () => {
+    mocks.check.mockResolvedValue({
+      running: "aaaaaaa1234",
+      latest: "aaaaaaa1234",
+      changes: [],
+      checkedAt: Date.UTC(2026, 7, 26, 12, 0),
+      addressState: "unreachable",
+    });
+    await renderSection({ operationRunning: true });
+    expect(
+      screen.getByRole("button", { name: "versions.addressMove" }),
+    ).toBeDisabled();
   });
 
   it("does not check software for a library that is not live", async () => {
