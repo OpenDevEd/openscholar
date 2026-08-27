@@ -58,10 +58,15 @@ async function requestTeardown(
   if (teardown?.status === "queued" || teardown?.status === "running") {
     return { operationId: teardown._id, status: teardown.status };
   }
+  // A draft's setup operation is created as "queued" but never starts until
+  // the Owner activates it. Only work that is running, or that already ran
+  // and is waiting to retry, blocks deletion.
   const activeOperation = operations.find(
     (operation) =>
       operation.kind !== "teardown" &&
-      (operation.status === "queued" || operation.status === "running"),
+      (operation.status === "running" ||
+        (operation.status === "queued" &&
+          (operation.attemptCount > 0 || operation.startedAt !== undefined))),
   );
   if (activeOperation) {
     throw createError(

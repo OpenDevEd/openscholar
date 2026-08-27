@@ -1,7 +1,11 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createActivatedSetupFixture,
+  createDraftSetupFixture,
+  createReadySetupFixture,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 
 describe("development Evidence Library teardown", () => {
   beforeEach(() => {
@@ -79,6 +83,80 @@ describe("development Evidence Library teardown", () => {
         { operationId: requested.operationId },
       ),
     ).resolves.toEqual({ status: "complete" });
+  });
+
+  it("deletes a draft whose setup never started", async () => {
+    const fixture = await createDraftSetupFixture("teardown_draft");
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(fixture.created.setupOperationId)),
+    ).resolves.toMatchObject({ status: "queued", attemptCount: 0 });
+
+    const requested = await fixture.admin.mutation(
+      api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        confirmationName: "Climate Evidence",
+      },
+    );
+    expect(requested.status).toBe("queued");
+    await fixture.t.mutation(
+      internal.evidenceLibraries.teardown.prepareDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: requested.operationId,
+      },
+    );
+    let complete = false;
+    for (let batch = 0; batch < 20 && !complete; batch += 1) {
+      ({ complete } = await fixture.t.mutation(
+        internal.evidenceLibraries.teardown.deleteDevelopmentTeardownBatch,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: requested.operationId,
+        },
+      ));
+    }
+    expect(complete).toBe(true);
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(fixture.created.libraryId)),
+    ).resolves.toBeNull();
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(fixture.created.setupOperationId)),
+    ).resolves.toBeNull();
+  });
+
+  it("still refuses while setup is running after activation was requested", async () => {
+    const fixture = await createActivatedSetupFixture("teardown_activated");
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(fixture.created.setupOperationId)),
+    ).resolves.toMatchObject({ status: "running" });
+
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+        {
+          libraryId: fixture.created.libraryId,
+          confirmationName: "Climate Evidence",
+        },
+      ),
+    ).rejects.toThrow(/wait for the current library operation/i);
+  });
+
+  it("still refuses a queued setup that already ran and is waiting to retry", async () => {
+    const fixture = await createActivatedSetupFixture("teardown_retry_wait");
+    await fixture.t.run((ctx) =>
+      ctx.db.patch(fixture.created.setupOperationId, { status: "queued" }),
+    );
+
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+        {
+          libraryId: fixture.created.libraryId,
+          confirmationName: "Climate Evidence",
+        },
+      ),
+    ).rejects.toThrow(/wait for the current library operation/i);
   });
 
   it("rejects deletion when the development-only switch is off", async () => {
