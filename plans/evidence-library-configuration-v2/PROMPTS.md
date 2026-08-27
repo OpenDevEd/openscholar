@@ -595,3 +595,65 @@ START NOW: read the plan and the README, read convex/_generated/ai/guidelines.md
 
 Go.
 ```
+
+## Plan 13 — large-list pickers, lane R (runtime)
+
+```text
+Implement lane R of plans/evidence-library-configuration-v2/13-large-list-pickers.md (the plan lives in the OpenScholar repository at /Users/mcharrad/Documents/Github/openscholar/dev-self; read it there). Read that repository's plans/evidence-library-configuration-v2/00-README.md and this repository's AGENTS.md first.
+Depends on: nothing. Lane P builds against your contract in parallel.
+
+Worktree /Users/mcharrad/Documents/Github/new-el-pickers, branch codex/institutions-paging from origin/main. Run `npm ci` first. Allow about two hours and keep working without asking questions the plan already answers.
+
+STANDING RULES:
+1. Reuse first: mirror the collections endpoint (`src/lib/admin/collection-catalog-service.ts`, its contract file and route) for query, cursor, pageSize and the error shape. Do not invent a second paging style.
+2. No legacy code: the old "everything in one array" response goes; a request without parameters gets the first page.
+3. Keyset paging on (count desc, name asc); the cursor carries both. Cap pageSize at 200, default 50.
+4. Tests: red → green for the service (query, sort, cursor stability across ties, clamp, empty) and the route (bearer, bad cursor → 400, shape). Behaviour only.
+5. `npm run check:changed` (Fallow) must pass before every push. Run `npm run test:acceptance` if Docker works on this machine; if it does not, say so in the PR and rely on the GitHub "Runtime acceptance" check. Never restart Docker Desktop and never touch containers you did not create (what2 and minio are off limits).
+6. Research instead of guessing: read the code and the existing tests.
+7. Use other agents only for read-only investigation over about three file reads.
+
+EXECUTION RHYTHM: test-first for the service, then the route, then the doc. Commit after every working unit with `[plan-13]`.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-13]` on every commit; never commit while relevant tests fail; never use --no-verify or another hook bypass; push and open a PR to main; do not merge.
+
+WHEN TO STOP: only for a real blocker (write plans/…/13-BLOCKER.md in the OpenScholar repository). Do not stop for an answer the plan already gives, for token worry, or for the urge to ask. Fallow and the tests must pass first.
+
+DEVIATIONS: if the plan is wrong, commit safe work, fix the numbered plan in the OpenScholar repository, commit there with `docs: [plan-13] revise <section> — <reason>`, then continue.
+
+START NOW: read the plan and the README, run `git status`, then start the service test.
+
+Go.
+```
+
+## Plan 13 — large-list pickers, lane P (OpenScholar)
+
+```text
+Implement lane P of plans/evidence-library-configuration-v2/13-large-list-pickers.md.
+Read plans/evidence-library-configuration-v2/00-README.md, AGENTS.md, and convex/_generated/ai/guidelines.md first.
+Depends on: plans 01–12 merged (they are). Lane R builds the runtime institutions paging in parallel to the contract in the plan's Decision 2; until it merges the shared runtime answers with the full list and no nextCursor — treat that as a single page.
+
+Worktree /Users/mcharrad/Documents/Github/openscholar/pickers-sprint, branch codex/large-list-pickers from origin/dev. Run `npm ci` first. Convex lane in .env.local (calm-labrador-815). Next port 3013. Allow about four hours and keep working without asking questions the plan already answers.
+
+STANDING RULES:
+1. Reuse first: the approved collections picker (`CollectionPicker` in collections-field.tsx: Dialog, search, filter chips, sortable table, checkbox rows, select-all, footer count and confirm) becomes the shared `RemotePickerDialog`; the shared primitives in configuration/fields.tsx; `runtimeReads.ts` caching; the copy rules in the README (sentence case, no dots, no counts unless they change a decision). Match the approved look exactly — do not redesign.
+2. No legacy code: delete `readCatalogue`, `MAX_PAGES`, the truncated banner, the Popover institution combobox and the plain Collection `Select`. Nothing preloads a catalogue.
+3. Convex rules: validators on args and returns; every returned field in `returns`; read convex/_generated/ai/guidelines.md.
+4. No useEffect for app state. The debounce is a timer in the search handler or a small custom hook with cleanup and a comment naming the outside system.
+5. Tests: run the `test-decision` skill first; behaviour, roles, labels and data-* only; never Tailwind classes. Every test named in the plan.
+6. Deployment checks: upload only with `npx convex dev --once` to the lane; never `npm run convex:push`; never touch the shared deployment. You may set up one disposable library on the development platform for the browser gate and must delete it before opening the PR.
+7. Research instead of guessing: the code, the Convex guidelines, node_modules/next/dist/docs/.
+8. Use other agents only for read-only investigation over about three file reads; never for UI work.
+
+EXECUTION RHYTHM: test-first for the read client and the action, then the dialog, then each call site. Commit after every working unit with `[plan-13]`.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-13]` on every commit; never commit while relevant tests fail; never use --no-verify or another hook bypass; push and open a PR to dev; do not merge.
+
+WHEN TO STOP: only for a real blocker (plans/…/13-BLOCKER.md). Do not stop for an answer the plan already gives, for token worry, or for the urge to ask. `npx tsc --noEmit`, the vitest sets in the plan, `npx convex dev --once`, and the browser gate on port 3013 with screenshots in /tmp/pickers/ must all pass first.
+
+DEVIATIONS: if the plan is wrong, commit safe work, fix the numbered plan, commit `docs: [plan-13] revise <section> — <reason>`, then continue.
+
+START NOW: read the plan and the README, read convex/_generated/ai/guidelines.md, run `git status`, confirm no other Convex uploader is running on this lane, then start the read-client test.
+
+Go.
+```
