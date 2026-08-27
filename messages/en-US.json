@@ -2742,17 +2742,10 @@
     },
     "analytics": {
       "description": "Where visitor statistics go. Nothing is recorded until a visitor accepts cookies.",
-      "providerLabel": "Provider",
-      "provider": {
-        "none": "None",
-        "posthog": "PostHog",
-        "google": "Google Analytics"
-      },
-      "providerHint": {
-        "none": "No visitor statistics.",
-        "posthog": "PostHog cloud or your own PostHog server.",
-        "google": "Google Analytics 4."
-      },
+      "posthogLabel": "PostHog",
+      "posthogHint": "PostHog cloud or your own PostHog server.",
+      "googleLabel": "Google Analytics",
+      "googleHint": "Google Analytics 4.",
       "hostLabel": "PostHog host",
       "hostHint": "Your PostHog address, for example https://us.i.posthog.com.",
       "hostError": "Use a full address that starts with https://.",

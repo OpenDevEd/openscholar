@@ -688,19 +688,33 @@ describe("<ConfigurationWorkspace>", () => {
       expect(card("languages").getByText("sectionState.edited")).toBeInTheDocument();
     });
 
-    it("saves only the chosen analytics provider and checks its key", async () => {
+    it("lets PostHog and Google Analytics be on at the same time and checks both keys", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
       const analytics = card("analytics");
-      await user.click(analytics.getByRole("radio", { name: /analytics\.provider\.google/ }));
+      expect(analytics.queryByLabelText("analytics.measurementIdLabel")).not.toBeInTheDocument();
+      await user.click(analytics.getByRole("switch", { name: "analytics.googleLabel" }));
       expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
       await user.type(analytics.getByLabelText("analytics.measurementIdLabel"), "g-abcd12");
       expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
+
+      await user.click(analytics.getByRole("switch", { name: "analytics.posthogLabel" }));
+      expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
+      await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
+      await user.type(analytics.getByLabelText("analytics.keyLabel"), "phc_12345678901234567890");
+      expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
+
       await user.click(screen.getByRole("button", { name: "save" }));
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
       expect(request.sections).toEqual([
-        { sectionKey: "analytics", payload: { google: { measurementId: "G-ABCD12" } } },
+        {
+          sectionKey: "analytics",
+          payload: {
+            posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+            google: { measurementId: "G-ABCD12" },
+          },
+        },
       ]);
     });
   });

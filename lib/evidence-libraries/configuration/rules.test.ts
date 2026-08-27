@@ -717,7 +717,7 @@ const platformRows = [
 ] as const;
 
 describe("readDraft for the platform sections", () => {
-  it("reads export switches, languages and the analytics provider", () => {
+  it("reads export switches, languages and the analytics switches", () => {
     const draft = readDraft(platformRows);
     expect(draft.citations.showUrl).toBe(true);
     expect(draft.exports).toEqual({ ris: "https://api.zotero.org/groups/1/items?format=ris", bibtex: "", atom: "" });
@@ -728,12 +728,10 @@ describe("readDraft for the platform sections", () => {
       localePriority: ["en-GB", "fr"],
     });
     expect(draft.analytics).toEqual({
-      provider: "posthog",
-      posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
-      google: { measurementId: "" },
+      posthog: { enabled: true, host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+      google: { enabled: false, measurementId: "" },
     });
-    expect(readDraft(savedRows).analytics.posthog.host).toBe("");
-    expect(readDraft(savedRows).analytics.provider).toBe("none");
+    expect(readDraft(savedRows).analytics.posthog).toEqual({ enabled: false, host: "", key: "" });
     expect(readDraft(savedRows).exports).toEqual({ ris: "", bibtex: "", atom: "" });
   });
 });
@@ -842,24 +840,34 @@ describe("changedSectionRows for the platform sections", () => {
     ]);
   });
 
-  it("writes only the chosen analytics provider and checks its keys", () => {
+  it("writes both analytics providers when both are on and checks their keys", () => {
     const draft = readDraft(platformRows);
-    draft.analytics.provider = "google";
+    expect(draft.analytics).toEqual({
+      posthog: { enabled: true, host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+      google: { enabled: false, measurementId: "" },
+    });
+    draft.analytics.google.enabled = true;
+    expect(sectionProblems(draft, "analytics")).toEqual(["google"]);
     draft.analytics.google.measurementId = "G-12AB";
     expect(sectionProblems(draft, "analytics")).toEqual([]);
     expect(changedSectionRows(draft, platformRows)).toEqual([
-      { sectionKey: "analytics", payload: { google: { measurementId: "G-12AB" } } },
+      {
+        sectionKey: "analytics",
+        payload: {
+          posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+          google: { measurementId: "G-12AB" },
+        },
+      },
     ]);
     draft.analytics.google.measurementId = "UA-1";
     expect(sectionProblems(draft, "analytics")).toEqual(["google"]);
-    draft.analytics.provider = "posthog";
+    draft.analytics.google.enabled = false;
     draft.analytics.posthog.key = "nope";
     expect(sectionProblems(draft, "analytics")).toEqual(["posthog"]);
     draft.analytics.posthog.key = "phc_short";
     expect(sectionProblems(draft, "analytics")).toEqual(["posthog"]);
-    draft.analytics.posthog.key = "phc_12345678901234567890";
+    draft.analytics.posthog.enabled = false;
     expect(sectionProblems(draft, "analytics")).toEqual([]);
-    draft.analytics.provider = "none";
     expect(changedSectionRows(draft, platformRows)).toEqual([{ sectionKey: "analytics", payload: {} }]);
     expect(cardForRow("exports")).toBe("citations");
     expect(cardForRow("localization")).toBe("languages");
