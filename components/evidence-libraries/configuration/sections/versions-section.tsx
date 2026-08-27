@@ -79,6 +79,35 @@ function settle(
   );
 }
 
+type CheckAction = (args: { libraryId: Id<"evidenceLibraries"> }) => Promise<RuntimeState>;
+
+/**
+ * One update check per page open, shared with `use()` across renders. The
+ * outer key is the action callback, which Convex creates once per mounted
+ * section, so opening the page again checks again and Strict Mode's second
+ * render reuses the first call. "Check again" and a started update replace
+ * the entry.
+ */
+const runtimeChecks = new WeakMap<CheckAction, Map<string, Promise<RuntimeCheck>>>();
+
+function runtimeCheck(
+  check: CheckAction,
+  libraryId: Id<"evidenceLibraries">,
+  fallback: string,
+  { fresh = false } = {},
+): Promise<RuntimeCheck> {
+  let byLibrary = runtimeChecks.get(check);
+  if (!byLibrary) {
+    byLibrary = new Map();
+    runtimeChecks.set(check, byLibrary);
+  }
+  const cached = byLibrary.get(libraryId);
+  if (cached && !fresh) return cached;
+  const promise = settle(check({ libraryId }), fallback);
+  byLibrary.set(libraryId, promise);
+  return promise;
+}
+
 /**
  * The Evidence Library software the library runs, with an Update button when
  * newer software exists, and every published version with Restore. Not a
@@ -110,9 +139,10 @@ export function VersionsSection({
   );
 
   // Opening the page checks for updates once; "Check again" asks once more.
-  const [checkPromise, setCheckPromise] = useState<Promise<RuntimeCheck> | null>(
-    () => (live ? settle(check({ libraryId }), t("versions.checkError")) : null),
-  );
+  const [, setCheckCount] = useState(0);
+  const checkPromise = live
+    ? runtimeCheck(check, libraryId, t("versions.checkError"))
+    : null;
   const [busy, setBusy] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [restoring, setRestoring] = useState<VersionRow | null>(null);
@@ -120,7 +150,8 @@ export function VersionsSection({
   const blocked = busy || operationRunning;
 
   function checkAgain() {
-    setCheckPromise(settle(check({ libraryId }), t("versions.checkError")));
+    runtimeCheck(check, libraryId, t("versions.checkError"), { fresh: true });
+    setCheckCount((count) => count + 1);
   }
 
   function confirmUpdate() {
@@ -128,6 +159,7 @@ export function VersionsSection({
     setBusy(true);
     void startRuntimeUpdate({ libraryId })
       .then((result) => {
+        checkAgain();
         toast(t("versions.updateStarted"), {
           description: t("versions.updateStartedDescription", {
             rev: shortCommit(result.to),

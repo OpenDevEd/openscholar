@@ -26,8 +26,12 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
+// One action callback per test, as Convex gives one per mounted section; the
+// section caches its update check by that callback.
+let checkAction: (args: unknown) => unknown;
+
 vi.mock("convex/react", () => ({
-  useAction: () => mocks.check,
+  useAction: () => checkAction,
   useMutation: (reference: string) =>
     reference === "startRuntimeUpdate"
       ? mocks.startRuntimeUpdate
@@ -115,6 +119,7 @@ function row(revisionKey: string) {
 
 describe("<VersionsSection>", () => {
   beforeEach(() => {
+    checkAction = (args) => mocks.check(args);
     mocks.check.mockReset();
     mocks.startRuntimeUpdate.mockReset();
     mocks.restoreRevision.mockReset();
