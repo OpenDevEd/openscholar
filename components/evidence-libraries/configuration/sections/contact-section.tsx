@@ -17,11 +17,12 @@ import {
   SCHEMA_LIMITS,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { Field } from "../section-card";
-import { FieldGroup, Panel, TextUploadField } from "../fields";
+import { FieldGroup, Panel, TextUploadField, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 
 type LegalKind = LegalSource["kind"];
 const LEGAL_KINDS: LegalKind[] = ["none", "text", "url"];
+const RECIPIENT_KEYS = ["contactRecipient", "takedownRecipient"] as const satisfies readonly (keyof EmailDraft)[];
 
 export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.contact");
@@ -33,7 +34,7 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
       d.contact[key] = value;
       return d;
     });
-  const setEmail = <K extends keyof EmailDraft>(key: K, value: string) =>
+  const setEmail = <K extends keyof EmailDraft>(key: K, value: string | null) =>
     patch((d) => {
       d.email[key] = value;
       return d;
@@ -115,47 +116,39 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
         </Field>
       </FieldGroup>
 
-      <FieldGroup title={t("recipientsHeading")}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field
-            label={t("contactRecipient")}
-            hint={t("contactRecipientHint")}
-            error={emailError(email.contactRecipient)}
-          >
-            {(id, invalid) => (
-              <Input
-                id={id}
-                type="email"
-                className="bg-background"
-                value={email.contactRecipient}
-                placeholder={contact.email || t("contactRecipientPlaceholder")}
-                aria-invalid={invalid || undefined}
-                onChange={(e) => setEmail("contactRecipient", e.target.value)}
+      <FieldGroup title={t("recipientsHeading")} hint={t("recipientsHint")}>
+        {RECIPIENT_KEYS.map((key) => {
+          const value = email[key];
+          return (
+            <div key={key} className="space-y-3" data-recipient={key} data-enabled={value !== null}>
+              <ToggleRow
+                label={t(`${key}Label`)}
+                hint={t(`${key}Hint`)}
+                checked={value !== null}
+                onChange={(on) => setEmail(key, on ? "" : null)}
               />
-            )}
-          </Field>
-          <Field
-            label={t("takedownRecipient")}
-            hint={t("takedownRecipientHint")}
-            error={
-              !email.takedownRecipient.trim()
-                ? t("takedownRequired")
-                : emailError(email.takedownRecipient)
-            }
-          >
-            {(id, invalid) => (
-              <Input
-                id={id}
-                type="email"
-                className="bg-background"
-                value={email.takedownRecipient}
-                placeholder="takedown@example.org"
-                aria-invalid={invalid || undefined}
-                onChange={(e) => setEmail("takedownRecipient", e.target.value)}
-              />
-            )}
-          </Field>
-        </div>
+              {value !== null ? (
+                <Field
+                  label={t(`${key}`)}
+                  className="max-w-sm"
+                  error={!EMAIL.test(value) ? t("emailError") : null}
+                >
+                  {(id, invalid) => (
+                    <Input
+                      id={id}
+                      type="email"
+                      className="bg-background"
+                      value={value}
+                      placeholder="name@example.org"
+                      aria-invalid={invalid || undefined}
+                      onChange={(e) => setEmail(key, e.target.value)}
+                    />
+                  )}
+                </Field>
+              ) : null}
+            </div>
+          );
+        })}
       </FieldGroup>
 
       <FieldGroup title={t("legalHeading")} hint={t("legalHint")}>

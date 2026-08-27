@@ -402,7 +402,22 @@ describe("sectionProblems for the content sections", () => {
     ]);
   });
 
-  it("requires a takedown recipient and checks the other contact values", () => {
+  it("checks a recipient only while its switch is on", () => {
+    const draft = readDraft(contentRows);
+    expect(draft.email).toEqual({ contactRecipient: null, takedownRecipient: "takedown@example.org" });
+    draft.email.takedownRecipient = null;
+    expect(sectionProblems(draft, "contact")).toEqual([]);
+    expect(changedSectionRows(draft, contentRows)).toEqual([{ sectionKey: "email", payload: {} }]);
+    draft.email.contactRecipient = "";
+    expect(sectionProblems(draft, "contact")).toEqual(["contactRecipient"]);
+    draft.email.contactRecipient = "team@example.org";
+    expect(sectionProblems(draft, "contact")).toEqual([]);
+    expect(changedSectionRows(draft, contentRows)).toEqual([
+      { sectionKey: "email", payload: { contactRecipient: "team@example.org" } },
+    ]);
+  });
+
+  it("flags an invalid takedown recipient and checks the other contact values", () => {
     const draft = readDraft(contentRows);
     draft.email.takedownRecipient = "";
     draft.contact.email = "hello@";

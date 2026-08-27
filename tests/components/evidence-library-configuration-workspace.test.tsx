@@ -512,6 +512,32 @@ describe("<ConfigurationWorkspace>", () => {
       expect(credit).toBeDisabled();
     });
 
+    it("shows a recipient field only while its switch is on and saves nothing when off", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      const contact = card("contact");
+      const contactForm = contact.getByRole("switch", { name: "contact.contactRecipientLabel" });
+      const takedown = contact.getByRole("switch", { name: "contact.takedownRecipientLabel" });
+      expect(contactForm).not.toBeChecked();
+      expect(contact.queryByLabelText("contact.contactRecipient")).not.toBeInTheDocument();
+      expect(takedown).toBeChecked();
+      expect(contact.getByLabelText("contact.takedownRecipient")).toHaveValue("takedown@example.org");
+
+      await user.click(contactForm);
+      expect(contact.getByText("sectionState.attention")).toBeInTheDocument();
+      await user.type(contact.getByLabelText("contact.contactRecipient"), "team@example.org");
+      expect(contact.getByText("sectionState.edited")).toBeInTheDocument();
+
+      await user.click(takedown);
+      expect(contact.queryByLabelText("contact.takedownRecipient")).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "save" }));
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+      expect(request.sections).toEqual([
+        { sectionKey: "email", payload: { contactRecipient: "team@example.org" } },
+      ]);
+    });
+
     it("switches a legal page between an address and uploaded text, then saves the text", async () => {
       const user = userEvent.setup();
       mutationMock.mockImplementation((reference: unknown) => {

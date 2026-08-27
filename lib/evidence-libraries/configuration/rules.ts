@@ -344,7 +344,8 @@ export type FooterDraft = {
 };
 
 export type ContactDraft = { email: string; phone: string; address: string };
-export type EmailDraft = { contactRecipient: string; takedownRecipient: string };
+/** A recipient is null while its switch is off; on and empty is a problem. */
+export type EmailDraft = { contactRecipient: string | null; takedownRecipient: string | null };
 
 /**
  * Where a legal page comes from: nothing, uploaded text, or an address
@@ -631,11 +632,15 @@ function readContact(payload: unknown): ContactDraft {
   };
 }
 
+function readRecipient(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
 function readEmail(payload: unknown): EmailDraft {
   const email = record(payload);
   return {
-    contactRecipient: text(email.contactRecipient),
-    takedownRecipient: text(email.takedownRecipient),
+    contactRecipient: readRecipient(email.contactRecipient),
+    takedownRecipient: readRecipient(email.takedownRecipient),
   };
 }
 
@@ -896,10 +901,11 @@ function contactPayload(contact: ContactDraft) {
   });
 }
 
+// A switched-off recipient writes no key at all.
 function emailPayload(email: EmailDraft) {
   return compact({
-    contactRecipient: optional(email.contactRecipient),
-    takedownRecipient: optional(email.takedownRecipient),
+    contactRecipient: optional(email.contactRecipient ?? ""),
+    takedownRecipient: optional(email.takedownRecipient ?? ""),
   });
 }
 
@@ -1149,8 +1155,10 @@ export function sectionProblems(
     }
     case "contact": {
       const { contact, email, legal } = draft;
-      if (!EMAIL.test(email.takedownRecipient)) problems.push("takedownRecipient");
-      if (email.contactRecipient && !EMAIL.test(email.contactRecipient)) {
+      if (email.takedownRecipient !== null && !EMAIL.test(email.takedownRecipient)) {
+        problems.push("takedownRecipient");
+      }
+      if (email.contactRecipient !== null && !EMAIL.test(email.contactRecipient)) {
         problems.push("contactRecipient");
       }
       if (contact.email && !EMAIL.test(contact.email)) problems.push("contactEmail");
