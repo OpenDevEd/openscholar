@@ -31,7 +31,12 @@ type Overview = FunctionReturnType<
 >[number];
 
 /** How far the teardown is, by the stage it reports. */
-const TEARDOWN_PERCENT: Record<string, number> = { coolify: 35, convex: 80 };
+const TEARDOWN_PERCENT: Record<NonNullable<Overview["teardownStage"]>, number> = {
+  queued: 5,
+  coolify: 35,
+  convex: 80,
+  completed: 100,
+};
 
 export function LibraryList() {
   const t = useTranslations("evidenceLibraries.list");
@@ -71,7 +76,7 @@ export function LibraryList() {
       eyebrow={organization.name}
       actions={
         <>
-          <OrganizationSwitcher hidePersonal />
+          <OrganisationPill name={organization.name} />
           {isOwner ? newButton : null}
         </>
       }
@@ -108,6 +113,36 @@ export function LibraryList() {
         />
       ) : null}
     </LibraryPageShell>
+  );
+}
+
+/**
+ * Clerk's organisation switcher for behaviour, drawn as the outlined pill with
+ * initials from the mock instead of Clerk's default trigger.
+ */
+function OrganisationPill({ name }: { name: string }) {
+  return (
+    <div className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background pl-2 shadow-xs">
+      <span
+        aria-hidden="true"
+        className="inline-flex size-5 shrink-0 items-center justify-center rounded-md bg-primary text-[9px] font-bold text-white"
+      >
+        {initialsOf(name)}
+      </span>
+      <OrganizationSwitcher
+        hidePersonal
+        appearance={{
+          elements: {
+            rootBox: "flex",
+            organizationSwitcherTrigger:
+              "h-9 rounded-md px-2 pl-0 text-sm font-medium text-foreground hover:bg-accent focus:shadow-none",
+            organizationPreviewAvatarBox: { display: "none" },
+            organizationPreviewMainIdentifier: "text-sm font-medium text-foreground",
+            organizationSwitcherTriggerIcon: "text-muted-foreground",
+          },
+        }}
+      />
+    </div>
   );
 }
 
@@ -191,7 +226,7 @@ function LibraryRow({
         {isDeleting ? (
           <Progress
             aria-label={t("deleting")}
-            value={TEARDOWN_PERCENT[library.teardownStage ?? ""] ?? 10}
+            value={library.teardownStage ? TEARDOWN_PERCENT[library.teardownStage] : 5}
             className="h-1.5 max-w-xs bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive"
           />
         ) : null}

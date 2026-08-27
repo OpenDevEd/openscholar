@@ -1,14 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import type { LibraryOverviewStatus } from "@/convex/evidenceLibraries/queries";
 import { StatusChip, type StatusTone } from "./configuration/status-chip";
 
-export type LibraryStatus =
-  | "draft"
-  | "setting_up"
-  | "setup_failed"
-  | "active"
-  | "deleting";
+export type LibraryStatus = LibraryOverviewStatus;
 
 export const LIBRARY_TONE: Record<LibraryStatus, StatusTone> = {
   draft: "neutral",

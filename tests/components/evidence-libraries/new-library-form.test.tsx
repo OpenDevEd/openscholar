@@ -84,7 +84,7 @@ describe("<NewLibraryForm>", () => {
     await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
     expect(mocks.query).toHaveBeenLastCalledWith("previewSetupIdentity", { name: "Climate Evidence" });
     expect(screen.getByRole("textbox", { name: "addressLabel" })).toHaveTextContent(
-      "https://climate-evidence-lib.example.test",
+      "climate-evidence-lib.example.test",
     );
 
     await user.click(screen.getByRole("button", { name: "reserve" }));

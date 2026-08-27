@@ -78,7 +78,10 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
     trimmed && !reserved ? { name: trimmed } : "skip",
   );
   const shortName = reserved?.shortName ?? preview.data?.shortName ?? "";
-  const address = reserved?.publicAddress ?? preview.data?.publicAddress ?? "";
+  const address = (reserved?.publicAddress ?? preview.data?.publicAddress ?? "").replace(
+    /^https?:\/\//,
+    "",
+  );
   const nameError = showNameError && !trimmed;
 
   function handleReserve() {
@@ -138,9 +141,12 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
             label={t("nameLabel")}
             error={nameError ? t("nameError") : null}
             counter={
-              <span aria-live="polite">
-                {Array.from(name).length} / {MAX_EVIDENCE_LIBRARY_NAME_LENGTH}
-              </span>
+              // The limit appears only when it is reached.
+              Array.from(name).length >= MAX_EVIDENCE_LIBRARY_NAME_LENGTH ? (
+                <span aria-live="polite">
+                  {Array.from(name).length} / {MAX_EVIDENCE_LIBRARY_NAME_LENGTH}
+                </span>
+              ) : null
             }
           >
             {(id, invalid) =>

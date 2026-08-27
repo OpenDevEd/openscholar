@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
 import { Check, ExternalLink, RefreshCw, Settings, X } from "lucide-react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
@@ -23,19 +22,7 @@ import { FieldGroup } from "./configuration/fields";
 import { InlineNotice } from "./configuration/section-card";
 import { LibraryNotFound } from "./library-not-found";
 import { LibraryPageShell } from "./library-page-shell";
-import { type LibraryStatus, LibraryStatusChip } from "./library-status-chip";
-
-type Setup = NonNullable<
-  FunctionReturnType<typeof api.evidenceLibraries.queries.getSetupDraftSelection>
->;
-
-function libraryStatus(setup: Setup): LibraryStatus {
-  if (setup.library.state === "disabled") return "deleting";
-  if (setup.library.state === "active") return "active";
-  if (setup.setupOperation.status === "running") return "setting_up";
-  if (setup.setupOperation.status === "failed") return "setup_failed";
-  return "draft";
-}
+import { LibraryStatusChip } from "./library-status-chip";
 
 export function SetupProgress({ libraryId }: { libraryId: string }) {
   const t = useTranslations("evidenceLibraries.setup");
@@ -52,7 +39,7 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
   if (setupQuery.data === null) return <LibraryNotFound />;
 
   const setup = setupQuery.data;
-  const status = libraryStatus(setup);
+  const status = setup.status;
   const failed = status === "setup_failed";
   const active = status === "active";
   const base = `/evidence-libraries/${setup.library._id}`;

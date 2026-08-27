@@ -65,6 +65,29 @@ function isSetupStage(stage: string): stage is SetupStage {
   return (SETUP_STAGES as readonly string[]).includes(stage);
 }
 
+const TEARDOWN_STAGES = ["queued", "coolify", "convex", "completed"] as const;
+type TeardownStage = (typeof TEARDOWN_STAGES)[number];
+const teardownStageValidator = v.union(
+  ...TEARDOWN_STAGES.map((stage) => v.literal(stage)),
+);
+function isTeardownStage(stage: string): stage is TeardownStage {
+  return (TEARDOWN_STAGES as readonly string[]).includes(stage);
+}
+
+export type LibraryOverviewStatus = Infer<typeof libraryOverviewStatusValidator>;
+
+/** The one status word the pages show for a library, from its row and its setup operation. */
+function libraryOverviewStatus(
+  library: Doc<"evidenceLibraries">,
+  setupOperation: Pick<Doc<"evidenceLibraryConfigOperations">, "status"> | null,
+): LibraryOverviewStatus {
+  if (library.state === "disabled") return "deleting";
+  if (library.state === "active") return "active";
+  if (setupOperation?.status === "running") return "setting_up";
+  if (setupOperation?.status === "failed") return "setup_failed";
+  return "draft";
+}
+
 const libraryOverviewValidator = v.object({
   _id: v.id("evidenceLibraries"),
   name: v.string(),
@@ -73,7 +96,7 @@ const libraryOverviewValidator = v.object({
   /** The setup step that is running or failed, when the status is about setup. */
   setupStage: v.union(setupStageValidator, v.null()),
   /** The teardown stage while the library is being deleted. */
-  teardownStage: v.union(v.string(), v.null()),
+  teardownStage: v.union(teardownStageValidator, v.null()),
   lastActivatedAt: v.union(v.number(), v.null()),
   accentColor: v.union(v.string(), v.null()),
 });
@@ -106,10 +129,9 @@ async function readLibraryOverview(
             .unique()
         : null,
     ]);
-  let status: Infer<typeof libraryOverviewStatusValidator>;
-  let teardownStage: string | null = null;
-  if (library.state === "disabled") {
-    status = "deleting";
+  const status = libraryOverviewStatus(library, setupOperation);
+  let teardownStage: TeardownStage | null = null;
+  if (status === "deleting") {
     const teardown = await ctx.db
       .query("evidenceLibraryConfigOperations")
       .withIndex("by_libraryId_and_createdAt", (query) =>
@@ -117,15 +139,10 @@ async function readLibraryOverview(
       )
       .order("desc")
       .first();
-    teardownStage = teardown?.kind === "teardown" ? teardown.stage : null;
-  } else if (library.state === "active") {
-    status = "active";
-  } else if (setupOperation?.status === "running") {
-    status = "setting_up";
-  } else if (setupOperation?.status === "failed") {
-    status = "setup_failed";
-  } else {
-    status = "draft";
+    teardownStage =
+      teardown?.kind === "teardown" && isTeardownStage(teardown.stage)
+        ? teardown.stage
+        : null;
   }
   const themeColors = (draftTheme?.payload as { colors?: { accent?: unknown } } | undefined)
     ?.colors;
@@ -268,6 +285,7 @@ const evidenceLibrarySetupResultValidator = v.object({
     }),
   ),
   publicAddress: v.string(),
+  status: libraryOverviewStatusValidator,
 });
 
 async function readEvidenceLibrarySetupForLibrary(
@@ -283,6 +301,7 @@ async function readEvidenceLibrarySetupForLibrary(
     ...setup,
     setupOperation: publicSetupOperation,
     identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
+    status: libraryOverviewStatus(setup.library, setup.setupOperation),
   };
 }
 

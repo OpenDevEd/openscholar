@@ -41,7 +41,16 @@ function setup(
   libraryState: "provisioning" | "active",
   operation: { status: string; stage: string; error?: { code: string; message: string; stage: string } },
 ) {
+  const status =
+    libraryState === "active"
+      ? "active"
+      : operation.status === "running"
+        ? "setting_up"
+        : operation.status === "failed"
+          ? "setup_failed"
+          : "draft";
   return {
+    status,
     library: { _id: "lib_1", state: libraryState },
     identity: { name: "Climate Evidence" },
     publicAddress: "https://climate-lib.example.test",

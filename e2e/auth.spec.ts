@@ -93,14 +93,14 @@ test.describe("clerk auth flows", () => {
     await page.goto("/evidence-libraries/new");
 
     const libraryName = `E2E Library ${Date.now()}`;
-    await page.getByRole("textbox", { name: "Name" }).fill(libraryName);
+    await page.getByRole("textbox", { name: "Name", exact: true }).fill(libraryName);
     await page.getByRole("button", { name: "Reserve address" }).click();
     await expect(page.getByRole("status")).toHaveAttribute(
       "data-address-state",
       "reserved",
     );
     await expect(page.getByRole("textbox", { name: "Public address" })).toHaveText(
-      /^https:\/\//,
+      /-lib\./,
     );
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page).toHaveURL(/\/evidence-libraries\/[^/]+\/configuration$/);
