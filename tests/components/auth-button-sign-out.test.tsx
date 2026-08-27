@@ -113,31 +113,6 @@ describe("<AuthButton> sign out", () => {
     mocks.signOut.mockResolvedValue(undefined);
   });
 
-  it("sends the exact setup URL through sign-in", async () => {
-    mocks.pathname = "/evidence-libraries/new";
-    mocks.searchParams = new URLSearchParams({
-      libraryId: "library_123",
-      organizationId: "org_climate",
-    });
-    const user = userEvent.setup();
-
-    render(<AuthButton />);
-    await user.click(screen.getByRole("button", { name: "signOut" }));
-
-    expect(mocks.signOut).toHaveBeenCalledOnce();
-    const redirectUrl = mocks.signOut.mock.calls[0][0].redirectUrl;
-    expect(redirectUrl).toBe(
-      "/sign-in?redirect_url=%2Fevidence-libraries%2Fnew%3FlibraryId%3Dlibrary_123%26organizationId%3Dorg_climate",
-    );
-    expect(
-      new URL(redirectUrl, "https://openscholar.example.test").searchParams.get(
-        "redirect_url",
-      ),
-    ).toBe(
-      "/evidence-libraries/new?libraryId=library_123&organizationId=org_climate",
-    );
-  });
-
   it("returns to home when signing out from home", async () => {
     const user = userEvent.setup();
 

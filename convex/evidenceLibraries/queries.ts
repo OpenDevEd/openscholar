@@ -48,13 +48,30 @@ export const libraryOverviewStatusValidator = v.union(
   v.literal("deleting"),
 );
 
+const SETUP_STAGES = [
+  "queued",
+  "database",
+  "storage",
+  "application",
+  "deployment",
+  "health_check",
+  "completed",
+] as const;
+type SetupStage = (typeof SETUP_STAGES)[number];
+const setupStageValidator = v.union(
+  ...SETUP_STAGES.map((stage) => v.literal(stage)),
+);
+function isSetupStage(stage: string): stage is SetupStage {
+  return (SETUP_STAGES as readonly string[]).includes(stage);
+}
+
 const libraryOverviewValidator = v.object({
   _id: v.id("evidenceLibraries"),
   name: v.string(),
   publicAddress: v.string(),
   status: libraryOverviewStatusValidator,
   /** The setup step that is running or failed, when the status is about setup. */
-  setupStage: v.union(v.string(), v.null()),
+  setupStage: v.union(setupStageValidator, v.null()),
   /** The teardown stage while the library is being deleted. */
   teardownStage: v.union(v.string(), v.null()),
   lastActivatedAt: v.union(v.number(), v.null()),
@@ -118,8 +135,10 @@ async function readLibraryOverview(
     publicAddress: runtimeBinding?.targetBaseUrl ?? "",
     status,
     setupStage:
-      status === "setting_up" || status === "setup_failed"
-        ? (setupOperation?.stage ?? null)
+      (status === "setting_up" || status === "setup_failed") &&
+      setupOperation &&
+      isSetupStage(setupOperation.stage)
+        ? setupOperation.stage
         : null,
     teardownStage,
     lastActivatedAt: activeDeployment?.receipt?.activatedAt ?? null,

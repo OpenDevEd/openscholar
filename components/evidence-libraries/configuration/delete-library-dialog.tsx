@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { toast } from "sonner";
@@ -22,7 +21,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 /**
  * Asks the owner to type the library name, then queues the development
- * teardown and sends them to the libraries page that shows its progress.
+ * teardown. The libraries list shows the deleting row and its progress.
  */
 export function DeleteLibraryDialog({
   libraryId,
@@ -30,16 +29,18 @@ export function DeleteLibraryDialog({
   address,
   open,
   onOpenChange,
+  onDeleted,
 }: {
   libraryId: Id<"evidenceLibraries">;
   name: string;
   address: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called once the teardown is queued. Pages that are not the list go there. */
+  onDeleted?: () => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.deleteDialog");
   const tc = useTranslations("common");
-  const router = useRouter();
   const requestTeardown = useMutation(
     api.evidenceLibraries.teardown.requestDevelopmentTeardown,
   );
@@ -58,9 +59,11 @@ export function DeleteLibraryDialog({
     if (!matches || deleting) return;
     setDeleting(true);
     void requestTeardown({ libraryId, confirmationName: typed.trim() })
-      .then((result) => {
+      .then(() => {
         toast(t("startedTitle"), { description: t("startedDescription", { name }) });
-        router.push(`/evidence-libraries/new?teardownOperationId=${result.operationId}`);
+        setTyped("");
+        onOpenChange(false);
+        onDeleted?.();
       })
       .catch(() => toast.error(t("error")))
       .finally(() => setDeleting(false));

@@ -2108,70 +2108,6 @@
     "hoursAgo": "{count}時間前",
     "daysAgo": "{count}日前"
   },
-  "evidenceLibrarySetup": {
-    "eyebrow": "エビデンスライブラリ",
-    "title": "エビデンスライブラリを作成",
-    "description": "ライブラリに名前を付けます。続行前に OpenScholar がプラットフォームのアドレスを確保します。",
-    "activeOrganizationLabel": "現在の組織",
-    "detailsTitle": "ライブラリの詳細",
-    "detailsDescription": "公開名を入力してください。続行すると OpenScholar がアドレスを生成して確保します。",
-    "savedDraftDescription": "保存済みの下書きがあります。このまま続行できます。",
-    "libraryNameLabel": "ライブラリ名",
-    "libraryNameHelp": "100文字以内。",
-    "shortNameLabel": "初期の短縮名",
-    "shortNameHelp": "ライブラリ名から生成されます。設定画面で変更できます。",
-    "publicAddressLabel": "プラットフォームアドレス",
-    "publicAddressHelp": "このアドレスは OpenScholar が確保します。ここでは変更できません。",
-    "reserveAddress": "アドレスを確保",
-    "reserving": "確保中…",
-    "continue": "続行",
-    "createError": "ライブラリを保存できませんでした。もう一度お試しください。",
-    "status": {
-      "settingUpTitle": "セットアップ中",
-      "currentStepLabel": "現在のステップ",
-      "readyTitle": "準備完了",
-      "readyDescription": "エビデンスライブラリの準備ができました。",
-      "failedTitle": "セットアップに失敗しました",
-      "failedStepLabel": "失敗したステップ",
-      "retry": "再試行",
-      "retrying": "再試行中…",
-      "retryError": "セットアップを再開できませんでした。もう一度お試しください。",
-      "steps": {
-        "database": "データベースを設定しています",
-        "storage": "ファイルストレージを設定しています",
-        "application": "アプリケーションを作成しています",
-        "deployment": "ライブラリをデプロイしています",
-        "healthCheck": "ライブラリの準備状況を確認しています"
-      }
-    },
-    "noActiveOrganizationTitle": "組織を選択してください",
-    "noActiveOrganizationDescription": "Clerk の組織スイッチャーで組織を選択または作成してから、ここに戻ってください。",
-    "adminOnlyTitle": "組織管理者が必要です",
-    "adminOnlyDescription": "エビデンスライブラリを作成できるのは組織管理者だけです。",
-    "teardownRunningTitle": "ライブラリを削除しています",
-    "teardownRunningDescription": "OpenScholar がアプリ、ファイル、データベース、ログイン、保存済みレコードを削除しています。",
-    "teardownCompleteTitle": "ライブラリを削除しました",
-    "teardownCompleteDescription": "開発用ライブラリとそのすべてのリソースを削除しました。",
-    "teardownFailedTitle": "削除を停止しました",
-    "teardownFailedDescription": "削除できないリソースがありました。設定ページに戻って再試行してください。",
-    "teardownRetry": "戻って再試行",
-    "teardownCreateAnother": "別のライブラリを作成",
-    "teardownNotFoundTitle": "削除状況が見つかりません",
-    "teardownNotFoundDescription": "この開発用ライブラリを所有していた組織を選び、もう一度お試しください。"
-  },
-  "evidenceLibraryAdminLaunch": {
-    "title": "ライブラリの管理画面を開く",
-    "description": "このエビデンスライブラリのレコード編集画面を開きます。",
-    "noAccessTitle": "ライブラリを利用できません",
-    "noAccessDescription": "このライブラリを所有する組織を選択して、もう一度お試しください。",
-    "notReadyTitle": "ライブラリはまだ準備中です",
-    "notReadyDescription": "セットアップが完了すると管理画面を開けます。",
-    "readyTitle": "{libraryName} を開く",
-    "readyDescription": "OpenScholar が現在の組織ロールに基づいて、所有者または編集者としてサインインします。",
-    "openAdmin": "管理画面を開く",
-    "openingAdmin": "管理画面を開いています…",
-    "openError": "OpenScholar で管理画面を開けませんでした。接続とサインインを確認して、もう一度お試しください。解決しない場合は、管理者にライブラリとサーバーの確認を依頼してください。"
-  },
   "evidenceLibrarySources": {
     "account": {
       "connectedAs": "{handle} として接続中",
@@ -2842,6 +2778,149 @@
       "restoreStarted": "Restore started",
       "restoreStartedDescription": "Applying {rev} as {next}…",
       "restoreError": "The version could not be restored. Try again."
+    }
+  },
+  "evidenceLibraries": {
+    "list": {
+      "title": "Evidence Libraries",
+      "newLibrary": "New library",
+      "empty": "No libraries yet.",
+      "addressLabel": "Address",
+      "lastActivatedLabel": "Last activated",
+      "neverActivated": "Never activated",
+      "failedAtLabel": "Failed at",
+      "currentStepLabel": "Step",
+      "continueSetup": "Continue setup",
+      "viewProgress": "View progress",
+      "configure": "Configure",
+      "openAdmin": "Open admin",
+      "retry": "Retry",
+      "retrying": "Retrying setup",
+      "retryError": "Setup could not be restarted. Try again.",
+      "moreActions": "More actions for {name}",
+      "deleteLibrary": "Delete library",
+      "deleting": "Deleting the library",
+      "noOrganizationTitle": "Choose an organisation",
+      "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here."
+    },
+    "status": {
+      "draft": "Draft",
+      "setting_up": "Setting up",
+      "active": "Active",
+      "setup_failed": "Setup failed",
+      "deleting": "Deleting"
+    },
+    "stages": {
+      "queued": "Queued",
+      "database": "Database",
+      "storage": "Storage",
+      "application": "Application",
+      "deployment": "Build",
+      "health_check": "Readiness",
+      "completed": "Live"
+    },
+    "new": {
+      "title": "New Evidence Library",
+      "description": "Give it a name and reserve a public address.",
+      "backToLibraries": "Back to libraries",
+      "noOrganizationTitle": "Choose an organisation",
+      "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",
+      "ownerTitle": "Owner",
+      "ownedBy": "Owned by {organization}",
+      "ownerHint": "You are an owner of this organisation.",
+      "ownerOnlyTitle": "Owners only",
+      "ownerOnlyDescription": "Only an owner of the organisation can create a library.",
+      "libraryTitle": "Library",
+      "libraryDescription": "The name appears on the public website. The short name and the public address follow from it.",
+      "nameLabel": "Name",
+      "namePlaceholder": "Example: Climate Education Evidence",
+      "nameError": "Enter a name for the library.",
+      "shortNameLabel": "Short name",
+      "shortNameHint": "Filled in from the name. You can change it during configuration.",
+      "addressLabel": "Public address",
+      "addressHint": "Follows the name. Reserve it to make sure nobody else takes it.",
+      "addressPending": "Type a name to see the address.",
+      "reserve": "Reserve address",
+      "checking": "Reserving…",
+      "reserved": "Reserved",
+      "reservedToast": "Address reserved",
+      "reservedToastDescription": "{address} is yours.",
+      "reserveError": "The address could not be reserved. Try again."
+    },
+    "setup": {
+      "backToLibraries": "Back to libraries",
+      "configure": "Configure",
+      "openAdmin": "Open admin",
+      "groupTitle": "Setup",
+      "retry": "Retry",
+      "retryingTitle": "Retrying",
+      "retryingDescription": "Starting again from the step that stopped.",
+      "retryError": "Setup could not be restarted. Try again.",
+      "draftHint": "Set up and activate this library from its configuration page.",
+      "stoppedHint": "The build did not finish. Retry repeats this step and the steps after it.",
+      "deploymentError": "The build did not finish.",
+      "liveAt": "This library is live at {address}",
+      "openLibrary": "Open library",
+      "steps": {
+        "database": {
+          "name": "Database",
+          "waiting": "Creating the database that stores the records.",
+          "running": "Creating the database that stores the records…",
+          "done": "Created the database that stores the records."
+        },
+        "storage": {
+          "name": "Storage",
+          "waiting": "Creating file storage for PDFs and images.",
+          "running": "Creating file storage for PDFs and images…",
+          "done": "Created file storage for PDFs and images."
+        },
+        "application": {
+          "name": "Application",
+          "waiting": "Creating the library app.",
+          "running": "Creating the library app…",
+          "done": "Created the library app."
+        },
+        "deployment": {
+          "name": "Build",
+          "waiting": "Building the library and putting it online.",
+          "running": "Building the library and putting it online…",
+          "done": "Built the library and put it online."
+        },
+        "readiness": {
+          "name": "Readiness",
+          "waiting": "Checking that the library page loads.",
+          "running": "Checking that the library page loads…",
+          "done": "Checked that the library page loads."
+        },
+        "active": {
+          "name": "Live",
+          "waiting": "The library opens at its public address.",
+          "running": "Opening the library at its public address…",
+          "done": "The library is live at its public address."
+        }
+      }
+    },
+    "admin": {
+      "backToLibraries": "Back to libraries",
+      "configure": "Configure",
+      "title": "Admin area",
+      "description": "Records, files and imports are managed in the library's own admin area.",
+      "adminAddress": "Admin address",
+      "version": "Version",
+      "noneYet": "None yet",
+      "ownerTitle": "You are an owner",
+      "editorTitle": "You are an editor",
+      "roleHint": "Owners and editors can open the admin area.",
+      "openAdmin": "Open admin",
+      "creatingCode": "Creating code…",
+      "openError": "The admin area could not be opened. Check your connection and sign-in, then try again.",
+      "notReadyHint": "The admin area opens once the library is live.",
+      "viewSetup": "View setup"
+    },
+    "notFound": {
+      "title": "Library not found",
+      "description": "It may have been deleted, or it belongs to another organisation.",
+      "back": "Back to libraries"
     }
   }
 }

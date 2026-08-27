@@ -28,6 +28,7 @@ import {
   GripVertical,
   ImageIcon,
   Lock,
+  type LucideIcon,
   Plus,
   RotateCcw,
   Trash2,
@@ -1014,6 +1015,26 @@ export function FieldGroup({
       </div>
       <div className="space-y-4">{children}</div>
     </section>
+  );
+}
+
+export type MetaItem = { key: string; label?: ReactNode; value: ReactNode; icon?: LucideIcon };
+
+/**
+ * Small facts under a title: "Address example.org   Last activated 26 Aug".
+ * Labels are muted, values are not. Spacing separates the facts; never a dot.
+ */
+export function MetaList({ items, className }: { items: MetaItem[]; className?: string }) {
+  return (
+    <dl className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 text-xs", className)}>
+      {items.map(({ key, label, value, icon: Icon }) => (
+        <div key={key} className="inline-flex items-center gap-1.5">
+          {Icon ? <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden /> : null}
+          {label ? <dt className="text-muted-foreground">{label}</dt> : null}
+          <dd className="text-foreground">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

@@ -2108,70 +2108,6 @@
     "hoursAgo": "{count}小时前",
     "daysAgo": "{count}天前"
   },
-  "evidenceLibrarySetup": {
-    "eyebrow": "证据库",
-    "title": "创建证据库",
-    "description": "为证据库命名。继续前，OpenScholar 会预留平台地址。",
-    "activeOrganizationLabel": "当前组织",
-    "detailsTitle": "证据库详情",
-    "detailsDescription": "输入公开名称。继续后，OpenScholar 会生成并预留地址。",
-    "savedDraftDescription": "已保存的草稿可以继续使用。",
-    "libraryNameLabel": "证据库名称",
-    "libraryNameHelp": "最多 100 个字符。",
-    "shortNameLabel": "初始简称",
-    "shortNameHelp": "根据证据库名称生成，可在配置时修改。",
-    "publicAddressLabel": "平台地址",
-    "publicAddressHelp": "此地址由 OpenScholar 预留，不能在这里编辑。",
-    "reserveAddress": "预留地址",
-    "reserving": "正在预留…",
-    "continue": "继续",
-    "createError": "无法保存证据库，请重试。",
-    "status": {
-      "settingUpTitle": "正在设置",
-      "currentStepLabel": "当前步骤",
-      "readyTitle": "已就绪",
-      "readyDescription": "您的证据库已就绪。",
-      "failedTitle": "设置失败",
-      "failedStepLabel": "失败步骤",
-      "retry": "重试",
-      "retrying": "正在重试…",
-      "retryError": "无法重新启动设置，请重试。",
-      "steps": {
-        "database": "正在设置数据库",
-        "storage": "正在设置文件存储",
-        "application": "正在创建应用",
-        "deployment": "正在部署证据库",
-        "healthCheck": "正在检查证据库是否就绪"
-      }
-    },
-    "noActiveOrganizationTitle": "请选择组织",
-    "noActiveOrganizationDescription": "请使用 Clerk 组织切换器选择或创建组织，然后返回此页面。",
-    "adminOnlyTitle": "需要组织管理员权限",
-    "adminOnlyDescription": "只有组织管理员可以创建该组织的证据库。",
-    "teardownRunningTitle": "正在删除证据库",
-    "teardownRunningDescription": "OpenScholar 正在删除应用、文件、数据库、登录账号和已保存的证据库记录。",
-    "teardownCompleteTitle": "证据库已删除",
-    "teardownCompleteDescription": "开发证据库及其所有资源均已删除。",
-    "teardownFailedTitle": "删除已停止",
-    "teardownFailedDescription": "有一项资源无法删除。请返回配置页面重试。",
-    "teardownRetry": "返回并重试",
-    "teardownCreateAnother": "创建另一个证据库",
-    "teardownNotFoundTitle": "找不到删除状态",
-    "teardownNotFoundDescription": "请选择之前拥有此开发证据库的组织，然后重试。"
-  },
-  "evidenceLibraryAdminLaunch": {
-    "title": "打开证据库管理区",
-    "description": "打开此证据库的记录编辑器。",
-    "noAccessTitle": "无法访问证据库",
-    "noAccessDescription": "请选择拥有此证据库的组织，然后重试。",
-    "notReadyTitle": "证据库尚未就绪",
-    "notReadyDescription": "设置完成后即可打开管理区。",
-    "readyTitle": "打开 {libraryName}",
-    "readyDescription": "OpenScholar 会根据您当前的组织角色，以所有者或编辑者身份登录。",
-    "openAdmin": "打开管理区",
-    "openingAdmin": "正在打开管理区…",
-    "openError": "OpenScholar 无法打开管理区。请检查网络连接和登录状态，然后重试。如果仍然失败，请让管理员检查证据库和服务器。"
-  },
   "evidenceLibrarySources": {
     "account": {
       "connectedAs": "已以 {handle} 身份连接",
@@ -2842,6 +2778,149 @@
       "restoreStarted": "Restore started",
       "restoreStartedDescription": "Applying {rev} as {next}…",
       "restoreError": "The version could not be restored. Try again."
+    }
+  },
+  "evidenceLibraries": {
+    "list": {
+      "title": "Evidence Libraries",
+      "newLibrary": "New library",
+      "empty": "No libraries yet.",
+      "addressLabel": "Address",
+      "lastActivatedLabel": "Last activated",
+      "neverActivated": "Never activated",
+      "failedAtLabel": "Failed at",
+      "currentStepLabel": "Step",
+      "continueSetup": "Continue setup",
+      "viewProgress": "View progress",
+      "configure": "Configure",
+      "openAdmin": "Open admin",
+      "retry": "Retry",
+      "retrying": "Retrying setup",
+      "retryError": "Setup could not be restarted. Try again.",
+      "moreActions": "More actions for {name}",
+      "deleteLibrary": "Delete library",
+      "deleting": "Deleting the library",
+      "noOrganizationTitle": "Choose an organisation",
+      "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here."
+    },
+    "status": {
+      "draft": "Draft",
+      "setting_up": "Setting up",
+      "active": "Active",
+      "setup_failed": "Setup failed",
+      "deleting": "Deleting"
+    },
+    "stages": {
+      "queued": "Queued",
+      "database": "Database",
+      "storage": "Storage",
+      "application": "Application",
+      "deployment": "Build",
+      "health_check": "Readiness",
+      "completed": "Live"
+    },
+    "new": {
+      "title": "New Evidence Library",
+      "description": "Give it a name and reserve a public address.",
+      "backToLibraries": "Back to libraries",
+      "noOrganizationTitle": "Choose an organisation",
+      "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",
+      "ownerTitle": "Owner",
+      "ownedBy": "Owned by {organization}",
+      "ownerHint": "You are an owner of this organisation.",
+      "ownerOnlyTitle": "Owners only",
+      "ownerOnlyDescription": "Only an owner of the organisation can create a library.",
+      "libraryTitle": "Library",
+      "libraryDescription": "The name appears on the public website. The short name and the public address follow from it.",
+      "nameLabel": "Name",
+      "namePlaceholder": "Example: Climate Education Evidence",
+      "nameError": "Enter a name for the library.",
+      "shortNameLabel": "Short name",
+      "shortNameHint": "Filled in from the name. You can change it during configuration.",
+      "addressLabel": "Public address",
+      "addressHint": "Follows the name. Reserve it to make sure nobody else takes it.",
+      "addressPending": "Type a name to see the address.",
+      "reserve": "Reserve address",
+      "checking": "Reserving…",
+      "reserved": "Reserved",
+      "reservedToast": "Address reserved",
+      "reservedToastDescription": "{address} is yours.",
+      "reserveError": "The address could not be reserved. Try again."
+    },
+    "setup": {
+      "backToLibraries": "Back to libraries",
+      "configure": "Configure",
+      "openAdmin": "Open admin",
+      "groupTitle": "Setup",
+      "retry": "Retry",
+      "retryingTitle": "Retrying",
+      "retryingDescription": "Starting again from the step that stopped.",
+      "retryError": "Setup could not be restarted. Try again.",
+      "draftHint": "Set up and activate this library from its configuration page.",
+      "stoppedHint": "The build did not finish. Retry repeats this step and the steps after it.",
+      "deploymentError": "The build did not finish.",
+      "liveAt": "This library is live at {address}",
+      "openLibrary": "Open library",
+      "steps": {
+        "database": {
+          "name": "Database",
+          "waiting": "Creating the database that stores the records.",
+          "running": "Creating the database that stores the records…",
+          "done": "Created the database that stores the records."
+        },
+        "storage": {
+          "name": "Storage",
+          "waiting": "Creating file storage for PDFs and images.",
+          "running": "Creating file storage for PDFs and images…",
+          "done": "Created file storage for PDFs and images."
+        },
+        "application": {
+          "name": "Application",
+          "waiting": "Creating the library app.",
+          "running": "Creating the library app…",
+          "done": "Created the library app."
+        },
+        "deployment": {
+          "name": "Build",
+          "waiting": "Building the library and putting it online.",
+          "running": "Building the library and putting it online…",
+          "done": "Built the library and put it online."
+        },
+        "readiness": {
+          "name": "Readiness",
+          "waiting": "Checking that the library page loads.",
+          "running": "Checking that the library page loads…",
+          "done": "Checked that the library page loads."
+        },
+        "active": {
+          "name": "Live",
+          "waiting": "The library opens at its public address.",
+          "running": "Opening the library at its public address…",
+          "done": "The library is live at its public address."
+        }
+      }
+    },
+    "admin": {
+      "backToLibraries": "Back to libraries",
+      "configure": "Configure",
+      "title": "Admin area",
+      "description": "Records, files and imports are managed in the library's own admin area.",
+      "adminAddress": "Admin address",
+      "version": "Version",
+      "noneYet": "None yet",
+      "ownerTitle": "You are an owner",
+      "editorTitle": "You are an editor",
+      "roleHint": "Owners and editors can open the admin area.",
+      "openAdmin": "Open admin",
+      "creatingCode": "Creating code…",
+      "openError": "The admin area could not be opened. Check your connection and sign-in, then try again.",
+      "notReadyHint": "The admin area opens once the library is live.",
+      "viewSetup": "View setup"
+    },
+    "notFound": {
+      "title": "Library not found",
+      "description": "It may have been deleted, or it belongs to another organisation.",
+      "back": "Back to libraries"
     }
   }
 }

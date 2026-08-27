@@ -162,7 +162,7 @@ const SECTION_COMPONENTS: Record<
   analytics: AnalyticsSection,
 };
 
-const LIBRARIES_HREF = "/evidence-libraries/new";
+const LIBRARIES_HREF = "/evidence-libraries";
 
 function errorMessage(error: unknown, fallback: string) {
   if (error instanceof ConvexError) {
@@ -299,8 +299,7 @@ function Workspace({
       )
       .then((result) => {
         if (result.kind === "setup") {
-          const search = new URLSearchParams({ libraryId });
-          router.push(`/evidence-libraries/new?${search.toString()}`);
+          router.push(`/evidence-libraries/${libraryId}/setup`);
           return;
         }
         toast(t("activationStarted"), {
@@ -490,6 +489,7 @@ function Workspace({
           address={draft.identity.baseUrl}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
+          onDeleted={() => router.push(LIBRARIES_HREF)}
         />
       </div>
     </FileUploadsProvider>
