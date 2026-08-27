@@ -3,7 +3,7 @@
 import { useAction } from "convex/react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Plus, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Suspense, use, useId, useState } from "react";
+import { Suspense, use, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -141,6 +141,19 @@ export function CollectionsField({
           readCatalogue(listCollections, libraryId, { fresh: true });
           setAttempt((n) => n + 1);
         }}
+        onServerSearch={async (query) => {
+          const found: DatabaseCollection[] = [];
+          let cursor: string | undefined;
+          for (let page = 0; page < 5; page += 1) {
+            const result = await listCollections({ libraryId, query, cursor });
+            for (const item of result?.items ?? []) {
+              found.push({ id: item.id, title: item.title, count: item.count, source: item.source });
+            }
+            if (!result?.nextCursor) break;
+            cursor = result.nextCursor;
+          }
+          return found;
+        }}
       />
     </Suspense>
   );
@@ -151,11 +164,13 @@ function CollectionsBody({
   value,
   onChange,
   onRetry,
+  onServerSearch,
 }: {
   promise: Promise<Catalogue>;
   value: CollectionEntry[];
   onChange: (value: CollectionEntry[]) => void;
   onRetry: () => void;
+  onServerSearch: (query: string) => Promise<DatabaseCollection[]>;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.collections");
   const catalogue = use(promise);
@@ -183,6 +198,7 @@ function CollectionsBody({
           disabled={catalogue.status !== "ready" || database.length === 0}
           shownIds={shown.map((entry) => entry.id)}
           onAdd={add}
+          onServerSearch={onServerSearch}
         />
       }
     >
@@ -286,6 +302,7 @@ function CollectionPicker({
   disabled,
   shownIds,
   onAdd,
+  onServerSearch,
 }: {
   database: DatabaseCollection[];
   /** The catalogue stopped at the page limit; not every collection is listed. */
@@ -293,6 +310,7 @@ function CollectionPicker({
   disabled: boolean;
   shownIds: string[];
   onAdd: (items: DatabaseCollection[]) => void;
+  onServerSearch: (query: string) => Promise<DatabaseCollection[]>;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.collections.picker");
   const [open, setOpen] = useState(false);
@@ -301,10 +319,16 @@ function CollectionPicker({
   const [hideShown, setHideShown] = useState(true);
   const [sort, setSort] = useState<Sort>({ key: "title", dir: "asc" });
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [extra, setExtra] = useState<DatabaseCollection[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
+  const searchRun = useRef(0);
 
   const sources = [...new Set(database.map((c) => c.source))];
   const q = query.trim().toLowerCase();
-  const rows = database
+  const known = new Set(database.map((c) => c.id));
+  const all = [...database, ...extra.filter((c) => !known.has(c.id))];
+  const rows = all
     .filter((c) => !source || c.source === source)
     .filter((c) => !hideShown || !shownIds.includes(c.id))
     .filter((c) => !q || c.title.toLowerCase().includes(q) || c.source.toLowerCase().includes(q))
@@ -326,12 +350,42 @@ function CollectionPicker({
       setPicked(new Set());
       setQuery("");
       setSource(null);
+      setExtra([]);
+      setSearchFailed(false);
+      setSearching(false);
+      searchRun.current += 1;
     }
   }
 
   function confirm() {
-    onAdd(database.filter((c) => picked.has(c.id)));
+    onAdd(all.filter((c) => picked.has(c.id)));
     reset(false);
+  }
+
+  // The catalogue stopped at the page limit, so a local match list is not the
+  // whole truth; this asks the library itself for the typed text.
+  async function searchWholeLibrary() {
+    const run = ++searchRun.current;
+    setSearching(true);
+    setSearchFailed(false);
+    try {
+      const found = await onServerSearch(query.trim());
+      if (run !== searchRun.current) return;
+      setExtra((current) => {
+        const seen = new Set(current.map((c) => c.id));
+        const merged = [...current];
+        for (const item of found) {
+          if (seen.has(item.id)) continue;
+          seen.add(item.id);
+          merged.push(item);
+        }
+        return merged;
+      });
+    } catch {
+      if (run === searchRun.current) setSearchFailed(true);
+    } finally {
+      if (run === searchRun.current) setSearching(false);
+    }
   }
 
   const SortIcon = ({ k }: { k: SortKey }) =>
@@ -382,6 +436,19 @@ function CollectionPicker({
               </button>
             ) : null}
           </div>
+          {truncated && q ? (
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" disabled={searching} onClick={() => void searchWholeLibrary()}>
+                {searching ? <Spinner className="h-4 w-4" /> : <Search className="h-3.5 w-3.5" />}
+                {t("searchAll")}
+              </Button>
+              {searchFailed ? (
+                <p className="text-xs text-destructive" role="alert">
+                  {t("searchAllFailed")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-1.5">
             <FilterChip active={source === null} onClick={() => setSource(null)}>
               {t("allSources")}
@@ -399,7 +466,7 @@ function CollectionPicker({
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">
-          <Table aria-label={t("title")}>
+          <Table aria-label={t("title")} className="w-full table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
                 <TableHead className="w-10">
@@ -422,7 +489,7 @@ function CollectionPicker({
                 <SortHead sort={sort} k="source" onClick={() => toggleSort("source")}>
                   {t("colSource")} <SortIcon k="source" />
                 </SortHead>
-                <SortHead sort={sort} k="count" onClick={() => toggleSort("count")} className="text-right">
+                <SortHead sort={sort} k="count" onClick={() => toggleSort("count")} className="w-28 text-right">
                   {t("colRecords")} <SortIcon k="count" />
                 </SortHead>
                 <TableHead className="w-24" />
@@ -458,8 +525,8 @@ function CollectionPicker({
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox aria-label={c.title} checked={checked} disabled={already} onCheckedChange={toggle} />
                       </TableCell>
-                      <TableCell className="font-medium">{c.title}</TableCell>
-                      <TableCell className="text-muted-foreground">{c.source}</TableCell>
+                      <TableCell className="min-w-0"><p className="truncate font-medium" title={c.title}>{c.title}</p></TableCell>
+                      <TableCell className="min-w-0"><p className="truncate text-muted-foreground" title={c.source}>{c.source}</p></TableCell>
                       <TableCell className="text-right font-mono text-xs tabular-nums">{c.count}</TableCell>
                       <TableCell>{already ? <StatusChip tone="neutral">{t("shown")}</StatusChip> : null}</TableCell>
                     </TableRow>

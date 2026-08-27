@@ -60,10 +60,22 @@ function zoteroNetwork() {
       });
     }
     if (url.pathname === "/users/15294942/groups") {
-      return jsonResponse([
+      const all = [
         { id: 42, data: { name: "Climate evidence", type: "PublicOpen" }, meta: { numItems: 312 } },
         { id: 77, data: { name: "Private notes", type: "Private" }, meta: { numItems: 5 } },
-      ]);
+        ...Array.from({ length: 130 }, (_, index) => ({
+          id: 1000 + index,
+          data: { name: `Group ${index}`, type: "Private" },
+          meta: { numItems: index },
+        })),
+      ];
+      const start = Number(url.searchParams.get("start") ?? "0");
+      const limit = Number(url.searchParams.get("limit") ?? "25");
+      const body = JSON.stringify(all.slice(start, start + limit));
+      return new Response(body, {
+        status: 200,
+        headers: { "content-type": "application/json", "Total-Results": String(all.length) },
+      });
     }
     return jsonResponse({ message: "Unexpected test request" }, 500);
   });
@@ -162,14 +174,11 @@ describe("Evidence Library Zotero groups", () => {
       api.zotero.libraryGroupActions.listMyZoteroGroups,
       { libraryId },
     );
-    expect(mine).toMatchObject({
-      connected: true,
-      username: "owner",
-      groups: [
-        { id: "42", alreadyAdded: true },
-        { id: "77", alreadyAdded: true },
-      ],
-    });
+    expect(mine).toMatchObject({ connected: true, username: "owner" });
+    if (!mine.connected) throw new Error("expected a connection");
+    // Every Zotero page is read, not just the first 25.
+    expect(mine.groups).toHaveLength(132);
+    expect(mine.groups[0]).toEqual({ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 });
   });
 
   it("removes the group row together with its key", async () => {

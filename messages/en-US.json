@@ -2548,7 +2548,9 @@
         "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
         "cancel": "Cancel",
         "addPicked": "{count, plural, =0 {Add} one {Add # collection} other {Add # collections}}",
-        "truncated": "Only the first {total} are listed; search inside the library for the rest."
+        "truncated": "Only the first {total} are listed; search inside the library for the rest.",
+        "searchAll": "Search the whole library",
+        "searchAllFailed": "The search did not answer. Try again."
       }
     },
     "sources": {

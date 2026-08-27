@@ -129,14 +129,14 @@ describe("<SourcesField>", () => {
       username: "owner",
       zoteroUserId: "1",
       groups: [
-        { id: "42", name: "Climate evidence", isPublic: true, itemCount: 312, alreadyAdded: false },
-        { id: "77", name: "Private notes", isPublic: false, itemCount: 5, alreadyAdded: false },
-        { id: "99", name: "Old group", isPublic: true, itemCount: 1, alreadyAdded: true },
+        { id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 },
+        { id: "77", name: "Private notes", isPublic: false, itemCount: 5 },
+        { id: "99", name: "Old group", isPublic: true, itemCount: 1 },
       ],
     });
     mocks.connectGroup.mockImplementation(async ({ groupId }: { groupId: string }) => ({ groupId, name: groupId }));
     const onChange = vi.fn();
-    render(<Harness onChange={onChange} />);
+    render(<Harness initial={[zoteroSourceEntry("99")]} onChange={onChange} />);
     expect(screen.getByText(`${ns}.connectedAs {"handle":"owner"}`)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
@@ -150,7 +150,7 @@ describe("<SourcesField>", () => {
     expect(mocks.connectGroup).toHaveBeenCalledWith({ libraryId, groupId: "42" });
     expect(mocks.connectGroup).toHaveBeenCalledWith({ libraryId, groupId: "77" });
     await waitFor(() =>
-      expect(onChange).toHaveBeenLastCalledWith([zoteroSourceEntry("42"), zoteroSourceEntry("77")]),
+      expect(onChange).toHaveBeenLastCalledWith([zoteroSourceEntry("99"), zoteroSourceEntry("42"), zoteroSourceEntry("77")]),
     );
   });
 

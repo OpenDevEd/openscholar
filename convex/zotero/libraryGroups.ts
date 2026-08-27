@@ -106,7 +106,6 @@ export const readOwnerZoteroConnection = internalQuery({
         username: v.optional(v.string()),
       }),
     ),
-    connectedGroupIds: v.array(v.string()),
   }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(
@@ -124,10 +123,6 @@ export const readOwnerZoteroConnection = internalQuery({
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .first()
       : null;
-    const groups = await ctx.db
-      .query("evidenceLibraryZoteroGroups")
-      .withIndex("by_libraryId", (q) => q.eq("libraryId", args.libraryId))
-      .take(100);
     return {
       clerkUserId: access.clerkUserId,
       connection: connection
@@ -138,7 +133,6 @@ export const readOwnerZoteroConnection = internalQuery({
             username: connection.username,
           }
         : null,
-      connectedGroupIds: groups.map((group) => group.groupId),
     };
   },
 });

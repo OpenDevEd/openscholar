@@ -20,7 +20,6 @@ type OwnerConnection = {
     encryptedApiKey: string;
     username?: string;
   } | null;
-  connectedGroupIds: string[];
 };
 
 type ZoteroGroupSummary = {
@@ -73,10 +72,11 @@ async function readOwner(
   return { owner, apiKey, encryptionKey };
 }
 
-async function zoteroGet(path: string, apiKey: string): Promise<unknown> {
+async function zoteroFetch(path: string, apiKey: string, params?: Record<string, string>): Promise<Response> {
   const url = new URL(path, ZOTERO_API_URL);
   url.searchParams.set("v", "3");
   url.searchParams.set("format", "json");
+  for (const [key, value] of Object.entries(params ?? {})) url.searchParams.set(key, value);
   const response = await fetch(url.toString(), {
     headers: buildZoteroHeaders(apiKey),
   });
@@ -86,7 +86,31 @@ async function zoteroGet(path: string, apiKey: string): Promise<unknown> {
       `Zotero answered ${response.status} for ${url.pathname}`,
     );
   }
-  return await response.json();
+  return response;
+}
+
+async function zoteroGet(path: string, apiKey: string): Promise<unknown> {
+  return await (await zoteroFetch(path, apiKey)).json();
+}
+
+const GROUPS_PAGE_SIZE = 100;
+// Zotero's server refuses start values above 1000, so this is the hard end.
+const GROUPS_MAX_START = 1000;
+
+/** Every page of the owner's groups, following Zotero's start/limit paging. */
+async function listAllUserGroups(zoteroUserId: string, apiKey: string): Promise<ZoteroGroupResponse[]> {
+  const groups: ZoteroGroupResponse[] = [];
+  for (let start = 0; start <= GROUPS_MAX_START; start += GROUPS_PAGE_SIZE) {
+    const response = await zoteroFetch(`/users/${zoteroUserId}/groups`, apiKey, {
+      start: String(start),
+      limit: String(GROUPS_PAGE_SIZE),
+    });
+    const page = (await response.json()) as ZoteroGroupResponse[];
+    groups.push(...page);
+    const total = Number(response.headers.get("Total-Results") ?? page.length);
+    if (groups.length >= total || page.length === 0) break;
+  }
+  return groups;
 }
 
 const groupSummaryValidator = v.object({
@@ -94,12 +118,11 @@ const groupSummaryValidator = v.object({
   name: v.string(),
   isPublic: v.boolean(),
   itemCount: v.number(),
-  alreadyAdded: v.boolean(),
 });
 
-// The groups the signed-in owner can see, marked when the library already
-// has them. Owners without a Zotero connection get `connected: false` and
-// start the existing OAuth flow from the page.
+// Every group the signed-in owner's key can see, across all Zotero pages.
+// Whether one is already added comes from the draft, so the page has one
+// source of truth. Owners without a Zotero connection get `connected: false`.
 export const listMyZoteroGroups = action({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.union(
@@ -120,24 +143,17 @@ export const listMyZoteroGroups = action({
         connected: true;
         username?: string;
         zoteroUserId: string;
-        groups: (ZoteroGroupSummary & { alreadyAdded: boolean })[];
+        groups: ZoteroGroupSummary[];
       }
   > => {
     const { owner, apiKey } = await readOwner(ctx, args.libraryId);
     if (!owner.connection || !apiKey) return { connected: false as const };
-    const groups = (await zoteroGet(
-      `/users/${owner.connection.zoteroUserId}/groups`,
-      apiKey,
-    )) as ZoteroGroupResponse[];
-    const added = new Set(owner.connectedGroupIds);
+    const groups = await listAllUserGroups(owner.connection.zoteroUserId, apiKey);
     return {
       connected: true as const,
       username: owner.connection.username,
       zoteroUserId: owner.connection.zoteroUserId,
-      groups: groups.map((group) => ({
-        ...toSummary(group),
-        alreadyAdded: added.has(String(group.id)),
-      })),
+      groups: groups.map((group) => toSummary(group)),
     };
   },
 });

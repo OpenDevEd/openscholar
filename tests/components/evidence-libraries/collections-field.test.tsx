@@ -53,6 +53,70 @@ describe("collection order helpers", () => {
   });
 });
 
+describe("<CollectionsField> with a truncated catalogue", () => {
+  beforeEach(() => {
+    mocks.listCollections.mockReset();
+    listAction = (args) => mocks.listCollections(args);
+  });
+
+  function truncatedCatalogue() {
+    // Every page reports another page, so the loader stops at its cap.
+    mocks.listCollections.mockImplementation(async (args: { query?: string; cursor?: string }) => {
+      if (args.query === "amber") {
+        if (!args.cursor) {
+          return {
+            items: [
+              { id: "FOUND1", title: "Amber studies", count: 4, source: "Amber group", parentId: null },
+              { id: "FOUND2", title: "Amber maps", count: 2, source: "Amber group", parentId: null },
+            ],
+            nextCursor: "amber-2",
+          };
+        }
+        return {
+          items: [{ id: "FOUND1", title: "Amber studies", count: 4, source: "Amber group", parentId: null }],
+          nextCursor: null,
+        };
+      }
+      if (args.query === "broken") throw new Error("down");
+      const page = Number(args.cursor ?? "0");
+      return {
+        items: [{ id: `PAGE${page}`, title: `Page ${page}`, count: 1, source: "Big group", parentId: null }],
+        nextCursor: String(page + 1),
+      };
+    });
+  }
+
+  it("offers the whole-library search, merges its results once, and adds from them", async () => {
+    truncatedCatalogue();
+    const onChange = vi.fn();
+    await renderField({ libraryId, value: [], onChange });
+    await userEvent.click(await screen.findByRole("button", { name: `${ns}.picker.open` }));
+    const table = await screen.findByRole("table", { name: `${ns}.picker.title` });
+    expect(screen.queryByRole("button", { name: `${ns}.picker.searchAll` })).not.toBeInTheDocument();
+    await userEvent.type(screen.getByRole("textbox", { name: `${ns}.picker.search` }), "amber");
+    const searchAll = screen.getByRole("button", { name: `${ns}.picker.searchAll` });
+    await userEvent.click(searchAll);
+    expect(await within(table).findByText("Amber studies")).toBeInTheDocument();
+    // The second page's duplicate id and a repeated click both stay single rows.
+    expect(within(table).getByText("Amber maps")).toBeInTheDocument();
+    expect(mocks.listCollections).toHaveBeenLastCalledWith({ libraryId, query: "amber", cursor: "amber-2" });
+    await userEvent.click(searchAll);
+    expect(within(table).getAllByText("Amber studies")).toHaveLength(1);
+    await userEvent.click(within(table).getByRole("checkbox", { name: "Amber studies" }));
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.picker.addPicked {"count":1}` }));
+    expect(onChange).toHaveBeenCalledWith([{ id: "FOUND1", enabled: true, order: 0 }]);
+  });
+
+  it("says when the whole-library search fails", async () => {
+    truncatedCatalogue();
+    await renderField({ libraryId, value: [], onChange: vi.fn() });
+    await userEvent.click(await screen.findByRole("button", { name: `${ns}.picker.open` }));
+    await userEvent.type(await screen.findByRole("textbox", { name: `${ns}.picker.search` }), "broken");
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.picker.searchAll` }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(`${ns}.picker.searchAllFailed`);
+  });
+});
+
 describe("<CollectionsField>", () => {
   beforeEach(() => {
     mocks.listCollections.mockReset();

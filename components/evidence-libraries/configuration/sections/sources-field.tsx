@@ -62,7 +62,7 @@ type ConnectedGroup = {
   scopes: { read: boolean; write: boolean };
 };
 
-type PickerGroup = { id: string; name: string; isPublic: boolean; itemCount: number; alreadyAdded: boolean };
+type PickerGroup = { id: string; name: string; isPublic: boolean; itemCount: number };
 
 type PickerState =
   | { status: "loading" }
@@ -562,12 +562,12 @@ function GroupPicker({
           ) : state.status === "not-connected" ? (
             <p className="px-5 py-10 text-sm text-muted-foreground">{t("connectFirst")}</p>
           ) : (
-            <Table aria-label={t("picker.title")}>
+            <Table aria-label={t("picker.title")} className="w-full table-fixed">
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead className="w-10" />
                   <TableHead>{t("picker.colGroup")}</TableHead>
-                  <TableHead className="text-right">{t("picker.colItems")}</TableHead>
+                  <TableHead className="w-24 text-right">{t("picker.colItems")}</TableHead>
                   <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
@@ -580,7 +580,7 @@ function GroupPicker({
                   </TableRow>
                 ) : (
                   rows.map((o) => {
-                    const added = o.alreadyAdded || addedIds.includes(o.id);
+                    const added = addedIds.includes(o.id);
                     const checked = picked.has(o.id);
                     const toggle = () =>
                       setPicked((p) => {
@@ -599,8 +599,8 @@ function GroupPicker({
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox aria-label={o.name} checked={checked} disabled={added} onCheckedChange={toggle} />
                         </TableCell>
-                        <TableCell>
-                          <p className="font-medium">{o.name}</p>
+                        <TableCell className="min-w-0">
+                          <p className="truncate font-medium" title={o.name}>{o.name}</p>
                           <MetaList
                             className="text-muted-foreground"
                             items={[
