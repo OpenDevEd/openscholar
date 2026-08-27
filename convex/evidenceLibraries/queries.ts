@@ -1,6 +1,6 @@
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
-import { v } from "convex/values";
+import { type Infer, v } from "convex/values";
 import { createError } from "../lib/errors";
 import {
   requireEvidenceLibraryAccess,
@@ -16,7 +16,10 @@ import {
   evidenceLibrarySetupIdentityFields,
   sectionKeyValidator,
 } from "./validators";
-import { readEvidenceLibrarySetupIdentity } from "./setupNaming";
+import {
+  findAvailableEvidenceLibrarySetupIdentity,
+  readEvidenceLibrarySetupIdentity,
+} from "./setupNaming";
 import {
   readEvidenceLibraryAdminLaunchTarget,
   readEvidenceLibrarySetupRecords,
@@ -37,16 +40,120 @@ export async function readEvidenceLibraries(ctx: QueryCtx) {
     .collect();
 }
 
-export const listLibraries = query({
+export const libraryOverviewStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("setting_up"),
+  v.literal("setup_failed"),
+  v.literal("active"),
+  v.literal("deleting"),
+);
+
+const libraryOverviewValidator = v.object({
+  _id: v.id("evidenceLibraries"),
+  name: v.string(),
+  publicAddress: v.string(),
+  status: libraryOverviewStatusValidator,
+  /** The setup step that is running or failed, when the status is about setup. */
+  setupStage: v.union(v.string(), v.null()),
+  /** The teardown stage while the library is being deleted. */
+  teardownStage: v.union(v.string(), v.null()),
+  lastActivatedAt: v.union(v.number(), v.null()),
+  accentColor: v.union(v.string(), v.null()),
+});
+
+/** One row per library for the list page: status, address and the facts under the title. */
+async function readLibraryOverview(
+  ctx: QueryCtx,
+  library: Doc<"evidenceLibraries">,
+) {
+  const [runtimeBinding, setupOperation, activeDeployment, draftTheme] =
+    await Promise.all([
+      library.runtimeBindingId
+        ? ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId)
+        : null,
+      library.setupOperationId
+        ? ctx.db.get("evidenceLibraryConfigOperations", library.setupOperationId)
+        : null,
+      library.activeDeploymentOperationId
+        ? ctx.db.get(
+            "evidenceLibraryConfigOperations",
+            library.activeDeploymentOperationId,
+          )
+        : null,
+      library.draftId
+        ? ctx.db
+            .query("evidenceLibraryConfigSections")
+            .withIndex("by_draftId_and_sectionKey", (query) =>
+              query.eq("draftId", library.draftId!).eq("sectionKey", "theme"),
+            )
+            .unique()
+        : null,
+    ]);
+  let status: Infer<typeof libraryOverviewStatusValidator>;
+  let teardownStage: string | null = null;
+  if (library.state === "disabled") {
+    status = "deleting";
+    const teardown = await ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_createdAt", (query) =>
+        query.eq("libraryId", library._id),
+      )
+      .order("desc")
+      .first();
+    teardownStage = teardown?.kind === "teardown" ? teardown.stage : null;
+  } else if (library.state === "active") {
+    status = "active";
+  } else if (setupOperation?.status === "running") {
+    status = "setting_up";
+  } else if (setupOperation?.status === "failed") {
+    status = "setup_failed";
+  } else {
+    status = "draft";
+  }
+  const themeColors = (draftTheme?.payload as { colors?: { accent?: unknown } } | undefined)
+    ?.colors;
+  return {
+    _id: library._id,
+    name: library.name,
+    publicAddress: runtimeBinding?.targetBaseUrl ?? "",
+    status,
+    setupStage:
+      status === "setting_up" || status === "setup_failed"
+        ? (setupOperation?.stage ?? null)
+        : null,
+    teardownStage,
+    lastActivatedAt: activeDeployment?.receipt?.activatedAt ?? null,
+    accentColor:
+      typeof themeColors?.accent === "string" ? themeColors.accent : null,
+  };
+}
+
+export const listLibraryOverviews = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("evidenceLibraries"),
-      _creationTime: v.number(),
-      ...evidenceLibraryFields,
-    }),
-  ),
-  handler: readEvidenceLibraries,
+  returns: v.array(libraryOverviewValidator),
+  handler: async (ctx) => {
+    const libraries = await readEvidenceLibraries(ctx);
+    return await Promise.all(
+      libraries.map((library) => readLibraryOverview(ctx, library)),
+    );
+  },
+});
+
+/**
+ * The short name and platform address a new library would get for this name,
+ * so the new-library page can show them before the owner reserves the address.
+ */
+export const previewSetupIdentity = query({
+  args: { name: v.string() },
+  returns: v.union(v.null(), v.object(evidenceLibrarySetupIdentityFields)),
+  handler: async (ctx, args) => {
+    const access = await requireOrganizationAccess(ctx, "manage");
+    if (args.name.trim().length === 0) return null;
+    return await findAvailableEvidenceLibrarySetupIdentity(ctx, {
+      organizationId: access.organization._id,
+      name: args.name,
+    });
+  },
 });
 
 export const getAdminLaunchState = query({
@@ -56,6 +163,9 @@ export const getAdminLaunchState = query({
     v.object({
       libraryId: v.id("evidenceLibraries"),
       libraryName: v.string(),
+      publicAddress: v.string(),
+      libraryStatus: libraryOverviewStatusValidator,
+      activeRevisionKey: v.union(v.string(), v.null()),
       status: v.union(v.literal("not_ready"), v.literal("ready")),
     }),
   ),
@@ -72,9 +182,18 @@ export const getAdminLaunchState = query({
       ctx,
       library,
     );
+    const [overview, activeRevision] = await Promise.all([
+      readLibraryOverview(ctx, library),
+      library.activeRevisionId
+        ? ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId)
+        : null,
+    ]);
     return {
       libraryId,
       libraryName: library.name,
+      publicAddress: overview.publicAddress,
+      libraryStatus: overview.status,
+      activeRevisionKey: activeRevision?.revisionKey ?? null,
       status: targetBaseUrl ? ("ready" as const) : ("not_ready" as const),
     };
   },
