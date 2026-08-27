@@ -186,6 +186,8 @@ required).
    webhook flips the Convex row within seconds.
 4. Follow-up change: make `evidenceLibrariesEnabled` required in
    `organizationFields` and delete `convex/evidenceLibraries/devBackfill.ts`.
+   Done on 2026-08-27 after steps 1–3 ran on the shared deployment (all four
+   organisation rows carried the field; two were switched on in Clerk).
 
 The end-to-end test `e2e/auth.spec.ts` ("an owner can save and reopen
 essential library configuration") creates a library, so the organisation the

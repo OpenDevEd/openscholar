@@ -58,8 +58,7 @@ describe("requireOrganizationAccess", () => {
   async function seedMembership(
     role: "org:admin" | "org:member",
     state: "active" | "revoked" = "active",
-    // "never-set" stands for a row written before the switch existed.
-    evidenceLibrariesEnabled: boolean | "never-set" = true,
+    evidenceLibrariesEnabled = true,
   ) {
     const t = convexTest(schema);
     await t.run(async (ctx) => {
@@ -68,9 +67,7 @@ describe("requireOrganizationAccess", () => {
         name: "Evidence Team",
         slug: "evidence-team",
         state: "active",
-        ...(evidenceLibrariesEnabled === "never-set"
-          ? {}
-          : { evidenceLibrariesEnabled }),
+        evidenceLibrariesEnabled,
         clerkCreatedAt: 1,
         clerkUpdatedAt: 1,
         createdAt: 1,
@@ -161,11 +158,8 @@ describe("requireOrganizationAccess", () => {
       o: { id: "org_evidence_library", rol: "org:admin" },
     };
 
-    test.each([
-      ["switched off", false],
-      ["never switched on", "never-set"],
-    ] as const)("refuses to manage when the organisation is %s", async (_label, flag) => {
-      const t = await seedMembership("org:admin", "active", flag);
+    test("refuses to manage when the organisation is switched off", async () => {
+      const t = await seedMembership("org:admin", "active", false);
 
       await expect(
         t.withIdentity(admin).run((ctx) => requireOrganizationAccess(ctx, "manage")),

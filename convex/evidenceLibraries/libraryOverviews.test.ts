@@ -123,10 +123,20 @@ describe("library overviews", () => {
       ),
     ).resolves.toEqual({ enabled: true });
 
-    await fixture.t.mutation(
-      internal.evidenceLibraries.devBackfill.devSetEvidenceLibrariesEnabled,
-      { clerkOrganizationId: fixture.clerkOrganizationId, enabled: false },
-    );
+    // The real switch is Clerk public metadata via the webhook; the test flips
+    // the projected row directly.
+    await fixture.t.run(async (ctx) => {
+      const organization = await ctx.db
+        .query("organizations")
+        .withIndex("by_clerkOrganizationId", (query) =>
+          query.eq("clerkOrganizationId", fixture.clerkOrganizationId),
+        )
+        .unique();
+      if (!organization) throw new Error("organization row missing");
+      await ctx.db.patch("organizations", organization._id, {
+        evidenceLibrariesEnabled: false,
+      });
+    });
 
     await expect(
       fixture.admin.query(

@@ -39,6 +39,7 @@ describe("Evidence Library identity projections", () => {
         name: "Evidence Team",
         slug: "evidence-team",
         state: "active",
+        evidenceLibrariesEnabled: false,
         clerkCreatedAt: 1_700_000_000_000,
         clerkUpdatedAt: 1_700_000_001_000,
         createdAt: 1_700_000_002_000,
