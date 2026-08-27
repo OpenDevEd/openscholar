@@ -66,7 +66,10 @@ function rejectUpload(reason: "type" | "size", kind: "image" | "shareImage" | "l
 /**
  * Step two of an owner upload. Reads the temporary Convex file, checks it,
  * stores images in the platform bucket, and returns legal text as text.
- * The temporary file is deleted whatever the outcome.
+ *
+ * The owner check runs first, on its own. A refused caller must not cause any
+ * write, so the temporary file is only cleaned up once the caller is allowed
+ * to touch it. After that the cleanup runs whatever the outcome.
  */
 export const upload = action({
   args: {
@@ -77,12 +80,13 @@ export const upload = action({
   },
   returns: uploadResultValidator,
   handler: async (ctx, args): Promise<UploadResult> => {
+    await ctx.runQuery(internal.evidenceLibraries.uploads.requireUploadOwner, {
+      libraryId: args.libraryId,
+    });
+
     const name = args.name.trim();
     let bytes: ArrayBuffer;
     try {
-      await ctx.runQuery(internal.evidenceLibraries.uploads.requireUploadOwner, {
-        libraryId: args.libraryId,
-      });
       if (!name) rejectUpload("type", args.kind);
       const blob = await ctx.storage.get(args.storageId);
       if (!blob) throw createError("NOT_FOUND", "The uploaded file was not found");
