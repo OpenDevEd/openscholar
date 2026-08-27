@@ -2,9 +2,7 @@
 
 import { Quote } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
-import { EXPORT_FORMATS, isExportUrl, settleFeatures } from "@/lib/evidence-libraries/configuration/rules";
-import { Field } from "../section-card";
+import { EXPORT_FORMATS, settleFeatures } from "@/lib/evidence-libraries/configuration/rules";
 import { FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 
@@ -30,37 +28,22 @@ export function CitationsSection({ draft, saved, patch, reset }: SectionProps) {
           })
         }
       />
-      <FieldGroup title={t("exportsHeading")} hint={t("exportsHint")}>
-        {EXPORT_FORMATS.map((format) => {
-          const url = draft.exports[format];
-          const invalid = url !== "" && !isExportUrl(url, draft.identity.baseUrl);
-          return (
-            <Field
-              key={format}
-              label={t(`formats.${format}`)}
-              hint={t(`formatHints.${format}`)}
-              error={invalid ? t("urlError") : null}
-            >
-              {(id, hasError) => (
-                <Input
-                  id={id}
-                  data-format={format}
-                  inputMode="url"
-                  className="bg-background font-mono text-sm"
-                  value={url}
-                  placeholder="https://"
-                  aria-invalid={hasError || undefined}
-                  onChange={(e) =>
-                    patch((d) => {
-                      d.exports[format] = e.target.value.trim();
-                      return settleFeatures(d);
-                    })
-                  }
-                />
-              )}
-            </Field>
-          );
-        })}
+      <FieldGroup title={t("exportsHeading")}>
+        {EXPORT_FORMATS.map((format) => (
+          <ToggleRow
+            key={format}
+            data-format={format}
+            label={t(`formats.${format}`)}
+            hint={t(`formatHints.${format}`)}
+            checked={draft.exports[format]}
+            onChange={(checked) =>
+              patch((d) => {
+                d.exports[format] = checked;
+                return settleFeatures(d);
+              })
+            }
+          />
+        ))}
       </FieldGroup>
     </SectionShell>
   );

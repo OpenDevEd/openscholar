@@ -222,6 +222,16 @@ describe("validateOwnerSection email rules", () => {
 });
 
 describe("validateOwnerSections", () => {
+  test("accepts export switches and refuses the old file addresses", () => {
+    expect(
+      validateOwnerSections([{ sectionKey: "exports", payload: { ris: true, bibtex: false, atom: true } }]).issues,
+    ).toEqual([]);
+    expect(
+      validateOwnerSections([{ sectionKey: "exports", payload: { ris: "https://feeds.example.test/library.ris" } }])
+        .issues,
+    ).toEqual([expect.objectContaining({ pointer: "/exports/ris" })]);
+  });
+
   test("reports duplicate rows and, when asked, the required sections that are missing", () => {
     expect(REQUIRED_OWNER_SECTION_KEYS).toEqual([
       "identity",

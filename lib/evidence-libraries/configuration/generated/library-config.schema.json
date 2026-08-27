@@ -1458,22 +1458,16 @@
 			"type": "object",
 			"properties": {
 				"ris": {
-					"type": "string",
-					"minLength": 1,
-					"maxLength": 2048,
-					"format": "uri"
+					"default": true,
+					"type": "boolean"
 				},
 				"bibtex": {
-					"type": "string",
-					"minLength": 1,
-					"maxLength": 2048,
-					"format": "uri"
+					"default": true,
+					"type": "boolean"
 				},
 				"atom": {
-					"type": "string",
-					"minLength": 1,
-					"maxLength": 2048,
-					"format": "uri"
+					"default": false,
+					"type": "boolean"
 				}
 			},
 			"additionalProperties": false

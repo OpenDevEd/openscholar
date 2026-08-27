@@ -99,7 +99,6 @@ type SectionProblem =
   | "languages"
   | "posthog"
   | "google"
-  | "exportUrl"
   | "legalText";
 
 /* ------------------------------------------------------------------ */
@@ -118,6 +117,14 @@ function schemaNumber(pointer: string, key: "maxLength" | "maxItems"): number {
   const value = schemaNode(pointer)[key];
   if (typeof value !== "number") {
     throw new Error(`Configuration schema has no ${key} at ${pointer}`);
+  }
+  return value;
+}
+
+function schemaBoolean(pointer: string, key: "default"): boolean {
+  const value = schemaNode(pointer)[key];
+  if (typeof value !== "boolean") {
+    throw new Error(`Configuration schema has no boolean ${key} at ${pointer}`);
   }
   return value;
 }
@@ -191,19 +198,10 @@ export const LOCALES = schemaEnum<"en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" 
 export type Locale = (typeof LOCALES)[number];
 export const EXPORT_FORMATS = ["ris", "bibtex", "atom"] as const;
 type ExportFormat = (typeof EXPORT_FORMATS)[number];
-const EXPORT_URL_MAX_LENGTH = schemaNumber("/exports/ris", "maxLength");
-/**
- * An export address the runtime accepts. The runtime fetches this outside file
- * and streams it on `/lib/export/<format>` or `/lib/atom.xml` (new-el
- * `src/app/api/exports/[format]/route.ts`), so it must not point back at the
- * library's own address or the request loops onto itself.
- */
-export const isExportUrl = (url: string, baseUrl: string) => {
-  if (!HTTPS_URL.test(url) || url.length > EXPORT_URL_MAX_LENGTH) return false;
-  const origin = baseUrl.replace(/\/+$/, "").toLowerCase();
-  if (origin === "") return true;
-  const candidate = url.replace(/\/+$/, "").toLowerCase();
-  return candidate !== origin && !candidate.startsWith(`${origin}/`);
+const EXPORT_DEFAULTS: Record<ExportFormat, boolean> = {
+  ris: schemaBoolean("/exports/ris", "default"),
+  bibtex: schemaBoolean("/exports/bibtex", "default"),
+  atom: schemaBoolean("/exports/atom", "default"),
 };
 const POSTHOG_KEY_PATTERN = schemaPattern("/analytics/posthog/key");
 const POSTHOG_KEY_MIN_LENGTH = (() => {
@@ -403,8 +401,8 @@ export type ConfigurationDraft = {
   /** `content.tags`: which Zotero tags mean hidden, coming soon, and so on. Edited on the Sources card. */
   content: { tags: TagRules };
   citations: { showUrl: boolean };
-  /** `exports.<format>`: the address of an outside RIS, BibTeX or Atom file the runtime streams. Empty means off. */
-  exports: Record<ExportFormat, string>;
+  /** `exports.<format>`: which download formats the library generates from its records. */
+  exports: Record<ExportFormat, boolean>;
   localization: LocalizationDraft;
   analytics: AnalyticsDraft;
 };
@@ -449,11 +447,11 @@ export function featureBlock(draft: ConfigurationDraft, feature: ShownFeature): 
       // schema.ts:1726 "Years dropdown requires the years filter"
       return draft.filters.years.enabled ? null : { kind: "years" };
     case "downloads":
-      // schema.ts:1738 "Downloads require a RIS or BibTeX endpoint"
-      return hasExport(draft, "ris") || hasExport(draft, "bibtex") ? null : { kind: "exports" };
+      // schema.ts "Downloads require RIS or BibTeX" (new-el 122a7e55)
+      return draft.exports.ris || draft.exports.bibtex ? null : { kind: "exports" };
     case "atomFeed":
-      // schema.ts:1746 "Atom feed requires an Atom endpoint"
-      return hasExport(draft, "atom") ? null : { kind: "atom" };
+      // schema.ts "Atom feed requires the Atom export" (new-el 122a7e55)
+      return draft.exports.atom ? null : { kind: "atom" };
     case "languageSwitcher":
       // schema.ts:1595 "Language switcher requires at least two enabled locales"
       return draft.localization.locales.length >= 2 ? null : { kind: "languages" };
@@ -461,9 +459,6 @@ export function featureBlock(draft: ConfigurationDraft, feature: ShownFeature): 
       return null;
   }
 }
-
-const hasExport = (draft: ConfigurationDraft, format: ExportFormat) =>
-  isExportUrl(draft.exports[format], draft.identity.baseUrl);
 
 const SHOWN_FEATURES = FEATURE_GROUPS.flatMap((group) => group.features) as ShownFeature[];
 
@@ -764,11 +759,11 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
   };
 }
 
-function readExports(payload: unknown): Record<ExportFormat, string> {
+function readExports(payload: unknown): Record<ExportFormat, boolean> {
   const exports = record(payload);
   return Object.fromEntries(
-    EXPORT_FORMATS.map((format) => [format, typeof exports[format] === "string" ? exports[format] : ""]),
-  ) as Record<ExportFormat, string>;
+    EXPORT_FORMATS.map((format) => [format, flag(exports[format], EXPORT_DEFAULTS[format])]),
+  ) as Record<ExportFormat, boolean>;
 }
 
 function readLocales(value: unknown): Locale[] {
@@ -960,12 +955,7 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
     case "citations":
       return { showUrl: draft.citations.showUrl };
     case "exports":
-      return Object.fromEntries(
-        EXPORT_FORMATS.filter((format) => draft.exports[format] !== "").map((format) => [
-          format,
-          draft.exports[format],
-        ]),
-      );
+      return { ...draft.exports };
     case "localization": {
       const { locales, defaultLocale, detectLocale, localePriority } = draft.localization;
       return { locales: [...locales], defaultLocale, detectLocale, localePriority: [...localePriority] };
@@ -986,6 +976,15 @@ function hasRow(rows: readonly SectionRow[], rowKey: RowKey) {
   return rows.some((row) => row.sectionKey === rowKey);
 }
 
+// A saved exports row from before Evidence Library 122a7e55 holds file
+// addresses, which the runtime now rejects. It reads as the defaults, so it
+// must be rewritten even when nothing else changed.
+function staleExportsRow(rows: readonly SectionRow[]): boolean {
+  const row = rows.find((candidate) => candidate.sectionKey === "exports");
+  if (!row) return false;
+  return Object.values(record(row.payload)).some((value) => typeof value !== "boolean");
+}
+
 /** Rows to send on Save: every row whose payload differs from its saved row. */
 export function changedSectionRows(
   draft: ConfigurationDraft,
@@ -994,7 +993,9 @@ export function changedSectionRows(
   const saved = readDraft(rows);
   return ROW_KEYS.filter(
     (rowKey) =>
-      !hasRow(rows, rowKey) || !same(rowPayload(draft, rowKey), rowPayload(saved, rowKey)),
+      !hasRow(rows, rowKey) ||
+      !same(rowPayload(draft, rowKey), rowPayload(saved, rowKey)) ||
+      (rowKey === "exports" && staleExportsRow(rows)),
   ).map((rowKey) => ({ sectionKey: rowKey, payload: rowPayload(draft, rowKey) }));
 }
 
@@ -1207,11 +1208,6 @@ export function sectionProblems(
         )
       ) {
         problems.push("tagRules");
-      }
-      break;
-    case "citations":
-      if (EXPORT_FORMATS.some((format) => draft.exports[format] !== "" && !hasExport(draft, format))) {
-        problems.push("exportUrl");
       }
       break;
     case "features":

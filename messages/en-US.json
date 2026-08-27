@@ -2247,8 +2247,7 @@
       "languages": "Offer at least one language and pick the default from the offered ones.",
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
-      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters.",
-      "exportUrl": "An export file address is not valid. It must start with https:// and not be the library's own address."
+      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters."
     },
     "fields": {
       "optional": "optional",
@@ -2709,22 +2708,20 @@
       "manageButton": "Manage people"
     },
     "citations": {
-      "description": "Choose how citations look and where the library gets its download files.",
+      "description": "Choose how citations look and which export formats people can download.",
       "showUrl": "Show the URL in citations",
       "showUrlHint": "Add the record link at the end of each citation.",
-      "exportsHeading": "Export files",
-      "exportsHint": "Paste the address of a file hosted somewhere else, for example a Zotero group export. The library fetches it and serves it under its own address. Leave a field empty to turn that format off.",
+      "exportsHeading": "Export formats",
       "formats": {
-        "ris": "RIS file address",
-        "bibtex": "BibTeX file address",
-        "atom": "Atom feed address"
+        "ris": "RIS",
+        "bibtex": "BibTeX",
+        "atom": "Atom feed"
       },
       "formatHints": {
         "ris": "Works with EndNote, Zotero and Mendeley.",
         "bibtex": "Works with LaTeX and most reference managers.",
         "atom": "Lets feed readers follow new records."
-      },
-      "urlError": "Use a full address that starts with https:// and is not the library's own address."
+      }
     },
     "features": {
       "description": "Turn parts of the library on or off. Accounts and AI features come in a later version.",
@@ -2763,8 +2760,8 @@
         "authorCountry": "Turn on Author country in Search & filters first."
       },
       "needsYears": "Turn on the year range filter in Search & filters first.",
-      "needsExports": "Add a RIS or BibTeX file address in Citations & exports first.",
-      "needsAtom": "Add an Atom feed address in Citations & exports first.",
+      "needsExports": "Turn on RIS or BibTeX in Citations & exports first.",
+      "needsAtom": "Turn on the Atom feed in Citations & exports first.",
       "needsLanguages": "Offer at least two languages in Languages first."
     },
     "languages": {

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   cardForRow,
   collectionOptions,
-  isExportUrl,
   featureBlock,
   settleFeatures,
   SEARCH_SCOPES,
@@ -711,7 +710,7 @@ const platformRows = [
   { sectionKey: "filters", payload: { years: { enabled: false } } },
   { sectionKey: "features", payload: { collections: true, collectionNotes: true, downloads: true } },
   { sectionKey: "citations", payload: { showUrl: true } },
-  { sectionKey: "exports", payload: { ris: "https://api.zotero.org/groups/1/items?format=ris" } },
+  { sectionKey: "exports", payload: { ris: true, bibtex: false, atom: false } },
   { sectionKey: "localization", payload: { locales: ["fr", "en-GB"], defaultLocale: "en-GB", localePriority: ["en-GB"] } },
   { sectionKey: "analytics", payload: { posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" } } },
 ] as const;
@@ -720,7 +719,7 @@ describe("readDraft for the platform sections", () => {
   it("reads export switches, languages and the analytics switches", () => {
     const draft = readDraft(platformRows);
     expect(draft.citations.showUrl).toBe(true);
-    expect(draft.exports).toEqual({ ris: "https://api.zotero.org/groups/1/items?format=ris", bibtex: "", atom: "" });
+    expect(draft.exports).toEqual({ ris: true, bibtex: false, atom: false });
     expect(draft.localization).toEqual({
       locales: ["fr", "en-GB"],
       defaultLocale: "en-GB",
@@ -732,7 +731,7 @@ describe("readDraft for the platform sections", () => {
       google: { enabled: false, measurementId: "" },
     });
     expect(readDraft(savedRows).analytics.posthog).toEqual({ enabled: false, host: "", key: "" });
-    expect(readDraft(savedRows).exports).toEqual({ ris: "", bibtex: "", atom: "" });
+    expect(readDraft(savedRows).exports).toEqual({ ris: true, bibtex: true, atom: false });
   });
 });
 
@@ -745,17 +744,16 @@ describe("feature rules", () => {
     expect(featureBlock(draft, "downloads")).toBeNull();
     expect(featureBlock(draft, "languageSwitcher")).toBeNull();
     expect(sectionProblems(draft, "features")).toEqual([]);
-    draft.exports.ris = "";
+    draft.exports.ris = false;
     expect(featureBlock(draft, "downloads")).toEqual({ kind: "exports" });
     expect(sectionProblems(draft, "features")).toEqual(["featureDependency"]);
-    draft.exports.ris = "not a url";
-    expect(featureBlock(draft, "downloads")).toEqual({ kind: "exports" });
-    expect(sectionProblems(draft, "citations")).toEqual(["exportUrl"]);
+    draft.exports.bibtex = true;
+    expect(featureBlock(draft, "downloads")).toBeNull();
   });
 
   it("turns dependants off when a reset takes their requirement away", () => {
     const draft = readDraft(platformRows);
-    draft.exports.atom = "https://feeds.example.test/library.atom";
+    draft.exports.atom = true;
     draft.features.atomFeed = true;
     draft.localization.locales = ["en-GB", "fr"];
     draft.features.languageSwitcher = true;
@@ -773,7 +771,7 @@ describe("feature rules", () => {
   it("turns dependent features off when their requirement goes away", () => {
     const draft = readDraft(platformRows);
     draft.features.collections = false;
-    draft.exports.ris = "";
+    draft.exports.ris = false;
     settleFeatures(draft);
     expect(draft.features.collectionNotes).toBe(false);
     expect(draft.features.downloads).toBe(false);
@@ -782,33 +780,30 @@ describe("feature rules", () => {
 });
 
 describe("changedSectionRows for the platform sections", () => {
-  it("saves the typed export file addresses and leaves empty formats out", () => {
+  it("rewrites an exports row that still holds file addresses even when nothing else changed", () => {
+    const stale = platformRows.map((row) =>
+      row.sectionKey === "exports"
+        ? { sectionKey: "exports", payload: { ris: "https://feeds.example.test/library.ris" } }
+        : row,
+    );
+    const draft = readDraft(stale);
+    expect(draft.exports).toEqual({ ris: true, bibtex: true, atom: false });
+    expect(changedSectionRows(draft, stale)).toEqual([
+      { sectionKey: "exports", payload: { ris: true, bibtex: true, atom: false } },
+    ]);
+  });
+
+  it("saves the export switches as one row and reads the schema defaults when the row is empty", () => {
     const draft = readDraft(platformRows);
-    draft.exports.atom = "https://feeds.example.test/library.atom";
+    draft.exports.atom = true;
     draft.citations.showUrl = false;
     const rows = changedSectionRows(draft, platformRows);
     expect(rows).toEqual([
       { sectionKey: "citations", payload: { showUrl: false } },
-      {
-        sectionKey: "exports",
-        payload: {
-          ris: "https://api.zotero.org/groups/1/items?format=ris",
-          atom: "https://feeds.example.test/library.atom",
-        },
-      },
+      { sectionKey: "exports", payload: { ris: true, bibtex: false, atom: true } },
     ]);
-  });
-
-  it("refuses an export address that points back at the library itself", () => {
-    const baseUrl = "https://saved-library.libraries.example.test";
-    expect(isExportUrl("https://feeds.example.test/library.ris", baseUrl)).toBe(true);
-    expect(isExportUrl(`${baseUrl}/lib/export/ris`, baseUrl)).toBe(false);
-    expect(isExportUrl(baseUrl, baseUrl)).toBe(false);
-    expect(isExportUrl(`${baseUrl}/`, baseUrl)).toBe(false);
-    expect(isExportUrl(`${baseUrl}/lib/export/ris`, `${baseUrl}/`)).toBe(false);
-    expect(isExportUrl(`${baseUrl}.evil.test/x`, baseUrl)).toBe(true);
-    expect(isExportUrl("http://feeds.example.test/library.ris", baseUrl)).toBe(false);
-    expect(isExportUrl(`https://feeds.example.test/${"a".repeat(2048)}`, baseUrl)).toBe(false);
+    const fresh = readDraft(platformRows.map((row) => (row.sectionKey === "exports" ? { sectionKey: "exports", payload: {} } : row)));
+    expect(fresh.exports).toEqual({ ris: true, bibtex: true, atom: false });
   });
 
   it("keeps the navbar search flag on the Navigation card and the rest on Features", () => {
