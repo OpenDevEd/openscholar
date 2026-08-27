@@ -250,16 +250,12 @@ function LibraryRow({
       data-status={library.status}
       className={cn("flex flex-wrap items-center gap-3 p-4", isDeleting && "bg-muted/30")}
     >
-      {library.faviconUrl ? (
-        <LibraryImage
-          src={library.faviconUrl}
-          className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/40"
-          imageClassName="size-6 object-contain"
-          fallback={<InitialsTile library={library} />}
-        />
-      ) : (
-        <InitialsTile library={library} />
-      )}
+      <LibraryImage
+        src={library.faviconUrl ?? "/icon.svg"}
+        className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/40"
+        imageClassName="size-6 object-contain"
+        fallback={<InitialsTile library={library} />}
+      />
 
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
@@ -391,7 +387,7 @@ function OwnerActions({
   );
 }
 
-/** The coloured initials tile shown when a library has no favicon. */
+/** The coloured initials tile, shown only when the favicon image fails to load. */
 function InitialsTile({ library }: { library: Pick<Overview, "name" | "accentColor"> }) {
   return (
     <div

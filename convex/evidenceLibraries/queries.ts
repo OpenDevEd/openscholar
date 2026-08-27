@@ -107,11 +107,14 @@ const libraryOverviewValidator = v.object({
   teardownStage: v.union(teardownStageValidator, v.null()),
   lastActivatedAt: v.union(v.number(), v.null()),
   accentColor: v.union(v.string(), v.null()),
-  /** The favicon the owner uploaded, or null when the OpenScholar default applies. */
+  /** The favicon the owner uploaded, else the OpenScholar default; null only when neither exists. */
   faviconUrl: v.union(v.string(), v.null()),
 });
 
-/** The favicon URL from a draft's identity section, or null when none is uploaded. */
+/**
+ * The favicon URL from a draft's identity section. When the owner uploaded
+ * none, the OpenScholar default the published site uses (EL_DEFAULT_FAVICON_URL).
+ */
 async function readDraftFavicon(
   ctx: QueryCtx,
   draftId: Id<"evidenceLibraryConfigDrafts"> | undefined,
@@ -125,7 +128,8 @@ async function readDraftFavicon(
     .unique();
   const favicon = (identity?.payload as { assets?: { favicon?: unknown } } | undefined)
     ?.assets?.favicon;
-  return typeof favicon === "string" && favicon !== "" ? favicon : null;
+  if (typeof favicon === "string" && favicon !== "") return favicon;
+  return process.env.EL_DEFAULT_FAVICON_URL?.trim() || null;
 }
 
 /** One row per library for the list page: status, address and the facts under the title. */

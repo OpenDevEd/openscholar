@@ -153,12 +153,12 @@ describe("<LibraryList>", () => {
       "/evidence-libraries/lib_active/admin",
     );
     expect(activeRow.getByText("2026-08-26")).toBeInTheDocument();
-    // The library's favicon replaces the initials tile; rows without one keep the initials.
+    // The library's favicon fills the tile; without one the OpenScholar icon does.
     expect(rows[0].querySelector("[data-library-image]")).toHaveAttribute(
       "src",
       "https://assets.example.test/favicon.ico",
     );
-    expect(rows[1].querySelector("[data-library-image]")).toBeNull();
+    expect(rows[1].querySelector("[data-library-image]")).toHaveAttribute("src", "/icon.svg");
 
     const failedRow = within(rows[1]);
     expect(failedRow.getByText("stages.storage")).toBeInTheDocument();

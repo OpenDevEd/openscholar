@@ -34,7 +34,7 @@ export function PanelHeader({
   className,
 }: {
   icon: LucideIcon;
-  /** The library's own favicon; replaces the icon in the tile when set. */
+  /** A library page: its favicon, or null for the OpenScholar one. Leave undefined for the icon. */
   image?: string | null;
   title: ReactNode;
   /** One line under the title: what the page is about, or the library's address link. */
@@ -59,9 +59,9 @@ export function PanelHeader({
             </Button>
           ) : null}
           <div className="relative shrink-0">
-            {image ? (
+            {image !== undefined ? (
               <LibraryImage
-                src={image}
+                src={image ?? "/icon.svg"}
                 className={TILE}
                 imageClassName="h-6 w-6 object-contain md:h-7 md:w-7"
                 fallback={<IconTile icon={Icon} />}
