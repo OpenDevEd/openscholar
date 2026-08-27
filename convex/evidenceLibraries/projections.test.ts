@@ -254,6 +254,57 @@ describe("Evidence Library identity projections", () => {
     expect(stored).toMatchObject({ name: "Evidence Team", state: "deleted" });
   });
 
+  it("keeps a newer Evidence Libraries switch when a stale membership event arrives", async () => {
+    const t = convexTest(schema);
+
+    // Clerk switches the organisation on.
+    await t.run((ctx) =>
+      applyOrganizationProjection(ctx, {
+        ...eventMetadata("msg_switch_on", 100),
+        action: "upsert",
+        entityId: "org_123",
+        organization: {
+          ...organizationSnapshot,
+          evidenceLibrariesEnabled: true,
+          clerkUpdatedAt: 1_700_000_010_000,
+        },
+      }),
+    );
+
+    // A membership event that Clerk built before the switch arrives late. Its
+    // organisation snapshot still says off, and it must not win.
+    await t.run((ctx) =>
+      applyMembershipProjection(ctx, {
+        ...eventMetadata("msg_stale_membership", 101),
+        eventType: "organizationMembership.created",
+        action: "upsert",
+        membership: {
+          clerkCreatedAt: 1_700_000_002_000,
+          clerkMembershipId: "orgmem_stale",
+          clerkUpdatedAt: 1_700_000_003_000,
+          clerkUserId: "user_123",
+          organization: {
+            ...organizationSnapshot,
+            evidenceLibrariesEnabled: false,
+            clerkUpdatedAt: 1_700_000_009_000,
+          },
+          role: "org:member",
+          state: "active",
+        },
+      }),
+    );
+
+    const stored = await t.run((ctx) =>
+      ctx.db
+        .query("organizations")
+        .withIndex("by_clerkOrganizationId", (query) =>
+          query.eq("clerkOrganizationId", "org_123"),
+        )
+        .unique(),
+    );
+    expect(stored).toMatchObject({ evidenceLibrariesEnabled: true });
+  });
+
   it("projects a membership and its organization atomically", async () => {
     const t = convexTest(schema);
     const membership = {
