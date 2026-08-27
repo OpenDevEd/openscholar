@@ -122,6 +122,10 @@ describe("<SetupProgress>", () => {
     expect(within(status).getAllByRole("listitem").every((item) => item.dataset.state === "done")).toBe(true);
     expect(screen.getByRole("link", { name: "openAdmin" })).toHaveAttribute("href", "/evidence-libraries/lib_1/admin");
     expect(screen.getByRole("link", { name: "openLibrary" })).toHaveAttribute("href", "https://climate-lib.example.test");
+    // The live panel is the headline once setup succeeded; the progress bar is gone.
+    expect(screen.getByRole("region", { name: "title" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "copyAddress" })).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
   });
 
   it("points a draft to the configuration page instead of starting setup here", () => {

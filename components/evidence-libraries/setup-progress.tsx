@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { Check, ExternalLink, RefreshCw, Settings, X } from "lucide-react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
@@ -20,25 +21,41 @@ import {
 import { cn } from "@/lib/utils";
 import { FieldGroup } from "./configuration/fields";
 import { InlineNotice } from "./configuration/section-card";
+import { LibraryAddressLink } from "./library-address-link";
 import { LibraryNotFound } from "./library-not-found";
+import { SetupHero } from "./live-hero";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
 
 export function SetupProgress({ libraryId }: { libraryId: string }) {
-  const t = useTranslations("evidenceLibraries.setup");
   const setupQuery = useProtectedQuery(
     api.evidenceLibraries.queries.getSetupDraftSelection,
     { libraryId },
   );
   const retrySetup = useMutation(api.evidenceLibraries.mutations.retrySetup);
-  const [retrying, setRetrying] = useState(false);
 
   if (setupQuery.data === undefined) {
-    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
   if (setupQuery.data === null) return <LibraryNotFound />;
 
-  const setup = setupQuery.data;
+  return <SetupProgressView setup={setupQuery.data} retrySetup={retrySetup} />;
+}
+
+export type SetupProgressData = NonNullable<
+  FunctionReturnType<typeof api.evidenceLibraries.queries.getSetupDraftSelection>
+>;
+
+/** The page itself, given the setup data. Kept separate so it can render without a query. */
+export function SetupProgressView({
+  setup,
+  retrySetup,
+}: {
+  setup: SetupProgressData;
+  retrySetup: (args: { libraryId: SetupProgressData["library"]["_id"] }) => Promise<unknown>;
+}) {
+  const t = useTranslations("evidenceLibraries.setup");
+  const [retrying, setRetrying] = useState(false);
   const status = setup.status;
   const failed = status === "setup_failed";
   const active = status === "active";
@@ -52,6 +69,7 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
   });
   const percent = setupPercent(steps);
   const current = steps.find((s) => s.status === "running" || s.status === "failed") ?? steps[5];
+  const hero = status === "setting_up" || status === "setup_failed" || status === "active";
 
   function retry() {
     if (retrying) return;
@@ -65,18 +83,13 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
   return (
     <LibraryPageShell
       title={setup.identity.name}
-      eyebrow={address}
+      image={setup.faviconUrl}
+      description={<LibraryAddressLink address={address} />}
       backHref="/evidence-libraries"
       backLabel={t("backToLibraries")}
       titleAside={<LibraryStatusChip status={status} />}
       actions={
         <>
-          {failed ? (
-            <Button onClick={retry} disabled={retrying} data-retry>
-              {retrying ? <Spinner /> : <RefreshCw />}
-              {t("retry")}
-            </Button>
-          ) : null}
           {status === "draft" || active ? (
             <Button asChild variant={active ? "outline" : "default"}>
               <Link href={`${base}/configuration`}>
@@ -97,29 +110,45 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
       }
     >
       <div
-        className="space-y-4 p-4 md:p-6"
+        className={cn("space-y-4", hero ? "p-0" : "p-4 md:p-6")}
         role={failed ? "alert" : "status"}
         aria-live="polite"
         aria-busy={retrying}
         data-setup-status={status}
         data-setup-step={current.key}
       >
+        {hero ? (
+          <SetupHero
+            status={status}
+            name={setup.identity.name}
+            address={address}
+            steps={steps}
+            percent={percent}
+            currentStep={current}
+            errorMessage={failed ? setup.setupOperation.error?.message : undefined}
+            onRetry={retry}
+            retrying={retrying}
+          />
+        ) : null}
+
+        {hero ? null : (
         <FieldGroup title={t("groupTitle")}>
           <div className="space-y-4">
-            <div>
-              <div className="mb-2 flex justify-between text-sm">
-                <span className="text-muted-foreground">{t(`steps.${current.key}.name`)}</span>
-                <span className="tabular-nums">{percent}%</span>
+            {active ? null : (
+              <div>
+                <div className="mb-2 flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t(`steps.${current.key}.name`)}</span>
+                  <span className="tabular-nums">{percent}%</span>
+                </div>
+                <Progress
+                  value={percent}
+                  aria-label={t("groupTitle")}
+                  className={cn(
+                    failed && "bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive",
+                  )}
+                />
               </div>
-              <Progress
-                value={percent}
-                aria-label={t("groupTitle")}
-                className={cn(
-                  failed && "bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive",
-                  active && "bg-emerald-500/20 [&>[data-slot=progress-indicator]]:bg-emerald-500",
-                )}
-              />
-            </div>
+            )}
 
             {status === "draft" ? (
               <InlineNotice
@@ -135,7 +164,7 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
             ) : null}
 
             <ol className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background">
-              {steps.map((step) => (
+              {steps.filter((step) => !(active && step.key === "active")).map((step) => (
                 <StepRow
                   key={step.key}
                   step={step}
@@ -147,24 +176,9 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
                 />
               ))}
             </ol>
-
-            {active ? (
-              <InlineNotice
-                tone="info"
-                action={
-                  <Button asChild size="sm" variant="outline" className="h-7">
-                    <a href={address} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink />
-                      {t("openLibrary")}
-                    </a>
-                  </Button>
-                }
-              >
-                {t("liveAt", { address })}
-              </InlineNotice>
-            ) : null}
           </div>
         </FieldGroup>
+        )}
       </div>
     </LibraryPageShell>
   );

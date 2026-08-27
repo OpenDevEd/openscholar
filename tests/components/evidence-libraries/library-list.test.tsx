@@ -77,6 +77,7 @@ const libraries = [
     teardownStage: null,
     lastActivatedAt: Date.UTC(2026, 7, 26),
     accentColor: "#005A9C",
+    faviconUrl: "https://assets.example.test/favicon.ico",
   },
   {
     _id: "lib_failed",
@@ -87,6 +88,7 @@ const libraries = [
     teardownStage: null,
     lastActivatedAt: null,
     accentColor: null,
+    faviconUrl: null,
   },
   {
     _id: "lib_deleting",
@@ -97,6 +99,7 @@ const libraries = [
     teardownStage: "convex",
     lastActivatedAt: null,
     accentColor: null,
+    faviconUrl: null,
   },
 ];
 
@@ -150,6 +153,12 @@ describe("<LibraryList>", () => {
       "/evidence-libraries/lib_active/admin",
     );
     expect(activeRow.getByText("2026-08-26")).toBeInTheDocument();
+    // The library's favicon replaces the initials tile; rows without one keep the initials.
+    expect(rows[0].querySelector("[data-library-image]")).toHaveAttribute(
+      "src",
+      "https://assets.example.test/favicon.ico",
+    );
+    expect(rows[1].querySelector("[data-library-image]")).toBeNull();
 
     const failedRow = within(rows[1]);
     expect(failedRow.getByText("stages.storage")).toBeInTheDocument();

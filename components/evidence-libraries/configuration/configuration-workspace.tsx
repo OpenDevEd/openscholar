@@ -90,6 +90,7 @@ import { ThemeSection } from "./sections/theme-section";
 import { VersionsSection } from "./sections/versions-section";
 import { InlineNotice } from "./section-card";
 import { STATE_TONE, type SectionProps } from "./section-shell";
+import { LibraryAddressLink } from "../library-address-link";
 import { PanelHeader } from "./panel-header";
 import { STATUS_DOT, StatusChip } from "./status-chip";
 import { FileUploadsProvider } from "./use-file-uploads";
@@ -183,7 +184,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
     libraryId: libraryId as Id<"evidenceLibraries">,
   });
   if (draftQuery.data === undefined) {
-    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
   const { draft, library, operation, sections } = draftQuery.data;
   // A new edit version means the platform has newer rows; the draft restarts from them.
@@ -329,9 +330,10 @@ function Workspace({
           <div className="container mx-auto max-w-6xl px-4 sm:px-6">
             <PanelHeader
               icon={Layers}
+              image={draft.identity.assets.favicon || null}
               className="border-b-0 px-0 md:px-0"
               title={draft.identity.name || t("untitled")}
-              eyebrow={draft.identity.baseUrl}
+              description={<LibraryAddressLink address={draft.identity.baseUrl} />}
               backHref={LIBRARIES_HREF}
               backLabel={t("backToLibraries")}
               titleAside={
