@@ -518,3 +518,27 @@ START NOW: read the plan, README, AGENTS.md; `git status`; confirm the lane in .
 
 Go.
 ```
+
+## Plan 10 — defaults and team
+
+```text
+Implement plans/evidence-library-configuration-v2/10-defaults-and-team.md.
+Read plans/evidence-library-configuration-v2/00-README.md and AGENTS.md first.
+Depends on: plans 05–09 merged (they are).
+
+Repository: OpenDevEd/openalex-count. Worktree: /Users/mcharrad/Documents/Github/openscholar/pages-sprint. Branch: codex/defaults-and-team from current origin/dev. Convex lane: the one in the worktree .env.local (calm-labrador-815, port 3013). PR target: dev.
+
+Runtime facts: local checkout /Users/mcharrad/Documents/Github/new-el-runtime-api (main 7c269e10), src/config/library-config/schema.ts (assets 160-180, analytics 1337-1357, email 1388-1413 and 1775-1790).
+
+STANDING RULES: reuse existing helpers/controls (configuration/fields.tsx, runtimeActionConfig.ts env helpers, uploads); clean breaking changes, delete replaced code; Convex guidelines before Convex edits; upload only with `npx convex dev --once` to the lane; never `npm run convex:push`, never touch the shared deployment or Coolify; test-decision skill before tests, behaviour only; no useEffect for app state; read node_modules/next/dist/docs/ for Next APIs; mock copy rules; six locales.
+
+EXECUTION RHYTHM: one item per commit (assets, recipients, analytics, team), test-first for rules/assembly, then component + lane browser check.
+
+COMMIT DISCIPLINE: `[plan-10]` prefix; named files; never failing work; no hook bypass; push and open a PR to dev; do not merge.
+
+WHEN TO STOP: missing API or unsafe bug → commit safe work, write 10-BLOCKER.md, stop.
+DEVIATIONS: fix the plan first (`docs: [plan-10] revise …`).
+REPORT: PR URL, commits, check tails, screenshots of the four cards, the exact env names and the asset URLs the integration owner must set.
+
+Go.
+```
