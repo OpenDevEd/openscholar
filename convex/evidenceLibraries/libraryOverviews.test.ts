@@ -56,6 +56,7 @@ describe("library overviews", () => {
         teardownStage: null,
         lastActivatedAt: null,
         accentColor: "#005A9C",
+        faviconUrl: "https://assets.example.test/favicon.ico",
       },
     ]);
 
@@ -110,6 +111,7 @@ describe("library overviews", () => {
       teardownStage: null,
       lastActivatedAt: null,
       accentColor: null,
+      faviconUrl: null,
     });
   });
 

@@ -5,16 +5,28 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LibraryImage } from "../library-image";
 
 /**
  * Same look as `CommandCenterHeader` (icon tile, title, description) but with a
  * free right-hand slot for actions instead of the fixed count pill.
  */
+const TILE =
+  "flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 shadow-sm md:h-12 md:w-12";
+
+function IconTile({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <div className={TILE}>
+      <Icon className="h-5 w-5 text-primary md:h-6 md:w-6" />
+    </div>
+  );
+}
+
 export function PanelHeader({
   icon: Icon,
+  image,
   title,
   description,
-  eyebrow,
   backHref,
   backLabel,
   titleAside,
@@ -22,10 +34,11 @@ export function PanelHeader({
   className,
 }: {
   icon: LucideIcon;
+  /** A library page: its favicon, or null for the OpenScholar one. Leave undefined for the icon. */
+  image?: string | null;
   title: ReactNode;
+  /** One line under the title: what the page is about, or the library's address link. */
   description?: ReactNode;
-  /** Small mono line under the description, such as a public address. */
-  eyebrow?: ReactNode;
   /** Where the back chevron goes. */
   backHref?: string;
   backLabel?: string;
@@ -46,9 +59,16 @@ export function PanelHeader({
             </Button>
           ) : null}
           <div className="relative shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 shadow-sm md:h-12 md:w-12">
-              <Icon className="h-5 w-5 text-primary md:h-6 md:w-6" />
-            </div>
+            {image !== undefined ? (
+              <LibraryImage
+                src={image ?? "/icon.svg"}
+                className={TILE}
+                imageClassName="h-6 w-6 object-contain md:h-7 md:w-7"
+                fallback={<IconTile icon={Icon} />}
+              />
+            ) : (
+              <IconTile icon={Icon} />
+            )}
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -57,9 +77,6 @@ export function PanelHeader({
             </div>
             {description ? (
               <p className="text-sm text-muted-foreground">{description}</p>
-            ) : null}
-            {eyebrow ? (
-              <p className="mt-0.5 text-xs font-mono text-muted-foreground">{eyebrow}</p>
             ) : null}
           </div>
         </div>

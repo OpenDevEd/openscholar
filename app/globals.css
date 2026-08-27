@@ -509,3 +509,164 @@
     animation: none !important;
   }
 }
+
+/* Evidence Library setup: the live hero. Aurora drifts, the check lands with a
+   burst of dots and one light sweep, then the text rises in three beats. */
+.el-hero {
+  animation: el-hero-rise-in 500ms ease-out both;
+}
+@keyframes el-hero-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.el-hero-blob {
+  animation: el-hero-drift 14s ease-in-out infinite alternate;
+  /* A true falloff: colour at the centre, nothing by 60% of the radius. */
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--el-hero-tint) var(--el-hero-strength), transparent) 0%,
+    transparent 60%
+  );
+}
+.el-hero-blob-a {
+  --el-hero-tint: var(--color-emerald-500);
+  --el-hero-strength: 24%;
+}
+.el-hero-blob-b {
+  --el-hero-tint: var(--primary);
+  --el-hero-strength: 18%;
+}
+.el-hero-blob-c {
+  --el-hero-tint: var(--color-emerald-400);
+  --el-hero-strength: 14%;
+}
+.dark .el-hero-blob-a {
+  --el-hero-strength: 16%;
+}
+.dark .el-hero-blob-b {
+  --el-hero-strength: 12%;
+}
+.dark .el-hero-blob-c {
+  --el-hero-strength: 9%;
+}
+.el-hero-blob-b {
+  animation-duration: 18s;
+  animation-delay: -6s;
+}
+.el-hero-blob-c {
+  animation-duration: 16s;
+  animation-delay: -11s;
+}
+.el-hero-sweep {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.12) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  animation: el-hero-sweep 1100ms ease-in-out 900ms forwards;
+}
+.el-hero-check {
+  animation: el-hero-land 520ms cubic-bezier(0.2, 0.9, 0.3, 1.35) 220ms both;
+}
+.el-burst-dot {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--a)) translateX(0);
+  animation: el-burst 720ms cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+.el-hero-rise {
+  opacity: 0;
+  animation: el-hero-rise-in 480ms ease-out forwards;
+}
+@keyframes el-hero-drift {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(40px, 24px) scale(1.15);
+  }
+}
+@keyframes el-hero-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes el-hero-land {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes el-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--a)) translateX(14px) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--a)) translateX(64px) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .el-hero,
+  .el-hero-blob,
+  .el-hero-check,
+  .el-hero-rise {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .el-hero-sweep,
+  .el-burst-dot {
+    display: none;
+  }
+}
+
+/* Setup hero: state tints and the building-state orbit. */
+[data-live-hero][data-state="setting_up"] .el-hero-blob-a,
+[data-live-hero][data-state="setting_up"] .el-hero-blob-b,
+[data-live-hero][data-state="setting_up"] .el-hero-blob-c {
+  --el-hero-tint: var(--primary);
+}
+[data-live-hero][data-state="setup_failed"] .el-hero-blob-a,
+[data-live-hero][data-state="setup_failed"] .el-hero-blob-c {
+  --el-hero-tint: var(--destructive);
+}
+[data-live-hero][data-state="setup_failed"] .el-hero-blob-b {
+  --el-hero-strength: 0%;
+}
+[data-live-hero]:not([data-state="active"]) .el-hero-check {
+  animation: none;
+}
+.el-hero-orbit {
+  animation: el-hero-orbit 1.4s linear infinite;
+}
+@keyframes el-hero-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .el-hero-orbit {
+    animation: none;
+    display: none;
+  }
+}

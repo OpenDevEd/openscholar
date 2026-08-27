@@ -23,6 +23,7 @@ import { initialsOf } from "@/lib/evidence-libraries/initials";
 import { cn } from "@/lib/utils";
 import { DeleteLibraryDialog } from "./configuration/delete-library-dialog";
 import { EmptyList, MetaList, type MetaItem } from "./configuration/fields";
+import { LibraryImage } from "./library-image";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
 import { StatusChip } from "./configuration/status-chip";
@@ -71,7 +72,7 @@ export function LibraryList() {
   );
 
   if (!isLoaded) {
-    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
   if (!organization) {
     return (
@@ -83,7 +84,7 @@ export function LibraryList() {
     );
   }
   if (access.data === undefined) {
-    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
   // Evidence Libraries are switched on per organisation in Clerk.
   if (!access.data.enabled) {
@@ -109,7 +110,7 @@ export function LibraryList() {
   return (
     <LibraryPageShell
       title={t("title")}
-      eyebrow={organization.name}
+      description={t("description")}
       actions={
         <>
           <OrganisationPill name={organization.name} />
@@ -118,7 +119,7 @@ export function LibraryList() {
       }
     >
       {overviews.data === undefined ? (
-        <AuthStatePanel variant="loading" loadingStyle="spinner" />
+        <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />
       ) : overviews.data.length === 0 ? (
         <div className="space-y-3 p-4 md:p-6" data-library-empty>
           <EmptyList>{t("empty")}</EmptyList>
@@ -249,16 +250,12 @@ function LibraryRow({
       data-status={library.status}
       className={cn("flex flex-wrap items-center gap-3 p-4", isDeleting && "bg-muted/30")}
     >
-      <div
-        aria-hidden="true"
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white",
-          !library.accentColor && "bg-primary",
-        )}
-        style={library.accentColor ? { background: library.accentColor } : undefined}
-      >
-        {initialsOf(library.name)}
-      </div>
+      <LibraryImage
+        src={library.faviconUrl ?? "/icon.svg"}
+        className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/40"
+        imageClassName="size-6 object-contain"
+        fallback={<InitialsTile library={library} />}
+      />
 
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
@@ -387,5 +384,21 @@ function OwnerActions({
         </DropdownMenuContent>
       </DropdownMenu>
     </>
+  );
+}
+
+/** The coloured initials tile, shown only when the favicon image fails to load. */
+function InitialsTile({ library }: { library: Pick<Overview, "name" | "accentColor"> }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white",
+        !library.accentColor && "bg-primary",
+      )}
+      style={library.accentColor ? { background: library.accentColor } : undefined}
+    >
+      {initialsOf(library.name)}
+    </div>
   );
 }

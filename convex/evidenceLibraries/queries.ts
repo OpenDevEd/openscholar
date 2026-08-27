@@ -107,14 +107,37 @@ const libraryOverviewValidator = v.object({
   teardownStage: v.union(teardownStageValidator, v.null()),
   lastActivatedAt: v.union(v.number(), v.null()),
   accentColor: v.union(v.string(), v.null()),
+  /** The favicon the owner uploaded; null means the pages show the OpenScholar icon. */
+  faviconUrl: v.union(v.string(), v.null()),
 });
+
+/**
+ * The favicon URL from a draft's identity section, or null when none is
+ * uploaded. The platform default PNG is for browser tabs on the published
+ * site; our own pages draw the app icon instead, which has no background.
+ */
+async function readDraftFavicon(
+  ctx: QueryCtx,
+  draftId: Id<"evidenceLibraryConfigDrafts"> | undefined,
+): Promise<string | null> {
+  if (!draftId) return null;
+  const identity = await ctx.db
+    .query("evidenceLibraryConfigSections")
+    .withIndex("by_draftId_and_sectionKey", (query) =>
+      query.eq("draftId", draftId).eq("sectionKey", "identity"),
+    )
+    .unique();
+  const favicon = (identity?.payload as { assets?: { favicon?: unknown } } | undefined)
+    ?.assets?.favicon;
+  return typeof favicon === "string" && favicon !== "" ? favicon : null;
+}
 
 /** One row per library for the list page: status, address and the facts under the title. */
 async function readLibraryOverview(
   ctx: QueryCtx,
   library: Doc<"evidenceLibraries">,
 ) {
-  const [runtimeBinding, setupOperation, activeDeployment, draftTheme] =
+  const [runtimeBinding, setupOperation, activeDeployment, draftTheme, faviconUrl] =
     await Promise.all([
       library.runtimeBindingId
         ? ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId)
@@ -136,6 +159,7 @@ async function readLibraryOverview(
             )
             .unique()
         : null,
+      readDraftFavicon(ctx, library.draftId ?? undefined),
     ]);
   const status = libraryOverviewStatus(library, setupOperation);
   let teardownStage: TeardownStage | null = null;
@@ -169,6 +193,7 @@ async function readLibraryOverview(
     lastActivatedAt: activeDeployment?.receipt?.activatedAt ?? null,
     accentColor:
       typeof themeColors?.accent === "string" ? themeColors.accent : null,
+    faviconUrl,
   };
 }
 
@@ -269,6 +294,7 @@ export const getAdminLaunchState = query({
       libraryName: v.string(),
       publicAddress: v.string(),
       libraryStatus: libraryOverviewStatusValidator,
+      faviconUrl: v.union(v.string(), v.null()),
       activeRevisionKey: v.union(v.string(), v.null()),
       status: v.union(v.literal("not_ready"), v.literal("ready")),
     }),
@@ -297,6 +323,7 @@ export const getAdminLaunchState = query({
       libraryName: library.name,
       publicAddress: overview.publicAddress,
       libraryStatus: overview.status,
+      faviconUrl: overview.faviconUrl,
       activeRevisionKey: activeRevision?.revisionKey ?? null,
       status: targetBaseUrl ? ("ready" as const) : ("not_ready" as const),
     };
@@ -354,6 +381,7 @@ const evidenceLibrarySetupResultValidator = v.object({
   ),
   publicAddress: v.string(),
   status: libraryOverviewStatusValidator,
+  faviconUrl: v.union(v.string(), v.null()),
 });
 
 async function readEvidenceLibrarySetupForLibrary(
@@ -370,6 +398,7 @@ async function readEvidenceLibrarySetupForLibrary(
     setupOperation: publicSetupOperation,
     identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
     status: libraryOverviewStatus(setup.library, setup.setupOperation),
+    faviconUrl: await readDraftFavicon(ctx, setup.draft._id),
   };
 }
 

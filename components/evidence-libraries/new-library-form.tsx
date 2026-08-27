@@ -60,7 +60,7 @@ export function NewLibraryForm() {
   );
 
   if (!isLoaded) {
-    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
   if (!organization) {
     return (
@@ -72,7 +72,7 @@ export function NewLibraryForm() {
     );
   }
   if (membership === undefined || access.data === undefined) {
-    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
   // Evidence Libraries are switched on per organisation in Clerk.
   if (!access.data.enabled) {

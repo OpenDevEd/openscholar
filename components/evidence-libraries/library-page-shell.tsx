@@ -12,9 +12,9 @@ import { PanelHeader } from "./configuration/panel-header";
  */
 export function LibraryPageShell({
   icon = Layers,
+  image,
   title,
   description,
-  eyebrow,
   backHref,
   backLabel,
   titleAside,
@@ -22,9 +22,9 @@ export function LibraryPageShell({
   children,
 }: {
   icon?: LucideIcon;
+  image?: string | null;
   title: ReactNode;
   description?: ReactNode;
-  eyebrow?: ReactNode;
   backHref?: string;
   backLabel?: string;
   titleAside?: ReactNode;
@@ -37,10 +37,10 @@ export function LibraryPageShell({
         <div className="container mx-auto max-w-6xl px-4 sm:px-6">
           <PanelHeader
             icon={icon}
+            image={image}
             className="border-b-0 px-0 md:px-0"
             title={title}
             description={description}
-            eyebrow={eyebrow}
             backHref={backHref}
             backLabel={backLabel}
             titleAside={titleAside}

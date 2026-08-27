@@ -186,6 +186,7 @@ describe("Evidence Library admin login codes", () => {
       libraryName: "Climate Evidence",
       publicAddress: "https://climate-evidence-lib.libraries.example.test",
       libraryStatus: "active",
+      faviconUrl: "https://assets.example.test/favicon.ico",
       activeRevisionKey: expect.any(String),
       status: "ready",
     });
@@ -236,6 +237,7 @@ describe("Evidence Library admin login codes", () => {
       libraryName: "Climate Evidence",
       publicAddress: "https://climate-evidence-lib.libraries.example.test",
       libraryStatus: "setting_up",
+      faviconUrl: "https://assets.example.test/favicon.ico",
       activeRevisionKey: null,
       status: "not_ready",
     });

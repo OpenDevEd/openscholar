@@ -16,6 +16,7 @@ import { openAdminLaunchUrl } from "@/lib/evidence-libraries/open-admin-launch";
 import { FieldGroup, MetaList, PanelRow } from "./configuration/fields";
 import { InlineNotice } from "./configuration/section-card";
 import { LibraryNotFound } from "./library-not-found";
+import { LibraryAddressLink } from "./library-address-link";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
 
@@ -32,7 +33,7 @@ export function AdminLaunch({ libraryId }: { libraryId: string }) {
   const [creatingCode, setCreatingCode] = useState(false);
 
   if (launchState.data === undefined) {
-    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
   if (launchState.data === null) return <LibraryNotFound />;
 
@@ -56,7 +57,8 @@ export function AdminLaunch({ libraryId }: { libraryId: string }) {
   return (
     <LibraryPageShell
       title={library.libraryName}
-      eyebrow={library.publicAddress}
+      image={library.faviconUrl}
+      description={<LibraryAddressLink address={library.publicAddress} />}
       backHref="/evidence-libraries"
       backLabel={t("backToLibraries")}
       titleAside={<LibraryStatusChip status={library.libraryStatus} />}

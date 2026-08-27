@@ -38,11 +38,13 @@ function pageStatus() {
 }
 
 function setup(
-  libraryState: "provisioning" | "active",
+  libraryState: "provisioning" | "active" | "deleting",
   operation: { status: string; stage: string; error?: { code: string; message: string; stage: string } },
 ) {
   const status =
-    libraryState === "active"
+    libraryState === "deleting"
+      ? "deleting"
+      : libraryState === "active"
       ? "active"
       : operation.status === "running"
         ? "setting_up"
@@ -122,6 +124,10 @@ describe("<SetupProgress>", () => {
     expect(within(status).getAllByRole("listitem").every((item) => item.dataset.state === "done")).toBe(true);
     expect(screen.getByRole("link", { name: "openAdmin" })).toHaveAttribute("href", "/evidence-libraries/lib_1/admin");
     expect(screen.getByRole("link", { name: "openLibrary" })).toHaveAttribute("href", "https://climate-lib.example.test");
+    // The live panel is the headline once setup succeeded; the progress bar is gone.
+    expect(screen.getByRole("region", { name: "title" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "copyAddress" })).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
   });
 
   it("points a draft to the configuration page instead of starting setup here", () => {
@@ -137,6 +143,20 @@ describe("<SetupProgress>", () => {
       "href",
       "/evidence-libraries/lib_1/configuration",
     );
+  });
+
+  it("only says so while the library is being deleted", () => {
+    mocks.query.mockReturnValue({
+      data: setup("deleting", { status: "succeeded", stage: "completed" }),
+      isReady: true,
+    });
+
+    render(<SetupProgress libraryId="lib_1" />);
+
+    expect(pageStatus()).toHaveAttribute("data-setup-status", "deleting");
+    expect(screen.getByText("deletingHint")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "configure" })).toBeNull();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 
   it("shows not found when the library is not in this organisation", () => {

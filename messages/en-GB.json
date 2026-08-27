@@ -2883,7 +2883,8 @@
       "deleteLibrary": "Delete library",
       "deleting": "Deleting the library",
       "noOrganizationTitle": "Choose an organisation",
-      "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here."
+      "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",
+      "description": "Create and manage the public libraries your organisation publishes."
     },
     "gate": {
       "title": "Not available for this organisation",
@@ -2949,10 +2950,8 @@
       "retryingDescription": "Starting again from the step that stopped.",
       "retryError": "Setup could not be restarted. Try again.",
       "draftHint": "Set up and activate this library from its configuration page.",
-      "stoppedHint": "The build did not finish. Retry repeats this step and the steps after it.",
+      "stoppedHint": "Retry repeats this step and the steps after it.",
       "deploymentError": "The build did not finish.",
-      "liveAt": "This library is live at {address}",
-      "openLibrary": "Open library",
       "steps": {
         "database": {
           "name": "Database",
@@ -2990,7 +2989,19 @@
           "running": "Opening the library at its public address…",
           "done": "The library is live at its public address."
         }
-      }
+      },
+      "live": {
+        "title": "{name} is live",
+        "hint": "Anyone with the address can visit it. Add records from the admin.",
+        "copyAddress": "Copy address",
+        "copiedShort": "Copied",
+        "copied": "Address copied",
+        "openLibrary": "Open library",
+        "settingUp": "Setting up {name}",
+        "stopped": "Setup stopped",
+        "copyFailed": "Could not copy the address"
+      },
+      "deletingHint": "This library is being deleted."
     },
     "admin": {
       "backToLibraries": "Back to libraries",
