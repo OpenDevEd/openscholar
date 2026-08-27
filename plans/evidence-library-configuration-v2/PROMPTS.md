@@ -542,3 +542,25 @@ REPORT: PR URL, commits, check tails, screenshots of the four cards, the exact e
 
 Go.
 ```
+
+## Plan 11 — address reservation and recovery
+
+```text
+Implement your lane of plans/evidence-library-configuration-v2/11-address-reservation-and-recovery.md.
+Read plans/evidence-library-configuration-v2/00-README.md and AGENTS.md first.
+Depends on: plans 05–10 merged (they are).
+
+Lane A: worktree /Users/mcharrad/Documents/Github/openscholar/reserve-sprint, branch codex/address-reservation, lane calm-labrador-815, port 3013. PRs A1 then A2 (A2 stacked on A1).
+Lane B: worktree /Users/mcharrad/Documents/Github/openscholar/recovery-sprint, branch codex/address-recovery, lane lovable-clownfish-245, port 3014. PRs B1 then B2.
+
+STANDING RULES: reuse (coolifyClient helpers, readinessClient, setupNaming, configuration/fields.tsx); clean breaking changes; Convex guidelines before Convex edits (actions in "use node" files only; validators on args and returns); upload only with `npx convex dev --once` to the lane; never `npm run convex:push`, never touch the shared deployment or Coolify; test-decision before tests, behaviour only; no useEffect for app state; Next docs in node_modules/next/dist/docs/; mock copy rules, six locales; write-set = your lane's files only — if you must touch the other lane's files, stop and write 11-BLOCKER.md.
+
+EXECUTION RHYTHM: test-first for pure logic (candidate rules, probe signature parsing, host list parsing), then integration units with tests and a lane check; commit each unit with `[plan-11]`.
+
+COMMIT DISCIPLINE: named files, never failing work, no hook bypass, push and open PRs to dev, do not merge.
+WHEN TO STOP: missing API or unsafe bug → commit safe work, 11-BLOCKER.md, stop.
+DEVIATIONS: fix the plan first (`docs: [plan-11] revise …`).
+REPORT: PR URLs, commits, check tails, lane proof (screenshots for pages, logs for actions), anything left out.
+
+Go.
+```
