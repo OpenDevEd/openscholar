@@ -171,7 +171,9 @@ function createCoolifyServer(
     deploymentCount?: number;
     createPreviewEnvironmentOnCreate?: boolean;
     ignoreApplicationWrites?: boolean;
+    ignoreApplicationDelete?: boolean;
     ignoreEnvironmentWrites?: boolean;
+    staleApplicationReadsAfterDelete?: number;
     staleEnvironmentReadsAfterWrite?: number;
   } = {},
 ) {
@@ -183,6 +185,8 @@ function createCoolifyServer(
   let environments = structuredClone(input.environments ?? []);
   let staleEnvironments: FakeEnvironment[] | null = null;
   let staleEnvironmentReadsRemaining = 0;
+  let staleApplicationReadsRemaining = 0;
+  let deletedApplication: FakeApplication | null = null;
   const deployments = structuredClone(input.deployments ?? []);
   const requests: RecordedRequest[] = [];
 
@@ -282,14 +286,23 @@ function createCoolifyServer(
 
       const applicationPath = `/api/v1/applications/${APPLICATION_UUID}`;
       if (method === "GET" && url.pathname === applicationPath) {
-        return application
-          ? jsonResponse(structuredClone(application))
-          : jsonResponse({ message: "Application not found" }, 404);
+        if (application) return jsonResponse(structuredClone(application));
+        if (staleApplicationReadsRemaining > 0 && deletedApplication) {
+          staleApplicationReadsRemaining -= 1;
+          return jsonResponse(structuredClone(deletedApplication));
+        }
+        return jsonResponse({ message: "Application not found" }, 404);
       }
 
       if (method === "DELETE" && url.pathname === applicationPath) {
+        if (input.ignoreApplicationDelete) {
+          return jsonResponse({ message: "Application deleted." });
+        }
+        deletedApplication = application;
         application = null;
         tags.clear();
+        staleApplicationReadsRemaining =
+          input.staleApplicationReadsAfterDelete ?? 0;
         return jsonResponse({ message: "Application deleted." });
       }
 
@@ -540,6 +553,58 @@ describe("Coolify Evidence Library client", () => {
       search:
         "?delete_configurations=true&delete_volumes=true&docker_cleanup=true&delete_connected_networks=true",
     });
+  });
+
+  it("waits while Coolify finishes deleting the application in the background", async () => {
+    vi.useFakeTimers();
+    const server = createCoolifyServer({
+      application: expectedApplication(),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      staleApplicationReadsAfterDelete: 3,
+    });
+
+    const deletion = createClient(server.fetchImpl).deleteLibraryApplication({
+      applicationUuid: APPLICATION_UUID,
+      environmentName: ENVIRONMENT_NAME,
+      libraryId: LIBRARY_ID,
+      projectUuid: PROJECT_UUID,
+      publicDomain: PUBLIC_DOMAIN,
+      serverUuid: SERVER_UUID,
+    });
+    await vi.runAllTimersAsync();
+    await expect(deletion).resolves.toEqual({
+      applicationUuid: APPLICATION_UUID,
+      outcome: "deleted",
+    });
+    expect(server.application).toBeNull();
+    expect(
+      server.requests.filter(({ method }) => method === "DELETE"),
+    ).toHaveLength(1);
+  });
+
+  it("fails when Coolify never removes the application", async () => {
+    vi.useFakeTimers();
+    const server = createCoolifyServer({
+      application: expectedApplication(),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      ignoreApplicationDelete: true,
+    });
+
+    const deletion = createClient(server.fetchImpl).deleteLibraryApplication({
+      applicationUuid: APPLICATION_UUID,
+      environmentName: ENVIRONMENT_NAME,
+      libraryId: LIBRARY_ID,
+      projectUuid: PROJECT_UUID,
+      publicDomain: PUBLIC_DOMAIN,
+      serverUuid: SERVER_UUID,
+    });
+    const rejected = expect(deletion).rejects.toMatchObject({
+      code: "COOLIFY_DELETE_FAILED",
+      message: "Coolify still contains the Evidence Library application",
+    });
+    await vi.runAllTimersAsync();
+    await rejected;
+    expect(server.application).not.toBeNull();
   });
 
   it("finds a tagged application when setup stopped before saving its UUID", async () => {
