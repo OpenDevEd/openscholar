@@ -54,3 +54,14 @@ Built in PRs #95, #96, #97 (merged `b4396c9d`, `d4cb0a44`, `9240e9a4`).
 3. Feature dependency rules are mirrored from Evidence Library `src/config/library-config/schema.ts` lines 1569-1750 at `7c269e10`. The pinned JSON schema has no cross-field rules.
 4. ~~The takedown recipient is required on the page even though the schema makes it optional.~~ Changed 2026-08-27 by plan 10: both recipients sit behind a switch and are off by default. Off writes no key.
 5. The deployability gate ran as Save + reload on the Convex lane. The Activate/publish check on a development library is still owed by the integration owner.
+
+## Fidelity correction (2026-08-27, commit a42c71ef)
+
+The Sources and Collections cards shipped by lanes B and C did not match the
+agreed mock (plain list picker, up/down arrows, a `<details>` "Advanced tag
+rules", own copy). They were rebuilt by hand to the mock's components and
+words: account panel, group rows with status chip and facts, multi-select
+group table, paste a group link, "Advanced" → "Zotero tag rules" as chips;
+Collections "Shown on the site" with drag rows, the records chip, "Title on
+the site" and the full picker. Reviews for UI work now compare the mock
+component against the real one, not the plan text.
