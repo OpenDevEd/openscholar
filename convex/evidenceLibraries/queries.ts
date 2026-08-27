@@ -107,13 +107,14 @@ const libraryOverviewValidator = v.object({
   teardownStage: v.union(teardownStageValidator, v.null()),
   lastActivatedAt: v.union(v.number(), v.null()),
   accentColor: v.union(v.string(), v.null()),
-  /** The favicon the owner uploaded, else the OpenScholar default; null only when neither exists. */
+  /** The favicon the owner uploaded; null means the pages show the OpenScholar icon. */
   faviconUrl: v.union(v.string(), v.null()),
 });
 
 /**
- * The favicon URL from a draft's identity section. When the owner uploaded
- * none, the OpenScholar default the published site uses (EL_DEFAULT_FAVICON_URL).
+ * The favicon URL from a draft's identity section, or null when none is
+ * uploaded. The platform default PNG is for browser tabs on the published
+ * site; our own pages draw the app icon instead, which has no background.
  */
 async function readDraftFavicon(
   ctx: QueryCtx,
@@ -128,8 +129,7 @@ async function readDraftFavicon(
     .unique();
   const favicon = (identity?.payload as { assets?: { favicon?: unknown } } | undefined)
     ?.assets?.favicon;
-  if (typeof favicon === "string" && favicon !== "") return favicon;
-  return process.env.EL_DEFAULT_FAVICON_URL?.trim() || null;
+  return typeof favicon === "string" && favicon !== "" ? favicon : null;
 }
 
 /** One row per library for the list page: status, address and the facts under the title. */

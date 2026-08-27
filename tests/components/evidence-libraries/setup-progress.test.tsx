@@ -38,11 +38,13 @@ function pageStatus() {
 }
 
 function setup(
-  libraryState: "provisioning" | "active",
+  libraryState: "provisioning" | "active" | "deleting",
   operation: { status: string; stage: string; error?: { code: string; message: string; stage: string } },
 ) {
   const status =
-    libraryState === "active"
+    libraryState === "deleting"
+      ? "deleting"
+      : libraryState === "active"
       ? "active"
       : operation.status === "running"
         ? "setting_up"
@@ -141,6 +143,20 @@ describe("<SetupProgress>", () => {
       "href",
       "/evidence-libraries/lib_1/configuration",
     );
+  });
+
+  it("only says so while the library is being deleted", () => {
+    mocks.query.mockReturnValue({
+      data: setup("deleting", { status: "succeeded", stage: "completed" }),
+      isReady: true,
+    });
+
+    render(<SetupProgress libraryId="lib_1" />);
+
+    expect(pageStatus()).toHaveAttribute("data-setup-status", "deleting");
+    expect(screen.getByText("deletingHint")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "configure" })).toBeNull();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 
   it("shows not found when the library is not in this organisation", () => {

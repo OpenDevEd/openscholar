@@ -2975,7 +2975,8 @@
         "settingUp": "Setting up {name}",
         "stopped": "Setup stopped",
         "copyFailed": "Could not copy the address"
-      }
+      },
+      "deletingHint": "This library is being deleted."
     },
     "admin": {
       "backToLibraries": "Back to libraries",

@@ -67,8 +67,10 @@ export function SetupProgressView({
   });
   const percent = setupPercent(steps);
   const current = steps.find((s) => s.status === "running" || s.status === "failed") ?? steps[5];
-  // Building, stopped and live share one surface; a draft has not started and keeps the plain list.
+  // Building, stopped and live share one surface; a draft has not started and keeps the plain list;
+  // a library being deleted only says so.
   const hero = status === "setting_up" || failed || active;
+  const deleting = status === "deleting";
 
   function retry() {
     if (retrying) return;
@@ -110,6 +112,7 @@ export function SetupProgressView({
     >
       <div
         className={cn("space-y-4", hero ? "p-0" : "p-4 md:p-6")}
+        data-deleting={deleting || undefined}
         role={failed ? "alert" : "status"}
         aria-live="polite"
         aria-busy={retrying}
@@ -128,6 +131,8 @@ export function SetupProgressView({
             onRetry={retry}
             retrying={retrying}
           />
+        ) : deleting ? (
+          <InlineNotice tone="warning">{t("deletingHint")}</InlineNotice>
         ) : (
           <FieldGroup title={t("groupTitle")}>
             <div className="space-y-4">
