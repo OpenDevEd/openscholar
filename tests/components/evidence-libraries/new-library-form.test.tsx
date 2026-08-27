@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   checkAddress: vi.fn(),
   organization: vi.fn(),
   push: vi.fn(),
+  query: vi.fn(),
   reserveAddress: vi.fn(),
 }));
 
@@ -19,7 +20,8 @@ vi.mock("convex/react", () => ({
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: (namespace: string) => (key: string) =>
+    namespace === "evidenceLibraries.gate" ? `gate.${key}` : key,
 }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
@@ -31,12 +33,27 @@ vi.mock("@/convex/_generated/api", () => ({
         checkAddress: "checkAddress",
         reserveAddress: "reserveAddress",
       },
+      queries: { getEvidenceLibrariesAccess: "getEvidenceLibrariesAccess" },
     },
   },
 }));
+vi.mock("@/lib/auth/use-auth-query", () => ({
+  useProtectedQuery: (query: unknown, args: unknown) => mocks.query(query, args),
+}));
 vi.mock("@/components/auth/auth-state-panel", () => ({
-  AuthStatePanel: ({ variant, title }: { variant: string; title?: string }) => (
-    <p>{title ?? variant}</p>
+  AuthStatePanel: ({
+    variant,
+    title,
+    description,
+  }: {
+    variant: string;
+    title?: string;
+    description?: string;
+  }) => (
+    <div>
+      <p>{title ?? variant}</p>
+      {description ? <p>{description}</p> : null}
+    </div>
   ),
 }));
 
@@ -60,6 +77,8 @@ describe("<NewLibraryForm>", () => {
     });
     mocks.organization.mockReset();
     mocks.push.mockReset();
+    mocks.query.mockReset();
+    mocks.query.mockReturnValue({ data: { enabled: true }, isReady: true });
     mocks.reserveAddress.mockReset();
   });
 
@@ -250,5 +269,16 @@ describe("<NewLibraryForm>", () => {
 
     expect(screen.getByText("ownerOnlyTitle")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "reserve" })).not.toBeInTheDocument();
+  });
+
+  it("shows one plain panel instead of the form when the organisation is not switched on", () => {
+    mocks.organization.mockReturnValue(owner);
+    mocks.query.mockReturnValue({ data: { enabled: false }, isReady: true });
+
+    render(<NewLibraryForm />);
+
+    expect(screen.getByText("gate.title")).toBeInTheDocument();
+    expect(screen.getByText("gate.description")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 });

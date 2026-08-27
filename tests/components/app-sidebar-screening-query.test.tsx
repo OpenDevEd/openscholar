@@ -46,6 +46,11 @@ vi.mock("@/convex/_generated/api", () => ({
         listUserScreeningJobs: "screening:listUserScreeningJobs",
       },
     },
+    evidenceLibraries: {
+      queries: {
+        getEvidenceLibrariesAccess: "evidenceLibraries:getEvidenceLibrariesAccess",
+      },
+    },
   },
 }));
 
