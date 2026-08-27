@@ -135,15 +135,15 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
         <div className="grid gap-4 lg:grid-cols-2">
           <UploadField
             label={t("logoDarkLabel")}
+            hint={t("logoDefaultHint")}
             kind="image"
-            required
             value={assets.logoDark || null}
             onChange={(url) => setLogo("logoDark", url)}
           />
           <UploadField
             label={t("logoLightLabel")}
+            hint={t("logoLightHint")}
             kind="image"
-            optional
             value={assets.logoLight || null}
             onChange={(url) => setLogo("logoLight", url)}
           />
@@ -151,7 +151,6 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
             label={t("faviconLabel")}
             hint={t("faviconHint")}
             kind="image"
-            required
             value={assets.favicon || null}
             onChange={(url) => setLogo("favicon", url)}
           />

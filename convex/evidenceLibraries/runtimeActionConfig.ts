@@ -1,6 +1,9 @@
 "use node";
 
-import type { PlatformMailService } from "../../lib/evidence-libraries/configuration/assembly";
+import type {
+  PlatformBrandAssets,
+  PlatformMailService,
+} from "../../lib/evidence-libraries/configuration/assembly";
 
 type ErrorFactory = (message: string) => Error;
 
@@ -88,4 +91,21 @@ export function optionalPlatformMailService(
     from,
     ...(username && password ? { username, password } : {}),
   };
+}
+
+// The OpenScholar logo and favicon used when an owner uploads nothing.
+// Returns undefined when neither value is set; assembly then refuses a
+// library without its own uploads. Both must be set together.
+export function optionalPlatformBrandAssets(
+  createError: ErrorFactory,
+): PlatformBrandAssets | undefined {
+  const logoUrl = optionalRuntimeEnvironment("EL_DEFAULT_LOGO_URL");
+  const faviconUrl = optionalRuntimeEnvironment("EL_DEFAULT_FAVICON_URL");
+  if (!logoUrl && !faviconUrl) return undefined;
+  if (!logoUrl || !faviconUrl) {
+    throw createError(
+      "EL_DEFAULT_LOGO_URL and EL_DEFAULT_FAVICON_URL must be set together",
+    );
+  }
+  return { logoUrl, faviconUrl };
 }

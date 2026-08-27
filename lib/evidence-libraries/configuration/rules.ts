@@ -78,8 +78,6 @@ export type SectionState = "complete" | "edited" | "attention";
 type SectionProblem =
   | "nameMissing"
   | "partnerName"
-  | "logoMissing"
-  | "faviconMissing"
   | "badColour"
   | "institutionName"
   | LinkProblem
@@ -1122,8 +1120,6 @@ export function sectionProblems(
       }
       break;
     case "theme":
-      if (!draft.identity.assets.logoDark) problems.push("logoMissing");
-      if (!draft.identity.assets.favicon) problems.push("faviconMissing");
       if (COLOUR_KEYS.some((key) => !HEX_COLOUR.test(draft.theme.colors[key]))) {
         problems.push("badColour");
       }

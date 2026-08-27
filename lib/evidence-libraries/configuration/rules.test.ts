@@ -137,16 +137,13 @@ describe("sectionProblems", () => {
     ]);
   });
 
-  it("flags missing logos and bad colours on the theme section", () => {
+  it("flags bad colours but not missing logos; the platform logo fills in", () => {
     const draft = savedDraft();
     draft.identity.assets.logoDark = "";
     draft.identity.assets.favicon = "";
+    expect(sectionProblems(draft, "theme")).toEqual([]);
     draft.theme.colors.accent = "orange";
-    expect(sectionProblems(draft, "theme")).toEqual([
-      "logoMissing",
-      "faviconMissing",
-      "badColour",
-    ]);
+    expect(sectionProblems(draft, "theme")).toEqual(["badColour"]);
   });
 
   it("accepts eight-digit colours like the runtime does", () => {

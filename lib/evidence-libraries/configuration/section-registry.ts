@@ -244,6 +244,14 @@ export const WRITE_ONLY_POINTER_PATTERNS = catalogs.fields.writeOnlyPaths.map(
   writeOnlyPathToPointerPattern,
 );
 
+// Values the runtime requires but the platform fills at assembly when the
+// owner leaves them empty: the OpenScholar logo and favicon.
+export const PLATFORM_DEFAULT_POINTERS = [
+  "/identity/assets",
+  "/identity/assets/logoDark",
+  "/identity/assets/favicon",
+] as const;
+
 const FIELD_AUTHORITY_OVERRIDES = new Map<string, FieldAuthority>([
   ["/identity/baseUrl", "platformProvisioned"],
 ]);

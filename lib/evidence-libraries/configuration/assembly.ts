@@ -28,7 +28,15 @@ export type ManagedEvidenceLibraryConfiguration = {
   // The platform mail service. Owners only choose who receives the emails.
   // Undefined means the mail service is not set up yet.
   mail?: PlatformMailService;
+  // The OpenScholar logo and favicon, used when the owner uploads nothing.
+  // Undefined means the platform brand is not set up yet.
+  brand?: PlatformBrandAssets;
 };
+
+export type PlatformBrandAssets = { logoUrl: string; faviconUrl: string };
+
+export const PLATFORM_BRAND_MISSING_MESSAGE =
+  "The library has no logo or favicon and the OpenScholar defaults are not set up yet. Upload one or ask support.";
 
 export type PlatformMailService = {
   host: string;
@@ -41,6 +49,32 @@ export type PlatformMailService = {
 
 export const PLATFORM_MAIL_MISSING_MESSAGE =
   "Contact and takedown emails need the platform mail service, which is not set up yet. Remove the recipients or ask support.";
+
+const BRAND_ASSET_KEYS = ["logoDark", "favicon"] as const;
+
+/**
+ * Puts the platform logo and favicon into `identity.assets` where the owner
+ * left them empty. Returns the assets and the keys that stayed empty because
+ * the platform brand is not set up.
+ */
+export function fillBrandAssets(
+  assets: unknown,
+  brand: PlatformBrandAssets | undefined,
+): { assets: Record<string, unknown>; missing: (typeof BRAND_ASSET_KEYS)[number][] } {
+  const own = isObject(assets) ? assets : {};
+  const defaults: Record<(typeof BRAND_ASSET_KEYS)[number], string | undefined> = {
+    logoDark: brand?.logoUrl,
+    favicon: brand?.faviconUrl,
+  };
+  const filled: Record<string, unknown> = { ...own };
+  const missing: (typeof BRAND_ASSET_KEYS)[number][] = [];
+  for (const key of BRAND_ASSET_KEYS) {
+    if (typeof own[key] === "string" && own[key] !== "") continue;
+    if (defaults[key]) filled[key] = defaults[key];
+    else missing.push(key);
+  }
+  return { assets: filled, missing };
+}
 
 export function emailWantsPlatformMail(email: unknown): boolean {
   if (!isObject(email)) return false;
@@ -177,6 +211,10 @@ export function assembleEvidenceLibraryConfiguration({
   const email = managed.mail
     ? { ...ownerEmail, smtp: managed.mail }
     : ownerEmail;
+  // The owner may upload nothing; the OpenScholar logo and favicon fill in.
+  const ownerIdentity = isObject(owner.identity) ? owner.identity : {};
+  const brand = fillBrandAssets(ownerIdentity.assets, managed.brand);
+  const identity = { ...ownerIdentity, assets: brand.assets };
   const withDefaults = applyGeneratedDefaults(
     schema as JsonSchemaNode,
     {
@@ -184,6 +222,7 @@ export function assembleEvidenceLibraryConfiguration({
       revision: managed.revision,
       updatedAt: managed.updatedAt,
       ...owner,
+      identity,
       email,
       services: {
         database: { url: managed.databaseUrl },
@@ -243,7 +282,20 @@ export function assembleEvidenceLibraryConfiguration({
           },
         ]
       : [];
-  const issues = uniqueIssues([...structuralValidation.issues, ...mailIssues]);
+  const brandIssues: ValidationIssue[] = brand.missing.map((key) => ({
+    pointer: `/identity/assets/${key}`,
+    section: "identity",
+    keyword: "platformBrand",
+    message: PLATFORM_BRAND_MISSING_MESSAGE,
+  }));
+  const issues = uniqueIssues([
+    ...brandIssues,
+    ...structuralValidation.issues.filter(
+      (issue) =>
+        !brandIssues.some((brandIssue) => brandIssue.pointer === issue.pointer),
+    ),
+    ...mailIssues,
+  ]);
   if (issues.length > 0) throw new ConfigurationAssemblyError(issues);
   return candidate as AssembledEvidenceLibraryConfiguration;
 }

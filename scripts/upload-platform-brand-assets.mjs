@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+/**
+ * One-off: put the OpenScholar logo and favicon into the platform bucket so
+ * libraries without their own uploads can use them.
+ *
+ * Run once from the integration checkout, then set the two values it prints
+ * on every Convex deployment that creates or updates libraries:
+ *
+ *   EL_STORAGE_URL=... EL_STORAGE_SERVICE_KEY=... node scripts/upload-platform-brand-assets.mjs
+ *
+ * Read the two inputs with `npx convex env get EL_STORAGE_URL` and
+ * `npx convex env get EL_STORAGE_SERVICE_KEY`. The files go under
+ * `platform/` in the public `openscholar` bucket, next to the per-library
+ * folders (`lib/evidence-libraries/configuration/uploads.ts`). The addresses
+ * are plain https, have no query string and end in .svg / .png, which is what
+ * the Evidence Library runtime requires of a stable asset address.
+ */
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const BUCKET = "openscholar";
+const ASSETS = [
+  {
+    env: "EL_DEFAULT_LOGO_URL",
+    file: "public/icon.svg",
+    key: "platform/openscholar-logo.svg",
+    contentType: "image/svg+xml",
+  },
+  {
+    env: "EL_DEFAULT_FAVICON_URL",
+    file: "public/web-app-manifest-192x192.png",
+    key: "platform/openscholar-favicon.png",
+    contentType: "image/png",
+  },
+];
+
+function requireEnv(name) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    console.error(`${name} is not set.`);
+    process.exit(1);
+  }
+  return value;
+}
+
+const storageOrigin = new URL(requireEnv("EL_STORAGE_URL")).origin;
+const serviceKey = requireEnv("EL_STORAGE_SERVICE_KEY");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+const lines = [];
+for (const asset of ASSETS) {
+  const body = await readFile(path.join(root, asset.file));
+  const response = await fetch(
+    new URL(`/storage/v1/object/${BUCKET}/${asset.key}`, storageOrigin),
+    {
+      method: "POST",
+      headers: {
+        apikey: serviceKey,
+        authorization: `Bearer ${serviceKey}`,
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-type": asset.contentType,
+        "x-upsert": "true",
+      },
+      body,
+    },
+  );
+  if (!response.ok) {
+    console.error(
+      `Upload of ${asset.file} failed: ${response.status} ${await response.text()}`,
+    );
+    process.exit(1);
+  }
+  const url = `${storageOrigin}/storage/v1/object/public/${BUCKET}/${asset.key}`;
+  lines.push(`npx convex env set ${asset.env} ${url}`);
+  console.log(`${asset.file} -> ${url}`);
+}
+
+console.log("\nSet these on each Convex deployment that creates or updates libraries:");
+for (const line of lines) console.log(`  ${line}`);
