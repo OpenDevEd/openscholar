@@ -56,12 +56,28 @@ export const clerkOrganizationSnapshotFields = {
   name: v.string(),
   slug: v.string(),
   imageUrl: v.optional(v.string()),
+  /**
+   * Whether the platform team switched Evidence Libraries on for this
+   * organisation, from Clerk public metadata `{ "evidenceLibraries": true }`.
+   * The webhook always computes it, so the snapshot always carries it.
+   */
+  evidenceLibrariesEnabled: v.boolean(),
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
 };
 
 export const organizationFields = {
   ...clerkOrganizationSnapshotFields,
+  /**
+   * Optional on the stored row for one release only. Convex refuses to push a
+   * required field while older rows do not have it, and it refuses to write a
+   * field the deployed schema does not declare — so the backfill cannot run
+   * first. The integration owner runs
+   * `evidenceLibraries/devBackfill:devBackfillEvidenceLibrariesEnabled` once
+   * on the shared deployment; the follow-up change makes this required again
+   * and deletes that mutation. Readers treat anything but `true` as off.
+   */
+  evidenceLibrariesEnabled: v.optional(v.boolean()),
   state: organizationStateValidator,
   createdAt: v.number(),
   updatedAt: v.number(),

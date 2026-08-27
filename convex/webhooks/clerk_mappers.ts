@@ -29,6 +29,8 @@ export type ClerkOrganizationSnapshot = {
   name: string;
   slug: string;
   imageUrl?: string;
+  /** Whether the platform team switched Evidence Libraries on for this organisation. */
+  evidenceLibrariesEnabled: boolean;
   clerkCreatedAt: number;
   clerkUpdatedAt: number;
 };
@@ -68,6 +70,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+/**
+ * The Evidence Libraries switch, read from the Clerk organisation's public
+ * metadata. The platform team sets `{ "evidenceLibraries": true }` in the
+ * Clerk dashboard. Only the boolean `true` counts; a missing key, `false`,
+ * the string "true", or anything else means off.
+ */
+function readEvidenceLibrariesSwitch(organization: Record<string, unknown>): boolean {
+  const publicMetadata = asRecord(organization.public_metadata);
+  return publicMetadata?.evidenceLibraries === true;
+}
+
 function mapOrganizationSnapshot(value: unknown): ClerkOrganizationSnapshot | null {
   const organization = asRecord(value);
   if (
@@ -92,6 +105,7 @@ function mapOrganizationSnapshot(value: unknown): ClerkOrganizationSnapshot | nu
       typeof organization.image_url === "string"
         ? organization.image_url
         : undefined,
+    evidenceLibrariesEnabled: readEvidenceLibrariesSwitch(organization),
     clerkCreatedAt: organization.created_at,
     clerkUpdatedAt: organization.updated_at,
   };

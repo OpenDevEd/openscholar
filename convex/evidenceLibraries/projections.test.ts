@@ -13,6 +13,7 @@ const organizationSnapshot = {
   name: "Evidence Team",
   slug: "evidence-team",
   imageUrl: "https://img.example/org.png",
+  evidenceLibrariesEnabled: false,
   clerkCreatedAt: 1_700_000_000_000,
   clerkUpdatedAt: 1_700_000_001_000,
 };
