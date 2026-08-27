@@ -58,6 +58,8 @@ describe("requireOrganizationAccess", () => {
   async function seedMembership(
     role: "org:admin" | "org:member",
     state: "active" | "revoked" = "active",
+    // "never-set" stands for a row written before the switch existed.
+    evidenceLibrariesEnabled: boolean | "never-set" = true,
   ) {
     const t = convexTest(schema);
     await t.run(async (ctx) => {
@@ -66,6 +68,9 @@ describe("requireOrganizationAccess", () => {
         name: "Evidence Team",
         slug: "evidence-team",
         state: "active",
+        ...(evidenceLibrariesEnabled === "never-set"
+          ? {}
+          : { evidenceLibrariesEnabled }),
         clerkCreatedAt: 1,
         clerkUpdatedAt: 1,
         createdAt: 1,
@@ -150,6 +155,79 @@ describe("requireOrganizationAccess", () => {
     ).rejects.toThrow(/FORBIDDEN.*Evidence Library access denied/);
   });
 
+  describe("the Evidence Libraries switch", () => {
+    const admin = {
+      subject: "user_123",
+      o: { id: "org_evidence_library", rol: "org:admin" },
+    };
+
+    test.each([
+      ["switched off", false],
+      ["never switched on", "never-set"],
+    ] as const)("refuses to manage when the organisation is %s", async (_label, flag) => {
+      const t = await seedMembership("org:admin", "active", flag);
+
+      await expect(
+        t.withIdentity(admin).run((ctx) => requireOrganizationAccess(ctx, "manage")),
+      ).rejects.toThrow(
+        /FORBIDDEN.*Evidence Libraries are not switched on for this organisation\./,
+      );
+    });
+
+    test("still allows reading, so an active library keeps its admin launch", async () => {
+      const t = await seedMembership("org:admin", "active", false);
+
+      await expect(
+        t.withIdentity(admin).run((ctx) => requireOrganizationAccess(ctx, "read")),
+      ).resolves.toMatchObject({ role: "org:admin" });
+    });
+
+    test("allows managing when the organisation is switched on", async () => {
+      const t = await seedMembership("org:admin", "active", true);
+
+      await expect(
+        t.withIdentity(admin).run((ctx) => requireOrganizationAccess(ctx, "manage")),
+      ).resolves.toMatchObject({
+        organization: { evidenceLibrariesEnabled: true },
+      });
+    });
+
+    test("refuses to manage a library in a switched-off organisation", async () => {
+      const t = await seedMembership("org:admin", "active", false);
+      const libraryId = await t.run(async (ctx) => {
+        const organization = await ctx.db
+          .query("organizations")
+          .withIndex("by_clerkOrganizationId", (query) =>
+            query.eq("clerkOrganizationId", "org_evidence_library"),
+          )
+          .unique();
+        return await ctx.db.insert("evidenceLibraries", {
+          organizationId: organization!._id,
+          name: "Existing Library",
+          slug: "existing-library",
+          state: "active",
+          createdByClerkUserId: "user_123",
+          updatedByClerkUserId: "user_123",
+          createdAt: 1,
+          updatedAt: 1,
+        });
+      });
+
+      await expect(
+        t
+          .withIdentity(admin)
+          .run((ctx) => requireEvidenceLibraryAccess(ctx, libraryId, "manage")),
+      ).rejects.toThrow(
+        /FORBIDDEN.*Evidence Libraries are not switched on for this organisation\./,
+      );
+      await expect(
+        t
+          .withIdentity(admin)
+          .run((ctx) => requireEvidenceLibraryAccess(ctx, libraryId, "read")),
+      ).resolves.toMatchObject({ library: { name: "Existing Library" } });
+    });
+  });
+
   test("makes missing and cross-tenant library denials indistinguishable", async () => {
     const t = await seedMembership("org:admin");
     const { crossTenantLibraryId, missingLibraryId } = await t.run(async (ctx) => {
@@ -162,6 +240,7 @@ describe("requireOrganizationAccess", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       const crossTenantLibraryId = await ctx.db.insert("evidenceLibraries", {
         organizationId: otherOrganizationId,

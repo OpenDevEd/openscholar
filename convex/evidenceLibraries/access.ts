@@ -50,6 +50,32 @@ function denyOrganizationAccess(): never {
   throw createError("FORBIDDEN", "Evidence Library access denied");
 }
 
+/**
+ * Evidence Libraries are available only to organisations the platform team
+ * switched on in the Clerk dashboard, through organisation public metadata
+ * `{ "evidenceLibraries": true }`. The Clerk webhook copies that onto the
+ * organisation row as `evidenceLibrariesEnabled`.
+ *
+ * The switch gates the `"manage"` action only. That is deliberate:
+ *
+ * - Creating, configuring, activating, moving, and tearing down a library all
+ *   ask for `"manage"`, so switching an organisation off closes the owner
+ *   pages immediately.
+ * - Reading asks for `"read"`, so libraries that already exist keep working.
+ *   The public Evidence Library runtime never calls this helper at all, and
+ *   `getAdminLaunchState` plus the admin login codes stay open so an editor
+ *   of an active library can still open its `/admin` area.
+ *
+ * Anything but `true` is off, including a row written before the switch
+ * existed.
+ */
+function denyEvidenceLibrariesSwitchedOff(): never {
+  throw createError(
+    "FORBIDDEN",
+    "Evidence Libraries are not switched on for this organisation.",
+  );
+}
+
 export async function requireOrganizationAccess(
   ctx: OrganizationAccessCtx,
   action: OrganizationAction,
@@ -86,6 +112,10 @@ export async function requireOrganizationAccess(
     !canPerformOrganizationAction(claims.role, action)
   ) {
     return denyOrganizationAccess();
+  }
+
+  if (action === "manage" && organization.evidenceLibrariesEnabled !== true) {
+    return denyEvidenceLibrariesSwitchedOff();
   }
 
   return {

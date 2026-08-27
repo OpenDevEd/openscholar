@@ -77,6 +77,7 @@ export async function createDraftSetupFixture(suffix: string) {
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
+      evidenceLibrariesEnabled: true,
     });
     const membershipId = await ctx.db.insert("organizationMemberships", {
       organizationId,

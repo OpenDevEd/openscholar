@@ -47,6 +47,7 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       const libraryId = await ctx.db.insert("evidenceLibraries", {
         organizationId,
@@ -108,6 +109,7 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -202,6 +204,7 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -335,6 +338,7 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -476,6 +480,7 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       await ctx.db.insert("organizationMemberships", {
         organizationId,

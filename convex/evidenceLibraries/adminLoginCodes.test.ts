@@ -28,6 +28,7 @@ async function seedMember(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
+      evidenceLibrariesEnabled: true,
     });
     await ctx.db.insert("organizationMemberships", {
       organizationId,
@@ -199,6 +200,7 @@ describe("Evidence Library admin login codes", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       return await ctx.db.insert("evidenceLibraries", {
         organizationId: otherOrganizationId,
@@ -368,6 +370,7 @@ describe("Evidence Library admin login codes", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       return await ctx.db.insert("evidenceLibraries", {
         organizationId: otherOrganizationId,

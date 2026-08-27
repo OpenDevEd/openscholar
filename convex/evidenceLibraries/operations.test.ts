@@ -45,6 +45,7 @@ async function createOperationFixture(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
+      evidenceLibrariesEnabled: true,
     });
     await ctx.db.insert("organizationMemberships", {
       organizationId,
@@ -110,6 +111,7 @@ async function createActivationFixture(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
+      evidenceLibrariesEnabled: true,
     });
     await ctx.db.insert("organizationMemberships", {
       organizationId,
@@ -381,6 +383,7 @@ describe("Evidence Library operation state", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       await ctx.db.insert("organizationMemberships", {
         organizationId,
