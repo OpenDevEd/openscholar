@@ -1,203 +1,122 @@
-# Plan 13 — Large-list pickers
+# Plan 13 · Large list pickers
 
-## Goal
+Written on 2026-08-28 by the runtime lane (lane R) because the sprint started
+lane R and lane P against a contract that had no plan file. This file records
+the contract both lanes build against.
 
-Every list on the configuration page that comes from a library's database
-works when it holds thousands of entries. Owners search and page on the
-server; the browser never downloads a whole catalogue to filter it.
+## The problem
 
-Four lists change. Two more are noted and deferred.
+`GET /api/openscholar/institutions` returns every institution name in one
+array. A library with tens of thousands of records can name thousands of
+institutions, so the picker in OpenScholar waits for one huge response and has
+no way to search. The collections endpoint next to it already pages.
 
-## Facts checked on 2026-08-28
+## Two lanes
 
-1. **Institutions.** The runtime endpoint
-   `GET /api/openscholar/institutions` (new-el
-   `src/app/api/openscholar/institutions/route.ts` →
-   `src/lib/admin/openscholar-institutions.ts`) runs one `GROUP BY` over all
-   records and returns every institution name with its count. No `query`,
-   no `cursor`, no limit. OpenScholar's action
-   `convex/zotero/runtimeReadActions.ts` → `listRecordInstitutions` takes only
-   `libraryId` and returns the whole array (`readRuntimeInstitutions` in
-   `convex/zotero/runtimeReadClient.ts:128`). The picker
-   (`components/evidence-libraries/configuration/sections/institution-pickers.tsx`,
-   `InstitutionCombobox`) loads everything into a `Popover` + `Command` and
-   filters in the browser. Used twice: the Institutions section (add a logo
-   for an institution) and Search & filters (pinned institution).
-2. **Collections.** The runtime endpoint
-   `GET /api/openscholar/collections` already takes `query`, `cursor` and
-   `pageSize` (`collection-catalog-service.ts`), and
-   `listLibraryCollections` passes them. But the dialog in
-   `collections-field.tsx` (`readCatalogue`, `MAX_PAGES = 100`) preloads the
-   whole catalogue page by page when opened, then filters in the browser;
-   server search only runs once the preload hits the cap ("Search the whole
-   library").
-3. **Navigation and footer link targets.** `link-editor.tsx` offers the
-   "Collection" target as a plain `Select` over `collectionOptions(draft)` —
-   the collections the owner chose to show. Bounded by the owner, but a
-   `Select` with hundreds of rows is unusable.
-4. **Zotero groups.** `libraryGroupActions.ts` → `listMyZoteroGroups`
-   follows Zotero's `start`/`limit` paging up to `GROUPS_MAX_START = 1000`
-   (Zotero refuses higher `start` values) and returns all rows; the dialog
-   renders them all and filters in the browser. Zotero offers no group
-   search, so 1,000 is the ceiling the API sets.
-5. **Team** (`queries.ts` → `listTeam`) collects every organisation
-   membership and looks each user up. **Versions**
-   (`versions.ts` → `listVersions`) takes a fixed `MAX_VERSION_ROWS`. Both
-   are bounded and deferred (see "Deferred").
+| Lane | Repository | Owns |
+|---|---|---|
+| R · Runtime | `OpenDevEd/new-el`, branch `codex/institutions-paging` | `src/lib/admin/openscholar-institutions.ts`, its new contract file, `src/app/api/openscholar/institutions/route.ts`, the matching tests, `docs/evidence-library-customization-map.md` |
+| P · Picker | OpenScholar | the configuration picker that reads the endpoint |
 
-## Decisions
+Lane P builds against the contract below while lane R implements it.
 
-1. One shared picker dialog in OpenScholar, `RemotePickerDialog`, built from
-   the collections picker the user approved (`CollectionPicker` in
-   `collections-field.tsx`: full-screen `Dialog`, search box, source filter
-   chips where they apply, sortable table, checkbox rows, select-all,
-   footer with the count and the confirm button). It is fed by a
-   **server-driven source**: a function `(query, cursor) => page` that the
-   dialog calls with the debounced search text (300 ms) and a "Load more"
-   cursor. Nothing is preloaded. Sorting is a server parameter, not a
-   client sort of a partial page. Single-select and multi-select modes.
-2. The runtime institutions endpoint gets the same contract as collections:
-   `query` (case-insensitive contains on the name), `cursor`, `pageSize`
-   (default 50, max 200), `sort` = `count` (default, descending, then name)
-   or `name`. Keyset paging, no offsets. The response shape is
-   `{ items: [{ name, count }], nextCursor: string | null }`.
-3. `listRecordInstitutions` takes `{ libraryId, query?, cursor?, sort? }`
-   and returns `{ reason, items, nextCursor }`. The runtime read cache
-   (`runtimeReads.ts`) keys institutions like collections
-   (`collectionsCacheKey` pattern) so each page is cached on its own.
-4. The institution picker becomes the shared dialog in single-select mode,
-   in both places. "Type a name that is not on any record yet" stays for
-   the Institutions section (`allowNew`) as a row at the top when the typed
-   text matches nothing on the current page; the pinned-institution picker
-   keeps `allowNone`.
-5. Collections: the dialog uses the server source from the first
-   keystroke. `readCatalogue`, `MAX_PAGES` and the truncated banner go.
-   "Hide already shown" stays as a client filter of the current page. The
-   source filter chips stay (the endpoint already accepts the source).
-6. Nav and footer "Collection" targets open the same dialog in single-select
-   mode over the **shown** collections (the draft's list; it is local data,
-   so the source is an in-memory page function over `collectionOptions`,
-   paged at 50, searched by title). Same dialog, same look.
-7. Zotero groups: keep the full fetch (the API's 1,000 cap is the ceiling),
-   but the dialog pages the rows through the same in-memory source at 50
-   per page with search, and says "Zotero lists up to 1,000 groups" only
-   when the cap is hit.
-8. No new-el schema field changes, so no contract re-pin.
+## The contract
 
-## Deferred, written down
+`GET /api/openscholar/institutions`
 
-- Team: page memberships and batch the user lookups once an organisation
-  exceeds a few hundred members.
-- Versions: cursor "Load more" past `MAX_VERSION_ROWS`.
+Authentication: bearer token, the library's machine credential. Same guard as
+the collections endpoint (`requireOpenScholarBearer`).
 
-## Lanes
+Parameters, all optional:
 
-| Lane | Repo | Branch | Owns |
-|---|---|---|---|
-| R · Runtime | new-el | `codex/institutions-paging` | `src/app/api/openscholar/institutions/**`, `src/lib/admin/openscholar-institutions.ts`, its tests, the OpenScholar read-API doc |
-| P · Pickers | openalex-count | `codex/large-list-pickers` | `convex/zotero/runtimeReadActions.ts`, `runtimeReadClient.ts`, `runtimeReads.ts`, their tests; `components/evidence-libraries/configuration/sections/{institution-pickers,collections-field,link-editor,sources-field}.tsx`, a new `remote-picker-dialog.tsx`, their tests; `messages/*.json` keys they own |
+1. `query` — case-insensitive "contains" match on the institution name.
+2. `cursor` — the `nextCursor` from the previous page.
+3. `pageSize` — 1 to 200. Default 50. A larger number is reduced to 200.
+4. `sort` — `count` (default) or `name`.
 
-Lane P starts at once against the collections endpoint (already paged) and
-builds institutions to the contract in Decision 2; the institutions
-end-to-end proof waits for lane R to merge.
+Response: `{ "items": [{ "name": "...", "count": 12 }], "nextCursor": "..." }`.
+`nextCursor` is `null` on the last page.
+
+Errors use the existing admin error shape. A cursor that cannot be read, or
+that belongs to a different search or sort, returns 400 with
+`{ error: { code: "validation_error", message, fields } }`.
+
+## Fixed decisions
+
+1. Keyset paging, no `OFFSET`. Default order is count high to low, then name
+   A to Z. `sort=name` orders by name only. The cursor carries both the count
+   and the name so rows with the same count never repeat or go missing.
+2. The cursor is opaque: base64url JSON with a version, the count, the name,
+   the lower-cased query and the sort. It is checked against the request.
+3. No request without parameters returns everything. It returns the first page.
+   The old "one array" response is deleted, not kept beside the new one.
+4. `pageSize` above the cap is reduced to the cap rather than refused. This is
+   the one place lane R does not copy the collections contract, which refuses a
+   page size above its cap. A picker that asks for too much should get a full
+   page, not an error.
+5. Same file layout as collections: a contract file for parsing, encoding and
+   decoding; a service file that builds and runs the query; a thin route.
 
 ## Test-first steps
 
-### Lane R
-
-1. `openscholar-institutions.test.ts`: red → green for `query` (contains,
-   case-insensitive), `sort=count` then `sort=name`, keyset `cursor`
-   stability (no duplicates or gaps across pages when counts tie),
-   `pageSize` clamp to 200, and an empty result.
-2. Route test: bearer required; bad `cursor` → 400 with the admin error
-   shape; response `{ items, nextCursor }`.
-3. `npm run check:changed` (Fallow) before pushing. Update the read-API doc.
-
-### Lane P
-
-1. `runtimeReadClient.test.ts`: `readRuntimeInstitutions` sends `query`,
-   `cursor`, `sort`, `pageSize`, parses `nextCursor`; cache key per page.
-2. `runtimeReadActions` test: `listRecordInstitutions` validates args and
-   returns `nextCursor`.
-3. `remote-picker-dialog.test.tsx`: typing calls the source with the
-   debounced query; "Load more" passes the cursor and appends; single-select
-   closes on choose; multi-select confirms the checked set; the empty state
-   and the failure state (with retry) show; keyboard: Escape closes, arrows
-   move rows.
-4. `institution-pickers.test.tsx`: both call sites open the dialog; the
-   chosen name lands in the draft; `allowNew` row appears only when nothing
-   on the page matches.
-5. `collections-field.test.tsx`: no preload on open; the first page arrives
-   from the source with an empty query; search sends the typed text; "Add N"
-   still adds; "hide already shown" filters the page.
-6. `link-editor` test: the Collection target opens the dialog and writes
-   the chosen id.
-7. `sources-field.test.tsx`: the groups dialog shows 50 rows, "Load more"
-   shows the next 50, search filters; the 1,000 note only at the cap.
-
-Run the `test-decision` skill before touching any test.
-
-## Deployability gate
-
-### Lane R
-
-- `npm run check:changed` passes (Fallow verdict `pass`).
-- `npm run test:acceptance` if Docker on the machine works; otherwise say
-  so and rely on the GitHub "Runtime acceptance" check.
-- Push; open a PR to `main`; do not merge.
-
-### Lane P
-
-1. `npx tsc --noEmit` clean.
-2. `npx vitest run convex/zotero tests/components/evidence-libraries
-   tests/components/evidence-library-configuration-workspace.test.tsx` green.
-3. `npx convex dev --once` on the lane ends with `Convex functions ready!`;
-   `npx convex logs --history 100` shows no matching failure.
-4. Browser on the lane's port, signed in as the E2E user, on a library that
-   is set up on the development platform: the collections dialog opens
-   without a preload, search returns from the server, "Load more" appends;
-   the nav link Collection target opens the dialog; the groups dialog pages.
-   Screenshots in `/tmp/pickers/`.
-5. Push; open a PR to `dev`; do not merge.
-
-### Integration owner, after both merge
-
-1. `npm run convex:push` from `dev-self` → `✔ Convex functions ready!`.
-2. Set `EL_RUNTIME_COMMIT_SHA` on the shared deployment to the merged new-el
-   commit and publish one library with records from several institutions.
-3. On dev.openscholar.ai, open that library's configuration → Institutions →
-   Add: search returns from the server, "Load more" pages, pick one; then
-   Search & filters → pinned institution the same way. Tear the library down.
-4. Outline: one line under the current-state page.
-
-## Completion rules
-
-- Every gate above passes and each PR has been through the Codex review
-  (`codex exec -m gpt-5.6-sol -c model_reasoning_effort=high`) with its
-  findings applied.
-- No list on the configuration page downloads more than one page to show a
-  picker. `readCatalogue`, `MAX_PAGES`, the truncated banner and the
-  `Popover` institution combobox are deleted.
-- Copy follows the page's rules: sentence case, no dots, numbers only when
-  they change a decision ("Load more", "3 selected", the 1,000 note).
-
-## Known risks
-
-- Keyset paging on `(count desc, name asc)` needs both columns in the
-  cursor; a cursor on count alone skips ties. The test in R1 guards it.
-- The runtime read cache (`runtimeReads.ts`) has a freshness window; a
-  search must never return a stale page for a different query — the cache
-  key includes the query, cursor and sort.
-- Until lane R merges, the shared platform's runtime ignores the new
-  parameters and answers with the full list; the OpenScholar client must
-  treat a response without `nextCursor` as a single page, not fail.
+1. Red → green on the contract and the service, using the existing
+   "compile the query and check the SQL" pattern from
+   `tests/unit/library-export-query.test.ts` and
+   `tests/unit/admin-item-list-query.test.ts`:
+   - the first page asks for one row more than the page size and has no
+     `OFFSET`;
+   - `query` becomes a case-insensitive contains match and `%`, `_` and `\`
+     are treated as ordinary characters;
+   - `sort=name` changes the order;
+   - a cursor adds the "after this count and name" condition, including the
+     tie-break on name;
+   - a page size above the cap becomes the cap and a missing one becomes 50;
+   - a cursor from a different query or sort is refused;
+   - no rows gives `{ items: [], nextCursor: null }`;
+   - a full page with more rows behind it returns a cursor, the last page
+     returns `null`.
+2. Red → green on the route in `tests/unit/openscholar-routes.test.ts`: the
+   wrong bearer is refused before the database is touched, the parameters
+   reach the service, the body has the agreed shape, and a broken cursor
+   returns 400.
+3. Update the runtime acceptance check
+   (`verifyOpenScholarReadApi` in `tools/runRuntimeAcceptance.ts`) so it reads
+   the institutions endpoint one row at a time, follows the cursor, proves the
+   two pages do not repeat a name, and proves the search filter works.
+4. Update the OpenScholar read API row in
+   `docs/evidence-library-customization-map.md`.
 
 ## Files that change
 
-Lane R: `src/app/api/openscholar/institutions/route.ts`,
-`src/lib/admin/openscholar-institutions.ts` (+ test), the read-API doc.
+- `src/lib/admin/institution-catalog-contract.ts` (new)
+- `src/lib/admin/openscholar-institutions.ts`
+- `src/app/api/openscholar/institutions/route.ts`
+- `tests/unit/openscholar-institution-catalog.test.ts` (new)
+- `tests/unit/openscholar-routes.test.ts`
+- `tools/runRuntimeAcceptance.ts`
+- `docs/evidence-library-customization-map.md`
 
-Lane P: `convex/zotero/runtimeReadActions.ts`, `runtimeReadClient.ts`,
-`runtimeReads.ts` (+ tests), `components/evidence-libraries/configuration/sections/remote-picker-dialog.tsx`
-(new), `institution-pickers.tsx`, `collections-field.tsx`, `link-editor.tsx`,
-`sources-field.tsx` (+ tests), `messages/*.json`.
+## Migration
+
+None. The endpoint is only read by the OpenScholar configuration pickers,
+which lane P is writing now.
+
+## Deployability gate
+
+- `npm run check:changed` in the new-el worktree passes, including Fallow.
+- `npm run test:acceptance` runs the runtime acceptance stack and the
+  OpenScholar read API check passes. If Docker is unavailable on the machine,
+  say so in the pull request and rely on the GitHub "Runtime acceptance" check.
+
+## Completion rules
+
+Both checks above pass, the pull request is open against `main`, and no
+acceptance containers are left running.
+
+## Risks
+
+- Counting institutions is an aggregate over a lateral join. The keyset
+  condition has to sit in `HAVING`, not `WHERE`. The tests compile the query so
+  this stays visible.
+- Two institutions with the same count and the same name would collide, but the
+  name is the group key, so names are unique in the result.
