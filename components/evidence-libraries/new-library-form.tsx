@@ -16,7 +16,13 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { initialsOf } from "@/lib/evidence-libraries/initials";
-import { MAX_EVIDENCE_LIBRARY_NAME_LENGTH } from "@/lib/evidence-libraries/setup/naming";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import {
+  createEvidenceLibraryAddressCandidate,
+  createInitialEvidenceLibraryShortName,
+  MAX_EVIDENCE_LIBRARY_NAME_LENGTH,
+  normalizeEvidenceLibraryName,
+} from "@/lib/evidence-libraries/setup/naming";
 import { StatusChip } from "./configuration/status-chip";
 import { FieldGroup, PanelRow, ReadOnlyValue } from "./configuration/fields";
 import { Field } from "./configuration/section-card";
@@ -72,16 +78,36 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
   const [reserved, setReserved] = useState<Reserved | null>(null);
   const [showNameError, setShowNameError] = useState(false);
 
-  const trimmed = name.trim();
-  const preview = useProtectedQuery(
+  const trimmed = normalizeEvidenceLibraryName(name);
+  // The server only tells us the platform domain and whether the address
+  // is already taken. Everything else is derived here, so the preview never
+  // disappears while a query is loading.
+  const platformDomain = useProtectedQuery(
+    api.evidenceLibraries.queries.readSetupPlatformDomain,
+    reserved ? "skip" : {},
+  ).data;
+  // Ask the server once typing pauses, not on every keystroke.
+  const checkedName = useDebouncedValue(trimmed, 300);
+  const availability = useProtectedQuery(
     api.evidenceLibraries.queries.previewSetupIdentity,
-    trimmed && !reserved ? { name: trimmed } : "skip",
-  );
-  const shortName = reserved?.shortName ?? preview.data?.shortName ?? "";
-  const address = (reserved?.publicAddress ?? preview.data?.publicAddress ?? "").replace(
-    /^https?:\/\//,
-    "",
-  );
+    checkedName && !reserved ? { name: checkedName } : "skip",
+  ).data;
+  const derived = trimmed
+    ? {
+        shortName: createInitialEvidenceLibraryShortName(trimmed),
+        publicAddress: platformDomain
+          ? createEvidenceLibraryAddressCandidate(trimmed, platformDomain)
+          : "",
+      }
+    : null;
+  const shortName = reserved?.shortName ?? derived?.shortName ?? "";
+  const address = (
+    reserved?.publicAddress ??
+    (availability && availability.name === trimmed
+      ? availability.publicAddress
+      : derived?.publicAddress) ??
+    ""
+  ).replace(/^https?:\/\//, "");
   const nameError = showNameError && !trimmed;
 
   function handleReserve() {
