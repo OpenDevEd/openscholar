@@ -1,4 +1,6 @@
 import { v } from "convex/values";
+import type { PaginationResult } from "convex/server";
+import type { Doc } from "../_generated/dataModel";
 import { internalMutation } from "../_generated/server";
 
 /**
@@ -18,18 +20,27 @@ export const devBackfillEvidenceLibrariesEnabled = internalMutation({
   args: {},
   returns: v.object({ scanned: v.number(), updated: v.number() }),
   handler: async (ctx) => {
-    // Development deployments hold a handful of organisations, so one pass is enough.
-    const organizations = await ctx.db.query("organizations").take(1000);
+    let cursor: string | null = null;
+    let scanned = 0;
     let updated = 0;
-    for (const organization of organizations) {
-      if (organization.evidenceLibrariesEnabled === undefined) {
-        await ctx.db.patch("organizations", organization._id, {
-          evidenceLibrariesEnabled: false,
-        });
-        updated += 1;
+    // Walks every page, so the answer does not depend on the table's size.
+    for (;;) {
+      const page: PaginationResult<Doc<"organizations">> = await ctx.db
+        .query("organizations")
+        .paginate({ cursor, numItems: 200 });
+      for (const organization of page.page) {
+        scanned += 1;
+        if (organization.evidenceLibrariesEnabled === undefined) {
+          await ctx.db.patch("organizations", organization._id, {
+            evidenceLibrariesEnabled: false,
+          });
+          updated += 1;
+        }
       }
+      if (page.isDone) break;
+      cursor = page.continueCursor;
     }
-    return { scanned: organizations.length, updated };
+    return { scanned, updated };
   },
 });
 
