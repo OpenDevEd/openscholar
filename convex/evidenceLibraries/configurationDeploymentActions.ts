@@ -67,7 +67,7 @@ export const runConfigurationDeployment = internalAction({
           invalidConfiguration,
         ),
       });
-      const prepared = await ctx.runMutation(
+      let prepared = await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .prepareConfigurationDeployment,
         args,
@@ -80,15 +80,34 @@ export const runConfigurationDeployment = internalAction({
       if (prepared.state === "saved") {
         target = prepared.target;
       } else {
-        // A move changes the address first, so every later step reads the
-        // application on the address the library is going to.
-        if (prepared.addressMove) {
+        // A move changes Coolify's domain first. Only when the application
+        // answers on the new address do the records take it, so a failure
+        // here leaves the library on the address it has.
+        if (prepared.addressMove && !prepared.addressMove.applied) {
           await coolify.setApplicationDomain({
             applicationUuid: prepared.applicationId,
             libraryId: args.libraryId,
             currentPublicDomain: prepared.addressMove.from,
             nextPublicDomain: prepared.addressMove.to,
           });
+          await ctx.runMutation(
+            internal.evidenceLibraries.configurationDeployment
+              .applyConfigurationAddressMove,
+            args,
+          );
+          // Read the deployment again: the sections and the binding now
+          // carry the new address.
+          prepared = await ctx.runMutation(
+            internal.evidenceLibraries.configurationDeployment
+              .prepareConfigurationDeployment,
+            args,
+          );
+          if (prepared.state !== "new") {
+            throw new CoolifyClientError(
+              "CONFIGURATION_TARGET_INVALID",
+              "The Evidence Library move changed the deployment target",
+            );
+          }
         }
         const application = await coolify.readBoundApplication({
           applicationUuid: prepared.applicationId,

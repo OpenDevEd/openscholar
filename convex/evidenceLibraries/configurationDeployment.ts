@@ -25,6 +25,7 @@ import {
   SEARCH_KEY_PATH,
   STORAGE_SERVICE_KEY_PATH,
 } from "./runtimeCredentials";
+import { applyEvidenceLibraryAddressMove } from "./addressRecovery";
 import {
   evidenceLibraryAddressMoveValidator,
   evidenceLibraryConfigurationDeploymentTargetValidator,
@@ -585,6 +586,71 @@ export const prepareConfigurationDeployment = internalMutation({
         deployment.revision._id,
       ),
     };
+  },
+});
+
+/**
+ * Writes the planned address to the runtime binding, the draft and the
+ * revision. The action calls this only after Coolify has answered that the
+ * application serves the new domain, so a move that fails earlier leaves the
+ * library on the address it had.
+ */
+export const applyConfigurationAddressMove = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+    attemptCount: v.number(),
+  },
+  returns: v.object({ movedTo: v.string() }),
+  handler: async (ctx, args) => {
+    const deployment = await requireCurrentConfigurationDeployment(ctx, args);
+    const move = deployment.operation.addressMove;
+    if (!move) {
+      throw createError(
+        "CONFLICT",
+        "This Evidence Library deployment is not moving the address",
+      );
+    }
+    if (move.applied) return { movedTo: move.to };
+    if (deployment.runtimeBinding.targetBaseUrl !== move.from) {
+      throw createError(
+        "CONFLICT",
+        "The Evidence Library address changed after this move was requested",
+      );
+    }
+    const taken = await ctx.db
+      .query("evidenceLibraryRuntimeBindings")
+      .withIndex("by_targetBaseUrl", (query) =>
+        query.eq("targetBaseUrl", move.to),
+      )
+      .first();
+    if (taken && taken._id !== deployment.runtimeBinding._id) {
+      throw createError(
+        "CONFLICT",
+        "Another Evidence Library took that address first",
+      );
+    }
+    const draft = await ctx.db
+      .query("evidenceLibraryConfigDrafts")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .unique();
+    if (!draft) {
+      throw createError("NOT_FOUND", "Evidence Library draft not found");
+    }
+    await applyEvidenceLibraryAddressMove(ctx, {
+      bindingId: deployment.runtimeBinding._id,
+      draftId: draft._id,
+      revisionId: deployment.revision._id,
+      nextAddress: move.to,
+    });
+    await ctx.db.patch(deployment.operation._id, {
+      addressMove: { ...move, applied: true },
+      updatedAt: Date.now(),
+    });
+    return { movedTo: move.to };
   },
 });
 

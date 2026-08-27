@@ -511,13 +511,16 @@ export const evidenceLibraryRuntimeUpdateValidator = v.object({
   to: v.string(),
 });
 
-// Where the platform sent a library after another site answered its address.
-// `from` is the address it started on, `to` the one it runs on now.
+// Where the platform is sending a library after another site answered its
+// address. `from` is the address it started on, `to` the one it is taking.
+// `applied` says whether the records already carry `to`; a live move only
+// writes them once Coolify serves the new address.
 export const evidenceLibraryAddressMoveValidator = v.object({
   from: v.string(),
   to: v.string(),
   movedAt: v.number(),
   count: v.number(),
+  applied: v.boolean(),
 });
 
 export const evidenceLibraryOperationFields = {

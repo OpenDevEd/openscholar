@@ -230,14 +230,19 @@ describe("<VersionsSection>", () => {
 
   it("says nothing about the address while the library answers at it", async () => {
     await renderSection();
-    expect(screen.queryByText("versions.addressNotReachable")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByRole("button", { name: "versions.addressMove" })).toBeNull();
   });
 
   it("offers a move when another site answers the address", async () => {
     const user = userEvent.setup();
     mocks.addressNotices.mockReturnValue([
-      { libraryId: "library_123", movedTo: null, addressState: "not-ours" },
+      {
+        libraryId: "library_123",
+        address: "https://climate-lib.example.test",
+        movedFrom: null,
+        addressState: "not-ours",
+      },
     ]);
     mocks.startAddressMove.mockResolvedValue({
       movedFrom: "https://climate-lib.example.test",
@@ -245,7 +250,9 @@ describe("<VersionsSection>", () => {
     });
     await renderSection();
 
-    expect(screen.getByText("versions.addressNotReachable")).toBeInTheDocument();
+    expect(
+      screen.getByText("versions.addressTaken:climate-lib.example.test"),
+    ).toBeInTheDocument();
     expect(
       document.querySelector('[data-address-state="not-ours"]'),
     ).not.toBeNull();
@@ -266,9 +273,29 @@ describe("<VersionsSection>", () => {
     });
   });
 
+  it("names the silent address when nothing answers there", async () => {
+    mocks.addressNotices.mockReturnValue([
+      {
+        libraryId: "library_123",
+        address: "https://climate-lib.example.test",
+        movedFrom: null,
+        addressState: "unreachable",
+      },
+    ]);
+    await renderSection();
+    expect(
+      screen.getByText("versions.addressSilent:climate-lib.example.test"),
+    ).toBeInTheDocument();
+  });
+
   it("does not offer a move while an operation runs", async () => {
     mocks.addressNotices.mockReturnValue([
-      { libraryId: "library_123", movedTo: null, addressState: "unreachable" },
+      {
+        libraryId: "library_123",
+        address: "https://climate-lib.example.test",
+        movedFrom: null,
+        addressState: "unreachable",
+      },
     ]);
     await renderSection({ operationRunning: true });
     expect(

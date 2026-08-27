@@ -247,7 +247,13 @@ export async function queueAddressMoveOperation(
     libraryId: Id<"evidenceLibraries">;
     idempotencyKey: string;
     revisionId: Id<"evidenceLibraryConfigRevisions">;
-    addressMove: { from: string; to: string; movedAt: number; count: number };
+    addressMove: {
+      from: string;
+      to: string;
+      movedAt: number;
+      count: number;
+      applied: boolean;
+    };
   },
 ) {
   const { addressMove, ...record } = args;

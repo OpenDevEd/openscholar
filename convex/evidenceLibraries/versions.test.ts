@@ -331,7 +331,7 @@ describe("Evidence Library address move", () => {
     vi.unstubAllEnvs();
   });
 
-  it("moves a live library to the next free address and publishes it there", async () => {
+  it("plans a move to the next free address without writing it yet", async () => {
     const fixture = await createReadySetupFixture("address-live-move");
     const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
 
@@ -366,13 +366,24 @@ describe("Evidence Library address move", () => {
         .unique();
       return { binding, draftIdentity, identity, operation };
     });
-    expect(state.binding).toMatchObject({ targetBaseUrl: movedTo });
-    expect(state.identity?.payload).toMatchObject({ baseUrl: movedTo });
-    expect(state.draftIdentity?.payload).toMatchObject({ baseUrl: movedTo });
+    // The library keeps its address until Coolify serves the new one.
+    expect(state.binding).toMatchObject({
+      targetBaseUrl: fixture.created.publicAddress,
+    });
+    expect(state.identity?.payload).toMatchObject({
+      baseUrl: fixture.created.publicAddress,
+    });
+    expect(state.draftIdentity?.payload).toMatchObject({
+      baseUrl: fixture.created.publicAddress,
+    });
     expect(state.operation).toMatchObject({
       kind: "publish",
       status: "running",
-      addressMove: { from: fixture.created.publicAddress, to: movedTo },
+      addressMove: {
+        from: fixture.created.publicAddress,
+        to: movedTo,
+        applied: false,
+      },
     });
   });
 

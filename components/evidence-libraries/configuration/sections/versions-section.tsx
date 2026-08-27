@@ -38,12 +38,10 @@ import {
   type VersionStatus,
 } from "@/lib/evidence-libraries/configuration/versions";
 import { EmptyList, FieldGroup, Panel } from "../fields";
-import { SectionCard } from "../section-card";
+import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
 
-type RuntimeState = FunctionReturnType<
-  typeof api.evidenceLibraries.updates.check
->;
+type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
   typeof api.evidenceLibraries.versions.listVersions
 >[number];
@@ -52,6 +50,12 @@ type VersionRow = FunctionReturnType<
 type RuntimeCheck =
   | { ok: true; state: RuntimeState }
   | { ok: false; message: string };
+
+/** What the owner is told about an address that is not answering as ours. */
+const ADDRESS_STATE_MESSAGE = {
+  "not-ours": "versions.addressTaken",
+  unreachable: "versions.addressSilent",
+} as const;
 
 const VERSION_TONE: Record<VersionStatus, StatusTone> = {
   live: "success",
@@ -81,9 +85,7 @@ function settle(
   );
 }
 
-type CheckAction = (args: {
-  libraryId: Id<"evidenceLibraries">;
-}) => Promise<RuntimeState>;
+type CheckAction = (args: { libraryId: Id<"evidenceLibraries"> }) => Promise<RuntimeState>;
 
 /**
  * One update check per page open, shared with `use()` across renders. The
@@ -92,10 +94,7 @@ type CheckAction = (args: {
  * render reuses the first call. "Check again" and a started update replace
  * the entry.
  */
-const runtimeChecks = new WeakMap<
-  CheckAction,
-  Map<string, Promise<RuntimeCheck>>
->();
+const runtimeChecks = new WeakMap<CheckAction, Map<string, Promise<RuntimeCheck>>>();
 
 function runtimeCheck(
   check: CheckAction,
@@ -153,9 +152,9 @@ export function VersionsSection({
     api.evidenceLibraries.updates.listAddressNotices,
     live ? {} : "skip",
   );
-  const addressState =
-    addressNotices.data?.find((notice) => notice.libraryId === libraryId)
-      ?.addressState ?? null;
+  const addressNotice =
+    addressNotices.data?.find((notice) => notice.libraryId === libraryId) ??
+    null;
 
   // Opening the page checks for updates once; "Check again" asks once more.
   const [, setCheckCount] = useState(0);
@@ -238,26 +237,28 @@ export function VersionsSection({
       title={t("sections.versions")}
       description={t("versions.description")}
     >
-      {addressState ? (
-        <Panel
-          tone="muted"
+      {addressNotice?.addressState ? (
+        <InlineNotice
+          tone="danger"
           role="alert"
-          className="flex flex-wrap items-center justify-between gap-3"
-          data-address-state={addressState}
+          data-address-state={addressNotice.addressState}
+          action={
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7"
+              disabled={blocked}
+              onClick={() => setMoveOpen(true)}
+            >
+              {t("versions.addressMove")}
+            </Button>
+          }
         >
-          <p className="text-sm text-destructive">
-            {t("versions.addressNotReachable")}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={blocked}
-            onClick={() => setMoveOpen(true)}
-          >
-            {t("versions.addressMove")}
-          </Button>
-        </Panel>
+          {t(ADDRESS_STATE_MESSAGE[addressNotice.addressState], {
+            host: addressNotice.address.replace(/^https?:\/\//, ""),
+          })}
+        </InlineNotice>
       ) : null}
 
       <FieldGroup

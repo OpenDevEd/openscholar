@@ -149,6 +149,9 @@ export const moveSetupAddress = internalMutation({
         to: movedTo,
         movedAt: now,
         count: (previous?.count ?? 0) + 1,
+        // Setup writes the address first and reconciles Coolify right after;
+        // a retry reconciles again from the binding, so nothing is stranded.
+        applied: true,
       },
       stage: "application",
       setupDeploymentId: undefined,

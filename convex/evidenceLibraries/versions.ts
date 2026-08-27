@@ -11,10 +11,7 @@ import { validateOwnerSections } from "../../lib/evidence-libraries/configuratio
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
-import {
-  applyEvidenceLibraryAddressMove,
-  findNextFreeEvidenceLibraryAddress,
-} from "./addressRecovery";
+import { findNextFreeEvidenceLibraryAddress } from "./addressRecovery";
 import {
   claimAndScheduleConfigurationDeployment,
   isConfigurationDeploymentOperation,
@@ -99,9 +96,10 @@ export async function startEvidenceLibraryRuntimeUpdate(
 }
 
 /**
- * Moves a live library to the next free address: the runtime binding, the
- * draft and the live revision all take the new address, then the normal
- * publish rebuilds Coolify's domain, deploys and checks readiness.
+ * Plans a move of a live library to the next free address. The publish that
+ * follows changes Coolify's domain first and only then writes the address to
+ * the runtime binding, the draft and the live revision, so a failed move
+ * keeps the library on the address it has.
  */
 export async function startEvidenceLibraryAddressMove(
   ctx: MutationCtx,
@@ -117,6 +115,7 @@ export async function startEvidenceLibraryAddressMove(
     throw createError("NOT_FOUND", "Evidence Library draft not found");
   }
   const movedFrom = running.binding.targetBaseUrl;
+
   const movedTo = await findNextFreeEvidenceLibraryAddress(ctx, {
     name: running.library.name,
     currentAddress: movedFrom,
@@ -146,12 +145,8 @@ export async function startEvidenceLibraryAddressMove(
       { pointer: issue.pointer },
     );
   }
-  await applyEvidenceLibraryAddressMove(ctx, {
-    bindingId: running.binding._id,
-    draftId: draft._id,
-    revisionId: running.activeRevisionId,
-    nextAddress: movedTo,
-  });
+  // Nothing is written yet. The records take the new address only once
+  // Coolify serves it, so a failed move leaves the library where it is.
   const operation = await queueAddressMoveOperation(ctx, {
     libraryId: args.libraryId,
     idempotencyKey: `address-move:${movedTo}`,
@@ -161,6 +156,7 @@ export async function startEvidenceLibraryAddressMove(
       to: movedTo,
       movedAt: Date.now(),
       count: 1,
+      applied: false,
     },
   });
   const started = await claimAndScheduleConfigurationDeployment(ctx, {
