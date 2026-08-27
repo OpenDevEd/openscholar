@@ -57,7 +57,7 @@ export type PickerSource = (input: {
 }) => Promise<PickerPage>;
 
 /** How long the dialog waits after a keystroke before asking the server. */
-export const PICKER_SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_DEBOUNCE_MS = 300;
 
 type Status = "loading" | "loading-more" | "ready" | "failed" | "not-set-up";
 
@@ -197,7 +197,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
     clearTimeout(debounce.current);
     debounce.current = setTimeout(
       () => load({ query: value.trim(), sort, cursor: null }),
-      PICKER_SEARCH_DEBOUNCE_MS,
+      SEARCH_DEBOUNCE_MS,
     );
   }
 

@@ -73,7 +73,10 @@ Four lists change. Two more are noted and deferred.
 5. Collections: the dialog uses the server source from the first
    keystroke. `readCatalogue`, `MAX_PAGES` and the truncated banner go.
    "Hide already shown" stays as a client filter of the current page. The
-   source filter chips stay (the endpoint already accepts the source).
+   source filter chips stay, also as a client filter: checked on
+   2026-08-28, `GET /api/openscholar/collections` takes only `query`,
+   `cursor` and `pageSize` (new-el `collection-catalog-service.ts`), so the
+   chips list the sources of the pages already loaded.
 6. Nav and footer "Collection" targets open the same dialog in single-select
    mode over the **shown** collections (the draft's list; it is local data,
    so the source is an in-memory page function over `collectionOptions`,
@@ -81,14 +84,27 @@ Four lists change. Two more are noted and deferred.
 7. Zotero groups: keep the full fetch (the API's 1,000 cap is the ceiling),
    but the dialog pages the rows through the same in-memory source at 50
    per page with search, and says "Zotero lists up to 1,000 groups" only
-   when the cap is hit.
+   when the cap is hit. `listMyZoteroGroups` returns a new `capped` field
+   for that note; Zotero is asked once per open, not per page.
 8. No new-el schema field changes, so no contract re-pin.
+9. Sorting is offered only where the server sorts. The collections
+   endpoint always orders by name, so its picker has plain column headers;
+   institutions have sortable Institution and Records headers that send
+   `sort=name` or `sort=count`.
+10. Without a catalogue in the browser, a chosen collection shows its
+    database name and record count only after the picker has read it. A
+    saved row the owner has not renamed shows its id until the picker is
+    opened, the same as the navigation link editor already did. A
+    resolve-by-ids runtime endpoint would fix it; see "Deferred".
 
 ## Deferred, written down
 
 - Team: page memberships and batch the user lookups once an organisation
   exceeds a few hundred members.
 - Versions: cursor "Load more" past `MAX_VERSION_ROWS`.
+- Resolve collections by id: a runtime endpoint that answers the names and
+  counts of the collections the owner already shows, so the Collections
+  section names them without opening the picker.
 
 ## Lanes
 
@@ -198,6 +214,7 @@ Lane R: `src/app/api/openscholar/institutions/route.ts`,
 `src/lib/admin/openscholar-institutions.ts` (+ test), the read-API doc.
 
 Lane P: `convex/zotero/runtimeReadActions.ts`, `runtimeReadClient.ts`,
-`runtimeReads.ts` (+ tests), `components/evidence-libraries/configuration/sections/remote-picker-dialog.tsx`
+`runtimeReads.ts`, `libraryGroupActions.ts` (+ tests),
+`components/evidence-libraries/configuration/sections/remote-picker-dialog.tsx`
 (new), `institution-pickers.tsx`, `collections-field.tsx`, `link-editor.tsx`,
 `sources-field.tsx` (+ tests), `messages/*.json`.

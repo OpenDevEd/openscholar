@@ -233,7 +233,7 @@ function CollectionRow({
 }
 
 /** One filter chip: the source a collection came from. */
-export function FilterChip({
+function FilterChip({
   active,
   onClick,
   children,
