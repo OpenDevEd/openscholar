@@ -19,6 +19,8 @@ export const seedAddressState = internalMutation({
     // Marks the library live as well, so the pages that only speak about
     // running libraries have something to show.
     live: v.optional(v.boolean()),
+    // Forgets the answer instead of writing one.
+    forget: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -27,8 +29,8 @@ export const seedAddressState = internalMutation({
       throw createError("NOT_FOUND", "This library has no runtime binding");
     }
     await ctx.db.patch(library.runtimeBindingId, {
-      addressState: args.addressState,
-      addressCheckedAt: Date.now(),
+      addressState: args.forget ? undefined : args.addressState,
+      addressCheckedAt: args.forget ? undefined : Date.now(),
     });
     if (args.live) {
       await ctx.db.patch(library._id, {

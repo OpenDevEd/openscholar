@@ -127,6 +127,26 @@ Revised 2026-08-27 while building B2:
   `queueAddressMoveOperation`, `coolifyClient.ts` gains
   `setApplicationDomain`. Neither is a function lane A owns.
 
+Revised 2026-08-27 after the reviews, with lane A on `dev`:
+- Both moves now use lane A's shared check. The candidates come from the
+  database rule (`readEvidenceLibraryAddressCandidates`), then the hosts
+  Coolify serves, then the host itself
+  (`addressActions.findFreeEvidenceLibraryAddress`). The move mutations take
+  the checked candidate and look in the database once more inside their own
+  transaction.
+- Because the check is HTTP work, the owner's "Move to a new address" is the
+  action `addressActions.moveLibraryAddress`; `versions.startAddressMove`
+  became the internal mutation it calls.
+- The two internal served-host cache functions no longer ask for an
+  organisation. Recovery runs with no signed-in owner behind it, and the list
+  of hosts Coolify serves is the same for everybody.
+- The update check no longer waits for the address probe. It schedules
+  `updates.checkAddress` and returns, so a dead address cannot hold the
+  configuration page. The answer reaches the pages through the binding row.
+- The two states read differently: "Another site is using this address" and
+  "Nothing is answering at this address" in the list, and the same two with
+  the host named in the Versions panel.
+
 ## Migration
 
 None. Existing drafts keep their addresses. The public `createSetupDraft`
