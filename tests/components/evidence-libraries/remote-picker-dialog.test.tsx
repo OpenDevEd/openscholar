@@ -34,7 +34,9 @@ function row(id: string, title: string, count = 1): PickerRow {
   return { id, title, meta: "Big group", count };
 }
 
-function renderPicker(overrides: Partial<Parameters<typeof RemotePickerDialog>[0]> = {}) {
+type PickerProps = Parameters<typeof RemotePickerDialog>[0];
+
+function renderPicker(overrides: Record<string, unknown> = {}) {
   const user = userEvent.setup();
   const props = {
     ...labels,
@@ -44,7 +46,7 @@ function renderPicker(overrides: Partial<Parameters<typeof RemotePickerDialog>[0
     onConfirm: vi.fn(),
     source: vi.fn(async () => ({ items: [row("A", "Alpha")], nextCursor: null }) satisfies PickerPage),
     ...overrides,
-  } as Parameters<typeof RemotePickerDialog>[0];
+  } as unknown as PickerProps;
   render(<RemotePickerDialog {...props} />);
   return { user, props };
 }
