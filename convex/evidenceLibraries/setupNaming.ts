@@ -69,18 +69,87 @@ export function requireEvidenceLibraryPlatformDomain(
   );
 }
 
-export async function findAvailableEvidenceLibrarySetupIdentity(
+export type EvidenceLibraryAddressCandidate = {
+  publicAddress: string;
+  slug: string;
+};
+
+// How many free-in-our-database candidates the address check looks at. Each
+// one still costs a Coolify lookup and an HTTP probe, so the list is short.
+export const MAX_OFFERED_EVIDENCE_LIBRARY_ADDRESSES = 8;
+
+// True when nothing in our database holds this slug or this address.
+export async function isEvidenceLibraryAddressFree(
+  ctx: SetupNamingCtx,
+  args: {
+    organizationId: Id<"organizations">;
+    publicAddress: string;
+    slug: string;
+  },
+): Promise<boolean> {
+  const [library, runtimeBinding] = await Promise.all([
+    ctx.db
+      .query("evidenceLibraries")
+      .withIndex("by_organizationId_and_slug", (query) =>
+        query.eq("organizationId", args.organizationId).eq("slug", args.slug),
+      )
+      .unique(),
+    ctx.db
+      .query("evidenceLibraryRuntimeBindings")
+      .withIndex("by_targetBaseUrl", (query) =>
+        query.eq("targetBaseUrl", args.publicAddress),
+      )
+      .unique(),
+  ]);
+  return !library && !runtimeBinding;
+}
+
+// The library this organisation already has under this name. A disabled
+// library does not hold its name.
+export async function readEvidenceLibraryByName(
   ctx: SetupNamingCtx,
   args: { organizationId: Id<"organizations">; name: string },
-): Promise<EvidenceLibrarySetupIdentity> {
+) {
+  for (const state of ["provisioning", "active"] as const) {
+    const library = await ctx.db
+      .query("evidenceLibraries")
+      .withIndex("by_organizationId_and_name_and_state", (query) =>
+        query
+          .eq("organizationId", args.organizationId)
+          .eq("name", args.name)
+          .eq("state", state),
+      )
+      .first();
+    if (library) return library;
+  }
+  return null;
+}
+
+// The addresses this name could take, in order, skipping the ones our own
+// database already holds. Coolify and the HTTP probe decide the rest.
+export async function readEvidenceLibraryAddressCandidates(
+  ctx: SetupNamingCtx,
+  args: {
+    limit?: number;
+    organizationId: Id<"organizations">;
+    name: string;
+  },
+): Promise<{
+  candidates: EvidenceLibraryAddressCandidate[];
+  name: string;
+  shortName: string;
+}> {
   const name = validateEvidenceLibrarySetupName(args.name);
   const shortName = createInitialEvidenceLibraryShortName(name);
   const baseSlug = createEvidenceLibraryBaseSlug(name);
   const platformDomain = requireEvidenceLibraryPlatformDomain();
+  const limit = args.limit ?? MAX_OFFERED_EVIDENCE_LIBRARY_ADDRESSES;
+  const candidates: EvidenceLibraryAddressCandidate[] = [];
 
   for (
     let position = 1;
-    position <= MAX_EVIDENCE_LIBRARY_ADDRESS_CANDIDATES;
+    position <= MAX_EVIDENCE_LIBRARY_ADDRESS_CANDIDATES &&
+    candidates.length < limit;
     position += 1
   ) {
     const slug = createEvidenceLibrarySlugCandidate(baseSlug, position);
@@ -89,29 +158,18 @@ export async function findAvailableEvidenceLibrarySetupIdentity(
       platformDomain,
       position,
     );
-    const [library, runtimeBinding] = await Promise.all([
-      ctx.db
-        .query("evidenceLibraries")
-        .withIndex("by_organizationId_and_slug", (query) =>
-          query.eq("organizationId", args.organizationId).eq("slug", slug),
-        )
-        .unique(),
-      ctx.db
-        .query("evidenceLibraryRuntimeBindings")
-        .withIndex("by_targetBaseUrl", (query) =>
-          query.eq("targetBaseUrl", publicAddress),
-        )
-        .unique(),
-    ]);
-    if (!library && !runtimeBinding) {
-      return { name, publicAddress, shortName, slug };
+    if (
+      await isEvidenceLibraryAddressFree(ctx, {
+        organizationId: args.organizationId,
+        publicAddress,
+        slug,
+      })
+    ) {
+      candidates.push({ publicAddress, slug });
     }
   }
 
-  throw createError(
-    "CONFLICT",
-    "No platform address is available for this Evidence Library name",
-  );
+  return { candidates, name, shortName };
 }
 
 export async function readEvidenceLibrarySetupIdentity(
@@ -140,27 +198,5 @@ export async function readEvidenceLibrarySetupIdentity(
     publicAddress: setup.publicAddress,
     shortName: payload.shortName,
     slug: setup.library.slug,
-  };
-}
-
-export async function readProvisioningEvidenceLibrarySetupByName(
-  ctx: SetupNamingCtx,
-  args: { organizationId: Id<"organizations">; name: string },
-) {
-  const library = await ctx.db
-    .query("evidenceLibraries")
-    .withIndex("by_organizationId_and_name_and_state", (query) =>
-      query
-        .eq("organizationId", args.organizationId)
-        .eq("name", args.name)
-        .eq("state", "provisioning"),
-    )
-    .unique();
-  if (!library) return null;
-
-  const setup = await readEvidenceLibrarySetupRecords(ctx, library);
-  return {
-    identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
-    setup,
   };
 }

@@ -27,6 +27,40 @@ export const essentialSetupSections = {
   footer: { poweredBy: true },
 };
 
+type TestClient = Pick<ReturnType<typeof convexTest>, "mutation" | "query">;
+
+// Reserves the first address our database has free for this name, the way
+// the address action does without the Coolify and HTTP checks.
+export async function reserveLibraryAddressByName(
+  as: TestClient,
+  name: string,
+) {
+  const state = await as.query(
+    internal.evidenceLibraries.queries.readAddressCandidates,
+    { name },
+  );
+  const candidate =
+    state.status === "candidates" ? state.candidates[0] : undefined;
+  if (!candidate) throw new Error(`No address is free for ${name}`);
+  return await reserveLibraryAddress(as, { name, ...candidate });
+}
+
+// Reserves an address the way the address action does, without the Coolify
+// and HTTP checks that only the action can run.
+export async function reserveLibraryAddress(
+  as: TestClient,
+  args: { name: string; publicAddress: string; slug: string },
+) {
+  const reserved = await as.mutation(
+    internal.evidenceLibraries.mutations.reserveAddress,
+    args,
+  );
+  if (reserved.status !== "reserved") {
+    throw new Error(`Address ${args.publicAddress} was not reserved`);
+  }
+  return reserved;
+}
+
 // A library the Owner has named but not activated: its setup operation is
 // queued and has never started.
 export async function createDraftSetupFixture(suffix: string) {
@@ -61,10 +95,11 @@ export async function createDraftSetupFixture(suffix: string) {
     subject: clerkUserId,
     o: { id: clerkOrganizationId, rol: "org:admin" },
   });
-  const created = await admin.mutation(
-    api.evidenceLibraries.mutations.createSetupDraft,
-    { name: essentialSetupSections.identity.name },
-  );
+  const created = await reserveLibraryAddress(admin, {
+    name: essentialSetupSections.identity.name,
+    publicAddress: essentialSetupSections.identity.baseUrl,
+    slug: "climate-evidence",
+  });
   return {
     admin,
     clerkOrganizationId,

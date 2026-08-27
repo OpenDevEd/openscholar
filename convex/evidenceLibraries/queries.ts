@@ -1,4 +1,8 @@
-import { query, type QueryCtx } from "../_generated/server";
+import {
+  internalQuery,
+  query,
+  type QueryCtx,
+} from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { type Infer, v } from "convex/values";
 import { createError } from "../lib/errors";
@@ -17,9 +21,9 @@ import {
   sectionKeyValidator,
 } from "./validators";
 import {
-  findAvailableEvidenceLibrarySetupIdentity,
+  readEvidenceLibraryAddressCandidates,
+  readEvidenceLibraryByName,
   readEvidenceLibrarySetupIdentity,
-  requireEvidenceLibraryPlatformDomain,
 } from "./setupNaming";
 import {
   readEvidenceLibraryAdminLaunchTarget,
@@ -176,31 +180,43 @@ export const listLibraryOverviews = query({
   },
 });
 
-// The new-library form builds the short name and address preview on the
-// client with the shared naming helpers. It only needs the platform domain.
-export const readSetupPlatformDomain = query({
-  args: {},
-  returns: v.string(),
-  handler: async (ctx) => {
-    await requireOrganizationAccess(ctx, "manage");
-    return requireEvidenceLibraryPlatformDomain();
-  },
-});
-
 /**
- * The first free short name and platform address for this name. The
- * new-library form uses it only to learn when the address is already taken.
+ * What our own database says about a wanted library name: the library that
+ * already has the name, or the addresses the name could still take. The
+ * address action checks Coolify and the host itself before answering.
  */
-export const previewSetupIdentity = query({
+export const readAddressCandidates = internalQuery({
   args: { name: v.string() },
-  returns: v.union(v.null(), v.object(evidenceLibrarySetupIdentityFields)),
+  returns: v.union(
+    v.object({
+      status: v.literal("name-taken"),
+      libraryId: v.id("evidenceLibraries"),
+    }),
+    v.object({
+      status: v.literal("candidates"),
+      name: v.string(),
+      shortName: v.string(),
+      candidates: v.array(
+        v.object({ publicAddress: v.string(), slug: v.string() }),
+      ),
+    }),
+  ),
   handler: async (ctx, args) => {
     const access = await requireOrganizationAccess(ctx, "manage");
-    if (args.name.trim().length === 0) return null;
-    return await findAvailableEvidenceLibrarySetupIdentity(ctx, {
+    const named = await readEvidenceLibraryByName(ctx, {
       organizationId: access.organization._id,
-      name: args.name,
+      name: args.name.trim().replace(/\s+/gu, " "),
     });
+    if (named) {
+      return { status: "name-taken" as const, libraryId: named._id };
+    }
+    return {
+      status: "candidates" as const,
+      ...(await readEvidenceLibraryAddressCandidates(ctx, {
+        organizationId: access.organization._id,
+        name: args.name,
+      })),
+    };
   },
 });
 
