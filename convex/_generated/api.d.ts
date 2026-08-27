@@ -52,6 +52,7 @@ import type * as credits_queries from "../credits/queries.js";
 import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
+import type * as evidenceLibraries_addressActions from "../evidenceLibraries/addressActions.js";
 import type * as evidenceLibraries_addressRecovery from "../evidenceLibraries/addressRecovery.js";
 import type * as evidenceLibraries_adminLoginCodeActions from "../evidenceLibraries/adminLoginCodeActions.js";
 import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/adminLoginCodes.js";
@@ -307,6 +308,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   debug_papers: typeof debug_papers;
   "evidenceLibraries/access": typeof evidenceLibraries_access;
+  "evidenceLibraries/addressActions": typeof evidenceLibraries_addressActions;
   "evidenceLibraries/addressRecovery": typeof evidenceLibraries_addressRecovery;
   "evidenceLibraries/adminLoginCodeActions": typeof evidenceLibraries_adminLoginCodeActions;
   "evidenceLibraries/adminLoginCodes": typeof evidenceLibraries_adminLoginCodes;

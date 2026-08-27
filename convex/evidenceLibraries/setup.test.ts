@@ -3,7 +3,10 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createActivatedSetupFixture,
+  reserveLibraryAddressByName,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -125,7 +128,7 @@ describe("Evidence Library setup draft", () => {
     expect(operations[0]?._id).toBe(fixture.created.setupOperationId);
   });
 
-  it("creates, reopens, and retries one linked setup draft", async () => {
+  it("creates one linked setup draft and refuses a second under the same name", async () => {
     const t = convexTest(schema, modules);
     await seedOrganization(t, {
       clerkOrganizationId: "org_setup",
@@ -137,17 +140,18 @@ describe("Evidence Library setup draft", () => {
       o: { id: "org_setup", rol: "org:admin" },
     });
 
-    const created = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      setupArgs,
-    );
+    const created = await reserveLibraryAddressByName(admin, setupArgs.name);
     const reopened = await admin.query(
       api.evidenceLibraries.queries.getSetupDraft,
       { libraryId: created.libraryId },
     );
-    const retried = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      setupArgs,
+    const refused = await admin.mutation(
+      internal.evidenceLibraries.mutations.reserveAddress,
+      {
+        name: setupArgs.name,
+        publicAddress: "https://climate-evidence-2-lib.libraries.example.test",
+        slug: "climate-evidence-2",
+      },
     );
     await expect(
       admin.mutation(api.evidenceLibraries.operations.queueOperation, {
@@ -179,7 +183,10 @@ describe("Evidence Library setup draft", () => {
       sections: await ctx.db.query("evidenceLibraryConfigSections").collect(),
     }));
 
-    expect(retried).toEqual(created);
+    expect(refused).toEqual({
+      status: "name-taken",
+      libraryId: created.libraryId,
+    });
     expect(created).toMatchObject({
       name: setupArgs.name,
       publicAddress: setupAddress,
@@ -252,7 +259,7 @@ describe("Evidence Library setup draft", () => {
     });
   });
 
-  it("creates two named setup drafts for one organization without duplicate retries", async () => {
+  it("creates two named setup drafts for one organization and refuses a repeated name", async () => {
     const t = convexTest(schema, modules);
     await seedOrganization(t, {
       clerkOrganizationId: "org_multiple",
@@ -264,21 +271,18 @@ describe("Evidence Library setup draft", () => {
       o: { id: "org_multiple", rol: "org:admin" },
     });
 
-    const first = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "Climate Evidence" },
+    const first = await reserveLibraryAddressByName(admin, "Climate Evidence");
+    const second = await reserveLibraryAddressByName(
+      admin,
+      "Education Evidence",
     );
-    const firstRetry = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "Climate Evidence" },
-    );
-    const second = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "Education Evidence" },
-    );
-    const secondRetry = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "Education Evidence" },
+    const firstRepeated = await admin.mutation(
+      internal.evidenceLibraries.mutations.reserveAddress,
+      {
+        name: "Climate Evidence",
+        publicAddress: "https://climate-evidence-2-lib.libraries.example.test",
+        slug: "climate-evidence-2",
+      },
     );
     const state = await t.run(async (ctx) => ({
       drafts: await ctx.db.query("evidenceLibraryConfigDrafts").collect(),
@@ -293,8 +297,10 @@ describe("Evidence Library setup draft", () => {
       sections: await ctx.db.query("evidenceLibraryConfigSections").collect(),
     }));
 
-    expect(firstRetry).toEqual(first);
-    expect(secondRetry).toEqual(second);
+    expect(firstRepeated).toEqual({
+      status: "name-taken",
+      libraryId: first.libraryId,
+    });
     expect(second.libraryId).not.toBe(first.libraryId);
     expect(state.libraries.map((library) => library.name).sort()).toEqual([
       "Climate Evidence",
@@ -333,17 +339,14 @@ describe("Evidence Library setup draft", () => {
       subject: "user_selection_other",
       o: { id: "org_selection_other", rol: "org:admin" },
     });
-    const own = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "Owned Selection" },
+    const own = await reserveLibraryAddressByName(admin, "Owned Selection");
+    const deleted = await reserveLibraryAddressByName(
+      admin,
+      "Deleted Selection",
     );
-    const deleted = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "Deleted Selection" },
-    );
-    const other = await otherAdmin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "Other Selection" },
+    const other = await reserveLibraryAddressByName(
+      otherAdmin,
+      "Other Selection",
     );
     await t.run((ctx) => ctx.db.delete("evidenceLibraries", deleted.libraryId));
 
@@ -369,7 +372,7 @@ describe("Evidence Library setup draft", () => {
     ).resolves.toBeNull();
   });
 
-  it("resolves a platform-address collision", async () => {
+  it("offers the next numbered address when our database holds one", async () => {
     const t = convexTest(schema, modules);
     await seedOrganization(t, {
       clerkOrganizationId: "org_first",
@@ -386,6 +389,11 @@ describe("Evidence Library setup draft", () => {
       clerkUserId: "user_third",
       role: "org:admin",
     });
+    await seedOrganization(t, {
+      clerkOrganizationId: "org_fourth",
+      clerkUserId: "user_fourth",
+      role: "org:admin",
+    });
     const first = t.withIdentity({
       subject: "user_first",
       o: { id: "org_first", rol: "org:admin" },
@@ -399,21 +407,22 @@ describe("Evidence Library setup draft", () => {
       o: { id: "org_third", rol: "org:admin" },
     });
 
-    await first.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      setupArgs,
+    await reserveLibraryAddressByName(first, setupArgs.name);
+    const secondCreated = await reserveLibraryAddressByName(
+      second,
+      setupArgs.name,
     );
-    const secondCreated = await second.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      setupArgs,
+    const thirdCreated = await reserveLibraryAddressByName(
+      third,
+      setupArgs.name,
     );
-    const thirdCreated = await third.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      setupArgs,
-    );
-    const secondRetriedAfterAnotherCollision = await second.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      setupArgs,
+    const fourth = t.withIdentity({
+      subject: "user_fourth",
+      o: { id: "org_fourth", rol: "org:admin" },
+    });
+    const nextForFourth = await fourth.query(
+      internal.evidenceLibraries.queries.readAddressCandidates,
+      { name: setupArgs.name },
     );
     const counts = await t.run(async (ctx) => ({
       drafts: (await ctx.db.query("evidenceLibraryConfigDrafts").collect())
@@ -440,7 +449,20 @@ describe("Evidence Library setup draft", () => {
       publicAddress: "https://climate-evidence-3-lib.libraries.example.test",
       slug: "climate-evidence-3",
     });
-    expect(secondRetriedAfterAnotherCollision).toEqual(secondCreated);
+    expect(
+      nextForFourth.status === "candidates"
+        ? nextForFourth.candidates.slice(0, 2)
+        : nextForFourth,
+    ).toEqual([
+      {
+        slug: "climate-evidence-4",
+        publicAddress: "https://climate-evidence-4-lib.libraries.example.test",
+      },
+      {
+        slug: "climate-evidence-5",
+        publicAddress: "https://climate-evidence-5-lib.libraries.example.test",
+      },
+    ]);
     expect(counts).toEqual({
       drafts: 3,
       libraries: 3,
@@ -463,7 +485,7 @@ describe("Evidence Library setup draft", () => {
     });
 
     await expect(
-      admin.mutation(api.evidenceLibraries.mutations.createSetupDraft, {
+      admin.query(internal.evidenceLibraries.queries.readAddressCandidates, {
         name: "a".repeat(101),
       }),
     ).rejects.toThrow(/VALIDATION_ERROR/);
@@ -471,10 +493,7 @@ describe("Evidence Library setup draft", () => {
       await t.run((ctx) => ctx.db.query("evidenceLibraries").collect()),
     ).toHaveLength(0);
 
-    const created = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "a".repeat(100) },
-    );
+    const created = await reserveLibraryAddressByName(admin, "a".repeat(100));
     expect(created.name).toHaveLength(100);
     expect(created.shortName).toHaveLength(40);
   });
@@ -490,10 +509,7 @@ describe("Evidence Library setup draft", () => {
       subject: "user_binding_states",
       o: { id: "org_binding_states", rol: "org:admin" },
     });
-    const created = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      setupArgs,
-    );
+    const created = await reserveLibraryAddressByName(admin, setupArgs.name);
     const incompleteReadyBinding = {
       libraryId: created.libraryId,
       targetBaseUrl: "https://incomplete-ready.example.org",
@@ -598,10 +614,7 @@ describe("Evidence Library setup draft", () => {
       subject: "user_access_admin",
       o: { id: "org_access", rol: "org:admin" },
     });
-    const created = await admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      setupArgs,
-    );
+    const created = await reserveLibraryAddressByName(admin, setupArgs.name);
     const member = t.withIdentity({
       subject: "user_access_member",
       o: { id: "org_access", rol: "org:member" },
@@ -616,10 +629,11 @@ describe("Evidence Library setup draft", () => {
     });
 
     await expect(
-      member.mutation(
-        api.evidenceLibraries.mutations.createSetupDraft,
-        setupArgs,
-      ),
+      member.mutation(internal.evidenceLibraries.mutations.reserveAddress, {
+        name: setupArgs.name,
+        publicAddress: setupAddress,
+        slug: "climate-evidence",
+      }),
     ).rejects.toThrow(/FORBIDDEN/);
     await expect(
       member.query(api.evidenceLibraries.queries.getSetupDraft, {

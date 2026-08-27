@@ -4,7 +4,8 @@ import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import {
   applyEvidenceLibraryAddressMove,
-  findNextFreeEvidenceLibraryAddress,
+  evidenceLibraryAddressCandidateValidator,
+  requireFreeEvidenceLibraryAddress,
 } from "./addressRecovery";
 import {
   EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS,
@@ -113,6 +114,9 @@ export const moveSetupAddress = internalMutation({
     operationId: v.id("evidenceLibraryConfigOperations"),
     attemptToken: v.string(),
     attemptCount: v.number(),
+    // The address the shared check found free: free in our database, not
+    // served by Coolify, and answering nothing on the host itself.
+    candidate: evidenceLibraryAddressCandidateValidator,
   },
   returns: v.union(
     v.object({
@@ -132,9 +136,9 @@ export const moveSetupAddress = internalMutation({
       return { status: "exhausted" as const };
     }
     const movedFrom = setup.runtimeBinding.targetBaseUrl;
-    const movedTo = await findNextFreeEvidenceLibraryAddress(ctx, {
-      name: setup.library.name,
-      currentAddress: movedFrom,
+    const movedTo = await requireFreeEvidenceLibraryAddress(ctx, {
+      library: setup.library,
+      candidate: args.candidate,
     });
     await applyEvidenceLibraryAddressMove(ctx, {
       bindingId: setup.runtimeBinding._id,
@@ -165,7 +169,12 @@ export const moveSetupAddress = internalMutation({
     await ctx.scheduler.runAfter(
       EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS,
       internal.evidenceLibraries.applicationSetupActions.runApplicationSetup,
-      args,
+      {
+        libraryId: args.libraryId,
+        operationId: args.operationId,
+        attemptToken: args.attemptToken,
+        attemptCount: args.attemptCount,
+      },
     );
     return { status: "moving" as const, movedFrom, movedTo };
   },

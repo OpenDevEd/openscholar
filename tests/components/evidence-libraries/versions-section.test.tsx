@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
+      addressActions: { moveLibraryAddress: "moveLibraryAddress" },
       updates: {
         check: "check",
         listAddressNotices: "listAddressNotices",
@@ -25,7 +26,6 @@ vi.mock("@/convex/_generated/api", () => ({
       versions: {
         listVersions: "listVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
-        startAddressMove: "startAddressMove",
         restoreRevision: "restoreRevision",
       },
     },
@@ -37,13 +37,12 @@ vi.mock("@/convex/_generated/api", () => ({
 let checkAction: (args: unknown) => unknown;
 
 vi.mock("convex/react", () => ({
-  useAction: () => checkAction,
+  useAction: (reference: string) =>
+    reference === "moveLibraryAddress" ? mocks.startAddressMove : checkAction,
   useMutation: (reference: string) =>
     reference === "startRuntimeUpdate"
       ? mocks.startRuntimeUpdate
-      : reference === "startAddressMove"
-        ? mocks.startAddressMove
-        : mocks.restoreRevision,
+      : mocks.restoreRevision,
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
@@ -245,6 +244,7 @@ describe("<VersionsSection>", () => {
       },
     ]);
     mocks.startAddressMove.mockResolvedValue({
+      status: "moving",
       movedFrom: "https://climate-lib.example.test",
       movedTo: "https://climate-2-lib.example.test",
     });

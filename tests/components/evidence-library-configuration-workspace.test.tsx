@@ -57,6 +57,7 @@ vi.mock("@/convex/_generated/api", () => ({
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
       updates: { check: "check", listAddressNotices: "listAddressNotices" },
+      addressActions: { moveLibraryAddress: "moveLibraryAddress" },
       versions: {
         listVersions: "listVersions",
         startRuntimeUpdate: "startRuntimeUpdate",

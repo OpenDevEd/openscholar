@@ -31,6 +31,7 @@ import {
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingValidator,
   evidenceLibraryRuntimeReleaseFields,
+  evidenceLibraryServedHostsFields,
   organizationFields,
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
@@ -117,6 +118,10 @@ export default defineSchema({
   evidenceLibraryZoteroGroups: defineTable(evidenceLibraryZoteroGroupFields)
     .index("by_libraryId", ["libraryId"])
     .index("by_libraryId_and_groupId", ["libraryId", "groupId"]),
+
+  evidenceLibraryServedHosts: defineTable(
+    evidenceLibraryServedHostsFields,
+  ).index("by_source", ["source"]),
 
   evidenceLibraryRuntimeReadCache: defineTable(
     evidenceLibraryRuntimeReadCacheFields,

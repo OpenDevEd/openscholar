@@ -1,8 +1,10 @@
 "use node";
 
 import { internal } from "../_generated/api";
-import { internalAction } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import { internalAction, type ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { findFreeEvidenceLibraryAddress } from "./addressActions";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
   isAddressNotOursError,
@@ -20,6 +22,31 @@ type ReadinessSetupActionResult =
   | { movedTo: string; status: "moving" }
   | { pollCount: number; status: "running" }
   | { status: "succeeded" };
+
+/**
+ * Finds the next address nothing holds with the shared check - our database,
+ * the hosts Coolify serves, then the host itself - and hands it to the move.
+ */
+async function moveToFreeAddress(
+  ctx: ActionCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+    attemptToken: string;
+    attemptCount: number;
+  },
+) {
+  const plan = await ctx.runQuery(
+    internal.evidenceLibraries.addressRecovery.readPlatformMoveCandidates,
+    { libraryId: args.libraryId },
+  );
+  const candidate = await findFreeEvidenceLibraryAddress(ctx, plan.candidates);
+  if (!candidate) return null;
+  return await ctx.runMutation(
+    internal.evidenceLibraries.readinessSetup.moveSetupAddress,
+    { ...args, candidate },
+  );
+}
 
 export const runReadinessSetup = internalAction({
   args: {
@@ -84,12 +111,7 @@ export const runReadinessSetup = internalAction({
       if (isAddressNotOursError(error)) {
         // Waiting cannot free an address another site holds. Move once and
         // let the Coolify steps run again; a failed move falls through.
-        const moved = await ctx
-          .runMutation(
-            internal.evidenceLibraries.readinessSetup.moveSetupAddress,
-            args,
-          )
-          .catch(() => null);
+        const moved = await moveToFreeAddress(ctx, args).catch(() => null);
         if (moved?.status === "moving") {
           return { movedTo: moved.movedTo, status: "moving" as const };
         }

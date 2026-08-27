@@ -94,7 +94,10 @@ test.describe("clerk auth flows", () => {
 
     const libraryName = `E2E Library ${Date.now()}`;
     await page.getByRole("textbox", { name: "Name", exact: true }).fill(libraryName);
-    await page.getByRole("button", { name: "Reserve address" }).click();
+    // Reserve waits for the server's answer about the address.
+    const reserveButton = page.getByRole("button", { name: "Reserve address" });
+    await expect(reserveButton).toBeEnabled({ timeout: 30_000 });
+    await reserveButton.click();
     await expect(page.getByRole("status")).toHaveAttribute(
       "data-address-state",
       "reserved",

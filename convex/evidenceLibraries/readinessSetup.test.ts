@@ -239,6 +239,16 @@ describe("Evidence Library address recovery during setup", () => {
       vi.fn<typeof fetch>(async (request) => {
         const url = new URL(String(request));
         if (url.origin === "http://coolify:8080") {
+          // Coolify serves nothing else, so only the host answers decide.
+          if (
+            url.pathname === "/api/v1/applications" ||
+            url.pathname === "/api/v1/services"
+          ) {
+            return new Response("[]", {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+          }
           return new Response(
             JSON.stringify({
               deployment_uuid: fixture.deploymentId,
@@ -248,6 +258,13 @@ describe("Evidence Library address recovery during setup", () => {
             }),
             { status: 200, headers: { "content-type": "application/json" } },
           );
+        }
+        // Every numbered address is free: the proxy has no server there.
+        if (
+          url.origin !== "https://verifier.example.test" &&
+          url.hostname !== new URL(fixture.created.publicAddress).hostname
+        ) {
+          return new Response("no available server", { status: 503 });
         }
         if (url.origin === "https://verifier.example.test") {
           return new Response(

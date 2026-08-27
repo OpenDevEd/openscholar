@@ -136,8 +136,8 @@ export function VersionsSection({
   const startRuntimeUpdate = useMutation(
     api.evidenceLibraries.versions.startRuntimeUpdate,
   );
-  const startAddressMove = useMutation(
-    api.evidenceLibraries.versions.startAddressMove,
+  const moveAddress = useAction(
+    api.evidenceLibraries.addressActions.moveLibraryAddress,
   );
   const restoreRevision = useMutation(
     api.evidenceLibraries.versions.restoreRevision,
@@ -194,9 +194,13 @@ export function VersionsSection({
   function confirmMove() {
     setMoveOpen(false);
     setBusy(true);
-    void startAddressMove({ libraryId })
+    void moveAddress({ libraryId })
       .then((result) => {
         checkAgain();
+        if (result.status !== "moving") {
+          toast.error(t("versions.addressMoveError"));
+          return;
+        }
         toast(t("versions.addressMoveStarted"), {
           description: t("versions.addressMoveStartedDescription", {
             address: result.movedTo.replace(/^https?:\/\//, ""),

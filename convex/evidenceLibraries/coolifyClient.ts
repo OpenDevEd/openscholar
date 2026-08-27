@@ -9,6 +9,7 @@ const MAX_APPLICATION_MATCHES = 2;
 const MAX_GITHUB_APPS = 100;
 const MAX_ENVIRONMENT_VARIABLES = 256;
 const MAX_DEPLOYMENTS = 100;
+const MAX_SERVED_RESOURCES = 1_000;
 const ENVIRONMENT_READBACK_DELAYS_MS = [100, 250, 500, 1_000] as const;
 // Coolify deletes an application in the background. Wait up to about 60 s.
 const APPLICATION_DELETE_DELAYS_MS = [
@@ -480,6 +481,60 @@ async function requestCoolify(
     }
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+// Coolify writes a host as an origin, sometimes several separated by commas
+// and sometimes with a port. Anything that is not a readable host is skipped;
+// the address probe still checks that host before it is handed out.
+function collectServedHosts(hosts: Set<string>, value: unknown): void {
+  if (typeof value !== "string") return;
+  for (const part of value.split(",")) {
+    const text = part.trim();
+    if (!text) continue;
+    let url: URL;
+    try {
+      url = new URL(text.includes("://") ? text : `https://${text}`);
+    } catch {
+      continue;
+    }
+    const hostname = url.hostname.toLowerCase().replace(/\.$/u, "");
+    if (hostname) hosts.add(hostname);
+  }
+}
+
+function collectComposeDomainHosts(hosts: Set<string>, value: unknown): void {
+  if (typeof value !== "string" || !value.trim()) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return;
+  }
+  if (!isRecord(parsed)) return;
+  for (const service of Object.values(parsed)) {
+    if (isRecord(service)) collectServedHosts(hosts, service.domain);
+  }
+}
+
+function collectResourceHosts(hosts: Set<string>, payload: unknown): void {
+  const message = "Coolify returned an invalid resource list";
+  if (!Array.isArray(payload) || payload.length > MAX_SERVED_RESOURCES) {
+    invalidResponse(message);
+  }
+  for (const item of payload) {
+    if (!isRecord(item)) invalidResponse(message);
+    collectServedHosts(hosts, item.fqdn);
+    collectComposeDomainHosts(hosts, item.docker_compose_domains);
+    const applications = item.applications;
+    if (Array.isArray(applications)) {
+      if (applications.length > MAX_SERVED_RESOURCES) invalidResponse(message);
+      for (const application of applications) {
+        if (!isRecord(application)) continue;
+        collectServedHosts(hosts, application.fqdn);
+        collectComposeDomainHosts(hosts, application.docker_compose_domains);
+      }
+    }
   }
 }
 
@@ -1404,6 +1459,27 @@ export function createCoolifyClient(input: {
   };
 
   return {
+    // Every host Coolify already serves. A library address may not take one
+    // of these, even when our own database has never seen it.
+    async listServedHosts(): Promise<Set<string>> {
+      const [applications, services] = await Promise.all([
+        requestCoolify(client, {
+          expectedStatus: 200,
+          method: "GET",
+          path: "/api/v1/applications",
+        }),
+        requestCoolify(client, {
+          expectedStatus: 200,
+          method: "GET",
+          path: "/api/v1/services",
+        }),
+      ]);
+      const hosts = new Set<string>();
+      collectResourceHosts(hosts, applications);
+      collectResourceHosts(hosts, services);
+      return hosts;
+    },
+
     async deleteLibraryApplication(input: {
       applicationUuid?: string;
       environmentName: string;

@@ -1,4 +1,5 @@
 import {
+  internalMutation,
   mutation,
   query,
   type MutationCtx,
@@ -11,7 +12,10 @@ import { validateOwnerSections } from "../../lib/evidence-libraries/configuratio
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
-import { findNextFreeEvidenceLibraryAddress } from "./addressRecovery";
+import {
+  evidenceLibraryAddressCandidateValidator,
+  requireFreeEvidenceLibraryAddress,
+} from "./addressRecovery";
 import {
   claimAndScheduleConfigurationDeployment,
   isConfigurationDeploymentOperation,
@@ -103,7 +107,12 @@ export async function startEvidenceLibraryRuntimeUpdate(
  */
 export async function startEvidenceLibraryAddressMove(
   ctx: MutationCtx,
-  args: { libraryId: Id<"evidenceLibraries"> },
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    // The address the shared check found free: free in our database, not
+    // served by Coolify, and answering nothing on the host itself.
+    candidate: { publicAddress: string; slug: string };
+  },
 ) {
   const running = await requireRunningLibrary(ctx, args.libraryId);
   await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
@@ -115,10 +124,9 @@ export async function startEvidenceLibraryAddressMove(
     throw createError("NOT_FOUND", "Evidence Library draft not found");
   }
   const movedFrom = running.binding.targetBaseUrl;
-
-  const movedTo = await findNextFreeEvidenceLibraryAddress(ctx, {
-    name: running.library.name,
-    currentAddress: movedFrom,
+  const movedTo = await requireFreeEvidenceLibraryAddress(ctx, {
+    library: running.library,
+    candidate: args.candidate,
   });
   // The live sections must still pass the rules at the new address before
   // anything is written.
@@ -496,8 +504,11 @@ export const restoreRevision = mutation({
   handler: restoreEvidenceLibraryRevision,
 });
 
-export const startAddressMove = mutation({
-  args: { libraryId: v.id("evidenceLibraries") },
+export const startAddressMove = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    candidate: evidenceLibraryAddressCandidateValidator,
+  },
   returns: v.object({
     operationId: v.id("evidenceLibraryConfigOperations"),
     revisionId: v.id("evidenceLibraryConfigRevisions"),

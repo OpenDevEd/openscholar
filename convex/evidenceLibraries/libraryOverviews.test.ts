@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createActivatedSetupFixture,
+  reserveLibraryAddressByName,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 
 describe("library overviews", () => {
   beforeEach(() => {
@@ -14,24 +17,24 @@ describe("library overviews", () => {
     vi.unstubAllEnvs();
   });
 
-  it("previews the address a name would get, skipping one that is taken", async () => {
+  it("reports the library that already holds a wanted name", async () => {
     const fixture = await createActivatedSetupFixture("overview_preview");
 
     await expect(
-      fixture.admin.query(api.evidenceLibraries.queries.previewSetupIdentity, {
-        name: "   ",
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      fixture.admin.query(api.evidenceLibraries.queries.previewSetupIdentity, {
-        name: "Climate Evidence",
-      }),
+      fixture.admin.query(
+        internal.evidenceLibraries.queries.readAddressCandidates,
+        { name: "Climate Evidence" },
+      ),
     ).resolves.toEqual({
-      name: "Climate Evidence",
-      shortName: "Climate Evidence",
-      slug: "climate-evidence-2",
-      publicAddress: "https://climate-evidence-2-lib.libraries.example.test",
+      status: "name-taken",
+      libraryId: fixture.created.libraryId,
     });
+    await expect(
+      fixture.admin.query(
+        internal.evidenceLibraries.queries.readAddressCandidates,
+        { name: "   " },
+      ),
+    ).rejects.toThrow(/VALIDATION_ERROR/);
   });
 
   it("reports each library's status, address and accent colour", async () => {
@@ -89,9 +92,9 @@ describe("library overviews", () => {
 
   it("lists a fresh draft as a draft with no address facts beyond its own", async () => {
     const fixture = await createActivatedSetupFixture("overview_draft");
-    const draft = await fixture.admin.mutation(
-      api.evidenceLibraries.mutations.createSetupDraft,
-      { name: "Second Library" },
+    const draft = await reserveLibraryAddressByName(
+      fixture.admin,
+      "Second Library",
     );
     const overviews = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraryOverviews,
