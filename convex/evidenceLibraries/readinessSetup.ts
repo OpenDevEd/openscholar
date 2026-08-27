@@ -153,6 +153,7 @@ export const moveSetupAddress = internalMutation({
         to: movedTo,
         movedAt: now,
         count: (previous?.count ?? 0) + 1,
+        applied: true,
       },
       stage: "application",
       setupDeploymentId: undefined,

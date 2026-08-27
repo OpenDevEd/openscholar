@@ -331,6 +331,7 @@ describe("Evidence Library address notices", () => {
           to: movedTo,
           movedAt: Date.now(),
           count: 1,
+          applied: true,
         },
       });
     });
@@ -354,6 +355,7 @@ describe("Evidence Library address notices", () => {
           to: "https://climate-evidence-2-lib.libraries.example.test",
           movedAt: Date.now(),
           count: 1,
+          applied: true,
         },
       });
     });

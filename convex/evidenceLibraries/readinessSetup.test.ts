@@ -380,6 +380,7 @@ describe("Evidence Library address recovery during setup", () => {
           to: fixture.created.publicAddress,
           movedAt: Date.now(),
           count: 3,
+          applied: true,
         },
       });
     });

@@ -516,6 +516,9 @@ export const evidenceLibraryAddressMoveValidator = v.object({
   to: v.string(),
   movedAt: v.number(),
   count: v.number(),
+  // Whether the records already carry `to`. Setup writes them straight away
+  // and reconciles Coolify right after.
+  applied: v.boolean(),
 });
 
 export const evidenceLibraryOperationFields = {
