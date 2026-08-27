@@ -101,6 +101,7 @@ type SectionProblem =
   | "languages"
   | "posthog"
   | "google"
+  | "exportUrl"
   | "legalText";
 
 /* ------------------------------------------------------------------ */
@@ -192,14 +193,20 @@ export const LOCALES = schemaEnum<"en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" 
 export type Locale = (typeof LOCALES)[number];
 export const EXPORT_FORMATS = ["ris", "bibtex", "atom"] as const;
 type ExportFormat = (typeof EXPORT_FORMATS)[number];
-/** The public paths the runtime serves each export on (new-el `src/proxy.ts`). */
-const EXPORT_PATHS: Record<ExportFormat, string> = {
-  ris: "/lib/export/ris",
-  bibtex: "/lib/export/bibtex",
-  atom: "/lib/atom.xml",
+const EXPORT_URL_MAX_LENGTH = schemaNumber("/exports/ris", "maxLength");
+/**
+ * An export address the runtime accepts. The runtime fetches this outside file
+ * and streams it on `/lib/export/<format>` or `/lib/atom.xml` (new-el
+ * `src/app/api/exports/[format]/route.ts`), so it must not point back at the
+ * library's own address or the request loops onto itself.
+ */
+export const isExportUrl = (url: string, baseUrl: string) => {
+  if (!HTTPS_URL.test(url) || url.length > EXPORT_URL_MAX_LENGTH) return false;
+  const origin = baseUrl.replace(/\/+$/, "").toLowerCase();
+  if (origin === "") return true;
+  const candidate = url.replace(/\/+$/, "").toLowerCase();
+  return candidate !== origin && !candidate.startsWith(`${origin}/`);
 };
-export const exportUrl = (baseUrl: string, format: ExportFormat) =>
-  `${baseUrl.replace(/\/+$/, "")}${EXPORT_PATHS[format]}`;
 const POSTHOG_KEY_PATTERN = schemaPattern("/analytics/posthog/key");
 const POSTHOG_KEY_MIN_LENGTH = (() => {
   const value = schemaNode("/analytics/posthog/key").minLength;
@@ -399,8 +406,8 @@ export type ConfigurationDraft = {
   /** `content.tags`: which Zotero tags mean hidden, coming soon, and so on. Edited on the Sources card. */
   content: { tags: TagRules };
   citations: { showUrl: boolean };
-  /** Which export endpoints are on. The URLs are built from the public address on save. */
-  exports: Record<ExportFormat, boolean>;
+  /** `exports.<format>`: the address of an outside RIS, BibTeX or Atom file the runtime streams. Empty means off. */
+  exports: Record<ExportFormat, string>;
   localization: LocalizationDraft;
   analytics: AnalyticsDraft;
 };
@@ -446,10 +453,10 @@ export function featureBlock(draft: ConfigurationDraft, feature: ShownFeature): 
       return draft.filters.years.enabled ? null : { kind: "years" };
     case "downloads":
       // schema.ts:1738 "Downloads require a RIS or BibTeX endpoint"
-      return draft.exports.ris || draft.exports.bibtex ? null : { kind: "exports" };
+      return hasExport(draft, "ris") || hasExport(draft, "bibtex") ? null : { kind: "exports" };
     case "atomFeed":
       // schema.ts:1746 "Atom feed requires an Atom endpoint"
-      return draft.exports.atom ? null : { kind: "atom" };
+      return hasExport(draft, "atom") ? null : { kind: "atom" };
     case "languageSwitcher":
       // schema.ts:1595 "Language switcher requires at least two enabled locales"
       return draft.localization.locales.length >= 2 ? null : { kind: "languages" };
@@ -457,6 +464,9 @@ export function featureBlock(draft: ConfigurationDraft, feature: ShownFeature): 
       return null;
   }
 }
+
+const hasExport = (draft: ConfigurationDraft, format: ExportFormat) =>
+  isExportUrl(draft.exports[format], draft.identity.baseUrl);
 
 const SHOWN_FEATURES = FEATURE_GROUPS.flatMap((group) => group.features) as ShownFeature[];
 
@@ -753,11 +763,11 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
   };
 }
 
-function readExports(payload: unknown): Record<ExportFormat, boolean> {
+function readExports(payload: unknown): Record<ExportFormat, string> {
   const exports = record(payload);
   return Object.fromEntries(
-    EXPORT_FORMATS.map((format) => [format, typeof exports[format] === "string" && exports[format] !== ""]),
-  ) as Record<ExportFormat, boolean>;
+    EXPORT_FORMATS.map((format) => [format, typeof exports[format] === "string" ? exports[format] : ""]),
+  ) as Record<ExportFormat, string>;
 }
 
 function readLocales(value: unknown): Locale[] {
@@ -950,9 +960,9 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
       return { showUrl: draft.citations.showUrl };
     case "exports":
       return Object.fromEntries(
-        EXPORT_FORMATS.filter((format) => draft.exports[format]).map((format) => [
+        EXPORT_FORMATS.filter((format) => draft.exports[format] !== "").map((format) => [
           format,
-          exportUrl(draft.identity.baseUrl, format),
+          draft.exports[format],
         ]),
       );
     case "localization": {
@@ -1199,6 +1209,9 @@ export function sectionProblems(
       }
       break;
     case "citations":
+      if (EXPORT_FORMATS.some((format) => draft.exports[format] !== "" && !hasExport(draft, format))) {
+        problems.push("exportUrl");
+      }
       break;
     case "features":
       if (SHOWN_FEATURES.some((feature) => draft.features[feature] && featureBlock(draft, feature))) {

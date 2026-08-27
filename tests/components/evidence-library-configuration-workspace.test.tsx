@@ -622,26 +622,33 @@ describe("<ConfigurationWorkspace>", () => {
       expect(downloads).toBeDisabled();
       expect(features.getByText("features.needsExports")).toBeInTheDocument();
 
-      await user.click(card("citations").getByRole("switch", { name: "citations.formats.ris" }));
+      const risField = card("citations").getByLabelText("citations.formats.ris");
+      await user.type(risField, "https://feeds.example.test/library.ris");
       expect(downloads).toBeEnabled();
       await user.click(downloads);
       expect(downloads).toBeChecked();
 
-      await user.click(card("citations").getByRole("switch", { name: "citations.formats.ris" }));
+      await user.clear(risField);
       expect(downloads).toBeDisabled();
       expect(downloads).not.toBeChecked();
       expect(features.getByText("sectionState.complete")).toBeInTheDocument();
     });
 
-    it("writes the export URL from the public address when a format is turned on", async () => {
+    it("saves the typed Atom feed address and rejects the library's own address", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
-      await user.click(card("citations").getByRole("switch", { name: "citations.formats.atom" }));
+      const atomField = card("citations").getByLabelText("citations.formats.atom");
+      await user.type(atomField, `${savedIdentity.baseUrl}/lib/atom.xml`);
+      expect(atomField).toHaveAttribute("aria-invalid", "true");
+      expect(card("citations").getByText("problems.exportUrl")).toBeInTheDocument();
+      await user.clear(atomField);
+      await user.type(atomField, "https://feeds.example.test/library.atom");
+      expect(atomField).not.toHaveAttribute("aria-invalid");
       await user.click(screen.getByRole("button", { name: "save" }));
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
       expect(request.sections).toEqual([
-        { sectionKey: "exports", payload: { atom: `${savedIdentity.baseUrl}/lib/atom.xml` } },
+        { sectionKey: "exports", payload: { atom: "https://feeds.example.test/library.atom" } },
       ]);
     });
 
