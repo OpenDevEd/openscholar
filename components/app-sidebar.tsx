@@ -401,6 +401,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const extractionEnabled = useFeatureFlag("extraction.enabled");
   const canStartExtraction = useFeatureFlag("extraction.start");
   const hasExtractionAccess = extractionEnabled && canStartExtraction;
+  // Evidence Libraries are switched on per organisation in Clerk.
+  const evidenceLibrariesAccess = useProtectedQuery(
+    api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
+    {},
+  );
+  const hasEvidenceLibrariesAccess =
+    evidenceLibrariesAccess.data?.enabled === true;
   const { phase } = useAuthReadiness();
   const goToSignIn = useSignInRedirect();
   const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
@@ -552,15 +559,17 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             />
           )}
 
-          <NavItem
-            href="/evidence-libraries"
-            icon={Layers}
-            label={tc("evidenceLibraries")}
-            isActive={currentPageValue === "evidence-libraries"}
-            isCollapsed={isCollapsed && !isMobile}
-            onClick={handleNavClick}
-            index={5}
-          />
+          {hasEvidenceLibrariesAccess && (
+            <NavItem
+              href="/evidence-libraries"
+              icon={Layers}
+              label={tc("evidenceLibraries")}
+              isActive={currentPageValue === "evidence-libraries"}
+              isCollapsed={isCollapsed && !isMobile}
+              onClick={handleNavClick}
+              index={5}
+            />
+          )}
         </motion.div>
       </div>
 

@@ -51,7 +51,12 @@ const TEARDOWN_PERCENT: Record<NonNullable<Overview["teardownStage"]>, number> =
 
 export function LibraryList() {
   const t = useTranslations("evidenceLibraries.list");
+  const tGate = useTranslations("evidenceLibraries.gate");
   const { isLoaded, membership, organization } = useOrganization();
+  const access = useProtectedQuery(
+    api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
+    organization ? {} : "skip",
+  );
   const overviews = useProtectedQuery(
     api.evidenceLibraries.queries.listLibraryOverviews,
     organization ? {} : "skip",
@@ -74,6 +79,19 @@ export function LibraryList() {
         variant="no_access"
         title={t("noOrganizationTitle")}
         description={t("noOrganizationDescription")}
+      />
+    );
+  }
+  if (access.data === undefined) {
+    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+  }
+  // Evidence Libraries are switched on per organisation in Clerk.
+  if (!access.data.enabled) {
+    return (
+      <AuthStatePanel
+        variant="no_access"
+        title={tGate("title")}
+        description={tGate("description")}
       />
     );
   }

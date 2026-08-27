@@ -2885,6 +2885,10 @@
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here."
     },
+    "gate": {
+      "title": "Not available for this organisation",
+      "description": "Evidence Libraries are switched on per organisation. Ask the OpenScholar team."
+    },
     "status": {
       "draft": "Draft",
       "setting_up": "Setting up",

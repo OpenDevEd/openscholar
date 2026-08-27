@@ -47,6 +47,7 @@ describe("Evidence Library credential storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -101,6 +102,7 @@ describe("Evidence Library credential storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
+        evidenceLibrariesEnabled: true,
       });
       await ctx.db.insert("organizationMemberships", {
         organizationId,

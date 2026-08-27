@@ -31,6 +31,7 @@ describe("parseClerkProjectionEvent", () => {
           clerkCreatedAt: 1_700_000_000_000,
           clerkOrganizationId: "org_123",
           clerkUpdatedAt: 1_700_000_001_000,
+          evidenceLibrariesEnabled: false,
           imageUrl: "https://img.example/org.png",
           name: "Evidence Team",
           slug: "evidence-team",
@@ -38,6 +39,42 @@ describe("parseClerkProjectionEvent", () => {
       });
     },
   );
+
+  it.each([
+    ["switched on", { evidenceLibraries: true }, true],
+    ["switched off", { evidenceLibraries: false }, false],
+    ["missing the key", { somethingElse: true }, false],
+    ["an empty object", {}, false],
+    ["the string true", { evidenceLibraries: "true" }, false],
+    ["the number one", { evidenceLibraries: 1 }, false],
+    ["null", null, false],
+  ] as const)(
+    "reads the Evidence Libraries switch from public metadata: %s",
+    (_label, publicMetadata, expected) => {
+      const event = parseClerkProjectionEvent("organization.updated", {
+        ...organization,
+        public_metadata: publicMetadata,
+      });
+
+      expect(event).toMatchObject({
+        organization: { evidenceLibrariesEnabled: expected },
+      });
+    },
+  );
+
+  it("reads the switch from the organization inside a membership event", () => {
+    expect(
+      parseClerkProjectionEvent("organizationMembership.created", {
+        ...membership,
+        organization: {
+          ...organization,
+          public_metadata: { evidenceLibraries: true },
+        },
+      }),
+    ).toMatchObject({
+      membership: { organization: { evidenceLibrariesEnabled: true } },
+    });
+  });
 
   it("maps organization.deleted from Clerk's tombstone payload", () => {
     expect(
@@ -72,6 +109,7 @@ describe("parseClerkProjectionEvent", () => {
           clerkCreatedAt: 1_700_000_000_000,
           clerkOrganizationId: "org_123",
           clerkUpdatedAt: 1_700_000_001_000,
+          evidenceLibrariesEnabled: false,
           imageUrl: "https://img.example/org.png",
           name: "Evidence Team",
           slug: "evidence-team",

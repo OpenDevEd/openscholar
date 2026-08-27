@@ -8,6 +8,8 @@ import { type Infer, v } from "convex/values";
 import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import { createError } from "../lib/errors";
 import {
+  hasEvidenceLibrariesSwitchedOn,
+  readOrganizationAccess,
   requireEvidenceLibraryAccess,
   requireOrganizationAccess,
 } from "./access";
@@ -169,6 +171,22 @@ async function readLibraryOverview(
       typeof themeColors?.accent === "string" ? themeColors.accent : null,
   };
 }
+
+/**
+ * Whether the active organisation may use the Evidence Library owner pages.
+ * The sidebar renders on every page and the pages render before anyone picks
+ * an organisation, so this never throws: no sign-in, no active organisation,
+ * no settled membership, or a role that no longer matches the token all
+ * answer "off". It reads through the same helper as the gate itself, so the
+ * pages can never show a form the server would refuse.
+ */
+export const getEvidenceLibrariesAccess = query({
+  args: {},
+  returns: v.object({ enabled: v.boolean() }),
+  handler: async (ctx) => ({
+    enabled: hasEvidenceLibrariesSwitchedOn(await readOrganizationAccess(ctx)),
+  }),
+});
 
 export const listLibraryOverviews = query({
   args: {},

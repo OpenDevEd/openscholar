@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { initialsOf } from "@/lib/evidence-libraries/initials";
 import {
   createInitialEvidenceLibraryShortName,
@@ -51,7 +52,12 @@ const CHECK_DELAY_MS = 300;
 
 export function NewLibraryForm() {
   const t = useTranslations("evidenceLibraries.new");
+  const tGate = useTranslations("evidenceLibraries.gate");
   const { isLoaded, membership, organization } = useOrganization();
+  const access = useProtectedQuery(
+    api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
+    organization ? {} : "skip",
+  );
 
   if (!isLoaded) {
     return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
@@ -65,8 +71,18 @@ export function NewLibraryForm() {
       />
     );
   }
-  if (membership === undefined) {
+  if (membership === undefined || access.data === undefined) {
     return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+  }
+  // Evidence Libraries are switched on per organisation in Clerk.
+  if (!access.data.enabled) {
+    return (
+      <AuthStatePanel
+        variant="no_access"
+        title={tGate("title")}
+        description={tGate("description")}
+      />
+    );
   }
   if (membership?.role !== "org:admin") {
     return (

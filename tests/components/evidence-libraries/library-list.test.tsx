@@ -33,7 +33,10 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }))
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      queries: { listLibraryOverviews: "listLibraryOverviews" },
+      queries: {
+        listLibraryOverviews: "listLibraryOverviews",
+        getEvidenceLibrariesAccess: "getEvidenceLibrariesAccess",
+      },
       updates: { listAddressNotices: "listAddressNotices" },
       mutations: { retrySetup: "retrySetup" },
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
@@ -46,8 +49,19 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
-  AuthStatePanel: ({ variant, title }: { variant: string; title?: string }) => (
-    <p>{title ?? variant}</p>
+  AuthStatePanel: ({
+    variant,
+    title,
+    description,
+  }: {
+    variant: string;
+    title?: string;
+    description?: string;
+  }) => (
+    <div>
+      <p>{title ?? variant}</p>
+      {description ? <p>{description}</p> : null}
+    </div>
   ),
 }));
 
@@ -95,12 +109,16 @@ function organization(role: "org:admin" | "org:member") {
 }
 
 /** Answers each query the list opens; address notices default to none. */
-function answerQueries(addressNotices: unknown[] = []) {
-  mocks.query.mockImplementation((query: unknown) =>
-    query === "listAddressNotices"
-      ? { data: addressNotices, isReady: true }
-      : { data: libraries, isReady: true },
-  );
+function answerQueries(addressNotices: unknown[] = [], enabled = true) {
+  mocks.query.mockImplementation((query: unknown) => {
+    if (query === "listAddressNotices") {
+      return { data: addressNotices, isReady: true };
+    }
+    if (query === "getEvidenceLibrariesAccess") {
+      return { data: { enabled }, isReady: true };
+    }
+    return { data: libraries, isReady: true };
+  });
 }
 
 describe("<LibraryList>", () => {
@@ -229,5 +247,19 @@ describe("<LibraryList>", () => {
 
     expect(screen.getByText("list.noOrganizationTitle")).toBeInTheDocument();
     expect(mocks.query).toHaveBeenCalledWith("listLibraryOverviews", "skip");
+  });
+
+  it("shows one plain panel when the organisation is not switched on", () => {
+    mocks.organization.mockReturnValue(organization("org:admin"));
+    answerQueries([], false);
+
+    render(<LibraryList />);
+
+    expect(screen.getByText("gate.title")).toBeInTheDocument();
+    expect(screen.getByText("gate.description")).toBeInTheDocument();
+    expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "list.newLibrary" }),
+    ).not.toBeInTheDocument();
   });
 });

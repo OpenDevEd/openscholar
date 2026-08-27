@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import {
   createActivatedSetupFixture,
+  createDraftSetupFixture,
   reserveLibraryAddressByName,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
@@ -110,5 +111,55 @@ describe("library overviews", () => {
       lastActivatedAt: null,
       accentColor: null,
     });
+  });
+
+  it("tells the pages whether Evidence Libraries are switched on", async () => {
+    const fixture = await createDraftSetupFixture("overview_switch");
+
+    await expect(
+      fixture.admin.query(
+        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
+        {},
+      ),
+    ).resolves.toEqual({ enabled: true });
+
+    await fixture.t.mutation(
+      internal.evidenceLibraries.devBackfill.devSetEvidenceLibrariesEnabled,
+      { clerkOrganizationId: fixture.clerkOrganizationId, enabled: false },
+    );
+
+    await expect(
+      fixture.admin.query(
+        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
+        {},
+      ),
+    ).resolves.toEqual({ enabled: false });
+  });
+
+  it("answers 'off' when the token role no longer matches the stored role", async () => {
+    const fixture = await createDraftSetupFixture("overview_switch_role");
+    // The stored membership is an admin; the token claims plain membership.
+    const drifted = fixture.t.withIdentity({
+      subject: fixture.clerkUserId,
+      o: { id: fixture.clerkOrganizationId, rol: "org:member" },
+    });
+
+    await expect(
+      drifted.query(
+        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
+        {},
+      ),
+    ).resolves.toEqual({ enabled: false });
+  });
+
+  it("answers 'off' instead of throwing when nobody is signed in", async () => {
+    const fixture = await createDraftSetupFixture("overview_switch_anon");
+
+    await expect(
+      fixture.t.query(
+        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
+        {},
+      ),
+    ).resolves.toEqual({ enabled: false });
   });
 });

@@ -20,6 +20,7 @@ async function seedLibrary(role: "org:admin" | "org:member") {
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
+      evidenceLibrariesEnabled: true,
     });
     await ctx.db.insert("organizationMemberships", {
       organizationId,
@@ -225,7 +226,7 @@ describe("Evidence Library uploads", () => {
     expect(store.objects.size).toBe(0);
   });
 
-  it("refuses uploads from members and still drops the temporary file", async () => {
+  it("refuses uploads from members and changes nothing at all", async () => {
     const store = stubFileStore();
     const { caller, libraryId, t } = await seedLibrary("org:member");
     const storageId = await t.run((ctx) =>
@@ -239,7 +240,32 @@ describe("Evidence Library uploads", () => {
         storageId,
       }),
     ).rejects.toThrow(/access denied/);
-    expect(await t.run((ctx) => ctx.storage.get(storageId))).toBeNull();
+    // A refused caller must not cause any write, not even the cleanup delete.
+    const stillThere = await t.run(
+      async (ctx) => (await ctx.storage.get(storageId)) !== null,
+    );
+    expect(stillThere).toBe(true);
+    expect(store.objects.size).toBe(0);
+  });
+
+  it("still drops the temporary file when an allowed upload is rejected", async () => {
+    const store = stubFileStore();
+    const { caller, libraryId, t } = await seedLibrary("org:admin");
+    const storageId = await t.run((ctx) =>
+      ctx.storage.store(new Blob(["x"], { type: "text/plain" })),
+    );
+    await expect(
+      caller.action(api.evidenceLibraries.uploadActions.upload, {
+        libraryId,
+        kind: "image",
+        name: "logo.png",
+        storageId,
+      }),
+    ).rejects.toThrow(/VALIDATION_ERROR/);
+    const deleted = await t.run(
+      async (ctx) => (await ctx.storage.get(storageId)) === null,
+    );
+    expect(deleted).toBe(true);
     expect(store.objects.size).toBe(0);
   });
 
