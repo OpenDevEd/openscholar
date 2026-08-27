@@ -2,11 +2,11 @@
 
 import { useOrganization } from "@clerk/nextjs";
 import { useAction } from "convex/react";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,19 @@ type Reserved = {
   shortName: string;
   publicAddress: string;
 };
+
+// What the server says about the typed name. The form never guesses.
+type AddressCheck =
+  | { status: "checking"; name: string }
+  | { status: "available"; name: string; publicAddress: string }
+  | {
+      status: "name-taken";
+      name: string;
+      libraryId: Id<"evidenceLibraries">;
+    }
+  | { status: "failed"; name: string; reason: "check-failed" | "no-address" };
+
+const CHECK_DELAY_MS = 300;
 
 export function NewLibraryForm() {
   const t = useTranslations("evidenceLibraries.new");
@@ -68,14 +81,21 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
   const t = useTranslations("evidenceLibraries.new");
   const tc = useTranslations("common");
   const router = useRouter();
+  const checkAddress = useAction(
+    api.evidenceLibraries.addressActions.checkAddress,
+  );
   const reserveAddress = useAction(
     api.evidenceLibraries.addressActions.reserveAddress,
   );
 
   const [name, setName] = useState("");
+  const [check, setCheck] = useState<AddressCheck | null>(null);
   const [reserving, setReserving] = useState(false);
   const [reserved, setReserved] = useState<Reserved | null>(null);
   const [showNameError, setShowNameError] = useState(false);
+  // Waits for typing to pause, and ignores an answer to an older name.
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wantedName = useRef("");
 
   const trimmed = normalizeEvidenceLibraryName(name);
   // The short name follows the typed name straight away. The address is
@@ -83,8 +103,57 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
   const shortName =
     reserved?.shortName ??
     (trimmed ? createInitialEvidenceLibraryShortName(trimmed) : "");
-  const address = (reserved?.publicAddress ?? "").replace(/^https?:\/\//, "");
+  const current = check && check.name === trimmed ? check : null;
+  const address = reserved
+    ? reserved.publicAddress.replace(/^https?:\/\//, "")
+    : current?.status === "available"
+      ? current.publicAddress.replace(/^https?:\/\//, "")
+      : "";
   const nameError = showNameError && !trimmed;
+
+  function runCheck(wanted: string) {
+    wantedName.current = wanted;
+    setCheck({ status: "checking", name: wanted });
+    void checkAddress({ name: wanted })
+      .then((result) => {
+        if (wantedName.current !== wanted) return;
+        if (result.status === "available") {
+          setCheck({
+            status: "available",
+            name: wanted,
+            publicAddress: result.publicAddress,
+          });
+          return;
+        }
+        if (result.status === "name-taken") {
+          setCheck({
+            status: "name-taken",
+            name: wanted,
+            libraryId: result.libraryId,
+          });
+          return;
+        }
+        setCheck({ status: "failed", name: wanted, reason: result.reason });
+      })
+      .catch(() => {
+        if (wantedName.current !== wanted) return;
+        setCheck({ status: "failed", name: wanted, reason: "check-failed" });
+      });
+  }
+
+  function handleNameChange(value: string) {
+    setName(value);
+    setShowNameError(false);
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    const wanted = normalizeEvidenceLibraryName(value);
+    wantedName.current = wanted;
+    if (!wanted) {
+      setCheck(null);
+      return;
+    }
+    setCheck({ status: "checking", name: wanted });
+    checkTimer.current = setTimeout(() => runCheck(wanted), CHECK_DELAY_MS);
+  }
 
   function handleReserve() {
     if (reserving || reserved) return;
@@ -96,11 +165,15 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
     void reserveAddress({ name: trimmed })
       .then((result) => {
         if (result.status === "name-taken") {
-          toast.error(t("nameTaken", { name: trimmed }));
+          setCheck({
+            status: "name-taken",
+            name: trimmed,
+            libraryId: result.libraryId,
+          });
           return;
         }
         if (result.status === "unavailable") {
-          toast.error(t("checkFailed"));
+          setCheck({ status: "failed", name: trimmed, reason: result.reason });
           return;
         }
         setReserved({
@@ -113,7 +186,9 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
           description: t("reservedToastDescription", { address: result.publicAddress }),
         });
       })
-      .catch(() => toast.error(t("checkFailed")))
+      .catch(() =>
+        setCheck({ status: "failed", name: trimmed, reason: "check-failed" }),
+      )
       .finally(() => setReserving(false));
   }
 
@@ -149,7 +224,21 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
         <FieldGroup title={t("libraryTitle")} hint={t("libraryDescription")}>
           <Field
             label={t("nameLabel")}
-            error={nameError ? t("nameError") : null}
+            error={
+              nameError ? (
+                t("nameError")
+              ) : current?.status === "name-taken" ? (
+                <>
+                  {t("nameTaken", { name: trimmed })}{" "}
+                  <Link
+                    className="underline underline-offset-2"
+                    href={`/evidence-libraries/${current.libraryId}/configuration`}
+                  >
+                    {t("openExisting")}
+                  </Link>
+                </>
+              ) : null
+            }
             counter={
               // The limit appears only when it is reached.
               Array.from(name).length >= MAX_EVIDENCE_LIBRARY_NAME_LENGTH ? (
@@ -172,10 +261,7 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
                   placeholder={t("namePlaceholder")}
                   value={name}
                   aria-invalid={invalid || undefined}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    setShowNameError(false);
-                  }}
+                  onChange={(e) => handleNameChange(e.target.value)}
                 />
               )
             }
@@ -196,6 +282,11 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
             <Field
               label={t("addressLabel")}
               hint={reserved ? undefined : t("addressHint")}
+              error={
+                current?.status === "failed"
+                  ? t(current.reason === "no-address" ? "noAddress" : "checkFailed")
+                  : null
+              }
               counter={
                 reserved ? (
                   <StatusChip tone="success" role="status" data-address-state="reserved">
@@ -209,15 +300,29 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
                 <div className="flex flex-col gap-1.5 sm:flex-row">
                   <ReadOnlyValue
                     id={id}
-                    value={address || t("addressPending")}
+                    value={
+                      address ||
+                      (current?.status === "checking"
+                        ? t("checkingAddress")
+                        : t("addressPending"))
+                    }
                     locked={Boolean(reserved)}
                     className="min-w-0 flex-1"
                   />
-                  {reserved ? null : (
+                  {reserved ? null : current?.status === "failed" ? (
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={!trimmed || reserving}
+                      onClick={() => runCheck(trimmed)}
+                    >
+                      <RotateCw />
+                      {t("tryAgain")}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={current?.status !== "available" || reserving}
                       onClick={handleReserve}
                     >
                       {reserving ? <Spinner /> : <Lock />}

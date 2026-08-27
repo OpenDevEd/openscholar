@@ -2836,13 +2836,17 @@
       "addressLabel": "Public address",
       "addressHint": "Follows the name. Reserve it to make sure nobody else takes it.",
       "addressPending": "Type a name to see the address.",
+      "checkingAddress": "Checking…",
       "reserve": "Reserve address",
       "checking": "Reserving…",
       "reserved": "Reserved",
       "reservedToast": "Address reserved",
       "reservedToastDescription": "{address} is yours.",
       "nameTaken": "You already have a library named {name}.",
-      "checkFailed": "Could not check the address. Try again."
+      "openExisting": "Open it",
+      "checkFailed": "Could not check the address. Try again.",
+      "noAddress": "No address is free for this name. Try another name.",
+      "tryAgain": "Try again"
     },
     "setup": {
       "backToLibraries": "Back to libraries",
