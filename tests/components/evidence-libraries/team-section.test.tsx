@@ -65,6 +65,7 @@ describe("TeamSection", () => {
     expect(editors.getAllByRole("listitem")).toHaveLength(2);
     expect(editors.getByText("grace@example.org")).toBeInTheDocument();
     expect(editors.getByText("evidenceLibraryConfiguration.team.pending")).toBeInTheDocument();
+    expect(editors.getAllByRole("listitem")[1]).toHaveAttribute("data-pending", "true");
   });
 
   it("opens the organisation settings from the manage button", async () => {

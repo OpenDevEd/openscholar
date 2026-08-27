@@ -117,7 +117,7 @@ export const runConfigurationDeployment = internalAction({
           storage: prepared.storage,
           zoteroTranslationUrl: prepared.zoteroTranslationUrl,
           mail: optionalPlatformMailService(invalidConfiguration),
-        brand: optionalPlatformBrandAssets(invalidConfiguration),
+          brand: optionalPlatformBrandAssets(invalidConfiguration),
           zoteroGroups: prepared.zoteroGroups,
         });
         target = await ctx.runMutation(

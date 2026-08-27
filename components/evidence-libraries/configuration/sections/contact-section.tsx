@@ -22,7 +22,10 @@ import { SectionShell, type SectionProps } from "../section-shell";
 
 type LegalKind = LegalSource["kind"];
 const LEGAL_KINDS: LegalKind[] = ["none", "text", "url"];
-const RECIPIENT_KEYS = ["contactRecipient", "takedownRecipient"] as const satisfies readonly (keyof EmailDraft)[];
+const RECIPIENT_KEYS = [
+  "contactRecipient",
+  "takedownRecipient",
+] as const satisfies readonly (keyof EmailDraft)[];
 
 export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.contact");
@@ -49,10 +52,15 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
   const chooseKind = (key: LegalKey, kind: LegalKind) =>
     setLegal(
       key,
-      kind === "url" ? { kind: "url", url: "" } : kind === "text" ? { kind: "text", text: "" } : { kind: "none" },
+      kind === "url"
+        ? { kind: "url", url: "" }
+        : kind === "text"
+          ? { kind: "text", text: "" }
+          : { kind: "none" },
     );
 
-  const emailError = (value: string) => (value && !EMAIL.test(value) ? t("emailError") : null);
+  const emailError = (value: string) =>
+    value && !EMAIL.test(value) ? t("emailError") : null;
 
   return (
     <SectionShell
@@ -65,7 +73,11 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
     >
       <FieldGroup title={t("contactHeading")}>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label={t("email")} hint={t("emailHint")} error={emailError(contact.email)}>
+          <Field
+            label={t("email")}
+            hint={t("emailHint")}
+            error={emailError(contact.email)}
+          >
             {(id, invalid) => (
               <Input
                 id={id}
@@ -82,7 +94,11 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
             label={t("phone")}
             hint={t("phoneHint")}
             suffix={tf("optional")}
-            error={contact.phone && !PHONE.test(contact.phone) ? t("phoneError") : null}
+            error={
+              contact.phone && !PHONE.test(contact.phone)
+                ? t("phoneError")
+                : null
+            }
           >
             {(id, invalid) => (
               <Input
@@ -120,7 +136,12 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
         {RECIPIENT_KEYS.map((key) => {
           const value = email[key];
           return (
-            <div key={key} className="space-y-3" data-recipient={key} data-enabled={value !== null}>
+            <div
+              key={key}
+              className="space-y-3"
+              data-recipient={key}
+              data-enabled={value !== null}
+            >
               <ToggleRow
                 label={t(`${key}Label`)}
                 hint={t(`${key}Hint`)}
@@ -128,23 +149,25 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
                 onChange={(on) => setEmail(key, on ? "" : null)}
               />
               {value !== null ? (
-                <Field
-                  label={t(`${key}`)}
-                  className="max-w-sm"
-                  error={!EMAIL.test(value) ? t("emailError") : null}
-                >
-                  {(id, invalid) => (
-                    <Input
-                      id={id}
-                      type="email"
-                      className="bg-background"
-                      value={value}
-                      placeholder="name@example.org"
-                      aria-invalid={invalid || undefined}
-                      onChange={(e) => setEmail(key, e.target.value)}
-                    />
-                  )}
-                </Field>
+                <Panel tone="muted" className="ml-4">
+                  <Field
+                    label={t(`${key}`)}
+                    className="max-w-sm"
+                    error={!EMAIL.test(value) ? t("emailError") : null}
+                  >
+                    {(id, invalid) => (
+                      <Input
+                        id={id}
+                        type="email"
+                        className="bg-background"
+                        value={value}
+                        placeholder="name@example.org"
+                        aria-invalid={invalid || undefined}
+                        onChange={(e) => setEmail(key, e.target.value)}
+                      />
+                    )}
+                  </Field>
+                </Panel>
               ) : null}
             </div>
           );
@@ -168,7 +191,11 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
                   value={source.kind}
                   onValueChange={(kind) => chooseKind(key, kind as LegalKind)}
                 >
-                  <TabsList aria-label={t("legalSourceLabel", { page: t(`legal.${key}`) })}>
+                  <TabsList
+                    aria-label={t("legalSourceLabel", {
+                      page: t(`legal.${key}`),
+                    })}
+                  >
                     {LEGAL_KINDS.map((kind) => (
                       <TabsTrigger key={kind} value={kind}>
                         {t(`legalKinds.${kind}`)}
@@ -182,13 +209,17 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
                   label={t("legalFile")}
                   required
                   value={source.text || null}
-                  onChange={(text) => setLegal(key, { kind: "text", text: text ?? "" })}
+                  onChange={(text) =>
+                    setLegal(key, { kind: "text", text: text ?? "" })
+                  }
                 />
               ) : null}
               {source.kind === "url" ? (
                 <Field
                   label={t("legalUrl")}
-                  error={!HTTPS_URL.test(source.url) ? t("legalUrlError") : null}
+                  error={
+                    !HTTPS_URL.test(source.url) ? t("legalUrlError") : null
+                  }
                 >
                   {(id, invalid) => (
                     <Input
@@ -198,13 +229,17 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
                       inputMode="url"
                       placeholder="https://"
                       aria-invalid={invalid || undefined}
-                      onChange={(e) => setLegal(key, { kind: "url", url: e.target.value })}
+                      onChange={(e) =>
+                        setLegal(key, { kind: "url", url: e.target.value })
+                      }
                     />
                   )}
                 </Field>
               ) : null}
               {source.kind === "none" ? (
-                <p className="text-xs text-muted-foreground">{t("legalNone")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("legalNone")}
+                </p>
               ) : null}
             </Panel>
           );

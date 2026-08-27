@@ -10,7 +10,7 @@ import {
   MEASUREMENT_ID,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { Field } from "../section-card";
-import { ToggleRow } from "../fields";
+import { FieldGroup, Panel, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 
 /** PostHog and Google Analytics are independent; both may be on at once. */
@@ -18,7 +18,10 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.analytics");
   const analytics = draft.analytics;
 
-  const set = <P extends keyof AnalyticsDraft, K extends keyof AnalyticsDraft[P]>(
+  const set = <
+    P extends keyof AnalyticsDraft,
+    K extends keyof AnalyticsDraft[P],
+  >(
     provider: P,
     key: K,
     value: AnalyticsDraft[P][K],
@@ -37,7 +40,11 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
       saved={saved}
       reset={reset}
     >
-      <div className="space-y-3" data-analytics="posthog" data-enabled={analytics.posthog.enabled}>
+      <FieldGroup
+        title={t("posthogLabel")}
+        data-analytics="posthog"
+        data-enabled={analytics.posthog.enabled}
+      >
         <ToggleRow
           label={t("posthogLabel")}
           hint={t("posthogHint")}
@@ -45,11 +52,13 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
           onChange={(enabled) => set("posthog", "enabled", enabled)}
         />
         {analytics.posthog.enabled ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <Panel tone="muted" className="ml-4 grid gap-4 sm:grid-cols-2">
             <Field
               label={t("hostLabel")}
               hint={t("hostHint")}
-              error={!HTTPS_URL.test(analytics.posthog.host) ? t("hostError") : null}
+              error={
+                !HTTPS_URL.test(analytics.posthog.host) ? t("hostError") : null
+              }
             >
               {(id, invalid) => (
                 <Input
@@ -65,7 +74,9 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
             <Field
               label={t("keyLabel")}
               hint={t("keyHint")}
-              error={!isPosthogKey(analytics.posthog.key) ? t("keyError") : null}
+              error={
+                !isPosthogKey(analytics.posthog.key) ? t("keyError") : null
+              }
             >
               {(id, invalid) => (
                 <Input
@@ -79,11 +90,15 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
                 />
               )}
             </Field>
-          </div>
+          </Panel>
         ) : null}
-      </div>
+      </FieldGroup>
 
-      <div className="space-y-3" data-analytics="google" data-enabled={analytics.google.enabled}>
+      <FieldGroup
+        title={t("googleLabel")}
+        data-analytics="google"
+        data-enabled={analytics.google.enabled}
+      >
         <ToggleRow
           label={t("googleLabel")}
           hint={t("googleHint")}
@@ -91,25 +106,37 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
           onChange={(enabled) => set("google", "enabled", enabled)}
         />
         {analytics.google.enabled ? (
-          <Field
-            label={t("measurementIdLabel")}
-            hint={t("measurementIdHint")}
-            className="max-w-xs"
-            error={!MEASUREMENT_ID.test(analytics.google.measurementId) ? t("measurementIdError") : null}
-          >
-            {(id, invalid) => (
-              <Input
-                id={id}
-                className="bg-background font-mono text-sm"
-                value={analytics.google.measurementId}
-                placeholder="G-XXXXXXXXXX"
-                aria-invalid={invalid || undefined}
-                onChange={(e) => set("google", "measurementId", e.target.value.trim().toUpperCase())}
-              />
-            )}
-          </Field>
+          <Panel tone="muted" className="ml-4">
+            <Field
+              label={t("measurementIdLabel")}
+              hint={t("measurementIdHint")}
+              className="max-w-xs"
+              error={
+                !MEASUREMENT_ID.test(analytics.google.measurementId)
+                  ? t("measurementIdError")
+                  : null
+              }
+            >
+              {(id, invalid) => (
+                <Input
+                  id={id}
+                  className="bg-background font-mono text-sm"
+                  value={analytics.google.measurementId}
+                  placeholder="G-XXXXXXXXXX"
+                  aria-invalid={invalid || undefined}
+                  onChange={(e) =>
+                    set(
+                      "google",
+                      "measurementId",
+                      e.target.value.trim().toUpperCase(),
+                    )
+                  }
+                />
+              )}
+            </Field>
+          </Panel>
         ) : null}
-      </div>
+      </FieldGroup>
     </SectionShell>
   );
 }

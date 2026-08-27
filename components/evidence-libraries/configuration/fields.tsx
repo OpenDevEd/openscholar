@@ -71,7 +71,6 @@ export function UploadField({
   kind,
   value,
   onChange,
-  required,
   optional,
   className,
 }: {
@@ -81,8 +80,6 @@ export function UploadField({
   /** Public URL of the stored file, or null when empty. */
   value: string | null;
   onChange: (url: string | null) => void;
-  /** Show the "missing" error when empty. */
-  required?: boolean;
   optional?: boolean;
   className?: string;
 }) {
@@ -134,8 +131,6 @@ export function UploadField({
         ? t("tooBig", { max: formatBytes(maxBytes) })
         : error === "failed"
           ? t("uploadFailed")
-          : required && !value && !uploading
-          ? t("required")
           : null;
 
   return (
