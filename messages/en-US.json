@@ -2655,7 +2655,7 @@
       "editorsHint": "Members of {org}. They edit records in the library's admin.",
       "noOwners": "No owners yet.",
       "noEditors": "No editors yet.",
-      "pending": "Invited person",
+      "pending": "Pending",
       "manageButton": "Manage people"
     },
     "citations": {
