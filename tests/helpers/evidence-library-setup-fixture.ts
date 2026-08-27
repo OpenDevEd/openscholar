@@ -27,7 +27,9 @@ export const essentialSetupSections = {
   footer: { poweredBy: true },
 };
 
-export async function createActivatedSetupFixture(suffix: string) {
+// A library the Owner has named but not activated: its setup operation is
+// queued and has never started.
+export async function createDraftSetupFixture(suffix: string) {
   const t = convexTest(schema, modules);
   const clerkOrganizationId = `org_${suffix}`;
   const clerkUserId = `user_${suffix}`;
@@ -63,6 +65,20 @@ export async function createActivatedSetupFixture(suffix: string) {
     api.evidenceLibraries.mutations.createSetupDraft,
     { name: essentialSetupSections.identity.name },
   );
+  return {
+    admin,
+    clerkOrganizationId,
+    clerkUserId,
+    created,
+    membershipId,
+    organizationId,
+    t,
+  };
+}
+
+export async function createActivatedSetupFixture(suffix: string) {
+  const draft = await createDraftSetupFixture(suffix);
+  const { admin, created, t } = draft;
   const saved = await admin.mutation(
     api.evidenceLibraries.mutations.saveDraftSections,
     {
@@ -83,14 +99,8 @@ export async function createActivatedSetupFixture(suffix: string) {
     throw new Error("Activated setup did not start an attempt");
   }
   return {
+    ...draft,
     activated,
-    admin,
-    clerkOrganizationId,
-    clerkUserId,
-    created,
-    membershipId,
-    organizationId,
-    t,
     attemptToken: operation.setupAttemptToken,
     attemptCount: operation.attemptCount,
   };
