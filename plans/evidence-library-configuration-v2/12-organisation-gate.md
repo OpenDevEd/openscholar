@@ -187,6 +187,11 @@ required).
 4. Follow-up change: make `evidenceLibrariesEnabled` required in
    `organizationFields` and delete `convex/evidenceLibraries/devBackfill.ts`.
 
+The end-to-end test `e2e/auth.spec.ts` ("an owner can save and reopen
+essential library configuration") creates a library, so the organisation the
+E2E user belongs to must be switched on in Clerk before that test can pass.
+Its texts do not change, so the spec itself is untouched.
+
 ## Known risks
 
 - Between step 1 and step 3 every organisation is off, so owners see the
