@@ -45,7 +45,6 @@ export function CitationsSection({ draft, saved, patch, reset }: SectionProps) {
                 <Input
                   id={id}
                   data-format={format}
-                  type="url"
                   inputMode="url"
                   className="bg-background font-mono text-sm"
                   value={url}

@@ -793,6 +793,10 @@ describe("changedSectionRows for the platform sections", () => {
     const baseUrl = "https://saved-library.libraries.example.test";
     expect(isExportUrl("https://feeds.example.test/library.ris", baseUrl)).toBe(true);
     expect(isExportUrl(`${baseUrl}/lib/export/ris`, baseUrl)).toBe(false);
+    expect(isExportUrl(baseUrl, baseUrl)).toBe(false);
+    expect(isExportUrl(`${baseUrl}/`, baseUrl)).toBe(false);
+    expect(isExportUrl(`${baseUrl}/lib/export/ris`, `${baseUrl}/`)).toBe(false);
+    expect(isExportUrl(`${baseUrl}.evil.test/x`, baseUrl)).toBe(true);
     expect(isExportUrl("http://feeds.example.test/library.ris", baseUrl)).toBe(false);
     expect(isExportUrl(`https://feeds.example.test/${"a".repeat(2048)}`, baseUrl)).toBe(false);
   });

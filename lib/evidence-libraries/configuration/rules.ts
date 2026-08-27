@@ -192,7 +192,7 @@ export const LOCALES = schemaEnum<"en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" 
 );
 export type Locale = (typeof LOCALES)[number];
 export const EXPORT_FORMATS = ["ris", "bibtex", "atom"] as const;
-export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+type ExportFormat = (typeof EXPORT_FORMATS)[number];
 const EXPORT_URL_MAX_LENGTH = schemaNumber("/exports/ris", "maxLength");
 /**
  * An export address the runtime accepts. The runtime fetches this outside file
@@ -203,7 +203,9 @@ const EXPORT_URL_MAX_LENGTH = schemaNumber("/exports/ris", "maxLength");
 export const isExportUrl = (url: string, baseUrl: string) => {
   if (!HTTPS_URL.test(url) || url.length > EXPORT_URL_MAX_LENGTH) return false;
   const origin = baseUrl.replace(/\/+$/, "").toLowerCase();
-  return origin === "" || !url.toLowerCase().startsWith(`${origin}/`);
+  if (origin === "") return true;
+  const candidate = url.replace(/\/+$/, "").toLowerCase();
+  return candidate !== origin && !candidate.startsWith(`${origin}/`);
 };
 const POSTHOG_KEY_PATTERN = schemaPattern("/analytics/posthog/key");
 const POSTHOG_KEY_MIN_LENGTH = (() => {
