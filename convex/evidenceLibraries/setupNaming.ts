@@ -1,8 +1,8 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
+  createEvidenceLibraryAddressCandidate,
   createEvidenceLibraryBaseSlug,
-  createEvidenceLibraryPublicAddress,
   createEvidenceLibrarySlugCandidate,
   createInitialEvidenceLibraryShortName,
   EVIDENCE_LIBRARY_PLATFORM_DOMAIN_ENV,
@@ -84,9 +84,10 @@ export async function findAvailableEvidenceLibrarySetupIdentity(
     position += 1
   ) {
     const slug = createEvidenceLibrarySlugCandidate(baseSlug, position);
-    const publicAddress = createEvidenceLibraryPublicAddress(
-      slug,
+    const publicAddress = createEvidenceLibraryAddressCandidate(
+      name,
       platformDomain,
+      position,
     );
     const [library, runtimeBinding] = await Promise.all([
       ctx.db

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createEvidenceLibraryAddressCandidate,
   createEvidenceLibraryBaseSlug,
   createEvidenceLibraryPublicAddress,
   createEvidenceLibrarySlugCandidate,
@@ -43,6 +44,15 @@ describe("Evidence Library setup naming", () => {
     expect(() =>
       createEvidenceLibrarySlugCandidate("climate-evidence", 101),
     ).toThrow(/between 1 and 100/);
+  });
+
+  it("builds the address a typed name gets, with a number only after position 1", () => {
+    expect(
+      createEvidenceLibraryAddressCandidate("Climate & Evidence ", TEST_PLATFORM_DOMAIN),
+    ).toBe("https://climate-and-evidence-lib.libraries.example.test");
+    expect(
+      createEvidenceLibraryAddressCandidate("Climate Evidence", TEST_PLATFORM_DOMAIN, 2),
+    ).toBe("https://climate-evidence-2-lib.libraries.example.test");
   });
 
   it("builds an address from a validated server domain", () => {

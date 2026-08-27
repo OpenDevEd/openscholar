@@ -102,3 +102,18 @@ export function createEvidenceLibraryPublicAddress(
   }
   return `https://${hostname}`;
 }
+
+// The address a name gets at a given position. Position 1 has no number
+// suffix. The server walks positions until one is free; the new-library form
+// shows position 1 instantly and swaps in the server answer if it differs.
+export function createEvidenceLibraryAddressCandidate(
+  name: string,
+  platformDomain: string,
+  position = 1,
+): string {
+  const slug = createEvidenceLibrarySlugCandidate(
+    createEvidenceLibraryBaseSlug(name),
+    position,
+  );
+  return createEvidenceLibraryPublicAddress(slug, platformDomain);
+}
