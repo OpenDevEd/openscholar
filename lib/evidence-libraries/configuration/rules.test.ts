@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cardForRow,
   collectionOptions,
-  exportUrl,
+  isExportUrl,
   featureBlock,
   settleFeatures,
   SEARCH_SCOPES,
@@ -699,7 +699,7 @@ const platformRows = [
   { sectionKey: "filters", payload: { years: { enabled: false } } },
   { sectionKey: "features", payload: { collections: true, collectionNotes: true, downloads: true } },
   { sectionKey: "citations", payload: { showUrl: true } },
-  { sectionKey: "exports", payload: { ris: "https://saved-library.libraries.example.test/lib/export/ris" } },
+  { sectionKey: "exports", payload: { ris: "https://api.zotero.org/groups/1/items?format=ris" } },
   { sectionKey: "localization", payload: { locales: ["fr", "en-GB"], defaultLocale: "en-GB", localePriority: ["en-GB"] } },
   { sectionKey: "analytics", payload: { posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" } } },
 ] as const;
@@ -708,7 +708,7 @@ describe("readDraft for the platform sections", () => {
   it("reads export switches, languages and the analytics provider", () => {
     const draft = readDraft(platformRows);
     expect(draft.citations.showUrl).toBe(true);
-    expect(draft.exports).toEqual({ ris: true, bibtex: false, atom: false });
+    expect(draft.exports).toEqual({ ris: "https://api.zotero.org/groups/1/items?format=ris", bibtex: "", atom: "" });
     expect(draft.localization).toEqual({
       locales: ["fr", "en-GB"],
       defaultLocale: "en-GB",
@@ -722,7 +722,7 @@ describe("readDraft for the platform sections", () => {
     });
     expect(readDraft(savedRows).analytics.posthog.host).toBe("");
     expect(readDraft(savedRows).analytics.provider).toBe("none");
-    expect(readDraft(savedRows).exports).toEqual({ ris: false, bibtex: false, atom: false });
+    expect(readDraft(savedRows).exports).toEqual({ ris: "", bibtex: "", atom: "" });
   });
 });
 
@@ -735,14 +735,17 @@ describe("feature rules", () => {
     expect(featureBlock(draft, "downloads")).toBeNull();
     expect(featureBlock(draft, "languageSwitcher")).toBeNull();
     expect(sectionProblems(draft, "features")).toEqual([]);
-    draft.exports.ris = false;
+    draft.exports.ris = "";
     expect(featureBlock(draft, "downloads")).toEqual({ kind: "exports" });
     expect(sectionProblems(draft, "features")).toEqual(["featureDependency"]);
+    draft.exports.ris = "not a url";
+    expect(featureBlock(draft, "downloads")).toEqual({ kind: "exports" });
+    expect(sectionProblems(draft, "citations")).toEqual(["exportUrl"]);
   });
 
   it("turns dependants off when a reset takes their requirement away", () => {
     const draft = readDraft(platformRows);
-    draft.exports.atom = true;
+    draft.exports.atom = "https://feeds.example.test/library.atom";
     draft.features.atomFeed = true;
     draft.localization.locales = ["en-GB", "fr"];
     draft.features.languageSwitcher = true;
@@ -760,7 +763,7 @@ describe("feature rules", () => {
   it("turns dependent features off when their requirement goes away", () => {
     const draft = readDraft(platformRows);
     draft.features.collections = false;
-    draft.exports.ris = false;
+    draft.exports.ris = "";
     settleFeatures(draft);
     expect(draft.features.collectionNotes).toBe(false);
     expect(draft.features.downloads).toBe(false);
@@ -769,9 +772,9 @@ describe("feature rules", () => {
 });
 
 describe("changedSectionRows for the platform sections", () => {
-  it("writes export URLs from the public address when a format is on", () => {
+  it("saves the typed export file addresses and leaves empty formats out", () => {
     const draft = readDraft(platformRows);
-    draft.exports.atom = true;
+    draft.exports.atom = "https://feeds.example.test/library.atom";
     draft.citations.showUrl = false;
     const rows = changedSectionRows(draft, platformRows);
     expect(rows).toEqual([
@@ -779,12 +782,19 @@ describe("changedSectionRows for the platform sections", () => {
       {
         sectionKey: "exports",
         payload: {
-          ris: "https://saved-library.libraries.example.test/lib/export/ris",
-          atom: "https://saved-library.libraries.example.test/lib/atom.xml",
+          ris: "https://api.zotero.org/groups/1/items?format=ris",
+          atom: "https://feeds.example.test/library.atom",
         },
       },
     ]);
-    expect(exportUrl("https://x.test/", "bibtex")).toBe("https://x.test/lib/export/bibtex");
+  });
+
+  it("refuses an export address that points back at the library itself", () => {
+    const baseUrl = "https://saved-library.libraries.example.test";
+    expect(isExportUrl("https://feeds.example.test/library.ris", baseUrl)).toBe(true);
+    expect(isExportUrl(`${baseUrl}/lib/export/ris`, baseUrl)).toBe(false);
+    expect(isExportUrl("http://feeds.example.test/library.ris", baseUrl)).toBe(false);
+    expect(isExportUrl(`https://feeds.example.test/${"a".repeat(2048)}`, baseUrl)).toBe(false);
   });
 
   it("keeps the navbar search flag on the Navigation card and the rest on Features", () => {
