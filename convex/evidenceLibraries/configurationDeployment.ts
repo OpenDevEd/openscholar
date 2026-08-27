@@ -26,6 +26,7 @@ import {
   STORAGE_SERVICE_KEY_PATH,
 } from "./runtimeCredentials";
 import {
+  evidenceLibraryAddressMoveValidator,
   evidenceLibraryConfigurationDeploymentTargetValidator,
   evidenceLibraryOperationFailureValidator,
   evidenceLibraryRuntimeUpdateValidator,
@@ -56,15 +57,16 @@ function isReadyRuntimeBinding(
   return binding.state === "ready" && "targetRuntimeId" in binding;
 }
 
-// A publish operation the pipeline owns: either an activation of a draft
-// edit or a runtime update of the active revision.
+// A publish operation the pipeline owns: an activation of a draft edit, a
+// runtime update of the active revision, or a move to a new address.
 export function isConfigurationDeploymentOperation(
   operation: Doc<"evidenceLibraryConfigOperations">,
 ): boolean {
   return (
     operation.kind === "publish" &&
     (operation.activationEditVersion !== undefined ||
-      operation.runtimeUpdate !== undefined)
+      operation.runtimeUpdate !== undefined ||
+      operation.addressMove !== undefined)
   );
 }
 
@@ -347,6 +349,7 @@ export const prepareConfigurationDeployment = internalMutation({
     v.object({
       state: v.literal("new"),
       runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
+      addressMove: v.optional(evidenceLibraryAddressMoveValidator),
       applicationId: v.string(),
       targetBaseUrl: v.string(),
       revision: v.object({ key: v.string(), createdAt: v.number() }),
@@ -508,6 +511,9 @@ export const prepareConfigurationDeployment = internalMutation({
     return {
       state: "new" as const,
       ...(runtimeUpdate ? { runtimeUpdate } : {}),
+      ...(deployment.operation.addressMove
+        ? { addressMove: deployment.operation.addressMove }
+        : {}),
       applicationId: deployment.runtimeBinding.targetRuntimeId,
       targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
       revision: {
@@ -919,6 +925,9 @@ export const completeConfigurationDeployment = internalMutation({
     await ctx.db.patch(deployment.runtimeBinding._id, {
       runtimeCommit: receipt.runtimeCommit,
       lastVerifiedAt: args.checkedAt,
+      // Readiness just read our own health answer at this address.
+      addressState: "ours",
+      addressCheckedAt: args.checkedAt,
       updatedAt: now,
     });
     await ctx.db.patch(deployment.library._id, {

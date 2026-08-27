@@ -25,10 +25,19 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// The library's own health answer, so the address counts as ours.
+const OUR_HEALTH_ANSWER = () =>
+  jsonResponse({
+    state: "active",
+    active: { revision: "r2", schemaVersion: 1 },
+    rejected: null,
+  });
+
 function createGithub(input: {
   latest: string;
   compareStatus?: number;
   commitsStatus?: number;
+  addressAnswer?: Response;
 }) {
   const requests: RecordedRequest[] = [];
   const fetchImpl: typeof fetch = vi.fn(
@@ -40,6 +49,9 @@ function createGithub(input: {
             ? requestInput.href
             : requestInput.url,
       );
+      if (url.pathname === "/api/library-config/health") {
+        return input.addressAnswer ?? OUR_HEALTH_ANSWER();
+      }
       requests.push({ url, headers: new Headers(init?.headers) });
       if (url.origin !== GITHUB) {
         return jsonResponse({ message: "Unexpected test request" }, 500);
@@ -194,6 +206,7 @@ describe("Evidence Library update check", () => {
         { sha: "d".repeat(40), message: "fix: trim whitespace" },
       ],
       checkedAt: Date.now(),
+      addressState: "ours",
     });
     expect(github.requests).toHaveLength(2);
 
@@ -337,7 +350,9 @@ describe("Evidence Library address notices", () => {
 
     await expect(
       fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([{ libraryId: fixture.created.libraryId, movedTo }]);
+    ).resolves.toEqual([
+      { libraryId: fixture.created.libraryId, movedTo, addressState: null },
+    ]);
   });
 
   it("says nothing once the library is live at its address", async () => {
@@ -353,6 +368,78 @@ describe("Evidence Library address notices", () => {
       });
     });
 
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
+    ).resolves.toEqual([]);
+  });
+});
+
+describe("Evidence Library address ownership check", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+    vi.stubEnv("GITHUB_TOKEN", "github-token");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("stores that another site answers the address and tells the list", async () => {
+    const fixture = await createReadySetupFixture("address-not-ours");
+    const github = createGithub({
+      latest: LATEST,
+      addressAnswer: new Response("<!doctype html><title>Other</title>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    });
+    vi.stubGlobal("fetch", github.fetchImpl);
+
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.updates.check, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ addressState: "not-ours" });
+
+    const binding = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    expect(binding).toMatchObject({ addressState: "not-ours" });
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
+    ).resolves.toEqual([
+      {
+        libraryId: fixture.created.libraryId,
+        movedTo: null,
+        addressState: "not-ours",
+      },
+    ]);
+  });
+
+  it("stores an address that nothing answers as unreachable", async () => {
+    const fixture = await createReadySetupFixture("address-unreachable");
+    const github = createGithub({
+      latest: LATEST,
+      addressAnswer: new Response("no available server", { status: 503 }),
+    });
+    vi.stubGlobal("fetch", github.fetchImpl);
+
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.updates.check, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ addressState: "unreachable" });
+  });
+
+  it("says nothing to the list while the address answers as ours", async () => {
+    const fixture = await createReadySetupFixture("address-ours");
+    const github = createGithub({ latest: LATEST });
+    vi.stubGlobal("fetch", github.fetchImpl);
+
+    await fixture.admin.action(api.evidenceLibraries.updates.check, {
+      libraryId: fixture.created.libraryId,
+    });
     await expect(
       fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
     ).resolves.toEqual([]);

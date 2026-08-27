@@ -217,9 +217,19 @@ export const evidenceLibraryOperationFailureValidator = v.object({
   issues: v.optional(v.array(configurationIssueValidator)),
 });
 
+// Who answers the public address, from the last check. "not-ours" means
+// another site holds it; "unreachable" means nothing answered.
+export const evidenceLibraryAddressStateValidator = v.union(
+  v.literal("ours"),
+  v.literal("not-ours"),
+  v.literal("unreachable"),
+);
+
 const evidenceLibraryRuntimeBindingBaseFields = {
   libraryId: v.id("evidenceLibraries"),
   targetBaseUrl: v.string(),
+  addressState: v.optional(evidenceLibraryAddressStateValidator),
+  addressCheckedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

@@ -238,6 +238,27 @@ export async function queueRuntimeUpdateOperation(
   return await queueOperationRecord(ctx, { ...args, kind: "publish" });
 }
 
+// An address move publishes the active revision again at a new address. No
+// draft edit happened, so it carries the pair of addresses instead of an
+// activation edit version.
+export async function queueAddressMoveOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    idempotencyKey: string;
+    revisionId: Id<"evidenceLibraryConfigRevisions">;
+    addressMove: { from: string; to: string; movedAt: number; count: number };
+  },
+) {
+  const { addressMove, ...record } = args;
+  const queued = await queueOperationRecord(ctx, {
+    ...record,
+    kind: "publish",
+  });
+  await ctx.db.patch(queued.operationId, { addressMove });
+  return queued;
+}
+
 export async function attachRevisionToSetupOperation(
   ctx: MutationCtx,
   args: {

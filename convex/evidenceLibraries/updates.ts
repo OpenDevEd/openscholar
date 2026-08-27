@@ -12,6 +12,11 @@ import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import { readEvidenceLibraries } from "./queries";
 import {
+  probeEvidenceLibraryAddress,
+  type EvidenceLibraryAddressState,
+} from "./readinessClient";
+import { evidenceLibraryAddressStateValidator } from "./validators";
+import {
   fetchRuntimeRelease,
   isFreshRuntimeRelease,
   RuntimeReleaseError,
@@ -25,6 +30,16 @@ const runtimeUpdateStateValidator = v.object({
   checkedAt: v.number(),
 });
 
+// What the configuration page reads when it opens: the software the library
+// runs, and who answers its public address.
+const libraryCheckValidator = v.object({
+  running: v.string(),
+  latest: v.string(),
+  changes: v.array(runtimeReleaseChangeValidator),
+  checkedAt: v.number(),
+  addressState: evidenceLibraryAddressStateValidator,
+});
+
 type RuntimeUpdateState = {
   running: string;
   latest: string;
@@ -32,10 +47,16 @@ type RuntimeUpdateState = {
   checkedAt: number;
 };
 
+type LibraryCheckState = RuntimeUpdateState & {
+  addressState: EvidenceLibraryAddressState;
+};
+
 export const readRunningRelease = internalQuery({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({
     running: v.string(),
+    bindingId: v.id("evidenceLibraryRuntimeBindings"),
+    targetBaseUrl: v.string(),
     cached: v.union(v.null(), runtimeUpdateStateValidator),
   }),
   handler: async (ctx, args) => {
@@ -61,6 +82,8 @@ export const readRunningRelease = internalQuery({
       .first();
     return {
       running,
+      bindingId: binding._id,
+      targetBaseUrl: binding.targetBaseUrl,
       cached:
         cached && isFreshRuntimeRelease(cached.checkedAt, Date.now())
           ? {
@@ -125,45 +148,94 @@ async function refreshRuntimeRelease(
   return state;
 }
 
-// Called when the configuration page opens. Answers from the release row
-// when it is under ten minutes old, otherwise asks GitHub and saves the row.
+export const saveAddressState = internalMutation({
+  args: {
+    bindingId: v.id("evidenceLibraryRuntimeBindings"),
+    addressState: evidenceLibraryAddressStateValidator,
+    checkedAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // `updatedAt` stays as it is: a running publish compares it against the
+    // binding it started from.
+    await ctx.db.patch(args.bindingId, {
+      addressState: args.addressState,
+      addressCheckedAt: args.checkedAt,
+    });
+    return null;
+  },
+});
+
+/**
+ * Called when the configuration page opens. The software answer comes from
+ * the release row while it is under ten minutes old; the address is asked
+ * every time, because an address can be taken over at any moment.
+ */
 export const check = action({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: runtimeUpdateStateValidator,
-  handler: async (ctx, args): Promise<RuntimeUpdateState> => {
+  returns: libraryCheckValidator,
+  handler: async (ctx, args): Promise<LibraryCheckState> => {
     const state = await ctx.runQuery(
       internal.evidenceLibraries.updates.readRunningRelease,
       args,
     );
-    if (state.cached) return state.cached;
-    return await refreshRuntimeRelease(ctx, state.running);
+    const address = await probeEvidenceLibraryAddress({
+      targetBaseUrl: state.targetBaseUrl,
+    });
+    await ctx.runMutation(
+      internal.evidenceLibraries.updates.saveAddressState,
+      {
+        bindingId: state.bindingId,
+        addressState: address.state,
+        checkedAt: Date.now(),
+      },
+    );
+    const release =
+      state.cached ?? (await refreshRuntimeRelease(ctx, state.running));
+    return { ...release, addressState: address.state };
   },
 });
 
 /**
  * What the library list has to say about addresses. A library that is still
  * setting up reports the address the platform moved it to, so the owner sees
- * why it is not the one they reserved.
+ * why it is not the one they reserved. A live library reports its address
+ * only when the last check found somebody else there, or nobody at all.
  */
 export const listAddressNotices = query({
   args: {},
   returns: v.array(
     v.object({
       libraryId: v.id("evidenceLibraries"),
-      movedTo: v.string(),
+      movedTo: v.union(v.string(), v.null()),
+      addressState: v.union(evidenceLibraryAddressStateValidator, v.null()),
     }),
   ),
   handler: async (ctx) => {
     const libraries = await readEvidenceLibraries(ctx);
     const notices = await Promise.all(
       libraries.map(async (library) => {
-        if (library.state === "active" || !library.setupOperationId) return null;
+        if (library.state === "active") {
+          const binding = library.runtimeBindingId
+            ? await ctx.db.get(
+                "evidenceLibraryRuntimeBindings",
+                library.runtimeBindingId,
+              )
+            : null;
+          const addressState = binding?.addressState;
+          return addressState && addressState !== "ours"
+            ? { libraryId: library._id, movedTo: null, addressState }
+            : null;
+        }
+        if (!library.setupOperationId) return null;
         const operation = await ctx.db.get(
           "evidenceLibraryConfigOperations",
           library.setupOperationId,
         );
         const movedTo = operation?.addressMove?.to;
-        return movedTo ? { libraryId: library._id, movedTo } : null;
+        return movedTo
+          ? { libraryId: library._id, movedTo, addressState: null }
+          : null;
       }),
     );
     return notices.filter((notice) => notice !== null);

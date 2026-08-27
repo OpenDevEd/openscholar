@@ -1676,6 +1676,64 @@ export function createCoolifyClient(input: {
       };
     },
 
+    /**
+     * Serves the bound application on another address. Used when the old
+     * address turned out to be served by something else. Nothing is deployed
+     * here; the next deployment picks the domain up. Running it twice is
+     * safe: an application already on the new address is left alone.
+     */
+    async setApplicationDomain(input: {
+      applicationUuid: string;
+      libraryId: Id<"evidenceLibraries">;
+      currentPublicDomain: string;
+      nextPublicDomain: string;
+    }): Promise<CoolifyBoundApplication> {
+      const applicationUuid = requireInputIdentifier(
+        "Coolify application UUID",
+        input.applicationUuid,
+      );
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const currentPublicDomain = requirePublicDomain(input.currentPublicDomain);
+      const nextPublicDomain = requirePublicDomain(input.nextPublicDomain);
+      const existing = await readApplication(client, applicationUuid);
+      const alreadyMoved = hasExpectedComposeDomain(
+        existing.composeDomains,
+        nextPublicDomain,
+      );
+      let application = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain: alreadyMoved ? nextPublicDomain : currentPublicDomain,
+      });
+      if (!alreadyMoved) {
+        parseUuidResponse(
+          await requestCoolify(client, {
+            expectedStatus: 200,
+            method: "PATCH",
+            path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
+            body: {
+              docker_compose_domains: [
+                { name: "web", domain: nextPublicDomain },
+              ],
+              force_domain_override: false,
+              instant_deploy: false,
+            },
+          }),
+          applicationUuid,
+        );
+        application = await readExpectedBoundApplication(client, {
+          applicationUuid,
+          applicationTag,
+          publicDomain: nextPublicDomain,
+        });
+      }
+      return {
+        applicationUuid,
+        runtimeCommit: application.gitCommitSha,
+        coolifyConfigHash: application.configHash,
+      };
+    },
+
     // Points the bound application at another Evidence Library commit. The
     // next deployment builds that commit. Nothing is deployed here.
     async setApplicationCommit(input: {

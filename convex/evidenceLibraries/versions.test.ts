@@ -321,3 +321,102 @@ describe("Evidence Library versions", () => {
     ]);
   });
 });
+
+describe("Evidence Library address move", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("moves a live library to the next free address and publishes it there", async () => {
+    const fixture = await createReadySetupFixture("address-live-move");
+    const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
+
+    const moved = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startAddressMove,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(moved).toMatchObject({
+      movedFrom: fixture.created.publicAddress,
+      movedTo,
+      status: "running",
+    });
+
+    const state = await fixture.t.run(async (ctx) => {
+      const binding = await ctx.db.get(fixture.created.runtimeBindingId);
+      const operation = await ctx.db.get(moved.operationId);
+      const identity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", fixture.activated.revisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      const draftIdentity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query
+            .eq("draftId", fixture.created.draftId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      return { binding, draftIdentity, identity, operation };
+    });
+    expect(state.binding).toMatchObject({ targetBaseUrl: movedTo });
+    expect(state.identity?.payload).toMatchObject({ baseUrl: movedTo });
+    expect(state.draftIdentity?.payload).toMatchObject({ baseUrl: movedTo });
+    expect(state.operation).toMatchObject({
+      kind: "publish",
+      status: "running",
+      addressMove: { from: fixture.created.publicAddress, to: movedTo },
+    });
+  });
+
+  it("refuses a second move while the first one is still running", async () => {
+    const fixture = await createReadySetupFixture("address-live-busy");
+    await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startAddressMove,
+      { libraryId: fixture.created.libraryId },
+    );
+    await expect(
+      fixture.admin.mutation(api.evidenceLibraries.versions.startAddressMove, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).rejects.toThrow(/already running/);
+  });
+
+  it("keeps the numbering going when the next address is taken", async () => {
+    const fixture = await createReadySetupFixture("address-live-taken");
+    await fixture.t.run(async (ctx) => {
+      const other = await ctx.db.insert("evidenceLibraries", {
+        organizationId: fixture.organizationId,
+        name: "Other library",
+        slug: "other-library",
+        state: "active",
+        createdByClerkUserId: fixture.clerkUserId,
+        updatedByClerkUserId: fixture.clerkUserId,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("evidenceLibraryRuntimeBindings", {
+        libraryId: other,
+        targetBaseUrl: "https://climate-evidence-2-lib.libraries.example.test",
+        state: "pending",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+
+    await expect(
+      fixture.admin.mutation(api.evidenceLibraries.versions.startAddressMove, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({
+      movedTo: "https://climate-evidence-3-lib.libraries.example.test",
+    });
+  });
+});

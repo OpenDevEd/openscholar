@@ -80,6 +80,16 @@ export const runConfigurationDeployment = internalAction({
       if (prepared.state === "saved") {
         target = prepared.target;
       } else {
+        // A move changes the address first, so every later step reads the
+        // application on the address the library is going to.
+        if (prepared.addressMove) {
+          await coolify.setApplicationDomain({
+            applicationUuid: prepared.applicationId,
+            libraryId: args.libraryId,
+            currentPublicDomain: prepared.addressMove.from,
+            nextPublicDomain: prepared.addressMove.to,
+          });
+        }
         const application = await coolify.readBoundApplication({
           applicationUuid: prepared.applicationId,
           libraryId: args.libraryId,
