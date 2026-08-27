@@ -481,3 +481,40 @@ START NOW
 Go.
 ```
 
+
+## Plan 09 — library pages
+
+```text
+Implement plans/evidence-library-configuration-v2/09-library-pages.md.
+Read plans/evidence-library-configuration-v2/00-README.md first.
+Depends on: plans 05–08 merged (they are).
+
+Repository: OpenDevEd/openalex-count. Worktree: /Users/mcharrad/Documents/Github/openscholar/pages-sprint. Branch: codex/library-pages (created from origin/dev). Assigned Convex lane: the one in the worktree .env.local (calm-labrador-815, port 3013). Target branch for the PR: dev.
+
+Design source: branch feat/library-interface-mock (origin, commit e7ad8929): app/evidence-libraries/*, components/evidence-libraries/mock/{library-list,library-status-badge,library-not-found,delete-library-dialog,new-library-form,admin-launch,mock-org-switcher}.tsx and the mock page shells. Read them with `git show origin/feat/library-interface-mock:<path>`. Mock screenshots: /tmp/shots/page2-list.png, page2-new.png, page2-setup.png, page2-admin.png.
+
+Keep working until the completion rules pass. Do not ask questions whose answers are in the plan, README, code, AGENTS.md or official docs.
+
+STANDING RULES
+1. Search before building; reuse configuration/fields.tsx controls, existing Convex queries and mutations, existing tests and fixtures.
+2. Clean breaking changes: delete the old page components you replace. No mock store, no fake data, no compatibility paths.
+3. Read convex/_generated/ai/guidelines.md before Convex edits. Upload only with `npx convex dev --once` to the lane. Never `npm run convex:push`, never touch the shared deployment, Coolify or another lane. Do not copy CONVEX_SELF_HOSTED_* values.
+4. test-decision skill and docs/test-quality.md before every test edit. Behaviour, roles, labels, data-* only.
+5. Before finishing: `npx vitest run` for touched areas, `npx tsc --noEmit` (two known errors in components/icons/openalex-icon.tsx), and the browser gate in the plan.
+6. No useEffect for app state (AGENTS.md). Next.js APIs: read node_modules/next/dist/docs/ first.
+7. Owner-facing copy follows the mock rules; six locales, English mirrored.
+
+EXECUTION RHYTHM: one page per commit (list, new, setup, admin, shell), each with its test and a lane browser check.
+
+COMMIT DISCIPLINE: conventional prefix with `[plan-09]`; stage named files; never commit failing work; never bypass hooks; push and open a PR to dev; do not merge.
+
+WHEN TO STOP: only for a missing API or unsafe bug — commit safe work, write plans/evidence-library-configuration-v2/09-BLOCKER.md, stop.
+
+DEVIATIONS: fix the plan first (`docs: [plan-09] revise <section> — <reason>`), then continue.
+
+REPORT: PR URL, commits, check tails, gate screenshots side by side with the mock, anything left out.
+
+START NOW: read the plan, README, AGENTS.md; `git status`; confirm the lane in .env.local; start with the list page.
+
+Go.
+```
