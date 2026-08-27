@@ -40,16 +40,15 @@ vi.mock("next-intl", () => ({
 
 vi.mock("sonner", () => ({ toast: toastMock }));
 
-// The Team section reads the organisation name and opens Clerk's organisation modal.
+// The Team section opens Clerk's organisation modal from its manage button.
 vi.mock("@clerk/nextjs", () => ({
-  useOrganization: () => ({ isLoaded: true, organization: { name: "Test Org" } }),
   useClerk: () => ({ openOrganizationProfile: vi.fn() }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      queries: { getDraft: "getDraft" },
+      queries: { getDraft: "getDraft", listTeam: "listTeam" },
       mutations: {
         activateConfiguration: "activateConfiguration",
         saveDraftSections: "saveDraftSections",
@@ -93,7 +92,9 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
       ? { data: { connected: false }, isReady: true }
       : query === "listLibraryZoteroGroups" || query === "listVersions"
         ? { data: [], isReady: true }
-        : queryMock(query, args),
+        : query === "listTeam"
+          ? { data: { organizationName: "Test Org", owners: [], editors: [] }, isReady: true }
+          : queryMock(query, args),
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({

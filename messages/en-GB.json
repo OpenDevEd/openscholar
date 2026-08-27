@@ -2649,12 +2649,13 @@
     "team": {
       "description": "Who can manage and edit this library.",
       "ownersTitle": "Owners",
-      "ownersHint": "Admins of {org}.",
+      "ownersHint": "Admins of {org}. They change every setting and publish.",
       "editorsTitle": "Editors",
-      "editorsHint": "Members of {org}.",
-      "manageTitle": "People",
-      "manageHint": "Manage people in the organisation settings.",
-      "manageButton": "Open organisation settings"
+      "editorsHint": "Members of {org}. They edit records in the library's admin.",
+      "noOwners": "No owners yet.",
+      "noEditors": "No editors yet.",
+      "pending": "Invited person",
+      "manageButton": "Manage people"
     },
     "citations": {
       "description": "Choose how citations look and where the library gets its download files.",

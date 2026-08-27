@@ -438,7 +438,7 @@ function Workspace({
                 live={libraryState === "active"}
                 operationRunning={operationRunning}
               />
-              <TeamSection />
+              <TeamSection libraryId={libraryId} />
               <DangerSection onDelete={() => setDeleteOpen(true)} />
             </div>
           </CommandCenterContainer>
