@@ -1,12 +1,12 @@
 "use client";
 
 import { useOrganization } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
-import { Check, Lock } from "lucide-react";
+import { useAction } from "convex/react";
+import { Check, Lock, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { initialsOf } from "@/lib/evidence-libraries/initials";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
-  createEvidenceLibraryAddressCandidate,
   createInitialEvidenceLibraryShortName,
   MAX_EVIDENCE_LIBRARY_NAME_LENGTH,
   normalizeEvidenceLibraryName,
@@ -34,6 +31,23 @@ type Reserved = {
   shortName: string;
   publicAddress: string;
 };
+
+// What the server says about the typed name. The form never guesses.
+type AddressCheck =
+  | { status: "checking"; name: string }
+  | { status: "available"; name: string; publicAddress: string }
+  | {
+      status: "name-taken";
+      name: string;
+      libraryId: Id<"evidenceLibraries">;
+    }
+  | {
+      status: "failed";
+      name: string;
+      reason: "address-taken" | "check-failed" | "no-address";
+    };
+
+const CHECK_DELAY_MS = 300;
 
 export function NewLibraryForm() {
   const t = useTranslations("evidenceLibraries.new");
@@ -71,44 +85,97 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
   const t = useTranslations("evidenceLibraries.new");
   const tc = useTranslations("common");
   const router = useRouter();
-  const createSetupDraft = useMutation(api.evidenceLibraries.mutations.createSetupDraft);
+  const checkAddress = useAction(
+    api.evidenceLibraries.addressActions.checkAddress,
+  );
+  const reserveAddress = useAction(
+    api.evidenceLibraries.addressActions.reserveAddress,
+  );
 
   const [name, setName] = useState("");
+  const [check, setCheck] = useState<AddressCheck | null>(null);
   const [reserving, setReserving] = useState(false);
   const [reserved, setReserved] = useState<Reserved | null>(null);
   const [showNameError, setShowNameError] = useState(false);
+  // Waits for typing to pause, and ignores an answer to an older name.
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wantedName = useRef("");
+
+  // Outside system: the browser timer that waits for typing to pause. React
+  // has no other way to stop it when the page or organisation changes.
+  useEffect(
+    () => () => {
+      if (checkTimer.current) clearTimeout(checkTimer.current);
+    },
+    [],
+  );
 
   const trimmed = normalizeEvidenceLibraryName(name);
-  // The server only tells us the platform domain and whether the address
-  // is already taken. Everything else is derived here, so the preview never
-  // disappears while a query is loading.
-  const platformDomain = useProtectedQuery(
-    api.evidenceLibraries.queries.readSetupPlatformDomain,
-    reserved ? "skip" : {},
-  ).data;
-  // Ask the server once typing pauses, not on every keystroke.
-  const checkedName = useDebouncedValue(trimmed, 300);
-  const availability = useProtectedQuery(
-    api.evidenceLibraries.queries.previewSetupIdentity,
-    checkedName && !reserved ? { name: checkedName } : "skip",
-  ).data;
-  const derived = trimmed
-    ? {
-        shortName: createInitialEvidenceLibraryShortName(trimmed),
-        publicAddress: platformDomain
-          ? createEvidenceLibraryAddressCandidate(trimmed, platformDomain)
-          : "",
-      }
-    : null;
-  const shortName = reserved?.shortName ?? derived?.shortName ?? "";
-  const address = (
-    reserved?.publicAddress ??
-    (availability && availability.name === trimmed
-      ? availability.publicAddress
-      : derived?.publicAddress) ??
-    ""
-  ).replace(/^https?:\/\//, "");
+  // The short name follows the typed name straight away. The address is
+  // only ever the one the server says is free.
+  const shortName =
+    reserved?.shortName ??
+    (trimmed ? createInitialEvidenceLibraryShortName(trimmed) : "");
+  const current = check && check.name === trimmed ? check : null;
+  const address = reserved
+    ? reserved.publicAddress.replace(/^https?:\/\//, "")
+    : current?.status === "available"
+      ? current.publicAddress.replace(/^https?:\/\//, "")
+      : "";
+  // A name is typed but there is no address to show: a dash, never the
+  // "type a name" hint.
+  const addressText =
+    address ||
+    (current?.status === "checking"
+      ? t("checkingAddress")
+      : trimmed
+        ? "—"
+        : t("addressPending"));
   const nameError = showNameError && !trimmed;
+
+  function runCheck(wanted: string) {
+    wantedName.current = wanted;
+    setCheck({ status: "checking", name: wanted });
+    void checkAddress({ name: wanted })
+      .then((result) => {
+        if (wantedName.current !== wanted) return;
+        if (result.status === "available") {
+          setCheck({
+            status: "available",
+            name: wanted,
+            publicAddress: result.publicAddress,
+          });
+          return;
+        }
+        if (result.status === "name-taken") {
+          setCheck({
+            status: "name-taken",
+            name: wanted,
+            libraryId: result.libraryId,
+          });
+          return;
+        }
+        setCheck({ status: "failed", name: wanted, reason: result.reason });
+      })
+      .catch(() => {
+        if (wantedName.current !== wanted) return;
+        setCheck({ status: "failed", name: wanted, reason: "check-failed" });
+      });
+  }
+
+  function handleNameChange(value: string) {
+    setName(value);
+    setShowNameError(false);
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    const wanted = normalizeEvidenceLibraryName(value);
+    wantedName.current = wanted;
+    if (!wanted) {
+      setCheck(null);
+      return;
+    }
+    setCheck({ status: "checking", name: wanted });
+    checkTimer.current = setTimeout(() => runCheck(wanted), CHECK_DELAY_MS);
+  }
 
   function handleReserve() {
     if (reserving || reserved) return;
@@ -117,19 +184,41 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
       return;
     }
     setReserving(true);
-    void createSetupDraft({ name: trimmed })
-      .then((created) => {
+    void reserveAddress({ name: trimmed })
+      .then((result) => {
+        if (result.status === "name-taken") {
+          setCheck({
+            status: "name-taken",
+            name: trimmed,
+            libraryId: result.libraryId,
+          });
+          return;
+        }
+        if (result.status === "address-taken") {
+          setCheck({
+            status: "failed",
+            name: trimmed,
+            reason: "address-taken",
+          });
+          return;
+        }
+        if (result.status === "unavailable") {
+          setCheck({ status: "failed", name: trimmed, reason: result.reason });
+          return;
+        }
         setReserved({
-          libraryId: created.libraryId,
-          name: created.name,
-          shortName: created.shortName,
-          publicAddress: created.publicAddress,
+          libraryId: result.libraryId,
+          name: result.name,
+          shortName: result.shortName,
+          publicAddress: result.publicAddress,
         });
         toast.success(t("reservedToast"), {
-          description: t("reservedToastDescription", { address: created.publicAddress }),
+          description: t("reservedToastDescription", { address: result.publicAddress }),
         });
       })
-      .catch(() => toast.error(t("reserveError")))
+      .catch(() =>
+        setCheck({ status: "failed", name: trimmed, reason: "check-failed" }),
+      )
       .finally(() => setReserving(false));
   }
 
@@ -165,7 +254,21 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
         <FieldGroup title={t("libraryTitle")} hint={t("libraryDescription")}>
           <Field
             label={t("nameLabel")}
-            error={nameError ? t("nameError") : null}
+            error={
+              nameError ? (
+                t("nameError")
+              ) : current?.status === "name-taken" ? (
+                <>
+                  {t("nameTaken", { name: trimmed })}{" "}
+                  <Link
+                    className="underline underline-offset-2"
+                    href={`/evidence-libraries/${current.libraryId}/configuration`}
+                  >
+                    {t("openExisting")}
+                  </Link>
+                </>
+              ) : null
+            }
             counter={
               // The limit appears only when it is reached.
               Array.from(name).length >= MAX_EVIDENCE_LIBRARY_NAME_LENGTH ? (
@@ -188,10 +291,7 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
                   placeholder={t("namePlaceholder")}
                   value={name}
                   aria-invalid={invalid || undefined}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    setShowNameError(false);
-                  }}
+                  onChange={(e) => handleNameChange(e.target.value)}
                 />
               )
             }
@@ -212,6 +312,17 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
             <Field
               label={t("addressLabel")}
               hint={reserved ? undefined : t("addressHint")}
+              error={
+                current?.status === "failed"
+                  ? t(
+                      current.reason === "no-address"
+                        ? "noAddress"
+                        : current.reason === "address-taken"
+                          ? "addressTaken"
+                          : "checkFailed",
+                    )
+                  : null
+              }
               counter={
                 reserved ? (
                   <StatusChip tone="success" role="status" data-address-state="reserved">
@@ -225,15 +336,25 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
                 <div className="flex flex-col gap-1.5 sm:flex-row">
                   <ReadOnlyValue
                     id={id}
-                    value={address || t("addressPending")}
+                    value={addressText}
+                    title={address || undefined}
                     locked={Boolean(reserved)}
                     className="min-w-0 flex-1"
                   />
-                  {reserved ? null : (
+                  {reserved ? null : current?.status === "failed" ? (
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={!trimmed || reserving}
+                      onClick={() => runCheck(trimmed)}
+                    >
+                      <RotateCw />
+                      {t("tryAgain")}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={current?.status !== "available" || reserving}
                       onClick={handleReserve}
                     >
                       {reserving ? <Spinner /> : <Lock />}

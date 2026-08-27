@@ -1,46 +1,77 @@
-import { describe, expect, it } from "vitest";
-import { evidenceLibraryAddressMoveCandidates } from "./addressRecovery";
+/// <reference types="vite/client" />
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { internal } from "../_generated/api";
+import { createDeployedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
-const platformDomain = "libraries.example.test";
-
-describe("Evidence Library address move candidates", () => {
-  it("starts at the second position, never the plain name", () => {
-    const candidates = evidenceLibraryAddressMoveCandidates({
-      name: "Climate Evidence",
-      platformDomain,
-      currentAddress: "https://climate-evidence-lib.libraries.example.test",
-    });
-    expect(candidates.slice(0, 3)).toEqual([
-      "https://climate-evidence-2-lib.libraries.example.test",
-      "https://climate-evidence-3-lib.libraries.example.test",
-      "https://climate-evidence-4-lib.libraries.example.test",
-    ]);
+describe("Evidence Library move candidates", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
   });
 
-  it("skips the address the library sits on now", () => {
-    const candidates = evidenceLibraryAddressMoveCandidates({
-      name: "Climate Evidence",
-      platformDomain,
-      currentAddress: "https://climate-evidence-2-lib.libraries.example.test",
-    });
-    expect(candidates).not.toContain(
-      "https://climate-evidence-2-lib.libraries.example.test",
-    );
-    expect(candidates[0]).toBe(
-      "https://climate-evidence-3-lib.libraries.example.test",
-    );
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
-  it("offers every numbered position once", () => {
-    const candidates = evidenceLibraryAddressMoveCandidates({
-      name: "Hello",
-      platformDomain,
-      currentAddress: "https://hello-lib.libraries.example.test",
-    });
-    expect(candidates).toHaveLength(99);
-    expect(new Set(candidates).size).toBe(99);
-    expect(candidates.at(-1)).toBe(
-      "https://hello-100-lib.libraries.example.test",
+  it("offers the numbered addresses and never the one in use", async () => {
+    const fixture = await createDeployedSetupFixture("move-candidates");
+
+    const plan = await fixture.t.query(
+      internal.evidenceLibraries.addressRecovery.readPlatformMoveCandidates,
+      { libraryId: fixture.created.libraryId },
     );
+
+    expect(plan.currentAddress).toBe(fixture.created.publicAddress);
+    expect(
+      plan.candidates.map((candidate) => candidate.publicAddress),
+    ).not.toContain(fixture.created.publicAddress);
+    expect(plan.candidates[0]).toEqual({
+      publicAddress: "https://climate-evidence-2-lib.libraries.example.test",
+      slug: "climate-evidence-2",
+    });
+  });
+
+  it("skips an address another library already holds", async () => {
+    const fixture = await createDeployedSetupFixture("move-candidates-taken");
+    await fixture.t.run(async (ctx) => {
+      const other = await ctx.db.insert("evidenceLibraries", {
+        organizationId: fixture.organizationId,
+        name: "Other library",
+        slug: "other-library",
+        state: "active",
+        createdByClerkUserId: fixture.clerkUserId,
+        updatedByClerkUserId: fixture.clerkUserId,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("evidenceLibraryRuntimeBindings", {
+        libraryId: other,
+        targetBaseUrl: "https://climate-evidence-2-lib.libraries.example.test",
+        state: "pending",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+
+    const plan = await fixture.t.query(
+      internal.evidenceLibraries.addressRecovery.readPlatformMoveCandidates,
+      { libraryId: fixture.created.libraryId },
+    );
+
+    expect(plan.candidates[0]).toEqual({
+      publicAddress: "https://climate-evidence-3-lib.libraries.example.test",
+      slug: "climate-evidence-3",
+    });
+  });
+
+  it("refuses to read candidates for a library the owner cannot manage", async () => {
+    const fixture = await createDeployedSetupFixture("move-candidates-access");
+    const stranger = fixture.t.withIdentity({ subject: "user_stranger" });
+
+    await expect(
+      stranger.query(
+        internal.evidenceLibraries.addressRecovery.readOwnerMoveCandidates,
+        { libraryId: fixture.created.libraryId },
+      ),
+    ).rejects.toThrow(/access denied/i);
   });
 });

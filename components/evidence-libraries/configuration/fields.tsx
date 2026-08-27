@@ -936,6 +936,7 @@ export function ReadOnlyValue({
   mono = true,
   locked = true,
   className,
+  title,
 }: {
   id?: string;
   value: ReactNode;
@@ -943,6 +944,8 @@ export function ReadOnlyValue({
   /** Show the lock. Off for values that are only derived, not yet fixed. */
   locked?: boolean;
   className?: string;
+  /** Hover text. Use it when a long value has to be truncated. */
+  title?: string;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.fields");
   return (
@@ -952,7 +955,7 @@ export function ReadOnlyValue({
       aria-readonly="true"
       aria-labelledby={id ? labelId(id) : undefined}
       tabIndex={0}
-      title={t("fixed")}
+      title={title ?? t("fixed")}
       className={cn(
         "flex h-9 w-full cursor-default items-center gap-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-3 text-sm text-muted-foreground",
         mono && "font-mono",

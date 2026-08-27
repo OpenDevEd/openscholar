@@ -6,32 +6,33 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  createSetupDraft: vi.fn(),
+  checkAddress: vi.fn(),
   organization: vi.fn(),
   push: vi.fn(),
-  query: vi.fn(),
+  reserveAddress: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs", () => ({ useOrganization: () => mocks.organization() }));
-vi.mock("convex/react", () => ({ useMutation: () => mocks.createSetupDraft }));
+vi.mock("convex/react", () => ({
+  useAction: (name: string) =>
+    name === "checkAddress" ? mocks.checkAddress : mocks.reserveAddress,
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
-vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
+}));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      mutations: { createSetupDraft: "createSetupDraft" },
-      queries: {
-        previewSetupIdentity: "previewSetupIdentity",
-        readSetupPlatformDomain: "readSetupPlatformDomain",
+      addressActions: {
+        checkAddress: "checkAddress",
+        reserveAddress: "reserveAddress",
       },
     },
   },
-}));
-vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: (query: unknown, args: unknown) => mocks.query(query, args),
 }));
 vi.mock("@/components/auth/auth-state-panel", () => ({
   AuthStatePanel: ({ variant, title }: { variant: string; title?: string }) => (
@@ -49,32 +50,24 @@ const owner = {
 
 describe("<NewLibraryForm>", () => {
   beforeEach(() => {
-    mocks.createSetupDraft.mockReset();
+    mocks.checkAddress.mockReset();
+    mocks.checkAddress.mockResolvedValue({
+      status: "available",
+      name: "Climate Evidence",
+      shortName: "Climate Evidence",
+      slug: "climate-evidence",
+      publicAddress: "https://climate-evidence-lib.example.test",
+    });
     mocks.organization.mockReset();
     mocks.push.mockReset();
-    mocks.query.mockReset();
-    mocks.query.mockImplementation((query, args) => {
-      if (query === "readSetupPlatformDomain") {
-        return { data: args === "skip" ? undefined : "example.test", isReady: true };
-      }
-      return args === "skip"
-        ? { data: undefined, isReady: true }
-        : {
-            data: {
-              name: args.name,
-              shortName: args.name,
-              slug: "climate-evidence",
-              publicAddress: "https://climate-evidence-lib.example.test",
-            },
-            isReady: true,
-          };
-    });
+    mocks.reserveAddress.mockReset();
   });
 
-  it("previews the address for the typed name, reserves it, then continues to the configuration", async () => {
+  it("shows Checking…, then the address the server found, and reserves it", async () => {
     const user = userEvent.setup();
     mocks.organization.mockReturnValue(owner);
-    mocks.createSetupDraft.mockResolvedValue({
+    mocks.reserveAddress.mockResolvedValue({
+      status: "reserved",
       libraryId: "lib_1",
       name: "Climate Evidence",
       shortName: "Climate Evidence",
@@ -87,22 +80,29 @@ describe("<NewLibraryForm>", () => {
     expect(screen.getByRole("button", { name: "continue" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "reserve" })).toBeDisabled();
 
+    const shortNameField = screen.getByRole("textbox", { name: "shortNameLabel" });
+    const addressField = screen.getByRole("textbox", { name: "addressLabel" });
     await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
-    expect(screen.getByRole("textbox", { name: "addressLabel" })).toHaveTextContent(
-      "climate-evidence-lib.example.test",
-    );
-    // The availability check waits for typing to pause.
+    // The short name follows the typing; the address waits for the server.
+    expect(shortNameField).toHaveTextContent("Climate Evidence");
+    expect(addressField).toHaveTextContent("checkingAddress");
+    expect(screen.getByRole("button", { name: "reserve" })).toBeDisabled();
+
     await waitFor(() =>
-      expect(mocks.query).toHaveBeenLastCalledWith("previewSetupIdentity", {
-        name: "Climate Evidence",
-      }),
+      expect(mocks.checkAddress).toHaveBeenCalledWith({ name: "Climate Evidence" }),
+    );
+    // One answer for one pause in the typing.
+    expect(mocks.checkAddress).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(addressField).toHaveTextContent("climate-evidence-lib.example.test"),
     );
 
     await user.click(screen.getByRole("button", { name: "reserve" }));
     await waitFor(() =>
-      expect(mocks.createSetupDraft).toHaveBeenCalledWith({ name: "Climate Evidence" }),
+      expect(mocks.reserveAddress).toHaveBeenCalledWith({ name: "Climate Evidence" }),
     );
     expect(await screen.findByRole("status")).toHaveAttribute("data-address-state", "reserved");
+    expect(addressField).toHaveTextContent("climate-evidence-lib.example.test");
     expect(screen.getByRole("textbox", { name: "nameLabel" })).toHaveAttribute("aria-readonly", "true");
     expect(screen.queryByRole("button", { name: "reserve" })).not.toBeInTheDocument();
 
@@ -110,62 +110,20 @@ describe("<NewLibraryForm>", () => {
     expect(mocks.push).toHaveBeenCalledWith("/evidence-libraries/lib_1/configuration");
   });
 
-  it("shows the short name and address from the typed name and keeps them while the availability check loads", async () => {
+  it("shows the numbered address the server chose, not the one the name suggests", async () => {
     const user = userEvent.setup();
     mocks.organization.mockReturnValue(owner);
-    // The availability query never answers, like Convex between keystrokes.
-    mocks.query.mockImplementation((query, args) => {
-      if (query === "readSetupPlatformDomain") {
-        return { data: args === "skip" ? undefined : "example.test", isReady: true };
-      }
-      return { data: undefined, isReady: false };
-    });
-
-    render(<NewLibraryForm />);
-    const shortNameField = screen.getByRole("textbox", { name: "shortNameLabel" });
-    const addressField = screen.getByRole("textbox", { name: "addressLabel" });
-    expect(shortNameField).toHaveTextContent("addressPending");
-    expect(addressField).toHaveTextContent("addressPending");
-
-    const nameInput = screen.getByRole("textbox", { name: "nameLabel" });
-    for (const [index, character] of Array.from("Climate Evidence").entries()) {
-      await user.type(nameInput, character);
-      const typed = "Climate Evidence".slice(0, index + 1).trim();
-      expect(shortNameField).toHaveTextContent(typed);
-      expect(shortNameField).not.toHaveTextContent("addressPending");
-      expect(addressField).not.toHaveTextContent("addressPending");
-    }
-    expect(addressField).toHaveTextContent("climate-evidence-lib.example.test");
-    // The same box stays mounted the whole time; only its text changes.
-    expect(screen.getByRole("textbox", { name: "shortNameLabel" })).toBe(shortNameField);
-    expect(screen.getByRole("textbox", { name: "addressLabel" })).toBe(addressField);
-
-    await user.clear(nameInput);
-    expect(shortNameField).toHaveTextContent("addressPending");
-    expect(addressField).toHaveTextContent("addressPending");
-  });
-
-  it("uses the server address when the name is already taken", async () => {
-    const user = userEvent.setup();
-    mocks.organization.mockReturnValue(owner);
-    mocks.query.mockImplementation((query, args) => {
-      if (query === "readSetupPlatformDomain") {
-        return { data: "example.test", isReady: true };
-      }
-      if (args === "skip") return { data: undefined, isReady: true };
-      return {
-        data: {
-          name: args.name,
-          shortName: args.name,
-          slug: "climate-evidence-2",
-          publicAddress: "https://climate-evidence-2-lib.example.test",
-        },
-        isReady: true,
-      };
+    mocks.checkAddress.mockResolvedValue({
+      status: "available",
+      name: "Climate Evidence",
+      shortName: "Climate Evidence",
+      slug: "climate-evidence-2",
+      publicAddress: "https://climate-evidence-2-lib.example.test",
     });
 
     render(<NewLibraryForm />);
     await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+
     await waitFor(() =>
       expect(screen.getByRole("textbox", { name: "addressLabel" })).toHaveTextContent(
         "climate-evidence-2-lib.example.test",
@@ -173,18 +131,116 @@ describe("<NewLibraryForm>", () => {
     );
   });
 
-  it("keeps the form after a failed reservation so the owner can retry", async () => {
+  it("points at the library that already has the name and reserves nothing", async () => {
     const user = userEvent.setup();
     mocks.organization.mockReturnValue(owner);
-    mocks.createSetupDraft.mockRejectedValue(new Error("offline"));
+    mocks.checkAddress.mockResolvedValue({
+      status: "name-taken",
+      libraryId: "lib_existing",
+    });
 
     render(<NewLibraryForm />);
     await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("nameTaken");
+    expect(screen.getByRole("link", { name: "openExisting" })).toHaveAttribute(
+      "href",
+      "/evidence-libraries/lib_existing/configuration",
+    );
+    expect(screen.getByRole("button", { name: "reserve" })).toBeDisabled();
+    // A name is typed, so the box shows a dash, not the "type a name" hint.
+    const addressField = screen.getByRole("textbox", { name: "addressLabel" });
+    expect(addressField).toHaveTextContent("—");
+    expect(addressField).not.toHaveTextContent("addressPending");
+    expect(mocks.reserveAddress).not.toHaveBeenCalled();
+  });
+
+  it("offers Try again when the address could not be checked", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+    mocks.checkAddress.mockResolvedValueOnce({
+      status: "unavailable",
+      reason: "check-failed",
+    });
+
+    render(<NewLibraryForm />);
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("checkFailed");
+    expect(screen.queryByRole("button", { name: "reserve" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "tryAgain" }));
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "addressLabel" })).toHaveTextContent(
+        "climate-evidence-lib.example.test",
+      ),
+    );
+    expect(screen.getByRole("button", { name: "reserve" })).toBeEnabled();
+  });
+
+  it("says when no address is free for the name", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+    mocks.checkAddress.mockResolvedValue({
+      status: "unavailable",
+      reason: "no-address",
+    });
+
+    render(<NewLibraryForm />);
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("noAddress");
+  });
+
+  it("keeps the form when the reservation itself fails", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+    mocks.reserveAddress.mockRejectedValue(new Error("offline"));
+
+    render(<NewLibraryForm />);
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "reserve" })).toBeEnabled(),
+    );
     await user.click(screen.getByRole("button", { name: "reserve" }));
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "reserve" })).toBeEnabled());
+    expect(await screen.findByRole("alert")).toHaveTextContent("checkFailed");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+
+  it("says so when someone else took the address just now", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+    mocks.reserveAddress.mockResolvedValue({ status: "address-taken" });
+
+    render(<NewLibraryForm />);
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "reserve" })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: "reserve" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("addressTaken");
+    expect(screen.getByRole("button", { name: "tryAgain" })).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("keeps a long address readable on hover", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+
+    render(<NewLibraryForm />);
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "addressLabel" })).toHaveAttribute(
+        "title",
+        "climate-evidence-lib.example.test",
+      ),
+    );
   });
 
   it("does not offer the form to an editor", () => {

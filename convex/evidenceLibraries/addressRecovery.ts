@@ -1,67 +1,105 @@
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
-  createEvidenceLibraryAddressCandidate,
-  MAX_EVIDENCE_LIBRARY_ADDRESS_CANDIDATES,
-} from "../../lib/evidence-libraries/setup/naming";
+  internalQuery,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server";
+import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { requireEvidenceLibraryPlatformDomain } from "./setupNaming";
+import { requireEvidenceLibraryAccess } from "./access";
+import {
+  isEvidenceLibraryAddressFree,
+  readEvidenceLibraryAddressCandidates,
+  type EvidenceLibraryAddressCandidate,
+} from "./setupNaming";
 
 type AddressRecoveryCtx = Pick<QueryCtx | MutationCtx, "db">;
 
-/**
- * The addresses this library may move to, in order. Position 1 is the plain
- * name, so a move always starts at position 2. The address the library sits on
- * now is skipped; every other position is offered even if a later check finds
- * it taken.
- */
-export function evidenceLibraryAddressMoveCandidates(input: {
-  name: string;
-  platformDomain: string;
-  currentAddress: string;
-}): string[] {
-  const candidates: string[] = [];
-  for (
-    let position = 2;
-    position <= MAX_EVIDENCE_LIBRARY_ADDRESS_CANDIDATES;
-    position += 1
-  ) {
-    const candidate = createEvidenceLibraryAddressCandidate(
-      input.name,
-      input.platformDomain,
-      position,
-    );
-    if (candidate !== input.currentAddress) candidates.push(candidate);
+export const evidenceLibraryAddressCandidateValidator = v.object({
+  publicAddress: v.string(),
+  slug: v.string(),
+});
+
+export const evidenceLibraryMoveCandidatesValidator = v.object({
+  currentAddress: v.string(),
+  candidates: v.array(evidenceLibraryAddressCandidateValidator),
+});
+
+/** The address the library is on now, and the ones it could move to. */
+async function readMoveCandidates(
+  ctx: AddressRecoveryCtx,
+  libraryId: Id<"evidenceLibraries">,
+) {
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  if (!library) {
+    throw createError("NOT_FOUND", "Evidence Library not found");
   }
-  return candidates;
+  const binding = library.runtimeBindingId
+    ? await ctx.db.get(
+        "evidenceLibraryRuntimeBindings",
+        library.runtimeBindingId,
+      )
+    : null;
+  if (!binding) {
+    throw createError("CONFLICT", "This library has no address yet");
+  }
+  const { candidates } = await readEvidenceLibraryAddressCandidates(ctx, {
+    organizationId: library.organizationId,
+    name: library.name,
+  });
+  return {
+    currentAddress: binding.targetBaseUrl,
+    // The address it sits on now is not a move.
+    candidates: candidates.filter(
+      (candidate) => candidate.publicAddress !== binding.targetBaseUrl,
+    ),
+  };
 }
 
 /**
- * The first numbered address for this name that no library holds. Lane A adds
- * the shared Coolify and host checks; this is the database rule they extend.
+ * Candidates for a move the platform starts by itself, during setup. There is
+ * no signed-in owner: the deploy pipeline found another site on the address.
  */
-export async function findNextFreeEvidenceLibraryAddress(
+export const readPlatformMoveCandidates = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: evidenceLibraryMoveCandidatesValidator,
+  handler: async (ctx, args) => await readMoveCandidates(ctx, args.libraryId),
+});
+
+/** Candidates for a move an owner asked for. */
+export const readOwnerMoveCandidates = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: evidenceLibraryMoveCandidatesValidator,
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    return await readMoveCandidates(ctx, args.libraryId);
+  },
+});
+
+/**
+ * The address a move may take. The shared check already asked Coolify and the
+ * host itself; this is the last look at our own database, inside the
+ * transaction that writes the move.
+ */
+export async function requireFreeEvidenceLibraryAddress(
   ctx: AddressRecoveryCtx,
-  args: { name: string; currentAddress: string },
+  args: {
+    library: Doc<"evidenceLibraries">;
+    candidate: EvidenceLibraryAddressCandidate;
+  },
 ): Promise<string> {
-  const candidates = evidenceLibraryAddressMoveCandidates({
-    name: args.name,
-    platformDomain: requireEvidenceLibraryPlatformDomain(),
-    currentAddress: args.currentAddress,
+  const free = await isEvidenceLibraryAddressFree(ctx, {
+    organizationId: args.library.organizationId,
+    publicAddress: args.candidate.publicAddress,
+    slug: args.candidate.slug,
   });
-  for (const candidate of candidates) {
-    const taken = await ctx.db
-      .query("evidenceLibraryRuntimeBindings")
-      .withIndex("by_targetBaseUrl", (query) =>
-        query.eq("targetBaseUrl", candidate),
-      )
-      .first();
-    if (!taken) return candidate;
+  if (!free) {
+    throw createError(
+      "CONFLICT",
+      "Another Evidence Library took that address first",
+    );
   }
-  throw createError(
-    "CONFLICT",
-    "No platform address is available for this Evidence Library name",
-  );
+  return args.candidate.publicAddress;
 }
 
 async function moveIdentityBaseUrl(

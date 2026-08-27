@@ -121,8 +121,9 @@ mutation is removed; the new page is the only caller.
 
 Lane uploads and browser checks per PR. After merge, on the shared
 deployment: reserve "hello" twice (second refused with link); reserve a name
-whose host is served by something else (use an existing `*.opendev.space`
-site name such as `outline`) and see `-2`; deploy one `el-*` library; stop
+whose `<slug>-lib` host is really served (a leftover library app in Coolify,
+for example `E2E Library 1787622331198`; `outline` does not work because
+`outline-lib.opendev.space` is unserved) and see `-2`; deploy one `el-*` library; stop
 Coolify serving its host (rename the compose domain by hand in Coolify) and
 run the update check to see "Address not reachable" and move it; tear down.
 
