@@ -372,9 +372,7 @@ export function VersionsSection({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("versions.restoreTitle", {
-                rev: restoring?.revisionKey ?? "",
-              })}
+              {t("versions.restoreTitle", { rev: restoring?.revisionKey ?? "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("versions.restoreBody")}
@@ -418,9 +416,7 @@ function SoftwarePanel({
     <Panel tone="muted" className="space-y-3" data-runtime-state={state}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         {updateAvailable ? (
-          <StatusChip tone="warning">
-            {t("versions.updateAvailable")}
-          </StatusChip>
+          <StatusChip tone="warning">{t("versions.updateAvailable")}</StatusChip>
         ) : (
           <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
         )}
@@ -521,9 +517,7 @@ function VersionTable({
               data-version-status={row.status}
               data-revision={row.revisionKey}
             >
-              <TableCell className="font-mono text-xs">
-                {row.revisionKey}
-              </TableCell>
+              <TableCell className="font-mono text-xs">{row.revisionKey}</TableCell>
               <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                 {format.dateTime(new Date(row.createdAt), {
                   dateStyle: "medium",
