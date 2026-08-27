@@ -164,42 +164,18 @@ describe("<LibraryList>", () => {
     expect(within(rows[1]).queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("tells the owner where a library was moved while it sets up", () => {
+  it("tells the owner which address a library was moved away from", () => {
     mocks.organization.mockReturnValue(organization("org:admin"));
     answerQueries([
-      {
-        libraryId: "lib_failed",
-        movedTo: "https://health-2-lib.example.test",
-        addressState: null,
-      },
+      { libraryId: "lib_failed", movedFrom: "https://health-old-lib.example.test" },
     ]);
 
     render(<LibraryList />);
 
     const rows = screen.getAllByRole("listitem");
-    expect(within(rows[1]).getByText("list.movedToLabel")).toBeInTheDocument();
-    expect(within(rows[1]).getByText("health-2-lib.example.test")).toBeInTheDocument();
-    expect(within(rows[0]).queryByText("list.movedToLabel")).not.toBeInTheDocument();
-  });
-
-  it("tells the owner when a live library's address stopped answering", () => {
-    mocks.organization.mockReturnValue(organization("org:admin"));
-    answerQueries([
-      { libraryId: "lib_active", movedTo: null, addressState: "not-ours" },
-    ]);
-
-    render(<LibraryList />);
-
-    const rows = screen.getAllByRole("listitem");
-    expect(
-      within(rows[0]).getByText("list.addressNotReachable"),
-    ).toBeInTheDocument();
-    expect(
-      rows[0].querySelector('[data-address-state="not-ours"]'),
-    ).not.toBeNull();
-    expect(
-      within(rows[1]).queryByText("list.addressNotReachable"),
-    ).not.toBeInTheDocument();
+    expect(within(rows[1]).getByText("list.movedFromLabel")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("health-old-lib.example.test")).toBeInTheDocument();
+    expect(within(rows[0]).queryByText("list.movedFromLabel")).not.toBeInTheDocument();
   });
 
   it("asks for an organisation before listing anything", () => {
