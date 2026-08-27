@@ -136,6 +136,22 @@ describe("library overviews", () => {
     ).resolves.toEqual({ enabled: false });
   });
 
+  it("answers 'off' when the token role no longer matches the stored role", async () => {
+    const fixture = await createDraftSetupFixture("overview_switch_role");
+    // The stored membership is an admin; the token claims plain membership.
+    const drifted = fixture.t.withIdentity({
+      subject: fixture.clerkUserId,
+      o: { id: fixture.clerkOrganizationId, rol: "org:member" },
+    });
+
+    await expect(
+      drifted.query(
+        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
+        {},
+      ),
+    ).resolves.toEqual({ enabled: false });
+  });
+
   it("answers 'off' instead of throwing when nobody is signed in", async () => {
     const fixture = await createDraftSetupFixture("overview_switch_anon");
 

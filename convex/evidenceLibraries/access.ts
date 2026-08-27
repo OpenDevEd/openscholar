@@ -1,4 +1,4 @@
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 
@@ -76,14 +76,28 @@ function denyEvidenceLibrariesSwitchedOff(): never {
   );
 }
 
-export async function requireOrganizationAccess(
+export type OrganizationAccess = {
+  clerkUserId: string;
+  membership: Doc<"organizationMemberships">;
+  organization: Doc<"organizations">;
+  role: OrganizationRole;
+};
+
+/**
+ * Who the caller is inside their active organisation, or `null` when they are
+ * not a settled member of it. It answers instead of throwing so read-only
+ * callers such as `getEvidenceLibrariesAccess` can render a page, and so both
+ * the gate and the pages judge access by exactly the same rules: an active
+ * organisation, one active membership, and a stored role that still matches
+ * the role in the token.
+ */
+export async function readOrganizationAccess(
   ctx: OrganizationAccessCtx,
-  action: OrganizationAction,
-) {
+): Promise<OrganizationAccess | null> {
   const identity = await ctx.auth.getUserIdentity();
   const claims = parseOrganizationClaims(identity);
   if (!identity || !claims || typeof identity.subject !== "string") {
-    return denyOrganizationAccess();
+    return null;
   }
 
   const organization = await ctx.db
@@ -93,7 +107,7 @@ export async function requireOrganizationAccess(
     )
     .unique();
   if (!organization || organization.state !== "active") {
-    return denyOrganizationAccess();
+    return null;
   }
 
   const memberships = await ctx.db
@@ -106,16 +120,8 @@ export async function requireOrganizationAccess(
     )
     .take(2);
   const membership = memberships.length === 1 ? memberships[0] : null;
-  if (
-    !membership ||
-    membership.role !== claims.role ||
-    !canPerformOrganizationAction(claims.role, action)
-  ) {
-    return denyOrganizationAccess();
-  }
-
-  if (action === "manage" && organization.evidenceLibrariesEnabled !== true) {
-    return denyEvidenceLibrariesSwitchedOff();
+  if (!membership || membership.role !== claims.role) {
+    return null;
   }
 
   return {
@@ -124,6 +130,32 @@ export async function requireOrganizationAccess(
     organization,
     role: claims.role,
   };
+}
+
+/**
+ * Whether the caller's active organisation may use the Evidence Library owner
+ * pages. Both the gate and the pages call this, so they can never disagree.
+ */
+export function hasEvidenceLibrariesSwitchedOn(
+  access: OrganizationAccess | null,
+): boolean {
+  return access?.organization.evidenceLibrariesEnabled === true;
+}
+
+export async function requireOrganizationAccess(
+  ctx: OrganizationAccessCtx,
+  action: OrganizationAction,
+) {
+  const access = await readOrganizationAccess(ctx);
+  if (!access || !canPerformOrganizationAction(access.role, action)) {
+    return denyOrganizationAccess();
+  }
+
+  if (action === "manage" && !hasEvidenceLibrariesSwitchedOn(access)) {
+    return denyEvidenceLibrariesSwitchedOff();
+  }
+
+  return access;
 }
 
 export async function requireEvidenceLibraryAccess(
