@@ -5,6 +5,7 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
+  isAddressNotOursError,
   isRetryableReadinessError,
   ReadinessClientError,
   requireLibraryRuntimeReady,
@@ -16,6 +17,7 @@ const invalidReadinessConfig = (message: string) =>
 
 type ReadinessSetupActionResult =
   | { status: "failed" }
+  | { movedTo: string; status: "moving" }
   | { pollCount: number; status: "running" }
   | { status: "succeeded" };
 
@@ -28,6 +30,7 @@ export const runReadinessSetup = internalAction({
   },
   returns: v.union(
     v.object({ status: v.literal("failed") }),
+    v.object({ movedTo: v.string(), status: v.literal("moving") }),
     v.object({ pollCount: v.number(), status: v.literal("running") }),
     v.object({ status: v.literal("succeeded") }),
   ),
@@ -77,6 +80,19 @@ export const runReadinessSetup = internalAction({
           args,
         );
         if (retry.status === "running") return retry;
+      }
+      if (isAddressNotOursError(error)) {
+        // Waiting cannot free an address another site holds. Move once and
+        // let the Coolify steps run again; a failed move falls through.
+        const moved = await ctx
+          .runMutation(
+            internal.evidenceLibraries.readinessSetup.moveSetupAddress,
+            args,
+          )
+          .catch(() => null);
+        if (moved?.status === "moving") {
+          return { movedTo: moved.movedTo, status: "moving" as const };
+        }
       }
       const safeError =
         error instanceof CoolifyClientError ||
