@@ -19,12 +19,15 @@ type FakeWorld = {
   servedHosts: string[];
   coolifyFails?: boolean;
   probeFails?: boolean;
+  // Counted by the fake so a test can prove the list was reused.
+  coolifyRequests?: number;
 };
 
 function createFetch(world: FakeWorld): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
     if (url.hostname === "coolify.example.test") {
+      world.coolifyRequests = (world.coolifyRequests ?? 0) + 1;
       if (world.coolifyFails) throw new Error("coolify offline");
       if (url.pathname === "/api/v1/applications") {
         return Response.json(
@@ -78,7 +81,7 @@ async function seedOwner(
 async function createWorld(world: FakeWorld) {
   vi.stubGlobal("fetch", createFetch(world));
   const t = convexTest(schema, modules);
-  return { t, owner: await seedOwner(t, "address"), other: t };
+  return { t, world, owner: await seedOwner(t, "address") };
 }
 
 describe("free host signal", () => {
@@ -302,20 +305,75 @@ describe("Evidence Library address reservation", () => {
     ).rejects.toThrow(/FORBIDDEN/);
   });
 
-  it("refuses an address that was taken between the check and the write", async () => {
+
+  it("asks Coolify once for a burst of checks and the reservation that follows", async () => {
+    const { owner, world } = await createWorld({
+      coolifyHosts: [],
+      servedHosts: [],
+    });
+
+    await owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      name: "Climate Evidence",
+    });
+    await owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      name: "Climate Evidenc",
+    });
+    await owner.action(api.evidenceLibraries.addressActions.reserveAddress, {
+      name: "Climate Evidence",
+    });
+
+    // Two reads for one listing: applications and services.
+    expect(world.coolifyRequests).toBe(2);
+  });
+
+  it("refuses to reserve when the served hosts are stale and Coolify is silent", async () => {
     const { t, owner } = await createWorld({
       coolifyHosts: [],
       servedHosts: [],
     });
-    await owner.mutation(internal.evidenceLibraries.mutations.reserveAddress, {
+    await owner.action(api.evidenceLibraries.addressActions.checkAddress, {
       name: "Climate Evidence",
-      publicAddress: CLIMATE_ADDRESS,
-      slug: "climate-evidence",
     });
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query("evidenceLibraryServedHosts").unique();
+      if (!row) throw new Error("no served hosts were kept");
+      await ctx.db.patch("evidenceLibraryServedHosts", row._id, {
+        fetchedAt: Date.now() - 61_000,
+      });
+    });
+    vi.stubGlobal(
+      "fetch",
+      createFetch({ coolifyHosts: [], servedHosts: [], coolifyFails: true }),
+    );
 
     await expect(
-      owner.mutation(internal.evidenceLibraries.mutations.reserveAddress, {
+      owner.action(api.evidenceLibraries.addressActions.reserveAddress, {
+        name: "Climate Evidence",
+      }),
+    ).resolves.toEqual({ status: "unavailable", reason: "check-failed" });
+    expect(
+      await t.run((ctx) => ctx.db.query("evidenceLibraries").collect()),
+    ).toHaveLength(0);
+  });
+
+  it("says so when the address was taken between the check and the write", async () => {
+    const { t, owner } = await createWorld({
+      coolifyHosts: [],
+      servedHosts: [],
+    });
+    const otherOwner = await seedOwner(t, "address_racer");
+    await otherOwner.mutation(
+      internal.evidenceLibraries.mutations.reserveAddress,
+      {
         name: "Coastal Evidence",
+        publicAddress: CLIMATE_ADDRESS,
+        slug: "climate-evidence",
+      },
+    );
+    // The check ran before that write, so it still offers the first address.
+    await expect(
+      owner.mutation(internal.evidenceLibraries.mutations.reserveAddress, {
+        name: "Climate Evidence",
         publicAddress: CLIMATE_ADDRESS,
         slug: "climate-evidence",
       }),
@@ -324,4 +382,5 @@ describe("Evidence Library address reservation", () => {
       await t.run((ctx) => ctx.db.query("evidenceLibraries").collect()),
     ).toHaveLength(1);
   });
+
 });

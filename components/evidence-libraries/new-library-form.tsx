@@ -172,6 +172,10 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
           });
           return;
         }
+        if (result.status === "address-taken") {
+          toast.error(t("addressTaken"));
+          return;
+        }
         if (result.status === "unavailable") {
           setCheck({ status: "failed", name: trimmed, reason: result.reason });
           return;

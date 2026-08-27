@@ -7,7 +7,9 @@ import { internal } from "../_generated/api";
 import { createCoolifyClient } from "./coolifyClient";
 import { evidenceLibrarySetupIdentityFields } from "./validators";
 
-const PROBE_TIMEOUT_MS = 15_000;
+const PROBE_TIMEOUT_MS = 8_000;
+// How long the list of hosts Coolify serves may be reused.
+const SERVED_HOSTS_MAX_AGE_MS = 60_000;
 const FREE_HOST_STATUS = 503;
 const FREE_HOST_BODY = "no available server";
 const MAX_PROBE_BODY_BYTES = 4 * 1024;
@@ -19,13 +21,14 @@ type AddressIdentity = {
   slug: string;
 };
 
-export type AddressCheckResult =
+type AddressCheckResult =
   | ({ status: "available" } & AddressIdentity)
   | { status: "name-taken"; libraryId: Id<"evidenceLibraries"> }
   | { status: "unavailable"; reason: "check-failed" | "no-address" };
 
-export type AddressReservationResult =
+type AddressReservationResult =
   | ({ status: "reserved"; libraryId: Id<"evidenceLibraries"> } & AddressIdentity)
+  | { status: "address-taken" }
   | Exclude<AddressCheckResult, { status: "available" }>;
 
 const nameTakenValidator = v.object({
@@ -49,7 +52,7 @@ const addressCheckValidator = v.union(
 
 // Raised when a check could not run. Nothing is ever reserved after one of
 // these: the owner is asked to try again.
-export class AddressCheckError extends Error {
+class AddressCheckError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "AddressCheckError";
@@ -86,17 +89,13 @@ async function readProbeBody(response: Response): Promise<string> {
  * Asks the host itself whether anything answers there. A network failure or
  * a timeout is not an answer, so it throws instead of guessing.
  */
-export async function probeAddress(input: {
-  publicAddress: string;
-  fetchImpl?: typeof fetch;
-}): Promise<"free" | "served"> {
-  const fetchImpl = input.fetchImpl ?? fetch;
+async function probeAddress(publicAddress: string): Promise<"free" | "served"> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   try {
     let response: Response;
     try {
-      response = await fetchImpl(new URL("/", input.publicAddress), {
+      response = await fetch(new URL("/", publicAddress), {
         method: "GET",
         redirect: "manual",
         headers: { accept: "*/*" },
@@ -123,9 +122,33 @@ function requireEnvironment(name: string): string {
   return value;
 }
 
-export async function checkEvidenceLibraryAddress(
+/**
+ * The hosts Coolify serves, kept for a minute so a burst of checks and the
+ * reservation that follows cost one pair of Coolify reads. A list older than
+ * that is refused unless Coolify answers again.
+ */
+async function readServedHosts(ctx: ActionCtx): Promise<Set<string>> {
+  const cached = await ctx.runQuery(
+    internal.evidenceLibraries.queries.readServedHostsCache,
+    {},
+  );
+  if (cached && Date.now() - cached.fetchedAt < SERVED_HOSTS_MAX_AGE_MS) {
+    return new Set(cached.hosts);
+  }
+  const hosts = await createCoolifyClient({
+    origin: requireEnvironment("EL_COOLIFY_URL"),
+    token: requireEnvironment("EL_COOLIFY_TOKEN"),
+  }).listServedHosts();
+  await ctx.runMutation(
+    internal.evidenceLibraries.mutations.writeServedHostsCache,
+    { hosts: [...hosts] },
+  );
+  return hosts;
+}
+
+async function checkEvidenceLibraryAddress(
   ctx: ActionCtx,
-  args: { name: string; fetchImpl?: typeof fetch },
+  args: { name: string },
 ): Promise<AddressCheckResult> {
   const state = await ctx.runQuery(
     internal.evidenceLibraries.queries.readAddressCandidates,
@@ -134,19 +157,12 @@ export async function checkEvidenceLibraryAddress(
   if (state.status === "name-taken") return state;
 
   try {
-    const servedHosts = await createCoolifyClient({
-      origin: requireEnvironment("EL_COOLIFY_URL"),
-      token: requireEnvironment("EL_COOLIFY_TOKEN"),
-      ...(args.fetchImpl ? { fetchImpl: args.fetchImpl } : {}),
-    }).listServedHosts();
+    const servedHosts = await readServedHosts(ctx);
 
     for (const candidate of state.candidates) {
       const host = new URL(candidate.publicAddress).hostname.toLowerCase();
       if (servedHosts.has(host)) continue;
-      const probe = await probeAddress({
-        publicAddress: candidate.publicAddress,
-        ...(args.fetchImpl ? { fetchImpl: args.fetchImpl } : {}),
-      });
+      const probe = await probeAddress(candidate.publicAddress);
       if (probe === "free") {
         return {
           status: "available",
@@ -187,6 +203,7 @@ export const reserveAddress = action({
       libraryId: v.id("evidenceLibraries"),
       ...evidenceLibrarySetupIdentityFields,
     }),
+    v.object({ status: v.literal("address-taken") }),
     nameTakenValidator,
     unavailableValidator,
   ),
@@ -201,10 +218,8 @@ export const reserveAddress = action({
         slug: checked.slug,
       },
     );
-    if (reserved.status === "address-taken") {
-      // Someone took the address between the check and the write.
-      return { status: "unavailable", reason: "check-failed" };
-    }
+    // Someone took the address between the check and the write.
+    if (reserved.status === "address-taken") return reserved;
     if (reserved.status === "name-taken") return reserved;
     return {
       status: "reserved",

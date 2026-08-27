@@ -147,6 +147,14 @@ export const evidenceLibraryFields = {
   updatedAt: v.number(),
 };
 
+// One row: the hosts Coolify served when it was last asked. Read while an
+// owner reserves an address, so a burst of checks costs one pair of reads.
+export const evidenceLibraryServedHostsFields = {
+  source: v.literal("coolify"),
+  hosts: v.array(v.string()),
+  fetchedAt: v.number(),
+};
+
 export const evidenceLibrarySetupIdentityFields = {
   name: v.string(),
   publicAddress: v.string(),

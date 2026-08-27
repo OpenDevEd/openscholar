@@ -2871,6 +2871,7 @@
       "nameTaken": "You already have a library named {name}.",
       "openExisting": "Open it",
       "checkFailed": "Could not check the address. Try again.",
+      "addressTaken": "Someone reserved this address just now. Check again.",
       "noAddress": "No address is free for this name. Try another name.",
       "tryAgain": "Try again"
     },
