@@ -24,7 +24,10 @@ function runtime() {
     collections: [
       { id: "COLL0001", title: "Climate", count: 12, source: "zotero-42", parentId: null },
     ],
-    institutions: [{ name: "University of Nairobi", count: 4 }],
+    institutions: [
+      { name: "University of Nairobi", count: 4 },
+      { name: "Makerere University", count: 9 },
+    ],
   };
   const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
     const url = new URL(String(input));
@@ -41,7 +44,17 @@ function runtime() {
       });
     }
     if (url.pathname === "/api/openscholar/institutions") {
-      return jsonResponse({ items: state.institutions });
+      const query = url.searchParams.get("query") ?? "";
+      const sort = url.searchParams.get("sort") ?? "count";
+      const cursor = url.searchParams.get("cursor");
+      const matching = state.institutions
+        .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))
+        .sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b.count - a.count));
+      const from = cursor === "second" ? 1 : 0;
+      return jsonResponse({
+        items: matching.slice(from, from + 1),
+        nextCursor: from === 0 && matching.length > 1 ? "second" : null,
+      });
     }
     return jsonResponse({}, 404);
   });
@@ -83,7 +96,7 @@ describe("Evidence Library runtime reads", () => {
     ).resolves.toEqual({ reason: "not-set-up", items: [], nextCursor: null });
     await expect(
       fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, { libraryId }),
-    ).resolves.toEqual({ reason: "not-set-up", items: [] });
+    ).resolves.toEqual({ reason: "not-set-up", items: [], nextCursor: null });
   });
 
   it("reads collections and institutions from the library with its machine credential", async () => {
@@ -102,11 +115,36 @@ describe("Evidence Library runtime reads", () => {
       nextCursor: null,
     });
     await expect(
-      fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, { libraryId }),
-    ).resolves.toEqual({ items: [{ name: "University of Nairobi", count: 4 }] });
+      fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
+        libraryId,
+        sort: "name",
+      }),
+    ).resolves.toEqual({
+      items: [{ name: "Makerere University", count: 9 }],
+      nextCursor: "second",
+    });
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
+        libraryId,
+        sort: "name",
+        cursor: "second",
+      }),
+    ).resolves.toEqual({
+      items: [{ name: "University of Nairobi", count: 4 }],
+      nextCursor: null,
+    });
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
+        libraryId,
+        query: "makerere",
+      }),
+    ).resolves.toEqual({
+      items: [{ name: "Makerere University", count: 9 }],
+      nextCursor: null,
+    });
     expect(
       fetchImpl.mock.calls.map(([input]) => new URL(String(input)).origin),
-    ).toEqual([fixture.created.publicAddress, fixture.created.publicAddress]);
+    ).toEqual(Array(4).fill(fixture.created.publicAddress));
   });
 
   it("keeps an answer for five minutes, then asks the library again", async () => {
@@ -117,9 +155,15 @@ describe("Evidence Library runtime reads", () => {
     const read = () =>
       fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, { libraryId });
 
-    await expect(read()).resolves.toEqual({ items: [{ name: "University of Nairobi", count: 4 }] });
-    state.institutions = [{ name: "Makerere University", count: 9 }];
-    await expect(read()).resolves.toEqual({ items: [{ name: "University of Nairobi", count: 4 }] });
+    await expect(read()).resolves.toEqual({
+      items: [{ name: "Makerere University", count: 9 }],
+      nextCursor: "second",
+    });
+    state.institutions = [{ name: "Strathmore University", count: 1 }];
+    await expect(read()).resolves.toEqual({
+      items: [{ name: "Makerere University", count: 9 }],
+      nextCursor: "second",
+    });
 
     await fixture.t.run(async (ctx) => {
       for (const row of await ctx.db.query("evidenceLibraryRuntimeReadCache").take(10)) {
@@ -128,7 +172,10 @@ describe("Evidence Library runtime reads", () => {
         });
       }
     });
-    await expect(read()).resolves.toEqual({ items: [{ name: "Makerere University", count: 9 }] });
+    await expect(read()).resolves.toEqual({
+      items: [{ name: "Strathmore University", count: 1 }],
+      nextCursor: null,
+    });
   });
 
   it("refuses readers who cannot manage the library, even when the cache is warm", async () => {

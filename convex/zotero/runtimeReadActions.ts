@@ -8,11 +8,11 @@ import { decrypt } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import {
   type RuntimeCollectionsPage,
-  type RuntimeInstitution,
+  type RuntimeInstitutionsPage,
   RuntimeReadError,
-  collectionsCacheKey,
   readRuntimeCollections,
   readRuntimeInstitutions,
+  runtimeReadCacheKey,
 } from "./runtimeReadClient";
 
 const collectionValidator = v.object({
@@ -81,7 +81,7 @@ export const listLibraryCollections = action({
   handler: async (ctx, args): Promise<RuntimeCollectionsPage & { reason?: "not-set-up" }> => {
     const result = await cachedRead<RuntimeCollectionsPage>(
       ctx,
-      { libraryId: args.libraryId, kind: "collections", cacheKey: collectionsCacheKey(args) },
+      { libraryId: args.libraryId, kind: "collections", cacheKey: runtimeReadCacheKey(args) },
       (target) =>
         readRuntimeCollections(fetch, { ...target, query: args.query, cursor: args.cursor }),
     );
@@ -90,17 +90,29 @@ export const listLibraryCollections = action({
 });
 
 export const listRecordInstitutions = action({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.object({ reason: notSetUpValidator, items: v.array(institutionValidator) }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{ items: RuntimeInstitution[]; reason?: "not-set-up" }> => {
-    const result = await cachedRead<{ items: RuntimeInstitution[] }>(
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    query: v.optional(v.string()),
+    cursor: v.optional(v.string()),
+    sort: v.optional(v.union(v.literal("count"), v.literal("name"))),
+  },
+  returns: v.object({
+    reason: notSetUpValidator,
+    items: v.array(institutionValidator),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args): Promise<RuntimeInstitutionsPage & { reason?: "not-set-up" }> => {
+    const result = await cachedRead<RuntimeInstitutionsPage>(
       ctx,
-      { libraryId: args.libraryId, kind: "institutions", cacheKey: "all" },
-      (target) => readRuntimeInstitutions(fetch, target),
+      { libraryId: args.libraryId, kind: "institutions", cacheKey: runtimeReadCacheKey(args) },
+      (target) =>
+        readRuntimeInstitutions(fetch, {
+          ...target,
+          query: args.query,
+          cursor: args.cursor,
+          sort: args.sort,
+        }),
     );
-    return "reason" in result ? { ...result, items: [] } : result;
+    return "reason" in result ? { ...result, items: [], nextCursor: null } : result;
   },
 });

@@ -20,6 +20,14 @@ export type RuntimeCollectionsPage = {
 
 export type RuntimeInstitution = { name: string; count: number };
 
+/** How the library orders institutions: most records first, or by name. */
+export type RuntimeInstitutionSort = "count" | "name";
+
+export type RuntimeInstitutionsPage = {
+  items: RuntimeInstitution[];
+  nextCursor: string | null;
+};
+
 export class RuntimeReadError extends Error {
   constructor(
     readonly code: "RUNTIME_READ_REFUSED" | "RUNTIME_READ_INVALID" | "RUNTIME_READ_UNAVAILABLE",
@@ -34,8 +42,18 @@ export function isFreshRuntimeRead(fetchedAt: number, now: number): boolean {
   return now - fetchedAt < RUNTIME_READ_CACHE_MS;
 }
 
-export function collectionsCacheKey(input: { query?: string; cursor?: string }): string {
-  return JSON.stringify({ query: input.query ?? "", cursor: input.cursor ?? "" });
+// One cache row per page: the search text, the cursor and the sort all
+// change which rows come back.
+export function runtimeReadCacheKey(input: {
+  query?: string;
+  cursor?: string;
+  sort?: string;
+}): string {
+  return JSON.stringify({
+    query: input.query ?? "",
+    cursor: input.cursor ?? "",
+    sort: input.sort ?? "",
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -104,6 +122,27 @@ async function runtimeGet(
   }
 }
 
+/**
+ * One page of a list answer. A library that answers without `nextCursor`
+ * has given its whole list, so the page is the only one.
+ */
+function readPage<T>(
+  body: unknown,
+  readItem: (value: unknown) => T | null,
+  what: string,
+): { items: T[]; nextCursor: string | null } {
+  const items = isRecord(body) && Array.isArray(body.items) ? body.items.map(readItem) : null;
+  const nextCursor = isRecord(body) ? body.nextCursor : undefined;
+  if (
+    !items ||
+    items.some((item) => item === null) ||
+    (nextCursor !== undefined && nextCursor !== null && typeof nextCursor !== "string")
+  ) {
+    throw new RuntimeReadError("RUNTIME_READ_INVALID", `The library's ${what} has an unexpected shape`);
+  }
+  return { items: items as T[], nextCursor: typeof nextCursor === "string" ? nextCursor : null };
+}
+
 export async function readRuntimeCollections(
   fetchImpl: typeof fetch,
   input: { baseUrl: string; credential: string; query?: string; cursor?: string },
@@ -113,26 +152,24 @@ export async function readRuntimeCollections(
     cursor: input.cursor,
     pageSize: String(RUNTIME_READ_PAGE_SIZE),
   });
-  const items = isRecord(body) && Array.isArray(body.items) ? body.items.map(readCollection) : null;
-  const nextCursor = isRecord(body) ? body.nextCursor : undefined;
-  if (
-    !items ||
-    items.some((item) => item === null) ||
-    (nextCursor !== null && typeof nextCursor !== "string")
-  ) {
-    throw new RuntimeReadError("RUNTIME_READ_INVALID", "The library's collection list has an unexpected shape");
-  }
-  return { items: items as RuntimeCollection[], nextCursor };
+  return readPage(body, readCollection, "collection list");
 }
 
 export async function readRuntimeInstitutions(
   fetchImpl: typeof fetch,
-  input: { baseUrl: string; credential: string },
-): Promise<{ items: RuntimeInstitution[] }> {
-  const body = await runtimeGet(fetchImpl, input, "/api/openscholar/institutions", {});
-  const items = isRecord(body) && Array.isArray(body.items) ? body.items.map(readInstitution) : null;
-  if (!items || items.some((item) => item === null)) {
-    throw new RuntimeReadError("RUNTIME_READ_INVALID", "The library's institution list has an unexpected shape");
-  }
-  return { items: items as RuntimeInstitution[] };
+  input: {
+    baseUrl: string;
+    credential: string;
+    query?: string;
+    cursor?: string;
+    sort?: RuntimeInstitutionSort;
+  },
+): Promise<RuntimeInstitutionsPage> {
+  const body = await runtimeGet(fetchImpl, input, "/api/openscholar/institutions", {
+    query: input.query,
+    cursor: input.cursor,
+    sort: input.sort,
+    pageSize: String(RUNTIME_READ_PAGE_SIZE),
+  });
+  return readPage(body, readInstitution, "institution list");
 }
