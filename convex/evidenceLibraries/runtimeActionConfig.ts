@@ -1,5 +1,7 @@
 "use node";
 
+import type { PlatformMailService } from "../../lib/evidence-libraries/configuration/assembly";
+
 type ErrorFactory = (message: string) => Error;
 
 export function requireRuntimeEnvironment(
@@ -48,4 +50,42 @@ export function requireRuntimeHttpsOrigin(
     throw createError(`${name} must be a valid HTTPS origin`);
   }
   return url.origin;
+}
+
+const MAIL_SECURITY = ["tls", "starttls", "none"] as const;
+
+// The platform mail service used for contact and takedown emails. Returns
+// undefined when EL_SMTP_HOST is not set, so libraries without recipients
+// still deploy. Once a host is set, the sender and matching credentials
+// must be complete.
+export function optionalPlatformMailService(
+  createError: ErrorFactory,
+): PlatformMailService | undefined {
+  const host = optionalRuntimeEnvironment("EL_SMTP_HOST");
+  if (!host) return undefined;
+  const from = requireRuntimeEnvironment("EL_SMTP_FROM", createError);
+  const port = optionalRuntimeEnvironment("EL_SMTP_PORT")
+    ? requirePositiveRuntimeInteger("EL_SMTP_PORT", createError)
+    : 587;
+  if (port > 65_535) {
+    throw createError("EL_SMTP_PORT must be a port number between 1 and 65535");
+  }
+  const security = optionalRuntimeEnvironment("EL_SMTP_SECURITY") ?? "starttls";
+  if (!(MAIL_SECURITY as readonly string[]).includes(security)) {
+    throw createError("EL_SMTP_SECURITY must be tls, starttls, or none");
+  }
+  const username = optionalRuntimeEnvironment("EL_SMTP_USERNAME");
+  const password = optionalRuntimeEnvironment("EL_SMTP_PASSWORD");
+  if (Boolean(username) !== Boolean(password)) {
+    throw createError(
+      "EL_SMTP_USERNAME and EL_SMTP_PASSWORD must be set together",
+    );
+  }
+  return {
+    host,
+    port,
+    security: security as PlatformMailService["security"],
+    from,
+    ...(username && password ? { username, password } : {}),
+  };
 }

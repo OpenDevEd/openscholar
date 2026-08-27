@@ -55,6 +55,20 @@ const managedConfiguration = {
   zoteroTranslationUrl: "https://translation.example.test",
 };
 
+const platformMail = {
+  host: "smtp.example.test",
+  port: 465,
+  security: "tls" as const,
+  from: "no-reply@example.test",
+  username: "mailer",
+  password: "mail-password",
+};
+
+const emailWithRecipients = {
+  contactRecipient: "team@example.org",
+  takedownRecipient: "takedown@example.org",
+};
+
 describe("validateLibraryConfigStructure", () => {
   test("normalizes required, format, and enum failures to stable field pointers", () => {
     const result = validateLibraryConfigStructure({
@@ -150,6 +164,39 @@ describe("validateOwnerSection", () => {
         (issue) => issue.pointer,
       ),
     ).toEqual(["/sources/0/key", "/sources/0/provider"]);
+  });
+});
+
+describe("validateOwnerSection email rules", () => {
+  test("refuses a mail server in the owner row", () => {
+    const result = validateOwnerSection("email", {
+      ...emailWithRecipients,
+      smtp: { host: "owner.example.test" },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual([
+      expect.objectContaining({ pointer: "/email/smtp", keyword: "platformValue" }),
+    ]);
+  });
+
+  test("refuses recipients when the platform has no mail service", () => {
+    const withoutMail = validateOwnerSection("email", emailWithRecipients, {
+      platformMailConfigured: false,
+    });
+    expect(withoutMail.issues).toEqual([
+      expect.objectContaining({
+        pointer: "/email/smtp/host",
+        keyword: "platformMail",
+      }),
+    ]);
+    expect(
+      validateOwnerSection("email", {}, { platformMailConfigured: false }).valid,
+    ).toBe(true);
+    expect(
+      validateOwnerSection("email", emailWithRecipients, {
+        platformMailConfigured: true,
+      }).valid,
+    ).toBe(true);
   });
 });
 
@@ -265,6 +312,48 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         enabled: true,
       }),
     ]);
+  });
+
+  test("adds the platform mail service under the owner's recipients", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        email: { ...emailWithRecipients, smtp: { host: "owner.example.test" } },
+      },
+      managed: { ...managedConfiguration, mail: platformMail },
+    });
+    expect(configuration.email).toEqual({
+      ...emailWithRecipients,
+      smtp: platformMail,
+    });
+    expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
+  });
+
+  test("refuses recipients when the platform mail service is not set up", () => {
+    const withRecipients = {
+      sections: { ...ownerSections, email: emailWithRecipients },
+      managed: managedConfiguration,
+    };
+    expect(() => assembleEvidenceLibraryConfiguration(withRecipients)).toThrow(
+      ConfigurationAssemblyError,
+    );
+    try {
+      assembleEvidenceLibraryConfiguration(withRecipients);
+    } catch (error) {
+      expect((error as ConfigurationAssemblyError).issues).toEqual([
+        expect.objectContaining({
+          pointer: "/email/smtp/host",
+          section: "email",
+          keyword: "platformMail",
+        }),
+      ]);
+    }
+    // No recipients: the library deploys without a mail service.
+    const withoutRecipients = assembleEvidenceLibraryConfiguration({
+      sections: { ...ownerSections, email: {} },
+      managed: managedConfiguration,
+    });
+    expect(withoutRecipients.email).toEqual({ smtp: { port: 587, security: "starttls" } });
   });
 
   test("reports owner and platform failures with field pointers", () => {

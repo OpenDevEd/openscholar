@@ -5,6 +5,7 @@ import {
   assembleEvidenceLibraryConfiguration,
   type AssembledEvidenceLibraryConfiguration,
   type OwnerSections,
+  type PlatformMailService,
 } from "../../lib/evidence-libraries/configuration/assembly";
 import type { Id } from "../_generated/dataModel";
 import { decrypt } from "../lib/crypto";
@@ -34,6 +35,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     maxPdfBytes: number;
   };
   zoteroTranslationUrl?: string;
+  mail?: PlatformMailService;
   zoteroGroups: {
     groupId: string;
     encryptedApiKey: string;
@@ -79,6 +81,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       storagePublicBucket: input.storage.publicBucket,
       storageMaxPdfBytes: input.storage.maxPdfBytes,
       zoteroTranslationUrl: input.zoteroTranslationUrl,
+      mail: input.mail,
     },
     // Each Zotero source gets its group's key here and nowhere earlier.
     applySourceCredentials: createZoteroSourceCredentials(

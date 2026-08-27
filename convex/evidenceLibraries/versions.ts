@@ -8,6 +8,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
+import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import {
@@ -139,7 +140,11 @@ export async function restoreEvidenceLibraryRevision(
       sectionKey: row.sectionKey,
       payload: row.payload,
     })),
-    { expectedBaseUrl: running.binding.targetBaseUrl, requireComplete: true },
+    {
+      expectedBaseUrl: running.binding.targetBaseUrl,
+      requireComplete: true,
+      platformMailConfigured: isPlatformMailConfigured(),
+    },
   );
   const issue = validated.issues[0];
   if (issue) {

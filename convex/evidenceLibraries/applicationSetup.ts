@@ -3,6 +3,7 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
+import { isPlatformMailConfigured } from "./platformMail";
 import {
   LIBRARY_SERVICE_CREDENTIAL_KEY,
   writeEvidenceLibraryCredentialRecord,
@@ -161,6 +162,7 @@ export const prepareApplicationSetup = internalMutation({
     const validatedSections = validateOwnerSections(sections, {
       expectedBaseUrl: setup.runtimeBinding.targetBaseUrl,
       requireComplete: true,
+      platformMailConfigured: isPlatformMailConfigured(),
     });
     if (!validatedSections.valid) {
       throw createError(

@@ -1,4 +1,8 @@
 import {
+  PLATFORM_MAIL_MISSING_MESSAGE,
+  emailWantsPlatformMail,
+} from "./assembly";
+import {
   type ValidationIssue,
   validateSectionStructure,
 } from "./generated-validation";
@@ -28,6 +32,9 @@ export type OwnerRuleOptions = {
   expectedBaseUrl?: string;
   // When true, every section the schema requires must be present.
   requireComplete?: boolean;
+  // Whether the platform mail service exists. When false, recipients are
+  // refused early instead of failing when the runtime starts.
+  platformMailConfigured?: boolean;
 };
 
 function objectValue(value: unknown): Record<string, unknown> | undefined {
@@ -66,6 +73,27 @@ function ownerRuleIssues(
       section: "footer",
       keyword: "plan",
       message: "Available on paid plans.",
+    });
+  }
+  // The mail server is a platform service. Owners only pick recipients.
+  if (sectionKey === "email" && record?.smtp !== undefined) {
+    issues.push({
+      pointer: "/email/smtp",
+      section: "email",
+      keyword: "platformValue",
+      message: "The mail server is set by the platform and cannot be saved.",
+    });
+  }
+  if (
+    sectionKey === "email" &&
+    options.platformMailConfigured === false &&
+    emailWantsPlatformMail(record)
+  ) {
+    issues.push({
+      pointer: "/email/smtp/host",
+      section: "email",
+      keyword: "platformMail",
+      message: PLATFORM_MAIL_MISSING_MESSAGE,
     });
   }
   return issues;
