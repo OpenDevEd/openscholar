@@ -76,7 +76,7 @@ type CommonProps = {
   /** Nothing matches the typed text. */
   noMatchLabel: string;
   notSetUpLabel: string;
-  /** Called with every row loaded so far, each time a page arrives. */
+  /** Called with each page of rows as it arrives. */
   onRowsLoaded?: (rows: PickerRow[]) => void;
   onOpenChange?: (open: boolean) => void;
   /** A note above the footer, such as a list the source itself cuts short. */
@@ -159,11 +159,8 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
           setStatus("not-set-up");
           return;
         }
-        setRows((current) => {
-          const merged = next.cursor ? [...current, ...page.items] : page.items;
-          onRowsLoaded?.(merged);
-          return merged;
-        });
+        setRows((current) => (next.cursor ? [...current, ...page.items] : page.items));
+        onRowsLoaded?.(page.items);
         setCursor(page.nextCursor);
         setStatus("ready");
       })
