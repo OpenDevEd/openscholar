@@ -6,7 +6,7 @@ import { Check, Lock, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,11 @@ type AddressCheck =
       name: string;
       libraryId: Id<"evidenceLibraries">;
     }
-  | { status: "failed"; name: string; reason: "check-failed" | "no-address" };
+  | {
+      status: "failed";
+      name: string;
+      reason: "address-taken" | "check-failed" | "no-address";
+    };
 
 const CHECK_DELAY_MS = 300;
 
@@ -97,6 +101,15 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wantedName = useRef("");
 
+  // Outside system: the browser timer that waits for typing to pause. React
+  // has no other way to stop it when the page or organisation changes.
+  useEffect(
+    () => () => {
+      if (checkTimer.current) clearTimeout(checkTimer.current);
+    },
+    [],
+  );
+
   const trimmed = normalizeEvidenceLibraryName(name);
   // The short name follows the typed name straight away. The address is
   // only ever the one the server says is free.
@@ -109,6 +122,15 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
     : current?.status === "available"
       ? current.publicAddress.replace(/^https?:\/\//, "")
       : "";
+  // A name is typed but there is no address to show: a dash, never the
+  // "type a name" hint.
+  const addressText =
+    address ||
+    (current?.status === "checking"
+      ? t("checkingAddress")
+      : trimmed
+        ? "—"
+        : t("addressPending"));
   const nameError = showNameError && !trimmed;
 
   function runCheck(wanted: string) {
@@ -173,7 +195,11 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
           return;
         }
         if (result.status === "address-taken") {
-          toast.error(t("addressTaken"));
+          setCheck({
+            status: "failed",
+            name: trimmed,
+            reason: "address-taken",
+          });
           return;
         }
         if (result.status === "unavailable") {
@@ -288,7 +314,13 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
               hint={reserved ? undefined : t("addressHint")}
               error={
                 current?.status === "failed"
-                  ? t(current.reason === "no-address" ? "noAddress" : "checkFailed")
+                  ? t(
+                      current.reason === "no-address"
+                        ? "noAddress"
+                        : current.reason === "address-taken"
+                          ? "addressTaken"
+                          : "checkFailed",
+                    )
                   : null
               }
               counter={
@@ -304,12 +336,8 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
                 <div className="flex flex-col gap-1.5 sm:flex-row">
                   <ReadOnlyValue
                     id={id}
-                    value={
-                      address ||
-                      (current?.status === "checking"
-                        ? t("checkingAddress")
-                        : t("addressPending"))
-                    }
+                    value={addressText}
+                    title={address || undefined}
                     locked={Boolean(reserved)}
                     className="min-w-0 flex-1"
                   />

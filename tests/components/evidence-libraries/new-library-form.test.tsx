@@ -149,9 +149,10 @@ describe("<NewLibraryForm>", () => {
       "/evidence-libraries/lib_existing/configuration",
     );
     expect(screen.getByRole("button", { name: "reserve" })).toBeDisabled();
-    expect(screen.getByRole("textbox", { name: "addressLabel" })).toHaveTextContent(
-      "addressPending",
-    );
+    // A name is typed, so the box shows a dash, not the "type a name" hint.
+    const addressField = screen.getByRole("textbox", { name: "addressLabel" });
+    expect(addressField).toHaveTextContent("—");
+    expect(addressField).not.toHaveTextContent("addressPending");
     expect(mocks.reserveAddress).not.toHaveBeenCalled();
   });
 
@@ -207,6 +208,39 @@ describe("<NewLibraryForm>", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("checkFailed");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+
+  it("says so when someone else took the address just now", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+    mocks.reserveAddress.mockResolvedValue({ status: "address-taken" });
+
+    render(<NewLibraryForm />);
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "reserve" })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: "reserve" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("addressTaken");
+    expect(screen.getByRole("button", { name: "tryAgain" })).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("keeps a long address readable on hover", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+
+    render(<NewLibraryForm />);
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "addressLabel" })).toHaveAttribute(
+        "title",
+        "climate-evidence-lib.example.test",
+      ),
+    );
   });
 
   it("does not offer the form to an editor", () => {
