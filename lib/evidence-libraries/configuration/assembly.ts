@@ -25,7 +25,27 @@ export type ManagedEvidenceLibraryConfiguration = {
   zoteroTranslationUrl?: string;
   // The platform decides the search embedder. Owners never write it.
   searchEmbedder?: Record<string, unknown> | null;
+  // The platform mail service. Owners only choose who receives the emails.
+  // Undefined means the mail service is not set up yet.
+  mail?: PlatformMailService;
 };
+
+export type PlatformMailService = {
+  host: string;
+  port: number;
+  security: "tls" | "starttls" | "none";
+  from: string;
+  username?: string;
+  password?: string;
+};
+
+export const PLATFORM_MAIL_MISSING_MESSAGE =
+  "Contact and takedown emails need the platform mail service, which is not set up yet. Remove the recipients or ask support.";
+
+export function emailWantsPlatformMail(email: unknown): boolean {
+  if (!isObject(email)) return false;
+  return Boolean(email.contactRecipient) || Boolean(email.takedownRecipient);
+}
 
 export type OwnerSections = Partial<Record<SectionKey, unknown>>;
 
@@ -149,6 +169,14 @@ export function assembleEvidenceLibraryConfiguration({
         payload !== undefined && !isPlatformSection(key as SectionKey),
     ),
   );
+  // The owner row keeps recipients only. The mail server comes from the
+  // platform, like every other service.
+  const { smtp: _ownerSmtp, ...ownerEmail } = isObject(owner.email)
+    ? owner.email
+    : {};
+  const email = managed.mail
+    ? { ...ownerEmail, smtp: managed.mail }
+    : ownerEmail;
   const withDefaults = applyGeneratedDefaults(
     schema as JsonSchemaNode,
     {
@@ -156,6 +184,7 @@ export function assembleEvidenceLibraryConfiguration({
       revision: managed.revision,
       updatedAt: managed.updatedAt,
       ...owner,
+      email,
       services: {
         database: { url: managed.databaseUrl },
         search: {
@@ -201,7 +230,20 @@ export function assembleEvidenceLibraryConfiguration({
     );
   }
   const structuralValidation = validateLibraryConfigStructure(candidate);
-  const issues = uniqueIssues(structuralValidation.issues);
+  // The runtime refuses to start when recipients exist without a mail
+  // server. Catch it here so setup stops before anything is created.
+  const mailIssues: ValidationIssue[] =
+    !managed.mail && emailWantsPlatformMail(email)
+      ? [
+          {
+            pointer: "/email/smtp/host",
+            section: "email",
+            keyword: "platformMail",
+            message: PLATFORM_MAIL_MISSING_MESSAGE,
+          },
+        ]
+      : [];
+  const issues = uniqueIssues([...structuralValidation.issues, ...mailIssues]);
   if (issues.length > 0) throw new ConfigurationAssemblyError(issues);
   return candidate as AssembledEvidenceLibraryConfiguration;
 }

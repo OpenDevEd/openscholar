@@ -159,4 +159,8 @@ once the real page has replaced it.
 
 All three lane deployments expire 2026-09-09, carry daily usage caps, and hold
 the cloud dev env plus the `EL_*` values (each with its own `EL_CONVEX_SITE_URL`).
+Every deployment that creates or updates libraries also needs the platform
+mail values `EL_SMTP_HOST`, `EL_SMTP_FROM`, `EL_SMTP_PORT`, `EL_SMTP_SECURITY`,
+and optionally `EL_SMTP_USERNAME` and `EL_SMTP_PASSWORD`. Without them,
+libraries with a contact or takedown recipient are refused before setup.
 Delete them in plan 08.

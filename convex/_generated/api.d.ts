@@ -69,6 +69,7 @@ import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibra
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
+import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
 import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
 import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js";
 import type * as evidenceLibraries_readinessClient from "../evidenceLibraries/readinessClient.js";
@@ -321,6 +322,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
+  "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
   "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;
   "evidenceLibraries/queries": typeof evidenceLibraries_queries;
   "evidenceLibraries/readinessClient": typeof evidenceLibraries_readinessClient;

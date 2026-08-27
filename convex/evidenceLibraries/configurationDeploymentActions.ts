@@ -20,6 +20,7 @@ import {
   requireLibraryRuntimeReady,
 } from "./readinessClient";
 import {
+  optionalPlatformMailService,
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
@@ -114,6 +115,7 @@ export const runConfigurationDeployment = internalAction({
           search: prepared.search,
           storage: prepared.storage,
           zoteroTranslationUrl: prepared.zoteroTranslationUrl,
+          mail: optionalPlatformMailService(invalidConfiguration),
           zoteroGroups: prepared.zoteroGroups,
         });
         target = await ctx.runMutation(

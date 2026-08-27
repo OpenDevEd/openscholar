@@ -77,6 +77,13 @@ Use short Convex environment names, including `EL_COOLIFY_URL`,
 `EL_RUNTIME_COMMIT_SHA`, `EL_OPENSCHOLAR_URL`, `EL_CONVEX_SITE_URL`, and
 `EL_ZOTERO_TRANSLATION_URL`.
 
+The platform mail service for contact and takedown emails uses `EL_SMTP_HOST`,
+`EL_SMTP_FROM`, `EL_SMTP_PORT` (default 587), `EL_SMTP_SECURITY` (`tls`,
+`starttls`, or `none`; default `starttls`), and the optional pair
+`EL_SMTP_USERNAME` and `EL_SMTP_PASSWORD`. Owners never see these values. If
+`EL_SMTP_HOST` is missing, a library with a contact or takedown recipient is
+refused at Save, Activate, and assembly before anything is created in Coolify.
+
 `NEXT_PUBLIC_APP_URL` remains `http://localhost:3000` for the local Next.js
 development server. `EL_OPENSCHOLAR_URL` is the stable HTTPS development
 origin written into deployed library login links. Do not make local web

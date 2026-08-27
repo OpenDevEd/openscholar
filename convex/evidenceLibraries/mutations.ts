@@ -11,6 +11,7 @@ import {
   type OwnerSectionRow,
   validateOwnerSections,
 } from "../../lib/evidence-libraries/configuration/owner-rules";
+import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import {
   requireEvidenceLibraryAccess,
@@ -273,7 +274,10 @@ export async function saveEvidenceLibraryDraftSections(
   );
   const expectedBaseUrl = await readRuntimeBindingBaseUrl(ctx, access.library);
   throwFirstIssue(
-    validateOwnerSections(args.sections, { expectedBaseUrl }).issues,
+    validateOwnerSections(args.sections, {
+      expectedBaseUrl,
+      platformMailConfigured: isPlatformMailConfigured(),
+    }).issues,
   );
   const identity = args.sections.find(
     (section) => section.sectionKey === "identity",
@@ -553,7 +557,11 @@ export async function activateEvidenceLibraryConfiguration(
   throwFirstIssue(
     validateOwnerSections(
       rows.map((row) => ({ sectionKey: row.sectionKey, payload: row.payload })),
-      { expectedBaseUrl, requireComplete: true },
+      {
+        expectedBaseUrl,
+        requireComplete: true,
+        platformMailConfigured: isPlatformMailConfigured(),
+      },
     ).issues,
   );
   if (access.library.state === "active") {

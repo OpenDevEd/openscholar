@@ -19,6 +19,7 @@ import {
   EVIDENCE_LIBRARY_SEARCH_INDEX,
 } from "./runtimeConfiguration";
 import {
+  optionalPlatformMailService,
   optionalRuntimeEnvironment,
   requirePositiveRuntimeInteger,
   requireRuntimeEnvironment,
@@ -130,6 +131,7 @@ export const runApplicationSetup = internalAction({
         zoteroTranslationUrl: optionalRuntimeEnvironment(
           "EL_ZOTERO_TRANSLATION_URL",
         ),
+        mail: optionalPlatformMailService(invalidData),
         zoteroGroups: prepared.zoteroGroups,
       });
       const application = await reconcileCoolifyApplication({
