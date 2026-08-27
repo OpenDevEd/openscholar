@@ -1,0 +1,234 @@
+"use client";
+
+import { useOrganization } from "@clerk/nextjs";
+import { useMutation } from "convex/react";
+import { Check, Lock } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { type FormEvent, useState } from "react";
+import { toast } from "sonner";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { initialsOf } from "@/lib/evidence-libraries/initials";
+import { MAX_EVIDENCE_LIBRARY_NAME_LENGTH } from "@/lib/evidence-libraries/setup/naming";
+import { StatusChip } from "./configuration/status-chip";
+import { FieldGroup, PanelRow, ReadOnlyValue } from "./configuration/fields";
+import { Field } from "./configuration/section-card";
+import { LibraryPageShell } from "./library-page-shell";
+
+type Reserved = {
+  libraryId: Id<"evidenceLibraries">;
+  name: string;
+  shortName: string;
+  publicAddress: string;
+};
+
+export function NewLibraryForm() {
+  const t = useTranslations("evidenceLibraries.new");
+  const { isLoaded, membership, organization } = useOrganization();
+
+  if (!isLoaded) {
+    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+  }
+  if (!organization) {
+    return (
+      <AuthStatePanel
+        variant="no_access"
+        title={t("noOrganizationTitle")}
+        description={t("noOrganizationDescription")}
+      />
+    );
+  }
+  if (membership === undefined) {
+    return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
+  }
+  if (membership?.role !== "org:admin") {
+    return (
+      <AuthStatePanel
+        variant="no_access"
+        title={t("ownerOnlyTitle")}
+        description={t("ownerOnlyDescription")}
+      />
+    );
+  }
+  // Switching organisation starts a fresh form.
+  return <OwnerForm key={organization.id} organizationName={organization.name} />;
+}
+
+function OwnerForm({ organizationName }: { organizationName: string }) {
+  const t = useTranslations("evidenceLibraries.new");
+  const tc = useTranslations("common");
+  const router = useRouter();
+  const createSetupDraft = useMutation(api.evidenceLibraries.mutations.createSetupDraft);
+
+  const [name, setName] = useState("");
+  const [reserving, setReserving] = useState(false);
+  const [reserved, setReserved] = useState<Reserved | null>(null);
+  const [showNameError, setShowNameError] = useState(false);
+
+  const trimmed = name.trim();
+  const preview = useProtectedQuery(
+    api.evidenceLibraries.queries.previewSetupIdentity,
+    trimmed && !reserved ? { name: trimmed } : "skip",
+  );
+  const shortName = reserved?.shortName ?? preview.data?.shortName ?? "";
+  const address = (reserved?.publicAddress ?? preview.data?.publicAddress ?? "").replace(
+    /^https?:\/\//,
+    "",
+  );
+  const nameError = showNameError && !trimmed;
+
+  function handleReserve() {
+    if (reserving || reserved) return;
+    if (!trimmed) {
+      setShowNameError(true);
+      return;
+    }
+    setReserving(true);
+    void createSetupDraft({ name: trimmed })
+      .then((created) => {
+        setReserved({
+          libraryId: created.libraryId,
+          name: created.name,
+          shortName: created.shortName,
+          publicAddress: created.publicAddress,
+        });
+        toast.success(t("reservedToast"), {
+          description: t("reservedToastDescription", { address: created.publicAddress }),
+        });
+      })
+      .catch(() => toast.error(t("reserveError")))
+      .finally(() => setReserving(false));
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!reserved) return;
+    router.push(`/evidence-libraries/${reserved.libraryId}/configuration`);
+  }
+
+  return (
+    <LibraryPageShell
+      title={t("title")}
+      description={t("description")}
+      backHref="/evidence-libraries"
+      backLabel={t("backToLibraries")}
+    >
+      <form onSubmit={handleSubmit} noValidate className="space-y-5 p-4 md:p-6">
+        <FieldGroup title={t("ownerTitle")}>
+          <PanelRow
+            leading={
+              <span
+                aria-hidden="true"
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-white"
+              >
+                {initialsOf(organizationName)}
+              </span>
+            }
+            title={t("ownedBy", { organization: organizationName })}
+            hint={t("ownerHint")}
+          />
+        </FieldGroup>
+
+        <FieldGroup title={t("libraryTitle")} hint={t("libraryDescription")}>
+          <Field
+            label={t("nameLabel")}
+            error={nameError ? t("nameError") : null}
+            counter={
+              // The limit appears only when it is reached.
+              Array.from(name).length >= MAX_EVIDENCE_LIBRARY_NAME_LENGTH ? (
+                <span aria-live="polite">
+                  {Array.from(name).length} / {MAX_EVIDENCE_LIBRARY_NAME_LENGTH}
+                </span>
+              ) : null
+            }
+          >
+            {(id, invalid) =>
+              reserved ? (
+                <ReadOnlyValue id={id} value={reserved.name} mono={false} />
+              ) : (
+                <Input
+                  id={id}
+                  autoFocus
+                  autoComplete="off"
+                  maxLength={MAX_EVIDENCE_LIBRARY_NAME_LENGTH}
+                  className="bg-background"
+                  placeholder={t("namePlaceholder")}
+                  value={name}
+                  aria-invalid={invalid || undefined}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setShowNameError(false);
+                  }}
+                />
+              )
+            }
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
+            <Field label={t("shortNameLabel")} hint={reserved ? undefined : t("shortNameHint")}>
+              {(id) => (
+                <ReadOnlyValue
+                  id={id}
+                  value={shortName || t("addressPending")}
+                  mono={false}
+                  locked={Boolean(reserved)}
+                />
+              )}
+            </Field>
+
+            <Field
+              label={t("addressLabel")}
+              hint={reserved ? undefined : t("addressHint")}
+              counter={
+                reserved ? (
+                  <StatusChip tone="success" role="status" data-address-state="reserved">
+                    <Check />
+                    {t("reserved")}
+                  </StatusChip>
+                ) : null
+              }
+            >
+              {(id) => (
+                <div className="flex flex-col gap-1.5 sm:flex-row">
+                  <ReadOnlyValue
+                    id={id}
+                    value={address || t("addressPending")}
+                    locked={Boolean(reserved)}
+                    className="min-w-0 flex-1"
+                  />
+                  {reserved ? null : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!trimmed || reserving}
+                      onClick={handleReserve}
+                    >
+                      {reserving ? <Spinner /> : <Lock />}
+                      {reserving ? t("checking") : t("reserve")}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </Field>
+          </div>
+        </FieldGroup>
+
+        <div className="flex justify-end gap-2 border-t border-border/50 pt-5">
+          <Button asChild type="button" variant="ghost">
+            <Link href="/evidence-libraries">{tc("cancel")}</Link>
+          </Button>
+          <Button type="submit" disabled={!reserved}>
+            {tc("continue")}
+          </Button>
+        </div>
+      </form>
+    </LibraryPageShell>
+  );
+}

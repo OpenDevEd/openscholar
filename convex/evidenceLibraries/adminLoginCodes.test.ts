@@ -183,6 +183,9 @@ describe("Evidence Library admin login codes", () => {
     ).resolves.toEqual({
       libraryId,
       libraryName: "Climate Evidence",
+      publicAddress: "https://climate-evidence-lib.libraries.example.test",
+      libraryStatus: "active",
+      activeRevisionKey: expect.any(String),
       status: "ready",
     });
 
@@ -229,6 +232,9 @@ describe("Evidence Library admin login codes", () => {
     ).resolves.toEqual({
       libraryId,
       libraryName: "Climate Evidence",
+      publicAddress: "https://climate-evidence-lib.libraries.example.test",
+      libraryStatus: "setting_up",
+      activeRevisionKey: null,
       status: "not_ready",
     });
     await expect(
