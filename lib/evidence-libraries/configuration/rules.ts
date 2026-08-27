@@ -78,8 +78,6 @@ export type SectionState = "complete" | "edited" | "attention";
 type SectionProblem =
   | "nameMissing"
   | "partnerName"
-  | "logoMissing"
-  | "faviconMissing"
   | "badColour"
   | "institutionName"
   | LinkProblem
@@ -217,8 +215,6 @@ const POSTHOG_KEY_MIN_LENGTH = (() => {
 export const isPosthogKey = (key: string) =>
   POSTHOG_KEY_PATTERN.test(key) && key.length >= POSTHOG_KEY_MIN_LENGTH;
 export const MEASUREMENT_ID = schemaPattern("/analytics/google/measurementId");
-export const ANALYTICS_PROVIDERS = ["none", "posthog", "google"] as const;
-type AnalyticsProvider = (typeof ANALYTICS_PROVIDERS)[number];
 
 export const SEARCH_SCOPES = schemaEnum<
   | "title_abstract_author_and_keywords"
@@ -346,7 +342,8 @@ export type FooterDraft = {
 };
 
 export type ContactDraft = { email: string; phone: string; address: string };
-export type EmailDraft = { contactRecipient: string; takedownRecipient: string };
+/** A recipient is null while its switch is off; on and empty is a problem. */
+export type EmailDraft = { contactRecipient: string | null; takedownRecipient: string | null };
 
 /**
  * Where a legal page comes from: nothing, uploaded text, or an address
@@ -383,10 +380,10 @@ type LocalizationDraft = {
   detectLocale: boolean;
   localePriority: Locale[];
 };
-type AnalyticsDraft = {
-  provider: AnalyticsProvider;
-  posthog: { host: string; key: string };
-  google: { measurementId: string };
+/** PostHog and Google Analytics are independent switches; both may be on. */
+export type AnalyticsDraft = {
+  posthog: { enabled: boolean; host: string; key: string };
+  google: { enabled: boolean; measurementId: string };
 };
 
 export type ConfigurationDraft = {
@@ -633,11 +630,15 @@ function readContact(payload: unknown): ContactDraft {
   };
 }
 
+function readRecipient(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
 function readEmail(payload: unknown): EmailDraft {
   const email = record(payload);
   return {
-    contactRecipient: text(email.contactRecipient),
-    takedownRecipient: text(email.takedownRecipient),
+    contactRecipient: readRecipient(email.contactRecipient),
+    takedownRecipient: readRecipient(email.takedownRecipient),
   };
 }
 
@@ -793,9 +794,8 @@ function readAnalytics(payload: unknown): AnalyticsDraft {
   const key = text(posthog.key);
   const measurementId = text(google.measurementId);
   return {
-    provider: key ? "posthog" : measurementId ? "google" : "none",
-    posthog: { host: text(posthog.host), key },
-    google: { measurementId },
+    posthog: { enabled: key !== "", host: text(posthog.host), key },
+    google: { enabled: measurementId !== "", measurementId },
   };
 }
 
@@ -898,10 +898,11 @@ function contactPayload(contact: ContactDraft) {
   });
 }
 
+// A switched-off recipient writes no key at all.
 function emailPayload(email: EmailDraft) {
   return compact({
-    contactRecipient: optional(email.contactRecipient),
-    takedownRecipient: optional(email.takedownRecipient),
+    contactRecipient: optional(email.contactRecipient ?? ""),
+    takedownRecipient: optional(email.takedownRecipient ?? ""),
   });
 }
 
@@ -970,10 +971,10 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
       return { locales: [...locales], defaultLocale, detectLocale, localePriority: [...localePriority] };
     }
     case "analytics": {
-      const { provider, posthog, google } = draft.analytics;
+      const { posthog, google } = draft.analytics;
       return compact({
-        posthog: provider === "posthog" ? { host: posthog.host, key: posthog.key } : undefined,
-        google: provider === "google" ? { measurementId: google.measurementId } : undefined,
+        posthog: posthog.enabled ? { host: posthog.host, key: posthog.key } : undefined,
+        google: google.enabled ? { measurementId: google.measurementId } : undefined,
       });
     }
   }
@@ -1122,8 +1123,6 @@ export function sectionProblems(
       }
       break;
     case "theme":
-      if (!draft.identity.assets.logoDark) problems.push("logoMissing");
-      if (!draft.identity.assets.favicon) problems.push("faviconMissing");
       if (COLOUR_KEYS.some((key) => !HEX_COLOUR.test(draft.theme.colors[key]))) {
         problems.push("badColour");
       }
@@ -1153,8 +1152,10 @@ export function sectionProblems(
     }
     case "contact": {
       const { contact, email, legal } = draft;
-      if (!EMAIL.test(email.takedownRecipient)) problems.push("takedownRecipient");
-      if (email.contactRecipient && !EMAIL.test(email.contactRecipient)) {
+      if (email.takedownRecipient !== null && !EMAIL.test(email.takedownRecipient)) {
+        problems.push("takedownRecipient");
+      }
+      if (email.contactRecipient !== null && !EMAIL.test(email.contactRecipient)) {
         problems.push("contactRecipient");
       }
       if (contact.email && !EMAIL.test(contact.email)) problems.push("contactEmail");
@@ -1224,11 +1225,11 @@ export function sectionProblems(
       break;
     }
     case "analytics": {
-      const { provider, posthog, google } = draft.analytics;
-      if (provider === "posthog" && (!HTTPS_URL.test(posthog.host) || !isPosthogKey(posthog.key))) {
+      const { posthog, google } = draft.analytics;
+      if (posthog.enabled && (!HTTPS_URL.test(posthog.host) || !isPosthogKey(posthog.key))) {
         problems.push("posthog");
       }
-      if (provider === "google" && !MEASUREMENT_ID.test(google.measurementId)) problems.push("google");
+      if (google.enabled && !MEASUREMENT_ID.test(google.measurementId)) problems.push("google");
       break;
     }
   }

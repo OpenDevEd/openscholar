@@ -513,3 +513,57 @@ export const getRevision = query({
   }),
   handler: readEvidenceLibraryRevision,
 });
+
+const teamPersonValidator = v.object({
+  clerkUserId: v.string(),
+  name: v.string(),
+  email: v.string(),
+});
+
+/**
+ * The people who can work on this library: organisation admins own it and
+ * change every setting, organisation members edit records in its /admin.
+ * Names and emails come from the projected users table; someone whose user
+ * row has not arrived yet is listed by Clerk id with an empty name and email.
+ */
+export const listTeam = query({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.object({
+    organizationName: v.string(),
+    owners: v.array(teamPersonValidator),
+    editors: v.array(teamPersonValidator),
+  }),
+  handler: async (ctx, args) => {
+    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
+    const memberships = await ctx.db
+      .query("organizationMemberships")
+      .withIndex("by_organizationId_and_state", (query) =>
+        query.eq("organizationId", access.organization._id).eq("state", "active"),
+      )
+      .collect();
+    const people = await Promise.all(
+      memberships.map(async (membership) => {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("by_clerk_id", (query) => query.eq("clerkId", membership.clerkUserId))
+          .unique();
+        return {
+          role: membership.role,
+          person: {
+            clerkUserId: membership.clerkUserId,
+            name: [user?.firstName, user?.lastName].filter(Boolean).join(" "),
+            email: user?.email ?? "",
+          },
+        };
+      }),
+    );
+    const byName = (left: { person: { name: string; email: string } }, right: { person: { name: string; email: string } }) =>
+      (left.person.name || left.person.email).localeCompare(right.person.name || right.person.email);
+    people.sort(byName);
+    return {
+      organizationName: access.organization.name,
+      owners: people.filter((entry) => entry.role === "org:admin").map((entry) => entry.person),
+      editors: people.filter((entry) => entry.role === "org:member").map((entry) => entry.person),
+    };
+  },
+});

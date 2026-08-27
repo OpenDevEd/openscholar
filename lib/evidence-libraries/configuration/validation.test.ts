@@ -64,6 +64,11 @@ const platformMail = {
   password: "mail-password",
 };
 
+const platformBrand = {
+  logoUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-logo.svg",
+  faviconUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-favicon.png",
+};
+
 const emailWithRecipients = {
   contactRecipient: "team@example.org",
   takedownRecipient: "takedown@example.org",
@@ -164,6 +169,22 @@ describe("validateOwnerSection", () => {
         (issue) => issue.pointer,
       ),
     ).toEqual(["/sources/0/key", "/sources/0/provider"]);
+  });
+});
+
+describe("validateOwnerSection brand assets", () => {
+  test("accepts an identity without a logo or favicon; the platform fills them", () => {
+    const { assets: _assets, ...withoutAssets } = ownerSections.identity;
+    expect(validateOwnerSection("identity", withoutAssets).issues).toEqual([]);
+    expect(
+      validateOwnerSection("identity", { ...withoutAssets, assets: {} }).issues,
+    ).toEqual([]);
+    expect(
+      validateOwnerSection("identity", {
+        ...withoutAssets,
+        assets: { logoDark: "not a URL" },
+      }).issues.map((issue) => issue.pointer),
+    ).toEqual(["/identity/assets/logoDark"]);
   });
 });
 
@@ -327,6 +348,68 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       smtp: platformMail,
     });
     expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
+  });
+
+  test("fills a missing logo and favicon from the platform brand, owner uploads win", () => {
+    const { assets: _assets, ...identityWithoutAssets } = ownerSections.identity;
+    const filled = assembleEvidenceLibraryConfiguration({
+      sections: { ...ownerSections, identity: identityWithoutAssets },
+      managed: { ...managedConfiguration, brand: platformBrand },
+    });
+    expect(validateLibraryConfigStructure(filled).valid).toBe(true);
+    expect(filled.identity).toMatchObject({
+      assets: { logoDark: platformBrand.logoUrl, favicon: platformBrand.faviconUrl },
+    });
+
+    const partial = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        identity: {
+          ...identityWithoutAssets,
+          assets: { favicon: "https://assets.example.test/own-favicon.svg" },
+        },
+      },
+      managed: { ...managedConfiguration, brand: platformBrand },
+    });
+    expect(partial.identity).toMatchObject({
+      assets: {
+        logoDark: platformBrand.logoUrl,
+        favicon: "https://assets.example.test/own-favicon.svg",
+      },
+    });
+
+    const own = assembleEvidenceLibraryConfiguration({
+      sections: ownerSections,
+      managed: { ...managedConfiguration, brand: platformBrand },
+    });
+    expect(own.identity).toMatchObject({ assets: ownerSections.identity.assets });
+  });
+
+  test("refuses a missing logo when the platform brand is not set up", () => {
+    const { assets: _assets, ...identityWithoutAssets } = ownerSections.identity;
+    const input = {
+      sections: { ...ownerSections, identity: identityWithoutAssets },
+      managed: managedConfiguration,
+    };
+    expect(() => assembleEvidenceLibraryConfiguration(input)).toThrow(
+      ConfigurationAssemblyError,
+    );
+    try {
+      assembleEvidenceLibraryConfiguration(input);
+    } catch (error) {
+      expect((error as ConfigurationAssemblyError).issues).toEqual([
+        expect.objectContaining({
+          pointer: "/identity/assets/logoDark",
+          section: "identity",
+          keyword: "platformBrand",
+        }),
+        expect.objectContaining({
+          pointer: "/identity/assets/favicon",
+          section: "identity",
+          keyword: "platformBrand",
+        }),
+      ]);
+    }
   });
 
   test("refuses recipients when the platform mail service is not set up", () => {

@@ -302,12 +302,14 @@ describe("Evidence Library draft storage", () => {
         expectedEditVersion: 0,
       }),
     ).rejects.toThrow(/CONFLICT.*Draft changed since it was loaded/);
+    // The identity row has no logo; the platform fills that, so the first
+    // thing activation misses is the required theme row.
     await expect(
       admin.mutation(api.evidenceLibraries.mutations.activateConfiguration, {
         libraryId: created.libraryId,
         expectedEditVersion: 1,
       }),
-    ).rejects.toThrow(/VALIDATION_ERROR.*\/identity\/assets/);
+    ).rejects.toThrow(/VALIDATION_ERROR.*\/theme: Required section is missing/);
 
     const unchanged = await admin.run((ctx) =>
       readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),

@@ -40,16 +40,15 @@ vi.mock("next-intl", () => ({
 
 vi.mock("sonner", () => ({ toast: toastMock }));
 
-// The Team section reads the organisation name and opens Clerk's organisation modal.
+// The Team section opens Clerk's organisation modal from its manage button.
 vi.mock("@clerk/nextjs", () => ({
-  useOrganization: () => ({ isLoaded: true, organization: { name: "Test Org" } }),
   useClerk: () => ({ openOrganizationProfile: vi.fn() }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      queries: { getDraft: "getDraft" },
+      queries: { getDraft: "getDraft", listTeam: "listTeam" },
       mutations: {
         activateConfiguration: "activateConfiguration",
         saveDraftSections: "saveDraftSections",
@@ -93,7 +92,9 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
       ? { data: { connected: false }, isReady: true }
       : query === "listLibraryZoteroGroups" || query === "listVersions"
         ? { data: [], isReady: true }
-        : queryMock(query, args),
+        : query === "listTeam"
+          ? { data: { organizationName: "Test Org", owners: [], editors: [] }, isReady: true }
+          : queryMock(query, args),
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
@@ -512,6 +513,32 @@ describe("<ConfigurationWorkspace>", () => {
       expect(credit).toBeDisabled();
     });
 
+    it("shows a recipient field only while its switch is on and saves nothing when off", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      const contact = card("contact");
+      const contactForm = contact.getByRole("switch", { name: "contact.contactRecipientLabel" });
+      const takedown = contact.getByRole("switch", { name: "contact.takedownRecipientLabel" });
+      expect(contactForm).not.toBeChecked();
+      expect(contact.queryByLabelText("contact.contactRecipient")).not.toBeInTheDocument();
+      expect(takedown).toBeChecked();
+      expect(contact.getByLabelText("contact.takedownRecipient")).toHaveValue("takedown@example.org");
+
+      await user.click(contactForm);
+      expect(contact.getByText("sectionState.attention")).toBeInTheDocument();
+      await user.type(contact.getByLabelText("contact.contactRecipient"), "team@example.org");
+      expect(contact.getByText("sectionState.edited")).toBeInTheDocument();
+
+      await user.click(takedown);
+      expect(contact.queryByLabelText("contact.takedownRecipient")).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "save" }));
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+      expect(request.sections).toEqual([
+        { sectionKey: "email", payload: { contactRecipient: "team@example.org" } },
+      ]);
+    });
+
     it("switches a legal page between an address and uploaded text, then saves the text", async () => {
       const user = userEvent.setup();
       mutationMock.mockImplementation((reference: unknown) => {
@@ -662,19 +689,33 @@ describe("<ConfigurationWorkspace>", () => {
       expect(card("languages").getByText("sectionState.edited")).toBeInTheDocument();
     });
 
-    it("saves only the chosen analytics provider and checks its key", async () => {
+    it("lets PostHog and Google Analytics be on at the same time and checks both keys", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
       const analytics = card("analytics");
-      await user.click(analytics.getByRole("radio", { name: /analytics\.provider\.google/ }));
+      expect(analytics.queryByLabelText("analytics.measurementIdLabel")).not.toBeInTheDocument();
+      await user.click(analytics.getByRole("switch", { name: "analytics.googleLabel" }));
       expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
       await user.type(analytics.getByLabelText("analytics.measurementIdLabel"), "g-abcd12");
       expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
+
+      await user.click(analytics.getByRole("switch", { name: "analytics.posthogLabel" }));
+      expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
+      await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
+      await user.type(analytics.getByLabelText("analytics.keyLabel"), "phc_12345678901234567890");
+      expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
+
       await user.click(screen.getByRole("button", { name: "save" }));
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
       expect(request.sections).toEqual([
-        { sectionKey: "analytics", payload: { google: { measurementId: "G-ABCD12" } } },
+        {
+          sectionKey: "analytics",
+          payload: {
+            posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+            google: { measurementId: "G-ABCD12" },
+          },
+        },
       ]);
     });
   });
