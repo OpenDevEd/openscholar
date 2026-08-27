@@ -11,6 +11,7 @@ import {
   Database,
   FolderTree,
   Globe,
+  History,
   Languages,
   Layers,
   type LucideIcon,
@@ -68,6 +69,7 @@ import {
   sectionState,
   staleUploads,
 } from "@/lib/evidence-libraries/configuration/rules";
+import { shortCommit } from "@/lib/evidence-libraries/configuration/versions";
 import { cn } from "@/lib/utils";
 import { AnalyticsSection } from "./sections/analytics-section";
 import { CitationsSection } from "./sections/citations-section";
@@ -85,6 +87,7 @@ import { SearchSection } from "./sections/search-section";
 import { SourcesSection } from "./sections/sources-section";
 import { TeamSection } from "./sections/team-section";
 import { ThemeSection } from "./sections/theme-section";
+import { VersionsSection } from "./sections/versions-section";
 import { InlineNotice } from "./section-card";
 import { STATE_TONE, type SectionProps } from "./section-shell";
 import { PanelHeader } from "./panel-header";
@@ -107,8 +110,8 @@ function isOperationRunning(operation: Operation): operation is NonNullable<Oper
   return operation.status === "queued" || operation.status === "running";
 }
 
-/** Rail entries: the page cards in their groups, then the team and the danger zone. */
-type RailKey = PageSectionKey | "team" | "danger";
+/** Rail entries: the page cards in their groups, then versions, the team and the danger zone. */
+type RailKey = PageSectionKey | "versions" | "team" | "danger";
 const RAIL_GROUPS: {
   key: "brand" | "content" | "discovery" | "platform" | "team" | "danger";
   sections: readonly RailKey[];
@@ -116,7 +119,7 @@ const RAIL_GROUPS: {
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["navigation", "footer", "contact", "collections"] },
   { key: "discovery", sections: ["search", "citations", "features", "sources"] },
-  { key: "platform", sections: ["languages", "analytics"] },
+  { key: "platform", sections: ["languages", "analytics", "versions"] },
   { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
@@ -135,6 +138,7 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   features: ToggleRight,
   languages: Languages,
   analytics: BarChart3,
+  versions: History,
   team: Users,
   danger: Trash2,
 };
@@ -172,7 +176,7 @@ function isPageSection(value: string): value is PageSectionKey {
   return (PAGE_SECTION_KEYS as readonly string[]).includes(value);
 }
 
-const RAIL_KEYS: readonly RailKey[] = [...PAGE_SECTION_KEYS, "team", "danger"];
+const RAIL_KEYS: readonly RailKey[] = [...PAGE_SECTION_KEYS, "versions", "team", "danger"];
 
 export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
@@ -430,6 +434,11 @@ function Workspace({
                   />
                 );
               })}
+              <VersionsSection
+                libraryId={libraryId}
+                live={libraryState === "active"}
+                operationRunning={operationRunning}
+              />
               <TeamSection />
               <DangerSection onDelete={() => setDeleteOpen(true)} />
             </div>
@@ -488,8 +497,9 @@ function Workspace({
 }
 
 /**
- * The latest platform operation: progress while it runs, the failure and any
- * assembly issues when it stopped. Each issue links to its section.
+ * The latest platform operation: progress while it runs (a publish, a restore
+ * or a software update), the failure and any assembly issues when it stopped.
+ * Each issue links to its section.
  */
 function OperationBanner({
   operation,
@@ -511,7 +521,13 @@ function OperationBanner({
         className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border/50 bg-muted/30 p-4 text-sm"
       >
         <Spinner className="h-4 w-4 text-primary" />
-        <span className="font-medium">{t("applying")}</span>
+        <span className="font-medium">
+          {operation.runtimeUpdate
+            ? t("updatingSoftware", {
+                rev: shortCommit(operation.runtimeUpdate.to),
+              })
+            : t("applying")}
+        </span>
         <StatusChip tone="running">{t(`stages.${operation.stage}`)}</StatusChip>
       </div>
     );

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +9,15 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 const queryMock = vi.hoisted(() => vi.fn());
 const mutationMock = vi.hoisted(() => vi.fn());
+// The Versions section checks for software updates when the page opens.
+const checkMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    running: "aaaaaaa1234",
+    latest: "aaaaaaa1234",
+    changes: [],
+    checkedAt: Date.UTC(2026, 7, 26, 12, 0),
+  })),
+);
 const pushMock = vi.hoisted(() => vi.fn());
 const toastMock = vi.hoisted(() => {
   const toast = Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() });
@@ -26,6 +35,7 @@ vi.mock("next-intl", () => ({
     const prefix = "evidenceLibraryConfiguration.";
     return full.startsWith(prefix) ? full.slice(prefix.length) : full;
   },
+  useFormatter: () => ({ dateTime: (date: Date) => date.toISOString() }),
 }));
 
 vi.mock("sonner", () => ({ toast: toastMock }));
@@ -47,6 +57,12 @@ vi.mock("@/convex/_generated/api", () => ({
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
+      updates: { check: "check" },
+      versions: {
+        listVersions: "listVersions",
+        startRuntimeUpdate: "startRuntimeUpdate",
+        restoreRevision: "restoreRevision",
+      },
     },
     zotero: {
       actions: { startOAuth: "startOAuth" },
@@ -61,16 +77,21 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
+// One action callback per test, as Convex gives one per mounted section; the
+// Versions section caches its update check by that callback.
+let checkAction: (args: unknown) => unknown;
+
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
-  useAction: (action: unknown) => mutationMock(action),
+  useAction: (action: unknown) =>
+    action === "check" ? checkAction : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: unknown, args: unknown) =>
     query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
-      : query === "listLibraryZoteroGroups"
+      : query === "listLibraryZoteroGroups" || query === "listVersions"
         ? { data: [], isReady: true }
         : queryMock(query, args),
 }));
@@ -145,14 +166,21 @@ function draftResult(overrides: { operation?: unknown; state?: string } = {}) {
   };
 }
 
-function renderWorkspace() {
-  return render(
-    <NuqsTestingAdapter>
-      <TooltipProvider>
-        <ConfigurationWorkspace libraryId="library_123" />
-      </TooltipProvider>
-    </NuqsTestingAdapter>,
-  );
+/**
+ * The Versions section suspends until the update check answers. React retries
+ * a suspended tree only inside an awaited act, so render and settle there.
+ */
+async function renderWorkspace() {
+  await act(async () => {
+    render(
+      <NuqsTestingAdapter>
+        <TooltipProvider>
+          <ConfigurationWorkspace libraryId="library_123" />
+        </TooltipProvider>
+      </NuqsTestingAdapter>,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 function identityCard() {
@@ -175,6 +203,7 @@ describe("<ConfigurationWorkspace>", () => {
   beforeEach(() => {
     saved = [];
     activated = [];
+    checkAction = () => checkMock();
     queryMock.mockReset();
     mutationMock.mockReset();
     pushMock.mockReset();
@@ -201,7 +230,7 @@ describe("<ConfigurationWorkspace>", () => {
 
   it("saves only the sections that changed", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
+    await renderWorkspace();
     expect(queryMock).toHaveBeenCalledWith("getDraft", { libraryId: "library_123" });
 
     const name = identityCard().getByLabelText("identity.nameLabel");
@@ -229,7 +258,7 @@ describe("<ConfigurationWorkspace>", () => {
 
   it("writes the navigation bar choice to theme.layout", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
+    await renderWorkspace();
     await user.click(screen.getByRole("radio", { name: /theme\.layout\.wide/ }));
     await user.click(screen.getByRole("button", { name: "save" }));
 
@@ -241,7 +270,7 @@ describe("<ConfigurationWorkspace>", () => {
 
   it("shows Needs attention for a section with a problem and blocks Activate and Save", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
+    await renderWorkspace();
     expect(screen.getByRole("button", { name: "activate" })).toBeEnabled();
 
     await user.clear(identityCard().getByLabelText("identity.nameLabel"));
@@ -261,7 +290,7 @@ describe("<ConfigurationWorkspace>", () => {
 
   it("resets a section back to the saved values", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
+    await renderWorkspace();
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
     await user.type(name, "Renamed Library");
@@ -275,8 +304,8 @@ describe("<ConfigurationWorkspace>", () => {
     expect(screen.queryByText("unsaved")).not.toBeInTheDocument();
   });
 
-  it("keeps the short name and public address read-only", () => {
-    renderWorkspace();
+  it("keeps the short name and public address read-only", async () => {
+    await renderWorkspace();
     const shortName = identityCard().getByRole("textbox", { name: "identity.shortNameLabel" });
     const address = identityCard().getByRole("textbox", { name: "identity.addressLabel" });
     expect(shortName).toHaveAttribute("aria-readonly", "true");
@@ -287,7 +316,7 @@ describe("<ConfigurationWorkspace>", () => {
 
   it("saves unsaved changes first, then activates with the new edit version", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
+    await renderWorkspace();
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
     await user.type(name, "Renamed Library");
@@ -310,7 +339,7 @@ describe("<ConfigurationWorkspace>", () => {
         ? async () => ({ editVersion: 5, kind: "setup", revisionKey: "r1", status: "queued" })
         : async () => ({ editVersion: 5 }),
     );
-    renderWorkspace();
+    await renderWorkspace();
 
     await user.click(screen.getByRole("button", { name: "setUpAndActivate" }));
     await user.click(screen.getByRole("button", { name: "activateDraftConfirm" }));
@@ -337,7 +366,7 @@ describe("<ConfigurationWorkspace>", () => {
         },
       }),
     );
-    renderWorkspace();
+    await renderWorkspace();
 
     const notice = screen.getByText("operationFailed").closest("[data-operation-issues]")!;
     expect(notice).toHaveTextContent("The configuration is not valid");
@@ -352,29 +381,53 @@ describe("<ConfigurationWorkspace>", () => {
     );
   });
 
-  it("lets a new library be set up while its setup operation waits for the owner", () => {
+  it("lets a new library be set up while its setup operation waits for the owner", async () => {
     queryMock.mockReturnValue(
       draftResult({
         state: "provisioning",
         operation: { _id: "operation_1", kind: "setup", status: "queued", stage: "queued" },
       }),
     );
-    renderWorkspace();
+    await renderWorkspace();
     expect(document.querySelector("[data-operation-stage]")).toBeNull();
     expect(screen.getByRole("button", { name: "setUpAndActivate" })).toBeEnabled();
   });
 
-  it("shows the running stage and blocks Activate while an operation runs", () => {
+  it("shows the running stage and blocks Activate while an operation runs", async () => {
     queryMock.mockReturnValue(
       draftResult({
         operation: { _id: "operation_1", kind: "publish", status: "running", stage: "deployment" },
       }),
     );
-    renderWorkspace();
+    await renderWorkspace();
     const banner = document.querySelector("[data-operation-stage='deployment']");
     expect(banner).toHaveAttribute("role", "status");
     expect(banner).toHaveTextContent("stages.deployment");
     expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
+  });
+
+  it("names the software update while it runs and blocks Activate", async () => {
+    queryMock.mockReturnValue(
+      draftResult({
+        operation: {
+          _id: "operation_123",
+          kind: "publish",
+          status: "running",
+          stage: "deployment",
+          revisionId: "revision_123",
+          runtimeUpdate: { from: "aaaaaaa1234", to: "bbbbbbb1234" },
+        },
+      }),
+    );
+    await renderWorkspace();
+    const banner = document.querySelector("[data-operation-stage]");
+    expect(banner).toHaveTextContent("updatingSoftware");
+    expect(banner).toHaveAttribute("data-operation-stage", "deployment");
+    expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "sections.versions" })).toHaveAttribute(
+      "href",
+      "#sec-versions",
+    );
   });
 
   it("requires the exact library name before queuing development teardown", async () => {
@@ -388,7 +441,7 @@ describe("<ConfigurationWorkspace>", () => {
           }
         : async () => ({}),
     );
-    renderWorkspace();
+    await renderWorkspace();
 
     await user.click(screen.getByRole("button", { name: "danger.deleteButton" }));
     const confirm = screen.getByRole("button", { name: "deleteDialog.confirm" });
@@ -413,7 +466,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("writes the top bar search switch to the features row", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       await user.click(card("navigation").getByRole("switch", { name: "navigation.showSearch" }));
       expect(card("navigation").getByText("sectionState.edited")).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "save" }));
@@ -430,7 +483,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("clears the other target when a link changes what it goes to", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       const navigation = card("navigation");
       await user.click(navigation.getByRole("button", { name: "navigation.addLink" }));
       const row = within(document.querySelector("[data-nav-link]") as HTMLElement);
@@ -452,8 +505,8 @@ describe("<ConfigurationWorkspace>", () => {
       expect(navigation.getByText("sectionState.attention")).toBeInTheDocument();
     });
 
-    it("keeps the OpenScholar credit switched on", () => {
-      renderWorkspace();
+    it("keeps the OpenScholar credit switched on", async () => {
+      await renderWorkspace();
       const credit = card("footer").getByRole("switch", { name: "footer.poweredBy" });
       expect(credit).toBeChecked();
       expect(credit).toBeDisabled();
@@ -479,7 +532,7 @@ describe("<ConfigurationWorkspace>", () => {
         vi.fn(async () => new Response(JSON.stringify({ storageId: "storage_1" }), { status: 200 })),
       );
       try {
-        renderWorkspace();
+        await renderWorkspace();
         const privacy = document.querySelector("[data-legal='privacy']") as HTMLElement;
         expect(privacy).toHaveAttribute("data-legal-kind", "none");
 
@@ -516,7 +569,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("drops the full-text scope when full-text search is turned off and saves the search row", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       const search = card("search");
       const documents = search.getByRole("checkbox", { name: "search.scope.documents" });
       expect(documents).toBeChecked();
@@ -539,7 +592,7 @@ describe("<ConfigurationWorkspace>", () => {
           ? async () => ({ reason: "not-set-up", items: [] })
           : async () => null,
       );
-      renderWorkspace();
+      await renderWorkspace();
       const search = card("search");
       expect(search.queryByRole("combobox", { name: "search.featuredInstitution" })).not.toBeInTheDocument();
       await user.click(search.getByRole("combobox", { name: "search.institutionMode" }));
@@ -550,8 +603,8 @@ describe("<ConfigurationWorkspace>", () => {
       expect(await screen.findByText("evidenceLibraryInstitutions.picker.notSetUp")).toBeInTheDocument();
     });
 
-    it("shows the Zotero sources and the collections picker inside their cards", () => {
-      renderWorkspace();
+    it("shows the Zotero sources and the collections picker inside their cards", async () => {
+      await renderWorkspace();
       expect(card("sources").getByRole("button", { name: "evidenceLibrarySources.account.connect" })).toBeInTheDocument();
       expect(card("collections").getByRole("button", { name: "evidenceLibraryCollections.add" })).toBeInTheDocument();
       expect(card("institutions").getByRole("combobox", { name: "institutions.nameLabel" })).toBeInTheDocument();
@@ -563,7 +616,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("disables a feature with the reason and switches it off again when its export goes", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       const features = card("features");
       const downloads = features.getByRole("switch", { name: "features.labels.downloads" });
       expect(downloads).toBeDisabled();
@@ -582,7 +635,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("writes the export URL from the public address when a format is turned on", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       await user.click(card("citations").getByRole("switch", { name: "citations.formats.atom" }));
       await user.click(screen.getByRole("button", { name: "save" }));
       await waitFor(() => expect(saved).toHaveLength(1));
@@ -594,7 +647,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("keeps the language switch off until two languages are offered", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       const languageSwitch = card("features").getByRole("switch", { name: "features.labels.languageSwitcher" });
       expect(languageSwitch).toBeDisabled();
       await user.click(card("languages").getByRole("checkbox", { name: "languages.names.fr" }));
@@ -604,7 +657,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("saves only the chosen analytics provider and checks its key", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       const analytics = card("analytics");
       await user.click(analytics.getByRole("radio", { name: /analytics\.provider\.google/ }));
       expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
@@ -666,7 +719,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("keeps the saved file when the owner replaces it and then resets", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       const theme = await replaceLogo(user);
       expect(removed).toEqual([]);
 
@@ -678,7 +731,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("deletes the replaced file only after a successful save", async () => {
       const user = userEvent.setup();
-      renderWorkspace();
+      await renderWorkspace();
       await replaceLogo(user);
 
       await user.click(screen.getByRole("button", { name: "save" }));
