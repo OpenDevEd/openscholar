@@ -4,11 +4,13 @@ import {
   internalAction,
   internalMutation,
   internalQuery,
+  query,
   type ActionCtx,
 } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
+import { readEvidenceLibraries } from "./queries";
 import {
   fetchRuntimeRelease,
   isFreshRuntimeRelease,
@@ -135,6 +137,36 @@ export const check = action({
     );
     if (state.cached) return state.cached;
     return await refreshRuntimeRelease(ctx, state.running);
+  },
+});
+
+/**
+ * What the library list has to say about addresses. A library that is still
+ * setting up reports the address the platform moved it to, so the owner sees
+ * why it is not the one they reserved.
+ */
+export const listAddressNotices = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      libraryId: v.id("evidenceLibraries"),
+      movedTo: v.string(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const libraries = await readEvidenceLibraries(ctx);
+    const notices = await Promise.all(
+      libraries.map(async (library) => {
+        if (library.state === "active" || !library.setupOperationId) return null;
+        const operation = await ctx.db.get(
+          "evidenceLibraryConfigOperations",
+          library.setupOperationId,
+        );
+        const movedTo = operation?.addressMove?.to;
+        return movedTo ? { libraryId: library._id, movedTo } : null;
+      }),
+    );
+    return notices.filter((notice) => notice !== null);
   },
 });
 

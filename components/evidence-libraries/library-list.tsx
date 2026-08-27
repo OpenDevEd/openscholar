@@ -45,7 +45,17 @@ export function LibraryList() {
     api.evidenceLibraries.queries.listLibraryOverviews,
     organization ? {} : "skip",
   );
+  const addressNotices = useProtectedQuery(
+    api.evidenceLibraries.updates.listAddressNotices,
+    organization ? {} : "skip",
+  );
   const [deleteTarget, setDeleteTarget] = useState<Overview | null>(null);
+  const movedAddresses = new Map(
+    (addressNotices.data ?? []).map((notice) => [
+      notice.libraryId,
+      notice.movedTo,
+    ]),
+  );
 
   if (!isLoaded) {
     return <AuthStatePanel variant="loading" loadingStyle="spinner" />;
@@ -95,6 +105,7 @@ export function LibraryList() {
               key={library._id}
               library={library}
               isOwner={isOwner}
+              movedTo={movedAddresses.get(library._id) ?? null}
               onDelete={() => setDeleteTarget(library)}
             />
           ))}
@@ -149,10 +160,13 @@ function OrganisationPill({ name }: { name: string }) {
 function LibraryRow({
   library,
   isOwner,
+  movedTo,
   onDelete,
 }: {
   library: Overview;
   isOwner: boolean;
+  /** The address the platform moved this library to while it sets up. */
+  movedTo: string | null;
   onDelete: () => void;
 }) {
   const t = useTranslations("evidenceLibraries.list");
@@ -184,6 +198,17 @@ function LibraryRow({
         }
       : { key: "activated", value: t("neverActivated") },
   ];
+  if (movedTo) {
+    meta.push({
+      key: "moved",
+      label: t("movedToLabel"),
+      value: (
+        <span className="font-mono" data-moved-to={movedTo}>
+          {movedTo.replace(/^https?:\/\//, "")}
+        </span>
+      ),
+    });
+  }
   if (library.setupStage) {
     meta.push({
       key: "step",

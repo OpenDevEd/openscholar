@@ -34,6 +34,7 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
       queries: { listLibraryOverviews: "listLibraryOverviews" },
+      updates: { listAddressNotices: "listAddressNotices" },
       mutations: { retrySetup: "retrySetup" },
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
     },
@@ -93,12 +94,21 @@ function organization(role: "org:admin" | "org:member") {
   };
 }
 
+/** Answers each query the list opens; address notices default to none. */
+function answerQueries(addressNotices: unknown[] = []) {
+  mocks.query.mockImplementation((query: unknown) =>
+    query === "listAddressNotices"
+      ? { data: addressNotices, isReady: true }
+      : { data: libraries, isReady: true },
+  );
+}
+
 describe("<LibraryList>", () => {
   beforeEach(() => {
     mocks.organization.mockReset();
     mocks.query.mockReset();
     mocks.retrySetup.mockReset();
-    mocks.query.mockReturnValue({ data: libraries, isReady: true });
+    answerQueries();
   });
 
   it("shows each library with its status and the owner's actions", async () => {
@@ -152,6 +162,20 @@ describe("<LibraryList>", () => {
     expect(screen.queryByRole("link", { name: "list.newLibrary" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "list.retry" })).not.toBeInTheDocument();
     expect(within(rows[1]).queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("tells the owner where a library was moved while it sets up", () => {
+    mocks.organization.mockReturnValue(organization("org:admin"));
+    answerQueries([
+      { libraryId: "lib_failed", movedTo: "https://health-2-lib.example.test" },
+    ]);
+
+    render(<LibraryList />);
+
+    const rows = screen.getAllByRole("listitem");
+    expect(within(rows[1]).getByText("list.movedToLabel")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("health-2-lib.example.test")).toBeInTheDocument();
+    expect(within(rows[0]).queryByText("list.movedToLabel")).not.toBeInTheDocument();
   });
 
   it("asks for an organisation before listing anything", () => {
