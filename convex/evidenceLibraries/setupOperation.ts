@@ -507,6 +507,9 @@ export async function recordEvidenceLibrarySetupStep(
     ...provisionedRuntimeBindingFields(setup.runtimeBinding),
     state: "ready",
     lastVerifiedAt: receipt.checkedAt,
+    // Readiness just read our own health answer at this address.
+    addressState: "ours",
+    addressCheckedAt: receipt.checkedAt,
     updatedAt: now,
   });
   await ctx.db.patch(setup.library._id, {

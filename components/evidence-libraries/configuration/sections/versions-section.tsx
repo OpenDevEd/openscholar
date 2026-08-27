@@ -38,7 +38,7 @@ import {
   type VersionStatus,
 } from "@/lib/evidence-libraries/configuration/versions";
 import { EmptyList, FieldGroup, Panel } from "../fields";
-import { SectionCard } from "../section-card";
+import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
 
 type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
@@ -50,6 +50,12 @@ type VersionRow = FunctionReturnType<
 type RuntimeCheck =
   | { ok: true; state: RuntimeState }
   | { ok: false; message: string };
+
+/** What the owner is told about an address that is not answering as ours. */
+const ADDRESS_STATE_MESSAGE = {
+  "not-ours": "versions.addressTaken",
+  unreachable: "versions.addressSilent",
+} as const;
 
 const VERSION_TONE: Record<VersionStatus, StatusTone> = {
   live: "success",
@@ -130,6 +136,9 @@ export function VersionsSection({
   const startRuntimeUpdate = useMutation(
     api.evidenceLibraries.versions.startRuntimeUpdate,
   );
+  const moveAddress = useAction(
+    api.evidenceLibraries.addressActions.moveLibraryAddress,
+  );
   const restoreRevision = useMutation(
     api.evidenceLibraries.versions.restoreRevision,
   );
@@ -137,6 +146,15 @@ export function VersionsSection({
     api.evidenceLibraries.versions.listVersions,
     { libraryId },
   );
+  // The address answer the last check stored. It stays right even when the
+  // software check cannot reach GitHub, and clears itself once a move lands.
+  const addressNotices = useProtectedQuery(
+    api.evidenceLibraries.updates.listAddressNotices,
+    live ? {} : "skip",
+  );
+  const addressNotice =
+    addressNotices.data?.find((notice) => notice.libraryId === libraryId) ??
+    null;
 
   // Opening the page checks for updates once; "Check again" asks once more.
   const [, setCheckCount] = useState(0);
@@ -145,6 +163,7 @@ export function VersionsSection({
     : null;
   const [busy, setBusy] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [restoring, setRestoring] = useState<VersionRow | null>(null);
 
   const blocked = busy || operationRunning;
@@ -168,6 +187,28 @@ export function VersionsSection({
       })
       .catch((error: unknown) =>
         toast.error(errorMessage(error, t("versions.updateError"))),
+      )
+      .finally(() => setBusy(false));
+  }
+
+  function confirmMove() {
+    setMoveOpen(false);
+    setBusy(true);
+    void moveAddress({ libraryId })
+      .then((result) => {
+        checkAgain();
+        if (result.status !== "moving") {
+          toast.error(t("versions.addressMoveError"));
+          return;
+        }
+        toast(t("versions.addressMoveStarted"), {
+          description: t("versions.addressMoveStartedDescription", {
+            address: result.movedTo.replace(/^https?:\/\//, ""),
+          }),
+        });
+      })
+      .catch((error: unknown) =>
+        toast.error(errorMessage(error, t("versions.addressMoveError"))),
       )
       .finally(() => setBusy(false));
   }
@@ -200,6 +241,30 @@ export function VersionsSection({
       title={t("sections.versions")}
       description={t("versions.description")}
     >
+      {addressNotice?.addressState ? (
+        <InlineNotice
+          tone="danger"
+          role="alert"
+          data-address-state={addressNotice.addressState}
+          action={
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7"
+              disabled={blocked}
+              onClick={() => setMoveOpen(true)}
+            >
+              {t("versions.addressMove")}
+            </Button>
+          }
+        >
+          {t(ADDRESS_STATE_MESSAGE[addressNotice.addressState], {
+            host: addressNotice.address.replace(/^https?:\/\//, ""),
+          })}
+        </InlineNotice>
+      ) : null}
+
       <FieldGroup
         title={t("versions.softwareHeading")}
         action={
@@ -278,6 +343,25 @@ export function VersionsSection({
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUpdate}>
               {t("versions.updateConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("versions.addressMoveTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("versions.addressMoveBody")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMove}>
+              {t("versions.addressMoveConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

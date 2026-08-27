@@ -8,15 +8,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   check: vi.fn(),
   startRuntimeUpdate: vi.fn(),
+  startAddressMove: vi.fn(),
   restoreRevision: vi.fn(),
   listVersions: vi.fn(),
+  addressNotices: vi.fn(),
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      updates: { check: "check" },
+      addressActions: { moveLibraryAddress: "moveLibraryAddress" },
+      updates: {
+        check: "check",
+        listAddressNotices: "listAddressNotices",
+      },
       versions: {
         listVersions: "listVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
@@ -31,7 +37,8 @@ vi.mock("@/convex/_generated/api", () => ({
 let checkAction: (args: unknown) => unknown;
 
 vi.mock("convex/react", () => ({
-  useAction: () => checkAction,
+  useAction: (reference: string) =>
+    reference === "moveLibraryAddress" ? mocks.startAddressMove : checkAction,
   useMutation: (reference: string) =>
     reference === "startRuntimeUpdate"
       ? mocks.startRuntimeUpdate
@@ -39,7 +46,13 @@ vi.mock("convex/react", () => ({
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: () => ({ data: mocks.listVersions(), isReady: true }),
+  useProtectedQuery: (reference: string) => ({
+    data:
+      reference === "listAddressNotices"
+        ? mocks.addressNotices()
+        : mocks.listVersions(),
+    isReady: true,
+  }),
 }));
 
 vi.mock("next-intl", () => ({
@@ -122,8 +135,11 @@ describe("<VersionsSection>", () => {
     checkAction = (args) => mocks.check(args);
     mocks.check.mockReset();
     mocks.startRuntimeUpdate.mockReset();
+    mocks.startAddressMove.mockReset();
     mocks.restoreRevision.mockReset();
     mocks.listVersions.mockReset();
+    mocks.addressNotices.mockReset();
+    mocks.addressNotices.mockReturnValue([]);
     mocks.toast.mockReset();
     mocks.toast.error.mockReset();
     mocks.check.mockResolvedValue({
@@ -209,6 +225,82 @@ describe("<VersionsSection>", () => {
     expect(mocks.toast).toHaveBeenCalledWith("versions.restoreStarted", {
       description: "versions.restoreStartedDescription:r1,r4",
     });
+  });
+
+  it("says nothing about the address while the library answers at it", async () => {
+    await renderSection();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "versions.addressMove" })).toBeNull();
+  });
+
+  it("offers a move when another site answers the address", async () => {
+    const user = userEvent.setup();
+    mocks.addressNotices.mockReturnValue([
+      {
+        libraryId: "library_123",
+        address: "https://climate-lib.example.test",
+        movedFrom: null,
+        addressState: "not-ours",
+      },
+    ]);
+    mocks.startAddressMove.mockResolvedValue({
+      status: "moving",
+      movedFrom: "https://climate-lib.example.test",
+      movedTo: "https://climate-2-lib.example.test",
+    });
+    await renderSection();
+
+    expect(
+      screen.getByText("versions.addressTaken:climate-lib.example.test"),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-address-state="not-ours"]'),
+    ).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "versions.addressMove" }));
+    await user.click(
+      screen.getByRole("button", { name: "versions.addressMoveConfirm" }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.startAddressMove).toHaveBeenCalledWith({
+        libraryId: "library_123",
+      }),
+    );
+    expect(mocks.toast).toHaveBeenCalledWith("versions.addressMoveStarted", {
+      description:
+        "versions.addressMoveStartedDescription:climate-2-lib.example.test",
+    });
+  });
+
+  it("names the silent address when nothing answers there", async () => {
+    mocks.addressNotices.mockReturnValue([
+      {
+        libraryId: "library_123",
+        address: "https://climate-lib.example.test",
+        movedFrom: null,
+        addressState: "unreachable",
+      },
+    ]);
+    await renderSection();
+    expect(
+      screen.getByText("versions.addressSilent:climate-lib.example.test"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not offer a move while an operation runs", async () => {
+    mocks.addressNotices.mockReturnValue([
+      {
+        libraryId: "library_123",
+        address: "https://climate-lib.example.test",
+        movedFrom: null,
+        addressState: "unreachable",
+      },
+    ]);
+    await renderSection({ operationRunning: true });
+    expect(
+      screen.getByRole("button", { name: "versions.addressMove" }),
+    ).toBeDisabled();
   });
 
   it("does not check software for a library that is not live", async () => {

@@ -159,10 +159,14 @@ async function readBoundedText(
     }
     chunks.push(value);
   }
+  const serialized = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    serialized.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(
-      Buffer.concat(chunks),
-    );
+    return new TextDecoder("utf-8", { fatal: true }).decode(serialized);
   } catch {
     // Bytes that are not text cannot be our JSON answer.
     return "";

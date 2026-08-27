@@ -25,7 +25,9 @@ import {
   SEARCH_KEY_PATH,
   STORAGE_SERVICE_KEY_PATH,
 } from "./runtimeCredentials";
+import { applyEvidenceLibraryAddressMove } from "./addressRecovery";
 import {
+  evidenceLibraryAddressMoveValidator,
   evidenceLibraryConfigurationDeploymentTargetValidator,
   evidenceLibraryOperationFailureValidator,
   evidenceLibraryRuntimeUpdateValidator,
@@ -56,15 +58,16 @@ function isReadyRuntimeBinding(
   return binding.state === "ready" && "targetRuntimeId" in binding;
 }
 
-// A publish operation the pipeline owns: either an activation of a draft
-// edit or a runtime update of the active revision.
+// A publish operation the pipeline owns: an activation of a draft edit, a
+// runtime update of the active revision, or a move to a new address.
 export function isConfigurationDeploymentOperation(
   operation: Doc<"evidenceLibraryConfigOperations">,
 ): boolean {
   return (
     operation.kind === "publish" &&
     (operation.activationEditVersion !== undefined ||
-      operation.runtimeUpdate !== undefined)
+      operation.runtimeUpdate !== undefined ||
+      operation.addressMove !== undefined)
   );
 }
 
@@ -347,6 +350,7 @@ export const prepareConfigurationDeployment = internalMutation({
     v.object({
       state: v.literal("new"),
       runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
+      addressMove: v.optional(evidenceLibraryAddressMoveValidator),
       applicationId: v.string(),
       targetBaseUrl: v.string(),
       revision: v.object({ key: v.string(), createdAt: v.number() }),
@@ -508,6 +512,9 @@ export const prepareConfigurationDeployment = internalMutation({
     return {
       state: "new" as const,
       ...(runtimeUpdate ? { runtimeUpdate } : {}),
+      ...(deployment.operation.addressMove
+        ? { addressMove: deployment.operation.addressMove }
+        : {}),
       applicationId: deployment.runtimeBinding.targetRuntimeId,
       targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
       revision: {
@@ -579,6 +586,71 @@ export const prepareConfigurationDeployment = internalMutation({
         deployment.revision._id,
       ),
     };
+  },
+});
+
+/**
+ * Writes the planned address to the runtime binding, the draft and the
+ * revision. The action calls this only after Coolify has answered that the
+ * application serves the new domain, so a move that fails earlier leaves the
+ * library on the address it had.
+ */
+export const applyConfigurationAddressMove = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+    attemptCount: v.number(),
+  },
+  returns: v.object({ movedTo: v.string() }),
+  handler: async (ctx, args) => {
+    const deployment = await requireCurrentConfigurationDeployment(ctx, args);
+    const move = deployment.operation.addressMove;
+    if (!move) {
+      throw createError(
+        "CONFLICT",
+        "This Evidence Library deployment is not moving the address",
+      );
+    }
+    if (move.applied) return { movedTo: move.to };
+    if (deployment.runtimeBinding.targetBaseUrl !== move.from) {
+      throw createError(
+        "CONFLICT",
+        "The Evidence Library address changed after this move was requested",
+      );
+    }
+    const taken = await ctx.db
+      .query("evidenceLibraryRuntimeBindings")
+      .withIndex("by_targetBaseUrl", (query) =>
+        query.eq("targetBaseUrl", move.to),
+      )
+      .first();
+    if (taken && taken._id !== deployment.runtimeBinding._id) {
+      throw createError(
+        "CONFLICT",
+        "Another Evidence Library took that address first",
+      );
+    }
+    const draft = await ctx.db
+      .query("evidenceLibraryConfigDrafts")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .unique();
+    if (!draft) {
+      throw createError("NOT_FOUND", "Evidence Library draft not found");
+    }
+    await applyEvidenceLibraryAddressMove(ctx, {
+      bindingId: deployment.runtimeBinding._id,
+      draftId: draft._id,
+      revisionId: deployment.revision._id,
+      nextAddress: move.to,
+    });
+    await ctx.db.patch(deployment.operation._id, {
+      addressMove: { ...move, applied: true },
+      updatedAt: Date.now(),
+    });
+    return { movedTo: move.to };
   },
 });
 
@@ -919,6 +991,9 @@ export const completeConfigurationDeployment = internalMutation({
     await ctx.db.patch(deployment.runtimeBinding._id, {
       runtimeCommit: receipt.runtimeCommit,
       lastVerifiedAt: args.checkedAt,
+      // Readiness just read our own health answer at this address.
+      addressState: "ours",
+      addressCheckedAt: args.checkedAt,
       updatedAt: now,
     });
     await ctx.db.patch(deployment.library._id, {

@@ -167,7 +167,12 @@ describe("<LibraryList>", () => {
   it("tells the owner which address a library was moved away from", () => {
     mocks.organization.mockReturnValue(organization("org:admin"));
     answerQueries([
-      { libraryId: "lib_failed", movedFrom: "https://health-old-lib.example.test" },
+      {
+        libraryId: "lib_failed",
+        address: "https://health-lib.example.test",
+        movedFrom: "https://health-old-lib.example.test",
+        addressState: null,
+      },
     ]);
 
     render(<LibraryList />);
@@ -176,6 +181,45 @@ describe("<LibraryList>", () => {
     expect(within(rows[1]).getByText("list.movedFromLabel")).toBeInTheDocument();
     expect(within(rows[1]).getByText("health-old-lib.example.test")).toBeInTheDocument();
     expect(within(rows[0]).queryByText("list.movedFromLabel")).not.toBeInTheDocument();
+  });
+
+  it("tells the owner when another site answers a live library's address", () => {
+    mocks.organization.mockReturnValue(organization("org:admin"));
+    answerQueries([
+      {
+        libraryId: "lib_active",
+        address: "https://climate-lib.example.test",
+        movedFrom: null,
+        addressState: "not-ours",
+      },
+    ]);
+
+    render(<LibraryList />);
+
+    const rows = screen.getAllByRole("listitem");
+    expect(within(rows[0]).getByText("list.addressTaken")).toBeInTheDocument();
+    expect(
+      rows[0].querySelector('[data-address-state="not-ours"]'),
+    ).not.toBeNull();
+    expect(within(rows[1]).queryByText("list.addressTaken")).not.toBeInTheDocument();
+  });
+
+  it("says plainly when nothing answers a live library's address", () => {
+    mocks.organization.mockReturnValue(organization("org:admin"));
+    answerQueries([
+      {
+        libraryId: "lib_active",
+        address: "https://climate-lib.example.test",
+        movedFrom: null,
+        addressState: "unreachable",
+      },
+    ]);
+
+    render(<LibraryList />);
+
+    const rows = screen.getAllByRole("listitem");
+    expect(within(rows[0]).getByText("list.addressSilent")).toBeInTheDocument();
+    expect(within(rows[0]).queryByText("list.addressTaken")).not.toBeInTheDocument();
   });
 
   it("asks for an organisation before listing anything", () => {

@@ -25,10 +25,19 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// The library's own health answer, so the address counts as ours.
+const ourHealthAnswer = () =>
+  jsonResponse({
+    state: "active",
+    active: { revision: "r2", schemaVersion: 1 },
+    rejected: null,
+  });
+
 function createGithub(input: {
   latest: string;
   compareStatus?: number;
   commitsStatus?: number;
+  addressAnswer?: Response;
 }) {
   const requests: RecordedRequest[] = [];
   const fetchImpl: typeof fetch = vi.fn(
@@ -40,6 +49,9 @@ function createGithub(input: {
             ? requestInput.href
             : requestInput.url,
       );
+      if (url.pathname === "/api/library-config/health") {
+        return input.addressAnswer ?? ourHealthAnswer();
+      }
       requests.push({ url, headers: new Headers(init?.headers) });
       if (url.origin !== GITHUB) {
         return jsonResponse({ message: "Unexpected test request" }, 500);
@@ -341,7 +353,9 @@ describe("Evidence Library address notices", () => {
     ).resolves.toEqual([
       {
         libraryId: fixture.created.libraryId,
+        address: fixture.created.publicAddress,
         movedFrom: fixture.created.publicAddress,
+        addressState: null,
       },
     ]);
   });
@@ -363,5 +377,122 @@ describe("Evidence Library address notices", () => {
     await expect(
       fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
     ).resolves.toEqual([]);
+  });
+});
+
+
+describe("Evidence Library address ownership check", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-26T10:00:00Z"));
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+    vi.stubEnv("GITHUB_TOKEN", "github-token");
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("answers the update check before the address has been asked", async () => {
+    const fixture = await createReadySetupFixture("address-not-blocking");
+    const github = createGithub({ latest: LATEST });
+    vi.stubGlobal("fetch", github.fetchImpl);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.runtimeBindingId, {
+        addressState: "unreachable",
+      });
+    });
+
+    await fixture.admin.action(api.evidenceLibraries.updates.check, {
+      libraryId: fixture.created.libraryId,
+    });
+    const duringCheck = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    // The check came back with the software answer; the address answer is
+    // still the old one because the probe has not run yet.
+    expect(duringCheck).toMatchObject({ addressState: "unreachable" });
+
+    await fixture.t.finishAllScheduledFunctions(vi.runAllTimers);
+    const afterProbe = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    expect(afterProbe).toMatchObject({ addressState: "ours" });
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
+    ).resolves.toEqual([]);
+  });
+
+  it("stores that another site answers the address and tells the pages", async () => {
+    const fixture = await createReadySetupFixture("address-not-ours");
+    const github = createGithub({
+      latest: LATEST,
+      addressAnswer: new Response("<!doctype html><title>Other</title>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    });
+    vi.stubGlobal("fetch", github.fetchImpl);
+
+    await fixture.admin.action(api.evidenceLibraries.updates.check, {
+      libraryId: fixture.created.libraryId,
+    });
+    await fixture.t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const binding = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    expect(binding).toMatchObject({ addressState: "not-ours" });
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
+    ).resolves.toEqual([
+      {
+        libraryId: fixture.created.libraryId,
+        address: fixture.created.publicAddress,
+        movedFrom: null,
+        addressState: "not-ours",
+      },
+    ]);
+  });
+
+  it("stores an address that nothing answers as unreachable", async () => {
+    const fixture = await createReadySetupFixture("address-unreachable");
+    const github = createGithub({
+      latest: LATEST,
+      addressAnswer: new Response("no available server", { status: 503 }),
+    });
+    vi.stubGlobal("fetch", github.fetchImpl);
+
+    await fixture.admin.action(api.evidenceLibraries.updates.check, {
+      libraryId: fixture.created.libraryId,
+    });
+    await fixture.t.finishAllScheduledFunctions(vi.runAllTimers);
+    const binding = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    expect(binding).toMatchObject({ addressState: "unreachable" });
+  });
+
+  it("throws away an answer about an address the library has left", async () => {
+    const fixture = await createReadySetupFixture("address-late-answer");
+    const binding = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    await fixture.t.mutation(
+      internal.evidenceLibraries.updates.saveAddressState,
+      {
+        bindingId: binding!._id,
+        askedAddress: "https://an-address-it-left.libraries.example.test",
+        addressState: "not-ours",
+        checkedAt: Date.now(),
+      },
+    );
+    const after = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    // Setup left "ours" here; the answer about the old address is dropped.
+    expect(after).toMatchObject({ addressState: "ours" });
   });
 });

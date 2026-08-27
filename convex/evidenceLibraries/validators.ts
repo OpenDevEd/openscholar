@@ -225,9 +225,19 @@ export const evidenceLibraryOperationFailureValidator = v.object({
   issues: v.optional(v.array(configurationIssueValidator)),
 });
 
+// Who answers the public address, from the last check. "not-ours" means
+// another site holds it; "unreachable" means nothing answered.
+export const evidenceLibraryAddressStateValidator = v.union(
+  v.literal("ours"),
+  v.literal("not-ours"),
+  v.literal("unreachable"),
+);
+
 const evidenceLibraryRuntimeBindingBaseFields = {
   libraryId: v.id("evidenceLibraries"),
   targetBaseUrl: v.string(),
+  addressState: v.optional(evidenceLibraryAddressStateValidator),
+  addressCheckedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
@@ -509,15 +519,15 @@ export const evidenceLibraryRuntimeUpdateValidator = v.object({
   to: v.string(),
 });
 
-// Where the platform sent a library after another site answered its address.
-// `from` is the address it started on, `to` the one it runs on now.
+// Where the platform is sending a library after another site answered its
+// address. `from` is the address it started on, `to` the one it is taking.
+// `applied` says whether the records already carry `to`; a live move only
+// writes them once Coolify serves the new address.
 export const evidenceLibraryAddressMoveValidator = v.object({
   from: v.string(),
   to: v.string(),
   movedAt: v.number(),
   count: v.number(),
-  // Whether the records already carry `to`. Setup writes them straight away
-  // and reconciles Coolify right after.
   applied: v.boolean(),
 });
 

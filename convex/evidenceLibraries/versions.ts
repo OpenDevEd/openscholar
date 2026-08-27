@@ -1,4 +1,5 @@
 import {
+  internalMutation,
   mutation,
   query,
   type MutationCtx,
@@ -12,12 +13,17 @@ import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import {
+  evidenceLibraryAddressCandidateValidator,
+  requireFreeEvidenceLibraryAddress,
+} from "./addressRecovery";
+import {
   claimAndScheduleConfigurationDeployment,
   isConfigurationDeploymentOperation,
   requireNoActiveConfigurationDeployment,
 } from "./configurationDeployment";
 import { nextDraftEditVersion } from "./draftVersion";
 import {
+  queueAddressMoveOperation,
   queueConfigurationDeploymentOperation,
   queueRuntimeUpdateOperation,
 } from "./operations";
@@ -91,6 +97,81 @@ export async function startEvidenceLibraryRuntimeUpdate(
     operationId: operation.operationId,
   });
   return { ...started, from, to: release.latest };
+}
+
+/**
+ * Plans a move of a live library to the next free address. The publish that
+ * follows changes Coolify's domain first and only then writes the address to
+ * the runtime binding, the draft and the live revision, so a failed move
+ * keeps the library on the address it has.
+ */
+export async function startEvidenceLibraryAddressMove(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    // The address the shared check found free: free in our database, not
+    // served by Coolify, and answering nothing on the host itself.
+    candidate: { publicAddress: string; slug: string };
+  },
+) {
+  const running = await requireRunningLibrary(ctx, args.libraryId);
+  await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+  const draft = await ctx.db
+    .query("evidenceLibraryConfigDrafts")
+    .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+    .unique();
+  if (!draft) {
+    throw createError("NOT_FOUND", "Evidence Library draft not found");
+  }
+  const movedFrom = running.binding.targetBaseUrl;
+  const movedTo = await requireFreeEvidenceLibraryAddress(ctx, {
+    library: running.library,
+    candidate: args.candidate,
+  });
+  // The live sections must still pass the rules at the new address before
+  // anything is written.
+  const sourceRows = await readRevisionSectionRows(ctx, running.activeRevisionId);
+  const validated = validateOwnerSections(
+    sourceRows.map((row) => ({
+      sectionKey: row.sectionKey,
+      payload:
+        row.sectionKey === "identity"
+          ? { ...(row.payload as Record<string, unknown>), baseUrl: movedTo }
+          : row.payload,
+    })),
+    {
+      expectedBaseUrl: movedTo,
+      requireComplete: true,
+      platformMailConfigured: isPlatformMailConfigured(),
+    },
+  );
+  const issue = validated.issues[0];
+  if (issue) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `${issue.pointer}: ${issue.message}`,
+      { pointer: issue.pointer },
+    );
+  }
+  // Nothing is written yet. The records take the new address only once
+  // Coolify serves it, so a failed move leaves the library where it is.
+  const operation = await queueAddressMoveOperation(ctx, {
+    libraryId: args.libraryId,
+    idempotencyKey: `address-move:${movedTo}`,
+    revisionId: running.activeRevisionId,
+    addressMove: {
+      from: movedFrom,
+      to: movedTo,
+      movedAt: Date.now(),
+      count: 1,
+      applied: false,
+    },
+  });
+  const started = await claimAndScheduleConfigurationDeployment(ctx, {
+    libraryId: args.libraryId,
+    operationId: operation.operationId,
+  });
+  return { ...started, movedFrom, movedTo };
 }
 
 async function readRevisionSectionRows(
@@ -421,6 +502,21 @@ export const restoreRevision = mutation({
     revisionNumber: v.number(),
   }),
   handler: restoreEvidenceLibraryRevision,
+});
+
+export const startAddressMove = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    candidate: evidenceLibraryAddressCandidateValidator,
+  },
+  returns: v.object({
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+    status: v.literal("running"),
+    movedFrom: v.string(),
+    movedTo: v.string(),
+  }),
+  handler: startEvidenceLibraryAddressMove,
 });
 
 export const listVersions = query({

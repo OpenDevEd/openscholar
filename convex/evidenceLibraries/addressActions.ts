@@ -247,3 +247,49 @@ export const reserveAddress = action({
     };
   },
 });
+
+/**
+ * Moves a live library to the next free address. The same check the new
+ * library page uses decides the address: our database, then the hosts Coolify
+ * serves, then the host itself. Nothing is written until the publish that
+ * follows has changed Coolify's domain.
+ */
+export const moveLibraryAddress = action({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.union(
+    v.object({
+      status: v.literal("moving"),
+      movedFrom: v.string(),
+      movedTo: v.string(),
+    }),
+    unavailableValidator,
+  ),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    | { status: "moving"; movedFrom: string; movedTo: string }
+    | { status: "unavailable"; reason: "check-failed" | "no-address" }
+  > => {
+    const plan = await ctx.runQuery(
+      internal.evidenceLibraries.addressRecovery.readOwnerMoveCandidates,
+      { libraryId: args.libraryId },
+    );
+    let candidate: { publicAddress: string; slug: string } | null;
+    try {
+      candidate = await findFreeEvidenceLibraryAddress(ctx, plan.candidates);
+    } catch {
+      return { status: "unavailable", reason: "check-failed" };
+    }
+    if (!candidate) return { status: "unavailable", reason: "no-address" };
+    const moved = await ctx.runMutation(
+      internal.evidenceLibraries.versions.startAddressMove,
+      { libraryId: args.libraryId, candidate },
+    );
+    return {
+      status: "moving",
+      movedFrom: moved.movedFrom,
+      movedTo: moved.movedTo,
+    };
+  },
+});

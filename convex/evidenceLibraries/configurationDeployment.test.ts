@@ -56,6 +56,9 @@ function createRuntimeNetwork(input: {
   revisionKey: string;
 }) {
   let commit = RUNTIME_COMMIT;
+  // The address Coolify serves. A move patches it, and every later request
+  // has to be answered on the new one.
+  let publicDomain = input.publicAddress;
   let configHash = INITIAL_CONFIG_HASH;
   let deployedConfigHash = INITIAL_CONFIG_HASH;
   let deploymentStatus = "queued";
@@ -82,7 +85,7 @@ function createRuntimeNetwork(input: {
     fqdn: null,
     docker_compose_location: "/docker/compose.library.yaml",
     docker_compose_domains: JSON.stringify({
-      web: { domain: input.publicAddress },
+      web: { domain: publicDomain },
     }),
     source_type: "App\\Models\\GithubApp",
     source_id: 7,
@@ -116,13 +119,27 @@ function createRuntimeNetwork(input: {
       requests.push({ body, method, url });
 
       if (url.origin === COOLIFY_ORIGIN) {
+        // The address check asks what Coolify serves. Nothing but this
+        // library, which never offers its own address as a candidate.
+        if (
+          method === "GET" &&
+          (url.pathname === "/api/v1/applications" ||
+            url.pathname === "/api/v1/services")
+        ) {
+          return jsonResponse([]);
+        }
         const applicationPath = `/api/v1/applications/${APPLICATION_UUID}`;
         if (method === "GET" && url.pathname === applicationPath) {
           return jsonResponse(application());
         }
         if (method === "PATCH" && url.pathname === applicationPath) {
-          const patch = body as { git_commit_sha?: string };
+          const patch = body as {
+            git_commit_sha?: string;
+            docker_compose_domains?: { name: string; domain: string }[];
+          };
           if (patch.git_commit_sha) commit = patch.git_commit_sha;
+          const movedDomain = patch.docker_compose_domains?.[0]?.domain;
+          if (movedDomain) publicDomain = movedDomain;
           configHash = UPDATED_CONFIG_HASH;
           return jsonResponse({ uuid: APPLICATION_UUID });
         }
@@ -193,7 +210,7 @@ function createRuntimeNetwork(input: {
         });
       }
       if (
-        url.origin === new URL(input.publicAddress).origin &&
+        url.origin === new URL(publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
@@ -204,11 +221,15 @@ function createRuntimeNetwork(input: {
         });
       }
       if (
-        url.origin === new URL(input.publicAddress).origin &&
+        url.origin === new URL(publicDomain).origin &&
         method === "GET" &&
         (url.pathname === "/lib" || url.pathname === "/admin")
       ) {
         return new Response("ready", { status: 200 });
+      }
+      // Any other host is free: our proxy has no server for it.
+      if (url.pathname === "/") {
+        return new Response("no available server", { status: 503 });
       }
       return jsonResponse({ message: "Unexpected test request" }, 500);
     },
@@ -220,6 +241,9 @@ function createRuntimeNetwork(input: {
     environments,
     get commit() {
       return commit;
+    },
+    get publicDomain() {
+      return publicDomain;
     },
     finishDeployment() {
       deploymentStatus = "finished";
@@ -277,6 +301,26 @@ async function createReadyLibrary(suffix: string) {
     }
   });
   return fixture;
+}
+
+/** The publish operation an address move just queued, newest first. */
+async function readMoveOperation(
+  fixture: Awaited<ReturnType<typeof createReadyLibrary>>,
+) {
+  const operation = await fixture.t.run(async (ctx) => {
+    const rows = await ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_createdAt", (query) =>
+        query.eq("libraryId", fixture.created.libraryId),
+      )
+      .order("desc")
+      .take(5);
+    return rows.find((row) => row.addressMove) ?? null;
+  });
+  if (!operation?.configurationAttemptToken) {
+    throw new Error("The address move did not start an attempt");
+  }
+  return operation;
 }
 
 async function activateChangedConfiguration(suffix: string) {
@@ -612,6 +656,149 @@ describe("Evidence Library configuration deployment", () => {
     expect(completed.operation).toMatchObject({
       status: "succeeded",
       receipt: { runtimeCommit: NEWER_COMMIT },
+    });
+  });
+
+  it("moves a live library only after Coolify serves the new address", async () => {
+    const fixture = await createReadyLibrary("address-move-deploy");
+    const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: fixture.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+
+    const moved = await fixture.admin.action(
+      api.evidenceLibraries.addressActions.moveLibraryAddress,
+      { libraryId: fixture.created.libraryId },
+    );
+    if (moved.status !== "moving") throw new Error("The move did not start");
+    const operation = await readMoveOperation(fixture);
+    expect(moved.movedTo).toBe(movedTo);
+
+    // The plan is on the operation; nothing carries the new address yet.
+    const binding = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    expect(binding).toMatchObject({
+      targetBaseUrl: fixture.created.publicAddress,
+    });
+    expect(operation).toMatchObject({
+      addressMove: {
+        from: fixture.created.publicAddress,
+        to: movedTo,
+        applied: false,
+      },
+    });
+    expect(network.publicDomain).toBe(fixture.created.publicAddress);
+
+    const args = {
+      libraryId: fixture.created.libraryId,
+      operationId: operation._id,
+      attemptToken: operation.configurationAttemptToken!,
+      attemptCount: operation.attemptCount,
+    };
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        args,
+      ),
+    ).resolves.toMatchObject({ status: "running" });
+    expect(network.publicDomain).toBe(movedTo);
+
+    network.finishDeployment();
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        args,
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
+
+    const state = await fixture.t.run(async (ctx) => {
+      const identity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", fixture.activated.revisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      return {
+        binding: await ctx.db.get(fixture.created.runtimeBindingId),
+        identity,
+        operation: await ctx.db.get(operation._id),
+      };
+    });
+    expect(state.binding).toMatchObject({
+      targetBaseUrl: movedTo,
+      addressState: "ours",
+      state: "ready",
+    });
+    expect(state.identity?.payload).toMatchObject({ baseUrl: movedTo });
+    expect(state.operation).toMatchObject({
+      status: "succeeded",
+      addressMove: { to: movedTo, applied: true },
+    });
+  });
+
+  it("keeps the old address when Coolify refuses the new domain", async () => {
+    const fixture = await createReadyLibrary("address-move-refused");
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: fixture.activated.revisionKey,
+    });
+    const failing: typeof fetch = async (requestInput, init) => {
+      const url = new URL(String(requestInput));
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (
+        method === "PATCH" &&
+        url.pathname === `/api/v1/applications/${APPLICATION_UUID}`
+      ) {
+        return jsonResponse({ message: "Domain rejected" }, 422);
+      }
+      return await network.fetchImpl(requestInput, init);
+    };
+    vi.stubGlobal("fetch", failing);
+
+    const moved = await fixture.admin.action(
+      api.evidenceLibraries.addressActions.moveLibraryAddress,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(moved).toMatchObject({ status: "moving" });
+    const operation = await readMoveOperation(fixture);
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: operation._id,
+          attemptToken: operation.configurationAttemptToken!,
+          attemptCount: operation.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+
+    const after = await fixture.t.run(async (ctx) => ({
+      binding: await ctx.db.get(fixture.created.runtimeBindingId),
+      identity: await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", fixture.activated.revisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique(),
+    }));
+    expect(after.binding).toMatchObject({
+      targetBaseUrl: fixture.created.publicAddress,
+    });
+    expect(after.identity?.payload).toMatchObject({
+      baseUrl: fixture.created.publicAddress,
     });
   });
 

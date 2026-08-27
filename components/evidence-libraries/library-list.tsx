@@ -25,10 +25,21 @@ import { DeleteLibraryDialog } from "./configuration/delete-library-dialog";
 import { EmptyList, MetaList, type MetaItem } from "./configuration/fields";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
+import { StatusChip } from "./configuration/status-chip";
 
 type Overview = FunctionReturnType<
   typeof api.evidenceLibraries.queries.listLibraryOverviews
 >[number];
+
+type AddressNotice = FunctionReturnType<
+  typeof api.evidenceLibraries.updates.listAddressNotices
+>[number];
+
+/** The short state word for an address that is not answering as ours. */
+const ADDRESS_STATE_MESSAGE = {
+  "not-ours": "addressTaken",
+  unreachable: "addressSilent",
+} as const;
 
 /** How far the teardown is, by the stage it reports. */
 const TEARDOWN_PERCENT: Record<NonNullable<Overview["teardownStage"]>, number> = {
@@ -50,11 +61,8 @@ export function LibraryList() {
     organization ? {} : "skip",
   );
   const [deleteTarget, setDeleteTarget] = useState<Overview | null>(null);
-  const movedAddresses = new Map(
-    (addressNotices.data ?? []).map((notice) => [
-      notice.libraryId,
-      notice.movedFrom,
-    ]),
+  const notices = new Map(
+    (addressNotices.data ?? []).map((notice) => [notice.libraryId, notice]),
   );
 
   if (!isLoaded) {
@@ -105,7 +113,7 @@ export function LibraryList() {
               key={library._id}
               library={library}
               isOwner={isOwner}
-              movedFrom={movedAddresses.get(library._id) ?? null}
+              notice={notices.get(library._id) ?? null}
               onDelete={() => setDeleteTarget(library)}
             />
           ))}
@@ -160,13 +168,13 @@ function OrganisationPill({ name }: { name: string }) {
 function LibraryRow({
   library,
   isOwner,
-  movedFrom,
+  notice,
   onDelete,
 }: {
   library: Overview;
   isOwner: boolean;
-  /** The address this library was moved away from while it sets up. */
-  movedFrom: string | null;
+  /** What the last address check found for this library, if anything. */
+  notice: AddressNotice | null;
   onDelete: () => void;
 }) {
   const t = useTranslations("evidenceLibraries.list");
@@ -198,13 +206,13 @@ function LibraryRow({
         }
       : { key: "activated", value: t("neverActivated") },
   ];
-  if (movedFrom) {
+  if (notice?.movedFrom) {
     meta.push({
       key: "moved",
       label: t("movedFromLabel"),
       value: (
-        <span className="font-mono" data-moved-from={movedFrom}>
-          {movedFrom.replace(/^https?:\/\//, "")}
+        <span className="font-mono" data-moved-from={notice.movedFrom}>
+          {notice.movedFrom.replace(/^https?:\/\//, "")}
         </span>
       ),
     });
@@ -246,6 +254,11 @@ function LibraryRow({
             </span>
           )}
           <LibraryStatusChip status={library.status} />
+          {notice?.addressState ? (
+            <StatusChip tone="danger" data-address-state={notice.addressState}>
+              {t(ADDRESS_STATE_MESSAGE[notice.addressState])}
+            </StatusChip>
+          ) : null}
         </div>
         <MetaList items={meta} />
         {isDeleting ? (
