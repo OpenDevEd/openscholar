@@ -56,12 +56,18 @@ async function holdTeardown(
   );
 }
 
-/** The part of the deletion a stage belongs to, as a name the page can use. */
+/**
+ * The part of the deletion a stage belongs to, as a name the page can say.
+ *
+ * The custom domains and their certificates are taken down inside the first
+ * stage, so a failure there is reported as the domains when that is what was
+ * being removed, and as the running site otherwise.
+ */
 function readTeardownStep(
-  stage: string,
+  stage: "convex" | "coolify" | "database" | "storage",
+  duringDomains: boolean,
 ): "domains" | "runtime" | "files" | "database" | "records" {
-  if (stage === "domains" || stage === "certificates") return "domains";
-  if (stage === "coolify" || stage === "runtime") return "runtime";
+  if (stage === "coolify") return duringDomains ? "domains" : "runtime";
   if (stage === "storage") return "files";
   if (stage === "database") return "database";
   return "records";
@@ -81,6 +87,8 @@ export const runDevelopmentTeardown = internalAction({
   }),
   handler: async (ctx, args) => {
     let stage: "convex" | "coolify" | "database" | "storage" = "coolify";
+    // True while the custom domains and their certificates are coming down.
+    let removingDomains = false;
     // Empty until this attempt holds the teardown. A failure before then has
     // nothing to write: another attempt owns the operation.
     let attemptToken = "";
@@ -107,6 +115,7 @@ export const runDevelopmentTeardown = internalAction({
           "Custom domains are set up on this library but not on this platform",
         );
       }
+      removingDomains = true;
       if (cloudflare) {
         // By name as well as by id: a hostname created before its id was
         // written down would otherwise be left behind for ever.
@@ -123,6 +132,7 @@ export const runDevelopmentTeardown = internalAction({
         }
       }
 
+      removingDomains = false;
       const expectedBuckets = createLibraryStorageBucketNames(args.libraryId);
       if (
         (prepared.privateBucket &&
@@ -225,7 +235,7 @@ export const runDevelopmentTeardown = internalAction({
             };
       // Which part of the deletion stopped, in this library's own words. The
       // page says that; the provider's own message is kept for the log only.
-      const failedStep = readTeardownStep(stage);
+      const failedStep = readTeardownStep(stage, removingDomains);
       if (!attemptToken) return { status: "pending" as const };
       // The certificate service being unreachable is usually a moment, not a
       // decision. The library keeps its records and waits, and only says so
