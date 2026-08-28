@@ -220,7 +220,9 @@ async function readRuntimeBindingBaseUrl(
       "Evidence Library runtime binding not found",
     );
   }
-  return binding.targetBaseUrl;
+  // The address the library calls its own: a custom domain the owner made
+  // primary, otherwise the platform address.
+  return binding.canonicalBaseUrl ?? binding.targetBaseUrl;
 }
 
 // The only way owner sections reach the draft. Each payload is checked

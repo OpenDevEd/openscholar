@@ -265,6 +265,31 @@ export async function queueAddressMoveOperation(
   return queued;
 }
 
+/**
+ * A custom domain changing publishes the live revision again: the proxy only
+ * learns about a domain through a deployment.
+ */
+export async function queueDomainChangeOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    idempotencyKey: string;
+    revisionId: Id<"evidenceLibraryConfigRevisions">;
+    domainChange: {
+      host: string;
+      reason: "attach" | "detach" | "canonical";
+    };
+  },
+) {
+  const { domainChange, ...record } = args;
+  const queued = await queueOperationRecord(ctx, {
+    ...record,
+    kind: "publish",
+  });
+  await ctx.db.patch(queued.operationId, { domainChange });
+  return queued;
+}
+
 export async function attachRevisionToSetupOperation(
   ctx: MutationCtx,
   args: {

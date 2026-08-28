@@ -14,6 +14,7 @@ import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import {
   evidenceLibraryAddressCandidateValidator,
+  moveIdentityBaseUrl,
   requireFreeEvidenceLibraryAddress,
 } from "./addressRecovery";
 import {
@@ -25,6 +26,7 @@ import { nextDraftEditVersion } from "./draftVersion";
 import {
   queueAddressMoveOperation,
   queueConfigurationDeploymentOperation,
+  queueDomainChangeOperation,
   queueRuntimeUpdateOperation,
 } from "./operations";
 import { isFreshRuntimeRelease } from "./runtimeReleases";
@@ -222,7 +224,8 @@ export async function restoreEvidenceLibraryRevision(
       payload: row.payload,
     })),
     {
-      expectedBaseUrl: running.binding.targetBaseUrl,
+      expectedBaseUrl:
+        running.binding.canonicalBaseUrl ?? running.binding.targetBaseUrl,
       requireComplete: true,
       platformMailConfigured: isPlatformMailConfigured(),
     },
@@ -517,6 +520,161 @@ export const startAddressMove = internalMutation({
     movedTo: v.string(),
   }),
   handler: startEvidenceLibraryAddressMove,
+});
+
+
+/**
+ * Publishes the live revision again. Coolify writes the proxy rules into the
+ * container, so a domain only becomes live through a deployment.
+ */
+export const startDomainDeployment = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    host: v.string(),
+    reason: v.union(
+      v.literal("attach"),
+      v.literal("detach"),
+      v.literal("canonical"),
+    ),
+  },
+  returns: v.object({
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+    status: v.literal("running"),
+  }),
+  handler: async (ctx, args) => {
+    const running = await requireRunningLibrary(ctx, args.libraryId);
+    await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+    const operation = await queueDomainChangeOperation(ctx, {
+      libraryId: args.libraryId,
+      idempotencyKey: `domain:${args.reason}:${args.host}:${Date.now()}`,
+      revisionId: running.activeRevisionId,
+      domainChange: { host: args.host, reason: args.reason },
+    });
+    return await claimAndScheduleConfigurationDeployment(ctx, {
+      libraryId: args.libraryId,
+      operationId: operation.operationId,
+    });
+  },
+});
+
+/**
+ * Sends the platform address to a custom domain, or back to itself.
+ *
+ * The library's address is also where people sign in, so everyone signed in
+ * is signed out by this. The platform address is never released: it keeps
+ * redirecting for ever, because DOI landing pages already registered point
+ * at it.
+ */
+export const setDomainPrimary = mutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainId: v.id("evidenceLibraryDomains"),
+    primary: v.boolean(),
+  },
+  returns: v.object({
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+    status: v.literal("running"),
+    address: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const running = await requireRunningLibrary(ctx, args.libraryId);
+    await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row || row.libraryId !== args.libraryId) {
+      throw createError("NOT_FOUND", "That domain is not on this library");
+    }
+    if (args.primary && row.state !== "active") {
+      throw createError(
+        "CONFLICT",
+        "The domain has to be working before it can become the address",
+      );
+    }
+    const address = args.primary
+      ? `https://${row.host}`
+      : running.binding.targetBaseUrl;
+    const draft = await ctx.db
+      .query("evidenceLibraryConfigDrafts")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .unique();
+    if (!draft) {
+      throw createError("NOT_FOUND", "Evidence Library draft not found");
+    }
+    // The live sections must still pass the rules at the new address.
+    const sourceRows = await readRevisionSectionRows(
+      ctx,
+      running.activeRevisionId,
+    );
+    const validated = validateOwnerSections(
+      sourceRows.map((section) => ({
+        sectionKey: section.sectionKey,
+        payload:
+          section.sectionKey === "identity"
+            ? { ...(section.payload as Record<string, unknown>), baseUrl: address }
+            : section.payload,
+      })),
+      {
+        expectedBaseUrl: address,
+        requireComplete: true,
+        platformMailConfigured: isPlatformMailConfigured(),
+      },
+    );
+    const issue = validated.issues[0];
+    if (issue) {
+      throw createError("VALIDATION_ERROR", `${issue.pointer}: ${issue.message}`, {
+        pointer: issue.pointer,
+      });
+    }
+    const [draftIdentity, revisionIdentity] = await Promise.all([
+      ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", draft._id).eq("sectionKey", "identity"),
+        )
+        .unique(),
+      ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", running.activeRevisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique(),
+    ]);
+    await ctx.db.patch(running.binding._id, {
+      canonicalBaseUrl: args.primary ? address : undefined,
+      updatedAt: Date.now(),
+    });
+    await moveIdentityBaseUrl(ctx, draftIdentity, address);
+    await moveIdentityBaseUrl(ctx, revisionIdentity, address);
+    // Only one domain at a time may be the library's address; the others
+    // keep sending visitors to it.
+    const rows = await ctx.db
+      .query("evidenceLibraryDomains")
+      .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+      .collect();
+    for (const entry of rows) {
+      const role =
+        args.primary && entry._id === args.domainId ? "primary" : "redirect";
+      if (entry.role !== role) {
+        await ctx.db.patch(entry._id, { role, updatedAt: Date.now() });
+      }
+    }
+    const operation = await queueDomainChangeOperation(ctx, {
+      libraryId: args.libraryId,
+      idempotencyKey: `domain:canonical:${address}:${Date.now()}`,
+      revisionId: running.activeRevisionId,
+      domainChange: { host: row.host, reason: "canonical" },
+    });
+    const started = await claimAndScheduleConfigurationDeployment(ctx, {
+      libraryId: args.libraryId,
+      operationId: operation.operationId,
+    });
+    return { ...started, address };
+  },
 });
 
 export const listVersions = query({

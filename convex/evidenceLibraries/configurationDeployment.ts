@@ -59,7 +59,8 @@ function isReadyRuntimeBinding(
 }
 
 // A publish operation the pipeline owns: an activation of a draft edit, a
-// runtime update of the active revision, or a move to a new address.
+// runtime update of the active revision, a move to a new address, or a
+// custom domain being attached, removed or made the library's address.
 export function isConfigurationDeploymentOperation(
   operation: Doc<"evidenceLibraryConfigOperations">,
 ): boolean {
@@ -67,7 +68,8 @@ export function isConfigurationDeploymentOperation(
     operation.kind === "publish" &&
     (operation.activationEditVersion !== undefined ||
       operation.runtimeUpdate !== undefined ||
-      operation.addressMove !== undefined)
+      operation.addressMove !== undefined ||
+      operation.domainChange !== undefined)
   );
 }
 
@@ -480,7 +482,9 @@ export const prepareConfigurationDeployment = internalMutation({
       payload: section.payload,
     }));
     const validated = validateOwnerSections(sections, {
-      expectedBaseUrl: deployment.runtimeBinding.targetBaseUrl,
+      expectedBaseUrl:
+        deployment.runtimeBinding.canonicalBaseUrl ??
+        deployment.runtimeBinding.targetBaseUrl,
       requireComplete: true,
       platformMailConfigured: isPlatformMailConfigured(),
     });
