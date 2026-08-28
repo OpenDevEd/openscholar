@@ -143,10 +143,11 @@ against our own setup on 2026-08-28). Read it before touching code.
 The runtime needs no change (the canonical-host redirect already produces
 both toggle states). Infrastructure, by the integration owner before the
 gate: a proxied `cname.openscholar.ai` CNAME target and a proxied fallback
-origin in the `opendev.space` zone, Cloudflare for SaaS enabled on the
-zone, an API token scoped to SSL and Certificates: Edit on that zone, set
-as `EL_CLOUDFLARE_API_TOKEN` + `EL_CLOUDFLARE_ZONE_ID` on the shared
-deployment (and on the lane for the lane gate).
+origin in the `openscholar.ai` zone, Cloudflare for SaaS enabled on that
+zone, an API token scoped to SSL and Certificates: Edit on it, set as
+`EL_CLOUDFLARE_API_TOKEN` + `EL_CLOUDFLARE_ZONE_ID` on the shared
+deployment. `EL_CUSTOM_DOMAIN_TARGET` names the target and defaults to
+`cname.openscholar.ai`; nothing hard-codes a domain.
 
 ## Test-first steps
 
@@ -203,13 +204,84 @@ deployment (and on the lane for the lane gate).
   another proxy. Turn the proxy off for this record.").
 - `reconcileDockerComposeDomains` drops every domain if the compose
   service is renamed; assert the `web` key on every read.
-- Origin TLS: each custom hostname is created with a custom origin (the
-  library's platform address) and origin SNI set to it — an Enterprise
-  feature of Cloudflare for SaaS — so the runtime serves its existing
-  platform certificate and Traefik never attempts Let's Encrypt for the
-  custom hostname. Lane D confirms the exact API fields
-  (`custom_origin_server`, `custom_origin_sni`) against Cloudflare's docs
-  and writes them here.
+- **Origin TLS — answered in lane D (2026-08-28).** Each custom hostname is
+  created with `custom_origin_server` set to the library's own platform
+  address (`<slug>-lib.opendev.space`). Cloudflare documents the default
+  origin SNI as *"the value of the SNI will be that of the custom origin and
+  the `Host` header will be the original custom hostname"*, which is exactly
+  what we need: the runtime is asked for the certificate it already holds
+  for its platform address, and the customer's name arrives in the `Host`
+  header, which is what the proxy routes on. The explicit `custom_origin_sni`
+  field is **not** sent: Cloudflare only accepts `":request_host_header:"`
+  or a name inside our own zone there, and both are wrong here. Omitting it
+  is the documented way to get the SNI we want.
+  Source: https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/advanced-settings/custom-origin/
+  What is still unproven, and what the integration owner must watch at the
+  shared gate: Coolify writes a Traefik router with its Let's Encrypt
+  certificate resolver for **every** compose domain, so Traefik may still
+  order its own certificate for the custom hostname over HTTP-01. That
+  request is not needed and nothing depends on it. It is bounded by the
+  gates: a host only reaches Coolify after the address and ownership
+  records pass, so Traefik never retries a name that does not point at us,
+  and the five-authorisation-failures-per-hour cap is never approached.
+  The lane could not test this — the lane has no Cloudflare credentials.
+- The CAA gate accepts `pki.goog`, `letsencrypt.org`, `ssl.com`,
+  `sectigo.com` and `digicert.com`. Cloudflare issues custom hostname
+  certificates from Google Trust Services, Let's Encrypt, SSL.com and
+  Sectigo and falls back between them, so any one of these being permitted
+  is enough. Source:
+  https://developers.cloudflare.com/ssl/edge-certificates/caa-records/
+
+## Decisions taken during lane D
+
+These correct or complete the decisions above. Each one is a change to the
+plan, not a silent difference.
+
+1. **The toggle does not use `startAddressMove`.** That function moves the
+   *platform* address: it rewrites `targetBaseUrl` and Coolify's domain.
+   Decision 8 forbids ever releasing a platform address, so the toggle
+   instead writes a new `canonicalBaseUrl` on the runtime binding, which is
+   the address `identity.baseUrl` must equal. `targetBaseUrl` never moves.
+   Everything that computed `expectedBaseUrl` from `targetBaseUrl` now reads
+   `canonicalBaseUrl ?? targetBaseUrl`, and a later platform address move
+   leaves `identity.baseUrl` alone while a custom domain is primary.
+2. **A publish is queued with a new `domainChange` operation field**
+   (`{ host, reason: attach | detach | canonical }`), beside `addressMove`.
+   Coolify writes the proxy rules into the container, so a domain only goes
+   live through a deployment.
+3. **`attachedAt` on the domain row.** Whether the proxy holds a host is
+   kept apart from the row's state, so a failed check can never make the
+   platform forget a host Coolify is already serving.
+4. **Coolify assertions.** Only the new `setCustomDomains` compares the
+   whole set. The five existing call sites require the platform address to
+   be **first** in the list and leave later entries alone; `applicationPatch`
+   and `setApplicationDomain` keep the hosts already there. Demanding an
+   exact set everywhere would have made every ordinary deployment fail for a
+   library with a custom domain.
+5. **Removing the primary domain is refused**, with "Send the platform
+   address back to itself before removing this domain", rather than moving
+   the address back on the owner's behalf. One clear owner step instead of a
+   hidden two-phase operation.
+6. **No separate `behind-proxy` failure.** Another proxy in front cannot be
+   told apart from a wrong record without vendor IP lists, which the
+   research rules out. The `wrong-target` message names both possibilities.
+7. **Gate 4a (the plain-HTTP `404 page not found` probe) is not built.**
+   Under Cloudflare for SaaS the edge answers the custom hostname, not
+   Traefik, so that signal never appears. Gate 4b — our own health answer
+   with the live revision — is the proof, and it is stronger.
+8. **International domains must be given in punycode.** Only ASCII host
+   names are accepted; every domain host shows the `xn--` form.
+9. **The queries and mutations live in a new `convex/evidenceLibraries/domains.ts`**,
+   not in `mutations.ts`, which is already long and shared with other lanes.
+10. **The rail entry sits in the existing `platform` group**, beside
+    Versions. The page has no "Publishing" group.
+
+## Still to build
+
+- The scheduled sweep of decision 6. The owner-facing behaviour is complete
+  (Check is manual, as the mock draws it), but nothing yet re-probes `active`
+  rows on a schedule and marks a domain `failed` when its records go away.
+
 
 ## Files that change
 
