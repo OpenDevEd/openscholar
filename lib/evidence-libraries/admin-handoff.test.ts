@@ -30,8 +30,28 @@ describe("sanitiseAdminReturnPath", () => {
     ["a bare path", "admin"],
     ["an empty value", ""],
     ["a very long value", `/admin/${"a".repeat(600)}`],
+    ["an encoded walk out of the admin area", "/admin/%2e%2e/records"],
+    ["an encoded walk in capitals", "/admin/%2E%2E/records"],
+    ["a double-encoded walk", "/admin/%252e%252e/records"],
+    ["an encoded slash", "/admin%2Frecords"],
+    ["an encoded slash in lower case", "/admin%2frecords"],
+    ["an encoded backslash", "/admin%5Crecords"],
+    ["an encoded protocol-relative address", "/%2F%2Fevil.example"],
+    ["an encoded fragment", "/admin%23/evil"],
+    ["a broken escape", "/admin/%zz"],
+    ["an encoded null byte", "/admin/%00"],
+    ["a locale that is really another site", "/en-GB%2F%2Fevil.example/admin"],
   ])("falls back to /admin for %s", (_label, path) => {
     expect(sanitiseAdminReturnPath(path)).toBe("/admin");
+  });
+
+  it("keeps ordinary encoding inside a segment or a query", () => {
+    expect(sanitiseAdminReturnPath("/admin/items/Climate%20report")).toBe(
+      "/admin/items/Climate%20report",
+    );
+    expect(sanitiseAdminReturnPath("/admin/items?q=a%20b%26c")).toBe(
+      "/admin/items?q=a%20b%26c",
+    );
   });
 
   it("falls back to /admin when nothing was asked for", () => {

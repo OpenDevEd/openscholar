@@ -13,11 +13,18 @@ const DEFAULT_ADMIN_RETURN_PATH = "/admin";
 
 const MAX_RETURN_PATH_LENGTH = 512;
 const LOCALE_SEGMENT = /^[a-z]{2}(-[A-Za-z]{2,8})?$/;
+// A decoded segment may not hold a separator, another escape (double
+// encoding) or a fragment marker.
+const SEPARATOR_OR_ESCAPE = /[\\/%#]/;
+// eslint-disable-next-line no-control-regex -- control characters are exactly what this rejects
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/;
 
 /**
  * The path inside the library the person should land on. Anything that could
- * leave the library — another site, a protocol-relative address, a backslash
- * trick, a page outside the admin area — falls back to `/admin`.
+ * leave the library falls back to `/admin`: another site, a
+ * protocol-relative address, a backslash, a walk up the tree, and the
+ * encoded versions of all of those. Each segment is decoded once and checked
+ * again, so `%2e%2e`, `%2f`, `%5c` and double encoding never slip through.
  */
 export function sanitiseAdminReturnPath(
   raw: string | null | undefined,
@@ -29,12 +36,27 @@ export function sanitiseAdminReturnPath(
   if (!raw.startsWith("/") || raw.startsWith("//")) {
     return DEFAULT_ADMIN_RETURN_PATH;
   }
-  if (/[\\\s#]/.test(raw)) return DEFAULT_ADMIN_RETURN_PATH;
+  // Nothing raw may carry a separator, a fragment, whitespace or a control
+  // character; those never belong in a path we were handed.
+  if (/[\\\s#]/.test(raw) || CONTROL_CHARACTER.test(raw)) {
+    return DEFAULT_ADMIN_RETURN_PATH;
+  }
 
   const path = raw.split("?")[0] ?? "";
-  const segments = path.split("/").slice(1);
-  if (segments.some((segment) => segment === "." || segment === "..")) {
-    return DEFAULT_ADMIN_RETURN_PATH;
+  const segments: string[] = [];
+  for (const segment of path.split("/").slice(1)) {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(segment);
+    } catch {
+      // A broken escape such as `%zz`.
+      return DEFAULT_ADMIN_RETURN_PATH;
+    }
+    if (decoded === "." || decoded === "..") return DEFAULT_ADMIN_RETURN_PATH;
+    if (SEPARATOR_OR_ESCAPE.test(decoded) || CONTROL_CHARACTER.test(decoded)) {
+      return DEFAULT_ADMIN_RETURN_PATH;
+    }
+    segments.push(decoded);
   }
 
   const [first, second] = segments;

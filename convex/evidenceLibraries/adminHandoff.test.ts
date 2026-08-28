@@ -215,6 +215,11 @@ describe("Evidence Library admin handoff", () => {
     { label: "a page outside the admin area", returnPath: "/records" },
     { label: "a backslash trick", returnPath: "/\\evil.example" },
     { label: "an empty value", returnPath: "" },
+    { label: "an encoded walk out", returnPath: "/admin/%2e%2e/records" },
+    { label: "a double-encoded walk out", returnPath: "/admin/%252e%252e/x" },
+    { label: "an encoded slash", returnPath: "/admin%2Frecords" },
+    { label: "an encoded backslash", returnPath: "/admin%5Crecords" },
+    { label: "a broken escape", returnPath: "/admin/%zz" },
   ])("drops a return path pointing at $label", async ({ returnPath }) => {
     const fixture = await createReadySetupFixture(
       `admin_handoff_return_${returnPath.replace(/\W/g, "") || "empty"}`,
