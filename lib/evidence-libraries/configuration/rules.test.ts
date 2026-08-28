@@ -909,7 +909,9 @@ const withCatalog = AI_MODELS.length > 0;
 const approvedModel = AI_MODELS[0] ?? "openai/gpt-5.6-luna";
 
 const aiRows = [
-  ...savedRows.filter((row) => row.sectionKey !== "features"),
+  ...savedRows.filter(
+    (row) => row.sectionKey !== "features" && row.sectionKey !== "ai",
+  ),
   { sectionKey: "features", payload: { ai: true } },
   {
     sectionKey: "ai",
