@@ -45,7 +45,8 @@ describe("GET /evidence-libraries/[libraryId]/admin", () => {
   });
 
   it("spends no code on the client router's fetch after sign-in", async () => {
-    for (const headers of [{ rsc: "1" }, { "next-router-prefetch": "1" }]) {
+    const clientRouterHeaders: Record<string, string>[] = [{ rsc: "1" }, { "next-router-prefetch": "1" }];
+    for (const headers of clientRouterHeaders) {
       const response = await GET(
         new Request("http://localhost:3012/evidence-libraries/lib_1/admin?return=%2Fadmin", { headers }),
         context(),
