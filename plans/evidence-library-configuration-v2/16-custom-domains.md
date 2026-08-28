@@ -20,8 +20,9 @@ against our own setup on 2026-08-28). Read it before touching code.
    account (research 0b.3, C.6.1). So OpenScholar registers each attached
    domain as a custom hostname through the Cloudflare API on attach and
    removes it on detach. Cloudflare issues and renews the certificate; the
-   origin IP never appears in any DNS answer; free up to 100 hostnames,
-   then $0.10 per hostname per month. The customer's job is one CNAME plus
+   origin IP never appears in any DNS answer; the `openscholar.ai` zone is
+   on an Enterprise plan the user's grant covers, so hostnames cost
+   nothing extra. The customer's job is one CNAME plus
    one TXT, the same as on any other platform — this is our own account,
    not a dependency on the customer's DNS provider.
 2. **The CNAME target is `cname.openscholar.ai`** (proxied), in the
@@ -33,7 +34,7 @@ against our own setup on 2026-08-28). Read it before touching code.
    (`<slug>-lib.opendev.space`) with matching SNI, so Traefik serves the
    certificate it already has and no Let's Encrypt issuance happens for
    custom domains at all. The platform addresses stay on `opendev.space`.
-   Previously written as `cname.openscholar.ai`; superseded. Not the
+   Previously written as `cname.opendev.space`; superseded. Not the
    library's own `<slug>-lib.opendev.space`: the platform may move a
    library to another address by itself (plan 11), which would break a
    customer's CNAME. The agreed mock keeps its shape (a CNAME row and a
