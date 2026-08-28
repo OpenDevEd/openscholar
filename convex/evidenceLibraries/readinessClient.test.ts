@@ -444,4 +444,36 @@ describe("Evidence Library address ownership", () => {
     expect(seen.ordinary).toContain("runtime-verifier.example.test");
     expect(seen.ordinary).toContain("climate-lib.opendev.space");
   });
+
+  it("gives up on a library that sends headers and then stops", async () => {
+    // The deadline used to end when the headers arrived, so a body that
+    // never finished held the check open for ever.
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+        const signal = init?.signal;
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('{"state":'));
+              // Nothing more is ever sent.
+              signal?.addEventListener("abort", () => {
+                controller.error(new Error("aborted"));
+              });
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }) as unknown as typeof fetch;
+
+      const pending = probeEvidenceLibraryAddress({
+        targetBaseUrl: "https://climate.libraries.example.test",
+        fetchImpl,
+      });
+      await vi.advanceTimersByTimeAsync(20_000);
+      await expect(pending).resolves.toMatchObject({ state: "unreachable" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
