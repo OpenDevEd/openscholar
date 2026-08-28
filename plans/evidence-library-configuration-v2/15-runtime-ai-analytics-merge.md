@@ -207,3 +207,33 @@ every test that waited for the catalog now runs.
 The AI switch stays disabled with "Your library software does not offer AI
 answers yet" when the pinned catalog has no OpenRouter models, so a library on
 older software can never be given a setting it refuses.
+
+## Live check on the shared platform — 2026-08-28
+
+Run after #117 merged (`dev` `b9f25939`, shared backend pushed,
+`EL_RUNTIME_COMMIT_SHA=95ac3fc0`) on throwaway library `el-gate-0828b`
+(`r17490kcjpfbc2ht9qn9cagj8x8dbrk3`), then deleted through the app; the
+Coolify app was gone afterwards.
+
+- Compact cookie dialog: **pass** (two toggles, three buttons, new wording).
+- OpenRouter key never reaches the browser: **pass** (139 payloads, page HTML,
+  storage and every live-library response searched; the key exists only in the
+  app's `LIBRARY_CONFIG_JSON` on the server).
+- AI answer streams through OpenRouter: **pass on a record with a PDF**
+  ("Ask AI → Summarise", `POST /api/ai` → `200 text/event-stream`, Gemini 3.7
+  Flash).
+- Header logo 150×150 in a 104 px bar: **expected failure**, fixed by new-el
+  #144 (`codex/logo-fit`), not yet merged.
+
+### Open question for the product owner
+
+The library-wide assistant (the "Ask AI" box beside search, `POST /api/ai/chat`)
+is gated on `features.aiSearch` in the runtime, and OpenScholar always writes
+`aiSearch: false` because the runtime refuses it without an embedder
+(Decision 2 deviation). So an owner who turns on "AI answers" gets only the
+per-record menu, and only on records with a visible PDF. The AI section's copy
+("Let visitors ask questions about the evidence in your library") promises
+more than that. Options: (a) the runtime lets `/api/ai/chat` run without
+`aiSearch` (chat over the record set without embeddings); (b) OpenScholar
+exposes AI search with an embedder setting; (c) the copy is narrowed to what
+works today. Decision pending; nothing changed yet.
