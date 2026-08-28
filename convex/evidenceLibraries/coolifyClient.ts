@@ -140,6 +140,8 @@ export function requireMatchingCoolifyDeployment(
 
 type CoolifyRequest = {
   allowNotFound?: boolean;
+  /** A 409 means another Coolify resource already serves the host. */
+  allowConflict?: boolean;
   body?: Record<string, unknown>;
   expectedStatus: number;
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -442,6 +444,12 @@ async function requestCoolify(
     }
     if (response.status !== request.expectedStatus) {
       if (request.allowNotFound && response.status === 404) return null;
+      if (request.allowConflict && response.status === 409) {
+        throw new CoolifyClientError(
+          "COOLIFY_DOMAIN_TAKEN",
+          "That domain is already used by another site",
+        );
+      }
       throw new CoolifyClientError(
         "COOLIFY_REQUEST_FAILED",
         "Coolify rejected the request",
@@ -802,15 +810,61 @@ async function readTags(
   );
 }
 
-function hasExpectedComposeDomain(
+/**
+ * Coolify keeps every domain of a compose service in one comma-separated
+ * string under the service name. Since custom domains are appended to the
+ * platform address, every read goes through this list.
+ *
+ * The `web` key is asserted on every read: a rename of that service in the
+ * runtime's compose file would silently drop every domain.
+ */
+export function composeDomainHosts(
+  domains: Record<string, ComposeDomain> | null,
+): string[] {
+  if (domains === null || Object.keys(domains).length !== 1) return [];
+  const web = domains.web?.domain;
+  if (!web) return [];
+  return web
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/**
+ * The platform address must still be the first entry. Index 0 keeps the
+ * Traefik router names Coolify generated, and it is the address the platform
+ * guarantees. Later entries are the library's own custom domains, which
+ * every call except the one that manages them leaves alone.
+ */
+function hasPlatformComposeDomain(
   domains: Record<string, ComposeDomain> | null,
   publicDomain: string,
 ): boolean {
+  return composeDomainHosts(domains)[0] === publicDomain;
+}
+
+/** The exact list, used by the one call that owns the whole set. */
+export function hasExpectedComposeDomains(
+  domains: Record<string, ComposeDomain> | null,
+  expected: readonly string[],
+): boolean {
+  const actual = composeDomainHosts(domains);
   return (
-    domains !== null &&
-    Object.keys(domains).length === 1 &&
-    domains.web?.domain === publicDomain
+    actual.length === expected.length &&
+    actual[0] === expected[0] &&
+    expected.every((domain) => actual.includes(domain))
   );
+}
+
+/** The complete map Coolify is sent: the platform address always first. */
+function composeDomainValue(
+  publicDomain: string,
+  others: readonly string[],
+): string {
+  return [
+    publicDomain,
+    ...others.filter((host) => host !== publicDomain),
+  ].join(",");
 }
 
 function hasExpectedTarget(
@@ -840,10 +894,7 @@ function hasExpectedApplication(
     application.portsExposes === PORTS_EXPOSES &&
     (application.fqdn === null || application.fqdn === "") &&
     application.composePath === COMPOSE_PATH &&
-    hasExpectedComposeDomain(
-      application.composeDomains,
-      desired.publicDomain,
-    ) &&
+    hasPlatformComposeDomain(application.composeDomains, desired.publicDomain) &&
     APPLICATION_SETTING_KEYS.every((key) => application.settings[key] === false)
   );
 }
@@ -862,7 +913,7 @@ function hasExpectedBoundApplication(
     application.portsExposes === PORTS_EXPOSES &&
     (application.fqdn === null || application.fqdn === "") &&
     application.composePath === COMPOSE_PATH &&
-    hasExpectedComposeDomain(application.composeDomains, publicDomain) &&
+    hasPlatformComposeDomain(application.composeDomains, publicDomain) &&
     application.sourceType === GITHUB_SOURCE_TYPE &&
     application.sourceId !== null &&
     APPLICATION_SETTING_KEYS.every((key) => application.settings[key] === false)
@@ -920,11 +971,19 @@ function applicationPatch(
   if (application.composePath !== COMPOSE_PATH) {
     patch.docker_compose_location = COMPOSE_PATH;
   }
+  // Every custom domain this library already serves is kept. Sending only
+  // the platform address here would take those sites down.
   if (
-    !hasExpectedComposeDomain(application.composeDomains, desired.publicDomain)
+    !hasPlatformComposeDomain(application.composeDomains, desired.publicDomain)
   ) {
     patch.docker_compose_domains = [
-      { name: "web", domain: desired.publicDomain },
+      {
+        name: "web",
+        domain: composeDomainValue(
+          desired.publicDomain,
+          composeDomainHosts(application.composeDomains),
+        ),
+      },
     ];
     patch.force_domain_override = false;
   }
@@ -1772,7 +1831,7 @@ export function createCoolifyClient(input: {
       const currentPublicDomain = requirePublicDomain(input.currentPublicDomain);
       const nextPublicDomain = requirePublicDomain(input.nextPublicDomain);
       const existing = await readApplication(client, applicationUuid);
-      const alreadyMoved = hasExpectedComposeDomain(
+      const alreadyMoved = hasPlatformComposeDomain(
         existing.composeDomains,
         nextPublicDomain,
       );
@@ -1782,6 +1841,11 @@ export function createCoolifyClient(input: {
         publicDomain: alreadyMoved ? nextPublicDomain : currentPublicDomain,
       });
       if (!alreadyMoved) {
+        // The library's custom domains stay on the application; only the
+        // platform address at the front of the list changes.
+        const keptDomains = composeDomainHosts(existing.composeDomains).filter(
+          (host) => host !== currentPublicDomain,
+        );
         parseUuidResponse(
           await requestCoolify(client, {
             expectedStatus: 200,
@@ -1789,7 +1853,10 @@ export function createCoolifyClient(input: {
             path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
             body: {
               docker_compose_domains: [
-                { name: "web", domain: nextPublicDomain },
+                {
+                  name: "web",
+                  domain: composeDomainValue(nextPublicDomain, keptDomains),
+                },
               ],
               force_domain_override: false,
               instant_deploy: false,
@@ -1802,6 +1869,71 @@ export function createCoolifyClient(input: {
           applicationTag,
           publicDomain: nextPublicDomain,
         });
+      }
+      return {
+        applicationUuid,
+        runtimeCommit: application.gitCommitSha,
+        coolifyConfigHash: application.configHash,
+      };
+    },
+
+    /**
+     * Serves the library's custom domains beside its platform address. The
+     * complete list is always sent, platform address first, because a PATCH
+     * replaces the whole map. Nothing is deployed here: Coolify writes the
+     * proxy rules into the container, so the next deployment makes the
+     * domain live.
+     */
+    async setCustomDomains(input: {
+      applicationUuid: string;
+      libraryId: Id<"evidenceLibraries">;
+      publicDomain: string;
+      customDomains: readonly string[];
+    }): Promise<CoolifyBoundApplication> {
+      const applicationUuid = requireInputIdentifier(
+        "Coolify application UUID",
+        input.applicationUuid,
+      );
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const publicDomain = requirePublicDomain(input.publicDomain);
+      const customDomains = input.customDomains.map(requirePublicDomain);
+      const expected = [
+        publicDomain,
+        ...customDomains.filter((domain) => domain !== publicDomain),
+      ];
+      let application = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomain,
+      });
+      if (!hasExpectedComposeDomains(application.composeDomains, expected)) {
+        parseUuidResponse(
+          await requestCoolify(client, {
+            allowConflict: true,
+            expectedStatus: 200,
+            method: "PATCH",
+            path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
+            body: {
+              docker_compose_domains: [
+                { name: "web", domain: expected.join(",") },
+              ],
+              force_domain_override: false,
+              instant_deploy: false,
+            },
+          }),
+          applicationUuid,
+        );
+        application = await readExpectedBoundApplication(client, {
+          applicationUuid,
+          applicationTag,
+          publicDomain,
+        });
+        if (!hasExpectedComposeDomains(application.composeDomains, expected)) {
+          throw new CoolifyClientError(
+            "COOLIFY_APPLICATION_MISMATCH",
+            "Coolify did not save the requested domains",
+          );
+        }
       }
       return {
         applicationUuid,

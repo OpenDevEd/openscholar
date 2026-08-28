@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import type { Id } from "../_generated/dataModel";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  composeDomainHosts,
   CoolifyClientError,
   createCoolifyClient,
   createCoolifyLibraryTag,
+  hasExpectedComposeDomains,
 } from "./coolifyClient";
 
 const COOLIFY_ORIGIN = "https://coolify.example.test";
@@ -171,6 +173,7 @@ function createCoolifyServer(
     deploymentCount?: number;
     createPreviewEnvironmentOnCreate?: boolean;
     ignoreApplicationWrites?: boolean;
+    conflictOnApplicationPatch?: boolean;
     ignoreApplicationDelete?: boolean;
     ignoreEnvironmentWrites?: boolean;
     staleApplicationReadsAfterDelete?: number;
@@ -308,6 +311,9 @@ function createCoolifyServer(
 
       if (method === "PATCH" && url.pathname === applicationPath) {
         if (!application) return jsonResponse({ message: "Not found" }, 404);
+        if (input.conflictOnApplicationPatch) {
+          return jsonResponse({ message: "Domain already in use." }, 409);
+        }
         if (!input.ignoreApplicationWrites) {
           const patch = body as Record<string, unknown>;
           for (const key of [
@@ -1636,5 +1642,144 @@ describe("Coolify Evidence Library client", () => {
       message: "Coolify could not be reached",
     });
   });
+
+
+describe("compose domains", () => {
+  it("reads every host out of the one comma-separated list", () => {
+    expect(
+      composeDomainHosts({
+        web: {
+          domain:
+            "https://library.example.test, https://Evidence.Example.ORG ,,",
+        },
+      }),
+    ).toEqual(["https://library.example.test", "https://evidence.example.org"]);
+  });
+
+  it("reads nothing when the compose service is not web", () => {
+    expect(composeDomainHosts({ app: { domain: "https://library.example.test" } })).toEqual([]);
+    expect(
+      composeDomainHosts({
+        web: { domain: "https://library.example.test" },
+        api: { domain: "https://api.example.test" },
+      }),
+    ).toEqual([]);
+    expect(composeDomainHosts(null)).toEqual([]);
+  });
+
+  it("matches the expected set in any order with the platform address first", () => {
+    const domains = {
+      web: {
+        domain: "https://library.example.test,https://evidence.example.org",
+      },
+    };
+    expect(
+      hasExpectedComposeDomains(domains, [
+        "https://library.example.test",
+        "https://evidence.example.org",
+      ]),
+    ).toBe(true);
+    expect(
+      hasExpectedComposeDomains(domains, [
+        "https://evidence.example.org",
+        "https://library.example.test",
+      ]),
+    ).toBe(false);
+    expect(hasExpectedComposeDomains(domains, ["https://library.example.test"])).toBe(
+      false,
+    );
+  });
+});
+
+describe("setCustomDomains", () => {
+  it("sends the complete list with the platform address first", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication(),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+    });
+
+    await createClient(server.fetchImpl).setCustomDomains({
+      applicationUuid: APPLICATION_UUID,
+      libraryId: LIBRARY_ID,
+      publicDomain: PUBLIC_DOMAIN,
+      customDomains: ["https://Evidence.Example.ORG"],
+    });
+
+    const patch = server.requests.find((request) => request.method === "PATCH");
+    expect(patch?.body).toEqual({
+      docker_compose_domains: [
+        {
+          name: "web",
+          domain: `${PUBLIC_DOMAIN},https://evidence.example.org`,
+        },
+      ],
+      force_domain_override: false,
+      instant_deploy: false,
+    });
+  });
+
+  it("sends the platform address alone when the last custom domain goes", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication({
+        docker_compose_domains: JSON.stringify({
+          web: { domain: `${PUBLIC_DOMAIN},https://evidence.example.org` },
+        }),
+      }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+    });
+
+    await createClient(server.fetchImpl).setCustomDomains({
+      applicationUuid: APPLICATION_UUID,
+      libraryId: LIBRARY_ID,
+      publicDomain: PUBLIC_DOMAIN,
+      customDomains: [],
+    });
+
+    const patch = server.requests.find((request) => request.method === "PATCH");
+    expect(patch?.body).toMatchObject({
+      docker_compose_domains: [{ name: "web", domain: PUBLIC_DOMAIN }],
+    });
+  });
+
+  it("writes nothing when the list is already right", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication({
+        docker_compose_domains: JSON.stringify({
+          web: { domain: `${PUBLIC_DOMAIN},https://evidence.example.org` },
+        }),
+      }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+    });
+
+    await createClient(server.fetchImpl).setCustomDomains({
+      applicationUuid: APPLICATION_UUID,
+      libraryId: LIBRARY_ID,
+      publicDomain: PUBLIC_DOMAIN,
+      customDomains: ["https://evidence.example.org"],
+    });
+
+    expect(server.requests.some((request) => request.method === "PATCH")).toBe(false);
+  });
+
+  it("says so when another site already holds the domain", async () => {
+    const server = createCoolifyServer({
+      application: expectedApplication(),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      conflictOnApplicationPatch: true,
+    });
+
+    await expect(
+      createClient(server.fetchImpl).setCustomDomains({
+        applicationUuid: APPLICATION_UUID,
+        libraryId: LIBRARY_ID,
+        publicDomain: PUBLIC_DOMAIN,
+        customDomains: ["https://evidence.example.org"],
+      }),
+    ).rejects.toMatchObject({
+      code: "COOLIFY_DOMAIN_TAKEN",
+      message: "That domain is already used by another site",
+    });
+  });
+});
 
 });
