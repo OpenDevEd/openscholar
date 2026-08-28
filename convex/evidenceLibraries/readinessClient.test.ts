@@ -176,6 +176,13 @@ describe("Evidence Library readiness client", () => {
       label: "a server error",
       answer: new Response("boom", { status: 502 }),
     },
+    ...[301, 302, 303, 308].map((status) => ({
+      label: `a ${status} to the right login page`,
+      answer: new Response(null, {
+        status,
+        headers: { location: LOGIN_PAGE_URL },
+      }),
+    })),
     {
       label: "a page of its own",
       answer: new Response("<!doctype html><title>Admin</title>", {

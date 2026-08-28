@@ -41,6 +41,9 @@ export const POST = methodNotAllowed;
 export const PUT = methodNotAllowed;
 export const PATCH = methodNotAllowed;
 export const DELETE = methodNotAllowed;
+// Without this Next answers OPTIONS itself, with no `no-store` and a list of
+// every method it thinks this file serves.
+export const OPTIONS = methodNotAllowed;
 
 export async function GET(
   request: Request,

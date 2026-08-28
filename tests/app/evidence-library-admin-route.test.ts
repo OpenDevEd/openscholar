@@ -21,6 +21,7 @@ import {
   DELETE,
   GET,
   HEAD,
+  OPTIONS,
   PATCH,
   POST,
   PUT,
@@ -120,6 +121,7 @@ describe("GET /evidence-libraries/[libraryId]/admin", () => {
     ["PUT", PUT],
     ["PATCH", PATCH],
     ["DELETE", DELETE],
+    ["OPTIONS", OPTIONS],
   ])("refuses %s so no code is spent", async (_method, handler) => {
     const response = await handler();
 

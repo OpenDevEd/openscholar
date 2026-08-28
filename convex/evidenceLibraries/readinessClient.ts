@@ -406,10 +406,11 @@ function isLibraryLoginPage(destination: URL, loginPageUrl: string): boolean {
 }
 
 /**
- * A signed-out `/admin` does not render a page: the runtime sends the browser
- * to this library's OpenScholar login page, which signs the person in and
- * hands the session back. Only that redirect counts as ready. A page of its
- * own means the library still runs software that gates `/admin` itself.
+ * A signed-out `/admin` does not render a page: the runtime answers `307` and
+ * sends the browser to this library's OpenScholar login page, which signs the
+ * person in and hands the session back. Only that exact answer counts as
+ * ready. A page of its own, or another kind of redirect, means the library
+ * runs software that does not follow this contract.
  */
 async function requireAdminPage(
   fetchImpl: typeof fetch,
@@ -424,7 +425,8 @@ async function requireAdminPage(
     headers: { accept: "text/html" },
     method: "GET",
   });
-  if (response.status < 300 || response.status >= 400) throw notReady;
+  // The runtime contract is one exact answer: a 307 to the login page.
+  if (response.status !== 307) throw notReady;
 
   const location = response.headers.get("location");
   if (!location) throw notReady;
