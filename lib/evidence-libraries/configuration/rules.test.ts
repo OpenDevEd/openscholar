@@ -953,7 +953,15 @@ describe("AI answers", () => {
     draft.features.ai = false;
     expect(sectionProblems(draft, "ai")).toEqual([]);
     expect(sectionState(draft, aiRows, "ai")).toBe("edited");
-    expect(changedSectionRows(draft, aiRows)).toContainEqual({ sectionKey: "ai", payload: {} });
+    // Switching off still writes one provider, now off, keeping the model.
+    expect(changedSectionRows(draft, aiRows)).toContainEqual({
+      sectionKey: "ai",
+      payload: {
+        providers: [
+          { provider: AI_PROVIDER, enabled: false, defaultModel: approvedModel },
+        ],
+      },
+    });
   });
 
   it("puts the AI card back the way it was saved", () => {
@@ -981,6 +989,21 @@ describe("the analytics fields the runtime gained", () => {
     expect(sectionProblems(draft, "analytics")).toEqual(["posthogUiHost"]);
     draft.analytics.posthog.uiHost = "https://eu.posthog.com";
     expect(sectionProblems(draft, "analytics")).toEqual([]);
+    // The runtime refuses a recordings address without a host, so a host that
+    // is not an address keeps the recordings address out of the row.
+    const noHost = readDraft(platformRows);
+    noHost.analytics.posthog.host = "eu.i.posthog.com";
+    noHost.analytics.posthog.uiHost = "https://eu.posthog.com";
+    expect(
+      changedSectionRows(noHost, platformRows).find(
+        (row) => row.sectionKey === "analytics",
+      )?.payload,
+    ).toEqual({
+      posthog: {
+        host: "eu.i.posthog.com",
+        key: "phc_12345678901234567890",
+      },
+    });
     expect(changedSectionRows(draft, platformRows)).toEqual([
       {
         sectionKey: "analytics",

@@ -1027,7 +1027,12 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
         posthog: posthog.enabled
           ? compact({
               host: posthog.host,
-              uiHost: posthog.uiHost === "" ? undefined : posthog.uiHost,
+              // The runtime refuses a session recordings address without a
+              // host, so one is never written without the other.
+              uiHost:
+                posthog.uiHost === "" || !HTTPS_URL.test(posthog.host)
+                  ? undefined
+                  : posthog.uiHost,
               key: posthog.key,
             })
           : undefined,
@@ -1038,19 +1043,19 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
             : consentPolicyVersion,
       });
     }
-    // One entry, or none at all. The key is added at assembly, never here.
+    // Always exactly one OpenRouter entry, switched on with AI answers. The
+    // key is added at assembly, never here.
     case "ai":
-      return draft.features.ai
-        ? {
-            providers: [
-              {
-                provider: AI_PROVIDER,
-                enabled: true,
-                defaultModel: draft.ai.defaultModel,
-              },
-            ],
-          }
-        : {};
+      return {
+        providers: [
+          compact({
+            provider: AI_PROVIDER,
+            enabled: draft.features.ai,
+            defaultModel:
+              draft.ai.defaultModel === "" ? undefined : draft.ai.defaultModel,
+          }),
+        ],
+      };
   }
 }
 
@@ -1327,10 +1332,16 @@ export function sectionProblems(
     // schema.ts "Enabled AI providers require an API key" and "require a
     // default model"; the model must be one the runtime catalog approves.
     case "ai": {
-      if (!draft.features.ai) break;
-      if (!draft.ai.keySaved) problems.push("aiKey");
-      if (draft.ai.defaultModel === "") problems.push("aiModel");
-      else if (!AI_MODELS.includes(draft.ai.defaultModel)) problems.push("aiModelUnknown");
+      const { keySaved, defaultModel } = draft.ai;
+      if (draft.features.ai) {
+        if (!keySaved) problems.push("aiKey");
+        if (defaultModel === "") problems.push("aiModel");
+      }
+      // The runtime checks the model against its catalog whether or not AI
+      // answers are on, so a stale choice is flagged either way.
+      if (defaultModel !== "" && !AI_MODELS.includes(defaultModel)) {
+        problems.push("aiModelUnknown");
+      }
       break;
     }
   }
