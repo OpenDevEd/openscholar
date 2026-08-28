@@ -427,6 +427,67 @@ describe("the OpenRouter key", () => {
     await expect(write()).resolves.toBeTruthy();
   });
 
+  /**
+   * Whether a running operation of this shape stops the owner changing the
+   * key. Each case mirrors what the matching pipeline treats as still held,
+   * so the guard and the reclaim rules can never drift apart.
+   */
+  it.each([
+    ["a publish holding a live lease", "publish", { configurationLeaseExpiresAt: 60_000 }, true],
+    ["a publish whose lease ran out", "publish", { configurationLeaseExpiresAt: -1 }, false],
+    // The deployment pipeline reads a zero lease as no lease, so it is held.
+    ["a publish with a zero lease", "publish", { configurationLeaseExpiresAt: 0 }, true],
+    ["a publish with no lease at all", "publish", {}, true],
+    ["a setup holding a live lease", "setup", { setupLeaseExpiresAt: 60_000 }, true],
+    ["a setup whose lease ran out", "setup", { setupLeaseExpiresAt: -1 }, false],
+    // The setup pipeline reads a zero lease as expired, unlike the publish.
+    ["a setup with a zero lease", "setup", { setupLeaseExpiresAt: 0 }, false],
+    ["a setup with no lease at all", "setup", {}, true],
+    // Neither of these ever reads the key.
+    ["a running teardown", "teardown", {}, false],
+    ["a running rollback", "rollback", {}, false],
+  ])("holds the key still for %s: %s", async (name, kind, lease, blocked) => {
+    vi.stubEnv("ENCRYPTION_KEY", ENCRYPTION_KEY);
+    const fixture = await createReadySetupFixture(
+      `ai_lease_${name.replace(/\W+/gu, "_")}`,
+    );
+    const libraryId = fixture.created.libraryId;
+    const now = Date.now();
+    await fixture.t.run((ctx) =>
+      ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId,
+        kind: kind as "publish" | "setup" | "teardown" | "rollback",
+        idempotencyKey: `lease-${name}`,
+        status: "running",
+        stage: "publishing",
+        attemptCount: 1,
+        ...Object.fromEntries(
+          Object.entries(lease).map(([key, offset]) => [
+            key,
+            offset === 0 ? 0 : now + offset,
+          ]),
+        ),
+        requestedByClerkUserId: "user_ai_lease",
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+    const write = fixture.admin.action(
+      api.evidenceLibraries.credentialActions.writeCredential,
+      {
+        libraryId,
+        concretePath: AI_PROVIDER_KEY_PATH,
+        instanceKey: AI_PROVIDER,
+        value: OPENROUTER_KEY,
+      },
+    );
+    if (blocked) {
+      await expect(write).rejects.toThrow(/Wait for the current publish to finish/);
+    } else {
+      await expect(write).resolves.toBeTruthy();
+    }
+  });
+
   it("cannot be removed when the library has none", async () => {
     const fixture = await createReadySetupFixture("ai_key_absent");
     await expect(
