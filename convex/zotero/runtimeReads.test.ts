@@ -35,6 +35,21 @@ function runtime() {
       return jsonResponse({ error: { code: "unauthorized" } }, 401);
     }
     if (url.pathname === "/api/openscholar/collections") {
+      const ids = url.searchParams.get("ids");
+      if (ids) {
+        const wanted = new Set(ids.split(","));
+        return jsonResponse({
+          items: state.collections
+            .filter((item) => wanted.has(item.id))
+            .map((item) => ({
+              id: item.id,
+              name: item.title,
+              source: item.source,
+              count: item.count,
+            })),
+          nextCursor: null,
+        });
+      }
       const query = url.searchParams.get("query") ?? "";
       return jsonResponse({
         items: state.collections.filter((item) =>
@@ -46,10 +61,12 @@ function runtime() {
     if (url.pathname === "/api/openscholar/institutions") {
       const query = url.searchParams.get("query") ?? "";
       const sort = url.searchParams.get("sort") ?? "count";
+      const direction = url.searchParams.get("direction") ?? (sort === "name" ? "asc" : "desc");
       const cursor = url.searchParams.get("cursor");
       const matching = state.institutions
         .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))
-        .sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b.count - a.count));
+        .sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : a.count - b.count));
+      if (direction === "desc") matching.reverse();
       const from = cursor === "second" ? 1 : 0;
       return jsonResponse({
         items: matching.slice(from, from + 1),
@@ -176,6 +193,75 @@ describe("Evidence Library runtime reads", () => {
       items: [{ name: "Strathmore University", count: 1 }],
       nextCursor: null,
     });
+  });
+
+  it("names the collections the owner already shows, and skips ids the library does not know", async () => {
+    const fixture = await readyLibrary("reads_resolve");
+    const { fetchImpl } = runtime();
+    vi.stubGlobal("fetch", fetchImpl);
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.resolveLibraryCollections, {
+        libraryId: fixture.created.libraryId,
+        ids: ["COLL0001", "GONE0002"],
+      }),
+    ).resolves.toEqual({
+      items: [{ id: "COLL0001", name: "Climate", source: "zotero-42", count: 12 }],
+    });
+  });
+
+  it("answers an empty list of ids without asking the library", async () => {
+    const fixture = await readyLibrary("reads_resolve_none");
+    const { fetchImpl } = runtime();
+    vi.stubGlobal("fetch", fetchImpl);
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.resolveLibraryCollections, {
+        libraryId: fixture.created.libraryId,
+        ids: [],
+      }),
+    ).resolves.toEqual({ items: [] });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("refuses an order it does not know", async () => {
+    const fixture = await readyLibrary("reads_bad_args");
+    vi.stubGlobal("fetch", runtime().fetchImpl);
+    const libraryId = fixture.created.libraryId;
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
+        libraryId,
+        sort: "records" as unknown as "count",
+      }),
+    ).rejects.toThrow();
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
+        libraryId,
+        direction: "sideways" as unknown as "asc",
+      }),
+    ).rejects.toThrow();
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.resolveLibraryCollections, {
+        libraryId,
+        ids: "COLL0001" as unknown as string[],
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("turns the institution order around when asked", async () => {
+    const fixture = await readyLibrary("reads_direction");
+    const { fetchImpl } = runtime();
+    vi.stubGlobal("fetch", fetchImpl);
+    const libraryId = fixture.created.libraryId;
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
+        libraryId,
+        sort: "count",
+        direction: "asc",
+      }),
+    ).resolves.toEqual({
+      items: [{ name: "University of Nairobi", count: 4 }],
+      nextCursor: "second",
+    });
+    expect(new URL(String(fetchImpl.mock.calls[0][0])).searchParams.get("direction")).toBe("asc");
   });
 
   it("refuses readers who cannot manage the library, even when the cache is warm", async () => {

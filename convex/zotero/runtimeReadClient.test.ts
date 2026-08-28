@@ -4,6 +4,7 @@ import {
   RuntimeReadError,
   isFreshRuntimeRead,
   readRuntimeCollections,
+  readRuntimeCollectionsByIds,
   readRuntimeInstitutions,
   runtimeReadCacheKey,
 } from "./runtimeReadClient";
@@ -30,6 +31,9 @@ describe("runtimeReadCacheKey", () => {
     expect(runtimeReadCacheKey({ query: "cli" })).not.toBe(runtimeReadCacheKey({}));
     expect(runtimeReadCacheKey({ cursor: "p2" })).not.toBe(runtimeReadCacheKey({}));
     expect(runtimeReadCacheKey({ sort: "name" })).not.toBe(runtimeReadCacheKey({ sort: "count" }));
+    expect(runtimeReadCacheKey({ direction: "asc" })).not.toBe(runtimeReadCacheKey({ direction: "desc" }));
+    expect(runtimeReadCacheKey({ ids: ["b", "a"] })).toBe(runtimeReadCacheKey({ ids: ["a", "b"] }));
+    expect(runtimeReadCacheKey({ ids: ["a"] })).not.toBe(runtimeReadCacheKey({ ids: ["a", "b"] }));
   });
 });
 
@@ -80,6 +84,7 @@ describe("readRuntimeInstitutions", () => {
       expect(url.searchParams.get("query")).toBe("nairobi");
       expect(url.searchParams.get("cursor")).toBe("p2");
       expect(url.searchParams.get("sort")).toBe("name");
+      expect(url.searchParams.get("direction")).toBe("asc");
       expect(url.searchParams.get("pageSize")).toBe("50");
       expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${credential}`);
       return jsonResponse({ items: [{ name: "University of Nairobi", count: 4 }], nextCursor: "p3" });
@@ -91,6 +96,7 @@ describe("readRuntimeInstitutions", () => {
         query: "nairobi",
         cursor: "p2",
         sort: "name",
+        direction: "asc",
       }),
     ).resolves.toEqual({ items: [{ name: "University of Nairobi", count: 4 }], nextCursor: "p3" });
   });
@@ -109,5 +115,65 @@ describe("readRuntimeInstitutions", () => {
     await expect(
       readRuntimeInstitutions(broken, { baseUrl: "https://lib.example.test", credential }),
     ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" } satisfies Partial<RuntimeReadError>);
+  });
+});
+
+describe("readRuntimeCollectionsByIds", () => {
+  it("asks the library for exactly the ids it needs", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      expect(url.pathname).toBe("/api/openscholar/collections");
+      expect(url.searchParams.get("ids")).toBe("COLL0001,COLL0002");
+      return jsonResponse({
+        items: [
+          { id: "COLL0001", name: "Climate", source: "zotero-42", count: 12 },
+          { id: "COLL0002", name: "Health", source: "zotero-42", count: 3 },
+        ],
+        nextCursor: null,
+      });
+    });
+    await expect(
+      readRuntimeCollectionsByIds(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+        ids: ["COLL0001", "COLL0002"],
+      }),
+    ).resolves.toEqual({
+      items: [
+        { id: "COLL0001", name: "Climate", source: "zotero-42", count: 12 },
+        { id: "COLL0002", name: "Health", source: "zotero-42", count: 3 },
+      ],
+    });
+  });
+
+  it("answers nothing when the library does not know the ids yet", async () => {
+    // A library that has not learned about `ids` answers with its own first
+    // page instead. Those rows are not names for the ids that were asked
+    // for, so the answer is empty rather than wrong.
+    const olderRuntime = vi.fn<typeof fetch>(async () =>
+      jsonResponse({
+        items: [{ id: "OTHER", title: "Something else", count: 1, source: "s", parentId: null }],
+        nextCursor: "p2",
+      }),
+    );
+    await expect(
+      readRuntimeCollectionsByIds(olderRuntime, {
+        baseUrl: "https://lib.example.test",
+        credential,
+        ids: ["COLL0001"],
+      }),
+    ).resolves.toEqual({ items: [] });
+  });
+
+  it("asks for nothing when there are no ids", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ items: [] }));
+    await expect(
+      readRuntimeCollectionsByIds(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+        ids: [],
+      }),
+    ).resolves.toEqual({ items: [] });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

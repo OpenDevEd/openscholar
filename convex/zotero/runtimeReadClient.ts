@@ -20,6 +20,17 @@ export type RuntimeCollectionsPage = {
 
 export type RuntimeInstitution = { name: string; count: number };
 
+/** What the library knows about one collection the owner already shows. */
+export type RuntimeCollectionFacts = {
+  id: string;
+  name: string;
+  source: string;
+  count: number;
+};
+
+/** Ascending or descending, as the library orders a list. */
+export type RuntimeSortDirection = "asc" | "desc";
+
 /** How the library orders institutions: most records first, or by name. */
 export type RuntimeInstitutionSort = "count" | "name";
 
@@ -42,17 +53,21 @@ export function isFreshRuntimeRead(fetchedAt: number, now: number): boolean {
   return now - fetchedAt < RUNTIME_READ_CACHE_MS;
 }
 
-// One cache row per page: the search text, the cursor and the sort all
-// change which rows come back.
+// One cache row per page: the search text, the cursor, the order and the
+// ids all change which rows come back.
 export function runtimeReadCacheKey(input: {
   query?: string;
   cursor?: string;
   sort?: string;
+  direction?: string;
+  ids?: readonly string[];
 }): string {
   return JSON.stringify({
     query: input.query ?? "",
     cursor: input.cursor ?? "",
     sort: input.sort ?? "",
+    direction: input.direction ?? "",
+    ids: input.ids ? [...input.ids].sort() : [],
   });
 }
 
@@ -77,6 +92,26 @@ function readCollection(value: unknown): RuntimeCollection | null {
     count: value.count,
     source: value.source,
     parentId: value.parentId ?? null,
+  };
+}
+
+// The library answers ids with `name`; a library that has not learned about
+// `ids` answers its own first page instead, whose rows carry `title`. Those
+// rows are not answers to the question, so they are left out.
+function readCollectionFacts(value: unknown): RuntimeCollectionFacts | null {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.name !== "string" ||
+    typeof value.count !== "number"
+  ) {
+    return null;
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    source: typeof value.source === "string" ? value.source : "",
+    count: value.count,
   };
 }
 
@@ -163,13 +198,43 @@ export async function readRuntimeInstitutions(
     query?: string;
     cursor?: string;
     sort?: RuntimeInstitutionSort;
+    direction?: RuntimeSortDirection;
   },
 ): Promise<RuntimeInstitutionsPage> {
   const body = await runtimeGet(fetchImpl, input, "/api/openscholar/institutions", {
     query: input.query,
     cursor: input.cursor,
     sort: input.sort,
+    direction: input.direction,
     pageSize: String(RUNTIME_READ_PAGE_SIZE),
   });
   return readPage(body, readInstitution, "institution list");
+}
+
+/** The most ids one call may ask about, as the runtime allows. */
+export const RUNTIME_RESOLVE_MAX_IDS = 200;
+
+/**
+ * The names and record counts of collections the owner already shows.
+ * A library that does not answer `ids` yet gives nothing back, so the page
+ * falls back to the id instead of failing.
+ */
+export async function readRuntimeCollectionsByIds(
+  fetchImpl: typeof fetch,
+  input: { baseUrl: string; credential: string; ids: readonly string[] },
+): Promise<{ items: RuntimeCollectionFacts[] }> {
+  if (input.ids.length === 0) return { items: [] };
+  const body = await runtimeGet(fetchImpl, input, "/api/openscholar/collections", {
+    ids: input.ids.slice(0, RUNTIME_RESOLVE_MAX_IDS).join(","),
+  });
+  const asked = new Set(input.ids);
+  const items = isRecord(body) && Array.isArray(body.items) ? body.items : null;
+  if (!items) {
+    throw new RuntimeReadError("RUNTIME_READ_INVALID", "The library's collection list has an unexpected shape");
+  }
+  return {
+    items: items
+      .map(readCollectionFacts)
+      .filter((item): item is RuntimeCollectionFacts => item !== null && asked.has(item.id)),
+  };
 }

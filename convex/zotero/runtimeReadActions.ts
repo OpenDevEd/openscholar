@@ -7,10 +7,13 @@ import { action, type ActionCtx } from "../_generated/server";
 import { decrypt } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import {
+  type RuntimeCollectionFacts,
   type RuntimeCollectionsPage,
   type RuntimeInstitutionsPage,
   RuntimeReadError,
+  RUNTIME_RESOLVE_MAX_IDS,
   readRuntimeCollections,
+  readRuntimeCollectionsByIds,
   readRuntimeInstitutions,
   runtimeReadCacheKey,
 } from "./runtimeReadClient";
@@ -24,6 +27,13 @@ const collectionValidator = v.object({
 });
 
 const institutionValidator = v.object({ name: v.string(), count: v.number() });
+
+const collectionFactsValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  source: v.string(),
+  count: v.number(),
+});
 
 // `reason: "not-set-up"` means the library has no running runtime yet, so
 // there is nothing to read and the list is empty.
@@ -95,6 +105,7 @@ export const listRecordInstitutions = action({
     query: v.optional(v.string()),
     cursor: v.optional(v.string()),
     sort: v.optional(v.union(v.literal("count"), v.literal("name"))),
+    direction: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
   },
   returns: v.object({
     reason: notSetUpValidator,
@@ -111,8 +122,35 @@ export const listRecordInstitutions = action({
           query: args.query,
           cursor: args.cursor,
           sort: args.sort,
+          direction: args.direction,
         }),
     );
     return "reason" in result ? { ...result, items: [], nextCursor: null } : result;
+  },
+});
+
+/**
+ * The names and record counts of collections the site already shows, so the
+ * Collections section and every link editor can name them. A library that
+ * cannot answer ids yet gives an empty list, and the page shows the id.
+ */
+export const resolveLibraryCollections = action({
+  args: { libraryId: v.id("evidenceLibraries"), ids: v.array(v.string()) },
+  returns: v.object({
+    reason: notSetUpValidator,
+    items: v.array(collectionFactsValidator),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ items: RuntimeCollectionFacts[]; reason?: "not-set-up" }> => {
+    const ids = [...new Set(args.ids)].slice(0, RUNTIME_RESOLVE_MAX_IDS);
+    if (ids.length === 0) return { items: [] };
+    const result = await cachedRead<{ items: RuntimeCollectionFacts[] }>(
+      ctx,
+      { libraryId: args.libraryId, kind: "collections", cacheKey: runtimeReadCacheKey({ ids }) },
+      (target) => readRuntimeCollectionsByIds(fetch, { ...target, ids }),
+    );
+    return "reason" in result ? { ...result, items: [] } : result;
   },
 });
