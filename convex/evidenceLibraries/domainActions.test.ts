@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createReadySetupFixture as createFixture } from "../../tests/helpers/evidence-library-setup-fixture";
-import { readAttachedDomainOrigins } from "./domains";
 
 // The pinned client opens a real socket, which a test cannot answer. The
 // address check it wraps still runs for real; only the connector is stubbed,
@@ -496,6 +495,9 @@ async function settleScheduledWork(
     if (remaining === 0) return;
     await fixture.t.finishInProgressScheduledFunctions();
   }
+  throw new Error(
+    "Scheduled work kept appearing after 20 passes. A test is booking work in a loop.",
+  );
 }
 
 describe("custom domains", () => {
@@ -2192,6 +2194,34 @@ describe("custom domains", () => {
       });
     });
 
+    // A call naming another library is refused before it takes anything.
+    // The second library lives in this same database, so its id is really a
+    // different one.
+    const otherLibraryId = await fixture.t.run(async (ctx) => {
+      const mine = await ctx.db.get(fixture.created.libraryId);
+      return await ctx.db.insert("evidenceLibraries", {
+        organizationId: mine!.organizationId,
+        name: "Another library",
+        slug: "another-library",
+        state: "active",
+        createdByClerkUserId: "someone",
+        updatedByClerkUserId: "someone",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.claimDomainCleanup,
+        {
+          libraryId: otherLibraryId,
+          domainId: added.domainId,
+          operationId,
+        },
+      ),
+    ).resolves.toBeNull();
+    expect((await readRow(fixture, added.domainId))?.transition).toBeUndefined();
+
     // A call naming another deployment is refused before it takes anything.
     const elsewhere = await fixture.t.run(async (ctx) =>
       ctx.db.insert("evidenceLibraryConfigOperations", {
@@ -2711,8 +2741,6 @@ describe("custom domains", () => {
         updatedAt: Date.now(),
       });
     });
-    const before = await readRow(fixture, added.domainId);
-
     await fixture.admin.mutation(
       api.evidenceLibraries.teardown.requestDevelopmentTeardown,
       {
@@ -2720,6 +2748,10 @@ describe("custom domains", () => {
         confirmationName: fixture.created.name,
       },
     );
+    // Read after the teardown, which moves every domain on. Using the older
+    // count would be stopped by the generation check and would never reach
+    // the one being tested here.
+    const after = await readRow(fixture, added.domainId);
 
     // The list leaves it out, so a fresh sweep never looks at it.
     const listed = await fixture.t.query(
@@ -2733,7 +2765,7 @@ describe("custom domains", () => {
     await expect(
       fixture.t.mutation(internal.evidenceLibraries.domains.writeSweptDomain, {
         domainId: added.domainId,
-        expectedGeneration: before!.generation,
+        expectedGeneration: after!.generation,
         state: "failed",
         failure: "host-taken",
       }),
@@ -2789,12 +2821,39 @@ describe("custom domains", () => {
     expect(booked.rounds).toBe(1);
     expect(booked.job?.scheduledTime).toBeGreaterThan(Date.now());
 
-    // On the last round it stops for good, whatever the reason.
+  });
+
+  it("stops for good on the last round and books nothing more", async () => {
+    const fixture = await createReadySetupFixture("domain-cleanup-last");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const operationId = await fixture.t.run(async (ctx) =>
+      ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId: fixture.created.libraryId,
+        kind: "publish",
+        idempotencyKey: "the-detach",
+        status: "succeeded",
+        stage: "completed",
+        attemptCount: 1,
+        requestedByClerkUserId: "someone",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+    );
+    // Nine rounds already used, and nothing booked.
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(added.domainId, {
+        removingAt: Date.now(),
         cleanup: { operationId, attempts: 0, rounds: 9 },
       });
     });
+    const bookedBefore = await fixture.t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).filter(
+        (job) => job.state.kind === "pending",
+      ).length,
+    );
+
     await expect(
       fixture.t.mutation(
         internal.evidenceLibraries.domains.scheduleDomainCleanupRetry,
@@ -2806,6 +2865,20 @@ describe("custom domains", () => {
         },
       ),
     ).resolves.toMatchObject({ status: "given-up" });
+
+    const after = await fixture.t.run(async (ctx) => {
+      const row = await ctx.db.get(added.domainId);
+      const pending = (
+        await ctx.db.system.query("_scheduled_functions").collect()
+      ).filter((job) => job.state.kind === "pending").length;
+      return { cleanup: row?.cleanup, pending };
+    });
+    // The tenth round is the last: it is recorded, nothing new is booked,
+    // and no run is left pointing at this domain.
+    expect(after.cleanup?.rounds).toBe(10);
+    expect(after.cleanup?.scheduledId).toBeUndefined();
+    expect(after.cleanup?.failure).toBe("unknown");
+    expect(after.pending).toBe(bookedBefore);
   });
 
 

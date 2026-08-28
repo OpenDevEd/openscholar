@@ -284,17 +284,17 @@ function LibraryRow({
           ) : null}
         </div>
         <MetaList items={meta} />
-        {isDeleting && !library.teardownError ? (
+        {isDeleting && !library.teardownFailedStep ? (
           <Progress
             aria-label={t("deleting")}
             value={library.teardownStage ? TEARDOWN_PERCENT[library.teardownStage] : 5}
             className="h-1.5 max-w-xs bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive"
           />
         ) : null}
-        {isDeleting && library.teardownError ? (
+        {isDeleting && library.teardownFailedStep ? (
           <div className="space-y-2" data-teardown-error>
             <p className="max-w-xl text-sm text-destructive" role="status">
-              {library.teardownError}
+              {t(`deleteFailed.${library.teardownFailedStep}`)}
             </p>
             <Button
               type="button"

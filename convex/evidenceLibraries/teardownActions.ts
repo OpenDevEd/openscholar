@@ -56,6 +56,17 @@ async function holdTeardown(
   );
 }
 
+/** The part of the deletion a stage belongs to, as a name the page can use. */
+function readTeardownStep(
+  stage: string,
+): "domains" | "runtime" | "files" | "database" | "records" {
+  if (stage === "domains" || stage === "certificates") return "domains";
+  if (stage === "coolify" || stage === "runtime") return "runtime";
+  if (stage === "storage") return "files";
+  if (stage === "database") return "database";
+  return "records";
+}
+
 export const runDevelopmentTeardown = internalAction({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -212,6 +223,9 @@ export const runDevelopmentTeardown = internalAction({
               code: "DEVELOPMENT_TEARDOWN_FAILED",
               message: "The development library could not be deleted",
             };
+      // Which part of the deletion stopped, in this library's own words. The
+      // page says that; the provider's own message is kept for the log only.
+      const failedStep = readTeardownStep(stage);
       if (!attemptToken) return { status: "pending" as const };
       // The certificate service being unreachable is usually a moment, not a
       // decision. The library keeps its records and waits, and only says so
@@ -232,7 +246,13 @@ export const runDevelopmentTeardown = internalAction({
       }
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.failDevelopmentTeardown,
-        { attemptToken, operationId: args.operationId, stage, ...safe },
+        {
+          attemptToken,
+          operationId: args.operationId,
+          stage,
+          failedStep,
+          ...safe,
+        },
       );
       return { status: "failed" as const };
     }

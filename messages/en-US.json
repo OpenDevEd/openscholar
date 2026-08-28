@@ -3010,7 +3010,14 @@
       "description": "Create and manage the public libraries your organisation publishes.",
       "deleteRetry": "Try deleting again",
       "deleteRetryStarted": "Trying again.",
-      "deleteRetryError": "That could not be started. Try again."
+      "deleteRetryError": "That could not be started. Try again.",
+      "deleteFailed": {
+        "domains": "We could not remove this library's custom domains, so it has not finished being deleted. Try again, or contact support.",
+        "runtime": "We could not remove this library's running site, so it has not finished being deleted. Try again, or contact support.",
+        "files": "We could not remove this library's files, so it has not finished being deleted. Try again, or contact support.",
+        "database": "We could not remove this library's database, so it has not finished being deleted. Try again, or contact support.",
+        "records": "This library has not finished being deleted. Try again, or contact support."
+      }
     },
     "gate": {
       "title": "Not available for this organisation",

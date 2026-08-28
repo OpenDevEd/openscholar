@@ -6,7 +6,6 @@ import { api, internal } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
   queueConfigurationDeploymentOperation,
-  queueEvidenceLibraryOperation,
 } from "./operations";
 import { createEvidenceLibrarySetup } from "./mutations";
 import { toSectionRows } from "../../tests/helpers/evidence-library-setup-fixture";

@@ -622,6 +622,20 @@ these decisions.
     off, in one transaction; anything already running is allowed to finish;
     and it goes round until a pass finds nothing left.
 
+## Corrections after the twelfth review (2026-08-28)
+
+106. **A deletion that stops says which part stopped**, in this library's own
+    words — domains, running site, files, database, or records — instead of
+    repeating another service's message. The provider's own words stay in
+    the log. English in all six files, as this namespace already is.
+107. **The tests prove what they claim.** The sweep test carries the count
+    the teardown left behind, so it reaches the library check rather than
+    stopping at the count; the cleanup claim is tried with another library
+    in the same database; and the last round has its own test, checking the
+    round is recorded, no run is booked, and nothing new is waiting.
+108. **A drain that never settles is a failure, not a shrug.** The test
+    helper now says so instead of returning quietly.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

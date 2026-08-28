@@ -9,6 +9,7 @@ import {
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
+import { evidenceLibraryTeardownStepValidator } from "./validators";
 import {
   readAttachedDomainOrigins,
   readEvidenceLibraryDomains,
@@ -589,6 +590,8 @@ export const failDevelopmentTeardown = internalMutation({
     code: v.string(),
     message: v.string(),
     stage: v.string(),
+    /** Which part of the deletion stopped, as a name the page can say. */
+    failedStep: evidenceLibraryTeardownStepValidator,
     attemptToken: v.string(),
   },
   handler: async (ctx, args) => {
@@ -602,6 +605,7 @@ export const failDevelopmentTeardown = internalMutation({
     await ctx.db.patch(operation._id, {
       status: "failed",
       error: { code: args.code, message: args.message, stage: args.stage },
+      teardownFailedStep: args.failedStep,
       completedAt: now,
       updatedAt: now,
     });

@@ -1662,10 +1662,6 @@ export function createCoolifyClient(input: {
       );
       const runtimeCommit = requireCommit(input.runtimeCommit);
       const publicDomain = requirePublicDomain(input.publicDomain);
-      const publicDomains = expectedComposeDomains(
-        publicDomain,
-        input.customDomains.map(requirePublicDomain),
-      );
       const libraryConfigJson = requireLibraryConfigJson(
         input.libraryConfigJson,
       );

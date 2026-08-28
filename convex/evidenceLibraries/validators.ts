@@ -197,6 +197,15 @@ export const evidenceLibraryDomainStateValidator = v.union(
 
 // Only reasons a check actually found. A check that could not run writes
 // nothing at all, so it has no stored reason.
+/** Which part of deleting a library stopped, as a name the page can say. */
+export const evidenceLibraryTeardownStepValidator = v.union(
+  v.literal("domains"),
+  v.literal("runtime"),
+  v.literal("files"),
+  v.literal("database"),
+  v.literal("records"),
+);
+
 /** Why a domain's last step could not be finished. */
 export const evidenceLibraryCleanupFailureValidator = v.union(
   // The certificate service could not be reached at all.
@@ -640,12 +649,6 @@ export type EvidenceLibrarySetupReceipts = Infer<
   typeof evidenceLibrarySetupReceiptsValidator
 >;
 
-export const evidenceLibraryConfigRunningStageValidator = v.union(
-  v.literal("assembling"),
-  v.literal("validating"),
-  v.literal("publishing"),
-  v.literal("activating"),
-);
 
 export const evidenceLibraryOperationReceiptValidator = v.object({
   revisionKey: v.optional(v.string()),
@@ -744,6 +747,9 @@ export const evidenceLibraryOperationFields = {
   ),
   configurationAttemptToken: v.optional(v.string()),
   configurationLeaseExpiresAt: v.optional(v.number()),
+  // Which part of deleting the library stopped, so the list can say it in
+  // plain words instead of repeating another service's message.
+  teardownFailedStep: v.optional(evidenceLibraryTeardownStepValidator),
   configurationDeploymentPollCount: v.optional(v.number()),
   configurationReadinessPollCount: v.optional(v.number()),
   status: v.union(

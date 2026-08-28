@@ -1,5 +1,4 @@
 import {
-  internalMutation,
   mutation,
   type MutationCtx,
 } from "../_generated/server";
@@ -9,13 +8,11 @@ import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import {
   type EvidenceLibraryOperationKind,
-  evidenceLibraryConfigRunningStageValidator,
   evidenceLibraryOperationFailureValidator,
   evidenceLibraryOperationReceiptValidator,
   evidenceLibraryRequestableOperationKindValidator,
 } from "./validators";
 
-type RunningStage = "assembling" | "validating" | "publishing" | "activating";
 type OperationReceipt = {
   revisionKey?: string;
   targetConfigSha256?: string;
