@@ -163,14 +163,13 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
   const selectable = visible.filter((row) => !used.has(row.id));
   const allPicked = selectable.length > 0 && selectable.every((row) => picked.has(row.id));
   const typed = query.trim();
-  // A typed name is new only once the server has answered that very text
-  // with nothing at all.
+  // A typed name is offered once the server answered that very text with
+  // nothing, and whenever the library cannot be read at all.
   const typedIsNew =
     props.mode === "single" &&
     props.newLabel !== undefined &&
     typed.length > 0 &&
-    status === "ready" &&
-    rows.length === 0;
+    (status === "failed" || status === "not-set-up" || (status === "ready" && rows.length === 0));
 
   function load(next: {
     query: string;

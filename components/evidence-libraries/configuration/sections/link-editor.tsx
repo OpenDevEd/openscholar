@@ -268,12 +268,20 @@ function CollectionTarget({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.links");
   const facts = useCollectionFacts();
+  // The database name leads, so a collection the owner renamed for the site
+  // is still recognisable; the site title is shown beside it.
   const rows = collections.map((collection) => {
     const known = facts.get(collection.id);
     return {
       id: collection.id,
-      title: collection.title ?? known?.title ?? collection.id,
+      title: known?.title ?? collection.title ?? collection.id,
+      meta: known?.source,
       count: known?.count,
+      detail: collection.title ? (
+        <p className="truncate text-xs text-muted-foreground">
+          {t("collectionPicker.shownAs", { title: collection.title })}
+        </p>
+      ) : null,
     };
   });
   const chosen = rows.find((row) => row.id === collectionId);
@@ -294,7 +302,11 @@ function CollectionTarget({
       title={t("collectionPicker.title")}
       description={t("collectionPicker.description")}
       searchLabel={t("collectionPicker.search")}
-      columns={{ title: t("collectionPicker.colTitle"), count: t("collectionPicker.colRecords") }}
+      columns={{
+        title: t("collectionPicker.colTitle"),
+        meta: t("collectionPicker.colSource"),
+        count: t("collectionPicker.colRecords"),
+      }}
       source={localPickerSource(rows)}
       loadingLabel={t("collectionPicker.loading")}
       failedLabel={t("collectionPicker.failed")}

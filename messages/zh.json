@@ -2415,7 +2415,9 @@
         "noMatch": "No collection matches.",
         "loading": "Loading collections…",
         "failed": "Could not load the collections.",
-        "colRecords": "Records"
+        "colRecords": "Records",
+        "colSource": "Source",
+        "shownAs": "Shown on the site as {title}"
       }
     },
     "navigation": {
@@ -2509,9 +2511,7 @@
     "picker": {
       "clear": "Clear search",
       "selectAll": "Select all",
-      "loading": "Loading…",
       "loadMore": "Load more",
-      "failed": "Could not load the list.",
       "tryAgain": "Try again",
       "cancel": "Cancel",
       "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}"

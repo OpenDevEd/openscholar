@@ -26,13 +26,32 @@ const EMPTY: CollectionFacts = new Map();
 // Nothing to ask about: the same answer every render, so no render loop.
 const NOTHING_TO_READ = Promise.resolve(new Map<string, CollectionFact>());
 
+/**
+ * One read per action callback, library and set of ids, shared with `use()`
+ * across renders. Convex hands out one action callback per mounted
+ * component, so Strict Mode's second render reuses the first call instead
+ * of asking the library twice.
+ */
+const reads = new WeakMap<
+  ResolveAction,
+  Map<string, Promise<Map<string, CollectionFact>>>
+>();
+
 function readFacts(
   resolve: ResolveAction,
   libraryId: Id<"evidenceLibraries">,
   ids: readonly string[],
 ): Promise<Map<string, CollectionFact>> {
   if (ids.length === 0) return NOTHING_TO_READ;
-  return resolve({ libraryId, ids: [...ids] })
+  const key = `${libraryId}:${[...ids].sort().join(",")}`;
+  let byKey = reads.get(resolve);
+  if (!byKey) {
+    byKey = new Map();
+    reads.set(resolve, byKey);
+  }
+  const cached = byKey.get(key);
+  if (cached) return cached;
+  const promise = resolve({ libraryId, ids: [...ids] })
     .then(
       (page) =>
         new Map(
@@ -44,6 +63,8 @@ function readFacts(
     )
     // A library that cannot answer yet leaves the rows named by their id.
     .catch(() => new Map<string, CollectionFact>());
+  byKey.set(key, promise);
+  return promise;
 }
 
 type ContextValue = {
@@ -71,9 +92,13 @@ export function CollectionFactsProvider({
 }) {
   const resolve = useAction(api.zotero.runtimeReadActions.resolveLibraryCollections) as ResolveAction;
   const [learned, setLearned] = useState<Map<string, CollectionFact>>(new Map());
-  // Asked once, when the page opens, for the ids the site shows then. A
-  // different library is a different page, so a new provider is mounted.
-  const [promise] = useState(() => readFacts(resolve, libraryId, ids));
+  // Only ids the picker has not already read are asked about, so adding a
+  // collection never sends the page back to its loading state.
+  const promise = readFacts(
+    resolve,
+    libraryId,
+    ids.filter((id) => !learned.has(id)),
+  );
   return (
     <CollectionFactsContext
       value={{
