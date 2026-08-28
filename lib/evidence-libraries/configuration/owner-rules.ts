@@ -1,4 +1,4 @@
-import { aiProviderIssues } from "./ai";
+import { aiProviderIssues, PLATFORM_FEATURE_KEYS } from "./ai";
 import {
   PLATFORM_MAIL_MISSING_MESSAGE,
   emailWantsPlatformMail,
@@ -88,6 +88,30 @@ function ownerRuleIssues(
       section: "email",
       keyword: "platformValue",
       message: "The mail server is set by the platform and cannot be saved.",
+    });
+  }
+  // The platform decides these two switches and the search embedder. A saved
+  // row must not carry them, or a stale value would sit in the draft while
+  // the library runs on something else.
+  if (sectionKey === "features") {
+    for (const key of PLATFORM_FEATURE_KEYS) {
+      if (record?.[key] !== undefined) {
+        issues.push({
+          pointer: `/features/${key}`,
+          section: "features",
+          keyword: "platformValue",
+          message: "This is set by the platform and cannot be saved.",
+        });
+      }
+    }
+  }
+  if (sectionKey === "search" && record?.embedder !== undefined) {
+    issues.push({
+      pointer: "/search/embedder",
+      section: "search",
+      keyword: "platformValue",
+      message:
+        "Search by meaning is set by the platform and cannot be saved.",
     });
   }
   // Reaching here means the row is being saved, so it must hold one provider.

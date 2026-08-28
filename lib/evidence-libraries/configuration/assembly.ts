@@ -2,6 +2,8 @@ import {
   aiProviderIssues,
   type ApplyAiProviderKey,
   passThroughAiProviderKey,
+  PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+  platformSearchEmbedder,
 } from "./ai";
 import schema from "./generated/library-config.schema.json";
 import {
@@ -28,8 +30,9 @@ export type ManagedEvidenceLibraryConfiguration = {
   storagePublicBucket: string;
   storageMaxPdfBytes: number;
   zoteroTranslationUrl?: string;
-  // The platform decides the search embedder. Owners never write it.
-  searchEmbedder?: Record<string, unknown> | null;
+  // The platform pays for meaning-based search. Assembly builds the embedder
+  // from this key; owners never see it. Undefined means no key is set up.
+  embeddingApiKey?: string;
   // The platform mail service. Owners only choose who receives the emails.
   // Undefined means the mail service is not set up yet.
   mail?: PlatformMailService;
@@ -263,11 +266,21 @@ export function assembleEvidenceLibraryConfiguration({
     },
     now,
   ) as Record<string, unknown>;
+  // AI answers decide both halves of the AI offer: the assistant and search
+  // by meaning. The runtime refuses AI search without an embedder, so the
+  // two are written together or not at all. Deep research is a separate
+  // decision and stays off whatever a saved row says.
+  const features = isObject(withDefaults.features) ? withDefaults.features : {};
+  const aiOn = features.ai === true;
   const candidate: Record<string, unknown> = {
     ...withDefaults,
+    features: { ...features, aiSearch: aiOn, deepResearch: false },
     search: {
       ...(isObject(withDefaults.search) ? withDefaults.search : {}),
-      embedder: managed.searchEmbedder ?? null,
+      embedder:
+        aiOn && managed.embeddingApiKey
+          ? platformSearchEmbedder(managed.embeddingApiKey)
+          : null,
     },
   };
   if (Array.isArray(candidate.sources)) {
@@ -311,6 +324,19 @@ export function assembleEvidenceLibraryConfiguration({
           },
         ]
       : [];
+  // Same rule as the mail service: stop here, before anything is created,
+  // rather than let the runtime fail to start.
+  const embedderIssues: ValidationIssue[] =
+    aiOn && !managed.embeddingApiKey
+      ? [
+          {
+            pointer: "/search/embedder",
+            section: "ai",
+            keyword: "platformEmbedder",
+            message: PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+          },
+        ]
+      : [];
   const brandIssues: ValidationIssue[] = brand.missing.map((key) => ({
     pointer: `/identity/assets/${key}`,
     section: "identity",
@@ -319,6 +345,7 @@ export function assembleEvidenceLibraryConfiguration({
   }));
   const issues = uniqueIssues([
     ...aiIssues,
+    ...embedderIssues,
     ...brandIssues,
     ...structuralValidation.issues.filter(
       (issue) =>

@@ -6,6 +6,8 @@ import {
   AI_PROVIDER,
   AI_PROVIDER_CREDENTIAL_KEY,
   AI_PROVIDER_KEY_PATH,
+  PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+  platformSearchEmbedder,
 } from "../../lib/evidence-libraries/configuration/ai";
 import { decrypt, encrypt } from "../lib/crypto";
 import {
@@ -24,6 +26,7 @@ import { assembleEvidenceLibraryRuntimePayload } from "./runtimeConfiguration";
 
 const ENCRYPTION_KEY = "44".repeat(32);
 const OPENROUTER_KEY = `sk-or-v1-${"9".repeat(48)}`;
+const EMBEDDING_KEY = `sk-or-v1-${"7".repeat(48)}`;
 
 describe("the OpenRouter key", () => {
   afterEach(() => {
@@ -544,7 +547,7 @@ describe("the OpenRouter key", () => {
       const aiProviderKey = await fixture.t.run((ctx) =>
         readLibraryAiProviderKey(ctx, libraryId),
       );
-      const payload = assembleEvidenceLibraryRuntimePayload({
+      const payloadInput = {
         encryptionKey: ENCRYPTION_KEY,
         libraryId,
         revision: { key: "r2", createdAt: 10 },
@@ -575,7 +578,28 @@ describe("the OpenRouter key", () => {
         },
         zoteroGroups: [],
         aiProviderKey: aiProviderKey ?? undefined,
+        embeddingApiKey: EMBEDDING_KEY as string | undefined,
+      };
+      const payload = assembleEvidenceLibraryRuntimePayload(payloadInput);
+      expect(payload.runtimeConfig.search).toMatchObject({
+        embedder: platformSearchEmbedder(EMBEDDING_KEY),
       });
+      expect(payload.runtimeConfig.features).toMatchObject({
+        ai: true,
+        aiSearch: true,
+      });
+      // Neither key is anywhere an owner or a visitor can read.
+      expect(JSON.stringify(draft)).not.toContain(EMBEDDING_KEY);
+      const operations = await fixture.t.run(async (ctx) =>
+        await ctx.db
+          .query("evidenceLibraryConfigOperations")
+          .withIndex("by_libraryId_and_createdAt", (query) =>
+            query.eq("libraryId", libraryId),
+          )
+          .collect(),
+      );
+      expect(JSON.stringify(operations)).not.toContain(EMBEDDING_KEY);
+      expect(JSON.stringify(operations)).not.toContain(OPENROUTER_KEY);
       expect(payload.runtimeConfig.ai).toEqual({
         providers: [
           {
@@ -587,6 +611,23 @@ describe("the OpenRouter key", () => {
         ],
         prompts: {},
       });
+
+      // No platform embedding key: the publish stops here, before Coolify.
+      expect(() =>
+        assembleEvidenceLibraryRuntimePayload({
+          ...payloadInput,
+          embeddingApiKey: undefined,
+        }),
+      ).toThrow(
+        expect.objectContaining({
+          issues: expect.arrayContaining([
+            expect.objectContaining({
+              pointer: "/search/embedder",
+              message: PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+            }),
+          ]),
+        }),
+      );
     },
   );
 });

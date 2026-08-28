@@ -39,7 +39,12 @@ function pageStatus() {
 
 function setup(
   libraryState: "provisioning" | "active" | "deleting",
-  operation: { status: string; stage: string; error?: { code: string; message: string; stage: string } },
+  operation: {
+    status: string;
+    stage: string;
+    error?: { code: string; message: string; stage: string };
+    issues?: { pointer: string; message: string }[];
+  },
 ) {
   const status =
     libraryState === "deleting"
@@ -109,6 +114,41 @@ describe("<SetupProgress>", () => {
     expect(within(alert).getByText("Storage did not answer.")).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "retry" })[0]);
     await waitFor(() => expect(mocks.retrySetup).toHaveBeenCalledWith({ libraryId: "lib_1" }));
+  });
+
+  it("names what went wrong when the failure carries reasons", () => {
+    mocks.query.mockReturnValue({
+      data: setup("provisioning", {
+        status: "failed",
+        stage: "application",
+        error: {
+          code: "APPLICATION_CONFIG_INVALID",
+          message: "Evidence Library configuration could not be assembled",
+          stage: "application",
+        },
+        issues: [
+          {
+            pointer: "/search/embedder",
+            message: "The platform has no embedding key yet.",
+          },
+          {
+            pointer: "/email/smtp/host",
+            message: "Contact emails need the platform mail service.",
+          },
+        ],
+      }),
+      isReady: true,
+    });
+
+    render(<SetupProgress libraryId="lib_1" />);
+
+    const alert = screen.getByRole("alert");
+    expect(
+      within(alert).getByText("The platform has no embedding key yet."),
+    ).toBeInTheDocument();
+    expect(
+      within(alert).getByText("Contact emails need the platform mail service."),
+    ).toBeInTheDocument();
   });
 
   it("shows every step done and the admin link once the library is live", () => {

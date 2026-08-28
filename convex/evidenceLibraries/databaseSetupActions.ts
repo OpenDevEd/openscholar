@@ -11,6 +11,10 @@ import {
   DatabaseProvisionerError,
   reconcileLibraryDatabase,
 } from "./databaseSetupClient";
+import {
+  PlatformEmbeddingKeyMissingError,
+  requirePlatformEmbeddingKey,
+} from "./runtimeActionConfig";
 
 function requireEnvironmentValue(name: string): string {
   const value = process.env[name]?.trim();
@@ -62,6 +66,8 @@ export const runDatabaseSetup = internalAction({
           ),
         },
       );
+      // Nothing outside is created for a library the platform cannot serve.
+      requirePlatformEmbeddingKey(prepared.aiEnabled);
       const password = decrypt(prepared.encryptedPassword, encryptionKey);
       const result = await reconcileLibraryDatabase({
         provisionerUrl,
@@ -81,7 +87,8 @@ export const runDatabaseSetup = internalAction({
       );
     } catch (error) {
       const safeError =
-        error instanceof DatabaseProvisionerError
+        error instanceof DatabaseProvisionerError ||
+        error instanceof PlatformEmbeddingKeyMissingError
           ? { code: error.code, message: error.message }
           : {
               code: "DATABASE_SETUP_FAILED",

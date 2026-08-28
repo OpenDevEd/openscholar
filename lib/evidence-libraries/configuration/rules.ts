@@ -12,7 +12,7 @@
  * shared by cards (the Navigation card owns `features.navbarSearch`).
  */
 
-import { AI_MODELS, AI_PROVIDER } from "./ai";
+import { AI_MODELS, AI_PROVIDER, PLATFORM_FEATURE_KEYS } from "./ai";
 import schema from "./generated/library-config.schema.json";
 import {
   HTTPS_URL,
@@ -982,8 +982,13 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
       return institutionsPayload(draft.institutions);
     case "navigation":
       return navigationPayload(draft.navigation);
-    case "features":
-      return { ...draft.features };
+    case "features": {
+      // The platform writes aiSearch and deepResearch at assembly, so the
+      // row the page saves never carries them.
+      const saved = { ...draft.features };
+      for (const key of PLATFORM_FEATURE_KEYS) delete saved[key];
+      return saved;
+    }
     case "footer":
       return footerPayload(draft.footer);
     case "contact":

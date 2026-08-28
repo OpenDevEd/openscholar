@@ -32,6 +32,7 @@ export function SetupHero({
   percent,
   currentStep,
   errorMessage,
+  errorReasons,
   onRetry,
   retrying,
 }: {
@@ -42,6 +43,9 @@ export function SetupHero({
   percent: number;
   currentStep: SetupStep;
   errorMessage?: string;
+  // What exactly stopped the setup, in the owner's words. Shown under the
+  // headline message, which is often the general "could not be assembled".
+  errorReasons?: readonly string[];
   onRetry: () => void;
   retrying: boolean;
 }) {
@@ -112,6 +116,13 @@ export function SetupHero({
                 ? (errorMessage ?? t("deploymentError"))
                 : t(`steps.${currentStep.key}.running`)}
           </p>
+          {failed && errorReasons && errorReasons.length > 0 ? (
+            <ul className="space-y-1 text-sm text-destructive">
+              {errorReasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
         {live ? (

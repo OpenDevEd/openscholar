@@ -3,7 +3,12 @@ import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { encrypt } from "../lib/crypto";
-import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
+import {
+  AI_MODELS,
+  AI_PROVIDER,
+  AI_PROVIDER_CREDENTIAL_KEY,
+  PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+} from "../../lib/evidence-libraries/configuration/ai";
 import { createCoolifyLibraryTag } from "./coolifyClient";
 import {
   createDeployedSetupFixture,
@@ -395,6 +400,174 @@ describe("Evidence Library configuration deployment", () => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+  });
+
+  it("refuses to publish before touching Coolify when the platform has no embedding key", async () => {
+    vi.stubEnv("EL_EMBEDDING_OPENROUTER_KEY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "");
+    const fixture = await createReadyLibrary("deploy-embedder");
+    const saved = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: fixture.created.libraryId,
+        sections: toSectionRows({
+          ...essentialSetupSections,
+          features: { ai: true },
+          ai: {
+            providers: [
+              {
+                provider: AI_PROVIDER,
+                enabled: true,
+                defaultModel: AI_MODELS[0],
+              },
+            ],
+          },
+        }),
+        expectedEditVersion: fixture.activated.editVersion,
+      },
+    );
+    const activated = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId: fixture.created.libraryId,
+        expectedEditVersion: saved.editVersion,
+      },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    let calls = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls += 1;
+      throw new Error("Coolify must not be called");
+    });
+
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: activated.operationId,
+          attemptToken: operation!.configurationAttemptToken!,
+          attemptCount: operation!.attemptCount,
+        },
+      ),
+    ).toEqual({ status: "failed" });
+    expect(calls).toBe(0);
+    const failed = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    expect(failed).toMatchObject({
+      error: {
+        code: "PLATFORM_EMBEDDING_KEY_MISSING",
+        message: PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+      },
+      status: "failed",
+    });
+    // Nothing was written down, so no secret can be recovered from the row.
+    expect(failed?.configurationDeploymentTarget).toBeUndefined();
+  });
+
+  it("sends the embedder to Coolify and keeps its key out of every owner view", async () => {
+    const EMBEDDING_KEY = `sk-or-v1-${"5".repeat(48)}`;
+    vi.stubEnv("EL_EMBEDDING_OPENROUTER_KEY", EMBEDDING_KEY);
+    const fixture = await createReadyLibrary("deploy-embedder-ok");
+    const libraryId = fixture.created.libraryId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryCredentials", {
+        libraryId,
+        credentialKey: AI_PROVIDER_CREDENTIAL_KEY,
+        pathPattern: "/ai/providers/*/apiKey",
+        instanceKey: AI_PROVIDER,
+        encryptedValue: encrypt("sk-or-answers", ENCRYPTION_KEY),
+        validationState: "untested",
+        createdByClerkUserId: "user_embedder",
+        updatedByClerkUserId: "user_embedder",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+    const saved = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId,
+        sections: toSectionRows({
+          ...essentialSetupSections,
+          features: { ai: true },
+          ai: {
+            providers: [
+              {
+                provider: AI_PROVIDER,
+                enabled: true,
+                defaultModel: AI_MODELS[0],
+              },
+            ],
+          },
+        }),
+        expectedEditVersion: fixture.activated.editVersion,
+      },
+    );
+    const activated = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      { libraryId, expectedEditVersion: saved.editVersion },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    const network = createRuntimeNetwork({
+      libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+
+    await fixture.t.action(
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      {
+        libraryId,
+        operationId: activated.operationId,
+        attemptToken: operation!.configurationAttemptToken!,
+        attemptCount: operation!.attemptCount,
+      },
+    );
+
+    // Coolify received the embedder, with the platform key inside it.
+    const runtimeJson = network.environments.find(
+      ({ key }) => key === "LIBRARY_CONFIG_JSON",
+    )!.value;
+    expect(JSON.parse(runtimeJson)).toMatchObject({
+      features: { ai: true, aiSearch: true, deepResearch: false },
+      search: {
+        embedder: {
+          source: "rest",
+          url: "https://openrouter.ai/api/v1/embeddings",
+          apiKey: EMBEDDING_KEY,
+          dimensions: 1024,
+        },
+      },
+    });
+
+    // The owner's own views, read after the action ran, carry neither key.
+    const draft = await fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
+    );
+    const overviews = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraryOverviews,
+      {},
+    );
+    const versions = await fixture.admin.query(
+      api.evidenceLibraries.versions.listVersions,
+      { libraryId },
+    );
+    for (const view of [draft, overviews, versions]) {
+      const seen = JSON.stringify(view);
+      expect(seen).not.toContain(EMBEDDING_KEY);
+      expect(seen).not.toContain("sk-or-answers");
+      expect(seen).not.toContain("openrouter.ai/api/v1/embeddings");
+    }
   });
 
   it("saves one immutable target, polls Coolify, verifies the runtime, and activates it", async () => {

@@ -240,13 +240,37 @@ false` as a "deviation" in Decision 2 was wrong. That deviation is withdrawn.
 ## Decision 7 — platform embedder (lane E)
 
 1. When `features.ai` is on, assembly writes the platform embedder block:
-   `{ source: "rest", url: "https://openrouter.ai/api/v1/embeddings",
-   model: "perplexity/pplx-embed-v1-0.6b", dimensions: 1024, apiKey,
-   request, response }`. The `request`/`response` templates and any headers
-   are copied from what the runtime's `src/lib/search-index/embedder-settings.ts`
-   expects and what the development libraries on new-el `openscholar`
-   commit `87e6815a` run — not invented. When `features.ai` is off the block
-   is `null`.
+
+   ```json
+   {
+     "source": "rest",
+     "url": "https://openrouter.ai/api/v1/embeddings",
+     "apiKey": "<platform key>",
+     "dimensions": 1024,
+     "request": { "model": "perplexity/pplx-embed-v1-0.6b",
+                  "input": ["{{text}}", "{{..}}"] },
+     "response": { "data": [{ "embedding": "{{embedding}}" }, "{{..}}"] }
+   }
+   ```
+
+   **Corrected 2026-08-28 (lane E).** The model is *not* a top-level field.
+   The pinned `rest` embedder allows only `source`, `url`, `apiKey`,
+   `dimensions`, `request`, `response` and `headers`, and refuses anything
+   else (`library-config.schema.json`, `search.embedder`; new-el
+   `restEmbedderSchema`, `schema.ts:711-723`, is `.strict()`). The model
+   belongs inside `request`, because the runtime copies `request` straight
+   into the Meilisearch embedder setting
+   (`src/lib/search-index/embedder-settings.ts:72-84`). `{{..}}` is
+   Meilisearch's repeat marker, so one call embeds a batch. There are no
+   headers: Meilisearch sends the key as `Authorization: Bearer`.
+
+   The block is copied from Outline "08 — Development and Verification
+   Runbooks" (id `30b7169b-1530-424a-a374-80478d1bee56`, "Turning on the
+   Similar Resources embedder", checked 2026-08-20 on new-el `openscholar`),
+   the only place it exists. It is **not** in the new-el repository: nothing
+   in the working tree, `docs/`, or any commit on any branch contains
+   `pplx-embed`, and `87e6815a` only guards the record title in the document
+   template. When `features.ai` is off the block is `null`.
 2. The key is a platform secret read at assembly on the server:
    `EL_EMBEDDING_OPENROUTER_KEY` when set, otherwise `OPENROUTER_API_KEY`.
    Never in `getDraft`, saved rows, logs or the client. Its fingerprint joins
@@ -266,6 +290,40 @@ false` as a "deviation" in Decision 2 was wrong. That deviation is withdrawn.
    block and `aiSearch: true`; on the shared platform after merge, the
    library-wide "Ask AI" answers (the live check that failed on
    `el-gate-0828b`).
+
+### The deployment record holds every platform secret — checked 2026-08-28
+
+A review of #120 asked lane E to keep the embedding key off the publish
+operation record and inject it only when writing `LIBRARY_CONFIG_JSON` to
+Coolify. Checked in the code, the answer is that the embedding key is stored
+exactly like every other platform secret, and lane E changes nothing about
+that:
+
+- `configurationDeployment.ts:748` stores `aiProviderKey` on the target, but
+  that field is only a fingerprint — `{ present, id, digest }`
+  (`validators.ts:17-26`). #117 already keeps the OpenRouter key itself off
+  the record as a separate field.
+- The one place any secret sits on the record is `encryptedRuntimeConfig`
+  (`configurationDeployment.ts:760`), the whole assembled configuration
+  encrypted with `ENCRYPTION_KEY`. It has always held the database URL with
+  its password, the Meilisearch key, the storage service-role key, the
+  authentication secret, the machine credential and, when the platform mail
+  service is set up, the SMTP password. #117 added the OpenRouter answer key
+  to the same place. Lane E adds the embedding key there too.
+
+So the OpenRouter key does travel the same path, and lane E matches that
+mechanism exactly, as the review asked in its second case. Removing only the
+two AI keys would leave six older secrets in the same row and change nothing
+an attacker could reach.
+
+Making the target secret-free is worth doing, but it is its own piece of
+work: the bytes sent to Coolify are hashed (`runtimeConfigSha256`) and
+compared against what Coolify saved, so any re-injection has to reproduce the
+exact same JSON, and all seven secrets have to move together. Lane E does not
+attempt it. What lane E does instead, and proves in
+`configurationDeployment.test.ts`, is that no owner-facing query
+(`getDraft`, `listLibraryOverviews`, `listVersions`) ever carries either key
+after a real publish.
 
 Lane E · OpenScholar · `codex/platform-embedder` (worktree `../ai-sprint`,
 Convex lane `calm-labrador-815`, port 3013). Files:
