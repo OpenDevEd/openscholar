@@ -927,7 +927,8 @@ async function readExpectedBoundApplication(
   input: {
     applicationUuid: string;
     applicationTag: string;
-    publicDomains: readonly string[];
+    /** Any one of these being what Coolify holds is safe to go on from. */
+    publicDomains: readonly (readonly string[])[];
   },
 ): Promise<CoolifyApplication> {
   const [application, tags] = await Promise.all([
@@ -937,10 +938,8 @@ async function readExpectedBoundApplication(
   if (
     application.uuid !== input.applicationUuid ||
     !tags.includes(input.applicationTag) ||
-    !hasExpectedBoundApplication(
-      application,
-      input.applicationTag,
-      input.publicDomains,
+    !input.publicDomains.some((domains) =>
+      hasExpectedBoundApplication(application, input.applicationTag, domains),
     )
   ) {
     throw new CoolifyClientError(
@@ -1593,7 +1592,7 @@ export function createCoolifyClient(input: {
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomains,
+        publicDomains: [publicDomains],
       });
       if (
         application.environmentName !== environmentName ||
@@ -1761,7 +1760,7 @@ export function createCoolifyClient(input: {
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomains,
+        publicDomains: [publicDomains],
       });
       return {
         applicationUuid,
@@ -1795,7 +1794,7 @@ export function createCoolifyClient(input: {
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomains,
+        publicDomains: [publicDomains],
       });
       if (application.gitCommitSha !== runtimeCommit) {
         throw new CoolifyClientError(
@@ -1814,7 +1813,7 @@ export function createCoolifyClient(input: {
       const finalApplication = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomains,
+        publicDomains: [publicDomains],
       });
       if (finalApplication.gitCommitSha !== runtimeCommit) {
         throw new CoolifyClientError(
@@ -1862,7 +1861,7 @@ export function createCoolifyClient(input: {
       let application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomains: alreadyMoved ? after : before,
+        publicDomains: [alreadyMoved ? after : before],
       });
       if (!alreadyMoved) {
         parseUuidResponse(
@@ -1882,7 +1881,7 @@ export function createCoolifyClient(input: {
         application = await readExpectedBoundApplication(client, {
           applicationUuid,
           applicationTag,
-          publicDomains: after,
+          publicDomains: [after],
         });
       }
       return {
@@ -1903,8 +1902,12 @@ export function createCoolifyClient(input: {
       applicationUuid: string;
       libraryId: Id<"evidenceLibraries">;
       publicDomain: string;
-      /** The list Coolify holds now, from our own records. */
-      currentCustomDomains: readonly string[];
+      /**
+       * The lists Coolify may be holding now, from our own records. More
+       * than one when an earlier attempt asked for a change and stopped
+       * before we learned whether it took.
+       */
+      currentCustomDomains: readonly (readonly string[])[];
       /** The list it should hold when this call returns. */
       customDomains: readonly string[];
     }): Promise<CoolifyBoundApplication> {
@@ -1925,9 +1928,11 @@ export function createCoolifyClient(input: {
         application = await readExpectedBoundApplication(client, {
           applicationUuid,
           applicationTag,
-          publicDomains: expectedComposeDomains(
-            publicDomain,
-            input.currentCustomDomains.map(requirePublicDomain),
+          publicDomains: input.currentCustomDomains.map((current) =>
+            expectedComposeDomains(
+              publicDomain,
+              current.map(requirePublicDomain),
+            ),
           ),
         });
       }
@@ -1950,7 +1955,7 @@ export function createCoolifyClient(input: {
         application = await readExpectedBoundApplication(client, {
           applicationUuid,
           applicationTag,
-          publicDomains: expected,
+          publicDomains: [expected],
         });
       }
       return {
@@ -1983,7 +1988,7 @@ export function createCoolifyClient(input: {
       let application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomains,
+        publicDomains: [publicDomains],
       });
       if (application.gitCommitSha !== runtimeCommit) {
         parseUuidResponse(
@@ -1998,7 +2003,7 @@ export function createCoolifyClient(input: {
         application = await readExpectedBoundApplication(client, {
           applicationUuid,
           applicationTag,
-          publicDomains,
+          publicDomains: [publicDomains],
         });
         if (application.gitCommitSha !== runtimeCommit) {
           throw new CoolifyClientError(
@@ -2039,7 +2044,7 @@ export function createCoolifyClient(input: {
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomains,
+        publicDomains: [publicDomains],
       });
       if (application.gitCommitSha !== expectedRuntimeCommit) {
         throw new CoolifyClientError(
@@ -2058,7 +2063,7 @@ export function createCoolifyClient(input: {
       const finalApplication = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomains,
+        publicDomains: [publicDomains],
       });
       if (
         finalApplication.uuid !== applicationUuid ||

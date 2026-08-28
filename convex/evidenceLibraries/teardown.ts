@@ -9,7 +9,10 @@ import {
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
-import { readAttachedDomainOrigins } from "./domains";
+import {
+  readAttachedDomainOrigins,
+  readEvidenceLibraryDomains,
+} from "./domains";
 import {
   requireEvidenceLibraryAccess,
   requireOrganizationAccess,
@@ -105,6 +108,21 @@ async function requestTeardown(
       query.eq("libraryId", args.libraryId),
     )
     .collect();
+  // A domain change that is still running owns provider state this teardown
+  // would delete underneath it. It finishes or expires first.
+  const domains = await readEvidenceLibraryDomains(ctx, args.libraryId);
+  const busy = domains.find(
+    (domain) =>
+      (domain.transition !== undefined &&
+        domain.transition.expiresAt > Date.now()) ||
+      domain.pendingDeployment !== undefined,
+  );
+  if (busy) {
+    throw createError(
+      "CONFLICT",
+      "A change to one of this library's domains is still running. Wait for it to finish, then delete the library.",
+    );
+  }
   const teardown = operations.find(
     (operation) => operation.kind === "teardown",
   );
@@ -480,7 +498,11 @@ export const prepareDevelopmentTeardown = internalMutation({
           ? binding.storagePublicBucket
           : setupOperation?.setupReceipts?.storage?.publicBucket,
       targetBaseUrl: binding?.targetBaseUrl,
-      customDomains: await readAttachedDomainOrigins(ctx, args.libraryId),
+      customDomains: await readAttachedDomainOrigins(ctx, args.libraryId, {
+      // Taking a library apart has to account for a host the proxy was
+      // only asked to hold.
+      includeUncertain: true,
+    }),
       // Custom domains are removed from the certificate service before the
       // application goes, so a deleted library can never keep a name. The
       // host names travel too, so a hostname created before its id was saved

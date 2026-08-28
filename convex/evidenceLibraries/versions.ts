@@ -557,7 +557,7 @@ export const startDomainDeployment = internalMutation({
       throw createError("NOT_FOUND", "That domain is no longer there");
     }
     requireTransition(row, args.token);
-    if ((row.generation ?? 0) !== args.generation) {
+    if (row.generation !== args.generation) {
       throw createError(
         "CONFLICT",
         "Another change to that domain is running",

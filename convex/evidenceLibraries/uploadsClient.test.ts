@@ -274,4 +274,37 @@ describe("ensureUploadBucket", () => {
     });
     expect(again).toBe("matched");
   });
+  it("keeps hold of the teardown through every page of files", async () => {
+    // A library with more files than one page has to keep its lease while it
+    // walks them, or a wake-up would start a second worker behind it.
+    const pages = [
+      Array.from({ length: 1000 }, (_, index) => ({ name: `file-${index}` })),
+      [{ name: "last" }],
+    ];
+    let listed = 0;
+    const holds: number[] = [];
+    const fetchImpl = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(url)).pathname;
+      if (path.includes("/list/")) {
+        const page = pages[listed] ?? [];
+        listed += 1;
+        return Response.json(page);
+      }
+      return Response.json({});
+    }) as unknown as typeof fetch;
+
+    await deleteLibraryUploads({
+      storageUrl: "https://storage.example.test",
+      serviceRoleKey: "service-key",
+      libraryId: "library_1",
+      fetchImpl,
+      onBatch: async () => {
+        holds.push(Date.now());
+      },
+    });
+    // Once before each page it asked for, and once more before the deletes.
+    expect(holds.length).toBe(listed + 1);
+    expect(holds.length).toBeGreaterThan(2);
+  });
+
 });

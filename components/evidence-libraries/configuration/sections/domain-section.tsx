@@ -53,6 +53,11 @@ type DomainRow = {
   attached: boolean;
   removing: boolean;
   deploymentPending: boolean;
+  /** Set when this domain's last step ran out of tries. */
+  cleanupFailure?:
+    | "certificate-service-unreachable"
+    | "certificate-service-refused"
+    | "unknown";
   isApex: boolean;
   recordName: string;
   recordValue: string;
@@ -114,10 +119,10 @@ export const DomainSection = memo(function DomainSection({
     setBusy(key);
     try {
       return await work();
-    } catch (error) {
-      toast.error(
-        error instanceof Error && error.message ? error.message : t("failed"),
-      );
+    } catch {
+      // Never a message written by another service: the page says it in
+      // this library's own words.
+      toast.error(t("failed"));
       return undefined;
     } finally {
       setBusy(null);
@@ -253,6 +258,12 @@ export const DomainSection = memo(function DomainSection({
                 <ReadOnlyValue id={id} value={domain.host} locked={false} />
               )}
             </Field>
+
+            {domain.cleanupFailure ? (
+              <Panel tone="danger" role="status" data-cleanup-failure>
+                {t(`cleanupFailure.${domain.cleanupFailure}`)}
+              </Panel>
+            ) : null}
 
             {domain.isApex ? (
               <Panel tone="muted" role="note">

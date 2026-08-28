@@ -263,6 +263,8 @@ async function attachDomain(
     platformAddress: string;
     applicationUuid: string;
     attachedHosts: readonly string[];
+    /** Hosts the proxy was asked to hold and never confirmed. */
+    uncertainHosts: readonly string[];
     certificateHostnameId: string | null;
     generation: number;
   },
@@ -314,7 +316,15 @@ async function attachDomain(
 
   // Step two: the proxy. Running it again with the host already in the list
   // writes nothing, so a retry is safe.
-  const wanted = [...input.attachedHosts, `https://${input.host}`].sort();
+  // A set, not a list: this host may already be in the proxy from an attempt
+  // that stopped before its receipt, and asking for it twice would be wrong.
+  const wanted = [
+    ...new Set([
+      ...input.attachedHosts,
+      ...input.uncertainHosts,
+      `https://${input.host}`,
+    ]),
+  ].sort();
   // Written before the call, so a crash between the proxy accepting the
   // host and the receipt being saved is still visible: the next attempt
   // sees the host may already be there and running it again writes nothing.
@@ -328,7 +338,12 @@ async function attachDomain(
       applicationUuid: input.applicationUuid,
       libraryId: input.libraryId,
       publicDomain: input.platformAddress,
-      currentCustomDomains: input.attachedHosts,
+      // Either safe state: the proxy may already hold the hosts an earlier
+      // attempt asked about, or it may not.
+      currentCustomDomains: [
+        [...input.attachedHosts].sort(),
+        [...new Set([...input.attachedHosts, ...input.uncertainHosts])].sort(),
+      ],
       customDomains: wanted,
     });
   } catch (error) {
@@ -526,6 +541,7 @@ export const checkDomain = action({
               platformAddress: context.platformAddress,
               applicationUuid: context.applicationUuid,
               attachedHosts: context.attachedHosts,
+              uncertainHosts: context.uncertainHosts,
               certificateHostnameId: row.certificateHostnameId,
               generation: row.generation,
             });
@@ -634,16 +650,27 @@ export const removeDomain = action({
 
       // An attach that asked the proxy and stopped before saving its
       // receipt is taken back out too, so no host is left behind there.
-      if ((row.attached || row.attachIntent) && context.applicationUuid) {
+      const wasKnownToProxy = row.attached || row.attachIntent;
+      if (wasKnownToProxy && context.applicationUuid) {
         await holdDomain(ctx, args.domainId, token);
         await coolify().setCustomDomains({
           applicationUuid: context.applicationUuid,
           libraryId: args.libraryId,
           publicDomain: context.platformAddress,
-          currentCustomDomains: context.attachedHosts,
-          customDomains: context.attachedHosts.filter(
-            (entry: string) => entry !== `https://${row.host}`,
-          ),
+          currentCustomDomains: [
+            [...context.attachedHosts].sort(),
+            [
+              ...new Set([
+                ...context.attachedHosts,
+                ...context.uncertainHosts,
+              ]),
+            ].sort(),
+          ],
+          customDomains: [
+            ...new Set([...context.attachedHosts, ...context.uncertainHosts]),
+          ]
+            .filter((entry: string) => entry !== `https://${row.host}`)
+            .sort(),
         });
         // The proxy no longer holds the host and a deployment is owed.
         // Written together, so a crash here cannot look like a finished
@@ -661,8 +688,10 @@ export const removeDomain = action({
       }
 
       // Either the proxy just lost the host, or a previous attempt got that
-      // far and stopped before the deployment finished.
-      const owed = row.attached || row.deploymentPending;
+      // far and stopped before the deployment finished. A host the proxy was
+      // only asked about counts too: it was just taken back out, and that
+      // has to reach the running site.
+      const owed = wasKnownToProxy || row.deploymentPending;
       if (owed && context.applicationUuid) {
         await queueDomainDeployment(ctx, {
           libraryId: args.libraryId,
@@ -709,6 +738,8 @@ async function finishRemoval(
     host: string;
     certificateHostnameId: string | null;
     token: string;
+    /** Told just before the certificate service is asked to do anything. */
+    onProviderCall?: () => void;
   },
 ): Promise<void> {
   const cloudflare = createPlatformCloudflareSaasClient();
@@ -721,6 +752,7 @@ async function finishRemoval(
   // Deleting a certificate is destructive and cannot be taken back, so the
   // removal proves it still owns the domain immediately before it.
   await holdDomain(ctx, input.domainId, input.token);
+  input.onProviderCall?.();
   await deleteCustomHostname(cloudflare, input);
   await ctx.runMutation(
     internal.evidenceLibraries.domains.finishDomainRemoval,
@@ -773,6 +805,9 @@ export const completeDomainChange = internalAction({
     // Set once this cleanup holds the domain, so a failure can hand the
     // lease straight back with the retry it books.
     let cleanupToken: string | null = null;
+    // Set the moment the certificate service is actually about to be
+    // called. Taking our own lease is not an attempt at it.
+    let calledProvider = false;
     try {
       // Takes the domain before anything outside OpenScholar is touched: a
       // domain that has moved on since this was booked must not lose a
@@ -788,6 +823,9 @@ export const completeDomainChange = internalAction({
         host: receipt.host,
         certificateHostnameId: receipt.certificateHostnameId,
         token: receipt.token,
+        onProviderCall: () => {
+          calledProvider = true;
+        },
       });
       return { status: "done" as const };
     } catch (error) {
@@ -805,7 +843,8 @@ export const completeDomainChange = internalAction({
           ...(cleanupToken ? { token: cleanupToken } : {}),
           // A failure before the certificate service was reached does not
           // use up one of the tries.
-          calledProvider: cleanupToken !== null,
+          calledProvider,
+          failure: readCleanupFailure(error),
         },
       );
       if (retry.status === "given-up") throw error;
@@ -815,6 +854,24 @@ export const completeDomainChange = internalAction({
     }
   },
 });
+
+/**
+ * Turns whatever went wrong into one of this library's own short names, so
+ * the page never shows a message written by another service.
+ */
+function readCleanupFailure(
+  error: unknown,
+): "certificate-service-unreachable" | "certificate-service-refused" | "unknown" {
+  if (error instanceof DomainCheckUnavailable) {
+    return "certificate-service-unreachable";
+  }
+  if (error instanceof CloudflareSaasError) {
+    return error.code === "CLOUDFLARE_UNAVAILABLE"
+      ? "certificate-service-unreachable"
+      : "certificate-service-refused";
+  }
+  return "unknown";
+}
 
 /**
  * Proves this change still owns the domain, immediately before writing

@@ -562,6 +562,28 @@ these decisions.
     page of uploads and again before the buckets go, so walking a large
     library cannot look like a teardown that died.
 
+## Corrections after the ninth review (2026-08-28)
+
+90. **Confirmed and uncertain hosts are kept apart.** A host the proxy was
+    asked to hold and never confirmed is its own list. The proxy call accepts
+    either safe state, asks for each host once, and a removal still publishes
+    when only the asking was recorded. Taking a library apart counts them too.
+91. **Cleanup retries prove who they are.** A call about another change, or
+    holding a lease the row does not have, is refused — and the lease goes
+    back either way, so a stopped cleanup never leaves a domain held.
+92. **Reaching the certificate service is what counts.** `calledProvider` is
+    set immediately before the first request, not when the lease is taken.
+93. **Deleting a library waits for its domains.** A change that is still
+    running blocks the teardown, and a library on its way out takes no new
+    domain work.
+94. **Every accepted sweep result moves the domain on**, so a second sweep
+    still holding the old count cannot land on top of a newer answer.
+95. **A last step that runs out of tries says why**, as one of this library's
+    own short names, shown in plain words in all six languages. The page no
+    longer repeats a message written by another service.
+96. **Clean break:** `generation` is required and written on create, with
+    every fallback gone; the unused `readDomainReceipt` is deleted.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

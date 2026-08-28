@@ -1665,7 +1665,7 @@ describe("compose domains", () => {
       applicationUuid: APPLICATION_UUID,
       libraryId: LIBRARY_ID,
       publicDomain: PUBLIC_DOMAIN,
-      currentCustomDomains: [],
+      currentCustomDomains: [[]],
       customDomains: ["https://evidence.example.org"],
     });
     await createClient(server.fetchImpl).reconcileApplication(reconcileInput());
@@ -1753,7 +1753,7 @@ describe("setCustomDomains", () => {
       applicationUuid: APPLICATION_UUID,
       libraryId: LIBRARY_ID,
       publicDomain: PUBLIC_DOMAIN,
-      currentCustomDomains: [],
+      currentCustomDomains: [[]],
       customDomains: ["https://Evidence.Example.ORG"],
     });
 
@@ -1783,7 +1783,7 @@ describe("setCustomDomains", () => {
       applicationUuid: APPLICATION_UUID,
       libraryId: LIBRARY_ID,
       publicDomain: PUBLIC_DOMAIN,
-      currentCustomDomains: ["https://evidence.example.org"],
+      currentCustomDomains: [["https://evidence.example.org"]],
       customDomains: [],
     });
 
@@ -1808,7 +1808,7 @@ describe("setCustomDomains", () => {
       applicationUuid: APPLICATION_UUID,
       libraryId: LIBRARY_ID,
       publicDomain: PUBLIC_DOMAIN,
-      currentCustomDomains: ["https://evidence.example.org"],
+      currentCustomDomains: [["https://evidence.example.org"]],
       customDomains: ["https://evidence.example.org"],
     });
 
@@ -1830,7 +1830,7 @@ describe("setCustomDomains", () => {
         applicationUuid: APPLICATION_UUID,
         libraryId: LIBRARY_ID,
         publicDomain: PUBLIC_DOMAIN,
-        currentCustomDomains: [],
+        currentCustomDomains: [[]],
         customDomains: ["https://evidence.example.org"],
       }),
     ).rejects.toMatchObject({ code: "COOLIFY_APPLICATION_CONFLICT" });
@@ -1849,7 +1849,7 @@ describe("setCustomDomains", () => {
         applicationUuid: APPLICATION_UUID,
         libraryId: LIBRARY_ID,
         publicDomain: PUBLIC_DOMAIN,
-        currentCustomDomains: [],
+        currentCustomDomains: [[]],
         customDomains: ["https://evidence.example.org"],
       }),
     ).rejects.toMatchObject({

@@ -28,6 +28,7 @@ import {
   verificationRecordValue,
 } from "./domainConfig";
 import {
+  evidenceLibraryCleanupFailureValidator,
   evidenceLibraryCertificateStateValidator,
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
@@ -61,6 +62,8 @@ const domainRowValidator = v.object({
   attached: v.boolean(),
   removing: v.boolean(),
   deploymentPending: v.boolean(),
+  /** Set when the last step ran out of tries. */
+  cleanupFailure: v.optional(evidenceLibraryCleanupFailureValidator),
   isApex: v.boolean(),
   checkedAt: v.optional(v.number()),
   recordName: v.string(),
@@ -85,10 +88,17 @@ export async function readEvidenceLibraryDomains(
 export async function readAttachedDomainOrigins(
   ctx: QueryCtx | MutationCtx,
   libraryId: Id<"evidenceLibraries">,
+  { includeUncertain = false }: { includeUncertain?: boolean } = {},
 ): Promise<string[]> {
   const rows = await readEvidenceLibraryDomains(ctx, libraryId);
   return rows
-    .filter((row) => row.attachedAt !== undefined)
+    .filter(
+      (row) =>
+        row.attachedAt !== undefined ||
+        // A host the proxy was asked to hold and never confirmed. Taking a
+        // library apart has to account for it; a routine comparison must not.
+        (includeUncertain && row.attachIntentAt !== undefined),
+    )
     .map((row) => `https://${row.host}`)
     .sort();
 }
@@ -106,6 +116,7 @@ function presentDomain(row: Doc<"evidenceLibraryDomains">) {
     deploymentPending:
       row.deploymentPending === true || row.pendingDeployment !== undefined,
     isApex: row.isApex === true,
+    ...(row.cleanup?.failure ? { cleanupFailure: row.cleanup.failure } : {}),
     ...(row.checkedAt === undefined ? {} : { checkedAt: row.checkedAt }),
     recordName: verificationRecordName(row.host),
     recordValue: verificationRecordValue(row.verificationToken),
@@ -167,6 +178,7 @@ type DomainContext = {
   applicationUuid: string | null;
   liveRevisionKey: string | null;
   attachedHosts: string[];
+  uncertainHosts: string[];
   domain: {
     domainId: Id<"evidenceLibraryDomains">;
     host: string;
@@ -193,6 +205,7 @@ export const readDomainContext = internalQuery({
     applicationUuid: v.union(v.string(), v.null()),
     liveRevisionKey: v.union(v.string(), v.null()),
     attachedHosts: v.array(v.string()),
+    uncertainHosts: v.array(v.string()),
     domain: v.union(
       v.object({
         domainId: v.id("evidenceLibraryDomains"),
@@ -232,13 +245,18 @@ export const readDomainContext = internalQuery({
       applicationUuid:
         "targetRuntimeId" in binding ? binding.targetRuntimeId : null,
       liveRevisionKey: revision?.revisionKey ?? null,
-      // A host the proxy may already hold counts here: an attach that got as
-      // far as asking, then stopped before saving its receipt, still has to
-      // be taken back out.
+      // Hosts the proxy has confirmed it holds.
       attachedHosts: rows
+        .filter((entry) => entry.attachedAt !== undefined)
+        .map((entry) => `https://${entry.host}`)
+        .sort(),
+      // Hosts the proxy was asked to hold and never confirmed. It may or may
+      // not have them, so a change has to work either way.
+      uncertainHosts: rows
         .filter(
           (entry) =>
-            entry.attachedAt !== undefined || entry.attachIntentAt !== undefined,
+            entry.attachedAt === undefined &&
+            entry.attachIntentAt !== undefined,
         )
         .map((entry) => `https://${entry.host}`)
         .sort(),
@@ -260,7 +278,7 @@ export const readDomainContext = internalQuery({
             deploymentPending:
               row.deploymentPending === true ||
               row.pendingDeployment !== undefined,
-            generation: row.generation ?? 0,
+            generation: row.generation,
             certificateHostnameId: row.certificateHostnameId ?? null,
           }
         : null,
@@ -309,6 +327,8 @@ export const claimDomainHost = internalMutation({
     const verificationToken =
       rows[0]?.verificationToken ?? createVerificationToken();
     const domainId = await ctx.db.insert("evidenceLibraryDomains", {
+      // Its first change is its zeroth: every later one counts up from here.
+      generation: 0,
       libraryId: args.libraryId,
       host: args.host,
       verificationToken,
@@ -398,7 +418,7 @@ export const claimDomainTransition = internalMutation({
       });
     }
     const token = createTransitionToken();
-    const generation = (row.generation ?? 0) + 1;
+    const generation = row.generation + 1;
     await ctx.db.patch(args.domainId, {
       transition: {
         kind: args.kind,
@@ -479,8 +499,14 @@ export function claimDomainTransitionRow(
   ctx: MutationCtx,
   row: Doc<"evidenceLibraryDomains">,
   kind: "check" | "attach" | "canonical" | "remove",
+  { libraryState }: { libraryState?: string } = {},
 ): { token: string; generation: number; write: () => Promise<void> } {
   const now = Date.now();
+  // A library on its way out takes no new work: a teardown is about to
+  // delete the very things a new change would be writing.
+  if (libraryState === "disabled") {
+    throw createError("CONFLICT", "That library is being deleted");
+  }
   if (
     row.transition &&
     (row.transition.expiresAt > now || row.pendingDeployment !== undefined)
@@ -497,7 +523,7 @@ export function claimDomainTransitionRow(
     throw createError("CONFLICT", "That domain is being removed");
   }
   const token = createTransitionToken();
-  const generation = (row.generation ?? 0) + 1;
+  const generation = row.generation + 1;
   return {
     token,
     generation,
@@ -763,38 +789,6 @@ export const claimDomainCleanup = internalMutation({
   },
 });
 
-export const readDomainReceipt = internalQuery({
-  args: { domainId: v.id("evidenceLibraryDomains") },
-  returns: v.union(
-    v.object({
-      host: v.string(),
-      certificateHostnameId: v.union(v.string(), v.null()),
-      removing: v.boolean(),
-      attached: v.boolean(),
-      deploymentPending: v.boolean(),
-      cleanupAttempts: v.number(),
-      pendingOperationId: v.union(
-        v.id("evidenceLibraryConfigOperations"),
-        v.null(),
-      ),
-    }),
-    v.null(),
-  ),
-  handler: async (ctx, args) => {
-    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
-    if (!row) return null;
-    return {
-      host: row.host,
-      certificateHostnameId: row.certificateHostnameId ?? null,
-      removing: row.removingAt !== undefined,
-      attached: row.attachedAt !== undefined,
-      deploymentPending:
-        row.deploymentPending === true || row.pendingDeployment !== undefined,
-      cleanupAttempts: row.cleanup?.attempts ?? 0,
-      pendingOperationId: row.pendingDeployment?.operationId ?? null,
-    };
-  },
-});
 
 /**
  * Counts one attempt at the work that follows a domain's deployment and
@@ -810,6 +804,8 @@ export const scheduleDomainCleanupRetry = internalMutation({
     token: v.optional(v.string()),
     /** True when something outside OpenScholar was actually called. */
     calledProvider: v.boolean(),
+    /** Why it failed, in this library's own words rather than a service's. */
+    failure: v.optional(evidenceLibraryCleanupFailureValidator),
   },
   returns: v.object({
     status: v.union(
@@ -823,29 +819,46 @@ export const scheduleDomainCleanupRetry = internalMutation({
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row) return { status: "given-up" as const, attempts: 0 };
     const cleanup = row.cleanup;
-    // A call about another deployment says nothing about this one.
-    if (cleanup && cleanup.operationId !== args.operationId) {
-      return { status: "stale" as const, attempts: cleanup.attempts };
+    // The lease goes back whatever else is decided here, so a cleanup that
+    // stopped can never leave the domain held.
+    const release =
+      args.token && row.transition?.token === args.token
+        ? { transition: undefined }
+        : {};
+    const giveBack = async () => {
+      if (Object.keys(release).length > 0) {
+        await ctx.db.patch(args.domainId, { ...release, updatedAt: Date.now() });
+      }
+    };
+    // A call about another deployment says nothing about this one. A caller
+    // holding a lease that is not the one on the row is not this cleanup.
+    if (
+      (cleanup && cleanup.operationId !== args.operationId) ||
+      (args.token !== undefined && row.transition?.token !== args.token)
+    ) {
+      await giveBack();
+      return { status: "stale" as const, attempts: cleanup?.attempts ?? 0 };
     }
     // A run is already booked, so this call has nothing to add.
     if (cleanup?.scheduledId) {
       const booked = await ctx.db.system.get(cleanup.scheduledId);
       if (booked && booked.state.kind === "pending") {
+        await giveBack();
         return { status: "scheduled" as const, attempts: cleanup.attempts };
       }
     }
     // Only a real attempt at the outside service counts. Giving up because
     // this library could not take its own lease would waste every try.
     const attempts = (cleanup?.attempts ?? 0) + (args.calledProvider ? 1 : 0);
-    // The lease goes back in this same write, so the retry is not fighting
-    // the attempt that booked it.
-    const release =
-      args.token && row.transition?.token === args.token
-        ? { transition: undefined }
-        : {};
     if (attempts >= MAX_DOMAIN_CLEANUP_ATTEMPTS) {
       await ctx.db.patch(args.domainId, {
-        cleanup: { operationId: args.operationId, attempts },
+        cleanup: {
+          operationId: args.operationId,
+          attempts,
+          // Saved so the owner can be told, in this library's own words,
+          // what stopped the last step.
+          failure: args.failure ?? "unknown",
+        },
         ...release,
         updatedAt: Date.now(),
       });
@@ -955,7 +968,7 @@ export const listWorkingDomains = internalQuery({
             libraryId: row.libraryId,
             host: row.host,
             checkedAt: row.checkedAt ?? 0,
-            generation: row.generation ?? 0,
+            generation: row.generation,
             // Something is already changing this domain, so the sweep
             // leaves it alone. A lease whose worker died has expired, and
             // the sweep may look at that domain again.
@@ -995,7 +1008,7 @@ export const writeSweptDomain = internalMutation({
     // a removal or a change of address has happened since, its answer is
     // out of date and must not overwrite the newer one.
     if (
-      (row.generation ?? 0) !== args.expectedGeneration ||
+      row.generation !== args.expectedGeneration ||
       (row.transition !== undefined && row.transition.expiresAt > Date.now()) ||
       row.pendingDeployment !== undefined ||
       row.removingAt !== undefined
@@ -1006,6 +1019,9 @@ export const writeSweptDomain = internalMutation({
       state: args.state,
       failure: args.failure,
       certificateState: args.certificateState ?? row.certificateState,
+      // The domain has moved on, so a second sweep still holding the old
+      // count cannot land its answer on top of this one.
+      generation: row.generation + 1,
       checkedAt: Date.now(),
       updatedAt: Date.now(),
     });

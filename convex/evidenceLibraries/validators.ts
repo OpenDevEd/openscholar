@@ -197,6 +197,16 @@ export const evidenceLibraryDomainStateValidator = v.union(
 
 // Only reasons a check actually found. A check that could not run writes
 // nothing at all, so it has no stored reason.
+/** Why a domain's last step could not be finished. */
+export const evidenceLibraryCleanupFailureValidator = v.union(
+  // The certificate service could not be reached at all.
+  v.literal("certificate-service-unreachable"),
+  // It answered, but refused.
+  v.literal("certificate-service-refused"),
+  // Something else went wrong.
+  v.literal("unknown"),
+);
+
 export const evidenceLibraryDomainFailureValidator = v.union(
   v.literal("no-name"),
   v.literal("no-records"),
@@ -264,12 +274,17 @@ export const evidenceLibraryDomainFields = {
       operationId: v.id("evidenceLibraryConfigOperations"),
       attempts: v.number(),
       scheduledId: v.optional(v.id("_scheduled_functions")),
+      // Set once the tries run out. A short name, not a message from
+      // another service, so the page can say it in plain words.
+      failure: v.optional(evidenceLibraryCleanupFailureValidator),
     }),
   ),
   // Counts every change this domain has been through. It goes into each
   // operation's key, so the same change asked for twice is two operations
   // rather than one that already succeeded and will not run again.
-  generation: v.optional(v.number()),
+  // How many changes this domain has been through. Every change reads it,
+  // writes with it, and moves it on, so no two changes can share a key.
+  generation: v.number(),
   // Set the moment the proxy was written but before the deployment exists.
   deploymentPending: v.optional(v.boolean()),
   // Whether the name is a zone of its own, read from its records rather

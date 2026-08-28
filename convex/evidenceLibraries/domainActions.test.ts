@@ -1279,6 +1279,7 @@ describe("custom domains", () => {
           libraryId: fixture.created.libraryId,
           host: `page-${index}.example.org`,
           verificationToken: "token",
+          generation: 0,
           role: "redirect",
           state: "active",
           attachedAt: Date.now(),
@@ -1338,6 +1339,7 @@ describe("custom domains", () => {
           libraryId: fixture.created.libraryId,
           host: `quiet-${index}.example.org`,
           verificationToken: "token",
+          generation: 0,
           role: "redirect",
           state: "active",
           attachedAt: Date.now(),
@@ -1351,6 +1353,7 @@ describe("custom domains", () => {
         libraryId: fixture.created.libraryId,
         host: CUSTOM_HOST,
         verificationToken: "token",
+        generation: 0,
         role: "redirect",
         state: "active",
         attachedAt: Date.now(),
@@ -1403,6 +1406,7 @@ describe("custom domains", () => {
         libraryId: fixture.created.libraryId,
         host: "swept.example.org",
         verificationToken: "token",
+        generation: 0,
         role: "redirect",
         state: "active",
         attachedAt: Date.now(),
@@ -2078,7 +2082,10 @@ describe("custom domains", () => {
     // The removal treats it as a host the proxy may hold, so it is taken
     // back out rather than left behind.
     expect(context.domain?.attachIntent).toBe(true);
-    expect(context.attachedHosts).toContain(`https://${CUSTOM_HOST}`);
+    // Kept apart from the confirmed list: the proxy may or may not hold it,
+    // so a change has to work either way.
+    expect(context.attachedHosts).not.toContain(`https://${CUSTOM_HOST}`);
+    expect(context.uncertainHosts).toContain(`https://${CUSTOM_HOST}`);
   });
 
   it("will not clean up a domain that is no longer being removed", async () => {
@@ -2219,5 +2226,220 @@ describe("custom domains", () => {
         },
       ),
     ).resolves.toMatchObject({ attempts: 0 });
+  });
+  it("asks the proxy for a host once, whether or not it already had it", async () => {
+    // The proxy really did accept the host, and the attempt stopped before
+    // saving its receipt. Trying again must not ask for it twice.
+    const fixture = await createReadySetupFixture("domain-intent-attach");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await markVerified(fixture, added.domainId);
+    // The proxy does hold it, from the attempt that stopped before its
+    // receipt was saved.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        attachIntentAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+    const world = createWorld({}, tag);
+    vi.stubGlobal("fetch", world.fetchImpl);
+
+    await fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+      libraryId: fixture.created.libraryId,
+      domainId: added.domainId,
+    });
+    const asked = world.coolifyPatches.at(-1) as
+      | { docker_compose_domains?: { domain: string }[] }
+      | undefined;
+    const hosts = (asked?.docker_compose_domains?.[0]?.domain ?? "")
+      .split(",")
+      .filter(Boolean);
+    expect(hosts).toEqual([...new Set(hosts)]);
+    expect(hosts).toContain(`https://${CUSTOM_HOST}`);
+    // The receipt is saved, so the note has done its job.
+    expect((await readRow(fixture, added.domainId))?.attachIntentAt)
+      .toBeUndefined();
+  });
+
+  it("still publishes when a host was only ever asked about", async () => {
+    // The proxy may never have had it, but the running site still has to be
+    // told, so the removal is not treated as already finished.
+    const fixture = await createReadySetupFixture("domain-intent-detach");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({ coolifyHosts: [] }, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        state: "verified",
+        attachIntentAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.removeDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId: added.domainId,
+      }),
+    ).resolves.toMatchObject({ status: "removing" });
+    expect((await readRow(fixture, added.domainId))?.pendingDeployment)
+      .toBeDefined();
+  });
+
+  it("will not start deleting a library while one of its domains is changing", async () => {
+    const fixture = await createReadySetupFixture("domain-teardown-race");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    // An attach paused between taking the domain and saving its receipt.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        transition: {
+          kind: "attach",
+          token: "still-working",
+          expiresAt: Date.now() + 120_000,
+        },
+        attachIntentAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+        {
+          libraryId: fixture.created.libraryId,
+          confirmationName: fixture.created.name,
+        },
+      ),
+    ).rejects.toThrow(/still running/);
+  });
+
+  it("keeps the newer of two sweeps that ran over the same domain", async () => {
+    const fixture = await createReadySetupFixture("domain-sweep-overlap");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    const before = (await readRow(fixture, domainId))!.generation;
+
+    // Two sweeps read the same domain. The first to write moves it on.
+    await expect(
+      fixture.t.mutation(internal.evidenceLibraries.domains.writeSweptDomain, {
+        domainId,
+        expectedGeneration: before,
+        state: "active",
+      }),
+    ).resolves.toEqual({ written: true });
+    // The second is now out of date and says nothing.
+    await expect(
+      fixture.t.mutation(internal.evidenceLibraries.domains.writeSweptDomain, {
+        domainId,
+        expectedGeneration: before,
+        state: "failed",
+        failure: "host-taken",
+      }),
+    ).resolves.toEqual({ written: false });
+    const row = await readRow(fixture, domainId);
+    expect(row?.state).toBe("active");
+    expect(row?.generation).toBe(before + 1);
+  });
+
+  it("gives the domain back and says why when the last step runs out of tries", async () => {
+    const fixture = await createReadySetupFixture("domain-cleanup-gives-up");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const operationId = await fixture.t.run(async (ctx) => {
+      const operation = await ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_createdAt", (q) =>
+          q.eq("libraryId", fixture.created.libraryId),
+        )
+        .order("desc")
+        .first();
+      return operation!._id;
+    });
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        removingAt: Date.now(),
+        cleanup: { operationId, attempts: 4 },
+        transition: {
+          kind: "remove",
+          token: "the-cleanup",
+          expiresAt: Date.now() + 120_000,
+        },
+        updatedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.scheduleDomainCleanupRetry,
+        {
+          libraryId: fixture.created.libraryId,
+          domainId: added.domainId,
+          operationId,
+          token: "the-cleanup",
+          calledProvider: true,
+          failure: "certificate-service-unreachable",
+        },
+      ),
+    ).resolves.toMatchObject({ status: "given-up" });
+    const row = await readRow(fixture, added.domainId);
+    // The lease goes back, and the reason is saved in this library's own
+    // words rather than another service's.
+    expect(row?.transition).toBeUndefined();
+    expect(row?.cleanup?.failure).toBe("certificate-service-unreachable");
+  });
+
+  it("gives the lease back even when the retry call is about another change", async () => {
+    const fixture = await createReadySetupFixture("domain-cleanup-mismatch");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const operationId = await fixture.t.run(async (ctx) => {
+      const operation = await ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_createdAt", (q) =>
+          q.eq("libraryId", fixture.created.libraryId),
+        )
+        .order("desc")
+        .first();
+      return operation!._id;
+    });
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        transition: {
+          kind: "remove",
+          token: "someone-else",
+          expiresAt: Date.now() + 120_000,
+        },
+        updatedAt: Date.now(),
+      });
+    });
+
+    // A caller holding a lease that is not the one on the row is not this
+    // cleanup, and is told so.
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.scheduleDomainCleanupRetry,
+        {
+          libraryId: fixture.created.libraryId,
+          domainId: added.domainId,
+          operationId,
+          token: "the-overtaken-one",
+          calledProvider: true,
+        },
+      ),
+    ).resolves.toMatchObject({ status: "stale" });
+    // The newer change keeps the domain.
+    expect((await readRow(fixture, added.domainId))?.transition?.token).toBe(
+      "someone-else",
+    );
   });
 });
