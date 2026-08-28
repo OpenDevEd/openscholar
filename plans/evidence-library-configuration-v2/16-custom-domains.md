@@ -3,7 +3,7 @@
 ## Goal
 
 An owner can give a library their own web address (for example
-`evidence.example.org`). They add one CNAME to `cname.opendev.space` and a
+`evidence.example.org`). They add one CNAME to `cname.openscholar.ai` and a
 TXT record, press "Check DNS", and the library answers on that address with
 a valid certificate. The platform's server address is never shown or
 needed. A toggle sends the platform address to the custom domain.
@@ -24,7 +24,16 @@ against our own setup on 2026-08-28). Read it before touching code.
    then $0.10 per hostname per month. The customer's job is one CNAME plus
    one TXT, the same as on any other platform — this is our own account,
    not a dependency on the customer's DNS provider.
-2. **The CNAME target is `cname.opendev.space`** (proxied). Not the
+2. **The CNAME target is `cname.openscholar.ai`** (proxied), in the
+   `openscholar.ai` zone, which is on Cloudflare Enterprise (a grant covers
+   it; decided with the user on 2026-08-28). Custom hostnames must live in
+   the zone that hosts the target, and owners recognise the brand in their
+   DNS. Enterprise also gives each custom hostname a **custom origin**: the
+   origin is set to the library's own platform address
+   (`<slug>-lib.opendev.space`) with matching SNI, so Traefik serves the
+   certificate it already has and no Let's Encrypt issuance happens for
+   custom domains at all. The platform addresses stay on `opendev.space`.
+   Previously written as `cname.openscholar.ai`; superseded. Not the
    library's own `<slug>-lib.opendev.space`: the platform may move a
    library to another address by itself (plan 11), which would break a
    customer's CNAME. The agreed mock keeps its shape (a CNAME row and a
@@ -49,7 +58,7 @@ against our own setup on 2026-08-28). Read it before touching code.
       Coolify serves (`listServedHosts`);
    2. DNS-over-HTTPS (`fetch`, two resolvers — Cloudflare and Google —
       that must agree): an `A` query for the host shows a CNAME to
-      `cname.opendev.space` in the chain, or resolves to the same address
+      `cname.openscholar.ai` in the chain, or resolves to the same address
       set as the target (flattened apex) → `pointing`; NXDOMAIN →
       `no-records`, elsewhere → `wrong-target`; also a `CAA` scan on the
       host and its parents: if any `issue` value exists and none permits
@@ -132,7 +141,7 @@ against our own setup on 2026-08-28). Read it before touching code.
 
 The runtime needs no change (the canonical-host redirect already produces
 both toggle states). Infrastructure, by the integration owner before the
-gate: a proxied `cname.opendev.space` CNAME target and a proxied fallback
+gate: a proxied `cname.openscholar.ai` CNAME target and a proxied fallback
 origin in the `opendev.space` zone, Cloudflare for SaaS enabled on the
 zone, an API token scoped to SSL and Certificates: Edit on that zone, set
 as `EL_CLOUDFLARE_API_TOKEN` + `EL_CLOUDFLARE_ZONE_ID` on the shared
@@ -161,7 +170,7 @@ deployment (and on the lane for the lane gate).
    `expectedBaseUrl`.
 7. `teardown.test.ts`: rows and custom hostnames removed with the library.
 8. Component test for the section: records table shows the CNAME to
-   `cname.opendev.space` and the TXT with the library's token; the state
+   `cname.openscholar.ai` and the TXT with the library's token; the state
    chips; the toggle disabled until verified; apex wording when the host
    has no dots beyond the registrable domain.
 9. Workspace test: "Domain" in the rail under Publishing with its dot.
@@ -193,11 +202,13 @@ deployment (and on the lane for the lane gate).
   another proxy. Turn the proxy off for this record.").
 - `reconcileDockerComposeDomains` drops every domain if the compose
   service is renamed; assert the `web` key on every read.
-- Rate limits: Cloudflare custom hostnames are not ACME-limited; Coolify's
-  Traefik must not attempt Let's Encrypt for the custom hostname (origin
-  TLS is served with the platform certificate via the custom hostname's
-  origin SNI override, or Cloudflare's Full mode) — decide during lane D
-  by testing on the lane library and write the answer into this plan.
+- Origin TLS: each custom hostname is created with a custom origin (the
+  library's platform address) and origin SNI set to it — an Enterprise
+  feature of Cloudflare for SaaS — so the runtime serves its existing
+  platform certificate and Traefik never attempts Let's Encrypt for the
+  custom hostname. Lane D confirms the exact API fields
+  (`custom_origin_server`, `custom_origin_sni`) against Cloudflare's docs
+  and writes them here.
 
 ## Files that change
 
