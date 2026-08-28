@@ -289,6 +289,9 @@ function LibraryRow({
         {isDeleting && !library.teardownFailedStep ? (
           <Progress
             aria-label={t("deleting")}
+            // The part being removed, so the page can be checked on meaning
+            // rather than on how far along a bar looks.
+            data-teardown-stage={library.teardownStage ?? "queued"}
             value={library.teardownStage ? TEARDOWN_PERCENT[library.teardownStage] : 5}
             className="h-1.5 max-w-xs bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive"
           />
