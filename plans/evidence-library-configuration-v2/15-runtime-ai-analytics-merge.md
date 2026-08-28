@@ -349,3 +349,32 @@ Runtime bug found (new-el, not OpenScholar): the browser sends
 `distinctId: null` when analytics is off or cookies are declined, and the
 strict `chatRequestSchema` rejects it with 400, so on `95ac3fc0` browser AI
 calls only work with PostHog on and accepted. Fixed in new-el PR #145.
+
+### Final live gate — 2026-08-28 night (new-el `937bb65e`, dev `ad141fc9`)
+
+On `el-gate-0828d` (`r171t6r67f8thk2bcjhqjjqj8s8dafqh`, deleted afterwards;
+Coolify app gone). All pass:
+
+- Logo fit: square 400×400 → 40×40 header / 48×48 footer / 32×32 dialog;
+  landscape 1200×400 → 120×40 / 144×48 / 96×32; portrait 400×800 →
+  20×40 / 24×48 / 16×32. Every image's height equals its box, inside the bar,
+  vertical overflow 0.
+- Consent: a new visitor cannot use the search field before answering; the
+  dialog has an accessible name; Decline makes the page usable with zero
+  analytics requests; a returning visitor sees no gate and no dialog.
+- AI with analytics declined: library-wide "Ask AI" → 200 event-stream,
+  cited answer (the `distinctId` fix).
+- No OpenRouter key in 444 responses, page HTML, storage or cookies.
+- Setup 3 min 51 s; republish 2 min 51 s and 3 min 7 s.
+
+Not checkable: `identity.assets.logoStyles` is in the pinned schema but not
+in the OpenScholar UI (no field, no copy, no function) — intended for now.
+
+**Bug found in OpenScholar (lane F):** saving Identity with logos but no
+favicon fails — `saveDraftSections` rejects
+`/identity/assets/favicon: Value must match the uri format` even though the
+field says "Uses the OpenScholar icon until you upload one" (plan 10 made it
+optional; the platform fills it at assembly). The owner sees nothing plain;
+the error only appears in the console. Fix: an empty favicon (and logo) must
+be omitted from the saved row, not sent as `""`; a refused save must show a
+plain message in the section.
