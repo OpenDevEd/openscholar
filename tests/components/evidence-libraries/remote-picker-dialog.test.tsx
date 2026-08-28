@@ -371,11 +371,13 @@ describe("<RemotePickerDialog> in single mode", () => {
     );
     await user.click(screen.getByRole("button", { name: "Open" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load the rows");
-    await user.click(screen.getByText("None"));
-    expect(onChoose).toHaveBeenCalledWith(null);
+    expect(screen.getByText("None")).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: "Search" }), "Strathmore");
+    await user.click(await screen.findByText("Use Strathmore"));
+    expect(onChoose).toHaveBeenCalledWith({ id: "Strathmore", title: "Strathmore" });
   });
 
-  it("still offers None when the library is not set up", async () => {
+  it("still offers None and the typed name when the library is not set up", async () => {
     const user = userEvent.setup();
     const onChoose = vi.fn();
     render(
@@ -389,8 +391,13 @@ describe("<RemotePickerDialog> in single mode", () => {
     );
     await user.click(screen.getByRole("button", { name: "Open" }));
     expect(await screen.findByText("Not set up yet")).toBeInTheDocument();
-    await user.click(screen.getByText("None"));
-    expect(onChoose).toHaveBeenCalledWith(null);
+    await user.type(screen.getByRole("textbox", { name: "Search" }), "Strathmore");
+    await user.click(await screen.findByText("Use Strathmore"));
+    expect(onChoose).toHaveBeenCalledWith({ id: "Strathmore", title: "Strathmore" });
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.click(await screen.findByText("None"));
+    expect(onChoose).toHaveBeenLastCalledWith(null);
   });
 
   it("offers the typed name only once the server answered that text with nothing", async () => {

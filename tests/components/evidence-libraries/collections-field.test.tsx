@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -208,6 +209,17 @@ describe("<CollectionsField>", () => {
     expect(mocks.resolveCollections).toHaveBeenCalledWith({ libraryId, ids: ["COLL0003"] });
     // The picker was never opened, so nothing was paged to learn the name.
     expect(mocks.listCollections).not.toHaveBeenCalled();
+  });
+
+  it("asks the library once, even when React renders the page twice", async () => {
+    mocks.resolveCollections.mockResolvedValue({
+      items: [{ id: "COLL0003", title: "Water", source: "Climate group", count: 7 }],
+    });
+    await act(async () => {
+      render(<StrictMode>{field([{ id: "COLL0003", order: 0 }], vi.fn())}</StrictMode>);
+    });
+    expect(await screen.findByText("Water")).toBeInTheDocument();
+    expect(mocks.resolveCollections).toHaveBeenCalledTimes(1);
   });
 
   it("falls back to the id while the library cannot name a collection", async () => {

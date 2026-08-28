@@ -87,14 +87,19 @@ describe("<LinkEditor> collection target", () => {
     });
   });
 
-  it("names every collection from the library, with its record count", async () => {
+  it("names every collection from the library, with its source and record count", async () => {
     const user = userEvent.setup();
     await renderEditor({});
     await user.click(screen.getByRole("combobox", { name: `${ns}.collectionLabel` }));
     const table = screen.getByRole("table", { name: `${ns}.collectionPicker.title` });
-    // The owner's own title wins; the library names the one without a title.
-    expect(await within(table).findByText("Climate")).toBeInTheDocument();
+    // The database name leads, even for the one the owner renamed, and the
+    // site title is shown beside it.
+    expect(await within(table).findByText("Climate change")).toBeInTheDocument();
+    expect(
+      within(table).getByText(`${ns}.collectionPicker.shownAs {"title":"Climate"}`),
+    ).toBeInTheDocument();
     expect(within(table).getByText("Health")).toBeInTheDocument();
+    expect(within(table).getAllByText("zotero-42")).toHaveLength(2);
     expect(within(table).getByText("12")).toBeInTheDocument();
     expect(within(table).getByText("3")).toBeInTheDocument();
     expect(mocks.resolveCollections).toHaveBeenCalledWith({
@@ -109,7 +114,7 @@ describe("<LinkEditor> collection target", () => {
       link: { ...link, target: { kind: "collection", collectionId: "COLL0001" } },
     });
     const trigger = screen.getByRole("combobox", { name: `${ns}.collectionLabel` });
-    expect(trigger).toHaveTextContent("Climate");
+    expect(trigger).toHaveTextContent("Climate change");
     await user.click(trigger);
     await user.type(
       await screen.findByRole("textbox", { name: `${ns}.collectionPicker.search` }),
@@ -117,7 +122,7 @@ describe("<LinkEditor> collection target", () => {
     );
     const table = screen.getByRole("table", { name: `${ns}.collectionPicker.title` });
     expect(await within(table).findByText("Health")).toBeInTheDocument();
-    expect(within(table).queryByText("Climate")).not.toBeInTheDocument();
+    expect(within(table).queryByText("Climate change")).not.toBeInTheDocument();
   });
 
   it("pages a long list of collections", async () => {
