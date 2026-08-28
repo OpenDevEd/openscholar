@@ -327,4 +327,7 @@ now answers RSC and prefetch fetches (`rsc: 1`, `next-router-prefetch: 1`,
 `_rsc` in the query) with an empty `200 text/html` and no code; Next's router
 treats a non-RSC answer as a full-page navigation to the same address, so
 exactly one code is spent per sign-in. Unit test: an RSC fetch never calls
-the handoff action.
+the handoff action. Browser gate: after sign-in the network log must show the
+RSC request (`rsc: 1` or `_rsc`) answered `200 text/html`, the document
+request answered `303`, and exactly one row in `evidenceLibraryAdminLoginCodes`
+for that sign-in.
