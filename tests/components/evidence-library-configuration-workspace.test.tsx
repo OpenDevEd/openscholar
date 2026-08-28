@@ -59,10 +59,17 @@ vi.mock("@/convex/_generated/api", () => ({
       uploadActions: { upload: "upload", remove: "remove" },
       updates: { check: "check", listAddressNotices: "listAddressNotices" },
       addressActions: { moveLibraryAddress: "moveLibraryAddress" },
+      domains: { listDomains: "listDomains" },
+      domainActions: {
+        addDomain: "addDomain",
+        checkDomain: "checkDomain",
+        removeDomain: "removeDomain",
+      },
       versions: {
         listVersions: "listVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
         restoreRevision: "restoreRevision",
+        setDomainPrimary: "setDomainPrimary",
       },
     },
     zotero: {
@@ -107,7 +114,19 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
         ? { data: [], isReady: true }
         : query === "listTeam"
           ? { data: { organizationName: "Test Org", owners: [], editors: [] }, isReady: true }
-          : queryMock(query, args),
+          : query === "listDomains"
+            ? {
+                data: {
+                  platformReady: false,
+                  platformAddress: savedIdentity.baseUrl,
+                  canonicalAddress: savedIdentity.baseUrl,
+                  target: "cname.openscholar.ai",
+                  live: true,
+                  domains: [],
+                },
+                isReady: true,
+              }
+            : queryMock(query, args),
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
@@ -240,6 +259,18 @@ describe("<ConfigurationWorkspace>", () => {
       }
       return async () => null;
     });
+  });
+
+  it("puts Domain in the rail beside Versions, with its own card", async () => {
+    await renderWorkspace();
+    const rail = within(
+      screen.getByRole("navigation", { name: "rail.aria" }),
+    );
+    const domain = rail.getByRole("link", { name: /sections\.domain/ });
+    expect(domain).toHaveAttribute("href", "#sec-domain");
+    // Domain is not a configuration section, so it carries no saved-state dot.
+    expect(within(domain).queryByRole("img")).toBeNull();
+    expect(document.getElementById("sec-domain")).toBeInTheDocument();
   });
 
   it("saves only the sections that changed", async () => {

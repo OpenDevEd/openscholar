@@ -2202,7 +2202,8 @@
       "features": "Features",
       "languages": "Languages",
       "analytics": "Analytics",
-      "versions": "Versions"
+      "versions": "Versions",
+      "domain": "Domain"
     },
     "sectionState": {
       "complete": "Complete",
@@ -2874,6 +2875,57 @@
       "addressMoveStartedDescription": "Moving to {address}…",
       "addressMoveError": "The library could not be moved. Try again.",
       "restoreError": "The version could not be restored. Try again."
+    },
+    "domain": {
+      "description": "Use your own web address for the library.",
+      "notSetUp": "Custom domains are not set up on this platform yet",
+      "platformLabel": "Platform address",
+      "platformHint": "Always works, even without a custom domain.",
+      "customLabel": "Custom domain",
+      "customHint": "Use a name like library.example.org, not a bare example.org.",
+      "add": "Add domain",
+      "remove": "Remove",
+      "apex": "Most domain hosts cannot point a bare domain at another address, and forcing it would stop your email working. Use www.example.org or library.example.org instead, and ask your domain host to forward the bare domain to it. If your domain host offers CNAME flattening, ALIAS or ANAME, the bare domain works.",
+      "recordsHeading": "DNS records to add",
+      "recordsHint": "Add these two records where you manage the domain, then check again.",
+      "colType": "Type",
+      "colName": "Name",
+      "colValue": "Value",
+      "copyValue": "Copy {type} value",
+      "copied": "Copied",
+      "checkDns": "Check DNS",
+      "failed": "That did not work. Try again.",
+      "status": {
+        "added": "Not verified",
+        "pointing": "Address record found",
+        "verified": "Verified",
+        "active": "Working",
+        "failed": "Records not found"
+      },
+      "failure": {
+        "no-records": "Records not found",
+        "wrong-target": "That domain points somewhere else. If it sits behind another proxy, turn the proxy off for this record.",
+        "token-mismatch": "The ownership record holds a different value",
+        "host-taken": "Another site already answers on that domain",
+        "not-served": "The library is not running yet",
+        "certificate": "The certificate could not be issued",
+        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org.",
+        "check-failed": "We could not check the domain. Try again."
+      },
+      "refused": {
+        "invalid": "That does not look like a domain",
+        "platform-host": "That address already belongs to the platform",
+        "host-taken": "That domain is already used by another site",
+        "too-many": "This library already has as many domains as it can hold",
+        "not-set-up": "Custom domains are not set up on this platform yet",
+        "check-failed": "We could not check the domain. Try again."
+      },
+      "tlsActive": "TLS: Active",
+      "tlsPending": "Certificate pending",
+      "redirectLabel": "Send the platform address to the custom domain",
+      "redirectHint": "Visitors to the platform address land on the custom domain. Everyone signed in is signed out.",
+      "redirectDisabled": "Verify the domain first.",
+      "redirectWaiting": "Wait until the domain is working."
     }
   },
   "evidenceLibraries": {
