@@ -131,8 +131,13 @@ OpenScholar (`dev` b540cc5e):
 6. **The plan-12 switch stays out of this path** (Exception B holds): an
    active library's admin stays reachable for its members when the
    organisation is switched off.
-7. **No interstitial copy.** The page renders nothing before redirecting;
-   Next's `redirect()` in a server component sends the `Location` header.
+7. **No interstitial copy.** The page renders nothing before redirecting.
+   Checked in the browser on 2026-08-28: this Next version streams the
+   answer, so `redirect()` to the library comes back as a `200` whose stream
+   carries the redirect, and the browser lands on
+   `<library>/api/admin/session?code=…&return=…` with nothing to click. A
+   `Location` header is not available from a page component; only the proxy
+   could send one, and the flow does not need it.
 
 ## Lanes
 
@@ -190,10 +195,12 @@ in parallel; the end-to-end proof waits for both to merge.
    `return`.
 5. New `e2e/evidence-library-admin.spec.ts`: signed out, open the admin
    route → `/sign-in` with `redirect_url` carrying the route and its query;
-   after sign-in the browser is redirected off-site to the library origin
-   (assert the navigation target with request interception, since the
-   library is not running in e2e); the E2E organisation is switched on in
-   Clerk, so this passes on CI.
+   signed in, a library the person cannot reach → the no-access panel with
+   the page still on OpenScholar; `?error=invalid_code` → the expired-link
+   panel whose "Try again" link drops the error. Revised on 2026-08-28: the
+   spec cannot cover the off-site redirect, because no e2e organisation has
+   a live library and a lane cannot create one (its Coolify address is
+   internal). The browser gate covers that step instead.
 
 ## Deployability gate
 
@@ -212,10 +219,11 @@ in parallel; the end-to-end proof waits for both to merge.
 2. `npx convex dev --once` on the lane ends with `Convex functions ready!`;
    `npx convex logs --history 100` clean.
 3. Browser on the lane's port: signed out, open
-   `/evidence-libraries/<id>/admin` → sign-in → back → the browser is sent
-   to `<library>/api/admin/session?code=…&return=%2Fadmin` (capture the
-   `Location`; the lane library may not be running). As a user outside the
-   organisation: the no-access panel. Screenshots in `/tmp/admin-handoff/`.
+   `/evidence-libraries/<id>/admin` → sign-in → back → the browser ends on
+   `<library>/api/admin/session?code=…&return=…` (capture the address the
+   browser reaches; the lane library may not be running). Also capture the
+   no-access, not-ready and expired-link panels. Screenshots in
+   `/tmp/admin-handoff/`.
 4. Push; PR to `dev`; do not merge.
 
 ### Integration owner, after both merge
