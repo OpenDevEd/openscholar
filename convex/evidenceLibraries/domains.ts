@@ -37,8 +37,15 @@ export const MAX_EVIDENCE_LIBRARY_DOMAINS = 5;
 
 const VERIFICATION_TOKEN_BYTES = 16;
 
-/** How long one check may hold a domain before another may start. */
-export const DOMAIN_CHECK_LEASE_MS = 60_000;
+/**
+ * How long one check may hold a domain before another may start. The check
+ * renews it as it works, so a slow walk up a domain's parents never loses
+ * its place, and an abandoned check expires.
+ */
+export const DOMAIN_CHECK_LEASE_MS = 120_000;
+
+/** How many times the work after a domain's deployment is retried. */
+export const MAX_DOMAIN_CLEANUP_ATTEMPTS = 5;
 
 const domainRowValidator = v.object({
   domainId: v.id("evidenceLibraryDomains"),
@@ -49,6 +56,7 @@ const domainRowValidator = v.object({
   certificateState: v.optional(evidenceLibraryCertificateStateValidator),
   attached: v.boolean(),
   removing: v.boolean(),
+  deploymentPending: v.boolean(),
   checkedAt: v.optional(v.number()),
   recordName: v.string(),
   recordValue: v.string(),
@@ -90,6 +98,7 @@ function presentDomain(row: Doc<"evidenceLibraryDomains">) {
     ...(row.certificateState ? { certificateState: row.certificateState } : {}),
     attached: row.attachedAt !== undefined,
     removing: row.removingAt !== undefined,
+    deploymentPending: row.deploymentPending === true,
     ...(row.checkedAt === undefined ? {} : { checkedAt: row.checkedAt }),
     recordName: verificationRecordName(row.host),
     recordValue: verificationRecordValue(row.verificationToken),
@@ -159,6 +168,7 @@ type DomainContext = {
     verificationToken: string;
     attached: boolean;
     removing: boolean;
+    deploymentPending: boolean;
     certificateHostnameId: string | null;
   } | null;
 };
@@ -183,6 +193,7 @@ export const readDomainContext = internalQuery({
         verificationToken: v.string(),
         attached: v.boolean(),
         removing: v.boolean(),
+        deploymentPending: v.boolean(),
         certificateHostnameId: v.union(v.string(), v.null()),
       }),
       v.null(),
@@ -223,6 +234,7 @@ export const readDomainContext = internalQuery({
             verificationToken: row.verificationToken,
             attached: row.attachedAt !== undefined,
             removing: row.removingAt !== undefined,
+            deploymentPending: row.deploymentPending === true,
             certificateHostnameId: row.certificateHostnameId ?? null,
           }
         : null,
@@ -335,6 +347,20 @@ export const claimDomainCheck = internalMutation({
   },
 });
 
+/** Keeps a running check's place while it works. */
+export const renewDomainCheck = internalMutation({
+  args: { domainId: v.id("evidenceLibraryDomains") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row) return null;
+    await ctx.db.patch(args.domainId, {
+      checkLeaseUntil: Date.now() + DOMAIN_CHECK_LEASE_MS,
+    });
+    return null;
+  },
+});
+
 export const releaseDomainCheck = internalMutation({
   args: { domainId: v.id("evidenceLibraryDomains") },
   returns: v.null(),
@@ -389,11 +415,18 @@ export const writeDomainCheck = internalMutation({
  * no longer do. Kept apart from the check so a host the proxy serves is
  * never forgotten.
  */
+/**
+ * Records that the proxy's domain list now holds the host, or no longer
+ * does, and that a deployment is owed for that change. Both facts are
+ * written in one transaction, so a crash can never leave the platform
+ * thinking a change reached the running site when it did not.
+ */
 export const writeDomainAttachment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     domainId: v.id("evidenceLibraryDomains"),
     attached: v.boolean(),
+    deploymentPending: v.boolean(),
     certificateHostnameId: v.optional(v.string()),
     certificateState: v.optional(evidenceLibraryCertificateStateValidator),
   },
@@ -409,9 +442,29 @@ export const writeDomainAttachment = internalMutation({
     // certificate service that nothing points back to.
     await ctx.db.patch(args.domainId, {
       attachedAt: args.attached ? (row.attachedAt ?? Date.now()) : undefined,
+      deploymentPending: args.deploymentPending ? true : undefined,
       certificateHostnameId:
         args.certificateHostnameId ?? row.certificateHostnameId,
       certificateState: args.certificateState ?? row.certificateState,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+/** The deployment carrying the proxy change has been queued. */
+export const clearDomainDeploymentPending = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainId: v.id("evidenceLibraryDomains"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row || row.libraryId !== args.libraryId) return null;
+    await ctx.db.patch(args.domainId, {
+      deploymentPending: undefined,
       updatedAt: Date.now(),
     });
     return null;
@@ -463,6 +516,10 @@ export const readDomainReceipt = internalQuery({
     v.object({
       host: v.string(),
       certificateHostnameId: v.union(v.string(), v.null()),
+      removing: v.boolean(),
+      attached: v.boolean(),
+      deploymentPending: v.boolean(),
+      cleanupAttempts: v.number(),
     }),
     v.null(),
   ),
@@ -472,7 +529,27 @@ export const readDomainReceipt = internalQuery({
     return {
       host: row.host,
       certificateHostnameId: row.certificateHostnameId ?? null,
+      removing: row.removingAt !== undefined,
+      attached: row.attachedAt !== undefined,
+      deploymentPending: row.deploymentPending === true,
+      cleanupAttempts: row.cleanupAttempts ?? 0,
     };
+  },
+});
+
+/** Counts one attempt at the work that follows a domain's deployment. */
+export const countDomainCleanupAttempt = internalMutation({
+  args: { domainId: v.id("evidenceLibraryDomains") },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row) return MAX_DOMAIN_CLEANUP_ATTEMPTS;
+    const attempts = (row.cleanupAttempts ?? 0) + 1;
+    await ctx.db.patch(args.domainId, {
+      cleanupAttempts: attempts,
+      updatedAt: Date.now(),
+    });
+    return attempts;
   },
 });
 
@@ -483,11 +560,12 @@ export const finishDomainRemoval = internalMutation({
   handler: async (ctx, args) => {
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row) return null;
-    if (row.role === "primary" || row.attachedAt !== undefined) {
-      throw createError(
-        "CONFLICT",
-        "That domain is still being served",
-      );
+    if (
+      row.role === "primary" ||
+      row.attachedAt !== undefined ||
+      row.deploymentPending === true
+    ) {
+      throw createError("CONFLICT", "That domain is still being served");
     }
     await ctx.db.delete(args.domainId);
     return null;
@@ -501,28 +579,48 @@ export const finishDomainRemoval = internalMutation({
  * for ever.
  */
 export const listWorkingDomains = internalQuery({
-  args: { limit: v.number(), after: v.optional(v.number()) },
+  args: {
+    limit: v.number(),
+    /** Only rows checked at or before this moment, fixed when a sweep starts. */
+    cutoff: v.number(),
+    /** The last row of the previous page: (checkedAt, _id). */
+    afterCheckedAt: v.optional(v.number()),
+    afterId: v.optional(v.id("evidenceLibraryDomains")),
+  },
   returns: v.array(
     v.object({
       domainId: v.id("evidenceLibraryDomains"),
       libraryId: v.id("evidenceLibraries"),
       host: v.string(),
-      checkedAt: v.optional(v.number()),
+      checkedAt: v.number(),
       liveRevisionKey: v.union(v.string(), v.null()),
     }),
   ),
   handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit, 1), 50);
+    // A fixed cutoff, taken when the sweep started, keeps a row this sweep
+    // already checked out of a later page: writing a new check time moves it
+    // past the cutoff, not into the next page.
     const rows = await ctx.db
       .query("evidenceLibraryDomains")
       .withIndex("by_state_and_checkedAt", (index) =>
-        args.after === undefined
-          ? index.eq("state", "active")
-          : index.eq("state", "active").gt("checkedAt", args.after),
+        index.eq("state", "active").lte("checkedAt", args.cutoff),
       )
       .order("asc")
-      .take(Math.min(Math.max(args.limit, 1), 50));
+      .take(limit + 32);
+    const page = rows
+      .filter((row) => {
+        const checkedAt = row.checkedAt ?? 0;
+        if (args.afterCheckedAt === undefined) return true;
+        // A stable order over equal check times, so no row is skipped.
+        if (checkedAt !== args.afterCheckedAt) {
+          return checkedAt > args.afterCheckedAt;
+        }
+        return args.afterId !== undefined && row._id > args.afterId;
+      })
+      .slice(0, limit);
     return await Promise.all(
-      rows.map(async (row) => {
+      page.map(async (row) => {
         const library = await ctx.db.get("evidenceLibraries", row.libraryId);
         const revision = library?.activeRevisionId
           ? await ctx.db.get(
@@ -534,7 +632,7 @@ export const listWorkingDomains = internalQuery({
           domainId: row._id,
           libraryId: row.libraryId,
           host: row.host,
-          ...(row.checkedAt === undefined ? {} : { checkedAt: row.checkedAt }),
+          checkedAt: row.checkedAt ?? 0,
           liveRevisionKey: revision?.revisionKey ?? null,
         };
       }),

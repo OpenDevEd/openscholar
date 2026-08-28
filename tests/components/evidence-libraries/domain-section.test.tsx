@@ -14,6 +14,7 @@ type DomainRow = {
   certificateState?: "pending" | "active" | "failed";
   attached: boolean;
   removing: boolean;
+  deploymentPending: boolean;
   recordName: string;
   recordValue: string;
 };
@@ -85,6 +86,7 @@ function row(overrides: Partial<DomainRow> = {}): DomainRow {
     state: "added",
     attached: false,
     removing: false,
+    deploymentPending: false,
     recordName: "_openscholar.evidence.example.org",
     recordValue: "os-verify=7f3a9c1e5b2d4a8f",
     ...overrides,
@@ -260,6 +262,21 @@ describe("DomainSection", () => {
     expect(
       screen.queryByText("evidenceLibraryConfiguration.domain.apex"),
     ).toBeNull();
+  });
+
+  it("stops checking a domain that is on its way out", () => {
+    mocks.data.domains = [row({ state: "active", attached: true, removing: true })];
+    render(<DomainSection libraryId={libraryId} />);
+    expect(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.checkDns",
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", {
+        name: /evidenceLibraryConfiguration\.domain\.removing/,
+      }),
+    ).toBeDisabled();
   });
 
   it("sends the platform address to the domain when the switch is turned on", async () => {

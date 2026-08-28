@@ -479,14 +479,29 @@ export const prepareConfigurationDeployment = internalMutation({
         ctx.db.get(deployment.runtimeBinding.searchCredentialId),
         ctx.db.get(deployment.runtimeBinding.storageCredentialId),
       ]);
+    // A change of the library's own address travels on the operation. The
+    // deployment carries the new address so the running site starts using
+    // it; nothing stored moves until readiness passes.
+    const canonicalChange =
+      deployment.operation.domainChange?.reason === "canonical"
+        ? deployment.operation.domainChange.address
+        : undefined;
+    const expectedBaseUrl =
+      canonicalChange ??
+      deployment.runtimeBinding.canonicalBaseUrl ??
+      deployment.runtimeBinding.targetBaseUrl;
     const sections = sectionRows.map((section) => ({
       sectionKey: section.sectionKey,
-      payload: section.payload,
+      payload:
+        canonicalChange && section.sectionKey === "identity"
+          ? {
+              ...(section.payload as Record<string, unknown>),
+              baseUrl: canonicalChange,
+            }
+          : section.payload,
     }));
     const validated = validateOwnerSections(sections, {
-      expectedBaseUrl:
-        deployment.runtimeBinding.canonicalBaseUrl ??
-        deployment.runtimeBinding.targetBaseUrl,
+      expectedBaseUrl,
       requireComplete: true,
       platformMailConfigured: isPlatformMailConfigured(),
     });

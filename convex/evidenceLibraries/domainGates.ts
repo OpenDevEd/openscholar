@@ -24,8 +24,7 @@ export type DomainFailure =
   | "host-taken"
   | "not-served"
   | "certificate"
-  | "caa-blocked"
-  | "check-failed";
+  | "caa-blocked";
 
 export type DomainOutcome =
   | { state: "pointing" | "verified" | "active" }

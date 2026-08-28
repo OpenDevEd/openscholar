@@ -175,6 +175,8 @@ export const evidenceLibraryDomainStateValidator = v.union(
   v.literal("failed"),
 );
 
+// Only reasons a check actually found. A check that could not run writes
+// nothing at all, so it has no stored reason.
 export const evidenceLibraryDomainFailureValidator = v.union(
   v.literal("no-name"),
   v.literal("no-records"),
@@ -184,7 +186,6 @@ export const evidenceLibraryDomainFailureValidator = v.union(
   v.literal("not-served"),
   v.literal("certificate"),
   v.literal("caa-blocked"),
-  v.literal("check-failed"),
 );
 
 export const evidenceLibraryCertificateStateValidator = v.union(
@@ -206,8 +207,16 @@ export const evidenceLibraryDomainFields = {
   attachedAt: v.optional(v.number()),
   certificateState: v.optional(evidenceLibraryCertificateStateValidator),
   certificateHostnameId: v.optional(v.string()),
-  // Set while a check is running, so two presses cannot run at once.
+  // Set while a check is running, so two presses cannot run at once. It is
+  // renewed as the check works, so a slow check never loses its place and an
+  // abandoned one expires.
   checkLeaseUntil: v.optional(v.number()),
+  // The proxy's domain list holds the host, but no deployment has carried
+  // that change to the running site yet. Kept apart from `attachedAt` so a
+  // crash between writing the proxy and queuing the deployment is visible.
+  deploymentPending: v.optional(v.boolean()),
+  // How many times the work after a domain's deployment has been tried.
+  cleanupAttempts: v.optional(v.number()),
   // Set once the owner asked for the domain to go. The row survives until
   // the proxy has been redeployed without it and the certificate is gone.
   removingAt: v.optional(v.number()),
@@ -632,6 +641,10 @@ export const evidenceLibraryOperationFields = {
   setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
   setupDeploymentNotBefore: v.optional(v.number()),
   setupDeploymentPollCount: v.optional(v.number()),
+  // A running teardown holds the operation for a while. Without it, an
+  // attempt that died left the teardown running for ever and every later
+  // attempt walked away.
+  teardownLeaseExpiresAt: v.optional(v.number()),
   setupReadinessPollCount: v.optional(v.number()),
   configurationDeploymentTarget: v.optional(
     evidenceLibraryConfigurationDeploymentTargetValidator,

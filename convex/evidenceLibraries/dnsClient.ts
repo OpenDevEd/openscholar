@@ -16,7 +16,7 @@ const RESOLVERS = [
   "https://dns.google/resolve",
 ] as const;
 
-const RECORD_TYPES = { A: 1, CNAME: 5, TXT: 16, CAA: 257 } as const;
+const RECORD_TYPES = { A: 1, AAAA: 28, CNAME: 5, TXT: 16, CAA: 257 } as const;
 
 export type DnsRecordType = keyof typeof RECORD_TYPES;
 
@@ -133,7 +133,10 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
     }
     if (record.type === RECORD_TYPES.CNAME) {
       answer.cnames.push(normaliseRecordName(data));
-    } else if (record.type === RECORD_TYPES.A || record.type === 28) {
+    } else if (
+      record.type === RECORD_TYPES.A ||
+      record.type === RECORD_TYPES.AAAA
+    ) {
       answer.addresses.push(data.trim().toLowerCase());
     } else if (record.type === RECORD_TYPES.TXT) {
       answer.texts.push(readTxtValue(data));

@@ -73,6 +73,7 @@ import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibra
 import type * as evidenceLibraries_dnsClient from "../evidenceLibraries/dnsClient.js";
 import type * as evidenceLibraries_domainActions from "../evidenceLibraries/domainActions.js";
 import type * as evidenceLibraries_domainConfig from "../evidenceLibraries/domainConfig.js";
+import type * as evidenceLibraries_domainEgress from "../evidenceLibraries/domainEgress.js";
 import type * as evidenceLibraries_domainGates from "../evidenceLibraries/domainGates.js";
 import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
@@ -336,6 +337,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/dnsClient": typeof evidenceLibraries_dnsClient;
   "evidenceLibraries/domainActions": typeof evidenceLibraries_domainActions;
   "evidenceLibraries/domainConfig": typeof evidenceLibraries_domainConfig;
+  "evidenceLibraries/domainEgress": typeof evidenceLibraries_domainEgress;
   "evidenceLibraries/domainGates": typeof evidenceLibraries_domainGates;
   "evidenceLibraries/domains": typeof evidenceLibraries_domains;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;

@@ -14,6 +14,7 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
+import { requireSafeRuntimeTarget } from "./domainEgress";
 import {
   isRetryableReadinessError,
   ReadinessClientError,
@@ -361,6 +362,13 @@ export const runConfigurationDeployment = internalAction({
         deploymentUuid: readiness.deploymentId,
         runtimeCommit: readiness.runtimeCommit,
         coolifyConfigHash: readiness.coolifyConfigHash,
+      });
+      // The address the runtime is read at may be a customer's domain, whose
+      // records they can repoint at any moment. The same gate every other
+      // request to a custom domain goes through runs here too.
+      await requireSafeRuntimeTarget({
+        targetBaseUrl: readiness.targetBaseUrl,
+        platformBaseUrl: readiness.platformBaseUrl,
       });
       await requireLibraryRuntimeReady({
         applicationUuid: readiness.applicationId,

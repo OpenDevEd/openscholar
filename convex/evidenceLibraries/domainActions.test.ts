@@ -29,6 +29,8 @@ type World = {
   dnsOffline?: boolean;
   coolifyConflict?: boolean;
   coolifyOffline?: boolean;
+  /** Answer the health probe for every host, not just the custom one. */
+  anyHost?: boolean;
   /** What the proxy already serves for this library. */
   serving?: string[];
 };
@@ -126,9 +128,13 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
         ssl: { status: certificate.ssl },
       };
       if (method === "GET") {
+        // The service answers about whatever hostname was asked for.
+        const asked = url.searchParams.get("hostname");
         return Response.json({
           success: true,
-          result: world.certificate ? [hostname] : [],
+          result: world.certificate
+            ? [{ ...hostname, hostname: asked ?? hostname.hostname }]
+            : [],
         });
       }
       return Response.json({ success: true, result: hostname });
@@ -162,7 +168,11 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
       return Response.json(coolifyApplication(composeDomains, tag));
     }
 
-    if (url.hostname === CUSTOM_HOST || url.hostname === "example.org") {
+    if (
+      url.hostname === CUSTOM_HOST ||
+      url.hostname === "example.org" ||
+      world.anyHost
+    ) {
       probedHosts.push(url.hostname);
       if (world.health === "other" ) {
         return new Response("<html>someone else</html>", { status: 200 });
@@ -248,6 +258,64 @@ async function readRow(fixture: Fixture, domainId: Id<"evidenceLibraryDomains">)
   return await fixture.t.run(async (ctx) => await ctx.db.get(domainId));
 }
 
+
+/** The arguments the deployment pipeline passes itself for one operation. */
+async function deploymentArgs(
+  fixture: Fixture,
+  operationId: Id<"evidenceLibraryConfigOperations">,
+) {
+  const operation = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
+  return {
+    libraryId: fixture.created.libraryId,
+    operationId,
+    attemptToken: operation?.configurationAttemptToken ?? "",
+    attemptCount: operation?.attemptCount ?? 1,
+  };
+}
+
+/**
+ * Finishes a deployment the way the pipeline does, so the work that follows
+ * a domain change runs through its real hook rather than being called by hand.
+ */
+async function runDeploymentCompletion(
+  fixture: Fixture,
+  operationId: Id<"evidenceLibraryConfigOperations">,
+) {
+  const change = await fixture.t.run(async (ctx) => {
+    const operation = await ctx.db.get(operationId);
+    const now = Date.now();
+    await ctx.db.patch(operationId, {
+      status: "succeeded",
+      stage: "completed",
+      completedAt: now,
+      configurationAttemptToken: undefined,
+      configurationLeaseExpiresAt: undefined,
+      updatedAt: now,
+    });
+    return operation?.domainChange ?? null;
+  });
+  if (!change) return;
+  await fixture.t.action(
+    internal.evidenceLibraries.domainActions.completeDomainChange,
+    {
+      libraryId: fixture.created.libraryId,
+      domainId: change.domainId,
+      reason: change.reason,
+      ...(change.address ? { address: change.address } : {}),
+    },
+  );
+}
+
+async function readOperations(fixture: Fixture) {
+  return await fixture.t.run(async (ctx) =>
+    await ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_createdAt", (query) =>
+        query.eq("libraryId", fixture.created.libraryId),
+      )
+      .collect(),
+  );
+}
 
 async function readLiveRevisionKey(fixture: Fixture) {
   return await fixture.t.run(async (ctx) => {
@@ -635,15 +703,19 @@ describe("custom domains", () => {
       );
     }
 
-    // Nothing answers yet: the deployment has not finished.
+    // Nothing answers yet. That is not an answer about the domain, so the
+    // check writes nothing rather than pushing the row back.
     await expect(
       check({ certificate: { status: "active", ssl: "active" } }),
-    ).resolves.toMatchObject({ state: "verified" });
-    // The certificate is not there yet.
-    await expect(check({ health: { revision: revisionKey } })).resolves.toMatchObject({
-      state: "verified",
-      certificateState: "pending",
-    });
+    ).resolves.toEqual({ status: "check-failed" });
+    // The certificate is not there yet, but the site answers, so the domain
+    // is verified and waiting.
+    await expect(
+      check({
+        health: { revision: revisionKey },
+        certificate: { status: "pending", ssl: "pending_validation" },
+      }),
+    ).resolves.toMatchObject({ state: "verified", certificateState: "pending" });
     // Someone else's site answers.
     await expect(
       check({ health: "other", certificate: { status: "active", ssl: "active" } }),
@@ -877,15 +949,23 @@ describe("custom domains", () => {
     expect(listed.domains[0]!.role).toBe("redirect");
     expect(await readIdentityBaseUrl(fixture)).toBe(`https://${PLATFORM_HOST}`);
 
-    await fixture.t.action(
-      internal.evidenceLibraries.domainActions.completeDomainChange,
-      {
-        libraryId: fixture.created.libraryId,
-        domainId,
-        reason: "canonical",
-        address: `https://${CUSTOM_HOST}`,
-      },
+    // The deployment carries the new address even though nothing stored has
+    // changed, so the site starts answering on it.
+    const prepared = await fixture.t.mutation(
+      internal.evidenceLibraries.configurationDeployment
+        .prepareConfigurationDeployment,
+      await deploymentArgs(fixture, on.operationId),
     );
+    if (prepared.state !== "new") throw new Error("not a new deployment");
+    const identity = prepared.sections.find(
+      (row: { sectionKey: string }) => row.sectionKey === "identity",
+    );
+    expect((identity?.payload as { baseUrl?: string }).baseUrl).toBe(
+      `https://${CUSTOM_HOST}`,
+    );
+
+    // The real hook: finishing the deployment schedules the last step.
+    await runDeploymentCompletion(fixture, on.operationId);
     listed = await fixture.admin.query(
       api.evidenceLibraries.domains.listDomains,
       { libraryId: fixture.created.libraryId },
@@ -895,23 +975,40 @@ describe("custom domains", () => {
     expect(listed.canonicalAddress).toBe(`https://${CUSTOM_HOST}`);
     expect(listed.domains[0]!.role).toBe("primary");
     expect(await readIdentityBaseUrl(fixture)).toBe(`https://${CUSTOM_HOST}`);
+  });
 
-    await finishDeployment(fixture);
-    const off = await fixture.admin.mutation(
+  it("leaves the library's address alone when the deployment never finishes", async () => {
+    const fixture = await createReadySetupFixture("domain-toggle-failed");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const on = await fixture.admin.mutation(
       api.evidenceLibraries.versions.setDomainPrimary,
-      { libraryId: fixture.created.libraryId, domainId, primary: false },
+      { libraryId: fixture.created.libraryId, domainId, primary: true },
     );
-    expect(off.address).toBe(`https://${PLATFORM_HOST}`);
-    await fixture.t.action(
-      internal.evidenceLibraries.domainActions.completeDomainChange,
-      {
-        libraryId: fixture.created.libraryId,
-        domainId,
-        reason: "canonical",
-        address: `https://${PLATFORM_HOST}`,
-      },
-    );
-    listed = await fixture.admin.query(
+    // Readiness never passed, so the operation failed.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(on.operationId, {
+        status: "failed",
+        error: { code: "TEST", message: "readiness failed", stage: "publishing" },
+        completedAt: Date.now(),
+        configurationAttemptToken: undefined,
+        configurationLeaseExpiresAt: undefined,
+        updatedAt: Date.now(),
+      });
+    });
+
+    const listed = await fixture.admin.query(
       api.evidenceLibraries.domains.listDomains,
       { libraryId: fixture.created.libraryId },
     );
@@ -934,6 +1031,198 @@ describe("custom domains", () => {
         primary: true,
       }),
     ).rejects.toThrow(/has to be working before it can become the address/);
+  });
+
+  it("deletes the library's domains with the library", async () => {
+    const fixture = await createReadySetupFixture("domain_teardown");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+
+    const requested = await fixture.admin.mutation(
+      api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        confirmationName: "Climate Evidence",
+      },
+    );
+    const prepared = await fixture.t.mutation(
+      internal.evidenceLibraries.teardown.prepareDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: requested.operationId,
+      },
+    );
+    expect(prepared.certificateHostnameIds).toEqual([]);
+    let complete = false;
+    for (let batch = 0; batch < 20 && !complete; batch += 1) {
+      ({ complete } = await fixture.t.mutation(
+        internal.evidenceLibraries.teardown.deleteDevelopmentTeardownBatch,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: requested.operationId,
+        },
+      ));
+    }
+    expect(complete).toBe(true);
+    // A deleted library must not keep a name reserved.
+    await expect(readRow(fixture, added.domainId)).resolves.toBeNull();
+  });
+
+  it("stops showing a domain as working once its records go away", async () => {
+    const fixture = await createReadySetupFixture("domain-sweep");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        certificateHostnameId: "custom-hostname-1",
+        certificateState: "active",
+        activatedAt: Date.now(),
+        checkedAt: 1,
+        updatedAt: Date.now(),
+      });
+    });
+    const revisionKey = await readLiveRevisionKey(fixture);
+
+    // The library still answers, and the check time moves forward so the
+    // next page starts after it.
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        {
+          cname: TARGET,
+          health: { revision: revisionKey },
+          certificate: { status: "active", ssl: "active" },
+        },
+        tag,
+      ).fetchImpl,
+    );
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
+        {},
+      ),
+    ).resolves.toEqual({ checked: 1, failed: 0, more: false });
+    const swept = await readRow(fixture, domainId);
+    expect(swept?.state).toBe("active");
+    expect(swept?.checkedAt).toBeGreaterThan(1);
+
+    // Someone else answers now.
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        {
+          cname: TARGET,
+          health: "other",
+          certificate: { status: "active", ssl: "active" },
+        },
+        tag,
+      ).fetchImpl,
+    );
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
+        {},
+      ),
+    ).resolves.toEqual({ checked: 1, failed: 1, more: false });
+    const failed = await readRow(fixture, domainId);
+    expect(failed?.state).toBe("failed");
+    expect(failed?.failure).toBe("host-taken");
+    // The row keeps its history.
+    expect(failed?.activatedAt).toBeTypeOf("number");
+  });
+
+  it("walks a long list of working domains to the end, once each", async () => {
+    const fixture = await createReadySetupFixture("domain-sweep-page");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const revisionKey = await readLiveRevisionKey(fixture);
+    // More working domains than one sweep checks, several sharing a check
+    // time so the order has to break ties by row.
+    const total = 25;
+    await fixture.t.run(async (ctx) => {
+      for (let index = 0; index < total; index += 1) {
+        await ctx.db.insert("evidenceLibraryDomains", {
+          libraryId: fixture.created.libraryId,
+          host: `page-${index}.example.org`,
+          verificationToken: "token",
+          role: "redirect",
+          state: "active",
+          attachedAt: Date.now(),
+          checkedAt: index < 5 ? 1 : index,
+          createdByClerkUserId: fixture.clerkUserId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      }
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        {
+          cname: TARGET,
+          health: { revision: revisionKey },
+          certificate: { status: "active", ssl: "active" },
+          anyHost: true,
+        },
+        tag,
+      ).fetchImpl,
+    );
+
+    // Run the sweep the way the scheduler would: page after page, following
+    // the cursor it hands on.
+    let cursor: Record<string, unknown> = {};
+    let seen = 0;
+    let pages = 0;
+    for (; pages < 10; pages += 1) {
+      const result: {
+        checked: number;
+        more: boolean;
+        next?: Record<string, unknown>;
+      } = await fixture.t.action(
+        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
+        cursor as never,
+      );
+      seen += result.checked;
+      if (!result.more || !result.next) break;
+      cursor = result.next;
+    }
+    // Every domain was checked, and the sweep ended rather than looping.
+    expect(seen).toBe(total);
+    expect(pages).toBeLessThan(10);
+  });
+
+  it("never gives one sweep the same domain twice", async () => {
+    const fixture = await createReadySetupFixture("domain-sweep-cutoff");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const cutoff = Date.now();
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryDomains", {
+        libraryId: fixture.created.libraryId,
+        host: "swept.example.org",
+        verificationToken: "token",
+        role: "redirect",
+        state: "active",
+        attachedAt: Date.now(),
+        // Checked after the sweep started: this sweep has already done it.
+        checkedAt: cutoff + 1_000,
+        createdByClerkUserId: fixture.clerkUserId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+    await expect(
+      fixture.t.query(internal.evidenceLibraries.domains.listWorkingDomains, {
+        limit: 20,
+        cutoff,
+      }),
+    ).resolves.toEqual([]);
   });
 
   it("deletes the library's domains with the library", async () => {
@@ -1118,5 +1407,229 @@ describe("custom domains", () => {
     expect(complete).toBe(true);
     // A deleted library must not keep a name reserved.
     await expect(readRow(fixture, added.domainId)).resolves.toBeNull();
+  });
+
+  it("finishes the deployment a crashed attach never queued", async () => {
+    const fixture = await createReadySetupFixture("domain-attach-crash");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    // The proxy was written and the action died before the deployment was
+    // queued. That is exactly what the row says.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "verified",
+        attachedAt: Date.now(),
+        deploymentPending: true,
+        certificateHostnameId: "custom-hostname-1",
+        updatedAt: Date.now(),
+      });
+    });
+
+    const world = createWorld(
+      { cname: TARGET, serving: [`https://${CUSTOM_HOST}`] },
+      tag,
+    );
+    vi.stubGlobal("fetch", world.fetchImpl);
+    // The next check queues the deployment instead of asking a site that was
+    // never redeployed.
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId,
+      }),
+    ).resolves.toEqual({ status: "deploying" });
+    expect(world.probedHosts).toEqual([]);
+    const row = await readRow(fixture, domainId);
+    expect(row?.deploymentPending).toBeUndefined();
+    const operations = await readOperations(fixture);
+    expect(
+      operations.some((operation) => operation.domainChange?.reason === "attach"),
+    ).toBe(true);
+  });
+
+  it("finishes the deployment a crashed removal never queued", async () => {
+    const fixture = await createReadySetupFixture("domain-detach-crash");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    // The proxy no longer holds the host, the row is on its way out, and no
+    // deployment was queued.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        removingAt: Date.now(),
+        deploymentPending: true,
+        certificateHostnameId: "custom-hostname-1",
+        updatedAt: Date.now(),
+      });
+    });
+
+    const world = createWorld({ cname: TARGET }, tag);
+    vi.stubGlobal("fetch", world.fetchImpl);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.removeDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId,
+      }),
+    ).resolves.toEqual({ status: "removing" });
+    // The certificate and the row are still there: the removal is only
+    // finished by the deployment.
+    expect(world.cloudflareCalls.some((call) => call.method === "DELETE")).toBe(
+      false,
+    );
+    expect(await readRow(fixture, domainId)).not.toBeNull();
+    const operations = await readOperations(fixture);
+    expect(
+      operations.some((operation) => operation.domainChange?.reason === "detach"),
+    ).toBe(true);
+  });
+
+  it("refuses to finish a removal while its deployment is still owed", async () => {
+    const fixture = await createReadySetupFixture("domain-detach-guard");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        state: "active",
+        removingAt: Date.now(),
+        deploymentPending: true,
+        updatedAt: Date.now(),
+      });
+    });
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.finishDomainRemoval,
+        { domainId: added.domainId },
+      ),
+    ).rejects.toThrow(/still being served/);
+  });
+
+  it("will not check or attach a domain that is being removed", async () => {
+    const fixture = await createReadySetupFixture("domain-removing-check");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        state: "verified",
+        removingAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const world = createWorld({ cname: TARGET }, tag);
+    vi.stubGlobal("fetch", world.fetchImpl);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId: added.domainId,
+      }),
+    ).resolves.toEqual({ status: "removing" });
+    expect(world.cloudflareCalls).toEqual([]);
+    expect(world.coolifyPatches).toEqual([]);
+  });
+
+  it("deletes a certificate whose id was never written down", async () => {
+    const fixture = await createReadySetupFixture("domain-orphan");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    // The hostname exists at the certificate service but the action died
+    // before its id reached the row.
+    const world = createWorld(
+      { certificate: { status: "pending", ssl: "pending_validation" } },
+      "unused",
+    );
+    vi.stubGlobal("fetch", world.fetchImpl);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.removeDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId: added.domainId,
+      }),
+    ).resolves.toEqual({ status: "removed" });
+    // Looked up by name, then deleted.
+    expect(world.cloudflareCalls.some((call) => call.method === "DELETE")).toBe(
+      true,
+    );
+    expect(await readRow(fixture, added.domainId)).toBeNull();
+  });
+
+  it("tries the work after a deployment again when it fails, and gives up in the end", async () => {
+    const fixture = await createReadySetupFixture("domain-cleanup-retry");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        removingAt: Date.now(),
+        certificateHostnameId: "custom-hostname-1",
+        updatedAt: Date.now(),
+      });
+    });
+
+    // The certificate service refuses. Convex does not retry a scheduled
+    // action, so the step has to reschedule itself.
+    vi.stubGlobal("fetch", createWorld({ cloudflareFails: true }).fetchImpl);
+    for (let attempt = 1; attempt < 5; attempt += 1) {
+      await expect(
+        fixture.t.action(
+          internal.evidenceLibraries.domainActions.completeDomainChange,
+          { libraryId: fixture.created.libraryId, domainId, reason: "detach" },
+        ),
+      ).resolves.toEqual({ status: "retrying" });
+    }
+    // After the last attempt it stops asking, and the failure is visible.
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.domainActions.completeDomainChange,
+        { libraryId: fixture.created.libraryId, domainId, reason: "detach" },
+      ),
+    ).rejects.toThrow();
+    expect((await readRow(fixture, domainId))?.cleanupAttempts).toBe(5);
+  });
+
+  it("picks a teardown up again when the attempt that held it died", async () => {
+    const fixture = await createReadySetupFixture("domain_teardown_lease");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const requested = await fixture.admin.mutation(
+      api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        confirmationName: "Climate Evidence",
+      },
+    );
+    const first = await fixture.t.mutation(
+      internal.evidenceLibraries.teardown.prepareDevelopmentTeardown,
+      { libraryId: fixture.created.libraryId, operationId: requested.operationId },
+    );
+    expect(first.claimed).toBe(true);
+    // A second attempt while the first still holds it walks away.
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.teardown.prepareDevelopmentTeardown,
+        { libraryId: fixture.created.libraryId, operationId: requested.operationId },
+      ),
+    ).resolves.toEqual({ claimed: false });
+    // Once the claim has expired, the teardown can be finished by another.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(requested.operationId, {
+        teardownLeaseExpiresAt: Date.now() - 1,
+      });
+    });
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.teardown.prepareDevelopmentTeardown,
+        { libraryId: fixture.created.libraryId, operationId: requested.operationId },
+      ),
+    ).resolves.toMatchObject({ claimed: true });
   });
 });

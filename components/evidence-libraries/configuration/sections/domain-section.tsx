@@ -31,8 +31,7 @@ type DomainFailure =
   | "host-taken"
   | "not-served"
   | "certificate"
-  | "caa-blocked"
-  | "check-failed";
+  | "caa-blocked";
 
 type DomainRow = {
   domainId: Id<"evidenceLibraryDomains">;
@@ -43,6 +42,7 @@ type DomainRow = {
   certificateState?: "pending" | "active" | "failed";
   attached: boolean;
   removing: boolean;
+  deploymentPending: boolean;
   recordName: string;
   recordValue: string;
 };
@@ -133,11 +133,19 @@ export const DomainSection = memo(function DomainSection({
       return;
     }
     if (checked.status === "check-failed") {
-      toast.error(t("failure.check-failed"));
+      toast.error(t("checkFailed"));
+      return;
+    }
+    if (checked.status === "deploying") {
+      toast.success(t("deploying"));
+      return;
+    }
+    if (checked.status === "removing") {
+      toast.error(t("removingNow"));
       return;
     }
     if (checked.state === "failed") {
-      toast.error(t(`failure.${checked.failure ?? "check-failed"}`));
+      toast.error(checked.failure ? t(`failure.${checked.failure}`) : t("failed"));
       return;
     }
     toast.success(t(`status.${dnsStatusOf({ ...row, state: checked.state }, false)}`));
@@ -308,7 +316,9 @@ export const DomainSection = memo(function DomainSection({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={busy !== null}
+                // A domain on its way out is not checked again: that would
+                // race the removal already running.
+                disabled={busy !== null || domain.removing}
                 onClick={() => void onCheck(domain)}
               >
                 {checking ? <Spinner /> : null}

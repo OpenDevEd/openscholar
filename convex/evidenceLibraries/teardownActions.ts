@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { createPlatformCloudflareSaasClient } from "./cloudflareSaasClient";
+import { deleteCustomHostname } from "./domainActions";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
   DatabaseProvisionerError,
@@ -72,6 +73,14 @@ export const runDevelopmentTeardown = internalAction({
       }
       const cloudflare = createPlatformCloudflareSaasClient();
       if (cloudflare) {
+        // By name as well as by id: a hostname created before its id was
+        // written down would otherwise be left behind for ever.
+        for (const host of prepared.customDomainHosts) {
+          await deleteCustomHostname(cloudflare, {
+            host,
+            certificateHostnameId: null,
+          });
+        }
         for (const hostnameId of prepared.certificateHostnameIds) {
           await cloudflare.deleteCustomHostname(hostnameId);
         }

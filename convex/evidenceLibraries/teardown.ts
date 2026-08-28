@@ -14,6 +14,9 @@ import {
   requireOrganizationAccess,
 } from "./access";
 
+/** How long one teardown attempt holds the operation. */
+const TEARDOWN_LEASE_MS = 10 * 60 * 1000;
+
 const BATCH_SIZE = 50;
 
 function requireDevelopmentTeardownEnabled() {
@@ -185,6 +188,19 @@ export const prepareDevelopmentTeardown = internalMutation({
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
   },
+  returns: v.union(
+    v.object({ claimed: v.literal(false) }),
+    v.object({
+      claimed: v.literal(true),
+      applicationId: v.optional(v.string()),
+      privateBucket: v.optional(v.string()),
+      publicBucket: v.optional(v.string()),
+      targetBaseUrl: v.optional(v.string()),
+      customDomains: v.array(v.string()),
+      customDomainHosts: v.array(v.string()),
+      certificateHostnameIds: v.array(v.string()),
+    }),
+  ),
   handler: async (ctx, args) => {
     requireDevelopmentTeardownEnabled();
     const [library, operation] = await Promise.all([
@@ -199,8 +215,11 @@ export const prepareDevelopmentTeardown = internalMutation({
     ) {
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
-    if (operation.status === "running") return { claimed: false as const };
-    if (operation.status !== "queued") {
+    const held =
+      operation.status === "running" &&
+      (operation.teardownLeaseExpiresAt ?? 0) > Date.now();
+    if (held) return { claimed: false as const };
+    if (operation.status !== "queued" && operation.status !== "running") {
       throw createError("CONFLICT", "Evidence Library teardown is not queued");
     }
     const binding = library.runtimeBindingId
@@ -215,6 +234,10 @@ export const prepareDevelopmentTeardown = internalMutation({
           library.setupOperationId,
         )
       : null;
+    const domainRows = await ctx.db
+      .query("evidenceLibraryDomains")
+      .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+      .collect();
     const applicationId =
       binding && "targetRuntimeId" in binding
         ? binding.targetRuntimeId
@@ -223,6 +246,9 @@ export const prepareDevelopmentTeardown = internalMutation({
     await ctx.db.patch(operation._id, {
       status: "running",
       attemptCount: operation.attemptCount + 1,
+      // The claim expires, so an attempt that died is picked up again
+      // instead of leaving the teardown running for ever.
+      teardownLeaseExpiresAt: now + TEARDOWN_LEASE_MS,
       startedAt: now,
       completedAt: undefined,
       error: undefined,
@@ -242,15 +268,11 @@ export const prepareDevelopmentTeardown = internalMutation({
       targetBaseUrl: binding?.targetBaseUrl,
       customDomains: await readAttachedDomainOrigins(ctx, args.libraryId),
       // Custom domains are removed from the certificate service before the
-      // application goes, so a deleted library can never keep a name.
-      certificateHostnameIds: (
-        await ctx.db
-          .query("evidenceLibraryDomains")
-          .withIndex("by_libraryId", (query) =>
-            query.eq("libraryId", args.libraryId),
-          )
-          .collect()
-      )
+      // application goes, so a deleted library can never keep a name. The
+      // host names travel too, so a hostname created before its id was saved
+      // is still found and deleted.
+      customDomainHosts: domainRows.map((row) => row.host),
+      certificateHostnameIds: domainRows
         .map((row) => row.certificateHostnameId)
         .filter((id): id is string => typeof id === "string"),
     };

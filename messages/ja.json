@@ -2885,8 +2885,7 @@
         "host-taken": "Another site already answers on that domain",
         "not-served": "The library is not running yet",
         "certificate": "The certificate could not be issued",
-        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org.",
-        "check-failed": "We could not check the domain. Try again."
+        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org."
       },
       "refused": {
         "invalid": "That does not look like a domain",
@@ -2904,7 +2903,10 @@
       "redirectWaiting": "Wait until the domain is working.",
       "addAnother": "Add another domain",
       "busy": "A check is already running for that domain",
-      "removing": "Removing"
+      "removing": "Removing",
+      "checkFailed": "We could not check the domain. Try again.",
+      "deploying": "Applying the change to the library",
+      "removingNow": "That domain is being removed"
     }
   },
   "evidenceLibraries": {
