@@ -53,6 +53,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
   zoteroTranslationUrl?: string;
   mail?: PlatformMailService;
   brand?: PlatformBrandAssets;
+  embeddingApiKey?: string;
   zoteroGroups: {
     groupId: string;
     encryptedApiKey: string;
@@ -101,6 +102,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       zoteroTranslationUrl: input.zoteroTranslationUrl,
       mail: input.mail,
       brand: input.brand,
+      embeddingApiKey: input.embeddingApiKey,
     },
     // Each Zotero source gets its group's key here and nowhere earlier.
     applySourceCredentials: createZoteroSourceCredentials(

@@ -1,5 +1,6 @@
 "use node";
 
+import { platformEmbeddingKey } from "../../lib/evidence-libraries/configuration/ai";
 import type {
   PlatformBrandAssets,
   PlatformMailService,
@@ -108,4 +109,12 @@ export function optionalPlatformBrandAssets(
     );
   }
   return { logoUrl, faviconUrl };
+}
+
+// The key that pays for meaning-based search. A separate embedding key keeps
+// that spend apart from answer spend; without one the shared OpenRouter key
+// is used. Returns undefined when neither is set, and assembly then refuses
+// to publish a library with AI answers on.
+export function optionalPlatformEmbeddingKey(): string | undefined {
+  return platformEmbeddingKey(process.env);
 }

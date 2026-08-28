@@ -21,6 +21,7 @@ import {
 } from "./readinessClient";
 import {
   optionalPlatformBrandAssets,
+  optionalPlatformEmbeddingKey,
   optionalPlatformMailService,
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
@@ -150,6 +151,7 @@ export const runConfigurationDeployment = internalAction({
           zoteroTranslationUrl: prepared.zoteroTranslationUrl,
           mail: optionalPlatformMailService(invalidConfiguration),
           brand: optionalPlatformBrandAssets(invalidConfiguration),
+          embeddingApiKey: optionalPlatformEmbeddingKey(),
           zoteroGroups: prepared.zoteroGroups,
           aiProviderKey: prepared.aiProviderKey,
         });

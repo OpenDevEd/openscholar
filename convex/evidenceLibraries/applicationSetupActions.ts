@@ -20,6 +20,7 @@ import {
 } from "./runtimeConfiguration";
 import {
   optionalPlatformBrandAssets,
+  optionalPlatformEmbeddingKey,
   optionalPlatformMailService,
   optionalRuntimeEnvironment,
   requirePositiveRuntimeInteger,
@@ -134,6 +135,7 @@ export const runApplicationSetup = internalAction({
         ),
         mail: optionalPlatformMailService(invalidData),
         brand: optionalPlatformBrandAssets(invalidData),
+        embeddingApiKey: optionalPlatformEmbeddingKey(),
         zoteroGroups: prepared.zoteroGroups,
         aiProviderKey: prepared.aiProviderApiKey,
       });
