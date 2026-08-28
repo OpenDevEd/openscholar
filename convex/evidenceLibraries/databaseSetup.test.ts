@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { decrypt } from "../lib/crypto";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  AI_MODELS,
+  AI_PROVIDER,
+  PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+} from "../../lib/evidence-libraries/configuration/ai";
 
 const ENCRYPTION_KEY = "11".repeat(32);
 
@@ -185,6 +190,92 @@ describe("Evidence Library database setup", () => {
       },
     );
     expect(laterStepRetry.encryptedPassword).toBe("encrypted-password-1");
+  });
+
+  it("creates nothing when AI answers are on and the platform has no embedding key", async () => {
+    vi.stubEnv("EL_EMBEDDING_OPENROUTER_KEY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "");
+    const fixture = await createActivatedSetupFixture("database-embedder", {
+      features: { ai: true },
+      ai: {
+        providers: [
+          { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+        ],
+      },
+    });
+    let calls = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls += 1;
+      throw new Error("The provisioner must not be called");
+    });
+
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.databaseSetupActions.runDatabaseSetup,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: fixture.created.setupOperationId,
+          attemptToken: fixture.attemptToken,
+          attemptCount: fixture.attemptCount,
+        },
+      ),
+    ).toEqual({ status: "failed" });
+    expect(calls).toBe(0);
+    const failed = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.setupOperationId),
+    );
+    expect(failed).toMatchObject({
+      error: {
+        code: "PLATFORM_EMBEDDING_KEY_MISSING",
+        message: PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+        stage: "database",
+      },
+      status: "failed",
+    });
+    // Nothing was created: no database credential, no receipt.
+    const credentials = await fixture.t.run((ctx) =>
+      ctx.db
+        .query("evidenceLibraryCredentials")
+        .withIndex("by_libraryId", (query) =>
+          query.eq("libraryId", fixture.created.libraryId),
+        )
+        .collect(),
+    );
+    expect(
+      credentials.map((row) => row.credentialKey),
+    ).not.toContain("/services/database/url");
+    expect(failed?.setupReceipts?.database).toBeUndefined();
+    expect(failed?.setupReceipts?.storage).toBeUndefined();
+  });
+
+  it("still creates the database when AI answers are off", async () => {
+    vi.stubEnv("EL_EMBEDDING_OPENROUTER_KEY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "");
+    const fixture = await createActivatedSetupFixture("database-no-ai");
+    vi.stubGlobal("fetch", async (_input: URL | RequestInfo, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { password: string };
+      return new Response(
+        JSON.stringify({
+          libraryId: fixture.created.libraryId,
+          outcome: "created",
+          databaseName: "el_789",
+          loginName: "el_789_user",
+          databaseUrl: `postgresql://el_789_user:${encodeURIComponent(body.password)}@postgres:5432/el_789`,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.databaseSetupActions.runDatabaseSetup,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: fixture.created.setupOperationId,
+          attemptToken: fixture.attemptToken,
+          attemptCount: fixture.attemptCount,
+        },
+      ),
+    ).toMatchObject({ nextStep: "storage", status: "running" });
   });
 
   it("sends a bounded request and records a safe failure before retrying", async () => {

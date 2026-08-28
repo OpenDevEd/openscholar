@@ -206,3 +206,13 @@ export function platformEmbeddingKey(
 
 export const PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE =
   "The platform has no embedding key yet.";
+
+/** Whether a saved `features` row has AI answers switched on. */
+export function featuresAiEnabled(payload: unknown): boolean {
+  return (
+    payload !== null &&
+    typeof payload === "object" &&
+    !Array.isArray(payload) &&
+    (payload as Record<string, unknown>).ai === true
+  );
+}

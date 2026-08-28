@@ -9,6 +9,7 @@ import {
 } from "./setupOperation";
 import { writeEvidenceLibraryCredentialRecord } from "./credentials";
 import { evidenceLibraryReconcileOutcomeValidator } from "./validators";
+import { featuresAiEnabled } from "../../lib/evidence-libraries/configuration/ai";
 
 export const prepareDatabaseSetup = internalMutation({
   args: {
@@ -18,7 +19,7 @@ export const prepareDatabaseSetup = internalMutation({
     attemptCount: v.number(),
     candidateEncryptedPassword: v.string(),
   },
-  returns: v.object({ encryptedPassword: v.string() }),
+  returns: v.object({ aiEnabled: v.boolean(), encryptedPassword: v.string() }),
   handler: async (ctx, args) => {
     const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, {
       ...args,
@@ -36,7 +37,18 @@ export const prepareDatabaseSetup = internalMutation({
         updatedAt: Date.now(),
       });
     }
-    return { encryptedPassword };
+    // The first setup step also reports whether this library wants AI
+    // answers, so the action can stop before PostgreSQL exists.
+    const features = await ctx.db
+      .query("evidenceLibraryConfigSections")
+      .withIndex("by_revisionId_and_sectionKey", (query) =>
+        query.eq("revisionId", setup.revision._id).eq("sectionKey", "features"),
+      )
+      .unique();
+    return {
+      aiEnabled: featuresAiEnabled(features?.payload),
+      encryptedPassword,
+    };
   },
 });
 

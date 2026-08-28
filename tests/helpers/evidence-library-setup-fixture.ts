@@ -112,14 +112,18 @@ export async function createDraftSetupFixture(suffix: string) {
   };
 }
 
-export async function createActivatedSetupFixture(suffix: string) {
+export async function createActivatedSetupFixture(
+  suffix: string,
+  // Rows beyond the essentials, for tests that need a setting switched on.
+  extraSections: Record<string, unknown> = {},
+) {
   const draft = await createDraftSetupFixture(suffix);
   const { admin, created, t } = draft;
   const saved = await admin.mutation(
     api.evidenceLibraries.mutations.saveDraftSections,
     {
       libraryId: created.libraryId,
-      sections: toSectionRows(essentialSetupSections),
+      sections: toSectionRows({ ...essentialSetupSections, ...extraSections }),
       expectedEditVersion: 0,
     },
   );

@@ -1,6 +1,9 @@
 "use node";
 
-import { platformEmbeddingKey } from "../../lib/evidence-libraries/configuration/ai";
+import {
+  platformEmbeddingKey,
+  PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+} from "../../lib/evidence-libraries/configuration/ai";
 import type {
   PlatformBrandAssets,
   PlatformMailService,
@@ -117,4 +120,29 @@ export function optionalPlatformBrandAssets(
 // to publish a library with AI answers on.
 export function optionalPlatformEmbeddingKey(): string | undefined {
   return platformEmbeddingKey(process.env);
+}
+
+/**
+ * Raised before a library with AI answers on creates or changes anything.
+ * Its own class so the pipelines can report the owner-readable reason instead
+ * of their generic "setup failed" message.
+ */
+export class PlatformEmbeddingKeyMissingError extends Error {
+  readonly code = "PLATFORM_EMBEDDING_KEY_MISSING";
+
+  constructor() {
+    super(PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE);
+    this.name = "PlatformEmbeddingKeyMissingError";
+  }
+}
+
+/**
+ * Search by meaning needs the platform embedding key. Both pipelines check it
+ * before their first outside call, so a library with AI answers on never
+ * creates a database, a bucket or a Coolify application it cannot use.
+ */
+export function requirePlatformEmbeddingKey(aiEnabled: boolean): void {
+  if (aiEnabled && !optionalPlatformEmbeddingKey()) {
+    throw new PlatformEmbeddingKeyMissingError();
+  }
 }

@@ -5,6 +5,7 @@ import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
+import { featuresAiEnabled } from "../../lib/evidence-libraries/configuration/ai";
 import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
 import { decrypt, encrypt } from "../lib/crypto";
 import {
@@ -23,6 +24,8 @@ import {
   optionalPlatformBrandAssets,
   optionalPlatformEmbeddingKey,
   optionalPlatformMailService,
+  PlatformEmbeddingKeyMissingError,
+  requirePlatformEmbeddingKey,
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
@@ -84,6 +87,15 @@ export const runConfigurationDeployment = internalAction({
       if (prepared.state === "saved") {
         target = prepared.target;
       } else {
+        // Before Coolify hears anything: a library with AI answers on cannot
+        // be published without the platform embedding key, so refuse here
+        // rather than after the domain or the application has changed.
+        requirePlatformEmbeddingKey(
+          prepared.sections.some(
+            (row) =>
+              row.sectionKey === "features" && featuresAiEnabled(row.payload),
+          ),
+        );
         // A move changes Coolify's domain first. Only when the application
         // answers on the new address do the records take it, so a failure
         // here leaves the library on the address it has.
@@ -395,7 +407,8 @@ export const runConfigurationDeployment = internalAction({
       }
       const safeError =
         error instanceof CoolifyClientError ||
-        error instanceof ReadinessClientError
+        error instanceof ReadinessClientError ||
+        error instanceof PlatformEmbeddingKeyMissingError
           ? { code: error.code, message: error.message }
           : error instanceof ConfigurationAssemblyError
             ? {

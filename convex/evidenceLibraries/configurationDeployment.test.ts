@@ -3,7 +3,12 @@ import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { encrypt } from "../lib/crypto";
-import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
+import {
+  AI_MODELS,
+  AI_PROVIDER,
+  AI_PROVIDER_CREDENTIAL_KEY,
+  PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+} from "../../lib/evidence-libraries/configuration/ai";
 import { createCoolifyLibraryTag } from "./coolifyClient";
 import {
   createDeployedSetupFixture,
@@ -395,6 +400,73 @@ describe("Evidence Library configuration deployment", () => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+  });
+
+  it("refuses to publish before touching Coolify when the platform has no embedding key", async () => {
+    vi.stubEnv("EL_EMBEDDING_OPENROUTER_KEY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "");
+    const fixture = await createReadyLibrary("deploy-embedder");
+    const saved = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: fixture.created.libraryId,
+        sections: toSectionRows({
+          ...essentialSetupSections,
+          features: { ai: true },
+          ai: {
+            providers: [
+              {
+                provider: AI_PROVIDER,
+                enabled: true,
+                defaultModel: AI_MODELS[0],
+              },
+            ],
+          },
+        }),
+        expectedEditVersion: fixture.activated.editVersion,
+      },
+    );
+    const activated = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId: fixture.created.libraryId,
+        expectedEditVersion: saved.editVersion,
+      },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    let calls = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls += 1;
+      throw new Error("Coolify must not be called");
+    });
+
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: activated.operationId,
+          attemptToken: operation!.configurationAttemptToken!,
+          attemptCount: operation!.attemptCount,
+        },
+      ),
+    ).toEqual({ status: "failed" });
+    expect(calls).toBe(0);
+    const failed = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    expect(failed).toMatchObject({
+      error: {
+        code: "PLATFORM_EMBEDDING_KEY_MISSING",
+        message: PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+      },
+      status: "failed",
+    });
+    // Nothing was written down, so no secret can be recovered from the row.
+    expect(failed?.configurationDeploymentTarget).toBeUndefined();
   });
 
   it("saves one immutable target, polls Coolify, verifies the runtime, and activates it", async () => {
