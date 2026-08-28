@@ -341,6 +341,44 @@ these decisions.
     check names what actually went wrong instead of always saying "Records
     not found".
 
+## Corrections after the second review (2026-08-28)
+
+27. **The deployment carries the new address.** A change of the library's own
+    address travels on the operation; `prepareConfigurationDeployment`
+    rewrites `identity.baseUrl` in the payload it sends and validates against
+    it. Nothing stored moves until readiness passes. Without this the
+    deployment shipped the old address and readiness waited for a redirect
+    that was never deployed.
+28. **Three facts, kept apart.** `attachedAt` says the proxy holds the host,
+    `deploymentPending` says the running site has not been given that change,
+    `removingAt` says the owner asked for the domain to go. A crash between
+    two steps is now visible, and the next Check queues the deployment that
+    was owed instead of skipping it.
+29. **A domain on its way out is left alone.** Checks and attaches are
+    refused while a removal is pending, and the button is disabled.
+30. **Custom hostnames are found by name as well as by id**, on removal and
+    on teardown, so an attempt that died between creating one and writing its
+    id down still cleans it up.
+31. **The work after a deployment retries itself.** Convex does not retry a
+    scheduled action, so `completeDomainChange` counts its attempts on the row
+    and reschedules its own failures up to five times.
+32. **A teardown attempt holds an expiring claim.** An attempt that died no
+    longer leaves the teardown running for ever.
+33. **One gate for every outbound request to a customer's domain**
+    (`domainEgress.ts`): both address families resolved through both
+    resolvers, the CNAME target re-checked, and every private, loopback,
+    link-local, unique-local, carrier-grade-NAT, NAT64, 6to4 and
+    IPv4-in-IPv6 form refused, written dotted or hexadecimal. It runs before
+    the health probe, before the sweep's probe, and before readiness.
+34. **The sweep takes a fixed cutoff when it starts** and pages by
+    `(checkedAt, _id)`, so a row it has checked cannot return in a later page
+    and equal check times cannot hide a row.
+35. **Issuer sets travel as arrays.** Joining them into a string lost
+    `issue ";"`, the value that permits nobody.
+36. **A check that could not run writes nothing, ever.** No certificate
+    service, no answer from the domain, or a refused request are all "we
+    could not tell"; `check-failed` is no longer a state a row can hold.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,
