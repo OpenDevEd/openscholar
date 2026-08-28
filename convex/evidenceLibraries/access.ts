@@ -63,8 +63,8 @@ function denyOrganizationAccess(): never {
  *   pages immediately.
  * - Reading asks for `"read"`, so libraries that already exist keep working.
  *   The public Evidence Library runtime never calls this helper at all, and
- *   `getAdminLaunchState` plus the admin login codes stay open so an editor
- *   of an active library can still open its `/admin` area.
+ *   the admin handoff does not call it either: a member of an active
+ *   library's organisation can still open its `/admin` area.
  *
  * Anything but `true` is off, including a row written before the switch
  * existed.

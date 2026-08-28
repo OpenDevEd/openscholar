@@ -501,11 +501,11 @@ describe("Evidence Library configuration deployment", () => {
         .value,
     ).toBe(firstRuntimeJson);
     await expect(
-      deployment.fixture.admin.query(
-        api.evidenceLibraries.queries.getAdminLaunchState,
+      deployment.fixture.admin.action(
+        api.evidenceLibraries.adminHandoffActions.issueAdminHandoff,
         { libraryId: deployment.fixture.created.libraryId },
       ),
-    ).resolves.toMatchObject({ status: "ready" });
+    ).resolves.toMatchObject({ status: "allowed" });
   });
 
   it("keeps the previous revision active while runtime readiness catches up", async () => {

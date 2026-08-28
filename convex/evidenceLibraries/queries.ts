@@ -28,10 +28,7 @@ import {
   readEvidenceLibraryByName,
   readEvidenceLibrarySetupIdentity,
 } from "./setupNaming";
-import {
-  readEvidenceLibraryAdminLaunchTarget,
-  readEvidenceLibrarySetupRecords,
-} from "./setupRecords";
+import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 
 const {
   setupEncryptedDatabasePassword: _encryptedDatabasePasswordValidator,
@@ -282,51 +279,6 @@ export const readServedHostsCache = internalQuery({
       .withIndex("by_source", (query) => query.eq("source", "coolify"))
       .unique();
     return row ? { hosts: row.hosts, fetchedAt: row.fetchedAt } : null;
-  },
-});
-
-export const getAdminLaunchState = query({
-  args: { libraryId: v.string() },
-  returns: v.union(
-    v.null(),
-    v.object({
-      libraryId: v.id("evidenceLibraries"),
-      libraryName: v.string(),
-      publicAddress: v.string(),
-      libraryStatus: libraryOverviewStatusValidator,
-      faviconUrl: v.union(v.string(), v.null()),
-      activeRevisionKey: v.union(v.string(), v.null()),
-      status: v.union(v.literal("not_ready"), v.literal("ready")),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const access = await requireOrganizationAccess(ctx, "read");
-    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
-    if (!libraryId) return null;
-
-    const library = await ctx.db.get("evidenceLibraries", libraryId);
-    if (!library || library.organizationId !== access.organization._id) {
-      return null;
-    }
-    const targetBaseUrl = await readEvidenceLibraryAdminLaunchTarget(
-      ctx,
-      library,
-    );
-    const [overview, activeRevision] = await Promise.all([
-      readLibraryOverview(ctx, library),
-      library.activeRevisionId
-        ? ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId)
-        : null,
-    ]);
-    return {
-      libraryId,
-      libraryName: library.name,
-      publicAddress: overview.publicAddress,
-      libraryStatus: overview.status,
-      faviconUrl: overview.faviconUrl,
-      activeRevisionKey: activeRevision?.revisionKey ?? null,
-      status: targetBaseUrl ? ("ready" as const) : ("not_ready" as const),
-    };
   },
 });
 
