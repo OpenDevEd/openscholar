@@ -169,21 +169,24 @@ function ProviderKeyField({
               className="bg-background font-mono text-sm"
               placeholder="sk-or-"
               value={value}
+              disabled={busy}
               onChange={(event) => setValue(event.target.value)}
             />
             <Button
               type="button"
               variant="outline"
               disabled={busy || value.trim() === ""}
+              aria-busy={busy || undefined}
               onClick={saveKey}
             >
-              {busy ? <Spinner /> : null}
+              {busy ? <Spinner aria-hidden /> : null}
               {t("keySave")}
             </Button>
             {keySaved ? (
               <Button
                 type="button"
                 variant="ghost"
+                disabled={busy}
                 onClick={() => {
                   setValue("");
                   setReplacing(false);
@@ -199,6 +202,7 @@ function ProviderKeyField({
             <Button
               type="button"
               variant="outline"
+              disabled={busy}
               onClick={() => setReplacing(true)}
             >
               {t("keyReplace")}
@@ -207,9 +211,10 @@ function ProviderKeyField({
               type="button"
               variant="ghost"
               disabled={busy}
+              aria-busy={busy || undefined}
               onClick={remove}
             >
-              {busy ? <Spinner /> : null}
+              {busy ? <Spinner aria-hidden /> : null}
               {t("keyRemove")}
             </Button>
           </div>
