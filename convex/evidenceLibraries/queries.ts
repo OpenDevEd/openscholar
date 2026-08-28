@@ -18,7 +18,6 @@ import {
   evidenceLibraryConfigDraftFields,
   evidenceLibraryConfigRevisionFields,
   evidenceLibraryFields,
-  evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingVariantFields,
   evidenceLibrarySetupIdentityFields,
   evidenceLibraryPublicOperationFields,

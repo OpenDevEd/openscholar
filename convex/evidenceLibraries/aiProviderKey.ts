@@ -119,6 +119,8 @@ export async function requireNoRunningOperation(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
 ): Promise<void> {
+  // Operations are read newest first. A library only ever has one in flight,
+  // so twenty is far more than enough to find it.
   const running = await ctx.db
     .query("evidenceLibraryConfigOperations")
     .withIndex("by_libraryId_and_createdAt", (query) =>
