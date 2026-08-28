@@ -188,6 +188,11 @@ function readRefusal(error: unknown): SaveRefusal | null {
   return saveRefusal(data?.pointer, data?.message);
 }
 
+/** The plain sentence for a failure that has no card of its own. */
+function errorMessage(error: unknown, fallback: string) {
+  return readRefusal(error)?.message ?? fallback;
+}
+
 function isPageSection(value: string): value is PageSectionKey {
   return (PAGE_SECTION_KEYS as readonly string[]).includes(value);
 }
@@ -491,19 +496,19 @@ function Workspace({
                 ids={draft.collections.map((collection) => collection.id)}
               >
                 <SaveRefusalProvider refusal={refusal}>
-                {PAGE_SECTION_KEYS.map((key) => {
-                  const Section = SECTION_COMPONENTS[key];
-                  return (
-                    <Section
-                      key={key}
-                      libraryId={libraryId}
-                      draft={draft}
-                      saved={saved}
-                      patch={patch}
-                      reset={reset}
-                    />
-                  );
-                })}
+                  {PAGE_SECTION_KEYS.map((key) => {
+                    const Section = SECTION_COMPONENTS[key];
+                    return (
+                      <Section
+                        key={key}
+                        libraryId={libraryId}
+                        draft={draft}
+                        saved={saved}
+                        patch={patch}
+                        reset={reset}
+                      />
+                    );
+                  })}
                 </SaveRefusalProvider>
               </CollectionFactsProvider>
               <DomainSection libraryId={libraryId} />
