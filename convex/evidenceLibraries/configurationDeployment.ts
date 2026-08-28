@@ -1081,6 +1081,15 @@ export const completeConfigurationDeployment = internalMutation({
     // A custom domain change finishes here, and only here.
     const domainChange = deployment.operation.domainChange;
     if (domainChange) {
+      // The domain must still be held by this change. If it is not, this
+      // throws and the operation fails rather than reporting success for a
+      // change that was never written.
+      await settleDomainDeploymentRow(ctx, {
+        domainId: domainChange.domainId,
+        operationId: deployment.operation._id,
+        ...(domainChange.token ? { token: domainChange.token } : {}),
+        outcome: "succeeded",
+      });
       // The library's new address is written in this same transaction as the
       // readiness-checked operation, so nothing that runs later can overwrite
       // a newer state with a stale one.
@@ -1089,16 +1098,8 @@ export const completeConfigurationDeployment = internalMutation({
           libraryId: args.libraryId,
           domainId: domainChange.domainId,
           address: domainChange.address,
-          // The lease this change took when it was asked for. A change that
-          // was overtaken by a check or a removal does not land.
-          ...(domainChange.token ? { token: domainChange.token } : {}),
         });
       }
-      // The proxy change this deployment carried has now reached the site.
-      await settleDomainDeploymentRow(ctx, {
-        domainId: domainChange.domainId,
-        operationId: deployment.operation._id,
-      });
       // Deleting the certificate and the row talks to another service, so it
       // is the one part that has to run outside this transaction.
       if (domainChange.reason === "detach") {
@@ -1150,6 +1151,17 @@ export const failConfigurationDeployment = internalMutation({
       configurationReadinessPollCount: undefined,
       updatedAt: now,
     });
+    // A domain change that failed gives the domain back, so the owner can
+    // try again instead of waiting for a lease to expire. What it owes —
+    // the proxy change and its deployment — is kept, so the retry knows
+    // where it stopped.
+    if (operation.domainChange) {
+      await settleDomainDeploymentRow(ctx, {
+        domainId: operation.domainChange.domainId,
+        operationId: operation._id,
+        outcome: "failed",
+      });
+    }
     return "failed" as const;
   },
 });

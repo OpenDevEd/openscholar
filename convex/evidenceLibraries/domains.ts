@@ -363,7 +363,10 @@ export const claimDomainTransition = internalMutation({
     }
     const now = Date.now();
     const held = row.transition;
-    if (held && held.expiresAt > now) {
+    // A change waiting on a deployment holds the domain for as long as that
+    // deployment runs — far longer than an action's own lease — so the clock
+    // is not the only thing that can say "busy".
+    if (held && (held.expiresAt > now || row.pendingDeployment !== undefined)) {
       return { status: "busy" as const, kind: held.kind };
     }
     if (args.spendBudget) {
@@ -439,8 +442,14 @@ export function claimDomainTransitionRow(
   kind: "check" | "attach" | "canonical" | "remove",
 ): { token: string; generation: number; write: () => Promise<void> } {
   const now = Date.now();
-  if (row.transition && row.transition.expiresAt > now) {
+  if (
+    row.transition &&
+    (row.transition.expiresAt > now || row.pendingDeployment !== undefined)
+  ) {
     throw createError("CONFLICT", "Another change to that domain is running");
+  }
+  if (kind !== "remove" && row.removingAt !== undefined) {
+    throw createError("CONFLICT", "That domain is being removed");
   }
   const token = createTransitionToken();
   const generation = (row.generation ?? 0) + 1;
@@ -592,14 +601,29 @@ export async function settleDomainDeploymentRow(
   args: {
     domainId: Id<"evidenceLibraryDomains">;
     operationId: Id<"evidenceLibraryConfigOperations">;
+    /** The change this deployment carried. It must still hold the domain. */
+    token?: string;
+    /** Whether the deployment succeeded, so the row records what happened. */
+    outcome: "succeeded" | "failed";
   },
 ): Promise<void> {
   const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
-  if (!row || row.pendingDeployment?.operationId !== args.operationId) return;
+  if (!row) return;
+  if (args.token && row.transition?.token !== args.token) {
+    // Something else took the domain while this deployment ran. Saying
+    // nothing would leave the row claiming a change that never landed.
+    throw createError(
+      "CONFLICT",
+      "Another change took that domain while this one was being applied",
+    );
+  }
   await ctx.db.patch(args.domainId, {
-    pendingDeployment: undefined,
-    cleanup: undefined,
-    // The change is live, so whoever was holding the domain for it is done.
+    // A failed deployment still owes its change, so the record of it stays;
+    // only a successful one is settled.
+    ...(args.outcome === "succeeded"
+      ? { pendingDeployment: undefined, cleanup: undefined }
+      : {}),
+    // Either way the change is over, so the domain is free again.
     transition: undefined,
     updatedAt: Date.now(),
   });
@@ -780,6 +804,8 @@ export const listWorkingDomains = internalQuery({
         libraryId: v.id("evidenceLibraries"),
         host: v.string(),
         checkedAt: v.number(),
+        generation: v.number(),
+        busy: v.boolean(),
         liveRevisionKey: v.union(v.string(), v.null()),
       }),
     ),
@@ -815,6 +841,13 @@ export const listWorkingDomains = internalQuery({
             libraryId: row.libraryId,
             host: row.host,
             checkedAt: row.checkedAt ?? 0,
+            generation: row.generation ?? 0,
+            // Something is already changing this domain, so the sweep leaves
+            // it alone rather than racing it.
+            busy:
+              row.transition !== undefined ||
+              row.pendingDeployment !== undefined ||
+              row.removingAt !== undefined,
             liveRevisionKey: revision?.revisionKey ?? null,
           };
         }),
@@ -832,14 +865,27 @@ export const listWorkingDomains = internalQuery({
 export const writeSweptDomain = internalMutation({
   args: {
     domainId: v.id("evidenceLibraryDomains"),
+    /** What the sweep read before it looked. Anything else and it says nothing. */
+    expectedGeneration: v.number(),
     state: evidenceLibraryDomainStateValidator,
     failure: v.optional(evidenceLibraryDomainFailureValidator),
     certificateState: v.optional(evidenceLibraryCertificateStateValidator),
   },
-  returns: v.null(),
+  returns: v.object({ written: v.boolean() }),
   handler: async (ctx, args) => {
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
-    if (!row) return null;
+    if (!row) return { written: false };
+    // A sweep speaks about the domain as it was when it looked. If a check,
+    // a removal or a change of address has happened since, its answer is
+    // out of date and must not overwrite the newer one.
+    if (
+      (row.generation ?? 0) !== args.expectedGeneration ||
+      row.transition !== undefined ||
+      row.pendingDeployment !== undefined ||
+      row.removingAt !== undefined
+    ) {
+      return { written: false };
+    }
     await ctx.db.patch(args.domainId, {
       state: args.state,
       failure: args.failure,
@@ -847,6 +893,6 @@ export const writeSweptDomain = internalMutation({
       checkedAt: Date.now(),
       updatedAt: Date.now(),
     });
-    return null;
+    return { written: true };
   },
 });

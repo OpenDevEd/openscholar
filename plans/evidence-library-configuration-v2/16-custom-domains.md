@@ -452,6 +452,39 @@ these decisions.
 58. **The sweep uses Convex's own pagination cursor**, which keeps its place
     inside a run of rows checked in the same millisecond.
 
+## Corrections after the fifth review (2026-08-28)
+
+59. **A change waiting on a deployment holds the domain until that
+    deployment ends**, not until a two-minute lease expires. Attach keeps its
+    lease when it hands over; the deployment's own completion gives it back,
+    on success and on failure alike.
+60. **Every attach, detach and canonical change carries its token on the
+    operation**, and the completion checks it. A change that was overtaken
+    makes the deployment fail loudly rather than reporting success for
+    something it never wrote.
+61. **A successful canonical change is settled first, then applied**, in the
+    same transaction, so the domain is never left locked after it lands.
+62. **A domain on its way out cannot become the library's address** — refused
+    on the server and disabled in the section.
+63. **The cleanup receipt is checked before anything outside OpenScholar is
+    touched**, so a booking made for a removal cannot delete a certificate
+    the domain has since started needing.
+64. **The sweep writes only what it read.** It compares the domain's change
+    count before writing, skips rows something else is already changing, and
+    moves past its page whether it ran out of rows or out of time, so one
+    slow domain cannot starve the rest.
+65. **A hostname is never forgotten because the certificate service is
+    missing.** Removal and teardown both fail and retry while a hostname
+    exists and Cloudflare cannot be reached; the row is the only note that it
+    exists.
+66. **One readiness deadline covers the whole answer**, not just its headers,
+    and an unread body is released.
+67. **Environment variables are read the way the rest of the repository reads
+    them.** `convex.config.ts` declares no typed `env` block and 38 files read
+    `process.env` directly, so these follow `runtimeActionConfig.ts` rather
+    than introducing a third pattern; the three scattered reads now go
+    through one helper each.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

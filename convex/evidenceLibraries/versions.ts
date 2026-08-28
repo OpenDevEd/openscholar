@@ -534,6 +534,8 @@ export const startDomainDeployment = internalMutation({
     domainId: v.id("evidenceLibraryDomains"),
     /** The domain's change count, so one key never names two changes. */
     generation: v.number(),
+    /** The lease this change holds, checked again when the deployment ends. */
+    token: v.string(),
     host: v.string(),
     reason: v.union(
       v.literal("attach"),
@@ -560,6 +562,7 @@ export const startDomainDeployment = internalMutation({
         host: args.host,
         domainId: args.domainId,
         reason: args.reason,
+        token: args.token,
       },
     });
     return await claimAndScheduleConfigurationDeployment(ctx, {
@@ -672,16 +675,10 @@ export async function applyEvidenceLibraryCanonicalAddress(
     libraryId: Id<"evidenceLibraries">;
     domainId: Id<"evidenceLibraryDomains">;
     address: string;
-    token?: string;
   },
 ): Promise<void> {
   {
-    const domain = await ctx.db.get(
-      "evidenceLibraryDomains",
-      args.domainId,
-    );
-    // Only the change that still holds the domain may write the address.
-    if (args.token && domain?.transition?.token !== args.token) return;
+
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     const binding = library?.runtimeBindingId
       ? await ctx.db.get(

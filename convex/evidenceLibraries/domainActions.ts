@@ -71,6 +71,7 @@ function isUnavailable(error: unknown): boolean {
   );
 }
 import { probeEvidenceLibraryAddress } from "./readinessClient";
+import { requireRuntimeEnvironment } from "./runtimeActionConfig";
 import {
   evidenceLibraryCertificateStateValidator,
   evidenceLibraryDomainFailureValidator,
@@ -117,16 +118,12 @@ const checkedValidator = v.union(
   v.object({ status: v.literal("removing") }),
 );
 
-function requireEnvironment(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is not configured`);
-  return value;
-}
-
 function coolify() {
+  // The same reader every other Evidence Library action uses.
+  const missing = (message: string) => new Error(message);
   return createCoolifyClient({
-    origin: requireEnvironment("EL_COOLIFY_URL"),
-    token: requireEnvironment("EL_COOLIFY_TOKEN"),
+    origin: requireRuntimeEnvironment("EL_COOLIFY_URL", missing),
+    token: requireRuntimeEnvironment("EL_COOLIFY_TOKEN", missing),
   });
 }
 
@@ -378,6 +375,7 @@ async function queueDomainDeployment(
       libraryId: input.libraryId,
       domainId: input.domainId,
       generation: input.generation,
+      token: input.token,
       host: input.host,
       reason: input.reason,
     },
@@ -460,6 +458,9 @@ export const checkDomain = action({
     );
     if (claimed.status === "busy") return { status: "busy" as const };
     const token = claimed.token;
+    // A step that hands the domain to a deployment keeps the lease: the
+    // deployment now holds it, and its own completion gives it back.
+    let heldByDeployment = false;
     const renewLease = async () => {
       await ctx.runMutation(
         internal.evidenceLibraries.domains.renewDomainTransition,
@@ -502,6 +503,7 @@ export const checkDomain = action({
             host: row.host,
             reason: row.attached ? "attach" : "detach",
           });
+          heldByDeployment = true;
           return { status: "deploying" as const };
         }
         if (step === "records") {
@@ -525,6 +527,8 @@ export const checkDomain = action({
               certificateHostnameId: row.certificateHostnameId,
               generation: row.generation,
             });
+            // Attaching queues a deployment, which now holds the domain.
+            if (outcome.state !== "failed") heldByDeployment = true;
           }
         } else {
           outcome = await readAnswerGate({
@@ -565,10 +569,12 @@ export const checkDomain = action({
           : {}),
       };
     } finally {
-      await ctx.runMutation(
-        internal.evidenceLibraries.domains.releaseDomainTransition,
-        { domainId: args.domainId, token },
-      );
+      if (!heldByDeployment) {
+        await ctx.runMutation(
+          internal.evidenceLibraries.domains.releaseDomainTransition,
+          { domainId: args.domainId, token },
+        );
+      }
     }
   },
 });
@@ -699,9 +705,13 @@ async function finishRemoval(
   },
 ): Promise<void> {
   const cloudflare = createPlatformCloudflareSaasClient();
-  if (cloudflare) {
-    await deleteCustomHostname(cloudflare, input);
+  // The row is the only record that a hostname exists. Dropping it while
+  // the certificate service cannot be reached would leave that hostname
+  // behind for ever with nothing pointing at it.
+  if (!cloudflare) {
+    throw new DomainCheckUnavailable();
   }
+  await deleteCustomHostname(cloudflare, input);
   await ctx.runMutation(
     internal.evidenceLibraries.domains.finishDomainRemoval,
     { domainId: input.domainId },
@@ -755,13 +765,15 @@ export const completeDomainChange = internalAction({
         internal.evidenceLibraries.domains.readDomainReceipt,
         { domainId: args.domainId },
       );
-      if (receipt) {
-        await finishRemoval(ctx, {
-          domainId: args.domainId,
-          host: receipt.host,
-          certificateHostnameId: receipt.certificateHostnameId,
-        });
-      }
+      // Checked before anything outside OpenScholar is touched: a domain
+      // that has moved on since this was booked must not lose a hostname it
+      // now needs.
+      if (!receipt || !receipt.removing) return { status: "stale" as const };
+      await finishRemoval(ctx, {
+        domainId: args.domainId,
+        host: receipt.host,
+        certificateHostnameId: receipt.certificateHostnameId,
+      });
       return { status: "done" as const };
     } catch (error) {
       // Convex does not retry a scheduled action, so the attempt and the
@@ -843,6 +855,8 @@ export const sweepWorkingDomains = internalAction({
         stopped = true;
         break;
       }
+      // Something else is already changing this domain.
+      if (row.busy) continue;
       let outcome: DomainOutcome & { certificateState?: CertificateState };
       try {
         outcome = await readAnswerGate({
@@ -863,6 +877,7 @@ export const sweepWorkingDomains = internalAction({
         internal.evidenceLibraries.domains.writeSweptDomain,
         {
           domainId: row.domainId,
+          expectedGeneration: row.generation,
           state: outcome.state,
           ...(outcome.state === "failed" ? { failure: outcome.failure } : {}),
           ...(outcome.certificateState
@@ -871,10 +886,13 @@ export const sweepWorkingDomains = internalAction({
         },
       );
     }
-    // A page cut short by the deadline is resumed from the same cursor.
+    // Whether the page ran out or the deadline did, the next run starts
+    // after this page. A row that could not be read keeps its old check
+    // time and the next sweep reaches it, so one slow domain never holds
+    // the rest up.
     const more = stopped || !page.done;
     if (!more) return { checked, failed, more: false };
-    const next = { cutoff, cursor: stopped ? (args.cursor ?? null) : page.cursor };
+    const next = { cutoff, cursor: page.cursor };
     await ctx.scheduler.runAfter(
       0,
       internal.evidenceLibraries.domainActions.sweepWorkingDomains,

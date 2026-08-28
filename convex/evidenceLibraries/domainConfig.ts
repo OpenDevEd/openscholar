@@ -32,9 +32,21 @@ export function readCustomDomainTarget(env: Environment = process.env): string {
 export function isCustomDomainPlatformReady(
   env: Environment = process.env,
 ): boolean {
-  return Boolean(
-    env[CLOUDFLARE_API_TOKEN_ENV]?.trim() && env[CLOUDFLARE_ZONE_ID_ENV]?.trim(),
-  );
+  const account = readCloudflareAccount(env);
+  return account !== null;
+}
+
+/**
+ * The platform's certificate account, or null when it is not set up. One
+ * place reads it, so the section, the actions and the teardown all agree.
+ */
+export function readCloudflareAccount(
+  env: Environment = process.env,
+): { apiToken: string; zoneId: string } | null {
+  const apiToken = env[CLOUDFLARE_API_TOKEN_ENV]?.trim();
+  const zoneId = env[CLOUDFLARE_ZONE_ID_ENV]?.trim();
+  if (!apiToken || !zoneId) return null;
+  return { apiToken, zoneId };
 }
 
 /**

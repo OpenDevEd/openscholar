@@ -17,10 +17,7 @@
  * https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/advanced-settings/custom-origin/
  */
 
-import {
-  CLOUDFLARE_API_TOKEN_ENV,
-  CLOUDFLARE_ZONE_ID_ENV,
-} from "./domainConfig";
+import { readCloudflareAccount } from "./domainConfig";
 
 const API_ORIGIN = "https://api.cloudflare.com/client/v4";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -281,8 +278,7 @@ export type CloudflareSaasClient = ReturnType<typeof createCloudflareSaasClient>
 export function createPlatformCloudflareSaasClient(
   fetchImpl?: typeof fetch,
 ): CloudflareSaasClient | null {
-  const apiToken = process.env[CLOUDFLARE_API_TOKEN_ENV]?.trim();
-  const zoneId = process.env[CLOUDFLARE_ZONE_ID_ENV]?.trim();
-  if (!apiToken || !zoneId) return null;
-  return createCloudflareSaasClient({ apiToken, zoneId, fetchImpl });
+  const account = readCloudflareAccount();
+  if (!account) return null;
+  return createCloudflareSaasClient({ ...account, fetchImpl });
 }

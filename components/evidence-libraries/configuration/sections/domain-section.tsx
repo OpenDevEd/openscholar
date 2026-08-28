@@ -328,11 +328,16 @@ export const DomainSection = memo(function DomainSection({
               label={t("redirectLabel")}
               hint={t("redirectHint")}
               checked={domain.role === "primary"}
-              disabled={busy !== null || domain.state !== "active"}
+              // A domain on its way out cannot become the library's address.
+              disabled={
+                busy !== null || domain.state !== "active" || domain.removing
+              }
               disabledReason={
-                domain.state === "verified"
-                  ? t("redirectWaiting")
-                  : t("redirectDisabled")
+                domain.removing
+                  ? t("removingNow")
+                  : domain.state === "verified"
+                    ? t("redirectWaiting")
+                    : t("redirectDisabled")
               }
               onChange={(checked) =>
                 void run(domain.domainId, () =>
