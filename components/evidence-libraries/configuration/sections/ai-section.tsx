@@ -76,7 +76,9 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
             >
               {(id) => (
                 <Select
-                  value={AI_MODELS.includes(defaultModel) ? defaultModel : undefined}
+                  // "" keeps the control controlled while showing the
+                  // placeholder for a model the runtime no longer offers.
+                  value={AI_MODELS.includes(defaultModel) ? defaultModel : ""}
                   onValueChange={(value) =>
                     patch((d) => {
                       d.ai.defaultModel = value;
