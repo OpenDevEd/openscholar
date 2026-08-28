@@ -1,7 +1,14 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -780,17 +787,33 @@ describe("<ConfigurationWorkspace>", () => {
     const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
 
     it(
-      "offers the session recordings address only once PostHog is on",
+      "offers the session recordings address only once a host is set",
       async () => {
         const user = userEvent.setup();
         await renderWorkspace();
         const analytics = card("analytics");
         expect(analytics.queryByLabelText("analytics.uiHostLabel")).not.toBeInTheDocument();
+
+        // Switched on with no host yet: the card needs attention and the
+        // recordings address is still nowhere to be seen.
         await user.click(analytics.getByRole("switch", { name: "analytics.posthogLabel" }));
+        expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
+        expect(analytics.getByText("problems.posthog")).toBeInTheDocument();
+        expect(analytics.queryByLabelText("analytics.uiHostLabel")).not.toBeInTheDocument();
+
         await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
         await user.type(analytics.getByLabelText("analytics.keyLabel"), "phc_12345678901234567890");
         await user.type(analytics.getByLabelText("analytics.uiHostLabel"), "not-an-address");
         expect(analytics.getByText("problems.posthogUiHost")).toBeInTheDocument();
+        expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
+
+        // Clearing the host takes the recordings address with it, so the two
+        // can never be saved half-set.
+        await user.clear(analytics.getByLabelText("analytics.hostLabel"));
+        expect(analytics.queryByLabelText("analytics.uiHostLabel")).not.toBeInTheDocument();
+        expect(analytics.queryByText("problems.posthogUiHost")).not.toBeInTheDocument();
+        await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
+        expect(analytics.getByLabelText("analytics.uiHostLabel")).toHaveValue("");
       },
     );
 
@@ -923,6 +946,23 @@ describe("<ConfigurationWorkspace>", () => {
         await waitFor(() =>
           expect(removed).toEqual([{ libraryId: "library_123" }]),
         );
+        // Convex answers the removal with an empty credential list. That is
+        // what puts the key field back and the card into needs attention.
+        cleanup();
+        queryMock.mockReturnValue(
+          draftResult({
+            sections: savedRows.map((row) =>
+              row.sectionKey === "features"
+                ? { sectionKey: "features", payload: { ai: true } }
+                : row,
+            ),
+          }),
+        );
+        await renderWorkspace();
+        const afterRemoval = card("ai");
+        expect(afterRemoval.getByText("sectionState.attention")).toBeInTheDocument();
+        expect(afterRemoval.getByText("problems.aiKey")).toBeInTheDocument();
+        expect(afterRemoval.getByLabelText("ai.keyLabel")).toBeInTheDocument();
       },
     );
   });

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { encrypt } from "../lib/crypto";
+import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 import { createCoolifyLibraryTag } from "./coolifyClient";
 import {
   createDeployedSetupFixture,
@@ -937,6 +938,87 @@ describe("Evidence Library configuration deployment", () => {
         ctx.db.get(deployment.activated.operationId),
       ),
     ).not.toHaveProperty("configurationDeploymentTarget");
+  });
+
+  it("refuses to finish a publish whose AI key was replaced along the way", async () => {
+    const deployment = await activateChangedConfiguration("ai-key-late-change");
+    const libraryId = deployment.fixture.created.libraryId;
+    await deployment.fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryCredentials", {
+        libraryId,
+        credentialKey: AI_PROVIDER_CREDENTIAL_KEY,
+        pathPattern: "/ai/providers/*/apiKey",
+        instanceKey: "openrouter",
+        encryptedValue: encrypt("sk-or-first", ENCRYPTION_KEY),
+        validationState: "untested",
+        createdByClerkUserId: "user_ai_key_late",
+        updatedByClerkUserId: "user_ai_key_late",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+    const network = createRuntimeNetwork({
+      libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const actionArgs = {
+      libraryId,
+      operationId: deployment.activated.operationId,
+      attemptToken: deployment.attemptToken,
+      attemptCount: deployment.attemptCount,
+    };
+    expect(
+      await deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ pollCount: 1, status: "running" });
+
+    network.finishDeployment();
+    // The key changes at the very last moment: after the runtime has been
+    // asked whether it is ready, and before the library is told it is live.
+    const replaceKey = async () => {
+      await deployment.fixture.t.run(async (ctx) => {
+        const row = await ctx.db
+          .query("evidenceLibraryCredentials")
+          .withIndex("by_libraryId_and_credentialKey", (query) =>
+            query
+              .eq("libraryId", libraryId)
+              .eq("credentialKey", AI_PROVIDER_CREDENTIAL_KEY),
+          )
+          .unique();
+        await ctx.db.patch(row!._id, {
+          encryptedValue: encrypt("sk-or-second", ENCRYPTION_KEY),
+          updatedAt: 4242,
+        });
+      });
+    };
+    vi.stubGlobal("fetch", (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      const answer = await network.fetchImpl(input, init);
+      if (url.pathname === "/api/library-config/health") await replaceKey();
+      return answer;
+    }) as typeof fetch);
+
+    expect(
+      await deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ status: "failed" });
+    const operation = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(deployment.activated.operationId),
+    );
+    expect(operation).toMatchObject({ status: "failed" });
+    // The library keeps the revision it was already serving.
+    const library = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(libraryId),
+    );
+    expect(library?.activeRevisionId).not.toBe(deployment.activated.revisionId);
   });
 
   it("ignores orphan public publish queues when activation starts", async () => {

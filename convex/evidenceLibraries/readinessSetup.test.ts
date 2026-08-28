@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import { createDeployedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 
 describe("Evidence Library readiness completion", () => {
   beforeEach(() => {
@@ -16,6 +17,57 @@ describe("Evidence Library readiness completion", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+  });
+
+  it("refuses to finish a setup whose AI key was replaced along the way", async () => {
+    const fixture = await createDeployedSetupFixture("readiness-ai-key");
+    const libraryId = fixture.created.libraryId;
+    const args = {
+      libraryId,
+      operationId: fixture.created.setupOperationId,
+      attemptToken: fixture.attemptToken,
+      attemptCount: fixture.attemptCount,
+    };
+    await fixture.t.mutation(
+      internal.evidenceLibraries.readinessSetup.prepareReadinessSetup,
+      args,
+    );
+    // The owner replaces the key while the new library is being made live.
+    await fixture.t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("evidenceLibraryCredentials")
+        .withIndex("by_libraryId_and_credentialKey", (query) =>
+          query
+            .eq("libraryId", libraryId)
+            .eq("credentialKey", AI_PROVIDER_CREDENTIAL_KEY),
+        )
+        .unique();
+      if (row) {
+        await ctx.db.patch(row._id, { updatedAt: 4242 });
+        return;
+      }
+      await ctx.db.insert("evidenceLibraryCredentials", {
+        libraryId,
+        credentialKey: AI_PROVIDER_CREDENTIAL_KEY,
+        pathPattern: "/ai/providers/*/apiKey",
+        instanceKey: "openrouter",
+        encryptedValue: "ciphertext",
+        validationState: "untested",
+        createdByClerkUserId: "user_readiness_ai_key",
+        updatedByClerkUserId: "user_readiness_ai_key",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.readinessSetup.completeReadinessSetup,
+        args,
+      ),
+    ).rejects.toThrow(/changed while the library was publishing/);
+    expect(
+      await fixture.t.run((ctx) => ctx.db.get(libraryId)),
+    ).not.toMatchObject({ state: "active" });
   });
 
   it("activates the frozen revision only after deployment readiness passes", async () => {

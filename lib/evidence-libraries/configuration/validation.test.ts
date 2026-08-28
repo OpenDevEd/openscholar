@@ -370,8 +370,9 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     ).toThrow(ConfigurationAssemblyError);
   });
 
-  test("never hands the key to another vendor or to a second provider", () => {
+  test("never hands the key to another vendor, a second provider, or none", () => {
     const apply = createAiProviderKey("sk-or-stored");
+    expect(() => apply([])).toThrow(ConfigurationAssemblyError);
     expect(() => apply([{ provider: "openai", enabled: true }])).toThrow(
       ConfigurationAssemblyError,
     );
@@ -418,6 +419,9 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       "/ai/providers/0/enabled",
     ],
     ["AI answers on with no provider at all", [], true, "/ai/providers"],
+    // An AI row that is there must hold one provider, even with AI off. Only
+    // a library that never saved the row has none.
+    ["a saved AI row with no provider", [], false, "/ai/providers"],
   ])(
     "refuses %s when the configuration is assembled",
     (_name, providers, featuresAi, pointer) => {
