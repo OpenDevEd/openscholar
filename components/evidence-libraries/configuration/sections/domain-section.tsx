@@ -3,7 +3,7 @@
 import { useAction, useMutation } from "convex/react";
 import { Copy, Link2, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,17 +42,28 @@ type DomainRow = {
   failure?: DomainFailure;
   certificateState?: "pending" | "active" | "failed";
   attached: boolean;
+  removing: boolean;
   recordName: string;
   recordValue: string;
 };
 
-const STATE_TONE: Record<DomainRow["state"], StatusTone> = {
-  added: "neutral",
-  pointing: "neutral",
-  verified: "running",
-  active: "success",
+/** How the mock draws a domain's state. The server's five states map onto it. */
+type DnsStatus = "none" | "pending" | "checking" | "verified" | "failed";
+
+const STATUS_TONE: Record<DnsStatus, StatusTone> = {
+  none: "neutral",
+  pending: "neutral",
+  checking: "running",
+  verified: "success",
   failed: "danger",
 };
+
+function dnsStatusOf(row: DomainRow, checking: boolean): DnsStatus {
+  if (checking) return "checking";
+  if (row.state === "failed") return "failed";
+  if (row.state === "verified" || row.state === "active") return "verified";
+  return "pending";
+}
 
 /** A bare domain has no room for the record every domain host needs. */
 function isApex(host: string): boolean {
@@ -61,10 +72,12 @@ function isApex(host: string): boolean {
 
 /**
  * The library's own web address. The owner adds two records where they manage
- * the domain, presses Check, and the library answers on the address. Domain
- * is not part of Save or Activate: every button here applies straight away.
+ * the domain, presses Check DNS, and the library answers on the address.
+ *
+ * Domain is not part of Save or Activate: every button here applies straight
+ * away.
  */
-export function DomainSection({
+export const DomainSection = memo(function DomainSection({
   libraryId,
 }: {
   libraryId: Id<"evidenceLibraries">;
@@ -78,20 +91,14 @@ export function DomainSection({
   const checkDomain = useAction(api.evidenceLibraries.domainActions.checkDomain);
   const removeDomain = useAction(api.evidenceLibraries.domainActions.removeDomain);
   const setPrimary = useMutation(api.evidenceLibraries.versions.setDomainPrimary);
-  const [host, setHost] = useState("");
-  const [busy, setBusy] = useState<null | "add" | "check" | "remove" | "toggle">(
-    null,
-  );
+  const [custom, setCustom] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const domain: DomainRow | undefined = data?.domains[0];
-  const verified =
-    domain?.state === "verified" || domain?.state === "active";
+  const domains = data?.domains ?? [];
+  const canAdd = Boolean(data?.platformReady) && domains.length < 5;
 
-  async function run<T>(
-    kind: "add" | "check" | "remove" | "toggle",
-    work: () => Promise<T>,
-  ) {
-    setBusy(kind);
+  async function run<T>(key: string, work: () => Promise<T>) {
+    setBusy(key);
     try {
       return await work();
     } catch (error) {
@@ -105,7 +112,7 @@ export function DomainSection({
   }
 
   async function onAdd() {
-    const typed = host.trim();
+    const typed = custom.trim();
     if (!typed) return;
     const added = await run("add", () => addDomain({ libraryId, host: typed }));
     if (!added) return;
@@ -113,17 +120,27 @@ export function DomainSection({
       toast.error(t(`refused.${added.reason}`));
       return;
     }
-    setHost("");
+    setCustom("");
   }
 
-  async function onCheck(domainId: Id<"evidenceLibraryDomains">) {
-    const checked = await run("check", () => checkDomain({ libraryId, domainId }));
+  async function onCheck(row: DomainRow) {
+    const checked = await run(row.domainId, () =>
+      checkDomain({ libraryId, domainId: row.domainId }),
+    );
     if (!checked) return;
+    if (checked.status === "busy") {
+      toast.error(t("busy"));
+      return;
+    }
+    if (checked.status === "check-failed") {
+      toast.error(t("failure.check-failed"));
+      return;
+    }
     if (checked.state === "failed") {
       toast.error(t(`failure.${checked.failure ?? "check-failed"}`));
-    } else {
-      toast.success(t(`status.${checked.state}`));
+      return;
     }
+    toast.success(t(`status.${dnsStatusOf({ ...row, state: checked.state }, false)}`));
   }
 
   function copy(value: string) {
@@ -138,12 +155,10 @@ export function DomainSection({
       icon={Link2}
       title={ts("domain")}
       description={t("description")}
-      data-domain-state={domain?.state ?? "none"}
+      data-domain-state={domains[0]?.state ?? "none"}
     >
       <Field label={t("platformLabel")} hint={t("platformHint")}>
-        {(id) => (
-          <ReadOnlyValue id={id} value={data?.platformAddress ?? ""} />
-        )}
+        {(id) => <ReadOnlyValue id={id} value={data?.platformAddress ?? ""} />}
       </Field>
 
       {data && !data.platformReady ? (
@@ -152,21 +167,24 @@ export function DomainSection({
         </Panel>
       ) : null}
 
-      {data?.platformReady && !domain ? (
-        <Field label={t("customLabel")} hint={t("customHint")}>
+      {canAdd ? (
+        <Field
+          label={domains.length === 0 ? t("customLabel") : t("addAnother")}
+          hint={t("customHint")}
+        >
           {(id) => (
             <div className="flex gap-2">
               <Input
                 id={id}
                 className="bg-background font-mono text-sm"
                 placeholder="library.example.org"
-                value={host}
-                onChange={(event) => setHost(event.target.value)}
+                value={custom}
+                onChange={(event) => setCustom(event.target.value)}
               />
               <Button
                 type="button"
                 variant="outline"
-                disabled={busy !== null || !host.trim()}
+                disabled={busy !== null || !custom.trim()}
                 onClick={() => void onAdd()}
               >
                 {busy === "add" ? <Spinner /> : null}
@@ -177,19 +195,48 @@ export function DomainSection({
         </Field>
       ) : null}
 
-      {domain ? (
-        <>
-          <Field label={t("customLabel")}>
-            {(id) => <ReadOnlyValue id={id} value={domain.host} locked={false} />}
-          </Field>
+      {domains.map((domain) => {
+        const checking = busy === domain.domainId;
+        const status = dnsStatusOf(domain, checking);
+        const records = [
+          { type: "CNAME", name: domain.host, value: data?.target ?? "" },
+          { type: "TXT", name: domain.recordName, value: domain.recordValue },
+        ];
+        return (
+          <FieldGroup
+            key={domain.domainId}
+            title={t("recordsHeading")}
+            hint={t("recordsHint")}
+            data-domain-host={domain.host}
+            action={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy !== null || domain.removing}
+                onClick={() =>
+                  void run(domain.domainId, () =>
+                    removeDomain({ libraryId, domainId: domain.domainId }),
+                  )
+                }
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {domain.removing ? t("removing") : t("remove")}
+              </Button>
+            }
+          >
+            <Field label={t("customLabel")}>
+              {(id) => (
+                <ReadOnlyValue id={id} value={domain.host} locked={false} />
+              )}
+            </Field>
 
-          {isApex(domain.host) ? (
-            <Panel tone="muted" role="note">
-              <p className="text-sm">{t("apex")}</p>
-            </Panel>
-          ) : null}
+            {isApex(domain.host) ? (
+              <Panel tone="muted" role="note">
+                <p className="text-sm">{t("apex")}</p>
+              </Panel>
+            ) : null}
 
-          <FieldGroup title={t("recordsHeading")} hint={t("recordsHint")}>
             <div className="rounded-lg border border-border/50 bg-background">
               <Table>
                 <TableHeader>
@@ -200,18 +247,7 @@ export function DomainSection({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {[
-                    {
-                      type: "CNAME",
-                      name: domain.host,
-                      value: data?.target ?? "",
-                    },
-                    {
-                      type: "TXT",
-                      name: domain.recordName,
-                      value: domain.recordValue,
-                    },
-                  ].map((record) => (
+                  {records.map((record) => (
                     <TableRow key={record.type}>
                       <TableCell className="font-mono text-xs">
                         {record.type}
@@ -241,81 +277,68 @@ export function DomainSection({
                 </TableBody>
               </Table>
             </div>
-          </FieldGroup>
 
-          <Panel
-            tone="muted"
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip
-                tone={STATE_TONE[domain.state]}
-                data-domain-status={domain.state}
-              >
-                {busy === "check" ? <Spinner /> : null}
-                {domain.state === "failed" && domain.failure
-                  ? t(`failure.${domain.failure}`)
-                  : t(`status.${domain.state}`)}
-              </StatusChip>
-              {domain.attached ? (
-                <StatusChip
-                  tone={domain.certificateState === "active" ? "success" : "neutral"}
-                  data-certificate={domain.certificateState ?? "pending"}
-                >
-                  {domain.certificateState === "active"
-                    ? t("tlsActive")
-                    : t("tlsPending")}
+            <Panel
+              tone="muted"
+              className="flex flex-wrap items-center justify-between gap-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusChip tone={STATUS_TONE[status]} data-dns-status={status}>
+                  {checking ? <Spinner /> : null}
+                  {/* A failed check names what actually went wrong; the mock's
+                      wording is the answer for a domain with no records. */}
+                  {status === "failed" && domain.failure
+                    ? t(`failure.${domain.failure}`)
+                    : t(`status.${status}`)}
                 </StatusChip>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-2">
+                {domain.attached ? (
+                  <StatusChip
+                    tone={
+                      domain.certificateState === "active" ? "success" : "neutral"
+                    }
+                    data-certificate={domain.certificateState ?? "pending"}
+                  >
+                    {domain.certificateState === "active"
+                      ? t("tlsActive")
+                      : t("tlsPending")}
+                  </StatusChip>
+                ) : null}
+              </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 disabled={busy !== null}
-                onClick={() => void onCheck(domain.domainId)}
+                onClick={() => void onCheck(domain)}
               >
-                {busy === "check" ? <Spinner /> : null}
+                {checking ? <Spinner /> : null}
                 {t("checkDns")}
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={busy !== null}
-                onClick={() =>
-                  void run("remove", () =>
-                    removeDomain({ libraryId, domainId: domain.domainId }),
-                  )
-                }
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {t("remove")}
-              </Button>
-            </div>
-          </Panel>
+            </Panel>
 
-          <ToggleRow
-            label={t("redirectLabel")}
-            hint={t("redirectHint")}
-            checked={domain.role === "primary"}
-            disabled={busy !== null || domain.state !== "active"}
-            disabledReason={
-              verified ? t("redirectWaiting") : t("redirectDisabled")
-            }
-            onChange={(checked) =>
-              void run("toggle", () =>
-                setPrimary({
-                  libraryId,
-                  domainId: domain.domainId,
-                  primary: checked,
-                }),
-              )
-            }
-          />
-        </>
-      ) : null}
+            <ToggleRow
+              label={t("redirectLabel")}
+              hint={t("redirectHint")}
+              checked={domain.role === "primary"}
+              disabled={busy !== null || domain.state !== "active"}
+              disabledReason={
+                domain.state === "verified"
+                  ? t("redirectWaiting")
+                  : t("redirectDisabled")
+              }
+              onChange={(checked) =>
+                void run(domain.domainId, () =>
+                  setPrimary({
+                    libraryId,
+                    domainId: domain.domainId,
+                    primary: checked,
+                  }),
+                )
+              }
+            />
+          </FieldGroup>
+        );
+      })}
     </SectionCard>
   );
-}
+});

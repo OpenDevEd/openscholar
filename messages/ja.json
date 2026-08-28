@@ -2871,10 +2871,10 @@
       "checkDns": "Check DNS",
       "failed": "That did not work. Try again.",
       "status": {
-        "added": "Not verified",
-        "pointing": "Address record found",
+        "none": "Not verified",
+        "pending": "Not verified",
+        "checking": "Checking…",
         "verified": "Verified",
-        "active": "Working",
         "failed": "Records not found"
       },
       "failure": {
@@ -2901,7 +2901,10 @@
       "redirectLabel": "Send the platform address to the custom domain",
       "redirectHint": "Visitors to the platform address land on the custom domain. Everyone signed in is signed out.",
       "redirectDisabled": "Verify the domain first.",
-      "redirectWaiting": "Wait until the domain is working."
+      "redirectWaiting": "Wait until the domain is working.",
+      "addAnother": "Add another domain",
+      "busy": "A check is already running for that domain",
+      "removing": "Removing"
     }
   },
   "evidenceLibraries": {

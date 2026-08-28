@@ -229,6 +229,20 @@ beforeAll(() => {
   }
 });
 
+/**
+ * Enters a value in one event. The page re-renders on every keystroke, so
+ * typing a long value character by character costs seconds and proves
+ * nothing these tests are about.
+ */
+async function fillField(
+  user: ReturnType<typeof userEvent.setup>,
+  field: HTMLElement,
+  value: string,
+) {
+  await user.click(field);
+  await user.paste(value);
+}
+
 describe("<ConfigurationWorkspace>", () => {
   let saved: unknown[];
   let activated: unknown[];
@@ -280,7 +294,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
-    await user.type(name, "Renamed Library");
+    await fillField(user, name, "Renamed Library");
     expect(screen.getByText("unsaved")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "save" }));
 
@@ -338,7 +352,7 @@ describe("<ConfigurationWorkspace>", () => {
     await renderWorkspace();
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
-    await user.type(name, "Renamed Library");
+    await fillField(user, name, "Renamed Library");
     expect(identityCard().getByText("sectionState.edited")).toBeInTheDocument();
 
     await user.click(identityCard().getByRole("button", { name: "fields.reset" }));
@@ -364,7 +378,7 @@ describe("<ConfigurationWorkspace>", () => {
     await renderWorkspace();
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
-    await user.type(name, "Renamed Library");
+    await fillField(user, name, "Renamed Library");
 
     await user.click(screen.getByRole("button", { name: "activate" }));
     await user.click(screen.getByRole("button", { name: "activateConfirm" }));
@@ -491,7 +505,7 @@ describe("<ConfigurationWorkspace>", () => {
     await user.click(screen.getByRole("button", { name: "danger.deleteButton" }));
     const confirm = screen.getByRole("button", { name: "deleteDialog.confirm" });
     expect(confirm).toBeDisabled();
-    await user.type(screen.getByLabelText("deleteDialog.typeToConfirm"), "Saved Library");
+    await fillField(user, screen.getByLabelText("deleteDialog.typeToConfirm"), "Saved Library");
     expect(confirm).toBeEnabled();
     await user.click(confirm);
 
@@ -533,10 +547,10 @@ describe("<ConfigurationWorkspace>", () => {
       await user.click(navigation.getByRole("button", { name: "navigation.addLink" }));
       const row = within(document.querySelector("[data-nav-link]") as HTMLElement);
       expect(row.getByRole("alert")).toHaveTextContent("links.labelError");
-      await user.type(row.getByLabelText("links.labelLabel"), "About");
+      await fillField(user, row.getByLabelText("links.labelLabel"), "About");
 
       await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.url");
-      await user.type(row.getByLabelText("links.urlLabel"), "https://example.org/about");
+      await fillField(user, row.getByLabelText("links.urlLabel"), "https://example.org/about");
       expect(row.getByRole("switch", { name: "links.newTab" })).toBeInTheDocument();
       expect(navigation.getByText("sectionState.edited")).toBeInTheDocument();
     });
@@ -547,9 +561,9 @@ describe("<ConfigurationWorkspace>", () => {
       const navigation = card("navigation");
       await user.click(navigation.getByRole("button", { name: "navigation.addLink" }));
       const row = within(document.querySelector("[data-nav-link]") as HTMLElement);
-      await user.type(row.getByLabelText("links.labelLabel"), "About");
+      await fillField(user, row.getByLabelText("links.labelLabel"), "About");
       await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.url");
-      await user.type(row.getByLabelText("links.urlLabel"), "https://example.org/about");
+      await fillField(user, row.getByLabelText("links.urlLabel"), "https://example.org/about");
 
       await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.page");
       expect(row.queryByLabelText("links.urlLabel")).not.toBeInTheDocument();
@@ -582,7 +596,7 @@ describe("<ConfigurationWorkspace>", () => {
 
       await user.click(contactForm);
       expect(contact.getByText("sectionState.attention")).toBeInTheDocument();
-      await user.type(contact.getByLabelText("contact.contactRecipient"), "team@example.org");
+      await fillField(user, contact.getByLabelText("contact.contactRecipient"), "team@example.org");
       expect(contact.getByText("sectionState.edited")).toBeInTheDocument();
 
       await user.click(takedown);
@@ -621,7 +635,7 @@ describe("<ConfigurationWorkspace>", () => {
 
         await user.click(within(privacy).getByRole("tab", { name: "contact.legalKinds.url" }));
         expect(privacy).toHaveAttribute("data-legal-kind", "url");
-        await user.type(within(privacy).getByLabelText("contact.legalUrl"), "https://example.org/privacy");
+        await fillField(user, within(privacy).getByLabelText("contact.legalUrl"), "https://example.org/privacy");
 
         await user.click(within(privacy).getByRole("tab", { name: "contact.legalKinds.text" }));
         expect(privacy).toHaveAttribute("data-legal-kind", "text");
@@ -756,12 +770,18 @@ describe("<ConfigurationWorkspace>", () => {
       const user = userEvent.setup();
       await renderWorkspace();
       const analytics = card("analytics");
+      // Pasted rather than typed: the page re-renders on every keystroke, and
+      // what this test is about is what Save sends, not per-character state.
+      const fill = async (label: string, value: string) => {
+        await user.click(analytics.getByLabelText(label));
+        await user.paste(value);
+      };
       await user.click(analytics.getByRole("switch", { name: "analytics.googleLabel" }));
-      await user.type(analytics.getByLabelText("analytics.measurementIdLabel"), "g-abcd12");
+      await fill("analytics.measurementIdLabel", "g-abcd12");
       await user.click(analytics.getByRole("switch", { name: "analytics.posthogLabel" }));
       expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
-      await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
-      await user.type(analytics.getByLabelText("analytics.keyLabel"), "phc_12345678901234567890");
+      await fill("analytics.hostLabel", "https://eu.i.posthog.com");
+      await fill("analytics.keyLabel", "phc_12345678901234567890");
       expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
 
       await user.click(screen.getByRole("button", { name: "save" }));

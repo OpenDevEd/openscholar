@@ -13,6 +13,7 @@ type DomainRow = {
   failure?: string;
   certificateState?: "pending" | "active" | "failed";
   attached: boolean;
+  removing: boolean;
   recordName: string;
   recordValue: string;
 };
@@ -83,6 +84,7 @@ function row(overrides: Partial<DomainRow> = {}): DomainRow {
     role: "redirect",
     state: "added",
     attached: false,
+    removing: false,
     recordName: "_openscholar.evidence.example.org",
     recordValue: "os-verify=7f3a9c1e5b2d4a8f",
     ...overrides,
@@ -137,14 +139,65 @@ describe("DomainSection", () => {
     expect(txt.getByText("os-verify=7f3a9c1e5b2d4a8f")).toBeInTheDocument();
   });
 
+  it("renders every domain the library holds, not just the first", () => {
+    mocks.data.domains = [
+      row(),
+      row({ domainId: "domain_2", host: "www.example.org" }),
+    ];
+    render(<DomainSection libraryId={libraryId} />);
+    expect(
+      document.querySelectorAll("[data-domain-host]"),
+    ).toHaveLength(2);
+    expect(
+      document.querySelector("[data-domain-host='www.example.org']"),
+    ).not.toBeNull();
+    // Adding another is still offered until the limit.
+    expect(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.add",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("stops offering another domain at the limit", () => {
+    mocks.data.domains = [1, 2, 3, 4, 5].map((index) =>
+      row({ domainId: `domain_${index}`, host: `d${index}.example.org` }),
+    );
+    render(<DomainSection libraryId={libraryId} />);
+    expect(
+      screen.queryByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.add",
+      }),
+    ).toBeNull();
+  });
+
+  it("shows the mock's own words for each state", () => {
+    mocks.data.domains = [row({ state: "added" })];
+    const { unmount } = render(<DomainSection libraryId={libraryId} />);
+    expect(
+      screen.getByText("evidenceLibraryConfiguration.domain.status.pending"),
+    ).toBeInTheDocument();
+    expect(document.querySelector("[data-dns-status]")).toHaveAttribute(
+      "data-dns-status",
+      "pending",
+    );
+    unmount();
+
+    mocks.data.domains = [row({ state: "active", attached: true })];
+    render(<DomainSection libraryId={libraryId} />);
+    expect(
+      screen.getByText("evidenceLibraryConfiguration.domain.status.verified"),
+    ).toBeInTheDocument();
+  });
+
   it("names the reason the last check failed", () => {
     mocks.data.domains = [row({ state: "failed", failure: "no-records" })];
     render(<DomainSection libraryId={libraryId} />);
     expect(
       screen.getByText("evidenceLibraryConfiguration.domain.failure.no-records"),
     ).toBeInTheDocument();
-    expect(document.getElementById("sec-domain")).toHaveAttribute(
-      "data-domain-state",
+    expect(document.querySelector("[data-dns-status]")).toHaveAttribute(
+      "data-dns-status",
       "failed",
     );
   });
