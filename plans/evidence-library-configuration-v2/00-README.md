@@ -81,6 +81,7 @@ answer machine calls yet, so pickers have nothing to read.
 | 11 | `11-address-reservation-and-recovery.md` | Address reservation and recovery |
 | 12 | `12-organisation-gate.md` | Evidence Libraries switched on per organisation in Clerk |
 | 13 | `13-large-list-pickers.md` | Server-driven pickers for institutions, collections, link targets and groups |
+| 14 | `14-admin-handoff.md` | `/admin` redirects to OpenScholar, which signs in, checks access and sends the cookie back |
 
 ## Lanes and order
 
@@ -176,6 +177,8 @@ once the real page has replaced it.
 | C · Page | `openscholar/page-sprint` | `codex/lane-page` (renamed per plan) | `dev/agents/page` = `calm-labrador-815` | 3013 |
 | R · Runtime (plan 13) | `new-el-pickers` | `codex/institutions-paging` | none | — |
 | P · Pickers (plan 13) | `openscholar/pickers-sprint` | `codex/large-list-pickers` | `dev/agents/page` = `calm-labrador-815` | 3013 |
+| R2 · Runtime (plan 14) | `new-el-admin-handoff` | `codex/admin-handoff` | none | — |
+| O · OpenScholar (plan 14) | `openscholar/admin-handoff` | `codex/admin-handoff` | `dev/agents/data` = `bright-stork-673` | 3012 |
 
 All three lane deployments expire 2026-09-09, carry daily usage caps, and hold
 the cloud dev env plus the `EL_*` values (each with its own `EL_CONVEX_SITE_URL`).

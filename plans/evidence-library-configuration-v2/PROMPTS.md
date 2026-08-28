@@ -657,3 +657,65 @@ START NOW: read the plan and the README, read convex/_generated/ai/guidelines.md
 
 Go.
 ```
+
+## Plan 14 — admin handoff, lane R2 (runtime)
+
+```text
+Implement lane R2 of plans/evidence-library-configuration-v2/14-admin-handoff.md (the plan lives in the OpenScholar repository at /Users/mcharrad/Documents/Github/openscholar/dev-self; read it there). Read that repository's plans/evidence-library-configuration-v2/00-README.md and this repository's AGENTS.md first.
+Depends on: new-el #141 (Runtime acceptance fix) — rebase onto main once it merges; until then the acceptance suite may stop at verifyOwnerLegalText, which is not yours. Lane O builds the OpenScholar side in parallel to the URL contract in Decisions 1–2.
+
+Worktree /Users/mcharrad/Documents/Github/new-el-admin-handoff, branch codex/admin-handoff from origin/main. Run `npm ci` first. Allow about three hours and keep working without asking questions the plan already answers.
+
+STANDING RULES:
+1. Reuse first: `loginPageUrl` from `getAdminAccessConfig`, `getExternalRequestOrigin`/`hasMatchingRequestOrigin` in src/lib/runtime-routing.ts, the existing session route. No new config fields.
+2. No legacy code: delete AdminAccess.tsx and the access-error page; no card in any state; the 401s on API routes stay.
+3. `return` is validated on the runtime: a path only, under /admin or /<locale>/admin, else /admin. Never redirect to anything built from input except that validated path; the external target is always loginPageUrl.
+4. Tests: red → green for the routing helper and the session routes; update the e2e helper and specs the plan names; the acceptance step at tools/runRuntimeAcceptance.ts:432 must assert the redirect, not a 200. Behaviour only.
+5. `npm run check:changed` (Fallow) before every push. Run `npm run test:acceptance` with your own image tags (the five EVIDENCE_LIBRARY_ACCEPTANCE_*_IMAGE variables) and `npm run test:acceptance:cleanup`. Never restart Docker Desktop; never touch containers you did not create (what2 and minio are off limits).
+6. Research instead of guessing; use other agents only for read-only investigation.
+
+EXECUTION RHYTHM: helper test → page redirect → exchange route → e2e helper and specs → acceptance step → doc. Commit after every working unit with `[plan-14]`.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-14]` on every commit; never commit while relevant tests fail; never use --no-verify; push and open a PR to main with `gh pr create`; do not merge.
+
+WHEN TO STOP: only for a real blocker (plans/…/14-BLOCKER.md in the OpenScholar repository). Fallow, unit tests and the acceptance run must pass first (or stop at the known verifyOwnerLegalText failure if #141 is not merged yet — say so).
+
+DEVIATIONS: if the plan is wrong, commit safe work, fix the numbered plan in the OpenScholar repository with `docs: [plan-14] revise <section> — <reason>`, then continue.
+
+START NOW: read the plan and the README, run `git status`, then start the routing helper test.
+
+Go.
+```
+
+## Plan 14 — admin handoff, lane O (OpenScholar)
+
+```text
+Implement lane O of plans/evidence-library-configuration-v2/14-admin-handoff.md.
+Read plans/evidence-library-configuration-v2/00-README.md, AGENTS.md, and convex/_generated/ai/guidelines.md first.
+Depends on: plans 01–13 (13 is in flight on other files; do not touch its files). Lane R2 builds the runtime side in parallel to the URL contract in Decisions 1–2.
+
+Worktree /Users/mcharrad/Documents/Github/openscholar/admin-handoff, branch codex/admin-handoff from origin/dev. Run `npm ci` first. Convex lane in .env.local (bright-stork-673). Next port 3012 (`npx next dev -p 3012`). Allow about four hours and keep working without asking questions the plan already answers.
+
+STANDING RULES:
+1. Reuse first: `storeIssuedAdminLoginCode` and the audit rows, `readEvidenceLibraryAdminLaunchTarget`, `AuthStatePanel`, `LibraryPageShell`/`Panel` primitives for the panels, the sign-in page's redirect_url handling. Do not add a client card; the route is a server component that redirects or renders one panel.
+2. No legacy code: delete admin-launch.tsx, open-admin-launch.ts and the client action path; remove `getAdminLaunchState` if nothing else reads it; remove dead copy keys.
+3. Access is decided by membership in the library's organisation, not the token's active organisation (Decision 4). The plan-12 switch does not gate this path.
+4. Convex rules: validators on args and returns; every returned field in `returns`; `"use node"` only where needed; read convex/_generated/ai/guidelines.md. Server-side calls use `fetchAction`/`fetchQuery` from `convex/nextjs` with `auth().getToken({ template: "convex" })`.
+5. No useEffect for app state.
+6. Tests: run the `test-decision` skill first; behaviour, roles, labels, data-* only; every test the plan names, including the new e2e spec.
+7. Deployment checks: upload only with `npx convex dev --once` to the lane; never `npm run convex:push`; never touch the shared deployment or dev-self. You may set up one disposable library on the development platform for the browser gate and must delete it before opening the PR. Never touch Docker containers you did not create.
+8. Research instead of guessing: the code, the Convex guidelines, node_modules/next/dist/docs/ (redirect() in server components, route handlers), the Clerk Next.js docs in node_modules/@clerk.
+9. Use other agents only for read-only investigation; never for UI work.
+
+EXECUTION RHYTHM: action test → action → decision helper test → helper → page → panels → e2e → cleanup of the old card. Commit after every working unit with `[plan-14]`.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-14]` on every commit; never commit while relevant tests fail; never use --no-verify; push and open a PR to dev with `gh pr create`; do not merge.
+
+WHEN TO STOP: only for a real blocker (plans/…/14-BLOCKER.md). `npx tsc --noEmit`, the vitest sets, the e2e spec, `npx convex dev --once`, and the browser gate with screenshots in /tmp/admin-handoff/ must all pass first.
+
+DEVIATIONS: if the plan is wrong, commit safe work, fix the numbered plan, commit `docs: [plan-14] revise <section> — <reason>`, then continue.
+
+START NOW: read the plan and the README, read convex/_generated/ai/guidelines.md, run `git status`, confirm no other Convex uploader is running on this lane, then start the action test.
+
+Go.
+```
