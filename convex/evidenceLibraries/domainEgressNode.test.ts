@@ -86,15 +86,18 @@ describe("createPinnedFetch", () => {
   });
 
   it("never reaches a server it was not pinned to", async () => {
-    // Pinned somewhere else, the client cannot arrive here however the name
-    // resolves: the connector offers only the address it was given.
+    // With nothing on its list the connector has nothing to offer, so the
+    // request cannot leave however the name resolves. No routing is
+    // involved, which is what makes this the same everywhere.
     const before = served;
     const pinned = createPinnedFetch({
       host: HOST,
-      addresses: ["203.0.113.9"],
+      addresses: [],
       tlsOptions: { ca },
     });
-    await expect(pinned(`https://${HOST}:${port}/health`)).rejects.toThrow();
+    await expect(
+      pinned(`https://${HOST}:${port}/health`),
+    ).rejects.toBeInstanceOf(DomainEgressRefused);
     expect(served).toBe(before);
   });
 
