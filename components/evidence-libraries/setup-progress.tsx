@@ -17,6 +17,7 @@ import {
   setupSteps,
 } from "@/lib/evidence-libraries/setup/steps";
 import { cn } from "@/lib/utils";
+import { AdminAreaLink } from "./admin-area-link";
 import { FieldGroup } from "./configuration/fields";
 import { InlineNotice } from "./configuration/section-card";
 import { LibraryAddressLink } from "./library-address-link";
@@ -101,10 +102,10 @@ export function SetupProgressView({
           ) : null}
           {active ? (
             <Button asChild>
-              <Link href={`${base}/admin`}>
+              <AdminAreaLink libraryId={setup.library._id}>
                 <ExternalLink />
                 {t("openAdmin")}
-              </Link>
+              </AdminAreaLink>
             </Button>
           ) : null}
         </>

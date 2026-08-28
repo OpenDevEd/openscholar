@@ -139,8 +139,18 @@ OpenScholar (`dev` b540cc5e):
 6. **The plan-12 switch stays out of this path** (Exception B holds): an
    active library's admin stays reachable for its members when the
    organisation is switched off.
-7. **No interstitial copy.** The page renders nothing before redirecting;
-   Next's `redirect()` in a server component sends the `Location` header.
+7. **The admin address is a route handler, not a page.**
+   `app/evidence-libraries/[libraryId]/admin/route.ts` answers every request
+   with a real `303` and a `Location` header: the library's
+   `/api/admin/session?code=…&return=…` when the person may go there, or
+   `/evidence-libraries/<id>/admin/status` when they may not. Revised on
+   2026-08-28 after the Codex review: a page cannot do this, because Next
+   streams a dynamic page's answer and turns `redirect()` into a `200` whose
+   body carries the redirect, which only a browser running JavaScript
+   follows. Only `GET` is served; every other method answers `405`. The
+   status page renders the panels and asks a read-only query
+   (`readAdminHandoffState`), so opening it never spends a code and no copy
+   travels in the query string.
 
 ## Lanes
 
@@ -191,9 +201,18 @@ in parallel; the end-to-end proof waits for both to merge.
    library that is not ready → `not_ready` with `isOwner`; the stored
    code, audit row and `launchUrl` match today's shape plus the validated
    `return`; an unsafe `returnPath` is dropped.
-2. A pure decision helper (`lib/evidence-libraries/admin-handoff.ts`)
-   mapping the action result and the query (`error`) to one of
-   `redirect | no_access | not_ready | invalid_code`, unit-tested.
+2. Pure helpers in `lib/evidence-libraries/admin-handoff.ts`: the addresses
+   the route and the status page use, and the return-path check, which
+   rejects encoded separators, encoded dot segments and double encoding on
+   the decoded value of every segment.
+   `tests/app/evidence-library-admin-route.test.ts` checks the route
+   handler's status code and `Location` for each answer, including `405` for
+   every method except `GET` — `OPTIONS` included, or Next answers it itself
+   — so a link check or a preview card can never spend a code. Every link in
+   the app that points at the admin route is a plain `<a>` — `AdminAreaLink`
+   on the list and setup pages, `AuthStatePanel` with
+   `primaryNavigation="document"` on the status page — so Next never fetches
+   it before the click.
 3. `tests/components/evidence-libraries/admin-panels.test.tsx`: the three
    panels render their copy and links (roles, names); no CSS assertions.
 4. Delete `admin-launch.test.tsx` with the card. Update
@@ -201,10 +220,12 @@ in parallel; the end-to-end proof waits for both to merge.
    `return`.
 5. New `e2e/evidence-library-admin.spec.ts`: signed out, open the admin
    route → `/sign-in` with `redirect_url` carrying the route and its query;
-   after sign-in the browser is redirected off-site to the library origin
-   (assert the navigation target with request interception, since the
-   library is not running in e2e); the E2E organisation is switched on in
-   Clerk, so this passes on CI.
+   signed in, a library the person cannot reach → the no-access panel with
+   the page still on OpenScholar; `?error=invalid_code` → the expired-link
+   panel whose "Try again" link drops the error. Revised on 2026-08-28: the
+   spec cannot cover the off-site redirect, because no e2e organisation has
+   a live library and a lane cannot create one (its Coolify address is
+   internal). The browser gate covers that step instead.
 
 ## Deployability gate
 
@@ -223,10 +244,12 @@ in parallel; the end-to-end proof waits for both to merge.
 2. `npx convex dev --once` on the lane ends with `Convex functions ready!`;
    `npx convex logs --history 100` clean.
 3. Browser on the lane's port: signed out, open
-   `/evidence-libraries/<id>/admin` → sign-in → back → the browser is sent
-   to `<library>/api/admin/session?code=…&return=%2Fadmin` (capture the
-   `Location`; the lane library may not be running). As a user outside the
-   organisation: the no-access panel. Screenshots in `/tmp/admin-handoff/`.
+   `/evidence-libraries/<id>/admin` → sign-in → back → the route answers
+   `303` with `Location: <library>/api/admin/session?code=…&return=…`
+   (capture the header with a signed-in request that does not follow
+   redirects; the lane library may not be running). Also capture the
+   no-access, not-ready and expired-link panels. Screenshots in
+   `/tmp/admin-handoff/`.
 4. Push; PR to `dev`; do not merge.
 
 ### Integration owner, after both merge
@@ -252,15 +275,15 @@ in parallel; the end-to-end proof waits for both to merge.
 
 ## Known risks
 
-- **Readiness will call every library broken until lane O fixes it.**
-  `requireLibraryRuntimeReady` fetches the library's `/admin` with
-  `redirect: "manual"` and treats anything that is not `2xx` as not ready
-  (`convex/evidenceLibraries/readinessClient.ts:367-382` and `:415`). Once the
-  runtime redirects a signed-out `/admin`, publishing or updating a library
-  fails with `PAGE_NOT_READY`. Lane O must change that one check to accept a
-  `3xx` whose `Location` starts with the library's configured OpenScholar login
-  page, and update `readinessClient.test.ts` with it. Found by lane R2 on
-  2026-08-28 while making the runtime redirect.
+- Readiness only passes for libraries that run the new runtime: a `/admin`
+  that answers with a page of its own now counts as not ready, the answer
+  must be exactly `307`, and the address must match the library's login page
+  by origin *and* path. The
+  shared `EL_RUNTIME_COMMIT_SHA` is bumped right after both PRs merge.
+  Decided after the Codex review on 2026-08-28: no fallback for the old
+  answer.
+  Found by lane R2 on 2026-08-28 while making the runtime redirect: before
+  this change the check treated anything that was not `2xx` as not ready.
 - Open redirect: `return` is validated on the runtime (path only, under
   `/admin`); OpenScholar forwards it only when it starts with a single `/`.
   `launchUrl` is built from the stored `targetBaseUrl`, never from input.
@@ -283,7 +306,8 @@ Lane R2: `src/proxy.ts`, `src/app/[locale]/admin/page.tsx`,
 `tests/e2e/admin-login.ts`, `tests/e2e/admin.spec.ts`,
 `tools/runRuntimeAcceptance.ts`, `docs/evidence-library-operations.md`.
 
-Lane O: `app/evidence-libraries/[libraryId]/admin/page.tsx`,
+Lane O: `app/evidence-libraries/[libraryId]/admin/route.ts` and
+`admin/status/page.tsx` (the old `admin/page.tsx` goes),
 `components/evidence-libraries/admin-launch.tsx` (delete),
 `components/evidence-libraries/admin-panels.tsx` (new),
 `lib/evidence-libraries/open-admin-launch.ts` (delete),

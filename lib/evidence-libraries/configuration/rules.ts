@@ -470,9 +470,15 @@ export function settleFeatures(draft: ConfigurationDraft): ConfigurationDraft {
   return draft;
 }
 
-/** Collections as link targets: the shown title, or the id when none was set. */
+/**
+ * Collections as link targets. `title` is only the owner's own title for
+ * the site; a link editor names the rest from the library itself.
+ */
 export const collectionOptions = (draft: ConfigurationDraft) =>
-  draft.collections.map((collection) => ({ id: collection.id, title: collection.title || collection.id }));
+  draft.collections.map((collection) => ({
+    id: collection.id,
+    title: collection.title?.trim() ? collection.title : undefined,
+  }));
 
 export const newId = (prefix: string) =>
   `${prefix}_${Math.random().toString(36).slice(2, 8)}`;

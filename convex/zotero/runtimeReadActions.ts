@@ -7,12 +7,16 @@ import { action, type ActionCtx } from "../_generated/server";
 import { decrypt } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import {
+  type RuntimeCollectionFacts,
   type RuntimeCollectionsPage,
-  type RuntimeInstitution,
+  type RuntimeInstitutionsPage,
   RuntimeReadError,
-  collectionsCacheKey,
+  RUNTIME_RESOLVE_MAX_IDS,
+  RUNTIME_RESOLVE_MAX_TOTAL_IDS,
   readRuntimeCollections,
+  readRuntimeCollectionsByIds,
   readRuntimeInstitutions,
+  runtimeReadCacheKey,
 } from "./runtimeReadClient";
 
 const collectionValidator = v.object({
@@ -24,6 +28,13 @@ const collectionValidator = v.object({
 });
 
 const institutionValidator = v.object({ name: v.string(), count: v.number() });
+
+const collectionFactsValidator = v.object({
+  id: v.string(),
+  title: v.string(),
+  source: v.string(),
+  count: v.number(),
+});
 
 // `reason: "not-set-up"` means the library has no running runtime yet, so
 // there is nothing to read and the list is empty.
@@ -81,7 +92,7 @@ export const listLibraryCollections = action({
   handler: async (ctx, args): Promise<RuntimeCollectionsPage & { reason?: "not-set-up" }> => {
     const result = await cachedRead<RuntimeCollectionsPage>(
       ctx,
-      { libraryId: args.libraryId, kind: "collections", cacheKey: collectionsCacheKey(args) },
+      { libraryId: args.libraryId, kind: "collections", cacheKey: runtimeReadCacheKey(args) },
       (target) =>
         readRuntimeCollections(fetch, { ...target, query: args.query, cursor: args.cursor }),
     );
@@ -90,17 +101,85 @@ export const listLibraryCollections = action({
 });
 
 export const listRecordInstitutions = action({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.object({ reason: notSetUpValidator, items: v.array(institutionValidator) }),
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    query: v.optional(v.string()),
+    cursor: v.optional(v.string()),
+    sort: v.optional(v.union(v.literal("count"), v.literal("name"))),
+    direction: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+  },
+  returns: v.object({
+    reason: notSetUpValidator,
+    items: v.array(institutionValidator),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args): Promise<RuntimeInstitutionsPage & { reason?: "not-set-up" }> => {
+    const result = await cachedRead<RuntimeInstitutionsPage>(
+      ctx,
+      { libraryId: args.libraryId, kind: "institutions", cacheKey: runtimeReadCacheKey(args) },
+      (target) =>
+        readRuntimeInstitutions(fetch, {
+          ...target,
+          query: args.query,
+          cursor: args.cursor,
+          sort: args.sort,
+          direction: args.direction,
+        }),
+    );
+    return "reason" in result ? { ...result, items: [], nextCursor: null } : result;
+  },
+});
+
+/**
+ * The names and record counts of collections the site already shows, so the
+ * Collections section and every link editor can name them. A library that
+ * cannot answer ids yet gives an empty list, and the page shows the id.
+ */
+export const resolveLibraryCollections = action({
+  args: { libraryId: v.id("evidenceLibraries"), ids: v.array(v.string()) },
+  returns: v.object({
+    reason: notSetUpValidator,
+    items: v.array(collectionFactsValidator),
+  }),
   handler: async (
     ctx,
     args,
-  ): Promise<{ items: RuntimeInstitution[]; reason?: "not-set-up" }> => {
-    const result = await cachedRead<{ items: RuntimeInstitution[] }>(
-      ctx,
-      { libraryId: args.libraryId, kind: "institutions", cacheKey: "all" },
-      (target) => readRuntimeInstitutions(fetch, target),
-    );
-    return "reason" in result ? { ...result, items: [] } : result;
+  ): Promise<{ items: RuntimeCollectionFacts[]; reason?: "not-set-up" }> => {
+    await ctx.runQuery(internal.zotero.runtimeReads.requireRuntimeReadAccess, {
+      libraryId: args.libraryId,
+    });
+    const ids = [...new Set(args.ids)];
+    if (ids.length === 0) return { items: [] };
+    if (ids.length > RUNTIME_RESOLVE_MAX_TOTAL_IDS) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `A site shows at most ${RUNTIME_RESOLVE_MAX_TOTAL_IDS} collections`,
+      );
+    }
+    // A site may show more collections than the library answers at once, so
+    // the list is asked for in batches and put back together here.
+    const found = new Map<string, RuntimeCollectionFacts>();
+    for (let from = 0; from < ids.length; from += RUNTIME_RESOLVE_MAX_IDS) {
+      const batch = ids.slice(from, from + RUNTIME_RESOLVE_MAX_IDS);
+      const result = await cachedRead<{ items: RuntimeCollectionFacts[] }>(
+        ctx,
+        {
+          libraryId: args.libraryId,
+          kind: "collections",
+          cacheKey: runtimeReadCacheKey({ ids: batch }),
+        },
+        (target) => readRuntimeCollectionsByIds(fetch, { ...target, ids: batch }),
+      );
+      if ("reason" in result) return { reason: "not-set-up", items: [] };
+      for (const item of result.items) found.set(item.id, item);
+    }
+    // The answer follows the order that was asked for, whatever order the
+    // library or a warm cache row happened to use.
+    return {
+      items: ids.flatMap((id) => {
+        const item = found.get(id);
+        return item ? [item] : [];
+      }),
+    };
   },
 });

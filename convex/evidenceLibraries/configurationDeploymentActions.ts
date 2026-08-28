@@ -25,7 +25,10 @@ import {
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
-import { assembleEvidenceLibraryRuntimePayload } from "./runtimeConfiguration";
+import {
+  assembleEvidenceLibraryRuntimePayload,
+  buildEvidenceLibraryLoginPageUrl,
+} from "./runtimeConfiguration";
 
 const invalidConfiguration = (message: string) =>
   new CoolifyClientError("INVALID_CONFIGURATION_DEPLOYMENT_CONFIG", message);
@@ -357,6 +360,13 @@ export const runConfigurationDeployment = internalAction({
         runtimeCommit: readiness.runtimeCommit,
         revisionKey: readiness.revisionKey,
         targetBaseUrl: readiness.targetBaseUrl,
+        loginPageUrl: buildEvidenceLibraryLoginPageUrl({
+          libraryId: args.libraryId,
+          appOrigin: requireRuntimeHttpsOrigin(
+            "EL_OPENSCHOLAR_URL",
+            invalidConfiguration,
+          ),
+        }),
         verifierUrl: requireRuntimeHttpsOrigin(
           "EL_RUNTIME_VERIFIER_URL",
           invalidConfiguration,

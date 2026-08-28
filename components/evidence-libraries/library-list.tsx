@@ -21,6 +21,7 @@ import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { initialsOf } from "@/lib/evidence-libraries/initials";
 import { cn } from "@/lib/utils";
+import { AdminAreaLink } from "./admin-area-link";
 import { DeleteLibraryDialog } from "./configuration/delete-library-dialog";
 import { EmptyList, MetaList, type MetaItem } from "./configuration/fields";
 import { LibraryImage } from "./library-image";
@@ -203,11 +204,8 @@ function LibraryRow({
   const base = `/evidence-libraries/${library._id}`;
   const address = library.publicAddress.replace(/^https?:\/\//, "");
   // Owners land on the configuration; editors only get the admin area once it is live.
-  const titleHref = isOwner
-    ? `${base}/configuration`
-    : library.status === "active"
-      ? `${base}/admin`
-      : null;
+  const titleGoesToAdmin = !isOwner && library.status === "active";
+  const titleHref = isOwner ? `${base}/configuration` : null;
 
   const meta: MetaItem[] = [
     {
@@ -263,6 +261,13 @@ function LibraryRow({
             <Link href={titleHref} className="truncate text-sm font-medium hover:underline">
               {library.name}
             </Link>
+          ) : titleGoesToAdmin && !isDeleting ? (
+            <AdminAreaLink
+              libraryId={library._id}
+              className="truncate text-sm font-medium hover:underline"
+            >
+              {library.name}
+            </AdminAreaLink>
           ) : (
             <span className={cn("truncate text-sm font-medium", isDeleting && "text-muted-foreground")}>
               {library.name}
@@ -291,10 +296,10 @@ function LibraryRow({
             <OwnerActions library={library} base={base} onDelete={onDelete} />
           ) : library.status === "active" ? (
             <Button asChild size="sm" variant="outline">
-              <Link href={`${base}/admin`}>
+              <AdminAreaLink libraryId={library._id}>
                 {t("openAdmin")}
                 <ExternalLink />
-              </Link>
+              </AdminAreaLink>
             </Button>
           ) : null}
         </div>
@@ -342,10 +347,10 @@ function OwnerActions({
         <>
           {configure}
           <Button asChild size="sm" variant="ghost">
-            <Link href={`${base}/admin`}>
+            <AdminAreaLink libraryId={library._id}>
               {t("openAdmin")}
               <ExternalLink />
-            </Link>
+            </AdminAreaLink>
           </Button>
         </>
       ) : null}

@@ -73,16 +73,48 @@ Four lists change. Two more are noted and deferred.
 5. Collections: the dialog uses the server source from the first
    keystroke. `readCatalogue`, `MAX_PAGES` and the truncated banner go.
    "Hide already shown" stays as a client filter of the current page. The
-   source filter chips stay (the endpoint already accepts the source).
+   source filter chips stay, also as a client filter: checked on
+   2026-08-28, `GET /api/openscholar/collections` takes only `query`,
+   `cursor` and `pageSize` (new-el `collection-catalog-service.ts`), so the
+   chips list the sources of the pages already loaded.
 6. Nav and footer "Collection" targets open the same dialog in single-select
    mode over the **shown** collections (the draft's list; it is local data,
    so the source is an in-memory page function over `collectionOptions`,
    paged at 50, searched by title). Same dialog, same look.
 7. Zotero groups: keep the full fetch (the API's 1,000 cap is the ceiling),
    but the dialog pages the rows through the same in-memory source at 50
-   per page with search, and says "Zotero lists up to 1,000 groups" only
-   when the cap is hit.
+   per page with search, and says "Zotero stops listing after about 1,000
+   groups" only when the cap is hit (Zotero refuses a `start` above 1,000,
+   so the true end is 1,100 rows). `listMyZoteroGroups` returns a new `capped` field
+   for that note; Zotero is asked once per open, not per page.
 8. No new-el schema field changes, so no contract re-pin.
+9. Sorting is offered only where the server sorts, and a sortable header
+   can be turned around. The collections endpoint always orders by name,
+   so its picker keeps plain column headers — that is correct, not a gap.
+   Institutions have sortable Institution and Records headers that send
+   `sort=name|count` and `direction=asc|desc`. The library carries both in
+   its cursor and refuses a cursor reused with a different order, so
+   changing a header always starts the list again; the arrow only appears on
+   the header that is in use, and an unused sortable header carries the
+   two-way arrow the approved picker used.
+10. The collections a site shows are named from the library itself. Lane R
+    adds `GET /api/openscholar/collections?ids=<up to 200, comma separated>`,
+    which answers the same rows as a page — `{ id, title, source, count,
+    parentId }` — in the order asked, with `nextCursor: null`, leaving out
+    ids it does not know. `ids` cannot be combined with `query` or `cursor`;
+    the library refuses that with 400. OpenScholar
+    adds `resolveLibraryCollections({ libraryId, ids })`, cached per id set,
+    and the configuration page reads it once for the ids the owner shows.
+    The Collections section and every navigation and footer link editor read
+    the same answer, so a row shows its database name and record count on
+    first render. Until lane R merges, the runtime ignores `ids`; the client
+    reads that as "not available yet" and shows the id, and never fails.
+11. Dialog copy belongs to the list it shows. The dialog owns only the
+    words that are the same everywhere (clear, select all, load more, try
+    again, cancel, the selected count); each call site passes its own
+    title, description, search label, column headers, loading line and
+    failure line. The approved collections description keeps its words
+    without the total, which no single page can know.
 
 ## Deferred, written down
 
@@ -105,6 +137,8 @@ end-to-end proof waits for lane R to merge.
 
 ### Lane R
 
+0. `GET /api/openscholar/collections?ids=` and institutions `direction`
+   (see Decisions 9 and 10), with their own route and service tests.
 1. `openscholar-institutions.test.ts`: red → green for `query` (contains,
    case-insensitive), `sort=count` then `sort=name`, keyset `cursor`
    stability (no duplicates or gaps across pages when counts tie),
@@ -116,9 +150,16 @@ end-to-end proof waits for lane R to merge.
 ### Lane P
 
 1. `runtimeReadClient.test.ts`: `readRuntimeInstitutions` sends `query`,
-   `cursor`, `sort`, `pageSize`, parses `nextCursor`; cache key per page.
-2. `runtimeReadActions` test: `listRecordInstitutions` validates args and
-   returns `nextCursor`.
+   `cursor`, `sort`, `direction`, `pageSize`, parses `nextCursor`; cache key
+   per page; `readRuntimeCollectionsByIds` sends `ids` and reads a runtime
+   that ignores them as "not available yet".
+2. `runtimeReadActions` test: `listRecordInstitutions` validates args,
+   refuses an unknown `sort` or `direction`, and returns `nextCursor`;
+   `resolveLibraryCollections` answers the names and counts of the ids it
+   was given.
+2b. `remote-picker-dialog.test.tsx`: a slow answer for old search text never
+   lands under new text, and "Load more" never mixes a new query with an old
+   cursor.
 3. `remote-picker-dialog.test.tsx`: typing calls the source with the
    debounced query; "Load more" passes the cursor and appends; single-select
    closes on choose; multi-select confirms the checked set; the empty state
@@ -153,11 +194,16 @@ Run the `test-decision` skill before touching any test.
    tests/components/evidence-library-configuration-workspace.test.tsx` green.
 3. `npx convex dev --once` on the lane ends with `Convex functions ready!`;
    `npx convex logs --history 100` shows no matching failure.
-4. Browser on the lane's port, signed in as the E2E user, on a library that
-   is set up on the development platform: the collections dialog opens
-   without a preload, search returns from the server, "Load more" appends;
-   the nav link Collection target opens the dialog; the groups dialog pages.
-   Screenshots in `/tmp/pickers/`.
+4. Browser on the lane's port, signed in as the E2E user: the collections
+   dialog opens without a preload and asks the library once, the typed text
+   is sent after the pause, and the nav link Collection target opens the
+   same dialog. Screenshots in `/tmp/pickers/`. Checked on 2026-08-28: the
+   lane's Convex has no library with a running runtime, so the dialog shows
+   "Collections appear after the library is set up and has synced" and the
+   remote logs show exactly two `listLibraryCollections` calls (open, then
+   search) with no failure. Rows, "Load more" and the groups paging are
+   proven by the component tests; the runtime end-to-end proof is the
+   integration owner's step below, after lane R merges.
 5. Push; open a PR to `dev`; do not merge.
 
 ### Integration owner, after both merge
@@ -198,6 +244,7 @@ Lane R: `src/app/api/openscholar/institutions/route.ts`,
 `src/lib/admin/openscholar-institutions.ts` (+ test), the read-API doc.
 
 Lane P: `convex/zotero/runtimeReadActions.ts`, `runtimeReadClient.ts`,
-`runtimeReads.ts` (+ tests), `components/evidence-libraries/configuration/sections/remote-picker-dialog.tsx`
+`runtimeReads.ts`, `libraryGroupActions.ts` (+ tests),
+`components/evidence-libraries/configuration/sections/remote-picker-dialog.tsx`
 (new), `institution-pickers.tsx`, `collections-field.tsx`, `link-editor.tsx`,
 `sources-field.tsx` (+ tests), `messages/*.json`.

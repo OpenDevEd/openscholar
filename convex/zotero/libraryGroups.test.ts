@@ -22,7 +22,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 // Zotero answers: the owner's key may write to group 42 and only read 77.
-function zoteroNetwork() {
+function zoteroNetwork(otherGroups = 130) {
   const requests: string[] = [];
   const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
     const url = new URL(typeof input === "string" ? input : input.toString());
@@ -63,7 +63,7 @@ function zoteroNetwork() {
       const all = [
         { id: 42, data: { name: "Climate evidence", type: "PublicOpen" }, meta: { numItems: 312 } },
         { id: 77, data: { name: "Private notes", type: "Private" }, meta: { numItems: 5 } },
-        ...Array.from({ length: 130 }, (_, index) => ({
+        ...Array.from({ length: otherGroups }, (_, index) => ({
           id: 1000 + index,
           data: { name: `Group ${index}`, type: "Private" },
           meta: { numItems: index },
@@ -174,11 +174,22 @@ describe("Evidence Library Zotero groups", () => {
       api.zotero.libraryGroupActions.listMyZoteroGroups,
       { libraryId },
     );
-    expect(mine).toMatchObject({ connected: true, username: "owner" });
+    expect(mine).toMatchObject({ connected: true, username: "owner", capped: false });
     if (!mine.connected) throw new Error("expected a connection");
     // Every Zotero page is read, not just the first 25.
     expect(mine.groups).toHaveLength(132);
     expect(mine.groups[0]).toEqual({ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 });
+  });
+
+  it("says the list stopped when Zotero's own ceiling is reached", async () => {
+    const fixture = await ownerWithZotero("capped");
+    vi.stubGlobal("fetch", zoteroNetwork(1_500).fetchImpl);
+    const mine = await fixture.admin.action(api.zotero.libraryGroupActions.listMyZoteroGroups, {
+      libraryId: fixture.created.libraryId,
+    });
+    if (!mine.connected) throw new Error("expected a connection");
+    expect(mine.capped).toBe(true);
+    expect(mine.groups).toHaveLength(1_100);
   });
 
   it("removes the group row together with its key", async () => {

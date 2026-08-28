@@ -223,9 +223,23 @@ function createRuntimeNetwork(input: {
       if (
         url.origin === new URL(publicDomain).origin &&
         method === "GET" &&
-        (url.pathname === "/lib" || url.pathname === "/admin")
+        url.pathname === "/lib"
       ) {
         return new Response("ready", { status: 200 });
+      }
+      // A live library sends a signed-out visitor of its admin area to
+      // OpenScholar, and readiness checks exactly that.
+      if (
+        url.origin === new URL(publicDomain).origin &&
+        method === "GET" &&
+        url.pathname === "/admin"
+      ) {
+        return new Response(null, {
+          status: 307,
+          headers: {
+            location: `https://openscholar.example.test/evidence-libraries/${input.libraryId}/admin?return=%2Fadmin`,
+          },
+        });
       }
       // Any other host is free: our proxy has no server for it.
       if (url.pathname === "/") {
@@ -501,11 +515,11 @@ describe("Evidence Library configuration deployment", () => {
         .value,
     ).toBe(firstRuntimeJson);
     await expect(
-      deployment.fixture.admin.query(
-        api.evidenceLibraries.queries.getAdminLaunchState,
+      deployment.fixture.admin.action(
+        api.evidenceLibraries.adminHandoffActions.issueAdminHandoff,
         { libraryId: deployment.fixture.created.libraryId },
       ),
-    ).resolves.toMatchObject({ status: "ready" });
+    ).resolves.toMatchObject({ status: "allowed" });
   });
 
   it("keeps the previous revision active while runtime readiness catches up", async () => {

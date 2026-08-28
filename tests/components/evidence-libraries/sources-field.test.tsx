@@ -128,6 +128,7 @@ describe("<SourcesField>", () => {
       connected: true,
       username: "owner",
       zoteroUserId: "1",
+      capped: false,
       groups: [
         { id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 },
         { id: "77", name: "Private notes", isPublic: false, itemCount: 5 },
@@ -141,7 +142,7 @@ describe("<SourcesField>", () => {
 
     await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
     const table = await screen.findByRole("table", { name: `${ns}.picker.title` });
-    expect(within(table).getByRole("checkbox", { name: "Old group" })).toBeDisabled();
+    expect(await within(table).findByRole("checkbox", { name: "Old group" })).toBeDisabled();
     expect(within(table).getByText(`${ns}.picker.added`)).toBeInTheDocument();
     await userEvent.click(within(table).getByRole("checkbox", { name: "Climate evidence" }));
     await userEvent.click(within(table).getByRole("checkbox", { name: "Private notes" }));
@@ -152,6 +153,102 @@ describe("<SourcesField>", () => {
     await waitFor(() =>
       expect(onChange).toHaveBeenLastCalledWith([zoteroSourceEntry("99"), zoteroSourceEntry("42"), zoteroSourceEntry("77")]),
     );
+  });
+
+  it("pages the groups fifty at a time, searches them, and warns only at Zotero's ceiling", async () => {
+    queries({ connected: true, groups: [] });
+    const many = Array.from({ length: 120 }, (_, index) => ({
+      id: String(index),
+      name: `Group ${index}`,
+      isPublic: true,
+      itemCount: index,
+    }));
+    mocks.listMyGroups.mockResolvedValue({
+      connected: true,
+      username: "owner",
+      zoteroUserId: "1",
+      capped: true,
+      groups: many,
+    });
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
+    const table = await screen.findByRole("table", { name: `${ns}.picker.title` });
+    expect(await within(table).findByText("Group 0")).toBeInTheDocument();
+    expect(within(table).queryByText("Group 60")).not.toBeInTheDocument();
+    expect(screen.getByText(`${ns}.picker.capped`)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "evidenceLibraryConfiguration.picker.loadMore" }));
+    expect(await within(table).findByText("Group 60")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("textbox", { name: `${ns}.picker.search` }), "Group 119");
+    expect(await within(table).findByText("Group 119")).toBeInTheDocument();
+    expect(within(table).queryByText("Group 0")).not.toBeInTheDocument();
+    // Zotero was asked once, not per page or per keystroke.
+    expect(mocks.listMyGroups).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks Zotero again when the first read failed", async () => {
+    queries({ connected: true, groups: [] });
+    mocks.listMyGroups
+      .mockRejectedValueOnce(new Error("zotero is down"))
+      .mockResolvedValue({
+        connected: true,
+        username: "owner",
+        zoteroUserId: "1",
+        capped: false,
+        groups: [{ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 }],
+      });
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(`${ns}.picker.failed`);
+    await userEvent.click(
+      screen.getByRole("button", { name: "evidenceLibraryConfiguration.picker.tryAgain" }),
+    );
+    expect(await screen.findByText("Climate evidence")).toBeInTheDocument();
+    expect(mocks.listMyGroups).toHaveBeenCalledTimes(2);
+  });
+
+  it("says nothing about a ceiling the account never reached", async () => {
+    queries({ connected: true, groups: [] });
+    mocks.listMyGroups.mockResolvedValue({
+      connected: true,
+      username: "owner",
+      zoteroUserId: "1",
+      capped: false,
+      groups: [{ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 }],
+    });
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
+    expect(await screen.findByText("Climate evidence")).toBeInTheDocument();
+    expect(screen.queryByText(`${ns}.picker.capped`)).not.toBeInTheDocument();
+  });
+
+  it("keeps the groups it could not connect ticked", async () => {
+    queries({ connected: true, groups: [] });
+    mocks.listMyGroups.mockResolvedValue({
+      connected: true,
+      username: "owner",
+      zoteroUserId: "1",
+      capped: false,
+      groups: [
+        { id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 },
+        { id: "77", name: "Private notes", isPublic: false, itemCount: 5 },
+      ],
+    });
+    mocks.connectGroup.mockImplementation(async ({ groupId }: { groupId: string }) => {
+      if (groupId === "77") throw new Error("no access");
+      return { groupId, name: groupId };
+    });
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
+    const table = await screen.findByRole("table", { name: `${ns}.picker.title` });
+    await userEvent.click(await within(table).findByRole("checkbox", { name: "Climate evidence" }));
+    await userEvent.click(within(table).getByRole("checkbox", { name: "Private notes" }));
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.picker.addPicked {"count":2}` }));
+    expect(
+      await screen.findByText('evidenceLibraryConfiguration.picker.pickedCount {"count":1}'),
+    ).toBeInTheDocument();
+    expect(within(table).getByRole("checkbox", { name: "Private notes" })).toBeChecked();
   });
 
   it("adds a public group from a pasted link and rejects other text", async () => {

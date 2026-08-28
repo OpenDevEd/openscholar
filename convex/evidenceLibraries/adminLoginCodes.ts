@@ -1,14 +1,12 @@
 import { internalMutation, type MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { writeAuditLogRecord } from "../lib/audit";
-import { createError } from "../lib/errors";
 import {
   mapOrganizationRoleToAdminRole,
-  requireEvidenceLibraryAccess,
+  type EvidenceLibraryAdminRole,
 } from "./access";
 import { findMatchingLibraryServiceCredential } from "./credentials";
-import { readEvidenceLibraryAdminLaunchTarget } from "./setupRecords";
 import { evidenceLibraryAdminRoleValidator } from "./validators";
 
 export type AdminLoginRedemptionResult =
@@ -24,65 +22,44 @@ export type AdminLoginRedemptionResult =
       consumedAt: number;
     };
 
+/**
+ * Writes one single-use admin login code and its audit row. The caller has
+ * already decided who the person is and what they may do, so this only
+ * records the decision.
+ */
 export async function storeIssuedAdminLoginCode(
   ctx: MutationCtx,
   args: {
-    libraryId: Id<"evidenceLibraries">;
+    library: Doc<"evidenceLibraries">;
+    organizationId: Id<"organizations">;
+    clerkUserId: string;
+    role: EvidenceLibraryAdminRole;
     codeDigest: string;
     issuedAt: number;
     expiresAt: number;
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(
-    ctx,
-    args.libraryId,
-    "read",
-  );
-  const targetBaseUrl = await readEvidenceLibraryAdminLaunchTarget(
-    ctx,
-    access.library,
-  );
-  if (!targetBaseUrl) {
-    throw createError("CONFLICT", "Evidence Library is not ready");
-  }
-  const role = mapOrganizationRoleToAdminRole(access.role);
   const codeId = await ctx.db.insert("evidenceLibraryAdminLoginCodes", {
-    libraryId: args.libraryId,
-    organizationId: access.organization._id,
-    clerkUserId: access.clerkUserId,
-    role,
+    libraryId: args.library._id,
+    organizationId: args.organizationId,
+    clerkUserId: args.clerkUserId,
+    role: args.role,
     codeDigest: args.codeDigest,
     issuedAt: args.issuedAt,
     expiresAt: args.expiresAt,
   });
   await writeAuditLogRecord(ctx, {
     action: "evidence_library.admin_login_code.issued",
-    userId: access.clerkUserId,
+    userId: args.clerkUserId,
     metadata: {
       codeId,
-      libraryId: args.libraryId,
-      organizationId: access.organization._id,
-      role,
+      libraryId: args.library._id,
+      organizationId: args.organizationId,
+      role: args.role,
     },
   });
-  return { codeId, expiresAt: args.expiresAt, role, targetBaseUrl };
+  return { codeId, expiresAt: args.expiresAt, role: args.role };
 }
-
-export const storeIssuedCode = internalMutation({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    codeDigest: v.string(),
-    issuedAt: v.number(),
-    expiresAt: v.number(),
-  },
-  returns: v.object({
-    codeId: v.id("evidenceLibraryAdminLoginCodes"),
-    expiresAt: v.number(),
-    role: evidenceLibraryAdminRoleValidator,
-    targetBaseUrl: v.string(),
-  }),
-  handler: storeIssuedAdminLoginCode,
-});
 
 export async function redeemAdminLoginCode(
   ctx: MutationCtx,

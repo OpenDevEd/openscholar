@@ -73,6 +73,7 @@ import { shortCommit } from "@/lib/evidence-libraries/configuration/versions";
 import { cn } from "@/lib/utils";
 import { AnalyticsSection } from "./sections/analytics-section";
 import { CitationsSection } from "./sections/citations-section";
+import { CollectionFactsProvider } from "./sections/collection-facts";
 import { CollectionsSection } from "./sections/collections-section";
 import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
@@ -422,19 +423,24 @@ function Workspace({
 
             {/* Sections */}
             <div className="min-w-0 flex-1 space-y-4 p-4 md:p-6">
-              {PAGE_SECTION_KEYS.map((key) => {
-                const Section = SECTION_COMPONENTS[key];
-                return (
-                  <Section
-                    key={key}
-                    libraryId={libraryId}
-                    draft={draft}
-                    saved={saved}
-                    patch={patch}
-                    reset={reset}
-                  />
-                );
-              })}
+              <CollectionFactsProvider
+                libraryId={libraryId}
+                ids={draft.collections.map((collection) => collection.id)}
+              >
+                {PAGE_SECTION_KEYS.map((key) => {
+                  const Section = SECTION_COMPONENTS[key];
+                  return (
+                    <Section
+                      key={key}
+                      libraryId={libraryId}
+                      draft={draft}
+                      saved={saved}
+                      patch={patch}
+                      reset={reset}
+                    />
+                  );
+                })}
+              </CollectionFactsProvider>
               <VersionsSection
                 libraryId={libraryId}
                 live={libraryState === "active"}

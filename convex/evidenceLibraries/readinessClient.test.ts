@@ -44,16 +44,34 @@ function activeHealth(revision = REVISION) {
   };
 }
 
+const LOGIN_PAGE_URL =
+  "https://app.example.test/evidence-libraries/kh74ezgjwdv2nkbq/admin";
+
 function input(fetchImpl: typeof fetch) {
   return {
     applicationUuid: APPLICATION_UUID,
     runtimeCommit: RUNTIME_COMMIT,
     revisionKey: REVISION,
     targetBaseUrl: "https://climate.libraries.example.test",
+    loginPageUrl: LOGIN_PAGE_URL,
     verifierUrl: "https://runtime-verifier.example.test",
     verifierToken: "verifier-token-value",
     fetchImpl,
   };
+}
+
+// The admin route answers in one of these ways; everything else means the
+// library is not ready yet.
+function adminAnswer(answer: Response) {
+  return vi.fn<typeof fetch>(async (request) => {
+    const url = String(request);
+    if (url.includes("runtime-verifier")) return json(readyVerifierBody());
+    if (url.endsWith("/api/library-config/health")) {
+      return json(activeHealth());
+    }
+    if (url.endsWith("/admin")) return answer.clone();
+    return new Response("ready", { status: 200 });
+  });
 }
 
 describe("Evidence Library readiness client", () => {
@@ -69,6 +87,12 @@ describe("Evidence Library readiness client", () => {
       if (url.includes("runtime-verifier")) return json(readyVerifierBody());
       if (url.endsWith("/api/library-config/health")) {
         return json(activeHealth());
+      }
+      if (url.endsWith("/admin")) {
+        return new Response(null, {
+          status: 307,
+          headers: { location: `${LOGIN_PAGE_URL}?return=%2Fadmin` },
+        });
       }
       return new Response("ready", { status: 200 });
     });
@@ -113,17 +137,104 @@ describe("Evidence Library readiness client", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("does not accept redirects from the public or admin route", async () => {
+  it("accepts the admin route sending a signed-out visitor to this library's login page", async () => {
+    const fetchImpl = adminAnswer(
+      new Response(null, {
+        status: 307,
+        headers: { location: `${LOGIN_PAGE_URL}?return=%2Fadmin` },
+      }),
+    );
+
+    await expect(requireLibraryRuntimeReady(input(fetchImpl))).resolves.toEqual(
+      { status: "ready" },
+    );
+  });
+
+  it.each([
+    {
+      label: "a redirect to somewhere else",
+      answer: new Response(null, {
+        status: 307,
+        headers: { location: "https://other.example.test/login" },
+      }),
+    },
+    {
+      label: "a redirect to another library's login page",
+      answer: new Response(null, {
+        status: 307,
+        headers: {
+          location:
+            "https://app.example.test/evidence-libraries/another-library/admin",
+        },
+      }),
+    },
+    {
+      label: "a redirect with no address",
+      answer: new Response(null, { status: 307 }),
+    },
+    {
+      label: "a server error",
+      answer: new Response("boom", { status: 502 }),
+    },
+    ...[301, 302, 303, 308].map((status) => ({
+      label: `a ${status} to the right login page`,
+      answer: new Response(null, {
+        status,
+        headers: { location: LOGIN_PAGE_URL },
+      }),
+    })),
+    {
+      label: "a page of its own",
+      answer: new Response("<!doctype html><title>Admin</title>", {
+        status: 200,
+      }),
+    },
+    {
+      label: "a redirect to an address that only starts the same",
+      answer: new Response(null, {
+        status: 307,
+        headers: { location: `${LOGIN_PAGE_URL}-evil` },
+      }),
+    },
+    {
+      label: "a redirect to the login page on another site",
+      answer: new Response(null, {
+        status: 307,
+        headers: {
+          location: LOGIN_PAGE_URL.replace(
+            "app.example.test",
+            "app.example.test.evil.example",
+          ),
+        },
+      }),
+    },
+    {
+      label: "a redirect to a path below the login page",
+      answer: new Response(null, {
+        status: 307,
+        headers: { location: `${LOGIN_PAGE_URL}/deeper` },
+      }),
+    },
+  ])("refuses the admin route answering with $label", async ({ answer }) => {
+    await expect(
+      requireLibraryRuntimeReady(input(adminAnswer(answer))),
+    ).rejects.toMatchObject({
+      code: "PAGE_NOT_READY",
+      message: "The Evidence Library admin page is not ready",
+    });
+  });
+
+  it("does not accept a redirect from the public page", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (request) => {
       const url = String(request);
       if (url.includes("runtime-verifier")) return json(readyVerifierBody());
       if (url.endsWith("/api/library-config/health")) {
         return json(activeHealth());
       }
-      if (url.endsWith("/admin")) {
+      if (url.endsWith("/lib")) {
         return new Response(null, {
           status: 307,
-          headers: { location: "https://other.example.test/login" },
+          headers: { location: LOGIN_PAGE_URL },
         });
       }
       return new Response("ready", { status: 200 });
@@ -133,7 +244,7 @@ describe("Evidence Library readiness client", () => {
       requireLibraryRuntimeReady(input(fetchImpl)),
     ).rejects.toMatchObject({
       code: "PAGE_NOT_READY",
-      message: "The Evidence Library admin page is not ready",
+      message: "The Evidence Library public page is not ready",
     });
   });
 

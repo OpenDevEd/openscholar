@@ -25,6 +25,13 @@ type AuthStatePanelProps = {
   secondaryHref?: string;
   secondaryLabel?: string;
   onRetry?: () => void;
+  /**
+   * `"document"` renders the primary action as a plain link the browser
+   * loads itself. Use it when the address does real work on the server, such
+   * as the Evidence Library admin handoff: a client-side link would let Next
+   * fetch it before the click.
+   */
+  primaryNavigation?: "client" | "document";
   className?: string;
   layout?: AuthStateLayout;
   loadingStyle?: AuthStateLoadingStyle;
@@ -118,6 +125,7 @@ export function AuthStatePanel({
   secondaryHref,
   secondaryLabel,
   onRetry,
+  primaryNavigation = "client",
   className,
   layout = "inline",
   loadingStyle = "spinner",
@@ -176,7 +184,11 @@ export function AuthStatePanel({
       </Button>
     ) : primaryHref && primaryLabel ? (
       <Button asChild>
-        <Link href={primaryHref}>{primaryLabel}</Link>
+        {primaryNavigation === "document" ? (
+          <a href={primaryHref}>{primaryLabel}</a>
+        ) : (
+          <Link href={primaryHref}>{primaryLabel}</Link>
+        )}
       </Button>
     ) : null;
 

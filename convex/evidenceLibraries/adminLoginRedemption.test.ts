@@ -36,6 +36,24 @@ async function seedRedemptionScenario() {
   };
 }
 
+// The handoff hands back the address the browser goes to; the code the
+// runtime redeems travels inside it.
+async function issueLoginCode(
+  caller: Awaited<ReturnType<typeof seedRedemptionScenario>>["owner"],
+  libraryId: Awaited<ReturnType<typeof seedRedemptionScenario>>["libraryId"],
+) {
+  const handoff = await caller.action(
+    api.evidenceLibraries.adminHandoffActions.issueAdminHandoff,
+    { libraryId },
+  );
+  if (handoff.status !== "allowed") {
+    throw new Error(`The admin handoff answered ${handoff.status}`);
+  }
+  const code = new URL(handoff.launchUrl).searchParams.get("code");
+  if (!code) throw new Error("The launch address carries no code");
+  return { code };
+}
+
 async function issueRedemptionPair(
   owner: Awaited<ReturnType<typeof seedRedemptionScenario>>["owner"],
   libraryId: Awaited<ReturnType<typeof seedRedemptionScenario>>["libraryId"],
@@ -44,10 +62,7 @@ async function issueRedemptionPair(
     api.evidenceLibraries.credentialActions.rotateServiceCredential,
     { libraryId },
   );
-  const loginCode = await owner.action(
-    api.evidenceLibraries.adminLoginCodeActions.issueAdminLoginCode,
-    { libraryId },
-  );
+  const loginCode = await issueLoginCode(owner, libraryId);
   return { loginCode, machineCredential };
 }
 
@@ -187,10 +202,7 @@ describe("Evidence Library admin login redemption", () => {
       subject: "user_admin_login_redemption",
       o: { id: "org_admin_login_redemption", rol: "org:member" },
     });
-    const loginCode = await editor.action(
-      api.evidenceLibraries.adminLoginCodeActions.issueAdminLoginCode,
-      { libraryId },
-    );
+    const loginCode = await issueLoginCode(editor, libraryId);
 
     const response = await redeem(t, {
       libraryId,
