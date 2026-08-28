@@ -139,7 +139,7 @@ OpenScholar (`dev` b540cc5e):
 | Lane | Repo | Branch | Owns |
 |---|---|---|---|
 | R2 · Runtime | new-el | `codex/admin-handoff` | `src/app/[locale]/admin/**`, `src/app/api/admin/session/**`, `src/components/admin/AdminAccess.tsx` (delete), `src/lib/admin/access.ts`, `src/lib/runtime-routing.ts`, their tests, `tests/e2e/admin*.ts`, `tools/runRuntimeAcceptance.ts` (admin steps only), `docs/evidence-library-operations.md` |
-| O · OpenScholar | openalex-count | `codex/admin-handoff` | `app/evidence-libraries/[libraryId]/admin/**`, `components/evidence-libraries/admin-*.tsx`, `lib/evidence-libraries/open-admin-launch.ts` (delete), `convex/evidenceLibraries/adminHandoff*.ts` (new), `adminLoginCodes.ts`, `adminLoginCodeActions.ts`, `queries.ts` (admin launch only), their tests, `messages/*.json` keys under `evidenceLibraries.admin`, `e2e/` (new spec) |
+| O · OpenScholar | openalex-count | `codex/admin-handoff` | `app/evidence-libraries/[libraryId]/admin/**`, `components/evidence-libraries/admin-*.tsx`, `lib/evidence-libraries/open-admin-launch.ts` (delete), `convex/evidenceLibraries/adminHandoff*.ts` (new), `adminLoginCodes.ts`, `adminLoginCodeActions.ts`, `queries.ts` (admin launch only), `readinessClient.ts` (the `/admin` page check only), their tests, `messages/*.json` keys under `evidenceLibraries.admin`, `e2e/` (new spec) |
 
 The two lanes share only the URL contract in Decisions 1–2. They can run
 in parallel; the end-to-end proof waits for both to merge.
@@ -241,6 +241,15 @@ in parallel; the end-to-end proof waits for both to merge.
 
 ## Known risks
 
+- **Readiness will call every library broken until lane O fixes it.**
+  `requireLibraryRuntimeReady` fetches the library's `/admin` with
+  `redirect: "manual"` and treats anything that is not `2xx` as not ready
+  (`convex/evidenceLibraries/readinessClient.ts:367-382` and `:415`). Once the
+  runtime redirects a signed-out `/admin`, publishing or updating a library
+  fails with `PAGE_NOT_READY`. Lane O must change that one check to accept a
+  `3xx` whose `Location` starts with the library's configured OpenScholar login
+  page, and update `readinessClient.test.ts` with it. Found by lane R2 on
+  2026-08-28 while making the runtime redirect.
 - Open redirect: `return` is validated on the runtime (path only, under
   `/admin`); OpenScholar forwards it only when it starts with a single `/`.
   `launchUrl` is built from the stored `targetBaseUrl`, never from input.
