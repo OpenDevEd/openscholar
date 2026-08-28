@@ -239,6 +239,18 @@ export const prepareDevelopmentTeardown = internalMutation({
           ? binding.storagePublicBucket
           : setupOperation?.setupReceipts?.storage?.publicBucket,
       targetBaseUrl: binding?.targetBaseUrl,
+      // Custom domains are removed from the certificate service before the
+      // application goes, so a deleted library can never keep a name.
+      certificateHostnameIds: (
+        await ctx.db
+          .query("evidenceLibraryDomains")
+          .withIndex("by_libraryId", (query) =>
+            query.eq("libraryId", args.libraryId),
+          )
+          .collect()
+      )
+        .map((row) => row.certificateHostnameId)
+        .filter((id): id is string => typeof id === "string"),
     };
   },
 });
@@ -355,6 +367,14 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
     }
     if (sections.length > 0) {
       await Promise.all(sections.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
+    const domains = await ctx.db
+      .query("evidenceLibraryDomains")
+      .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+      .take(BATCH_SIZE);
+    if (domains.length > 0) {
+      await Promise.all(domains.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
     const adminCodes = await ctx.db

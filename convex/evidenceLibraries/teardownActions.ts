@@ -3,6 +3,7 @@
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
+import { createPlatformCloudflareSaasClient } from "./cloudflareSaasClient";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
   DatabaseProvisionerError,
@@ -68,6 +69,12 @@ export const runDevelopmentTeardown = internalAction({
           "COOLIFY_APPLICATION_CONFLICT",
           "The library has no saved public address",
         );
+      }
+      const cloudflare = createPlatformCloudflareSaasClient();
+      if (cloudflare) {
+        for (const hostnameId of prepared.certificateHostnameIds) {
+          await cloudflare.deleteCustomHostname(hostnameId);
+        }
       }
       await createCoolifyClient({
         origin: requireEnvironment("EL_COOLIFY_URL"),

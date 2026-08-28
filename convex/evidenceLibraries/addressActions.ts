@@ -127,7 +127,7 @@ function requireEnvironment(name: string): string {
  * reservation that follows cost one pair of Coolify reads. A list older than
  * that is refused unless Coolify answers again.
  */
-async function readServedHosts(ctx: ActionCtx): Promise<Set<string>> {
+export async function readServedHosts(ctx: ActionCtx): Promise<Set<string>> {
   const cached = await ctx.runQuery(
     internal.evidenceLibraries.queries.readServedHostsCache,
     {},
