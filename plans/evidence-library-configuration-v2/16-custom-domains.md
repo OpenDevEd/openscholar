@@ -379,6 +379,46 @@ these decisions.
     service, no answer from the domain, or a refused request are all "we
     could not tell"; `check-failed` is no longer a state a row can hold.
 
+## Corrections after the third review (2026-08-28)
+
+37. **The platform connects only to the addresses it checked.** A Node client
+    (`domainEgressNode.ts`, `"use node"`) resolves nothing itself: its
+    connector returns the addresses that just passed, the hostname still
+    carries TLS and the `Host` header, and the address the socket actually
+    reached is checked again once the connection is open. Every request to a
+    customer's domain uses one — the health probe, the sweep, and all three
+    readiness requests.
+38. **Each address family is judged against its own.** A dual-stack target
+    answers IPv4 with IPv4 and IPv6 with IPv6; merging them made the
+    exact-set rule impossible to pass.
+39. **A domain that no longer points at us is a real answer**, not a silence.
+    It fails with `wrong-target` and stops being active. Only transport
+    failures and resolver disagreement write nothing.
+40. **The deployment is settled by its own completion.** The row holds the
+    operation carrying its proxy change until that deployment succeeds, so a
+    failed one is redeployed rather than probed, and a retried removal cannot
+    delete a row the running site still serves. Operation keys are one per
+    transition, so a crash cannot make a second operation.
+41. **The library's new address is written inside the deployment's own
+    transaction**, beside the readiness-checked operation, so nothing that
+    runs later can overwrite newer state.
+42. **One lease per domain, for every change.** Checking, attaching, becoming
+    the library's address and being removed take the same lease, and every
+    write carries its token, so a step that was overtaken cannot land.
+43. **The retry after a deployment is booked in one transaction** with the
+    attempt that failed, and attempts belong to that deployment.
+44. **A teardown claim books its own wake-up**, so an attempt that died is
+    picked up rather than leaving the teardown running for ever.
+45. **The sweep pages over a real indexed range** with a strict cursor, so a
+    run of domains that cannot answer never stops it reaching the ones after
+    them.
+46. **An existing custom hostname's origin is checked** and repointed when it
+    belongs to another library.
+47. **Whether a name is a bare domain is read from its records**, not counted
+    from its parts: `example.co.uk` is one and `library.example.org` is not,
+    and no list of endings is needed. The platform's own names are named in
+    the environment rather than guessed from the target.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,
