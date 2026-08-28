@@ -139,7 +139,8 @@ OpenScholar (`dev` b540cc5e):
    2026-08-28 after the Codex review: a page cannot do this, because Next
    streams a dynamic page's answer and turns `redirect()` into a `200` whose
    body carries the redirect, which only a browser running JavaScript
-   follows. The status page renders the panels and asks a read-only query
+   follows. Only `GET` is served; every other method answers `405`. The
+   status page renders the panels and asks a read-only query
    (`readAdminHandoffState`), so opening it never spends a code and no copy
    travels in the query string.
 
@@ -189,13 +190,15 @@ in parallel; the end-to-end proof waits for both to merge.
    library that is not ready → `not_ready` with `isOwner`; the stored
    code, audit row and `launchUrl` match today's shape plus the validated
    `return`; an unsafe `returnPath` is dropped.
-2. A pure decision helper (`lib/evidence-libraries/admin-handoff.ts`)
-   mapping the action result and the query (`error`) to one of
-   `redirect | no_access | not_ready | invalid_code`, unit-tested. Its
-   return-path check rejects encoded separators, encoded dot segments and
-   double encoding, checked on the decoded value of every segment.
+2. Pure helpers in `lib/evidence-libraries/admin-handoff.ts`: the addresses
+   the route and the status page use, and the return-path check, which
+   rejects encoded separators, encoded dot segments and double encoding on
+   the decoded value of every segment.
    `tests/app/evidence-library-admin-route.test.ts` checks the route
-   handler's status code and `Location` for each answer.
+   handler's status code and `Location` for each answer, including `405` for
+   every method except `GET`, so a link check or a preview card can never
+   spend a code. The two links that lead back to the route are plain `<a>`
+   elements, never prefetched.
 3. `tests/components/evidence-libraries/admin-panels.test.tsx`: the three
    panels render their copy and links (roles, names); no CSS assertions.
 4. Delete `admin-launch.test.tsx` with the card. Update
@@ -258,6 +261,12 @@ in parallel; the end-to-end proof waits for both to merge.
 
 ## Known risks
 
+- Readiness only passes for libraries that run the new runtime: a `/admin`
+  that answers with a page of its own now counts as not ready, and the
+  redirect must match the library's login page by origin *and* path. The
+  shared `EL_RUNTIME_COMMIT_SHA` is bumped right after both PRs merge.
+  Decided after the Codex review on 2026-08-28: no fallback for the old
+  answer.
 - Open redirect: `return` is validated on the runtime (path only, under
   `/admin`); OpenScholar forwards it only when it starts with a single `/`.
   `launchUrl` is built from the stored `targetBaseUrl`, never from input.
