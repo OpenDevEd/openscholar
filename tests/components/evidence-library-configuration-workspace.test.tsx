@@ -123,12 +123,14 @@ vi.mock("@/components/auth/auth-state-panel", () => ({
 }));
 
 import { ConfigurationWorkspace } from "@/components/evidence-libraries/configuration/configuration-workspace";
-import { AI_MODELS } from "@/lib/evidence-libraries/configuration/ai";
+import {
+  AI_MODELS,
+  AI_PROVIDER_CREDENTIAL_KEY,
+} from "@/lib/evidence-libraries/configuration/ai";
 import {
   SUPPORTS_CONSENT_POLICY_VERSION,
   SUPPORTS_POSTHOG_UI_HOST,
 } from "@/lib/evidence-libraries/configuration/rules";
-import { AI_PROVIDER_CREDENTIAL_KEY } from "@/convex/evidenceLibraries/aiProviderKey";
 
 const savedIdentity = {
   name: "Saved Library",

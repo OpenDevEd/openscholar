@@ -6,8 +6,10 @@ import {
 } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { WRITE_ONLY_POINTER_PATTERNS } from "../../lib/evidence-libraries/configuration/section-registry";
-import { jsonPointerPatternMatches } from "../../lib/evidence-libraries/configuration/json-pointer";
+import {
+  credentialKeyFor,
+  writeOnlyPatternFor,
+} from "../../lib/evidence-libraries/configuration/credential-paths";
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
@@ -16,9 +18,7 @@ export function resolveCredentialPath(
   concretePath: string,
   instanceKey?: string,
 ) {
-  const pathPattern = WRITE_ONLY_POINTER_PATTERNS.find((pattern) =>
-    jsonPointerPatternMatches(pattern, concretePath),
-  );
+  const pathPattern = writeOnlyPatternFor(concretePath);
   if (!pathPattern) {
     throw createError(
       "VALIDATION_ERROR",
@@ -26,7 +26,7 @@ export function resolveCredentialPath(
     );
   }
   return {
-    credentialKey: instanceKey ? `${pathPattern}:${instanceKey}` : pathPattern,
+    credentialKey: credentialKeyFor(pathPattern, instanceKey),
     pathPattern,
   };
 }

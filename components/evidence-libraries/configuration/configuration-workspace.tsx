@@ -71,7 +71,7 @@ import {
   staleUploads,
   withAiKey,
 } from "@/lib/evidence-libraries/configuration/rules";
-import { AI_PROVIDER_CREDENTIAL_KEY } from "@/convex/evidenceLibraries/aiProviderKey";
+import { AI_PROVIDER_CREDENTIAL_KEY } from "@/lib/evidence-libraries/configuration/ai";
 import { shortCommit } from "@/lib/evidence-libraries/configuration/versions";
 import { cn } from "@/lib/utils";
 import { AiSection } from "./sections/ai-section";

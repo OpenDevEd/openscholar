@@ -3,11 +3,11 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
-import { AI_PROVIDER_KEY_PATH } from "../../lib/evidence-libraries/configuration/ai";
 import {
   AI_PROVIDER_CREDENTIAL_KEY,
-  readLibraryAiProviderKey,
-} from "./aiProviderKey";
+  AI_PROVIDER_KEY_PATH,
+} from "../../lib/evidence-libraries/configuration/ai";
+import { readLibraryAiProviderKey } from "./aiProviderKey";
 
 const OPENROUTER_KEY = `sk-or-v1-${"9".repeat(48)}`;
 

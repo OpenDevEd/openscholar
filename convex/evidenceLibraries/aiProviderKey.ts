@@ -7,24 +7,19 @@ import {
 } from "../_generated/server";
 import {
   AI_PROVIDER,
-  AI_PROVIDER_KEY_PATH,
+  AI_PROVIDER_CREDENTIAL_KEY,
   type ApplyAiProviderKey,
 } from "../../lib/evidence-libraries/configuration/ai";
 import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
-import { resolveCredentialPath } from "./credentials";
 
 /**
  * One row per library holds the OpenRouter key. The owner writes it through
  * `credentialActions.writeCredential`; it is only ever read again inside the
  * deploy action, and only to build the configuration the runtime receives.
  */
-export const AI_PROVIDER_CREDENTIAL_KEY = resolveCredentialPath(
-  AI_PROVIDER_KEY_PATH,
-  AI_PROVIDER,
-).credentialKey;
 
 type ReadCtx = Pick<QueryCtx | MutationCtx, "db">;
 

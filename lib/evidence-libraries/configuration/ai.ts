@@ -1,3 +1,7 @@
+import {
+  credentialKeyFor,
+  writeOnlyPatternFor,
+} from "./credential-paths";
 import catalogs from "./generated/library-config.catalogs.json";
 
 /**
@@ -21,6 +25,17 @@ export const AI_MODELS: readonly string[] =
       active: readonly string[];
     }[]
   ).find((entry) => entry.provider === AI_PROVIDER)?.active ?? [];
+
+const AI_PROVIDER_KEY_PATTERN = writeOnlyPatternFor(AI_PROVIDER_KEY_PATH);
+if (!AI_PROVIDER_KEY_PATTERN) {
+  throw new Error("The pinned contract has no AI provider key");
+}
+
+/** The credential row that holds this library's OpenRouter key. */
+export const AI_PROVIDER_CREDENTIAL_KEY = credentialKeyFor(
+  AI_PROVIDER_KEY_PATTERN,
+  AI_PROVIDER,
+);
 
 export type AiProviderEntry = Record<string, unknown>;
 
