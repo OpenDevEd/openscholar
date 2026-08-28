@@ -565,6 +565,17 @@ export const startDomainDeployment = internalMutation({
         token: args.token,
       },
     });
+    // Written before the worker is booked, and in the same transaction, so
+    // there is never a moment when a deployment is running and the domain
+    // does not know which change is holding it.
+    await ctx.db.patch(args.domainId, {
+      pendingDeployment: {
+        operationId: operation.operationId,
+        phase: args.reason,
+      },
+      deploymentPending: undefined,
+      updatedAt: Date.now(),
+    });
     return await claimAndScheduleConfigurationDeployment(ctx, {
       libraryId: args.libraryId,
       operationId: operation.operationId,
@@ -666,14 +677,15 @@ export const setDomainPrimary = mutation({
         token: claimed.token,
       },
     });
-    // The deployment is recorded on the domain, exactly as attaching and
-    // removing do, so the change holds it for as long as the deployment runs
-    // rather than for the length of an action's lease.
+    // The deployment is recorded on the domain before the worker is booked,
+    // exactly as attaching and removing do, so the change holds it for as
+    // long as the deployment runs rather than for an action's lease.
     await ctx.db.patch(args.domainId, {
       pendingDeployment: {
         operationId: operation.operationId,
         phase: "canonical",
       },
+      deploymentPending: undefined,
       updatedAt: Date.now(),
     });
     const started = await claimAndScheduleConfigurationDeployment(ctx, {

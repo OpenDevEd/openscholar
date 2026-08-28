@@ -603,32 +603,6 @@ export const writeDomainAttachment = internalMutation({
  * owed until that deployment succeeds, so a failed one is redeployed rather
  * than mistaken for a finished change.
  */
-export const writeDomainDeployment = internalMutation({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    domainId: v.id("evidenceLibraryDomains"),
-    token: v.string(),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    phase: v.union(
-      v.literal("attach"),
-      v.literal("detach"),
-      v.literal("canonical"),
-    ),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
-    if (!row || row.libraryId !== args.libraryId) return null;
-    requireTransition(row, args.token);
-    await ctx.db.patch(args.domainId, {
-      pendingDeployment: { operationId: args.operationId, phase: args.phase },
-      deploymentPending: undefined,
-      updatedAt: Date.now(),
-    });
-    return null;
-  },
-});
 
 /**
  * The deployment carrying a proxy change finished. Called from the same
@@ -647,11 +621,16 @@ export async function settleDomainDeploymentRow(
 ): Promise<void> {
   const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
   if (!row) return;
-  // A deployment only settles the change it was carrying.
-  if (
-    row.pendingDeployment !== undefined &&
-    row.pendingDeployment.operationId !== args.operationId
-  ) {
+  // A deployment only settles the change it was carrying. On success this
+  // has to be loud: passing over it would let a stale worker go on and
+  // change the library's address on behalf of a change that is over.
+  if (row.pendingDeployment?.operationId !== args.operationId) {
+    if (args.outcome === "succeeded") {
+      throw createError(
+        "CONFLICT",
+        "Another change took that domain while this one was being applied",
+      );
+    }
     return;
   }
   if (row.transition?.token !== args.token) {
@@ -715,6 +694,61 @@ export const beginDomainRemoval = internalMutation({
  * One domain row, read without a caller. Used by the scheduled work that
  * finishes a domain change, which runs after the owner's request has ended.
  */
+/**
+ * Notes that the proxy is about to be asked to hold this host.
+ *
+ * Saved before the call, so a crash between the proxy accepting the host and
+ * the receipt being written is still visible. The next attempt asks for the
+ * same list, which the proxy already has, and writes nothing.
+ */
+export const writeDomainAttachmentIntent = internalMutation({
+  args: { domainId: v.id("evidenceLibraryDomains"), token: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row) {
+      throw createError("NOT_FOUND", "That domain is no longer there");
+    }
+    requireTransition(row, args.token);
+    await ctx.db.patch(args.domainId, {
+      attachIntentAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+/**
+ * Takes the domain for the final cleanup and hands back what it needs.
+ *
+ * A mutation, not a read: the cleanup deletes a certificate, so it has to
+ * hold the domain from the moment it decides to act.
+ */
+export const claimDomainCleanup = internalMutation({
+  args: { domainId: v.id("evidenceLibraryDomains") },
+  returns: v.union(
+    v.object({
+      host: v.string(),
+      certificateHostnameId: v.union(v.string(), v.null()),
+      token: v.string(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    // A domain that has moved on since this was booked must not lose a
+    // hostname it now needs.
+    if (!row || row.removingAt === undefined) return null;
+    const claimed = claimDomainTransitionRow(ctx, row, "remove");
+    await claimed.write();
+    return {
+      host: row.host,
+      certificateHostnameId: row.certificateHostnameId ?? null,
+      token: claimed.token,
+    };
+  },
+});
+
 export const readDomainReceipt = internalQuery({
   args: { domainId: v.id("evidenceLibraryDomains") },
   returns: v.union(

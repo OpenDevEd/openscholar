@@ -278,6 +278,9 @@ export const evidenceLibraryDomainFields = {
   // Set once the owner asked for the domain to go. The row survives until
   // the proxy has been redeployed without it and the certificate is gone.
   removingAt: v.optional(v.number()),
+  // Set just before the proxy is asked to hold this host, so a crash between
+  // the proxy accepting it and the receipt being saved is still visible.
+  attachIntentAt: v.optional(v.number()),
   checkedAt: v.optional(v.number()),
   activatedAt: v.optional(v.number()),
   createdByClerkUserId: v.string(),

@@ -1,9 +1,14 @@
 "use node";
 
 import { internal } from "../_generated/api";
+import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { createPlatformCloudflareSaasClient } from "./cloudflareSaasClient";
+import {
+  CloudflareSaasError,
+  createPlatformCloudflareSaasClient,
+} from "./cloudflareSaasClient";
 import { deleteCustomHostname } from "./domainActions";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
@@ -30,6 +35,25 @@ function requireDevelopmentEnvironment() {
   ) {
     throw new Error("Development Evidence Library teardown is not enabled");
   }
+}
+
+
+/**
+ * Proves this attempt still holds the teardown and puts its lease forward.
+ *
+ * Called immediately before every destructive call and between batches of
+ * deletions, so a healthy but slow teardown cannot be declared dead and have
+ * a second worker started behind it.
+ */
+async function holdTeardown(
+  ctx: ActionCtx,
+  operationId: Id<"evidenceLibraryConfigOperations">,
+  attemptToken: string,
+): Promise<void> {
+  await ctx.runMutation(
+    internal.evidenceLibraries.teardown.holdDevelopmentTeardown,
+    { operationId, attemptToken },
+  );
 }
 
 export const runDevelopmentTeardown = internalAction({
@@ -76,12 +100,14 @@ export const runDevelopmentTeardown = internalAction({
         // By name as well as by id: a hostname created before its id was
         // written down would otherwise be left behind for ever.
         for (const host of prepared.customDomainHosts) {
+          await holdTeardown(ctx, args.operationId, attemptToken);
           await deleteCustomHostname(cloudflare, {
             host,
             certificateHostnameId: null,
           });
         }
         for (const hostnameId of prepared.certificateHostnameIds) {
+          await holdTeardown(ctx, args.operationId, attemptToken);
           await cloudflare.deleteCustomHostname(hostnameId);
         }
       }
@@ -104,6 +130,7 @@ export const runDevelopmentTeardown = internalAction({
           "The library has no saved public address",
         );
       }
+      await holdTeardown(ctx, args.operationId, attemptToken);
       await createCoolifyClient({
         origin: requireEnvironment("EL_COOLIFY_URL"),
         token: requireEnvironment("EL_COOLIFY_TOKEN"),
@@ -126,6 +153,7 @@ export const runDevelopmentTeardown = internalAction({
         serviceRoleKey: requireEnvironment("EL_STORAGE_SERVICE_KEY"),
         libraryId: args.libraryId,
       };
+      await holdTeardown(ctx, args.operationId, attemptToken);
       await deleteLibraryUploads(storageAccess);
       const storage = await deleteLibraryStorage(storageAccess);
       if (storage.outcome === "pending") {
@@ -140,6 +168,9 @@ export const runDevelopmentTeardown = internalAction({
         internal.evidenceLibraries.teardown.setDevelopmentTeardownStage,
         { attemptToken, operationId: args.operationId, stage },
       );
+      // The database request alone may take eight minutes, so its lease is
+      // put forward immediately before it.
+      await holdTeardown(ctx, args.operationId, attemptToken);
       await deleteLibraryDatabase({
         provisionerUrl: requireEnvironment("EL_DATABASE_PROVISIONER_URL"),
         token: requireEnvironment("EL_DATABASE_PROVISIONER_TOKEN"),
@@ -156,6 +187,8 @@ export const runDevelopmentTeardown = internalAction({
           { ...args, attemptToken },
         );
         if (result.complete) return { status: "complete" as const };
+        // Between batches too: deleting rows can take longer than one lease.
+        await holdTeardown(ctx, args.operationId, attemptToken);
       }
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.deferDevelopmentTeardown,
@@ -166,13 +199,31 @@ export const runDevelopmentTeardown = internalAction({
       const safe =
         error instanceof CoolifyClientError ||
         error instanceof StorageSetupError ||
-        error instanceof DatabaseProvisionerError
+        error instanceof DatabaseProvisionerError ||
+        error instanceof CloudflareSaasError
           ? { code: error.code, message: error.message }
           : {
               code: "DEVELOPMENT_TEARDOWN_FAILED",
               message: "The development library could not be deleted",
             };
       if (!attemptToken) return { status: "pending" as const };
+      // The certificate service being unreachable is usually a moment, not a
+      // decision. The library keeps its records and waits, and only says so
+      // after the last try.
+      if (
+        error instanceof CloudflareSaasError &&
+        error.code === "CLOUDFLARE_UNAVAILABLE"
+      ) {
+        const again = await ctx.runMutation(
+          internal.evidenceLibraries.teardown.retryDevelopmentTeardown,
+          {
+            libraryId: args.libraryId,
+            operationId: args.operationId,
+            attemptToken,
+          },
+        );
+        if (again.status === "retrying") return { status: "pending" as const };
+      }
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.failDevelopmentTeardown,
         { attemptToken, operationId: args.operationId, stage, ...safe },

@@ -9,7 +9,11 @@ import { v } from "convex/values";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
-import { readAttachedDomainOrigins, settleDomainDeploymentRow } from "./domains";
+import {
+  claimDomainTransitionRow,
+  readAttachedDomainOrigins,
+  settleDomainDeploymentRow,
+} from "./domains";
 import { applyEvidenceLibraryCanonicalAddress } from "./versions";
 import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
@@ -45,6 +49,33 @@ import {
 
 export const CONFIGURATION_DEPLOYMENT_LEASE_MS = 20 * 60 * 1_000;
 const CONFIGURATION_DEPLOYMENT_POLL_DELAY_MS = 5_000;
+
+/**
+ * Puts the deployment's lease forward and books the watchdog that will pick
+ * it up if this worker stops answering.
+ *
+ * Every lease write goes through here. The watchdog is fenced by the
+ * operation, the attempt and the exact deadline it was booked for, so only
+ * the last renewal's watchdog can ever act.
+ */
+async function renewConfigurationLease(
+  ctx: MutationCtx,
+  operation: Doc<"evidenceLibraryConfigOperations">,
+  attemptToken: string,
+): Promise<number> {
+  const leaseExpiresAt = Date.now() + CONFIGURATION_DEPLOYMENT_LEASE_MS;
+  await ctx.scheduler.runAt(
+    leaseExpiresAt + WATCHDOG_GRACE_MS,
+    internal.evidenceLibraries.configurationDeployment
+      .failExpiredConfigurationDeployment,
+    { operationId: operation._id, attemptToken, leaseExpiresAt },
+  );
+  return leaseExpiresAt;
+}
+
+/** How long after a lease runs out the watchdog looks. */
+const WATCHDOG_GRACE_MS = 60_000;
+
 const MAX_CONFIGURATION_DEPLOYMENT_POLLS = 120;
 const CONFIGURATION_READINESS_POLL_DELAY_MS = 5_000;
 const MAX_CONFIGURATION_READINESS_POLLS = 24;
@@ -270,7 +301,11 @@ export async function claimAndScheduleConfigurationDeployment(
     startedAt: now,
     completedAt: undefined,
     configurationAttemptToken: attemptToken,
-    configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+    configurationLeaseExpiresAt: await renewConfigurationLease(
+      ctx,
+      deployment.operation,
+      attemptToken,
+    ),
     configurationDeploymentPollCount: 0,
     configurationReadinessPollCount: 0,
     updatedAt: now,
@@ -285,15 +320,6 @@ export async function claimAndScheduleConfigurationDeployment(
       attemptToken,
       attemptCount,
     },
-  );
-  // A worker that dies takes its lease with it, and nothing would notice.
-  // This comes back when the lease has run out and marks the deployment
-  // failed, which frees the domain and offers the owner a retry.
-  await ctx.scheduler.runAfter(
-    CONFIGURATION_DEPLOYMENT_LEASE_MS + 60_000,
-    internal.evidenceLibraries.configurationDeployment
-      .failExpiredConfigurationDeployment,
-    { operationId: args.operationId, attemptToken },
   );
   return {
     operationId: deployment.operation._id,
@@ -805,7 +831,11 @@ export const saveConfigurationDeploymentTarget = internalMutation({
     };
     await ctx.db.patch(deployment.operation._id, {
       configurationDeploymentTarget: target,
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     return target;
@@ -855,7 +885,11 @@ export const saveConfigurationDeploymentReceipt = internalMutation({
       receipt,
       stage: "publishing",
       configurationDeploymentPollCount: 0,
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     return { status: "running" as const };
@@ -892,7 +926,11 @@ export const scheduleConfigurationDeploymentPoll = internalMutation({
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       configurationDeploymentPollCount: pollCount,
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     await ctx.scheduler.runAfter(
@@ -949,7 +987,11 @@ export const prepareConfigurationActivation = internalMutation({
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       stage: "activating",
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     return {
@@ -1000,7 +1042,11 @@ export const scheduleConfigurationReadinessPoll = internalMutation({
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       configurationReadinessPollCount: pollCount,
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     await ctx.scheduler.runAfter(
@@ -1178,6 +1224,7 @@ export const failConfigurationDeployment = internalMutation({
   },
 });
 
+
 /**
  * Marks a deployment failed when the worker that held it stopped answering.
  * Booked whenever a lease is written, so nothing is left running for ever.
@@ -1186,6 +1233,8 @@ export const failExpiredConfigurationDeployment = internalMutation({
   args: {
     operationId: v.id("evidenceLibraryConfigOperations"),
     attemptToken: v.string(),
+    /** The deadline this watchdog was booked for. A renewal replaces it. */
+    leaseExpiresAt: v.number(),
   },
   returns: v.union(v.literal("failed"), v.literal("ignored")),
   handler: async (ctx, args) => {
@@ -1195,7 +1244,9 @@ export const failExpiredConfigurationDeployment = internalMutation({
       operation.status !== "running" ||
       // Another attempt has taken over, or this one finished.
       operation.configurationAttemptToken !== args.attemptToken ||
-      (operation.configurationLeaseExpiresAt ?? 0) > Date.now()
+      // The work carried on, so a later watchdog owns this deployment now.
+      operation.configurationLeaseExpiresAt !== args.leaseExpiresAt ||
+      args.leaseExpiresAt > Date.now()
     ) {
       return "ignored" as const;
     }
@@ -1234,5 +1285,44 @@ export const retryConfigurationDeployment = mutation({
     revisionId: v.id("evidenceLibraryConfigRevisions"),
     status: v.literal("running"),
   }),
-  handler: claimAndScheduleConfigurationDeployment,
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const operation = await ctx.db.get(args.operationId);
+    // A domain change that failed gave the domain back, so trying again has
+    // to take it afresh. Done in the same transaction that books the worker,
+    // so the retry never runs holding a lease that is no longer its own.
+    if (operation?.domainChange) {
+      const change = operation.domainChange;
+      const domain = await ctx.db.get(
+        "evidenceLibraryDomains",
+        change.domainId,
+      );
+      if (!domain) {
+        throw createError("NOT_FOUND", "That domain is no longer there");
+      }
+      // The failed attempt's own record does not stand in its way.
+      if (domain.pendingDeployment?.operationId === args.operationId) {
+        await ctx.db.patch(change.domainId, { pendingDeployment: undefined });
+      }
+      const fresh = await ctx.db.get("evidenceLibraryDomains", change.domainId);
+      const claimed = claimDomainTransitionRow(
+        ctx,
+        fresh!,
+        change.reason === "canonical" ? "canonical" : "attach",
+      );
+      await claimed.write();
+      await ctx.db.patch(change.domainId, {
+        pendingDeployment: {
+          operationId: args.operationId,
+          phase: change.reason,
+        },
+        deploymentPending: undefined,
+        updatedAt: Date.now(),
+      });
+      await ctx.db.patch(args.operationId, {
+        domainChange: { ...change, token: claimed.token },
+      });
+    }
+    return await claimAndScheduleConfigurationDeployment(ctx, args);
+  },
 });

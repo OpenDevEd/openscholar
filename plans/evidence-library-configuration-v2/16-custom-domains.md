@@ -511,6 +511,34 @@ these decisions.
     directions, using the same dialog the delete flow uses. Everyone signed
     in is signed out by it, so it is not something a stray click should do.
 
+## Corrections after the seventh review (2026-08-28)
+
+75. **Every lease write books its own watchdog.** One helper does both, and
+    the watchdog is fenced by the operation, the attempt and the exact
+    deadline it was booked for, so only the last renewal's watchdog can act.
+76. **Trying again takes the domain afresh.** A retry claims a new lease,
+    writes it on the operation and records the deployment, all in the
+    transaction that books the worker, so the completion that follows is
+    allowed to finish.
+77. **A successful completion whose domain has forgotten it now fails.**
+    Passing over that quietly let a stale worker change the library's
+    address anyway.
+78. **The handoff is one transaction.** `startDomainDeployment` records the
+    deployment on the domain before it books the worker, so there is never a
+    moment when a deployment is running and the domain does not know.
+79. **The lease is proved immediately before each outside write**, not
+    before the read that comes first, and the certificate deletion proves it
+    too. The final cleanup claims the domain rather than reading it.
+80. **The proxy call leaves a note before it is made**, so a crash between
+    the proxy accepting a host and the receipt being saved is still visible
+    and the next attempt reconciles it.
+81. **A certificate service that cannot be reached during a deletion is
+    waited on**, through the same bounded retry, and only becomes a saved
+    error after the last attempt.
+82. **A slow but healthy teardown keeps its lease.** It is renewed before
+    every destructive call and between batches of deletions, so the wake-up
+    cannot start a second worker behind it.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

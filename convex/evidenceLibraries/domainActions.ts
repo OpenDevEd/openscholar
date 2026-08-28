@@ -273,10 +273,12 @@ async function attachDomain(
   // Step one: the certificate service. Reading first means an action that
   // died after creating a hostname finds it again instead of orphaning it.
   const originHost = new URL(input.platformAddress).hostname;
-  await holdDomain(ctx, input.domainId, input.token);
   const existing = await cloudflare.readCustomHostname(input.host);
   let hostname: CustomHostname;
   if (!existing) {
+    // Proved immediately before the write, not before the read that came
+    // first: a slow read must not be the gap a stale worker writes through.
+    await holdDomain(ctx, input.domainId, input.token);
     hostname = await cloudflare.createCustomHostname({
       host: input.host,
       // The library's own platform address answers the request, so the
@@ -287,6 +289,7 @@ async function attachDomain(
   } else if (existing.originHost !== originHost) {
     // A hostname left over from another library, or from before this
     // library moved, would send visitors to the wrong site.
+    await holdDomain(ctx, input.domainId, input.token);
     hostname = await cloudflare.setCustomHostnameOrigin({
       hostnameId: existing.hostnameId,
       originHost,
@@ -312,6 +315,13 @@ async function attachDomain(
   // Step two: the proxy. Running it again with the host already in the list
   // writes nothing, so a retry is safe.
   const wanted = [...input.attachedHosts, `https://${input.host}`].sort();
+  // Written before the call, so a crash between the proxy accepting the
+  // host and the receipt being saved is still visible: the next attempt
+  // sees the host may already be there and running it again writes nothing.
+  await ctx.runMutation(
+    internal.evidenceLibraries.domains.writeDomainAttachmentIntent,
+    { domainId: input.domainId, token: input.token },
+  );
   await holdDomain(ctx, input.domainId, input.token);
   try {
     await coolify().setCustomDomains({
@@ -384,16 +394,6 @@ async function queueDomainDeployment(
   );
   // The change stays owed until that deployment succeeds. Only the
   // deployment's own completion clears it.
-  await ctx.runMutation(
-    internal.evidenceLibraries.domains.writeDomainDeployment,
-    {
-      libraryId: input.libraryId,
-      domainId: input.domainId,
-      token: input.token,
-      operationId: started.operationId,
-      phase: input.reason,
-    },
-  );
 }
 
 /** Asks the domain itself whether this library answers on it. */
@@ -681,6 +681,7 @@ export const removeDomain = action({
         domainId: args.domainId,
         host: row.host,
         certificateHostnameId: row.certificateHostnameId,
+        token,
       });
       return { status: "removed" as const };
     } finally {
@@ -705,6 +706,7 @@ async function finishRemoval(
     domainId: Id<"evidenceLibraryDomains">;
     host: string;
     certificateHostnameId: string | null;
+    token: string;
   },
 ): Promise<void> {
   const cloudflare = createPlatformCloudflareSaasClient();
@@ -714,6 +716,9 @@ async function finishRemoval(
   if (!cloudflare) {
     throw new DomainCheckUnavailable();
   }
+  // Deleting a certificate is destructive and cannot be taken back, so the
+  // removal proves it still owns the domain immediately before it.
+  await holdDomain(ctx, input.domainId, input.token);
   await deleteCustomHostname(cloudflare, input);
   await ctx.runMutation(
     internal.evidenceLibraries.domains.finishDomainRemoval,
@@ -764,18 +769,19 @@ export const completeDomainChange = internalAction({
     args,
   ): Promise<{ status: "done" | "retrying" | "stale" }> => {
     try {
-      const receipt = await ctx.runQuery(
-        internal.evidenceLibraries.domains.readDomainReceipt,
+      // Takes the domain before anything outside OpenScholar is touched: a
+      // domain that has moved on since this was booked must not lose a
+      // hostname it now needs.
+      const receipt = await ctx.runMutation(
+        internal.evidenceLibraries.domains.claimDomainCleanup,
         { domainId: args.domainId },
       );
-      // Checked before anything outside OpenScholar is touched: a domain
-      // that has moved on since this was booked must not lose a hostname it
-      // now needs.
-      if (!receipt || !receipt.removing) return { status: "stale" as const };
+      if (!receipt) return { status: "stale" as const };
       await finishRemoval(ctx, {
         domainId: args.domainId,
         host: receipt.host,
         certificateHostnameId: receipt.certificateHostnameId,
+        token: receipt.token,
       });
       return { status: "done" as const };
     } catch (error) {

@@ -239,6 +239,33 @@ export const restartDevelopmentTeardown = mutation({
   },
 });
 
+/**
+ * Puts the teardown's lease forward, proving this attempt still holds it.
+ * A slow but healthy teardown must not look dead to the wake-up.
+ */
+export const holdDevelopmentTeardown = internalMutation({
+  args: {
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(
+      "evidenceLibraryConfigOperations",
+      args.operationId,
+    );
+    if (!operation || operation.kind !== "teardown") {
+      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+    }
+    requireTeardownAttempt(operation, args.attemptToken);
+    await ctx.db.patch(operation._id, {
+      teardownLeaseExpiresAt: Date.now() + TEARDOWN_LEASE_MS,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
 /** How many times a teardown waits for something it needs before giving up. */
 const MAX_TEARDOWN_RETRIES = 5;
 

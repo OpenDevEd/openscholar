@@ -1933,11 +1933,14 @@ describe("custom domains", () => {
     const operation = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
 
     // The worker died, so its lease ran out with nothing to show for it.
+    const leaseExpiresAt = Date.now() - 1;
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(operationId, {
-        configurationLeaseExpiresAt: Date.now() - 1,
+        configurationLeaseExpiresAt: leaseExpiresAt,
       });
     });
+    // A watchdog booked for a deadline the work has since moved past does
+    // nothing: only the last renewal's watchdog can act.
     await expect(
       fixture.t.mutation(
         internal.evidenceLibraries.configurationDeployment
@@ -1945,10 +1948,137 @@ describe("custom domains", () => {
         {
           operationId,
           attemptToken: operation?.configurationAttemptToken ?? "",
+          leaseExpiresAt: leaseExpiresAt - 1_000,
+        },
+      ),
+    ).resolves.toBe("ignored");
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.configurationDeployment
+          .failExpiredConfigurationDeployment,
+        {
+          operationId,
+          attemptToken: operation?.configurationAttemptToken ?? "",
+          leaseExpiresAt,
         },
       ),
     ).resolves.toBe("failed");
     // The owner can try again, and the domain is free.
     expect((await readRow(fixture, domainId))?.transition).toBeUndefined();
+  });
+  it("finishes a domain change that failed and was tried again", async () => {
+    const fixture = await createReadySetupFixture("domain-retry-success");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({ cname: TARGET }, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await markVerified(fixture, domainId);
+    await fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+      libraryId: fixture.created.libraryId,
+      domainId,
+    });
+    const operationId = await readPendingOperationId(fixture, domainId);
+    const first = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
+
+    // The publish fails, which gives the domain back.
+    await fixture.t.mutation(
+      internal.evidenceLibraries.configurationDeployment
+        .failConfigurationDeployment,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId,
+        attemptToken: first?.configurationAttemptToken ?? "",
+        attemptCount: first?.attemptCount ?? 1,
+        error: { code: "TEST", message: "the deployment failed" },
+      },
+    );
+    expect((await readRow(fixture, domainId))?.transition).toBeUndefined();
+
+    // Trying again takes the domain afresh and writes the new lease on the
+    // operation, so the completion that follows is allowed to finish.
+    await fixture.admin.mutation(
+      api.evidenceLibraries.configurationDeployment.retryConfigurationDeployment,
+      { libraryId: fixture.created.libraryId, operationId },
+    );
+    const retried = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
+    const row = await readRow(fixture, domainId);
+    expect(retried?.domainChange?.token).toBe(row?.transition?.token);
+    expect(row?.pendingDeployment?.operationId).toBe(operationId);
+
+    await runDeploymentCompletion(fixture, operationId);
+    // The change landed and the domain is free again.
+    const settled = await readRow(fixture, domainId);
+    expect(settled?.transition).toBeUndefined();
+    expect(settled?.pendingDeployment).toBeUndefined();
+  });
+
+  it("refuses a completion for a domain that no longer knows about it", async () => {
+    const fixture = await createReadySetupFixture("domain-settle-orphan");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({ cname: TARGET }, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await markVerified(fixture, domainId);
+    await fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+      libraryId: fixture.created.libraryId,
+      domainId,
+    });
+    const operationId = await readPendingOperationId(fixture, domainId);
+
+    // The domain has forgotten this deployment. Passing over that would let
+    // a stale worker change the library's address anyway.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, { pendingDeployment: undefined });
+    });
+    await expect(runDeploymentCompletion(fixture, operationId)).rejects.toThrow(
+      /took that domain/,
+    );
+  });
+
+  it("notes that the proxy was asked before it answers", async () => {
+    const fixture = await createReadySetupFixture("domain-attach-intent");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({ cname: TARGET }, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await markVerified(fixture, added.domainId);
+    await fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+      libraryId: fixture.created.libraryId,
+      domainId: added.domainId,
+    });
+    // A crash between the proxy accepting the host and the receipt being
+    // saved is still visible here.
+    expect((await readRow(fixture, added.domainId))?.attachIntentAt).toEqual(
+      expect.any(Number),
+    );
+  });
+
+  it("will not clean up a domain that is no longer being removed", async () => {
+    const fixture = await createReadySetupFixture("domain-cleanup-stale");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    // The removal was called off, so nothing may delete its certificate.
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.claimDomainCleanup,
+        { domainId: added.domainId },
+      ),
+    ).resolves.toBeNull();
+
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, { removingAt: Date.now() });
+    });
+    const claimed = await fixture.t.mutation(
+      internal.evidenceLibraries.domains.claimDomainCleanup,
+      { domainId: added.domainId },
+    );
+    // It holds the domain from the moment it decides to act.
+    expect(claimed?.token).toEqual(expect.any(String));
+    expect((await readRow(fixture, added.domainId))?.transition?.token).toBe(
+      claimed?.token,
+    );
   });
 });
