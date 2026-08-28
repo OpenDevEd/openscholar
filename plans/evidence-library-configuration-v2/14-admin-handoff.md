@@ -315,3 +315,19 @@ Lane O: `app/evidence-libraries/[libraryId]/admin/route.ts` and
 `convex/evidenceLibraries/adminHandoff.ts` and `adminHandoffActions.ts`
 (new), `adminLoginCodes.ts`, `adminLoginCodeActions.ts`, `queries.ts`,
 their tests, `messages/*.json`, `e2e/evidence-library-admin.spec.ts` (new).
+
+
+## Revision 2026-08-28 — the client router's fetch after sign-in
+
+The gate on `el-gate-0828` showed one sign-in spending two codes: after
+sign-in Clerk's router requests the handoff address as a client-side (RSC)
+fetch, which minted a code and followed the cross-site redirect for nothing;
+the browser's document request then minted the code that was used. The route
+now answers RSC and prefetch fetches (`rsc: 1`, `next-router-prefetch: 1`,
+`_rsc` in the query) with an empty `200 text/html` and no code; Next's router
+treats a non-RSC answer as a full-page navigation to the same address, so
+exactly one code is spent per sign-in. Unit test: an RSC fetch never calls
+the handoff action. Browser gate: after sign-in the network log must show the
+RSC request (`rsc: 1` or `_rsc`) answered `200 text/html`, the document
+request answered `303`, and exactly one row in `evidenceLibraryAdminLoginCodes`
+for that sign-in.

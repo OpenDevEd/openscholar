@@ -45,12 +45,35 @@ export const DELETE = methodNotAllowed;
 // every method it thinks this file serves.
 export const OPTIONS = methodNotAllowed;
 
+/**
+ * After sign-in, Clerk's router asks for the return address as a client-side
+ * (RSC) fetch before the browser itself goes there. That fetch would spend a
+ * code and follow the cross-site redirect for nothing. Answering with a plain
+ * page instead makes Next's router hand the address to the browser, whose
+ * one document request then spends the one code that is used.
+ */
+function isClientRouterFetch(request: Request, searchParams: URLSearchParams) {
+  return (
+    request.headers.get("rsc") === "1" ||
+    request.headers.get("next-router-prefetch") === "1" ||
+    searchParams.has("_rsc")
+  );
+}
+
+function letTheBrowserNavigate() {
+  return new Response(null, {
+    status: 200,
+    headers: { "content-type": "text/html", "cache-control": "no-store" },
+  });
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ libraryId: string }> },
 ) {
   const { libraryId } = await context.params;
   const { searchParams } = new URL(request.url);
+  if (isClientRouterFetch(request, searchParams)) return letTheBrowserNavigate();
   const returnPath = readAdminReturnPath(
     searchParams.get("return") ?? undefined,
   );
