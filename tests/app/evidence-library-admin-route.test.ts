@@ -44,6 +44,21 @@ describe("GET /evidence-libraries/[libraryId]/admin", () => {
     mocks.getToken.mockResolvedValue("clerk-token");
   });
 
+  it("spends no code on the client router's fetch after sign-in", async () => {
+    for (const headers of [{ rsc: "1" }, { "next-router-prefetch": "1" }]) {
+      const response = await GET(
+        new Request("http://localhost:3012/evidence-libraries/lib_1/admin?return=%2Fadmin", { headers }),
+        context(),
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("text/html");
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    const response = await GET(request("?return=%2Fadmin&_rsc=1x0ad"), context());
+    expect(response.status).toBe(200);
+    expect(mocks.fetchAction).not.toHaveBeenCalled();
+  });
+
   it("sends the browser to the library with a real redirect", async () => {
     const launchUrl =
       "https://climate.example.test/api/admin/session?code=elc_1&return=%2Fadmin%2Fitems";
