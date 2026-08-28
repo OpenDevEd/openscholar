@@ -789,7 +789,12 @@ export const writeDomainAttachmentIntent = internalMutation({
  * hold the domain from the moment it decides to act.
  */
 export const claimDomainCleanup = internalMutation({
-  args: { domainId: v.id("evidenceLibraryDomains") },
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainId: v.id("evidenceLibraryDomains"),
+    /** The deployment this cleanup belongs to. Proved before it takes hold. */
+    operationId: v.id("evidenceLibraryConfigOperations"),
+  },
   returns: v.union(
     v.object({
       host: v.string(),
@@ -801,8 +806,18 @@ export const claimDomainCleanup = internalMutation({
   handler: async (ctx, args) => {
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     // A domain that has moved on since this was booked must not lose a
-    // hostname it now needs.
-    if (!row || row.removingAt === undefined) return null;
+    // hostname it now needs. Every one of these is checked before anything
+    // outside OpenScholar is touched, not after.
+    if (
+      !row ||
+      row.libraryId !== args.libraryId ||
+      row.removingAt === undefined ||
+      // Written when the detach completed. A call that cannot point at the
+      // same deployment is not this cleanup.
+      row.cleanup?.operationId !== args.operationId
+    ) {
+      return null;
+    }
     // Once a teardown owns the library it deletes the hostnames itself.
     const library = await ctx.db.get("evidenceLibraries", row.libraryId);
     if (!library || library.state === "disabled") return null;
@@ -889,8 +904,11 @@ export const scheduleDomainCleanupRetry = internalMutation({
     const attempts = cleanup.attempts + (args.calledProvider ? 1 : 0);
     // Every trip round counts, even the ones that never reached the
     // certificate service, so this can never go round for ever.
-    const rounds = (cleanup.rounds ?? 0) + 1;
-    if (attempts >= MAX_DOMAIN_CLEANUP_ATTEMPTS || rounds > MAX_CLEANUP_ROUNDS) {
+    const rounds = cleanup.rounds + 1;
+    if (
+      attempts >= MAX_DOMAIN_CLEANUP_ATTEMPTS ||
+      rounds >= MAX_CLEANUP_ROUNDS
+    ) {
       await ctx.db.patch(args.domainId, {
         cleanup: {
           operationId: args.operationId,
@@ -996,11 +1014,13 @@ export const listWorkingDomains = internalQuery({
         cursor: args.cursor ?? null,
         numItems: Math.min(Math.max(args.limit, 1), 50),
       });
-    return {
-      rows: await Promise.all(
-        page.page.map(async (row) => {
+    const rows = await Promise.all(
+      page.page.map(async (row) => {
           const library = await ctx.db.get("evidenceLibraries", row.libraryId);
-          const revision = library?.activeRevisionId
+          // A library being deleted is left out entirely: a teardown is
+          // removing the very things a sweep would be writing about.
+          if (!library || library.state === "disabled") return null;
+          const revision = library.activeRevisionId
             ? await ctx.db.get(
                 "evidenceLibraryConfigRevisions",
                 library.activeRevisionId,
@@ -1020,10 +1040,12 @@ export const listWorkingDomains = internalQuery({
                 row.transition.expiresAt > Date.now()) ||
               row.pendingDeployment !== undefined ||
               row.removingAt !== undefined,
-            liveRevisionKey: revision?.revisionKey ?? null,
-          };
-        }),
-      ),
+          liveRevisionKey: revision?.revisionKey ?? null,
+        };
+      }),
+    );
+    return {
+      rows: rows.filter((row) => row !== null),
       cursor: page.continueCursor,
       done: page.isDone,
     };
@@ -1047,6 +1069,9 @@ export const writeSweptDomain = internalMutation({
   handler: async (ctx, args) => {
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row) return { written: false };
+    // A teardown may have started while this sweep was looking.
+    const library = await ctx.db.get("evidenceLibraries", row.libraryId);
+    if (!library || library.state === "disabled") return { written: false };
     // A sweep speaks about the domain as it was when it looked. If a check,
     // a removal or a change of address has happened since, its answer is
     // out of date and must not overwrite the newer one.

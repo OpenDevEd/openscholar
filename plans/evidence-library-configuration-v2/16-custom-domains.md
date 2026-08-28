@@ -603,6 +603,25 @@ these decisions.
 100. **A publish carrying a domain change cannot be moved by hand.** The
     generic operation transitions refuse it rather than stranding the domain.
 
+## Corrections after the eleventh review (2026-08-28)
+
+101. **A sweep stops at the library gate.** A library being deleted is left
+    out of the working list, and the write checks again, so a sweep already
+    holding an answer cannot land it after a teardown starts.
+102. **The final step proves who it is before it deletes anything.** The
+    claim now takes the library and the deployment, and all three — library,
+    deployment, and the record written when the detach completed — must
+    agree before it takes the lease.
+103. **The generic operation transitions are gone.** Nothing in production
+    used them, they could still move a teardown record with no token, and
+    they created an import cycle. Deleted, cycle broken.
+104. **The cap on the final step is real.** Every trip round is recorded,
+    the count is required rather than assumed, the tenth round is the last,
+    and the wait before a retry is never zero.
+105. **Tests settle the diary safely.** Only work still waiting is called
+    off, in one transaction; anything already running is allowed to finish;
+    and it goes round until a pass finds nothing left.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

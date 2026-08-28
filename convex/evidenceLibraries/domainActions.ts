@@ -813,7 +813,11 @@ export const completeDomainChange = internalAction({
       // hostname it now needs.
       const receipt = await ctx.runMutation(
         internal.evidenceLibraries.domains.claimDomainCleanup,
-        { domainId: args.domainId },
+        {
+          libraryId: args.libraryId,
+          domainId: args.domainId,
+          operationId: args.operationId,
+        },
       );
       if (!receipt) return { status: "stale" as const };
       cleanupToken = receipt.token;
