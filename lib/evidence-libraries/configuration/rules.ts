@@ -873,10 +873,13 @@ function compact<T extends Record<string, unknown>>(value: T): T {
   ) as T;
 }
 
+// Brand images are optional: the platform puts the OpenScholar logo and
+// favicon in at assembly. An empty box therefore writes no key at all; an
+// empty string would be refused as a bad web address.
 function identityPayload(identity: IdentityDraft) {
   return compact({
     name: identity.name,
-    shortName: identity.shortName,
+    shortName: optional(identity.shortName),
     baseUrl: identity.baseUrl,
     tagline: optional(identity.tagline),
     description: optional(identity.description),
@@ -888,9 +891,9 @@ function identityPayload(identity: IdentityDraft) {
           }))
         : undefined,
     assets: compact({
-      logoDark: identity.assets.logoDark,
+      logoDark: optional(identity.assets.logoDark),
       logoLight: optional(identity.assets.logoLight),
-      favicon: identity.assets.favicon,
+      favicon: optional(identity.assets.favicon),
       shareImage: optional(identity.assets.shareImage),
     }),
   });
@@ -1189,6 +1192,27 @@ export function cardForRow(rowKey: string): PageSectionKey | null {
       (ROWS_FOR_CARD[card] as readonly string[]).includes(rowKey),
     ) ?? null
   );
+}
+
+/** A save the platform refused: the card it belongs to and what to tell the owner. */
+export type SaveRefusal = { card: PageSectionKey | null; message: string };
+
+/**
+ * Reads a refused save. The pointer names the runtime value, so the message
+ * goes to the card that edits it. The pointer is dropped from the text the
+ * owner reads.
+ */
+export function saveRefusal(
+  pointer: unknown,
+  message: unknown,
+): SaveRefusal | null {
+  if (typeof message !== "string" || message.trim() === "") return null;
+  const path = typeof pointer === "string" ? pointer : "";
+  const prefix = `${path}: `;
+  return {
+    card: path ? cardForRow(path.split("/")[1] ?? "") : null,
+    message: path && message.startsWith(prefix) ? message.slice(prefix.length) : message,
+  };
 }
 
 export function sectionChanged(
