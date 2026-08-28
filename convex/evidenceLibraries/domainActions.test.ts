@@ -310,6 +310,7 @@ async function runDeploymentCompletion(
     // for that one step so the real completion mutation can run.
     const target = operation.configurationDeploymentTarget ?? {
       applicationId: "coolify-domains",
+      aiProviderKey: { present: false as const },
       runtimeBindingId: binding._id,
       targetBaseUrl: binding.targetBaseUrl,
       customDomains: [],

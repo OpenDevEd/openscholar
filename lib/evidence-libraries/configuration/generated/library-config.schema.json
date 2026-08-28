@@ -1821,7 +1821,8 @@
 									"google",
 									"anthropic",
 									"mistral",
-									"deepseek"
+									"deepseek",
+									"openrouter"
 								]
 							},
 							"enabled": {
@@ -1903,6 +1904,12 @@
 							"maxLength": 2048,
 							"format": "uri"
 						},
+						"uiHost": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 2048,
+							"format": "uri"
+						},
 						"key": {
 							"type": "string",
 							"minLength": 20,
@@ -1911,6 +1918,12 @@
 						}
 					},
 					"additionalProperties": false
+				},
+				"consentPolicyVersion": {
+					"default": 1,
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 9007199254740991
 				},
 				"google": {
 					"default": {},

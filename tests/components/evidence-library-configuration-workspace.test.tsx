@@ -1,11 +1,23 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Every test here renders all fourteen configuration sections and types into
+// them one key at a time, so a single case can pass five seconds on a busy
+// machine. The whole file still finishes in about thirty seconds.
+vi.setConfig({ testTimeout: 20_000 });
 
 const queryMock = vi.hoisted(() => vi.fn());
 
@@ -50,6 +62,9 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
       queries: { getDraft: "getDraft", listTeam: "listTeam" },
+      credentials: { listCredentialMetadata: "listCredentialMetadata" },
+      credentialActions: { writeCredential: "writeCredential" },
+      aiProviderKey: { removeAiProviderKey: "removeAiProviderKey" },
       mutations: {
         activateConfiguration: "activateConfiguration",
         saveDraftSections: "saveDraftSections",
@@ -112,21 +127,26 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
           query === "listVersions" ||
           query === "listAddressNotices"
         ? { data: [], isReady: true }
-        : query === "listTeam"
-          ? { data: { organizationName: "Test Org", owners: [], editors: [] }, isReady: true }
-          : query === "listDomains"
+        : query === "listCredentialMetadata"
+          ? { data: storedCredentials, isReady: true }
+          : query === "listTeam"
             ? {
-                data: {
-                  platformReady: false,
-                  platformAddress: savedIdentity.baseUrl,
-                  canonicalAddress: savedIdentity.baseUrl,
-                  target: "cname.openscholar.ai",
-                  live: true,
-                  domains: [],
-                },
+                data: { organizationName: "Test Org", owners: [], editors: [] },
                 isReady: true,
               }
-            : queryMock(query, args),
+            : query === "listDomains"
+              ? {
+                  data: {
+                    platformReady: false,
+                    platformAddress: savedIdentity.baseUrl,
+                    canonicalAddress: savedIdentity.baseUrl,
+                    target: "cname.openscholar.ai",
+                    live: true,
+                    domains: [],
+                  },
+                  isReady: true,
+                }
+              : queryMock(query, args),
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
@@ -134,6 +154,10 @@ vi.mock("@/components/auth/auth-state-panel", () => ({
 }));
 
 import { ConfigurationWorkspace } from "@/components/evidence-libraries/configuration/configuration-workspace";
+import {
+  AI_MODELS,
+  AI_PROVIDER_CREDENTIAL_KEY,
+} from "@/lib/evidence-libraries/configuration/ai";
 
 const savedIdentity = {
   name: "Saved Library",
@@ -161,6 +185,9 @@ const savedTheme = {
     body: { source: "google", family: "Ubuntu" },
   },
 };
+/** The credential rows the page reads; a test may add the OpenRouter key. */
+let storedCredentials: { credentialKey: string }[] = [];
+
 const savedRows = [
   { sectionKey: "identity", payload: savedIdentity },
   { sectionKey: "theme", payload: savedTheme },
@@ -180,9 +207,16 @@ const savedRows = [
   { sectionKey: "citations", payload: {} },
   { sectionKey: "exports", payload: {} },
   { sectionKey: "analytics", payload: {} },
+  { sectionKey: "ai", payload: {} },
 ];
 
-function draftResult(overrides: { operation?: unknown; state?: string } = {}) {
+function draftResult(
+  overrides: {
+    operation?: unknown;
+    state?: string;
+    sections?: { sectionKey: string; payload: unknown }[];
+  } = {},
+) {
   return {
     data: {
       library: {
@@ -193,7 +227,7 @@ function draftResult(overrides: { operation?: unknown; state?: string } = {}) {
       },
       draft: { _id: "draft_123", libraryId: "library_123", editVersion: 4 },
       operation: overrides.operation ?? null,
-      sections: savedRows,
+      sections: overrides.sections ?? savedRows,
     },
     isReady: true,
   };
@@ -250,6 +284,7 @@ describe("<ConfigurationWorkspace>", () => {
   beforeEach(() => {
     saved = [];
     activated = [];
+    storedCredentials = [];
     checkAction = () => checkMock();
     queryMock.mockReset();
     mutationMock.mockReset();
@@ -796,6 +831,301 @@ describe("<ConfigurationWorkspace>", () => {
           },
         },
       ]);
+    });
+  });
+
+  describe("the analytics fields the runtime gained", () => {
+    const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
+
+    it(
+      "offers the session recordings address only once a host is set",
+      async () => {
+        const user = userEvent.setup();
+        await renderWorkspace();
+        const analytics = card("analytics");
+        expect(analytics.queryByLabelText("analytics.uiHostLabel")).not.toBeInTheDocument();
+
+        // Switched on with no host yet: the card needs attention and the
+        // recordings address is still nowhere to be seen.
+        await user.click(analytics.getByRole("switch", { name: "analytics.posthogLabel" }));
+        expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
+        expect(analytics.getByText("problems.posthog")).toBeInTheDocument();
+        expect(analytics.queryByLabelText("analytics.uiHostLabel")).not.toBeInTheDocument();
+
+        await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
+        await user.type(analytics.getByLabelText("analytics.keyLabel"), "phc_12345678901234567890");
+        await user.type(analytics.getByLabelText("analytics.uiHostLabel"), "not-an-address");
+        expect(analytics.getByText("problems.posthogUiHost")).toBeInTheDocument();
+        expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
+
+        // Clearing the host takes the recordings address with it, so the two
+        // can never be saved half-set.
+        await user.clear(analytics.getByLabelText("analytics.hostLabel"));
+        expect(analytics.queryByLabelText("analytics.uiHostLabel")).not.toBeInTheDocument();
+        expect(analytics.queryByText("problems.posthogUiHost")).not.toBeInTheDocument();
+        await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
+        expect(analytics.getByLabelText("analytics.uiHostLabel")).toHaveValue("");
+      },
+    );
+
+    it(
+      "saves a raised consent version and refuses one below one",
+      async () => {
+        const user = userEvent.setup();
+        await renderWorkspace();
+        const analytics = card("analytics");
+        const version = analytics.getByLabelText("analytics.consentVersionLabel");
+        await user.clear(version);
+        await user.type(version, "0");
+        expect(analytics.getByText("problems.consentVersion")).toBeInTheDocument();
+        await user.clear(version);
+        await user.type(version, "3");
+        await user.click(screen.getByRole("button", { name: "save" }));
+        await waitFor(() => expect(saved).toHaveLength(1));
+        const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+        expect(request.sections).toEqual([
+          { sectionKey: "analytics", payload: { consentPolicyVersion: 3 } },
+        ]);
+      },
+    );
+  });
+
+  describe("the AI card", () => {
+    const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
+
+    it("sits under Discovery in the rail with its state", async () => {
+      await renderWorkspace();
+      const discovery = within(
+        screen.getByRole("navigation", { name: "rail.aria" }),
+      );
+      const link = discovery.getByRole("link", { name: /sections\.ai/ });
+      expect(link).toHaveAttribute("href", "#sec-ai");
+      expect(within(link).getByRole("img")).toHaveAccessibleName(
+        "sectionState.complete",
+      );
+      expect(card("ai").getByRole("switch", { name: "ai.answersLabel" })).toBeInTheDocument();
+    });
+
+    it(
+      "asks for a key and a model, then saves one provider entry",
+      async () => {
+        const user = userEvent.setup();
+        const keysWritten: unknown[] = [];
+        mutationMock.mockImplementation((reference: unknown) => {
+          if (reference === "saveDraftSections") {
+            return async (input: unknown) => {
+              saved.push(input);
+              return { editVersion: 5 };
+            };
+          }
+          if (reference === "writeCredential") {
+            return async (input: unknown) => {
+              keysWritten.push(input);
+              storedCredentials = [
+                { credentialKey: AI_PROVIDER_CREDENTIAL_KEY },
+              ];
+              return "credential_1";
+            };
+          }
+          return async () => null;
+        });
+        await renderWorkspace();
+        const ai = card("ai");
+        await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
+        expect(ai.getByText("sectionState.attention")).toBeInTheDocument();
+        expect(ai.getByText("problems.aiKey")).toBeInTheDocument();
+        expect(ai.getByText("problems.aiModel")).toBeInTheDocument();
+
+        await user.type(ai.getByLabelText("ai.keyLabel"), "sk-or-v1-test");
+        await user.click(ai.getByRole("button", { name: "ai.keySave" }));
+        await waitFor(() =>
+          expect(keysWritten).toEqual([
+            {
+              libraryId: "library_123",
+              concretePath: "/ai/providers/0/apiKey",
+              instanceKey: "openrouter",
+              value: "sk-or-v1-test",
+            },
+          ]),
+        );
+
+        await user.click(ai.getByRole("combobox", { name: "ai.modelLabel" }));
+        await user.click(await screen.findByRole("option", { name: AI_MODELS[0] }));
+        await user.click(screen.getByRole("button", { name: "save" }));
+
+        await waitFor(() => expect(saved).toHaveLength(1));
+        const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+        expect(request.sections.find((row) => row.sectionKey === "ai")).toEqual({
+          sectionKey: "ai",
+          payload: {
+            providers: [
+              {
+                provider: "openrouter",
+                enabled: true,
+                defaultModel: AI_MODELS[0],
+              },
+            ],
+          },
+        });
+        expect(request.sections.find((row) => row.sectionKey === "features")?.payload)
+          .toMatchObject({ ai: true });
+      },
+    );
+
+    it(
+      "shows a stored key as saved and lets the owner remove it",
+      async () => {
+        const user = userEvent.setup();
+        storedCredentials = [{ credentialKey: AI_PROVIDER_CREDENTIAL_KEY }];
+        const removed: unknown[] = [];
+        mutationMock.mockImplementation((reference: unknown) =>
+          reference === "removeAiProviderKey"
+            ? async (input: unknown) => {
+                removed.push(input);
+                storedCredentials = [];
+                return null;
+              }
+            : async () => null,
+        );
+        await renderWorkspace();
+        const ai = card("ai");
+        await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
+        expect(ai.getByText("ai.keyStored")).toBeInTheDocument();
+        expect(ai.queryByText("problems.aiKey")).not.toBeInTheDocument();
+
+        await user.click(ai.getByRole("button", { name: "ai.keyRemove" }));
+        await waitFor(() =>
+          expect(removed).toEqual([{ libraryId: "library_123" }]),
+        );
+        // Convex answers the removal with an empty credential list. That is
+        // what puts the key field back and the card into needs attention.
+        cleanup();
+        queryMock.mockReturnValue(
+          draftResult({
+            sections: savedRows.map((row) =>
+              row.sectionKey === "features"
+                ? { sectionKey: "features", payload: { ai: true } }
+                : row,
+            ),
+          }),
+        );
+        await renderWorkspace();
+        const afterRemoval = card("ai");
+        expect(afterRemoval.getByText("sectionState.attention")).toBeInTheDocument();
+        expect(afterRemoval.getByText("problems.aiKey")).toBeInTheDocument();
+        expect(afterRemoval.getByLabelText("ai.keyLabel")).toBeInTheDocument();
+      },
+    );
+  });
+
+  describe("the AI card while a key request is in flight", () => {
+    const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
+
+    it("locks every key control until the save answers", async () => {
+      const user = userEvent.setup();
+      let release!: (id: string) => void;
+      mutationMock.mockImplementation((reference: unknown) =>
+        reference === "writeCredential"
+          ? () =>
+              new Promise<string>((resolve) => {
+                release = resolve;
+              })
+          : async () => null,
+      );
+      await renderWorkspace();
+      const ai = card("ai");
+      await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
+      await user.type(ai.getByLabelText("ai.keyLabel"), "sk-or-v1-pending");
+      await user.click(ai.getByRole("button", { name: "ai.keySave" }));
+
+      // While the platform is still answering, nothing about the key moves.
+      const save = ai.getByRole("button", { name: "ai.keySave" });
+      expect(ai.getByLabelText("ai.keyLabel")).toBeDisabled();
+      expect(save).toBeDisabled();
+      expect(save).toHaveAttribute("aria-busy", "true");
+
+      await act(async () => {
+        release("credential_1");
+      });
+      // The saved key is cleared from the box, so Save has nothing to send.
+      expect(save).not.toHaveAttribute("aria-busy");
+      expect(ai.getByLabelText("ai.keyLabel")).toBeEnabled();
+      expect(ai.getByLabelText("ai.keyLabel")).toHaveValue("");
+    });
+
+    it("locks every key control until the removal answers", async () => {
+      const user = userEvent.setup();
+      storedCredentials = [{ credentialKey: AI_PROVIDER_CREDENTIAL_KEY }];
+      let release!: () => void;
+      mutationMock.mockImplementation((reference: unknown) =>
+        reference === "removeAiProviderKey"
+          ? () =>
+              new Promise<null>((resolve) => {
+                release = () => resolve(null);
+              })
+          : async () => null,
+      );
+      await renderWorkspace();
+      const ai = card("ai");
+      await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
+      await user.click(ai.getByRole("button", { name: "ai.keyRemove" }));
+
+      const removeButton = ai.getByRole("button", { name: "ai.keyRemove" });
+      const replace = ai.getByRole("button", { name: "ai.keyReplace" });
+      expect(removeButton).toBeDisabled();
+      expect(removeButton).toHaveAttribute("aria-busy", "true");
+      // Replace would start a second request against the same row.
+      expect(replace).toBeDisabled();
+
+      await act(async () => {
+        release();
+      });
+      expect(ai.getByRole("button", { name: "ai.keyReplace" })).toBeEnabled();
+    });
+
+    it("locks Cancel while a replacement is being saved", async () => {
+      const user = userEvent.setup();
+      storedCredentials = [{ credentialKey: AI_PROVIDER_CREDENTIAL_KEY }];
+      let release!: (id: string) => void;
+      mutationMock.mockImplementation((reference: unknown) =>
+        reference === "writeCredential"
+          ? () =>
+              new Promise<string>((resolve) => {
+                release = resolve;
+              })
+          : async () => null,
+      );
+      await renderWorkspace();
+      const ai = card("ai");
+      await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
+      await user.click(ai.getByRole("button", { name: "ai.keyReplace" }));
+      await user.type(ai.getByLabelText("ai.keyLabel"), "sk-or-v1-replacement");
+      await user.click(ai.getByRole("button", { name: "ai.keySave" }));
+
+      expect(ai.getByRole("button", { name: "ai.keyCancel" })).toBeDisabled();
+
+      await act(async () => {
+        release("credential_2");
+      });
+    });
+  });
+
+  describe("the AI card without a stored key", () => {
+    it("needs attention while AI answers are on and no key is stored", async () => {
+      queryMock.mockReturnValue(
+        draftResult({
+          sections: savedRows.map((row) =>
+            row.sectionKey === "features"
+              ? { sectionKey: "features", payload: { ai: true } }
+              : row,
+          ),
+        }),
+      );
+      await renderWorkspace();
+      const ai = within(document.getElementById("sec-ai")!);
+      expect(ai.getByText("sectionState.attention")).toBeInTheDocument();
+      expect(ai.getByText("problems.aiKey")).toBeInTheDocument();
+      expect(ai.getByLabelText("ai.keyLabel")).toBeInTheDocument();
     });
   });
 

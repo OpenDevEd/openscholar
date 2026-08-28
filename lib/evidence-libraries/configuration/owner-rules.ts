@@ -1,3 +1,4 @@
+import { aiProviderIssues } from "./ai";
 import {
   PLATFORM_MAIL_MISSING_MESSAGE,
   emailWantsPlatformMail,
@@ -37,6 +38,9 @@ export type OwnerRuleOptions = {
   // Whether the platform mail service exists. When false, recipients are
   // refused early instead of failing when the runtime starts.
   platformMailConfigured?: boolean;
+  // Whether AI answers are on for this library, counting the rows being
+  // saved. The AI provider entry has to agree with it.
+  featuresAi?: boolean;
 };
 
 function objectValue(value: unknown): Record<string, unknown> | undefined {
@@ -86,6 +90,10 @@ function ownerRuleIssues(
       message: "The mail server is set by the platform and cannot be saved.",
     });
   }
+  // Reaching here means the row is being saved, so it must hold one provider.
+  if (sectionKey === "ai") {
+    issues.push(...aiProviderIssues(record?.providers, options.featuresAi, true));
+  }
   if (
     sectionKey === "email" &&
     options.platformMailConfigured === false &&
@@ -121,6 +129,18 @@ export function validateOwnerSections(
 ): { valid: boolean; issues: ValidationIssue[] } {
   const issues: ValidationIssue[] = [];
   const seen = new Set<SectionKey>();
+  // The AI provider entry has to agree with the AI answers switch, which
+  // lives in another row. A caller that already knows the effective value
+  // passes it; otherwise the `features` row in this set decides.
+  const featuresRow = rows.find((row) => row.sectionKey === "features");
+  const ruleOptions: OwnerRuleOptions = {
+    ...options,
+    featuresAi:
+      options.featuresAi ??
+      (featuresRow
+        ? objectValue(featuresRow.payload)?.ai === true
+        : undefined),
+  };
   for (const row of rows) {
     if (seen.has(row.sectionKey)) {
       issues.push({
@@ -141,7 +161,15 @@ export function validateOwnerSections(
       });
       continue;
     }
-    issues.push(...validateOwnerSection(row.sectionKey, row.payload, options).issues);
+    issues.push(
+      ...validateOwnerSection(row.sectionKey, row.payload, ruleOptions).issues,
+    );
+  }
+  // AI answers on with no AI row at all leaves the runtime without a
+  // provider. Only the complete set can tell; a partial save has no `ai` row
+  // simply because that card did not change.
+  if (options.requireComplete && ruleOptions.featuresAi === true && !seen.has("ai")) {
+    issues.push(...aiProviderIssues(undefined, true, false));
   }
   if (options.requireComplete) {
     for (const sectionKey of REQUIRED_OWNER_SECTION_KEYS) {

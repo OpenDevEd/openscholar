@@ -7,6 +7,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { createInitialEvidenceLibraryShortName } from "../../lib/evidence-libraries/setup/naming";
+import { aiProviderIssues } from "../../lib/evidence-libraries/configuration/ai";
 import {
   initialIdentityPayload,
   initialLocalizationPayload,
@@ -256,12 +257,50 @@ export async function saveEvidenceLibraryDraftSections(
     args.expectedEditVersion,
   );
   const expectedBaseUrl = await readRuntimeBindingBaseUrl(ctx, access.library);
+  const storedSections = await ctx.db
+    .query("evidenceLibraryConfigSections")
+    .withIndex("by_draftId_and_sectionKey", (query) =>
+      query.eq("draftId", draft._id),
+    )
+    .collect();
+  // A save carries only the cards that changed, so the AI rules read the
+  // draft as it will be: the rows being written over the rows already there.
+  const effectivePayload = (sectionKey: string): unknown =>
+    args.sections.find((section) => section.sectionKey === sectionKey)
+      ?.payload ??
+    storedSections.find((section) => section.sectionKey === sectionKey)
+      ?.payload;
+  const effectiveFeatures = effectivePayload("features");
+  const featuresAi =
+    typeof effectiveFeatures === "object" &&
+    effectiveFeatures !== null &&
+    (effectiveFeatures as { ai?: unknown }).ai === true;
   throwFirstIssue(
     validateOwnerSections(args.sections, {
       expectedBaseUrl,
       platformMailConfigured: isPlatformMailConfigured(),
+      featuresAi,
     }).issues,
   );
+  // AI answers and the provider entry live in two rows. Either one changing
+  // is checked against the other, so they can never drift apart.
+  if (
+    args.sections.some(
+      (section) =>
+        section.sectionKey === "ai" || section.sectionKey === "features",
+    )
+  ) {
+    const ai = effectivePayload("ai");
+    throwFirstIssue(
+      aiProviderIssues(
+        typeof ai === "object" && ai !== null
+          ? (ai as { providers?: unknown }).providers
+          : undefined,
+        featuresAi,
+        ai !== undefined,
+      ),
+    );
+  }
   const identity = args.sections.find(
     (section) => section.sectionKey === "identity",
   );
@@ -283,12 +322,6 @@ export async function saveEvidenceLibraryDraftSections(
     ...section,
     payloadByteLength: validateSectionPayload(section.payload),
   }));
-  const storedSections = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_draftId_and_sectionKey", (query) =>
-      query.eq("draftId", draft._id),
-    )
-    .collect();
   const writeKeys = new Set(writes.map((write) => write.sectionKey));
   const totalByteLength =
     storedSections.reduce(

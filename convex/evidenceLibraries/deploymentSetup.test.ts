@@ -67,6 +67,7 @@ async function createApplicationSetupFixture() {
       databaseCredentialId: prepared.databaseCredentialId,
       searchCredentialId: prepared.searchCredentialId,
       storageCredentialId: prepared.storageCredentialId,
+      aiProviderKey: { present: false } as const,
     },
   );
   return { ...fixture, prepared };

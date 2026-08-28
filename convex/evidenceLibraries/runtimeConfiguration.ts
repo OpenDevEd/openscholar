@@ -12,6 +12,7 @@ import type { Id } from "../_generated/dataModel";
 import { decrypt } from "../lib/crypto";
 import type { ZoteroGroupScopes } from "../zotero/groupAccess";
 import { createZoteroSourceCredentials } from "../zotero/sourceCredentials";
+import { createAiProviderKey } from "./aiProviderKey";
 
 export const EVIDENCE_LIBRARY_SEARCH_HOST = "http://meilisearch:7700";
 export const EVIDENCE_LIBRARY_SEARCH_INDEX = "evidence_library";
@@ -57,6 +58,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     encryptedApiKey: string;
     scopes: ZoteroGroupScopes;
   }[];
+  aiProviderKey?: { encryptedApiKey: string };
 }): {
   runtimeConfig: AssembledEvidenceLibraryConfiguration;
   runtimeConfigJson: string;
@@ -107,6 +109,12 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
         apiKey: decrypt(group.encryptedApiKey, input.encryptionKey),
         scopes: group.scopes,
       })),
+    ),
+    // The AI provider key, likewise: decrypted only for this payload.
+    applyAiProviderKey: createAiProviderKey(
+      input.aiProviderKey
+        ? decrypt(input.aiProviderKey.encryptedApiKey, input.encryptionKey)
+        : undefined,
     ),
   });
   const runtimeConfigJson = JSON.stringify(runtimeConfig);

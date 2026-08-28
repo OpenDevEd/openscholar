@@ -29,7 +29,13 @@ import {
   STORAGE_SERVICE_KEY_PATH,
 } from "./runtimeCredentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
+import {
+  readAiProviderKeySource,
+  readLibraryAiProviderKey,
+  requireUnchangedAiProviderKey,
+} from "./aiProviderKey";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
+import { aiProviderKeySourceValidator } from "./validators";
 
 function requireRuntimeCommit(value: string): string {
   const commit = requireNonBlankProvisioningValue("runtimeCommit", value);
@@ -80,6 +86,10 @@ export const prepareApplicationSetup = internalMutation({
         scopes: zoteroGroupScopesValidator,
       }),
     ),
+    aiProviderKey: aiProviderKeySourceValidator,
+    // The key itself, for the action that builds the configuration. It is
+    // never written to the operation, which owners can read.
+    aiProviderApiKey: v.optional(v.object({ encryptedApiKey: v.string() })),
   }),
   handler: async (ctx, args) => {
     const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, {
@@ -241,6 +251,11 @@ export const prepareApplicationSetup = internalMutation({
         validationState: "valid",
       }));
 
+    const aiProviderKey = await readAiProviderKeySource(ctx, args.libraryId);
+    const aiProviderApiKey = await readLibraryAiProviderKey(
+      ctx,
+      args.libraryId,
+    );
     return {
       searchCredentialId,
       encryptedSearchKey,
@@ -263,6 +278,8 @@ export const prepareApplicationSetup = internalMutation({
         ctx,
         args.libraryId,
       ),
+      aiProviderKey,
+      ...(aiProviderApiKey ? { aiProviderApiKey } : {}),
     };
   },
 });
@@ -288,6 +305,7 @@ export const completeApplicationSetup = internalMutation({
     databaseCredentialId: v.id("evidenceLibraryCredentials"),
     searchCredentialId: v.id("evidenceLibraryCredentials"),
     storageCredentialId: v.id("evidenceLibraryCredentials"),
+    aiProviderKey: aiProviderKeySourceValidator,
   },
   returns: v.object({
     bindingId: v.id("evidenceLibraryRuntimeBindings"),
@@ -371,6 +389,13 @@ export const completeApplicationSetup = internalMutation({
         );
       }
     }
+    // A key replaced or removed while the library was being set up must not
+    // reach it, the same rule a later publish follows. The snapshot stays on
+    // the operation so the final step can check it once more.
+    await requireUnchangedAiProviderKey(ctx, args.libraryId, args.aiProviderKey);
+    await ctx.db.patch(setup.setupOperation._id, {
+      setupAiProviderKey: args.aiProviderKey,
+    });
     if (occupied && occupied._id !== setup.runtimeBinding._id) {
       throw createError(
         "CONFLICT",

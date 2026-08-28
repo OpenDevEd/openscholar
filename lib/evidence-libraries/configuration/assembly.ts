@@ -1,3 +1,8 @@
+import {
+  aiProviderIssues,
+  type ApplyAiProviderKey,
+  passThroughAiProviderKey,
+} from "./ai";
 import schema from "./generated/library-config.schema.json";
 import {
   type ValidationIssue,
@@ -191,11 +196,13 @@ export function assembleEvidenceLibraryConfiguration({
   managed,
   now = new Date(),
   applySourceCredentials = passThroughSourceCredentials,
+  applyAiProviderKey = passThroughAiProviderKey,
 }: {
   sections: OwnerSections;
   managed: ManagedEvidenceLibraryConfiguration;
   now?: Date;
   applySourceCredentials?: ApplySourceCredentials;
+  applyAiProviderKey?: ApplyAiProviderKey;
 }): AssembledEvidenceLibraryConfiguration {
   const owner = Object.fromEntries(
     Object.entries(sections).filter(
@@ -268,6 +275,28 @@ export function assembleEvidenceLibraryConfiguration({
       candidate.sources.filter(isObject),
     );
   }
+  // Exactly one OpenRouter entry, agreeing with the AI answers switch, with a
+  // model the runtime approves. Checked before the key is added, so a wrong
+  // entry never receives one.
+  const aiRowSaved = owner.ai !== undefined;
+  const aiIssues = aiProviderIssues(
+    isObject(candidate.ai) ? candidate.ai.providers : undefined,
+    isObject(candidate.features)
+      ? candidate.features.ai === true
+      : undefined,
+    aiRowSaved,
+  );
+  if (aiIssues.length === 0 && aiRowSaved && isObject(candidate.ai)) {
+    // The AI provider key is added here and nowhere earlier, like a source key.
+    candidate.ai = {
+      ...candidate.ai,
+      providers: applyAiProviderKey(
+        Array.isArray(candidate.ai.providers)
+          ? candidate.ai.providers.filter(isObject)
+          : [],
+      ),
+    };
+  }
   const structuralValidation = validateLibraryConfigStructure(candidate);
   // The runtime refuses to start when recipients exist without a mail
   // server. Catch it here so setup stops before anything is created.
@@ -289,6 +318,7 @@ export function assembleEvidenceLibraryConfiguration({
     message: PLATFORM_BRAND_MISSING_MESSAGE,
   }));
   const issues = uniqueIssues([
+    ...aiIssues,
     ...brandIssues,
     ...structuralValidation.issues.filter(
       (issue) =>

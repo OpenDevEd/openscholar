@@ -24,6 +24,7 @@ import {
   Rocket,
   Save,
   Search,
+  Sparkles,
   ToggleRight,
   Trash2,
   Users,
@@ -69,9 +70,12 @@ import {
   type SectionRow,
   sectionState,
   staleUploads,
+  withAiKey,
 } from "@/lib/evidence-libraries/configuration/rules";
+import { AI_PROVIDER_CREDENTIAL_KEY } from "@/lib/evidence-libraries/configuration/ai";
 import { shortCommit } from "@/lib/evidence-libraries/configuration/versions";
 import { cn } from "@/lib/utils";
+import { AiSection } from "./sections/ai-section";
 import { AnalyticsSection } from "./sections/analytics-section";
 import { CitationsSection } from "./sections/citations-section";
 import { CollectionFactsProvider } from "./sections/collection-facts";
@@ -122,7 +126,7 @@ const RAIL_GROUPS: {
 }[] = [
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["navigation", "footer", "contact", "collections"] },
-  { key: "discovery", sections: ["search", "citations", "features", "sources"] },
+  { key: "discovery", sections: ["search", "citations", "features", "sources", "ai"] },
   { key: "platform", sections: ["languages", "analytics", "domain", "versions"] },
   { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
@@ -140,6 +144,7 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   sources: Database,
   citations: Quote,
   features: ToggleRight,
+  ai: Sparkles,
   languages: Languages,
   analytics: BarChart3,
   domain: Link2,
@@ -163,6 +168,7 @@ const SECTION_COMPONENTS: Record<
   sources: SourcesSection,
   citations: CitationsSection,
   features: FeaturesSection,
+  ai: AiSection,
   languages: LanguagesSection,
   analytics: AnalyticsSection,
 };
@@ -237,8 +243,20 @@ function Workspace({
   );
   const removeUpload = useAction(api.evidenceLibraries.uploadActions.remove);
 
-  const [draft, setDraft] = useState<ConfigurationDraft>(() =>
+  const [edited, setEdited] = useState<ConfigurationDraft>(() =>
     readDraft(saved),
+  );
+  // Whether an OpenRouter key is stored is not a saved row; it comes from the
+  // credential store and is folded into the draft while the page renders.
+  const credentials = useProtectedQuery(
+    api.evidenceLibraries.credentials.listCredentialMetadata,
+    { libraryId },
+  );
+  const draft = withAiKey(
+    edited,
+    (credentials.data ?? []).some(
+      (credential) => credential.credentialKey === AI_PROVIDER_CREDENTIAL_KEY,
+    ),
   );
   const [saving, setSaving] = useState(false);
   const [activating, setActivating] = useState(false);
@@ -260,9 +278,9 @@ function Workspace({
   const canActivate = !activating && !saving && !problems && !operationRunning;
 
   const patch: SectionProps["patch"] = (update) =>
-    setDraft((current) => update(cloneDraft(current)));
+    setEdited((current) => update(cloneDraft(current)));
   const reset: SectionProps["reset"] = (sectionKey) =>
-    setDraft((current) => resetSection(current, saved, sectionKey));
+    setEdited((current) => resetSection(current, saved, sectionKey));
 
   function jumpTo(key: RailKey) {
     void setSection(key);
