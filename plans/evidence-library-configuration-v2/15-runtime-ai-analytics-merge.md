@@ -331,3 +331,21 @@ Convex lane `calm-labrador-815`, port 3013). Files:
 `convex/evidenceLibraries/configurationDeploymentActions.ts` and
 `applicationSetup*.ts` (managed values), `owner-rules.ts` / `ai.ts`
 (`aiSearch` derivation), `messages/*.json` if any copy changes.
+
+### Live check after #120 — 2026-08-28 evening
+
+On `el-gate-0828c` (`r170x0xns5ykg6yma6yt2y1p558dav5n`; dev `7d9bfcf6` on the
+shared deployment; `EL_EMBEDDING_OPENROUTER_KEY` unset, so the
+`OPENROUTER_API_KEY` fallback ran), AI turned on before the first setup:
+
+- `features.aiSearch: true` and `search.embedder` present in the running
+  library; the index worker embedded three records in under a minute.
+- The library-wide "Ask AI" streamed a correct, cited answer through
+  `POST /api/ai/chat` (200, event-stream). **Pass.**
+- No OpenRouter key in 382 payloads, page HTML, storage or cookies. **Pass.**
+- Setup 2 min 31 s; republish 2 min 48 s. Library deleted; Coolify app gone.
+
+Runtime bug found (new-el, not OpenScholar): the browser sends
+`distinctId: null` when analytics is off or cookies are declined, and the
+strict `chatRequestSchema` rejects it with 400, so on `95ac3fc0` browser AI
+calls only work with PostHog on and accepted. Fixed in new-el PR #145.
