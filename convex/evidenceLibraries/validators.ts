@@ -19,7 +19,9 @@ export const aiProviderKeySourceValidator = v.union(
   v.object({
     present: v.literal(true),
     id: v.id("evidenceLibraryCredentials"),
-    updatedAt: v.number(),
+    // A hash of the stored ciphertext. It changes on every write, including
+    // two in the same millisecond, and says nothing about the key itself.
+    digest: v.string(),
   }),
 );
 export type AiProviderKeySource = Infer<typeof aiProviderKeySourceValidator>;

@@ -13,6 +13,7 @@ import {
 import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { requireEvidenceLibraryAccess } from "./access";
 import type { AiProviderKeySource } from "./validators";
 
@@ -103,7 +104,11 @@ export async function readAiProviderKeySource(
 ): Promise<AiProviderKeySource> {
   const credential = await findAiProviderCredential(ctx, libraryId);
   return credential
-    ? { present: true, id: credential._id, updatedAt: credential.updatedAt }
+    ? {
+        present: true,
+        id: credential._id,
+        digest: await digestOpaqueToken(credential.encryptedValue),
+      }
     : { present: false };
 }
 
@@ -155,7 +160,7 @@ export async function requireUnchangedAiProviderKey(
     current.present === source.present &&
     (!current.present ||
       !source.present ||
-      (current.id === source.id && current.updatedAt === source.updatedAt));
+      (current.id === source.id && current.digest === source.digest));
   if (!same) {
     throw createError("CONFLICT", AI_PROVIDER_KEY_CHANGED_MESSAGE);
   }

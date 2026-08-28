@@ -43,7 +43,7 @@ describe("Evidence Library readiness completion", () => {
         )
         .unique();
       if (row) {
-        await ctx.db.patch(row._id, { updatedAt: 4242 });
+        await ctx.db.patch(row._id, { encryptedValue: "replaced-ciphertext" });
         return;
       }
       await ctx.db.insert("evidenceLibraryCredentials", {
