@@ -9,7 +9,7 @@
  * never disagree.
  */
 
-export const DEFAULT_ADMIN_RETURN_PATH = "/admin";
+const DEFAULT_ADMIN_RETURN_PATH = "/admin";
 
 const MAX_RETURN_PATH_LENGTH = 512;
 const LOCALE_SEGMENT = /^[a-z]{2}(-[A-Za-z]{2,8})?$/;
@@ -48,7 +48,7 @@ export function sanitiseAdminReturnPath(
 }
 
 /** The first value of a query parameter, however Next hands it over. */
-export function readSingleSearchParam(
+function readSingleSearchParam(
   value: string | string[] | undefined,
 ): string | null {
   const single = Array.isArray(value) ? value[0] : value;
