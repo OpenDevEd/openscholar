@@ -91,6 +91,12 @@ function requireInput(input: ReadinessCheckInput) {
       "Evidence Library revision is missing",
     );
   }
+  if (!input.loginPageUrl.trim()) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library login page address is missing",
+    );
+  }
   if (!input.verifierToken.trim()) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
@@ -381,11 +387,47 @@ async function requirePage(
   }
 }
 
+/**
+ * A signed-out `/admin` does not render a page any more: the runtime sends
+ * the browser to this library's OpenScholar login page, which signs the
+ * person in and hands the session back. Readiness accepts that redirect and a
+ * plain answer, and nothing else. `2xx` stays accepted while libraries still
+ * run older software.
+ */
+async function requireAdminPage(
+  fetchImpl: typeof fetch,
+  url: URL,
+  loginPageUrl: string,
+) {
+  const notReady = new ReadinessClientError(
+    "PAGE_NOT_READY",
+    "The Evidence Library admin page is not ready",
+  );
+  const response = await fetchWithTimeout(fetchImpl, url, {
+    headers: { accept: "text/html" },
+    method: "GET",
+  });
+  if (response.ok) return;
+  if (response.status < 300 || response.status >= 400) throw notReady;
+
+  const location = response.headers.get("location");
+  if (!location) throw notReady;
+  let destination: string;
+  try {
+    destination = new URL(location, url).toString();
+  } catch {
+    throw notReady;
+  }
+  if (!destination.startsWith(loginPageUrl)) throw notReady;
+}
+
 export type ReadinessCheckInput = {
   applicationUuid: string;
   runtimeCommit: string;
   revisionKey: string;
   targetBaseUrl: string;
+  /** Where the library sends a signed-out visitor of `/admin`. */
+  loginPageUrl: string;
   verifierUrl: string;
   verifierToken: string;
   fetchImpl?: typeof fetch;
@@ -412,7 +454,11 @@ export async function requireLibraryRuntimeReady(
       new URL("/lib", targetOrigin),
       "public page",
     ),
-    requirePage(fetchImpl, new URL("/admin", targetOrigin), "admin page"),
+    requireAdminPage(
+      fetchImpl,
+      new URL("/admin", targetOrigin),
+      input.loginPageUrl,
+    ),
   ]);
   return { status: "ready" };
 }

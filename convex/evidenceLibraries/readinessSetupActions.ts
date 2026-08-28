@@ -12,7 +12,11 @@ import {
   ReadinessClientError,
   requireLibraryRuntimeReady,
 } from "./readinessClient";
-import { requireRuntimeEnvironment } from "./runtimeActionConfig";
+import { buildEvidenceLibraryLoginPageUrl } from "./runtimeConfiguration";
+import {
+  requireRuntimeEnvironment,
+  requireRuntimeHttpsOrigin,
+} from "./runtimeActionConfig";
 
 const invalidReadinessConfig = (message: string) =>
   new ReadinessClientError("READINESS_CONFIG_INVALID", message);
@@ -87,6 +91,13 @@ export const runReadinessSetup = internalAction({
         runtimeCommit: prepared.runtimeCommit,
         revisionKey: prepared.revisionKey,
         targetBaseUrl: prepared.targetBaseUrl,
+        loginPageUrl: buildEvidenceLibraryLoginPageUrl({
+          libraryId: args.libraryId,
+          appOrigin: requireRuntimeHttpsOrigin(
+            "EL_OPENSCHOLAR_URL",
+            invalidReadinessConfig,
+          ),
+        }),
         verifierUrl: requireRuntimeEnvironment(
           "EL_RUNTIME_VERIFIER_URL",
           invalidReadinessConfig,

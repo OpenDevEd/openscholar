@@ -10,6 +10,7 @@ describe("Evidence Library readiness completion", () => {
     vi.stubEnv("EL_COOLIFY_TOKEN", "coolify-token");
     vi.stubEnv("EL_RUNTIME_VERIFIER_URL", "https://verifier.example.test");
     vi.stubEnv("EL_RUNTIME_VERIFIER_TOKEN", "verifier-token");
+    vi.stubEnv("EL_OPENSCHOLAR_URL", "https://openscholar.example.test");
   });
 
   afterEach(() => {
@@ -198,6 +199,7 @@ describe("Evidence Library address recovery during setup", () => {
     vi.stubEnv("EL_COOLIFY_TOKEN", "coolify-token");
     vi.stubEnv("EL_RUNTIME_VERIFIER_URL", "https://verifier.example.test");
     vi.stubEnv("EL_RUNTIME_VERIFIER_TOKEN", "verifier-token");
+    vi.stubEnv("EL_OPENSCHOLAR_URL", "https://openscholar.example.test");
   });
 
   afterEach(() => {
