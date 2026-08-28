@@ -586,7 +586,10 @@ describe("readDraft for the discovery sections", () => {
     expect(draft.filters.collectionsExpanded).toBe(true);
     expect(draft.sources).toEqual([{ key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: true }]);
     expect(draft.content.tags).toEqual({ publish: ["_publish"], hidden: [] });
-    expect(collectionOptions(draft)).toEqual([{ id: "COL2", title: "Health" }, { id: "COL1", title: "COL1" }]);
+    expect(collectionOptions(draft)).toEqual([
+      { id: "COL2", title: "Health" },
+      { id: "COL1", title: undefined },
+    ]);
   });
 
   it("uses the runtime defaults when the rows are missing", () => {

@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const queryMock = vi.hoisted(() => vi.fn());
+
 const mutationMock = vi.hoisted(() => vi.fn());
 // The Versions section checks for software updates when the page opens.
 const checkMock = vi.hoisted(() =>
@@ -73,6 +74,7 @@ vi.mock("@/convex/_generated/api", () => ({
       runtimeReadActions: {
         listLibraryCollections: "listLibraryCollections",
         listRecordInstitutions: "listRecordInstitutions",
+        resolveLibraryCollections: "resolveLibraryCollections",
       },
     },
   },
@@ -82,10 +84,17 @@ vi.mock("@/convex/_generated/api", () => ({
 // Versions section caches its update check by that callback.
 let checkAction: (args: unknown) => unknown;
 
+// The page asks the library to name the collections it shows.
+const resolveCollectionsMock = vi.hoisted(() => vi.fn(async () => ({ items: [] })));
+
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
   useAction: (action: unknown) =>
-    action === "check" ? checkAction : mutationMock(action),
+    action === "check"
+      ? checkAction
+      : action === "resolveLibraryCollections"
+        ? resolveCollectionsMock
+        : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
@@ -486,7 +495,7 @@ describe("<ConfigurationWorkspace>", () => {
       });
     });
 
-    it("clears the other target when a link changes what it goes to", async () => {
+    it("asks for an address once a link goes to an external site", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
       const navigation = card("navigation");
@@ -498,6 +507,18 @@ describe("<ConfigurationWorkspace>", () => {
       await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.url");
       await user.type(row.getByLabelText("links.urlLabel"), "https://example.org/about");
       expect(row.getByRole("switch", { name: "links.newTab" })).toBeInTheDocument();
+      expect(navigation.getByText("sectionState.edited")).toBeInTheDocument();
+    });
+
+    it("clears the other target when a link changes what it goes to", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      const navigation = card("navigation");
+      await user.click(navigation.getByRole("button", { name: "navigation.addLink" }));
+      const row = within(document.querySelector("[data-nav-link]") as HTMLElement);
+      await user.type(row.getByLabelText("links.labelLabel"), "About");
+      await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.url");
+      await user.type(row.getByLabelText("links.urlLabel"), "https://example.org/about");
 
       await choose(user, row.getByRole("combobox", { name: "links.kindLabel" }), "links.kinds.page");
       expect(row.queryByLabelText("links.urlLabel")).not.toBeInTheDocument();
@@ -689,7 +710,7 @@ describe("<ConfigurationWorkspace>", () => {
       expect(card("languages").getByText("sectionState.edited")).toBeInTheDocument();
     });
 
-    it("lets PostHog and Google Analytics be on at the same time and checks both keys", async () => {
+    it("asks for a measurement id as soon as Google Analytics is switched on", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
       const analytics = card("analytics");
@@ -698,7 +719,14 @@ describe("<ConfigurationWorkspace>", () => {
       expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
       await user.type(analytics.getByLabelText("analytics.measurementIdLabel"), "g-abcd12");
       expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
+    });
 
+    it("saves PostHog and Google Analytics switched on together", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      const analytics = card("analytics");
+      await user.click(analytics.getByRole("switch", { name: "analytics.googleLabel" }));
+      await user.type(analytics.getByLabelText("analytics.measurementIdLabel"), "g-abcd12");
       await user.click(analytics.getByRole("switch", { name: "analytics.posthogLabel" }));
       expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
       await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");

@@ -2113,13 +2113,17 @@
     "picker": {
       "placeholder": "機関を選択",
       "search": "機関を検索",
-      "loading": "機関を読み込んでいます",
-      "failed": "機関を読み込めませんでした。もう一度お試しください。",
       "notSetUp": "レコードの機関名はライブラリのセットアップ後に表示されます。",
-      "empty": "一致する機関がありません。",
+      "empty": "No institution names on the records yet.",
       "none": "なし",
       "useTyped": "「{name}」を使う",
-      "records": "{count} 件"
+      "title": "Choose an institution",
+      "description": "Names come from the records in this library.",
+      "colName": "Institution",
+      "colRecords": "Records",
+      "noMatch": "No institution matches.",
+      "loading": "Loading institutions",
+      "failed": "Could not load institutions."
     }
   },
   "evidenceLibraryConfiguration": {
@@ -2401,6 +2405,19 @@
         "LuX": "X",
         "FaQuestionCircle": "Question",
         "IoStatsChart": "Statistics"
+      },
+      "collectionPicker": {
+        "title": "Choose a collection",
+        "description": "The collections this site shows.",
+        "search": "Search collections…",
+        "colTitle": "Collection",
+        "empty": "Add collections in the Collections section first.",
+        "noMatch": "No collection matches.",
+        "loading": "Loading collections…",
+        "failed": "Could not load the collections.",
+        "colRecords": "Records",
+        "colSource": "Source",
+        "shownAs": "Shown on the site as {title}"
       }
     },
     "navigation": {
@@ -2491,13 +2508,20 @@
       "legalUrlError": "Use a full address that starts with https://.",
       "legalNone": "The site shows its standard page."
     },
+    "picker": {
+      "clear": "Clear search",
+      "selectAll": "Select all",
+      "loadMore": "Load more",
+      "tryAgain": "Try again",
+      "cancel": "Cancel",
+      "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}"
+    },
     "collections": {
       "description": "Choose which collections from the library's database appear on the site, and in what order.",
       "shownHeading": "Shown on the site",
       "introHint": "Collections come from every connected source. Add the ones visitors should see; the order here is the order on the site.",
       "loading": "Loading collections…",
       "failed": "Could not load the library's collections.",
-      "tryAgain": "Try again",
       "notSetUp": "Collections appear after the library is set up and has synced.",
       "noneInDatabase": "No collections in the database yet. Connect a source and sync first.",
       "empty": "No collections shown yet.",
@@ -2508,23 +2532,16 @@
       "picker": {
         "open": "Add collections",
         "title": "Add collections",
-        "description": "{total} collections in the library database. Tick the ones to show on the site.",
+        "description": "Collections in the library database. Tick the ones to show on the site.",
         "search": "Search by name or source…",
-        "clear": "Clear search",
         "allSources": "All sources",
         "hideShown": "Hide collections already shown",
-        "selectAll": "Select all",
         "colTitle": "Collection",
         "colSource": "Source",
         "colRecords": "Records",
         "noMatch": "No collection matches.",
         "shown": "Shown",
-        "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
-        "cancel": "Cancel",
-        "addPicked": "{count, plural, =0 {Add} one {Add # collection} other {Add # collections}}",
-        "truncated": "Only the first {total} are listed; search inside the library for the rest.",
-        "searchAll": "Search the whole library",
-        "searchAllFailed": "The search did not answer. Try again."
+        "addPicked": "{count, plural, =0 {Add} one {Add # collection} other {Add # collections}}"
       }
     },
     "sources": {
@@ -2609,16 +2626,16 @@
         "title": "Add groups",
         "description": "Groups your Zotero account can see. Tick the ones to import.",
         "search": "Search groups…",
-        "loading": "Loading your groups…",
-        "failed": "Could not load your groups. Try again.",
         "noGroups": "Your Zotero account has no groups.",
         "colGroup": "Group",
         "colItems": "Records",
         "added": "Added",
         "noMatch": "No group matches.",
-        "pickedCount": "{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}",
         "cancel": "Cancel",
-        "addPicked": "{count, plural, =0 {Add} one {Add # group} other {Add # groups}}"
+        "addPicked": "{count, plural, =0 {Add} one {Add # group} other {Add # groups}}",
+        "capped": "Zotero stops listing after about 1,000 groups.",
+        "loading": "Loading your groups…",
+        "failed": "Could not load your groups."
       }
     },
     "search": {
