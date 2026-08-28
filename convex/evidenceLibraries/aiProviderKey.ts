@@ -14,6 +14,10 @@ import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configu
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import {
+  isDeploymentLeaseHeld,
+  isSetupLeaseHeld,
+} from "./operationLeases";
 import { requireEvidenceLibraryAccess } from "./access";
 import type { AiProviderKeySource } from "./validators";
 
@@ -139,17 +143,15 @@ export async function requireNoRunningOperation(
       query.eq("libraryId", libraryId).eq("status", "running"),
     );
   for await (const operation of running) {
-    const lease =
+    // The same rules the two pipelines use to decide whether an attempt may
+    // be reclaimed, so this guard can never disagree with them.
+    const held =
       operation.kind === "setup"
-        ? operation.setupLeaseExpiresAt
+        ? isSetupLeaseHeld(operation, now)
         : operation.kind === "publish"
-          ? operation.configurationLeaseExpiresAt
-          : undefined;
-    if (operation.kind !== "setup" && operation.kind !== "publish") continue;
-    // No lease at all is how both pipelines read "held", so it counts as
-    // working. Only a lease that has run out frees the key.
-    if (lease !== undefined && lease <= now) continue;
-    throw createError("CONFLICT", AI_PROVIDER_KEY_BUSY_MESSAGE);
+          ? isDeploymentLeaseHeld(operation, now)
+          : false;
+    if (held) throw createError("CONFLICT", AI_PROVIDER_KEY_BUSY_MESSAGE);
   }
 }
 

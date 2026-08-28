@@ -10,6 +10,7 @@ import {
 } from "./operations";
 import { requireNonBlankProvisioningValue } from "./provisioning";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
+import { isSetupLeaseHeld } from "./operationLeases";
 import {
   evidenceLibraryOperationFailureValidator,
   evidenceLibrarySetupResultValidator,
@@ -261,11 +262,7 @@ export async function claimEvidenceLibrarySetupOperation(
     args.attemptToken ??
       `elsetup_${operation._id}_${operation.attemptCount + 1}`,
   );
-  if (
-    operation.status === "running" &&
-    (operation.setupLeaseExpiresAt === undefined ||
-      operation.setupLeaseExpiresAt > now)
-  ) {
+  if (isSetupLeaseHeld(operation, now)) {
     throw createError(
       "CONFLICT",
       "Evidence Library setup operation is already running",

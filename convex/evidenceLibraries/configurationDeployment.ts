@@ -14,6 +14,7 @@ import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
 import { aiProviderKeySourceValidator } from "./validators";
+import { isDeploymentLeaseHeld } from "./operationLeases";
 import {
   readAiProviderKeySource,
   readLibraryAiProviderKey,
@@ -240,11 +241,7 @@ export async function claimAndScheduleConfigurationDeployment(
   );
   const deployment = await readConfigurationDeployment(ctx, args);
   const now = Date.now();
-  if (
-    deployment.operation.status === "running" &&
-    (!deployment.operation.configurationLeaseExpiresAt ||
-      deployment.operation.configurationLeaseExpiresAt > now)
-  ) {
+  if (isDeploymentLeaseHeld(deployment.operation, now)) {
     throw createError(
       "CONFLICT",
       "Evidence Library configuration deployment is already running",
