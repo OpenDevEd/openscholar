@@ -70,8 +70,17 @@ height of its bar, whatever its shape.
    credits path, no other providers, no embeddings note. `ai.providers` is
    written as exactly one entry `{ provider: "openrouter", enabled, apiKey,
    defaultModel }`. Rules: AI on without a key or a model → section needs
-   attention; `features.aiSearch`/deep research dependants follow the
-   existing feature-dependency rules.
+   attention.
+
+   **Revised 2026-08-28 (lane A).** AI search and deep research are *not*
+   shown. The runtime refuses both without `search.embedder`
+   (`schema.ts` "AI search requires an embedder", on `main` and on
+   `ai-modernization`), and OpenScholar always assembles
+   `search.embedder: null` (`lib/evidence-libraries/configuration/assembly.ts`
+   sets it from `managed.searchEmbedder`, which nothing fills). A switch that
+   can never be turned on is UI the runtime cannot honour, so the AI card
+   holds only the master switch, the key and the model. Add the two
+   dependants when the platform gives libraries an embedder.
 3. **Analytics gains two fields**: "PostHog UI host" (optional; only when a
    PostHog host is set; hint: where session recordings open) and "Consent
    policy version" (a number; hint: raise it when your cookie text changes
@@ -176,8 +185,19 @@ Lane M: merge commit; then `src/components/**` (header, footer, cookie
 dialog, record page brand images), their tests, `docs/evidence-library-customization-map.md`.
 
 Lane A: `lib/evidence-libraries/configuration/generated/**`,
-`contract-lock.json`, `section-registry.ts`, `rules.ts` (+ tests),
+`contract-lock.json`, `rules.ts` and a new `ai.ts` (+ tests),
+`assembly.ts` (the provider-key hook),
 `components/evidence-libraries/configuration/sections/ai-section.tsx` (new),
-`analytics-section.tsx`, `features-section.tsx`, `configuration-workspace.tsx`
-(rail), `convex/evidenceLibraries/credentials.ts`, `configurationDeploymentActions.ts`
-(assembly), their tests, `messages/*.json`.
+`analytics-section.tsx`, `configuration-workspace.tsx` (rail), a new
+`convex/evidenceLibraries/aiProviderKey.ts` (credential row, removal and the
+assembly hook), `configurationDeployment.ts`, `configurationDeploymentActions.ts`,
+`applicationSetup.ts`, `applicationSetupActions.ts`, `runtimeConfiguration.ts`,
+their tests, `messages/*.json`. `section-registry.ts` and
+`features-section.tsx` need no change: `ai` is already a registry section, and
+the dependants stay hidden (see Decision 2).
+
+**Waiting on the re-pin.** Until the contract is re-pinned to a `main` commit
+carrying the merge, `AI_MODELS` is empty, `SUPPORTS_POSTHOG_UI_HOST` and
+`SUPPORTS_CONSENT_POLICY_VERSION` are false, so the AI switch is disabled and
+the two analytics fields stay hidden. Every test that needs the new contract
+is marked `skipIf` with that reason. Delete the three flags after the re-pin.
