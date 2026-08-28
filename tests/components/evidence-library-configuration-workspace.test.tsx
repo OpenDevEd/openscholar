@@ -10,6 +10,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ConvexError } from "convex/values";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -218,6 +219,7 @@ function draftResult(
     operation?: unknown;
     state?: string;
     sections?: { sectionKey: string; payload: unknown }[];
+    editVersion?: number;
   } = {},
 ) {
   return {
@@ -228,7 +230,11 @@ function draftResult(
         state: overrides.state ?? "active",
         organizationId: "organization_123",
       },
-      draft: { _id: "draft_123", libraryId: "library_123", editVersion: 4 },
+      draft: {
+        _id: "draft_123",
+        libraryId: "library_123",
+        editVersion: overrides.editVersion ?? 4,
+      },
       operation: overrides.operation ?? null,
       sections: overrides.sections ?? savedRows,
     },
@@ -240,17 +246,32 @@ function draftResult(
  * The Versions section suspends until the update check answers. React retries
  * a suspended tree only inside an awaited act, so render and settle there.
  */
+// A fresh element every time: React skips a re-render when it is given the
+// exact element it already rendered.
+const workspaceTree = () => (
+  <NuqsTestingAdapter>
+    <TooltipProvider>
+      <ConfigurationWorkspace libraryId="library_123" />
+    </TooltipProvider>
+  </NuqsTestingAdapter>
+);
+
+/** Renders the page and returns a way to make the page re-read the draft. */
 async function renderWorkspace() {
+  let result: ReturnType<typeof render> | undefined;
   await act(async () => {
-    render(
-      <NuqsTestingAdapter>
-        <TooltipProvider>
-          <ConfigurationWorkspace libraryId="library_123" />
-        </TooltipProvider>
-      </NuqsTestingAdapter>,
-    );
+    result = render(workspaceTree());
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
+  return {
+    // The Convex query is mocked, so a fresh read needs a render from the top.
+    reread: async () => {
+      await act(async () => {
+        result?.rerender(workspaceTree());
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    },
+  };
 }
 
 function identityCard() {
@@ -383,6 +404,217 @@ describe("<ConfigurationWorkspace>", () => {
     await user.click(screen.getByRole("button", { name: "save" }));
     expect(saved).toEqual([]);
     expect(toastMock.error).toHaveBeenCalledWith("fixFirstToast", expect.anything());
+  });
+
+  /** Every save is refused, with a pointer that belongs to the Identity card. */
+  function refuseNextSave() {
+    mutationMock.mockImplementation((reference: unknown) => {
+      if (reference === "saveDraftSections") {
+        return async () => {
+          throw new ConvexError({
+            code: "VALIDATION_ERROR",
+            message: "/identity/name: This name is already taken.",
+            pointer: "/identity/name",
+          });
+        };
+      }
+      return async () => null;
+    });
+    return Promise.resolve();
+  }
+
+  it("shows a refused save inside the section that owns the value", async () => {
+    const user = userEvent.setup();
+    mutationMock.mockImplementation((reference: unknown) => {
+      if (reference === "saveDraftSections") {
+        return async () => {
+          throw new ConvexError({
+            code: "VALIDATION_ERROR",
+            message: "/identity/name: This name is already taken.",
+            pointer: "/identity/name",
+          });
+        };
+      }
+      return async () => null;
+    });
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+
+    const refusal = await waitFor(() => identityCard().getByRole("alert"));
+    expect(refusal).toHaveTextContent("saveRefused");
+    expect(refusal).toHaveTextContent("This name is already taken.");
+    expect(refusal).not.toHaveTextContent("/identity/name");
+    expect(toastMock.error).toHaveBeenCalledWith("This name is already taken.");
+  });
+
+  it("clears a refused save once the next save works", async () => {
+    const user = userEvent.setup();
+    let refuse = true;
+    mutationMock.mockImplementation((reference: unknown) => {
+      if (reference === "saveDraftSections") {
+        return async (input: unknown) => {
+          if (refuse) {
+            throw new ConvexError({
+              code: "VALIDATION_ERROR",
+              message: "/identity/name: This name is already taken.",
+              pointer: "/identity/name",
+            });
+          }
+          saved.push(input);
+          return { editVersion: 5 };
+        };
+      }
+      return async () => null;
+    });
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => identityCard().getByRole("alert"));
+
+    refuse = false;
+    await user.click(screen.getByRole("button", { name: "save" }));
+
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps a refused activation on screen after the save that came first", async () => {
+    const user = userEvent.setup();
+    // Activate saves first. That save raises the edit version, which restarts
+    // the form from the newer rows. The refusal that follows must survive it.
+    let editVersion = 4;
+    let releaseActivate = () => {};
+    const activateReached = new Promise<void>((resolve) => {
+      releaseActivate = resolve;
+    });
+    queryMock.mockImplementation(() => draftResult({ editVersion }));
+    mutationMock.mockImplementation((reference: unknown) => {
+      if (reference === "saveDraftSections") {
+        return async (input: unknown) => {
+          saved.push(input);
+          editVersion = 5;
+          return { editVersion: 5 };
+        };
+      }
+      if (reference === "activateConfiguration") {
+        return async () => {
+          await activateReached;
+          throw new ConvexError({
+            code: "VALIDATION_ERROR",
+            message: "/identity/name: This name is already taken.",
+            pointer: "/identity/name",
+          });
+        };
+      }
+      return async () => null;
+    });
+    const { reread } = await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "activate" }));
+    await user.click(screen.getByRole("button", { name: "activateConfirm" }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+
+    // The platform now has the newer draft, so the form starts again.
+    await reread();
+    expect(identityCard().getByLabelText("identity.nameLabel")).toHaveValue(
+      "Saved Library",
+    );
+
+    releaseActivate();
+    const refusal = await waitFor(() => identityCard().getByRole("alert"));
+    expect(refusal).toHaveTextContent("saveRefused");
+    expect(refusal).toHaveTextContent("This name is already taken.");
+  });
+
+  it("shows a refusal that belongs to no card above the sections", async () => {
+    const user = userEvent.setup();
+    mutationMock.mockImplementation((reference: unknown) => {
+      if (reference === "saveDraftSections") {
+        return async () => {
+          throw new ConvexError({
+            code: "VALIDATION_ERROR",
+            message: "The library was changed somewhere else. Reload the page.",
+          });
+        };
+      }
+      return async () => null;
+    });
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+
+    const refusal = await waitFor(() => screen.getByRole("alert"));
+    expect(refusal).toHaveTextContent("saveRefusedAll");
+    expect(refusal).toHaveTextContent(
+      "The library was changed somewhere else. Reload the page.",
+    );
+    expect(document.getElementById("sec-identity")).not.toContainElement(refusal);
+  });
+
+  it("clears a refused save when the owner opens another section", async () => {
+    const user = userEvent.setup();
+    await refuseNextSave();
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => identityCard().getByRole("alert"));
+
+    await user.click(screen.getByRole("link", { name: /sections\.theme/ }));
+
+    expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("clears a refused save when the owner uses Back to top", async () => {
+    const user = userEvent.setup();
+    await refuseNextSave();
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => identityCard().getByRole("alert"));
+
+    await user.click(screen.getByRole("button", { name: "backToTop" }));
+
+    expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("clears a refused save when the owner edits or resets the card", async () => {
+    const user = userEvent.setup();
+    await refuseNextSave();
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => identityCard().getByRole("alert"));
+
+    await user.type(identityCard().getByLabelText("identity.nameLabel"), "!");
+    expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => identityCard().getByRole("alert"));
+
+    await user.click(identityCard().getByRole("button", { name: "fields.reset" }));
+    expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("resets a section back to the saved values", async () => {

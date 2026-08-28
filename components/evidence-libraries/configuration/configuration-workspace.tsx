@@ -58,7 +58,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
   type ConfigurationDraft,
-  cardForRow,
+  cardForPointer,
   changedSectionRows,
   cloneDraft,
   hasProblems,
@@ -67,6 +67,8 @@ import {
   type PageSectionKey,
   readDraft,
   resetSection,
+  type SaveRefusal,
+  saveRefusal,
   type SectionRow,
   sectionState,
   staleUploads,
@@ -96,7 +98,11 @@ import { TeamSection } from "./sections/team-section";
 import { ThemeSection } from "./sections/theme-section";
 import { VersionsSection } from "./sections/versions-section";
 import { InlineNotice } from "./section-card";
-import { STATE_TONE, type SectionProps } from "./section-shell";
+import {
+  SaveRefusalProvider,
+  STATE_TONE,
+  type SectionProps,
+} from "./section-shell";
 import { LibraryAddressLink } from "../library-address-link";
 import { PanelHeader } from "./panel-header";
 import { STATUS_DOT, StatusChip } from "./status-chip";
@@ -175,12 +181,16 @@ const SECTION_COMPONENTS: Record<
 
 const LIBRARIES_HREF = "/evidence-libraries";
 
+/** What the platform refused and where it belongs, or null when it said nothing useful. */
+function readRefusal(error: unknown): SaveRefusal | null {
+  if (!(error instanceof ConvexError)) return null;
+  const data = error.data as { message?: unknown; pointer?: unknown };
+  return saveRefusal(data?.pointer, data?.message);
+}
+
+/** The plain sentence for a failure that has no card of its own. */
 function errorMessage(error: unknown, fallback: string) {
-  if (error instanceof ConvexError) {
-    const data = error.data as { message?: unknown };
-    if (typeof data?.message === "string") return data.message;
-  }
-  return fallback;
+  return readRefusal(error)?.message ?? fallback;
 }
 
 function isPageSection(value: string): value is PageSectionKey {
@@ -199,6 +209,9 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
     libraryId: libraryId as Id<"evidenceLibraries">,
   });
+  // A refused save outlives the form below: saving first and then failing to
+  // activate raises the edit version, which restarts the form from scratch.
+  const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
   if (draftQuery.data === undefined) {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
@@ -213,6 +226,8 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       editVersion={draft.editVersion}
       saved={sections}
       operation={operation}
+      refusal={refusal}
+      setRefusal={setRefusal}
     />
   );
 }
@@ -224,6 +239,8 @@ function Workspace({
   editVersion,
   saved,
   operation,
+  refusal,
+  setRefusal,
 }: {
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
@@ -231,6 +248,8 @@ function Workspace({
   editVersion: number;
   saved: readonly SectionRow[];
   operation: Operation;
+  refusal: SaveRefusal | null;
+  setRefusal: (refusal: SaveRefusal | null) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const tc = useTranslations("common");
@@ -277,12 +296,18 @@ function Workspace({
   const isDraftLibrary = libraryState === "provisioning";
   const canActivate = !activating && !saving && !problems && !operationRunning;
 
-  const patch: SectionProps["patch"] = (update) =>
+  // Editing, resetting or moving on answers the last refusal, so it goes away.
+  const patch: SectionProps["patch"] = (update) => {
+    setRefusal(null);
     setEdited((current) => update(cloneDraft(current)));
-  const reset: SectionProps["reset"] = (sectionKey) =>
+  };
+  const reset: SectionProps["reset"] = (sectionKey) => {
+    setRefusal(null);
     setEdited((current) => resetSection(current, saved, sectionKey));
+  };
 
   function jumpTo(key: RailKey) {
+    setRefusal(null);
     void setSection(key);
     scrollToSection(key);
   }
@@ -303,6 +328,13 @@ function Workspace({
     return result.editVersion;
   }
 
+  // Shows a refused save both as a toast and inside the card that owns the value.
+  function showRefusal(error: unknown, fallback: string) {
+    const refused = readRefusal(error);
+    setRefusal(refused);
+    toast.error(refused?.message ?? fallback);
+  }
+
   function handleSave() {
     if (problems) {
       toast.error(t("fixFirstToast"), {
@@ -311,17 +343,17 @@ function Workspace({
       return;
     }
     setSaving(true);
+    setRefusal(null);
     void save()
       .then(() => toast.success(t("saved")))
-      .catch((error: unknown) =>
-        toast.error(errorMessage(error, t("saveError"))),
-      )
+      .catch((error: unknown) => showRefusal(error, t("saveError")))
       .finally(() => setSaving(false));
   }
 
   function confirmActivate() {
     setActivateOpen(false);
     setActivating(true);
+    setRefusal(null);
     void save()
       .then((version) =>
         activateConfiguration({ libraryId, expectedEditVersion: version }),
@@ -337,9 +369,7 @@ function Workspace({
           }),
         });
       })
-      .catch((error: unknown) =>
-        toast.error(errorMessage(error, t("activationError"))),
-      )
+      .catch((error: unknown) => showRefusal(error, t("activationError")))
       .finally(() => setActivating(false));
   }
 
@@ -451,23 +481,35 @@ function Workspace({
 
             {/* Sections */}
             <div className="min-w-0 flex-1 space-y-4 p-4 md:p-6">
+              {refusal && refusal.card === null ? (
+                <InlineNotice
+                  tone="danger"
+                  role="alert"
+                  title={t("saveRefusedAll")}
+                  data-save-refused
+                >
+                  {refusal.message}
+                </InlineNotice>
+              ) : null}
               <CollectionFactsProvider
                 libraryId={libraryId}
                 ids={draft.collections.map((collection) => collection.id)}
               >
-                {PAGE_SECTION_KEYS.map((key) => {
-                  const Section = SECTION_COMPONENTS[key];
-                  return (
-                    <Section
-                      key={key}
-                      libraryId={libraryId}
-                      draft={draft}
-                      saved={saved}
-                      patch={patch}
-                      reset={reset}
-                    />
-                  );
-                })}
+                <SaveRefusalProvider refusal={refusal}>
+                  {PAGE_SECTION_KEYS.map((key) => {
+                    const Section = SECTION_COMPONENTS[key];
+                    return (
+                      <Section
+                        key={key}
+                        libraryId={libraryId}
+                        draft={draft}
+                        saved={saved}
+                        patch={patch}
+                        reset={reset}
+                      />
+                    );
+                  })}
+                </SaveRefusalProvider>
               </CollectionFactsProvider>
               <DomainSection libraryId={libraryId} />
               <VersionsSection
@@ -485,10 +527,7 @@ function Workspace({
           variant="outline"
           size="sm"
           className="fixed bottom-6 right-6 z-20 shadow-lg"
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            void setSection("identity");
-          }}
+          onClick={() => jumpTo("identity")}
         >
           <ArrowUp />
           {t("backToTop")}
@@ -601,7 +640,7 @@ function OperationBanner({
       {issues.length > 0 ? (
         <ul className="mt-1 space-y-1">
           {issues.map((issue) => {
-            const target = cardForRow(issue.pointer.split("/")[1] ?? "");
+            const target = cardForPointer(issue.pointer);
             return (
               <li
                 key={`${issue.pointer}:${issue.message}`}

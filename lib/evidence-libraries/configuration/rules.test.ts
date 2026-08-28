@@ -15,11 +15,13 @@ import {
   sectionChanged,
   sectionProblems,
   sectionState,
+  saveRefusal,
   staleUploads,
   SCHEMA_LIMITS,
   THEME_DEFAULTS,
   type ConfigurationDraft,
 } from "./rules";
+import { validateOwnerSections } from "./owner-rules";
 
 const brandRows = [
   {
@@ -188,6 +190,57 @@ describe("changedSectionRows", () => {
         },
       },
     ]);
+  });
+
+  it("leaves out a logo or favicon the owner has not uploaded", () => {
+    const draft = savedDraft();
+    draft.identity.assets.favicon = "";
+    draft.identity.assets.logoLight = "https://assets.example.test/logo-light.svg";
+    const rows = changedSectionRows(draft, savedRows);
+    expect(rows).toHaveLength(1);
+    expect((rows[0]?.payload as { assets: unknown }).assets).toEqual({
+      logoDark: "https://assets.example.test/logo-dark.svg",
+      logoLight: "https://assets.example.test/logo-light.svg",
+    });
+  });
+
+  it("saves a favicon on its own, and no brand images at all", () => {
+    const faviconOnly = savedDraft();
+    faviconOnly.identity.assets.logoDark = "";
+    expect(
+      (changedSectionRows(faviconOnly, savedRows)[0]?.payload as { assets: unknown })
+        .assets,
+    ).toEqual({ favicon: "https://assets.example.test/favicon.svg" });
+
+    const nothing = savedDraft();
+    nothing.identity.assets.logoDark = "";
+    nothing.identity.assets.favicon = "";
+    expect(
+      (changedSectionRows(nothing, savedRows)[0]?.payload as { assets: unknown })
+        .assets,
+    ).toEqual({});
+  });
+
+  it("still sends an empty short name so the platform can point at it", () => {
+    const draft = savedDraft();
+    draft.identity.shortName = "";
+    const rows = changedSectionRows(draft, savedRows);
+    expect((rows[0]?.payload as { shortName?: unknown }).shortName).toBe("");
+    expect(
+      validateOwnerSections(rows, {
+        expectedBaseUrl: "https://saved-library.libraries.example.test",
+      }).issues.map((issue) => issue.pointer),
+    ).toEqual(["/identity/shortName"]);
+  });
+
+  it("sends a row the platform accepts when there is no favicon", () => {
+    const draft = savedDraft();
+    draft.identity.assets.favicon = "";
+    expect(
+      validateOwnerSections(changedSectionRows(draft, savedRows), {
+        expectedBaseUrl: "https://saved-library.libraries.example.test",
+      }).issues,
+    ).toEqual([]);
   });
 
   it("writes the navigation bar choice to theme.layout", () => {
@@ -545,6 +598,44 @@ describe("changedSectionRows for the content sections", () => {
     const draft = readDraft(contentRows);
     draft.footer.funders = [];
     expect(staleUploads(draft, contentRows)).toEqual(["https://assets.example.test/jacobs.svg"]);
+  });
+
+  it("sends a refused save to the card that owns the value", () => {
+    expect(saveRefusal("/identity/name", "/identity/name: This name is already taken.")).toEqual({
+      card: "identity",
+      message: "This name is already taken.",
+    });
+    expect(saveRefusal("/email/smtp", "/email/smtp: The mail server is set by the platform and cannot be saved.")).toEqual({
+      card: "contact",
+      message: "The mail server is set by the platform and cannot be saved.",
+    });
+  });
+
+  it("sends a refused brand image to the Theme card, which edits it", () => {
+    for (const pointer of [
+      "/identity/assets",
+      "/identity/assets/favicon",
+      "/identity/assets/logoDark",
+      "/identity/assets/shareImage",
+    ]) {
+      expect(saveRefusal(pointer, `${pointer}: Value must match the uri format.`)).toEqual({
+        card: "theme",
+        message: "Value must match the uri format.",
+      });
+    }
+  });
+
+  it("keeps a refused save without a pointer out of every card", () => {
+    expect(saveRefusal(undefined, "Nothing to save")).toEqual({
+      card: null,
+      message: "Nothing to save",
+    });
+    expect(saveRefusal("/services/database", "Set by the platform.")).toEqual({
+      card: null,
+      message: "Set by the platform.",
+    });
+    expect(saveRefusal("/identity/name", "")).toBeNull();
+    expect(saveRefusal("/identity/name", undefined)).toBeNull();
   });
 
   it("points an email issue at the contact card", () => {

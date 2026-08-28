@@ -873,6 +873,11 @@ function compact<T extends Record<string, unknown>>(value: T): T {
   ) as T;
 }
 
+// Brand images are optional: the platform puts the OpenScholar logo and
+// favicon in at assembly. An empty box therefore writes no key at all; an
+// empty string would be refused as a bad web address. The name and short name
+// are different: they are required, so an empty one still travels and the
+// platform answers with the field it means.
 function identityPayload(identity: IdentityDraft) {
   return compact({
     name: identity.name,
@@ -888,9 +893,9 @@ function identityPayload(identity: IdentityDraft) {
           }))
         : undefined,
     assets: compact({
-      logoDark: identity.assets.logoDark,
+      logoDark: optional(identity.assets.logoDark),
       logoLight: optional(identity.assets.logoLight),
-      favicon: identity.assets.favicon,
+      favicon: optional(identity.assets.favicon),
       shareImage: optional(identity.assets.shareImage),
     }),
   });
@@ -1189,6 +1194,39 @@ export function cardForRow(rowKey: string): PageSectionKey | null {
       (ROWS_FOR_CARD[card] as readonly string[]).includes(rowKey),
     ) ?? null
   );
+}
+
+// The brand images sit in the identity row, but the Theme card is where the
+// owner uploads them, so their problems belong there.
+const BRAND_ASSET_POINTER = "/identity/assets";
+
+/** The card that edits the value a JSON pointer names, or null when the page has none. */
+export function cardForPointer(pointer: string): PageSectionKey | null {
+  if (pointer === BRAND_ASSET_POINTER || pointer.startsWith(`${BRAND_ASSET_POINTER}/`)) {
+    return "theme";
+  }
+  return cardForRow(pointer.split("/")[1] ?? "");
+}
+
+/** A save the platform refused: the card it belongs to and what to tell the owner. */
+export type SaveRefusal = { card: PageSectionKey | null; message: string };
+
+/**
+ * Reads a refused save. The pointer names the runtime value, so the message
+ * goes to the card that edits it. The pointer is dropped from the text the
+ * owner reads.
+ */
+export function saveRefusal(
+  pointer: unknown,
+  message: unknown,
+): SaveRefusal | null {
+  if (typeof message !== "string" || message.trim() === "") return null;
+  const path = typeof pointer === "string" ? pointer : "";
+  const prefix = `${path}: `;
+  return {
+    card: path ? cardForPointer(path) : null,
+    message: path && message.startsWith(prefix) ? message.slice(prefix.length) : message,
+  };
 }
 
 export function sectionChanged(
