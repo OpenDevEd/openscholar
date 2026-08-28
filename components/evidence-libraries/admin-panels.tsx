@@ -12,7 +12,7 @@ function AdminPanel({
   state,
   children,
 }: {
-  state: "no_access" | "not_ready" | "expired_link";
+  state: "no_access" | "not_ready" | "expired_link" | "open_admin";
   children: React.ReactNode;
 }) {
   return (
@@ -64,6 +64,28 @@ export function AdminNotReadyPanel({
         description={t("notReadyDescription")}
         primaryHref={isOwner ? setupHref : undefined}
         primaryLabel={isOwner ? t("viewSetup") : undefined}
+        secondaryHref="/evidence-libraries"
+        secondaryLabel={t("backToLibraries")}
+      />
+    </AdminPanel>
+  );
+}
+
+/**
+ * Only reached by someone who opens this page directly while they may in
+ * fact use the admin area. One link, and no automatic redirect, so a library
+ * that keeps refusing a code can never bounce the browser in a circle.
+ */
+export function AdminOpenAdminPanel({ adminHref }: { adminHref: string }) {
+  const t = useTranslations("evidenceLibraries.admin");
+  return (
+    <AdminPanel state="open_admin">
+      <AuthStatePanel
+        variant="sign_in_required"
+        title={t("openTitle")}
+        description={t("openDescription")}
+        primaryHref={adminHref}
+        primaryLabel={t("openAdmin")}
         secondaryHref="/evidence-libraries"
         secondaryLabel={t("backToLibraries")}
       />

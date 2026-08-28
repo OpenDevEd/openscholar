@@ -307,11 +307,52 @@ describe("Evidence Library admin handoff", () => {
     ).resolves.toEqual({ status: "no_access", organisationName: null });
   });
 
+  it("answers the refusal page without handing out a code", async () => {
+    const outsiderView = await createReadySetupFixture("admin_handoff_view");
+    const outsider = outsiderView.t.withIdentity({
+      subject: "user_outsider",
+      o: { id: "org_somewhere_else", rol: "org:admin" },
+    });
+
+    await expect(
+      outsider.query(api.evidenceLibraries.adminHandoff.readAdminHandoffState, {
+        libraryId: outsiderView.created.libraryId,
+      }),
+    ).resolves.toEqual({
+      status: "no_access",
+      organisationName: "Team admin_handoff_view",
+    });
+    await expect(
+      signedInElsewhere(outsiderView).query(
+        api.evidenceLibraries.adminHandoff.readAdminHandoffState,
+        { libraryId: outsiderView.created.libraryId },
+      ),
+    ).resolves.toEqual({ status: "allowed" });
+
+    const rows = await outsiderView.t.run(async (ctx) =>
+      ctx.db.query("evidenceLibraryAdminLoginCodes").take(1),
+    );
+    expect(rows).toHaveLength(0);
+
+    const pending = await createDeployedSetupFixture("admin_handoff_view_wait");
+    await expect(
+      signedInElsewhere(pending).query(
+        api.evidenceLibraries.adminHandoff.readAdminHandoffState,
+        { libraryId: pending.created.libraryId },
+      ),
+    ).resolves.toEqual({ status: "not_ready", isOwner: true });
+  });
+
   it("refuses a caller who is not signed in", async () => {
     const t = convexTest(schema, modules);
 
     await expect(
       t.action(api.evidenceLibraries.adminHandoffActions.issueAdminHandoff, {
+        libraryId: "not-a-library-id",
+      }),
+    ).rejects.toThrow(/sign in/i);
+    await expect(
+      t.query(api.evidenceLibraries.adminHandoff.readAdminHandoffState, {
         libraryId: "not-a-library-id",
       }),
     ).rejects.toThrow(/sign in/i);

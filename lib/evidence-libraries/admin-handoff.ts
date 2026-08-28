@@ -130,7 +130,21 @@ export function decideAdminHandoff(input: {
   return { kind: "not_ready", isOwner: result.isOwner };
 }
 
-/** The address of this page itself, without any leftover error. */
+/** The page that explains why the admin area did not open. */
+export function buildAdminStatusHref(input: {
+  libraryId: string;
+  returnPath?: string | undefined;
+  state?: "expired_link";
+}): string {
+  const base = `/evidence-libraries/${encodeURIComponent(input.libraryId)}/admin/status`;
+  const query = new URLSearchParams();
+  if (input.state) query.set("state", input.state);
+  if (input.returnPath) query.set("return", input.returnPath);
+  const search = query.toString();
+  return search ? `${base}?${search}` : base;
+}
+
+/** The address of the admin route itself, without any leftover error. */
 export function buildAdminRouteHref(input: {
   libraryId: string;
   returnPath?: string | undefined;

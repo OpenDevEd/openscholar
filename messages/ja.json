@@ -2988,7 +2988,10 @@
       "viewSetup": "View setup",
       "expiredTitle": "That link no longer works",
       "expiredDescription": "The link expired or was already used. Try again to get a new one.",
-      "tryAgain": "Try again"
+      "tryAgain": "Try again",
+      "openTitle": "Open the admin area",
+      "openDescription": "You can manage this library's records, files and imports in its own admin area.",
+      "openAdmin": "Open admin area"
     },
     "notFound": {
       "title": "Library not found",

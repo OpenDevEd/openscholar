@@ -9,6 +9,7 @@ import {
   AdminExpiredLinkPanel,
   AdminNoAccessPanel,
   AdminNotReadyPanel,
+  AdminOpenAdminPanel,
 } from "@/components/evidence-libraries/admin-panels";
 import messages from "@/messages/en-GB.json";
 
@@ -66,6 +67,18 @@ describe("admin handoff panels", () => {
 
     expect(screen.queryByRole("link", { name: "View setup" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to libraries" })).toBeInTheDocument();
+  });
+
+  it("offers one link to someone who lands here although they may go in", () => {
+    const { container } = renderPanel(
+      <AdminOpenAdminPanel adminHref="/evidence-libraries/lib_1/admin?return=%2Fadmin" />,
+    );
+
+    expect(container.querySelector("[data-admin-handoff='open_admin']")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Open admin area" })).toHaveAttribute(
+      "href",
+      "/evidence-libraries/lib_1/admin?return=%2Fadmin",
+    );
   });
 
   it("lets someone try again after a link failed, without carrying the failure along", () => {

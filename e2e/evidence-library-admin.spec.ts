@@ -1,6 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 
+const LIBRARY_ID = "kh74ezgjwdv2nkbq2nafdg14z98d7t3b";
+const ADMIN_PATH = `/evidence-libraries/${LIBRARY_ID}/admin`;
+
 function getTestUserEmail() {
   const emailAddress = process.env.E2E_CLERK_USER_EMAIL;
   if (!emailAddress) {
@@ -24,18 +27,41 @@ test.describe("evidence library admin handoff", () => {
     await page.goto("/");
     await clerk.loaded({ page });
 
-    await page.goto(
-      "/evidence-libraries/kh74ezgjwdv2nkbq2nafdg14z98d7t3b/admin?return=%2Fadmin%2Fitems",
-    );
+    await page.goto(`${ADMIN_PATH}?return=%2Fadmin%2Fitems`);
 
     await expect(page).toHaveURL(/\/sign-in/);
-    const redirectUrl = decodeURIComponent(
+    const redirectUrl = new URL(
       new URL(page.url()).searchParams.get("redirect_url") ?? "",
+      "http://localhost",
     );
-    expect(redirectUrl).toContain(
-      "/evidence-libraries/kh74ezgjwdv2nkbq2nafdg14z98d7t3b/admin",
+    expect(redirectUrl.pathname).toBe(ADMIN_PATH);
+    expect(redirectUrl.searchParams.get("return")).toBe("/admin/items");
+  });
+
+  test("answers the admin address with a redirect, not a page", async ({
+    page,
+  }) => {
+    await signIn(page);
+
+    // A library nobody owns: a real 303 to the page that explains it.
+    const refusal = await page.request.get(
+      "/evidence-libraries/not-a-library/admin?return=%2Fadmin%2Fitems",
+      { maxRedirects: 0 },
     );
-    expect(redirectUrl).toContain("return=/admin/items");
+    expect(refusal.status()).toBe(303);
+    expect(refusal.headers()["location"]).toBe(
+      "/evidence-libraries/not-a-library/admin/status?return=%2Fadmin%2Fitems",
+    );
+
+    // The library reported a failed code: no new code is asked for.
+    const failed = await page.request.get(
+      `${ADMIN_PATH}?error=invalid_code&return=%2Fadmin`,
+      { maxRedirects: 0 },
+    );
+    expect(failed.status()).toBe(303);
+    expect(failed.headers()["location"]).toBe(
+      `${ADMIN_PATH}/status?state=expired_link&return=%2Fadmin`,
+    );
   });
 
   test("explains a refusal on OpenScholar instead of redirecting", async ({
@@ -43,10 +69,11 @@ test.describe("evidence library admin handoff", () => {
   }) => {
     await signIn(page);
 
-    // A library nobody owns: the page says so and stays on OpenScholar.
     await page.goto("/evidence-libraries/not-a-library/admin");
     await expect(page.locator("[data-admin-handoff='no_access']")).toBeVisible();
-    await expect(page).toHaveURL(/\/evidence-libraries\/not-a-library\/admin$/);
+    await expect(page).toHaveURL(
+      /\/evidence-libraries\/not-a-library\/admin\/status$/,
+    );
     await expect(
       page.getByRole("link", { name: "Back to libraries" }),
     ).toBeVisible();
@@ -57,9 +84,7 @@ test.describe("evidence library admin handoff", () => {
   }) => {
     await signIn(page);
 
-    await page.goto(
-      "/evidence-libraries/kh74ezgjwdv2nkbq2nafdg14z98d7t3b/admin?error=invalid_code&return=%2Fadmin",
-    );
+    await page.goto(`${ADMIN_PATH}?error=invalid_code&return=%2Fadmin`);
 
     await expect(
       page.locator("[data-admin-handoff='expired_link']"),
@@ -67,7 +92,7 @@ test.describe("evidence library admin handoff", () => {
     const retry = page.getByRole("link", { name: "Try again" });
     await expect(retry).toHaveAttribute(
       "href",
-      "/evidence-libraries/kh74ezgjwdv2nkbq2nafdg14z98d7t3b/admin?return=%2Fadmin",
+      `${ADMIN_PATH}?return=%2Fadmin`,
     );
   });
 });
