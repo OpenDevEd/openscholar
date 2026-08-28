@@ -161,26 +161,12 @@ function schemaEnum<T extends string>(pointer: string): readonly T[] {
   return values as T[];
 }
 
-/**
- * Fields and choices the Evidence Library runtime gains with the
- * `ai-modernization` merge. The pinned contract does not carry them until
- * `scripts/sync-evidence-library-config-contract.mjs --commit <merged main sha>`
- * runs, so each is written and shown only once the pinned schema knows it. A
- * library still running older software then never receives a value it refuses.
- */
-const schemaHas = (pointer: string) =>
-  resolveSchemaPointer(schema, pointer) !== undefined;
-export const SUPPORTS_POSTHOG_UI_HOST = schemaHas("/analytics/posthog/uiHost");
-export const SUPPORTS_CONSENT_POLICY_VERSION = schemaHas(
-  "/analytics/consentPolicyVersion",
-);
-
 export { AI_MODELS, AI_PROVIDER };
 
 /** The consent version every library starts from, as the runtime sets it. */
-export const CONSENT_POLICY_VERSION_DEFAULT = SUPPORTS_CONSENT_POLICY_VERSION
-  ? (schemaNode("/analytics/consentPolicyVersion").default as number)
-  : 1;
+export const CONSENT_POLICY_VERSION_DEFAULT = schemaNode(
+  "/analytics/consentPolicyVersion",
+).default as number;
 
 export const SCHEMA_LIMITS = {
   identity: {
@@ -1041,19 +1027,15 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
         posthog: posthog.enabled
           ? compact({
               host: posthog.host,
-              uiHost:
-                SUPPORTS_POSTHOG_UI_HOST && posthog.uiHost !== ""
-                  ? posthog.uiHost
-                  : undefined,
+              uiHost: posthog.uiHost === "" ? undefined : posthog.uiHost,
               key: posthog.key,
             })
           : undefined,
         google: google.enabled ? { measurementId: google.measurementId } : undefined,
         consentPolicyVersion:
-          SUPPORTS_CONSENT_POLICY_VERSION &&
-          consentPolicyVersion !== CONSENT_POLICY_VERSION_DEFAULT
-            ? consentPolicyVersion
-            : undefined,
+          consentPolicyVersion === CONSENT_POLICY_VERSION_DEFAULT
+            ? undefined
+            : consentPolicyVersion,
       });
     }
     // One entry, or none at all. The key is added at assembly, never here.

@@ -372,10 +372,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     ).toEqual([{ provider: AI_PROVIDER, enabled: false }]);
   });
 
-  // Waits for the pinned contract to carry OpenRouter: re-pin with
-  // `scripts/sync-evidence-library-config-contract.mjs --commit <sha>` once the
-  // `ai-modernization` merge lands on new-el `main`.
-  test.skipIf(AI_MODELS.length === 0)(
+  test(
     "puts the AI key into the assembled configuration and nowhere else",
     () => {
       const configuration = assembleEvidenceLibraryConfiguration({

@@ -127,10 +127,6 @@ import {
   AI_MODELS,
   AI_PROVIDER_CREDENTIAL_KEY,
 } from "@/lib/evidence-libraries/configuration/ai";
-import {
-  SUPPORTS_CONSENT_POLICY_VERSION,
-  SUPPORTS_POSTHOG_UI_HOST,
-} from "@/lib/evidence-libraries/configuration/rules";
 
 const savedIdentity = {
   name: "Saved Library",
@@ -772,9 +768,7 @@ describe("<ConfigurationWorkspace>", () => {
   describe("the analytics fields the runtime gained", () => {
     const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
 
-    // Both wait for the pinned contract to carry the two fields: re-pin once
-    // the `ai-modernization` merge lands on new-el `main`.
-    it.skipIf(!SUPPORTS_POSTHOG_UI_HOST)(
+    it(
       "offers the session recordings address only once PostHog is on",
       async () => {
         const user = userEvent.setup();
@@ -789,7 +783,7 @@ describe("<ConfigurationWorkspace>", () => {
       },
     );
 
-    it.skipIf(!SUPPORTS_CONSENT_POLICY_VERSION)(
+    it(
       "saves a raised consent version and refuses one below one",
       async () => {
         const user = userEvent.setup();
@@ -827,9 +821,7 @@ describe("<ConfigurationWorkspace>", () => {
       expect(card("ai").getByRole("switch", { name: "ai.answersLabel" })).toBeInTheDocument();
     });
 
-    // Waits for the pinned contract to carry the OpenRouter model catalog:
-    // re-pin once the `ai-modernization` merge lands on new-el `main`.
-    it.skipIf(AI_MODELS.length === 0)(
+    it(
       "asks for a key and a model, then saves one provider entry",
       async () => {
         const user = userEvent.setup();
@@ -895,7 +887,7 @@ describe("<ConfigurationWorkspace>", () => {
       },
     );
 
-    it.skipIf(AI_MODELS.length === 0)(
+    it(
       "shows a stored key as saved and lets the owner remove it",
       async () => {
         const user = userEvent.setup();

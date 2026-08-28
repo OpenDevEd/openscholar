@@ -9,8 +9,6 @@ import {
   CONSENT_POLICY_VERSION_DEFAULT,
   isPosthogKey,
   MEASUREMENT_ID,
-  SUPPORTS_CONSENT_POLICY_VERSION,
-  SUPPORTS_POSTHOG_UI_HOST,
 } from "@/lib/evidence-libraries/configuration/rules";
 import { Field } from "../section-card";
 import { FieldGroup, Panel, ToggleRow } from "../fields";
@@ -93,29 +91,27 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
                 />
               )}
             </Field>
-            {SUPPORTS_POSTHOG_UI_HOST ? (
-              <Field
-                label={t("uiHostLabel")}
-                hint={t("uiHostHint")}
-                error={
-                  analytics.posthog.uiHost !== "" &&
-                  !HTTPS_URL.test(analytics.posthog.uiHost)
-                    ? t("hostError")
-                    : null
-                }
-              >
-                {(id, invalid) => (
-                  <Input
-                    id={id}
-                    className="bg-background font-mono text-sm"
-                    value={analytics.posthog.uiHost}
-                    placeholder="https://"
-                    aria-invalid={invalid || undefined}
-                    onChange={(e) => set("posthog", "uiHost", e.target.value)}
-                  />
-                )}
-              </Field>
-            ) : null}
+            <Field
+              label={t("uiHostLabel")}
+              hint={t("uiHostHint")}
+              error={
+                analytics.posthog.uiHost !== "" &&
+                !HTTPS_URL.test(analytics.posthog.uiHost)
+                  ? t("hostError")
+                  : null
+              }
+            >
+              {(id, invalid) => (
+                <Input
+                  id={id}
+                  className="bg-background font-mono text-sm"
+                  value={analytics.posthog.uiHost}
+                  placeholder="https://"
+                  aria-invalid={invalid || undefined}
+                  onChange={(e) => set("posthog", "uiHost", e.target.value)}
+                />
+              )}
+            </Field>
           </Panel>
         ) : null}
       </FieldGroup>
@@ -164,43 +160,41 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
         ) : null}
       </FieldGroup>
 
-      {SUPPORTS_CONSENT_POLICY_VERSION ? (
-        <FieldGroup title={t("consentLabel")} data-analytics="consent">
-          <Field
-            label={t("consentVersionLabel")}
-            hint={t("consentVersionHint")}
-            className="max-w-xs"
-            error={
-              !Number.isInteger(analytics.consentPolicyVersion) ||
-              analytics.consentPolicyVersion < CONSENT_POLICY_VERSION_DEFAULT
-                ? t("consentVersionError")
-                : null
-            }
-          >
-            {(id, invalid) => (
-              <Input
-                id={id}
-                type="number"
-                min={CONSENT_POLICY_VERSION_DEFAULT}
-                step={1}
-                className="bg-background font-mono text-sm"
-                value={
-                  Number.isFinite(analytics.consentPolicyVersion)
-                    ? analytics.consentPolicyVersion
-                    : ""
-                }
-                aria-invalid={invalid || undefined}
-                onChange={(e) =>
-                  patch((d) => {
-                    d.analytics.consentPolicyVersion = Number(e.target.value);
-                    return d;
-                  })
-                }
-              />
-            )}
-          </Field>
-        </FieldGroup>
-      ) : null}
+      <FieldGroup title={t("consentLabel")} data-analytics="consent">
+        <Field
+          label={t("consentVersionLabel")}
+          hint={t("consentVersionHint")}
+          className="max-w-xs"
+          error={
+            !Number.isInteger(analytics.consentPolicyVersion) ||
+            analytics.consentPolicyVersion < CONSENT_POLICY_VERSION_DEFAULT
+              ? t("consentVersionError")
+              : null
+          }
+        >
+          {(id, invalid) => (
+            <Input
+              id={id}
+              type="number"
+              min={CONSENT_POLICY_VERSION_DEFAULT}
+              step={1}
+              className="bg-background font-mono text-sm"
+              value={
+                Number.isFinite(analytics.consentPolicyVersion)
+                  ? analytics.consentPolicyVersion
+                  : ""
+              }
+              aria-invalid={invalid || undefined}
+              onChange={(e) =>
+                patch((d) => {
+                  d.analytics.consentPolicyVersion = Number(e.target.value);
+                  return d;
+                })
+              }
+            />
+          )}
+        </Field>
+      </FieldGroup>
     </SectionShell>
   );
 }

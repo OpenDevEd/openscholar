@@ -90,10 +90,7 @@ describe("the OpenRouter key", () => {
     ).rejects.toThrow(/no AI key/);
   });
 
-  // Waits for the pinned contract to carry OpenRouter: re-pin with
-  // `scripts/sync-evidence-library-config-contract.mjs --commit <sha>` once the
-  // `ai-modernization` merge lands on new-el `main`.
-  it.skipIf(AI_MODELS.length === 0)(
+  it(
     "reaches the runtime only when the configuration payload is built",
     async () => {
       vi.stubEnv("ENCRYPTION_KEY", ENCRYPTION_KEY);

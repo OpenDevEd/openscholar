@@ -15,8 +15,6 @@ import {
   sectionChanged,
   sectionProblems,
   sectionState,
-  SUPPORTS_CONSENT_POLICY_VERSION,
-  SUPPORTS_POSTHOG_UI_HOST,
   staleUploads,
   SCHEMA_LIMITS,
   THEME_DEFAULTS,
@@ -900,13 +898,7 @@ describe("changedSectionRows for the platform sections", () => {
 /* Plan 15: AI answers and the two analytics fields                    */
 /* ------------------------------------------------------------------ */
 
-// The OpenRouter model list arrives with the pinned contract. Until the
-// runtime merge of `ai-modernization` lands on new-el `main` and
-// `scripts/sync-evidence-library-config-contract.mjs --commit <sha>` re-pins
-// it, the pinned catalog carries no OpenRouter entry and these cases cannot
-// run.
-const withCatalog = AI_MODELS.length > 0;
-const approvedModel = AI_MODELS[0] ?? "openai/gpt-5.6-luna";
+const approvedModel = AI_MODELS[0]!;
 
 const aiRows = [
   ...savedRows.filter(
@@ -937,7 +929,7 @@ describe("AI answers", () => {
     expect(sectionProblems(draft, "ai")).toEqual(["aiModelUnknown"]);
   });
 
-  it.skipIf(!withCatalog)("accepts an approved model and writes exactly one provider entry", () => {
+  it("accepts an approved model and writes exactly one provider entry", () => {
     const draft = savedDraft();
     draft.features.ai = true;
     draft.ai.keySaved = true;
@@ -953,7 +945,7 @@ describe("AI answers", () => {
     });
   });
 
-  it.skipIf(!withCatalog)("reads a saved provider entry back and clears the row when AI goes off", () => {
+  it("reads a saved provider entry back and clears the row when AI goes off", () => {
     const draft = readDraft(aiRows);
     expect(draft.features.ai).toBe(true);
     expect(draft.ai.defaultModel).toBe(approvedModel);
@@ -964,7 +956,7 @@ describe("AI answers", () => {
     expect(changedSectionRows(draft, aiRows)).toContainEqual({ sectionKey: "ai", payload: {} });
   });
 
-  it.skipIf(!withCatalog)("puts the AI card back the way it was saved", () => {
+  it("puts the AI card back the way it was saved", () => {
     const draft = readDraft(aiRows);
     draft.features.ai = false;
     draft.ai.defaultModel = "";
@@ -983,7 +975,7 @@ describe("AI answers", () => {
 });
 
 describe("the analytics fields the runtime gained", () => {
-  it.skipIf(!SUPPORTS_POSTHOG_UI_HOST)("writes a session-recording address only with a PostHog host", () => {
+  it("writes a session-recording address only with a PostHog host", () => {
     const draft = readDraft(platformRows);
     draft.analytics.posthog.uiHost = "not a url";
     expect(sectionProblems(draft, "analytics")).toEqual(["posthogUiHost"]);
@@ -1007,7 +999,7 @@ describe("the analytics fields the runtime gained", () => {
     ]);
   });
 
-  it.skipIf(!SUPPORTS_CONSENT_POLICY_VERSION)("writes the consent version only when it is raised", () => {
+  it("writes the consent version only when it is raised", () => {
     const draft = readDraft(platformRows);
     expect(draft.analytics.consentPolicyVersion).toBe(1);
     expect(changedSectionRows(draft, platformRows)).toEqual([]);
