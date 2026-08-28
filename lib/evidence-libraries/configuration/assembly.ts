@@ -268,12 +268,13 @@ export function assembleEvidenceLibraryConfiguration({
   ) as Record<string, unknown>;
   // AI answers decide both halves of the AI offer: the assistant and search
   // by meaning. The runtime refuses AI search without an embedder, so the
-  // two are written together or not at all.
+  // two are written together or not at all. Deep research is a separate
+  // decision and stays off whatever a saved row says.
   const features = isObject(withDefaults.features) ? withDefaults.features : {};
   const aiOn = features.ai === true;
   const candidate: Record<string, unknown> = {
     ...withDefaults,
-    features: { ...features, aiSearch: aiOn },
+    features: { ...features, aiSearch: aiOn, deepResearch: false },
     search: {
       ...(isObject(withDefaults.search) ? withDefaults.search : {}),
       embedder:

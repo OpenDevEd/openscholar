@@ -570,6 +570,28 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     }
   });
 
+  test("keeps deep research off even when a saved row asks for it", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        features: { ...ownerSections.features, ai: true, deepResearch: true },
+        ai: {
+          providers: [
+            { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+          ],
+        },
+      },
+      managed: { ...managedConfiguration, embeddingApiKey: "sk-or-embed" },
+      applyAiProviderKey: createAiProviderKey("sk-or-stored"),
+    });
+    expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
+    expect(configuration.features).toMatchObject({
+      ai: true,
+      aiSearch: true,
+      deepResearch: false,
+    });
+  });
+
   test("adds the platform mail service under the owner's recipients", () => {
     const configuration = assembleEvidenceLibraryConfiguration({
       sections: {
@@ -746,4 +768,62 @@ describe("the platform embedding key", () => {
       response: { data: [{ embedding: "{{embedding}}" }, "{{..}}"] },
     });
   });
+});
+
+describe("platform-owned fields an owner may not save", () => {
+  test.each([
+    ["aiSearch", { ai: true, aiSearch: true }, "/features/aiSearch"],
+    ["deepResearch", { ai: true, deepResearch: true }, "/features/deepResearch"],
+  ])("refuses a features row carrying %s", (_name, payload, pointer) => {
+    const result = validateOwnerSection("features", payload);
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ pointer, section: "features" }),
+    );
+    // The switches an owner does own still save.
+    expect(validateOwnerSection("features", { ai: true }).valid).toBe(true);
+  });
+
+  test("refuses a search row carrying an embedder", () => {
+    const result = validateOwnerSection("search", {
+      embedder: {
+        source: "rest",
+        url: "https://openrouter.ai/api/v1/embeddings",
+        request: { input: ["{{text}}"] },
+        response: { data: [{ embedding: "{{embedding}}" }] },
+      },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ pointer: "/search/embedder", section: "search" }),
+    );
+    expect(validateOwnerSection("search", { fullText: true }).valid).toBe(true);
+  });
+
+  test.each(["largeModel", "smallModel"])(
+    "refuses an AI provider entry carrying %s",
+    (field) => {
+      const result = validateOwnerSection(
+        "ai",
+        {
+          providers: [
+            {
+              provider: AI_PROVIDER,
+              enabled: true,
+              defaultModel: AI_MODELS[0],
+              [field]: AI_MODELS[0],
+            },
+          ],
+        },
+        { featuresAi: true },
+      );
+      expect(result.valid).toBe(false);
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({
+          pointer: `/ai/providers/0/${field}`,
+          section: "ai",
+        }),
+      );
+    },
+  );
 });

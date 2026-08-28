@@ -11,6 +11,16 @@ import type { ValidationIssue } from "./generated-validation";
  */
 export const AI_PROVIDER = "openrouter";
 
+/** Provider models the runtime decides. OpenScholar never writes them. */
+export const PLATFORM_AI_MODEL_FIELDS = ["largeModel", "smallModel"] as const;
+
+/**
+ * Feature switches the platform decides, not the owner. AI search follows the
+ * AI answers switch and deep research stays off until it is a decision of its
+ * own, so a saved row must never carry either.
+ */
+export const PLATFORM_FEATURE_KEYS = ["aiSearch", "deepResearch"] as const;
+
 /** Where the provider key sits in an assembled runtime configuration. */
 export const AI_PROVIDER_KEY_PATH = "/ai/providers/0/apiKey";
 
@@ -112,6 +122,18 @@ export function aiProviderIssues(
         "The AI provider is on exactly when AI answers are on.",
       ),
     );
+  }
+  // The runtime picks the large and small models. Offering them would be a
+  // setting OpenScholar does not show and cannot check.
+  for (const field of PLATFORM_AI_MODEL_FIELDS) {
+    if (entry?.[field] !== undefined) {
+      issues.push(
+        issue(
+          `/ai/providers/0/${field}`,
+          "Your library software chooses this model.",
+        ),
+      );
+    }
   }
   const model = entry?.defaultModel;
   if (entry?.enabled === true && (typeof model !== "string" || model === "")) {
