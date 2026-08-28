@@ -873,6 +873,7 @@ export const prepareConfigurationActivation = internalMutation({
     coolifyConfigHash: v.string(),
     revisionKey: v.string(),
     targetBaseUrl: v.string(),
+    platformBaseUrl: v.string(),
     customDomains: v.array(v.string()),
   }),
   handler: async (ctx, args) => {
@@ -904,7 +905,16 @@ export const prepareConfigurationActivation = internalMutation({
       runtimeCommit: target.runtimeCommit,
       coolifyConfigHash: receipt.coolifyConfigHash,
       revisionKey: target.revisionKey,
-      targetBaseUrl: target.targetBaseUrl,
+      // Readiness reads the address the library calls its own, which is the
+      // custom domain once one is primary. When a change of address is
+      // travelling on this operation, that is the address to read.
+      targetBaseUrl:
+        deployment.operation.domainChange?.reason === "canonical"
+          ? (deployment.operation.domainChange.address ??
+            deployment.runtimeBinding.canonicalBaseUrl ??
+            target.targetBaseUrl)
+          : (deployment.runtimeBinding.canonicalBaseUrl ?? target.targetBaseUrl),
+      platformBaseUrl: target.targetBaseUrl,
       customDomains: target.customDomains,
     };
   },
@@ -1015,6 +1025,23 @@ export const completeConfigurationDeployment = internalMutation({
       updatedByClerkUserId: deployment.operation.requestedByClerkUserId,
       updatedAt: now,
     });
+    // A custom domain change finishes here, and only here: the certificate
+    // and the row of a removed domain go once the running site no longer
+    // serves it, and a new library address is written down once the site
+    // answers on it.
+    const domainChange = deployment.operation.domainChange;
+    if (domainChange) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.evidenceLibraries.domainActions.completeDomainChange,
+        {
+          libraryId: args.libraryId,
+          domainId: domainChange.domainId,
+          reason: domainChange.reason,
+          ...(domainChange.address ? { address: domainChange.address } : {}),
+        },
+      );
+    }
     return { status: "succeeded" as const };
   },
 });

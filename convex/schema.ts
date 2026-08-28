@@ -118,7 +118,8 @@ export default defineSchema({
   evidenceLibraryDomains: defineTable(evidenceLibraryDomainFields)
     .index("by_host", ["host"])
     .index("by_libraryId", ["libraryId"])
-    .index("by_state", ["state"]),
+    // The sweep walks working domains oldest check first, so none starves.
+    .index("by_state_and_checkedAt", ["state", "checkedAt"]),
 
   evidenceLibraryRuntimeReleases: defineTable(evidenceLibraryRuntimeReleaseFields)
     .index("by_running", ["running"]),

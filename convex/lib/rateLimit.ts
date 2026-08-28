@@ -62,6 +62,28 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
     period: MINUTE,
     capacity: 15,
   },
+  // Checking a custom domain costs several DNS, certificate and proxy
+  // requests, so it is capped three ways: per person, per library, and per
+  // domain. The per-domain bucket is the tightest, because repeating the
+  // same check learns nothing new.
+  "domain-check-user": {
+    kind: "token bucket",
+    rate: 30,
+    period: MINUTE,
+    capacity: 30,
+  },
+  "domain-check-library": {
+    kind: "token bucket",
+    rate: 20,
+    period: MINUTE,
+    capacity: 20,
+  },
+  "domain-check-host": {
+    kind: "token bucket",
+    rate: 6,
+    period: MINUTE,
+    capacity: 6,
+  },
 });
 
 /**
@@ -78,7 +100,10 @@ export const consume = internalMutation({
       v.literal("wallet-generate"),
       v.literal("wallet-connect"),
       v.literal("batch-screening"),
-      v.literal("batch-translation")
+      v.literal("batch-translation"),
+      v.literal("domain-check-user"),
+      v.literal("domain-check-library"),
+      v.literal("domain-check-host")
     ),
     key: v.string(),
     count: v.optional(v.number()),

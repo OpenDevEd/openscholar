@@ -277,7 +277,9 @@ export async function queueDomainChangeOperation(
     revisionId: Id<"evidenceLibraryConfigRevisions">;
     domainChange: {
       host: string;
+      domainId: Id<"evidenceLibraryDomains">;
       reason: "attach" | "detach" | "canonical";
+      address?: string;
     };
   },
 ) {

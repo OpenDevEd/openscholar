@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   classifyCaaChain,
+  isPublicInternetAddress,
   classifyTarget,
   classifyToken,
   DnsLookupError,
@@ -226,6 +227,41 @@ describe("classifyCaaChain", () => {
 
   it("only reads the closest name that has issuers", () => {
     expect(classifyCaaChain([["ssl.com"], ["amazon.com"]])).toBe("ok");
+  });
+});
+
+describe("isPublicInternetAddress", () => {
+  it("accepts an ordinary public address", () => {
+    for (const address of ["188.114.96.6", "8.8.8.8", "2606:4700::6810:85e5"]) {
+      expect(isPublicInternetAddress(address)).toBe(true);
+    }
+  });
+
+  it("refuses an address inside our own network", () => {
+    for (const address of [
+      "127.0.0.1",
+      "0.0.0.0",
+      "10.1.2.3",
+      "172.16.5.4",
+      "172.31.255.255",
+      "192.168.1.1",
+      "169.254.169.254",
+      "100.64.0.1",
+      "192.0.0.1",
+      "198.18.0.1",
+      "224.0.0.1",
+      "255.255.255.255",
+      "::1",
+      "::",
+      "fe80::1",
+      "fc00::1",
+      "fd12:3456::1",
+      "::ffff:127.0.0.1",
+      "::ffff:10.0.0.1",
+      "not-an-address",
+    ]) {
+      expect(isPublicInternetAddress(address)).toBe(false);
+    }
   });
 });
 

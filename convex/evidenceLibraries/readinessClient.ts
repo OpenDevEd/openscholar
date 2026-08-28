@@ -439,11 +439,55 @@ async function requireAdminPage(
   if (!isLibraryLoginPage(destination, loginPageUrl)) throw notReady;
 }
 
+/**
+ * The platform address is never released. Once a library answers on a custom
+ * domain, its platform address has to keep sending visitors there, because
+ * DOI landing pages already registered point at it.
+ */
+async function requireRedirectToCanonical(
+  fetchImpl: typeof fetch,
+  platformOrigin: URL,
+  canonicalOrigin: URL,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(fetchImpl, new URL("/lib", platformOrigin), {
+      headers: { accept: "text/html" },
+      method: "GET",
+      redirect: "manual",
+    });
+  } catch {
+    throw new ReadinessClientError(
+      "CONFIG_NOT_READY",
+      "The platform address does not answer yet",
+    );
+  }
+  await response.body?.cancel().catch(() => undefined);
+  const location = response.headers.get("location");
+  const redirected =
+    response.status >= 300 &&
+    response.status < 400 &&
+    location !== null &&
+    new URL(location, platformOrigin).origin === canonicalOrigin.origin;
+  if (!redirected) {
+    throw new ReadinessClientError(
+      "CONFIG_NOT_READY",
+      "The platform address does not send visitors to the library address yet",
+    );
+  }
+}
+
 export type ReadinessCheckInput = {
   applicationUuid: string;
   runtimeCommit: string;
   revisionKey: string;
+  /** The address the library calls its own. Everything is read here. */
   targetBaseUrl: string;
+  /**
+   * The platform address, when the library answers on a custom domain. It
+   * must send visitors to `targetBaseUrl` rather than answer itself.
+   */
+  platformBaseUrl?: string;
   /** Where the library sends a signed-out visitor of `/admin`. */
   loginPageUrl: string;
   verifierUrl: string;
@@ -466,6 +510,13 @@ export async function requireLibraryRuntimeReady(
   );
   await requireVerifierReady(fetchImpl, verifierOrigin, input);
   await requireActiveRevision(fetchImpl, targetOrigin, input.revisionKey);
+  if (input.platformBaseUrl && input.platformBaseUrl !== targetOrigin.origin) {
+    await requireRedirectToCanonical(
+      fetchImpl,
+      requireHttpsOrigin("Evidence Library platform URL", input.platformBaseUrl),
+      targetOrigin,
+    );
+  }
   await Promise.all([
     requirePage(
       fetchImpl,

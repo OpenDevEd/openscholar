@@ -530,6 +530,7 @@ export const startAddressMove = internalMutation({
 export const startDomainDeployment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
+    domainId: v.id("evidenceLibraryDomains"),
     host: v.string(),
     reason: v.union(
       v.literal("attach"),
@@ -549,7 +550,11 @@ export const startDomainDeployment = internalMutation({
       libraryId: args.libraryId,
       idempotencyKey: `domain:${args.reason}:${args.host}:${Date.now()}`,
       revisionId: running.activeRevisionId,
-      domainChange: { host: args.host, reason: args.reason },
+      domainChange: {
+        host: args.host,
+        domainId: args.domainId,
+        reason: args.reason,
+      },
     });
     return await claimAndScheduleConfigurationDeployment(ctx, {
       libraryId: args.libraryId,
@@ -560,6 +565,11 @@ export const startDomainDeployment = internalMutation({
 
 /**
  * Sends the platform address to a custom domain, or back to itself.
+ *
+ * Nothing is written here. The change travels on the operation and is only
+ * written down once the deployment carrying it is live, so a failed
+ * deployment never leaves OpenScholar claiming an address the site does not
+ * answer on.
  *
  * The library's address is also where people sign in, so everyone signed in
  * is signed out by this. The platform address is never released: it keeps
@@ -594,15 +604,6 @@ export const setDomainPrimary = mutation({
     const address = args.primary
       ? `https://${row.host}`
       : running.binding.targetBaseUrl;
-    const draft = await ctx.db
-      .query("evidenceLibraryConfigDrafts")
-      .withIndex("by_libraryId", (query) =>
-        query.eq("libraryId", args.libraryId),
-      )
-      .unique();
-    if (!draft) {
-      throw createError("NOT_FOUND", "Evidence Library draft not found");
-    }
     // The live sections must still pass the rules at the new address.
     const sourceRows = await readRevisionSectionRows(
       ctx,
@@ -628,28 +629,76 @@ export const setDomainPrimary = mutation({
         pointer: issue.pointer,
       });
     }
-    const [draftIdentity, revisionIdentity] = await Promise.all([
-      ctx.db
-        .query("evidenceLibraryConfigSections")
-        .withIndex("by_draftId_and_sectionKey", (query) =>
-          query.eq("draftId", draft._id).eq("sectionKey", "identity"),
+    const operation = await queueDomainChangeOperation(ctx, {
+      libraryId: args.libraryId,
+      idempotencyKey: `domain:canonical:${address}:${Date.now()}`,
+      revisionId: running.activeRevisionId,
+      domainChange: {
+        host: row.host,
+        domainId: args.domainId,
+        reason: "canonical",
+        address,
+      },
+    });
+    const started = await claimAndScheduleConfigurationDeployment(ctx, {
+      libraryId: args.libraryId,
+      operationId: operation.operationId,
+    });
+    return { ...started, address };
+  },
+});
+
+/**
+ * Writes down the library's new address, once the deployment carrying it is
+ * live. `targetBaseUrl` never moves: the platform address keeps redirecting.
+ */
+export const applyDomainCanonicalAddress = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainId: v.id("evidenceLibraryDomains"),
+    address: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const library = await ctx.db.get("evidenceLibraries", args.libraryId);
+    const binding = library?.runtimeBindingId
+      ? await ctx.db.get(
+          "evidenceLibraryRuntimeBindings",
+          library.runtimeBindingId,
         )
-        .unique(),
+      : null;
+    if (!library || !binding || !library.activeRevisionId) return null;
+    const primary = args.address !== binding.targetBaseUrl;
+    const draft = await ctx.db
+      .query("evidenceLibraryConfigDrafts")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .unique();
+    const [draftIdentity, revisionIdentity] = await Promise.all([
+      draft
+        ? ctx.db
+            .query("evidenceLibraryConfigSections")
+            .withIndex("by_draftId_and_sectionKey", (query) =>
+              query.eq("draftId", draft._id).eq("sectionKey", "identity"),
+            )
+            .unique()
+        : null,
       ctx.db
         .query("evidenceLibraryConfigSections")
         .withIndex("by_revisionId_and_sectionKey", (query) =>
           query
-            .eq("revisionId", running.activeRevisionId)
+            .eq("revisionId", library.activeRevisionId!)
             .eq("sectionKey", "identity"),
         )
         .unique(),
     ]);
-    await ctx.db.patch(running.binding._id, {
-      canonicalBaseUrl: args.primary ? address : undefined,
+    await ctx.db.patch(binding._id, {
+      canonicalBaseUrl: primary ? args.address : undefined,
       updatedAt: Date.now(),
     });
-    await moveIdentityBaseUrl(ctx, draftIdentity, address);
-    await moveIdentityBaseUrl(ctx, revisionIdentity, address);
+    await moveIdentityBaseUrl(ctx, draftIdentity, args.address);
+    await moveIdentityBaseUrl(ctx, revisionIdentity, args.address);
     // Only one domain at a time may be the library's address; the others
     // keep sending visitors to it.
     const rows = await ctx.db
@@ -657,23 +706,12 @@ export const setDomainPrimary = mutation({
       .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
       .collect();
     for (const entry of rows) {
-      const role =
-        args.primary && entry._id === args.domainId ? "primary" : "redirect";
+      const role = primary && entry._id === args.domainId ? "primary" : "redirect";
       if (entry.role !== role) {
         await ctx.db.patch(entry._id, { role, updatedAt: Date.now() });
       }
     }
-    const operation = await queueDomainChangeOperation(ctx, {
-      libraryId: args.libraryId,
-      idempotencyKey: `domain:canonical:${address}:${Date.now()}`,
-      revisionId: running.activeRevisionId,
-      domainChange: { host: row.host, reason: "canonical" },
-    });
-    const started = await claimAndScheduleConfigurationDeployment(ctx, {
-      libraryId: args.libraryId,
-      operationId: operation.operationId,
-    });
-    return { ...started, address };
+    return null;
   },
 });
 

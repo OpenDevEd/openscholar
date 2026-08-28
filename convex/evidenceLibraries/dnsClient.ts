@@ -310,6 +310,56 @@ export async function lookupHost(
   );
 }
 
+function readIpv4(address: string): number[] | null {
+  const parts = address.split(".");
+  if (parts.length !== 4) return null;
+  const bytes: number[] = [];
+  for (const part of parts) {
+    if (!/^\d{1,3}$/u.test(part)) return null;
+    const value = Number(part);
+    if (value > 255) return null;
+    bytes.push(value);
+  }
+  return bytes;
+}
+
+/**
+ * True only for an address on the public internet.
+ *
+ * A custom domain's records belong to its owner, who can repoint them at any
+ * moment. Without this check an owner could verify a domain, point it at an
+ * address inside our own network, and have the platform fetch it for them.
+ * Everything private, reserved or local is refused.
+ */
+export function isPublicInternetAddress(address: string): boolean {
+  const value = address.trim().toLowerCase();
+  if (!value) return false;
+  if (value.includes(":")) {
+    // An IPv4 address written inside IPv6 is judged as IPv4.
+    const mapped = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/u.exec(value);
+    if (mapped) return isPublicInternetAddress(mapped[1]!);
+    if (!/^[0-9a-f:]+$/u.test(value)) return false;
+    if (value === "::" || value === "::1") return false;
+    // fc00::/7 unique local, fe80::/10 link local, ff00::/8 multicast.
+    if (/^f[cd][0-9a-f]{0,2}:/u.test(value)) return false;
+    if (/^fe[89ab][0-9a-f]?:/u.test(value)) return false;
+    if (/^ff[0-9a-f]{2}:/u.test(value)) return false;
+    return true;
+  }
+  const bytes = readIpv4(value);
+  if (!bytes) return false;
+  const [a, b] = bytes as [number, number, number, number];
+  if (a === 0 || a === 127 || a >= 224) return false; // this host, loopback, multicast and beyond
+  if (a === 10) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 169 && b === 254) return false; // link local, including metadata
+  if (a === 100 && b >= 64 && b <= 127) return false; // carrier-grade NAT
+  if (a === 192 && b === 0) return false; // IETF protocol assignments
+  if (a === 198 && (b === 18 || b === 19)) return false; // benchmarking
+  return true;
+}
+
 /**
  * True when the host is one of the platform's own names, or sits beneath one.
  * Those names are ours to serve; nobody may claim them as a custom domain.

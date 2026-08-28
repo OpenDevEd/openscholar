@@ -105,5 +105,7 @@ export async function readEvidenceLibraryAdminLaunchTarget(
     return null;
   }
 
-  return runtimeBinding.targetBaseUrl;
+  // The address the library calls its own: a custom domain the owner made
+  // primary, otherwise the platform address.
+  return runtimeBinding.canonicalBaseUrl ?? runtimeBinding.targetBaseUrl;
 }

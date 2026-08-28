@@ -367,6 +367,7 @@ export const runConfigurationDeployment = internalAction({
         runtimeCommit: readiness.runtimeCommit,
         revisionKey: readiness.revisionKey,
         targetBaseUrl: readiness.targetBaseUrl,
+        platformBaseUrl: readiness.platformBaseUrl,
         loginPageUrl: buildEvidenceLibraryLoginPageUrl({
           libraryId: args.libraryId,
           appOrigin: requireRuntimeHttpsOrigin(

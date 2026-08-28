@@ -178,7 +178,8 @@ async function readLibraryOverview(
   return {
     _id: library._id,
     name: library.name,
-    publicAddress: runtimeBinding?.targetBaseUrl ?? "",
+    publicAddress:
+      runtimeBinding?.canonicalBaseUrl ?? runtimeBinding?.targetBaseUrl ?? "",
     status,
     setupStage:
       (status === "setting_up" || status === "setup_failed") &&

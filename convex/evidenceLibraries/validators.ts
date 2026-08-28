@@ -206,6 +206,11 @@ export const evidenceLibraryDomainFields = {
   attachedAt: v.optional(v.number()),
   certificateState: v.optional(evidenceLibraryCertificateStateValidator),
   certificateHostnameId: v.optional(v.string()),
+  // Set while a check is running, so two presses cannot run at once.
+  checkLeaseUntil: v.optional(v.number()),
+  // Set once the owner asked for the domain to go. The row survives until
+  // the proxy has been redeployed without it and the certificate is gone.
+  removingAt: v.optional(v.number()),
   checkedAt: v.optional(v.number()),
   activatedAt: v.optional(v.number()),
   createdByClerkUserId: v.string(),
@@ -602,7 +607,11 @@ export const evidenceLibraryAddressMoveValidator = v.object({
 // rewrites the address the library calls its own.
 export const evidenceLibraryDomainChangeValidator = v.object({
   host: v.string(),
+  domainId: v.id("evidenceLibraryDomains"),
   reason: v.union(v.literal("attach"), v.literal("detach"), v.literal("canonical")),
+  // For a canonical change: the address the library should call its own once
+  // this deployment is live. Nothing is written until it is.
+  address: v.optional(v.string()),
 });
 
 export const evidenceLibraryOperationFields = {
