@@ -399,4 +399,49 @@ describe("Evidence Library address ownership", () => {
       }),
     ).toMatchObject({ state: "unreachable" });
   });
+
+  it("keeps the verifier and the platform address off the pinned client", async () => {
+    // The pinned client can only reach the library's own address. Sending
+    // the verifier or the platform address through it would refuse every
+    // readiness check for a custom domain.
+    const seen: { pinned: string[]; ordinary: string[] } = {
+      pinned: [],
+      ordinary: [],
+    };
+    const record = (bucket: string[]) =>
+      (async (input: RequestInfo | URL) => {
+        const url = new URL(String(input));
+        bucket.push(url.hostname);
+        if (url.pathname === "/api/library-config/health") {
+          return Response.json(activeHealth());
+        }
+        if (url.pathname.startsWith("/v1/library-runtime")) {
+          return Response.json(readyVerifierBody());
+        }
+        if (url.pathname === "/lib") return new Response("<html>", { status: 200 });
+        if (url.pathname === "/admin") {
+          return new Response("", {
+            status: 302,
+            headers: { location: LOGIN_PAGE_URL },
+          });
+        }
+        return new Response("", {
+          status: 308,
+          headers: { location: "https://evidence.example.org/" },
+        });
+      }) as unknown as typeof fetch;
+
+    await requireLibraryRuntimeReady({
+      ...input(record(seen.ordinary)),
+      targetBaseUrl: "https://evidence.example.org",
+      platformBaseUrl: "https://climate-lib.opendev.space",
+      targetFetchImpl: record(seen.pinned),
+    }).catch(() => undefined);
+
+    // Everything the pinned client saw was the library's own address.
+    expect([...new Set(seen.pinned)]).toEqual(["evidence.example.org"]);
+    // The verifier and the platform address went the ordinary way.
+    expect(seen.ordinary).toContain("runtime-verifier.example.test");
+    expect(seen.ordinary).toContain("climate-lib.opendev.space");
+  });
 });

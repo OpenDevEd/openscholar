@@ -767,9 +767,6 @@ export const completeDomainChange = internalAction({
 });
 
 /** How long to wait before trying a domain's final step again. */
-const CLEANUP_RETRY_MS = 30_000;
-export { CLEANUP_RETRY_MS };
-
 /** How many working domains one sweep re-checks before it hands over. */
 const SWEEP_BATCH = 20;
 /** How long one sweep may run before it schedules the rest of the list. */

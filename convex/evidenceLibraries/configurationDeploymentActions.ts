@@ -368,14 +368,17 @@ export const runConfigurationDeployment = internalAction({
       // records they can repoint at any moment. Every readiness request to
       // one goes through a client that can only reach the addresses that
       // passed the check; a platform address is ours and needs no pinning.
-      const readinessFetch =
+      const targetFetchImpl =
         readiness.targetBaseUrl === readiness.platformBaseUrl
           ? undefined
           : await openPinnedDomainClient({
               host: new URL(readiness.targetBaseUrl).hostname,
             });
       await requireLibraryRuntimeReady({
-        ...(readinessFetch ? { fetchImpl: readinessFetch } : {}),
+        // Only the requests to the library's own address are pinned. The
+        // verifier and the platform address are ours, so they use the
+        // ordinary client.
+        ...(targetFetchImpl ? { targetFetchImpl } : {}),
         applicationUuid: readiness.applicationId,
         runtimeCommit: readiness.runtimeCommit,
         revisionKey: readiness.revisionKey,

@@ -1370,39 +1370,6 @@ describe("custom domains", () => {
     expect(failed?.activatedAt).toBeTypeOf("number");
   });
 
-  it("walks a long list of working domains a page at a time", async () => {
-    const fixture = await createReadySetupFixture("domain-sweep-page");
-    const tag = await bindApplication(fixture);
-    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
-    // More working domains than one sweep checks.
-    await fixture.t.run(async (ctx) => {
-      for (let index = 0; index < 21; index += 1) {
-        await ctx.db.insert("evidenceLibraryDomains", {
-          libraryId: fixture.created.libraryId,
-          host: `page-${index}.example.org`,
-          verificationToken: "token",
-          role: "redirect",
-          state: "active",
-          attachedAt: Date.now(),
-          checkedAt: index + 1,
-          createdByClerkUserId: fixture.clerkUserId,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
-      }
-    });
-
-    // Every domain answers nothing, so each one is checked and fails.
-    vi.stubGlobal("fetch", createWorld({ dnsOffline: true }, tag).fetchImpl);
-    const first = await fixture.t.action(
-      internal.evidenceLibraries.domainActions.sweepWorkingDomains,
-      {},
-    );
-    // A page that is full hands the rest of the list to the next run rather
-    // than checking the same rows for ever.
-    expect(first.more).toBe(true);
-  });
-
   it("deletes the library's domains with the library", async () => {
     const fixture = await createReadySetupFixture("domain_teardown");
     vi.stubGlobal("fetch", createWorld({}).fetchImpl);

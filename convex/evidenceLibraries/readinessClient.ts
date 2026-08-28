@@ -490,6 +490,13 @@ export type ReadinessCheckInput = {
   platformBaseUrl?: string;
   /** Where the library sends a signed-out visitor of `/admin`. */
   loginPageUrl: string;
+  /**
+   * Used only for requests to `targetBaseUrl`. When that is a customer's
+   * domain it is a client pinned to the addresses that were checked, which
+   * can reach nothing else — so the verifier and the platform address keep
+   * using the ordinary one.
+   */
+  targetFetchImpl?: typeof fetch;
   verifierUrl: string;
   verifierToken: string;
   fetchImpl?: typeof fetch;
@@ -500,6 +507,7 @@ export async function requireLibraryRuntimeReady(
 ): Promise<{ status: "ready" }> {
   requireInput(input);
   const fetchImpl = input.fetchImpl ?? fetch;
+  const targetFetchImpl = input.targetFetchImpl ?? fetchImpl;
   const verifierOrigin = requireHttpsOrigin(
     "Runtime verifier URL",
     input.verifierUrl,
@@ -509,7 +517,7 @@ export async function requireLibraryRuntimeReady(
     input.targetBaseUrl,
   );
   await requireVerifierReady(fetchImpl, verifierOrigin, input);
-  await requireActiveRevision(fetchImpl, targetOrigin, input.revisionKey);
+  await requireActiveRevision(targetFetchImpl, targetOrigin, input.revisionKey);
   if (input.platformBaseUrl && input.platformBaseUrl !== targetOrigin.origin) {
     await requireRedirectToCanonical(
       fetchImpl,
@@ -518,13 +526,9 @@ export async function requireLibraryRuntimeReady(
     );
   }
   await Promise.all([
-    requirePage(
-      fetchImpl,
-      new URL("/lib", targetOrigin),
-      "public page",
-    ),
+    requirePage(targetFetchImpl, new URL("/lib", targetOrigin), "public page"),
     requireAdminPage(
-      fetchImpl,
+      targetFetchImpl,
       new URL("/admin", targetOrigin),
       input.loginPageUrl,
     ),
