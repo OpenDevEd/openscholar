@@ -46,8 +46,10 @@ const ADDRESS_STATE_MESSAGE = {
 /** How far the teardown is, by the stage it reports. */
 const TEARDOWN_PERCENT: Record<NonNullable<Overview["teardownStage"]>, number> = {
   queued: 5,
-  coolify: 35,
-  convex: 80,
+  coolify: 30,
+  storage: 50,
+  database: 70,
+  convex: 85,
   completed: 100,
 };
 
@@ -198,6 +200,9 @@ function LibraryRow({
   onDelete: () => void;
 }) {
   const t = useTranslations("evidenceLibraries.list");
+  const restartTeardown = useMutation(
+    api.evidenceLibraries.teardown.restartDevelopmentTeardown,
+  );
   const tStages = useTranslations("evidenceLibraries.stages");
   const format = useFormatter();
   const isDeleting = library.status === "deleting";
@@ -281,12 +286,34 @@ function LibraryRow({
           ) : null}
         </div>
         <MetaList items={meta} />
-        {isDeleting ? (
+        {isDeleting && !library.teardownFailedStep ? (
           <Progress
             aria-label={t("deleting")}
+            // The part being removed, so the page can be checked on meaning
+            // rather than on how far along a bar looks.
+            data-teardown-stage={library.teardownStage ?? "queued"}
             value={library.teardownStage ? TEARDOWN_PERCENT[library.teardownStage] : 5}
             className="h-1.5 max-w-xs bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive"
           />
+        ) : null}
+        {isDeleting && library.teardownFailedStep ? (
+          <div className="space-y-2" data-teardown-error>
+            <p className="max-w-xl text-sm text-destructive" role="status">
+              {t(`deleteFailed.${library.teardownFailedStep}`)}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                restartTeardown({ libraryId: library._id })
+                  .then(() => toast.success(t("deleteRetryStarted")))
+                  .catch(() => toast.error(t("deleteRetryError")));
+              }}
+            >
+              {t("deleteRetry")}
+            </Button>
+          </div>
         ) : null}
       </div>
 

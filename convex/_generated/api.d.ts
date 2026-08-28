@@ -60,6 +60,7 @@ import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/ad
 import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
+import type * as evidenceLibraries_cloudflareSaasClient from "../evidenceLibraries/cloudflareSaasClient.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
 import type * as evidenceLibraries_configurationDeploymentActions from "../evidenceLibraries/configurationDeploymentActions.js";
 import type * as evidenceLibraries_coolifyClient from "../evidenceLibraries/coolifyClient.js";
@@ -70,6 +71,13 @@ import type * as evidenceLibraries_databaseSetupActions from "../evidenceLibrari
 import type * as evidenceLibraries_databaseSetupClient from "../evidenceLibraries/databaseSetupClient.js";
 import type * as evidenceLibraries_deploymentSetup from "../evidenceLibraries/deploymentSetup.js";
 import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibraries/deploymentSetupActions.js";
+import type * as evidenceLibraries_dnsClient from "../evidenceLibraries/dnsClient.js";
+import type * as evidenceLibraries_domainActions from "../evidenceLibraries/domainActions.js";
+import type * as evidenceLibraries_domainConfig from "../evidenceLibraries/domainConfig.js";
+import type * as evidenceLibraries_domainEgress from "../evidenceLibraries/domainEgress.js";
+import type * as evidenceLibraries_domainEgressNode from "../evidenceLibraries/domainEgressNode.js";
+import type * as evidenceLibraries_domainGates from "../evidenceLibraries/domainGates.js";
+import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
@@ -319,6 +327,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
+  "evidenceLibraries/cloudflareSaasClient": typeof evidenceLibraries_cloudflareSaasClient;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
   "evidenceLibraries/configurationDeploymentActions": typeof evidenceLibraries_configurationDeploymentActions;
   "evidenceLibraries/coolifyClient": typeof evidenceLibraries_coolifyClient;
@@ -329,6 +338,13 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/databaseSetupClient": typeof evidenceLibraries_databaseSetupClient;
   "evidenceLibraries/deploymentSetup": typeof evidenceLibraries_deploymentSetup;
   "evidenceLibraries/deploymentSetupActions": typeof evidenceLibraries_deploymentSetupActions;
+  "evidenceLibraries/dnsClient": typeof evidenceLibraries_dnsClient;
+  "evidenceLibraries/domainActions": typeof evidenceLibraries_domainActions;
+  "evidenceLibraries/domainConfig": typeof evidenceLibraries_domainConfig;
+  "evidenceLibraries/domainEgress": typeof evidenceLibraries_domainEgress;
+  "evidenceLibraries/domainEgressNode": typeof evidenceLibraries_domainEgressNode;
+  "evidenceLibraries/domainGates": typeof evidenceLibraries_domainGates;
+  "evidenceLibraries/domains": typeof evidenceLibraries_domains;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;

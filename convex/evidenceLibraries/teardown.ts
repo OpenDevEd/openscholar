@@ -1,17 +1,74 @@
-import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import {
   internalMutation,
+  internalQuery,
   mutation,
   query,
   type MutationCtx,
 } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
+import { evidenceLibraryTeardownStepValidator } from "./validators";
+import {
+  readAttachedDomainOrigins,
+  readEvidenceLibraryDomains,
+} from "./domains";
 import {
   requireEvidenceLibraryAccess,
   requireOrganizationAccess,
 } from "./access";
+
+/**
+ * Only the attempt that holds the teardown may write about it. Without this
+ * a worker that took over after a claim expired could be overwritten by the
+ * one it replaced.
+ */
+function requireTeardownAttempt(
+  operation: Doc<"evidenceLibraryConfigOperations">,
+  attemptToken: string,
+): void {
+  if (operation.teardownAttemptToken !== attemptToken) {
+    throw createError(
+      "CONFLICT",
+      "Another attempt is running this Evidence Library teardown",
+    );
+  }
+}
+
+/** How long one teardown attempt holds the operation. */
+const TEARDOWN_LEASE_MS = 10 * 60 * 1000;
+
+/**
+ * Puts the teardown's lease forward and books the wake-up that will look at
+ * it if this attempt stops answering.
+ *
+ * Every lease write goes through here, so a renewal never retires the only
+ * wake-up there was. The wake-up is fenced by the attempt and the exact
+ * deadline it was booked for, so only the last one can act.
+ */
+async function renewTeardownLease(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+    attemptToken: string;
+  },
+): Promise<number> {
+  const leaseExpiresAt = Date.now() + TEARDOWN_LEASE_MS;
+  await ctx.scheduler.runAt(
+    leaseExpiresAt,
+    internal.evidenceLibraries.teardownActions.resumeDevelopmentTeardown,
+    {
+      libraryId: args.libraryId,
+      operationId: args.operationId,
+      attemptToken: args.attemptToken,
+      leaseExpiresAt,
+    },
+  );
+  return leaseExpiresAt;
+}
+
 
 const BATCH_SIZE = 50;
 
@@ -52,6 +109,21 @@ async function requestTeardown(
       query.eq("libraryId", args.libraryId),
     )
     .collect();
+  // A domain change that is still running owns provider state this teardown
+  // would delete underneath it. It finishes or expires first.
+  const domains = await readEvidenceLibraryDomains(ctx, args.libraryId);
+  const busy = domains.find(
+    (domain) =>
+      (domain.transition !== undefined &&
+        domain.transition.expiresAt > Date.now()) ||
+      domain.pendingDeployment !== undefined,
+  );
+  if (busy) {
+    throw createError(
+      "CONFLICT",
+      "A change to one of this library's domains is still running. Wait for it to finish, then delete the library.",
+    );
+  }
   const teardown = operations.find(
     (operation) => operation.kind === "teardown",
   );
@@ -106,6 +178,16 @@ async function requestTeardown(
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
   });
+  // A worker whose lease ran out could still be holding a token. Moving each
+  // domain on makes those tokens name a change that no longer exists, so
+  // nothing can come back and write while the teardown works.
+  for (const domain of domains) {
+    await ctx.db.patch(domain._id, {
+      generation: domain.generation + 1,
+      transition: undefined,
+      updatedAt: now,
+    });
+  }
   await ctx.scheduler.runAfter(
     0,
     internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
@@ -179,11 +261,180 @@ export const getDevelopmentTeardownStatus = query({
   },
 });
 
+/**
+ * Starts a stopped deletion again. The owner has already confirmed the name
+ * once, so this asks only for the library.
+ */
+export const restartDevelopmentTeardown = mutation({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.object({ status: v.literal("queued") }),
+  handler: async (ctx, args) => {
+    requireDevelopmentTeardownEnabled();
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const operation = await ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_createdAt", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .order("desc")
+      .first();
+    if (operation?.kind !== "teardown" || operation.status !== "failed") {
+      throw createError("CONFLICT", "That library is not waiting to be deleted");
+    }
+    await ctx.db.patch(operation._id, {
+      status: "queued",
+      error: undefined,
+      attemptCount: 0,
+      teardownLeaseExpiresAt: undefined,
+      teardownAttemptToken: undefined,
+      completedAt: undefined,
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+      { libraryId: args.libraryId, operationId: operation._id },
+    );
+    return { status: "queued" as const };
+  },
+});
+
+/**
+ * Puts the teardown's lease forward, proving this attempt still holds it.
+ * A slow but healthy teardown must not look dead to the wake-up.
+ */
+export const holdDevelopmentTeardown = internalMutation({
+  args: {
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(
+      "evidenceLibraryConfigOperations",
+      args.operationId,
+    );
+    if (!operation || operation.kind !== "teardown") {
+      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+    }
+    requireTeardownAttempt(operation, args.attemptToken);
+    await ctx.db.patch(operation._id, {
+      teardownLeaseExpiresAt: await renewTeardownLease(ctx, {
+        libraryId: operation.libraryId,
+        operationId: operation._id,
+        attemptToken: args.attemptToken,
+      }),
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+/** How many times a teardown waits for something it needs before giving up. */
+const MAX_TEARDOWN_RETRIES = 5;
+
+
+
+/**
+ * Hands the teardown back and books another attempt, up to a fixed number.
+ * Used when something the teardown needs is not there yet.
+ */
+export const retryDevelopmentTeardown = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+  },
+  returns: v.object({
+    status: v.union(v.literal("retrying"), v.literal("given-up")),
+  }),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(
+      "evidenceLibraryConfigOperations",
+      args.operationId,
+    );
+    if (!operation || operation.kind !== "teardown") {
+      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+    }
+    requireTeardownAttempt(operation, args.attemptToken);
+    if (operation.attemptCount >= MAX_TEARDOWN_RETRIES) {
+      return { status: "given-up" as const };
+    }
+    await ctx.db.patch(operation._id, {
+      status: "queued",
+      teardownLeaseExpiresAt: undefined,
+      teardownAttemptToken: undefined,
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(
+      60_000,
+      internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+      { libraryId: args.libraryId, operationId: args.operationId },
+    );
+    return { status: "retrying" as const };
+  },
+});
+
+/** True when a teardown is still running but nobody holds it any more. */
+export const isDevelopmentTeardownStale = internalQuery({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    /** The attempt the caller was booked for, when it was booked for one. */
+    attemptToken: v.optional(v.string()),
+    /** The deadline it was booked for. A renewal replaces it. */
+    leaseExpiresAt: v.optional(v.number()),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(
+      "evidenceLibraryConfigOperations",
+      args.operationId,
+    );
+    if (
+      operation?.kind !== "teardown" ||
+      operation.libraryId !== args.libraryId ||
+      operation.status !== "running"
+    ) {
+      return false;
+    }
+    // A wake-up booked for one attempt and one deadline only speaks about
+    // those. The work carrying on replaces it with a later one.
+    if (
+      args.attemptToken !== undefined &&
+      operation.teardownAttemptToken !== args.attemptToken
+    ) {
+      return false;
+    }
+    if (
+      args.leaseExpiresAt !== undefined &&
+      operation.teardownLeaseExpiresAt !== args.leaseExpiresAt
+    ) {
+      return false;
+    }
+    return (operation.teardownLeaseExpiresAt ?? 0) <= Date.now();
+  },
+});
+
 export const prepareDevelopmentTeardown = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
   },
+  returns: v.union(
+    v.object({ claimed: v.literal(false) }),
+    v.object({
+      claimed: v.literal(true),
+      attemptToken: v.string(),
+      applicationId: v.optional(v.string()),
+      privateBucket: v.optional(v.string()),
+      publicBucket: v.optional(v.string()),
+      targetBaseUrl: v.optional(v.string()),
+      customDomains: v.array(v.string()),
+      customDomainHosts: v.array(v.string()),
+      certificateHostnameIds: v.array(v.string()),
+    }),
+  ),
   handler: async (ctx, args) => {
     requireDevelopmentTeardownEnabled();
     const [library, operation] = await Promise.all([
@@ -198,8 +449,11 @@ export const prepareDevelopmentTeardown = internalMutation({
     ) {
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
-    if (operation.status === "running") return { claimed: false as const };
-    if (operation.status !== "queued") {
+    const held =
+      operation.status === "running" &&
+      (operation.teardownLeaseExpiresAt ?? 0) > Date.now();
+    if (held) return { claimed: false as const };
+    if (operation.status !== "queued" && operation.status !== "running") {
       throw createError("CONFLICT", "Evidence Library teardown is not queued");
     }
     const binding = library.runtimeBindingId
@@ -214,14 +468,29 @@ export const prepareDevelopmentTeardown = internalMutation({
           library.setupOperationId,
         )
       : null;
+    const domainRows = await ctx.db
+      .query("evidenceLibraryDomains")
+      .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+      .collect();
     const applicationId =
       binding && "targetRuntimeId" in binding
         ? binding.targetRuntimeId
         : setupOperation?.setupReceipts?.application?.applicationId;
     const now = Date.now();
+    const attemptToken = crypto.randomUUID();
     await ctx.db.patch(operation._id, {
       status: "running",
       attemptCount: operation.attemptCount + 1,
+      // The claim expires, so an attempt that died is picked up again
+      // instead of leaving the teardown running for ever. Something has to
+      // come back and look, so the wake-up is booked in the same
+      // transaction as the claim.
+      teardownLeaseExpiresAt: await renewTeardownLease(ctx, {
+        libraryId: args.libraryId,
+        operationId: operation._id,
+        attemptToken,
+      }),
+      teardownAttemptToken: attemptToken,
       startedAt: now,
       completedAt: undefined,
       error: undefined,
@@ -229,6 +498,7 @@ export const prepareDevelopmentTeardown = internalMutation({
     });
     return {
       claimed: true as const,
+      attemptToken,
       applicationId,
       privateBucket:
         binding && "storagePrivateBucket" in binding
@@ -239,6 +509,19 @@ export const prepareDevelopmentTeardown = internalMutation({
           ? binding.storagePublicBucket
           : setupOperation?.setupReceipts?.storage?.publicBucket,
       targetBaseUrl: binding?.targetBaseUrl,
+      customDomains: await readAttachedDomainOrigins(ctx, args.libraryId, {
+      // Taking a library apart has to account for a host the proxy was
+      // only asked to hold.
+      includeUncertain: true,
+    }),
+      // Custom domains are removed from the certificate service before the
+      // application goes, so a deleted library can never keep a name. The
+      // host names travel too, so a hostname created before its id was saved
+      // is still found and deleted.
+      customDomainHosts: domainRows.map((row) => row.host),
+      certificateHostnameIds: domainRows
+        .map((row) => row.certificateHostnameId)
+        .filter((id): id is string => typeof id === "string"),
     };
   },
 });
@@ -252,6 +535,7 @@ export const setDevelopmentTeardownStage = internalMutation({
       v.literal("database"),
       v.literal("convex"),
     ),
+    attemptToken: v.string(),
   },
   handler: async (ctx, args) => {
     const operation = await ctx.db.get(
@@ -261,6 +545,7 @@ export const setDevelopmentTeardownStage = internalMutation({
     if (!operation || operation.kind !== "teardown") {
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
+    requireTeardownAttempt(operation, args.attemptToken);
     await ctx.db.patch(operation._id, {
       stage: args.stage,
       updatedAt: Date.now(),
@@ -272,6 +557,7 @@ export const deferDevelopmentTeardown = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
   },
   handler: async (ctx, args) => {
     const operation = await ctx.db.get(
@@ -281,15 +567,19 @@ export const deferDevelopmentTeardown = internalMutation({
     if (!operation || operation.kind !== "teardown") {
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
+    requireTeardownAttempt(operation, args.attemptToken);
+    // The claim is given back, so the next attempt takes its own.
     await ctx.db.patch(operation._id, {
       status: "queued",
       stage: "storage",
+      teardownLeaseExpiresAt: undefined,
+      teardownAttemptToken: undefined,
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(
       10_000,
       internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
-      args,
+      { libraryId: args.libraryId, operationId: args.operationId },
     );
   },
 });
@@ -300,6 +590,9 @@ export const failDevelopmentTeardown = internalMutation({
     code: v.string(),
     message: v.string(),
     stage: v.string(),
+    /** Which part of the deletion stopped, as a name the page can say. */
+    failedStep: evidenceLibraryTeardownStepValidator,
+    attemptToken: v.string(),
   },
   handler: async (ctx, args) => {
     const operation = await ctx.db.get(
@@ -307,10 +600,12 @@ export const failDevelopmentTeardown = internalMutation({
       args.operationId,
     );
     if (!operation || operation.kind !== "teardown") return;
+    requireTeardownAttempt(operation, args.attemptToken);
     const now = Date.now();
     await ctx.db.patch(operation._id, {
       status: "failed",
       error: { code: args.code, message: args.message, stage: args.stage },
+      teardownFailedStep: args.failedStep,
       completedAt: now,
       updatedAt: now,
     });
@@ -321,6 +616,7 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
   },
   returns: v.object({ complete: v.boolean() }),
   handler: async (ctx, args) => {
@@ -337,6 +633,7 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
     ) {
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
+    requireTeardownAttempt(operation, args.attemptToken);
     const sections = await ctx.db
       .query("evidenceLibraryConfigSections")
       .withIndex("by_libraryId_and_kind", (query) =>
@@ -355,6 +652,14 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
     }
     if (sections.length > 0) {
       await Promise.all(sections.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
+    const domains = await ctx.db
+      .query("evidenceLibraryDomains")
+      .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+      .take(BATCH_SIZE);
+    if (domains.length > 0) {
+      await Promise.all(domains.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
     const adminCodes = await ctx.db

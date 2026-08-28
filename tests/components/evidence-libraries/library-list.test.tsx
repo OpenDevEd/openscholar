@@ -271,4 +271,55 @@ describe("<LibraryList>", () => {
       screen.queryByRole("link", { name: "list.newLibrary" }),
     ).not.toBeInTheDocument();
   });
+  it("shows which part of a deletion is running", () => {
+    mocks.organization.mockReturnValue(organization("org:admin"));
+    answerQueries();
+    render(<LibraryList />);
+
+    // The bar carries the part being removed, so a library part-way through
+    // is not drawn as if it had only just started.
+    const deletingRow = within(screen.getAllByRole("listitem")[2]);
+    expect(
+      deletingRow.getByRole("progressbar", { name: "list.deleting" }),
+    ).toHaveAttribute("data-teardown-stage", "convex");
+    // Nothing has gone wrong, so no message and no way to start it again.
+    expect(
+      deletingRow.queryByRole("button", { name: "list.deleteRetry" }),
+    ).toBeNull();
+  });
+
+  it("says which part stopped when a deletion cannot finish", async () => {
+    mocks.organization.mockReturnValue(organization("org:admin"));
+    mocks.query.mockImplementation((query: unknown) => {
+      if (query === "listAddressNotices") return { data: [], isReady: true };
+      if (query === "getEvidenceLibrariesAccess") {
+        return { data: { enabled: true }, isReady: true };
+      }
+      return {
+        data: libraries.map((library) =>
+          library._id === "lib_deleting"
+            ? { ...library, teardownStage: "storage", teardownFailedStep: "files" }
+            : library,
+        ),
+        isReady: true,
+      };
+    });
+    render(<LibraryList />);
+
+    // The message names the part that stopped, and the owner can start the
+    // deletion again.
+    const deletingRow = within(screen.getAllByRole("listitem")[2]);
+    expect(deletingRow.getByRole("status")).toHaveTextContent(
+      "list.deleteFailed.files",
+    );
+    expect(
+      deletingRow.getByRole("button", { name: "list.deleteRetry" }),
+    ).toBeInTheDocument();
+    // A deletion that stopped shows no progress, which would suggest it was
+    // still going.
+    expect(
+      deletingRow.queryByRole("progressbar", { name: "list.deleting" }),
+    ).toBeNull();
+  });
+
 });

@@ -2178,7 +2178,8 @@
       "languages": "Languages",
       "analytics": "Analytics",
       "versions": "Versions",
-      "ai": "AI"
+      "ai": "AI",
+      "domain": "Domain"
     },
     "sectionState": {
       "complete": "Complete",
@@ -2881,7 +2882,79 @@
       "modelHint": "The model that writes the answers.",
       "modelPlaceholder": "Choose a model",
       "modelError": "That model is not one your library software offers."
-    }
+    },
+    "domain": {
+      "description": "Use your own web address for the library.",
+      "notSetUp": "Custom domains are not set up on this platform yet",
+      "platformLabel": "Platform address",
+      "platformHint": "Always works, even without a custom domain.",
+      "customLabel": "Custom domain",
+      "customHint": "Use a name like library.example.org, not a bare example.org.",
+      "add": "Add domain",
+      "remove": "Remove",
+      "apex": "This name is the top of its own DNS zone, so it cannot point at another address the way a subdomain can, and forcing it would stop your email working. Use www.example.org or library.example.org instead, and ask your domain host to forward the top of the zone to it. If your domain host offers CNAME flattening, ALIAS or ANAME, this name works as it is.",
+      "recordsHeading": "DNS records to add",
+      "recordsHint": "Add these two records where you manage the domain, then check again.",
+      "colType": "Type",
+      "colName": "Name",
+      "colValue": "Value",
+      "copyValue": "Copy {type} value",
+      "copied": "Copied",
+      "checkDns": "Check DNS",
+      "failed": "That did not work. Try again.",
+      "status": {
+        "none": "Not verified",
+        "pending": "Not verified",
+        "checking": "Checking…",
+        "verified": "Verified",
+        "failed": "Records not found"
+      },
+      "failure": {
+        "no-name": "We could not find that domain",
+        "no-records": "Records not found",
+        "wrong-target": "That domain points somewhere else. If it sits behind another proxy, turn the proxy off for this record.",
+        "token-mismatch": "The ownership record holds a different value",
+        "host-taken": "Another site already answers on that domain",
+        "not-served": "The library is not running yet",
+        "certificate": "The certificate could not be issued",
+        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org."
+      },
+      "refused": {
+        "invalid": "That does not look like a domain",
+        "platform-host": "That address already belongs to the platform",
+        "host-taken": "That domain is already used by another site",
+        "too-many": "This library already has as many domains as it can hold",
+        "not-set-up": "Custom domains are not set up on this platform yet",
+        "check-failed": "We could not check the domain. Try again."
+      },
+      "tlsActive": "TLS: Active",
+      "tlsPending": "Certificate pending",
+      "redirectLabel": "Send the platform address to the custom domain",
+      "redirectHint": "Visitors to the platform address land on the custom domain. Everyone signed in is signed out.",
+      "redirectDisabled": "Verify the domain first.",
+      "redirectWaiting": "Wait until the domain is working.",
+      "addAnother": "Add another domain",
+      "busy": "A check is already running for that domain",
+      "removing": "Removing",
+      "checkFailed": "We could not check the domain. Try again.",
+      "deploying": "Applying the change to the library",
+      "removingNow": "That domain is being removed",
+      "removeAgain": "Finish removing",
+      "confirmOnTitle": "Send the platform address to this domain?",
+      "confirmOnBody": "The library will answer on {host}. Everyone signed in is signed out, and visitors to the platform address land on the new one. The platform address keeps working.",
+      "confirmOffTitle": "Take the library back to its platform address?",
+      "confirmOffBody": "The library will answer on {address} again. Everyone signed in is signed out, and visitors to the custom domain land on the platform address.",
+      "confirmCancel": "Cancel",
+      "confirmAction": "Change the address",
+      "cleanupFailure": {
+        "certificate-service-unreachable": "We could not reach the service that manages this domain's certificate, and we have stopped trying. Choose \"Finish removing\" to try again, or contact support.",
+        "certificate-service-refused": "The service that manages this domain's certificate would not remove it, and we have stopped trying. Choose \"Finish removing\" to try again, or contact support.",
+        "unknown": "This domain could not finish being removed, and we have stopped trying. Choose \"Finish removing\" to try again, or contact support."
+      }
+    },
+    "retry": "Try again",
+    "retryStarted": "Trying again.",
+    "retryError": "That could not be started. Try again."
   },
   "evidenceLibraries": {
     "list": {
@@ -2908,7 +2981,17 @@
       "deleting": "Deleting the library",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",
-      "description": "Create and manage the public libraries your organisation publishes."
+      "description": "Create and manage the public libraries your organisation publishes.",
+      "deleteRetry": "Try deleting again",
+      "deleteRetryStarted": "Trying again.",
+      "deleteRetryError": "That could not be started. Try again.",
+      "deleteFailed": {
+        "domains": "We could not remove this library's custom domains, so it has not finished being deleted. Try again, or contact support.",
+        "runtime": "We could not remove this library's running site, so it has not finished being deleted. Try again, or contact support.",
+        "files": "We could not remove this library's files, so it has not finished being deleted. Try again, or contact support.",
+        "database": "We could not remove this library's database, so it has not finished being deleted. Try again, or contact support.",
+        "records": "This library has not finished being deleted. Try again, or contact support."
+      }
     },
     "gate": {
       "title": "Not available for this organisation",

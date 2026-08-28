@@ -181,6 +181,140 @@ export const evidenceLibraryServedHostsFields = {
   fetchedAt: v.number(),
 };
 
+// One custom domain of one library. `host` is unique across the platform.
+export const evidenceLibraryDomainStateValidator = v.union(
+  // Saved; the records have not been seen yet.
+  v.literal("added"),
+  // The CNAME chain reaches our target.
+  v.literal("pointing"),
+  // The ownership record matches too.
+  v.literal("verified"),
+  // The library answers on the domain.
+  v.literal("active"),
+  // The last check failed; `failure` says why.
+  v.literal("failed"),
+);
+
+// Only reasons a check actually found. A check that could not run writes
+// nothing at all, so it has no stored reason.
+/** Which part of deleting a library stopped, as a name the page can say. */
+export const evidenceLibraryTeardownStepValidator = v.union(
+  v.literal("domains"),
+  v.literal("runtime"),
+  v.literal("files"),
+  v.literal("database"),
+  v.literal("records"),
+);
+
+/** Why a domain's last step could not be finished. */
+export const evidenceLibraryCleanupFailureValidator = v.union(
+  // The certificate service could not be reached at all.
+  v.literal("certificate-service-unreachable"),
+  // It answered, but refused.
+  v.literal("certificate-service-refused"),
+  // Something else went wrong.
+  v.literal("unknown"),
+);
+
+export const evidenceLibraryDomainFailureValidator = v.union(
+  v.literal("no-name"),
+  v.literal("no-records"),
+  v.literal("wrong-target"),
+  v.literal("token-mismatch"),
+  v.literal("host-taken"),
+  v.literal("not-served"),
+  v.literal("certificate"),
+  v.literal("caa-blocked"),
+);
+
+export const evidenceLibraryCertificateStateValidator = v.union(
+  v.literal("pending"),
+  v.literal("active"),
+  v.literal("failed"),
+);
+
+export const evidenceLibraryDomainFields = {
+  libraryId: v.id("evidenceLibraries"),
+  host: v.string(),
+  verificationToken: v.string(),
+  role: v.union(v.literal("primary"), v.literal("redirect")),
+  state: evidenceLibraryDomainStateValidator,
+  failure: v.optional(evidenceLibraryDomainFailureValidator),
+  // Set while the host is in the proxy's domain list. Kept apart from
+  // `state` so a check that has not run yet cannot silently drop a host the
+  // proxy is already serving.
+  attachedAt: v.optional(v.number()),
+  certificateState: v.optional(evidenceLibraryCertificateStateValidator),
+  certificateHostnameId: v.optional(v.string()),
+  // One lease covers every change to this domain: checking, attaching,
+  // becoming the library's address, and being removed. Whoever holds it is
+  // the only one who may write, and every write carries the same token, so a
+  // slow step cannot land after another has taken over.
+  transition: v.optional(
+    v.object({
+      kind: v.union(
+        v.literal("check"),
+        v.literal("attach"),
+        v.literal("canonical"),
+        v.literal("remove"),
+      ),
+      token: v.string(),
+      expiresAt: v.number(),
+    }),
+  ),
+  // The deployment that has to carry the current proxy change to the running
+  // site. Cleared only when that deployment succeeds, so a failed one is
+  // still owed and a retry redeploys rather than probing.
+  pendingDeployment: v.optional(
+    v.object({
+      operationId: v.id("evidenceLibraryConfigOperations"),
+      phase: v.union(
+        v.literal("attach"),
+        v.literal("detach"),
+        v.literal("canonical"),
+      ),
+    }),
+  ),
+  // The work owed after one deployment: which deployment it belongs to, how
+  // many attempts it has had, and the run already booked. All three together,
+  // so a stale call cannot count an attempt or book a second run.
+  cleanup: v.optional(
+    v.object({
+      operationId: v.id("evidenceLibraryConfigOperations"),
+      attempts: v.number(),
+      // Every trip round, including ones that never reached the certificate
+      // service, so this can never go round for ever.
+      rounds: v.number(),
+      scheduledId: v.optional(v.id("_scheduled_functions")),
+      // Set once the tries run out. A short name, not a message from
+      // another service, so the page can say it in plain words.
+      failure: v.optional(evidenceLibraryCleanupFailureValidator),
+    }),
+  ),
+  // Counts every change this domain has been through. It goes into each
+  // operation's key, so the same change asked for twice is two operations
+  // rather than one that already succeeded and will not run again.
+  // How many changes this domain has been through. Every change reads it,
+  // writes with it, and moves it on, so no two changes can share a key.
+  generation: v.number(),
+  // Set the moment the proxy was written but before the deployment exists.
+  deploymentPending: v.optional(v.boolean()),
+  // Whether the name is a zone of its own, read from its records rather
+  // than guessed from how many parts it has.
+  isApex: v.optional(v.boolean()),
+  // Set once the owner asked for the domain to go. The row survives until
+  // the proxy has been redeployed without it and the certificate is gone.
+  removingAt: v.optional(v.number()),
+  // Set just before the proxy is asked to hold this host, so a crash between
+  // the proxy accepting it and the receipt being saved is still visible.
+  attachIntentAt: v.optional(v.number()),
+  checkedAt: v.optional(v.number()),
+  activatedAt: v.optional(v.number()),
+  createdByClerkUserId: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
 export const evidenceLibrarySetupIdentityFields = {
   name: v.string(),
   publicAddress: v.string(),
@@ -262,6 +396,11 @@ export const evidenceLibraryAddressStateValidator = v.union(
 const evidenceLibraryRuntimeBindingBaseFields = {
   libraryId: v.id("evidenceLibraries"),
   targetBaseUrl: v.string(),
+  // The address the library calls its own. Unset means the platform address.
+  // A custom domain the owner made primary is held here; the platform
+  // address stays on `targetBaseUrl` and is never released, because DOI
+  // landing pages already registered point at it.
+  canonicalBaseUrl: v.optional(v.string()),
   addressState: v.optional(evidenceLibraryAddressStateValidator),
   addressCheckedAt: v.optional(v.number()),
   createdAt: v.number(),
@@ -510,12 +649,6 @@ export type EvidenceLibrarySetupReceipts = Infer<
   typeof evidenceLibrarySetupReceiptsValidator
 >;
 
-export const evidenceLibraryConfigRunningStageValidator = v.union(
-  v.literal("assembling"),
-  v.literal("validating"),
-  v.literal("publishing"),
-  v.literal("activating"),
-);
 
 export const evidenceLibraryOperationReceiptValidator = v.object({
   revisionKey: v.optional(v.string()),
@@ -533,6 +666,9 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   aiProviderKey: aiProviderKeySourceValidator,
   runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
   targetBaseUrl: v.string(),
+  // The custom domains the proxy serves beside the platform address, taken
+  // from our own records when the deployment was planned.
+  customDomains: v.array(v.string()),
   revisionKey: v.string(),
   defaultLocale: v.string(),
   runtimeCommit: v.string(),
@@ -560,6 +696,22 @@ export const evidenceLibraryAddressMoveValidator = v.object({
   applied: v.boolean(),
 });
 
+// A publish caused by a custom domain: the proxy rules only reach the
+// running container through a deployment, and making a domain primary also
+// rewrites the address the library calls its own.
+export const evidenceLibraryDomainChangeValidator = v.object({
+  host: v.string(),
+  domainId: v.id("evidenceLibraryDomains"),
+  reason: v.union(v.literal("attach"), v.literal("detach"), v.literal("canonical")),
+  // For a canonical change: the address the library should call its own once
+  // this deployment is live. Nothing is written until it is.
+  address: v.optional(v.string()),
+  // The lease this change holds on the domain. Checked when the deployment
+  // finishes, so a change that was overtaken cannot land. Every domain
+  // change carries one.
+  token: v.string(),
+});
+
 export const evidenceLibraryOperationFields = {
   libraryId: v.id("evidenceLibraries"),
   kind: evidenceLibraryOperationKindValidator,
@@ -567,6 +719,7 @@ export const evidenceLibraryOperationFields = {
   activationEditVersion: v.optional(v.number()),
   runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
   addressMove: v.optional(evidenceLibraryAddressMoveValidator),
+  domainChange: v.optional(evidenceLibraryDomainChangeValidator),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
   setupAttemptToken: v.optional(v.string()),
@@ -580,12 +733,23 @@ export const evidenceLibraryOperationFields = {
   setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
   setupDeploymentNotBefore: v.optional(v.number()),
   setupDeploymentPollCount: v.optional(v.number()),
+  // A running teardown holds the operation for a while. Without it, an
+  // attempt that died left the teardown running for ever and every later
+  // attempt walked away.
+  teardownLeaseExpiresAt: v.optional(v.number()),
+  // Names the attempt that holds the teardown. Every write it makes carries
+  // it, so a replacement worker after the claim expired cannot be written
+  // over by the attempt it replaced.
+  teardownAttemptToken: v.optional(v.string()),
   setupReadinessPollCount: v.optional(v.number()),
   configurationDeploymentTarget: v.optional(
     evidenceLibraryConfigurationDeploymentTargetValidator,
   ),
   configurationAttemptToken: v.optional(v.string()),
   configurationLeaseExpiresAt: v.optional(v.number()),
+  // Which part of deleting the library stopped, so the list can say it in
+  // plain words instead of repeating another service's message.
+  teardownFailedStep: v.optional(evidenceLibraryTeardownStepValidator),
   configurationDeploymentPollCount: v.optional(v.number()),
   configurationReadinessPollCount: v.optional(v.number()),
   status: v.union(
@@ -646,6 +810,7 @@ const PUBLIC_OPERATION_FIELDS = [
   "receipt",
   "error",
   "issues",
+  "teardownFailedStep",
   "requestedByClerkUserId",
   "createdAt",
   "updatedAt",

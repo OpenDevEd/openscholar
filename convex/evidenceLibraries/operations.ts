@@ -1,5 +1,4 @@
 import {
-  internalMutation,
   mutation,
   type MutationCtx,
 } from "../_generated/server";
@@ -9,13 +8,11 @@ import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import {
   type EvidenceLibraryOperationKind,
-  evidenceLibraryConfigRunningStageValidator,
   evidenceLibraryOperationFailureValidator,
   evidenceLibraryOperationReceiptValidator,
   evidenceLibraryRequestableOperationKindValidator,
 } from "./validators";
 
-type RunningStage = "assembling" | "validating" | "publishing" | "activating";
 type OperationReceipt = {
   revisionKey?: string;
   targetConfigSha256?: string;
@@ -265,6 +262,34 @@ export async function queueAddressMoveOperation(
   return queued;
 }
 
+/**
+ * A custom domain changing publishes the live revision again: the proxy only
+ * learns about a domain through a deployment.
+ */
+export async function queueDomainChangeOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    idempotencyKey: string;
+    revisionId: Id<"evidenceLibraryConfigRevisions">;
+    domainChange: {
+      host: string;
+      domainId: Id<"evidenceLibraryDomains">;
+      reason: "attach" | "detach" | "canonical";
+      address?: string;
+      token: string;
+    };
+  },
+) {
+  const { domainChange, ...record } = args;
+  const queued = await queueOperationRecord(ctx, {
+    ...record,
+    kind: "publish",
+  });
+  await ctx.db.patch(queued.operationId, { domainChange });
+  return queued;
+}
+
 export async function attachRevisionToSetupOperation(
   ctx: MutationCtx,
   args: {
@@ -333,86 +358,6 @@ export async function attachRevisionToSetupOperation(
   return { operationId: operation._id, status: operation.status };
 }
 
-type TransitionArgs = {
-  libraryId: Id<"evidenceLibraries">;
-  operationId: Id<"evidenceLibraryConfigOperations">;
-} & (
-  | { transition: "start"; stage: RunningStage }
-  | { transition: "succeed"; receipt?: OperationReceipt }
-  | {
-      transition: "fail";
-      error: { code: string; message: string; issues?: ConfigurationIssue[] };
-    }
-);
-
-export async function applyOperationTransition(
-  ctx: MutationCtx,
-  args: TransitionArgs,
-) {
-  await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-  const operation = await ctx.db.get(
-    "evidenceLibraryConfigOperations",
-    args.operationId,
-  );
-  if (!operation || operation.libraryId !== args.libraryId) {
-    throw createError("NOT_FOUND", "Evidence Library operation not found");
-  }
-  if (operation.kind === "setup") {
-    throw createError(
-      "CONFLICT",
-      "Evidence Library setup uses the fixed setup transitions",
-    );
-  }
-  const now = Date.now();
-  if (args.transition === "start") {
-    if (operation.status !== "queued" && operation.status !== "failed") {
-      throw createError(
-        "CONFLICT",
-        "Invalid Evidence Library operation transition",
-      );
-    }
-    await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
-      status: "running",
-      stage: args.stage,
-      attemptCount: operation.attemptCount + 1,
-      error: undefined,
-      issues: undefined,
-      startedAt: now,
-      completedAt: undefined,
-      updatedAt: now,
-    });
-    return "running" as const;
-  }
-  if (operation.status !== "running") {
-    throw createError(
-      "CONFLICT",
-      "Invalid Evidence Library operation transition",
-    );
-  }
-  if (args.transition === "succeed") {
-    const receipt = validateOperationReceipt(args.receipt);
-    await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
-      status: "succeeded",
-      stage: "completed",
-      receipt,
-      completedAt: now,
-      updatedAt: now,
-    });
-    return "succeeded" as const;
-  }
-  if (operation.stage === "queued" || operation.stage === "completed") {
-    throw createError("CONFLICT", "Invalid Evidence Library operation stage");
-  }
-  await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
-    status: "failed",
-    error: sanitizeOperationError(args.error, operation.stage),
-    issues: sanitizeConfigurationIssues(args.error.issues),
-    completedAt: now,
-    updatedAt: now,
-  });
-  return "failed" as const;
-}
-
 export const queueOperation = mutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -430,43 +375,4 @@ export const queueOperation = mutation({
     ),
   }),
   handler: queueEvidenceLibraryOperation,
-});
-
-const transitionReturnValidator = v.union(
-  v.literal("running"),
-  v.literal("succeeded"),
-  v.literal("failed"),
-);
-
-export const startOperation = internalMutation({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    stage: evidenceLibraryConfigRunningStageValidator,
-  },
-  returns: transitionReturnValidator,
-  handler: async (ctx, args) =>
-    await applyOperationTransition(ctx, { ...args, transition: "start" }),
-});
-
-export const succeedOperation = internalMutation({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    receipt: v.optional(evidenceLibraryOperationReceiptValidator),
-  },
-  returns: transitionReturnValidator,
-  handler: async (ctx, args) =>
-    await applyOperationTransition(ctx, { ...args, transition: "succeed" }),
-});
-
-export const failOperation = internalMutation({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    error: evidenceLibraryOperationFailureValidator,
-  },
-  returns: transitionReturnValidator,
-  handler: async (ctx, args) =>
-    await applyOperationTransition(ctx, { ...args, transition: "fail" }),
 });

@@ -14,6 +14,7 @@ import {
   History,
   Languages,
   Layers,
+  Link2,
   type LucideIcon,
   Mail,
   Menu,
@@ -81,6 +82,7 @@ import { CollectionFactsProvider } from "./sections/collection-facts";
 import { CollectionsSection } from "./sections/collections-section";
 import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
+import { DomainSection } from "./sections/domain-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { FeaturesSection } from "./sections/features-section";
 import { FooterSection } from "./sections/footer-section";
@@ -117,7 +119,7 @@ function isOperationRunning(operation: Operation): operation is NonNullable<Oper
 }
 
 /** Rail entries: the page cards in their groups, then versions, the team and the danger zone. */
-type RailKey = PageSectionKey | "versions" | "team" | "danger";
+type RailKey = PageSectionKey | "domain" | "versions" | "team" | "danger";
 const RAIL_GROUPS: {
   key: "brand" | "content" | "discovery" | "platform" | "team" | "danger";
   sections: readonly RailKey[];
@@ -125,7 +127,7 @@ const RAIL_GROUPS: {
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["navigation", "footer", "contact", "collections"] },
   { key: "discovery", sections: ["search", "citations", "features", "sources", "ai"] },
-  { key: "platform", sections: ["languages", "analytics", "versions"] },
+  { key: "platform", sections: ["languages", "analytics", "domain", "versions"] },
   { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
@@ -145,6 +147,7 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   ai: Sparkles,
   languages: Languages,
   analytics: BarChart3,
+  domain: Link2,
   versions: History,
   team: Users,
   danger: Trash2,
@@ -184,7 +187,13 @@ function isPageSection(value: string): value is PageSectionKey {
   return (PAGE_SECTION_KEYS as readonly string[]).includes(value);
 }
 
-const RAIL_KEYS: readonly RailKey[] = [...PAGE_SECTION_KEYS, "versions", "team", "danger"];
+const RAIL_KEYS: readonly RailKey[] = [
+  ...PAGE_SECTION_KEYS,
+  "domain",
+  "versions",
+  "team",
+  "danger",
+];
 
 export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
@@ -386,6 +395,7 @@ function Workspace({
               <OperationBanner
                 operation={operation}
                 running={operationRunning}
+                libraryId={libraryId}
                 onJump={jumpTo}
               />
             ) : null}
@@ -459,6 +469,7 @@ function Workspace({
                   );
                 })}
               </CollectionFactsProvider>
+              <DomainSection libraryId={libraryId} />
               <VersionsSection
                 libraryId={libraryId}
                 live={libraryState === "active"}
@@ -530,13 +541,18 @@ function Workspace({
 function OperationBanner({
   operation,
   running,
+  libraryId,
   onJump,
 }: {
   operation: NonNullable<Operation>;
   running: boolean;
+  libraryId: Id<"evidenceLibraries">;
   onJump: (key: PageSectionKey) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
+  const retry = useMutation(
+    api.evidenceLibraries.configurationDeployment.retryConfigurationDeployment,
+  );
   const issues = operation.issues ?? [];
   if (running) {
     return (
@@ -567,6 +583,21 @@ function OperationBanner({
       data-operation-issues
     >
       {operation.error ? <p>{operation.error.message}</p> : null}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-3"
+        onClick={() => {
+          retry({ libraryId, operationId: operation._id })
+            .then(() => toast.success(t("retryStarted")))
+            .catch((error) =>
+              toast.error(errorMessage(error, t("retryError"))),
+            );
+        }}
+      >
+        {t("retry")}
+      </Button>
       {issues.length > 0 ? (
         <ul className="mt-1 space-y-1">
           {issues.map((issue) => {

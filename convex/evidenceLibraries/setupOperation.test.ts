@@ -93,7 +93,7 @@ describe("fixed Evidence Library setup operation", () => {
     vi.unstubAllEnvs();
   });
 
-  it("claims the activated revision once and rejects generic setup transitions", async () => {
+  it("claims the activated revision once", async () => {
     const fixture = await createActivatedSetupFixture("claim");
     const claimed = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.setupOperationId),
@@ -148,16 +148,6 @@ describe("fixed Evidence Library setup operation", () => {
         1,
       ),
     ).rejects.toThrow(/no longer active/);
-    await expect(
-      fixture.admin.mutation(
-        internal.evidenceLibraries.operations.startOperation,
-        {
-          libraryId: fixture.created.libraryId,
-          operationId: fixture.created.setupOperationId,
-          stage: "validating",
-        },
-      ),
-    ).rejects.toThrow(/fixed setup/);
   });
 
   it("records checked resources in the fixed order", async () => {

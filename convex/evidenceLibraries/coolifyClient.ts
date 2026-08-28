@@ -140,6 +140,8 @@ export function requireMatchingCoolifyDeployment(
 
 type CoolifyRequest = {
   allowNotFound?: boolean;
+  /** A 409 means another Coolify resource already serves the host. */
+  allowConflict?: boolean;
   body?: Record<string, unknown>;
   expectedStatus: number;
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -191,6 +193,7 @@ type DesiredApplication = {
   githubAppId: number;
   runtimeCommit: string;
   publicDomain: string;
+  customDomains: readonly string[];
 };
 
 type CoolifyEnvironment = {
@@ -442,6 +445,12 @@ async function requestCoolify(
     }
     if (response.status !== request.expectedStatus) {
       if (request.allowNotFound && response.status === 404) return null;
+      if (request.allowConflict && response.status === 409) {
+        throw new CoolifyClientError(
+          "COOLIFY_DOMAIN_TAKEN",
+          "That domain is already used by another site",
+        );
+      }
       throw new CoolifyClientError(
         "COOLIFY_REQUEST_FAILED",
         "Coolify rejected the request",
@@ -802,15 +811,59 @@ async function readTags(
   );
 }
 
-function hasExpectedComposeDomain(
+/**
+ * Coolify keeps every domain of a compose service in one comma-separated
+ * string under the service name. Since custom domains are appended to the
+ * platform address, every read goes through this list.
+ *
+ * The `web` key is asserted on every read: a rename of that service in the
+ * runtime's compose file would silently drop every domain.
+ */
+export function composeDomainHosts(
   domains: Record<string, ComposeDomain> | null,
-  publicDomain: string,
+): string[] | null {
+  if (domains === null) return null;
+  // Exactly one service, and it must be `web`. A renamed compose service
+  // would otherwise read as "no domains" and let the next write replace the
+  // whole map with the platform address alone.
+  const keys = Object.keys(domains);
+  if (keys.length !== 1 || keys[0] !== "web") return null;
+  const web = domains.web?.domain;
+  if (typeof web !== "string") return null;
+  const hosts = web
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+  return hosts.length === 0 ? null : hosts;
+}
+
+/**
+ * The map Coolify holds is exactly the list we expect: the platform address
+ * first, then this library's custom domains, and nothing else. A malformed
+ * map never matches, so a caller that cannot read it refuses to write.
+ */
+export function hasExpectedComposeDomains(
+  domains: Record<string, ComposeDomain> | null,
+  expected: readonly string[],
 ): boolean {
+  const actual = composeDomainHosts(domains);
+  if (actual === null || expected.length === 0) return false;
   return (
-    domains !== null &&
-    Object.keys(domains).length === 1 &&
-    domains.web?.domain === publicDomain
+    actual.length === expected.length &&
+    actual[0] === expected[0] &&
+    expected.every((domain) => actual.includes(domain))
   );
+}
+
+/** The complete list this library should be served on, platform address first. */
+export function expectedComposeDomains(
+  publicDomain: string,
+  customDomains: readonly string[],
+): string[] {
+  return [
+    publicDomain,
+    ...customDomains.filter((domain) => domain !== publicDomain),
+  ];
 }
 
 function hasExpectedTarget(
@@ -840,9 +893,9 @@ function hasExpectedApplication(
     application.portsExposes === PORTS_EXPOSES &&
     (application.fqdn === null || application.fqdn === "") &&
     application.composePath === COMPOSE_PATH &&
-    hasExpectedComposeDomain(
+    hasExpectedComposeDomains(
       application.composeDomains,
-      desired.publicDomain,
+      expectedComposeDomains(desired.publicDomain, desired.customDomains),
     ) &&
     APPLICATION_SETTING_KEYS.every((key) => application.settings[key] === false)
   );
@@ -851,7 +904,7 @@ function hasExpectedApplication(
 function hasExpectedBoundApplication(
   application: CoolifyApplication,
   applicationTag: string,
-  publicDomain: string,
+  publicDomains: readonly string[],
 ): boolean {
   return (
     application.name === applicationTag &&
@@ -862,7 +915,7 @@ function hasExpectedBoundApplication(
     application.portsExposes === PORTS_EXPOSES &&
     (application.fqdn === null || application.fqdn === "") &&
     application.composePath === COMPOSE_PATH &&
-    hasExpectedComposeDomain(application.composeDomains, publicDomain) &&
+    hasExpectedComposeDomains(application.composeDomains, publicDomains) &&
     application.sourceType === GITHUB_SOURCE_TYPE &&
     application.sourceId !== null &&
     APPLICATION_SETTING_KEYS.every((key) => application.settings[key] === false)
@@ -874,7 +927,8 @@ async function readExpectedBoundApplication(
   input: {
     applicationUuid: string;
     applicationTag: string;
-    publicDomain: string;
+    /** Any one of these being what Coolify holds is safe to go on from. */
+    publicDomains: readonly (readonly string[])[];
   },
 ): Promise<CoolifyApplication> {
   const [application, tags] = await Promise.all([
@@ -884,10 +938,8 @@ async function readExpectedBoundApplication(
   if (
     application.uuid !== input.applicationUuid ||
     !tags.includes(input.applicationTag) ||
-    !hasExpectedBoundApplication(
-      application,
-      input.applicationTag,
-      input.publicDomain,
+    !input.publicDomains.some((domains) =>
+      hasExpectedBoundApplication(application, input.applicationTag, domains),
     )
   ) {
     throw new CoolifyClientError(
@@ -920,13 +972,17 @@ function applicationPatch(
   if (application.composePath !== COMPOSE_PATH) {
     patch.docker_compose_location = COMPOSE_PATH;
   }
-  if (
-    !hasExpectedComposeDomain(application.composeDomains, desired.publicDomain)
-  ) {
+  // The complete list this library should be served on, taken from our own
+  // records. Reading it back out of Coolify would let a malformed map decide
+  // what we write.
+  const expected = expectedComposeDomains(
+    desired.publicDomain,
+    desired.customDomains,
+  );
+  if (!hasExpectedComposeDomains(application.composeDomains, expected)) {
     patch.docker_compose_domains = [
-      { name: "web", domain: desired.publicDomain },
+      { name: "web", domain: expected.join(",") },
     ];
-    patch.force_domain_override = false;
   }
   for (const key of APPLICATION_SETTING_KEYS) {
     if (application.settings[key] !== false) patch[key] = false;
@@ -962,7 +1018,6 @@ async function createApplication(
       is_preview_deployments_enabled: false,
       instant_deploy: false,
       connect_to_docker_network: false,
-      force_domain_override: false,
       autogenerate_domain: false,
       inject_build_args_to_dockerfile: false,
       include_source_commit_in_build: false,
@@ -1486,6 +1541,7 @@ export function createCoolifyClient(input: {
       libraryId: Id<"evidenceLibraries">;
       projectUuid: string;
       publicDomain: string;
+      customDomains: readonly string[];
       serverUuid: string;
     }): Promise<{
       applicationUuid: string | null;
@@ -1523,6 +1579,10 @@ export function createCoolifyClient(input: {
         input.projectUuid,
       );
       const publicDomain = requirePublicDomain(input.publicDomain);
+      const publicDomains = expectedComposeDomains(
+        publicDomain,
+        input.customDomains.map(requirePublicDomain),
+      );
       const serverUuid = requireInputIdentifier(
         "Coolify server UUID",
         input.serverUuid,
@@ -1532,7 +1592,7 @@ export function createCoolifyClient(input: {
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomain,
+        publicDomains: [publicDomains],
       });
       if (
         application.environmentName !== environmentName ||
@@ -1579,6 +1639,7 @@ export function createCoolifyClient(input: {
       githubAppUuid: string;
       runtimeCommit: string;
       publicDomain: string;
+      customDomains: readonly string[];
       libraryConfigJson: string;
       meilisearchMasterKey: string;
     }): Promise<CoolifyApplicationResult> {
@@ -1618,6 +1679,7 @@ export function createCoolifyClient(input: {
         githubAppId,
         runtimeCommit,
         publicDomain,
+        customDomains: input.customDomains.map(requirePublicDomain),
       };
 
       const matches = await listTaggedApplications(client, applicationTag);
@@ -1679,6 +1741,7 @@ export function createCoolifyClient(input: {
       applicationUuid: string;
       libraryId: Id<"evidenceLibraries">;
       publicDomain: string;
+      customDomains: readonly string[];
     }): Promise<CoolifyBoundApplication> {
       const applicationUuid = requireInputIdentifier(
         "Coolify application UUID",
@@ -1686,10 +1749,14 @@ export function createCoolifyClient(input: {
       );
       const applicationTag = createCoolifyLibraryTag(input.libraryId);
       const publicDomain = requirePublicDomain(input.publicDomain);
+      const publicDomains = expectedComposeDomains(
+        publicDomain,
+        input.customDomains.map(requirePublicDomain),
+      );
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomain,
+        publicDomains: [publicDomains],
       });
       return {
         applicationUuid,
@@ -1702,6 +1769,7 @@ export function createCoolifyClient(input: {
       applicationUuid: string;
       libraryId: Id<"evidenceLibraries">;
       publicDomain: string;
+      customDomains: readonly string[];
       runtimeCommit: string;
       libraryConfigJson: string;
     }): Promise<CoolifyBoundApplication> {
@@ -1711,6 +1779,10 @@ export function createCoolifyClient(input: {
       );
       const applicationTag = createCoolifyLibraryTag(input.libraryId);
       const publicDomain = requirePublicDomain(input.publicDomain);
+      const publicDomains = expectedComposeDomains(
+        publicDomain,
+        input.customDomains.map(requirePublicDomain),
+      );
       const runtimeCommit = requireCommit(input.runtimeCommit);
       const libraryConfigJson = requireLibraryConfigJson(
         input.libraryConfigJson,
@@ -1718,7 +1790,7 @@ export function createCoolifyClient(input: {
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomain,
+        publicDomains: [publicDomains],
       });
       if (application.gitCommitSha !== runtimeCommit) {
         throw new CoolifyClientError(
@@ -1737,7 +1809,7 @@ export function createCoolifyClient(input: {
       const finalApplication = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomain,
+        publicDomains: [publicDomains],
       });
       if (finalApplication.gitCommitSha !== runtimeCommit) {
         throw new CoolifyClientError(
@@ -1763,6 +1835,7 @@ export function createCoolifyClient(input: {
       libraryId: Id<"evidenceLibraries">;
       currentPublicDomain: string;
       nextPublicDomain: string;
+      customDomains: readonly string[];
     }): Promise<CoolifyBoundApplication> {
       const applicationUuid = requireInputIdentifier(
         "Coolify application UUID",
@@ -1771,15 +1844,20 @@ export function createCoolifyClient(input: {
       const applicationTag = createCoolifyLibraryTag(input.libraryId);
       const currentPublicDomain = requirePublicDomain(input.currentPublicDomain);
       const nextPublicDomain = requirePublicDomain(input.nextPublicDomain);
+      // The library's custom domains stay on the application; only the
+      // platform address at the front of the list changes.
+      const customDomains = input.customDomains.map(requirePublicDomain);
+      const before = expectedComposeDomains(currentPublicDomain, customDomains);
+      const after = expectedComposeDomains(nextPublicDomain, customDomains);
       const existing = await readApplication(client, applicationUuid);
-      const alreadyMoved = hasExpectedComposeDomain(
+      const alreadyMoved = hasExpectedComposeDomains(
         existing.composeDomains,
-        nextPublicDomain,
+        after,
       );
       let application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomain: alreadyMoved ? nextPublicDomain : currentPublicDomain,
+        publicDomains: [alreadyMoved ? after : before],
       });
       if (!alreadyMoved) {
         parseUuidResponse(
@@ -1789,9 +1867,8 @@ export function createCoolifyClient(input: {
             path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
             body: {
               docker_compose_domains: [
-                { name: "web", domain: nextPublicDomain },
+                { name: "web", domain: after.join(",") },
               ],
-              force_domain_override: false,
               instant_deploy: false,
             },
           }),
@@ -1800,7 +1877,81 @@ export function createCoolifyClient(input: {
         application = await readExpectedBoundApplication(client, {
           applicationUuid,
           applicationTag,
-          publicDomain: nextPublicDomain,
+          publicDomains: [after],
+        });
+      }
+      return {
+        applicationUuid,
+        runtimeCommit: application.gitCommitSha,
+        coolifyConfigHash: application.configHash,
+      };
+    },
+
+    /**
+     * Serves the library's custom domains beside its platform address. The
+     * complete list is always sent, platform address first, because a PATCH
+     * replaces the whole map. Nothing is deployed here: Coolify writes the
+     * proxy rules into the container, so the next deployment makes the
+     * domain live.
+     */
+    async setCustomDomains(input: {
+      applicationUuid: string;
+      libraryId: Id<"evidenceLibraries">;
+      publicDomain: string;
+      /**
+       * The lists Coolify may be holding now, from our own records. More
+       * than one when an earlier attempt asked for a change and stopped
+       * before we learned whether it took.
+       */
+      currentCustomDomains: readonly (readonly string[])[];
+      /** The list it should hold when this call returns. */
+      customDomains: readonly string[];
+    }): Promise<CoolifyBoundApplication> {
+      const applicationUuid = requireInputIdentifier(
+        "Coolify application UUID",
+        input.applicationUuid,
+      );
+      const applicationTag = createCoolifyLibraryTag(input.libraryId);
+      const publicDomain = requirePublicDomain(input.publicDomain);
+      const expected = expectedComposeDomains(
+        publicDomain,
+        input.customDomains.map(requirePublicDomain),
+      );
+      // Either Coolify already holds the list we want, or it still holds the
+      // one we are replacing. Anything else is a map we did not write.
+      let application = await readApplication(client, applicationUuid);
+      if (!hasExpectedComposeDomains(application.composeDomains, expected)) {
+        application = await readExpectedBoundApplication(client, {
+          applicationUuid,
+          applicationTag,
+          publicDomains: input.currentCustomDomains.map((current) =>
+            expectedComposeDomains(
+              publicDomain,
+              current.map(requirePublicDomain),
+            ),
+          ),
+        });
+      }
+      if (!hasExpectedComposeDomains(application.composeDomains, expected)) {
+        parseUuidResponse(
+          await requestCoolify(client, {
+            allowConflict: true,
+            expectedStatus: 200,
+            method: "PATCH",
+            path: `/api/v1/applications/${encodeURIComponent(applicationUuid)}`,
+            body: {
+              docker_compose_domains: [
+                { name: "web", domain: expected.join(",") },
+              ],
+                      instant_deploy: false,
+            },
+          }),
+          applicationUuid,
+        );
+        application = await readExpectedBoundApplication(client, {
+          applicationUuid,
+          applicationTag,
+          publicDomains: [expected],
         });
       }
       return {
@@ -1816,6 +1967,7 @@ export function createCoolifyClient(input: {
       applicationUuid: string;
       libraryId: Id<"evidenceLibraries">;
       publicDomain: string;
+      customDomains: readonly string[];
       runtimeCommit: string;
     }): Promise<CoolifyBoundApplication> {
       const applicationUuid = requireInputIdentifier(
@@ -1824,11 +1976,15 @@ export function createCoolifyClient(input: {
       );
       const applicationTag = createCoolifyLibraryTag(input.libraryId);
       const publicDomain = requirePublicDomain(input.publicDomain);
+      const publicDomains = expectedComposeDomains(
+        publicDomain,
+        input.customDomains.map(requirePublicDomain),
+      );
       const runtimeCommit = requireCommit(input.runtimeCommit);
       let application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomain,
+        publicDomains: [publicDomains],
       });
       if (application.gitCommitSha !== runtimeCommit) {
         parseUuidResponse(
@@ -1843,7 +1999,7 @@ export function createCoolifyClient(input: {
         application = await readExpectedBoundApplication(client, {
           applicationUuid,
           applicationTag,
-          publicDomain,
+          publicDomains: [publicDomains],
         });
         if (application.gitCommitSha !== runtimeCommit) {
           throw new CoolifyClientError(
@@ -1863,6 +2019,7 @@ export function createCoolifyClient(input: {
       applicationUuid: string;
       libraryId: Id<"evidenceLibraries">;
       publicDomain: string;
+      customDomains: readonly string[];
       libraryConfigJson: string;
       expectedRuntimeCommit: string;
     }): Promise<CoolifyConfigurationUpdateResult> {
@@ -1872,6 +2029,10 @@ export function createCoolifyClient(input: {
       );
       const applicationTag = createCoolifyLibraryTag(input.libraryId);
       const publicDomain = requirePublicDomain(input.publicDomain);
+      const publicDomains = expectedComposeDomains(
+        publicDomain,
+        input.customDomains.map(requirePublicDomain),
+      );
       const libraryConfigJson = requireLibraryConfigJson(
         input.libraryConfigJson,
       );
@@ -1879,7 +2040,7 @@ export function createCoolifyClient(input: {
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomain,
+        publicDomains: [publicDomains],
       });
       if (application.gitCommitSha !== expectedRuntimeCommit) {
         throw new CoolifyClientError(
@@ -1898,7 +2059,7 @@ export function createCoolifyClient(input: {
       const finalApplication = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
-        publicDomain,
+        publicDomains: [publicDomains],
       });
       if (
         finalApplication.uuid !== applicationUuid ||
@@ -1906,7 +2067,7 @@ export function createCoolifyClient(input: {
         !hasExpectedBoundApplication(
           finalApplication,
           applicationTag,
-          publicDomain,
+          publicDomains,
         )
       ) {
         throw new CoolifyClientError(
@@ -2085,6 +2246,8 @@ export async function reconcileCoolifyApplication(input: {
     githubAppUuid: input.githubAppUuid,
     runtimeCommit: input.runtimeCommit,
     publicDomain: input.targetBaseUrl,
+    // Application setup runs before a library can hold a custom domain.
+    customDomains: [],
     libraryConfigJson: input.runtimeConfigJson,
     meilisearchMasterKey: input.searchKey,
   });

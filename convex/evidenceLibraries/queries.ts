@@ -7,6 +7,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { type Infer, v } from "convex/values";
 import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import { createError } from "../lib/errors";
+import { evidenceLibraryTeardownStepValidator } from "./validators";
 import {
   hasEvidenceLibrariesSwitchedOn,
   readOrganizationAccess,
@@ -66,7 +67,14 @@ function isSetupStage(stage: string): stage is SetupStage {
   return (SETUP_STAGES as readonly string[]).includes(stage);
 }
 
-const TEARDOWN_STAGES = ["queued", "coolify", "convex", "completed"] as const;
+const TEARDOWN_STAGES = [
+  "queued",
+  "coolify",
+  "storage",
+  "database",
+  "convex",
+  "completed",
+] as const;
 type TeardownStage = (typeof TEARDOWN_STAGES)[number];
 const teardownStageValidator = v.union(
   ...TEARDOWN_STAGES.map((stage) => v.literal(stage)),
@@ -98,6 +106,9 @@ const libraryOverviewValidator = v.object({
   setupStage: v.union(setupStageValidator, v.null()),
   /** The teardown stage while the library is being deleted. */
   teardownStage: v.union(teardownStageValidator, v.null()),
+  // Present only on a deletion that stopped, which always records which
+  // part stopped. Nothing is invented when it is absent.
+  teardownFailedStep: v.optional(evidenceLibraryTeardownStepValidator),
   lastActivatedAt: v.union(v.number(), v.null()),
   accentColor: v.union(v.string(), v.null()),
   /** The favicon the owner uploaded; null means the pages show the OpenScholar icon. */
@@ -156,6 +167,9 @@ async function readLibraryOverview(
     ]);
   const status = libraryOverviewStatus(library, setupOperation);
   let teardownStage: TeardownStage | null = null;
+  let teardownFailedStep:
+    | Infer<typeof evidenceLibraryTeardownStepValidator>
+    | undefined;
   if (status === "deleting") {
     const teardown = await ctx.db
       .query("evidenceLibraryConfigOperations")
@@ -168,13 +182,20 @@ async function readLibraryOverview(
       teardown?.kind === "teardown" && isTeardownStage(teardown.stage)
         ? teardown.stage
         : null;
+    // A deletion that stopped says which part stopped, in this library's own
+    // words. Another service's message is kept in the log, not shown here.
+    teardownFailedStep =
+      teardown?.kind === "teardown" && teardown.status === "failed"
+        ? teardown.teardownFailedStep
+        : undefined;
   }
   const themeColors = (draftTheme?.payload as { colors?: { accent?: unknown } } | undefined)
     ?.colors;
   return {
     _id: library._id,
     name: library.name,
-    publicAddress: runtimeBinding?.targetBaseUrl ?? "",
+    publicAddress:
+      runtimeBinding?.canonicalBaseUrl ?? runtimeBinding?.targetBaseUrl ?? "",
     status,
     setupStage:
       (status === "setting_up" || status === "setup_failed") &&
@@ -183,6 +204,7 @@ async function readLibraryOverview(
         ? setupOperation.stage
         : null,
     teardownStage,
+    ...(teardownFailedStep ? { teardownFailedStep } : {}),
     lastActivatedAt: activeDeployment?.receipt?.activatedAt ?? null,
     accentColor:
       typeof themeColors?.accent === "string" ? themeColors.accent : null,

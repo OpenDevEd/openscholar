@@ -15,6 +15,7 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
+import { openPinnedDomainClient } from "./domainEgressNode";
 import {
   isRetryableReadinessError,
   ReadinessClientError,
@@ -105,6 +106,7 @@ export const runConfigurationDeployment = internalAction({
             libraryId: args.libraryId,
             currentPublicDomain: prepared.addressMove.from,
             nextPublicDomain: prepared.addressMove.to,
+            customDomains: prepared.customDomains,
           });
           await ctx.runMutation(
             internal.evidenceLibraries.configurationDeployment
@@ -129,6 +131,7 @@ export const runConfigurationDeployment = internalAction({
           applicationUuid: prepared.applicationId,
           libraryId: args.libraryId,
           publicDomain: prepared.targetBaseUrl,
+          customDomains: prepared.customDomains,
         });
         if (
           runtimeUpdate &&
@@ -176,6 +179,7 @@ export const runConfigurationDeployment = internalAction({
             target: {
               applicationId: prepared.applicationId,
               targetBaseUrl: prepared.targetBaseUrl,
+              customDomains: prepared.customDomains,
               revisionKey: prepared.revision.key,
               defaultLocale: prepared.defaultLocale,
               runtimeCommit: runtimeUpdate?.to ?? application.runtimeCommit,
@@ -209,6 +213,7 @@ export const runConfigurationDeployment = internalAction({
           applicationUuid: target.applicationId,
           libraryId: args.libraryId,
           publicDomain: target.targetBaseUrl,
+          customDomains: target.customDomains,
           runtimeCommit: target.runtimeCommit,
           libraryConfigJson: runtimeConfigJson,
         });
@@ -226,6 +231,7 @@ export const runConfigurationDeployment = internalAction({
             applicationUuid: target.applicationId,
             libraryId: args.libraryId,
             publicDomain: target.targetBaseUrl,
+          customDomains: target.customDomains,
             runtimeCommit: target.runtimeCommit,
           });
         }
@@ -233,6 +239,7 @@ export const runConfigurationDeployment = internalAction({
           applicationUuid: target.applicationId,
           libraryId: args.libraryId,
           publicDomain: target.targetBaseUrl,
+          customDomains: target.customDomains,
           libraryConfigJson: runtimeConfigJson,
           expectedRuntimeCommit: target.runtimeCommit,
         });
@@ -347,6 +354,7 @@ export const runConfigurationDeployment = internalAction({
         applicationUuid: target.applicationId,
         libraryId: args.libraryId,
         publicDomain: target.targetBaseUrl,
+        customDomains: target.customDomains,
         runtimeCommit: target.runtimeCommit,
         libraryConfigJson: runtimeConfigJson,
       });
@@ -370,11 +378,26 @@ export const runConfigurationDeployment = internalAction({
         runtimeCommit: readiness.runtimeCommit,
         coolifyConfigHash: readiness.coolifyConfigHash,
       });
+      // The address the runtime is read at may be a customer's domain, whose
+      // records they can repoint at any moment. Every readiness request to
+      // one goes through a client that can only reach the addresses that
+      // passed the check; a platform address is ours and needs no pinning.
+      const targetFetchImpl =
+        readiness.targetBaseUrl === readiness.platformBaseUrl
+          ? undefined
+          : await openPinnedDomainClient({
+              host: new URL(readiness.targetBaseUrl).hostname,
+            });
       await requireLibraryRuntimeReady({
+        // Only the requests to the library's own address are pinned. The
+        // verifier and the platform address are ours, so they use the
+        // ordinary client.
+        ...(targetFetchImpl ? { targetFetchImpl } : {}),
         applicationUuid: readiness.applicationId,
         runtimeCommit: readiness.runtimeCommit,
         revisionKey: readiness.revisionKey,
         targetBaseUrl: readiness.targetBaseUrl,
+        platformBaseUrl: readiness.platformBaseUrl,
         loginPageUrl: buildEvidenceLibraryLoginPageUrl({
           libraryId: args.libraryId,
           appOrigin: requireRuntimeHttpsOrigin(

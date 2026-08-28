@@ -102,7 +102,7 @@ export async function requireFreeEvidenceLibraryAddress(
   return args.candidate.publicAddress;
 }
 
-async function moveIdentityBaseUrl(
+export async function moveIdentityBaseUrl(
   ctx: MutationCtx,
   section: Doc<"evidenceLibraryConfigSections"> | null,
   nextAddress: string,
@@ -142,10 +142,17 @@ export async function applyEvidenceLibraryAddressMove(
       )
       .unique(),
   ]);
+  const binding = await ctx.db.get(
+    "evidenceLibraryRuntimeBindings",
+    args.bindingId,
+  );
   await ctx.db.patch(args.bindingId, {
     targetBaseUrl: args.nextAddress,
     updatedAt: Date.now(),
   });
+  // A library whose owner made a custom domain primary keeps calling that
+  // domain its address. Only the platform address moves here.
+  if (binding?.canonicalBaseUrl !== undefined) return;
   await moveIdentityBaseUrl(ctx, draftIdentity, args.nextAddress);
   await moveIdentityBaseUrl(ctx, revisionIdentity, args.nextAddress);
 }

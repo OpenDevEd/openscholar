@@ -293,6 +293,7 @@ describe("the OpenRouter key", () => {
           aiProviderKey: ciphertext,
           runtimeBindingId: fixture.created.runtimeBindingId,
           targetBaseUrl: "https://climate-evidence-lib.libraries.example.test",
+          customDomains: [],
           revisionKey: "r2",
           defaultLocale: "en-GB",
           runtimeCommit: "a".repeat(40),

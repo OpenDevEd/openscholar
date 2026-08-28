@@ -161,13 +161,6 @@ describe("Evidence Library setup draft", () => {
         idempotencyKey: "another-setup-operation",
       }),
     ).rejects.toThrow(/ArgumentValidationError|Validator/);
-    await expect(
-      admin.mutation(internal.evidenceLibraries.operations.startOperation, {
-        libraryId: created.libraryId,
-        operationId: created.setupOperationId,
-        stage: "assembling",
-      }),
-    ).rejects.toThrow(/fixed setup transitions/);
     const counts = await t.run(async (ctx) => ({
       drafts: (await ctx.db.query("evidenceLibraryConfigDrafts").collect())
         .length,

@@ -105,26 +105,44 @@ function requireInput(input: ReadinessCheckInput) {
   }
 }
 
-async function fetchWithTimeout(
+/**
+ * One deadline for the whole exchange, not just the headers.
+ *
+ * A server that answers headers and then stops sending would otherwise hold
+ * the check open for ever: the timer used to be cleared the moment the
+ * headers arrived. The caller closes the request when it has finished with
+ * the body, and anything left unread is cancelled.
+ */
+async function fetchWithTimeout<T>(
   fetchImpl: typeof fetch,
   url: URL,
   init: RequestInit,
-): Promise<Response> {
+  use: (response: Response) => Promise<T>,
+): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response | undefined;
   try {
-    return await fetchImpl(url, {
+    response = await fetchImpl(url, {
       ...init,
       redirect: "manual",
       signal: controller.signal,
     });
-  } catch {
+    return await use(response);
+  } catch (error) {
+    if (error instanceof ReadinessClientError) throw error;
     throw new ReadinessClientError(
       "READINESS_UNAVAILABLE",
       "Evidence Library readiness could not be checked",
     );
   } finally {
     clearTimeout(timeout);
+    // A body nobody read keeps the connection open. Released without
+    // waiting: a server that has stopped sending must not be able to hold
+    // the check open here either.
+    if (response && !response.bodyUsed) {
+      void response.body?.cancel().catch(() => undefined);
+    }
   }
 }
 
@@ -270,27 +288,23 @@ export async function probeEvidenceLibraryAddress(input: {
   } catch {
     return UNREACHABLE_ADDRESS;
   }
-  let response: Response;
   try {
-    response = await fetchWithTimeout(
+    // The body is read inside the deadline, so an answer that stops halfway
+    // is a failed check rather than a check that never ends.
+    return await fetchWithTimeout(
       fetchImpl,
       new URL("/api/library-config/health", origin),
       { headers: { accept: "application/json" }, method: "GET" },
+      async (response) =>
+        classifyEvidenceLibraryAddress({
+          kind: "answer",
+          status: response.status,
+          body: await readBoundedText(response, { allowEmpty: true }),
+        }),
     );
   } catch {
     return UNREACHABLE_ADDRESS;
   }
-  let body: string;
-  try {
-    body = await readBoundedText(response, { allowEmpty: true });
-  } catch {
-    return UNREACHABLE_ADDRESS;
-  }
-  return classifyEvidenceLibraryAddress({
-    kind: "answer",
-    status: response.status,
-    body,
-  });
 }
 
 async function requireVerifierReady(
@@ -298,7 +312,7 @@ async function requireVerifierReady(
   origin: URL,
   input: ReadinessCheckInput,
 ) {
-  const response = await fetchWithTimeout(
+  const body = await fetchWithTimeout(
     fetchImpl,
     new URL("/v1/library-runtime/readiness", origin),
     {
@@ -313,14 +327,16 @@ async function requireVerifierReady(
         commit: input.runtimeCommit,
       }),
     },
+    async (response) => {
+      if (response.status !== 200) {
+        throw new ReadinessClientError(
+          "RUNTIME_NOT_READY",
+          "The Evidence Library services are not ready",
+        );
+      }
+      return await readBoundedJson(response);
+    },
   );
-  if (response.status !== 200) {
-    throw new ReadinessClientError(
-      "RUNTIME_NOT_READY",
-      "The Evidence Library services are not ready",
-    );
-  }
-  const body = await readBoundedJson(response);
   if (
     !isRecord(body) ||
     body.ready !== true ||
@@ -375,16 +391,19 @@ async function requirePage(
   url: URL,
   description: string,
 ) {
-  const response = await fetchWithTimeout(fetchImpl, url, {
-    headers: { accept: "text/html" },
-    method: "GET",
-  });
-  if (!response.ok) {
-    throw new ReadinessClientError(
-      "PAGE_NOT_READY",
-      `The Evidence Library ${description} is not ready`,
-    );
-  }
+  await fetchWithTimeout(
+    fetchImpl,
+    url,
+    { headers: { accept: "text/html" }, method: "GET" },
+    async (response) => {
+      if (!response.ok) {
+        throw new ReadinessClientError(
+          "PAGE_NOT_READY",
+          `The Evidence Library ${description} is not ready`,
+        );
+      }
+    },
+  );
 }
 
 /**
@@ -421,10 +440,11 @@ async function requireAdminPage(
     "PAGE_NOT_READY",
     "The Evidence Library admin page is not ready",
   );
-  const response = await fetchWithTimeout(fetchImpl, url, {
-    headers: { accept: "text/html" },
-    method: "GET",
-  });
+  await fetchWithTimeout(
+    fetchImpl,
+    url,
+    { headers: { accept: "text/html" }, method: "GET" },
+    async (response) => {
   // The runtime contract is one exact answer: a 307 to the login page.
   if (response.status !== 307) throw notReady;
 
@@ -437,15 +457,72 @@ async function requireAdminPage(
     throw notReady;
   }
   if (!isLibraryLoginPage(destination, loginPageUrl)) throw notReady;
+    },
+  );
+}
+
+/**
+ * The platform address is never released. Once a library answers on a custom
+ * domain, its platform address has to keep sending visitors there, because
+ * DOI landing pages already registered point at it.
+ */
+async function requireRedirectToCanonical(
+  fetchImpl: typeof fetch,
+  platformOrigin: URL,
+  canonicalOrigin: URL,
+): Promise<void> {
+  let redirected: boolean;
+  try {
+    redirected = await fetchWithTimeout(
+      fetchImpl,
+      new URL("/lib", platformOrigin),
+      { headers: { accept: "text/html" }, method: "GET", redirect: "manual" },
+      async (response) => readsAsRedirectTo(response, platformOrigin, canonicalOrigin),
+    );
+  } catch {
+    throw new ReadinessClientError(
+      "CONFIG_NOT_READY",
+      "The platform address does not answer yet",
+    );
+  }
+  if (!redirected) {
+    throw new ReadinessClientError(
+      "CONFIG_NOT_READY",
+      "The platform address does not send visitors to the library address yet",
+    );
+  }
+}
+
+function readsAsRedirectTo(response: Response, from: URL, to: URL): boolean {
+  const location = response.headers.get("location");
+  return (
+    response.status >= 300 &&
+    response.status < 400 &&
+    location !== null &&
+    new URL(location, from).origin === to.origin
+  );
 }
 
 export type ReadinessCheckInput = {
   applicationUuid: string;
   runtimeCommit: string;
   revisionKey: string;
+  /** The address the library calls its own. Everything is read here. */
   targetBaseUrl: string;
+  /**
+   * The platform address, when the library answers on a custom domain. It
+   * must send visitors to `targetBaseUrl` rather than answer itself.
+   */
+  platformBaseUrl?: string;
   /** Where the library sends a signed-out visitor of `/admin`. */
   loginPageUrl: string;
+  /**
+   * Used only for requests to `targetBaseUrl`. When that is a customer's
+   * domain it is a client pinned to the addresses that were checked, which
+   * can reach nothing else — so the verifier and the platform address keep
+   * using the ordinary one.
+   */
+  targetFetchImpl?: typeof fetch;
   verifierUrl: string;
   verifierToken: string;
   fetchImpl?: typeof fetch;
@@ -456,6 +533,7 @@ export async function requireLibraryRuntimeReady(
 ): Promise<{ status: "ready" }> {
   requireInput(input);
   const fetchImpl = input.fetchImpl ?? fetch;
+  const targetFetchImpl = input.targetFetchImpl ?? fetchImpl;
   const verifierOrigin = requireHttpsOrigin(
     "Runtime verifier URL",
     input.verifierUrl,
@@ -465,15 +543,18 @@ export async function requireLibraryRuntimeReady(
     input.targetBaseUrl,
   );
   await requireVerifierReady(fetchImpl, verifierOrigin, input);
-  await requireActiveRevision(fetchImpl, targetOrigin, input.revisionKey);
+  await requireActiveRevision(targetFetchImpl, targetOrigin, input.revisionKey);
+  if (input.platformBaseUrl && input.platformBaseUrl !== targetOrigin.origin) {
+    await requireRedirectToCanonical(
+      fetchImpl,
+      requireHttpsOrigin("Evidence Library platform URL", input.platformBaseUrl),
+      targetOrigin,
+    );
+  }
   await Promise.all([
-    requirePage(
-      fetchImpl,
-      new URL("/lib", targetOrigin),
-      "public page",
-    ),
+    requirePage(targetFetchImpl, new URL("/lib", targetOrigin), "public page"),
     requireAdminPage(
-      fetchImpl,
+      targetFetchImpl,
       new URL("/admin", targetOrigin),
       input.loginPageUrl,
     ),

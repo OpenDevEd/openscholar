@@ -54,6 +54,8 @@ export const runDeploymentSetup = internalAction({
         applicationUuid: prepared.applicationId,
         libraryId: args.libraryId,
         publicDomain: prepared.targetBaseUrl,
+        // A library being set up has no custom domains yet.
+        customDomains: [],
       });
       if (application.runtimeCommit !== prepared.runtimeCommit) {
         throw new CoolifyClientError(

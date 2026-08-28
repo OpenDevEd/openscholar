@@ -9,6 +9,12 @@ import { v } from "convex/values";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
+import {
+  claimDomainTransitionRow,
+  readAttachedDomainOrigins,
+  settleDomainDeploymentRow,
+} from "./domains";
+import { applyEvidenceLibraryCanonicalAddress } from "./versions";
 import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
@@ -43,6 +49,33 @@ import {
 
 export const CONFIGURATION_DEPLOYMENT_LEASE_MS = 20 * 60 * 1_000;
 const CONFIGURATION_DEPLOYMENT_POLL_DELAY_MS = 5_000;
+
+/**
+ * Puts the deployment's lease forward and books the watchdog that will pick
+ * it up if this worker stops answering.
+ *
+ * Every lease write goes through here. The watchdog is fenced by the
+ * operation, the attempt and the exact deadline it was booked for, so only
+ * the last renewal's watchdog can ever act.
+ */
+async function renewConfigurationLease(
+  ctx: MutationCtx,
+  operation: Doc<"evidenceLibraryConfigOperations">,
+  attemptToken: string,
+): Promise<number> {
+  const leaseExpiresAt = Date.now() + CONFIGURATION_DEPLOYMENT_LEASE_MS;
+  await ctx.scheduler.runAt(
+    leaseExpiresAt + WATCHDOG_GRACE_MS,
+    internal.evidenceLibraries.configurationDeployment
+      .failExpiredConfigurationDeployment,
+    { operationId: operation._id, attemptToken, leaseExpiresAt },
+  );
+  return leaseExpiresAt;
+}
+
+/** How long after a lease runs out the watchdog looks. */
+const WATCHDOG_GRACE_MS = 60_000;
+
 const MAX_CONFIGURATION_DEPLOYMENT_POLLS = 120;
 const CONFIGURATION_READINESS_POLL_DELAY_MS = 5_000;
 const MAX_CONFIGURATION_READINESS_POLLS = 24;
@@ -66,7 +99,8 @@ function isReadyRuntimeBinding(
 }
 
 // A publish operation the pipeline owns: an activation of a draft edit, a
-// runtime update of the active revision, or a move to a new address.
+// runtime update of the active revision, a move to a new address, or a
+// custom domain being attached, removed or made the library's address.
 export function isConfigurationDeploymentOperation(
   operation: Doc<"evidenceLibraryConfigOperations">,
 ): boolean {
@@ -74,7 +108,8 @@ export function isConfigurationDeploymentOperation(
     operation.kind === "publish" &&
     (operation.activationEditVersion !== undefined ||
       operation.runtimeUpdate !== undefined ||
-      operation.addressMove !== undefined)
+      operation.addressMove !== undefined ||
+      operation.domainChange !== undefined)
   );
 }
 
@@ -266,7 +301,11 @@ export async function claimAndScheduleConfigurationDeployment(
     startedAt: now,
     completedAt: undefined,
     configurationAttemptToken: attemptToken,
-    configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+    configurationLeaseExpiresAt: await renewConfigurationLease(
+      ctx,
+      deployment.operation,
+      attemptToken,
+    ),
     configurationDeploymentPollCount: 0,
     configurationReadinessPollCount: 0,
     updatedAt: now,
@@ -356,6 +395,7 @@ export const prepareConfigurationDeployment = internalMutation({
       addressMove: v.optional(evidenceLibraryAddressMoveValidator),
       applicationId: v.string(),
       targetBaseUrl: v.string(),
+      customDomains: v.array(v.string()),
       revision: v.object({ key: v.string(), createdAt: v.number() }),
       sections: v.array(sectionRowValidator),
       credentials: v.object({
@@ -482,12 +522,29 @@ export const prepareConfigurationDeployment = internalMutation({
         ctx.db.get(deployment.runtimeBinding.searchCredentialId),
         ctx.db.get(deployment.runtimeBinding.storageCredentialId),
       ]);
+    // A change of the library's own address travels on the operation. The
+    // deployment carries the new address so the running site starts using
+    // it; nothing stored moves until readiness passes.
+    const canonicalChange =
+      deployment.operation.domainChange?.reason === "canonical"
+        ? deployment.operation.domainChange.address
+        : undefined;
+    const expectedBaseUrl =
+      canonicalChange ??
+      deployment.runtimeBinding.canonicalBaseUrl ??
+      deployment.runtimeBinding.targetBaseUrl;
     const sections = sectionRows.map((section) => ({
       sectionKey: section.sectionKey,
-      payload: section.payload,
+      payload:
+        canonicalChange && section.sectionKey === "identity"
+          ? {
+              ...(section.payload as Record<string, unknown>),
+              baseUrl: canonicalChange,
+            }
+          : section.payload,
     }));
     const validated = validateOwnerSections(sections, {
-      expectedBaseUrl: deployment.runtimeBinding.targetBaseUrl,
+      expectedBaseUrl,
       requireComplete: true,
       platformMailConfigured: isPlatformMailConfigured(),
     });
@@ -529,6 +586,7 @@ export const prepareConfigurationDeployment = internalMutation({
         : {}),
       applicationId: deployment.runtimeBinding.targetRuntimeId,
       targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
+      customDomains: await readAttachedDomainOrigins(ctx, args.libraryId),
       revision: {
         key: deployment.revision.revisionKey,
         createdAt: deployment.revision.createdAt,
@@ -688,6 +746,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
     target: v.object({
       applicationId: v.string(),
       targetBaseUrl: v.string(),
+      customDomains: v.array(v.string()),
       revisionKey: v.string(),
       defaultLocale: v.string(),
       runtimeCommit: v.string(),
@@ -751,6 +810,9 @@ export const saveConfigurationDeploymentTarget = internalMutation({
         "targetBaseUrl",
         args.target.targetBaseUrl,
       ),
+      customDomains: args.target.customDomains.map((domain) =>
+        requireNonBlank("customDomain", domain),
+      ),
       revisionKey: requireNonBlank("revisionKey", args.target.revisionKey),
       defaultLocale: requireNonBlank(
         "defaultLocale",
@@ -769,7 +831,11 @@ export const saveConfigurationDeploymentTarget = internalMutation({
     };
     await ctx.db.patch(deployment.operation._id, {
       configurationDeploymentTarget: target,
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     return target;
@@ -819,7 +885,11 @@ export const saveConfigurationDeploymentReceipt = internalMutation({
       receipt,
       stage: "publishing",
       configurationDeploymentPollCount: 0,
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     return { status: "running" as const };
@@ -856,7 +926,11 @@ export const scheduleConfigurationDeploymentPoll = internalMutation({
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       configurationDeploymentPollCount: pollCount,
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     await ctx.scheduler.runAfter(
@@ -883,6 +957,8 @@ export const prepareConfigurationActivation = internalMutation({
     coolifyConfigHash: v.string(),
     revisionKey: v.string(),
     targetBaseUrl: v.string(),
+    platformBaseUrl: v.string(),
+    customDomains: v.array(v.string()),
   }),
   handler: async (ctx, args) => {
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
@@ -911,7 +987,11 @@ export const prepareConfigurationActivation = internalMutation({
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       stage: "activating",
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     return {
@@ -920,7 +1000,17 @@ export const prepareConfigurationActivation = internalMutation({
       runtimeCommit: target.runtimeCommit,
       coolifyConfigHash: receipt.coolifyConfigHash,
       revisionKey: target.revisionKey,
-      targetBaseUrl: target.targetBaseUrl,
+      // Readiness reads the address the library calls its own, which is the
+      // custom domain once one is primary. When a change of address is
+      // travelling on this operation, that is the address to read.
+      targetBaseUrl:
+        deployment.operation.domainChange?.reason === "canonical"
+          ? (deployment.operation.domainChange.address ??
+            deployment.runtimeBinding.canonicalBaseUrl ??
+            target.targetBaseUrl)
+          : (deployment.runtimeBinding.canonicalBaseUrl ?? target.targetBaseUrl),
+      platformBaseUrl: target.targetBaseUrl,
+      customDomains: target.customDomains,
     };
   },
 });
@@ -952,7 +1042,11 @@ export const scheduleConfigurationReadinessPoll = internalMutation({
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       configurationReadinessPollCount: pollCount,
-      configurationLeaseExpiresAt: now + CONFIGURATION_DEPLOYMENT_LEASE_MS,
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
       updatedAt: now,
     });
     await ctx.scheduler.runAfter(
@@ -1039,6 +1133,54 @@ export const completeConfigurationDeployment = internalMutation({
       updatedByClerkUserId: deployment.operation.requestedByClerkUserId,
       updatedAt: now,
     });
+    // A custom domain change finishes here, and only here.
+    const domainChange = deployment.operation.domainChange;
+    if (domainChange) {
+      // The domain must still be held by this change. If it is not, this
+      // throws and the operation fails rather than reporting success for a
+      // change that was never written.
+      await settleDomainDeploymentRow(ctx, {
+        domainId: domainChange.domainId,
+        operationId: deployment.operation._id,
+        token: domainChange.token,
+        outcome: "succeeded",
+      });
+      // The library's new address is written in this same transaction as the
+      // readiness-checked operation, so nothing that runs later can overwrite
+      // a newer state with a stale one.
+      if (domainChange.reason === "canonical" && domainChange.address) {
+        await applyEvidenceLibraryCanonicalAddress(ctx, {
+          libraryId: args.libraryId,
+          domainId: domainChange.domainId,
+          address: domainChange.address,
+        });
+      }
+      // Deleting the certificate and the row talks to another service, so it
+      // is the one part that has to run outside this transaction.
+      if (domainChange.reason === "detach") {
+        const scheduledId = await ctx.scheduler.runAfter(
+          0,
+          internal.evidenceLibraries.domainActions.completeDomainChange,
+          {
+            libraryId: args.libraryId,
+            domainId: domainChange.domainId,
+            operationId: deployment.operation._id,
+            reason: "detach",
+          },
+        );
+        // Written here, with the run it books, so the final step can prove
+        // which deployment it belongs to from its very first attempt.
+        await ctx.db.patch(domainChange.domainId, {
+          cleanup: {
+            operationId: deployment.operation._id,
+            attempts: 0,
+            rounds: 0,
+            scheduledId,
+          },
+          updatedAt: now,
+        });
+      }
+    }
     return { status: "succeeded" as const };
   },
 });
@@ -1075,6 +1217,71 @@ export const failConfigurationDeployment = internalMutation({
       configurationReadinessPollCount: undefined,
       updatedAt: now,
     });
+    // A domain change that failed gives the domain back, so the owner can
+    // try again instead of waiting for a lease to expire. What it owes —
+    // the proxy change and its deployment — is kept, so the retry knows
+    // where it stopped.
+    if (operation.domainChange) {
+      await settleDomainDeploymentRow(ctx, {
+        domainId: operation.domainChange.domainId,
+        operationId: operation._id,
+        // A failure only frees the change it was carrying: a newer one that
+        // has already taken the domain keeps it.
+        token: operation.domainChange.token,
+        outcome: "failed",
+      });
+    }
+    return "failed" as const;
+  },
+});
+
+
+/**
+ * Marks a deployment failed when the worker that held it stopped answering.
+ * Booked whenever a lease is written, so nothing is left running for ever.
+ */
+export const failExpiredConfigurationDeployment = internalMutation({
+  args: {
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+    /** The deadline this watchdog was booked for. A renewal replaces it. */
+    leaseExpiresAt: v.number(),
+  },
+  returns: v.union(v.literal("failed"), v.literal("ignored")),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(args.operationId);
+    if (
+      !operation ||
+      operation.status !== "running" ||
+      // Another attempt has taken over, or this one finished.
+      operation.configurationAttemptToken !== args.attemptToken ||
+      // The work carried on, so a later watchdog owns this deployment now.
+      operation.configurationLeaseExpiresAt !== args.leaseExpiresAt ||
+      args.leaseExpiresAt > Date.now()
+    ) {
+      return "ignored" as const;
+    }
+    const now = Date.now();
+    await ctx.db.patch(operation._id, {
+      status: "failed",
+      error: {
+        code: "CONFIGURATION_DEPLOYMENT_STALLED",
+        message: "The publish stopped answering. Try again.",
+        stage: operation.stage,
+      },
+      completedAt: now,
+      configurationAttemptToken: undefined,
+      configurationLeaseExpiresAt: undefined,
+      updatedAt: now,
+    });
+    if (operation.domainChange) {
+      await settleDomainDeploymentRow(ctx, {
+        domainId: operation.domainChange.domainId,
+        operationId: operation._id,
+        token: operation.domainChange.token,
+        outcome: "failed",
+      });
+    }
     return "failed" as const;
   },
 });
@@ -1089,5 +1296,50 @@ export const retryConfigurationDeployment = mutation({
     revisionId: v.id("evidenceLibraryConfigRevisions"),
     status: v.literal("running"),
   }),
-  handler: claimAndScheduleConfigurationDeployment,
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const operation = await ctx.db.get(args.operationId);
+    // A domain change that failed gave the domain back, so trying again has
+    // to take it afresh. Done in the same transaction that books the worker,
+    // so the retry never runs holding a lease that is no longer its own.
+    if (operation?.domainChange) {
+      const change = operation.domainChange;
+      const domain = await ctx.db.get(
+        "evidenceLibraryDomains",
+        change.domainId,
+      );
+      if (!domain) {
+        throw createError("NOT_FOUND", "That domain is no longer there");
+      }
+      // The failed attempt's own record does not stand in its way.
+      if (domain.pendingDeployment?.operationId === args.operationId) {
+        await ctx.db.patch(change.domainId, { pendingDeployment: undefined });
+      }
+      const fresh = await ctx.db.get("evidenceLibraryDomains", change.domainId);
+      // A detach is a removal: its domain has `removingAt` set, which only
+      // a removal is allowed to take.
+      const claimed = await claimDomainTransitionRow(
+        ctx,
+        fresh!,
+        change.reason === "detach"
+          ? "remove"
+          : change.reason === "canonical"
+            ? "canonical"
+            : "attach",
+      );
+      await claimed.write();
+      await ctx.db.patch(change.domainId, {
+        pendingDeployment: {
+          operationId: args.operationId,
+          phase: change.reason,
+        },
+        deploymentPending: undefined,
+        updatedAt: Date.now(),
+      });
+      await ctx.db.patch(args.operationId, {
+        domainChange: { ...change, token: claimed.token },
+      });
+    }
+    return await claimAndScheduleConfigurationDeployment(ctx, args);
+  },
 });
