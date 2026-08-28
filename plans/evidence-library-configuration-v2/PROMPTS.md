@@ -807,3 +807,34 @@ START NOW: read the research sections 0, C, D, the plan, the README, the Convex 
 
 Go.
 ```
+
+## Plan 18 — safe stored configuration upgrades
+
+```text
+Implement plans/evidence-library-configuration-v2/18-safe-stored-configuration-upgrades.md. Read plans/evidence-library-configuration-v2/00-README.md and plans/evidence-library-configuration-v2/15-runtime-ai-analytics-merge.md Decision 7 first. Depends on merged plans 01-16 and runtime contract commit 937bb65e.
+
+Work in a new OpenScholar worktree from origin/dev with one assigned Convex Cloud development deployment. Allow one working day. Keep working without asking questions the plan or repository already answers.
+
+STANDING RULES:
+1. Read and follow the `ponytail` and `unslop` skills before any work. Do not add a read-time converter, owner-format version, migration framework, compatibility mode, service, queue or cron.
+2. Reuse `changedSectionRows` and `staleExportsRow`, `PLATFORM_FEATURE_KEYS`, `createError` extra data, `sanitizeConfigurationIssues`, the existing issue links and the existing banner.
+3. New browser/API writes remain strict. The stale-row check reads raw stored Features rows and removes only `aiSearch` and `deepResearch` through the normal Save path.
+4. Old immutable revisions never change. Save and Activate create the clean current revision before Update.
+5. Read convex/_generated/ai/guidelines.md before Convex work. Use validators for all args and returns. Upload only to the assigned lane with `npx convex dev --once`; never use `npm run convex:push` outside dev-self.
+6. Before changing tests, run the `test-decision` skill and read docs/test-quality.md. Test behavior and data, never classes or incidental copy. Pure logic is red, then green, then cleanup.
+7. Read the matching installed Next.js guide before any app or component change. Do not use useEffect for app state.
+8. Use GPT-5.6 Luna at max reasoning for independent delegated research. Every agent must follow `ponytail` and `unslop`. Keep the one overlapping implementation write set in one lane.
+9. At the end of each complete phase, run one read-only review with `claudeekitabu --model claude-fable-5 --effort max`. Tell Fable to read and follow `ponytail` and `unslop`. Do not review every commit and do not let Fable implement or merge.
+
+EXECUTION RHYTHM: Phase 1 stale-row test → `changedSectionRows` fix → lane Save and Activate gate → one Fable phase review. Phase 2 issue-projection test → preserve Convex error data → banner behavior → lane deployment and browser gate → one Fable phase review. Commit after every working unit.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-18]` on every plan commit; never commit while relevant tests fail; never use --no-verify or another hook bypass; push and open a PR to dev; do not merge. Commit a plan correction before code that depends on it as `docs: [plan-18] revise <section> — <reason>`.
+
+WHEN TO STOP: only when both phase gates pass or a real blocker exists. For a blocker, commit safe work, write plans/evidence-library-configuration-v2/18-BLOCKER.md and stop. Do not stop for token worry or a question the plan answers. TypeScript, focused tests, lane Convex upload and browser checks must pass first.
+
+DEVIATIONS: if the plan is wrong but the better path is clear, commit safe work, fix the numbered plan with the reason, commit the plan change, then continue. Never change direction silently.
+
+START NOW: read the plan, README, Plan 15 Decision 7, AGENTS.md, `ponytail`, `unslop`, test-decision, docs/test-quality.md and convex/_generated/ai/guidelines.md. Run git status, confirm no other Convex uploader is running in the lane, inspect the existing `staleExportsRow` pattern and operation issue path, then write the first failing stale Features row test.
+
+Go.
+```

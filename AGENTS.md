@@ -27,6 +27,26 @@ Before sending or publishing anything, reread it once and simplify it. These rul
 3. **Do not keep old behavior.** This project is still in testing. Make clean breaking changes, delete replaced code, and do not add compatibility layers or fallback paths unless the user asks for them.
 4. **Do not interrupt work over secrets.** The user accepts environment values appearing in terminal output and agent history. Do not rotate keys, lecture about exposure, or add redaction work unless asked.
 
+## Keep work simple and parallel
+
+These rules apply to work started on or after 2026-08-29.
+
+1. Use the `ponytail` skill for substantial planning and implementation when
+   it is available. Choose the smallest correct change, reuse the deepest
+   existing module, and do not add a framework or abstraction for a future
+   need. Use the `unslop` skill for every agent-written plan, review, document,
+   and user-facing message.
+2. Split large work into independent lanes that can run at the same time. Do
+   not split files with one shared invariant across several implementation
+   agents merely to create more lanes.
+3. Delegated Codex agents use GPT-5.6 Luna at max reasoning when model choice
+   is available. Every prompt tells the agent to read and follow `ponytail`
+   and `unslop` before starting.
+4. Review once at the end of each complete phase, not after every commit. Use
+   `claudeekitabu --model claude-fable-5 --effort max` in read-only mode. Its
+   prompt must also require `ponytail` and `unslop`. Fable reviews; it does not
+   implement or merge.
+
 ## What this repository owns
 
 This repository is **OpenScholar**. It is more than academic search. It covers research discovery, literature reviews, screening, data extraction, source-based chat and synthesis, evidence organization, and publishing to public Evidence Libraries.
@@ -374,15 +394,15 @@ Never change direction silently. Fix the plan in Git first.
 
 If an investigation needs more than about three file reads or three searches, use another agent. This keeps large search output out of the main session.
 
-Use:
-
-- `Explore` for finding definitions, callers, and imports. Say whether the search should be quick, medium, or very thorough;
-- `general-purpose` for several-step research, docs, library source, or isolated implementation; and
-- `Plan` for a difficult planning subproblem.
+Use GPT-5.6 Luna at max reasoning for delegated research, planning, and
+independent implementation lanes. Tell every agent to read `ponytail` and
+`unslop` before it starts.
 
 Good work to hand off includes mapping callers, reading a library contract, comparing several files, checking current external docs, and building an isolated module after its contract is clear.
 
-Keep the test-first coding loop, commits, plan edits, final checks, and tiny searches in the main session.
+Keep plan edits, integration commits, and final shared-deployment checks in
+the main session. An implementation lane owns its own test-first loop in its
+own worktree and Convex Cloud deployment.
 
 Start independent agents together in one message so they can run at the same time. A new agent has no context, so give it:
 
@@ -403,6 +423,9 @@ This project is still in testing. The Convex database is a development database.
 2. If new validation rejects development rows, wipe the affected tables through the Convex dashboard or a development-only admin function.
 3. Do not add `@convex-dev/migrations`, backfill scripts, or code that preserves old development rows.
 4. If a production database is added later, write a real migration then.
+5. Once production configuration data exists, deploy ownership or meaning
+   changes in this order: read-only audit, explicit data migration, then the
+   stricter validator. Never make an owner repair a platform-owned change.
 
 A plan may say “no migration” for an additive change. The default remains: clean breaking change, disposable development data.
 

@@ -84,6 +84,7 @@ answer machine calls yet, so pickers have nothing to read.
 | 14 | `14-admin-handoff.md` | `/admin` redirects to OpenScholar, which signs in, checks access and sends the cookie back |
 | 15 | `15-runtime-ai-analytics-merge.md` | Merge `ai-modernization` into the runtime; AI section (OpenRouter only); analytics fields; logo sizing |
 | 16 | `16-custom-domains.md` (+ `16-RESEARCH.md`) | Custom domains: CNAME to `cname.opendev.space`, Cloudflare for SaaS, four verification gates, redirect toggle |
+| 18 | `18-safe-stored-configuration-upgrades.md` | Clean stale development rows and show the right recovery for configuration failures |
 
 ## Lanes and order
 
@@ -108,8 +109,9 @@ from `dev-cloud` plus `convex deployment select`, and its own Next port
 (3011 A, 3012 B, 3013 C). Only lane B may create disposable libraries in the
 development Coolify environment and it must remove them before its PR.
 
-Every PR gets two read-only reviewers (standards, spec) before merge. Agents
-never merge. After each merge the integration owner runs
+Plans 01-16 used two read-only reviewers per PR. Work started on or after
+2026-08-29 gets one Fable-5 review at the end of each complete phase, following
+the current rules in `AGENTS.md`. Agents never merge. After each merge the integration owner runs
 `npm run convex:push` from `dev-self`, reads remote logs, does the browser
 check, and updates Outline.
 
