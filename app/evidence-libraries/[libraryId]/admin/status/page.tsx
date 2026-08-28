@@ -1,6 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
 import { fetchQuery } from "convex/nextjs";
-import { redirect } from "next/navigation";
 import {
   AdminExpiredLinkPanel,
   AdminNoAccessPanel,
@@ -38,8 +37,16 @@ export default async function EvidenceLibraryAdminStatusPage({
     );
   }
 
+  // Clerk's middleware signs people in before this page renders, so a
+  // missing token means the sign-in setup is broken.
   const token = await (await auth()).getToken({ template: "convex" });
-  if (!token) redirect(`/sign-in?redirect_url=${encodeURIComponent(adminHref)}`);
+  if (!token) {
+    console.error(
+      "Evidence Library admin status: signed-in request carried no Convex token",
+      { libraryId },
+    );
+    throw new Error("The admin area could not be checked");
+  }
 
   const state = await fetchQuery(
     api.evidenceLibraries.adminHandoff.readAdminHandoffState,

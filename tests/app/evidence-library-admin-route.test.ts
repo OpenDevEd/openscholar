@@ -17,7 +17,14 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
-import { GET } from "@/app/evidence-libraries/[libraryId]/admin/route";
+import {
+  DELETE,
+  GET,
+  HEAD,
+  PATCH,
+  POST,
+  PUT,
+} from "@/app/evidence-libraries/[libraryId]/admin/route";
 
 function request(query = "") {
   return new Request(
@@ -95,15 +102,30 @@ describe("GET /evidence-libraries/[libraryId]/admin", () => {
     expect(mocks.fetchAction).not.toHaveBeenCalled();
   });
 
-  it("asks an unknown visitor to sign in first", async () => {
+  // Clerk's middleware signs people in before this runs, so no token means
+  // the sign-in setup is broken. It must never look like a refusal.
+  it("reports a server failure when the sign-in check gives no token", async () => {
     mocks.getToken.mockResolvedValue(null);
 
     const response = await GET(request("?return=%2Fadmin"), context());
 
-    expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe(
-      "/sign-in?redirect_url=%2Fevidence-libraries%2Flib_1%2Fadmin%3Freturn%3D%252Fadmin",
-    );
+    expect(response.status).toBe(500);
+    expect(response.headers.get("location")).toBeNull();
+    expect(mocks.fetchAction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["HEAD", HEAD],
+    ["POST", POST],
+    ["PUT", PUT],
+    ["PATCH", PATCH],
+    ["DELETE", DELETE],
+  ])("refuses %s so no code is spent", async (_method, handler) => {
+    const response = await handler();
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get("allow")).toBe("GET");
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mocks.fetchAction).not.toHaveBeenCalled();
   });
 });

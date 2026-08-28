@@ -53,6 +53,17 @@ test.describe("evidence library admin handoff", () => {
       "/evidence-libraries/not-a-library/admin/status?return=%2Fadmin%2Fitems",
     );
 
+    // Only a real GET may spend a code. Next answers HEAD through GET
+    // unless a HEAD is exported, so this is checked over real HTTP.
+    const head = await page.request.head(`${ADMIN_PATH}?return=%2Fadmin`, {
+      maxRedirects: 0,
+    });
+    expect(head.status()).toBe(405);
+    expect(head.headers()["allow"]).toBe("GET");
+    const posted = await page.request.post(ADMIN_PATH, { maxRedirects: 0 });
+    expect(posted.status()).toBe(405);
+    expect(posted.headers()["allow"]).toBe("GET");
+
     // The library reported a failed code: no new code is asked for.
     const failed = await page.request.get(
       `${ADMIN_PATH}?error=invalid_code&return=%2Fadmin`,

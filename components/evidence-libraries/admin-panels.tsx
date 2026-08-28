@@ -86,6 +86,7 @@ export function AdminOpenAdminPanel({ adminHref }: { adminHref: string }) {
         description={t("openDescription")}
         primaryHref={adminHref}
         primaryLabel={t("openAdmin")}
+        primaryNavigation="document"
         secondaryHref="/evidence-libraries"
         secondaryLabel={t("backToLibraries")}
       />
@@ -103,6 +104,7 @@ export function AdminExpiredLinkPanel({ retryHref }: { retryHref: string }) {
         description={t("expiredDescription")}
         primaryHref={retryHref}
         primaryLabel={t("tryAgain")}
+        primaryNavigation="document"
         secondaryHref="/evidence-libraries"
         secondaryLabel={t("backToLibraries")}
       />

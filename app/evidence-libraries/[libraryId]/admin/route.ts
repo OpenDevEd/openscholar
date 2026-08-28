@@ -2,7 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import { fetchAction } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import {
-  buildAdminRouteHref,
   buildAdminStatusHref,
   readAdminReturnPath,
   shouldRequestAdminHandoff,
@@ -25,6 +24,24 @@ function seeOther(location: string) {
   });
 }
 
+/**
+ * Every request here spends a single-use code, so only a real `GET` may run.
+ * Next answers `HEAD` with `GET` unless a `HEAD` is exported, and a browser,
+ * a link checker or a preview card would then burn somebody's code.
+ */
+function methodNotAllowed() {
+  return new Response(null, {
+    status: 405,
+    headers: { allow: "GET", "cache-control": "no-store" },
+  });
+}
+
+export const HEAD = methodNotAllowed;
+export const POST = methodNotAllowed;
+export const PUT = methodNotAllowed;
+export const PATCH = methodNotAllowed;
+export const DELETE = methodNotAllowed;
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ libraryId: string }> },
@@ -43,10 +60,18 @@ export async function GET(
     );
   }
 
+  // Clerk's middleware signs people in before this runs, so a missing token
+  // means the sign-in setup is broken, not that somebody is signed out.
   const token = await (await auth()).getToken({ template: "convex" });
   if (!token) {
-    const target = buildAdminRouteHref({ libraryId, returnPath });
-    return seeOther(`/sign-in?redirect_url=${encodeURIComponent(target)}`);
+    console.error(
+      "Evidence Library admin handoff: signed-in request carried no Convex token",
+      { libraryId },
+    );
+    return new Response("The admin area could not be opened. Try again.", {
+      status: 500,
+      headers: { "cache-control": "no-store", "content-type": "text/plain" },
+    });
   }
 
   const result: AdminHandoffResult = await fetchAction(
