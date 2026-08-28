@@ -91,6 +91,12 @@ function requireInput(input: ReadinessCheckInput) {
       "Evidence Library revision is missing",
     );
   }
+  if (!input.loginPageUrl.trim()) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library login page address is missing",
+    );
+  }
   if (!input.verifierToken.trim()) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
@@ -381,11 +387,65 @@ async function requirePage(
   }
 }
 
+/**
+ * The address the library sends a signed-out visitor of `/admin` to. Only
+ * the exact login page for this library counts, so a page that merely starts
+ * with the same text, or one on a look-alike host, is refused.
+ */
+function isLibraryLoginPage(destination: URL, loginPageUrl: string): boolean {
+  let expected: URL;
+  try {
+    expected = new URL(loginPageUrl);
+  } catch {
+    return false;
+  }
+  return (
+    destination.origin === expected.origin &&
+    destination.pathname === expected.pathname
+  );
+}
+
+/**
+ * A signed-out `/admin` does not render a page: the runtime answers `307` and
+ * sends the browser to this library's OpenScholar login page, which signs the
+ * person in and hands the session back. Only that exact answer counts as
+ * ready. A page of its own, or another kind of redirect, means the library
+ * runs software that does not follow this contract.
+ */
+async function requireAdminPage(
+  fetchImpl: typeof fetch,
+  url: URL,
+  loginPageUrl: string,
+) {
+  const notReady = new ReadinessClientError(
+    "PAGE_NOT_READY",
+    "The Evidence Library admin page is not ready",
+  );
+  const response = await fetchWithTimeout(fetchImpl, url, {
+    headers: { accept: "text/html" },
+    method: "GET",
+  });
+  // The runtime contract is one exact answer: a 307 to the login page.
+  if (response.status !== 307) throw notReady;
+
+  const location = response.headers.get("location");
+  if (!location) throw notReady;
+  let destination: URL;
+  try {
+    destination = new URL(location, url);
+  } catch {
+    throw notReady;
+  }
+  if (!isLibraryLoginPage(destination, loginPageUrl)) throw notReady;
+}
+
 export type ReadinessCheckInput = {
   applicationUuid: string;
   runtimeCommit: string;
   revisionKey: string;
   targetBaseUrl: string;
+  /** Where the library sends a signed-out visitor of `/admin`. */
+  loginPageUrl: string;
   verifierUrl: string;
   verifierToken: string;
   fetchImpl?: typeof fetch;
@@ -412,7 +472,11 @@ export async function requireLibraryRuntimeReady(
       new URL("/lib", targetOrigin),
       "public page",
     ),
-    requirePage(fetchImpl, new URL("/admin", targetOrigin), "admin page"),
+    requireAdminPage(
+      fetchImpl,
+      new URL("/admin", targetOrigin),
+      input.loginPageUrl,
+    ),
   ]);
   return { status: "ready" };
 }

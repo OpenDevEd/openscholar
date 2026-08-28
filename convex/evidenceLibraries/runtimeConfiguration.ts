@@ -16,6 +16,20 @@ import { createZoteroSourceCredentials } from "../zotero/sourceCredentials";
 export const EVIDENCE_LIBRARY_SEARCH_HOST = "http://meilisearch:7700";
 export const EVIDENCE_LIBRARY_SEARCH_INDEX = "evidence_library";
 
+/**
+ * Where a library sends someone who opens its admin area without a session:
+ * the OpenScholar page that signs them in and hands the session back.
+ */
+export function buildEvidenceLibraryLoginPageUrl(input: {
+  libraryId: Id<"evidenceLibraries">;
+  appOrigin: string;
+}): string {
+  return new URL(
+    `/evidence-libraries/${encodeURIComponent(input.libraryId)}/admin`,
+    input.appOrigin,
+  ).toString();
+}
+
 export function assembleEvidenceLibraryRuntimePayload(input: {
   encryptionKey: string;
   libraryId: Id<"evidenceLibraries">;
@@ -55,10 +69,10 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       updatedAt: new Date(input.revision.createdAt).toISOString(),
       libraryId: input.libraryId,
       convexSiteUrl: input.origins.convexSite,
-      loginPageUrl: new URL(
-        `/evidence-libraries/${encodeURIComponent(input.libraryId)}/admin`,
-        input.origins.app,
-      ).toString(),
+      loginPageUrl: buildEvidenceLibraryLoginPageUrl({
+        libraryId: input.libraryId,
+        appOrigin: input.origins.app,
+      }),
       machineCredential: decrypt(
         input.credentials.encryptedMachine,
         input.encryptionKey,

@@ -44,3 +44,8 @@ next-env.d.ts
 .cursor
 
 .gsd-auto-logs
+
+# playwright
+/test-results
+/playwright-report
+/blob-report
