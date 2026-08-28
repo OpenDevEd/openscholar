@@ -567,6 +567,9 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   applicationId: v.string(),
   runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
   targetBaseUrl: v.string(),
+  // The custom domains the proxy serves beside the platform address, taken
+  // from our own records when the deployment was planned.
+  customDomains: v.array(v.string()),
   revisionKey: v.string(),
   defaultLocale: v.string(),
   runtimeCommit: v.string(),

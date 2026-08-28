@@ -921,6 +921,7 @@ describe("Evidence Library configuration deployment", () => {
           target: {
             applicationId: prepared.applicationId,
             targetBaseUrl: prepared.targetBaseUrl,
+            customDomains: [],
             revisionKey: prepared.revision.key,
             defaultLocale: prepared.defaultLocale,
             runtimeCommit: RUNTIME_COMMIT,

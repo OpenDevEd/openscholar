@@ -85,6 +85,7 @@ export const runDevelopmentTeardown = internalAction({
         libraryId: args.libraryId,
         projectUuid: requireEnvironment("EL_COOLIFY_PROJECT_UUID"),
         publicDomain: prepared.targetBaseUrl,
+        customDomains: prepared.customDomains,
         serverUuid: requireEnvironment("EL_COOLIFY_SERVER_UUID"),
       });
       stage = "storage";

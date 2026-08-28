@@ -493,7 +493,6 @@ describe("custom domains", () => {
             domain: `https://${PLATFORM_HOST},https://${CUSTOM_HOST}`,
           },
         ],
-        force_domain_override: false,
         instant_deploy: false,
       },
     ]);
@@ -628,7 +627,6 @@ describe("custom domains", () => {
         docker_compose_domains: [
           { name: "web", domain: `https://${PLATFORM_HOST}` },
         ],
-        force_domain_override: false,
         instant_deploy: false,
       },
     ]);

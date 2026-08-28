@@ -59,6 +59,22 @@ export async function readEvidenceLibraryDomains(
     .collect();
 }
 
+/**
+ * The custom domains the proxy should be serving for this library: the ones
+ * we have handed to it and not yet taken back. Every Coolify call compares
+ * the complete map against this list.
+ */
+export async function readAttachedDomainOrigins(
+  ctx: QueryCtx | MutationCtx,
+  libraryId: Id<"evidenceLibraries">,
+): Promise<string[]> {
+  const rows = await readEvidenceLibraryDomains(ctx, libraryId);
+  return rows
+    .filter((row) => row.attachedAt !== undefined)
+    .map((row) => `https://${row.host}`)
+    .sort();
+}
+
 function presentDomain(row: Doc<"evidenceLibraryDomains">) {
   return {
     domainId: row._id,
@@ -171,7 +187,8 @@ export const readDomainContext = internalQuery({
       liveRevisionKey: revision?.revisionKey ?? null,
       attachedHosts: rows
         .filter((entry) => entry.attachedAt !== undefined)
-        .map((entry) => `https://${entry.host}`),
+        .map((entry) => `https://${entry.host}`)
+        .sort(),
       domain: row
         ? {
             domainId: row._id,

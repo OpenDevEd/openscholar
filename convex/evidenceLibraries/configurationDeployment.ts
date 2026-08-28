@@ -9,6 +9,7 @@ import { v } from "convex/values";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
+import { readAttachedDomainOrigins } from "./domains";
 import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
@@ -355,6 +356,7 @@ export const prepareConfigurationDeployment = internalMutation({
       addressMove: v.optional(evidenceLibraryAddressMoveValidator),
       applicationId: v.string(),
       targetBaseUrl: v.string(),
+      customDomains: v.array(v.string()),
       revision: v.object({ key: v.string(), createdAt: v.number() }),
       sections: v.array(sectionRowValidator),
       credentials: v.object({
@@ -521,6 +523,7 @@ export const prepareConfigurationDeployment = internalMutation({
         : {}),
       applicationId: deployment.runtimeBinding.targetRuntimeId,
       targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
+      customDomains: await readAttachedDomainOrigins(ctx, args.libraryId),
       revision: {
         key: deployment.revision.revisionKey,
         createdAt: deployment.revision.createdAt,
@@ -677,6 +680,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
     target: v.object({
       applicationId: v.string(),
       targetBaseUrl: v.string(),
+      customDomains: v.array(v.string()),
       revisionKey: v.string(),
       defaultLocale: v.string(),
       runtimeCommit: v.string(),
@@ -733,6 +737,9 @@ export const saveConfigurationDeploymentTarget = internalMutation({
       targetBaseUrl: requireNonBlank(
         "targetBaseUrl",
         args.target.targetBaseUrl,
+      ),
+      customDomains: args.target.customDomains.map((domain) =>
+        requireNonBlank("customDomain", domain),
       ),
       revisionKey: requireNonBlank("revisionKey", args.target.revisionKey),
       defaultLocale: requireNonBlank(
@@ -866,6 +873,7 @@ export const prepareConfigurationActivation = internalMutation({
     coolifyConfigHash: v.string(),
     revisionKey: v.string(),
     targetBaseUrl: v.string(),
+    customDomains: v.array(v.string()),
   }),
   handler: async (ctx, args) => {
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
@@ -897,6 +905,7 @@ export const prepareConfigurationActivation = internalMutation({
       coolifyConfigHash: receipt.coolifyConfigHash,
       revisionKey: target.revisionKey,
       targetBaseUrl: target.targetBaseUrl,
+      customDomains: target.customDomains,
     };
   },
 });

@@ -8,6 +8,7 @@ import {
 } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
+import { readAttachedDomainOrigins } from "./domains";
 import {
   requireEvidenceLibraryAccess,
   requireOrganizationAccess,
@@ -239,6 +240,7 @@ export const prepareDevelopmentTeardown = internalMutation({
           ? binding.storagePublicBucket
           : setupOperation?.setupReceipts?.storage?.publicBucket,
       targetBaseUrl: binding?.targetBaseUrl,
+      customDomains: await readAttachedDomainOrigins(ctx, args.libraryId),
       // Custom domains are removed from the certificate service before the
       // application goes, so a deleted library can never keep a name.
       certificateHostnameIds: (

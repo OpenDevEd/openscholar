@@ -231,7 +231,8 @@ async function attachDomain(
       applicationUuid: input.applicationUuid,
       libraryId: input.libraryId,
       publicDomain: input.platformAddress,
-      customDomains: [...input.attachedHosts, `https://${input.host}`],
+      currentCustomDomains: input.attachedHosts,
+      customDomains: [...input.attachedHosts, `https://${input.host}`].sort(),
     });
   } catch (error) {
     if (
@@ -381,6 +382,7 @@ export const removeDomain = action({
         applicationUuid: context.applicationUuid,
         libraryId: args.libraryId,
         publicDomain: context.platformAddress,
+        currentCustomDomains: context.attachedHosts,
         customDomains: context.attachedHosts.filter(
           (entry: string) => entry !== `https://${row.host}`,
         ),

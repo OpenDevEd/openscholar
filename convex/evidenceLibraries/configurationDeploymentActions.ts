@@ -92,6 +92,7 @@ export const runConfigurationDeployment = internalAction({
             libraryId: args.libraryId,
             currentPublicDomain: prepared.addressMove.from,
             nextPublicDomain: prepared.addressMove.to,
+            customDomains: prepared.customDomains,
           });
           await ctx.runMutation(
             internal.evidenceLibraries.configurationDeployment
@@ -116,6 +117,7 @@ export const runConfigurationDeployment = internalAction({
           applicationUuid: prepared.applicationId,
           libraryId: args.libraryId,
           publicDomain: prepared.targetBaseUrl,
+          customDomains: prepared.customDomains,
         });
         if (
           runtimeUpdate &&
@@ -161,6 +163,7 @@ export const runConfigurationDeployment = internalAction({
             target: {
               applicationId: prepared.applicationId,
               targetBaseUrl: prepared.targetBaseUrl,
+              customDomains: prepared.customDomains,
               revisionKey: prepared.revision.key,
               defaultLocale: prepared.defaultLocale,
               runtimeCommit: runtimeUpdate?.to ?? application.runtimeCommit,
@@ -194,6 +197,7 @@ export const runConfigurationDeployment = internalAction({
           applicationUuid: target.applicationId,
           libraryId: args.libraryId,
           publicDomain: target.targetBaseUrl,
+          customDomains: target.customDomains,
           runtimeCommit: target.runtimeCommit,
           libraryConfigJson: runtimeConfigJson,
         });
@@ -211,6 +215,7 @@ export const runConfigurationDeployment = internalAction({
             applicationUuid: target.applicationId,
             libraryId: args.libraryId,
             publicDomain: target.targetBaseUrl,
+          customDomains: target.customDomains,
             runtimeCommit: target.runtimeCommit,
           });
         }
@@ -218,6 +223,7 @@ export const runConfigurationDeployment = internalAction({
           applicationUuid: target.applicationId,
           libraryId: args.libraryId,
           publicDomain: target.targetBaseUrl,
+          customDomains: target.customDomains,
           libraryConfigJson: runtimeConfigJson,
           expectedRuntimeCommit: target.runtimeCommit,
         });
@@ -332,6 +338,7 @@ export const runConfigurationDeployment = internalAction({
         applicationUuid: target.applicationId,
         libraryId: args.libraryId,
         publicDomain: target.targetBaseUrl,
+        customDomains: target.customDomains,
         runtimeCommit: target.runtimeCommit,
         libraryConfigJson: runtimeConfigJson,
       });
