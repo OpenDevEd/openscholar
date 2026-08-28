@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createReadySetupFixture as createFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { readAttachedDomainOrigins } from "./domains";
 
 // The pinned client opens a real socket, which a test cannot answer. The
 // address check it wraps still runs for real; only the connector is stubbed,
@@ -2261,39 +2262,70 @@ describe("custom domains", () => {
       ),
     ).resolves.toMatchObject({ attempts: 0 });
   });
-  it("asks the proxy for a host once, whether or not it already had it", async () => {
+  it("asks the proxy nothing when it is already holding the host", async () => {
     // The proxy really did accept the host, and the attempt stopped before
-    // saving its receipt. Trying again must not ask for it twice.
-    const fixture = await createReadySetupFixture("domain-intent-attach");
+    // saving its receipt. There is nothing left to change.
+    const fixture = await createReadySetupFixture("domain-intent-held");
     const tag = await bindApplication(fixture);
     vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
     const added = await addDomain(fixture);
     if (added.status !== "added") throw new Error("not added");
     await markVerified(fixture, added.domainId);
-    // The proxy does hold it, from the attempt that stopped before its
-    // receipt was saved.
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(added.domainId, {
         attachIntentAt: Date.now(),
         updatedAt: Date.now(),
       });
     });
-    const world = createWorld({}, tag);
-    vi.stubGlobal("fetch", world.fetchImpl);
 
+    const world = createWorld({ serving: [`https://${CUSTOM_HOST}`] }, tag);
+    vi.stubGlobal("fetch", world.fetchImpl);
     await fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
       libraryId: fixture.created.libraryId,
       domainId: added.domainId,
     });
+
+    // Asked for nothing, because the map is already the one we want.
+    expect(world.coolifyPatches).toEqual([]);
+    // And the attach is finished properly: the receipt is saved and the note
+    // that the proxy was asked has done its job.
+    const row = await readRow(fixture, added.domainId);
+    expect(row?.attachedAt).toEqual(expect.any(Number));
+    expect(row?.attachIntentAt).toBeUndefined();
+  });
+
+  it("asks the proxy for the host once when it is not holding it", async () => {
+    // The same note, but the proxy never actually took the host. It must be
+    // asked for exactly once, not twice.
+    const fixture = await createReadySetupFixture("domain-intent-absent");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await markVerified(fixture, added.domainId);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        attachIntentAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const world = createWorld({}, tag);
+    vi.stubGlobal("fetch", world.fetchImpl);
+    await fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+      libraryId: fixture.created.libraryId,
+      domainId: added.domainId,
+    });
+
     const asked = world.coolifyPatches.at(-1) as
       | { docker_compose_domains?: { domain: string }[] }
       | undefined;
     const hosts = (asked?.docker_compose_domains?.[0]?.domain ?? "")
       .split(",")
       .filter(Boolean);
-    expect(hosts).toEqual([...new Set(hosts)]);
-    expect(hosts).toContain(`https://${CUSTOM_HOST}`);
-    // The receipt is saved, so the note has done its job.
+    expect(hosts.filter((host) => host === `https://${CUSTOM_HOST}`)).toEqual([
+      `https://${CUSTOM_HOST}`,
+    ]);
     expect((await readRow(fixture, added.domainId))?.attachIntentAt)
       .toBeUndefined();
   });
@@ -2431,73 +2463,148 @@ describe("custom domains", () => {
     expect(row?.cleanup?.failure).toBe("certificate-service-unreachable");
   });
 
-  it("gives the lease back even when the retry call is about another change", async () => {
+  it("gives the lease back when the retry names another deployment", async () => {
     const fixture = await createReadySetupFixture("domain-cleanup-mismatch");
     vi.stubGlobal("fetch", createWorld({}).fetchImpl);
     const added = await addDomain(fixture);
     if (added.status !== "added") throw new Error("not added");
-    const operationId = await fixture.t.run(async (ctx) => {
-      const operation = await ctx.db
+    const [mine, other] = await fixture.t.run(async (ctx) => {
+      const operations = await ctx.db
         .query("evidenceLibraryConfigOperations")
         .withIndex("by_libraryId_and_createdAt", (q) =>
           q.eq("libraryId", fixture.created.libraryId),
         )
-        .order("desc")
-        .first();
-      return operation!._id;
+        .collect();
+      return [operations[0]!._id, operations[0]!._id];
     });
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(added.domainId, {
+        removingAt: Date.now(),
+        // The record says this cleanup belongs to one deployment.
+        cleanup: { operationId: mine, attempts: 1, rounds: 1 },
         transition: {
           kind: "remove",
-          token: "someone-else",
+          token: "the-cleanup",
           expiresAt: Date.now() + 120_000,
         },
         updatedAt: Date.now(),
       });
     });
 
-    // A caller holding a lease that is not the one on the row is not this
-    // cleanup, and is told so.
+    // The caller holds the right lease but speaks for a different
+    // deployment, so it is not this cleanup.
+    const elsewhere = await fixture.t.run(async (ctx) =>
+      ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId: fixture.created.libraryId,
+        kind: "publish",
+        idempotencyKey: "another-deployment",
+        status: "succeeded",
+        stage: "completed",
+        attemptCount: 1,
+        requestedByClerkUserId: "someone",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+    );
     await expect(
       fixture.t.mutation(
         internal.evidenceLibraries.domains.scheduleDomainCleanupRetry,
         {
           libraryId: fixture.created.libraryId,
           domainId: added.domainId,
-          operationId,
-          token: "the-overtaken-one",
+          operationId: elsewhere,
+          token: "the-cleanup",
           calledProvider: true,
         },
       ),
     ).resolves.toMatchObject({ status: "stale" });
-    // The newer change keeps the domain.
-    expect((await readRow(fixture, added.domainId))?.transition?.token).toBe(
-      "someone-else",
-    );
+    // The lease it was holding goes back, so nothing is left stuck.
+    expect((await readRow(fixture, added.domainId))?.transition).toBeUndefined();
+    expect(other).toBe(mine);
   });
-  it("takes no new domain work once a library is on its way out", async () => {
-    const fixture = await createReadySetupFixture("domain-disabled-library");
+
+  it("stops every domain path once a library is being deleted", async () => {
+    const fixture = await createReadySetupFixture("domain-teardown-boundary");
     vi.stubGlobal("fetch", createWorld({}).fetchImpl);
     const added = await addDomain(fixture);
     if (added.status !== "added") throw new Error("not added");
+    const generationBefore = (await readRow(fixture, added.domainId))!.generation;
+    // A worker whose lease ran out is still holding a token.
     await fixture.t.run(async (ctx) => {
-      await ctx.db.patch(fixture.created.libraryId, { state: "disabled" });
       await ctx.db.patch(added.domainId, {
-        state: "active",
-        attachedAt: Date.now(),
+        transition: {
+          kind: "check",
+          token: "the-expired-worker",
+          expiresAt: Date.now() - 1,
+        },
         updatedAt: Date.now(),
       });
     });
 
-    // A teardown is about to delete the very things a new change would be
-    // writing, so nothing new may start.
+    // A real deletion request, not a hand-written state.
+    await fixture.admin.mutation(
+      api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        confirmationName: fixture.created.name,
+      },
+    );
+
+    // The domain moved on, so the token that worker holds names a change
+    // that no longer exists.
+    const row = await readRow(fixture, added.domainId);
+    expect(row?.generation).toBe(generationBefore + 1);
+    expect(row?.transition).toBeUndefined();
+
+    // Adding, checking and removing all stop.
+    await expect(addDomain(fixture, "second.example.org")).rejects.toThrow(
+      /being deleted/,
+    );
     await expect(
-      fixture.admin.mutation(api.evidenceLibraries.versions.setDomainPrimary, {
+      fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
         libraryId: fixture.created.libraryId,
         domainId: added.domainId,
-        primary: true,
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/being deleted/);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.removeDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId: added.domainId,
+      }),
+    ).rejects.toThrow(/being deleted/);
+    // And the worker that was still running cannot keep its place either.
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.holdDomainTransition,
+        { domainId: added.domainId, token: "the-expired-worker" },
+      ),
+    ).rejects.toThrow(/being deleted/);
+  });
+
+  it("hands a host the proxy was only asked about to the teardown", async () => {
+    const fixture = await createReadySetupFixture("domain-teardown-uncertain");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        attachIntentAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    // Taking the library apart has to account for a host the proxy may hold
+    // but never confirmed, or it would be left behind.
+    const prepared = await fixture.t.run(async (ctx) =>
+      readAttachedDomainOrigins(ctx, fixture.created.libraryId, {
+        includeUncertain: true,
+      }),
+    );
+    expect(prepared).toContain(`https://${CUSTOM_HOST}`);
+    // A routine comparison still leaves it out.
+    const routine = await fixture.t.run(async (ctx) =>
+      readAttachedDomainOrigins(ctx, fixture.created.libraryId),
+    );
+    expect(routine).not.toContain(`https://${CUSTOM_HOST}`);
   });
 });

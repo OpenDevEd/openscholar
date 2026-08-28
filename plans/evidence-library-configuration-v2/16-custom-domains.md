@@ -584,6 +584,25 @@ these decisions.
 96. **Clean break:** `generation` is required and written on create, with
     every fallback gone; the unused `readDomainReceipt` is deleted.
 
+## Corrections after the tenth review (2026-08-28)
+
+97. **A library being deleted stops every domain path**, not one. Claiming a
+    host, either way of taking a lease, renewing, holding, saving a receipt,
+    the final cleanup and removal all refuse it. Starting a deletion also
+    moves every domain on, so a worker whose lease ran out holds a token that
+    names a change which no longer exists.
+98. **The final step can no longer go round for ever.** Its record is written
+    when the detach completes, so the first attempt can prove which
+    deployment it belongs to; a call with no record, the wrong deployment or
+    the wrong lease is refused; every trip round counts towards a limit; and
+    the wait is never zero.
+99. **The message at the end tells the truth.** Nothing is booked after the
+    tries run out, so it says the automatic attempts have stopped and points
+    at "Finish removing". English in all six files, as this namespace already
+    is on `dev`.
+100. **A publish carrying a domain change cannot be moved by hand.** The
+    generic operation transitions refuse it rather than stranding the domain.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

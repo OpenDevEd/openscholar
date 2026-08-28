@@ -51,6 +51,8 @@ export const MAX_DOMAIN_CLEANUP_ATTEMPTS = 5;
 
 /** How long to wait before trying a domain's final step again. */
 const CLEANUP_RETRY_MS = 30_000;
+/** How many times the final step may come round at all, however it fails. */
+const MAX_CLEANUP_ROUNDS = 10;
 
 const domainRowValidator = v.object({
   domainId: v.id("evidenceLibraryDomains"),
@@ -297,6 +299,23 @@ function createVerificationToken(): string {
  * the same things a moment earlier; this re-check is what makes the claim
  * safe when two owners press the button at the same time.
  */
+/**
+ * Refuses anything to do with a library that is being deleted.
+ *
+ * A teardown is about to remove the very things a domain change would be
+ * writing, so no path — claiming a host, taking or keeping a lease, saving a
+ * receipt, removing, or finishing a removal — may carry on past this.
+ */
+async function requireLibraryNotBeingDeleted(
+  ctx: MutationCtx,
+  libraryId: Id<"evidenceLibraries">,
+): Promise<void> {
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  if (!library || library.state === "disabled") {
+    throw createError("CONFLICT", "That library is being deleted");
+  }
+}
+
 export const claimDomainHost = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -312,6 +331,7 @@ export const claimDomainHost = internalMutation({
   ),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const held = await ctx.db
       .query("evidenceLibraryDomains")
       .withIndex("by_host", (index) => index.eq("host", args.host))
@@ -388,6 +408,7 @@ export const claimDomainTransition = internalMutation({
       args.libraryId,
       "manage",
     );
+    await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
       throw createError("NOT_FOUND", "That domain is not on this library");
@@ -439,6 +460,7 @@ export const renewDomainTransition = internalMutation({
   handler: async (ctx, args) => {
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.transition?.token !== args.token) return null;
+    await requireLibraryNotBeingDeleted(ctx, row.libraryId);
     await ctx.db.patch(args.domainId, {
       transition: { ...row.transition, expiresAt: Date.now() + DOMAIN_CHECK_LEASE_MS },
     });
@@ -462,6 +484,7 @@ export const holdDomainTransition = internalMutation({
     if (!row) {
       throw createError("NOT_FOUND", "That domain is no longer there");
     }
+    await requireLibraryNotBeingDeleted(ctx, row.libraryId);
     requireTransition(row, args.token);
     await ctx.db.patch(args.domainId, {
       transition: {
@@ -613,6 +636,7 @@ export const writeDomainAttachment = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
       throw createError("NOT_FOUND", "That domain is not on this library");
@@ -779,6 +803,9 @@ export const claimDomainCleanup = internalMutation({
     // A domain that has moved on since this was booked must not lose a
     // hostname it now needs.
     if (!row || row.removingAt === undefined) return null;
+    // Once a teardown owns the library it deletes the hostnames itself.
+    const library = await ctx.db.get("evidenceLibraries", row.libraryId);
+    if (!library || library.state === "disabled") return null;
     const claimed = await claimDomainTransitionRow(ctx, row, "remove");
     await claimed.write();
     return {
@@ -830,10 +857,20 @@ export const scheduleDomainCleanupRetry = internalMutation({
         await ctx.db.patch(args.domainId, { ...release, updatedAt: Date.now() });
       }
     };
-    // A call about another deployment says nothing about this one. A caller
-    // holding a lease that is not the one on the row is not this cleanup.
+    // Once a teardown owns the library it deletes the hostnames itself, so
+    // this stops rather than racing it.
+    const library = await ctx.db.get("evidenceLibraries", row.libraryId);
+    if (!library || library.state === "disabled") {
+      await giveBack();
+      return { status: "stale" as const, attempts: cleanup?.attempts ?? 0 };
+    }
+    // A call about another deployment says nothing about this one, and a
+    // caller holding a lease the row does not have is not this cleanup. The
+    // record is written when the detach completes, so a call with no record
+    // to point at is not this cleanup either.
     if (
-      (cleanup && cleanup.operationId !== args.operationId) ||
+      cleanup === undefined ||
+      cleanup.operationId !== args.operationId ||
       (args.token !== undefined && row.transition?.token !== args.token)
     ) {
       await giveBack();
@@ -849,12 +886,16 @@ export const scheduleDomainCleanupRetry = internalMutation({
     }
     // Only a real attempt at the outside service counts. Giving up because
     // this library could not take its own lease would waste every try.
-    const attempts = (cleanup?.attempts ?? 0) + (args.calledProvider ? 1 : 0);
-    if (attempts >= MAX_DOMAIN_CLEANUP_ATTEMPTS) {
+    const attempts = cleanup.attempts + (args.calledProvider ? 1 : 0);
+    // Every trip round counts, even the ones that never reached the
+    // certificate service, so this can never go round for ever.
+    const rounds = (cleanup.rounds ?? 0) + 1;
+    if (attempts >= MAX_DOMAIN_CLEANUP_ATTEMPTS || rounds > MAX_CLEANUP_ROUNDS) {
       await ctx.db.patch(args.domainId, {
         cleanup: {
           operationId: args.operationId,
           attempts,
+          rounds,
           // Saved so the owner can be told, in this library's own words,
           // what stopped the last step.
           failure: args.failure ?? "unknown",
@@ -865,7 +906,9 @@ export const scheduleDomainCleanupRetry = internalMutation({
       return { status: "given-up" as const, attempts };
     }
     const scheduledId = await ctx.scheduler.runAfter(
-      CLEANUP_RETRY_MS * attempts,
+      // Never zero: a failure before the certificate service was reached
+      // would otherwise come straight back with no wait at all.
+      CLEANUP_RETRY_MS * Math.max(attempts, 1),
       internal.evidenceLibraries.domainActions.completeDomainChange,
       {
         libraryId: args.libraryId,
@@ -875,7 +918,7 @@ export const scheduleDomainCleanupRetry = internalMutation({
       },
     );
     await ctx.db.patch(args.domainId, {
-      cleanup: { operationId: args.operationId, attempts, scheduledId },
+      cleanup: { operationId: args.operationId, attempts, rounds, scheduledId },
       ...release,
       updatedAt: Date.now(),
     });

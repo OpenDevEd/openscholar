@@ -273,6 +273,9 @@ export const evidenceLibraryDomainFields = {
     v.object({
       operationId: v.id("evidenceLibraryConfigOperations"),
       attempts: v.number(),
+      // Every trip round, including ones that never reached the certificate
+      // service, so this can never go round for ever.
+      rounds: v.optional(v.number()),
       scheduledId: v.optional(v.id("_scheduled_functions")),
       // Set once the tries run out. A short name, not a message from
       // another service, so the page can say it in plain words.

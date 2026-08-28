@@ -177,6 +177,16 @@ async function requestTeardown(
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
   });
+  // A worker whose lease ran out could still be holding a token. Moving each
+  // domain on makes those tokens name a change that no longer exists, so
+  // nothing can come back and write while the teardown works.
+  for (const domain of domains) {
+    await ctx.db.patch(domain._id, {
+      generation: domain.generation + 1,
+      transition: undefined,
+      updatedAt: now,
+    });
+  }
   await ctx.scheduler.runAfter(
     0,
     internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,

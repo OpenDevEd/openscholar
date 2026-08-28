@@ -2972,9 +2972,9 @@
       "confirmCancel": "Cancel",
       "confirmAction": "Change the address",
       "cleanupFailure": {
-        "certificate-service-unreachable": "We could not reach the service that manages this domain's certificate, so the domain has not finished being removed. It will be tried again. If this keeps happening, contact support.",
-        "certificate-service-refused": "The service that manages this domain's certificate would not remove it, so the domain has not finished being removed. Contact support.",
-        "unknown": "This domain has not finished being removed. Contact support."
+        "certificate-service-unreachable": "We could not reach the service that manages this domain's certificate, and we have stopped trying. Choose \"Finish removing\" to try again, or contact support.",
+        "certificate-service-refused": "The service that manages this domain's certificate would not remove it, and we have stopped trying. Choose \"Finish removing\" to try again, or contact support.",
+        "unknown": "This domain could not finish being removed, and we have stopped trying. Choose \"Finish removing\" to try again, or contact support."
       }
     },
     "retry": "Try again",

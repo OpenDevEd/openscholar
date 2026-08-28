@@ -64,10 +64,9 @@ type DomainRow = {
 };
 
 /** How the mock draws a domain's state. The server's five states map onto it. */
-type DnsStatus = "none" | "pending" | "checking" | "verified" | "failed";
+type DnsStatus = "pending" | "checking" | "verified" | "failed";
 
 const STATUS_TONE: Record<DnsStatus, StatusTone> = {
-  none: "neutral",
   pending: "neutral",
   checking: "running",
   verified: "success",
@@ -181,7 +180,7 @@ export const DomainSection = memo(function DomainSection({
       icon={Link2}
       title={ts("domain")}
       description={t("description")}
-      data-domain-state={domains[0]?.state ?? "none"}
+      data-domain-state={domains[0]?.state ?? "empty"}
     >
       <Field label={t("platformLabel")} hint={t("platformHint")}>
         {(id) => <ReadOnlyValue id={id} value={data?.platformAddress ?? ""} />}

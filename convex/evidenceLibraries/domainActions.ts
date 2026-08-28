@@ -37,7 +37,6 @@ import {
 } from "./dnsClient";
 import { DomainEgressRefused, DomainEgressUnavailable } from "./domainEgress";
 import { openPinnedDomainClient } from "./domainEgressNode";
-import { MAX_DOMAIN_CLEANUP_ATTEMPTS } from "./domains";
 import {
   readCustomDomainTarget,
   readReservedDomainSuffixes,
@@ -888,7 +887,6 @@ async function holdDomain(
   );
 }
 
-/** How long to wait before trying a domain's final step again. */
 /** How many working domains one sweep re-checks before it hands over. */
 const SWEEP_BATCH = 20;
 /** How long one sweep may run before it schedules the rest of the list. */

@@ -6,6 +6,7 @@ import {
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
+import { isConfigurationDeploymentOperation } from "./configurationDeployment";
 import { requireEvidenceLibraryAccess } from "./access";
 import {
   type EvidenceLibraryOperationKind,
@@ -384,6 +385,14 @@ export async function applyOperationTransition(
   );
   if (!operation || operation.libraryId !== args.libraryId) {
     throw createError("NOT_FOUND", "Evidence Library operation not found");
+  }
+  // A publish carries a domain change whose lease and deployment are settled
+  // together. Moving it by status alone would strand the domain.
+  if (isConfigurationDeploymentOperation(operation)) {
+    throw createError(
+      "CONFLICT",
+      "That publish is finished by its own deployment, not by hand",
+    );
   }
   if (operation.kind === "setup") {
     throw createError(
