@@ -12,7 +12,8 @@ height of its bar, whatever its shape.
 
 ## Facts checked on 2026-08-28
 
-- new-el `main` = `720a3c45` (after #140, #141, #142). Every OpenScholar
+- new-el `main` = `720a3c45` (after #140, #141, #142), then `95ac3fc0` after
+  the merge in #143. Every OpenScholar
   library builds from `OpenDevEd/new-el` at `EL_RUNTIME_COMMIT_SHA` on
   `main` (`convex/evidenceLibraries/coolifyClient.ts:28-30`).
 - Three branches carry the modernisation:
@@ -196,8 +197,13 @@ their tests, `messages/*.json`. `section-registry.ts` and
 `features-section.tsx` need no change: `ai` is already a registry section, and
 the dependants stay hidden (see Decision 2).
 
-**Waiting on the re-pin.** Until the contract is re-pinned to a `main` commit
-carrying the merge, `AI_MODELS` is empty, `SUPPORTS_POSTHOG_UI_HOST` and
-`SUPPORTS_CONSENT_POLICY_VERSION` are false, so the AI switch is disabled and
-the two analytics fields stay hidden. Every test that needs the new contract
-is marked `skipIf` with that reason. Delete the three flags after the re-pin.
+**Re-pinned 2026-08-28** to new-el `main` `95ac3fc0` (the merge of
+`codex/merge-ai-modernization`). The contract gained exactly three things:
+`openrouter` in the AI provider enum and the model catalog,
+`analytics.posthog.uiHost`, and `analytics.consentPolicyVersion`. The
+temporary flags that stood in for them while the merge was open are gone and
+every test that waited for the catalog now runs.
+
+The AI switch stays disabled with "Your library software does not offer AI
+answers yet" when the pinned catalog has no OpenRouter models, so a library on
+older software can never be given a setting it refuses.
