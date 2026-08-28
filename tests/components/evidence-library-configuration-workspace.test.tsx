@@ -7,6 +7,11 @@ import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Every test here renders all fourteen configuration sections and types into
+// them one key at a time, so a single case can pass five seconds on a busy
+// machine. The whole file still finishes in about thirty seconds.
+vi.setConfig({ testTimeout: 20_000 });
+
 const queryMock = vi.hoisted(() => vi.fn());
 
 const mutationMock = vi.hoisted(() => vi.fn());
@@ -179,7 +184,13 @@ const savedRows = [
   { sectionKey: "ai", payload: {} },
 ];
 
-function draftResult(overrides: { operation?: unknown; state?: string } = {}) {
+function draftResult(
+  overrides: {
+    operation?: unknown;
+    state?: string;
+    sections?: { sectionKey: string; payload: unknown }[];
+  } = {},
+) {
   return {
     data: {
       library: {
@@ -190,7 +201,7 @@ function draftResult(overrides: { operation?: unknown; state?: string } = {}) {
       },
       draft: { _id: "draft_123", libraryId: "library_123", editVersion: 4 },
       operation: overrides.operation ?? null,
-      sections: savedRows,
+      sections: overrides.sections ?? savedRows,
     },
     isReady: true,
   };
@@ -914,6 +925,25 @@ describe("<ConfigurationWorkspace>", () => {
         );
       },
     );
+  });
+
+  describe("the AI card without a stored key", () => {
+    it("needs attention while AI answers are on and no key is stored", async () => {
+      queryMock.mockReturnValue(
+        draftResult({
+          sections: savedRows.map((row) =>
+            row.sectionKey === "features"
+              ? { sectionKey: "features", payload: { ai: true } }
+              : row,
+          ),
+        }),
+      );
+      await renderWorkspace();
+      const ai = within(document.getElementById("sec-ai")!);
+      expect(ai.getByText("sectionState.attention")).toBeInTheDocument();
+      expect(ai.getByText("problems.aiKey")).toBeInTheDocument();
+      expect(ai.getByLabelText("ai.keyLabel")).toBeInTheDocument();
+    });
   });
 
   describe("replaced files", () => {

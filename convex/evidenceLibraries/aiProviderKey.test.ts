@@ -7,13 +7,17 @@ import {
   AI_PROVIDER_CREDENTIAL_KEY,
   AI_PROVIDER_KEY_PATH,
 } from "../../lib/evidence-libraries/configuration/ai";
-import { encrypt } from "../lib/crypto";
+import { decrypt, encrypt } from "../lib/crypto";
 import {
   createActivatedSetupFixture,
   essentialSetupSections,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
-import { readLibraryAiProviderKey } from "./aiProviderKey";
+import {
+  readAiProviderKeySource,
+  readLibraryAiProviderKey,
+  requireUnchangedAiProviderKey,
+} from "./aiProviderKey";
 import { assembleEvidenceLibraryRuntimePayload } from "./runtimeConfiguration";
 
 const ENCRYPTION_KEY = "44".repeat(32);
@@ -78,6 +82,169 @@ describe("the OpenRouter key", () => {
         { libraryId },
       ),
     ).toEqual([]);
+  });
+
+  it("keeps one row when the owner replaces the key", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", ENCRYPTION_KEY);
+    const fixture = await createActivatedSetupFixture("ai_key_replace");
+    const libraryId = fixture.created.libraryId;
+    const replacement = `sk-or-v1-${"1".repeat(48)}`;
+
+    for (const value of [OPENROUTER_KEY, replacement]) {
+      await fixture.admin.action(
+        api.evidenceLibraries.credentialActions.writeCredential,
+        {
+          libraryId,
+          concretePath: AI_PROVIDER_KEY_PATH,
+          instanceKey: AI_PROVIDER,
+          value,
+        },
+      );
+    }
+
+    const rows = await fixture.t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("evidenceLibraryCredentials")
+          .withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId))
+          .collect()
+      ).filter((row) => row.credentialKey === AI_PROVIDER_CREDENTIAL_KEY),
+    );
+    expect(rows).toHaveLength(1);
+    // The row now holds the new key, and the old one is gone for good.
+    expect(decrypt(rows[0]!.encryptedValue, ENCRYPTION_KEY)).toBe(replacement);
+  });
+
+  it("stops a publish that read a key which has since changed", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", ENCRYPTION_KEY);
+    const fixture = await createActivatedSetupFixture("ai_key_race");
+    const libraryId = fixture.created.libraryId;
+    const write = (value: string) =>
+      fixture.admin.action(
+        api.evidenceLibraries.credentialActions.writeCredential,
+        {
+          libraryId,
+          concretePath: AI_PROVIDER_KEY_PATH,
+          instanceKey: AI_PROVIDER,
+          value,
+        },
+      );
+    await write(OPENROUTER_KEY);
+
+    // What a publish would have read before the owner touched the key again.
+    const seen = await fixture.t.run((ctx) =>
+      readAiProviderKeySource(ctx, libraryId),
+    );
+    await write(`sk-or-v1-${"2".repeat(48)}`);
+    await expect(
+      fixture.t.run((ctx) =>
+        requireUnchangedAiProviderKey(ctx, libraryId, seen),
+      ),
+    ).rejects.toThrow(/changed while the library was publishing/);
+
+    // Removing it counts as a change too.
+    const afterReplace = await fixture.t.run((ctx) =>
+      readAiProviderKeySource(ctx, libraryId),
+    );
+    await fixture.admin.mutation(
+      api.evidenceLibraries.aiProviderKey.removeAiProviderKey,
+      { libraryId },
+    );
+    await expect(
+      fixture.t.run((ctx) =>
+        requireUnchangedAiProviderKey(ctx, libraryId, afterReplace),
+      ),
+    ).rejects.toThrow(/changed while the library was publishing/);
+
+    // An untouched key passes.
+    await write(OPENROUTER_KEY);
+    const steady = await fixture.t.run((ctx) =>
+      readAiProviderKeySource(ctx, libraryId),
+    );
+    await expect(
+      fixture.t.run((ctx) =>
+        requireUnchangedAiProviderKey(ctx, libraryId, steady),
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it.each([
+    [
+      "another vendor",
+      { providers: [{ provider: "openai", enabled: true, defaultModel: "gpt-5.4" }] },
+      true,
+    ],
+    [
+      "two providers",
+      {
+        providers: [
+          { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+          { provider: AI_PROVIDER, enabled: false },
+        ],
+      },
+      true,
+    ],
+    [
+      "no model",
+      { providers: [{ provider: AI_PROVIDER, enabled: true }] },
+      true,
+    ],
+    [
+      "a model the runtime does not offer",
+      {
+        providers: [
+          { provider: AI_PROVIDER, enabled: true, defaultModel: "made-up/model" },
+        ],
+      },
+      true,
+    ],
+    [
+      "a provider switched on while AI answers are off",
+      {
+        providers: [
+          { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+        ],
+      },
+      false,
+    ],
+  ])("refuses to save %s", async (name, ai, featuresAi) => {
+    const fixture = await createActivatedSetupFixture(
+      `ai_save_${name.replace(/\W+/gu, "_")}`,
+    );
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.mutations.saveDraftSections,
+        {
+          libraryId: fixture.created.libraryId,
+          sections: toSectionRows({ ai, features: { ai: featuresAi } }),
+          expectedEditVersion: fixture.activated.editVersion,
+        },
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("saves one OpenRouter entry with an approved model", async () => {
+    const fixture = await createActivatedSetupFixture("ai_save_good");
+    const ai = {
+      providers: [
+        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+      ],
+    };
+    await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: fixture.created.libraryId,
+        sections: toSectionRows({ ai, features: { ai: true } }),
+        expectedEditVersion: fixture.activated.editVersion,
+      },
+    );
+    const draft = await fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(
+      draft.sections.find((row) => row.sectionKey === "ai")?.payload,
+    ).toEqual(ai);
   });
 
   it("cannot be removed when the library has none", async () => {
