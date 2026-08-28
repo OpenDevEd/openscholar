@@ -249,7 +249,11 @@ export const evidenceLibraryDomainFields = {
   pendingDeployment: v.optional(
     v.object({
       operationId: v.id("evidenceLibraryConfigOperations"),
-      phase: v.union(v.literal("attach"), v.literal("detach")),
+      phase: v.union(
+        v.literal("attach"),
+        v.literal("detach"),
+        v.literal("canonical"),
+      ),
     }),
   ),
   // The work owed after one deployment: which deployment it belongs to, how
@@ -679,8 +683,9 @@ export const evidenceLibraryDomainChangeValidator = v.object({
   // this deployment is live. Nothing is written until it is.
   address: v.optional(v.string()),
   // The lease this change holds on the domain. Checked when the deployment
-  // finishes, so a change that was overtaken cannot land.
-  token: v.optional(v.string()),
+  // finishes, so a change that was overtaken cannot land. Every domain
+  // change carries one.
+  token: v.string(),
 });
 
 export const evidenceLibraryOperationFields = {

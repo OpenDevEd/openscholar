@@ -604,10 +604,19 @@ export const setDomainPrimary = mutation({
     if (!row || row.libraryId !== args.libraryId) {
       throw createError("NOT_FOUND", "That domain is not on this library");
     }
+    // Switching one on needs a working domain. Switching the current one
+    // off must always be possible: a domain that stopped working is exactly
+    // when an owner needs the platform address back.
     if (args.primary && row.state !== "active") {
       throw createError(
         "CONFLICT",
         "The domain has to be working before it can become the address",
+      );
+    }
+    if (!args.primary && row.role !== "primary") {
+      throw createError(
+        "CONFLICT",
+        "That domain is not the library's address",
       );
     }
     // The same lease every other change to this domain takes, so becoming
@@ -656,6 +665,16 @@ export const setDomainPrimary = mutation({
         address,
         token: claimed.token,
       },
+    });
+    // The deployment is recorded on the domain, exactly as attaching and
+    // removing do, so the change holds it for as long as the deployment runs
+    // rather than for the length of an action's lease.
+    await ctx.db.patch(args.domainId, {
+      pendingDeployment: {
+        operationId: operation.operationId,
+        phase: "canonical",
+      },
+      updatedAt: Date.now(),
     });
     const started = await claimAndScheduleConfigurationDeployment(ctx, {
       libraryId: args.libraryId,

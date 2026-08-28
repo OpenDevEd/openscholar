@@ -60,8 +60,14 @@ export const runDevelopmentTeardown = internalAction({
       const cloudflare = createPlatformCloudflareSaasClient();
       if (!cloudflare && prepared.customDomainHosts.length > 0) {
         // The library's records are the only note that these hostnames
-        // exist. They are not deleted until the certificate service can
-        // confirm the hostnames are gone.
+        // exist, so they are kept until the certificate service can say the
+        // hostnames are gone. A few more tries first: the account may be
+        // being set up.
+        const again = await ctx.runMutation(
+          internal.evidenceLibraries.teardown.retryDevelopmentTeardown,
+          { libraryId: args.libraryId, operationId: args.operationId, attemptToken },
+        );
+        if (again.status === "retrying") return { status: "pending" as const };
         throw new Error(
           "Custom domains are set up on this library but not on this platform",
         );

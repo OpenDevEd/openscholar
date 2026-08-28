@@ -273,6 +273,7 @@ async function attachDomain(
   // Step one: the certificate service. Reading first means an action that
   // died after creating a hostname finds it again instead of orphaning it.
   const originHost = new URL(input.platformAddress).hostname;
+  await holdDomain(ctx, input.domainId, input.token);
   const existing = await cloudflare.readCustomHostname(input.host);
   let hostname: CustomHostname;
   if (!existing) {
@@ -311,6 +312,7 @@ async function attachDomain(
   // Step two: the proxy. Running it again with the host already in the list
   // writes nothing, so a retry is safe.
   const wanted = [...input.attachedHosts, `https://${input.host}`].sort();
+  await holdDomain(ctx, input.domainId, input.token);
   try {
     await coolify().setCustomDomains({
       applicationUuid: input.applicationUuid,
@@ -631,6 +633,7 @@ export const removeDomain = action({
       if (!row) return { status: "removed" as const };
 
       if (row.attached && context.applicationUuid) {
+        await holdDomain(ctx, args.domainId, token);
         await coolify().setCustomDomains({
           applicationUuid: context.applicationUuid,
           libraryId: args.libraryId,
@@ -794,6 +797,21 @@ export const completeDomainChange = internalAction({
     }
   },
 });
+
+/**
+ * Proves this change still owns the domain, immediately before writing
+ * anywhere outside OpenScholar.
+ */
+async function holdDomain(
+  ctx: ActionCtx,
+  domainId: Id<"evidenceLibraryDomains">,
+  token: string,
+): Promise<void> {
+  await ctx.runMutation(
+    internal.evidenceLibraries.domains.holdDomainTransition,
+    { domainId, token },
+  );
+}
 
 /** How long to wait before trying a domain's final step again. */
 /** How many working domains one sweep re-checks before it hands over. */

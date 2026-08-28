@@ -280,7 +280,7 @@ export async function queueDomainChangeOperation(
       domainId: Id<"evidenceLibraryDomains">;
       reason: "attach" | "detach" | "canonical";
       address?: string;
-      token?: string;
+      token: string;
     };
   },
 ) {

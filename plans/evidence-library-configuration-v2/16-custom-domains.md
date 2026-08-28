@@ -485,6 +485,32 @@ these decisions.
     than introducing a third pattern; the three scattered reads now go
     through one helper each.
 
+## Corrections after the sixth review (2026-08-28)
+
+68. **A canonical change records its deployment on the domain**, exactly as
+    attaching and removing do, so it holds the domain for as long as that
+    deployment runs rather than for two minutes. The token is required on
+    every domain change, and both the success and the failure paths check it
+    and the operation before they touch the row.
+69. **A publish whose worker stops answering is failed by a watchdog**,
+    booked whenever the lease is written. It frees the domain and the page
+    offers "Try again" instead of a spinner that never ends.
+70. **Every write outside OpenScholar is preceded by one proof.**
+    `holdDomainTransition` shows the change still owns the domain and puts
+    its lease forward; a worker that was overtaken stops there rather than
+    writing to the certificate service or the proxy.
+71. **The current address can always be switched off**, even when the domain
+    has stopped working — that is exactly when an owner needs the platform
+    address back. Switching one on still needs a working domain.
+72. **An expired lease no longer hides a domain from the sweep.** Only a
+    lease that is still running counts as busy.
+73. **A deletion that cannot reach the certificate service waits and tries
+    again**, up to five times, and then shows the owner what stopped it with
+    a button to try again.
+74. **Changing the library's address is confirmed first**, in both
+    directions, using the same dialog the delete flow uses. Everyone signed
+    in is signed out by it, so it is not something a stray click should do.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

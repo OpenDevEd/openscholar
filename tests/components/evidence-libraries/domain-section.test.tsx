@@ -285,15 +285,49 @@ describe("DomainSection", () => {
     ).toBeEnabled();
   });
 
-  it("sends the platform address to the domain when the switch is turned on", async () => {
+  it("asks before it changes the library's address, then changes it", async () => {
     mocks.data.domains = [row({ state: "active", attached: true })];
     mocks.setPrimary.mockResolvedValue({ address: "https://evidence.example.org" });
     render(<DomainSection libraryId={libraryId} />);
     await userEvent.click(screen.getByRole("switch"));
+    // Everyone signed in is signed out by this, so nothing happens until the
+    // owner says yes.
+    expect(mocks.setPrimary).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("evidenceLibraryConfiguration.domain.confirmOnTitle"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.confirmAction",
+      }),
+    );
     expect(mocks.setPrimary).toHaveBeenCalledWith({
       libraryId,
       domainId: "domain_1",
       primary: true,
     });
+  });
+
+  it("does nothing when the owner backs out of changing the address", async () => {
+    mocks.data.domains = [row({ state: "active", attached: true })];
+    render(<DomainSection libraryId={libraryId} />);
+    await userEvent.click(screen.getByRole("switch"));
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.confirmCancel",
+      }),
+    );
+    expect(mocks.setPrimary).not.toHaveBeenCalled();
+  });
+
+  it("lets the current address be switched off even when it stopped working", async () => {
+    mocks.data.domains = [
+      row({ state: "failed", failure: "wrong-target", role: "primary", attached: true }),
+    ];
+    render(<DomainSection libraryId={libraryId} />);
+    // Taking the library back to its platform address is exactly what an
+    // owner needs here.
+    expect(screen.getByRole("switch")).toBeEnabled();
   });
 });

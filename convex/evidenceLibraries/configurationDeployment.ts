@@ -286,6 +286,15 @@ export async function claimAndScheduleConfigurationDeployment(
       attemptCount,
     },
   );
+  // A worker that dies takes its lease with it, and nothing would notice.
+  // This comes back when the lease has run out and marks the deployment
+  // failed, which frees the domain and offers the owner a retry.
+  await ctx.scheduler.runAfter(
+    CONFIGURATION_DEPLOYMENT_LEASE_MS + 60_000,
+    internal.evidenceLibraries.configurationDeployment
+      .failExpiredConfigurationDeployment,
+    { operationId: args.operationId, attemptToken },
+  );
   return {
     operationId: deployment.operation._id,
     revisionId: deployment.revision._id,
@@ -1087,7 +1096,7 @@ export const completeConfigurationDeployment = internalMutation({
       await settleDomainDeploymentRow(ctx, {
         domainId: domainChange.domainId,
         operationId: deployment.operation._id,
-        ...(domainChange.token ? { token: domainChange.token } : {}),
+        token: domainChange.token,
         outcome: "succeeded",
       });
       // The library's new address is written in this same transaction as the
@@ -1159,6 +1168,55 @@ export const failConfigurationDeployment = internalMutation({
       await settleDomainDeploymentRow(ctx, {
         domainId: operation.domainChange.domainId,
         operationId: operation._id,
+        // A failure only frees the change it was carrying: a newer one that
+        // has already taken the domain keeps it.
+        token: operation.domainChange.token,
+        outcome: "failed",
+      });
+    }
+    return "failed" as const;
+  },
+});
+
+/**
+ * Marks a deployment failed when the worker that held it stopped answering.
+ * Booked whenever a lease is written, so nothing is left running for ever.
+ */
+export const failExpiredConfigurationDeployment = internalMutation({
+  args: {
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+  },
+  returns: v.union(v.literal("failed"), v.literal("ignored")),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(args.operationId);
+    if (
+      !operation ||
+      operation.status !== "running" ||
+      // Another attempt has taken over, or this one finished.
+      operation.configurationAttemptToken !== args.attemptToken ||
+      (operation.configurationLeaseExpiresAt ?? 0) > Date.now()
+    ) {
+      return "ignored" as const;
+    }
+    const now = Date.now();
+    await ctx.db.patch(operation._id, {
+      status: "failed",
+      error: {
+        code: "CONFIGURATION_DEPLOYMENT_STALLED",
+        message: "The publish stopped answering. Try again.",
+        stage: operation.stage,
+      },
+      completedAt: now,
+      configurationAttemptToken: undefined,
+      configurationLeaseExpiresAt: undefined,
+      updatedAt: now,
+    });
+    if (operation.domainChange) {
+      await settleDomainDeploymentRow(ctx, {
+        domainId: operation.domainChange.domainId,
+        operationId: operation._id,
+        token: operation.domainChange.token,
         outcome: "failed",
       });
     }

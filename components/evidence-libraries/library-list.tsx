@@ -198,6 +198,9 @@ function LibraryRow({
   onDelete: () => void;
 }) {
   const t = useTranslations("evidenceLibraries.list");
+  const restartTeardown = useMutation(
+    api.evidenceLibraries.teardown.restartDevelopmentTeardown,
+  );
   const tStages = useTranslations("evidenceLibraries.stages");
   const format = useFormatter();
   const isDeleting = library.status === "deleting";
@@ -281,12 +284,31 @@ function LibraryRow({
           ) : null}
         </div>
         <MetaList items={meta} />
-        {isDeleting ? (
+        {isDeleting && !library.teardownError ? (
           <Progress
             aria-label={t("deleting")}
             value={library.teardownStage ? TEARDOWN_PERCENT[library.teardownStage] : 5}
             className="h-1.5 max-w-xs bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive"
           />
+        ) : null}
+        {isDeleting && library.teardownError ? (
+          <div className="space-y-2" data-teardown-error>
+            <p className="max-w-xl text-sm text-destructive" role="status">
+              {library.teardownError}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                restartTeardown({ libraryId: library._id })
+                  .then(() => toast.success(t("deleteRetryStarted")))
+                  .catch(() => toast.error(t("deleteRetryError")));
+              }}
+            >
+              {t("deleteRetry")}
+            </Button>
+          </div>
         ) : null}
       </div>
 

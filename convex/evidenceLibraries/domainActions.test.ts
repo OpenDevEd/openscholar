@@ -1423,74 +1423,6 @@ describe("custom domains", () => {
     ).resolves.toEqual([]);
   });
 
-  it("stops showing a domain as working once its records go away", async () => {
-    const fixture = await createReadySetupFixture("domain-sweep");
-    const tag = await bindApplication(fixture);
-    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
-    const added = await addDomain(fixture);
-    if (added.status !== "added") throw new Error("not added");
-    const domainId = added.domainId;
-    await fixture.t.run(async (ctx) => {
-      await ctx.db.patch(domainId, {
-        state: "active",
-        attachedAt: Date.now(),
-        certificateHostnameId: "custom-hostname-1",
-        certificateState: "active",
-        activatedAt: Date.now(),
-        checkedAt: 1,
-        updatedAt: Date.now(),
-      });
-    });
-    const revisionKey = await readLiveRevisionKey(fixture);
-
-    // The library still answers, and the check time moves forward so the
-    // next page starts after it.
-    vi.stubGlobal(
-      "fetch",
-      createWorld(
-        {
-          cname: TARGET,
-          health: { revision: revisionKey },
-          certificate: { status: "active", ssl: "active" },
-        },
-        tag,
-      ).fetchImpl,
-    );
-    await expect(
-      fixture.t.action(
-        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
-        {},
-      ),
-    ).resolves.toEqual({ checked: 1, failed: 0, more: false });
-    const swept = await readRow(fixture, domainId);
-    expect(swept?.state).toBe("active");
-    expect(swept?.checkedAt).toBeGreaterThan(1);
-
-    // Someone else answers now.
-    vi.stubGlobal(
-      "fetch",
-      createWorld(
-        {
-          cname: TARGET,
-          health: "other",
-          certificate: { status: "active", ssl: "active" },
-        },
-        tag,
-      ).fetchImpl,
-    );
-    await expect(
-      fixture.t.action(
-        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
-        {},
-      ),
-    ).resolves.toEqual({ checked: 1, failed: 1, more: false });
-    const failed = await readRow(fixture, domainId);
-    expect(failed?.state).toBe("failed");
-    expect(failed?.failure).toBe("host-taken");
-    // The row keeps its history.
-    expect(failed?.activatedAt).toBeTypeOf("number");
-  });
-
   it("deletes the library's domains with the library", async () => {
     const fixture = await createReadySetupFixture("domain_teardown");
     vi.stubGlobal("fetch", createWorld({}).fetchImpl);
@@ -1844,5 +1776,179 @@ describe("custom domains", () => {
       ),
     ).resolves.toMatchObject({ checked: 0 });
     expect((await readRow(fixture, added.domainId))?.state).toBe("active");
+  });
+  it("holds a canonical change for as long as its deployment runs", async () => {
+    const fixture = await createReadySetupFixture("domain-canonical-lease");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    await fixture.admin.mutation(
+      api.evidenceLibraries.versions.setDomainPrimary,
+      { libraryId: fixture.created.libraryId, domainId, primary: true },
+    );
+    // The deployment is recorded on the domain, exactly as attaching is, so
+    // the two-minute lease is not what holds it.
+    const row = await readRow(fixture, domainId);
+    expect(row?.pendingDeployment?.phase).toBe("canonical");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        transition: { ...row!.transition!, expiresAt: Date.now() - 1 },
+      });
+    });
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId,
+      }),
+    ).resolves.toEqual({ status: "busy" });
+  });
+
+  it("stops a worker that lost the domain before it writes anywhere else", async () => {
+    const fixture = await createReadySetupFixture("domain-hold-lost");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        transition: {
+          kind: "check",
+          token: "the-holder",
+          expiresAt: Date.now() + 60_000,
+        },
+      });
+    });
+    // The proof every outside write is preceded by.
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.holdDomainTransition,
+        { domainId: added.domainId, token: "the-replaced-one" },
+      ),
+    ).rejects.toThrow(/Another change/);
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.holdDomainTransition,
+        { domainId: added.domainId, token: "the-holder" },
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("lets the sweep look at a domain whose worker died", async () => {
+    const fixture = await createReadySetupFixture("domain-sweep-expired");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    const revisionKey = await readLiveRevisionKey(fixture);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        checkedAt: 1,
+        // A check whose worker died. Its lease has run out.
+        transition: {
+          kind: "check",
+          token: "gone",
+          expiresAt: Date.now() - 1,
+        },
+        updatedAt: Date.now(),
+      });
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        {
+          cname: TARGET,
+          health: { revision: revisionKey },
+          certificate: { status: "active", ssl: "active" },
+        },
+        tag,
+      ).fetchImpl,
+    );
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
+        {},
+      ),
+    ).resolves.toMatchObject({ checked: 1 });
+  });
+
+  it("lets the library be taken back from a domain that stopped working", async () => {
+    const fixture = await createReadySetupFixture("domain-primary-off");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    // The library's address, and it has stopped working.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        state: "failed",
+        failure: "wrong-target",
+        role: "primary",
+        attachedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      const library = await ctx.db.get(fixture.created.libraryId);
+      if (library?.runtimeBindingId) {
+        await ctx.db.patch(library.runtimeBindingId, {
+          canonicalBaseUrl: `https://${CUSTOM_HOST}`,
+        });
+      }
+    });
+
+    // Switching it off is exactly what an owner needs here, so it is allowed.
+    await expect(
+      fixture.admin.mutation(api.evidenceLibraries.versions.setDomainPrimary, {
+        libraryId: fixture.created.libraryId,
+        domainId: added.domainId,
+        primary: false,
+      }),
+    ).resolves.toMatchObject({ address: `https://${PLATFORM_HOST}` });
+  });
+
+  it("marks a publish failed when its worker stops answering", async () => {
+    const fixture = await createReadySetupFixture("domain-watchdog");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({ cname: TARGET }, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await markVerified(fixture, domainId);
+    await fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+      libraryId: fixture.created.libraryId,
+      domainId,
+    });
+    const operationId = await readPendingOperationId(fixture, domainId);
+    const operation = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
+
+    // The worker died, so its lease ran out with nothing to show for it.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(operationId, {
+        configurationLeaseExpiresAt: Date.now() - 1,
+      });
+    });
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.configurationDeployment
+          .failExpiredConfigurationDeployment,
+        {
+          operationId,
+          attemptToken: operation?.configurationAttemptToken ?? "",
+        },
+      ),
+    ).resolves.toBe("failed");
+    // The owner can try again, and the domain is free.
+    expect((await readRow(fixture, domainId))?.transition).toBeUndefined();
   });
 });

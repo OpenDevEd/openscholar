@@ -415,6 +415,34 @@ export const renewDomainTransition = internalMutation({
   },
 });
 
+/**
+ * Proves this change still owns the domain, and puts its lease forward.
+ *
+ * Called immediately before anything outside OpenScholar is written, so a
+ * worker that was overtaken — or whose lease ran out while it was slow —
+ * stops here instead of writing to the certificate service or the proxy on
+ * behalf of a change that is no longer happening.
+ */
+export const holdDomainTransition = internalMutation({
+  args: { domainId: v.id("evidenceLibraryDomains"), token: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row) {
+      throw createError("NOT_FOUND", "That domain is no longer there");
+    }
+    requireTransition(row, args.token);
+    await ctx.db.patch(args.domainId, {
+      transition: {
+        ...row.transition!,
+        expiresAt: Date.now() + DOMAIN_CHECK_LEASE_MS,
+      },
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
 export const releaseDomainTransition = internalMutation({
   args: { domainId: v.id("evidenceLibraryDomains"), token: v.string() },
   returns: v.null(),
@@ -448,7 +476,13 @@ export function claimDomainTransitionRow(
   ) {
     throw createError("CONFLICT", "Another change to that domain is running");
   }
-  if (kind !== "remove" && row.removingAt !== undefined) {
+  // A domain on its way out may still be handed back the platform address;
+  // that is how an owner stops it being the library's address before it goes.
+  if (
+    kind !== "remove" &&
+    !(kind === "canonical" && row.role === "primary") &&
+    row.removingAt !== undefined
+  ) {
     throw createError("CONFLICT", "That domain is being removed");
   }
   const token = createTransitionToken();
@@ -575,7 +609,11 @@ export const writeDomainDeployment = internalMutation({
     domainId: v.id("evidenceLibraryDomains"),
     token: v.string(),
     operationId: v.id("evidenceLibraryConfigOperations"),
-    phase: v.union(v.literal("attach"), v.literal("detach")),
+    phase: v.union(
+      v.literal("attach"),
+      v.literal("detach"),
+      v.literal("canonical"),
+    ),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -602,14 +640,21 @@ export async function settleDomainDeploymentRow(
     domainId: Id<"evidenceLibraryDomains">;
     operationId: Id<"evidenceLibraryConfigOperations">;
     /** The change this deployment carried. It must still hold the domain. */
-    token?: string;
+    token: string;
     /** Whether the deployment succeeded, so the row records what happened. */
     outcome: "succeeded" | "failed";
   },
 ): Promise<void> {
   const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
   if (!row) return;
-  if (args.token && row.transition?.token !== args.token) {
+  // A deployment only settles the change it was carrying.
+  if (
+    row.pendingDeployment !== undefined &&
+    row.pendingDeployment.operationId !== args.operationId
+  ) {
+    return;
+  }
+  if (row.transition?.token !== args.token) {
     // Something else took the domain while this deployment ran. Saying
     // nothing would leave the row claiming a change that never landed.
     throw createError(
@@ -842,10 +887,12 @@ export const listWorkingDomains = internalQuery({
             host: row.host,
             checkedAt: row.checkedAt ?? 0,
             generation: row.generation ?? 0,
-            // Something is already changing this domain, so the sweep leaves
-            // it alone rather than racing it.
+            // Something is already changing this domain, so the sweep
+            // leaves it alone. A lease whose worker died has expired, and
+            // the sweep may look at that domain again.
             busy:
-              row.transition !== undefined ||
+              (row.transition !== undefined &&
+                row.transition.expiresAt > Date.now()) ||
               row.pendingDeployment !== undefined ||
               row.removingAt !== undefined,
             liveRevisionKey: revision?.revisionKey ?? null,
@@ -880,7 +927,7 @@ export const writeSweptDomain = internalMutation({
     // out of date and must not overwrite the newer one.
     if (
       (row.generation ?? 0) !== args.expectedGeneration ||
-      row.transition !== undefined ||
+      (row.transition !== undefined && row.transition.expiresAt > Date.now()) ||
       row.pendingDeployment !== undefined ||
       row.removingAt !== undefined
     ) {

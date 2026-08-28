@@ -395,6 +395,7 @@ function Workspace({
               <OperationBanner
                 operation={operation}
                 running={operationRunning}
+                libraryId={libraryId}
                 onJump={jumpTo}
               />
             ) : null}
@@ -540,13 +541,18 @@ function Workspace({
 function OperationBanner({
   operation,
   running,
+  libraryId,
   onJump,
 }: {
   operation: NonNullable<Operation>;
   running: boolean;
+  libraryId: Id<"evidenceLibraries">;
   onJump: (key: PageSectionKey) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
+  const retry = useMutation(
+    api.evidenceLibraries.configurationDeployment.retryConfigurationDeployment,
+  );
   const issues = operation.issues ?? [];
   if (running) {
     return (
@@ -577,6 +583,21 @@ function OperationBanner({
       data-operation-issues
     >
       {operation.error ? <p>{operation.error.message}</p> : null}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-3"
+        onClick={() => {
+          retry({ libraryId, operationId: operation._id })
+            .then(() => toast.success(t("retryStarted")))
+            .catch((error) =>
+              toast.error(errorMessage(error, t("retryError"))),
+            );
+        }}
+      >
+        {t("retry")}
+      </Button>
       {issues.length > 0 ? (
         <ul className="mt-1 space-y-1">
           {issues.map((issue) => {

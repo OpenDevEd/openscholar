@@ -5,6 +5,16 @@ import { Copy, Link2, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { memo, useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -89,6 +99,13 @@ export const DomainSection = memo(function DomainSection({
   const setPrimary = useMutation(api.evidenceLibraries.versions.setDomainPrimary);
   const [custom, setCustom] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  // Switching the library's address signs everyone out, so it is confirmed
+  // first — in both directions.
+  const [confirming, setConfirming] = useState<{
+    domainId: Id<"evidenceLibraryDomains">;
+    host: string;
+    primary: boolean;
+  } | null>(null);
 
   const domains = data?.domains ?? [];
   const canAdd = Boolean(data?.platformReady) && domains.length < 5;
@@ -328,9 +345,14 @@ export const DomainSection = memo(function DomainSection({
               label={t("redirectLabel")}
               hint={t("redirectHint")}
               checked={domain.role === "primary"}
-              // A domain on its way out cannot become the library's address.
+              // Turning it on needs a working domain and one that is not on
+              // its way out. Turning the current address off is always
+              // allowed: that is how an owner takes back the platform
+              // address when a domain stops working.
               disabled={
-                busy !== null || domain.state !== "active" || domain.removing
+                busy !== null ||
+                (domain.role !== "primary" &&
+                  (domain.state !== "active" || domain.removing))
               }
               disabledReason={
                 domain.removing
@@ -340,18 +362,59 @@ export const DomainSection = memo(function DomainSection({
                     : t("redirectDisabled")
               }
               onChange={(checked) =>
-                void run(domain.domainId, () =>
-                  setPrimary({
-                    libraryId,
-                    domainId: domain.domainId,
-                    primary: checked,
-                  }),
-                )
+                setConfirming({
+                  domainId: domain.domainId,
+                  host: domain.host,
+                  primary: checked,
+                })
               }
             />
           </FieldGroup>
         );
       })}
+
+      <AlertDialog
+        open={confirming !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirming(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirming?.primary
+                ? t("confirmOnTitle")
+                : t("confirmOffTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirming?.primary
+                ? t("confirmOnBody", { host: confirming?.host ?? "" })
+                : t("confirmOffBody", {
+                    address: data?.platformAddress ?? "",
+                  })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("confirmCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const change = confirming;
+                setConfirming(null);
+                if (!change) return;
+                void run(change.domainId, () =>
+                  setPrimary({
+                    libraryId,
+                    domainId: change.domainId,
+                    primary: change.primary,
+                  }),
+                );
+              }}
+            >
+              {t("confirmAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SectionCard>
   );
 });

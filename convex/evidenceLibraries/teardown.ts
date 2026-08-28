@@ -201,6 +201,87 @@ export const getDevelopmentTeardownStatus = query({
   },
 });
 
+/**
+ * Starts a stopped deletion again. The owner has already confirmed the name
+ * once, so this asks only for the library.
+ */
+export const restartDevelopmentTeardown = mutation({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.object({ status: v.literal("queued") }),
+  handler: async (ctx, args) => {
+    requireDevelopmentTeardownEnabled();
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const operation = await ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_createdAt", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .order("desc")
+      .first();
+    if (operation?.kind !== "teardown" || operation.status !== "failed") {
+      throw createError("CONFLICT", "That library is not waiting to be deleted");
+    }
+    await ctx.db.patch(operation._id, {
+      status: "queued",
+      error: undefined,
+      attemptCount: 0,
+      teardownLeaseExpiresAt: undefined,
+      teardownAttemptToken: undefined,
+      completedAt: undefined,
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+      { libraryId: args.libraryId, operationId: operation._id },
+    );
+    return { status: "queued" as const };
+  },
+});
+
+/** How many times a teardown waits for something it needs before giving up. */
+const MAX_TEARDOWN_RETRIES = 5;
+
+/**
+ * Hands the teardown back and books another attempt, up to a fixed number.
+ * Used when something the teardown needs is not there yet.
+ */
+export const retryDevelopmentTeardown = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+  },
+  returns: v.object({
+    status: v.union(v.literal("retrying"), v.literal("given-up")),
+  }),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(
+      "evidenceLibraryConfigOperations",
+      args.operationId,
+    );
+    if (!operation || operation.kind !== "teardown") {
+      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+    }
+    requireTeardownAttempt(operation, args.attemptToken);
+    if (operation.attemptCount >= MAX_TEARDOWN_RETRIES) {
+      return { status: "given-up" as const };
+    }
+    await ctx.db.patch(operation._id, {
+      status: "queued",
+      teardownLeaseExpiresAt: undefined,
+      teardownAttemptToken: undefined,
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(
+      60_000,
+      internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+      { libraryId: args.libraryId, operationId: args.operationId },
+    );
+    return { status: "retrying" as const };
+  },
+});
+
 /** True when a teardown is still running but nobody holds it any more. */
 export const isDevelopmentTeardownStale = internalQuery({
   args: {

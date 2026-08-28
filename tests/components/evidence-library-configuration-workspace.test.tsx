@@ -74,6 +74,9 @@ vi.mock("@/convex/_generated/api", () => ({
       uploadActions: { upload: "upload", remove: "remove" },
       updates: { check: "check", listAddressNotices: "listAddressNotices" },
       addressActions: { moveLibraryAddress: "moveLibraryAddress" },
+      configurationDeployment: {
+        retryConfigurationDeployment: "retryConfigurationDeployment",
+      },
       domains: { listDomains: "listDomains" },
       domainActions: {
         addDomain: "addDomain",

@@ -98,6 +98,7 @@ const libraryOverviewValidator = v.object({
   setupStage: v.union(setupStageValidator, v.null()),
   /** The teardown stage while the library is being deleted. */
   teardownStage: v.union(teardownStageValidator, v.null()),
+  teardownError: v.union(v.string(), v.null()),
   lastActivatedAt: v.union(v.number(), v.null()),
   accentColor: v.union(v.string(), v.null()),
   /** The favicon the owner uploaded; null means the pages show the OpenScholar icon. */
@@ -156,6 +157,7 @@ async function readLibraryOverview(
     ]);
   const status = libraryOverviewStatus(library, setupOperation);
   let teardownStage: TeardownStage | null = null;
+  let teardownError: string | null = null;
   if (status === "deleting") {
     const teardown = await ctx.db
       .query("evidenceLibraryConfigOperations")
@@ -167,6 +169,11 @@ async function readLibraryOverview(
     teardownStage =
       teardown?.kind === "teardown" && isTeardownStage(teardown.stage)
         ? teardown.stage
+        : null;
+    // A deletion that stopped shows why, instead of a bar that never moves.
+    teardownError =
+      teardown?.kind === "teardown" && teardown.status === "failed"
+        ? (teardown.error?.message ?? null)
         : null;
   }
   const themeColors = (draftTheme?.payload as { colors?: { accent?: unknown } } | undefined)
@@ -184,6 +191,7 @@ async function readLibraryOverview(
         ? setupOperation.stage
         : null,
     teardownStage,
+    teardownError,
     lastActivatedAt: activeDeployment?.receipt?.activatedAt ?? null,
     accentColor:
       typeof themeColors?.accent === "string" ? themeColors.accent : null,
