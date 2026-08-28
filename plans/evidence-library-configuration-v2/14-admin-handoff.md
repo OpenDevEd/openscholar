@@ -88,6 +88,14 @@ OpenScholar (`dev` b540cc5e):
    code exchange redirects to `loginPageUrl?error=invalid_code&return=…`
    instead of `/admin/access-error`. `AdminAccess.tsx` and the
    `access-error` page are deleted. Protected API routes keep their 401s.
+
+   The redirect is decided in `src/proxy.ts`, not in the page. The runtime
+   runs with `cacheComponents: true`, so a page that calls `redirect()`
+   answers HTTP 200 and asks the browser to move on afterwards — the
+   acceptance check on 2026-08-28 saw exactly that. The proxy reads the same
+   signed cookie (Proxy runs in the Node.js runtime) and answers 307 before
+   anything renders. The page keeps its own check for the one case the proxy
+   cannot see: a valid session whose role lacks the permission.
 2. **`return` is validated on the runtime.** A helper in
    `src/lib/runtime-routing.ts` accepts only a path (no scheme, no host,
    no `//`), under `/admin` or `/<locale>/admin`, and falls back to
@@ -138,7 +146,7 @@ OpenScholar (`dev` b540cc5e):
 
 | Lane | Repo | Branch | Owns |
 |---|---|---|---|
-| R2 · Runtime | new-el | `codex/admin-handoff` | `src/app/[locale]/admin/**`, `src/app/api/admin/session/**`, `src/components/admin/AdminAccess.tsx` (delete), `src/lib/admin/access.ts`, `src/lib/runtime-routing.ts`, their tests, `tests/e2e/admin*.ts`, `tools/runRuntimeAcceptance.ts` (admin steps only), `docs/evidence-library-operations.md` |
+| R2 · Runtime | new-el | `codex/admin-handoff` | `src/proxy.ts` (admin gate only), `src/app/[locale]/admin/**`, `src/app/api/admin/session/**`, `src/components/admin/AdminAccess.tsx` (delete), `src/lib/admin/access.ts`, `src/lib/runtime-routing.ts`, their tests, `tests/e2e/admin*.ts`, `tools/runRuntimeAcceptance.ts` (admin steps only), `docs/evidence-library-operations.md` |
 | O · OpenScholar | openalex-count | `codex/admin-handoff` | `app/evidence-libraries/[libraryId]/admin/**`, `components/evidence-libraries/admin-*.tsx`, `lib/evidence-libraries/open-admin-launch.ts` (delete), `convex/evidenceLibraries/adminHandoff*.ts` (new), `adminLoginCodes.ts`, `adminLoginCodeActions.ts`, `queries.ts` (admin launch only), `readinessClient.ts` (the `/admin` page check only), their tests, `messages/*.json` keys under `evidenceLibraries.admin`, `e2e/` (new spec) |
 
 The two lanes share only the URL contract in Decisions 1–2. They can run
@@ -151,20 +159,23 @@ in parallel; the end-to-end proof waits for both to merge.
 1. `tests/unit/runtime-routing.test.ts`: red → green for the return-path
    helper (accepts `/admin`, `/admin/items?x=1`, `/en-GB/admin/...`;
    rejects `https://…`, `//evil`, `/lib`, empty → `/admin`).
-2. `tests/unit/admin-auth-routes.test.ts`: signed-out `/admin` page →
+2. `tests/unit/runtime-routing.test.ts`: `isAdminPagePath` accepts `/admin`,
+   `/admin/items` and `/<locale>/admin`, and refuses `/lib`, `/adminish` and
+   `/api/admin/items`; the proxy reuses it.
+3. `tests/unit/admin-auth-routes.test.ts`: signed-out `/admin` page →
    307 to `loginPageUrl` with `return`; failed exchange → 303 to
    `loginPageUrl` with `error=invalid_code`; successful exchange → cookie +
    303 to the validated `return`; malformed code never contacts OpenScholar
    (unchanged).
-3. `tests/e2e/admin-login.ts`: `openAdmin` stops branching on the card —
+4. `tests/e2e/admin-login.ts`: `openAdmin` stops branching on the card —
    it issues a code and hits `/api/admin/session?code=…&return=…`, then
    asserts the destination. `tests/e2e/admin.spec.ts:618-694`: logout lands
    on OpenScholar's URL (assert the redirect target, `redirect: "manual"`
    in a request or the browser's final URL when the fake OpenScholar
    answers); replay → OpenScholar URL with `error=invalid_code`.
-4. `tools/runRuntimeAcceptance.ts:432`: signed-out `/admin` must answer
+5. `tools/runRuntimeAcceptance.ts:432`: signed-out `/admin` must answer
    3xx with `Location` starting with `loginPageUrl` (`redirect: "manual"`).
-5. `npm run check:changed`, then `npm run test:acceptance` and
+6. `npm run check:changed`, then `npm run test:acceptance` and
    `npm run test:acceptance:cleanup`. Tag your acceptance images with the
    five `EVIDENCE_LIBRARY_ACCEPTANCE_*_IMAGE` variables so a parallel run
    on this machine cannot collide.
@@ -264,7 +275,7 @@ in parallel; the end-to-end proof waits for both to merge.
 
 ## Files that change
 
-Lane R2: `src/app/[locale]/admin/page.tsx`,
+Lane R2: `src/proxy.ts`, `src/app/[locale]/admin/page.tsx`,
 `src/app/[locale]/admin/access-error/page.tsx` (delete),
 `src/components/admin/AdminAccess.tsx` (delete),
 `src/app/api/admin/session/route.ts`, `src/lib/runtime-routing.ts`,
