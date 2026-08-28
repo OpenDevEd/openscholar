@@ -646,7 +646,7 @@ export const setDomainPrimary = mutation({
     // The same lease every other change to this domain takes, so becoming
     // the library's address cannot race a check or a removal. It is held
     // until the deployment carrying it settles the row.
-    const claimed = claimDomainTransitionRow(ctx, row, "canonical");
+    const claimed = await claimDomainTransitionRow(ctx, row, "canonical");
     const address = args.primary
       ? `https://${row.host}`
       : running.binding.targetBaseUrl;

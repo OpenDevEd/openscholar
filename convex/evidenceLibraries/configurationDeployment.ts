@@ -1307,7 +1307,7 @@ export const retryConfigurationDeployment = mutation({
       const fresh = await ctx.db.get("evidenceLibraryDomains", change.domainId);
       // A detach is a removal: its domain has `removingAt` set, which only
       // a removal is allowed to take.
-      const claimed = claimDomainTransitionRow(
+      const claimed = await claimDomainTransitionRow(
         ctx,
         fresh!,
         change.reason === "detach"

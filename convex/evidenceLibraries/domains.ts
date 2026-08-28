@@ -495,16 +495,16 @@ export const releaseDomainTransition = internalMutation({
  * and queued in one transaction. Returns the token to record on the
  * operation and the write that takes it.
  */
-export function claimDomainTransitionRow(
+export async function claimDomainTransitionRow(
   ctx: MutationCtx,
   row: Doc<"evidenceLibraryDomains">,
   kind: "check" | "attach" | "canonical" | "remove",
-  { libraryState }: { libraryState?: string } = {},
-): { token: string; generation: number; write: () => Promise<void> } {
+): Promise<{ token: string; generation: number; write: () => Promise<void> }> {
   const now = Date.now();
   // A library on its way out takes no new work: a teardown is about to
   // delete the very things a new change would be writing.
-  if (libraryState === "disabled") {
+  const library = await ctx.db.get("evidenceLibraries", row.libraryId);
+  if (!library || library.state === "disabled") {
     throw createError("CONFLICT", "That library is being deleted");
   }
   if (
@@ -779,7 +779,7 @@ export const claimDomainCleanup = internalMutation({
     // A domain that has moved on since this was booked must not lose a
     // hostname it now needs.
     if (!row || row.removingAt === undefined) return null;
-    const claimed = claimDomainTransitionRow(ctx, row, "remove");
+    const claimed = await claimDomainTransitionRow(ctx, row, "remove");
     await claimed.write();
     return {
       host: row.host,

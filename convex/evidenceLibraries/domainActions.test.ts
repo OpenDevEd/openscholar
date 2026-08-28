@@ -2442,4 +2442,28 @@ describe("custom domains", () => {
       "someone-else",
     );
   });
+  it("takes no new domain work once a library is on its way out", async () => {
+    const fixture = await createReadySetupFixture("domain-disabled-library");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.libraryId, { state: "disabled" });
+      await ctx.db.patch(added.domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    // A teardown is about to delete the very things a new change would be
+    // writing, so nothing new may start.
+    await expect(
+      fixture.admin.mutation(api.evidenceLibraries.versions.setDomainPrimary, {
+        libraryId: fixture.created.libraryId,
+        domainId: added.domainId,
+        primary: true,
+      }),
+    ).rejects.toThrow();
+  });
 });
