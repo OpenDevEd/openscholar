@@ -43,6 +43,7 @@ type DomainRow = {
   attached: boolean;
   removing: boolean;
   deploymentPending: boolean;
+  isApex: boolean;
   recordName: string;
   recordValue: string;
 };
@@ -63,11 +64,6 @@ function dnsStatusOf(row: DomainRow, checking: boolean): DnsStatus {
   if (row.state === "failed") return "failed";
   if (row.state === "verified" || row.state === "active") return "verified";
   return "pending";
-}
-
-/** A bare domain has no room for the record every domain host needs. */
-function isApex(host: string): boolean {
-  return host.split(".").length === 2;
 }
 
 /**
@@ -203,7 +199,7 @@ export const DomainSection = memo(function DomainSection({
         </Field>
       ) : null}
 
-      {domains.map((domain) => {
+      {domains.map((domain: DomainRow) => {
         const checking = busy === domain.domainId;
         const status = dnsStatusOf(domain, checking);
         const records = [
@@ -239,7 +235,7 @@ export const DomainSection = memo(function DomainSection({
               )}
             </Field>
 
-            {isApex(domain.host) ? (
+            {domain.isApex ? (
               <Panel tone="muted" role="note">
                 <p className="text-sm">{t("apex")}</p>
               </Panel>

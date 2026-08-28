@@ -15,6 +15,7 @@ type DomainRow = {
   attached: boolean;
   removing: boolean;
   deploymentPending: boolean;
+  isApex: boolean;
   recordName: string;
   recordValue: string;
 };
@@ -87,6 +88,7 @@ function row(overrides: Partial<DomainRow> = {}): DomainRow {
     attached: false,
     removing: false,
     deploymentPending: false,
+    isApex: false,
     recordName: "_openscholar.evidence.example.org",
     recordValue: "os-verify=7f3a9c1e5b2d4a8f",
     ...overrides,
@@ -250,14 +252,16 @@ describe("DomainSection", () => {
   });
 
   it("explains that a bare domain cannot carry the record", () => {
-    mocks.data.domains = [row({ host: "example.org" })];
+    // Whether a name is a bare domain is read from its records on the
+    // server; the section renders what it was told.
+    mocks.data.domains = [row({ host: "example.co.uk", isApex: true })];
     const { unmount } = render(<DomainSection libraryId={libraryId} />);
     expect(
       screen.getByText("evidenceLibraryConfiguration.domain.apex"),
     ).toBeInTheDocument();
     unmount();
 
-    mocks.data.domains = [row({ host: "library.example.org" })];
+    mocks.data.domains = [row({ host: "library.example.org", isApex: false })];
     render(<DomainSection libraryId={libraryId} />);
     expect(
       screen.queryByText("evidenceLibraryConfiguration.domain.apex"),

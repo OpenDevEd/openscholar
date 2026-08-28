@@ -9,7 +9,8 @@ import { v } from "convex/values";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
-import { readAttachedDomainOrigins } from "./domains";
+import { readAttachedDomainOrigins, settleDomainDeploymentRow } from "./domains";
+import { applyEvidenceLibraryCanonicalAddress } from "./versions";
 import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
@@ -1040,22 +1041,38 @@ export const completeConfigurationDeployment = internalMutation({
       updatedByClerkUserId: deployment.operation.requestedByClerkUserId,
       updatedAt: now,
     });
-    // A custom domain change finishes here, and only here: the certificate
-    // and the row of a removed domain go once the running site no longer
-    // serves it, and a new library address is written down once the site
-    // answers on it.
+    // A custom domain change finishes here, and only here.
     const domainChange = deployment.operation.domainChange;
     if (domainChange) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.evidenceLibraries.domainActions.completeDomainChange,
-        {
+      // The library's new address is written in this same transaction as the
+      // readiness-checked operation, so nothing that runs later can overwrite
+      // a newer state with a stale one.
+      if (domainChange.reason === "canonical" && domainChange.address) {
+        await applyEvidenceLibraryCanonicalAddress(ctx, {
           libraryId: args.libraryId,
           domainId: domainChange.domainId,
-          reason: domainChange.reason,
-          ...(domainChange.address ? { address: domainChange.address } : {}),
-        },
-      );
+          address: domainChange.address,
+        });
+      }
+      // The proxy change this deployment carried has now reached the site.
+      await settleDomainDeploymentRow(ctx, {
+        domainId: domainChange.domainId,
+        operationId: deployment.operation._id,
+      });
+      // Deleting the certificate and the row talks to another service, so it
+      // is the one part that has to run outside this transaction.
+      if (domainChange.reason === "detach") {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.evidenceLibraries.domainActions.completeDomainChange,
+          {
+            libraryId: args.libraryId,
+            domainId: domainChange.domainId,
+            operationId: deployment.operation._id,
+            reason: "detach",
+          },
+        );
+      }
     }
     return { status: "succeeded" as const };
   },

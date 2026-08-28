@@ -5,6 +5,7 @@ const emptyAnswer = {
   addresses: [] as string[],
   texts: [] as string[],
   caaIssuers: [] as string[],
+  hasSoa: false,
 };
 
 import {
@@ -18,6 +19,7 @@ import {
   parseDohAnswer,
   readAgreedAnswer,
   readAgreedIssuers,
+  readsAsApex,
 } from "./dnsClient";
 
 function dohResponse(body: unknown, init?: ResponseInit): Response {
@@ -139,7 +141,7 @@ describe("classifyTarget", () => {
   it("passes a CNAME chain that reaches the target", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: ["cname.opendev.space"], addresses: ["188.114.96.6"], texts: [], caaIssuers: [] },
+        { exists: true, cnames: ["cname.opendev.space"], addresses: ["188.114.96.6"], texts: [], caaIssuers: [], hasSoa: false },
         { target, targetAddresses },
       ),
     ).toBe("pointing");
@@ -148,13 +150,7 @@ describe("classifyTarget", () => {
   it("passes a flattened apex that answers with the target's whole address set", () => {
     expect(
       classifyTarget(
-        {
-          exists: true,
-          cnames: [],
-          addresses: ["188.114.97.6", "188.114.96.6"],
-          texts: [],
-          caaIssuers: [],
-        },
+        { ...emptyAnswer, addresses: ["188.114.97.6", "188.114.96.6"] },
         { target, targetAddresses },
       ),
     ).toBe("pointing");
@@ -163,7 +159,7 @@ describe("classifyTarget", () => {
   it("refuses an apex that shares only one address with the target", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: [], addresses: ["188.114.97.6"], texts: [], caaIssuers: [] },
+        { exists: true, cnames: [], addresses: ["188.114.97.6"], texts: [], caaIssuers: [], hasSoa: false },
         { target, targetAddresses },
       ),
     ).toBe("wrong-target");
@@ -172,7 +168,7 @@ describe("classifyTarget", () => {
   it("tells a name that does not exist apart from one with no address", () => {
     expect(
       classifyTarget(
-        { exists: false, cnames: [], addresses: [], texts: [], caaIssuers: [] },
+        { exists: false, cnames: [], addresses: [], texts: [], caaIssuers: [], hasSoa: false },
         { target, targetAddresses },
       ),
     ).toBe("no-name");
@@ -181,7 +177,7 @@ describe("classifyTarget", () => {
   it("reports a name with no address at all", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: [], addresses: [], texts: [], caaIssuers: [] },
+        { exists: true, cnames: [], addresses: [], texts: [], caaIssuers: [], hasSoa: false },
         { target, targetAddresses },
       ),
     ).toBe("no-records");
@@ -190,7 +186,7 @@ describe("classifyTarget", () => {
   it("reports a name pointing somewhere else", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: ["cname.other.example"], addresses: ["203.0.113.9"], texts: [], caaIssuers: [] },
+        { exists: true, cnames: ["cname.other.example"], addresses: ["203.0.113.9"], texts: [], caaIssuers: [], hasSoa: false },
         { target, targetAddresses },
       ),
     ).toBe("wrong-target");
@@ -204,6 +200,7 @@ describe("classifyToken", () => {
     addresses: [],
     texts,
     caaIssuers: [],
+    hasSoa: false,
   });
 
   it("matches the exact token", () => {
@@ -315,6 +312,26 @@ describe("lookupHost", () => {
   });
 });
 
+describe("readsAsApex", () => {
+  it("reads a name that is a zone of its own as a bare domain", () => {
+    // `example.co.uk` is a bare domain and `library.example.org` is not; no
+    // count of labels can tell them apart, but the record can.
+    expect(
+      readsAsApex([
+        { ...emptyAnswer, hasSoa: true },
+        { ...emptyAnswer, hasSoa: true },
+      ]),
+    ).toBe(true);
+    expect(readsAsApex([emptyAnswer, emptyAnswer])).toBe(false);
+  });
+
+  it("refuses to say when the resolvers disagree", () => {
+    expect(() =>
+      readsAsApex([{ ...emptyAnswer, hasSoa: true }, emptyAnswer]),
+    ).toThrow(DnsLookupError);
+  });
+});
+
 describe("readAgreedIssuers", () => {
   it("returns the issuers themselves when both resolvers read the same set", () => {
     expect(
@@ -338,7 +355,7 @@ describe("readAgreedIssuers", () => {
     expect(() =>
       readAgreedIssuers([
         { ...emptyAnswer, caaIssuers: ["letsencrypt.org"] },
-        { ...emptyAnswer, caaIssuers: [] },
+        { ...emptyAnswer, caaIssuers: [], hasSoa: false },
       ]),
     ).toThrow(DnsLookupError);
   });

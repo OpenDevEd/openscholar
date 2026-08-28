@@ -207,16 +207,39 @@ export const evidenceLibraryDomainFields = {
   attachedAt: v.optional(v.number()),
   certificateState: v.optional(evidenceLibraryCertificateStateValidator),
   certificateHostnameId: v.optional(v.string()),
-  // Set while a check is running, so two presses cannot run at once. It is
-  // renewed as the check works, so a slow check never loses its place and an
-  // abandoned one expires.
-  checkLeaseUntil: v.optional(v.number()),
-  // The proxy's domain list holds the host, but no deployment has carried
-  // that change to the running site yet. Kept apart from `attachedAt` so a
-  // crash between writing the proxy and queuing the deployment is visible.
-  deploymentPending: v.optional(v.boolean()),
-  // How many times the work after a domain's deployment has been tried.
+  // One lease covers every change to this domain: checking, attaching,
+  // becoming the library's address, and being removed. Whoever holds it is
+  // the only one who may write, and every write carries the same token, so a
+  // slow step cannot land after another has taken over.
+  transition: v.optional(
+    v.object({
+      kind: v.union(
+        v.literal("check"),
+        v.literal("attach"),
+        v.literal("canonical"),
+        v.literal("remove"),
+      ),
+      token: v.string(),
+      expiresAt: v.number(),
+    }),
+  ),
+  // The deployment that has to carry the current proxy change to the running
+  // site. Cleared only when that deployment succeeds, so a failed one is
+  // still owed and a retry redeploys rather than probing.
+  pendingDeployment: v.optional(
+    v.object({
+      operationId: v.id("evidenceLibraryConfigOperations"),
+      phase: v.union(v.literal("attach"), v.literal("detach")),
+    }),
+  ),
+  // Attempts at the work after the current deployment. Cleared with it, so a
+  // new deployment always starts from zero.
   cleanupAttempts: v.optional(v.number()),
+  // Set the moment the proxy was written but before the deployment exists.
+  deploymentPending: v.optional(v.boolean()),
+  // Whether the name is a zone of its own, read from its records rather
+  // than guessed from how many parts it has.
+  isApex: v.optional(v.boolean()),
   // Set once the owner asked for the domain to go. The row survives until
   // the proxy has been redeployed without it and the certificate is gone.
   removingAt: v.optional(v.number()),

@@ -16,7 +16,14 @@ const RESOLVERS = [
   "https://dns.google/resolve",
 ] as const;
 
-const RECORD_TYPES = { A: 1, AAAA: 28, CNAME: 5, TXT: 16, CAA: 257 } as const;
+const RECORD_TYPES = {
+  A: 1,
+  AAAA: 28,
+  CNAME: 5,
+  SOA: 6,
+  TXT: 16,
+  CAA: 257,
+} as const;
 
 export type DnsRecordType = keyof typeof RECORD_TYPES;
 
@@ -53,6 +60,8 @@ export type DnsAnswer = {
   texts: string[];
   /** Lower-cased `issue` values from CAA records. */
   caaIssuers: string[];
+  /** The name carries a start-of-authority record, so it is a zone of its own. */
+  hasSoa: boolean;
 };
 
 /**
@@ -103,7 +112,14 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
   // 3 is NXDOMAIN. Any other non-zero status is a resolver problem, not an
   // answer, so it never decides anything.
   if (payload.Status === 3) {
-    return { exists: false, cnames: [], addresses: [], texts: [], caaIssuers: [] };
+    return {
+      exists: false,
+      cnames: [],
+      addresses: [],
+      texts: [],
+      caaIssuers: [],
+      hasSoa: false,
+    };
   }
   if (payload.Status !== 0) {
     throw new DnsLookupError("The domain could not be checked");
@@ -118,6 +134,7 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
     addresses: [],
     texts: [],
     caaIssuers: [],
+    hasSoa: false,
   };
   if (!records) return answer;
   if (records.length > MAX_ANSWER_RECORDS) {
@@ -140,6 +157,8 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
       answer.addresses.push(data.trim().toLowerCase());
     } else if (record.type === RECORD_TYPES.TXT) {
       answer.texts.push(readTxtValue(data));
+    } else if (record.type === RECORD_TYPES.SOA) {
+      answer.hasSoa = true;
     } else if (record.type === RECORD_TYPES.CAA) {
       // An empty value is kept: `issue ";"` means nobody may issue.
       const issuer = readCaaIssuer(data);
@@ -460,6 +479,16 @@ export function isReservedPlatformHost(
     const reserved = normaliseRecordName(suffix);
     return reserved !== "" && (host === reserved || host.endsWith(`.${reserved}`));
   });
+}
+
+/**
+ * True when the name is a zone of its own, which is what "a bare domain"
+ * means: a zone's own name carries its SOA record. Asking DNS is right where
+ * counting labels is not — `example.co.uk` is a bare domain and
+ * `library.example.org` is not, and no list of endings can say so.
+ */
+export function readsAsApex(answers: readonly DnsAnswer[]): boolean {
+  return readAgreedAnswer(answers, (answer) => answer.hasSoa);
 }
 
 /** Every name from the host up to its last two labels, closest first. */

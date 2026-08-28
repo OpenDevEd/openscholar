@@ -548,7 +548,9 @@ export const startDomainDeployment = internalMutation({
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
     const operation = await queueDomainChangeOperation(ctx, {
       libraryId: args.libraryId,
-      idempotencyKey: `domain:${args.reason}:${args.host}:${Date.now()}`,
+      // One key per transition, so a crash between queuing the deployment
+      // and writing its id down cannot create a second operation.
+      idempotencyKey: `domain:${args.reason}:${args.domainId}`,
       revisionId: running.activeRevisionId,
       domainChange: {
         host: args.host,
@@ -631,7 +633,9 @@ export const setDomainPrimary = mutation({
     }
     const operation = await queueDomainChangeOperation(ctx, {
       libraryId: args.libraryId,
-      idempotencyKey: `domain:canonical:${address}:${Date.now()}`,
+      idempotencyKey: `domain:canonical:${args.domainId}:${
+        args.primary ? "on" : "off"
+      }`,
       revisionId: running.activeRevisionId,
       domainChange: {
         host: row.host,
@@ -652,14 +656,15 @@ export const setDomainPrimary = mutation({
  * Writes down the library's new address, once the deployment carrying it is
  * live. `targetBaseUrl` never moves: the platform address keeps redirecting.
  */
-export const applyDomainCanonicalAddress = internalMutation({
+export async function applyEvidenceLibraryCanonicalAddress(
+  ctx: MutationCtx,
   args: {
-    libraryId: v.id("evidenceLibraries"),
-    domainId: v.id("evidenceLibraryDomains"),
-    address: v.string(),
+    libraryId: Id<"evidenceLibraries">;
+    domainId: Id<"evidenceLibraryDomains">;
+    address: string;
   },
-  returns: v.null(),
-  handler: async (ctx, args) => {
+): Promise<void> {
+  {
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     const binding = library?.runtimeBindingId
       ? await ctx.db.get(
@@ -667,7 +672,7 @@ export const applyDomainCanonicalAddress = internalMutation({
           library.runtimeBindingId,
         )
       : null;
-    if (!library || !binding || !library.activeRevisionId) return null;
+    if (!library || !binding || !library.activeRevisionId) return;
     const primary = args.address !== binding.targetBaseUrl;
     const draft = await ctx.db
       .query("evidenceLibraryConfigDrafts")
@@ -711,9 +716,8 @@ export const applyDomainCanonicalAddress = internalMutation({
         await ctx.db.patch(entry._id, { role, updatedAt: Date.now() });
       }
     }
-    return null;
-  },
-});
+  }
+}
 
 export const listVersions = query({
   args: { libraryId: v.id("evidenceLibraries") },

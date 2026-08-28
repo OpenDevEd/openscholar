@@ -44,6 +44,8 @@ export type CustomHostname = {
   certificate: CertificateState;
   hostnameStatus: string;
   sslStatus: string;
+  /** Where Cloudflare sends the request. Must be the library's own address. */
+  originHost: string | null;
   validationErrors: string[];
 };
 
@@ -114,6 +116,10 @@ function parseCustomHostname(payload: unknown): CustomHostname {
     certificate: classifyCustomHostnameStatus(hostnameStatus, sslStatus),
     hostnameStatus,
     sslStatus,
+    originHost:
+      typeof payload.custom_origin_server === "string"
+        ? payload.custom_origin_server
+        : null,
     validationErrors: errors,
   };
 }
@@ -127,7 +133,7 @@ type Transport = {
 async function request(
   transport: Transport,
   input: {
-    method: "GET" | "POST" | "DELETE";
+    method: "GET" | "POST" | "PATCH" | "DELETE";
     path: string;
     body?: Record<string, unknown>;
     /** A missing hostname is a normal answer for a delete. */
@@ -240,6 +246,20 @@ export function createCloudflareSaasClient(input: {
         (entry) => isRecord(entry) && entry.hostname === host,
       );
       return match ? parseCustomHostname(match) : null;
+    },
+
+    /** Points an existing hostname at the right library. */
+    async setCustomHostnameOrigin(input: {
+      hostnameId: string;
+      originHost: string;
+    }): Promise<CustomHostname> {
+      return parseCustomHostname(
+        await request(transport, {
+          method: "PATCH",
+          path: `${base}/${encodeURIComponent(input.hostnameId)}`,
+          body: { custom_origin_server: input.originHost },
+        }),
+      );
     },
 
     async deleteCustomHostname(hostnameId: string): Promise<void> {

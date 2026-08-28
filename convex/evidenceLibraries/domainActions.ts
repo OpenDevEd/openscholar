@@ -19,6 +19,7 @@ import {
   createPlatformCloudflareSaasClient,
   type CertificateState,
   type CloudflareSaasClient,
+  type CustomHostname,
 } from "./cloudflareSaasClient";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
@@ -32,6 +33,7 @@ import {
   normaliseDomainHost,
   readAgreedAnswer,
   readAgreedIssuers,
+  readsAsApex,
 } from "./dnsClient";
 import { DomainEgressRefused, DomainEgressUnavailable } from "./domainEgress";
 import { openPinnedDomainClient } from "./domainEgressNode";
@@ -211,11 +213,12 @@ async function readRecordGates(
   host: string,
   token: string,
   renewLease: () => Promise<void>,
-): Promise<DomainOutcome> {
+): Promise<DomainOutcome & { isApex: boolean }> {
   const target = readCustomDomainTarget();
-  const [targetAnswers, tokenAnswers] = await Promise.all([
+  const [targetAnswers, tokenAnswers, soaAnswers] = await Promise.all([
     lookupHost(fetch, host, "A"),
     lookupHost(fetch, verificationRecordName(host), "TXT"),
+    lookupHost(fetch, host, "SOA"),
   ]);
   const targetAddresses = await readTargetAddresses(target);
   const targetReading = readAgreedAnswer(targetAnswers, (answer) =>
@@ -236,11 +239,12 @@ async function readRecordGates(
     }
     caa = classifyCaaChain(chain);
   }
-  return readDomainRecords({
-    target: targetReading,
-    caa,
-    token: tokenReading,
-  });
+  return {
+    ...readDomainRecords({ target: targetReading, caa, token: tokenReading }),
+    // A bare domain cannot carry the record we ask for. Which names are bare
+    // is read from DNS, not counted from the parts of the name.
+    isApex: readsAsApex(soaAnswers),
+  };
 }
 
 /**
@@ -256,6 +260,7 @@ async function attachDomain(
   input: {
     libraryId: Id<"evidenceLibraries">;
     domainId: Id<"evidenceLibraryDomains">;
+    token: string;
     host: string;
     platformAddress: string;
     applicationUuid: string;
@@ -268,21 +273,34 @@ async function attachDomain(
 
   // Step one: the certificate service. Reading first means an action that
   // died after creating a hostname finds it again instead of orphaning it.
-  const hostname =
-    (await cloudflare.readCustomHostname(input.host)) ??
-    (await cloudflare.createCustomHostname({
+  const originHost = new URL(input.platformAddress).hostname;
+  const existing = await cloudflare.readCustomHostname(input.host);
+  let hostname: CustomHostname;
+  if (!existing) {
+    hostname = await cloudflare.createCustomHostname({
       host: input.host,
       // The library's own platform address answers the request, so the
       // runtime serves the certificate it already has and never asks for
       // one in the customer's name.
-      originHost: new URL(input.platformAddress).hostname,
-    }));
+      originHost,
+    });
+  } else if (existing.originHost !== originHost) {
+    // A hostname left over from another library, or from before this
+    // library moved, would send visitors to the wrong site.
+    hostname = await cloudflare.setCustomHostnameOrigin({
+      hostnameId: existing.hostnameId,
+      originHost,
+    });
+  } else {
+    hostname = existing;
+  }
   if (input.certificateHostnameId !== hostname.hostnameId) {
     await ctx.runMutation(
       internal.evidenceLibraries.domains.writeDomainAttachment,
       {
         libraryId: input.libraryId,
         domainId: input.domainId,
+        token: input.token,
         attached: false,
         deploymentPending: false,
         certificateHostnameId: hostname.hostnameId,
@@ -318,6 +336,7 @@ async function attachDomain(
     {
       libraryId: input.libraryId,
       domainId: input.domainId,
+      token: input.token,
       attached: true,
       deploymentPending: true,
       certificateHostnameId: hostname.hostnameId,
@@ -328,6 +347,7 @@ async function attachDomain(
   await queueDomainDeployment(ctx, {
     libraryId: input.libraryId,
     domainId: input.domainId,
+    token: input.token,
     host: input.host,
     reason: "attach",
   });
@@ -343,11 +363,12 @@ async function queueDomainDeployment(
   input: {
     libraryId: Id<"evidenceLibraries">;
     domainId: Id<"evidenceLibraryDomains">;
+    token: string;
     host: string;
     reason: "attach" | "detach";
   },
 ): Promise<void> {
-  await ctx.runMutation(
+  const started = await ctx.runMutation(
     internal.evidenceLibraries.versions.startDomainDeployment,
     {
       libraryId: input.libraryId,
@@ -356,9 +377,17 @@ async function queueDomainDeployment(
       reason: input.reason,
     },
   );
+  // The change stays owed until that deployment succeeds. Only the
+  // deployment's own completion clears it.
   await ctx.runMutation(
-    internal.evidenceLibraries.domains.clearDomainDeploymentPending,
-    { libraryId: input.libraryId, domainId: input.domainId },
+    internal.evidenceLibraries.domains.writeDomainDeployment,
+    {
+      libraryId: input.libraryId,
+      domainId: input.domainId,
+      token: input.token,
+      operationId: started.operationId,
+      phase: input.reason,
+    },
   );
 }
 
@@ -416,14 +445,20 @@ export const checkDomain = action({
   returns: checkedValidator,
   handler: async (ctx, args): Promise<CheckDomainResult> => {
     const claimed = await ctx.runMutation(
-      internal.evidenceLibraries.domains.claimDomainCheck,
-      { libraryId: args.libraryId, domainId: args.domainId },
+      internal.evidenceLibraries.domains.claimDomainTransition,
+      {
+        libraryId: args.libraryId,
+        domainId: args.domainId,
+        kind: "check",
+        spendBudget: true,
+      },
     );
     if (claimed.status === "busy") return { status: "busy" as const };
+    const token = claimed.token;
     const renewLease = async () => {
       await ctx.runMutation(
-        internal.evidenceLibraries.domains.renewDomainCheck,
-        { domainId: args.domainId },
+        internal.evidenceLibraries.domains.renewDomainTransition,
+        { domainId: args.domainId, token },
       );
     };
     try {
@@ -443,7 +478,10 @@ export const checkDomain = action({
       // removal that is already running.
       if (step === "blocked") return { status: "removing" as const };
 
-      let outcome: DomainOutcome & { certificateState?: CertificateState };
+      let outcome: DomainOutcome & {
+        certificateState?: CertificateState;
+        isApex?: boolean;
+      };
       try {
         if (step === "deploy") {
           // The proxy was changed but the deployment carrying it was never
@@ -454,6 +492,7 @@ export const checkDomain = action({
           await queueDomainDeployment(ctx, {
             libraryId: args.libraryId,
             domainId: args.domainId,
+            token,
             host: row.host,
             reason: row.attached ? "attach" : "detach",
           });
@@ -472,6 +511,7 @@ export const checkDomain = action({
             outcome = await attachDomain(ctx, {
               libraryId: args.libraryId,
               domainId: args.domainId,
+              token,
               host: row.host,
               platformAddress: context.platformAddress,
               applicationUuid: context.applicationUuid,
@@ -500,7 +540,9 @@ export const checkDomain = action({
         {
           libraryId: args.libraryId,
           domainId: args.domainId,
+          token,
           state: outcome.state,
+          ...(outcome.isApex === undefined ? {} : { isApex: outcome.isApex }),
           ...(failure ? { failure } : {}),
           ...(outcome.certificateState
             ? { certificateState: outcome.certificateState }
@@ -517,8 +559,8 @@ export const checkDomain = action({
       };
     } finally {
       await ctx.runMutation(
-        internal.evidenceLibraries.domains.releaseDomainCheck,
-        { domainId: args.domainId },
+        internal.evidenceLibraries.domains.releaseDomainTransition,
+        { domainId: args.domainId, token },
       );
     }
   },
@@ -539,71 +581,99 @@ export const removeDomain = action({
     domainId: v.id("evidenceLibraryDomains"),
   },
   returns: v.object({
-    status: v.union(v.literal("removed"), v.literal("removing")),
+    status: v.union(
+      v.literal("removed"),
+      v.literal("removing"),
+      v.literal("busy"),
+    ),
   }),
   handler: async (
     ctx,
     args,
-  ): Promise<{ status: "removed" | "removing" }> => {
-    // Nothing outside OpenScholar has been touched yet. A domain the library
-    // calls its own is refused here, before it can be taken out of the proxy.
-    const started = await ctx.runMutation(
-      internal.evidenceLibraries.domains.beginDomainRemoval,
-      { libraryId: args.libraryId, domainId: args.domainId },
+  ): Promise<{ status: "removed" | "removing" | "busy" }> => {
+    // The same lease every other change to this domain takes, so a removal
+    // never starts under a running check or attach.
+    const claimed = await ctx.runMutation(
+      internal.evidenceLibraries.domains.claimDomainTransition,
+      { libraryId: args.libraryId, domainId: args.domainId, kind: "remove" },
     );
-    if (started.status === "gone") return { status: "removed" as const };
+    if (claimed.status === "busy") return { status: "busy" as const };
+    const token = claimed.token;
+    let releaseLease = true;
+    try {
+      // Nothing outside OpenScholar has been touched yet. A domain the
+      // library calls its own is refused here, before it can be taken out of
+      // the proxy.
+      const started = await ctx.runMutation(
+        internal.evidenceLibraries.domains.beginDomainRemoval,
+        { libraryId: args.libraryId, domainId: args.domainId, token },
+      );
+      if (started.status === "gone") return { status: "removed" as const };
 
-    const context = await ctx.runQuery(
-      internal.evidenceLibraries.domains.readDomainContext,
-      { libraryId: args.libraryId, domainId: args.domainId },
-    );
-    const row = context.domain;
-    if (!row) return { status: "removed" as const };
+      const context = await ctx.runQuery(
+        internal.evidenceLibraries.domains.readDomainContext,
+        { libraryId: args.libraryId, domainId: args.domainId },
+      );
+      const row = context.domain;
+      if (!row) return { status: "removed" as const };
 
-    if (row.attached && context.applicationUuid) {
-      await coolify().setCustomDomains({
-        applicationUuid: context.applicationUuid,
-        libraryId: args.libraryId,
-        publicDomain: context.platformAddress,
-        currentCustomDomains: context.attachedHosts,
-        customDomains: context.attachedHosts.filter(
-          (entry: string) => entry !== `https://${row.host}`,
-        ),
-      });
-      // The proxy no longer holds the host and a deployment is owed. Written
-      // together, so a crash here cannot look like a finished removal.
-      await ctx.runMutation(
-        internal.evidenceLibraries.domains.writeDomainAttachment,
-        {
+      if (row.attached && context.applicationUuid) {
+        await coolify().setCustomDomains({
+          applicationUuid: context.applicationUuid,
+          libraryId: args.libraryId,
+          publicDomain: context.platformAddress,
+          currentCustomDomains: context.attachedHosts,
+          customDomains: context.attachedHosts.filter(
+            (entry: string) => entry !== `https://${row.host}`,
+          ),
+        });
+        // The proxy no longer holds the host and a deployment is owed.
+        // Written together, so a crash here cannot look like a finished
+        // removal.
+        await ctx.runMutation(
+          internal.evidenceLibraries.domains.writeDomainAttachment,
+          {
+            libraryId: args.libraryId,
+            domainId: args.domainId,
+            token,
+            attached: false,
+            deploymentPending: true,
+          },
+        );
+      }
+
+      // Either the proxy just lost the host, or a previous attempt got that
+      // far and stopped before the deployment finished.
+      const owed = row.attached || row.deploymentPending;
+      if (owed && context.applicationUuid) {
+        await queueDomainDeployment(ctx, {
           libraryId: args.libraryId,
           domainId: args.domainId,
-          attached: false,
-          deploymentPending: true,
-        },
-      );
-    }
+          token,
+          host: row.host,
+          reason: "detach",
+        });
+        // The certificate and the row survive until that deployment is live,
+        // and the lease is held until then so nothing else touches the row.
+        releaseLease = false;
+        return { status: "removing" as const };
+      }
 
-    // Either the proxy just lost the host, or a previous attempt got that far
-    // and stopped before queuing the deployment.
-    const owed = row.attached || row.deploymentPending;
-    if (owed && context.applicationUuid) {
-      await queueDomainDeployment(ctx, {
-        libraryId: args.libraryId,
+      // The proxy never had it, so nothing has to be redeployed.
+      await finishRemoval(ctx, {
         domainId: args.domainId,
         host: row.host,
-        reason: "detach",
+        certificateHostnameId: row.certificateHostnameId,
       });
-      // The certificate and the row survive until that deployment is live.
-      return { status: "removing" as const };
+      return { status: "removed" as const };
+    } finally {
+      if (releaseLease) {
+        await ctx.runMutation(
+          internal.evidenceLibraries.domains.releaseDomainTransition,
+          { domainId: args.domainId, token },
+        );
+      }
     }
-
-    // The proxy never had it, so nothing has to be redeployed.
-    await finishRemoval(ctx, {
-      domainId: args.domainId,
-      host: row.host,
-      certificateHostnameId: row.certificateHostnameId,
-    });
-    return { status: "removed" as const };
   },
 });
 
@@ -657,62 +727,40 @@ export const completeDomainChange = internalAction({
   args: {
     libraryId: v.id("evidenceLibraries"),
     domainId: v.id("evidenceLibraryDomains"),
-    reason: v.union(
-      v.literal("attach"),
-      v.literal("detach"),
-      v.literal("canonical"),
-    ),
-    address: v.optional(v.string()),
+    /** The deployment this cleanup belongs to; attempts are counted per one. */
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    reason: v.literal("detach"),
   },
   returns: v.object({
-    status: v.union(
-      v.literal("done"),
-      v.literal("retrying"),
-      v.literal("given-up"),
-    ),
+    status: v.union(v.literal("done"), v.literal("retrying")),
   }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{ status: "done" | "retrying" | "given-up" }> => {
+  handler: async (ctx, args): Promise<{ status: "done" | "retrying" }> => {
     try {
-      if (args.reason === "detach") {
-        const receipt = await ctx.runQuery(
-          internal.evidenceLibraries.domains.readDomainReceipt,
-          { domainId: args.domainId },
-        );
-        if (receipt) {
-          await finishRemoval(ctx, {
-            domainId: args.domainId,
-            host: receipt.host,
-            certificateHostnameId: receipt.certificateHostnameId,
-          });
-        }
-      }
-      if (args.reason === "canonical" && args.address) {
-        await ctx.runMutation(
-          internal.evidenceLibraries.versions.applyDomainCanonicalAddress,
-          {
-            libraryId: args.libraryId,
-            domainId: args.domainId,
-            address: args.address,
-          },
-        );
+      const receipt = await ctx.runQuery(
+        internal.evidenceLibraries.domains.readDomainReceipt,
+        { domainId: args.domainId },
+      );
+      if (receipt) {
+        await finishRemoval(ctx, {
+          domainId: args.domainId,
+          host: receipt.host,
+          certificateHostnameId: receipt.certificateHostnameId,
+        });
       }
       return { status: "done" as const };
     } catch (error) {
-      const attempts = await ctx.runMutation(
-        internal.evidenceLibraries.domains.countDomainCleanupAttempt,
-        { domainId: args.domainId },
+      // Convex does not retry a scheduled action, so the attempt and the
+      // next run are recorded in one mutation: a crash between them cannot
+      // lose the retry, and two completions cannot both schedule one.
+      const retry = await ctx.runMutation(
+        internal.evidenceLibraries.domains.scheduleDomainCleanupRetry,
+        {
+          libraryId: args.libraryId,
+          domainId: args.domainId,
+          operationId: args.operationId,
+        },
       );
-      if (attempts >= MAX_DOMAIN_CLEANUP_ATTEMPTS) {
-        throw error;
-      }
-      await ctx.scheduler.runAfter(
-        CLEANUP_RETRY_MS * attempts,
-        internal.evidenceLibraries.domainActions.completeDomainChange,
-        args,
-      );
+      if (retry.status === "given-up") throw error;
       return { status: "retrying" as const };
     }
   },
@@ -720,6 +768,7 @@ export const completeDomainChange = internalAction({
 
 /** How long to wait before trying a domain's final step again. */
 const CLEANUP_RETRY_MS = 30_000;
+export { CLEANUP_RETRY_MS };
 
 /** How many working domains one sweep re-checks before it hands over. */
 const SWEEP_BATCH = 20;

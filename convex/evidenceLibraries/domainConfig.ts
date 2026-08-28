@@ -6,6 +6,8 @@
 export const CUSTOM_DOMAIN_TARGET_ENV = "EL_CUSTOM_DOMAIN_TARGET";
 export const CLOUDFLARE_API_TOKEN_ENV = "EL_CLOUDFLARE_API_TOKEN";
 export const CLOUDFLARE_ZONE_ID_ENV = "EL_CLOUDFLARE_ZONE_ID";
+/** Extra names nobody may claim, beyond the target and the platform domain. */
+export const RESERVED_DOMAIN_SUFFIXES_ENV = "EL_RESERVED_DOMAIN_SUFFIXES";
 
 /** The name every custom domain points at. One name for the whole platform. */
 export const DEFAULT_CUSTOM_DOMAIN_TARGET = "cname.openscholar.ai";
@@ -43,15 +45,21 @@ export function isCustomDomainPlatformReady(
 export function readReservedDomainSuffixes(
   env: Environment = process.env,
 ): string[] {
-  const target = readCustomDomainTarget(env);
-  const labels = target.split(".");
-  const registrable = labels.slice(-2).join(".");
+  // Named, never guessed. Taking "the last two labels" of the target would
+  // call `co.uk` a domain of ours, and would miss a target whose own domain
+  // has more parts. The platform says which names are its own.
+  const named = (env[RESERVED_DOMAIN_SUFFIXES_ENV] ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase().replace(/\.$/u, ""))
+    .filter(Boolean);
   const platformDomain = env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN?.trim()
     .toLowerCase()
     .replace(/\.$/u, "");
-  return [target, registrable, ...(platformDomain ? [platformDomain] : [])].filter(
-    Boolean,
-  );
+  return [
+    readCustomDomainTarget(env),
+    ...named,
+    ...(platformDomain ? [platformDomain] : []),
+  ].filter(Boolean);
 }
 
 export function verificationRecordName(host: string): string {

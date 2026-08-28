@@ -53,6 +53,21 @@ export const runDevelopmentTeardown = internalAction({
         args,
       );
       if (!prepared.claimed) return { status: "pending" as const };
+      const cloudflare = createPlatformCloudflareSaasClient();
+      if (cloudflare) {
+        // By name as well as by id: a hostname created before its id was
+        // written down would otherwise be left behind for ever.
+        for (const host of prepared.customDomainHosts) {
+          await deleteCustomHostname(cloudflare, {
+            host,
+            certificateHostnameId: null,
+          });
+        }
+        for (const hostnameId of prepared.certificateHostnameIds) {
+          await cloudflare.deleteCustomHostname(hostnameId);
+        }
+      }
+
       const expectedBuckets = createLibraryStorageBucketNames(args.libraryId);
       if (
         (prepared.privateBucket &&
@@ -70,20 +85,6 @@ export const runDevelopmentTeardown = internalAction({
           "COOLIFY_APPLICATION_CONFLICT",
           "The library has no saved public address",
         );
-      }
-      const cloudflare = createPlatformCloudflareSaasClient();
-      if (cloudflare) {
-        // By name as well as by id: a hostname created before its id was
-        // written down would otherwise be left behind for ever.
-        for (const host of prepared.customDomainHosts) {
-          await deleteCustomHostname(cloudflare, {
-            host,
-            certificateHostnameId: null,
-          });
-        }
-        for (const hostnameId of prepared.certificateHostnameIds) {
-          await cloudflare.deleteCustomHostname(hostnameId);
-        }
       }
       await createCoolifyClient({
         origin: requireEnvironment("EL_COOLIFY_URL"),
@@ -159,5 +160,35 @@ export const runDevelopmentTeardown = internalAction({
       );
       return { status: "failed" as const };
     }
+  },
+});
+
+/**
+ * Looks at a teardown whose claim has run out. An attempt that died leaves
+ * the operation running for ever unless something comes back for it, so the
+ * claim books this when it is taken.
+ */
+export const resumeDevelopmentTeardown = internalAction({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+  },
+  returns: v.object({
+    status: v.union(v.literal("resumed"), v.literal("nothing-to-do")),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ status: "resumed" | "nothing-to-do" }> => {
+    const stale = await ctx.runQuery(
+      internal.evidenceLibraries.teardown.isDevelopmentTeardownStale,
+      args,
+    );
+    if (!stale) return { status: "nothing-to-do" as const };
+    await ctx.runAction(
+      internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+      args,
+    );
+    return { status: "resumed" as const };
   },
 });

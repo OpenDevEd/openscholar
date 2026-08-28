@@ -1,12 +1,13 @@
-import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import {
   internalMutation,
+  internalQuery,
   mutation,
   query,
   type MutationCtx,
 } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { readAttachedDomainOrigins } from "./domains";
 import {
@@ -183,6 +184,27 @@ export const getDevelopmentTeardownStatus = query({
   },
 });
 
+/** True when a teardown is still running but nobody holds it any more. */
+export const isDevelopmentTeardownStale = internalQuery({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(
+      "evidenceLibraryConfigOperations",
+      args.operationId,
+    );
+    return (
+      operation?.kind === "teardown" &&
+      operation.libraryId === args.libraryId &&
+      operation.status === "running" &&
+      (operation.teardownLeaseExpiresAt ?? 0) <= Date.now()
+    );
+  },
+});
+
 export const prepareDevelopmentTeardown = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -247,13 +269,20 @@ export const prepareDevelopmentTeardown = internalMutation({
       status: "running",
       attemptCount: operation.attemptCount + 1,
       // The claim expires, so an attempt that died is picked up again
-      // instead of leaving the teardown running for ever.
+      // instead of leaving the teardown running for ever. Something has to
+      // come back and look, so the wake-up is booked in the same
+      // transaction as the claim.
       teardownLeaseExpiresAt: now + TEARDOWN_LEASE_MS,
       startedAt: now,
       completedAt: undefined,
       error: undefined,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(
+      TEARDOWN_LEASE_MS,
+      internal.evidenceLibraries.teardownActions.resumeDevelopmentTeardown,
+      { libraryId: args.libraryId, operationId: operation._id },
+    );
     return {
       claimed: true as const,
       applicationId,

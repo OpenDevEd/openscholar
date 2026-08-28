@@ -93,6 +93,7 @@ describe("createCloudflareSaasClient", () => {
       certificate: "pending",
       hostnameStatus: "pending",
       sslStatus: "pending_validation",
+      originHost: null,
       validationErrors: [],
     });
     const call = calls[0]!;
@@ -111,6 +112,28 @@ describe("createCloudflareSaasClient", () => {
         wildcard: false,
         settings: { min_tls_version: "1.2" },
       },
+    });
+  });
+
+  it("points an adopted hostname at the right library", async () => {
+    const { calls, fetchImpl } = recordingFetch(() =>
+      ok({
+        id: "ch1",
+        hostname: "evidence.example.org",
+        status: "active",
+        ssl: { status: "active" },
+        custom_origin_server: "climate-lib.opendev.space",
+      }),
+    );
+    const client = createCloudflareSaasClient({ ...CONFIG, fetchImpl });
+    const result = await client.setCustomHostnameOrigin({
+      hostnameId: "ch1",
+      originHost: "climate-lib.opendev.space",
+    });
+    expect(result.originHost).toBe("climate-lib.opendev.space");
+    expect(calls[0]!.method).toBe("PATCH");
+    expect(calls[0]!.body).toEqual({
+      custom_origin_server: "climate-lib.opendev.space",
     });
   });
 
