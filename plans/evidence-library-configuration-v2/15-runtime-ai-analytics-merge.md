@@ -240,13 +240,37 @@ false` as a "deviation" in Decision 2 was wrong. That deviation is withdrawn.
 ## Decision 7 — platform embedder (lane E)
 
 1. When `features.ai` is on, assembly writes the platform embedder block:
-   `{ source: "rest", url: "https://openrouter.ai/api/v1/embeddings",
-   model: "perplexity/pplx-embed-v1-0.6b", dimensions: 1024, apiKey,
-   request, response }`. The `request`/`response` templates and any headers
-   are copied from what the runtime's `src/lib/search-index/embedder-settings.ts`
-   expects and what the development libraries on new-el `openscholar`
-   commit `87e6815a` run — not invented. When `features.ai` is off the block
-   is `null`.
+
+   ```json
+   {
+     "source": "rest",
+     "url": "https://openrouter.ai/api/v1/embeddings",
+     "apiKey": "<platform key>",
+     "dimensions": 1024,
+     "request": { "model": "perplexity/pplx-embed-v1-0.6b",
+                  "input": ["{{text}}", "{{..}}"] },
+     "response": { "data": [{ "embedding": "{{embedding}}" }, "{{..}}"] }
+   }
+   ```
+
+   **Corrected 2026-08-28 (lane E).** The model is *not* a top-level field.
+   The pinned `rest` embedder allows only `source`, `url`, `apiKey`,
+   `dimensions`, `request`, `response` and `headers`, and refuses anything
+   else (`library-config.schema.json`, `search.embedder`; new-el
+   `restEmbedderSchema`, `schema.ts:711-723`, is `.strict()`). The model
+   belongs inside `request`, because the runtime copies `request` straight
+   into the Meilisearch embedder setting
+   (`src/lib/search-index/embedder-settings.ts:72-84`). `{{..}}` is
+   Meilisearch's repeat marker, so one call embeds a batch. There are no
+   headers: Meilisearch sends the key as `Authorization: Bearer`.
+
+   The block is copied from Outline "08 — Development and Verification
+   Runbooks" (id `30b7169b-1530-424a-a374-80478d1bee56`, "Turning on the
+   Similar Resources embedder", checked 2026-08-20 on new-el `openscholar`),
+   the only place it exists. It is **not** in the new-el repository: nothing
+   in the working tree, `docs/`, or any commit on any branch contains
+   `pplx-embed`, and `87e6815a` only guards the record title in the document
+   template. When `features.ai` is off the block is `null`.
 2. The key is a platform secret read at assembly on the server:
    `EL_EMBEDDING_OPENROUTER_KEY` when set, otherwise `OPENROUTER_API_KEY`.
    Never in `getDraft`, saved rows, logs or the client. Its fingerprint joins
