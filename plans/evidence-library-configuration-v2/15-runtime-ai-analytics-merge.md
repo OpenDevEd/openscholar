@@ -225,15 +225,51 @@ Coolify app was gone afterwards.
 - Header logo 150×150 in a 104 px bar: **expected failure**, fixed by new-el
   #144 (`codex/logo-fit`), not yet merged.
 
-### Open question for the product owner
+### Decided 2026-08-28: the platform embedder was never written
 
 The library-wide assistant (the "Ask AI" box beside search, `POST /api/ai/chat`)
-is gated on `features.aiSearch` in the runtime, and OpenScholar always writes
-`aiSearch: false` because the runtime refuses it without an embedder
-(Decision 2 deviation). So an owner who turns on "AI answers" gets only the
-per-record menu, and only on records with a visible PDF. The AI section's copy
-("Let visitors ask questions about the evidence in your library") promises
-more than that. Options: (a) the runtime lets `/api/ai/chat` run without
-`aiSearch` (chat over the record set without embeddings); (b) OpenScholar
-exposes AI search with an embedder setting; (c) the copy is narrowed to what
-works today. Decision pending; nothing changed yet.
+is gated on `features.aiSearch`, and OpenScholar always wrote `aiSearch: false`
+because the runtime refuses it without `search.embedder`. The real cause: the
+embedder is a platform value (Outline decisions 2026-08-18 and 2026-08-20 —
+Perplexity `pplx-embed-v1-0.6b` through OpenRouter, `rest` source,
+`https://openrouter.ai/api/v1/embeddings`, 1024 dimensions, OpenScholar writes
+it, owners never see it), and `assembly.ts` has the hook
+(`managed.searchEmbedder`) but nothing ever fills it. Accepting `aiSearch:
+false` as a "deviation" in Decision 2 was wrong. That deviation is withdrawn.
+
+## Decision 7 — platform embedder (lane E)
+
+1. When `features.ai` is on, assembly writes the platform embedder block:
+   `{ source: "rest", url: "https://openrouter.ai/api/v1/embeddings",
+   model: "perplexity/pplx-embed-v1-0.6b", dimensions: 1024, apiKey,
+   request, response }`. The `request`/`response` templates and any headers
+   are copied from what the runtime's `src/lib/search-index/embedder-settings.ts`
+   expects and what the development libraries on new-el `openscholar`
+   commit `87e6815a` run — not invented. When `features.ai` is off the block
+   is `null`.
+2. The key is a platform secret read at assembly on the server:
+   `EL_EMBEDDING_OPENROUTER_KEY` when set, otherwise `OPENROUTER_API_KEY`.
+   Never in `getDraft`, saved rows, logs or the client. Its fingerprint joins
+   the existing AI-key snapshot check only if the key can change mid-publish
+   (it is an env value, so no).
+3. `features.aiSearch` follows the AI answers switch (on ⇔ `features.ai`).
+   Deep research stays off; exposing it is a separate decision.
+4. Rules: assembly refuses to publish with AI on when neither key exists
+   ("The platform has no embedding key yet."), the same way missing mail is
+   refused before any Coolify resource exists.
+5. Tests: assembly emits the block only with AI on; key source precedence;
+   `aiSearch` derived; the assembled config validates against the pinned
+   schema with the embedder present; `getDraft` and operation records carry
+   no key.
+6. Deployability gate: `npx convex dev --once` on the lane; publish a lane
+   library with AI on and confirm the runtime manifest holds the `rest`
+   block and `aiSearch: true`; on the shared platform after merge, the
+   library-wide "Ask AI" answers (the live check that failed on
+   `el-gate-0828b`).
+
+Lane E · OpenScholar · `codex/platform-embedder` (worktree `../ai-sprint`,
+Convex lane `calm-labrador-815`, port 3013). Files:
+`lib/evidence-libraries/configuration/assembly.ts` (+ tests),
+`convex/evidenceLibraries/configurationDeploymentActions.ts` and
+`applicationSetup*.ts` (managed values), `owner-rules.ts` / `ai.ts`
+(`aiSearch` derivation), `messages/*.json` if any copy changes.
