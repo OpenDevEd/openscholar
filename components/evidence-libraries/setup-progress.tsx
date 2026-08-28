@@ -129,6 +129,11 @@ export function SetupProgressView({
             percent={percent}
             currentStep={current}
             errorMessage={failed ? setup.setupOperation.error?.message : undefined}
+            errorReasons={
+              failed
+                ? setup.setupOperation.issues?.map((issue) => issue.message)
+                : undefined
+            }
             onRetry={retry}
             retrying={retrying}
           />
