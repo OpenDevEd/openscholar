@@ -3,15 +3,17 @@
 import { useAction } from "convex/react";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { Suspense, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { EmptyList, FieldGroup, ListRow, move, SortableList } from "../fields";
+import { type CollectionFacts, useCollectionFacts, useLearnCollections } from "./collection-facts";
 import { type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 
 export type CollectionEntry = {
@@ -49,7 +51,29 @@ export function sortedEntries(entries: readonly CollectionEntry[]): CollectionEn
  * site, in order, with a title override, and a picker that searches the
  * library's own database one page at a time.
  */
-export function CollectionsField({
+export function CollectionsField(props: {
+  libraryId: Id<"evidenceLibraries">;
+  value: CollectionEntry[];
+  onChange: (value: CollectionEntry[]) => void;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration.collections");
+  return (
+    <Suspense
+      fallback={
+        <FieldGroup title={t("shownHeading")} hint={t("introHint")}>
+          <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+            <Spinner className="h-4 w-4" />
+            {t("loading")}
+          </p>
+        </FieldGroup>
+      }
+    >
+      <CollectionsBody {...props} />
+    </Suspense>
+  );
+}
+
+function CollectionsBody({
   libraryId,
   value,
   onChange,
@@ -60,10 +84,10 @@ export function CollectionsField({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.collections");
   const listCollections = useAction(api.zotero.runtimeReadActions.listLibraryCollections) as ListAction;
-  // What the picker has read about a collection, kept so a chosen row can
-  // show its database name and record count.
-  const [known, setKnown] = useState<Map<string, PickerRow>>(new Map());
+  const facts = useCollectionFacts();
+  const learn = useLearnCollections();
   const [source, setSource] = useState<string | null>(null);
+  const [sources, setSources] = useState<string[]>([]);
   const [hideShown, setHideShown] = useState(true);
   const shown = sortedEntries(value);
   const shownIds = shown.map((entry) => entry.id);
@@ -115,36 +139,45 @@ export function CollectionsField({
           source={readPage}
           usedIds={shownIds}
           usedLabel={t("picker.shown")}
+          loadingLabel={t("loading")}
+          failedLabel={t("failed")}
           emptyLabel={t("noneInDatabase")}
           noMatchLabel={t("picker.noMatch")}
           notSetUpLabel={t("notSetUp")}
-          onRowsLoaded={(rows) =>
-            setKnown((current) => {
-              const next = new Map(current);
-              for (const row of rows) next.set(row.id, row);
-              return next;
-            })
-          }
+          onRowsLoaded={(rows) => {
+            // Every source seen while the dialog is open keeps its chip, so
+            // a later search cannot take away the filter in use.
+            setSources((current) => [
+              ...new Set([...current, ...rows.flatMap((row) => (row.meta ? [row.meta] : []))]),
+            ]);
+            learn(
+              rows.map((row) => ({
+                id: row.id,
+                name: row.title,
+                source: row.meta ?? "",
+                count: row.count ?? 0,
+              })),
+            );
+          }}
           onOpenChange={(open) => {
             if (open) return;
             setSource(null);
+            setSources([]);
             setHideShown(true);
           }}
           rowFilter={(row) =>
             (!source || row.meta === source) && (!hideShown || !shownIds.includes(row.id))
           }
-          controls={(rows) => (
+          controls={() => (
             <>
               <FilterChip active={source === null} onClick={() => setSource(null)}>
                 {t("picker.allSources")}
               </FilterChip>
-              {[...new Set(rows.map((row) => row.meta ?? ""))]
-                .filter(Boolean)
-                .map((one) => (
-                  <FilterChip key={one} active={source === one} onClick={() => setSource(one)}>
-                    {one}
-                  </FilterChip>
-                ))}
+              {sources.map((one) => (
+                <FilterChip key={one} active={source === one} onClick={() => setSource(one)}>
+                  {one}
+                </FilterChip>
+              ))}
               <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
                 <Checkbox checked={hideShown} onCheckedChange={(v) => setHideShown(v === true)} />
                 {t("picker.hideShown")}
@@ -173,7 +206,7 @@ export function CollectionsField({
             >
               <CollectionRow
                 entry={entry}
-                known={known.get(entry.id)}
+                facts={facts}
                 onTitle={(title) =>
                   onChange(
                     shown.map((row) =>
@@ -192,21 +225,22 @@ export function CollectionsField({
 
 function CollectionRow({
   entry,
-  known,
+  facts,
   onTitle,
 }: {
   entry: CollectionEntry;
-  known: PickerRow | undefined;
+  facts: CollectionFacts;
   onTitle: (title: string) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.collections");
   const id = useId();
-  const databaseTitle = known?.title ?? entry.title ?? entry.id;
+  const known = facts.get(entry.id);
+  const databaseTitle = known?.name ?? entry.title ?? entry.id;
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">{databaseTitle}</span>
-        {known?.count !== undefined ? (
+        {known ? (
           <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
             {t("records", { count: known.count })}
           </span>

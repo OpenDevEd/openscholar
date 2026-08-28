@@ -540,6 +540,8 @@ function GroupPicker({
       source={readPage}
       usedIds={addedIds}
       usedLabel={t("picker.added")}
+      loadingLabel={t("picker.loading")}
+      failedLabel={t("picker.failed")}
       emptyLabel={t("picker.noGroups")}
       noMatchLabel={t("picker.noMatch")}
       notSetUpLabel={t("connectFirst")}

@@ -1,22 +1,34 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Id } from "@/convex/_generated/dataModel";
 
-const mocks = vi.hoisted(() => ({ listCollections: vi.fn() }));
+const mocks = vi.hoisted(() => ({ listCollections: vi.fn(), resolveCollections: vi.fn() }));
 
-vi.mock("convex/react", () => ({ useAction: () => mocks.listCollections }));
+// One action callback per test, as Convex gives one per mounted component;
+// the shared facts are cached by that callback.
+let actions: Record<string, (args: unknown) => unknown>;
+
+vi.mock("convex/react", () => ({ useAction: (ref: string) => actions[ref] }));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) =>
     `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
 }));
 vi.mock("@/convex/_generated/api", () => ({
-  api: { zotero: { runtimeReadActions: { listLibraryCollections: "listLibraryCollections" } } },
+  api: {
+    zotero: {
+      runtimeReadActions: {
+        listLibraryCollections: "listLibraryCollections",
+        resolveLibraryCollections: "resolveLibraryCollections",
+      },
+    },
+  },
 }));
 
+import { CollectionFactsProvider } from "@/components/evidence-libraries/configuration/sections/collection-facts";
 import {
   CollectionsField,
   renumber,
@@ -33,8 +45,31 @@ const catalogue = [
   { id: "COLL0003", title: "Water", count: 7, source: "Climate group", parentId: null },
 ];
 
+type Entry = { id: string; order?: number; title?: string };
+
+function field(value: Entry[], onChange: (value: unknown) => void) {
+  return (
+    <CollectionFactsProvider libraryId={libraryId} ids={value.map((entry) => entry.id)}>
+      <CollectionsField libraryId={libraryId} value={value} onChange={onChange} />
+    </CollectionFactsProvider>
+  );
+}
+
+/**
+ * The section as the page mounts it: inside the shared collection facts.
+ * It waits for the library's answer about the shown ids, so rendering must
+ * be awaited.
+ */
+async function renderField(props: { value: Entry[]; onChange: (value: unknown) => void }) {
+  let result!: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(field(props.value, props.onChange));
+  });
+  return result;
+}
+
 async function openPicker(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: `${ns}.picker.open` }));
+  await user.click(await screen.findByRole("button", { name: `${ns}.picker.open` }));
   return await screen.findByRole("table", { name: `${ns}.picker.title` });
 }
 
@@ -51,12 +86,18 @@ describe("collection order helpers", () => {
 describe("<CollectionsField>", () => {
   beforeEach(() => {
     mocks.listCollections.mockReset();
+    mocks.resolveCollections.mockReset();
+    mocks.resolveCollections.mockResolvedValue({ items: [] });
+    actions = {
+      listLibraryCollections: (args) => mocks.listCollections(args),
+      resolveLibraryCollections: (args) => mocks.resolveCollections(args),
+    };
   });
 
   it("reads nothing until the picker opens, then asks for one page", async () => {
     const user = userEvent.setup();
     mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
-    render(<CollectionsField libraryId={libraryId} value={[]} onChange={vi.fn()} />);
+    await renderField({ value: [], onChange: vi.fn() });
     expect(mocks.listCollections).not.toHaveBeenCalled();
     const table = await openPicker(user);
     expect(await within(table).findByText("Climate")).toBeInTheDocument();
@@ -77,7 +118,7 @@ describe("<CollectionsField>", () => {
       nextCursor: null,
     }));
     const onChange = vi.fn();
-    render(<CollectionsField libraryId={libraryId} value={[]} onChange={onChange} />);
+    await renderField({ value: [], onChange: onChange });
     const table = await openPicker(user);
     await user.type(screen.getByRole("textbox", { name: `${ns}.picker.search` }), "amber");
     expect(await within(table).findByText("Amber studies")).toBeInTheDocument();
@@ -98,7 +139,7 @@ describe("<CollectionsField>", () => {
         ? { items: catalogue.slice(2), nextCursor: null }
         : { items: catalogue.slice(0, 2), nextCursor: "page-2" },
     );
-    render(<CollectionsField libraryId={libraryId} value={[]} onChange={vi.fn()} />);
+    await renderField({ value: [], onChange: vi.fn() });
     const table = await openPicker(user);
     expect(await within(table).findByText("Climate")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: `${pickerNs}.loadMore` }));
@@ -113,7 +154,7 @@ describe("<CollectionsField>", () => {
   it("explains that a draft library has no collections yet", async () => {
     const user = userEvent.setup();
     mocks.listCollections.mockResolvedValue({ reason: "not-set-up", items: [], nextCursor: null });
-    render(<CollectionsField libraryId={libraryId} value={[]} onChange={vi.fn()} />);
+    await renderField({ value: [], onChange: vi.fn() });
     await user.click(screen.getByRole("button", { name: `${ns}.picker.open` }));
     expect(await screen.findByText(`${ns}.notSetUp`)).toBeInTheDocument();
   });
@@ -122,9 +163,7 @@ describe("<CollectionsField>", () => {
     const user = userEvent.setup();
     mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
     const onChange = vi.fn();
-    render(
-      <CollectionsField libraryId={libraryId} value={[{ id: "COLL0002", order: 0 }]} onChange={onChange} />,
-    );
+    await renderField({ value: [{ id: "COLL0002", order: 0 }], onChange: onChange });
     const table = await openPicker(user);
     expect(await within(table).findByText("Climate")).toBeInTheDocument();
     expect(within(table).queryByText("Health")).not.toBeInTheDocument();
@@ -144,7 +183,7 @@ describe("<CollectionsField>", () => {
   it("filters the loaded page by source", async () => {
     const user = userEvent.setup();
     mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
-    render(<CollectionsField libraryId={libraryId} value={[]} onChange={vi.fn()} />);
+    await renderField({ value: [], onChange: vi.fn() });
     const table = await openPicker(user);
     expect(await within(table).findByText("Climate")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Health group" }));
@@ -154,22 +193,47 @@ describe("<CollectionsField>", () => {
     expect(within(table).getByText("Climate")).toBeInTheDocument();
   });
 
-  it("shows the database name and record count of a collection the picker read", async () => {
+  it("names every shown collection from the library on first render", async () => {
+    mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
+    mocks.resolveCollections.mockResolvedValue({
+      items: [{ id: "COLL0003", name: "Water", source: "Climate group", count: 7 }],
+    });
+    await renderField({ value: [{ id: "COLL0003", order: 0 }], onChange: vi.fn() });
+    expect(await screen.findByText("Water")).toBeInTheDocument();
+    expect(screen.getByText(`${ns}.records {"count":7}`)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: `${ns}.titleLabel` })).toHaveAttribute(
+      "placeholder",
+      "Water",
+    );
+    expect(mocks.resolveCollections).toHaveBeenCalledWith({ libraryId, ids: ["COLL0003"] });
+    // The picker was never opened, so nothing was paged to learn the name.
+    expect(mocks.listCollections).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the id while the library cannot name a collection", async () => {
+    mocks.resolveCollections.mockResolvedValue({ reason: "not-set-up", items: [] });
+    await renderField({ value: [{ id: "COLL0003", order: 0 }], onChange: vi.fn() });
+    expect(await screen.findByText("COLL0003")).toBeInTheDocument();
+    expect(screen.queryByText(`${ns}.records {"count":7}`)).not.toBeInTheDocument();
+  });
+
+  it("names a collection the picker just read, without asking again", async () => {
     const user = userEvent.setup();
     mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
-    const { rerender } = render(
-      <CollectionsField libraryId={libraryId} value={[]} onChange={vi.fn()} />,
-    );
+    const onChange = vi.fn();
+    const { rerender } = await renderField({ value: [], onChange });
     const table = await openPicker(user);
     expect(await within(table).findByText("Water")).toBeInTheDocument();
     await user.click(within(table).getByRole("checkbox", { name: "Water" }));
     await user.click(screen.getByRole("button", { name: `${ns}.picker.addPicked {"count":1}` }));
-    rerender(
-      <CollectionsField libraryId={libraryId} value={[{ id: "COLL0003", order: 0 }]} onChange={vi.fn()} />,
-    );
+    await act(async () => {
+      rerender(field([{ id: "COLL0003", order: 0 }], onChange));
+    });
     expect(await screen.findByText("Water")).toBeInTheDocument();
     expect(screen.getByText(`${ns}.records {"count":7}`)).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: `${ns}.titleLabel` })).toHaveAttribute("placeholder", "Water");
+    // The library answered nothing about this id; the name and count come
+    // from what the picker itself read.
+    expect(mocks.resolveCollections).toHaveBeenLastCalledWith({ libraryId, ids: ["COLL0003"] });
   });
 
   it("renames and removes chosen collections", async () => {
@@ -177,7 +241,7 @@ describe("<CollectionsField>", () => {
     mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
     const onChange = vi.fn();
     const value = [{ id: "COLL0001", order: 0 }, { id: "COLL0002", order: 1 }];
-    render(<CollectionsField libraryId={libraryId} value={value} onChange={onChange} />);
+    await renderField({ value, onChange });
     const titles = await screen.findAllByRole("textbox", { name: `${ns}.titleLabel` });
     await user.type(titles[0], "O");
     expect(onChange).toHaveBeenLastCalledWith([{ id: "COLL0001", order: 0, title: "O" }, value[1]]);

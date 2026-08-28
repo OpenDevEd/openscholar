@@ -181,8 +181,8 @@ describe("<SourcesField>", () => {
     expect(await within(table).findByText("Group 60")).toBeInTheDocument();
 
     await userEvent.type(screen.getByRole("textbox", { name: `${ns}.picker.search` }), "Group 119");
-    await waitFor(() => expect(within(table).queryByText("Group 0")).not.toBeInTheDocument());
-    expect(within(table).getByText("Group 119")).toBeInTheDocument();
+    expect(await within(table).findByText("Group 119")).toBeInTheDocument();
+    expect(within(table).queryByText("Group 0")).not.toBeInTheDocument();
     // Zotero was asked once, not per page or per keystroke.
     expect(mocks.listMyGroups).toHaveBeenCalledTimes(1);
   });
@@ -200,14 +200,27 @@ describe("<SourcesField>", () => {
       });
     render(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "evidenceLibraryConfiguration.picker.failed",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(`${ns}.picker.failed`);
     await userEvent.click(
       screen.getByRole("button", { name: "evidenceLibraryConfiguration.picker.tryAgain" }),
     );
     expect(await screen.findByText("Climate evidence")).toBeInTheDocument();
     expect(mocks.listMyGroups).toHaveBeenCalledTimes(2);
+  });
+
+  it("says nothing about a ceiling the account never reached", async () => {
+    queries({ connected: true, groups: [] });
+    mocks.listMyGroups.mockResolvedValue({
+      connected: true,
+      username: "owner",
+      zoteroUserId: "1",
+      capped: false,
+      groups: [{ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 }],
+    });
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
+    expect(await screen.findByText("Climate evidence")).toBeInTheDocument();
+    expect(screen.queryByText(`${ns}.picker.capped`)).not.toBeInTheDocument();
   });
 
   it("keeps the groups it could not connect ticked", async () => {

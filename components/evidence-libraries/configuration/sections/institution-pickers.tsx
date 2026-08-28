@@ -30,12 +30,14 @@ type ListAction = (args: {
   query?: string;
   cursor?: string;
   sort?: "count" | "name";
+  direction?: "asc" | "desc";
 }) => Promise<InstitutionPage>;
 
 // Most records first, the way an owner looks for the main institution.
+// Either header can be turned around.
 const SORTS: readonly PickerSort[] = [
-  { value: "count", column: "count", direction: "descending" },
-  { value: "name", column: "title", direction: "ascending" },
+  { value: "count", column: "count", direction: "desc" },
+  { value: "name", column: "title", direction: "asc" },
 ];
 
 type PickerProps = {
@@ -56,12 +58,13 @@ function InstitutionPicker({ libraryId, value, onChange, id, allowNew, allowNone
     api.zotero.runtimeReadActions.listRecordInstitutions,
   ) as ListAction;
 
-  const readPage: PickerSource = async ({ query, cursor, sort }) => {
+  const readPage: PickerSource = async ({ query, cursor, sort, direction }) => {
     const page = await listInstitutions({
       libraryId,
       query: query || undefined,
       cursor: cursor ?? undefined,
       sort: sort === "name" ? "name" : "count",
+      direction: direction ?? undefined,
     });
     return {
       reason: page.reason,
@@ -95,6 +98,8 @@ function InstitutionPicker({ libraryId, value, onChange, id, allowNew, allowNone
       columns={{ title: t("colName"), count: t("colRecords") }}
       sorts={SORTS}
       source={readPage}
+      loadingLabel={t("loading")}
+      failedLabel={t("failed")}
       emptyLabel={t("empty")}
       noMatchLabel={t("noMatch")}
       notSetUpLabel={t("notSetUp")}

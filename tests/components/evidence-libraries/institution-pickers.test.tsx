@@ -51,6 +51,7 @@ describe("institution pickers", () => {
       query: undefined,
       cursor: undefined,
       sort: "count",
+      direction: "desc",
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
@@ -76,6 +77,7 @@ describe("institution pickers", () => {
       query: "strath",
       cursor: undefined,
       sort: "count",
+      direction: "desc",
     });
   });
 
@@ -95,7 +97,7 @@ describe("institution pickers", () => {
     expect(onChange).toHaveBeenCalledWith("Strathmore");
   });
 
-  it("orders by name when the owner asks for it", async () => {
+  it("orders by name, then turns that order around", async () => {
     const user = userEvent.setup();
     mocks.listInstitutions.mockResolvedValue({
       items: [{ name: "University of Nairobi", count: 4 }],
@@ -104,6 +106,12 @@ describe("institution pickers", () => {
     render(<InstitutionNamePicker libraryId={libraryId} value="" onChange={vi.fn()} />);
     await user.click(screen.getByRole("combobox"));
     expect(await screen.findByText("University of Nairobi")).toBeInTheDocument();
+    // Records lead the list, most first, until another header is chosen.
+    expect(screen.getByRole("columnheader", { name: `${ns}.colRecords` })).toHaveAttribute(
+      "aria-sort",
+      "descending",
+    );
+
     await user.click(screen.getByRole("button", { name: `${ns}.colName` }));
     await waitFor(() =>
       expect(mocks.listInstitutions).toHaveBeenLastCalledWith({
@@ -111,11 +119,27 @@ describe("institution pickers", () => {
         query: undefined,
         cursor: undefined,
         sort: "name",
+        direction: "asc",
       }),
     );
     expect(screen.getByRole("columnheader", { name: `${ns}.colName` })).toHaveAttribute(
       "aria-sort",
       "ascending",
+    );
+
+    await user.click(screen.getByRole("button", { name: `${ns}.colName` }));
+    await waitFor(() =>
+      expect(mocks.listInstitutions).toHaveBeenLastCalledWith({
+        libraryId,
+        query: undefined,
+        cursor: undefined,
+        sort: "name",
+        direction: "desc",
+      }),
+    );
+    expect(screen.getByRole("columnheader", { name: `${ns}.colName` })).toHaveAttribute(
+      "aria-sort",
+      "descending",
     );
   });
 

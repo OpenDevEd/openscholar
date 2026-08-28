@@ -2,6 +2,7 @@
 
 import { ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,11 +25,13 @@ import { SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
 import { InlineSwitch } from "../fields";
 import { NAV_ICON_GLYPHS } from "../nav-icons";
 import { Field } from "../section-card";
+import { useCollectionFacts } from "./collection-facts";
 import { localPickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 
 const NO_ICON = "__none";
 
-type CollectionOption = { id: string; title: string };
+/** A collection the site shows, with the owner's own title when it has one. */
+type CollectionOption = { id: string; title?: string };
 
 /** Switching the kind clears the other target's value. */
 function retarget(kind: LinkTarget["kind"], collections: CollectionOption[]): LinkTarget {
@@ -37,11 +40,6 @@ function retarget(kind: LinkTarget["kind"], collections: CollectionOption[]): Li
     return { kind: "collection", collectionId: collections[0]?.id ?? "" };
   }
   return { kind: "url", url: "" };
-}
-
-/** The title of the chosen collection, or empty when none is chosen. */
-function chosenTitle(collectionId: string, collections: CollectionOption[]): string {
-  return collections.find((collection) => collection.id === collectionId)?.title ?? "";
 }
 
 /**
@@ -135,45 +133,21 @@ export function LinkEditor({
       {target.kind === "collection" ? (
         <Field label={t("collectionLabel")} error={collectionError}>
           {(id, invalid) => (
-            <RemotePickerDialog
-              mode="single"
-              value={target.collectionId}
-              onChoose={(row) =>
-                onChange({ ...link, target: { kind: "collection", collectionId: row?.id ?? "" } })
+            <Suspense
+              fallback={
+                <CollectionTrigger id={id} invalid={invalid} disabled label={t("collectionPlaceholder")} />
               }
-              trigger={
-                <Button
-                  id={id}
-                  type="button"
-                  variant="outline"
-                  role="combobox"
-                  disabled={collections.length === 0}
-                  aria-invalid={invalid || undefined}
-                  className="w-full justify-between bg-background font-normal"
-                >
-                  <span
-                    className={
-                      chosenTitle(target.collectionId, collections)
-                        ? "truncate"
-                        : "truncate text-muted-foreground"
-                    }
-                  >
-                    {chosenTitle(target.collectionId, collections) || t("collectionPlaceholder")}
-                  </span>
-                  <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
-                </Button>
-              }
-              title={t("collectionPicker.title")}
-              description={t("collectionPicker.description")}
-              searchLabel={t("collectionPicker.search")}
-              columns={{ title: t("collectionPicker.colTitle") }}
-              source={localPickerSource(
-                collections.map((collection) => ({ id: collection.id, title: collection.title })),
-              )}
-              emptyLabel={t("collectionPicker.empty")}
-              noMatchLabel={t("collectionPicker.noMatch")}
-              notSetUpLabel={t("collectionPicker.empty")}
-            />
+            >
+              <CollectionTarget
+                id={id}
+                invalid={invalid}
+                collections={collections}
+                collectionId={target.collectionId}
+                onChoose={(collectionId) =>
+                  onChange({ ...link, target: { kind: "collection", collectionId } })
+                }
+              />
+            </Suspense>
           )}
         </Field>
       ) : null}
@@ -237,5 +211,96 @@ export function LinkEditor({
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * The button that opens the collection picker, or stands in while it loads.
+ * The dialog hands it its own props, so they are passed straight through.
+ */
+function CollectionTrigger({
+  id,
+  invalid,
+  disabled,
+  label,
+  chosen,
+  ...rest
+}: {
+  id: string;
+  invalid: boolean;
+  disabled: boolean;
+  label: string;
+  chosen?: boolean;
+} & React.ComponentProps<typeof Button>) {
+  return (
+    <Button
+      {...rest}
+      id={id}
+      type="button"
+      variant="outline"
+      role="combobox"
+      disabled={disabled}
+      aria-invalid={invalid || undefined}
+      className="w-full justify-between bg-background font-normal"
+    >
+      <span className={chosen ? "truncate" : "truncate text-muted-foreground"}>{label}</span>
+      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
+    </Button>
+  );
+}
+
+/**
+ * Picks one of the collections the site shows. Rows carry the database
+ * name and record count, so the owner is not choosing between ids.
+ */
+function CollectionTarget({
+  id,
+  invalid,
+  collections,
+  collectionId,
+  onChoose,
+}: {
+  id: string;
+  invalid: boolean;
+  collections: CollectionOption[];
+  collectionId: string;
+  onChoose: (collectionId: string) => void;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration.links");
+  const facts = useCollectionFacts();
+  const rows = collections.map((collection) => {
+    const known = facts.get(collection.id);
+    return {
+      id: collection.id,
+      title: collection.title ?? known?.name ?? collection.id,
+      count: known?.count,
+    };
+  });
+  const chosen = rows.find((row) => row.id === collectionId);
+  return (
+    <RemotePickerDialog
+      mode="single"
+      value={collectionId}
+      onChoose={(row) => onChoose(row?.id ?? "")}
+      trigger={
+        <CollectionTrigger
+          id={id}
+          invalid={invalid}
+          disabled={collections.length === 0}
+          chosen={chosen !== undefined}
+          label={chosen?.title ?? t("collectionPlaceholder")}
+        />
+      }
+      title={t("collectionPicker.title")}
+      description={t("collectionPicker.description")}
+      searchLabel={t("collectionPicker.search")}
+      columns={{ title: t("collectionPicker.colTitle"), count: t("collectionPicker.colRecords") }}
+      source={localPickerSource(rows)}
+      loadingLabel={t("collectionPicker.loading")}
+      failedLabel={t("collectionPicker.failed")}
+      emptyLabel={t("collectionPicker.empty")}
+      noMatchLabel={t("collectionPicker.noMatch")}
+      notSetUpLabel={t("collectionPicker.empty")}
+    />
   );
 }

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -25,6 +25,8 @@ const labels = {
   description: "Pick from the library",
   searchLabel: "Search",
   columns: { title: "Collection", meta: "Source", count: "Records" },
+  loadingLabel: "Loading rows",
+  failedLabel: "Could not load the rows",
   emptyLabel: "Nothing here",
   noMatchLabel: "No match",
   notSetUpLabel: "Not set up yet",
@@ -64,7 +66,7 @@ describe("<RemotePickerDialog>", () => {
     await open(user);
     expect(await screen.findByText("Alpha")).toBeInTheDocument();
     expect(source).toHaveBeenCalledTimes(1);
-    expect(source).toHaveBeenCalledWith({ query: "", cursor: null, sort: null });
+    expect(source).toHaveBeenCalledWith({ query: "", cursor: null, sort: null, direction: null });
   });
 
   it("sends the typed text to the server once typing stops", async () => {
@@ -91,7 +93,12 @@ describe("<RemotePickerDialog>", () => {
     await open(user);
     await user.click(screen.getByRole("button", { name: `${ns}.loadMore` }));
     expect(await screen.findByText("Beta")).toBeInTheDocument();
-    expect(source).toHaveBeenLastCalledWith({ query: "", cursor: "page-2", sort: null });
+    expect(source).toHaveBeenLastCalledWith({
+      query: "",
+      cursor: "page-2",
+      sort: null,
+      direction: null,
+    });
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.getByText("Beta")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: `${ns}.loadMore` })).not.toBeInTheDocument();
@@ -210,7 +217,7 @@ describe("<RemotePickerDialog>", () => {
     });
     const { user } = renderPicker({ source });
     await open(user);
-    expect(await screen.findByRole("alert")).toHaveTextContent(`${ns}.failed`);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load the rows");
     fail = false;
     await user.click(screen.getByRole("button", { name: `${ns}.tryAgain` }));
     expect(await screen.findByText("Alpha")).toBeInTheDocument();
@@ -251,17 +258,175 @@ describe("<RemotePickerDialog>", () => {
   });
 });
 
+describe("<RemotePickerDialog> and slow answers", () => {
+  /** A source whose pages are released by hand. */
+  function deferredSource() {
+    const waiting = new Map<string, (page: PickerPage) => void>();
+    const source = vi.fn(
+      ({ query }: { query: string }) =>
+        new Promise<PickerPage>((resolve) => {
+          waiting.set(query, resolve);
+        }),
+    );
+    return {
+      source,
+      release: (query: string, page: PickerPage) => {
+        const resolve = waiting.get(query);
+        if (!resolve) throw new Error(`nothing waiting for "${query}"`);
+        act(() => resolve(page));
+      },
+    };
+  }
+
+  it("never shows the answer to text the owner has moved on from", async () => {
+    const { source, release } = deferredSource();
+    const user = userEvent.setup();
+    render(
+      <RemotePickerDialog
+        {...({
+          ...labels,
+          trigger: <Button type="button">Open</Button>,
+          mode: "multi",
+          confirmLabel: (count: number) => `Add ${count}`,
+          onConfirm: vi.fn(),
+          source,
+        } as unknown as PickerProps)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    release("", { items: [row("A", "Alpha")], nextCursor: null });
+    expect(await screen.findByText("Alpha")).toBeInTheDocument();
+
+    await user.type(screen.getByRole("textbox", { name: "Search" }), "be");
+    await waitFor(() => expect(source).toHaveBeenCalledTimes(2));
+    // The owner keeps typing while "be" is still in the air.
+    await user.type(screen.getByRole("textbox", { name: "Search" }), "ta");
+    release("be", { items: [row("OLD", "Stale row")], nextCursor: "old-page-2" });
+    expect(screen.queryByText("Stale row")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: `${ns}.loadMore` })).not.toBeInTheDocument();
+
+    await waitFor(() => expect(source).toHaveBeenCalledTimes(3));
+    release("beta", { items: [row("B", "Beta")], nextCursor: null });
+    expect(await screen.findByText("Beta")).toBeInTheDocument();
+    expect(screen.queryByText("Stale row")).not.toBeInTheDocument();
+  });
+
+  it("never asks for the next page of an older search", async () => {
+    const { source, release } = deferredSource();
+    const user = userEvent.setup();
+    render(
+      <RemotePickerDialog
+        {...({
+          ...labels,
+          trigger: <Button type="button">Open</Button>,
+          mode: "multi",
+          confirmLabel: (count: number) => `Add ${count}`,
+          onConfirm: vi.fn(),
+          source,
+        } as unknown as PickerProps)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    release("", { items: [row("A", "Alpha")], nextCursor: "page-2" });
+    expect(await screen.findByRole("button", { name: `${ns}.loadMore` })).toBeInTheDocument();
+
+    await user.type(screen.getByRole("textbox", { name: "Search" }), "beta");
+    // While the new text is being answered there is nothing to page.
+    expect(screen.queryByRole("button", { name: `${ns}.loadMore` })).not.toBeInTheDocument();
+    await waitFor(() => expect(source).toHaveBeenCalledTimes(2));
+    release("beta", { items: [row("B", "Beta")], nextCursor: "beta-2" });
+    await user.click(await screen.findByRole("button", { name: `${ns}.loadMore` }));
+    expect(source).toHaveBeenLastCalledWith({
+      query: "beta",
+      cursor: "beta-2",
+      sort: null,
+      direction: null,
+    });
+  });
+});
+
+describe("<RemotePickerDialog> in single mode", () => {
+  const single = {
+    ...labels,
+    trigger: <Button type="button">Open</Button>,
+    mode: "single" as const,
+    value: "",
+    noneLabel: "None",
+    newLabel: (typed: string) => `Use ${typed}`,
+  };
+
+  it("still offers None and the typed name when the library cannot be read", async () => {
+    const user = userEvent.setup();
+    const onChoose = vi.fn();
+    render(
+      <RemotePickerDialog
+        {...({
+          ...single,
+          onChoose,
+          source: vi.fn(async () => {
+            throw new Error("down");
+          }),
+        } as unknown as PickerProps)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load the rows");
+    await user.click(screen.getByText("None"));
+    expect(onChoose).toHaveBeenCalledWith(null);
+  });
+
+  it("still offers None when the library is not set up", async () => {
+    const user = userEvent.setup();
+    const onChoose = vi.fn();
+    render(
+      <RemotePickerDialog
+        {...({
+          ...single,
+          onChoose,
+          source: vi.fn(async () => ({ items: [], nextCursor: null, reason: "not-set-up" as const })),
+        } as unknown as PickerProps)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    expect(await screen.findByText("Not set up yet")).toBeInTheDocument();
+    await user.click(screen.getByText("None"));
+    expect(onChoose).toHaveBeenCalledWith(null);
+  });
+
+  it("offers the typed name only once the server answered that text with nothing", async () => {
+    const user = userEvent.setup();
+    const onChoose = vi.fn();
+    render(
+      <RemotePickerDialog
+        {...({
+          ...single,
+          onChoose,
+          source: vi.fn(async ({ query }: { query: string }) => ({
+            items: query === "nairobi" ? [row("A", "University of Nairobi")] : [],
+            nextCursor: null,
+          })),
+        } as unknown as PickerProps)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.type(screen.getByRole("textbox", { name: "Search" }), "nairobi");
+    expect(await screen.findByText("University of Nairobi")).toBeInTheDocument();
+    // A near match is still a match, so the typed name is not offered.
+    expect(screen.queryByText("Use nairobi")).not.toBeInTheDocument();
+  });
+});
+
 describe("localPickerSource", () => {
   const rows = Array.from({ length: 120 }, (_, index) => row(`ID${index}`, `Row ${index}`));
 
   it("pages fifty at a time and searches the title", async () => {
     const source = localPickerSource(rows);
-    const first = await source({ query: "", cursor: null, sort: null });
+    const first = await source({ query: "", cursor: null, sort: null, direction: null });
     expect(first.items).toHaveLength(50);
     expect(first.nextCursor).toBe("50");
-    const second = await source({ query: "", cursor: first.nextCursor, sort: null });
+    const second = await source({ query: "", cursor: first.nextCursor, sort: null, direction: null });
     expect(second.items[0]?.id).toBe("ID50");
-    const found = await source({ query: "row 11", cursor: null, sort: null });
+    const found = await source({ query: "row 11", cursor: null, sort: null, direction: null });
     expect(found.items.map((item) => item.id)).toEqual([
       "ID11",
       "ID110",
