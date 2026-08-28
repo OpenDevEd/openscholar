@@ -3,10 +3,11 @@
 import type { LucideIcon } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import {
   type ConfigurationDraft,
   type PageSectionKey,
+  type SaveRefusal,
   type SectionRow,
   type SectionState,
   sectionChanged,
@@ -27,6 +28,23 @@ export type SectionProps = {
   /** Copy one card's values back from the saved rows. */
   reset: (sectionKey: PageSectionKey) => void;
 };
+
+const SaveRefusalContext = createContext<SaveRefusal | null>(null);
+
+/** Lets every card show a save the platform refused because of its own values. */
+export function SaveRefusalProvider({
+  refusal,
+  children,
+}: {
+  refusal: SaveRefusal | null;
+  children: ReactNode;
+}) {
+  return (
+    <SaveRefusalContext.Provider value={refusal}>
+      {children}
+    </SaveRefusalContext.Provider>
+  );
+}
 
 export const STATE_TONE: Record<SectionState, StatusTone> = {
   complete: "success",
@@ -56,6 +74,8 @@ export function SectionShell({
   const state = sectionState(draft, saved, sectionKey);
   const problems = sectionProblems(draft, sectionKey);
   const changed = sectionChanged(draft, saved, sectionKey);
+  const refusal = useContext(SaveRefusalContext);
+  const refused = refusal?.card === sectionKey ? refusal.message : null;
   return (
     <SectionCard
       id={`sec-${sectionKey}`}
@@ -73,6 +93,16 @@ export function SectionShell({
       }
       data-section-state={state}
     >
+      {refused ? (
+        <InlineNotice
+          tone="danger"
+          role="alert"
+          title={t("saveRefused")}
+          data-save-refused
+        >
+          {refused}
+        </InlineNotice>
+      ) : null}
       {problems.length > 0 ? (
         <InlineNotice tone="danger" data-problems>
           <ul className="list-disc space-y-0.5 pl-4">

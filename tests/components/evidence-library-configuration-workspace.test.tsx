@@ -10,6 +10,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ConvexError } from "convex/values";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -383,6 +384,68 @@ describe("<ConfigurationWorkspace>", () => {
     await user.click(screen.getByRole("button", { name: "save" }));
     expect(saved).toEqual([]);
     expect(toastMock.error).toHaveBeenCalledWith("fixFirstToast", expect.anything());
+  });
+
+  it("shows a refused save inside the section that owns the value", async () => {
+    const user = userEvent.setup();
+    mutationMock.mockImplementation((reference: unknown) => {
+      if (reference === "saveDraftSections") {
+        return async () => {
+          throw new ConvexError({
+            code: "VALIDATION_ERROR",
+            message: "/identity/name: This name is already taken.",
+            pointer: "/identity/name",
+          });
+        };
+      }
+      return async () => null;
+    });
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+
+    const refusal = await waitFor(() => identityCard().getByRole("alert"));
+    expect(refusal).toHaveTextContent("saveRefused");
+    expect(refusal).toHaveTextContent("This name is already taken.");
+    expect(refusal).not.toHaveTextContent("/identity/name");
+    expect(toastMock.error).toHaveBeenCalledWith("This name is already taken.");
+  });
+
+  it("clears a refused save once the next save works", async () => {
+    const user = userEvent.setup();
+    let refuse = true;
+    mutationMock.mockImplementation((reference: unknown) => {
+      if (reference === "saveDraftSections") {
+        return async (input: unknown) => {
+          if (refuse) {
+            throw new ConvexError({
+              code: "VALIDATION_ERROR",
+              message: "/identity/name: This name is already taken.",
+              pointer: "/identity/name",
+            });
+          }
+          saved.push(input);
+          return { editVersion: 5 };
+        };
+      }
+      return async () => null;
+    });
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => identityCard().getByRole("alert"));
+
+    refuse = false;
+    await user.click(screen.getByRole("button", { name: "save" }));
+
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("resets a section back to the saved values", async () => {

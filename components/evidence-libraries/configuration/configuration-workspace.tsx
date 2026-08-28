@@ -67,6 +67,8 @@ import {
   type PageSectionKey,
   readDraft,
   resetSection,
+  type SaveRefusal,
+  saveRefusal,
   type SectionRow,
   sectionState,
   staleUploads,
@@ -96,7 +98,11 @@ import { TeamSection } from "./sections/team-section";
 import { ThemeSection } from "./sections/theme-section";
 import { VersionsSection } from "./sections/versions-section";
 import { InlineNotice } from "./section-card";
-import { STATE_TONE, type SectionProps } from "./section-shell";
+import {
+  SaveRefusalProvider,
+  STATE_TONE,
+  type SectionProps,
+} from "./section-shell";
 import { LibraryAddressLink } from "../library-address-link";
 import { PanelHeader } from "./panel-header";
 import { STATUS_DOT, StatusChip } from "./status-chip";
@@ -175,12 +181,11 @@ const SECTION_COMPONENTS: Record<
 
 const LIBRARIES_HREF = "/evidence-libraries";
 
-function errorMessage(error: unknown, fallback: string) {
-  if (error instanceof ConvexError) {
-    const data = error.data as { message?: unknown };
-    if (typeof data?.message === "string") return data.message;
-  }
-  return fallback;
+/** What the platform refused and where it belongs, or null when it said nothing useful. */
+function readRefusal(error: unknown): SaveRefusal | null {
+  if (!(error instanceof ConvexError)) return null;
+  const data = error.data as { message?: unknown; pointer?: unknown };
+  return saveRefusal(data?.pointer, data?.message);
 }
 
 function isPageSection(value: string): value is PageSectionKey {
@@ -259,6 +264,8 @@ function Workspace({
     ),
   );
   const [saving, setSaving] = useState(false);
+  // The last save the platform refused. It stays until the next attempt.
+  const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
   const [activating, setActivating] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -303,6 +310,13 @@ function Workspace({
     return result.editVersion;
   }
 
+  // Shows a refused save both as a toast and inside the card that owns the value.
+  function showRefusal(error: unknown, fallback: string) {
+    const refused = readRefusal(error);
+    setRefusal(refused);
+    toast.error(refused?.message ?? fallback);
+  }
+
   function handleSave() {
     if (problems) {
       toast.error(t("fixFirstToast"), {
@@ -311,17 +325,17 @@ function Workspace({
       return;
     }
     setSaving(true);
+    setRefusal(null);
     void save()
       .then(() => toast.success(t("saved")))
-      .catch((error: unknown) =>
-        toast.error(errorMessage(error, t("saveError"))),
-      )
+      .catch((error: unknown) => showRefusal(error, t("saveError")))
       .finally(() => setSaving(false));
   }
 
   function confirmActivate() {
     setActivateOpen(false);
     setActivating(true);
+    setRefusal(null);
     void save()
       .then((version) =>
         activateConfiguration({ libraryId, expectedEditVersion: version }),
@@ -337,9 +351,7 @@ function Workspace({
           }),
         });
       })
-      .catch((error: unknown) =>
-        toast.error(errorMessage(error, t("activationError"))),
-      )
+      .catch((error: unknown) => showRefusal(error, t("activationError")))
       .finally(() => setActivating(false));
   }
 
@@ -455,6 +467,7 @@ function Workspace({
                 libraryId={libraryId}
                 ids={draft.collections.map((collection) => collection.id)}
               >
+                <SaveRefusalProvider refusal={refusal}>
                 {PAGE_SECTION_KEYS.map((key) => {
                   const Section = SECTION_COMPONENTS[key];
                   return (
@@ -468,6 +481,7 @@ function Workspace({
                     />
                   );
                 })}
+                </SaveRefusalProvider>
               </CollectionFactsProvider>
               <DomainSection libraryId={libraryId} />
               <VersionsSection
