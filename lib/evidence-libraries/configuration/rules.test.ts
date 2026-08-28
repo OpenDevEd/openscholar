@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  AI_MODELS,
+  AI_PROVIDER,
   cardForRow,
   collectionOptions,
   featureBlock,
@@ -10,8 +12,11 @@ import {
   hasProblems,
   readDraft,
   resetSection,
+  sectionChanged,
   sectionProblems,
   sectionState,
+  SUPPORTS_CONSENT_POLICY_VERSION,
+  SUPPORTS_POSTHOG_UI_HOST,
   staleUploads,
   SCHEMA_LIMITS,
   THEME_DEFAULTS,
@@ -66,6 +71,7 @@ const savedRows = [
   { sectionKey: "citations", payload: {} },
   { sectionKey: "exports", payload: {} },
   { sectionKey: "analytics", payload: {} },
+  { sectionKey: "ai", payload: {} },
 ] as const;
 
 function savedDraft() {
@@ -730,10 +736,21 @@ describe("readDraft for the platform sections", () => {
       localePriority: ["en-GB", "fr"],
     });
     expect(draft.analytics).toEqual({
-      posthog: { enabled: true, host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+      posthog: {
+        enabled: true,
+        host: "https://eu.i.posthog.com",
+        uiHost: "",
+        key: "phc_12345678901234567890",
+      },
       google: { enabled: false, measurementId: "" },
+      consentPolicyVersion: 1,
     });
-    expect(readDraft(savedRows).analytics.posthog).toEqual({ enabled: false, host: "", key: "" });
+    expect(readDraft(savedRows).analytics.posthog).toEqual({
+      enabled: false,
+      host: "",
+      uiHost: "",
+      key: "",
+    });
     expect(readDraft(savedRows).exports).toEqual({ ris: true, bibtex: true, atom: false });
   });
 });
@@ -841,8 +858,14 @@ describe("changedSectionRows for the platform sections", () => {
   it("writes both analytics providers when both are on and checks their keys", () => {
     const draft = readDraft(platformRows);
     expect(draft.analytics).toEqual({
-      posthog: { enabled: true, host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+      posthog: {
+        enabled: true,
+        host: "https://eu.i.posthog.com",
+        uiHost: "",
+        key: "phc_12345678901234567890",
+      },
       google: { enabled: false, measurementId: "" },
+      consentPolicyVersion: 1,
     });
     draft.analytics.google.enabled = true;
     expect(sectionProblems(draft, "analytics")).toEqual(["google"]);
@@ -870,5 +893,134 @@ describe("changedSectionRows for the platform sections", () => {
     expect(cardForRow("exports")).toBe("citations");
     expect(cardForRow("localization")).toBe("languages");
     expect(cardForRow("features")).toBe("features");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Plan 15: AI answers and the two analytics fields                    */
+/* ------------------------------------------------------------------ */
+
+// The OpenRouter model list arrives with the pinned contract. Until the
+// runtime merge of `ai-modernization` lands on new-el `main` and
+// `scripts/sync-evidence-library-config-contract.mjs --commit <sha>` re-pins
+// it, the pinned catalog carries no OpenRouter entry and these cases cannot
+// run.
+const withCatalog = AI_MODELS.length > 0;
+const approvedModel = AI_MODELS[0] ?? "openai/gpt-5.6-luna";
+
+const aiRows = [
+  ...savedRows.filter((row) => row.sectionKey !== "features"),
+  { sectionKey: "features", payload: { ai: true } },
+  {
+    sectionKey: "ai",
+    payload: { providers: [{ provider: AI_PROVIDER, enabled: true, defaultModel: approvedModel }] },
+  },
+];
+
+describe("AI answers", () => {
+  it("reads no key and no model from a library that has never saved one", () => {
+    const draft = savedDraft();
+    expect(draft.features.ai).toBe(false);
+    expect(draft.ai).toEqual({ keySaved: false, defaultModel: "" });
+    expect(sectionProblems(draft, "ai")).toEqual([]);
+  });
+
+  it("asks for a key and a model as soon as AI answers are on", () => {
+    const draft = savedDraft();
+    draft.features.ai = true;
+    expect(sectionProblems(draft, "ai")).toEqual(["aiKey", "aiModel"]);
+    draft.ai.keySaved = true;
+    expect(sectionProblems(draft, "ai")).toEqual(["aiModel"]);
+    draft.ai.defaultModel = "made-up/model";
+    expect(sectionProblems(draft, "ai")).toEqual(["aiModelUnknown"]);
+  });
+
+  it.skipIf(!withCatalog)("accepts an approved model and writes exactly one provider entry", () => {
+    const draft = savedDraft();
+    draft.features.ai = true;
+    draft.ai.keySaved = true;
+    draft.ai.defaultModel = approvedModel;
+    expect(sectionProblems(draft, "ai")).toEqual([]);
+    const rows = changedSectionRows(draft, savedRows);
+    expect(rows.find((row) => row.sectionKey === "features")?.payload).toMatchObject({ ai: true });
+    expect(rows.find((row) => row.sectionKey === "ai")).toEqual({
+      sectionKey: "ai",
+      payload: {
+        providers: [{ provider: AI_PROVIDER, enabled: true, defaultModel: approvedModel }],
+      },
+    });
+  });
+
+  it.skipIf(!withCatalog)("reads a saved provider entry back and clears the row when AI goes off", () => {
+    const draft = readDraft(aiRows);
+    expect(draft.features.ai).toBe(true);
+    expect(draft.ai.defaultModel).toBe(approvedModel);
+    expect(sectionChanged(draft, aiRows, "ai")).toBe(false);
+    draft.features.ai = false;
+    expect(sectionProblems(draft, "ai")).toEqual([]);
+    expect(sectionState(draft, aiRows, "ai")).toBe("edited");
+    expect(changedSectionRows(draft, aiRows)).toContainEqual({ sectionKey: "ai", payload: {} });
+  });
+
+  it.skipIf(!withCatalog)("puts the AI card back the way it was saved", () => {
+    const draft = readDraft(aiRows);
+    draft.features.ai = false;
+    draft.ai.defaultModel = "";
+    const back = resetSection(draft, aiRows, "ai");
+    expect(back.features.ai).toBe(true);
+    expect(back.ai.defaultModel).toBe(approvedModel);
+  });
+
+  it("never lets a stored key reach a saved row", () => {
+    const draft = readDraft(aiRows);
+    draft.ai.keySaved = true;
+    expect(JSON.stringify(changedSectionRows(draft, aiRows))).not.toContain("apiKey");
+    expect(cardForRow("ai")).toBe("ai");
+    expect(sectionChanged(draft, aiRows, "ai")).toBe(false);
+  });
+});
+
+describe("the analytics fields the runtime gained", () => {
+  it.skipIf(!SUPPORTS_POSTHOG_UI_HOST)("writes a session-recording address only with a PostHog host", () => {
+    const draft = readDraft(platformRows);
+    draft.analytics.posthog.uiHost = "not a url";
+    expect(sectionProblems(draft, "analytics")).toEqual(["posthogUiHost"]);
+    draft.analytics.posthog.uiHost = "https://eu.posthog.com";
+    expect(sectionProblems(draft, "analytics")).toEqual([]);
+    expect(changedSectionRows(draft, platformRows)).toEqual([
+      {
+        sectionKey: "analytics",
+        payload: {
+          posthog: {
+            host: "https://eu.i.posthog.com",
+            uiHost: "https://eu.posthog.com",
+            key: "phc_12345678901234567890",
+          },
+        },
+      },
+    ]);
+    draft.analytics.posthog.enabled = false;
+    expect(changedSectionRows(draft, platformRows)).toEqual([
+      { sectionKey: "analytics", payload: {} },
+    ]);
+  });
+
+  it.skipIf(!SUPPORTS_CONSENT_POLICY_VERSION)("writes the consent version only when it is raised", () => {
+    const draft = readDraft(platformRows);
+    expect(draft.analytics.consentPolicyVersion).toBe(1);
+    expect(changedSectionRows(draft, platformRows)).toEqual([]);
+    draft.analytics.consentPolicyVersion = 0;
+    expect(sectionProblems(draft, "analytics")).toEqual(["consentVersion"]);
+    draft.analytics.consentPolicyVersion = 2;
+    expect(sectionProblems(draft, "analytics")).toEqual([]);
+    expect(changedSectionRows(draft, platformRows)).toEqual([
+      {
+        sectionKey: "analytics",
+        payload: {
+          posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+          consentPolicyVersion: 2,
+        },
+      },
+    ]);
   });
 });
