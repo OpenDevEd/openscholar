@@ -177,8 +177,10 @@ export const SUPPORTS_CONSENT_POLICY_VERSION = schemaHas(
 
 export { AI_MODELS, AI_PROVIDER };
 
-/** The consent version every library starts from. */
-export const CONSENT_POLICY_VERSION_DEFAULT = 1;
+/** The consent version every library starts from, as the runtime sets it. */
+export const CONSENT_POLICY_VERSION_DEFAULT = SUPPORTS_CONSENT_POLICY_VERSION
+  ? (schemaNode("/analytics/consentPolicyVersion").default as number)
+  : 1;
 
 export const SCHEMA_LIMITS = {
   identity: {
