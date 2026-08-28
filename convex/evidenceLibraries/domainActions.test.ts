@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createReadySetupFixture as createFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { createLibraryStorageBucketNames } from "./storageSetupClient";
+import { readTeardownStep } from "./teardownActions";
 
 // The pinned client opens a real socket, which a test cannot answer. The
 // address check it wraps still runs for real; only the connector is stubbed,
@@ -43,6 +45,8 @@ type World = {
   dnsOffline?: boolean;
   coolifyConflict?: boolean;
   coolifyOffline?: boolean;
+  /** The Coolify application is already gone, so that step has nothing to do. */
+  coolifyApplicationGone?: boolean;
   /** The host owns its zone, so it can carry no alias. */
   apex?: boolean;
   /** Answer the health probe for every host, not just the custom one. */
@@ -164,6 +168,17 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
       return Response.json({ success: true, result: hostname });
     }
 
+    // A file store with nothing left in it, so that step has nothing to do.
+    if (url.hostname === "storage.example.test") {
+      if (url.pathname.includes("/list/")) return Response.json([]);
+      // The buckets are already gone, so this step finishes rather than
+      // waiting for them.
+      if (method === "GET") {
+        return Response.json({ message: "not found" }, { status: 404 });
+      }
+      return Response.json({});
+    }
+
     if (url.hostname === "coolify.example.test") {
       coolifyCalls.push({ method, url: url.pathname });
       if (world.coolifyOffline) throw new Error("coolify offline");
@@ -188,6 +203,11 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
       }
       if (url.pathname.endsWith("/tags")) {
         return Response.json([{ uuid: "tag00000000000000000001", name: tag }]);
+      }
+      // A library whose running site is already gone. Taking it apart then
+      // moves straight on to its files.
+      if (world.coolifyApplicationGone) {
+        return Response.json({ message: "not found" }, { status: 404 });
       }
       return Response.json(coolifyApplication(composeDomains, tag));
     }
@@ -3013,5 +3033,81 @@ describe("custom domains", () => {
       { libraryId: fixture.created.libraryId },
     );
     expect(draft.operation?.teardownFailedStep).toBe("files");
+  });
+  it.each([
+    { missing: "EL_COOLIFY_TOKEN", step: "runtime" },
+    { missing: "EL_STORAGE_SERVICE_KEY", step: "files" },
+    { missing: "EL_DATABASE_PROVISIONER_TOKEN", step: "database" },
+  ])(
+    "says the deletion stopped at $step when it really stops there",
+    async ({ missing, step }) => {
+      // Driven through the real teardown, failing at the real stage, then
+      // read back the way the page reads it.
+      const fixture = await createReadySetupFixture(`teardown-${step}`);
+      // The running site is already gone for the later stages, so the
+      // deletion really reaches the step under test.
+      vi.stubGlobal(
+        "fetch",
+        createWorld({ coolifyApplicationGone: step !== "runtime" }).fetchImpl,
+      );
+      await fixture.t.run(async (ctx) => {
+        await ctx.db.patch(fixture.created.libraryId, { state: "disabled" });
+        // The saved buckets have to be this library's own, or the deletion
+        // stops on that instead of reaching the step under test.
+        const library = await ctx.db.get(fixture.created.libraryId);
+        const buckets = createLibraryStorageBucketNames(
+          fixture.created.libraryId,
+        );
+        if (library?.runtimeBindingId) {
+          await ctx.db.patch(library.runtimeBindingId, {
+            storagePrivateBucket: buckets.privateBucket,
+            storagePublicBucket: buckets.publicBucket,
+          });
+        }
+      });
+      const operationId = await fixture.t.run(async (ctx) =>
+        ctx.db.insert("evidenceLibraryConfigOperations", {
+          libraryId: fixture.created.libraryId,
+          kind: "teardown",
+          idempotencyKey: `teardown:${step}`,
+          status: "queued",
+          stage: "queued",
+          // Past every wait, so one run settles it.
+          attemptCount: 9,
+          requestedByClerkUserId: "someone",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }),
+      );
+
+      vi.stubEnv(missing, "");
+      await expect(
+        fixture.t.action(
+          internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+          { libraryId: fixture.created.libraryId, operationId },
+        ),
+      ).resolves.toEqual({ status: "failed" });
+
+      const overviews = await fixture.admin.query(
+        api.evidenceLibraries.queries.listLibraryOverviews,
+        {},
+      );
+      const row = overviews.find(
+        (library) => library._id === fixture.created.libraryId,
+      );
+      expect(row?.teardownFailedStep).toBe(step);
+    },
+  );
+
+  it("calls the last step of a deletion the records", () => {
+    // The final stage only deletes this library's own rows, so it cannot be
+    // made to fail from outside the way the provider steps can. Its mapping
+    // is checked where it lives.
+    expect(readTeardownStep("convex", false)).toBe("records");
+    // And the earlier stages still map the way the deletions above showed.
+    expect(readTeardownStep("coolify", true)).toBe("domains");
+    expect(readTeardownStep("coolify", false)).toBe("runtime");
+    expect(readTeardownStep("storage", false)).toBe("files");
+    expect(readTeardownStep("database", false)).toBe("database");
   });
 });

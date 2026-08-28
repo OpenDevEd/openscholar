@@ -63,7 +63,7 @@ async function holdTeardown(
  * stage, so a failure there is reported as the domains when that is what was
  * being removed, and as the running site otherwise.
  */
-function readTeardownStep(
+export function readTeardownStep(
   stage: "convex" | "coolify" | "database" | "storage",
   duringDomains: boolean,
 ): "domains" | "runtime" | "files" | "database" | "records" {
@@ -100,9 +100,6 @@ export const runDevelopmentTeardown = internalAction({
       );
       if (!prepared.claimed) return { status: "pending" as const };
       attemptToken = prepared.attemptToken;
-      // The custom domains come down first, so anything that fails from here
-      // until the storage step is a failure to remove them — including not
-      // finding the certificate service at all.
       // The custom domains come down first, so anything that fails from here
       // until the storage step is a failure to remove them — including not
       // finding the certificate service at all.
