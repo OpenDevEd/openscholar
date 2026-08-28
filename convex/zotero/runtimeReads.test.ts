@@ -249,6 +249,53 @@ describe("Evidence Library runtime reads", () => {
     ).toEqual([200, 50]);
   });
 
+  it("answers collections in the order they were asked for, warm cache or not", async () => {
+    const fixture = await readyLibrary("reads_order");
+    const { state, fetchImpl } = runtime();
+    state.collections = ["COLL0001", "COLL0002", "COLL0003"].map((id, index) => ({
+      id,
+      title: `Collection ${index}`,
+      count: index,
+      source: "zotero-42",
+      parentId: null,
+    }));
+    vi.stubGlobal("fetch", fetchImpl);
+    const ask = (ids: string[]) =>
+      fixture.admin.action(api.zotero.runtimeReadActions.resolveLibraryCollections, {
+        libraryId: fixture.created.libraryId,
+        ids,
+      });
+
+    // The library answers in its own order; the caller's order is kept.
+    const reversed = await ask(["COLL0003", "COLL0002", "COLL0001"]);
+    expect(reversed.items.map((item) => item.id)).toEqual([
+      "COLL0003",
+      "COLL0002",
+      "COLL0001",
+    ]);
+    const forward = await ask(["COLL0001", "COLL0002", "COLL0003"]);
+    expect(forward.items.map((item) => item.id)).toEqual([
+      "COLL0001",
+      "COLL0002",
+      "COLL0003",
+    ]);
+    // The same ids share one cache row, whichever order they came in.
+    expect(fetchImpl.mock.calls).toHaveLength(1);
+  });
+
+  it("refuses a list longer than a site can show", async () => {
+    const fixture = await readyLibrary("reads_too_many");
+    const { fetchImpl } = runtime();
+    vi.stubGlobal("fetch", fetchImpl);
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.resolveLibraryCollections, {
+        libraryId: fixture.created.libraryId,
+        ids: Array.from({ length: 501 }, (_, index) => `COLL${index}`),
+      }),
+    ).rejects.toThrow(/at most 500/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("refuses an order it does not know", async () => {
     const fixture = await readyLibrary("reads_bad_args");
     vi.stubGlobal("fetch", runtime().fetchImpl);

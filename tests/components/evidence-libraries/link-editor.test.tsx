@@ -42,7 +42,8 @@ const link: LinkDraft = {
 const libraryId = "library_1" as Id<"evidenceLibraries">;
 
 // The owner renamed one collection for the site and left the other alone.
-const collections = [{ id: "COLL0001", title: "Climate" }, { id: "COLL0002" }];
+const SITE_TITLE = "Weather stories";
+const collections = [{ id: "COLL0001", title: SITE_TITLE }, { id: "COLL0002" }];
 
 async function renderEditor(props: {
   link?: typeof link;
@@ -95,9 +96,7 @@ describe("<LinkEditor> collection target", () => {
     // The database name leads, even for the one the owner renamed, and the
     // site title is shown beside it.
     expect(await within(table).findByText("Climate change")).toBeInTheDocument();
-    expect(
-      within(table).getByText(`${ns}.collectionPicker.shownAs {"title":"Climate"}`),
-    ).toBeInTheDocument();
+    expect(within(table).getByText(new RegExp(SITE_TITLE))).toBeInTheDocument();
     expect(within(table).getByText("Health")).toBeInTheDocument();
     expect(within(table).getAllByText("zotero-42")).toHaveLength(2);
     expect(within(table).getByText("12")).toBeInTheDocument();

@@ -12,6 +12,7 @@ import {
   type RuntimeInstitutionsPage,
   RuntimeReadError,
   RUNTIME_RESOLVE_MAX_IDS,
+  RUNTIME_RESOLVE_MAX_TOTAL_IDS,
   readRuntimeCollections,
   readRuntimeCollectionsByIds,
   readRuntimeInstitutions,
@@ -149,9 +150,15 @@ export const resolveLibraryCollections = action({
     });
     const ids = [...new Set(args.ids)];
     if (ids.length === 0) return { items: [] };
-    const items: RuntimeCollectionFacts[] = [];
+    if (ids.length > RUNTIME_RESOLVE_MAX_TOTAL_IDS) {
+      throw createError(
+        "VALIDATION_ERROR",
+        `A site shows at most ${RUNTIME_RESOLVE_MAX_TOTAL_IDS} collections`,
+      );
+    }
     // A site may show more collections than the library answers at once, so
     // the list is asked for in batches and put back together here.
+    const found = new Map<string, RuntimeCollectionFacts>();
     for (let from = 0; from < ids.length; from += RUNTIME_RESOLVE_MAX_IDS) {
       const batch = ids.slice(from, from + RUNTIME_RESOLVE_MAX_IDS);
       const result = await cachedRead<{ items: RuntimeCollectionFacts[] }>(
@@ -164,8 +171,15 @@ export const resolveLibraryCollections = action({
         (target) => readRuntimeCollectionsByIds(fetch, { ...target, ids: batch }),
       );
       if ("reason" in result) return { reason: "not-set-up", items: [] };
-      items.push(...result.items);
+      for (const item of result.items) found.set(item.id, item);
     }
-    return { items };
+    // The answer follows the order that was asked for, whatever order the
+    // library or a warm cache row happened to use.
+    return {
+      items: ids.flatMap((id) => {
+        const item = found.get(id);
+        return item ? [item] : [];
+      }),
+    };
   },
 });

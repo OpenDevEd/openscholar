@@ -206,6 +206,12 @@ export async function readRuntimeInstitutions(
 
 /** The most ids one call may ask about, as the runtime allows. */
 export const RUNTIME_RESOLVE_MAX_IDS = 200;
+/**
+ * The most collections a site can show, from the pinned configuration
+ * schema (`/properties/collections`, `maxItems`). Asking about more than
+ * that is a mistake, not a long list.
+ */
+export const RUNTIME_RESOLVE_MAX_TOTAL_IDS = 500;
 
 /**
  * The names and record counts of collections the owner already shows.
