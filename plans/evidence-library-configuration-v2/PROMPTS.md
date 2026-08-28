@@ -777,3 +777,33 @@ START NOW: read the plan and the README, read convex/_generated/ai/guidelines.md
 
 Go.
 ```
+
+## Plan 16 — custom domains, lane D (OpenScholar)
+
+```text
+Implement lane D of plans/evidence-library-configuration-v2/16-custom-domains.md. Read 16-RESEARCH.md in the same folder first (it is long; sections 0, C and D are the ones you build from), then plans/evidence-library-configuration-v2/00-README.md, AGENTS.md, and convex/_generated/ai/guidelines.md.
+Depends on: plans 01–15 (15 is in flight on other files — do not touch the AI or analytics sections, the contract files, or the setup page).
+
+Worktree /Users/mcharrad/Documents/Github/openscholar/domains-sprint, branch codex/custom-domains from origin/dev. Run `npm ci` first. Convex lane in .env.local (bright-stork-673). Next port 3012. The lane has no Cloudflare credentials yet: build the Cloudflare client with an injected fetch and full tests, and make the section show "Custom domains are not set up on this platform yet" when `EL_CLOUDFLARE_API_TOKEN`/`EL_CLOUDFLARE_ZONE_ID` are missing; the integration owner sets them for the gate. Allow about six hours and keep working without asking questions the plan already answers.
+
+STANDING RULES:
+1. Reuse first: the address check pipeline in convex/evidenceLibraries/addressActions.ts (served-hosts cache, `AddressCheckError` semantics), `probeEvidenceLibraryAddress` + `requireActiveRevision` in readinessClient.ts, `startAddressMove` in versions.ts for the toggle, `parseComposeDomains`/`requirePublicDomain` in coolifyClient.ts, the section primitives (FieldGroup, Panel, ToggleRow, StatusChip, ReadOnlyValue), the copy rules. The agreed mock for the section is `git show origin/feat/library-interface-mock:components/evidence-libraries/mock/config/domain-section.tsx` plus its `evidenceLibraryMock.config.domain` copy — match it exactly except the CNAME value, which is `cname.opendev.space`.
+2. No legacy code, no A-record path, no DNS-provider API for the customer side, no Traefik redirect labels; never send Coolify `redirect`, `domains` or `force_domain_override: true`.
+3. Convex rules: validators on args and returns; DoH and Cloudflare calls via `fetch` from actions; secrets only in env; read convex/_generated/ai/guidelines.md.
+4. No useEffect for app state.
+5. Tests: run the test-decision skill first; every test the plan names, red → green for the pure parsers and the state machine; behaviour only.
+6. Deployment checks: `npx convex dev --once` on the lane only; never the shared deployment; browser gate on 3012 with screenshots in /tmp/domains/ (records table, Check DNS → no-records for a fake host, toggle disabled until verified, apex wording). Note: lane rows may lack `evidenceLibrariesEnabled` — patch with a temporary internal mutation you delete afterwards, as earlier lanes did.
+7. Research instead of guessing; other agents only for read-only investigation; never for UI work.
+
+EXECUTION RHYTHM: dnsClient parsers → state machine (domainActions) → coolifyClient set comparison → cloudflareSaasClient → mutations/versions/teardown → section UI → rail → browser gate. Commit after every working unit with `[plan-16]`.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-16]`; never commit while relevant tests fail; never use --no-verify; push and open a PR to dev with `gh pr create`; do not merge.
+
+WHEN TO STOP: only for a real blocker (plans/…/16-BLOCKER.md in your worktree). tsc, the vitest sets, `npx convex dev --once` and the browser gate must pass first.
+
+DEVIATIONS: if the plan is wrong, commit safe work, fix the numbered plan in your worktree, commit `docs: [plan-16] revise <section> — <reason>`, then continue. In particular, the "Known risks" item about origin TLS under Cloudflare for SaaS must be answered in the plan with what you found.
+
+START NOW: read the research sections 0, C, D, the plan, the README, the Convex guidelines, run `git status`, confirm no other Convex uploader is running on this lane, then start the DoH parser tests.
+
+Go.
+```

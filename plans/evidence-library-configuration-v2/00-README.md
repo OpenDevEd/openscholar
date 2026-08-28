@@ -83,6 +83,7 @@ answer machine calls yet, so pickers have nothing to read.
 | 13 | `13-large-list-pickers.md` | Server-driven pickers for institutions, collections, link targets and groups |
 | 14 | `14-admin-handoff.md` | `/admin` redirects to OpenScholar, which signs in, checks access and sends the cookie back |
 | 15 | `15-runtime-ai-analytics-merge.md` | Merge `ai-modernization` into the runtime; AI section (OpenRouter only); analytics fields; logo sizing |
+| 16 | `16-custom-domains.md` (+ `16-RESEARCH.md`) | Custom domains: CNAME to `cname.opendev.space`, Cloudflare for SaaS, four verification gates, redirect toggle |
 
 ## Lanes and order
 
@@ -182,6 +183,7 @@ once the real page has replaced it.
 | O · OpenScholar (plan 14) | `openscholar/admin-handoff` | `codex/admin-handoff` | `dev/agents/data` = `bright-stork-673` | 3012 |
 | M · Runtime merge (plan 15) | `new-el-merge` | `codex/merge-ai-modernization`, then `codex/logo-fit` | none | — |
 | A · OpenScholar (plan 15) | `openscholar/ai-sprint` | `codex/ai-openrouter-analytics` | `dev/agents/page` = `calm-labrador-815` | 3013 |
+| D · Domains (plan 16) | `openscholar/domains-sprint` | `codex/custom-domains` | `dev/agents/data` = `bright-stork-673` | 3012 |
 
 All three lane deployments expire 2026-09-09, carry daily usage caps, and hold
 the cloud dev env plus the `EL_*` values (each with its own `EL_CONVEX_SITE_URL`).
