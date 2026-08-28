@@ -60,8 +60,8 @@ export type DnsAnswer = {
   texts: string[];
   /** Lower-cased `issue` values from CAA records. */
   caaIssuers: string[];
-  /** The name carries a start-of-authority record, so it is a zone of its own. */
-  hasSoa: boolean;
+  /** Names that answered with a start-of-authority record, lower-cased. */
+  soaOwners: string[];
 };
 
 /**
@@ -118,7 +118,7 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
       addresses: [],
       texts: [],
       caaIssuers: [],
-      hasSoa: false,
+      soaOwners: [],
     };
   }
   if (payload.Status !== 0) {
@@ -134,7 +134,7 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
     addresses: [],
     texts: [],
     caaIssuers: [],
-    hasSoa: false,
+    soaOwners: [],
   };
   if (!records) return answer;
   if (records.length > MAX_ANSWER_RECORDS) {
@@ -145,6 +145,8 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
       throw new DnsLookupError("The domain could not be checked");
     }
     const data = record.data;
+    const name =
+      typeof record.name === "string" ? record.name : "";
     if (typeof data !== "string") {
       throw new DnsLookupError("The domain could not be checked");
     }
@@ -158,7 +160,9 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
     } else if (record.type === RECORD_TYPES.TXT) {
       answer.texts.push(readTxtValue(data));
     } else if (record.type === RECORD_TYPES.SOA) {
-      answer.hasSoa = true;
+      // A resolver often answers with the SOA of a *parent* zone when the
+      // name itself has none. Only the owner tells the two apart.
+      answer.soaOwners.push(normaliseRecordName(name));
     } else if (record.type === RECORD_TYPES.CAA) {
       // An empty value is kept: `issue ";"` means nobody may issue.
       const issuer = readCaaIssuer(data);
@@ -203,12 +207,24 @@ export type TargetReading =
  */
 export function classifyTarget(
   answer: DnsAnswer,
-  input: { target: string; targetAddresses: readonly string[] },
+  input: {
+    target: string;
+    targetAddresses: readonly string[];
+    /**
+     * Whether the name is the top of its own zone. Only such a name may
+     * pass on matching addresses alone: it cannot carry the alias we ask
+     * for. Anywhere else the alias is the proof, and matching addresses
+     * would let a plain subdomain skip it.
+     */
+    isApex?: boolean;
+  },
 ): TargetReading {
   const target = normaliseRecordName(input.target);
   if (answer.cnames.includes(target)) return "pointing";
   if (!answer.exists) return "no-name";
   if (answer.addresses.length === 0) return "no-records";
+  // Only the top of a zone may pass on addresses alone.
+  if (input.isApex !== true) return "wrong-target";
   // A flattened apex has to answer with the target's whole address set. One
   // address in common proves nothing: a shared proxy hands the same anycast
   // addresses to everybody on it.
@@ -487,8 +503,14 @@ export function isReservedPlatformHost(
  * counting labels is not — `example.co.uk` is a bare domain and
  * `library.example.org` is not, and no list of endings can say so.
  */
-export function readsAsApex(answers: readonly DnsAnswer[]): boolean {
-  return readAgreedAnswer(answers, (answer) => answer.hasSoa);
+export function readsAsApex(
+  answers: readonly DnsAnswer[],
+  host: string,
+): boolean {
+  const owned = normaliseRecordName(host);
+  return readAgreedAnswer(answers, (answer) =>
+    answer.soaOwners.includes(owned),
+  );
 }
 
 /** Every name from the host up to its last two labels, closest first. */

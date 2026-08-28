@@ -43,6 +43,8 @@ type World = {
   dnsOffline?: boolean;
   coolifyConflict?: boolean;
   coolifyOffline?: boolean;
+  /** The host owns its zone, so it can carry no alias. */
+  apex?: boolean;
   /** Answer the health probe for every host, not just the custom one. */
   anyHost?: boolean;
   /** What the proxy already serves for this library. */
@@ -51,6 +53,14 @@ type World = {
 
 function dnsAnswer(world: World, name: string, type: string, google: boolean) {
   const dot = google ? "." : "";
+  if (type === "SOA") {
+    return {
+      Status: 0,
+      Answer: world.apex
+        ? [{ name: `${name}${dot}`, type: 6, data: "ns1. hostmaster. 1 2 3 4 5" }]
+        : [],
+    };
+  }
   if (type === "CAA") {
     return {
       Status: 0,
@@ -574,7 +584,7 @@ describe("custom domains", () => {
     ).resolves.toMatchObject({ state: "verified" });
   });
 
-  it("passes a flattened apex that answers with the target's own addresses", async () => {
+  it("passes the top of a zone that answers with the target's own addresses", async () => {
     const fixture = await createReadySetupFixture("domain-apex");
     vi.stubGlobal("fetch", createWorld({}).fetchImpl);
     const added = await addDomain(fixture, "example.org");
@@ -586,6 +596,7 @@ describe("custom domains", () => {
       createWorld({
         addresses: [...TARGET_ADDRESSES],
         token: `os-verify=${token}`,
+        apex: true,
       }).fetchImpl,
     );
     await expect(

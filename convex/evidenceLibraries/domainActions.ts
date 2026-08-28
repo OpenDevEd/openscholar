@@ -221,8 +221,9 @@ async function readRecordGates(
     lookupHost(fetch, host, "SOA"),
   ]);
   const targetAddresses = await readTargetAddresses(target);
+  const isApex = readsAsApex(soaAnswers, host);
   const targetReading = readAgreedAnswer(targetAnswers, (answer) =>
-    classifyTargetReading(answer, { target, targetAddresses }),
+    classifyTargetReading(answer, { target, targetAddresses, isApex }),
   );
   const tokenReading = readAgreedAnswer(tokenAnswers, (answer) =>
     classifyToken(answer, verificationRecordValue(token)),
@@ -241,9 +242,9 @@ async function readRecordGates(
   }
   return {
     ...readDomainRecords({ target: targetReading, caa, token: tokenReading }),
-    // A bare domain cannot carry the record we ask for. Which names are bare
-    // is read from DNS, not counted from the parts of the name.
-    isApex: readsAsApex(soaAnswers),
+    // The top of a zone cannot carry the alias we ask for. Which names are
+    // tops of zones is read from DNS, not counted from the parts of a name.
+    isApex,
   };
 }
 

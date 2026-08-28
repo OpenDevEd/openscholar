@@ -251,8 +251,8 @@ describe("DomainSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("explains that a bare domain cannot carry the record", () => {
-    // Whether a name is a bare domain is read from its records on the
+  it("explains that the top of a zone cannot carry the record", () => {
+    // Whether a name is the top of its zone is read from its records on the
     // server; the section renders what it was told.
     mocks.data.domains = [row({ host: "example.co.uk", isApex: true })];
     const { unmount } = render(<DomainSection libraryId={libraryId} />);

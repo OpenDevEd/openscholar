@@ -5,7 +5,7 @@ const emptyAnswer = {
   addresses: [] as string[],
   texts: [] as string[],
   caaIssuers: [] as string[],
-  hasSoa: false,
+  soaOwners: [] as string[],
 };
 
 import {
@@ -141,25 +141,36 @@ describe("classifyTarget", () => {
   it("passes a CNAME chain that reaches the target", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: ["cname.opendev.space"], addresses: ["188.114.96.6"], texts: [], caaIssuers: [], hasSoa: false },
+        { exists: true, cnames: ["cname.opendev.space"], addresses: ["188.114.96.6"], texts: [], caaIssuers: [], soaOwners: [] },
         { target, targetAddresses },
       ),
     ).toBe("pointing");
   });
 
-  it("passes a flattened apex that answers with the target's whole address set", () => {
+  it("passes the top of a zone that answers with the target's whole address set", () => {
+    expect(
+      classifyTarget(
+        { ...emptyAnswer, addresses: ["188.114.97.6", "188.114.96.6"] },
+        { target, targetAddresses, isApex: true },
+      ),
+    ).toBe("pointing");
+  });
+
+  it("refuses an ordinary subdomain that only copies the addresses", () => {
+    // Anywhere but the top of a zone the alias is the proof; matching
+    // addresses would let a plain subdomain skip it.
     expect(
       classifyTarget(
         { ...emptyAnswer, addresses: ["188.114.97.6", "188.114.96.6"] },
         { target, targetAddresses },
       ),
-    ).toBe("pointing");
+    ).toBe("wrong-target");
   });
 
   it("refuses an apex that shares only one address with the target", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: [], addresses: ["188.114.97.6"], texts: [], caaIssuers: [], hasSoa: false },
+        { exists: true, cnames: [], addresses: ["188.114.97.6"], texts: [], caaIssuers: [], soaOwners: [] },
         { target, targetAddresses },
       ),
     ).toBe("wrong-target");
@@ -168,7 +179,7 @@ describe("classifyTarget", () => {
   it("tells a name that does not exist apart from one with no address", () => {
     expect(
       classifyTarget(
-        { exists: false, cnames: [], addresses: [], texts: [], caaIssuers: [], hasSoa: false },
+        { exists: false, cnames: [], addresses: [], texts: [], caaIssuers: [], soaOwners: [] },
         { target, targetAddresses },
       ),
     ).toBe("no-name");
@@ -177,7 +188,7 @@ describe("classifyTarget", () => {
   it("reports a name with no address at all", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: [], addresses: [], texts: [], caaIssuers: [], hasSoa: false },
+        { exists: true, cnames: [], addresses: [], texts: [], caaIssuers: [], soaOwners: [] },
         { target, targetAddresses },
       ),
     ).toBe("no-records");
@@ -186,7 +197,7 @@ describe("classifyTarget", () => {
   it("reports a name pointing somewhere else", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: ["cname.other.example"], addresses: ["203.0.113.9"], texts: [], caaIssuers: [], hasSoa: false },
+        { exists: true, cnames: ["cname.other.example"], addresses: ["203.0.113.9"], texts: [], caaIssuers: [], soaOwners: [] },
         { target, targetAddresses },
       ),
     ).toBe("wrong-target");
@@ -200,7 +211,7 @@ describe("classifyToken", () => {
     addresses: [],
     texts,
     caaIssuers: [],
-    hasSoa: false,
+    soaOwners: [] as string[],
   });
 
   it("matches the exact token", () => {
@@ -313,22 +324,26 @@ describe("lookupHost", () => {
 });
 
 describe("readsAsApex", () => {
-  it("reads a name that is a zone of its own as a bare domain", () => {
-    // `example.co.uk` is a bare domain and `library.example.org` is not; no
-    // count of labels can tell them apart, but the record can.
-    expect(
-      readsAsApex([
-        { ...emptyAnswer, hasSoa: true },
-        { ...emptyAnswer, hasSoa: true },
-      ]),
-    ).toBe(true);
-    expect(readsAsApex([emptyAnswer, emptyAnswer])).toBe(false);
+  const owned = { ...emptyAnswer, soaOwners: ["example.co.uk"] };
+
+  it("reads a name that owns its zone as the top of that zone", () => {
+    // `example.co.uk` is the top of its zone and `library.example.org` is
+    // not; no count of labels can tell them apart, but the record can.
+    expect(readsAsApex([owned, owned], "example.co.uk")).toBe(true);
+    expect(readsAsApex([emptyAnswer, emptyAnswer], "example.co.uk")).toBe(false);
+  });
+
+  it("ignores a parent zone's record", () => {
+    // Resolvers answer with the parent's start-of-authority when the name
+    // itself has none. That does not make the name a zone.
+    const parent = { ...emptyAnswer, soaOwners: ["example.org"] };
+    expect(readsAsApex([parent, parent], "library.example.org")).toBe(false);
   });
 
   it("refuses to say when the resolvers disagree", () => {
-    expect(() =>
-      readsAsApex([{ ...emptyAnswer, hasSoa: true }, emptyAnswer]),
-    ).toThrow(DnsLookupError);
+    expect(() => readsAsApex([owned, emptyAnswer], "example.co.uk")).toThrow(
+      DnsLookupError,
+    );
   });
 });
 
@@ -355,7 +370,7 @@ describe("readAgreedIssuers", () => {
     expect(() =>
       readAgreedIssuers([
         { ...emptyAnswer, caaIssuers: ["letsencrypt.org"] },
-        { ...emptyAnswer, caaIssuers: [], hasSoa: false },
+        { ...emptyAnswer, caaIssuers: [], soaOwners: [] },
       ]),
     ).toThrow(DnsLookupError);
   });

@@ -2892,7 +2892,7 @@
       "customHint": "Use a name like library.example.org, not a bare example.org.",
       "add": "Add domain",
       "remove": "Remove",
-      "apex": "Most domain hosts cannot point a bare domain at another address, and forcing it would stop your email working. Use www.example.org or library.example.org instead, and ask your domain host to forward the bare domain to it. If your domain host offers CNAME flattening, ALIAS or ANAME, the bare domain works.",
+      "apex": "This name is the top of its own DNS zone, so it cannot point at another address the way a subdomain can, and forcing it would stop your email working. Use www.example.org or library.example.org instead, and ask your domain host to forward the top of the zone to it. If your domain host offers CNAME flattening, ALIAS or ANAME, this name works as it is.",
       "recordsHeading": "DNS records to add",
       "recordsHint": "Add these two records where you manage the domain, then check again.",
       "colType": "Type",

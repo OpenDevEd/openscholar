@@ -12,6 +12,7 @@
 import {
   classifyTarget,
   DnsLookupError,
+  readsAsApex,
   isPublicInternetAddress,
   lookupHost,
   readAgreedAnswer,
@@ -68,12 +69,15 @@ export async function readSafeDomainAddresses(input: {
   let aaaa: { answers: DnsAnswer[]; addresses: string[] };
   let targetA: string[];
   let targetAaaa: string[];
+  let isApex: boolean;
   try {
-    [a, aaaa, targetA, targetAaaa] = await Promise.all([
+    const soa = lookupHost(fetchImpl, input.host, "SOA");
+    [a, aaaa, targetA, targetAaaa, isApex] = await Promise.all([
       readFamily(fetchImpl, input.host, "A"),
       readFamily(fetchImpl, input.host, "AAAA"),
       readFamily(fetchImpl, target, "A").then((read) => read.addresses),
       readFamily(fetchImpl, target, "AAAA").then((read) => read.addresses),
+      soa.then((answers) => readsAsApex(answers, input.host)),
     ]);
   } catch (error) {
     if (error instanceof DnsLookupError) {
@@ -82,23 +86,34 @@ export async function readSafeDomainAddresses(input: {
     throw error;
   }
 
-  // The name still has to reach us. Either family may carry the proof.
-  const reachesUs =
-    readAgreedAnswer(a.answers, (answer) =>
-      classifyTarget(answer, { target, targetAddresses: targetA }),
-    ) === "pointing" ||
-    (aaaa.addresses.length > 0 &&
-      readAgreedAnswer(aaaa.answers, (answer) =>
-        classifyTarget(answer, { target, targetAddresses: targetAaaa }),
-      ) === "pointing");
-  if (!reachesUs) {
-    throw new DomainEgressRefused("That domain no longer points at us");
-  }
-
-  const addresses = [...a.addresses, ...aaaa.addresses];
-  if (addresses.length === 0) {
+  // Every family that answers at all has to reach us. A correct address
+  // record beside an unrelated one in the other family would otherwise put
+  // that unrelated address on the list we connect to.
+  const families = [
+    { answers: a.answers, addresses: a.addresses, targetAddresses: targetA },
+    {
+      answers: aaaa.answers,
+      addresses: aaaa.addresses,
+      targetAddresses: targetAaaa,
+    },
+  ].filter((family) => family.addresses.length > 0);
+  if (families.length === 0) {
     throw new DomainEgressRefused("That domain answers no address");
   }
+  for (const family of families) {
+    const reading = readAgreedAnswer(family.answers, (answer) =>
+      classifyTarget(answer, {
+        target,
+        targetAddresses: family.targetAddresses,
+        isApex,
+      }),
+    );
+    if (reading !== "pointing") {
+      throw new DomainEgressRefused("That domain no longer points at us");
+    }
+  }
+
+  const addresses = families.flatMap((family) => family.addresses);
   for (const address of addresses) {
     if (!isPublicInternetAddress(address)) {
       throw new DomainEgressRefused(

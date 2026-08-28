@@ -15,6 +15,8 @@ type World = {
   a?: string[];
   aaaa?: string[];
   targetV6?: string[];
+  /** The host owns its zone, so it can carry no alias. */
+  apex?: boolean;
   offline?: boolean;
 };
 
@@ -33,6 +35,14 @@ function createFetch(world: World): typeof fetch {
           type: type === "A" ? 1 : 28,
           data,
         })),
+      });
+    }
+    if (type === "SOA") {
+      return Response.json({
+        Status: 0,
+        Answer: world.apex
+          ? [{ name, type: 6, data: "ns1.example.org. hostmaster. 1 2 3 4 5" }]
+          : [],
       });
     }
     const answer: unknown[] = [];
@@ -74,6 +84,7 @@ describe("readSafeDomainAddresses", () => {
           a: TARGET_ADDRESSES,
           aaaa: TARGET_V6,
           targetV6: TARGET_V6,
+          apex: true,
         }),
       }),
     ).resolves.toEqual([...TARGET_ADDRESSES, ...TARGET_V6]);
@@ -84,6 +95,22 @@ describe("readSafeDomainAddresses", () => {
       readSafeDomainAddresses({
         host: HOST,
         fetchImpl: createFetch({ cname: TARGET, a: ["127.0.0.1"] }),
+      }),
+    ).rejects.toBeInstanceOf(DomainEgressRefused);
+  });
+
+  it("refuses an unrelated address in the second family", async () => {
+    // A correct IPv4 record beside an IPv6 record pointing somewhere else
+    // must not put that other address on the list we connect to.
+    await expect(
+      readSafeDomainAddresses({
+        host: HOST,
+        fetchImpl: createFetch({
+          cname: TARGET,
+          a: TARGET_ADDRESSES,
+          aaaa: ["2001:db8::1"],
+          targetV6: TARGET_V6,
+        }),
       }),
     ).rejects.toBeInstanceOf(DomainEgressRefused);
   });
