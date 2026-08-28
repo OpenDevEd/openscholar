@@ -153,8 +153,14 @@ export const runDevelopmentTeardown = internalAction({
         serviceRoleKey: requireEnvironment("EL_STORAGE_SERVICE_KEY"),
         libraryId: args.libraryId,
       };
+      // Listing every upload can take longer than one lease on its own, so
+      // the lease is put forward before each page's deletes rather than once
+      // for the whole walk.
+      await deleteLibraryUploads({
+        ...storageAccess,
+        onBatch: () => holdTeardown(ctx, args.operationId, attemptToken),
+      });
       await holdTeardown(ctx, args.operationId, attemptToken);
-      await deleteLibraryUploads(storageAccess);
       const storage = await deleteLibraryStorage(storageAccess);
       if (storage.outcome === "pending") {
         await ctx.runMutation(
@@ -242,6 +248,10 @@ export const resumeDevelopmentTeardown = internalAction({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    /** The attempt this wake-up was booked for, if it was booked for one. */
+    attemptToken: v.optional(v.string()),
+    /** The deadline it was booked for. A renewal replaces it. */
+    leaseExpiresAt: v.optional(v.number()),
   },
   returns: v.object({
     status: v.union(v.literal("resumed"), v.literal("nothing-to-do")),
@@ -252,12 +262,21 @@ export const resumeDevelopmentTeardown = internalAction({
   ): Promise<{ status: "resumed" | "nothing-to-do" }> => {
     const stale = await ctx.runQuery(
       internal.evidenceLibraries.teardown.isDevelopmentTeardownStale,
-      args,
+      {
+        libraryId: args.libraryId,
+        operationId: args.operationId,
+        // A wake-up booked for a deadline the work has since moved past
+        // says nothing: a later one owns this teardown now.
+        ...(args.attemptToken ? { attemptToken: args.attemptToken } : {}),
+        ...(args.leaseExpiresAt !== undefined
+          ? { leaseExpiresAt: args.leaseExpiresAt }
+          : {}),
+      },
     );
     if (!stale) return { status: "nothing-to-do" as const };
     await ctx.runAction(
       internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
-      args,
+      { libraryId: args.libraryId, operationId: args.operationId },
     );
     return { status: "resumed" as const };
   },

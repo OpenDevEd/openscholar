@@ -12,7 +12,7 @@ import { validateOwnerSections } from "../../lib/evidence-libraries/configuratio
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
-import { claimDomainTransitionRow } from "./domains";
+import { claimDomainTransitionRow, requireTransition } from "./domains";
 import {
   evidenceLibraryAddressCandidateValidator,
   moveIdentityBaseUrl,
@@ -550,6 +550,19 @@ export const startDomainDeployment = internalMutation({
   }),
   handler: async (ctx, args) => {
     const running = await requireRunningLibrary(ctx, args.libraryId);
+    // Checked before anything is queued or written: an action that was
+    // overtaken while it worked must not replace a newer handoff.
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row || row.libraryId !== args.libraryId || row.host !== args.host) {
+      throw createError("NOT_FOUND", "That domain is no longer there");
+    }
+    requireTransition(row, args.token);
+    if ((row.generation ?? 0) !== args.generation) {
+      throw createError(
+        "CONFLICT",
+        "Another change to that domain is running",
+      );
+    }
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
     const operation = await queueDomainChangeOperation(ctx, {
       libraryId: args.libraryId,

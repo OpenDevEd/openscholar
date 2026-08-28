@@ -174,6 +174,7 @@ type DomainContext = {
     state: "added" | "pointing" | "verified" | "active" | "failed";
     verificationToken: string;
     attached: boolean;
+    attachIntent: boolean;
     removing: boolean;
     deploymentPending: boolean;
     generation: number;
@@ -200,6 +201,7 @@ export const readDomainContext = internalQuery({
         state: evidenceLibraryDomainStateValidator,
         verificationToken: v.string(),
         attached: v.boolean(),
+        attachIntent: v.boolean(),
         removing: v.boolean(),
         deploymentPending: v.boolean(),
         generation: v.number(),
@@ -230,8 +232,14 @@ export const readDomainContext = internalQuery({
       applicationUuid:
         "targetRuntimeId" in binding ? binding.targetRuntimeId : null,
       liveRevisionKey: revision?.revisionKey ?? null,
+      // A host the proxy may already hold counts here: an attach that got as
+      // far as asking, then stopped before saving its receipt, still has to
+      // be taken back out.
       attachedHosts: rows
-        .filter((entry) => entry.attachedAt !== undefined)
+        .filter(
+          (entry) =>
+            entry.attachedAt !== undefined || entry.attachIntentAt !== undefined,
+        )
         .map((entry) => `https://${entry.host}`)
         .sort(),
       domain: row
@@ -242,6 +250,9 @@ export const readDomainContext = internalQuery({
             state: row.state,
             verificationToken: row.verificationToken,
             attached: row.attachedAt !== undefined,
+            // The proxy was asked to hold this host and never confirmed, so
+            // a removal has to take it back out to be sure.
+            attachIntent: row.attachIntentAt !== undefined,
             removing: row.removingAt !== undefined,
             // Both halves: the proxy was written, or a deployment carrying
             // that write has not succeeded yet. A failed deployment stays
@@ -501,7 +512,7 @@ export function claimDomainTransitionRow(
 }
 
 /** Every write about a domain proves it still holds the lease. */
-function requireTransition(
+export function requireTransition(
   row: { transition?: { token: string } },
   token: string,
 ): void {
@@ -592,6 +603,9 @@ export const writeDomainAttachment = internalMutation({
       certificateHostnameId:
         args.certificateHostnameId ?? row.certificateHostnameId,
       certificateState: args.certificateState ?? row.certificateState,
+      // The proxy has answered, so the note that it was asked has done its
+      // job. Cleared only here, never before the answer.
+      attachIntentAt: undefined,
       updatedAt: Date.now(),
     });
     return null;
@@ -792,6 +806,10 @@ export const scheduleDomainCleanupRetry = internalMutation({
     libraryId: v.id("evidenceLibraries"),
     domainId: v.id("evidenceLibraryDomains"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    /** The cleanup's lease, given back in the same write that books the retry. */
+    token: v.optional(v.string()),
+    /** True when something outside OpenScholar was actually called. */
+    calledProvider: v.boolean(),
   },
   returns: v.object({
     status: v.union(
@@ -816,10 +834,19 @@ export const scheduleDomainCleanupRetry = internalMutation({
         return { status: "scheduled" as const, attempts: cleanup.attempts };
       }
     }
-    const attempts = (cleanup?.attempts ?? 0) + 1;
+    // Only a real attempt at the outside service counts. Giving up because
+    // this library could not take its own lease would waste every try.
+    const attempts = (cleanup?.attempts ?? 0) + (args.calledProvider ? 1 : 0);
+    // The lease goes back in this same write, so the retry is not fighting
+    // the attempt that booked it.
+    const release =
+      args.token && row.transition?.token === args.token
+        ? { transition: undefined }
+        : {};
     if (attempts >= MAX_DOMAIN_CLEANUP_ATTEMPTS) {
       await ctx.db.patch(args.domainId, {
         cleanup: { operationId: args.operationId, attempts },
+        ...release,
         updatedAt: Date.now(),
       });
       return { status: "given-up" as const, attempts };
@@ -836,6 +863,7 @@ export const scheduleDomainCleanupRetry = internalMutation({
     );
     await ctx.db.patch(args.domainId, {
       cleanup: { operationId: args.operationId, attempts, scheduledId },
+      ...release,
       updatedAt: Date.now(),
     });
     return { status: "scheduled" as const, attempts };
@@ -844,11 +872,18 @@ export const scheduleDomainCleanupRetry = internalMutation({
 
 /** The last step of a removal: the row goes once nothing else holds the host. */
 export const finishDomainRemoval = internalMutation({
-  args: { domainId: v.id("evidenceLibraryDomains") },
+  args: {
+    domainId: v.id("evidenceLibraryDomains"),
+    /** The cleanup that is doing this. Checked again right before the row goes. */
+    token: v.string(),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row) return null;
+    // Deleting the row is the last thing that happens to a domain, so the
+    // change doing it has to still hold the domain at that moment.
+    requireTransition(row, args.token);
     if (
       row.role === "primary" ||
       row.attachedAt !== undefined ||

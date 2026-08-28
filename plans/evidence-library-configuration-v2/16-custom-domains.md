@@ -539,6 +539,29 @@ these decisions.
     every destructive call and between batches of deletions, so the wake-up
     cannot start a second worker behind it.
 
+## Corrections after the eighth review (2026-08-28)
+
+83. **A removal that failed can be tried again.** The retry takes the domain
+    as a removal, which is what it is; claiming it as an attach was refused,
+    because the domain is already on its way out.
+84. **The handoff checks what it was given** — library, host, lease and
+    change count — before it queues or writes anything, so an action that
+    was overtaken cannot replace a newer handoff.
+85. **A host the proxy was only asked about is taken back out.** The note is
+    cleared once the proxy answers and never before, so an attach that
+    stopped halfway cannot leave a host behind in the proxy.
+86. **A failed cleanup hands its lease back in the same write that books the
+    retry**, and only an attempt that actually reached the outside service
+    counts against the limit.
+87. **Deleting the row is fenced too.** The cleanup's lease is checked one
+    last time immediately before the domain goes.
+88. **Every teardown renewal books its own wake-up**, fenced by the attempt
+    and the exact deadline, so a renewal never retires the only wake-up
+    there was.
+89. **A long file deletion keeps its lease.** It is put forward before each
+    page of uploads and again before the buckets go, so walking a large
+    library cannot look like a teardown that died.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

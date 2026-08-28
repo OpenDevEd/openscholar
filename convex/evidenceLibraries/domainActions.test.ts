@@ -2037,7 +2037,7 @@ describe("custom domains", () => {
     );
   });
 
-  it("notes that the proxy was asked before it answers", async () => {
+  it("clears the note that the proxy was asked once it answers", async () => {
     const fixture = await createReadySetupFixture("domain-attach-intent");
     const tag = await bindApplication(fixture);
     vi.stubGlobal("fetch", createWorld({ cname: TARGET }, tag).fetchImpl);
@@ -2048,11 +2048,37 @@ describe("custom domains", () => {
       libraryId: fixture.created.libraryId,
       domainId: added.domainId,
     });
-    // A crash between the proxy accepting the host and the receipt being
-    // saved is still visible here.
-    expect((await readRow(fixture, added.domainId))?.attachIntentAt).toEqual(
-      expect.any(Number),
+    // The proxy answered and the receipt was saved, so the note has done
+    // its job.
+    const row = await readRow(fixture, added.domainId);
+    expect(row?.attachIntentAt).toBeUndefined();
+    expect(row?.attachedAt).toEqual(expect.any(Number));
+  });
+
+  it("takes a host back out of the proxy when only the asking was recorded", async () => {
+    const fixture = await createReadySetupFixture("domain-intent-removal");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    // The proxy accepted the host and the action stopped before saving the
+    // receipt, so the row says only that it was asked.
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        state: "verified",
+        attachIntentAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const context = await fixture.admin.query(
+      internal.evidenceLibraries.domains.readDomainContext,
+      { libraryId: fixture.created.libraryId, domainId: added.domainId },
     );
+    // The removal treats it as a host the proxy may hold, so it is taken
+    // back out rather than left behind.
+    expect(context.domain?.attachIntent).toBe(true);
+    expect(context.attachedHosts).toContain(`https://${CUSTOM_HOST}`);
   });
 
   it("will not clean up a domain that is no longer being removed", async () => {
@@ -2080,5 +2106,118 @@ describe("custom domains", () => {
     expect((await readRow(fixture, added.domainId))?.transition?.token).toBe(
       claimed?.token,
     );
+  });
+  it("finishes a removal that failed and was tried again", async () => {
+    const fixture = await createReadySetupFixture("domain-detach-retry");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({ cname: TARGET }, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const removed = await fixture.admin.action(
+      api.evidenceLibraries.domainActions.removeDomain,
+      { libraryId: fixture.created.libraryId, domainId },
+    );
+    expect(removed.status).toBe("removing");
+    const operationId = await readPendingOperationId(fixture, domainId);
+    const first = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
+
+    await fixture.t.mutation(
+      internal.evidenceLibraries.configurationDeployment
+        .failConfigurationDeployment,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId,
+        attemptToken: first?.configurationAttemptToken ?? "",
+        attemptCount: first?.attemptCount ?? 1,
+        error: { code: "TEST", message: "the deployment failed" },
+      },
+    );
+
+    // A removal is what this is, so trying again takes the domain as one.
+    // Claiming it as an attach would be refused, because it is on its way out.
+    await fixture.admin.mutation(
+      api.evidenceLibraries.configurationDeployment.retryConfigurationDeployment,
+      { libraryId: fixture.created.libraryId, operationId },
+    );
+    const retried = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
+    const row = await readRow(fixture, domainId);
+    expect(row?.transition?.kind).toBe("remove");
+    expect(retried?.domainChange?.token).toBe(row?.transition?.token);
+  });
+
+  it("refuses a handoff from a step that was overtaken", async () => {
+    const fixture = await createReadySetupFixture("domain-handoff-overtaken");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        transition: {
+          kind: "check",
+          token: "the-newer-one",
+          expiresAt: Date.now() + 60_000,
+        },
+        generation: 3,
+        updatedAt: Date.now(),
+      });
+    });
+
+    // An action that was overtaken while it worked must not replace the
+    // newer change's handoff.
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.versions.startDomainDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          domainId: added.domainId,
+          generation: 3,
+          token: "the-overtaken-one",
+          host: CUSTOM_HOST,
+          reason: "attach",
+        },
+      ),
+    ).rejects.toThrow(/Another change/);
+    expect((await readRow(fixture, added.domainId))?.pendingDeployment)
+      .toBeUndefined();
+  });
+
+  it("does not use up a try when the certificate service was never reached", async () => {
+    const fixture = await createReadySetupFixture("domain-cleanup-attempts");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const operationId = await fixture.t.run(async (ctx) => {
+      const operation = await ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_createdAt", (q) =>
+          q.eq("libraryId", fixture.created.libraryId),
+        )
+        .order("desc")
+        .first();
+      return operation!._id;
+    });
+
+    // Nothing outside OpenScholar was called, so nothing is used up.
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.domains.scheduleDomainCleanupRetry,
+        {
+          libraryId: fixture.created.libraryId,
+          domainId: added.domainId,
+          operationId,
+          calledProvider: false,
+        },
+      ),
+    ).resolves.toMatchObject({ attempts: 0 });
   });
 });

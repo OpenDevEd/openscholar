@@ -1305,10 +1305,16 @@ export const retryConfigurationDeployment = mutation({
         await ctx.db.patch(change.domainId, { pendingDeployment: undefined });
       }
       const fresh = await ctx.db.get("evidenceLibraryDomains", change.domainId);
+      // A detach is a removal: its domain has `removingAt` set, which only
+      // a removal is allowed to take.
       const claimed = claimDomainTransitionRow(
         ctx,
         fresh!,
-        change.reason === "canonical" ? "canonical" : "attach",
+        change.reason === "detach"
+          ? "remove"
+          : change.reason === "canonical"
+            ? "canonical"
+            : "attach",
       );
       await claimed.write();
       await ctx.db.patch(change.domainId, {

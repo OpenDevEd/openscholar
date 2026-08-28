@@ -381,7 +381,7 @@ async function queueDomainDeployment(
     reason: "attach" | "detach";
   },
 ): Promise<void> {
-  const started = await ctx.runMutation(
+  await ctx.runMutation(
     internal.evidenceLibraries.versions.startDomainDeployment,
     {
       libraryId: input.libraryId,
@@ -632,7 +632,9 @@ export const removeDomain = action({
       const row = context.domain;
       if (!row) return { status: "removed" as const };
 
-      if (row.attached && context.applicationUuid) {
+      // An attach that asked the proxy and stopped before saving its
+      // receipt is taken back out too, so no host is left behind there.
+      if ((row.attached || row.attachIntent) && context.applicationUuid) {
         await holdDomain(ctx, args.domainId, token);
         await coolify().setCustomDomains({
           applicationUuid: context.applicationUuid,
@@ -722,7 +724,7 @@ async function finishRemoval(
   await deleteCustomHostname(cloudflare, input);
   await ctx.runMutation(
     internal.evidenceLibraries.domains.finishDomainRemoval,
-    { domainId: input.domainId },
+    { domainId: input.domainId, token: input.token },
   );
 }
 
@@ -768,6 +770,9 @@ export const completeDomainChange = internalAction({
     ctx,
     args,
   ): Promise<{ status: "done" | "retrying" | "stale" }> => {
+    // Set once this cleanup holds the domain, so a failure can hand the
+    // lease straight back with the retry it books.
+    let cleanupToken: string | null = null;
     try {
       // Takes the domain before anything outside OpenScholar is touched: a
       // domain that has moved on since this was booked must not lose a
@@ -777,6 +782,7 @@ export const completeDomainChange = internalAction({
         { domainId: args.domainId },
       );
       if (!receipt) return { status: "stale" as const };
+      cleanupToken = receipt.token;
       await finishRemoval(ctx, {
         domainId: args.domainId,
         host: receipt.host,
@@ -794,6 +800,12 @@ export const completeDomainChange = internalAction({
           libraryId: args.libraryId,
           domainId: args.domainId,
           operationId: args.operationId,
+          // Given back in the same write, so the retry is not waiting on the
+          // attempt that booked it.
+          ...(cleanupToken ? { token: cleanupToken } : {}),
+          // A failure before the certificate service was reached does not
+          // use up one of the tries.
+          calledProvider: cleanupToken !== null,
         },
       );
       if (retry.status === "given-up") throw error;

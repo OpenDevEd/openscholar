@@ -165,9 +165,11 @@ export async function deleteLibraryUpload(
 async function listObjectNames(
   client: StorageClient,
   prefix: string,
+  onBatch?: () => Promise<void>,
 ): Promise<string[]> {
   const names: string[] = [];
   for (let offset = 0; ; offset += LIST_PAGE_SIZE) {
+    await onBatch?.();
     const response = await requestObjects(client, {
       method: "POST",
       path: bucketPath(`list/${EVIDENCE_LIBRARY_UPLOAD_BUCKET}`),
@@ -207,12 +209,21 @@ async function listObjectNames(
  * bucket means the library never uploaded anything.
  */
 export async function deleteLibraryUploads(
-  input: StorageInput & { libraryId: string },
+  input: StorageInput & {
+    libraryId: string;
+    /**
+     * Called before each batch of deletions. A library with many files takes
+     * longer than one lease to walk, so the caller uses this to keep hold of
+     * the teardown while it works.
+     */
+    onBatch?: () => Promise<void>;
+  },
 ): Promise<{ deleted: number }> {
   const client = createStorageClient(input);
   const prefix = evidenceLibraryUploadPrefix(input.libraryId);
-  const names = await listObjectNames(client, prefix);
+  const names = await listObjectNames(client, prefix, input.onBatch);
   const keys = names.map((name) => `${prefix}${name}`);
+  await input.onBatch?.();
   await deleteObjects(client, keys);
   return { deleted: keys.length };
 }

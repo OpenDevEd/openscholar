@@ -35,6 +35,37 @@ function requireTeardownAttempt(
 /** How long one teardown attempt holds the operation. */
 const TEARDOWN_LEASE_MS = 10 * 60 * 1000;
 
+/**
+ * Puts the teardown's lease forward and books the wake-up that will look at
+ * it if this attempt stops answering.
+ *
+ * Every lease write goes through here, so a renewal never retires the only
+ * wake-up there was. The wake-up is fenced by the attempt and the exact
+ * deadline it was booked for, so only the last one can act.
+ */
+async function renewTeardownLease(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+    attemptToken: string;
+  },
+): Promise<number> {
+  const leaseExpiresAt = Date.now() + TEARDOWN_LEASE_MS;
+  await ctx.scheduler.runAt(
+    leaseExpiresAt,
+    internal.evidenceLibraries.teardownActions.resumeDevelopmentTeardown,
+    {
+      libraryId: args.libraryId,
+      operationId: args.operationId,
+      attemptToken: args.attemptToken,
+      leaseExpiresAt,
+    },
+  );
+  return leaseExpiresAt;
+}
+
+
 const BATCH_SIZE = 50;
 
 function requireDevelopmentTeardownEnabled() {
@@ -259,7 +290,11 @@ export const holdDevelopmentTeardown = internalMutation({
     }
     requireTeardownAttempt(operation, args.attemptToken);
     await ctx.db.patch(operation._id, {
-      teardownLeaseExpiresAt: Date.now() + TEARDOWN_LEASE_MS,
+      teardownLeaseExpiresAt: await renewTeardownLease(ctx, {
+        libraryId: operation.libraryId,
+        operationId: operation._id,
+        attemptToken: args.attemptToken,
+      }),
       updatedAt: Date.now(),
     });
     return null;
@@ -268,6 +303,8 @@ export const holdDevelopmentTeardown = internalMutation({
 
 /** How many times a teardown waits for something it needs before giving up. */
 const MAX_TEARDOWN_RETRIES = 5;
+
+
 
 /**
  * Hands the teardown back and books another attempt, up to a fixed number.
@@ -314,6 +351,10 @@ export const isDevelopmentTeardownStale = internalQuery({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    /** The attempt the caller was booked for, when it was booked for one. */
+    attemptToken: v.optional(v.string()),
+    /** The deadline it was booked for. A renewal replaces it. */
+    leaseExpiresAt: v.optional(v.number()),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -321,12 +362,28 @@ export const isDevelopmentTeardownStale = internalQuery({
       "evidenceLibraryConfigOperations",
       args.operationId,
     );
-    return (
-      operation?.kind === "teardown" &&
-      operation.libraryId === args.libraryId &&
-      operation.status === "running" &&
-      (operation.teardownLeaseExpiresAt ?? 0) <= Date.now()
-    );
+    if (
+      operation?.kind !== "teardown" ||
+      operation.libraryId !== args.libraryId ||
+      operation.status !== "running"
+    ) {
+      return false;
+    }
+    // A wake-up booked for one attempt and one deadline only speaks about
+    // those. The work carrying on replaces it with a later one.
+    if (
+      args.attemptToken !== undefined &&
+      operation.teardownAttemptToken !== args.attemptToken
+    ) {
+      return false;
+    }
+    if (
+      args.leaseExpiresAt !== undefined &&
+      operation.teardownLeaseExpiresAt !== args.leaseExpiresAt
+    ) {
+      return false;
+    }
+    return (operation.teardownLeaseExpiresAt ?? 0) <= Date.now();
   },
 });
 
@@ -399,18 +456,17 @@ export const prepareDevelopmentTeardown = internalMutation({
       // instead of leaving the teardown running for ever. Something has to
       // come back and look, so the wake-up is booked in the same
       // transaction as the claim.
-      teardownLeaseExpiresAt: now + TEARDOWN_LEASE_MS,
+      teardownLeaseExpiresAt: await renewTeardownLease(ctx, {
+        libraryId: args.libraryId,
+        operationId: operation._id,
+        attemptToken,
+      }),
       teardownAttemptToken: attemptToken,
       startedAt: now,
       completedAt: undefined,
       error: undefined,
       updatedAt: now,
     });
-    await ctx.scheduler.runAfter(
-      TEARDOWN_LEASE_MS,
-      internal.evidenceLibraries.teardownActions.resumeDevelopmentTeardown,
-      { libraryId: args.libraryId, operationId: operation._id },
-    );
     return {
       claimed: true as const,
       attemptToken,
