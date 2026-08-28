@@ -116,32 +116,39 @@ export const AI_PROVIDER_KEY_BUSY_MESSAGE =
   "Wait for the current publish to finish, then change the AI key.";
 
 /**
- * Refuses to move the key while the library is being set up or published.
- * The publish reads the key once and ships it minutes later, so the simplest
- * safe rule is that it cannot move underneath one.
+ * Refuses to move the key while a setup or a publish is actually working.
+ * Those two read the key once and ship it minutes later, so it must not move
+ * underneath them.
+ *
+ * Only a `running` operation of those two kinds counts, and only while its
+ * lease is live. Queued work has not read the key yet, other kinds never
+ * read it, and an attempt whose lease ran out has stalled: the setup and
+ * deployment pipelines reclaim such an attempt and read the key again
+ * (`setupOperation.ts` and `configurationDeployment.ts` both refuse to claim
+ * only while the lease is live). Without those limits a queued `validate`,
+ * which nothing ever starts, would lock the key away for good.
  */
 export async function requireNoRunningOperation(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
 ): Promise<void> {
-  // Operations are read newest first. A library only ever has one in flight,
-  // so twenty is far more than enough to find it.
-  const running = await ctx.db
+  const now = Date.now();
+  const running = ctx.db
     .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_createdAt", (query) =>
-      query.eq("libraryId", libraryId),
-    )
-    .order("desc")
-    .take(20);
-  // A new library's setup operation is created queued and only starts once
-  // the owner activates. Until it holds a revision it is waiting, not
-  // running, so an owner can still add the key before the first setup.
-  const inFlight = running.some(
-    (operation) =>
-      (operation.status === "queued" || operation.status === "running") &&
-      !(operation.kind === "setup" && !operation.revisionId),
-  );
-  if (inFlight) {
+    .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
+      query.eq("libraryId", libraryId).eq("status", "running"),
+    );
+  for await (const operation of running) {
+    const lease =
+      operation.kind === "setup"
+        ? operation.setupLeaseExpiresAt
+        : operation.kind === "publish"
+          ? operation.configurationLeaseExpiresAt
+          : undefined;
+    if (operation.kind !== "setup" && operation.kind !== "publish") continue;
+    // No lease at all is how both pipelines read "held", so it counts as
+    // working. Only a lease that has run out frees the key.
+    if (lease !== undefined && lease <= now) continue;
     throw createError("CONFLICT", AI_PROVIDER_KEY_BUSY_MESSAGE);
   }
 }
