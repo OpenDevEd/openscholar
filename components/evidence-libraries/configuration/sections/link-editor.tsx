@@ -272,7 +272,7 @@ function CollectionTarget({
     const known = facts.get(collection.id);
     return {
       id: collection.id,
-      title: collection.title ?? known?.name ?? collection.id,
+      title: collection.title ?? known?.title ?? collection.id,
       count: known?.count,
     };
   });

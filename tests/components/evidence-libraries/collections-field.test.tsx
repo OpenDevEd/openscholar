@@ -196,7 +196,7 @@ describe("<CollectionsField>", () => {
   it("names every shown collection from the library on first render", async () => {
     mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
     mocks.resolveCollections.mockResolvedValue({
-      items: [{ id: "COLL0003", name: "Water", source: "Climate group", count: 7 }],
+      items: [{ id: "COLL0003", title: "Water", source: "Climate group", count: 7 }],
     });
     await renderField({ value: [{ id: "COLL0003", order: 0 }], onChange: vi.fn() });
     expect(await screen.findByText("Water")).toBeInTheDocument();
@@ -231,9 +231,8 @@ describe("<CollectionsField>", () => {
     });
     expect(await screen.findByText("Water")).toBeInTheDocument();
     expect(screen.getByText(`${ns}.records {"count":7}`)).toBeInTheDocument();
-    // The library answered nothing about this id; the name and count come
-    // from what the picker itself read.
-    expect(mocks.resolveCollections).toHaveBeenLastCalledWith({ libraryId, ids: ["COLL0003"] });
+    // The picker already read the name, so the library is never asked.
+    expect(mocks.resolveCollections).not.toHaveBeenCalled();
   });
 
   it("renames and removes chosen collections", async () => {

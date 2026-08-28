@@ -73,6 +73,7 @@ vi.mock("@/convex/_generated/api", () => ({
       runtimeReadActions: {
         listLibraryCollections: "listLibraryCollections",
         listRecordInstitutions: "listRecordInstitutions",
+        resolveLibraryCollections: "resolveLibraryCollections",
       },
     },
   },
@@ -82,10 +83,17 @@ vi.mock("@/convex/_generated/api", () => ({
 // Versions section caches its update check by that callback.
 let checkAction: (args: unknown) => unknown;
 
+// The page asks the library to name the collections it shows.
+const resolveCollectionsMock = vi.hoisted(() => vi.fn(async () => ({ items: [] })));
+
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
   useAction: (action: unknown) =>
-    action === "check" ? checkAction : mutationMock(action),
+    action === "check"
+      ? checkAction
+      : action === "resolveLibraryCollections"
+        ? resolveCollectionsMock
+        : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({

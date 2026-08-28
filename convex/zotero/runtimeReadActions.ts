@@ -30,7 +30,7 @@ const institutionValidator = v.object({ name: v.string(), count: v.number() });
 
 const collectionFactsValidator = v.object({
   id: v.string(),
-  name: v.string(),
+  title: v.string(),
   source: v.string(),
   count: v.number(),
 });

@@ -12,7 +12,7 @@ import { createContext, type ReactNode, use, useContext, useState } from "react"
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
-export type CollectionFact = { name: string; source: string; count: number };
+export type CollectionFact = { title: string; source: string; count: number };
 export type CollectionFacts = ReadonlyMap<string, CollectionFact>;
 
 type ResolvedCollection = { id: string } & CollectionFact;
@@ -26,41 +26,24 @@ const EMPTY: CollectionFacts = new Map();
 // Nothing to ask about: the same answer every render, so no render loop.
 const NOTHING_TO_READ = Promise.resolve(new Map<string, CollectionFact>());
 
-// One answer per library, kept for as long as the page is open. Convex hands
-// out one action callback per mounted component, so the outer key is that
-// callback and the second render of Strict Mode reuses the first read.
-const reads = new WeakMap<
-  ResolveAction,
-  Map<string, Promise<Map<string, CollectionFact>>>
->();
-
 function readFacts(
   resolve: ResolveAction,
   libraryId: Id<"evidenceLibraries">,
   ids: readonly string[],
 ): Promise<Map<string, CollectionFact>> {
   if (ids.length === 0) return NOTHING_TO_READ;
-  let byLibrary = reads.get(resolve);
-  if (!byLibrary) {
-    byLibrary = new Map();
-    reads.set(resolve, byLibrary);
-  }
-  const cached = byLibrary.get(libraryId);
-  if (cached) return cached;
-  const promise = resolve({ libraryId, ids: [...ids] })
+  return resolve({ libraryId, ids: [...ids] })
     .then(
       (page) =>
         new Map(
           page.items.map((item) => [
             item.id,
-            { name: item.name, source: item.source, count: item.count },
+            { title: item.title, source: item.source, count: item.count },
           ]),
         ),
     )
     // A library that cannot answer yet leaves the rows named by their id.
     .catch(() => new Map<string, CollectionFact>());
-  byLibrary.set(libraryId, promise);
-  return promise;
 }
 
 type ContextValue = {
@@ -88,7 +71,9 @@ export function CollectionFactsProvider({
 }) {
   const resolve = useAction(api.zotero.runtimeReadActions.resolveLibraryCollections) as ResolveAction;
   const [learned, setLearned] = useState<Map<string, CollectionFact>>(new Map());
-  const promise = readFacts(resolve, libraryId, ids);
+  // Asked once, when the page opens, for the ids the site shows then. A
+  // different library is a different page, so a new provider is mounted.
+  const [promise] = useState(() => readFacts(resolve, libraryId, ids));
   return (
     <CollectionFactsContext
       value={{
@@ -98,7 +83,7 @@ export function CollectionFactsProvider({
           setLearned((current) => {
             const next = new Map(current);
             for (const fact of facts) {
-              next.set(fact.id, { name: fact.name, source: fact.source, count: fact.count });
+              next.set(fact.id, { title: fact.title, source: fact.source, count: fact.count });
             }
             return next;
           }),

@@ -68,8 +68,8 @@ describe("<LinkEditor> collection target", () => {
     mocks.resolveCollections.mockReset();
     mocks.resolveCollections.mockResolvedValue({
       items: [
-        { id: "COLL0001", name: "Climate change", source: "zotero-42", count: 12 },
-        { id: "COLL0002", name: "Health", source: "zotero-42", count: 3 },
+        { id: "COLL0001", title: "Climate change", source: "zotero-42", count: 12 },
+        { id: "COLL0002", title: "Health", source: "zotero-42", count: 3 },
       ],
     });
     actions = { resolveLibraryCollections: (args) => mocks.resolveCollections(args) };

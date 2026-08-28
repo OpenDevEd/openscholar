@@ -92,13 +92,17 @@ Four lists change. Two more are noted and deferred.
    can be turned around. The collections endpoint always orders by name,
    so its picker keeps plain column headers — that is correct, not a gap.
    Institutions have sortable Institution and Records headers that send
-   `sort=name|count` and `direction=asc|desc`; the arrow only appears on
+   `sort=name|count` and `direction=asc|desc`. The library carries both in
+   its cursor and refuses a cursor reused with a different order, so
+   changing a header always starts the list again; the arrow only appears on
    the header that is in use, and an unused sortable header carries the
    two-way arrow the approved picker used.
 10. The collections a site shows are named from the library itself. Lane R
     adds `GET /api/openscholar/collections?ids=<up to 200, comma separated>`,
-    which answers `{ items: [{ id, name, source, count }], nextCursor: null }`
-    for exactly those ids and leaves out ids it does not know. OpenScholar
+    which answers the same rows as a page — `{ id, title, source, count,
+    parentId }` — in the order asked, with `nextCursor: null`, leaving out
+    ids it does not know. `ids` cannot be combined with `query` or `cursor`;
+    the library refuses that with 400. OpenScholar
     adds `resolveLibraryCollections({ libraryId, ids })`, cached per id set,
     and the configuration page reads it once for the ids the owner shows.
     The Collections section and every navigation and footer link editor read

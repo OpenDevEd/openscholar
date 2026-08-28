@@ -38,15 +38,11 @@ function runtime() {
       const ids = url.searchParams.get("ids");
       if (ids) {
         const wanted = new Set(ids.split(","));
+        if (url.searchParams.get("query") || url.searchParams.get("cursor")) {
+          return jsonResponse({ error: { code: "bad_request" } }, 400);
+        }
         return jsonResponse({
-          items: state.collections
-            .filter((item) => wanted.has(item.id))
-            .map((item) => ({
-              id: item.id,
-              name: item.title,
-              source: item.source,
-              count: item.count,
-            })),
+          items: state.collections.filter((item) => wanted.has(item.id)),
           nextCursor: null,
         });
       }
@@ -205,7 +201,7 @@ describe("Evidence Library runtime reads", () => {
         ids: ["COLL0001", "GONE0002"],
       }),
     ).resolves.toEqual({
-      items: [{ id: "COLL0001", name: "Climate", source: "zotero-42", count: 12 }],
+      items: [{ id: "COLL0001", title: "Climate", source: "zotero-42", count: 12 }],
     });
   });
 

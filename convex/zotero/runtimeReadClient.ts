@@ -23,7 +23,7 @@ export type RuntimeInstitution = { name: string; count: number };
 /** What the library knows about one collection the owner already shows. */
 export type RuntimeCollectionFacts = {
   id: string;
-  name: string;
+  title: string;
   source: string;
   count: number;
 };
@@ -95,24 +95,17 @@ function readCollection(value: unknown): RuntimeCollection | null {
   };
 }
 
-// The library answers ids with `name`; a library that has not learned about
-// `ids` answers its own first page instead, whose rows carry `title`. Those
-// rows are not answers to the question, so they are left out.
+// The ids answer carries the same rows as a page of the catalogue.
 function readCollectionFacts(value: unknown): RuntimeCollectionFacts | null {
-  if (
-    !isRecord(value) ||
-    typeof value.id !== "string" ||
-    typeof value.name !== "string" ||
-    typeof value.count !== "number"
-  ) {
-    return null;
-  }
-  return {
-    id: value.id,
-    name: value.name,
-    source: typeof value.source === "string" ? value.source : "",
-    count: value.count,
-  };
+  const collection = readCollection(value);
+  return collection
+    ? {
+        id: collection.id,
+        title: collection.title,
+        source: collection.source,
+        count: collection.count,
+      }
+    : null;
 }
 
 function readInstitution(value: unknown): RuntimeInstitution | null {
@@ -216,8 +209,10 @@ export const RUNTIME_RESOLVE_MAX_IDS = 200;
 
 /**
  * The names and record counts of collections the owner already shows.
- * A library that does not answer `ids` yet gives nothing back, so the page
- * falls back to the id instead of failing.
+ * `ids` is the only parameter the library accepts here; it answers the rows
+ * it knows and leaves the rest out. A library that does not read `ids` yet
+ * answers with its own first page, and only rows that were asked for are
+ * kept, so the page falls back to the id instead of showing the wrong name.
  */
 export async function readRuntimeCollectionsByIds(
   fetchImpl: typeof fetch,

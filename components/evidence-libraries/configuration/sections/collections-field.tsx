@@ -153,7 +153,7 @@ function CollectionsBody({
             learn(
               rows.map((row) => ({
                 id: row.id,
-                name: row.title,
+                title: row.title,
                 source: row.meta ?? "",
                 count: row.count ?? 0,
               })),
@@ -235,7 +235,7 @@ function CollectionRow({
   const t = useTranslations("evidenceLibraryConfiguration.collections");
   const id = useId();
   const known = facts.get(entry.id);
-  const databaseTitle = known?.name ?? entry.title ?? entry.id;
+  const databaseTitle = known?.title ?? entry.title ?? entry.id;
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">

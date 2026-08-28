@@ -124,10 +124,13 @@ describe("readRuntimeCollectionsByIds", () => {
       const url = new URL(String(input));
       expect(url.pathname).toBe("/api/openscholar/collections");
       expect(url.searchParams.get("ids")).toBe("COLL0001,COLL0002");
+      // `ids` is the only parameter this answer accepts.
+      expect(url.searchParams.get("query")).toBeNull();
+      expect(url.searchParams.get("cursor")).toBeNull();
       return jsonResponse({
         items: [
-          { id: "COLL0001", name: "Climate", source: "zotero-42", count: 12 },
-          { id: "COLL0002", name: "Health", source: "zotero-42", count: 3 },
+          { id: "COLL0001", title: "Climate", source: "zotero-42", count: 12, parentId: null },
+          { id: "COLL0002", title: "Health", source: "zotero-42", count: 3, parentId: null },
         ],
         nextCursor: null,
       });
@@ -140,16 +143,16 @@ describe("readRuntimeCollectionsByIds", () => {
       }),
     ).resolves.toEqual({
       items: [
-        { id: "COLL0001", name: "Climate", source: "zotero-42", count: 12 },
-        { id: "COLL0002", name: "Health", source: "zotero-42", count: 3 },
+        { id: "COLL0001", title: "Climate", source: "zotero-42", count: 12 },
+        { id: "COLL0002", title: "Health", source: "zotero-42", count: 3 },
       ],
     });
   });
 
   it("answers nothing when the library does not know the ids yet", async () => {
     // A library that has not learned about `ids` answers with its own first
-    // page instead. Those rows are not names for the ids that were asked
-    // for, so the answer is empty rather than wrong.
+    // page instead. Those rows are not answers to the question, so only rows
+    // that were asked for are kept.
     const olderRuntime = vi.fn<typeof fetch>(async () =>
       jsonResponse({
         items: [{ id: "OTHER", title: "Something else", count: 1, source: "s", parentId: null }],
