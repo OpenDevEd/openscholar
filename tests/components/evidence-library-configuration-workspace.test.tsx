@@ -580,6 +580,22 @@ describe("<ConfigurationWorkspace>", () => {
     expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("clears a refused save when the owner uses Back to top", async () => {
+    const user = userEvent.setup();
+    await refuseNextSave();
+    await renderWorkspace();
+
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await user.type(name, "Renamed Library");
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => identityCard().getByRole("alert"));
+
+    await user.click(screen.getByRole("button", { name: "backToTop" }));
+
+    expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("clears a refused save when the owner edits or resets the card", async () => {
     const user = userEvent.setup();
     await refuseNextSave();
