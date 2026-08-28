@@ -2202,7 +2202,8 @@
       "features": "Features",
       "languages": "Languages",
       "analytics": "Analytics",
-      "versions": "Versions"
+      "versions": "Versions",
+      "ai": "AI"
     },
     "sectionState": {
       "complete": "Complete",
@@ -2250,7 +2251,12 @@
       "languages": "Offer at least one language and pick the default from the offered ones.",
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
-      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters."
+      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters.",
+      "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
+      "consentVersion": "The consent version is a whole number, 1 or higher.",
+      "aiKey": "Add your OpenRouter key.",
+      "aiModel": "Choose the model that answers questions.",
+      "aiModelUnknown": "That model is not one your library software offers. Choose another."
     },
     "fields": {
       "optional": "optional",
@@ -2820,7 +2826,13 @@
       "keyError": "The key starts with phc_ and is at least 20 characters.",
       "measurementIdLabel": "Measurement ID",
       "measurementIdHint": "Find it in Google Analytics under Data streams.",
-      "measurementIdError": "Use an ID like G-XXXXXXXXXX."
+      "measurementIdError": "Use an ID like G-XXXXXXXXXX.",
+      "uiHostLabel": "Session recordings address",
+      "uiHostHint": "Where session recordings open, for example https://eu.posthog.com. Leave empty to use the host above.",
+      "consentLabel": "Cookie consent",
+      "consentVersionLabel": "Consent version",
+      "consentVersionHint": "Raise this when you change your cookie text so every visitor is asked again.",
+      "consentVersionError": "Use a whole number, 1 or higher."
     },
     "updatingSoftware": "Updating the Evidence Library software to {rev}",
     "versions": {
@@ -2874,6 +2886,26 @@
       "addressMoveStartedDescription": "Moving to {address}…",
       "addressMoveError": "The library could not be moved. Try again.",
       "restoreError": "The version could not be restored. Try again."
+    },
+    "ai": {
+      "description": "Let visitors ask questions about the evidence in your library.",
+      "answersLabel": "AI answers",
+      "answersHint": "Adds question answering to the library. You pay OpenRouter for what it uses.",
+      "notReady": "Your library software does not offer AI answers yet. Update it first.",
+      "keyLabel": "OpenRouter key",
+      "keyHint": "Create one at openrouter.ai. It is stored encrypted and never shown again.",
+      "keyStored": "Key saved",
+      "keySave": "Save key",
+      "keyCancel": "Cancel",
+      "keyReplace": "Replace",
+      "keyRemove": "Remove",
+      "keySavedToast": "Key saved.",
+      "keyError": "The key could not be saved. Check it and try again.",
+      "keyRemoveError": "The key could not be removed. Try again.",
+      "modelLabel": "Answer model",
+      "modelHint": "The model that writes the answers.",
+      "modelPlaceholder": "Choose a model",
+      "modelError": "That model is not one your library software offers."
     }
   },
   "evidenceLibraries": {
