@@ -27,6 +27,7 @@ import {
   evidenceLibraryConfigRevisionFields,
   evidenceLibraryConfigSectionValidator,
   evidenceLibraryCredentialFields,
+  evidenceLibraryDomainFields,
   evidenceLibraryFields,
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingValidator,
@@ -110,6 +111,13 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     .index("by_targetRuntimeId", ["targetRuntimeId"])
     .index("by_targetBaseUrl", ["targetBaseUrl"])
+    .index("by_state", ["state"]),
+
+  // One row per custom domain. `by_host` is the platform-wide claim: no two
+  // libraries may hold the same name.
+  evidenceLibraryDomains: defineTable(evidenceLibraryDomainFields)
+    .index("by_host", ["host"])
+    .index("by_libraryId", ["libraryId"])
     .index("by_state", ["state"]),
 
   evidenceLibraryRuntimeReleases: defineTable(evidenceLibraryRuntimeReleaseFields)

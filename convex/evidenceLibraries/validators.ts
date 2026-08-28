@@ -161,6 +161,57 @@ export const evidenceLibraryServedHostsFields = {
   fetchedAt: v.number(),
 };
 
+// One custom domain of one library. `host` is unique across the platform.
+export const evidenceLibraryDomainStateValidator = v.union(
+  // Saved; the records have not been seen yet.
+  v.literal("added"),
+  // The CNAME chain reaches our target.
+  v.literal("pointing"),
+  // The ownership record matches too.
+  v.literal("verified"),
+  // The library answers on the domain.
+  v.literal("active"),
+  // The last check failed; `failure` says why.
+  v.literal("failed"),
+);
+
+export const evidenceLibraryDomainFailureValidator = v.union(
+  v.literal("no-records"),
+  v.literal("wrong-target"),
+  v.literal("token-mismatch"),
+  v.literal("host-taken"),
+  v.literal("not-served"),
+  v.literal("certificate"),
+  v.literal("caa-blocked"),
+  v.literal("check-failed"),
+);
+
+export const evidenceLibraryCertificateStateValidator = v.union(
+  v.literal("pending"),
+  v.literal("active"),
+  v.literal("failed"),
+);
+
+export const evidenceLibraryDomainFields = {
+  libraryId: v.id("evidenceLibraries"),
+  host: v.string(),
+  verificationToken: v.string(),
+  role: v.union(v.literal("primary"), v.literal("redirect")),
+  state: evidenceLibraryDomainStateValidator,
+  failure: v.optional(evidenceLibraryDomainFailureValidator),
+  // Set while the host is in the proxy's domain list. Kept apart from
+  // `state` so a check that has not run yet cannot silently drop a host the
+  // proxy is already serving.
+  attachedAt: v.optional(v.number()),
+  certificateState: v.optional(evidenceLibraryCertificateStateValidator),
+  certificateHostnameId: v.optional(v.string()),
+  checkedAt: v.optional(v.number()),
+  activatedAt: v.optional(v.number()),
+  createdByClerkUserId: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
 export const evidenceLibrarySetupIdentityFields = {
   name: v.string(),
   publicAddress: v.string(),
@@ -242,6 +293,11 @@ export const evidenceLibraryAddressStateValidator = v.union(
 const evidenceLibraryRuntimeBindingBaseFields = {
   libraryId: v.id("evidenceLibraries"),
   targetBaseUrl: v.string(),
+  // The address the library calls its own. Unset means the platform address.
+  // A custom domain the owner made primary is held here; the platform
+  // address stays on `targetBaseUrl` and is never released, because DOI
+  // landing pages already registered point at it.
+  canonicalBaseUrl: v.optional(v.string()),
   addressState: v.optional(evidenceLibraryAddressStateValidator),
   addressCheckedAt: v.optional(v.number()),
   createdAt: v.number(),
@@ -537,6 +593,14 @@ export const evidenceLibraryAddressMoveValidator = v.object({
   applied: v.boolean(),
 });
 
+// A publish caused by a custom domain: the proxy rules only reach the
+// running container through a deployment, and making a domain primary also
+// rewrites the address the library calls its own.
+export const evidenceLibraryDomainChangeValidator = v.object({
+  host: v.string(),
+  reason: v.union(v.literal("attach"), v.literal("detach"), v.literal("canonical")),
+});
+
 export const evidenceLibraryOperationFields = {
   libraryId: v.id("evidenceLibraries"),
   kind: evidenceLibraryOperationKindValidator,
@@ -544,6 +608,7 @@ export const evidenceLibraryOperationFields = {
   activationEditVersion: v.optional(v.number()),
   runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
   addressMove: v.optional(evidenceLibraryAddressMoveValidator),
+  domainChange: v.optional(evidenceLibraryDomainChangeValidator),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
   setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
   setupAttemptToken: v.optional(v.string()),
