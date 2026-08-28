@@ -13,6 +13,7 @@ import {
   CoolifyClientError,
   reconcileCoolifyApplication,
 } from "./coolifyClient";
+import { libraryAiProviderKey } from "./aiProviderKey";
 import {
   assembleEvidenceLibraryRuntimePayload,
   EVIDENCE_LIBRARY_SEARCH_HOST,
@@ -135,7 +136,7 @@ export const runApplicationSetup = internalAction({
         mail: optionalPlatformMailService(invalidData),
         brand: optionalPlatformBrandAssets(invalidData),
         zoteroGroups: prepared.zoteroGroups,
-        aiProviderKey: prepared.aiProviderKey,
+        aiProviderKey: libraryAiProviderKey(prepared.aiProviderKey),
       });
       const application = await reconcileCoolifyApplication({
         coolifyUrl: requireRuntimeEnvironment("EL_COOLIFY_URL", invalidData),
@@ -177,6 +178,7 @@ export const runApplicationSetup = internalAction({
           storagePrivateBucket: prepared.storagePrivateBucket,
           storagePublicBucket: prepared.storagePublicBucket,
           storageMaxPdfBytes,
+          aiProviderKey: prepared.aiProviderKey,
           zoteroTranslationUrl: optionalRuntimeEnvironment(
             "EL_ZOTERO_TRANSLATION_URL",
           ),

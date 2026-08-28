@@ -206,6 +206,7 @@ export async function createDeployedSetupFixture(suffix: string) {
       databaseCredentialId: prepared.databaseCredentialId,
       searchCredentialId: prepared.searchCredentialId,
       storageCredentialId: prepared.storageCredentialId,
+      aiProviderKey: { present: false } as const,
     },
   );
   await fixture.t.mutation(

@@ -141,6 +141,7 @@ describe("Evidence Library application setup", () => {
         databaseCredentialId: first.databaseCredentialId,
         searchCredentialId: first.searchCredentialId,
         storageCredentialId: first.storageCredentialId,
+        aiProviderKey: { present: false } as const,
       },
     );
     expect(completed).toMatchObject({

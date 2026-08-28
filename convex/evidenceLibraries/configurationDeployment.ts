@@ -13,7 +13,11 @@ import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
-import { readLibraryAiProviderKey } from "./aiProviderKey";
+import { aiProviderKeySourceValidator } from "./validators";
+import {
+  readAiProviderKeySource,
+  requireUnchangedAiProviderKey,
+} from "./aiProviderKey";
 import {
   sanitizeConfigurationIssues,
   sanitizeOperationError,
@@ -381,7 +385,6 @@ export const prepareConfigurationDeployment = internalMutation({
           scopes: zoteroGroupScopesValidator,
         }),
       ),
-      aiProviderKey: v.optional(v.object({ encryptedApiKey: v.string() })),
       source: v.object({
         runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
         bindingUpdatedAt: v.number(),
@@ -391,6 +394,7 @@ export const prepareConfigurationDeployment = internalMutation({
         database: sourceCredentialValidator,
         search: sourceCredentialValidator,
         storage: sourceCredentialValidator,
+        aiProviderKey: aiProviderKeySourceValidator,
       }),
       defaultLocale: v.string(),
     }),
@@ -511,7 +515,7 @@ export const prepareConfigurationDeployment = internalMutation({
         STORAGE_SERVICE_KEY_PATH,
       ),
     };
-    const aiProviderKey = await readLibraryAiProviderKey(ctx, args.libraryId);
+    const aiProviderKey = await readAiProviderKeySource(ctx, args.libraryId);
     return {
       state: "new" as const,
       ...(runtimeUpdate ? { runtimeUpdate } : {}),
@@ -552,13 +556,13 @@ export const prepareConfigurationDeployment = internalMutation({
         ctx,
         args.libraryId,
       ),
-      ...(aiProviderKey ? { aiProviderKey } : {}),
       source: {
         runtimeBindingId: deployment.runtimeBinding._id,
         bindingUpdatedAt: deployment.runtimeBinding.updatedAt,
         bindingFingerprint: runtimeBindingFingerprint(
           deployment.runtimeBinding,
         ),
+        aiProviderKey,
         machine: {
           id: required.machine._id,
           encryptedValue: required.machine.encryptedValue,
@@ -673,6 +677,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
       database: sourceCredentialValidator,
       search: sourceCredentialValidator,
       storage: sourceCredentialValidator,
+      aiProviderKey: aiProviderKeySourceValidator,
     }),
     target: v.object({
       applicationId: v.string(),
@@ -693,6 +698,11 @@ export const saveConfigurationDeploymentTarget = internalMutation({
         "Evidence Library configuration target is already saved",
       );
     }
+    await requireUnchangedAiProviderKey(
+      ctx,
+      args.libraryId,
+      args.source.aiProviderKey,
+    );
     const sourceVersions = [
       args.source.machine,
       args.source.authentication,
@@ -729,6 +739,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
         "applicationId",
         args.target.applicationId,
       ),
+      aiProviderKey: args.source.aiProviderKey,
       runtimeBindingId: deployment.runtimeBinding._id,
       targetBaseUrl: requireNonBlank(
         "targetBaseUrl",
@@ -884,6 +895,13 @@ export const prepareConfigurationActivation = internalMutation({
         "Evidence Library deployment receipt is incomplete",
       );
     }
+    // The last look before the library goes live: a key replaced or removed
+    // during the publish must not reach it.
+    await requireUnchangedAiProviderKey(
+      ctx,
+      args.libraryId,
+      target.aiProviderKey,
+    );
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       stage: "activating",

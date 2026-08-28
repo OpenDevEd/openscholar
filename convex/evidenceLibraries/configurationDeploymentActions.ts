@@ -25,6 +25,7 @@ import {
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
+import { libraryAiProviderKey } from "./aiProviderKey";
 import {
   assembleEvidenceLibraryRuntimePayload,
   buildEvidenceLibraryLoginPageUrl,
@@ -151,7 +152,7 @@ export const runConfigurationDeployment = internalAction({
           mail: optionalPlatformMailService(invalidConfiguration),
           brand: optionalPlatformBrandAssets(invalidConfiguration),
           zoteroGroups: prepared.zoteroGroups,
-          aiProviderKey: prepared.aiProviderKey,
+          aiProviderKey: libraryAiProviderKey(prepared.source.aiProviderKey),
         });
         target = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment

@@ -6,6 +6,22 @@ import {
 
 export type { SectionKey };
 
+/**
+ * What a publish saw of the AI provider key: the row it read, or the fact
+ * that there was none. Carried through the deployment so a Replace or a
+ * Remove that lands mid-publish is noticed instead of shipping the old key.
+ */
+export const aiProviderKeySourceValidator = v.union(
+  v.object({ present: v.literal(false) }),
+  v.object({
+    present: v.literal(true),
+    id: v.id("evidenceLibraryCredentials"),
+    encryptedValue: v.string(),
+    updatedAt: v.number(),
+  }),
+);
+export type AiProviderKeySource = Infer<typeof aiProviderKeySourceValidator>;
+
 export const organizationStateValidator = v.union(
   v.literal("active"),
   v.literal("deleted"),
@@ -508,6 +524,9 @@ export const evidenceLibraryOperationReceiptValidator = v.object({
 
 export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   applicationId: v.string(),
+  // The AI key row this configuration was built from, so a Replace or a
+  // Remove during the publish is caught before the library goes live.
+  aiProviderKey: aiProviderKeySourceValidator,
   runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
   targetBaseUrl: v.string(),
   revisionKey: v.string(),
