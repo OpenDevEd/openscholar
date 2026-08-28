@@ -810,6 +810,7 @@ const PUBLIC_OPERATION_FIELDS = [
   "receipt",
   "error",
   "issues",
+  "teardownFailedStep",
   "requestedByClerkUserId",
   "createdAt",
   "updatedAt",

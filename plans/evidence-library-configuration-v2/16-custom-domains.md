@@ -636,6 +636,19 @@ these decisions.
 108. **A drain that never settles is a failure, not a shrug.** The test
     helper now says so instead of returning quietly.
 
+## Corrections after the thirteenth review (2026-08-28)
+
+109. **The domains are named from the moment they start coming down**, so a
+    platform with no certificate account is reported as a failure to remove
+    the domains rather than the running site.
+110. **The failed part survives the projection.** It was being stripped
+    before it reached the page, so the page could never have shown it.
+111. **Nothing is invented when the part is missing.** Every failed deletion
+    records which part stopped, and the page is told exactly what is stored.
+112. **The progress bar knows every stage.** Removing files and the database
+    were missing from the list the page uses, so the bar sat at the start
+    through both of them.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

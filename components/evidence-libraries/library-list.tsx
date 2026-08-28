@@ -46,8 +46,10 @@ const ADDRESS_STATE_MESSAGE = {
 /** How far the teardown is, by the stage it reports. */
 const TEARDOWN_PERCENT: Record<NonNullable<Overview["teardownStage"]>, number> = {
   queued: 5,
-  coolify: 35,
-  convex: 80,
+  coolify: 30,
+  storage: 50,
+  database: 70,
+  convex: 85,
   completed: 100,
 };
 

@@ -54,7 +54,6 @@ describe("library overviews", () => {
         status: "setting_up",
         setupStage: "database",
         teardownStage: null,
-        teardownFailedStep: null,
         lastActivatedAt: null,
         accentColor: "#005A9C",
         faviconUrl: "https://assets.example.test/favicon.ico",
@@ -110,7 +109,6 @@ describe("library overviews", () => {
       status: "draft",
       setupStage: null,
       teardownStage: null,
-      teardownFailedStep: null,
       lastActivatedAt: null,
       accentColor: null,
       faviconUrl: null,
@@ -176,4 +174,87 @@ describe("library overviews", () => {
       ),
     ).resolves.toEqual({ enabled: false });
   });
+  it("says which part of a deletion stopped, for each part", async () => {
+    const fixture = await createActivatedSetupFixture("overview_teardown");
+    const libraryId = fixture.created.libraryId;
+
+    // Every stage the deletion can stop in, and the words the page uses.
+    for (const failedStep of [
+      "domains",
+      "runtime",
+      "files",
+      "database",
+      "records",
+    ] as const) {
+      await fixture.t.run(async (ctx) => {
+        await ctx.db.patch(libraryId, { state: "disabled" });
+        const existing = await ctx.db
+          .query("evidenceLibraryConfigOperations")
+          .withIndex("by_libraryId_and_createdAt", (query) =>
+            query.eq("libraryId", libraryId),
+          )
+          .order("desc")
+          .collect();
+        for (const operation of existing) {
+          if (operation.kind === "teardown") await ctx.db.delete(operation._id);
+        }
+        await ctx.db.insert("evidenceLibraryConfigOperations", {
+          libraryId,
+          kind: "teardown",
+          idempotencyKey: `teardown:${failedStep}`,
+          status: "failed",
+          stage: "coolify",
+          attemptCount: 5,
+          error: {
+            code: "CLOUDFLARE_UNAVAILABLE",
+            message: "Cloudflare returned 503 for zone 9f2c",
+            stage: "coolify",
+          },
+          teardownFailedStep: failedStep,
+          requestedByClerkUserId: "someone",
+          // Clearly the newest, so it is the one the page reads.
+          createdAt: Date.now() + 1_000,
+          updatedAt: Date.now() + 1_000,
+        });
+      });
+
+      const overviews = await fixture.admin.query(
+        api.evidenceLibraries.queries.listLibraryOverviews,
+        {},
+      );
+      const row = overviews.find((library) => library._id === libraryId);
+      expect(row?.status).toBe("deleting");
+      // What is stored reaches the page, and nothing else does.
+      expect(row?.teardownFailedStep).toBe(failedStep);
+    }
+  });
+
+  it("says nothing about a deletion that is still going", async () => {
+    const fixture = await createActivatedSetupFixture("overview_teardown_ok");
+    const libraryId = fixture.created.libraryId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(libraryId, { state: "disabled" });
+      await ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId,
+        kind: "teardown",
+        idempotencyKey: "teardown:running",
+        status: "running",
+        stage: "storage",
+        attemptCount: 1,
+        requestedByClerkUserId: "someone",
+        // Clearly the newest, so it is the one the page reads.
+        createdAt: Date.now() + 1_000,
+        updatedAt: Date.now() + 1_000,
+      });
+    });
+
+    const overviews = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraryOverviews,
+      {},
+    );
+    const row = overviews.find((library) => library._id === libraryId);
+    expect(row?.teardownStage).toBe("storage");
+    expect(row?.teardownFailedStep).toBeUndefined();
+  });
+
 });

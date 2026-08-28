@@ -100,6 +100,13 @@ export const runDevelopmentTeardown = internalAction({
       );
       if (!prepared.claimed) return { status: "pending" as const };
       attemptToken = prepared.attemptToken;
+      // The custom domains come down first, so anything that fails from here
+      // until the storage step is a failure to remove them — including not
+      // finding the certificate service at all.
+      // The custom domains come down first, so anything that fails from here
+      // until the storage step is a failure to remove them — including not
+      // finding the certificate service at all.
+      removingDomains = true;
       const cloudflare = createPlatformCloudflareSaasClient();
       if (!cloudflare && prepared.customDomainHosts.length > 0) {
         // The library's records are the only note that these hostnames
@@ -115,7 +122,6 @@ export const runDevelopmentTeardown = internalAction({
           "Custom domains are set up on this library but not on this platform",
         );
       }
-      removingDomains = true;
       if (cloudflare) {
         // By name as well as by id: a hostname created before its id was
         // written down would otherwise be left behind for ever.

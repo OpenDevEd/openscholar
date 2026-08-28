@@ -2934,4 +2934,84 @@ describe("custom domains", () => {
     expect(await readRow(fixture, added.domainId)).not.toBeNull();
   });
 
+  it("blames the domains when the certificate service is not set up", async () => {
+    // The custom domains come down first, so a platform with no certificate
+    // account stops there — and the page has to say so, not blame the
+    // running site.
+    const fixture = await createReadySetupFixture("teardown-no-cloudflare");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        attachedAt: Date.now(),
+        state: "active",
+        updatedAt: Date.now(),
+      });
+      await ctx.db.patch(fixture.created.libraryId, { state: "disabled" });
+    });
+    // One deletion waiting to run, with every wait already used up. Written
+    // directly so nothing else is holding it.
+    const operationId = await fixture.t.run(async (ctx) =>
+      ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId: fixture.created.libraryId,
+        kind: "teardown",
+        idempotencyKey: "teardown:no-cloudflare",
+        status: "queued",
+        stage: "queued",
+        attemptCount: 9,
+        requestedByClerkUserId: "someone",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+    );
+
+    // The platform's certificate account is gone.
+    vi.stubEnv("EL_CLOUDFLARE_API_TOKEN", "");
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+        { libraryId: fixture.created.libraryId, operationId },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+
+    const operation = await fixture.t.run(async (ctx) =>
+      ctx.db.get(operationId),
+    );
+    expect(operation?.status).toBe("failed");
+    // The part that stopped, not the stage that happened to be current.
+    expect(operation?.teardownFailedStep).toBe("domains");
+  });
+
+  it("carries the failed part through to the page", async () => {
+    // The projection decides what leaves the backend, so a field the page
+    // needs has to survive it.
+    const fixture = await createReadySetupFixture("teardown-public-step");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const requested = await fixture.admin.mutation(
+      api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        confirmationName: fixture.created.name,
+      },
+    );
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(requested.operationId, {
+        status: "failed",
+        teardownFailedStep: "files",
+        error: {
+          code: "STORAGE_UNAVAILABLE",
+          message: "MinIO returned 500 for bucket private-9f2c",
+          stage: "storage",
+        },
+        updatedAt: Date.now(),
+      });
+    });
+
+    const draft = await fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(draft.operation?.teardownFailedStep).toBe("files");
+  });
 });
