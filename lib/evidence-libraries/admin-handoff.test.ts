@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAdminRouteHref,
-  decideAdminHandoff,
+  buildAdminStatusHref,
   readAdminReturnPath,
   sanitiseAdminReturnPath,
   shouldRequestAdminHandoff,
@@ -80,53 +80,6 @@ describe("shouldRequestAdminHandoff", () => {
   });
 });
 
-describe("decideAdminHandoff", () => {
-  it("sends an allowed person straight to the library", () => {
-    expect(
-      decideAdminHandoff({
-        errorParam: undefined,
-        result: {
-          status: "allowed",
-          launchUrl: "https://library.example/api/admin/session?code=elc_1",
-        },
-      }),
-    ).toEqual({
-      kind: "launch",
-      launchUrl: "https://library.example/api/admin/session?code=elc_1",
-    });
-  });
-
-  it("explains a refusal instead of redirecting", () => {
-    expect(
-      decideAdminHandoff({
-        errorParam: undefined,
-        result: { status: "no_access", organisationName: "Climate Team" },
-      }),
-    ).toEqual({ kind: "no_access", organisationName: "Climate Team" });
-    expect(
-      decideAdminHandoff({
-        errorParam: undefined,
-        result: { status: "not_ready", isOwner: true },
-      }),
-    ).toEqual({ kind: "not_ready", isOwner: true });
-  });
-
-  it("never redirects again after a failed exchange", () => {
-    expect(
-      decideAdminHandoff({
-        errorParam: "invalid_code",
-        result: {
-          status: "allowed",
-          launchUrl: "https://library.example/api/admin/session?code=elc_1",
-        },
-      }),
-    ).toEqual({ kind: "expired_link" });
-    expect(
-      decideAdminHandoff({ errorParam: undefined, result: null }),
-    ).toEqual({ kind: "expired_link" });
-  });
-});
-
 describe("buildAdminRouteHref", () => {
   it("points back at this page without the error", () => {
     expect(buildAdminRouteHref({ libraryId: "lib_1" })).toBe(
@@ -135,5 +88,22 @@ describe("buildAdminRouteHref", () => {
     expect(
       buildAdminRouteHref({ libraryId: "lib_1", returnPath: "/admin/items?page=2" }),
     ).toBe("/evidence-libraries/lib_1/admin?return=%2Fadmin%2Fitems%3Fpage%3D2");
+  });
+});
+
+describe("buildAdminStatusHref", () => {
+  it("points at the page that explains a refusal", () => {
+    expect(buildAdminStatusHref({ libraryId: "lib_1" })).toBe(
+      "/evidence-libraries/lib_1/admin/status",
+    );
+    expect(
+      buildAdminStatusHref({
+        libraryId: "lib_1",
+        returnPath: "/admin/items",
+        state: "expired_link",
+      }),
+    ).toBe(
+      "/evidence-libraries/lib_1/admin/status?state=expired_link&return=%2Fadmin%2Fitems",
+    );
   });
 });

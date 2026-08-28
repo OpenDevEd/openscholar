@@ -157,6 +157,16 @@ describe("Evidence Library readiness completion", () => {
             { status: 200, headers: { "content-type": "application/json" } },
           );
         }
+        if (url.pathname === "/admin") {
+          // A live library sends a signed-out visitor of its admin area to
+          // OpenScholar, and readiness checks exactly that.
+          return new Response(null, {
+            status: 307,
+            headers: {
+              location: `https://openscholar.example.test/evidence-libraries/${fixture.created.libraryId}/admin?return=%2Fadmin`,
+            },
+          });
+        }
         return new Response("ready", { status: 200 });
       }),
     );

@@ -107,29 +107,6 @@ export type AdminHandoffResult =
   | { status: "no_access"; organisationName: string | null }
   | { status: "not_ready"; isOwner: boolean };
 
-export type AdminHandoffView =
-  | { kind: "launch"; launchUrl: string }
-  | { kind: "no_access"; organisationName: string | null }
-  | { kind: "not_ready"; isOwner: boolean }
-  | { kind: "expired_link" };
-
-export function decideAdminHandoff(input: {
-  errorParam: string | string[] | undefined;
-  result: AdminHandoffResult | null;
-}): AdminHandoffView {
-  if (!shouldRequestAdminHandoff(input.errorParam) || !input.result) {
-    return { kind: "expired_link" };
-  }
-  const { result } = input;
-  if (result.status === "allowed") {
-    return { kind: "launch", launchUrl: result.launchUrl };
-  }
-  if (result.status === "no_access") {
-    return { kind: "no_access", organisationName: result.organisationName };
-  }
-  return { kind: "not_ready", isOwner: result.isOwner };
-}
-
 /** The page that explains why the admin area did not open. */
 export function buildAdminStatusHref(input: {
   libraryId: string;

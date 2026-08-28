@@ -388,11 +388,28 @@ async function requirePage(
 }
 
 /**
- * A signed-out `/admin` does not render a page any more: the runtime sends
- * the browser to this library's OpenScholar login page, which signs the
- * person in and hands the session back. Readiness accepts that redirect and a
- * plain answer, and nothing else. `2xx` stays accepted while libraries still
- * run older software.
+ * The address the library sends a signed-out visitor of `/admin` to. Only
+ * the exact login page for this library counts, so a page that merely starts
+ * with the same text, or one on a look-alike host, is refused.
+ */
+function isLibraryLoginPage(destination: URL, loginPageUrl: string): boolean {
+  let expected: URL;
+  try {
+    expected = new URL(loginPageUrl);
+  } catch {
+    return false;
+  }
+  return (
+    destination.origin === expected.origin &&
+    destination.pathname === expected.pathname
+  );
+}
+
+/**
+ * A signed-out `/admin` does not render a page: the runtime sends the browser
+ * to this library's OpenScholar login page, which signs the person in and
+ * hands the session back. Only that redirect counts as ready. A page of its
+ * own means the library still runs software that gates `/admin` itself.
  */
 async function requireAdminPage(
   fetchImpl: typeof fetch,
@@ -407,18 +424,17 @@ async function requireAdminPage(
     headers: { accept: "text/html" },
     method: "GET",
   });
-  if (response.ok) return;
   if (response.status < 300 || response.status >= 400) throw notReady;
 
   const location = response.headers.get("location");
   if (!location) throw notReady;
-  let destination: string;
+  let destination: URL;
   try {
-    destination = new URL(location, url).toString();
+    destination = new URL(location, url);
   } catch {
     throw notReady;
   }
-  if (!destination.startsWith(loginPageUrl)) throw notReady;
+  if (!isLibraryLoginPage(destination, loginPageUrl)) throw notReady;
 }
 
 export type ReadinessCheckInput = {
