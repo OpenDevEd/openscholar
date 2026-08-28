@@ -6,19 +6,21 @@ import {
 } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { WRITE_ONLY_POINTER_PATTERNS } from "../../lib/evidence-libraries/configuration/section-registry";
-import { jsonPointerPatternMatches } from "../../lib/evidence-libraries/configuration/json-pointer";
+import {
+  credentialKeyFor,
+  writeOnlyPatternFor,
+} from "../../lib/evidence-libraries/configuration/credential-paths";
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
+import { requireNoRunningOperation } from "./aiProviderKey";
+import { AI_PROVIDER_KEY_PATTERN } from "../../lib/evidence-libraries/configuration/ai";
 
 export function resolveCredentialPath(
   concretePath: string,
   instanceKey?: string,
 ) {
-  const pathPattern = WRITE_ONLY_POINTER_PATTERNS.find((pattern) =>
-    jsonPointerPatternMatches(pattern, concretePath),
-  );
+  const pathPattern = writeOnlyPatternFor(concretePath);
   if (!pathPattern) {
     throw createError(
       "VALIDATION_ERROR",
@@ -26,7 +28,7 @@ export function resolveCredentialPath(
     );
   }
   return {
-    credentialKey: instanceKey ? `${pathPattern}:${instanceKey}` : pathPattern,
+    credentialKey: credentialKeyFor(pathPattern, instanceKey),
     pathPattern,
   };
 }
@@ -88,6 +90,12 @@ export async function storeEvidenceLibraryCredential(
     args.libraryId,
     "manage",
   );
+  // A publish reads the AI key once and ships it minutes later, so the key
+  // may not move while one is under way.
+  if (resolveCredentialPath(args.concretePath, args.instanceKey).pathPattern
+      === AI_PROVIDER_KEY_PATTERN) {
+    await requireNoRunningOperation(ctx, args.libraryId);
+  }
   return await writeEvidenceLibraryCredentialRecord(ctx, {
     ...args,
     clerkUserId: access.clerkUserId,

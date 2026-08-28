@@ -6,6 +6,8 @@ import {
   ConfigurationAssemblyError,
   assembleEvidenceLibraryConfiguration,
 } from "./assembly";
+import { AI_MODELS, AI_PROVIDER } from "./ai";
+import { createAiProviderKey } from "@/convex/evidenceLibraries/aiProviderKey";
 import { initialLocalizationPayload } from "./initial-sections";
 import { validateOwnerSection, validateOwnerSections } from "./owner-rules";
 import { REQUIRED_OWNER_SECTION_KEYS } from "./section-registry";
@@ -344,6 +346,140 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       }),
     ]);
   });
+
+  test("gives only the switched-on OpenRouter entry the stored key", () => {
+    const apply = createAiProviderKey("sk-or-stored");
+    expect(
+      apply([
+        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+      ]),
+    ).toEqual([
+      {
+        provider: AI_PROVIDER,
+        enabled: true,
+        defaultModel: AI_MODELS[0],
+        apiKey: "sk-or-stored",
+      },
+    ]);
+    // A switched-off entry never needs a key and never receives one.
+    expect(
+      createAiProviderKey(undefined)([{ provider: AI_PROVIDER, enabled: false }]),
+    ).toEqual([{ provider: AI_PROVIDER, enabled: false }]);
+    expect(() =>
+      createAiProviderKey(undefined)([{ provider: AI_PROVIDER, enabled: true }]),
+    ).toThrow(ConfigurationAssemblyError);
+  });
+
+  test("never hands the key to another vendor, a second provider, or none", () => {
+    const apply = createAiProviderKey("sk-or-stored");
+    expect(() => apply([])).toThrow(ConfigurationAssemblyError);
+    expect(() => apply([{ provider: "openai", enabled: true }])).toThrow(
+      ConfigurationAssemblyError,
+    );
+    expect(() =>
+      apply([
+        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+      ]),
+    ).toThrow(ConfigurationAssemblyError);
+  });
+
+  test.each([
+    [
+      "another vendor",
+      [{ provider: "openai", enabled: true, defaultModel: "gpt-5.4" }],
+      true,
+      "/ai/providers/0/provider",
+    ],
+    [
+      "two providers",
+      [
+        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+        { provider: AI_PROVIDER, enabled: false },
+      ],
+      true,
+      "/ai/providers",
+    ],
+    [
+      "no model on a switched-on entry",
+      [{ provider: AI_PROVIDER, enabled: true }],
+      true,
+      "/ai/providers/0/defaultModel",
+    ],
+    [
+      "a model the runtime does not offer",
+      [{ provider: AI_PROVIDER, enabled: true, defaultModel: "made-up/model" }],
+      true,
+      "/ai/providers/0/defaultModel",
+    ],
+    [
+      "a provider switched on while AI answers are off",
+      [{ provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] }],
+      false,
+      "/ai/providers/0/enabled",
+    ],
+    ["AI answers on with no provider at all", [], true, "/ai/providers"],
+    // An AI row that is there must hold one provider, even with AI off. Only
+    // a library that never saved the row has none.
+    ["a saved AI row with no provider", [], false, "/ai/providers"],
+  ])(
+    "refuses %s when the configuration is assembled",
+    (_name, providers, featuresAi, pointer) => {
+      const input = {
+        sections: {
+          ...ownerSections,
+          features: { ...ownerSections.features, ai: featuresAi },
+          ai: { providers },
+        },
+        managed: managedConfiguration,
+        applyAiProviderKey: createAiProviderKey("sk-or-stored"),
+      };
+      expect(() => assembleEvidenceLibraryConfiguration(input)).toThrow(
+        ConfigurationAssemblyError,
+      );
+      try {
+        assembleEvidenceLibraryConfiguration(input);
+      } catch (error) {
+        expect((error as ConfigurationAssemblyError).issues).toContainEqual(
+          expect.objectContaining({ pointer, section: "ai" }),
+        );
+      }
+    },
+  );
+
+  test(
+    "puts the AI key into the assembled configuration and nowhere else",
+    () => {
+      const configuration = assembleEvidenceLibraryConfiguration({
+        sections: {
+          ...ownerSections,
+          features: { ...ownerSections.features, ai: true },
+          ai: {
+            providers: [
+              { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+            ],
+          },
+        },
+        managed: managedConfiguration,
+        applyAiProviderKey: createAiProviderKey("sk-or-stored"),
+      });
+      expect(validateLibraryConfigStructure(configuration)).toEqual({
+        valid: true,
+        issues: [],
+      });
+      expect(configuration.ai).toEqual({
+        providers: [
+          {
+            provider: AI_PROVIDER,
+            enabled: true,
+            defaultModel: AI_MODELS[0],
+            apiKey: "sk-or-stored",
+          },
+        ],
+        prompts: {},
+      });
+    },
+  );
 
   test("adds the platform mail service under the owner's recipients", () => {
     const configuration = assembleEvidenceLibraryConfiguration({

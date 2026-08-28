@@ -12,6 +12,7 @@
  * shared by cards (the Navigation card owns `features.navbarSearch`).
  */
 
+import { AI_MODELS, AI_PROVIDER } from "./ai";
 import schema from "./generated/library-config.schema.json";
 import {
   HTTPS_URL,
@@ -45,6 +46,7 @@ export const PAGE_SECTION_KEYS = [
   "citations",
   "features",
   "sources",
+  "ai",
   "languages",
   "analytics",
 ] as const;
@@ -70,6 +72,7 @@ const ROW_KEYS = [
   "exports",
   "localization",
   "analytics",
+  "ai",
 ] as const;
 type RowKey = (typeof ROW_KEYS)[number];
 
@@ -98,7 +101,12 @@ type SectionProblem =
   | "featureDependency"
   | "languages"
   | "posthog"
+  | "posthogUiHost"
+  | "consentVersion"
   | "google"
+  | "aiKey"
+  | "aiModel"
+  | "aiModelUnknown"
   | "legalText";
 
 /* ------------------------------------------------------------------ */
@@ -152,6 +160,13 @@ function schemaEnum<T extends string>(pointer: string): readonly T[] {
   }
   return values as T[];
 }
+
+export { AI_MODELS, AI_PROVIDER };
+
+/** The consent version every library starts from, as the runtime sets it. */
+export const CONSENT_POLICY_VERSION_DEFAULT = schemaNode(
+  "/analytics/consentPolicyVersion",
+).default as number;
 
 export const SCHEMA_LIMITS = {
   identity: {
@@ -380,9 +395,18 @@ type LocalizationDraft = {
 };
 /** PostHog and Google Analytics are independent switches; both may be on. */
 export type AnalyticsDraft = {
-  posthog: { enabled: boolean; host: string; key: string };
+  posthog: { enabled: boolean; host: string; uiHost: string; key: string };
   google: { enabled: boolean; measurementId: string };
+  /** Raising this asks every visitor for consent again. */
+  consentPolicyVersion: number;
 };
+
+/**
+ * The AI card. The switch itself is `features.ai` and the key is never here.
+ * `keySaved` says whether the credential store holds an OpenRouter key for
+ * this library, so the card can ask for one. It is in no saved row.
+ */
+export type AiDraft = { keySaved: boolean; defaultModel: string };
 
 export type ConfigurationDraft = {
   identity: IdentityDraft;
@@ -405,6 +429,7 @@ export type ConfigurationDraft = {
   exports: Record<ExportFormat, boolean>;
   localization: LocalizationDraft;
   analytics: AnalyticsDraft;
+  ai: AiDraft;
 };
 
 /** Feature switches the page shows, in their groups. Accounts and AI come later. */
@@ -762,6 +787,7 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     exports: readExports(payloadOf(rows, "exports")),
     localization: readLocalization(payloadOf(rows, "localization")),
     analytics: readAnalytics(payloadOf(rows, "analytics")),
+    ai: readAi(payloadOf(rows, "ai")),
   };
 }
 
@@ -794,10 +820,39 @@ function readAnalytics(payload: unknown): AnalyticsDraft {
   const google = record(analytics.google);
   const key = text(posthog.key);
   const measurementId = text(google.measurementId);
+  const version = analytics.consentPolicyVersion;
   return {
-    posthog: { enabled: key !== "", host: text(posthog.host), key },
+    posthog: {
+      enabled: key !== "",
+      host: text(posthog.host),
+      uiHost: text(posthog.uiHost),
+      key,
+    },
     google: { enabled: measurementId !== "", measurementId },
+    consentPolicyVersion:
+      typeof version === "number" ? version : CONSENT_POLICY_VERSION_DEFAULT,
   };
+}
+
+/** The saved OpenRouter entry, or an empty card. The key never travels here. */
+function readAi(payload: unknown): AiDraft {
+  const entry = list(record(payload).providers)
+    .map((provider) => record(provider))
+    .find((provider) => provider.provider === AI_PROVIDER);
+  return { keySaved: false, defaultModel: text(entry?.defaultModel) };
+}
+
+/**
+ * The draft the page renders: the edited draft plus whether the credential
+ * store holds an OpenRouter key. It stays out of the saved rows on purpose,
+ * so a stored key never makes the AI card look edited.
+ */
+export function withAiKey(
+  draft: ConfigurationDraft,
+  keySaved: boolean,
+): ConfigurationDraft {
+  if (draft.ai.keySaved === keySaved) return draft;
+  return { ...draft, ai: { ...draft.ai, keySaved } };
 }
 
 export function cloneDraft(draft: ConfigurationDraft): ConfigurationDraft {
@@ -967,12 +1022,40 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
       return { locales: [...locales], defaultLocale, detectLocale, localePriority: [...localePriority] };
     }
     case "analytics": {
-      const { posthog, google } = draft.analytics;
+      const { posthog, google, consentPolicyVersion } = draft.analytics;
       return compact({
-        posthog: posthog.enabled ? { host: posthog.host, key: posthog.key } : undefined,
+        posthog: posthog.enabled
+          ? compact({
+              host: posthog.host,
+              // The runtime refuses a session recordings address without a
+              // host, so one is never written without the other.
+              uiHost:
+                posthog.uiHost === "" || !HTTPS_URL.test(posthog.host)
+                  ? undefined
+                  : posthog.uiHost,
+              key: posthog.key,
+            })
+          : undefined,
         google: google.enabled ? { measurementId: google.measurementId } : undefined,
+        consentPolicyVersion:
+          consentPolicyVersion === CONSENT_POLICY_VERSION_DEFAULT
+            ? undefined
+            : consentPolicyVersion,
       });
     }
+    // Always exactly one OpenRouter entry, switched on with AI answers. The
+    // key is added at assembly, never here.
+    case "ai":
+      return {
+        providers: [
+          compact({
+            provider: AI_PROVIDER,
+            enabled: draft.features.ai,
+            defaultModel:
+              draft.ai.defaultModel === "" ? undefined : draft.ai.defaultModel,
+          }),
+        ],
+      };
   }
 }
 
@@ -1060,6 +1143,8 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
       return draft.localization;
     case "analytics":
       return draft.analytics;
+    case "ai":
+      return { enabled: draft.features.ai, defaultModel: draft.ai.defaultModel };
     case "footer":
       return draft.footer;
     case "contact":
@@ -1085,6 +1170,7 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
   sources: ["sources", "content"],
   citations: ["citations", "exports"],
   features: ["features"],
+  ai: ["ai", "features"],
   languages: ["localization"],
   analytics: ["analytics"],
 };
@@ -1227,11 +1313,35 @@ export function sectionProblems(
       break;
     }
     case "analytics": {
-      const { posthog, google } = draft.analytics;
+      const { posthog, google, consentPolicyVersion } = draft.analytics;
       if (posthog.enabled && (!HTTPS_URL.test(posthog.host) || !isPosthogKey(posthog.key))) {
         problems.push("posthog");
       }
+      if (posthog.enabled && posthog.uiHost !== "" && !HTTPS_URL.test(posthog.uiHost)) {
+        problems.push("posthogUiHost");
+      }
       if (google.enabled && !MEASUREMENT_ID.test(google.measurementId)) problems.push("google");
+      if (
+        !Number.isInteger(consentPolicyVersion) ||
+        consentPolicyVersion < CONSENT_POLICY_VERSION_DEFAULT
+      ) {
+        problems.push("consentVersion");
+      }
+      break;
+    }
+    // schema.ts "Enabled AI providers require an API key" and "require a
+    // default model"; the model must be one the runtime catalog approves.
+    case "ai": {
+      const { keySaved, defaultModel } = draft.ai;
+      if (draft.features.ai) {
+        if (!keySaved) problems.push("aiKey");
+        if (defaultModel === "") problems.push("aiModel");
+      }
+      // The runtime checks the model against its catalog whether or not AI
+      // answers are on, so a stale choice is flagged either way.
+      if (defaultModel !== "" && !AI_MODELS.includes(defaultModel)) {
+        problems.push("aiModelUnknown");
+      }
       break;
     }
   }
@@ -1312,6 +1422,10 @@ export function resetSection(
       break;
     case "analytics":
       next.analytics = saved.analytics;
+      break;
+    case "ai":
+      next.features.ai = saved.features.ai;
+      next.ai = { ...next.ai, defaultModel: saved.ai.defaultModel };
       break;
   }
   // A reset can take away what a feature needs (an export, a second language, a search option).

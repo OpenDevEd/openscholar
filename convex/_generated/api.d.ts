@@ -57,6 +57,7 @@ import type * as evidenceLibraries_addressRecovery from "../evidenceLibraries/ad
 import type * as evidenceLibraries_adminHandoff from "../evidenceLibraries/adminHandoff.js";
 import type * as evidenceLibraries_adminHandoffActions from "../evidenceLibraries/adminHandoffActions.js";
 import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/adminLoginCodes.js";
+import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
@@ -71,6 +72,7 @@ import type * as evidenceLibraries_deploymentSetup from "../evidenceLibraries/de
 import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibraries/deploymentSetupActions.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
+import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
 import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
@@ -314,6 +316,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/adminHandoff": typeof evidenceLibraries_adminHandoff;
   "evidenceLibraries/adminHandoffActions": typeof evidenceLibraries_adminHandoffActions;
   "evidenceLibraries/adminLoginCodes": typeof evidenceLibraries_adminLoginCodes;
+  "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
@@ -328,6 +331,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/deploymentSetupActions": typeof evidenceLibraries_deploymentSetupActions;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
+  "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
   "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;

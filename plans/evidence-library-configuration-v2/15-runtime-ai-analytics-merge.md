@@ -12,7 +12,8 @@ height of its bar, whatever its shape.
 
 ## Facts checked on 2026-08-28
 
-- new-el `main` = `720a3c45` (after #140, #141, #142). Every OpenScholar
+- new-el `main` = `720a3c45` (after #140, #141, #142), then `95ac3fc0` after
+  the merge in #143. Every OpenScholar
   library builds from `OpenDevEd/new-el` at `EL_RUNTIME_COMMIT_SHA` on
   `main` (`convex/evidenceLibraries/coolifyClient.ts:28-30`).
 - Three branches carry the modernisation:
@@ -70,8 +71,17 @@ height of its bar, whatever its shape.
    credits path, no other providers, no embeddings note. `ai.providers` is
    written as exactly one entry `{ provider: "openrouter", enabled, apiKey,
    defaultModel }`. Rules: AI on without a key or a model → section needs
-   attention; `features.aiSearch`/deep research dependants follow the
-   existing feature-dependency rules.
+   attention.
+
+   **Revised 2026-08-28 (lane A).** AI search and deep research are *not*
+   shown. The runtime refuses both without `search.embedder`
+   (`schema.ts` "AI search requires an embedder", on `main` and on
+   `ai-modernization`), and OpenScholar always assembles
+   `search.embedder: null` (`lib/evidence-libraries/configuration/assembly.ts`
+   sets it from `managed.searchEmbedder`, which nothing fills). A switch that
+   can never be turned on is UI the runtime cannot honour, so the AI card
+   holds only the master switch, the key and the model. Add the two
+   dependants when the platform gives libraries an embedder.
 3. **Analytics gains two fields**: "PostHog UI host" (optional; only when a
    PostHog host is set; hint: where session recordings open) and "Consent
    policy version" (a number; hint: raise it when your cookie text changes
@@ -176,8 +186,24 @@ Lane M: merge commit; then `src/components/**` (header, footer, cookie
 dialog, record page brand images), their tests, `docs/evidence-library-customization-map.md`.
 
 Lane A: `lib/evidence-libraries/configuration/generated/**`,
-`contract-lock.json`, `section-registry.ts`, `rules.ts` (+ tests),
+`contract-lock.json`, `rules.ts` and a new `ai.ts` (+ tests),
+`assembly.ts` (the provider-key hook),
 `components/evidence-libraries/configuration/sections/ai-section.tsx` (new),
-`analytics-section.tsx`, `features-section.tsx`, `configuration-workspace.tsx`
-(rail), `convex/evidenceLibraries/credentials.ts`, `configurationDeploymentActions.ts`
-(assembly), their tests, `messages/*.json`.
+`analytics-section.tsx`, `configuration-workspace.tsx` (rail), a new
+`convex/evidenceLibraries/aiProviderKey.ts` (credential row, removal and the
+assembly hook), `configurationDeployment.ts`, `configurationDeploymentActions.ts`,
+`applicationSetup.ts`, `applicationSetupActions.ts`, `runtimeConfiguration.ts`,
+their tests, `messages/*.json`. `section-registry.ts` and
+`features-section.tsx` need no change: `ai` is already a registry section, and
+the dependants stay hidden (see Decision 2).
+
+**Re-pinned 2026-08-28** to new-el `main` `95ac3fc0` (the merge of
+`codex/merge-ai-modernization`). The contract gained exactly three things:
+`openrouter` in the AI provider enum and the model catalog,
+`analytics.posthog.uiHost`, and `analytics.consentPolicyVersion`. The
+temporary flags that stood in for them while the merge was open are gone and
+every test that waited for the catalog now runs.
+
+The AI switch stays disabled with "Your library software does not offer AI
+answers yet" when the pinned catalog has no OpenRouter models, so a library on
+older software can never be given a setting it refuses.

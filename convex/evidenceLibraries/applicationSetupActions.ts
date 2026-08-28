@@ -135,6 +135,7 @@ export const runApplicationSetup = internalAction({
         mail: optionalPlatformMailService(invalidData),
         brand: optionalPlatformBrandAssets(invalidData),
         zoteroGroups: prepared.zoteroGroups,
+        aiProviderKey: prepared.aiProviderApiKey,
       });
       const application = await reconcileCoolifyApplication({
         coolifyUrl: requireRuntimeEnvironment("EL_COOLIFY_URL", invalidData),
@@ -176,6 +177,7 @@ export const runApplicationSetup = internalAction({
           storagePrivateBucket: prepared.storagePrivateBucket,
           storagePublicBucket: prepared.storagePublicBucket,
           storageMaxPdfBytes,
+          aiProviderKey: prepared.aiProviderKey,
           zoteroTranslationUrl: optionalRuntimeEnvironment(
             "EL_ZOTERO_TRANSLATION_URL",
           ),

@@ -1,4 +1,5 @@
 import { internal } from "../_generated/api";
+import { requireUnchangedAiProviderKey } from "./aiProviderKey";
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
@@ -194,6 +195,13 @@ export const completeReadinessSetup = internalMutation({
       expectedStage: "health_check",
     });
     const { application, deployment } = requireReadinessReceipts(setup);
+    // The last check of all, before the library becomes active: a key
+    // replaced while the new library was being made live must not reach it.
+    await requireUnchangedAiProviderKey(
+      ctx,
+      args.libraryId,
+      setup.setupOperation.setupAiProviderKey ?? { present: false },
+    );
     const transition = await recordEvidenceLibrarySetupStep(ctx, {
       libraryId: args.libraryId,
       operationId: args.operationId,

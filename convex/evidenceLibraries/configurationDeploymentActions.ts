@@ -151,6 +151,7 @@ export const runConfigurationDeployment = internalAction({
           mail: optionalPlatformMailService(invalidConfiguration),
           brand: optionalPlatformBrandAssets(invalidConfiguration),
           zoteroGroups: prepared.zoteroGroups,
+          aiProviderKey: prepared.aiProviderKey,
         });
         target = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment
