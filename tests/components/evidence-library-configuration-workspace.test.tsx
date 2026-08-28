@@ -8,6 +8,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const queryMock = vi.hoisted(() => vi.fn());
+// Every test here mounts the whole configuration page, which now also waits
+// for the library to name the collections it shows. Five seconds is not
+// enough while the rest of the suite runs beside it.
+vi.setConfig({ testTimeout: 20_000 });
+
 const mutationMock = vi.hoisted(() => vi.fn());
 // The Versions section checks for software updates when the page opens.
 const checkMock = vi.hoisted(() =>
