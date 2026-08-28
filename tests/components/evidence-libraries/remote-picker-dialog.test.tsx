@@ -127,6 +127,22 @@ describe("<RemotePickerDialog>", () => {
     expect(onConfirm).toHaveBeenCalledWith([row("B", "Beta")]);
   });
 
+  it("keeps a ticked row that a later search hides", async () => {
+    const onConfirm = vi.fn();
+    const source = vi.fn(async ({ query }: { query: string }) => ({
+      items: query === "beta" ? [row("B", "Beta")] : [row("A", "Alpha")],
+      nextCursor: null,
+    }));
+    const { user } = renderPicker({ source, onConfirm });
+    await open(user);
+    await user.click(await screen.findByRole("checkbox", { name: "Alpha" }));
+    await user.type(screen.getByRole("textbox", { name: "Search" }), "beta");
+    await user.click(await screen.findByRole("checkbox", { name: "Beta" }));
+    expect(screen.getByText(`${ns}.pickedCount {"count":2}`)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add 2" }));
+    expect(onConfirm).toHaveBeenCalledWith([row("A", "Alpha"), row("B", "Beta")]);
+  });
+
   it("chooses one row and closes in single mode", async () => {
     const onChoose = vi.fn();
     const source = vi.fn(async () => ({ items: [row("A", "Alpha")], nextCursor: null }));

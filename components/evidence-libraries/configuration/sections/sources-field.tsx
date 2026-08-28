@@ -489,7 +489,14 @@ function GroupPicker({
 
   const readPage: PickerSource = async (input) => {
     mine.current ??= load();
-    const answer = await mine.current;
+    let answer: Awaited<ReturnType<typeof load>>;
+    try {
+      answer = await mine.current;
+    } catch (error) {
+      // A failed read must not be remembered, or "Try again" would replay it.
+      mine.current = null;
+      throw error;
+    }
     if (!answer.connected) return { items: [], nextCursor: null, reason: "not-set-up" };
     setCapped(answer.capped);
     const rows = answer.groups.map((group) => ({

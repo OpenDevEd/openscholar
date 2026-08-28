@@ -83,8 +83,9 @@ Four lists change. Two more are noted and deferred.
    paged at 50, searched by title). Same dialog, same look.
 7. Zotero groups: keep the full fetch (the API's 1,000 cap is the ceiling),
    but the dialog pages the rows through the same in-memory source at 50
-   per page with search, and says "Zotero lists up to 1,000 groups" only
-   when the cap is hit. `listMyZoteroGroups` returns a new `capped` field
+   per page with search, and says "Zotero stops listing after about 1,000
+   groups" only when the cap is hit (Zotero refuses a `start` above 1,000,
+   so the true end is 1,100 rows). `listMyZoteroGroups` returns a new `capped` field
    for that note; Zotero is asked once per open, not per page.
 8. No new-el schema field changes, so no contract re-pin.
 9. Sorting is offered only where the server sorts. The collections

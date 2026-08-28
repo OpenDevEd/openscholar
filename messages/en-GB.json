@@ -2651,7 +2651,7 @@
         "noMatch": "No group matches.",
         "cancel": "Cancel",
         "addPicked": "{count, plural, =0 {Add} one {Add # group} other {Add # groups}}",
-        "capped": "Zotero lists up to 1,000 groups."
+        "capped": "Zotero stops listing after about 1,000 groups."
       }
     },
     "search": {

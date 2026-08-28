@@ -58,6 +58,8 @@ export type PickerSource = (input: {
 
 /** How long the dialog waits after a keystroke before asking the server. */
 const SEARCH_DEBOUNCE_MS = 300;
+/** The runtime read API refuses a longer search than this. */
+const SEARCH_MAX = 200;
 
 type Status = "loading" | "loading-more" | "ready" | "failed" | "not-set-up";
 
@@ -135,7 +137,9 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
   const [rows, setRows] = useState<PickerRow[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("loading");
-  const [picked, setPicked] = useState<Set<string>>(new Set());
+  // Ticked rows are kept whole, so a later search or filter cannot drop a
+  // choice the owner already made.
+  const [picked, setPicked] = useState<Map<string, PickerRow>>(new Map());
   const [busy, setBusy] = useState(false);
   const run = useRef(0);
   // Browser timer: the server is asked once typing stops, not per keystroke.
@@ -181,7 +185,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
     onOpenChange?.(nextOpen);
     clearTimeout(debounce.current);
     setQuery("");
-    setPicked(new Set());
+    setPicked(new Map());
     setBusy(false);
     const firstSort = sorts?.[0]?.value ?? null;
     setSort(firstSort);
@@ -207,11 +211,11 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
     load({ query: typed, sort: value, cursor: null });
   }
 
-  function toggle(id: string) {
+  function toggle(row: PickerRow) {
     setPicked((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const next = new Map(current);
+      if (next.has(row.id)) next.delete(row.id);
+      else next.set(row.id, row);
       return next;
     });
   }
@@ -227,12 +231,15 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
     setBusy(true);
     let failed: readonly string[] | void;
     try {
-      failed = await props.onConfirm(visible.filter((row) => picked.has(row.id)));
+      failed = await props.onConfirm([...picked.values()]);
     } finally {
       setBusy(false);
     }
     if (failed && failed.length > 0) {
-      setPicked(new Set(failed));
+      setPicked((current) => new Map(failed.flatMap((id) => {
+        const row = current.get(id);
+        return row ? [[id, row] as const] : [];
+      })));
       return;
     }
     reset(false);
@@ -275,6 +282,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
             <Input
               autoFocus
               value={query}
+              maxLength={SEARCH_MAX}
               aria-label={searchLabel}
               placeholder={searchLabel}
               className="bg-background pl-8"
@@ -330,9 +338,9 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                           disabled={selectable.length === 0}
                           onCheckedChange={(value) =>
                             setPicked((current) => {
-                              const next = new Set(current);
+                              const next = new Map(current);
                               for (const row of selectable) {
-                                if (value === true) next.add(row.id);
+                                if (value === true) next.set(row.id, row);
                                 else next.delete(row.id);
                               }
                               return next;
@@ -396,7 +404,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                       const act = () => {
                         if (already) return;
                         if (props.mode === "single") choose(row);
-                        else toggle(row.id);
+                        else toggle(row);
                       };
                       return (
                         <TableRow

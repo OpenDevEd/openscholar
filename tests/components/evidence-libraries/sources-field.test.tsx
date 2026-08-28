@@ -187,6 +187,29 @@ describe("<SourcesField>", () => {
     expect(mocks.listMyGroups).toHaveBeenCalledTimes(1);
   });
 
+  it("asks Zotero again when the first read failed", async () => {
+    queries({ connected: true, groups: [] });
+    mocks.listMyGroups
+      .mockRejectedValueOnce(new Error("zotero is down"))
+      .mockResolvedValue({
+        connected: true,
+        username: "owner",
+        zoteroUserId: "1",
+        capped: false,
+        groups: [{ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 }],
+      });
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "evidenceLibraryConfiguration.picker.failed",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "evidenceLibraryConfiguration.picker.tryAgain" }),
+    );
+    expect(await screen.findByText("Climate evidence")).toBeInTheDocument();
+    expect(mocks.listMyGroups).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps the groups it could not connect ticked", async () => {
     queries({ connected: true, groups: [] });
     mocks.listMyGroups.mockResolvedValue({
