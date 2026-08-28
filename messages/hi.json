@@ -2878,6 +2878,7 @@
         "failed": "Records not found"
       },
       "failure": {
+        "no-name": "We could not find that domain",
         "no-records": "Records not found",
         "wrong-target": "That domain points somewhere else. If it sits behind another proxy, turn the proxy off for this record.",
         "token-mismatch": "The ownership record holds a different value",

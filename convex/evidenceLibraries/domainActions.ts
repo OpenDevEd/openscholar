@@ -25,12 +25,14 @@ import {
   classifyTarget,
   classifyToken,
   DnsLookupError,
+  isReservedPlatformHost,
   lookupHost,
   normaliseDomainHost,
   readAgreedAnswer,
 } from "./dnsClient";
 import {
   readCustomDomainTarget,
+  readReservedDomainSuffixes,
   verificationRecordName,
   verificationRecordValue,
 } from "./domainConfig";
@@ -122,7 +124,6 @@ export const addDomain = action({
     } catch {
       return { status: "refused" as const, reason: "invalid" as const };
     }
-    const target = readCustomDomainTarget();
     const context = await ctx.runQuery(
       internal.evidenceLibraries.domains.readDomainContext,
       { libraryId: args.libraryId },
@@ -130,10 +131,10 @@ export const addDomain = action({
     const platformHost = new URL(context.platformAddress).hostname;
     // A name we already serve is not a custom domain; it is one of ours.
     if (
-      host === target ||
-      host === platformHost ||
-      host.endsWith(`.${target}`) ||
-      host.endsWith(platformHost.slice(platformHost.indexOf(".")))
+      isReservedPlatformHost(host, [
+        ...readReservedDomainSuffixes(),
+        platformHost,
+      ])
     ) {
       return { status: "refused" as const, reason: "platform-host" as const };
     }

@@ -25,7 +25,13 @@ const MAX_ANSWER_RECORDS = 64;
 const MAX_ANSWER_BYTES = 64 * 1024;
 const MAX_HOST_LENGTH = 253;
 const MAX_LABEL_LENGTH = 63;
-const LABEL = /^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?$/u;
+// A hostname label as the DNS "preferred name syntax" allows it: letters,
+// digits and hyphens, never starting or ending with a hyphen. Underscores are
+// legal in some record names but never in a name a browser can reach, so they
+// are refused here.
+const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
+// The ending is a letter word, or the punycode form of an international one.
+const TOP_LABEL = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/u;
 
 /** Raised when a lookup could not run or the two resolvers disagreed. */
 export class DnsLookupError extends Error {
@@ -67,9 +73,12 @@ export function normaliseDomainHost(value: string): string {
     if (label.length > MAX_LABEL_LENGTH || !LABEL.test(label)) {
       throw new DnsLookupError("That does not look like a domain");
     }
+    // `ab--cd` is reserved; only `xn--` carries a punycode name.
+    if (label.length > 3 && label[2] === "-" && label[3] === "-" && !label.startsWith("xn--")) {
+      throw new DnsLookupError("That does not look like a domain");
+    }
   }
-  const last = labels[labels.length - 1]!;
-  if (!/^[a-z]{2,63}$/u.test(last)) {
+  if (!TOP_LABEL.test(labels[labels.length - 1]!)) {
     throw new DnsLookupError("That does not look like a domain");
   }
   return host;
@@ -129,8 +138,9 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
     } else if (record.type === RECORD_TYPES.TXT) {
       answer.texts.push(readTxtValue(data));
     } else if (record.type === RECORD_TYPES.CAA) {
+      // An empty value is kept: `issue ";"` means nobody may issue.
       const issuer = readCaaIssuer(data);
-      if (issuer) answer.caaIssuers.push(issuer);
+      if (issuer !== null) answer.caaIssuers.push(issuer);
     }
   }
   return answer;
@@ -155,7 +165,13 @@ function readCaaIssuer(data: string): string | null {
 }
 
 /** How a host's address answer reads against our CNAME target. */
-export type TargetReading = "pointing" | "wrong-target" | "no-records";
+export type TargetReading =
+  | "pointing"
+  // The name itself is not in the zone (NXDOMAIN).
+  | "no-name"
+  // The name is there but carries no address record (NODATA).
+  | "no-records"
+  | "wrong-target";
 
 /**
  * Two ways to pass. A visible CNAME to our target is the normal case for a
@@ -169,9 +185,20 @@ export function classifyTarget(
 ): TargetReading {
   const target = normaliseRecordName(input.target);
   if (answer.cnames.includes(target)) return "pointing";
-  if (!answer.exists || answer.addresses.length === 0) return "no-records";
+  if (!answer.exists) return "no-name";
+  if (answer.addresses.length === 0) return "no-records";
+  // A flattened apex has to answer with the target's whole address set. One
+  // address in common proves nothing: a shared proxy hands the same anycast
+  // addresses to everybody on it.
   const ours = new Set(input.targetAddresses.map((value) => value.toLowerCase()));
-  if (answer.addresses.some((address) => ours.has(address))) return "pointing";
+  const theirs = new Set(answer.addresses);
+  if (
+    ours.size > 0 &&
+    ours.size === theirs.size &&
+    [...theirs].every((address) => ours.has(address))
+  ) {
+    return "pointing";
+  }
   return "wrong-target";
 }
 
@@ -209,6 +236,7 @@ export function classifyCaaChain(
   for (const issuers of chain) {
     if (issuers.length === 0) continue;
     const permitted = new Set<string>(PERMITTED_CERTIFICATE_ISSUERS);
+    // An empty issuer value permits nobody, so it can never match.
     return issuers.some((issuer) => permitted.has(issuer)) ? "ok" : "blocked";
   }
   return "ok";
@@ -280,6 +308,20 @@ export async function lookupHost(
   return await Promise.all(
     RESOLVERS.map((resolver) => readResolver(fetchImpl, resolver, host, type)),
   );
+}
+
+/**
+ * True when the host is one of the platform's own names, or sits beneath one.
+ * Those names are ours to serve; nobody may claim them as a custom domain.
+ */
+export function isReservedPlatformHost(
+  host: string,
+  reservedSuffixes: readonly string[],
+): boolean {
+  return reservedSuffixes.some((suffix) => {
+    const reserved = normaliseRecordName(suffix);
+    return reserved !== "" && (host === reserved || host.endsWith(`.${reserved}`));
+  });
 }
 
 /** Every name from the host up to its last two labels, closest first. */

@@ -176,6 +176,7 @@ export const evidenceLibraryDomainStateValidator = v.union(
 );
 
 export const evidenceLibraryDomainFailureValidator = v.union(
+  v.literal("no-name"),
   v.literal("no-records"),
   v.literal("wrong-target"),
   v.literal("token-mismatch"),

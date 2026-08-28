@@ -35,6 +35,25 @@ export function isCustomDomainPlatformReady(
   );
 }
 
+/**
+ * The platform's own domains. A custom domain may not be one of these or sit
+ * beneath one: the CNAME target's registrable domain, and the domain every
+ * library's platform address lives on.
+ */
+export function readReservedDomainSuffixes(
+  env: Environment = process.env,
+): string[] {
+  const target = readCustomDomainTarget(env);
+  const labels = target.split(".");
+  const registrable = labels.slice(-2).join(".");
+  const platformDomain = env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN?.trim()
+    .toLowerCase()
+    .replace(/\.$/u, "");
+  return [target, registrable, ...(platformDomain ? [platformDomain] : [])].filter(
+    Boolean,
+  );
+}
+
 export function verificationRecordName(host: string): string {
   return `${VERIFICATION_RECORD_PREFIX}.${host}`;
 }

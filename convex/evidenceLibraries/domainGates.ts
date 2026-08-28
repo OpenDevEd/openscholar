@@ -17,6 +17,7 @@ export type DomainState =
   | "failed";
 
 export type DomainFailure =
+  | "no-name"
   | "no-records"
   | "wrong-target"
   | "token-mismatch"
@@ -43,6 +44,9 @@ export type DomainRecordsReading = {
  * blocked authority cannot be worked around; then the ownership record.
  */
 export function readDomainRecords(reading: DomainRecordsReading): DomainOutcome {
+  if (reading.target === "no-name") {
+    return { state: "failed", failure: "no-name" };
+  }
   if (reading.target === "no-records") {
     return { state: "failed", failure: "no-records" };
   }

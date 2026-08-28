@@ -30,6 +30,12 @@ describe("readDomainRecords", () => {
     ).toEqual({ state: "failed", failure: "no-records" });
   });
 
+  it("tells a domain that does not exist apart from one with no record", () => {
+    expect(
+      readDomainRecords({ target: "no-name", caa: "ok", token: "missing" }),
+    ).toEqual({ state: "failed", failure: "no-name" });
+  });
+
   it("names an address record that points somewhere else", () => {
     expect(
       readDomainRecords({ target: "wrong-target", caa: "ok", token: "match" }),

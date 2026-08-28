@@ -24,6 +24,7 @@ import { Field, SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
 
 type DomainFailure =
+  | "no-name"
   | "no-records"
   | "wrong-target"
   | "token-mismatch"

@@ -33,17 +33,27 @@ describe("normaliseDomainHost", () => {
       "evidence.example.org/library",
       "evidence..example.org",
       "-bad.example.org",
+      "bad-.example.org",
       "evidence.example.org:8443",
       "biblioteca.ejemplo.españa",
+      "*.example.org",
+      // Underscores are legal in some record names but never in a hostname
+      // a browser can reach.
+      "_acme.example.org",
+      "under_score.example.org",
+      "192.0.2.10",
       `${"a".repeat(64)}.example.org`,
     ]) {
       expect(() => normaliseDomainHost(value)).toThrow(DnsLookupError);
     }
   });
 
-  it("accepts the punycode form of an international domain", () => {
+  it("accepts the punycode form of an international domain and of its ending", () => {
     expect(normaliseDomainHost("xn--bcher-kva.example.org")).toBe(
       "xn--bcher-kva.example.org",
+    );
+    expect(normaliseDomainHost("evidence.example.xn--p1ai")).toBe(
+      "evidence.example.xn--p1ai",
     );
   });
 });
@@ -84,6 +94,14 @@ describe("parseDohAnswer", () => {
     expect(answer.texts).toEqual(["os-verify=abc123", "part-onepart-two"]);
   });
 
+  it("keeps an issue record that permits nobody", () => {
+    const answer = parseDohAnswer({
+      Status: 0,
+      Answer: [{ name: "example.org", type: 257, data: '0 issue ";"' }],
+    });
+    expect(answer.caaIssuers).toEqual([""]);
+  });
+
   it("reads the issuers out of CAA records and ignores other tags", () => {
     const answer = parseDohAnswer({
       Status: 0,
@@ -117,22 +135,37 @@ describe("classifyTarget", () => {
     ).toBe("pointing");
   });
 
-  it("passes a flattened apex that shares an address with the target", () => {
+  it("passes a flattened apex that answers with the target's whole address set", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: [], addresses: ["188.114.97.6"], texts: [], caaIssuers: [] },
+        {
+          exists: true,
+          cnames: [],
+          addresses: ["188.114.97.6", "188.114.96.6"],
+          texts: [],
+          caaIssuers: [],
+        },
         { target, targetAddresses },
       ),
     ).toBe("pointing");
   });
 
-  it("reports a name that does not exist", () => {
+  it("refuses an apex that shares only one address with the target", () => {
+    expect(
+      classifyTarget(
+        { exists: true, cnames: [], addresses: ["188.114.97.6"], texts: [], caaIssuers: [] },
+        { target, targetAddresses },
+      ),
+    ).toBe("wrong-target");
+  });
+
+  it("tells a name that does not exist apart from one with no address", () => {
     expect(
       classifyTarget(
         { exists: false, cnames: [], addresses: [], texts: [], caaIssuers: [] },
         { target, targetAddresses },
       ),
-    ).toBe("no-records");
+    ).toBe("no-name");
   });
 
   it("reports a name with no address at all", () => {
@@ -185,6 +218,10 @@ describe("classifyCaaChain", () => {
 
   it("fails when the closest name with issuers permits none of ours", () => {
     expect(classifyCaaChain([[], ["amazon.com"], ["letsencrypt.org"]])).toBe("blocked");
+  });
+
+  it("fails when the domain permits nobody at all", () => {
+    expect(classifyCaaChain([[""]])).toBe("blocked");
   });
 
   it("only reads the closest name that has issuers", () => {

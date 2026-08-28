@@ -399,7 +399,7 @@ describe("custom domains", () => {
 
     await expect(check({ missing: true })).resolves.toMatchObject({
       state: "failed",
-      failure: "no-records",
+      failure: "no-name",
     });
     await expect(check({ addresses: ["203.0.113.9"] })).resolves.toMatchObject({
       state: "failed",
@@ -433,7 +433,7 @@ describe("custom domains", () => {
     vi.stubGlobal(
       "fetch",
       createWorld({
-        addresses: [TARGET_ADDRESSES[0]!],
+        addresses: [...TARGET_ADDRESSES],
         token: `os-verify=${token}`,
       }).fetchImpl,
     );
