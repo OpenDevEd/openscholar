@@ -219,17 +219,22 @@ export async function readRuntimeCollectionsByIds(
   input: { baseUrl: string; credential: string; ids: readonly string[] },
 ): Promise<{ items: RuntimeCollectionFacts[] }> {
   if (input.ids.length === 0) return { items: [] };
+  // Asking for more than the library allows would quietly lose the rest, so
+  // the caller has to split the list itself.
+  if (input.ids.length > RUNTIME_RESOLVE_MAX_IDS) {
+    throw new Error(
+      `Ask the library about at most ${RUNTIME_RESOLVE_MAX_IDS} collections at a time`,
+    );
+  }
   const body = await runtimeGet(fetchImpl, input, "/api/openscholar/collections", {
-    ids: input.ids.slice(0, RUNTIME_RESOLVE_MAX_IDS).join(","),
+    ids: input.ids.join(","),
   });
-  const asked = new Set(input.ids);
-  const items = isRecord(body) && Array.isArray(body.items) ? body.items : null;
-  if (!items) {
+  const rows = isRecord(body) && Array.isArray(body.items) ? body.items.map(readCollectionFacts) : null;
+  if (!rows || rows.some((row) => row === null)) {
     throw new RuntimeReadError("RUNTIME_READ_INVALID", "The library's collection list has an unexpected shape");
   }
-  return {
-    items: items
-      .map(readCollectionFacts)
-      .filter((item): item is RuntimeCollectionFacts => item !== null && asked.has(item.id)),
-  };
+  // A library that does not read `ids` answers with its own first page, so
+  // only the rows that were asked for are kept.
+  const asked = new Set(input.ids);
+  return { items: (rows as RuntimeCollectionFacts[]).filter((row) => asked.has(row.id)) };
 }

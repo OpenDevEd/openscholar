@@ -144,13 +144,28 @@ export const resolveLibraryCollections = action({
     ctx,
     args,
   ): Promise<{ items: RuntimeCollectionFacts[]; reason?: "not-set-up" }> => {
-    const ids = [...new Set(args.ids)].slice(0, RUNTIME_RESOLVE_MAX_IDS);
+    await ctx.runQuery(internal.zotero.runtimeReads.requireRuntimeReadAccess, {
+      libraryId: args.libraryId,
+    });
+    const ids = [...new Set(args.ids)];
     if (ids.length === 0) return { items: [] };
-    const result = await cachedRead<{ items: RuntimeCollectionFacts[] }>(
-      ctx,
-      { libraryId: args.libraryId, kind: "collections", cacheKey: runtimeReadCacheKey({ ids }) },
-      (target) => readRuntimeCollectionsByIds(fetch, { ...target, ids }),
-    );
-    return "reason" in result ? { ...result, items: [] } : result;
+    const items: RuntimeCollectionFacts[] = [];
+    // A site may show more collections than the library answers at once, so
+    // the list is asked for in batches and put back together here.
+    for (let from = 0; from < ids.length; from += RUNTIME_RESOLVE_MAX_IDS) {
+      const batch = ids.slice(from, from + RUNTIME_RESOLVE_MAX_IDS);
+      const result = await cachedRead<{ items: RuntimeCollectionFacts[] }>(
+        ctx,
+        {
+          libraryId: args.libraryId,
+          kind: "collections",
+          cacheKey: runtimeReadCacheKey({ ids: batch }),
+        },
+        (target) => readRuntimeCollectionsByIds(fetch, { ...target, ids: batch }),
+      );
+      if ("reason" in result) return { reason: "not-set-up", items: [] };
+      items.push(...result.items);
+    }
+    return { items };
   },
 });

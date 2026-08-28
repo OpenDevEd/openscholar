@@ -218,6 +218,37 @@ describe("Evidence Library runtime reads", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  it("asks about a long list of collections in batches and puts the answer together", async () => {
+    const fixture = await readyLibrary("reads_batches");
+    const { state, fetchImpl } = runtime();
+    state.collections = Array.from({ length: 250 }, (_, index) => ({
+      id: `COLL${String(index).padStart(4, "0")}`,
+      title: `Collection ${index}`,
+      count: index,
+      source: "zotero-42",
+      parentId: null,
+    }));
+    vi.stubGlobal("fetch", fetchImpl);
+    const result = await fixture.admin.action(
+      api.zotero.runtimeReadActions.resolveLibraryCollections,
+      { libraryId: fixture.created.libraryId, ids: state.collections.map((item) => item.id) },
+    );
+    expect(result.items).toHaveLength(250);
+    expect(result.items.at(-1)).toEqual({
+      id: "COLL0249",
+      title: "Collection 249",
+      source: "zotero-42",
+      count: 249,
+    });
+    // Two calls: the library answers at most 200 ids at a time.
+    expect(fetchImpl.mock.calls).toHaveLength(2);
+    expect(
+      fetchImpl.mock.calls.map(
+        ([input]) => (new URL(String(input)).searchParams.get("ids") ?? "").split(",").length,
+      ),
+    ).toEqual([200, 50]);
+  });
+
   it("refuses an order it does not know", async () => {
     const fixture = await readyLibrary("reads_bad_args");
     vi.stubGlobal("fetch", runtime().fetchImpl);
@@ -273,6 +304,19 @@ describe("Evidence Library runtime reads", () => {
     await expect(
       outsider.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
         libraryId: fixture.created.libraryId,
+      }),
+    ).rejects.toThrow();
+    // Even a question about nothing is a question about this library.
+    await expect(
+      outsider.action(api.zotero.runtimeReadActions.resolveLibraryCollections, {
+        libraryId: fixture.created.libraryId,
+        ids: [],
+      }),
+    ).rejects.toThrow();
+    await expect(
+      outsider.action(api.zotero.runtimeReadActions.resolveLibraryCollections, {
+        libraryId: fixture.created.libraryId,
+        ids: ["COLL0001"],
       }),
     ).rejects.toThrow();
   });

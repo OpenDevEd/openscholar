@@ -168,6 +168,37 @@ describe("readRuntimeCollectionsByIds", () => {
     ).resolves.toEqual({ items: [] });
   });
 
+  it("refuses a batch larger than the library allows", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ items: [] }));
+    await expect(
+      readRuntimeCollectionsByIds(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+        ids: Array.from({ length: 201 }, (_, index) => `COLL${index}`),
+      }),
+    ).rejects.toThrow(/at most 200/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("reports a broken row instead of leaving it out", async () => {
+    const broken = vi.fn<typeof fetch>(async () =>
+      jsonResponse({
+        items: [
+          { id: "COLL0001", title: "Climate", source: "zotero-42", count: 12, parentId: null },
+          { id: "COLL0002", title: 7, source: "zotero-42", count: 3, parentId: null },
+        ],
+        nextCursor: null,
+      }),
+    );
+    await expect(
+      readRuntimeCollectionsByIds(broken, {
+        baseUrl: "https://lib.example.test",
+        credential,
+        ids: ["COLL0001", "COLL0002"],
+      }),
+    ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" } satisfies Partial<RuntimeReadError>);
+  });
+
   it("asks for nothing when there are no ids", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ items: [] }));
     await expect(

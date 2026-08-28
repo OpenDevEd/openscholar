@@ -13,6 +13,17 @@ export const runtimeReadKindValidator = v.union(
   v.literal("institutions"),
 );
 
+// Answering anything about a library starts with the right to manage it,
+// even when the caller asked about nothing at all.
+export const requireRuntimeReadAccess = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    return null;
+  },
+});
+
 // Where a library answers reads, and the encrypted machine credential that
 // opens its read API. `null` while the library is not set up yet.
 export const readRuntimeReadTarget = internalQuery({
