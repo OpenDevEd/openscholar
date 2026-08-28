@@ -719,3 +719,61 @@ START NOW: read the plan and the README, read convex/_generated/ai/guidelines.md
 
 Go.
 ```
+
+## Plan 15 — runtime merge, lane M (new-el)
+
+```text
+Implement lane M of plans/evidence-library-configuration-v2/15-runtime-ai-analytics-merge.md (the plan lives in the OpenScholar repository at /Users/mcharrad/Documents/Github/openscholar/dev-self; read it there). Read that repository's plans/evidence-library-configuration-v2/00-README.md and this repository's AGENTS.md first.
+
+Worktree /Users/mcharrad/Documents/Github/new-el-merge, branch codex/merge-ai-modernization from origin/main. Run `npm ci` first. Two PRs in order: (1) the merge of origin/ai-modernization into main; (2) branch codex/logo-fit from the merged result for the logo sizing. Allow about four hours and keep working without asking questions the plan already answers.
+
+STANDING RULES:
+1. Merge with a merge commit (`git merge origin/ai-modernization`); resolve every conflict by keeping both sides' intent (Decision 1): our admin gate order and reserved-routes helper in src/proxy.ts, our redirects query, our itemInstitution table and migration, our acceptance steps. Read both sides of each conflicting file before choosing. Never resolve with `-X theirs` or `-X ours`.
+2. No legacy code: if the branch carries leftovers that Fallow flags on changed lines, fix them properly.
+3. `npm run check:changed` (Fallow) must pass before every push. `npm run test:acceptance` with your own image tags (the five EVIDENCE_LIBRARY_ACCEPTANCE_*_IMAGE variables) must pass end to end; poll it yourself in one foreground loop; `npm run test:acceptance:cleanup` after. Never restart Docker Desktop; never touch containers you did not create (what2 and minio are off limits).
+4. Logo PR (Decision 5): the bar owns the height, the image fits inside (`h-full w-auto max-w-[…] object-contain`); header, footer, cookie dialog, record-page institution and funder logos; unit test plus a browser measurement for square, 3:1 landscape and 1:2 portrait fixtures. Behaviour tests only — no class-string assertions in Vitest; measure geometry in Playwright.
+5. Research instead of guessing; use other agents only for read-only investigation.
+
+EXECUTION RHYTHM: merge → resolve → check:changed → acceptance → push PR 1; then logo fixtures and tests → fix → check:changed → acceptance (admin suite) → push PR 2. Commit with `[plan-15]`.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs/merge; `[plan-15]`; never commit while relevant tests fail; never use --no-verify; push and open each PR to main with `gh pr create`; do not merge.
+
+WHEN TO STOP: only for a real blocker (plans/…/15-BLOCKER.md in the OpenScholar repository). Fallow, unit tests and the acceptance run must pass first.
+
+DEVIATIONS: if the plan is wrong, commit safe work, fix the numbered plan in the OpenScholar repository with `docs: [plan-15] revise <section> — <reason>`, then continue.
+
+START NOW: read the plan and the README, run `git status`, then start the merge.
+
+Go.
+```
+
+## Plan 15 — OpenScholar AI and analytics, lane A
+
+```text
+Implement lane A of plans/evidence-library-configuration-v2/15-runtime-ai-analytics-merge.md.
+Read plans/evidence-library-configuration-v2/00-README.md, AGENTS.md, and convex/_generated/ai/guidelines.md first.
+Depends on: lane M's merge for the OpenRouter catalog and the two analytics fields in the pinned schema. Start on the contract as it stands (the `ai.providers[]` shape is already on new-el main) and re-pin when the merged main commit exists (`node scripts/sync-evidence-library-config-contract.mjs --commit <sha>`; the script only accepts commits on new-el main). Until then build the model picker against the catalog file shape and mark the one test that needs the catalog with the exact commit it waits for.
+
+Worktree /Users/mcharrad/Documents/Github/openscholar/ai-sprint, branch codex/ai-openrouter-analytics from origin/dev. Run `npm ci` first. Convex lane in .env.local (calm-labrador-815). Next port 3013. Allow about four hours and keep working without asking questions the plan already answers.
+
+STANDING RULES:
+1. Reuse first: the section shell, FieldGroup/ToggleRow/ChoiceChips/Select primitives, the Zotero per-group credential store and its assembly injection for the provider key, the feature-dependency rules, the approved copy rules (sentence case, no dots, no counts unless they change a decision, no vendor names except the product the owner chose — OpenRouter is one).
+2. OpenRouter only (Decision 2): one provider entry; no credits, no other providers, no embeddings note. Do not build UI the runtime cannot honour.
+3. Convex rules: validators on args and returns; secrets never in getDraft, logs or the assembled config that leaves the deploy action; read convex/_generated/ai/guidelines.md.
+4. No useEffect for app state.
+5. Tests: run the test-decision skill first; every test the plan names; behaviour only.
+6. Deployment checks: `npx convex dev --once` on the lane only; never the shared deployment; browser gate on 3013 with screenshots in /tmp/ai-section/.
+7. Research instead of guessing; other agents only for read-only investigation; never for UI work.
+
+EXECUTION RHYTHM: rules tests → rules → credential store and assembly tests → code → AI section → analytics fields → workspace rail → browser gate. Commit after every working unit with `[plan-15]`.
+
+COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-15]`; never commit while relevant tests fail; never use --no-verify; push and open a PR to dev; do not merge.
+
+WHEN TO STOP: only for a real blocker (plans/…/15-BLOCKER.md). tsc, the vitest sets, `npm run schema:check:evidence-library-config`, `npx convex dev --once` and the browser gate must pass first.
+
+DEVIATIONS: if the plan is wrong, commit safe work, fix the numbered plan, commit `docs: [plan-15] revise <section> — <reason>`, then continue.
+
+START NOW: read the plan and the README, read convex/_generated/ai/guidelines.md, run `git status`, confirm no other Convex uploader is running on this lane, then start the rules test.
+
+Go.
+```
