@@ -21,7 +21,9 @@ import {
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingVariantFields,
   evidenceLibrarySetupIdentityFields,
+  evidenceLibraryPublicOperationFields,
   sectionKeyValidator,
+  toPublicEvidenceLibraryOperation,
 } from "./validators";
 import {
   readEvidenceLibraryAddressCandidates,
@@ -29,11 +31,6 @@ import {
   readEvidenceLibrarySetupIdentity,
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
-
-const {
-  setupEncryptedDatabasePassword: _encryptedDatabasePasswordValidator,
-  ...evidenceLibraryPublicOperationFields
-} = evidenceLibraryOperationFields;
 
 export async function readEvidenceLibraries(ctx: QueryCtx) {
   const access = await requireOrganizationAccess(ctx, "read");
@@ -341,13 +338,9 @@ async function readEvidenceLibrarySetupForLibrary(
   library: Doc<"evidenceLibraries">,
 ) {
   const setup = await readEvidenceLibrarySetupRecords(ctx, library);
-  const {
-    setupEncryptedDatabasePassword: _encryptedDatabasePassword,
-    ...publicSetupOperation
-  } = setup.setupOperation;
   return {
     ...setup,
-    setupOperation: publicSetupOperation,
+    setupOperation: toPublicEvidenceLibraryOperation(setup.setupOperation),
     identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
     status: libraryOverviewStatus(setup.library, setup.setupOperation),
     faviconUrl: await readDraftFavicon(ctx, setup.draft._id),
@@ -431,8 +424,7 @@ export async function readEvidenceLibraryDraft(
     .order("desc")
     .first();
   const operation = latestOperation
-    ? (({ setupEncryptedDatabasePassword: _password, ...publicOperation }) =>
-        publicOperation)(latestOperation)
+    ? toPublicEvidenceLibraryOperation(latestOperation)
     : null;
   return { draft, library: access.library, operation, sections };
 }

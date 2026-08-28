@@ -1,3 +1,4 @@
+import type { GenericId } from "convex/values";
 import { v, type Infer } from "convex/values";
 import {
   SECTION_REGISTRY,
@@ -7,16 +8,17 @@ import {
 export type { SectionKey };
 
 /**
- * What a publish saw of the AI provider key: the row it read, or the fact
- * that there was none. Carried through the deployment so a Replace or a
- * Remove that lands mid-publish is noticed instead of shipping the old key.
+ * What a publish saw of the AI provider key: which row it read and when that
+ * row last changed, or the fact that there was none. Carried through the
+ * deployment so a Replace or a Remove that lands mid-publish is noticed
+ * instead of shipping the old key. Never the key itself, encrypted or not:
+ * this travels on the operation, which owners can read.
  */
 export const aiProviderKeySourceValidator = v.union(
   v.object({ present: v.literal(false) }),
   v.object({
     present: v.literal(true),
     id: v.id("evidenceLibraryCredentials"),
-    encryptedValue: v.string(),
     updatedAt: v.number(),
   }),
 );
@@ -568,6 +570,9 @@ export const evidenceLibraryOperationFields = {
   setupAttemptToken: v.optional(v.string()),
   setupLeaseExpiresAt: v.optional(v.number()),
   setupEncryptedDatabasePassword: v.optional(v.string()),
+  // What the setup saw of the AI key. Kept until the library is live so the
+  // last step can refuse a key that moved on the way.
+  setupAiProviderKey: v.optional(aiProviderKeySourceValidator),
   setupRuntimeCommit: v.optional(v.string()),
   setupDeploymentId: v.optional(v.string()),
   setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
@@ -618,3 +623,59 @@ export const evidenceLibraryOperationFields = {
   startedAt: v.optional(v.number()),
   completedAt: v.optional(v.number()),
 };
+
+/**
+ * What an owner may read about an operation. An allowlist, so a field added
+ * to the table later is private until someone chooses to publish it. The
+ * fields left out hold the library's encrypted configuration, its database
+ * password, and the leases only the platform uses.
+ */
+const PUBLIC_OPERATION_FIELDS = [
+  "libraryId",
+  "kind",
+  "activationEditVersion",
+  "runtimeUpdate",
+  "addressMove",
+  "revisionId",
+  "setupReceipts",
+  "status",
+  "stage",
+  "attemptCount",
+  "receipt",
+  "error",
+  "issues",
+  "requestedByClerkUserId",
+  "createdAt",
+  "updatedAt",
+  "startedAt",
+  "completedAt",
+] as const satisfies readonly (keyof typeof evidenceLibraryOperationFields)[];
+
+export const evidenceLibraryPublicOperationFields = Object.fromEntries(
+  PUBLIC_OPERATION_FIELDS.map((key) => [key, evidenceLibraryOperationFields[key]]),
+) as Pick<
+  typeof evidenceLibraryOperationFields,
+  (typeof PUBLIC_OPERATION_FIELDS)[number]
+>;
+
+type EvidenceLibraryOperationRow = Infer<
+  ReturnType<typeof v.object<typeof evidenceLibraryOperationFields>>
+> & { _id: GenericId<"evidenceLibraryConfigOperations">; _creationTime: number };
+
+/** The operation as an owner sees it: the allowlisted fields and nothing else. */
+export function toPublicEvidenceLibraryOperation(
+  operation: EvidenceLibraryOperationRow,
+) {
+  const publicOperation: Record<string, unknown> = {
+    _id: operation._id,
+    _creationTime: operation._creationTime,
+  };
+  for (const key of PUBLIC_OPERATION_FIELDS) {
+    if (operation[key] !== undefined) publicOperation[key] = operation[key];
+  }
+  return publicOperation as Pick<
+    EvidenceLibraryOperationRow,
+    "_id" | "_creationTime" | (typeof PUBLIC_OPERATION_FIELDS)[number]
+  >;
+}
+

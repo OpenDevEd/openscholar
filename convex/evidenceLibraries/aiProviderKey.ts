@@ -38,19 +38,18 @@ async function findAiProviderCredential(
     .unique();
 }
 
-/** The stored key, still encrypted, for deploy-time assembly. */
-export function libraryAiProviderKey(
-  source: AiProviderKeySource,
-): { encryptedApiKey: string } | undefined {
-  return source.present ? { encryptedApiKey: source.encryptedValue } : undefined;
-}
-
-/** The stored key, still encrypted, for deploy-time assembly. */
+/**
+ * The stored key, still encrypted, for deploy-time assembly. It travels only
+ * between the deploy mutation and the deploy action, never onto an operation.
+ */
 export async function readLibraryAiProviderKey(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
 ): Promise<{ encryptedApiKey: string } | undefined> {
-  return libraryAiProviderKey(await readAiProviderKeySource(ctx, libraryId));
+  const credential = await findAiProviderCredential(ctx, libraryId);
+  return credential
+    ? { encryptedApiKey: credential.encryptedValue }
+    : undefined;
 }
 
 /**
@@ -61,8 +60,18 @@ export async function readLibraryAiProviderKey(
 export function createAiProviderKey(
   apiKey: string | undefined,
 ): ApplyAiProviderKey {
-  return (providers) =>
-    providers.map((provider, index) => {
+  return (providers) => {
+    if (providers.length !== 1) {
+      throw new ConfigurationAssemblyError([
+        {
+          pointer: "/ai/providers",
+          section: "ai",
+          keyword: "aiProvider",
+          message: "This library saves exactly one AI provider, OpenRouter.",
+        },
+      ]);
+    }
+    return providers.map((provider, index) => {
       const refuse = (message: string) => {
         throw new ConfigurationAssemblyError([
           {
@@ -85,6 +94,7 @@ export function createAiProviderKey(
       if (!apiKey) refuse("AI answers need an OpenRouter key.");
       return { ...provider, apiKey };
     });
+  };
 }
 
 export async function readAiProviderKeySource(
@@ -93,13 +103,40 @@ export async function readAiProviderKeySource(
 ): Promise<AiProviderKeySource> {
   const credential = await findAiProviderCredential(ctx, libraryId);
   return credential
-    ? {
-        present: true,
-        id: credential._id,
-        encryptedValue: credential.encryptedValue,
-        updatedAt: credential.updatedAt,
-      }
+    ? { present: true, id: credential._id, updatedAt: credential.updatedAt }
     : { present: false };
+}
+
+export const AI_PROVIDER_KEY_BUSY_MESSAGE =
+  "Wait for the current publish to finish, then change the AI key.";
+
+/**
+ * Refuses to move the key while the library is being set up or published.
+ * The publish reads the key once and ships it minutes later, so the simplest
+ * safe rule is that it cannot move underneath one.
+ */
+export async function requireNoRunningOperation(
+  ctx: ReadCtx,
+  libraryId: Id<"evidenceLibraries">,
+): Promise<void> {
+  const running = await ctx.db
+    .query("evidenceLibraryConfigOperations")
+    .withIndex("by_libraryId_and_createdAt", (query) =>
+      query.eq("libraryId", libraryId),
+    )
+    .order("desc")
+    .take(20);
+  // A new library's setup operation is created queued and only starts once
+  // the owner activates. Until it holds a revision it is waiting, not
+  // running, so an owner can still add the key before the first setup.
+  const inFlight = running.some(
+    (operation) =>
+      (operation.status === "queued" || operation.status === "running") &&
+      !(operation.kind === "setup" && !operation.revisionId),
+  );
+  if (inFlight) {
+    throw createError("CONFLICT", AI_PROVIDER_KEY_BUSY_MESSAGE);
+  }
 }
 
 export const AI_PROVIDER_KEY_CHANGED_MESSAGE =
@@ -116,9 +153,7 @@ export async function requireUnchangedAiProviderKey(
     current.present === source.present &&
     (!current.present ||
       !source.present ||
-      (current.id === source.id &&
-        current.encryptedValue === source.encryptedValue &&
-        current.updatedAt === source.updatedAt));
+      (current.id === source.id && current.updatedAt === source.updatedAt));
   if (!same) {
     throw createError("CONFLICT", AI_PROVIDER_KEY_CHANGED_MESSAGE);
   }
@@ -133,6 +168,7 @@ export const removeAiProviderKey = mutation({
       args.libraryId,
       "manage",
     );
+    await requireNoRunningOperation(ctx, args.libraryId);
     const credential = await findAiProviderCredential(ctx, args.libraryId);
     if (!credential) {
       throw createError("NOT_FOUND", "This library has no AI key stored");

@@ -16,6 +16,7 @@ import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
 import { aiProviderKeySourceValidator } from "./validators";
 import {
   readAiProviderKeySource,
+  readLibraryAiProviderKey,
   requireUnchangedAiProviderKey,
 } from "./aiProviderKey";
 import {
@@ -396,6 +397,9 @@ export const prepareConfigurationDeployment = internalMutation({
         storage: sourceCredentialValidator,
         aiProviderKey: aiProviderKeySourceValidator,
       }),
+      // The key itself, for the action that builds the configuration. It is
+      // never written to the operation, which owners can read.
+      aiProviderKey: v.optional(v.object({ encryptedApiKey: v.string() })),
       defaultLocale: v.string(),
     }),
   ),
@@ -516,6 +520,10 @@ export const prepareConfigurationDeployment = internalMutation({
       ),
     };
     const aiProviderKey = await readAiProviderKeySource(ctx, args.libraryId);
+    const aiProviderApiKey = await readLibraryAiProviderKey(
+      ctx,
+      args.libraryId,
+    );
     return {
       state: "new" as const,
       ...(runtimeUpdate ? { runtimeUpdate } : {}),
@@ -556,6 +564,7 @@ export const prepareConfigurationDeployment = internalMutation({
         ctx,
         args.libraryId,
       ),
+      ...(aiProviderApiKey ? { aiProviderKey: aiProviderApiKey } : {}),
       source: {
         runtimeBindingId: deployment.runtimeBinding._id,
         bindingUpdatedAt: deployment.runtimeBinding.updatedAt,
@@ -981,6 +990,15 @@ export const completeConfigurationDeployment = internalMutation({
       );
     }
     const target = deployment.operation.configurationDeploymentTarget;
+    if (target) {
+      // The last check of all: a key replaced while the runtime was being
+      // asked whether it is ready must not reach a live library.
+      await requireUnchangedAiProviderKey(
+        ctx,
+        args.libraryId,
+        target.aiProviderKey,
+      );
+    }
     const receipt = validateOperationReceipt({
       ...deployment.operation.receipt,
       activatedAt: args.checkedAt,
