@@ -13,6 +13,8 @@ import {
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
+import { requireNoRunningOperation } from "./aiProviderKey";
+import { AI_PROVIDER_KEY_PATTERN } from "../../lib/evidence-libraries/configuration/ai";
 
 export function resolveCredentialPath(
   concretePath: string,
@@ -88,6 +90,12 @@ export async function storeEvidenceLibraryCredential(
     args.libraryId,
     "manage",
   );
+  // A publish reads the AI key once and ships it minutes later, so the key
+  // may not move while one is under way.
+  if (resolveCredentialPath(args.concretePath, args.instanceKey).pathPattern
+      === AI_PROVIDER_KEY_PATTERN) {
+    await requireNoRunningOperation(ctx, args.libraryId);
+  }
   return await writeEvidenceLibraryCredentialRecord(ctx, {
     ...args,
     clerkUserId: access.clerkUserId,
