@@ -169,11 +169,16 @@ Run the `test-decision` skill before touching any test.
    tests/components/evidence-library-configuration-workspace.test.tsx` green.
 3. `npx convex dev --once` on the lane ends with `Convex functions ready!`;
    `npx convex logs --history 100` shows no matching failure.
-4. Browser on the lane's port, signed in as the E2E user, on a library that
-   is set up on the development platform: the collections dialog opens
-   without a preload, search returns from the server, "Load more" appends;
-   the nav link Collection target opens the dialog; the groups dialog pages.
-   Screenshots in `/tmp/pickers/`.
+4. Browser on the lane's port, signed in as the E2E user: the collections
+   dialog opens without a preload and asks the library once, the typed text
+   is sent after the pause, and the nav link Collection target opens the
+   same dialog. Screenshots in `/tmp/pickers/`. Checked on 2026-08-28: the
+   lane's Convex has no library with a running runtime, so the dialog shows
+   "Collections appear after the library is set up and has synced" and the
+   remote logs show exactly two `listLibraryCollections` calls (open, then
+   search) with no failure. Rows, "Load more" and the groups paging are
+   proven by the component tests; the runtime end-to-end proof is the
+   integration owner's step below, after lane R merges.
 5. Push; open a PR to `dev`; do not merge.
 
 ### Integration owner, after both merge
