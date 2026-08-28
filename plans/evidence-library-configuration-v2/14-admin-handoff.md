@@ -196,9 +196,10 @@ in parallel; the end-to-end proof waits for both to merge.
    the decoded value of every segment.
    `tests/app/evidence-library-admin-route.test.ts` checks the route
    handler's status code and `Location` for each answer, including `405` for
-   every method except `GET`, so a link check or a preview card can never
-   spend a code. The two links that lead back to the route are plain `<a>`
-   elements, never prefetched.
+   every method except `GET` — `OPTIONS` included, or Next answers it itself
+   — so a link check or a preview card can never spend a code. Every link in
+   the app that points at the admin route goes through `AdminAreaLink`, a
+   plain `<a>`, so Next never fetches it before the click.
 3. `tests/components/evidence-libraries/admin-panels.test.tsx`: the three
    panels render their copy and links (roles, names); no CSS assertions.
 4. Delete `admin-launch.test.tsx` with the card. Update
@@ -262,8 +263,9 @@ in parallel; the end-to-end proof waits for both to merge.
 ## Known risks
 
 - Readiness only passes for libraries that run the new runtime: a `/admin`
-  that answers with a page of its own now counts as not ready, and the
-  redirect must match the library's login page by origin *and* path. The
+  that answers with a page of its own now counts as not ready, the answer
+  must be exactly `307`, and the address must match the library's login page
+  by origin *and* path. The
   shared `EL_RUNTIME_COMMIT_SHA` is bumped right after both PRs merge.
   Decided after the Codex review on 2026-08-28: no fallback for the old
   answer.
