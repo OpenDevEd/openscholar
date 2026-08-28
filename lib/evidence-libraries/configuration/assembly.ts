@@ -1,4 +1,5 @@
 import {
+  aiProviderIssues,
   type ApplyAiProviderKey,
   passThroughAiProviderKey,
 } from "./ai";
@@ -274,11 +275,24 @@ export function assembleEvidenceLibraryConfiguration({
       candidate.sources.filter(isObject),
     );
   }
-  // The AI provider key is added here and nowhere earlier, like a source key.
-  if (isObject(candidate.ai) && Array.isArray(candidate.ai.providers)) {
+  // Exactly one OpenRouter entry, agreeing with the AI answers switch, with a
+  // model the runtime approves. Checked before the key is added, so a wrong
+  // entry never receives one.
+  const aiIssues = aiProviderIssues(
+    isObject(candidate.ai) ? candidate.ai.providers : undefined,
+    isObject(candidate.features)
+      ? candidate.features.ai === true
+      : undefined,
+  );
+  if (aiIssues.length === 0 && isObject(candidate.ai)) {
+    // The AI provider key is added here and nowhere earlier, like a source key.
     candidate.ai = {
       ...candidate.ai,
-      providers: applyAiProviderKey(candidate.ai.providers.filter(isObject)),
+      providers: applyAiProviderKey(
+        Array.isArray(candidate.ai.providers)
+          ? candidate.ai.providers.filter(isObject)
+          : [],
+      ),
     };
   }
   const structuralValidation = validateLibraryConfigStructure(candidate);
@@ -302,6 +316,7 @@ export function assembleEvidenceLibraryConfiguration({
     message: PLATFORM_BRAND_MISSING_MESSAGE,
   }));
   const issues = uniqueIssues([
+    ...aiIssues,
     ...brandIssues,
     ...structuralValidation.issues.filter(
       (issue) =>

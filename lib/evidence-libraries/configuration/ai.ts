@@ -3,6 +3,7 @@ import {
   writeOnlyPatternFor,
 } from "./credential-paths";
 import catalogs from "./generated/library-config.catalogs.json";
+import type { ValidationIssue } from "./generated-validation";
 
 /**
  * OpenScholar configures one AI provider: OpenRouter. The runtime accepts
@@ -46,3 +47,74 @@ export type ApplyAiProviderKey = (
 
 export const passThroughAiProviderKey: ApplyAiProviderKey = (providers) =>
   providers.map((provider) => ({ ...provider }));
+
+/**
+ * The one shape OpenScholar saves: a single OpenRouter entry, switched on
+ * exactly when AI answers are, carrying a model the runtime approves.
+ *
+ * The page cannot be trusted to be the only caller, so this runs on the
+ * server twice: when a section is saved, and again when the configuration is
+ * assembled for a library. Messages are the ones an owner reads.
+ */
+export function aiProviderIssues(
+  providers: unknown,
+  featuresAi: boolean | undefined,
+): ValidationIssue[] {
+  const issue = (pointer: string, message: string): ValidationIssue => ({
+    pointer,
+    section: "ai",
+    keyword: "aiProvider",
+    message,
+  });
+
+  // No provider at all is how a library that never used AI answers looks.
+  // With AI answers on it is a problem; without them it is simply nothing.
+  if (providers === undefined || (Array.isArray(providers) && providers.length === 0)) {
+    return featuresAi === true
+      ? [issue("/ai/providers", "AI answers need one AI provider.")]
+      : [];
+  }
+  if (!Array.isArray(providers) || providers.length !== 1) {
+    return [
+      issue(
+        "/ai/providers",
+        "This library saves exactly one AI provider, OpenRouter.",
+      ),
+    ];
+  }
+  const entry = providers[0] as Record<string, unknown>;
+  const issues: ValidationIssue[] = [];
+  if (entry?.provider !== AI_PROVIDER) {
+    issues.push(
+      issue(
+        "/ai/providers/0/provider",
+        "OpenRouter is the only AI provider this library can use.",
+      ),
+    );
+  }
+  if (featuresAi !== undefined && entry?.enabled !== featuresAi) {
+    issues.push(
+      issue(
+        "/ai/providers/0/enabled",
+        "The AI provider is on exactly when AI answers are on.",
+      ),
+    );
+  }
+  const model = entry?.defaultModel;
+  if (entry?.enabled === true && (typeof model !== "string" || model === "")) {
+    issues.push(
+      issue(
+        "/ai/providers/0/defaultModel",
+        "Choose the model that answers questions.",
+      ),
+    );
+  } else if (typeof model === "string" && !AI_MODELS.includes(model)) {
+    issues.push(
+      issue(
+        "/ai/providers/0/defaultModel",
+        `${model} is not a model your library software offers.`,
+      ),
+    );
+  }
+  return issues;
+}

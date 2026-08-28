@@ -14,6 +14,7 @@ import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configu
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
+import type { AiProviderKeySource } from "./validators";
 
 /**
  * One row per library holds the OpenRouter key. The owner writes it through
@@ -38,38 +39,89 @@ async function findAiProviderCredential(
 }
 
 /** The stored key, still encrypted, for deploy-time assembly. */
+export function libraryAiProviderKey(
+  source: AiProviderKeySource,
+): { encryptedApiKey: string } | undefined {
+  return source.present ? { encryptedApiKey: source.encryptedValue } : undefined;
+}
+
+/** The stored key, still encrypted, for deploy-time assembly. */
 export async function readLibraryAiProviderKey(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
 ): Promise<{ encryptedApiKey: string } | undefined> {
-  const credential = await findAiProviderCredential(ctx, libraryId);
-  return credential
-    ? { encryptedApiKey: credential.encryptedValue }
-    : undefined;
+  return libraryAiProviderKey(await readAiProviderKeySource(ctx, libraryId));
 }
 
 /**
- * Gives every switched-on provider entry the stored key. An entry that is on
- * without a key stops the publish here, with the pointer the page can link.
+ * Gives the switched-on OpenRouter entry the stored key, and nothing else the
+ * key. An entry that is on without a key stops the publish here, with the
+ * pointer the page can link.
  */
 export function createAiProviderKey(
   apiKey: string | undefined,
 ): ApplyAiProviderKey {
   return (providers) =>
     providers.map((provider, index) => {
-      if (provider.enabled !== true) return { ...provider };
-      if (!apiKey) {
+      const refuse = (message: string) => {
         throw new ConfigurationAssemblyError([
           {
-            pointer: `/ai/providers/${index}/apiKey`,
+            pointer: `/ai/providers/${index}`,
             section: "ai",
-            keyword: "missingKey",
-            message: "AI answers need a provider key.",
+            keyword: "aiProvider",
+            message,
           },
         ]);
+      };
+      // Belt and braces: the caller checks the entry first, so reaching here
+      // with anything but one OpenRouter entry means a caller skipped it.
+      if (provider.provider !== AI_PROVIDER) {
+        refuse("OpenRouter is the only AI provider this library can use.");
       }
+      if (index > 0) {
+        refuse("This library saves exactly one AI provider, OpenRouter.");
+      }
+      if (provider.enabled !== true) return { ...provider };
+      if (!apiKey) refuse("AI answers need an OpenRouter key.");
       return { ...provider, apiKey };
     });
+}
+
+export async function readAiProviderKeySource(
+  ctx: ReadCtx,
+  libraryId: Id<"evidenceLibraries">,
+): Promise<AiProviderKeySource> {
+  const credential = await findAiProviderCredential(ctx, libraryId);
+  return credential
+    ? {
+        present: true,
+        id: credential._id,
+        encryptedValue: credential.encryptedValue,
+        updatedAt: credential.updatedAt,
+      }
+    : { present: false };
+}
+
+export const AI_PROVIDER_KEY_CHANGED_MESSAGE =
+  "The AI key changed while the library was publishing. Publish again.";
+
+/** Stops a publish that read a key which has since been replaced or removed. */
+export async function requireUnchangedAiProviderKey(
+  ctx: ReadCtx,
+  libraryId: Id<"evidenceLibraries">,
+  source: AiProviderKeySource,
+): Promise<void> {
+  const current = await readAiProviderKeySource(ctx, libraryId);
+  const same =
+    current.present === source.present &&
+    (!current.present ||
+      !source.present ||
+      (current.id === source.id &&
+        current.encryptedValue === source.encryptedValue &&
+        current.updatedAt === source.updatedAt));
+  if (!same) {
+    throw createError("CONFLICT", AI_PROVIDER_KEY_CHANGED_MESSAGE);
+  }
 }
 
 export const removeAiProviderKey = mutation({
