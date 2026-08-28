@@ -1,4 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+const emptyAnswer = {
+  exists: true,
+  cnames: [] as string[],
+  addresses: [] as string[],
+  texts: [] as string[],
+  caaIssuers: [] as string[],
+};
+
 import {
   classifyCaaChain,
   isPublicInternetAddress,
@@ -9,6 +17,7 @@ import {
   normaliseDomainHost,
   parseDohAnswer,
   readAgreedAnswer,
+  readAgreedIssuers,
 } from "./dnsClient";
 
 function dohResponse(body: unknown, init?: ResponseInit): Response {
@@ -258,6 +267,11 @@ describe("isPublicInternetAddress", () => {
       "fd12:3456::1",
       "::ffff:127.0.0.1",
       "::ffff:10.0.0.1",
+      // The same addresses written in hexadecimal.
+      "::ffff:7f00:1",
+      "::ffff:a00:1",
+      "0:0:0:0:0:ffff:7f00:0001",
+      "64:ff9b::7f00:1",
       "not-an-address",
     ]) {
       expect(isPublicInternetAddress(address)).toBe(false);
@@ -298,6 +312,35 @@ describe("lookupHost", () => {
     await expect(lookupHost(fetchImpl, "evidence.example.org", "A")).rejects.toThrow(
       DnsLookupError,
     );
+  });
+});
+
+describe("readAgreedIssuers", () => {
+  it("returns the issuers themselves when both resolvers read the same set", () => {
+    expect(
+      readAgreedIssuers([
+        { ...emptyAnswer, caaIssuers: ["letsencrypt.org", "pki.goog"] },
+        { ...emptyAnswer, caaIssuers: ["pki.goog", "letsencrypt.org"] },
+      ]),
+    ).toEqual(["letsencrypt.org", "pki.goog"]);
+  });
+
+  it("keeps an issuer that permits nobody", () => {
+    expect(
+      readAgreedIssuers([
+        { ...emptyAnswer, caaIssuers: [""] },
+        { ...emptyAnswer, caaIssuers: [""] },
+      ]),
+    ).toEqual([""]);
+  });
+
+  it("refuses when the resolvers read different issuers", () => {
+    expect(() =>
+      readAgreedIssuers([
+        { ...emptyAnswer, caaIssuers: ["letsencrypt.org"] },
+        { ...emptyAnswer, caaIssuers: [] },
+      ]),
+    ).toThrow(DnsLookupError);
   });
 });
 

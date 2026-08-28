@@ -95,13 +95,27 @@ export function readDomainAnswer(reading: DomainAnswerReading): DomainOutcome {
 }
 
 /**
- * The step "Check" takes next for one row. Attaching is its own step
- * because it writes to the proxy and starts a deployment.
+ * The step "Check" takes next for one row.
+ *
+ * The three facts are kept apart on purpose. `attachedAt` says the proxy's
+ * domain list holds the host. `deploymentPending` says that change has not
+ * reached the running site yet. `removing` says the owner asked for the
+ * domain to go. Collapsing them would let a crash between two steps look
+ * like a finished one.
  */
 export function nextDomainStep(row: {
   state: DomainState;
   attachedAt?: number;
-}): "records" | "attach" | "answer" {
+  deploymentPending?: boolean;
+  removing?: boolean;
+}): "records" | "attach" | "deploy" | "answer" | "blocked" {
+  // A domain on its way out is not checked or attached again: the removal
+  // finishes on its own once its deployment is live.
+  if (row.removing) {
+    return row.deploymentPending ? "deploy" : "blocked";
+  }
+  // The proxy changed but the running site has not been given the change.
+  if (row.deploymentPending) return "deploy";
   if (row.attachedAt !== undefined) return "answer";
   if (row.state === "verified") return "attach";
   return "records";

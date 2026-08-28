@@ -243,6 +243,27 @@ export function classifyCaaChain(
 }
 
 /**
+ * The certificate issuers both resolvers agree on. Kept as an array: joining
+ * them into one string loses an issuer that permits nobody, which is written
+ * as an empty value and has to block issuance.
+ */
+export function readAgreedIssuers(answers: readonly DnsAnswer[]): string[] {
+  const readings = answers.map((answer) => answer.caaIssuers.slice().sort());
+  const first = readings[0];
+  if (
+    !first ||
+    readings.some(
+      (reading) =>
+        reading.length !== first.length ||
+        reading.some((issuer, index) => issuer !== first[index]),
+    )
+  ) {
+    throw new DnsLookupError("The domain could not be checked");
+  }
+  return first;
+}
+
+/**
  * Turns two resolver answers into one reading. A disagreement is not a
  * failure of the domain: it means we could not tell, so nothing moves.
  */
@@ -334,18 +355,31 @@ function readIpv4(address: string): number[] | null {
 export function isPublicInternetAddress(address: string): boolean {
   const value = address.trim().toLowerCase();
   if (!value) return false;
-  if (value.includes(":")) {
-    // An IPv4 address written inside IPv6 is judged as IPv4.
-    const mapped = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/u.exec(value);
-    if (mapped) return isPublicInternetAddress(mapped[1]!);
-    if (!/^[0-9a-f:]+$/u.test(value)) return false;
-    if (value === "::" || value === "::1") return false;
-    // fc00::/7 unique local, fe80::/10 link local, ff00::/8 multicast.
-    if (/^f[cd][0-9a-f]{0,2}:/u.test(value)) return false;
-    if (/^fe[89ab][0-9a-f]?:/u.test(value)) return false;
-    if (/^ff[0-9a-f]{2}:/u.test(value)) return false;
-    return true;
+  if (!value.includes(":")) return isPublicIpv4(value);
+
+  if (!/^[0-9a-f:.]+$/u.test(value)) return false;
+  const groups = expandIpv6(value);
+  if (!groups) return false;
+  // An IPv4 address carried inside IPv6 is judged as IPv4, however it is
+  // written: dotted (`::ffff:127.0.0.1`), hexadecimal (`::ffff:7f00:1`), or
+  // through the NAT64 prefix (`64:ff9b::7f00:1`).
+  const mappedIpv4 = readEmbeddedIpv4(groups);
+  if (mappedIpv4) return isPublicIpv4(mappedIpv4);
+  if (groups.every((group) => group === 0)) return false; // ::
+  if (groups.slice(0, 7).every((group) => group === 0) && groups[7] === 1) {
+    return false; // ::1
   }
+  const first = groups[0]!;
+  if ((first & 0xfe00) === 0xfc00) return false; // fc00::/7 unique local
+  if ((first & 0xffc0) === 0xfe80) return false; // fe80::/10 link local
+  if ((first & 0xff00) === 0xff00) return false; // ff00::/8 multicast
+  if (first === 0x0064 && groups[1] === 0xff9b) return false; // 64:ff9b::/96
+  if (first === 0x2002) return false; // 6to4, carries an embedded IPv4
+  if (first === 0x0100 && groups[1] === 0) return false; // 100::/64 discard
+  return true;
+}
+
+function isPublicIpv4(value: string): boolean {
   const bytes = readIpv4(value);
   if (!bytes) return false;
   const [a, b] = bytes as [number, number, number, number];
@@ -358,6 +392,57 @@ export function isPublicInternetAddress(address: string): boolean {
   if (a === 192 && b === 0) return false; // IETF protocol assignments
   if (a === 198 && (b === 18 || b === 19)) return false; // benchmarking
   return true;
+}
+
+/** The eight groups of an IPv6 address, or null when it is not one. */
+function expandIpv6(value: string): number[] | null {
+  let text = value;
+  // A trailing dotted quad becomes two groups.
+  const dotted = /(\d{1,3}(?:\.\d{1,3}){3})$/u.exec(text);
+  if (dotted) {
+    const bytes = readIpv4(dotted[1]!);
+    if (!bytes) return null;
+    const high = (bytes[0]! << 8) | bytes[1]!;
+    const low = (bytes[2]! << 8) | bytes[3]!;
+    text = `${text.slice(0, dotted.index)}${high.toString(16)}:${low.toString(16)}`;
+  }
+  const halves = text.split("::");
+  if (halves.length > 2) return null;
+  const read = (part: string): number[] | null => {
+    if (part === "") return [];
+    const groups: number[] = [];
+    for (const piece of part.split(":")) {
+      if (!/^[0-9a-f]{1,4}$/u.test(piece)) return null;
+      groups.push(Number.parseInt(piece, 16));
+    }
+    return groups;
+  };
+  const head = read(halves[0]!);
+  const tail = halves.length === 2 ? read(halves[1]!) : [];
+  if (!head || !tail) return null;
+  if (halves.length === 1) return head.length === 8 ? head : null;
+  const missing = 8 - head.length - tail.length;
+  if (missing < 1) return null;
+  return [...head, ...Array<number>(missing).fill(0), ...tail];
+}
+
+/** The IPv4 address an IPv6 address carries, if it carries one. */
+function readEmbeddedIpv4(groups: number[]): string | null {
+  const toDotted = (high: number, low: number) =>
+    `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+  const leading = groups.slice(0, 5).every((group) => group === 0);
+  // ::ffff:a.b.c.d and ::a.b.c.d
+  if (leading && (groups[5] === 0xffff || groups[5] === 0)) {
+    if (groups[6] === 0 && groups[7] === 0) return null;
+    return toDotted(groups[6]!, groups[7]!);
+  }
+  // 64:ff9b::a.b.c.d
+  if (groups[0] === 0x0064 && groups[1] === 0xff9b) {
+    return toDotted(groups[6]!, groups[7]!);
+  }
+  // 2002:a.b.c.d::
+  if (groups[0] === 0x2002) return toDotted(groups[1]!, groups[2]!);
+  return null;
 }
 
 /**

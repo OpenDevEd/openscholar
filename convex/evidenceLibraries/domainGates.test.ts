@@ -98,9 +98,28 @@ describe("nextDomainStep", () => {
     expect(nextDomainStep({ state: "verified" })).toBe("attach");
   });
 
-  it("asks the domain itself once it is attached", () => {
+  it("asks the domain itself once the proxy change is live", () => {
     expect(nextDomainStep({ state: "verified", attachedAt: 1 })).toBe("answer");
     expect(nextDomainStep({ state: "active", attachedAt: 1 })).toBe("answer");
     expect(nextDomainStep({ state: "failed", attachedAt: 1 })).toBe("answer");
+  });
+
+  it("finishes the deployment before asking the domain anything", () => {
+    // The proxy holds the host but no deployment has applied it. Asking the
+    // domain now would wait for a site that was never redeployed.
+    expect(
+      nextDomainStep({ state: "verified", attachedAt: 1, deploymentPending: true }),
+    ).toBe("deploy");
+    // The same after a removal wrote the proxy but crashed before queuing.
+    expect(
+      nextDomainStep({ state: "active", deploymentPending: true, removing: true }),
+    ).toBe("deploy");
+  });
+
+  it("does nothing to a domain that is being removed", () => {
+    expect(nextDomainStep({ state: "active", attachedAt: 1, removing: true })).toBe(
+      "blocked",
+    );
+    expect(nextDomainStep({ state: "verified", removing: true })).toBe("blocked");
   });
 });
