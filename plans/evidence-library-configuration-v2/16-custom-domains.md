@@ -282,6 +282,65 @@ plan, not a silent difference.
     the row keeps `activatedAt` and its history.
 
 
+## Corrections after review (2026-08-28)
+
+A review of the branch found fourteen blocking problems. The fixes changed
+these decisions.
+
+12. **Nothing outside OpenScholar is touched before a removal is allowed.**
+    Removing the domain a library calls its own is refused first, in a
+    mutation, before the proxy or the certificate service hears about it.
+    The old order took a live site down and then refused the request.
+13. **Removal is staged.** The proxy loses the host, the deployment applies
+    it, and only when that deployment is live do the certificate and the row
+    go. Until then the row shows "Removing". A removal that stops halfway
+    keeps every receipt, so pressing again carries on.
+14. **Attach saves each receipt as it happens.** The certificate hostname id
+    is written before the proxy is touched, so a failure can never leave a
+    hostname nothing points back to. Every step is safe to run again.
+15. **The library's new address is written only after readiness passes.**
+    `setDomainPrimary` writes nothing: the desired address travels on the
+    operation, the deployment carries it, and `completeDomainChange` writes
+    the binding, the draft, the live revision and the roles once the site
+    answers. A failed deployment leaves nothing changed.
+16. **Readiness reads the address the library calls its own**, and separately
+    requires the platform address to redirect to it. The platform address is
+    never released, so it has to keep sending visitors on. The same address
+    is used for the `/admin` login link and the public link on the libraries
+    list.
+17. **Every request to a custom domain repeats the address gate first**, and
+    refuses any address that is not on the public internet. An owner can
+    repoint their records at any moment; without this a verified domain
+    could be aimed inside our own network.
+18. **Check is limited and locked.** One check per domain at a time, and
+    three token buckets: per owner, per library, per domain.
+19. **A check that could not run writes nothing at all.** It answers
+    `check-failed` and the row keeps exactly what the last check that did run
+    found. The old code stored `failed`.
+20. **Coolify's map is compared in full, against our own records.** A map
+    that is not exactly `{web}` reads as unreadable rather than empty, so no
+    write can replace it. The list of custom domains travels with the
+    deployment target, so an ordinary publish can neither drop a custom
+    domain nor accept a stranger's.
+21. **The sweep pages by oldest check** over `by_state_and_checkedAt`, moves
+    a working domain's check time forward too, stops at a fixed deadline and
+    schedules the next page.
+22. **NXDOMAIN and NODATA are different answers.** A name that does not exist
+    fails with `no-name` ("We could not find that domain"); a name with no
+    address record fails with `no-records`.
+23. **A flattened apex must answer with the target's whole address set.** One
+    address in common proves nothing on a shared proxy.
+24. **`CAA 0 issue ";"` blocks issuance.** An empty issuer value is kept and
+    permits nobody.
+25. **Host names are strict LDH.** No underscores, no reserved `ab--` form,
+    punycode endings accepted, and the platform's own domains and everything
+    beneath them refused.
+26. **The section follows the mock.** The mock's five status words, its
+    records table, its panel and its toggle. Two honest differences: every
+    stored domain is drawn, with Add offered until the limit; and a failed
+    check names what actually went wrong instead of always saying "Records
+    not found".
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,
