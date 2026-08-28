@@ -58,7 +58,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
   type ConfigurationDraft,
-  cardForRow,
+  cardForPointer,
   changedSectionRows,
   cloneDraft,
   hasProblems,
@@ -204,6 +204,9 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
     libraryId: libraryId as Id<"evidenceLibraries">,
   });
+  // A refused save outlives the form below: saving first and then failing to
+  // activate raises the edit version, which restarts the form from scratch.
+  const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
   if (draftQuery.data === undefined) {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
@@ -218,6 +221,8 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       editVersion={draft.editVersion}
       saved={sections}
       operation={operation}
+      refusal={refusal}
+      setRefusal={setRefusal}
     />
   );
 }
@@ -229,6 +234,8 @@ function Workspace({
   editVersion,
   saved,
   operation,
+  refusal,
+  setRefusal,
 }: {
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
@@ -236,6 +243,8 @@ function Workspace({
   editVersion: number;
   saved: readonly SectionRow[];
   operation: Operation;
+  refusal: SaveRefusal | null;
+  setRefusal: (refusal: SaveRefusal | null) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const tc = useTranslations("common");
@@ -264,8 +273,6 @@ function Workspace({
     ),
   );
   const [saving, setSaving] = useState(false);
-  // The last save the platform refused. It stays until the next attempt.
-  const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
   const [activating, setActivating] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -284,12 +291,18 @@ function Workspace({
   const isDraftLibrary = libraryState === "provisioning";
   const canActivate = !activating && !saving && !problems && !operationRunning;
 
-  const patch: SectionProps["patch"] = (update) =>
+  // Editing, resetting or moving on answers the last refusal, so it goes away.
+  const patch: SectionProps["patch"] = (update) => {
+    setRefusal(null);
     setEdited((current) => update(cloneDraft(current)));
-  const reset: SectionProps["reset"] = (sectionKey) =>
+  };
+  const reset: SectionProps["reset"] = (sectionKey) => {
+    setRefusal(null);
     setEdited((current) => resetSection(current, saved, sectionKey));
+  };
 
   function jumpTo(key: RailKey) {
+    setRefusal(null);
     void setSection(key);
     scrollToSection(key);
   }
@@ -463,6 +476,16 @@ function Workspace({
 
             {/* Sections */}
             <div className="min-w-0 flex-1 space-y-4 p-4 md:p-6">
+              {refusal && refusal.card === null ? (
+                <InlineNotice
+                  tone="danger"
+                  role="alert"
+                  title={t("saveRefusedAll")}
+                  data-save-refused
+                >
+                  {refusal.message}
+                </InlineNotice>
+              ) : null}
               <CollectionFactsProvider
                 libraryId={libraryId}
                 ids={draft.collections.map((collection) => collection.id)}
@@ -615,7 +638,7 @@ function OperationBanner({
       {issues.length > 0 ? (
         <ul className="mt-1 space-y-1">
           {issues.map((issue) => {
-            const target = cardForRow(issue.pointer.split("/")[1] ?? "");
+            const target = cardForPointer(issue.pointer);
             return (
               <li
                 key={`${issue.pointer}:${issue.message}`}

@@ -2134,6 +2134,7 @@
     "saved": "Changes saved.",
     "saveError": "The changes could not be saved. Try again.",
     "saveRefused": "This section was not saved.",
+    "saveRefusedAll": "The changes were not saved.",
     "activate": "Activate",
     "setUpAndActivate": "Set up and activate",
     "fixFirst": "Fix the highlighted fields first",

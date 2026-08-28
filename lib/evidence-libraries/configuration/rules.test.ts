@@ -221,6 +221,18 @@ describe("changedSectionRows", () => {
     ).toEqual({});
   });
 
+  it("still sends an empty short name so the platform can point at it", () => {
+    const draft = savedDraft();
+    draft.identity.shortName = "";
+    const rows = changedSectionRows(draft, savedRows);
+    expect((rows[0]?.payload as { shortName?: unknown }).shortName).toBe("");
+    expect(
+      validateOwnerSections(rows, {
+        expectedBaseUrl: "https://saved-library.libraries.example.test",
+      }).issues.map((issue) => issue.pointer),
+    ).toEqual(["/identity/shortName"]);
+  });
+
   it("sends a row the platform accepts when there is no favicon", () => {
     const draft = savedDraft();
     draft.identity.assets.favicon = "";
@@ -589,14 +601,28 @@ describe("changedSectionRows for the content sections", () => {
   });
 
   it("sends a refused save to the card that owns the value", () => {
-    expect(saveRefusal("/identity/assets/favicon", "/identity/assets/favicon: Value must match the uri format.")).toEqual({
+    expect(saveRefusal("/identity/name", "/identity/name: This name is already taken.")).toEqual({
       card: "identity",
-      message: "Value must match the uri format.",
+      message: "This name is already taken.",
     });
     expect(saveRefusal("/email/smtp", "/email/smtp: The mail server is set by the platform and cannot be saved.")).toEqual({
       card: "contact",
       message: "The mail server is set by the platform and cannot be saved.",
     });
+  });
+
+  it("sends a refused brand image to the Theme card, which edits it", () => {
+    for (const pointer of [
+      "/identity/assets",
+      "/identity/assets/favicon",
+      "/identity/assets/logoDark",
+      "/identity/assets/shareImage",
+    ]) {
+      expect(saveRefusal(pointer, `${pointer}: Value must match the uri format.`)).toEqual({
+        card: "theme",
+        message: "Value must match the uri format.",
+      });
+    }
   });
 
   it("keeps a refused save without a pointer out of every card", () => {
