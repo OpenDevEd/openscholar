@@ -135,6 +135,7 @@ export const runApplicationSetup = internalAction({
         mail: optionalPlatformMailService(invalidData),
         brand: optionalPlatformBrandAssets(invalidData),
         zoteroGroups: prepared.zoteroGroups,
+        aiProviderKey: prepared.aiProviderKey,
       });
       const application = await reconcileCoolifyApplication({
         coolifyUrl: requireRuntimeEnvironment("EL_COOLIFY_URL", invalidData),

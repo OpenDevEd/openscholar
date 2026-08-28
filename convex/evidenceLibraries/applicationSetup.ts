@@ -29,6 +29,7 @@ import {
   STORAGE_SERVICE_KEY_PATH,
 } from "./runtimeCredentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
+import { readLibraryAiProviderKey } from "./aiProviderKey";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
 
 function requireRuntimeCommit(value: string): string {
@@ -80,6 +81,7 @@ export const prepareApplicationSetup = internalMutation({
         scopes: zoteroGroupScopesValidator,
       }),
     ),
+    aiProviderKey: v.optional(v.object({ encryptedApiKey: v.string() })),
   }),
   handler: async (ctx, args) => {
     const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, {
@@ -241,6 +243,7 @@ export const prepareApplicationSetup = internalMutation({
         validationState: "valid",
       }));
 
+    const aiProviderKey = await readLibraryAiProviderKey(ctx, args.libraryId);
     return {
       searchCredentialId,
       encryptedSearchKey,
@@ -263,6 +266,7 @@ export const prepareApplicationSetup = internalMutation({
         ctx,
         args.libraryId,
       ),
+      ...(aiProviderKey ? { aiProviderKey } : {}),
     };
   },
 });

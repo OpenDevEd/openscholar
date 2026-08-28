@@ -13,6 +13,7 @@ import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
+import { readLibraryAiProviderKey } from "./aiProviderKey";
 import {
   sanitizeConfigurationIssues,
   sanitizeOperationError,
@@ -380,6 +381,7 @@ export const prepareConfigurationDeployment = internalMutation({
           scopes: zoteroGroupScopesValidator,
         }),
       ),
+      aiProviderKey: v.optional(v.object({ encryptedApiKey: v.string() })),
       source: v.object({
         runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
         bindingUpdatedAt: v.number(),
@@ -509,6 +511,7 @@ export const prepareConfigurationDeployment = internalMutation({
         STORAGE_SERVICE_KEY_PATH,
       ),
     };
+    const aiProviderKey = await readLibraryAiProviderKey(ctx, args.libraryId);
     return {
       state: "new" as const,
       ...(runtimeUpdate ? { runtimeUpdate } : {}),
@@ -549,6 +552,7 @@ export const prepareConfigurationDeployment = internalMutation({
         ctx,
         args.libraryId,
       ),
+      ...(aiProviderKey ? { aiProviderKey } : {}),
       source: {
         runtimeBindingId: deployment.runtimeBinding._id,
         bindingUpdatedAt: deployment.runtimeBinding.updatedAt,

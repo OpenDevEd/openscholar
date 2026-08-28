@@ -12,7 +12,7 @@
  * shared by cards (the Navigation card owns `features.navbarSearch`).
  */
 
-import catalogs from "./generated/library-config.catalogs.json";
+import { AI_MODELS, AI_PROVIDER } from "./ai";
 import schema from "./generated/library-config.schema.json";
 import {
   HTTPS_URL,
@@ -175,20 +175,7 @@ export const SUPPORTS_CONSENT_POLICY_VERSION = schemaHas(
   "/analytics/consentPolicyVersion",
 );
 
-/** The only AI provider OpenScholar configures. */
-export const AI_PROVIDER = "openrouter";
-
-/**
- * The models the runtime approves for OpenRouter, from the pinned catalog.
- * Empty until the contract is re-pinned; AI answers stay off until then.
- */
-export const AI_MODELS: readonly string[] =
-  (
-    catalogs.options.aiProviders as readonly {
-      provider: string;
-      active: readonly string[];
-    }[]
-  ).find((entry) => entry.provider === AI_PROVIDER)?.active ?? [];
+export { AI_MODELS, AI_PROVIDER };
 
 /** The consent version every library starts from. */
 export const CONSENT_POLICY_VERSION_DEFAULT = 1;

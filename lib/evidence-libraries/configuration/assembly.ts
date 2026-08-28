@@ -1,3 +1,7 @@
+import {
+  type ApplyAiProviderKey,
+  passThroughAiProviderKey,
+} from "./ai";
 import schema from "./generated/library-config.schema.json";
 import {
   type ValidationIssue,
@@ -191,11 +195,13 @@ export function assembleEvidenceLibraryConfiguration({
   managed,
   now = new Date(),
   applySourceCredentials = passThroughSourceCredentials,
+  applyAiProviderKey = passThroughAiProviderKey,
 }: {
   sections: OwnerSections;
   managed: ManagedEvidenceLibraryConfiguration;
   now?: Date;
   applySourceCredentials?: ApplySourceCredentials;
+  applyAiProviderKey?: ApplyAiProviderKey;
 }): AssembledEvidenceLibraryConfiguration {
   const owner = Object.fromEntries(
     Object.entries(sections).filter(
@@ -267,6 +273,13 @@ export function assembleEvidenceLibraryConfiguration({
     candidate.sources = applySourceCredentials(
       candidate.sources.filter(isObject),
     );
+  }
+  // The AI provider key is added here and nowhere earlier, like a source key.
+  if (isObject(candidate.ai) && Array.isArray(candidate.ai.providers)) {
+    candidate.ai = {
+      ...candidate.ai,
+      providers: applyAiProviderKey(candidate.ai.providers.filter(isObject)),
+    };
   }
   const structuralValidation = validateLibraryConfigStructure(candidate);
   // The runtime refuses to start when recipients exist without a mail
