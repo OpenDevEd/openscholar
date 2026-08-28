@@ -47,6 +47,8 @@ type World = {
   coolifyOffline?: boolean;
   /** The Coolify application is already gone, so that step has nothing to do. */
   coolifyApplicationGone?: boolean;
+  /** Answer the file store, which only a library being taken apart talks to. */
+  emptyFileStore?: boolean;
   /** The host owns its zone, so it can carry no alias. */
   apex?: boolean;
   /** Answer the health probe for every host, not just the custom one. */
@@ -168,15 +170,33 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
       return Response.json({ success: true, result: hostname });
     }
 
-    // A file store with nothing left in it, so that step has nothing to do.
-    if (url.hostname === "storage.example.test") {
-      if (url.pathname.includes("/list/")) return Response.json([]);
-      // The buckets are already gone, so this step finishes rather than
-      // waiting for them.
-      if (method === "GET") {
+    // A file store with nothing left in it, for the tests that ask for one.
+    // Only the four things taking a library apart really does are answered,
+    // so anything else shows up as a failure instead of passing quietly.
+    if (world.emptyFileStore && url.hostname === "storage.example.test") {
+      // Listing this library's uploads: there are none.
+      if (method === "POST" && url.pathname.startsWith("/storage/v1/object/list/")) {
+        return Response.json([]);
+      }
+      // Deleting uploads, and emptying a bucket: nothing to do either way.
+      if (
+        (method === "DELETE" &&
+          url.pathname.startsWith("/storage/v1/object/")) ||
+        (method === "POST" && url.pathname.endsWith("/empty"))
+      ) {
+        return Response.json({});
+      }
+      // Reading a bucket: already gone, so the step finishes rather than
+      // waiting for it.
+      if (method === "GET" && url.pathname.startsWith("/storage/v1/bucket/")) {
         return Response.json({ message: "not found" }, { status: 404 });
       }
-      return Response.json({});
+      if (method === "DELETE" && url.pathname.startsWith("/storage/v1/bucket/")) {
+        return Response.json({});
+      }
+      throw new Error(
+        `The file store was asked for something unexpected: ${method} ${url.pathname}`,
+      );
     }
 
     if (url.hostname === "coolify.example.test") {
@@ -3048,7 +3068,10 @@ describe("custom domains", () => {
       // deletion really reaches the step under test.
       vi.stubGlobal(
         "fetch",
-        createWorld({ coolifyApplicationGone: step !== "runtime" }).fetchImpl,
+        createWorld({
+          coolifyApplicationGone: step !== "runtime",
+          emptyFileStore: step === "database",
+        }).fetchImpl,
       );
       await fixture.t.run(async (ctx) => {
         await ctx.db.patch(fixture.created.libraryId, { state: "disabled" });
