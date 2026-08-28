@@ -27,7 +27,7 @@ export const AI_MODELS: readonly string[] =
     }[]
   ).find((entry) => entry.provider === AI_PROVIDER)?.active ?? [];
 
-const AI_PROVIDER_KEY_PATTERN = writeOnlyPatternFor(AI_PROVIDER_KEY_PATH);
+export const AI_PROVIDER_KEY_PATTERN = writeOnlyPatternFor(AI_PROVIDER_KEY_PATH);
 if (!AI_PROVIDER_KEY_PATTERN) {
   throw new Error("The pinned contract has no AI provider key");
 }
@@ -59,6 +59,11 @@ export const passThroughAiProviderKey: ApplyAiProviderKey = (providers) =>
 export function aiProviderIssues(
   providers: unknown,
   featuresAi: boolean | undefined,
+  /**
+   * Whether the library has an `ai` row at all. Only a library that never
+   * saved one may have no provider; a row that is there holds exactly one.
+   */
+  rowSaved = true,
 ): ValidationIssue[] {
   const issue = (pointer: string, message: string): ValidationIssue => ({
     pointer,
@@ -67,9 +72,17 @@ export function aiProviderIssues(
     message,
   });
 
-  // No provider at all is how a library that never used AI answers looks.
-  // With AI answers on it is a problem; without them it is simply nothing.
-  if (providers === undefined || (Array.isArray(providers) && providers.length === 0)) {
+  // No row at all is how a library that never used AI answers looks. With AI
+  // answers on it is a problem; without them it is simply nothing.
+  if (!rowSaved) {
+    if (Array.isArray(providers) && providers.length > 0) {
+      return [
+        issue(
+          "/ai/providers",
+          "This library saves exactly one AI provider, OpenRouter.",
+        ),
+      ];
+    }
     return featuresAi === true
       ? [issue("/ai/providers", "AI answers need one AI provider.")]
       : [];

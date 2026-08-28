@@ -295,6 +295,7 @@ export async function saveEvidenceLibraryDraftSections(
           ? (ai as { providers?: unknown }).providers
           : undefined,
         featuresAi,
+        ai !== undefined,
       ),
     );
   }

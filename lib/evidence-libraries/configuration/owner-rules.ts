@@ -90,8 +90,9 @@ function ownerRuleIssues(
       message: "The mail server is set by the platform and cannot be saved.",
     });
   }
+  // Reaching here means the row is being saved, so it must hold one provider.
   if (sectionKey === "ai") {
-    issues.push(...aiProviderIssues(record?.providers, options.featuresAi));
+    issues.push(...aiProviderIssues(record?.providers, options.featuresAi, true));
   }
   if (
     sectionKey === "email" &&
@@ -168,7 +169,7 @@ export function validateOwnerSections(
   // provider. Only the complete set can tell; a partial save has no `ai` row
   // simply because that card did not change.
   if (options.requireComplete && ruleOptions.featuresAi === true && !seen.has("ai")) {
-    issues.push(...aiProviderIssues(undefined, true));
+    issues.push(...aiProviderIssues(undefined, true, false));
   }
   if (options.requireComplete) {
     for (const sectionKey of REQUIRED_OWNER_SECTION_KEYS) {

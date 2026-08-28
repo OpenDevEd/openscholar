@@ -278,13 +278,15 @@ export function assembleEvidenceLibraryConfiguration({
   // Exactly one OpenRouter entry, agreeing with the AI answers switch, with a
   // model the runtime approves. Checked before the key is added, so a wrong
   // entry never receives one.
+  const aiRowSaved = owner.ai !== undefined;
   const aiIssues = aiProviderIssues(
     isObject(candidate.ai) ? candidate.ai.providers : undefined,
     isObject(candidate.features)
       ? candidate.features.ai === true
       : undefined,
+    aiRowSaved,
   );
-  if (aiIssues.length === 0 && isObject(candidate.ai)) {
+  if (aiIssues.length === 0 && aiRowSaved && isObject(candidate.ai)) {
     // The AI provider key is added here and nowhere earlier, like a source key.
     candidate.ai = {
       ...candidate.ai,
