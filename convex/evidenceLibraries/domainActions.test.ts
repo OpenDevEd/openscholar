@@ -765,4 +765,69 @@ describe("custom domains", () => {
     // A deleted library must not keep a name reserved.
     await expect(readRow(fixture, added.domainId)).resolves.toBeNull();
   });
+
+  it("stops showing a domain as working once its records go away", async () => {
+    const fixture = await createReadySetupFixture("domain-sweep");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        certificateHostnameId: "custom-hostname-1",
+        certificateState: "active",
+        activatedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+    const revisionKey = await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      const revision = library?.activeRevisionId
+        ? await ctx.db.get(library.activeRevisionId)
+        : null;
+      return revision?.revisionKey ?? "";
+    });
+
+    // The library still answers: nothing moves.
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        {
+          health: { revision: revisionKey },
+          certificate: { status: "active", ssl: "active" },
+        },
+        tag,
+      ).fetchImpl,
+    );
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
+        {},
+      ),
+    ).resolves.toEqual({ checked: 1, failed: 0 });
+    expect((await readRow(fixture, domainId))?.state).toBe("active");
+
+    // Someone else answers now.
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        { health: "other", certificate: { status: "active", ssl: "active" } },
+        tag,
+      ).fetchImpl,
+    );
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
+        {},
+      ),
+    ).resolves.toEqual({ checked: 1, failed: 1 });
+    const swept = await readRow(fixture, domainId);
+    expect(swept?.state).toBe("failed");
+    expect(swept?.failure).toBe("host-taken");
+    // The row keeps its history.
+    expect(swept?.activatedAt).toBeTypeOf("number");
+  });
 });

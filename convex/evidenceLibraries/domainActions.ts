@@ -10,7 +10,7 @@
  */
 
 import { v } from "convex/values";
-import { action, type ActionCtx } from "../_generated/server";
+import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { readServedHosts } from "./addressActions";
@@ -404,5 +404,52 @@ export const removeDomain = action({
       );
     }
     return { status: "removed" as const };
+  },
+});
+
+/** How many working domains one sweep re-checks. */
+const SWEEP_BATCH = 20;
+
+/**
+ * Re-checks the domains the platform says are working. A customer who points
+ * their domain somewhere else should stop showing as working, rather than
+ * leaving a route open for ever. Nothing else changes: the proxy and the
+ * certificate stay until an owner removes the domain.
+ */
+export const sweepWorkingDomains = internalAction({
+  args: {},
+  returns: v.object({ checked: v.number(), failed: v.number() }),
+  handler: async (ctx): Promise<{ checked: number; failed: number }> => {
+    const rows = await ctx.runQuery(
+      internal.evidenceLibraries.domains.listWorkingDomains,
+      { limit: SWEEP_BATCH },
+    );
+    let failed = 0;
+    for (const row of rows) {
+      let outcome: DomainOutcome & { certificateState?: CertificateState };
+      try {
+        outcome = await readAnswerGate({
+          host: row.host,
+          liveRevisionKey: row.liveRevisionKey,
+        });
+      } catch {
+        // A sweep that could not run leaves the row exactly as it was.
+        continue;
+      }
+      if (outcome.state === "active") continue;
+      failed += 1;
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.writeSweptDomain,
+        {
+          domainId: row.domainId,
+          state: outcome.state === "failed" ? "failed" : outcome.state,
+          ...(outcome.state === "failed" ? { failure: outcome.failure } : {}),
+          ...(outcome.certificateState
+            ? { certificateState: outcome.certificateState }
+            : {}),
+        },
+      );
+    }
+    return { checked: rows.length, failed };
   },
 });

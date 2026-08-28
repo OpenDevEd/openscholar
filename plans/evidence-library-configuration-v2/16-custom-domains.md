@@ -276,11 +276,10 @@ plan, not a silent difference.
 10. **The rail entry sits in the existing `platform` group**, beside
     Versions. The page has no "Publishing" group.
 
-## Still to build
-
-- The scheduled sweep of decision 6. The owner-facing behaviour is complete
-  (Check is manual, as the mock draws it), but nothing yet re-probes `active`
-  rows on a schedule and marks a domain `failed` when its records go away.
+11. **The sweep of decision 6 runs every six hours**, twenty rows at a
+    time, over `by_state` eq `active`. It only ever moves a working domain
+    off `active`; a sweep that could not run leaves the row untouched, and
+    the row keeps `activatedAt` and its history.
 
 
 ## Files that change

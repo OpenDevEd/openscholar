@@ -326,3 +326,65 @@ export const dropDomain = internalMutation({
     return null;
   },
 });
+
+/**
+ * The domains a sweep should re-check: the ones the platform currently says
+ * are working. No caller identity: this runs on a schedule.
+ */
+export const listWorkingDomains = internalQuery({
+  args: { limit: v.number() },
+  returns: v.array(
+    v.object({
+      domainId: v.id("evidenceLibraryDomains"),
+      libraryId: v.id("evidenceLibraries"),
+      host: v.string(),
+      liveRevisionKey: v.union(v.string(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("evidenceLibraryDomains")
+      .withIndex("by_state", (index) => index.eq("state", "active"))
+      .take(Math.min(Math.max(args.limit, 1), 50));
+    return await Promise.all(
+      rows.map(async (row) => {
+        const library = await ctx.db.get("evidenceLibraries", row.libraryId);
+        const revision = library?.activeRevisionId
+          ? await ctx.db.get(
+              "evidenceLibraryConfigRevisions",
+              library.activeRevisionId,
+            )
+          : null;
+        return {
+          domainId: row._id,
+          libraryId: row.libraryId,
+          host: row.host,
+          liveRevisionKey: revision?.revisionKey ?? null,
+        };
+      }),
+    );
+  },
+});
+
+/** Writes one sweep result. The row keeps its history: only the last check moves. */
+export const writeSweptDomain = internalMutation({
+  args: {
+    domainId: v.id("evidenceLibraryDomains"),
+    state: evidenceLibraryDomainStateValidator,
+    failure: v.optional(evidenceLibraryDomainFailureValidator),
+    certificateState: v.optional(evidenceLibraryCertificateStateValidator),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row) return null;
+    await ctx.db.patch(args.domainId, {
+      state: args.state,
+      failure: args.failure,
+      certificateState: args.certificateState ?? row.certificateState,
+      checkedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
