@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { createReadySetupFixture as createFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 // The pinned client opens a real socket, which a test cannot answer. The
 // address check it wraps still runs for real; only the connector is stubbed,
@@ -435,6 +435,37 @@ async function finishDeployment(fixture: Fixture) {
   });
 }
 
+/**
+ * Every library made by a test in this file, so nothing it booked is still
+ * waiting when the test's database goes away.
+ *
+ * A domain change books work for later — a watchdog, a wake-up, a retry —
+ * and convex-test keeps running those after the test ends, which shows up as
+ * an error even though every assertion passed.
+ */
+const openFixtures: Awaited<ReturnType<typeof createFixture>>[] = [];
+
+async function createReadySetupFixture(suffix: string) {
+  const fixture = await createFixture(suffix);
+  openFixtures.push(fixture);
+  return fixture;
+}
+
+/** Lets anything already running finish, then calls off what is still owed. */
+async function settleScheduledWork(
+  fixture: Awaited<ReturnType<typeof createFixture>>,
+) {
+  await fixture.t.finishInProgressScheduledFunctions();
+  await fixture.t.run(async (ctx) => {
+    const booked = await ctx.db.system.query("_scheduled_functions").collect();
+    for (const job of booked) {
+      if (job.state.kind === "pending" || job.state.kind === "inProgress") {
+        await ctx.scheduler.cancel(job._id);
+      }
+    }
+  });
+}
+
 describe("custom domains", () => {
   beforeEach(() => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
@@ -453,7 +484,10 @@ describe("custom domains", () => {
     vi.stubEnv("EL_DATABASE_PROVISIONER_TOKEN", "database-token");
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    for (const fixture of openFixtures.splice(0)) {
+      await settleScheduledWork(fixture);
+    }
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
