@@ -267,6 +267,7 @@ async function attachDomain(
     applicationUuid: string;
     attachedHosts: readonly string[];
     certificateHostnameId: string | null;
+    generation: number;
   },
 ): Promise<DomainOutcome & { certificateState?: CertificateState }> {
   const cloudflare = createPlatformCloudflareSaasClient();
@@ -349,6 +350,7 @@ async function attachDomain(
     libraryId: input.libraryId,
     domainId: input.domainId,
     token: input.token,
+    generation: input.generation,
     host: input.host,
     reason: "attach",
   });
@@ -365,6 +367,7 @@ async function queueDomainDeployment(
     libraryId: Id<"evidenceLibraries">;
     domainId: Id<"evidenceLibraryDomains">;
     token: string;
+    generation: number;
     host: string;
     reason: "attach" | "detach";
   },
@@ -374,6 +377,7 @@ async function queueDomainDeployment(
     {
       libraryId: input.libraryId,
       domainId: input.domainId,
+      generation: input.generation,
       host: input.host,
       reason: input.reason,
     },
@@ -494,6 +498,7 @@ export const checkDomain = action({
             libraryId: args.libraryId,
             domainId: args.domainId,
             token,
+            generation: row.generation,
             host: row.host,
             reason: row.attached ? "attach" : "detach",
           });
@@ -518,6 +523,7 @@ export const checkDomain = action({
               applicationUuid: context.applicationUuid,
               attachedHosts: context.attachedHosts,
               certificateHostnameId: row.certificateHostnameId,
+              generation: row.generation,
             });
           }
         } else {
@@ -651,6 +657,7 @@ export const removeDomain = action({
           libraryId: args.libraryId,
           domainId: args.domainId,
           token,
+          generation: row.generation,
           host: row.host,
           reason: "detach",
         });
@@ -733,9 +740,16 @@ export const completeDomainChange = internalAction({
     reason: v.literal("detach"),
   },
   returns: v.object({
-    status: v.union(v.literal("done"), v.literal("retrying")),
+    status: v.union(
+      v.literal("done"),
+      v.literal("retrying"),
+      v.literal("stale"),
+    ),
   }),
-  handler: async (ctx, args): Promise<{ status: "done" | "retrying" }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ status: "done" | "retrying" | "stale" }> => {
     try {
       const receipt = await ctx.runQuery(
         internal.evidenceLibraries.domains.readDomainReceipt,
@@ -762,6 +776,8 @@ export const completeDomainChange = internalAction({
         },
       );
       if (retry.status === "given-up") throw error;
+      // A call about a deployment this domain has moved past changes nothing.
+      if (retry.status === "stale") return { status: "stale" as const };
       return { status: "retrying" as const };
     }
   },
@@ -786,8 +802,7 @@ export const sweepWorkingDomains = internalAction({
   args: {
     /** Fixed when the sweep starts; rows checked after it are already done. */
     cutoff: v.optional(v.number()),
-    afterCheckedAt: v.optional(v.number()),
-    afterId: v.optional(v.id("evidenceLibraryDomains")),
+    cursor: v.optional(v.union(v.string(), v.null())),
   },
   returns: v.object({
     checked: v.number(),
@@ -797,8 +812,7 @@ export const sweepWorkingDomains = internalAction({
     next: v.optional(
       v.object({
         cutoff: v.number(),
-        afterCheckedAt: v.number(),
-        afterId: v.id("evidenceLibraryDomains"),
+        cursor: v.union(v.string(), v.null()),
       }),
     ),
   }),
@@ -809,38 +823,26 @@ export const sweepWorkingDomains = internalAction({
     checked: number;
     failed: number;
     more: boolean;
-    next?: {
-      cutoff: number;
-      afterCheckedAt: number;
-      afterId: Id<"evidenceLibraryDomains">;
-    };
+    next?: { cutoff: number; cursor: string | null };
   }> => {
     const cutoff = args.cutoff ?? Date.now();
     const deadline = Date.now() + SWEEP_DEADLINE_MS;
-    const rows = await ctx.runQuery(
+    const page = await ctx.runQuery(
       internal.evidenceLibraries.domains.listWorkingDomains,
       {
         limit: SWEEP_BATCH,
         cutoff,
-        ...(args.afterCheckedAt === undefined
-          ? {}
-          : { afterCheckedAt: args.afterCheckedAt }),
-        ...(args.afterId === undefined ? {} : { afterId: args.afterId }),
+        ...(args.cursor === undefined ? {} : { cursor: args.cursor }),
       },
     );
     let failed = 0;
     let checked = 0;
-    let cursor: { checkedAt: number; id: Id<"evidenceLibraryDomains"> } | null =
-      null;
     let stopped = false;
-    for (const row of rows) {
+    for (const row of page.rows) {
       if (Date.now() >= deadline) {
         stopped = true;
         break;
       }
-      // The cursor moves whether or not the row could be checked, so a row
-      // that cannot answer never holds the sweep up.
-      cursor = { checkedAt: row.checkedAt, id: row.domainId };
       let outcome: DomainOutcome & { certificateState?: CertificateState };
       try {
         outcome = await readAnswerGate({
@@ -848,8 +850,8 @@ export const sweepWorkingDomains = internalAction({
           liveRevisionKey: row.liveRevisionKey,
         });
       } catch (error) {
-        // A sweep that could not run leaves the row exactly as it was, and
-        // the next sweep reaches it again.
+        // A sweep that could not read a domain leaves it exactly as it was,
+        // and the next sweep reaches it again.
         if (isUnavailable(error)) continue;
         throw error;
       }
@@ -869,13 +871,10 @@ export const sweepWorkingDomains = internalAction({
         },
       );
     }
-    const more = (stopped || rows.length === SWEEP_BATCH) && cursor !== null;
-    if (!more || !cursor) return { checked, failed, more: false };
-    const next = {
-      cutoff,
-      afterCheckedAt: cursor.checkedAt,
-      afterId: cursor.id,
-    };
+    // A page cut short by the deadline is resumed from the same cursor.
+    const more = stopped || !page.done;
+    if (!more) return { checked, failed, more: false };
+    const next = { cutoff, cursor: stopped ? (args.cursor ?? null) : page.cursor };
     await ctx.scheduler.runAfter(
       0,
       internal.evidenceLibraries.domainActions.sweepWorkingDomains,

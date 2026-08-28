@@ -1,4 +1,4 @@
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import {
   internalMutation,
   internalQuery,
@@ -14,6 +14,23 @@ import {
   requireEvidenceLibraryAccess,
   requireOrganizationAccess,
 } from "./access";
+
+/**
+ * Only the attempt that holds the teardown may write about it. Without this
+ * a worker that took over after a claim expired could be overwritten by the
+ * one it replaced.
+ */
+function requireTeardownAttempt(
+  operation: Doc<"evidenceLibraryConfigOperations">,
+  attemptToken: string,
+): void {
+  if (operation.teardownAttemptToken !== attemptToken) {
+    throw createError(
+      "CONFLICT",
+      "Another attempt is running this Evidence Library teardown",
+    );
+  }
+}
 
 /** How long one teardown attempt holds the operation. */
 const TEARDOWN_LEASE_MS = 10 * 60 * 1000;
@@ -214,6 +231,7 @@ export const prepareDevelopmentTeardown = internalMutation({
     v.object({ claimed: v.literal(false) }),
     v.object({
       claimed: v.literal(true),
+      attemptToken: v.string(),
       applicationId: v.optional(v.string()),
       privateBucket: v.optional(v.string()),
       publicBucket: v.optional(v.string()),
@@ -265,6 +283,7 @@ export const prepareDevelopmentTeardown = internalMutation({
         ? binding.targetRuntimeId
         : setupOperation?.setupReceipts?.application?.applicationId;
     const now = Date.now();
+    const attemptToken = crypto.randomUUID();
     await ctx.db.patch(operation._id, {
       status: "running",
       attemptCount: operation.attemptCount + 1,
@@ -273,6 +292,7 @@ export const prepareDevelopmentTeardown = internalMutation({
       // come back and look, so the wake-up is booked in the same
       // transaction as the claim.
       teardownLeaseExpiresAt: now + TEARDOWN_LEASE_MS,
+      teardownAttemptToken: attemptToken,
       startedAt: now,
       completedAt: undefined,
       error: undefined,
@@ -285,6 +305,7 @@ export const prepareDevelopmentTeardown = internalMutation({
     );
     return {
       claimed: true as const,
+      attemptToken,
       applicationId,
       privateBucket:
         binding && "storagePrivateBucket" in binding
@@ -317,6 +338,7 @@ export const setDevelopmentTeardownStage = internalMutation({
       v.literal("database"),
       v.literal("convex"),
     ),
+    attemptToken: v.string(),
   },
   handler: async (ctx, args) => {
     const operation = await ctx.db.get(
@@ -326,6 +348,7 @@ export const setDevelopmentTeardownStage = internalMutation({
     if (!operation || operation.kind !== "teardown") {
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
+    requireTeardownAttempt(operation, args.attemptToken);
     await ctx.db.patch(operation._id, {
       stage: args.stage,
       updatedAt: Date.now(),
@@ -337,6 +360,7 @@ export const deferDevelopmentTeardown = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
   },
   handler: async (ctx, args) => {
     const operation = await ctx.db.get(
@@ -346,15 +370,19 @@ export const deferDevelopmentTeardown = internalMutation({
     if (!operation || operation.kind !== "teardown") {
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
+    requireTeardownAttempt(operation, args.attemptToken);
+    // The claim is given back, so the next attempt takes its own.
     await ctx.db.patch(operation._id, {
       status: "queued",
       stage: "storage",
+      teardownLeaseExpiresAt: undefined,
+      teardownAttemptToken: undefined,
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(
       10_000,
       internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
-      args,
+      { libraryId: args.libraryId, operationId: args.operationId },
     );
   },
 });
@@ -365,6 +393,7 @@ export const failDevelopmentTeardown = internalMutation({
     code: v.string(),
     message: v.string(),
     stage: v.string(),
+    attemptToken: v.string(),
   },
   handler: async (ctx, args) => {
     const operation = await ctx.db.get(
@@ -372,6 +401,7 @@ export const failDevelopmentTeardown = internalMutation({
       args.operationId,
     );
     if (!operation || operation.kind !== "teardown") return;
+    requireTeardownAttempt(operation, args.attemptToken);
     const now = Date.now();
     await ctx.db.patch(operation._id, {
       status: "failed",
@@ -386,6 +416,7 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
   },
   returns: v.object({ complete: v.boolean() }),
   handler: async (ctx, args) => {
@@ -402,6 +433,7 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
     ) {
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
+    requireTeardownAttempt(operation, args.attemptToken);
     const sections = await ctx.db
       .query("evidenceLibraryConfigSections")
       .withIndex("by_libraryId_and_kind", (query) =>

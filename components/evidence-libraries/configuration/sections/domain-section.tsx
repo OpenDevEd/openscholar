@@ -217,7 +217,9 @@ export const DomainSection = memo(function DomainSection({
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={busy !== null || domain.removing}
+                // A removal that stopped halfway is finished by pressing
+                // again, so the button stays usable while one is under way.
+                disabled={busy !== null}
                 onClick={() =>
                   void run(domain.domainId, () =>
                     removeDomain({ libraryId, domainId: domain.domainId }),
@@ -225,7 +227,7 @@ export const DomainSection = memo(function DomainSection({
                 }
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                {domain.removing ? t("removing") : t("remove")}
+                {domain.removing ? t("removeAgain") : t("remove")}
               </Button>
             }
           >

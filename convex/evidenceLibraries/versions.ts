@@ -12,6 +12,7 @@ import { validateOwnerSections } from "../../lib/evidence-libraries/configuratio
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
+import { claimDomainTransitionRow } from "./domains";
 import {
   evidenceLibraryAddressCandidateValidator,
   moveIdentityBaseUrl,
@@ -531,6 +532,8 @@ export const startDomainDeployment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     domainId: v.id("evidenceLibraryDomains"),
+    /** The domain's change count, so one key never names two changes. */
+    generation: v.number(),
     host: v.string(),
     reason: v.union(
       v.literal("attach"),
@@ -548,9 +551,10 @@ export const startDomainDeployment = internalMutation({
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
     const operation = await queueDomainChangeOperation(ctx, {
       libraryId: args.libraryId,
-      // One key per transition, so a crash between queuing the deployment
-      // and writing its id down cannot create a second operation.
-      idempotencyKey: `domain:${args.reason}:${args.domainId}`,
+      // One key per change, not per direction: a crash between queuing the
+      // deployment and writing its id down reuses this key, while asking for
+      // the same change again is a new change with a new key.
+      idempotencyKey: `domain:${args.reason}:${args.domainId}:${args.generation}`,
       revisionId: running.activeRevisionId,
       domainChange: {
         host: args.host,
@@ -603,6 +607,10 @@ export const setDomainPrimary = mutation({
         "The domain has to be working before it can become the address",
       );
     }
+    // The same lease every other change to this domain takes, so becoming
+    // the library's address cannot race a check or a removal. It is held
+    // until the deployment carrying it settles the row.
+    const claimed = claimDomainTransitionRow(ctx, row, "canonical");
     const address = args.primary
       ? `https://${row.host}`
       : running.binding.targetBaseUrl;
@@ -631,17 +639,19 @@ export const setDomainPrimary = mutation({
         pointer: issue.pointer,
       });
     }
+    // The lease is taken now, and held until the deployment carrying this
+    // change settles the row.
+    await claimed.write();
     const operation = await queueDomainChangeOperation(ctx, {
       libraryId: args.libraryId,
-      idempotencyKey: `domain:canonical:${args.domainId}:${
-        args.primary ? "on" : "off"
-      }`,
+      idempotencyKey: `domain:canonical:${args.domainId}:${claimed.generation}`,
       revisionId: running.activeRevisionId,
       domainChange: {
         host: row.host,
         domainId: args.domainId,
         reason: "canonical",
         address,
+        token: claimed.token,
       },
     });
     const started = await claimAndScheduleConfigurationDeployment(ctx, {
@@ -662,9 +672,16 @@ export async function applyEvidenceLibraryCanonicalAddress(
     libraryId: Id<"evidenceLibraries">;
     domainId: Id<"evidenceLibraryDomains">;
     address: string;
+    token?: string;
   },
 ): Promise<void> {
   {
+    const domain = await ctx.db.get(
+      "evidenceLibraryDomains",
+      args.domainId,
+    );
+    // Only the change that still holds the domain may write the address.
+    if (args.token && domain?.transition?.token !== args.token) return;
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     const binding = library?.runtimeBindingId
       ? await ctx.db.get(

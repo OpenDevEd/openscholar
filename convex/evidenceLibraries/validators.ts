@@ -252,9 +252,20 @@ export const evidenceLibraryDomainFields = {
       phase: v.union(v.literal("attach"), v.literal("detach")),
     }),
   ),
-  // Attempts at the work after the current deployment. Cleared with it, so a
-  // new deployment always starts from zero.
-  cleanupAttempts: v.optional(v.number()),
+  // The work owed after one deployment: which deployment it belongs to, how
+  // many attempts it has had, and the run already booked. All three together,
+  // so a stale call cannot count an attempt or book a second run.
+  cleanup: v.optional(
+    v.object({
+      operationId: v.id("evidenceLibraryConfigOperations"),
+      attempts: v.number(),
+      scheduledId: v.optional(v.id("_scheduled_functions")),
+    }),
+  ),
+  // Counts every change this domain has been through. It goes into each
+  // operation's key, so the same change asked for twice is two operations
+  // rather than one that already succeeded and will not run again.
+  generation: v.optional(v.number()),
   // Set the moment the proxy was written but before the deployment exists.
   deploymentPending: v.optional(v.boolean()),
   // Whether the name is a zone of its own, read from its records rather
@@ -667,6 +678,9 @@ export const evidenceLibraryDomainChangeValidator = v.object({
   // For a canonical change: the address the library should call its own once
   // this deployment is live. Nothing is written until it is.
   address: v.optional(v.string()),
+  // The lease this change holds on the domain. Checked when the deployment
+  // finishes, so a change that was overtaken cannot land.
+  token: v.optional(v.string()),
 });
 
 export const evidenceLibraryOperationFields = {
@@ -694,6 +708,10 @@ export const evidenceLibraryOperationFields = {
   // attempt that died left the teardown running for ever and every later
   // attempt walked away.
   teardownLeaseExpiresAt: v.optional(v.number()),
+  // Names the attempt that holds the teardown. Every write it makes carries
+  // it, so a replacement worker after the claim expired cannot be written
+  // over by the attempt it replaced.
+  teardownAttemptToken: v.optional(v.string()),
   setupReadinessPollCount: v.optional(v.number()),
   configurationDeploymentTarget: v.optional(
     evidenceLibraryConfigurationDeploymentTargetValidator,

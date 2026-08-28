@@ -176,6 +176,7 @@ type DomainContext = {
     attached: boolean;
     removing: boolean;
     deploymentPending: boolean;
+    generation: number;
     certificateHostnameId: string | null;
   } | null;
 };
@@ -201,6 +202,7 @@ export const readDomainContext = internalQuery({
         attached: v.boolean(),
         removing: v.boolean(),
         deploymentPending: v.boolean(),
+        generation: v.number(),
         certificateHostnameId: v.union(v.string(), v.null()),
       }),
       v.null(),
@@ -241,7 +243,13 @@ export const readDomainContext = internalQuery({
             verificationToken: row.verificationToken,
             attached: row.attachedAt !== undefined,
             removing: row.removingAt !== undefined,
-            deploymentPending: row.deploymentPending === true,
+            // Both halves: the proxy was written, or a deployment carrying
+            // that write has not succeeded yet. A failed deployment stays
+            // owed, so the next step retries it rather than probing.
+            deploymentPending:
+              row.deploymentPending === true ||
+              row.pendingDeployment !== undefined,
+            generation: row.generation ?? 0,
             certificateHostnameId: row.certificateHostnameId ?? null,
           }
         : null,
@@ -336,7 +344,11 @@ export const claimDomainTransition = internalMutation({
     spendBudget: v.optional(v.boolean()),
   },
   returns: v.union(
-    v.object({ status: v.literal("claimed"), token: v.string() }),
+    v.object({
+      status: v.literal("claimed"),
+      token: v.string(),
+      generation: v.number(),
+    }),
     v.object({ status: v.literal("busy"), kind: transitionKindValidator }),
   ),
   handler: async (ctx, args) => {
@@ -372,15 +384,17 @@ export const claimDomainTransition = internalMutation({
       });
     }
     const token = createTransitionToken();
+    const generation = (row.generation ?? 0) + 1;
     await ctx.db.patch(args.domainId, {
       transition: {
         kind: args.kind,
         token,
         expiresAt: now + DOMAIN_CHECK_LEASE_MS,
       },
+      generation,
       updatedAt: now,
     });
-    return { status: "claimed" as const, token };
+    return { status: "claimed" as const, token, generation };
   },
 });
 
@@ -413,6 +427,35 @@ export const releaseDomainTransition = internalMutation({
     return null;
   },
 });
+
+/**
+ * Takes the lease from inside another mutation, for a change that is decided
+ * and queued in one transaction. Returns the token to record on the
+ * operation and the write that takes it.
+ */
+export function claimDomainTransitionRow(
+  ctx: MutationCtx,
+  row: Doc<"evidenceLibraryDomains">,
+  kind: "check" | "attach" | "canonical" | "remove",
+): { token: string; generation: number; write: () => Promise<void> } {
+  const now = Date.now();
+  if (row.transition && row.transition.expiresAt > now) {
+    throw createError("CONFLICT", "Another change to that domain is running");
+  }
+  const token = createTransitionToken();
+  const generation = (row.generation ?? 0) + 1;
+  return {
+    token,
+    generation,
+    write: async () => {
+      await ctx.db.patch(row._id, {
+        transition: { kind, token, expiresAt: now + DOMAIN_CHECK_LEASE_MS },
+        generation,
+        updatedAt: now,
+      });
+    },
+  };
+}
 
 /** Every write about a domain proves it still holds the lease. */
 function requireTransition(
@@ -555,7 +598,7 @@ export async function settleDomainDeploymentRow(
   if (!row || row.pendingDeployment?.operationId !== args.operationId) return;
   await ctx.db.patch(args.domainId, {
     pendingDeployment: undefined,
-    cleanupAttempts: undefined,
+    cleanup: undefined,
     // The change is live, so whoever was holding the domain for it is done.
     transition: undefined,
     updatedAt: Date.now(),
@@ -630,7 +673,7 @@ export const readDomainReceipt = internalQuery({
       attached: row.attachedAt !== undefined,
       deploymentPending:
         row.deploymentPending === true || row.pendingDeployment !== undefined,
-      cleanupAttempts: row.cleanupAttempts ?? 0,
+      cleanupAttempts: row.cleanup?.attempts ?? 0,
       pendingOperationId: row.pendingDeployment?.operationId ?? null,
     };
   },
@@ -648,21 +691,37 @@ export const scheduleDomainCleanupRetry = internalMutation({
     operationId: v.id("evidenceLibraryConfigOperations"),
   },
   returns: v.object({
-    status: v.union(v.literal("scheduled"), v.literal("given-up")),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("given-up"),
+      v.literal("stale"),
+    ),
     attempts: v.number(),
   }),
   handler: async (ctx, args) => {
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row) return { status: "given-up" as const, attempts: 0 };
-    const attempts = (row.cleanupAttempts ?? 0) + 1;
-    await ctx.db.patch(args.domainId, {
-      cleanupAttempts: attempts,
-      updatedAt: Date.now(),
-    });
+    const cleanup = row.cleanup;
+    // A call about another deployment says nothing about this one.
+    if (cleanup && cleanup.operationId !== args.operationId) {
+      return { status: "stale" as const, attempts: cleanup.attempts };
+    }
+    // A run is already booked, so this call has nothing to add.
+    if (cleanup?.scheduledId) {
+      const booked = await ctx.db.system.get(cleanup.scheduledId);
+      if (booked && booked.state.kind === "pending") {
+        return { status: "scheduled" as const, attempts: cleanup.attempts };
+      }
+    }
+    const attempts = (cleanup?.attempts ?? 0) + 1;
     if (attempts >= MAX_DOMAIN_CLEANUP_ATTEMPTS) {
+      await ctx.db.patch(args.domainId, {
+        cleanup: { operationId: args.operationId, attempts },
+        updatedAt: Date.now(),
+      });
       return { status: "given-up" as const, attempts };
     }
-    await ctx.scheduler.runAfter(
+    const scheduledId = await ctx.scheduler.runAfter(
       CLEANUP_RETRY_MS * attempts,
       internal.evidenceLibraries.domainActions.completeDomainChange,
       {
@@ -672,6 +731,10 @@ export const scheduleDomainCleanupRetry = internalMutation({
         reason: "detach",
       },
     );
+    await ctx.db.patch(args.domainId, {
+      cleanup: { operationId: args.operationId, attempts, scheduledId },
+      updatedAt: Date.now(),
+    });
     return { status: "scheduled" as const, attempts };
   },
 });
@@ -707,55 +770,58 @@ export const listWorkingDomains = internalQuery({
     limit: v.number(),
     /** Only rows checked at or before this moment, fixed when a sweep starts. */
     cutoff: v.number(),
-    /** The last row of the previous page: (checkedAt, _id). */
-    afterCheckedAt: v.optional(v.number()),
-    afterId: v.optional(v.id("evidenceLibraryDomains")),
+    /** Convex's own cursor, which keeps its place among equal check times. */
+    cursor: v.optional(v.union(v.string(), v.null())),
   },
-  returns: v.array(
-    v.object({
-      domainId: v.id("evidenceLibraryDomains"),
-      libraryId: v.id("evidenceLibraries"),
-      host: v.string(),
-      checkedAt: v.number(),
-      liveRevisionKey: v.union(v.string(), v.null()),
-    }),
-  ),
+  returns: v.object({
+    rows: v.array(
+      v.object({
+        domainId: v.id("evidenceLibraryDomains"),
+        libraryId: v.id("evidenceLibraries"),
+        host: v.string(),
+        checkedAt: v.number(),
+        liveRevisionKey: v.union(v.string(), v.null()),
+      }),
+    ),
+    cursor: v.union(v.string(), v.null()),
+    done: v.boolean(),
+  }),
   handler: async (ctx, args) => {
-    const limit = Math.min(Math.max(args.limit, 1), 50);
-    // A real range over the index, so a run of rows that cannot answer never
-    // stops the sweep reaching the ones after them. The cursor is strict:
-    // every row this page looks at is past it, and a row that could not be
-    // checked keeps its old check time and is reached by the next sweep.
+    // Convex's cursor keeps its place inside a run of rows that share a
+    // check time, which a timestamp alone cannot: fifty rows checked in the
+    // same millisecond would otherwise be read for ever or skipped whole.
     const page = await ctx.db
       .query("evidenceLibraryDomains")
       .withIndex("by_state_and_checkedAt", (index) =>
-        args.afterCheckedAt === undefined
-          ? index.eq("state", "active").lte("checkedAt", args.cutoff)
-          : index
-              .eq("state", "active")
-              .gt("checkedAt", args.afterCheckedAt)
-              .lte("checkedAt", args.cutoff),
+        index.eq("state", "active").lte("checkedAt", args.cutoff),
       )
       .order("asc")
-      .take(limit);
-    return await Promise.all(
-      page.map(async (row) => {
-        const library = await ctx.db.get("evidenceLibraries", row.libraryId);
-        const revision = library?.activeRevisionId
-          ? await ctx.db.get(
-              "evidenceLibraryConfigRevisions",
-              library.activeRevisionId,
-            )
-          : null;
-        return {
-          domainId: row._id,
-          libraryId: row.libraryId,
-          host: row.host,
-          checkedAt: row.checkedAt ?? 0,
-          liveRevisionKey: revision?.revisionKey ?? null,
-        };
-      }),
-    );
+      .paginate({
+        cursor: args.cursor ?? null,
+        numItems: Math.min(Math.max(args.limit, 1), 50),
+      });
+    return {
+      rows: await Promise.all(
+        page.page.map(async (row) => {
+          const library = await ctx.db.get("evidenceLibraries", row.libraryId);
+          const revision = library?.activeRevisionId
+            ? await ctx.db.get(
+                "evidenceLibraryConfigRevisions",
+                library.activeRevisionId,
+              )
+            : null;
+          return {
+            domainId: row._id,
+            libraryId: row.libraryId,
+            host: row.host,
+            checkedAt: row.checkedAt ?? 0,
+            liveRevisionKey: revision?.revisionKey ?? null,
+          };
+        }),
+      ),
+      cursor: page.continueCursor,
+      done: page.isDone,
+    };
   },
 });
 

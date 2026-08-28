@@ -419,6 +419,39 @@ these decisions.
     and no list of endings is needed. The platform's own names are named in
     the environment rather than guessed from the target.
 
+## Corrections after the fourth review (2026-08-28)
+
+48. **Only the requests to the library's own address are pinned.** The
+    verifier and the platform address are ours and use ordinary `fetch`;
+    sending them through a client that can reach one customer host refused
+    every readiness check.
+49. **The pinned client is tested against a real TLS server**, not a stub:
+    host isolation, a socket that opens where it should not, the caller
+    giving up, an oversized answer, and settling exactly once.
+50. **Every family that answers has to reach us.** A correct address record
+    beside an unrelated one in the other family no longer puts that address
+    on the list we connect to.
+51. **Only the top of a zone may pass on matching addresses.** Elsewhere the
+    alias is the proof. Whether a name is a zone top is read from a
+    start-of-authority record *owned by that name*, so a parent's record does
+    not count. The copy says "the top of its own DNS zone", not "bare domain".
+52. **Every change carries a generation**, so asking for the same change
+    twice makes two operations rather than reusing one that already
+    succeeded.
+53. **Becoming the library's address takes the same lease** as every other
+    change, and the deployment checks it still holds before writing.
+54. **A failed deployment stays owed.** Both halves of the pending state are
+    read together, so the next step redeploys instead of probing.
+55. **A removal that stopped halfway can be finished** by pressing again; the
+    lease is given back on failure and the button stays usable.
+56. **The work after a deployment is fenced by its operation and its
+    booking**, so a stale call counts nothing and two completions cannot
+    book two runs.
+57. **A teardown attempt carries a token** that every write it makes must
+    present.
+58. **The sweep uses Convex's own pagination cursor**, which keeps its place
+    inside a run of rows checked in the same millisecond.
+
 ## Files that change
 
 Lane D: `convex/schema.ts`, `convex/evidenceLibraries/validators.ts`,

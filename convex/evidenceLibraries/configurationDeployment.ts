@@ -1089,6 +1089,9 @@ export const completeConfigurationDeployment = internalMutation({
           libraryId: args.libraryId,
           domainId: domainChange.domainId,
           address: domainChange.address,
+          // The lease this change took when it was asked for. A change that
+          // was overtaken by a check or a removal does not land.
+          ...(domainChange.token ? { token: domainChange.token } : {}),
         });
       }
       // The proxy change this deployment carried has now reached the site.

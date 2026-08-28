@@ -268,7 +268,7 @@ describe("DomainSection", () => {
     ).toBeNull();
   });
 
-  it("stops checking a domain that is on its way out", () => {
+  it("stops checking a domain that is on its way out, but lets the removal finish", () => {
     mocks.data.domains = [row({ state: "active", attached: true, removing: true })];
     render(<DomainSection libraryId={libraryId} />);
     expect(
@@ -276,11 +276,13 @@ describe("DomainSection", () => {
         name: "evidenceLibraryConfiguration.domain.checkDns",
       }),
     ).toBeDisabled();
+    // A removal that stopped halfway is finished by pressing again, so this
+    // one stays usable.
     expect(
       screen.getByRole("button", {
-        name: /evidenceLibraryConfiguration\.domain\.removing/,
+        name: /evidenceLibraryConfiguration\.domain\.removeAgain/,
       }),
-    ).toBeDisabled();
+    ).toBeEnabled();
   });
 
   it("sends the platform address to the domain when the switch is turned on", async () => {

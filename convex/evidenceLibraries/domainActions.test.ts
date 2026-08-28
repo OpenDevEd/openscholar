@@ -938,6 +938,46 @@ describe("custom domains", () => {
     expect(await readRow(fixture, added.domainId)).toBeNull();
   });
 
+  it("finishes a removal that stopped when the proxy could not be reached", async () => {
+    const fixture = await createReadySetupFixture("domain-remove-resume");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        certificateHostnameId: "custom-hostname-1",
+        updatedAt: Date.now(),
+      });
+    });
+
+    // The first attempt reaches nothing and leaves the domain marked for
+    // removal.
+    vi.stubGlobal("fetch", createWorld({ coolifyOffline: true }, tag).fetchImpl);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.removeDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId,
+      }),
+    ).rejects.toThrow();
+    expect((await readRow(fixture, domainId))?.removingAt).toBeTypeOf("number");
+
+    // Pressing again finishes it: the lease was given back, so the second
+    // attempt can take it.
+    const world = createWorld({ serving: [`https://${CUSTOM_HOST}`] }, tag);
+    vi.stubGlobal("fetch", world.fetchImpl);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.removeDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId,
+      }),
+    ).resolves.toEqual({ status: "removing" });
+    expect(world.coolifyPatches).toHaveLength(1);
+  });
+
   it("keeps every receipt when the proxy cannot be reached during a removal", async () => {
     const fixture = await createReadySetupFixture("domain-remove-offline");
     const tag = await bindApplication(fixture);
@@ -1230,8 +1270,8 @@ describe("custom domains", () => {
     const tag = await bindApplication(fixture);
     vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
     const revisionKey = await readLiveRevisionKey(fixture);
-    // More working domains than one sweep checks, several sharing a check
-    // time so the order has to break ties by row.
+    // More domains than one page, every one of them checked at the same
+    // moment, so the cursor has nothing but the row order to go on.
     const total = 25;
     await fixture.t.run(async (ctx) => {
       for (let index = 0; index < total; index += 1) {
@@ -1242,7 +1282,7 @@ describe("custom domains", () => {
           role: "redirect",
           state: "active",
           attachedAt: Date.now(),
-          checkedAt: index < 5 ? 1 : index,
+          checkedAt: 1,
           createdByClerkUserId: fixture.clerkUserId,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -1281,9 +1321,77 @@ describe("custom domains", () => {
       if (!result.more || !result.next) break;
       cursor = result.next;
     }
-    // Every domain was checked, and the sweep ended rather than looping.
+    // Every domain was checked once, and the sweep ended rather than looping.
     expect(seen).toBe(total);
     expect(pages).toBeLessThan(10);
+  });
+
+  it("reaches the domains behind a page of ones that cannot answer", async () => {
+    const fixture = await createReadySetupFixture("domain-sweep-unavailable");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const revisionKey = await readLiveRevisionKey(fixture);
+    // More rows that cannot answer than one page holds, then one that can.
+    await fixture.t.run(async (ctx) => {
+      for (let index = 0; index < 55; index += 1) {
+        await ctx.db.insert("evidenceLibraryDomains", {
+          libraryId: fixture.created.libraryId,
+          host: `quiet-${index}.example.org`,
+          verificationToken: "token",
+          role: "redirect",
+          state: "active",
+          attachedAt: Date.now(),
+          checkedAt: 1,
+          createdByClerkUserId: fixture.clerkUserId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      }
+      await ctx.db.insert("evidenceLibraryDomains", {
+        libraryId: fixture.created.libraryId,
+        host: CUSTOM_HOST,
+        verificationToken: "token",
+        role: "redirect",
+        state: "active",
+        attachedAt: Date.now(),
+        checkedAt: 1,
+        createdByClerkUserId: fixture.clerkUserId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    // Only the last one answers; the rest have no certificate, so they can
+    // never be judged.
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        {
+          cname: TARGET,
+          health: { revision: revisionKey },
+          certificate: { status: "active", ssl: "active" },
+        },
+        tag,
+      ).fetchImpl,
+    );
+
+    let cursor: Record<string, unknown> = {};
+    let checked = 0;
+    for (let page = 0; page < 10; page += 1) {
+      const result: {
+        checked: number;
+        more: boolean;
+        next?: Record<string, unknown>;
+      } = await fixture.t.action(
+        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
+        cursor as never,
+      );
+      checked += result.checked;
+      if (!result.more || !result.next) break;
+      cursor = result.next;
+    }
+    // The one that could answer was reached, behind fifty-five that could not.
+    expect(checked).toBe(1);
   });
 
   it("never gives one sweep the same domain twice", async () => {
@@ -1306,10 +1414,12 @@ describe("custom domains", () => {
       });
     });
     await expect(
-      fixture.t.query(internal.evidenceLibraries.domains.listWorkingDomains, {
-        limit: 20,
-        cutoff,
-      }),
+      fixture.t
+        .query(internal.evidenceLibraries.domains.listWorkingDomains, {
+          limit: 20,
+          cutoff,
+        })
+        .then((page) => page.rows),
     ).resolves.toEqual([]);
   });
 
@@ -1395,11 +1505,13 @@ describe("custom domains", () => {
       },
     );
     // The teardown action needs services this test does not stand up, so the
-    // record cleanup it drives is run directly.
+    // record cleanup it drives is run directly, under a real claim.
+    const attemptToken = "test-attempt";
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(requested.operationId, {
         status: "running",
         teardownLeaseExpiresAt: Date.now() + 60_000,
+        teardownAttemptToken: attemptToken,
       });
     });
     let complete = false;
@@ -1409,6 +1521,7 @@ describe("custom domains", () => {
         {
           libraryId: fixture.created.libraryId,
           operationId: requested.operationId,
+          attemptToken,
         },
       ));
     }
@@ -1456,6 +1569,36 @@ describe("custom domains", () => {
     expect(prepared.certificateHostnameIds).toEqual(["custom-hostname-1"]);
     expect(prepared.customDomainHosts).toEqual([CUSTOM_HOST]);
     expect(prepared.customDomains).toEqual([`https://${CUSTOM_HOST}`]);
+  });
+
+  it("refuses a teardown write from an attempt that no longer holds it", async () => {
+    const fixture = await createReadySetupFixture("domain_teardown_fence");
+    vi.stubGlobal("fetch", createWorld({}).fetchImpl);
+    const requested = await fixture.admin.mutation(
+      api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        confirmationName: "Climate Evidence",
+      },
+    );
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(requested.operationId, {
+        status: "running",
+        teardownLeaseExpiresAt: Date.now() + 60_000,
+        teardownAttemptToken: "the-holder",
+      });
+    });
+    // A worker that lost the teardown cannot delete its records.
+    await expect(
+      fixture.t.mutation(
+        internal.evidenceLibraries.teardown.deleteDevelopmentTeardownBatch,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: requested.operationId,
+          attemptToken: "the-replaced-one",
+        },
+      ),
+    ).rejects.toThrow(/Another attempt is running/);
   });
 
   it("picks a teardown up again when the attempt that held it died", async () => {

@@ -46,6 +46,9 @@ export const runDevelopmentTeardown = internalAction({
   }),
   handler: async (ctx, args) => {
     let stage: "convex" | "coolify" | "database" | "storage" = "coolify";
+    // Empty until this attempt holds the teardown. A failure before then has
+    // nothing to write: another attempt owns the operation.
+    let attemptToken = "";
     try {
       requireDevelopmentEnvironment();
       const prepared = await ctx.runMutation(
@@ -53,6 +56,7 @@ export const runDevelopmentTeardown = internalAction({
         args,
       );
       if (!prepared.claimed) return { status: "pending" as const };
+      attemptToken = prepared.attemptToken;
       const cloudflare = createPlatformCloudflareSaasClient();
       if (cloudflare) {
         // By name as well as by id: a hostname created before its id was
@@ -101,7 +105,7 @@ export const runDevelopmentTeardown = internalAction({
       stage = "storage";
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.setDevelopmentTeardownStage,
-        { operationId: args.operationId, stage },
+        { attemptToken, operationId: args.operationId, stage },
       );
       const storageAccess = {
         storageUrl: requireEnvironment("EL_STORAGE_URL"),
@@ -113,14 +117,14 @@ export const runDevelopmentTeardown = internalAction({
       if (storage.outcome === "pending") {
         await ctx.runMutation(
           internal.evidenceLibraries.teardown.deferDevelopmentTeardown,
-          args,
+          { ...args, attemptToken },
         );
         return { status: "pending" as const };
       }
       stage = "database";
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.setDevelopmentTeardownStage,
-        { operationId: args.operationId, stage },
+        { attemptToken, operationId: args.operationId, stage },
       );
       await deleteLibraryDatabase({
         provisionerUrl: requireEnvironment("EL_DATABASE_PROVISIONER_URL"),
@@ -130,18 +134,18 @@ export const runDevelopmentTeardown = internalAction({
       stage = "convex";
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.setDevelopmentTeardownStage,
-        { operationId: args.operationId, stage },
+        { attemptToken, operationId: args.operationId, stage },
       );
       for (let batch = 0; batch < 12; batch += 1) {
         const result = await ctx.runMutation(
           internal.evidenceLibraries.teardown.deleteDevelopmentTeardownBatch,
-          args,
+          { ...args, attemptToken },
         );
         if (result.complete) return { status: "complete" as const };
       }
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.deferDevelopmentTeardown,
-        args,
+        { ...args, attemptToken },
       );
       return { status: "pending" as const };
     } catch (error) {
@@ -154,9 +158,10 @@ export const runDevelopmentTeardown = internalAction({
               code: "DEVELOPMENT_TEARDOWN_FAILED",
               message: "The development library could not be deleted",
             };
+      if (!attemptToken) return { status: "pending" as const };
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.failDevelopmentTeardown,
-        { operationId: args.operationId, stage, ...safe },
+        { attemptToken, operationId: args.operationId, stage, ...safe },
       );
       return { status: "failed" as const };
     }

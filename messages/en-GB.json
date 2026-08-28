@@ -2963,7 +2963,8 @@
       "removing": "Removing",
       "checkFailed": "We could not check the domain. Try again.",
       "deploying": "Applying the change to the library",
-      "removingNow": "That domain is being removed"
+      "removingNow": "That domain is being removed",
+      "removeAgain": "Finish removing"
     }
   },
   "evidenceLibraries": {

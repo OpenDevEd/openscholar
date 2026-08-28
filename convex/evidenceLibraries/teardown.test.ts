@@ -49,13 +49,14 @@ describe("development Evidence Library teardown", () => {
       libraryId: fixture.created.libraryId,
       status: "queued",
     });
-    await fixture.t.mutation(
+    const claim = await fixture.t.mutation(
       internal.evidenceLibraries.teardown.prepareDevelopmentTeardown,
       {
         libraryId: fixture.created.libraryId,
         operationId: requested.operationId,
       },
     );
+    const attemptToken = claim.claimed ? claim.attemptToken : "";
 
     let complete = false;
     for (let batch = 0; batch < 20 && !complete; batch += 1) {
@@ -64,6 +65,7 @@ describe("development Evidence Library teardown", () => {
         {
           libraryId: fixture.created.libraryId,
           operationId: requested.operationId,
+          attemptToken,
         },
       ));
     }
@@ -99,13 +101,14 @@ describe("development Evidence Library teardown", () => {
       },
     );
     expect(requested.status).toBe("queued");
-    await fixture.t.mutation(
+    const claim = await fixture.t.mutation(
       internal.evidenceLibraries.teardown.prepareDevelopmentTeardown,
       {
         libraryId: fixture.created.libraryId,
         operationId: requested.operationId,
       },
     );
+    const attemptToken = claim.claimed ? claim.attemptToken : "";
     let complete = false;
     for (let batch = 0; batch < 20 && !complete; batch += 1) {
       ({ complete } = await fixture.t.mutation(
@@ -113,6 +116,7 @@ describe("development Evidence Library teardown", () => {
         {
           libraryId: fixture.created.libraryId,
           operationId: requested.operationId,
+          attemptToken,
         },
       ));
     }
