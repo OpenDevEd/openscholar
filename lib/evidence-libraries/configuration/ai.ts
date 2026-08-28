@@ -131,3 +131,56 @@ export function aiProviderIssues(
   }
   return issues;
 }
+
+/* ------------------------------------------------------------------ */
+/* The platform search embedder                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Meaning-based search needs an embedder, and the embedder is a platform
+ * value: OpenScholar writes it, owners never see it. The block below is the
+ * one the development libraries already run — Outline "08 — Development and
+ * Verification Runbooks", checked 2026-08-20 on new-el `openscholar` — and
+ * the runtime copies its fields straight through to Meilisearch
+ * (`src/lib/search-index/embedder-settings.ts`).
+ */
+export const PLATFORM_EMBEDDING_URL = "https://openrouter.ai/api/v1/embeddings";
+export const PLATFORM_EMBEDDING_MODEL = "perplexity/pplx-embed-v1-0.6b";
+export const PLATFORM_EMBEDDING_DIMENSIONS = 1024;
+
+/**
+ * The embedder block for one library. `{{text}}` is the record Meilisearch
+ * wants embedded and `{{embedding}}` is where it reads the numbers back;
+ * `{{..}}` marks the part that repeats, so one call embeds a whole batch.
+ * There are no headers: Meilisearch sends the key as `Authorization: Bearer`.
+ */
+export function platformSearchEmbedder(
+  apiKey: string,
+): Record<string, unknown> {
+  return {
+    source: "rest",
+    url: PLATFORM_EMBEDDING_URL,
+    apiKey,
+    dimensions: PLATFORM_EMBEDDING_DIMENSIONS,
+    request: { model: PLATFORM_EMBEDDING_MODEL, input: ["{{text}}", "{{..}}"] },
+    response: { data: [{ embedding: "{{embedding}}" }, "{{..}}"] },
+  };
+}
+
+/**
+ * The platform's embedding key. A separate key keeps embedding spend apart
+ * from answer spend; without it the shared OpenRouter key is used. Read on
+ * the server only, at assembly time.
+ */
+export function platformEmbeddingKey(
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+  return (
+    env.EL_EMBEDDING_OPENROUTER_KEY?.trim() ||
+    env.OPENROUTER_API_KEY?.trim() ||
+    undefined
+  );
+}
+
+export const PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE =
+  "The platform has no embedding key yet.";

@@ -6,7 +6,13 @@ import {
   ConfigurationAssemblyError,
   assembleEvidenceLibraryConfiguration,
 } from "./assembly";
-import { AI_MODELS, AI_PROVIDER } from "./ai";
+import {
+  AI_MODELS,
+  AI_PROVIDER,
+  PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+  platformEmbeddingKey,
+  platformSearchEmbedder,
+} from "./ai";
 import { createAiProviderKey } from "@/convex/evidenceLibraries/aiProviderKey";
 import { initialLocalizationPayload } from "./initial-sections";
 import { validateOwnerSection, validateOwnerSections } from "./owner-rules";
@@ -460,7 +466,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
             ],
           },
         },
-        managed: managedConfiguration,
+        managed: { ...managedConfiguration, embeddingApiKey: "sk-or-embed" },
         applyAiProviderKey: createAiProviderKey("sk-or-stored"),
       });
       expect(validateLibraryConfigStructure(configuration)).toEqual({
@@ -480,6 +486,89 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       });
     },
   );
+
+  test("writes the platform embedder and switches AI search on with AI answers", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        features: { ...ownerSections.features, ai: true },
+        ai: {
+          providers: [
+            { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+          ],
+        },
+      },
+      managed: { ...managedConfiguration, embeddingApiKey: "sk-or-embed" },
+      applyAiProviderKey: createAiProviderKey("sk-or-stored"),
+    });
+    expect(validateLibraryConfigStructure(configuration)).toEqual({
+      valid: true,
+      issues: [],
+    });
+    expect(configuration.search).toMatchObject({
+      embedder: {
+        source: "rest",
+        url: "https://openrouter.ai/api/v1/embeddings",
+        apiKey: "sk-or-embed",
+        dimensions: 1024,
+        request: {
+          model: "perplexity/pplx-embed-v1-0.6b",
+          input: ["{{text}}", "{{..}}"],
+        },
+        response: { data: [{ embedding: "{{embedding}}" }, "{{..}}"] },
+      },
+    });
+    expect(configuration.features).toMatchObject({
+      ai: true,
+      aiSearch: true,
+      deepResearch: false,
+    });
+  });
+
+  test("leaves the embedder out and AI search off when AI answers are off", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        features: { ...ownerSections.features, ai: false, aiSearch: true },
+      },
+      managed: { ...managedConfiguration, embeddingApiKey: "sk-or-embed" },
+    });
+    expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
+    expect(configuration.search).toMatchObject({ embedder: null });
+    expect(configuration.features).toMatchObject({
+      ai: false,
+      aiSearch: false,
+    });
+  });
+
+  test("refuses AI answers when the platform has no embedding key", () => {
+    const input = {
+      sections: {
+        ...ownerSections,
+        features: { ...ownerSections.features, ai: true },
+        ai: {
+          providers: [
+            { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+          ],
+        },
+      },
+      managed: managedConfiguration,
+      applyAiProviderKey: createAiProviderKey("sk-or-stored"),
+    };
+    expect(() => assembleEvidenceLibraryConfiguration(input)).toThrow(
+      ConfigurationAssemblyError,
+    );
+    try {
+      assembleEvidenceLibraryConfiguration(input);
+    } catch (error) {
+      expect((error as ConfigurationAssemblyError).issues).toContainEqual({
+        pointer: "/search/embedder",
+        section: "ai",
+        keyword: "platformEmbedder",
+        message: PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
+      });
+    }
+  });
 
   test("adds the platform mail service under the owner's recipients", () => {
     const configuration = assembleEvidenceLibraryConfiguration({
@@ -617,5 +706,44 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         managed: managedConfiguration,
       }),
     ).toThrow(ConfigurationAssemblyError);
+  });
+});
+
+
+describe("the platform embedding key", () => {
+  test("prefers the embedding key, then the shared OpenRouter key", () => {
+    expect(
+      platformEmbeddingKey({
+        EL_EMBEDDING_OPENROUTER_KEY: "sk-or-embed",
+        OPENROUTER_API_KEY: "sk-or-shared",
+      }),
+    ).toBe("sk-or-embed");
+    expect(
+      platformEmbeddingKey({ OPENROUTER_API_KEY: "sk-or-shared" }),
+    ).toBe("sk-or-shared");
+    expect(
+      platformEmbeddingKey({
+        EL_EMBEDDING_OPENROUTER_KEY: "   ",
+        OPENROUTER_API_KEY: "sk-or-shared",
+      }),
+    ).toBe("sk-or-shared");
+    expect(platformEmbeddingKey({})).toBeUndefined();
+    expect(
+      platformEmbeddingKey({ EL_EMBEDDING_OPENROUTER_KEY: " sk-or-embed " }),
+    ).toBe("sk-or-embed");
+  });
+
+  test("builds the REST block the runtime accepts", () => {
+    expect(platformSearchEmbedder("sk-or-embed")).toEqual({
+      source: "rest",
+      url: "https://openrouter.ai/api/v1/embeddings",
+      apiKey: "sk-or-embed",
+      dimensions: 1024,
+      request: {
+        model: "perplexity/pplx-embed-v1-0.6b",
+        input: ["{{text}}", "{{..}}"],
+      },
+      response: { data: [{ embedding: "{{embedding}}" }, "{{..}}"] },
+    });
   });
 });
