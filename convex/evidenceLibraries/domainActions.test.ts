@@ -4,6 +4,20 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
+// The pinned client opens a real socket, which a test cannot answer. The
+// address check it wraps still runs for real; only the connector is stubbed,
+// so a refused domain still fails here exactly as it would in production.
+vi.mock("./domainEgressNode", async () => {
+  const egress = await import("./domainEgress");
+  return {
+    createPinnedFetch: () => globalThis.fetch,
+    openPinnedDomainClient: async (input: { host: string }) => {
+      await egress.readSafeDomainAddresses(input);
+      return globalThis.fetch;
+    },
+  };
+});
+
 const TARGET = "cname.openscholar.test";
 const TARGET_ADDRESSES = ["188.114.96.6", "188.114.97.6"];
 const CUSTOM_HOST = "evidence.example.org";
@@ -706,7 +720,10 @@ describe("custom domains", () => {
     // Nothing answers yet. That is not an answer about the domain, so the
     // check writes nothing rather than pushing the row back.
     await expect(
-      check({ certificate: { status: "active", ssl: "active" } }),
+      check({
+        cname: TARGET,
+        certificate: { status: "active", ssl: "active" },
+      }),
     ).resolves.toEqual({ status: "check-failed" });
     // The certificate is not there yet, but the site answers, so the domain
     // is verified and waiting.
@@ -750,7 +767,8 @@ describe("custom domains", () => {
     const revisionKey = await readLiveRevisionKey(fixture);
 
     // The owner has repointed the domain at a private address since it was
-    // verified. The platform must not fetch it.
+    // verified. That is a real answer about the domain, so it stops being
+    // active, and nothing is fetched.
     const world = createWorld(
       {
         addresses: ["127.0.0.1"],
@@ -765,9 +783,9 @@ describe("custom domains", () => {
         libraryId: fixture.created.libraryId,
         domainId,
       }),
-    ).resolves.toEqual({ status: "check-failed" });
+    ).resolves.toMatchObject({ state: "failed", failure: "wrong-target" });
     expect(world.probedHosts).toEqual([]);
-    expect((await readRow(fixture, domainId))?.state).toBe("active");
+    expect((await readRow(fixture, domainId))?.state).toBe("failed");
   });
 
   it("takes the domain out of the proxy first and only removes it once the site is live", async () => {
@@ -1067,6 +1085,40 @@ describe("custom domains", () => {
     expect(complete).toBe(true);
     // A deleted library must not keep a name reserved.
     await expect(readRow(fixture, added.domainId)).resolves.toBeNull();
+  });
+
+  it("stops showing a domain as working when its records point somewhere else", async () => {
+    const fixture = await createReadySetupFixture("domain-sweep-repointed");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    const domainId = added.domainId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        certificateHostnameId: "custom-hostname-1",
+        certificateState: "active",
+        checkedAt: 1,
+        updatedAt: Date.now(),
+      });
+    });
+
+    // Repointed at a private address. A sweep must not leave it active.
+    vi.stubGlobal(
+      "fetch",
+      createWorld({ addresses: ["10.0.0.5"], anyHost: true }, tag).fetchImpl,
+    );
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.domainActions.sweepWorkingDomains,
+        {},
+      ),
+    ).resolves.toMatchObject({ checked: 1, failed: 1 });
+    const swept = await readRow(fixture, domainId);
+    expect(swept?.state).toBe("failed");
+    expect(swept?.failure).toBe("wrong-target");
   });
 
   it("stops showing a domain as working once its records go away", async () => {

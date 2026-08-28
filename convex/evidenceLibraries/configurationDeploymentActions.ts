@@ -14,7 +14,7 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
-import { requireSafeRuntimeTarget } from "./domainEgress";
+import { openPinnedDomainClient } from "./domainEgressNode";
 import {
   isRetryableReadinessError,
   ReadinessClientError,
@@ -364,13 +364,17 @@ export const runConfigurationDeployment = internalAction({
         coolifyConfigHash: readiness.coolifyConfigHash,
       });
       // The address the runtime is read at may be a customer's domain, whose
-      // records they can repoint at any moment. The same gate every other
-      // request to a custom domain goes through runs here too.
-      await requireSafeRuntimeTarget({
-        targetBaseUrl: readiness.targetBaseUrl,
-        platformBaseUrl: readiness.platformBaseUrl,
-      });
+      // records they can repoint at any moment. Every readiness request to
+      // one goes through a client that can only reach the addresses that
+      // passed the check; a platform address is ours and needs no pinning.
+      const readinessFetch =
+        readiness.targetBaseUrl === readiness.platformBaseUrl
+          ? undefined
+          : await openPinnedDomainClient({
+              host: new URL(readiness.targetBaseUrl).hostname,
+            });
       await requireLibraryRuntimeReady({
+        ...(readinessFetch ? { fetchImpl: readinessFetch } : {}),
         applicationUuid: readiness.applicationId,
         runtimeCommit: readiness.runtimeCommit,
         revisionKey: readiness.revisionKey,

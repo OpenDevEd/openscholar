@@ -1,16 +1,12 @@
 /**
- * The one gate every request to a customer's domain goes through.
+ * The gate every request to a customer's domain goes through.
  *
  * A custom domain's records belong to its owner, who can repoint them at any
- * moment. Every outbound request the platform makes to one of those names —
- * the health probe, the readiness checks, the sweep — resolves the name
- * again first and refuses anything that is not a public internet address
- * reached through our own CNAME target.
- *
- * The window between this check and the request itself cannot be closed with
- * `fetch`, which resolves the name again and offers SNI for it. Repeating the
- * check immediately before each request is the mitigation that is available,
- * and it is applied everywhere rather than once at verification time.
+ * moment. This module resolves the name, refuses anything that is not a
+ * public internet address reached through our own CNAME target, and hands
+ * back the exact addresses that passed. The Node half
+ * (`domainEgressNode.ts`) then connects only to those addresses, so the name
+ * cannot resolve to something else between the check and the request.
  */
 
 import {
@@ -20,10 +16,11 @@ import {
   lookupHost,
   readAgreedAnswer,
   type DnsAnswer,
+  type DnsRecordType,
 } from "./dnsClient";
 import { readCustomDomainTarget } from "./domainConfig";
 
-/** Raised when a request to a customer's domain must not be made. */
+/** The domain answered something we will not connect to. A real answer. */
 export class DomainEgressRefused extends Error {
   constructor(message: string) {
     super(message);
@@ -31,59 +28,74 @@ export class DomainEgressRefused extends Error {
   }
 }
 
-function addressesOf(answers: readonly DnsAnswer[]): string[] {
-  return answers.flatMap((answer) => answer.addresses);
+/** The domain could not be read at all. Not an answer about the domain. */
+export class DomainEgressUnavailable extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DomainEgressUnavailable";
+  }
 }
 
-/** Both address families of our CNAME target, as both resolvers see them. */
-async function readTargetAddresses(
+/** The addresses of one family, as both resolvers agree on them. */
+async function readFamily(
   fetchImpl: typeof fetch,
-  target: string,
-): Promise<string[]> {
-  const [a, aaaa] = await Promise.all([
-    lookupHost(fetchImpl, target, "A"),
-    lookupHost(fetchImpl, target, "AAAA"),
-  ]);
-  return [
-    ...readAgreedAnswer(a, (answer) => answer.addresses.slice().sort().join(",")),
-    ...readAgreedAnswer(aaaa, (answer) => answer.addresses.slice().sort().join(",")),
-  ]
-    .join(",")
+  host: string,
+  type: Extract<DnsRecordType, "A" | "AAAA">,
+): Promise<{ answers: DnsAnswer[]; addresses: string[] }> {
+  const answers = await lookupHost(fetchImpl, host, type);
+  const addresses = readAgreedAnswer(answers, (answer) =>
+    answer.addresses.slice().sort().join(","),
+  )
     .split(",")
     .filter(Boolean);
+  return { answers, addresses };
 }
 
 /**
- * Refuses unless the host still reaches our target and every address it
- * answers with, in both families, is on the public internet.
+ * The addresses we will connect to for this host, or a refusal.
+ *
+ * Each address family is compared against the target's own answer for the
+ * same family: a flattened apex on a dual-stack target answers IPv4 with the
+ * target's IPv4 and IPv6 with its IPv6, never a mixture.
  */
-export async function requirePublicDomainTarget(input: {
+export async function readSafeDomainAddresses(input: {
   host: string;
   fetchImpl?: typeof fetch;
-}): Promise<void> {
+}): Promise<string[]> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const target = readCustomDomainTarget();
-  let addresses: string[];
+  let a: { answers: DnsAnswer[]; addresses: string[] };
+  let aaaa: { answers: DnsAnswer[]; addresses: string[] };
+  let targetA: string[];
+  let targetAaaa: string[];
   try {
-    const targetAddresses = await readTargetAddresses(fetchImpl, target);
-    const [a, aaaa] = await Promise.all([
-      lookupHost(fetchImpl, input.host, "A"),
-      lookupHost(fetchImpl, input.host, "AAAA"),
+    [a, aaaa, targetA, targetAaaa] = await Promise.all([
+      readFamily(fetchImpl, input.host, "A"),
+      readFamily(fetchImpl, input.host, "AAAA"),
+      readFamily(fetchImpl, target, "A").then((read) => read.addresses),
+      readFamily(fetchImpl, target, "AAAA").then((read) => read.addresses),
     ]);
-    const reading = readAgreedAnswer(a, (answer) =>
-      classifyTarget(answer, { target, targetAddresses }),
-    );
-    if (reading !== "pointing") {
-      throw new DomainEgressRefused("That domain no longer points at us");
-    }
-    addresses = [...addressesOf(a), ...addressesOf(aaaa)];
   } catch (error) {
-    if (error instanceof DomainEgressRefused) throw error;
     if (error instanceof DnsLookupError) {
-      throw new DomainEgressRefused("That domain could not be resolved");
+      throw new DomainEgressUnavailable("That domain could not be read");
     }
     throw error;
   }
+
+  // The name still has to reach us. Either family may carry the proof.
+  const reachesUs =
+    readAgreedAnswer(a.answers, (answer) =>
+      classifyTarget(answer, { target, targetAddresses: targetA }),
+    ) === "pointing" ||
+    (aaaa.addresses.length > 0 &&
+      readAgreedAnswer(aaaa.answers, (answer) =>
+        classifyTarget(answer, { target, targetAddresses: targetAaaa }),
+      ) === "pointing");
+  if (!reachesUs) {
+    throw new DomainEgressRefused("That domain no longer points at us");
+  }
+
+  const addresses = [...a.addresses, ...aaaa.addresses];
   if (addresses.length === 0) {
     throw new DomainEgressRefused("That domain answers no address");
   }
@@ -94,20 +106,5 @@ export async function requirePublicDomainTarget(input: {
       );
     }
   }
-}
-
-/**
- * The same gate, applied only to a name outside the platform's own domains.
- * A platform address is ours and is never repointed by a customer.
- */
-export async function requireSafeRuntimeTarget(input: {
-  targetBaseUrl: string;
-  platformBaseUrl: string;
-  fetchImpl?: typeof fetch;
-}): Promise<void> {
-  if (input.targetBaseUrl === input.platformBaseUrl) return;
-  await requirePublicDomainTarget({
-    host: new URL(input.targetBaseUrl).hostname,
-    ...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
-  });
+  return addresses;
 }

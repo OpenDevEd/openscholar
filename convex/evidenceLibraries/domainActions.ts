@@ -33,10 +33,8 @@ import {
   readAgreedAnswer,
   readAgreedIssuers,
 } from "./dnsClient";
-import {
-  DomainEgressRefused,
-  requirePublicDomainTarget,
-} from "./domainEgress";
+import { DomainEgressRefused, DomainEgressUnavailable } from "./domainEgress";
+import { openPinnedDomainClient } from "./domainEgressNode";
 import { MAX_DOMAIN_CLEANUP_ATTEMPTS } from "./domains";
 import {
   readCustomDomainTarget,
@@ -64,7 +62,7 @@ class DomainCheckUnavailable extends Error {
 function isUnavailable(error: unknown): boolean {
   return (
     error instanceof DomainCheckUnavailable ||
-    error instanceof DomainEgressRefused ||
+    error instanceof DomainEgressUnavailable ||
     error instanceof DnsLookupError ||
     error instanceof CloudflareSaasError ||
     error instanceof CoolifyClientError
@@ -369,17 +367,27 @@ async function readAnswerGate(input: {
   host: string;
   liveRevisionKey: string | null;
 }): Promise<DomainOutcome & { certificateState?: CertificateState }> {
+  // Where the domain points is settled first, because it is conclusive on
+  // its own: a domain repointed somewhere else, or at an address inside our
+  // own network, has stopped working whatever the certificate says.
+  let pinned: typeof fetch;
+  try {
+    pinned = await openPinnedDomainClient({ host: input.host });
+  } catch (error) {
+    if (error instanceof DomainEgressRefused) {
+      return { state: "failed", failure: "wrong-target" };
+    }
+    throw error;
+  }
   const cloudflare = createPlatformCloudflareSaasClient();
   // Without the certificate service there is no certificate answer, so this
   // step cannot run. Guessing "pending" would push a working domain back.
   if (!cloudflare) throw new DomainCheckUnavailable();
   const hostname = await cloudflare.readCustomHostname(input.host);
   if (!hostname) throw new DomainCheckUnavailable();
-  // Checked again here, right before the request: the records may have moved
-  // since the domain was verified.
-  await requirePublicDomainTarget({ host: input.host });
   const address = await probeEvidenceLibraryAddress({
     targetBaseUrl: `https://${input.host}`,
+    fetchImpl: pinned,
   });
   // Nothing answered. That is not an answer about the domain, so nothing is
   // written and a working domain is never pushed back by a bad moment.

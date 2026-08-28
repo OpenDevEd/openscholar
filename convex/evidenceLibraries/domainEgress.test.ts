@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DomainEgressRefused, requirePublicDomainTarget } from "./domainEgress";
+import {
+  DomainEgressRefused,
+  DomainEgressUnavailable,
+  readSafeDomainAddresses,
+} from "./domainEgress";
 
 const TARGET = "cname.openscholar.test";
 const TARGET_ADDRESSES = ["188.114.96.6", "188.114.97.6"];
+const TARGET_V6 = ["2606:4700::6810:85e5"];
 const HOST = "evidence.example.org";
 
 type World = {
   cname?: string;
   a?: string[];
   aaaa?: string[];
+  targetV6?: string[];
   offline?: boolean;
 };
 
@@ -19,12 +25,14 @@ function createFetch(world: World): typeof fetch {
     const name = url.searchParams.get("name")!;
     const type = url.searchParams.get("type")!;
     if (name === TARGET) {
+      const family = type === "A" ? TARGET_ADDRESSES : (world.targetV6 ?? []);
       return Response.json({
         Status: 0,
-        Answer:
-          type === "A"
-            ? TARGET_ADDRESSES.map((data) => ({ name, type: 1, data }))
-            : [],
+        Answer: family.map((data) => ({
+          name,
+          type: type === "A" ? 1 : 28,
+          data,
+        })),
       });
     }
     const answer: unknown[] = [];
@@ -42,23 +50,38 @@ function createFetch(world: World): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
-describe("requirePublicDomainTarget", () => {
+describe("readSafeDomainAddresses", () => {
   beforeEach(() => {
     vi.stubEnv("EL_CUSTOM_DOMAIN_TARGET", TARGET);
   });
 
-  it("allows a domain that reaches us and answers public addresses", async () => {
+  it("returns the addresses a domain that reaches us answers with", async () => {
     await expect(
-      requirePublicDomainTarget({
+      readSafeDomainAddresses({
         host: HOST,
         fetchImpl: createFetch({ cname: TARGET, a: TARGET_ADDRESSES }),
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual(TARGET_ADDRESSES);
+  });
+
+  it("compares each address family against the target's own family", async () => {
+    // A flattened apex on a target that answers both families: IPv4 matches
+    // the target's IPv4 and IPv6 matches its IPv6, never a mixture.
+    await expect(
+      readSafeDomainAddresses({
+        host: HOST,
+        fetchImpl: createFetch({
+          a: TARGET_ADDRESSES,
+          aaaa: TARGET_V6,
+          targetV6: TARGET_V6,
+        }),
+      }),
+    ).resolves.toEqual([...TARGET_ADDRESSES, ...TARGET_V6]);
   });
 
   it("refuses a domain that answers an address inside our own network", async () => {
     await expect(
-      requirePublicDomainTarget({
+      readSafeDomainAddresses({
         host: HOST,
         fetchImpl: createFetch({ cname: TARGET, a: ["127.0.0.1"] }),
       }),
@@ -67,7 +90,7 @@ describe("requirePublicDomainTarget", () => {
 
   it("refuses a private address hidden in the second address family", async () => {
     await expect(
-      requirePublicDomainTarget({
+      readSafeDomainAddresses({
         host: HOST,
         fetchImpl: createFetch({
           cname: TARGET,
@@ -81,16 +104,18 @@ describe("requirePublicDomainTarget", () => {
 
   it("refuses a domain that no longer points at us", async () => {
     await expect(
-      requirePublicDomainTarget({
+      readSafeDomainAddresses({
         host: HOST,
         fetchImpl: createFetch({ a: ["203.0.113.9"] }),
       }),
     ).rejects.toBeInstanceOf(DomainEgressRefused);
   });
 
-  it("refuses when the domain could not be resolved at all", async () => {
+  it("says nothing about a domain it could not read at all", async () => {
+    // A resolver that is down is not an answer about the domain, so it must
+    // not read as "that domain is wrong".
     await expect(
-      requirePublicDomainTarget({ host: HOST, fetchImpl: createFetch({ offline: true }) }),
-    ).rejects.toBeInstanceOf(DomainEgressRefused);
+      readSafeDomainAddresses({ host: HOST, fetchImpl: createFetch({ offline: true }) }),
+    ).rejects.toBeInstanceOf(DomainEgressUnavailable);
   });
 });
