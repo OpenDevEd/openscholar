@@ -967,6 +967,98 @@ describe("<ConfigurationWorkspace>", () => {
     );
   });
 
+  describe("the AI card while a key request is in flight", () => {
+    const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
+
+    it("locks every key control until the save answers", async () => {
+      const user = userEvent.setup();
+      let release!: (id: string) => void;
+      mutationMock.mockImplementation((reference: unknown) =>
+        reference === "writeCredential"
+          ? () =>
+              new Promise<string>((resolve) => {
+                release = resolve;
+              })
+          : async () => null,
+      );
+      await renderWorkspace();
+      const ai = card("ai");
+      await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
+      await user.type(ai.getByLabelText("ai.keyLabel"), "sk-or-v1-pending");
+      await user.click(ai.getByRole("button", { name: "ai.keySave" }));
+
+      // While the platform is still answering, nothing about the key moves.
+      const save = ai.getByRole("button", { name: "ai.keySave" });
+      expect(ai.getByLabelText("ai.keyLabel")).toBeDisabled();
+      expect(save).toBeDisabled();
+      expect(save).toHaveAttribute("aria-busy", "true");
+
+      await act(async () => {
+        release("credential_1");
+      });
+      // The saved key is cleared from the box, so Save has nothing to send.
+      expect(save).not.toHaveAttribute("aria-busy");
+      expect(ai.getByLabelText("ai.keyLabel")).toBeEnabled();
+      expect(ai.getByLabelText("ai.keyLabel")).toHaveValue("");
+    });
+
+    it("locks every key control until the removal answers", async () => {
+      const user = userEvent.setup();
+      storedCredentials = [{ credentialKey: AI_PROVIDER_CREDENTIAL_KEY }];
+      let release!: () => void;
+      mutationMock.mockImplementation((reference: unknown) =>
+        reference === "removeAiProviderKey"
+          ? () =>
+              new Promise<null>((resolve) => {
+                release = () => resolve(null);
+              })
+          : async () => null,
+      );
+      await renderWorkspace();
+      const ai = card("ai");
+      await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
+      await user.click(ai.getByRole("button", { name: "ai.keyRemove" }));
+
+      const removeButton = ai.getByRole("button", { name: "ai.keyRemove" });
+      const replace = ai.getByRole("button", { name: "ai.keyReplace" });
+      expect(removeButton).toBeDisabled();
+      expect(removeButton).toHaveAttribute("aria-busy", "true");
+      // Replace would start a second request against the same row.
+      expect(replace).toBeDisabled();
+
+      await act(async () => {
+        release();
+      });
+      expect(ai.getByRole("button", { name: "ai.keyReplace" })).toBeEnabled();
+    });
+
+    it("locks Cancel while a replacement is being saved", async () => {
+      const user = userEvent.setup();
+      storedCredentials = [{ credentialKey: AI_PROVIDER_CREDENTIAL_KEY }];
+      let release!: (id: string) => void;
+      mutationMock.mockImplementation((reference: unknown) =>
+        reference === "writeCredential"
+          ? () =>
+              new Promise<string>((resolve) => {
+                release = resolve;
+              })
+          : async () => null,
+      );
+      await renderWorkspace();
+      const ai = card("ai");
+      await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
+      await user.click(ai.getByRole("button", { name: "ai.keyReplace" }));
+      await user.type(ai.getByLabelText("ai.keyLabel"), "sk-or-v1-replacement");
+      await user.click(ai.getByRole("button", { name: "ai.keySave" }));
+
+      expect(ai.getByRole("button", { name: "ai.keyCancel" })).toBeDisabled();
+
+      await act(async () => {
+        release("credential_2");
+      });
+    });
+  });
+
   describe("the AI card without a stored key", () => {
     it("needs attention while AI answers are on and no key is stored", async () => {
       queryMock.mockReturnValue(

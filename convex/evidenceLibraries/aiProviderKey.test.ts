@@ -364,6 +364,69 @@ describe("the OpenRouter key", () => {
     ).resolves.toBeTruthy();
   });
 
+  it("stays changeable while unrelated work is only queued", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", ENCRYPTION_KEY);
+    const fixture = await createReadySetupFixture("ai_key_queued");
+    const libraryId = fixture.created.libraryId;
+    // The public endpoint queues a validate run and never starts it. It does
+    // not touch the key, so it must not lock it away for good.
+    await fixture.admin.mutation(api.evidenceLibraries.operations.queueOperation, {
+      libraryId,
+      kind: "validate",
+      idempotencyKey: "validate-1",
+    });
+    await expect(
+      fixture.admin.action(
+        api.evidenceLibraries.credentialActions.writeCredential,
+        {
+          libraryId,
+          concretePath: AI_PROVIDER_KEY_PATH,
+          instanceKey: AI_PROVIDER,
+          value: OPENROUTER_KEY,
+        },
+      ),
+    ).resolves.toBeTruthy();
+  });
+
+  it("stays changeable once a stalled publish has lost its lease", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", ENCRYPTION_KEY);
+    const fixture = await createReadySetupFixture("ai_key_stalled");
+    const libraryId = fixture.created.libraryId;
+    const write = () =>
+      fixture.admin.action(
+        api.evidenceLibraries.credentialActions.writeCredential,
+        {
+          libraryId,
+          concretePath: AI_PROVIDER_KEY_PATH,
+          instanceKey: AI_PROVIDER,
+          value: OPENROUTER_KEY,
+        },
+      );
+    const operationId = await fixture.t.run((ctx) =>
+      ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId,
+        kind: "publish",
+        idempotencyKey: "stalled-publish",
+        status: "running",
+        stage: "publishing",
+        attemptCount: 1,
+        configurationLeaseExpiresAt: Date.now() + 60_000,
+        requestedByClerkUserId: "user_ai_key_stalled",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+    );
+    // A live lease means the publish really is working; the key holds still.
+    await expect(write()).rejects.toThrow(/Wait for the current publish to finish/);
+
+    // A lease that ran out means the attempt stalled. The publish pipeline
+    // reclaims it and reads the key again, so the owner is not locked out.
+    await fixture.t.run((ctx) =>
+      ctx.db.patch(operationId, { configurationLeaseExpiresAt: Date.now() - 1 }),
+    );
+    await expect(write()).resolves.toBeTruthy();
+  });
+
   it("cannot be removed when the library has none", async () => {
     const fixture = await createReadySetupFixture("ai_key_absent");
     await expect(
