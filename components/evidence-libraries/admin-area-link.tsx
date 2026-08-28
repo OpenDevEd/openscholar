@@ -5,8 +5,10 @@ import type { ComponentPropsWithoutRef } from "react";
  *
  * It is always a plain `<a>`, never a client link: asking for that address
  * spends a single-use sign-in code, and Next fetches `<Link>` destinations
- * before the click. Every route in the app that points at
- * `/evidence-libraries/<id>/admin` goes through here.
+ * before the click. Every link in the app that points at
+ * `/evidence-libraries/<id>/admin` is a plain `<a>`: the list and setup
+ * pages use this component; the status page's panels render theirs through
+ * `AuthStatePanel` with `primaryNavigation="document"`.
  */
 export function AdminAreaLink({
   libraryId,

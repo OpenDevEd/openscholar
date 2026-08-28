@@ -198,8 +198,10 @@ in parallel; the end-to-end proof waits for both to merge.
    handler's status code and `Location` for each answer, including `405` for
    every method except `GET` — `OPTIONS` included, or Next answers it itself
    — so a link check or a preview card can never spend a code. Every link in
-   the app that points at the admin route goes through `AdminAreaLink`, a
-   plain `<a>`, so Next never fetches it before the click.
+   the app that points at the admin route is a plain `<a>` — `AdminAreaLink`
+   on the list and setup pages, `AuthStatePanel` with
+   `primaryNavigation="document"` on the status page — so Next never fetches
+   it before the click.
 3. `tests/components/evidence-libraries/admin-panels.test.tsx`: the three
    panels render their copy and links (roles, names); no CSS assertions.
 4. Delete `admin-launch.test.tsx` with the card. Update
