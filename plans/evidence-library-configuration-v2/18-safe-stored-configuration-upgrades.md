@@ -61,37 +61,45 @@ The two fields are the first migration, not the migration system.
    Migration `1 -> 2` removes `features.aiSearch` and
    `features.deepResearch`; assembly derives them from platform policy. It
    also converts pre-`122a7e55` Exports file-address values to the same schema
-   defaults used by the existing `readDraft` and `rowPayload` path, adds the
-   missing AI row used by the current editor, and preserves every remaining
-   owner value.
+   defaults used by the existing `readDraft` and `rowPayload` path, and runs
+   the version-2 completion rules. Version 2 currently declares the AI row's
+   empty object as its default, so an absent AI row is added without changing
+   any other owner value.
 4. **One ordered migration registry.** Add
    `owner-configuration-migrations.ts` beside the owner rules. It receives the
    complete snapshot and applies explicit consecutive steps until it reaches
    `CURRENT_OWNER_CONFIGURATION_VERSION`.
-5. **No guessing.** The runner rejects missing versions outside the temporary
+5. **Declared completion.** Each version may declare row defaults that have
+   stored meaning. The completion helper applies those declarations to a full
+   snapshot, adds only absent rows, preserves explicit rows, and is safe to
+   run again. The migration step for that version and the mutable-draft reset
+   use the same helper. A current draft in an active library must contain all
+   rows declared by its current-version completion rules. A provisioning draft
+   may remain sparse until setup is ready for activation.
+6. **No guessing.** The runner rejects missing versions outside the temporary
    production backfill, versions newer than this code, missing steps,
    duplicate sections, unknown sections, invalid output, credential material
    and values a migration cannot interpret without a product decision.
-6. **Full-snapshot changes.** A migration step may rename or remove fields,
+7. **Full-snapshot changes.** A migration step may rename or remove fields,
    change types or defaults, transfer ownership, and merge, split or move
    sections. Each step contains the exact decision for that change. The runner
    never deletes fields merely because they look platform-owned.
-7. **Frozen history stays frozen.** The first backfill labels historical
+8. **Frozen history stays frozen.** The first backfill labels historical
    revisions as version 1 without changing their payloads. Restore migrates the
    selected snapshot and creates a new current-version revision. The source
    remains unchanged and visible.
-8. **Live libraries use migrated candidates.** Runtime update, configuration
+9. **Live libraries use migrated candidates.** Runtime update, configuration
    publish, address move and domain change create one current-version candidate
    revision before queueing Coolify. No background job rebuilds every library
    merely to change its stored format. Each library migrates through its next
    real operation. The old active revision stays live until readiness succeeds.
-9. **Retries reuse the candidate.** Candidate creation and operation creation
+10. **Retries reuse the candidate.** Candidate creation and operation creation
    share one transaction. The idempotency key covers the library, source
    revision, target configuration version and the operation-specific intent,
    such as the requested runtime commit or address generation. Network,
    Coolify and readiness retries reuse that exact candidate. A migration
    failure happens before external calls and carries safe issues.
-10. **Use the official migration component.** Pin
+11. **Use the official migration component.** Pin
     `@convex-dev/migrations@0.3.3`. The shared self-hosted backend is commit
     `a9a760ca10399ed42e1b4bb87c78539a235488c7` from 2026-03-24. Component
     `0.3.4` and newer use the later `1.0/getFunctionMetadata` backend syscall
@@ -100,7 +108,7 @@ The two fields are the first migration, not the migration system.
     backfill, mutable draft migration and status tracking. Do not build another
     cursor, progress or resume framework. Upgrade the backend separately; do
     not mix a database-server upgrade into this configuration rollout.
-11. **Widen, tag, teach, migrate, narrow.** The first deployment adds the
+12. **Widen, tag, teach, migrate, narrow.** The first deployment adds the
     optional field while ordinary code keeps version-1 behavior and writes
     version 1. The migration component tags every missing header as version 1.
     Only after zero headers are missing does the second deployment require a
@@ -109,7 +117,7 @@ The two fields are the first migration, not the migration system.
     current candidates on their next real operation, the third deployment
     accepts only version 2 for mutable drafts. No ordinary read ever guesses a
     missing version. Keep explicit historical migrations for Restore.
-12. **Production release rule.** Any change to stored meaning or ownership
+13. **Production release rule.** Any change to stored meaning or ownership
     increments the current version and adds one explicit migration step before
     stricter rules deploy. Audit all drafts and revisions, migrate mutable data,
     prove the historical chain and live operations, then narrow. A failed audit
@@ -161,6 +169,14 @@ type OwnerConfigurationMigration = {
 };
 ```
 
+The registry also declares the default rows that complete each current
+version. `completeOwnerConfigurationSnapshot(snapshot)` applies the
+declarations for the snapshot's version, adding only absent rows and leaving
+explicit rows unchanged. It is idempotent. The migration step calls it after
+transforming an older snapshot, and the mutable-draft migration calls it again
+when a reset repairs a current-version draft. Future schema changes add their
+completion declarations to the next version step.
+
 `migrateOwnerConfiguration(snapshot)`:
 
 1. Refuses an invalid, unsupported future or unsupported old version.
@@ -184,10 +200,12 @@ Version 1 to 2 has four explicit decisions:
    the container while each asset remains optional and platform branding fills
    omitted values during assembly. Preserve every existing Identity field and
    every existing asset. An invalid non-object `assets` value still fails.
-4. When the AI row is missing, add it as `{}`. This records the current
-   schema default instead of making the editor report an unsaved change on its
-   first render. If AI answers are on, normal current validation still requires
-   a real model and fails instead of choosing one.
+4. The version-2 completion declaration says that a missing AI row is `{}`.
+   The migration calls that declaration, so it records the current schema
+   default instead of making the editor report an unsaved change on its first
+   render. If AI answers are on, normal current validation still requires a
+   real model and fails instead of choosing one. Future versions add their own
+   declared completion rules rather than adding section-specific repair paths.
 
 The read-only audit reports both shapes separately before writes. If both old
 and replacement representations ever exist in a future migration, that
@@ -370,20 +388,22 @@ deployment targets and active-revision transitions.
 - New
   `lib/evidence-libraries/configuration/owner-configuration-migrations.test.ts`:
   `1 -> 2`, missing Identity assets becomes an empty object while existing
-  assets stay unchanged, a missing AI row is added exactly once, chained steps,
-  complete-snapshot section moves, collision failure, input immutability,
-  deterministic output, current no-op, missing step, unknown old and newer
-  versions, invalid output and credential-bearing output.
+  assets stay unchanged, generic missing optional/default-equivalent rows are
+  completed exactly once while explicit rows and real changes stay intact,
+  chained steps, complete-snapshot section moves, collision failure, input
+  immutability, deterministic output, current no-op, missing step, unknown old
+  and newer versions, invalid output and credential-bearing output.
 - New `convex/evidenceLibraries/configurationMigration.test.ts`:
   tagging a missing header, no-op on a tagged header, reporting a header-only
   setup revision separately without a validation failure, refusing an unknown
-  version, and reporting a missing required row on an active library draft. Do
-  not retest the component's own progress, resume or index code.
+  version, reporting an incomplete active-library draft under the declared
+  completion invariant, and leaving a provisioning draft partial. Do not
+  retest the component's own progress, resume or index code.
 - `convex/evidenceLibraries/drafts.test.ts`: saving and activating a version-1
   draft produces only current rows and a current revision; the Deploy B
   `migrateDraftsToV2` definition rewrites one draft atomically without changing
-  `editVersion`, and a reset run repairs a version-2 draft created by the first
-  Deploy B pass without duplicating the AI row.
+  `editVersion`, and a reset run uses the same completion declarations to
+  repair a current-version draft without duplicating any default row.
 - `convex/evidenceLibraries/versions.test.ts`: runtime update, address move,
   domain change and restore each create or reuse one current candidate; old
   revisions stay unchanged; a repeated command looks up the operation before
@@ -506,9 +526,10 @@ migration is complete. Repeat `auditPage` with the returned cursor until
 5. Migrate mutable drafts to version 2 in one transaction per draft without
    changing `editVersion`. Configure the migration component with one draft per
    batch if that is required to keep header and section writes atomic. The
-   migration is idempotent for current version-2 drafts. If the first Deploy B
-   pass ran before the missing AI-row correction, dry-run it and run it again
-   with `reset: true`; the second pass must add only the missing row.
+   migration is idempotent for current-version drafts and applies the same
+   declared completion rules when run with `reset: true`. If the first Deploy
+   B pass ran before a completion declaration was added, dry-run it and run it
+   again; the reset must add only the missing declared rows.
 6. Keep historical revision payloads at their recorded versions.
 7. Verify zero missing-version drafts or revisions and a clean audit of every
    historical revision through the full chain. Version-1 active revisions are
@@ -545,8 +566,10 @@ For shared production, only from `dev-self`:
    headers and zero migration-validation failures, and record the exact counts.
 4. Merge lanes R and E only after step 3. Run `npm run convex:push` for Deploy B,
    migrate drafts, verify migration status and rerun every audit page. Every
-   active version-2 draft must pass complete validation. Reload its
-   configuration page and require no unsaved section before the owner edits it.
+   active version-2 draft must satisfy the declared completion invariant.
+   Reload its configuration page and require no unsaved section before the
+   owner edits it. Provisioning drafts must remain allowed to omit optional
+   rows.
 5. Prove a failed current candidate leaves its old library and health answer
    unchanged, then Retry and confirm it reuses the candidate. Prove the old
    failed `new lib` version-1 operation has no Retry action.
