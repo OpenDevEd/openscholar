@@ -172,12 +172,17 @@ type OwnerConfigurationMigration = {
 5. Returns the current snapshot and a bounded list of changed JSON pointers for
    audit logs. It never logs values.
 
-Version 1 to 2 has two explicit decisions:
+Version 1 to 2 has three explicit decisions:
 
 1. Delete the two former owner switches from the Features row.
 2. When any Exports value is not a boolean, replace the Exports row with the
    three current schema-default booleans. This is the existing
    pre-`122a7e55` rule, not a guess based on the stored file addresses.
+3. When Identity has no `assets` object, add `assets: {}`. Version-1 setup
+   stored only `name`, `shortName` and `baseUrl`; the current schema requires
+   the container while each asset remains optional and platform branding fills
+   omitted values during assembly. Preserve every existing Identity field and
+   every existing asset. An invalid non-object `assets` value still fails.
 
 The read-only audit reports both shapes separately before writes. If both old
 and replacement representations ever exist in a future migration, that
@@ -334,7 +339,8 @@ deployment targets and active-revision transitions.
 
 - New
   `lib/evidence-libraries/configuration/owner-configuration-migrations.test.ts`:
-  `1 -> 2`, chained steps,
+  `1 -> 2`, missing Identity assets becomes an empty object while existing
+  assets stay unchanged, chained steps,
   complete-snapshot section moves, collision failure, input immutability,
   deterministic output, current no-op, missing step, unknown old and newer
   versions, invalid output and credential-bearing output.
