@@ -71,6 +71,7 @@ describe("owner configuration migrations", () => {
       ],
     });
     expect(result.changedPointers).toEqual([
+      "/ownerConfigurationVersion",
       "/features/aiSearch",
       "/features/deepResearch",
       "/exports",

@@ -528,6 +528,9 @@ export function migrateOwnerConfiguration(
     }
     const checked = requireValidSnapshot(migrated, options);
     current = cloneJson(checked);
+    if (before.ownerConfigurationVersion !== current.ownerConfigurationVersion) {
+      changedPointers.push("/ownerConfigurationVersion");
+    }
     for (const pointer of changedSnapshotPointers(before, current)) {
       if (!changedPointers.includes(pointer)) changedPointers.push(pointer);
       if (changedPointers.length >= MAX_CHANGED_POINTERS) break;
