@@ -284,8 +284,19 @@ trusted snapshots read from Convex enter the migration registry.
   version-2 candidate and a new operation. It never changes the old operation
   to point somewhere else.
 - The server, not the component, decides `retryable`. It is true only for a
-  transient failed operation whose revision and saved target are still current.
-  The retry mutation enforces the same rule as the query projection.
+  failed operation with a saved target when all of these remain true: its
+  revision is the current owner format, it is still the library's newest
+  revision, it is based on the active revision, and its saved runtime intent
+  still matches the ready binding. A missing target is not retryable.
+- The fail-closed transient list is
+  `CONFIGURATION_DEPLOYMENT_STALLED`, `COOLIFY_UNAVAILABLE`,
+  `READINESS_UNAVAILABLE`, `RUNTIME_NOT_READY`, `CONFIG_NOT_READY` and
+  `PAGE_NOT_READY`. Unknown codes and every other code are not retryable.
+  `COOLIFY_DEPLOYMENT_FAILED` and `COOLIFY_DEPLOYMENT_NOT_FINISHED` stay out
+  until a later plan defines and tests a bounded repeated-build policy.
+- The retry mutation enforces the same shared predicate as the query
+  projection. An expired running lease is recovered by the existing internal
+  watchdog, not by the owner's failed-operation Retry action.
 - `completeConfigurationDeployment` remains the only place that changes
   `activeRevisionId`, after readiness succeeds.
 - A failed deployment leaves the old revision live.
@@ -361,8 +372,11 @@ deployment targets and active-revision transitions.
   candidate creation; replacing an old failed update creates one new candidate
   and operation.
 - `convex/evidenceLibraries/configurationDeployment.test.ts`: no Coolify call
-  for an old or failed candidate; retry reuses the candidate; completion alone
-  switches the active revision; the runtime hash comes from migrated data.
+  for an old or stale candidate; a failed current candidate with an allowlisted
+  transient code reuses its saved target, while a missing target, unknown code,
+  later candidate, changed active source or changed runtime intent blocks
+  Retry; completion alone switches the active revision; the runtime hash comes
+  from migrated data.
 - `convex/evidenceLibraries/applicationSetup.test.ts`,
   `convex/evidenceLibraries/databaseSetup.test.ts`,
   `convex/evidenceLibraries/setup.test.ts` and the existing query coverage in
