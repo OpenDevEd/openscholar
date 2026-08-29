@@ -84,13 +84,15 @@ export default defineSchema({
   evidenceLibraryConfigDrafts: defineTable(evidenceLibraryConfigDraftFields).index(
     "by_libraryId",
     ["libraryId"],
-  ),
+  )
+    .index("by_ownerConfigurationVersion", ["ownerConfigurationVersion"]),
 
   evidenceLibraryConfigRevisions: defineTable(
     evidenceLibraryConfigRevisionFields,
   )
     .index("by_libraryId_and_revisionKey", ["libraryId", "revisionKey"])
-    .index("by_libraryId_and_revisionNumber", ["libraryId", "revisionNumber"]),
+    .index("by_libraryId_and_revisionNumber", ["libraryId", "revisionNumber"])
+    .index("by_ownerConfigurationVersion", ["ownerConfigurationVersion"]),
 
   evidenceLibraryConfigSections: defineTable(
     evidenceLibraryConfigSectionValidator,

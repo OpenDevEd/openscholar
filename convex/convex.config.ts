@@ -7,6 +7,7 @@ import extractionPaperWorkpool from "@convex-dev/workpool/convex.config.js";
 import aggregate from "@convex-dev/aggregate/convex.config.js";
 import agent from "@convex-dev/agent/convex.config.js";
 import shardedCounter from "@convex-dev/sharded-counter/convex.config.js";
+import migrations from "@convex-dev/migrations/convex.config.js";
 
 const app = defineApp();
 app.use(stripe);
@@ -55,5 +56,6 @@ app.use(aggregate, { name: "txnBillingTypeAgg" });
 // depth. Keyed by `Id<"credits">`; total balance is derived (free + paid).
 app.use(shardedCounter, { name: "balanceFreeCounter" });
 app.use(shardedCounter, { name: "balancePaidCounter" });
+app.use(migrations);
 
 export default app;

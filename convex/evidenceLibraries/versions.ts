@@ -261,6 +261,7 @@ export async function restoreEvidenceLibraryRevision(
     revisionNumber,
     basedOnRevisionId: draft.baseRevisionId,
     rollbackOfRevisionId: source._id,
+    ownerConfigurationVersion: 1,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     createdByClerkUserId: running.clerkUserId,
     createdAt: now,
@@ -722,7 +723,6 @@ export async function applyEvidenceLibraryCanonicalAddress(
   },
 ): Promise<void> {
   {
-
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     const binding = library?.runtimeBindingId
       ? await ctx.db.get(
