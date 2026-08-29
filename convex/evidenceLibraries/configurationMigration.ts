@@ -91,6 +91,34 @@ type AuditFinding = {
   pointer: string;
   message: string;
 };
+
+export function auditHeaderVersion(
+  version: number | undefined,
+  isPlaceholderRevision: boolean,
+): AuditFinding | null {
+  if (version === undefined) {
+    return {
+      category: "missingVersion",
+      pointer: "/ownerConfigurationVersion",
+      message: "Snapshot version is missing.",
+    };
+  }
+  if (
+    !Number.isSafeInteger(version) ||
+    version < 1 ||
+    version > CURRENT_OWNER_CONFIGURATION_VERSION
+  ) {
+    return {
+      category: "unknownVersion",
+      pointer: "/ownerConfigurationVersion",
+      message: isPlaceholderRevision
+        ? "Header-only snapshot version is not supported by this code."
+        : "Snapshot version is not supported by this code.",
+    };
+  }
+  return null;
+}
+
 type AuditSample = AuditFinding & {
   kind: AuditKind;
   id: string;
@@ -241,17 +269,22 @@ async function auditHeader(
   if (header.ownerConfigurationVersion !== undefined) {
     entry.ownerConfigurationVersion = header.ownerConfigurationVersion;
   }
-  if (header.ownerConfigurationVersion === undefined) {
-    addFinding(entry, counts, samples, {
-      category: "missingVersion",
-      pointer: "/ownerConfigurationVersion",
-      message: "Snapshot version is missing.",
-    });
-  }
 
   const rows = await loadConfigurationSections(ctx, kind, header._id);
   const isPlaceholderRevision = kind === "revision" && rows.length === 0;
   if (isPlaceholderRevision) counts.placeholderRevisions += 1;
+  const versionFinding = auditHeaderVersion(
+    header.ownerConfigurationVersion,
+    isPlaceholderRevision,
+  );
+  if (versionFinding) addFinding(entry, counts, samples, versionFinding);
+  const library =
+    kind === "draft"
+      ? await ctx.db.get(
+          "evidenceLibraries",
+          (header as Doc<"evidenceLibraryConfigDrafts">).libraryId,
+        )
+      : null;
   const seen = new Set<string>();
   for (const row of rows) {
     if (row.kind !== kind) {
@@ -338,22 +371,13 @@ async function auditHeader(
     }
   }
 
-  if (
-    header.ownerConfigurationVersion !== undefined &&
-    !isPlaceholderRevision
-  ) {
+  if (header.ownerConfigurationVersion !== undefined) {
     const version = header.ownerConfigurationVersion;
-    if (
-      !Number.isSafeInteger(version) ||
-      version < 1 ||
-      version > CURRENT_OWNER_CONFIGURATION_VERSION
-    ) {
-      addFinding(entry, counts, samples, {
-        category: "unknownVersion",
-        pointer: "/ownerConfigurationVersion",
-        message: "Snapshot version is not supported by this code.",
-      });
-    } else {
+    const supportedVersion =
+      Number.isSafeInteger(version) &&
+      version >= 1 &&
+      version <= CURRENT_OWNER_CONFIGURATION_VERSION;
+    if (supportedVersion && !isPlaceholderRevision) {
       try {
         migrateOwnerConfiguration(
           {
@@ -365,7 +389,18 @@ async function auditHeader(
                 payload: row.payload,
               })),
           },
-          { requireComplete: kind === "revision" },
+          {
+            requireComplete:
+              kind === "revision" ||
+              (kind === "draft" &&
+                library !== null &&
+                library.state !== "provisioning"),
+            requireDeclaredDefaults:
+              kind === "revision" ||
+              (kind === "draft" &&
+                library !== null &&
+                library.state !== "provisioning"),
+          },
         );
       } catch (error) {
         if (error instanceof Error && "issues" in error) {

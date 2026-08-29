@@ -3,8 +3,10 @@ import { register as registerMigrations } from "@convex-dev/migrations/test";
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
+import { createDraftSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { auditHeaderVersion } from "./configurationMigration";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const TAG_DRAFT_VERSIONS = "migrations/ownerConfiguration:tagDraftVersions";
@@ -26,7 +28,10 @@ type AuditPage = {
   isDone: boolean;
 };
 
-async function seedHeaders(t: ReturnType<typeof convexTest>) {
+async function seedHeaders(
+  t: ReturnType<typeof convexTest>,
+  state: "active" | "provisioning" = "active",
+) {
   return await t.run(async (ctx) => {
     const organizationId = await ctx.db.insert("organizations", {
       clerkOrganizationId: "org_owner_configuration_migration",
@@ -43,7 +48,7 @@ async function seedHeaders(t: ReturnType<typeof convexTest>) {
       organizationId,
       name: "Migration Library",
       slug: "migration-library",
-      state: "active",
+      state,
       createdByClerkUserId: "user_migration",
       updatedByClerkUserId: "user_migration",
       createdAt: 2,
@@ -126,7 +131,7 @@ describe("Evidence Library configuration migration", () => {
   it("leaves explicitly versioned draft and revision headers alone", async () => {
     const t = convexTest(schema, modules);
     registerMigrations(t);
-    const seeded = await seedHeaders(t);
+    const seeded = await seedHeaders(t, "provisioning");
     const beforeRows = await t.run(async (ctx) =>
       (
         await ctx.db
@@ -176,7 +181,7 @@ describe("Evidence Library configuration migration", () => {
   it("counts a tagged header-only revision as a setup placeholder", async () => {
     const t = convexTest(schema, modules);
     registerMigrations(t);
-    const seeded = await seedHeaders(t);
+    const seeded = await seedHeaders(t, "provisioning");
     await runTagMigration(t, TAG_REVISION_VERSIONS);
 
     const pages = await readAuditPages(t);
@@ -200,10 +205,19 @@ describe("Evidence Library configuration migration", () => {
     ).toBe(1);
   });
 
+  it("reports an unknown version on a header-only revision", async () => {
+    expect(auditHeaderVersion(99, true)).toEqual({
+      category: "unknownVersion",
+      pointer: "/ownerConfigurationVersion",
+      message: "Header-only snapshot version is not supported by this code.",
+    });
+    expect(auditHeaderVersion(1, true)).toBeNull();
+  });
+
   it("does not flag a tagged draft when version one omits Identity assets", async () => {
     const t = convexTest(schema, modules);
     registerMigrations(t);
-    const seeded = await seedHeaders(t);
+    const seeded = await seedHeaders(t, "provisioning");
     await t.run(async (ctx) => {
       await ctx.db.insert("evidenceLibraryConfigSections", {
         kind: "draft",
@@ -229,6 +243,48 @@ describe("Evidence Library configuration migration", () => {
       0,
     );
     expect(migrationValidationFailures).toBe(0);
+  });
+
+  it("audits active drafts for declared rows while allowing provisioning drafts to stay partial", async () => {
+    const active = await createDraftSetupFixture("audit-active-completion");
+    await active.t.run(async (ctx) => {
+      await ctx.db.patch(active.created.libraryId, { state: "active" });
+      const payload = { colors: { accent: "#005A9C", tertiary: "#F2A900" } };
+      await ctx.db.insert("evidenceLibraryConfigSections", {
+        kind: "draft",
+        libraryId: active.created.libraryId,
+        draftId: active.created.draftId,
+        sectionKey: "theme",
+        payload,
+        payloadByteLength: Buffer.byteLength(JSON.stringify(payload)),
+        contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+        updatedByClerkUserId: active.clerkUserId,
+        updatedAt: 1,
+      });
+    });
+    const activePages = await readAuditPages(active.t);
+    expect(
+      activePages.some((page) =>
+        page.samples.some(
+          (sample) =>
+            typeof sample === "object" &&
+            sample !== null &&
+            "pointer" in sample &&
+            sample.pointer === "/ai",
+        ),
+      ),
+    ).toBe(true);
+
+    const provisioning = await createDraftSetupFixture(
+      "audit-provisioning-completion",
+    );
+    const provisioningPages = await readAuditPages(provisioning.t);
+    expect(
+      provisioningPages.reduce(
+        (total, page) => total + page.counts.migrationValidationFailures,
+        0,
+      ),
+    ).toBe(0);
   });
 
   it("reports bounded findings while paging drafts, revisions, and orphan rows", async () => {
@@ -302,7 +358,7 @@ describe("Evidence Library configuration migration", () => {
     expect(counts.staleFeatures).toBe(2);
     expect(counts.nonBooleanExports).toBe(1);
     expect(counts.brokenParents).toBe(1);
-    expect(counts.migrationValidationFailures).toBe(2);
+    expect(counts.migrationValidationFailures).toBe(1);
     expect(counts.placeholderRevisions).toBe(1);
     expect(pages.every((page) => page.samples.length <= 20)).toBe(true);
   });
