@@ -285,10 +285,12 @@ trusted snapshots read from Convex enter the migration registry.
   to point somewhere else.
 - The server, not the component, decides `retryable`. It is true only for a
   failed operation with a saved target when all of these remain true: its
-  revision is the current owner format, it is still the library's newest
-  revision, it is either the active revision or a candidate based on the active
-  revision, and its saved runtime intent still matches the ready binding. A
-  missing target is not retryable.
+  revision is the current owner format, the operation is still the library's
+  newest configuration-deployment command, the revision is either active or a
+  candidate based on the active revision, and its saved runtime intent still
+  matches the ready binding. A missing target is not retryable. Do not use
+  `latestRevisionId` as the command-order test: a later current-format runtime
+  update may reuse the active revision after an earlier candidate failed.
 - The fail-closed transient list is
   `CONFIGURATION_DEPLOYMENT_STALLED`, `COOLIFY_UNAVAILABLE`,
   `READINESS_UNAVAILABLE`, `RUNTIME_NOT_READY`, `CONFIG_NOT_READY` and
@@ -375,7 +377,7 @@ deployment targets and active-revision transitions.
 - `convex/evidenceLibraries/configurationDeployment.test.ts`: no Coolify call
   for an old or stale candidate; a failed current candidate with an allowlisted
   transient code reuses its saved target, while a missing target, unknown code,
-  later candidate, changed active source or changed runtime intent blocks
+  later deployment command, changed active source or changed runtime intent blocks
   Retry; completion alone switches the active revision; the runtime hash comes
   from migrated data.
 - `convex/evidenceLibraries/applicationSetup.test.ts`,
