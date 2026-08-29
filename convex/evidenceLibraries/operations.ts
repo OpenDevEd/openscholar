@@ -191,6 +191,50 @@ export async function isAcceptableSavedConfigurationTarget(
 }
 
 /**
+ * Reopens a failed same-key command when another configuration command made
+ * its saved target stale. The candidate and attempt history stay attached to
+ * this operation, but the next attempt must assemble and save a new target.
+ */
+export async function reissueConfigurationDeploymentOperation(
+  ctx: MutationCtx,
+  operation: Doc<"evidenceLibraryConfigOperations">,
+): Promise<void> {
+  if (
+    operation.status !== "failed" ||
+    !isConfigurationDeploymentOperation(operation)
+  ) {
+    return;
+  }
+  if (
+    operation.configurationDeploymentTarget &&
+    (await isAcceptableSavedConfigurationTarget(ctx, operation))
+  ) {
+    return;
+  }
+
+  let newestCreatedAt = operation.createdAt;
+  const operations = ctx.db
+    .query("evidenceLibraryConfigOperations")
+    .withIndex("by_libraryId_and_createdAt", (query) =>
+      query.eq("libraryId", operation.libraryId),
+    )
+    .order("desc");
+  for await (const candidate of operations) {
+    if (isConfigurationDeploymentOperation(candidate)) {
+      newestCreatedAt = Math.max(newestCreatedAt, candidate.createdAt);
+      break;
+    }
+  }
+  const commandAt = Math.max(Date.now(), newestCreatedAt) + 1;
+  await ctx.db.patch(operation._id, {
+    configurationDeploymentTarget: undefined,
+    receipt: undefined,
+    createdAt: commandAt,
+    updatedAt: commandAt,
+  });
+}
+
+/**
  * One server decision shared by the owner projection and the retry mutation.
  * It never inspects an error message or exposes the saved target.
  */

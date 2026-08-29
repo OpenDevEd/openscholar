@@ -1088,6 +1088,170 @@ describe("Evidence Library configuration deployment", () => {
     });
   });
 
+  it("reissues a stale runtime update with a fresh target after a newer command", async () => {
+    const fixture = await createReadyLibrary("runtime-update-reissue");
+    const activeRevisionId = await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      if (!library?.activeRevisionId) {
+        throw new Error("The active revision is missing");
+      }
+      await ctx.db.patch(library.activeRevisionId, {
+        ownerConfigurationVersion: 1,
+      });
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: newer runtime" }],
+        checkedAt: Date.now(),
+      });
+      return library.activeRevisionId;
+    });
+
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const candidate = await fixture.t.run((ctx) =>
+      ctx.db.get(started.revisionId),
+    );
+    if (!candidate) throw new Error("The runtime candidate is missing");
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: candidate.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+
+    const firstAttempt = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    if (!firstAttempt?.configurationAttemptToken) {
+      throw new Error("The runtime update did not start an attempt");
+    }
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: started.operationId,
+          attemptToken: firstAttempt.configurationAttemptToken,
+          attemptCount: firstAttempt.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ pollCount: 1, status: "running" });
+
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(started.operationId, {
+        status: "failed",
+        error: {
+          code: "COOLIFY_DEPLOYMENT_FAILED",
+          message: "Coolify could not deploy the Evidence Library",
+          stage: "publishing",
+        },
+        completedAt: Date.now(),
+        configurationAttemptToken: undefined,
+        configurationLeaseExpiresAt: undefined,
+        updatedAt: Date.now(),
+      });
+    });
+
+    const failed = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    expect(failed).toMatchObject({
+      status: "failed",
+      error: { code: "COOLIFY_DEPLOYMENT_FAILED" },
+      configurationDeploymentTarget: { revisionKey: candidate.revisionKey },
+    });
+    const firstTargetSavedAt = failed!.configurationDeploymentTarget!.savedAt;
+
+    const newerCommand = await fixture.t.run(async (ctx) => {
+      const domainId = await ctx.db.insert("evidenceLibraryDomains", {
+        libraryId: fixture.created.libraryId,
+        host: "newer-command.example.org",
+        verificationToken: "domain-token",
+        role: "redirect",
+        state: "added",
+        generation: 0,
+        createdByClerkUserId: fixture.clerkUserId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return await ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId: fixture.created.libraryId,
+        kind: "publish",
+        idempotencyKey: "newer-domain-command",
+        domainChange: {
+          domainId,
+          host: "newer-command.example.org",
+          reason: "attach",
+          token: "domain-token",
+        },
+        revisionId: activeRevisionId,
+        status: "succeeded",
+        stage: "completed",
+        attemptCount: 1,
+        requestedByClerkUserId: fixture.clerkUserId,
+        createdAt: failed!.createdAt + 1,
+        updatedAt: failed!.updatedAt + 1,
+      });
+    });
+    vi.setSystemTime(Date.now() + 1_000);
+
+    const repeated = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(repeated).toMatchObject({
+      operationId: started.operationId,
+      revisionId: started.revisionId,
+      status: "running",
+    });
+    const reissued = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    expect(reissued).toMatchObject({
+      status: "running",
+      attemptCount: 2,
+    });
+    expect(reissued!.createdAt).toBeGreaterThan(
+      (await fixture.t.run((ctx) => ctx.db.get(newerCommand)))!.createdAt,
+    );
+    expect(reissued).not.toHaveProperty("configurationDeploymentTarget");
+    expect(reissued).not.toHaveProperty("receipt");
+    expect(reissued?.revisionId).toBe(candidate._id);
+
+    network.finishDeployment();
+    const secondAttempt = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    if (!secondAttempt?.configurationAttemptToken) {
+      throw new Error("The reissued runtime update did not start an attempt");
+    }
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: started.operationId,
+          attemptToken: secondAttempt.configurationAttemptToken,
+          attemptCount: secondAttempt.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(fixture.created.libraryId)),
+    ).resolves.toMatchObject({ activeRevisionId: candidate._id });
+    const completed = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    expect(completed?.configurationDeploymentTarget?.savedAt).toBeGreaterThan(
+      firstTargetSavedAt,
+    );
+  });
+
   it("moves a live library only after Coolify serves the new address", async () => {
     const fixture = await createReadyLibrary("address-move-deploy");
     const movedTo = "https://climate-evidence-2-lib.libraries.example.test";

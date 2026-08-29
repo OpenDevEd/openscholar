@@ -33,6 +33,7 @@ import {
   queueConfigurationDeploymentOperation,
   queueDomainChangeOperation,
   queueRuntimeUpdateOperation,
+  reissueConfigurationDeploymentOperation,
 } from "./operations";
 import { isFreshRuntimeRelease } from "./runtimeReleases";
 import { sectionKeyValidator, type SectionKey } from "./validators";
@@ -305,6 +306,7 @@ async function queueCandidateOperation(
   );
   if (existing) {
     assertExistingCandidateOperation(existing, intent);
+    await reissueConfigurationDeploymentOperation(ctx, existing);
     return {
       operationId: existing._id,
       revisionId: existing.revisionId!,
@@ -536,6 +538,7 @@ export async function restoreEvidenceLibraryRevision(
       activationEditVersion:
         existing.activationEditVersion ?? draft.editVersion,
     });
+    await reissueConfigurationDeploymentOperation(ctx, existing);
     const existingRevision = existing.revisionId
       ? await ctx.db.get(existing.revisionId)
       : null;
