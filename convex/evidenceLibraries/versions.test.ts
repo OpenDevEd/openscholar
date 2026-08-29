@@ -394,6 +394,68 @@ describe("Evidence Library versions", () => {
     expect(repeatedState[0]?.revisionId).toBe(started.revisionId);
   });
 
+  it("migrates an old active source before creating a domain candidate", async () => {
+    const fixture = await createReadySetupFixture("domain-v2-candidate");
+    const activeRevisionId = fixture.activated.revisionId;
+    const domainId = await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(activeRevisionId, {
+        ownerConfigurationVersion: 1,
+      });
+      return await ctx.db.insert("evidenceLibraryDomains", {
+        libraryId: fixture.created.libraryId,
+        host: "climate.example.org",
+        verificationToken: "domain-token",
+        generation: 0,
+        role: "redirect",
+        state: "active",
+        attachedAt: Date.now(),
+        createdByClerkUserId: fixture.clerkUserId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.setDomainPrimary,
+      {
+        libraryId: fixture.created.libraryId,
+        domainId,
+        primary: true,
+      },
+    );
+    const state = await fixture.t.run(async (ctx) => {
+      const active = await ctx.db.get(activeRevisionId);
+      const candidate = await ctx.db.get(started.revisionId);
+      const candidateIdentity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", started.revisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      const library = await ctx.db.get(fixture.created.libraryId);
+      const operation = await ctx.db.get(started.operationId);
+      return { active, candidate, candidateIdentity, library, operation };
+    });
+
+    expect(state.active?.ownerConfigurationVersion).toBe(1);
+    expect(state.candidate).toMatchObject({
+      basedOnRevisionId: activeRevisionId,
+      ownerConfigurationVersion: 2,
+    });
+    expect(state.candidateIdentity?.payload).toMatchObject({
+      baseUrl: "https://climate.example.org",
+    });
+    expect(state.library?.activeRevisionId).toBe(activeRevisionId);
+    expect(state.library?.latestRevisionId).toBe(started.revisionId);
+    expect(state.operation?.domainChange).toMatchObject({
+      reason: "canonical",
+      host: "climate.example.org",
+      address: "https://climate.example.org",
+    });
+  });
+
   it("lists failed publishes and software updates with who started them", async () => {
     const fixture = await createReadySetupFixture("versions-list");
     const second = await publishSecondRevision(fixture);
