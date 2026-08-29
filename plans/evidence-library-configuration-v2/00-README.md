@@ -84,7 +84,7 @@ answer machine calls yet, so pickers have nothing to read.
 | 14 | `14-admin-handoff.md` | `/admin` redirects to OpenScholar, which signs in, checks access and sends the cookie back |
 | 15 | `15-runtime-ai-analytics-merge.md` | Merge `ai-modernization` into the runtime; AI section (OpenRouter only); analytics fields; logo sizing |
 | 16 | `16-custom-domains.md` (+ `16-RESEARCH.md`) | Custom domains: CNAME to `cname.opendev.space`, Cloudflare for SaaS, four verification gates, redirect toggle |
-| 18 | `18-safe-stored-configuration-upgrades.md` | Clean stale development rows and show the right recovery for configuration failures |
+| 18 | `18-safe-stored-configuration-upgrades.md` | Version every stored owner configuration and migrate production snapshots before stricter rules deploy |
 
 ## Lanes and order
 
@@ -142,8 +142,11 @@ No CSS, no copy-only tests. Each plan names its tests.
 
 ## Migration
 
-Development data is disposable. Drafts saved by the old four-section chain
-are re-saved by the new page on first Save. Nothing else is migrated.
+Superseded on 2026-08-29: Evidence Library configuration is production data.
+Plan 18 adds a separate owner-configuration version and the required
+widen-migrate-narrow release process. Frozen revisions remain history and are
+migrated forward into a new revision when restored or deployed. Do not wipe
+configuration rows to satisfy a new validator.
 
 ## Deployability gates
 

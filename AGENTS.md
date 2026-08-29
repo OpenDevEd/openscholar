@@ -415,19 +415,29 @@ An agent that changes `convex/` or `app/` must finish by running the matching re
 
 If the main session becomes too full and quality drops, pause. Commit safe work, add a short resume note to the plan, run `/clear`, and restart from the matching prompt in `PROMPTS.md`.
 
-## Development data can be deleted
+## Evidence Library configuration data is production data
 
-This project is still in testing. The Convex database is a development database. Treat schema changes as breaking by default.
+The user confirmed this boundary on 2026-08-29. Never wipe or hand-edit saved
+Evidence Library configuration to get past a new validator.
 
-1. Do not keep old fields, optional fallbacks, compatibility reads, or widen-then-narrow migrations.
-2. If new validation rejects development rows, wipe the affected tables through the Convex dashboard or a development-only admin function.
-3. Do not add `@convex-dev/migrations`, backfill scripts, or code that preserves old development rows.
-4. If a production database is added later, write a real migration then.
-5. Once production configuration data exists, deploy ownership or meaning
-   changes in this order: read-only audit, explicit data migration, then the
-   stricter validator. Never make an owner repair a platform-owned change.
+1. Give every stored configuration snapshot its own OpenScholar format version.
+   Do not reuse the Evidence Library runtime schema version.
+2. For a breaking storage or ownership change, use widen, migrate, then narrow.
+   Starting with the deployment that requires the version, every new write uses
+   the new format. This remains true after narrowing.
+3. Use `@convex-dev/migrations` for unbounded production data. Run a read-only
+   audit and a dry run first. Verify every batch and every live deployment
+   before narrowing.
+4. Keep frozen revisions unchanged. Restore them by applying the explicit
+   migration chain into a new revision.
+5. Keep historical migration steps that Restore still needs. Remove temporary
+   optional fields, missing-version reads and dual-write code after narrowing.
+6. Unknown versions, missing migration steps, ambiguous values, invalid output
+   and credential material block the release. Never make an owner repair a
+   platform-caused ownership change.
 
-A plan may say “no migration” for an additive change. The default remains: clean breaking change, disposable development data.
+An additive change that does not alter stored meaning may say “no migration.”
+The plan must explain why.
 
 ## Test behavior, not CSS text
 

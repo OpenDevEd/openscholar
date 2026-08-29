@@ -808,33 +808,34 @@ START NOW: read the research sections 0, C, D, the plan, the README, the Convex 
 Go.
 ```
 
-## Plan 18 — safe stored configuration upgrades
+## Plan 18 — production configuration evolution
 
 ```text
-Implement plans/evidence-library-configuration-v2/18-safe-stored-configuration-upgrades.md. Read plans/evidence-library-configuration-v2/00-README.md and plans/evidence-library-configuration-v2/15-runtime-ai-analytics-merge.md Decision 7 first. Depends on merged plans 01-16 and runtime contract commit 937bb65e.
+Implement plans/evidence-library-configuration-v2/18-safe-stored-configuration-upgrades.md as the integration owner. Read plans/evidence-library-configuration-v2/00-README.md, Plan 15 Decision 7, AGENTS.md, convex/_generated/ai/guidelines.md, the `ponytail`, `unslop`, `test-decision` and `convex-migration-helper` skills, both migration-helper references, and docs/test-quality.md first. Depends on merged plans 01-16 and runtime contract commit 937bb65e.
 
-Work in a new OpenScholar worktree from origin/dev with one assigned Convex Cloud development deployment. Allow one working day. Keep working without asking questions the plan or repository already answers.
+Allow one working day. Create lane M (`codex/owner-config-migrations`) in its own worktree and Convex Cloud deployment. After it merges, push Deploy A from dev-self, tag every missing header and verify zero missing versions. Only then create lanes R (`codex/config-migration-wiring`) and E (`codex/config-migration-errors`) from the new origin/dev with separate worktrees and Convex Cloud deployments. Only dev-self may upload to the shared production deployment. Keep working without asking questions the plan or repository already answers.
 
 STANDING RULES:
-1. Read and follow the `ponytail` and `unslop` skills before any work. Do not add a read-time converter, owner-format version, migration framework, compatibility mode, service, queue or cron.
-2. Reuse `changedSectionRows` and `staleExportsRow`, `PLATFORM_FEATURE_KEYS`, `createError` extra data, `sanitizeConfigurationIssues`, the existing issue links and the existing banner.
-3. New browser/API writes remain strict. The stale-row check reads raw stored Features rows and removes only `aiSearch` and `deepResearch` through the normal Save path.
-4. Old immutable revisions never change. Save and Activate create the clean current revision before Update.
-5. Read convex/_generated/ai/guidelines.md before Convex work. Use validators for all args and returns. Upload only to the assigned lane with `npx convex dev --once`; never use `npm run convex:push` outside dev-self.
-6. Before changing tests, run the `test-decision` skill and read docs/test-quality.md. Test behavior and data, never classes or incidental copy. Pure logic is red, then green, then cleanup.
-7. Read the matching installed Next.js guide before any app or component change. Do not use useEffect for app state.
-8. Use GPT-5.6 Luna at max reasoning for independent delegated research. Every agent must follow `ponytail` and `unslop`. Keep the one overlapping implementation write set in one lane.
-9. At the end of each complete phase, run one read-only review with `claudeekitabu --model claude-fable-5 --effort max`. Tell Fable to read and follow `ponytail` and `unslop`. Do not review every commit and do not let Fable implement or merge.
+1. Production is now. Never wipe, hand-edit or silently coerce Evidence Library configuration. Use widen, migrate, verify, then narrow.
+2. Read and follow `ponytail` and `unslop` in the owner and every agent. Use the official `@convex-dev/migrations` component for batching, dry runs, progress and resume. Do not build another migration runner around it.
+3. Add one snapshot-level `ownerConfigurationVersion` on draft and revision headers. Do not put it on section rows and do not reuse the runtime contract `schemaVersion`.
+4. Migrations are explicit consecutive full-snapshot TypeScript steps. They may express any declared field or section change, but never guess. Version 1 to 2 removes the two old Features switches and converts pre-122a7e55 Exports address rows to the existing schema-default booleans. Missing, newer, ambiguous, invalid or credential-bearing data blocks the release.
+5. New request writes stay strict. Only trusted snapshots read from Convex enter the migration chain. Old frozen revisions never change; Restore creates a new current revision.
+6. A live library stays on its old active revision until the migrated candidate deploys and passes readiness. Look up an operation by its full intent key before creating a candidate; Retry reuses that candidate. Address and domain changes put the new address in the candidate and never patch a frozen revision. Migration happens before any Coolify call.
+7. Convex functions have complete args and returns validators. Read convex/_generated/ai/guidelines.md. Lanes upload only with `npx convex dev --once`; only dev-self uses `npm run convex:push`.
+8. Before any test edit, use `test-decision` and docs/test-quality.md. Test versions, rows, ids, operation states, errors and health. Never test CSS or incidental copy. Use red, green, clean up for the pure registry.
+9. Use GPT-5.6 Luna at max reasoning for every delegated Codex agent. Every prompt requires `ponytail` and `unslop`. Lane M establishes Deploy A. After its tag audit passes, lanes R and E run in parallel with the exact non-overlapping ownership from Plan 18.
+10. At the end of each complete phase, run one read-only review with `claudeekitabu --model claude-fable-5 --effort max`. Fable reads `ponytail` and `unslop`, reviews the whole phase once, and never implements or merges.
 
-EXECUTION RHYTHM: Phase 1 stale-row test → `changedSectionRows` fix → lane Save and Activate gate → one Fable phase review. Phase 2 issue-projection test → preserve Convex error data → banner behavior → lane deployment and browser gate → one Fable phase review. Commit after every working unit.
+EXECUTION RHYTHM: Phase 1: lane M builds the optional version, pure registry, snapshot seam, official migration definitions and focused tests. Run one Fable review, merge the green exact head, then in dev-self export → Deploy A widen/tag → audit and dry-run → backfill all missing headers → verify zero missing. Phase 2 in parallel: lane R wires save, activation, setup, update, restore, address, domain, deployment and every payload-interpreting read through the snapshot seam; lane E owns server-projected `retryable`, retry enforcement and the workspace behavior. Saving a migrated draft persists every changed section without changing `editVersion`. Run one Fable review over both complete lanes, merge only green exact heads, push Deploy B, migrate drafts, and run the live gates including `new lib`. Phase 3: commit and push Deploy C narrowing, then repeat audit, browser, logs and health gates. Commit after every working unit.
 
 COMMIT DISCIPLINE: prefixes feat/fix/refactor/test/chore/docs; `[plan-18]` on every plan commit; never commit while relevant tests fail; never use --no-verify or another hook bypass; push and open a PR to dev; do not merge. Commit a plan correction before code that depends on it as `docs: [plan-18] revise <section> — <reason>`.
 
-WHEN TO STOP: only when both phase gates pass or a real blocker exists. For a blocker, commit safe work, write plans/evidence-library-configuration-v2/18-BLOCKER.md and stop. Do not stop for token worry or a question the plan answers. TypeScript, focused tests, lane Convex upload and browser checks must pass first.
+WHEN TO STOP: only when Deploy C and every completion rule in Plan 18 pass, or a real blocker exists. For a blocker, commit safe work, write plans/evidence-library-configuration-v2/18-BLOCKER.md and stop. Do not stop for token worry or a question the plan answers. Never narrow while an audit page, dry run, migration, candidate deployment, health check or relevant test is not green.
 
 DEVIATIONS: if the plan is wrong but the better path is clear, commit safe work, fix the numbered plan with the reason, commit the plan change, then continue. Never change direction silently.
 
-START NOW: read the plan, README, Plan 15 Decision 7, AGENTS.md, `ponytail`, `unslop`, test-decision, docs/test-quality.md and convex/_generated/ai/guidelines.md. Run git status, confirm no other Convex uploader is running in the lane, inspect the existing `staleExportsRow` pattern and operation issue path, then write the first failing stale Features row test.
+START NOW: read every named file and skill, fetch origin, run git status, confirm no other Convex uploader is running, record the shared row counts without writing, create lane M with its worktree and Convex Cloud deployment, and give its Luna Max agent the exact Phase 1 write set and tests from Plan 18. Do not create lanes R or E until Deploy A has tagged and verified every header.
 
 Go.
 ```
