@@ -148,8 +148,7 @@ export async function persistDraftConfigurationSnapshot(
     options.updatedAt !== undefined;
   if (!rowsChanged && !headerChanged) return;
   const updatedAt = options.updatedAt ?? draft.updatedAt;
-  const updatedBy =
-    options.updatedByClerkUserId ?? draft.updatedByClerkUserId;
+  const updatedBy = options.updatedByClerkUserId ?? draft.updatedByClerkUserId;
 
   for (const row of migratedSnapshot.sections) {
     const existing = rowsByKey.get(row.sectionKey);
@@ -171,7 +170,11 @@ export async function persistDraftConfigurationSnapshot(
       updatedAt: existing?.updatedAt ?? updatedAt,
     };
     if (existing) {
-      await ctx.db.replace("evidenceLibraryConfigSections", existing._id, fields);
+      await ctx.db.replace(
+        "evidenceLibraryConfigSections",
+        existing._id,
+        fields,
+      );
     } else {
       await ctx.db.insert("evidenceLibraryConfigSections", fields);
     }
@@ -188,6 +191,8 @@ export async function persistDraftConfigurationSnapshot(
     ...(options.updatedByClerkUserId === undefined
       ? {}
       : { updatedByClerkUserId: options.updatedByClerkUserId }),
-    ...(options.updatedAt === undefined ? {} : { updatedAt: options.updatedAt }),
+    ...(options.updatedAt === undefined
+      ? {}
+      : { updatedAt: options.updatedAt }),
   });
 }

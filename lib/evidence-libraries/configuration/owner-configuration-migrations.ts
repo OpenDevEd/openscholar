@@ -341,15 +341,15 @@ function defaultRowsForVersion(
   migrations: readonly OwnerConfigurationMigration[],
 ): readonly OwnerConfigurationDefaultRow[] {
   return (
-    migrations.find((migration) => migration.to === version)
-      ?.defaultRows ?? []
+    migrations.find((migration) => migration.to === version)?.defaultRows ?? []
   );
 }
 
-export function completeOwnerConfigurationSnapshot<T extends OwnerConfigurationMigrationSnapshot>(
+export function completeOwnerConfigurationSnapshot<
+  T extends OwnerConfigurationMigrationSnapshot,
+>(
   snapshot: T,
-  migrations: readonly OwnerConfigurationMigration[] =
-    OWNER_CONFIGURATION_MIGRATIONS,
+  migrations: readonly OwnerConfigurationMigration[] = OWNER_CONFIGURATION_MIGRATIONS,
 ): T {
   const next = cloneJson(snapshot);
   const existing = new Set(next.sections.map((row) => row.sectionKey));
@@ -628,8 +628,7 @@ function changedSnapshotPointers(
 export function migrateOwnerConfiguration(
   value: unknown,
   options: OwnerConfigurationValidationOptions = {},
-  migrations: readonly OwnerConfigurationMigration[] =
-    OWNER_CONFIGURATION_MIGRATIONS,
+  migrations: readonly OwnerConfigurationMigration[] = OWNER_CONFIGURATION_MIGRATIONS,
   targetVersion: number = CURRENT_OWNER_CONFIGURATION_VERSION,
 ): OwnerConfigurationMigrationResult {
   requireValidMigrationRegistry(migrations, targetVersion);
@@ -673,9 +672,7 @@ export function migrateOwnerConfiguration(
 
   let current = cloneJson(initial.snapshot);
   const changedPointers: string[] = [];
-  while (
-    current.ownerConfigurationVersion < targetVersion
-  ) {
+  while (current.ownerConfigurationVersion < targetVersion) {
     const migration = migrations.find(
       (candidate) => candidate.from === current.ownerConfigurationVersion,
     );
@@ -708,7 +705,10 @@ export function migrateOwnerConfiguration(
         ],
       );
     }
-    if (!isRecord(migrated) || migrated.ownerConfigurationVersion !== migration.to) {
+    if (
+      !isRecord(migrated) ||
+      migrated.ownerConfigurationVersion !== migration.to
+    ) {
       throw new OwnerConfigurationMigrationError(
         "Evidence Library configuration migration returned an invalid snapshot",
         [

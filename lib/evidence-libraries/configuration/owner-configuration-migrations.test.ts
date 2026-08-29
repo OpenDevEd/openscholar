@@ -272,9 +272,7 @@ describe("owner configuration migrations", () => {
         }),
       },
     ];
-    expect(validateOwnerConfigurationMigrationRegistry(chained, 3)).toEqual(
-      [],
-    );
+    expect(validateOwnerConfigurationMigrationRegistry(chained, 3)).toEqual([]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
         [chained[1]!, chained[0]!],
@@ -330,9 +328,9 @@ describe("owner configuration migrations", () => {
         expect.objectContaining({ keyword: "missingMigration" }),
       ]),
     );
-    expect(OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to])).toEqual(
-      [[1, 2]],
-    );
+    expect(
+      OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to]),
+    ).toEqual([[1, 2]]);
   });
 
   it("lets a historical step remove, rename, convert, transfer, split, merge, and remove sections", () => {
@@ -397,7 +395,11 @@ describe("owner configuration migrations", () => {
       sections: [
         {
           sectionKey: "legacyFeatures",
-          payload: { enabled: "on", removed: "discard-me", platformOwned: true },
+          payload: {
+            enabled: "on",
+            removed: "discard-me",
+            platformOwned: true,
+          },
         },
         {
           sectionKey: "legacyExports",
@@ -411,7 +413,10 @@ describe("owner configuration migrations", () => {
             baseUrl: "https://climate.example.test",
           },
         },
-        { sectionKey: "legacyContact", payload: { email: "owner@example.test" } },
+        {
+          sectionKey: "legacyContact",
+          payload: { email: "owner@example.test" },
+        },
         { sectionKey: "legacy/obsolete", payload: { old: "value" } },
       ],
     };
@@ -421,7 +426,10 @@ describe("owner configuration migrations", () => {
       ownerConfigurationVersion: 2,
       sections: [
         { sectionKey: "features", payload: { ai: true } },
-        { sectionKey: "exports", payload: { ris: true, bibtex: false, atom: true } },
+        {
+          sectionKey: "exports",
+          payload: { ris: true, bibtex: false, atom: true },
+        },
         {
           sectionKey: "identity",
           payload: {
@@ -457,16 +465,13 @@ describe("owner configuration migrations", () => {
                 !payload ||
                 typeof payload !== "object" ||
                 Array.isArray(payload) ||
-                typeof (payload as Record<string, unknown>).enabled !==
-                  "string"
+                typeof (payload as Record<string, unknown>).enabled !== "string"
               ) {
                 throw new Error("Legacy feature value is ambiguous");
               }
               return {
                 ownerConfigurationVersion: 2,
-                sections: [
-                  { sectionKey: "features", payload: { ai: false } },
-                ],
+                sections: [{ sectionKey: "features", payload: { ai: false } }],
               };
             },
           },
@@ -523,10 +528,14 @@ describe("owner configuration migrations", () => {
         },
       ],
       (migrations) =>
-        migrateOwnerConfiguration({
-          ownerConfigurationVersion: 1,
-          sections: [{ sectionKey: "features", payload: {} }],
-        }, {}, migrations),
+        migrateOwnerConfiguration(
+          {
+            ownerConfigurationVersion: 1,
+            sections: [{ sectionKey: "features", payload: {} }],
+          },
+          {},
+          migrations,
+        ),
     );
     expect(moved.snapshot).toEqual({
       ownerConfigurationVersion: 2,
@@ -550,10 +559,14 @@ describe("owner configuration migrations", () => {
           },
         ],
         (migrations) =>
-          migrateOwnerConfiguration({
-            ownerConfigurationVersion: 1,
-            sections: [{ sectionKey: "exports", payload: {} }],
-          }, {}, migrations),
+          migrateOwnerConfiguration(
+            {
+              ownerConfigurationVersion: 1,
+              sections: [{ sectionKey: "exports", payload: {} }],
+            },
+            {},
+            migrations,
+          ),
       ),
     );
     expect(collision.issues).toEqual(
@@ -633,10 +646,14 @@ describe("owner configuration migrations", () => {
           },
         ],
         (migrations) =>
-          migrateOwnerConfiguration({
-            ownerConfigurationVersion: 1,
-            sections: [{ sectionKey: "features", payload: {} }],
-          }, {}, migrations),
+          migrateOwnerConfiguration(
+            {
+              ownerConfigurationVersion: 1,
+              sections: [{ sectionKey: "features", payload: {} }],
+            },
+            {},
+            migrations,
+          ),
       ),
     );
     expect(invalidOutput.issues).toEqual(
@@ -662,10 +679,14 @@ describe("owner configuration migrations", () => {
           },
         ],
         (migrations) =>
-          migrateOwnerConfiguration({
-            ownerConfigurationVersion: 1,
-            sections: [{ sectionKey: "email", payload: {} }],
-          }, {}, migrations),
+          migrateOwnerConfiguration(
+            {
+              ownerConfigurationVersion: 1,
+              sections: [{ sectionKey: "email", payload: {} }],
+            },
+            {},
+            migrations,
+          ),
       ),
     );
     expect(credentialOutput.issues).toEqual(
@@ -699,10 +720,14 @@ describe("owner configuration migrations", () => {
           },
         ],
         (migrations) =>
-          migrateOwnerConfiguration({
-            ownerConfigurationVersion: 1,
-            sections: [],
-          }, {}, migrations),
+          migrateOwnerConfiguration(
+            {
+              ownerConfigurationVersion: 1,
+              sections: [],
+            },
+            {},
+            migrations,
+          ),
       ),
     );
     expect(error.issues).toEqual(
