@@ -1,12 +1,15 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
+  CURRENT_OWNER_CONFIGURATION_VERSION,
   migrateOwnerConfiguration,
   type OwnerConfigurationMigrationResult,
   type OwnerConfigurationSnapshot,
   type OwnerConfigurationValidationOptions,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
+import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
+import { validateSectionPayload } from "./sectionPayload";
 
 type SnapshotCtx = QueryCtx | MutationCtx;
 type SnapshotHeader =
@@ -17,6 +20,11 @@ export type LoadedConfigurationSnapshot = {
   header: SnapshotHeader;
   sections: Doc<"evidenceLibraryConfigSections">[];
   migration: OwnerConfigurationMigrationResult;
+};
+
+export type PersistDraftConfigurationOptions = {
+  updatedByClerkUserId?: string;
+  updatedAt?: number;
 };
 
 export function materializeConfigurationSnapshot(
@@ -95,4 +103,72 @@ export async function loadRevisionConfigurationSnapshot(
     sections,
     migration: materializeConfigurationSnapshot(snapshot, options),
   };
+}
+
+function samePayload(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+/**
+ * Stores a migrated draft in the same transaction as the caller's mutation.
+ * Revisions stay frozen, so this helper deliberately accepts drafts only.
+ */
+export async function persistDraftConfigurationSnapshot(
+  ctx: MutationCtx,
+  loaded: LoadedConfigurationSnapshot,
+  options: PersistDraftConfigurationOptions = {},
+): Promise<void> {
+  if (loaded.header.ownerConfigurationVersion === CURRENT_OWNER_CONFIGURATION_VERSION) {
+    return;
+  }
+  if (!("editVersion" in loaded.header)) {
+    throw new Error("Only draft configuration snapshots can be persisted");
+  }
+
+  const draft = loaded.header as Doc<"evidenceLibraryConfigDrafts">;
+  const storedRows = loaded.sections.filter((row) => row.kind === "draft");
+  const rowsByKey = new Map(storedRows.map((row) => [row.sectionKey, row]));
+  const nextKeys = new Set(
+    loaded.migration.snapshot.sections.map((row) => row.sectionKey),
+  );
+  const updatedAt = options.updatedAt ?? draft.updatedAt;
+  const updatedBy =
+    options.updatedByClerkUserId ?? draft.updatedByClerkUserId;
+
+  for (const row of loaded.migration.snapshot.sections) {
+    const existing = rowsByKey.get(row.sectionKey);
+    const payloadByteLength = validateSectionPayload(row.payload);
+    if (existing && samePayload(existing.payload, row.payload)) continue;
+    const fields = {
+      kind: "draft" as const,
+      libraryId: draft.libraryId,
+      draftId: draft._id,
+      sectionKey: row.sectionKey,
+      payload: row.payload,
+      payloadByteLength,
+      contractProvenance:
+        existing?.contractProvenance ?? EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+      updatedByClerkUserId: updatedBy,
+      updatedAt,
+    };
+    if (existing) {
+      await ctx.db.replace("evidenceLibraryConfigSections", existing._id, fields);
+    } else {
+      await ctx.db.insert("evidenceLibraryConfigSections", fields);
+    }
+  }
+
+  for (const row of storedRows) {
+    if (!nextKeys.has(row.sectionKey)) {
+      await ctx.db.delete(row._id);
+    }
+  }
+
+  await ctx.db.patch(draft._id, {
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
+    ...(options.updatedByClerkUserId === undefined
+      ? {}
+      : { updatedByClerkUserId: options.updatedByClerkUserId }),
+    ...(options.updatedAt === undefined ? {} : { updatedAt: options.updatedAt }),
+  });
 }
