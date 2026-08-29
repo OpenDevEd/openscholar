@@ -209,7 +209,6 @@ import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_backfillBillingTypes from "../migrations/backfillBillingTypes.js";
 import type * as migrations_backfillSearchableText from "../migrations/backfillSearchableText.js";
 import type * as migrations_backfillTransactionCounters from "../migrations/backfillTransactionCounters.js";
-import type * as migrations_ownerConfiguration from "../migrations/ownerConfiguration.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
@@ -479,7 +478,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillBillingTypes": typeof migrations_backfillBillingTypes;
   "migrations/backfillSearchableText": typeof migrations_backfillSearchableText;
   "migrations/backfillTransactionCounters": typeof migrations_backfillTransactionCounters;
-  "migrations/ownerConfiguration": typeof migrations_ownerConfiguration;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;
@@ -585,5 +583,4 @@ export declare const components: {
   txnBillingTypeAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"txnBillingTypeAgg">;
   balanceFreeCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"balanceFreeCounter">;
   balancePaidCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"balancePaidCounter">;
-  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
 };

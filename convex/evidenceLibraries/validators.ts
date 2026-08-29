@@ -148,13 +148,13 @@ export const configProvenanceValidator = v.object({
   catalogsSha256: v.string(),
 });
 
-// Deploy B requires every stored snapshot to name a version understood by the
-// owner-configuration migration registry. Historical revisions may still be
-// version 1 while new writes use version 2.
+// Historical revisions may still be version 1 while mutable drafts are always
+// stored in the current version.
 export const ownerConfigurationVersionValidator = v.union(
   v.literal(1),
   v.literal(2),
 );
+export const currentOwnerConfigurationVersionValidator = v.literal(2);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),
@@ -334,7 +334,7 @@ export const evidenceLibraryConfigDraftFields = {
   libraryId: v.id("evidenceLibraries"),
   baseRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
   editVersion: v.number(),
-  ownerConfigurationVersion: ownerConfigurationVersionValidator,
+  ownerConfigurationVersion: currentOwnerConfigurationVersionValidator,
   contractProvenance: configProvenanceValidator,
   createdByClerkUserId: v.string(),
   updatedByClerkUserId: v.string(),

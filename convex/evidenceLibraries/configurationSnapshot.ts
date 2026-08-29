@@ -2,7 +2,6 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
-  completeOwnerConfigurationSnapshot,
   migrateOwnerConfiguration,
   type OwnerConfigurationMigrationResult,
   type OwnerConfigurationSnapshot,
@@ -26,7 +25,6 @@ export type LoadedConfigurationSnapshot = {
 export type PersistDraftConfigurationOptions = {
   updatedByClerkUserId?: string;
   updatedAt?: number;
-  completeCurrentVersion?: boolean;
 };
 
 export function materializeConfigurationSnapshot(
@@ -125,12 +123,7 @@ export async function persistDraftConfigurationSnapshot(
   }
 
   const draft = loaded.header as Doc<"evidenceLibraryConfigDrafts">;
-  const migratedSnapshot = options.completeCurrentVersion
-    ? materializeConfigurationSnapshot(
-        completeOwnerConfigurationSnapshot(loaded.migration.snapshot),
-        { requireComplete: false },
-      ).snapshot
-    : loaded.migration.snapshot;
+  const migratedSnapshot = loaded.migration.snapshot;
   const storedRows = loaded.sections.filter((row) => row.kind === "draft");
   const rowsByKey = new Map(storedRows.map((row) => [row.sectionKey, row]));
   const nextKeys = new Set(
