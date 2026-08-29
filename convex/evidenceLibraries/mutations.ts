@@ -442,7 +442,10 @@ async function finalizeEvidenceLibraryDraft(
     libraryId: args.libraryId,
     revisionKey,
     revisionNumber,
-    basedOnRevisionId: draft.baseRevisionId,
+    // A failed publish leaves the draft pointing at its failed candidate.
+    // New publishes must branch from what is actually live, not that failed
+    // candidate. Setup has no active revision yet, so it keeps the draft base.
+    basedOnRevisionId: access.library.activeRevisionId ?? draft.baseRevisionId,
     rollbackOfRevisionId: null,
     ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,

@@ -836,6 +836,107 @@ describe("Evidence Library configuration deployment", () => {
     ).resolves.toMatchObject({ status: "succeeded" });
   });
 
+  it("bases a publish after a failed publish on the live revision", async () => {
+    const deployment = await activateChangedConfiguration(
+      "publish-after-failure",
+    );
+    const { libraryId } = deployment.fixture.created;
+    const activeRevisionId = deployment.fixture.activated.revisionId;
+    const network = createRuntimeNetwork({
+      libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const firstActionArgs = {
+      libraryId,
+      operationId: deployment.activated.operationId,
+      attemptToken: deployment.attemptToken,
+      attemptCount: deployment.attemptCount,
+    };
+
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        firstActionArgs,
+      ),
+    ).resolves.toEqual({ pollCount: 1, status: "running" });
+    await failSavedConfigurationDeployment(deployment);
+
+    const failed = await deployment.fixture.t.run(async (ctx) => ({
+      draft: await ctx.db
+        .query("evidenceLibraryConfigDrafts")
+        .withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId))
+        .unique(),
+      library: await ctx.db.get(libraryId),
+    }));
+    expect(failed.library?.activeRevisionId).toBe(activeRevisionId);
+    expect(failed.draft?.baseRevisionId).toBe(deployment.activated.revisionId);
+
+    const saved = await deployment.fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId,
+        sections: toSectionRows({
+          ...deployment.sections,
+          identity: {
+            ...deployment.sections.identity,
+            name: "Changed again",
+          },
+        }),
+        expectedEditVersion: deployment.activated.editVersion,
+      },
+    );
+    const second = await deployment.fixture.admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId,
+        expectedEditVersion: saved.editVersion,
+      },
+    );
+    const secondRevision = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(second.revisionId),
+    );
+    expect(secondRevision).toMatchObject({
+      basedOnRevisionId: activeRevisionId,
+    });
+    expect(second.revisionId).not.toBe(deployment.activated.revisionId);
+
+    const secondOperation = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(second.operationId),
+    );
+    if (!secondOperation?.configurationAttemptToken) {
+      throw new Error("The second publish did not start an attempt");
+    }
+    const secondActionArgs = {
+      libraryId,
+      operationId: second.operationId,
+      attemptToken: secondOperation.configurationAttemptToken,
+      attemptCount: secondOperation.attemptCount,
+    };
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        secondActionArgs,
+      ),
+    ).resolves.toEqual({ pollCount: 1, status: "running" });
+
+    network.finishDeployment();
+    network.setActiveRevision(second.revisionKey);
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        secondActionArgs,
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
+    await expect(
+      deployment.fixture.t.run((ctx) => ctx.db.get(libraryId)),
+    ).resolves.toMatchObject({ activeRevisionId: second.revisionId });
+  });
+
   it("keeps the previous revision active while runtime readiness catches up", async () => {
     const deployment = await activateChangedConfiguration("action-failure");
     const previousRevisionId = deployment.fixture.activated.revisionId;
