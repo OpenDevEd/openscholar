@@ -322,14 +322,17 @@ Large work is parallel only where write sets are independent.
 | 1 | M, migration foundation | `package*.json`, `convex/convex.config.ts`, schema and validators, `owner-configuration-migrations.ts`, `configurationSnapshot.ts`, audit and version-tag migration definitions, generated Convex API types, header metadata in the manual `queries.ts` return projections, and their tests |
 | 1 | Integration owner | Merge M, push Deploy A, tag all missing headers, and verify zero missing versions |
 | 2 | R, runtime wiring | Deploy B code in `mutations.ts`, `applicationSetup.ts`, `versions.ts`, `addressRecovery.ts`, the mutable-draft migration definition, payload-reading helpers outside `queries.ts` and their integration tests |
-| 2 | E, deployment recovery | `configurationDeployment.ts`, `operations.ts`, all Deploy B changes in `queries.ts`, server-owned `retryable` projection and enforcement, workspace Retry behavior and their tests |
+| 2 | E, deployment recovery | `configurationDeployment.ts`, its orchestration in `configurationDeploymentActions.ts`, `operations.ts`, all Deploy B changes in `queries.ts`, server-owned `retryable` projection and enforcement, workspace Retry behavior and their tests |
 | 3 | Integration owner | Review R and E once, merge both, push Deploy B, migrate drafts, run live gates, then commit and push Deploy C narrowing and update Outline |
 
 Lane M must finish first because Deploy A creates the version contract. After
 Deploy A tags every header, lanes R and E run together in separate worktrees and
 Convex Cloud deployments. Lane E owns the whole deployment file because the
 retry mutation and the pre-Coolify current-version check share its private
-claim and target helpers; splitting that file would make the lanes overlap.
+claim and target helpers. It also owns the paired action orchestrator because
+the address move must leave the live binding untouched until readiness instead
+of applying it between preparation and deployment. Splitting those paths would
+make the lanes overlap.
 Their write sets therefore do not overlap. Neither may merge before the shared
 tag audit is green. All Codex agents use GPT-5.6 Luna at max reasoning and read
 `ponytail` and `unslop`. Fable-5 reviews once at the end of each phase.
