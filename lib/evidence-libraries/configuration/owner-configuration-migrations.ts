@@ -56,7 +56,7 @@ const SECTION_KEYS = new Set<string>(
 );
 // These names are frozen in the version-1 to version-2 contract. A future
 // platform-owned feature must get its own migration decision.
-const LEGACY_FEATURE_KEYS = ["aiSearch", "deepResearch"] as const;
+export const LEGACY_FEATURE_KEYS = ["aiSearch", "deepResearch"] as const;
 
 function isSectionKey(value: unknown): value is SectionKey {
   return typeof value === "string" && SECTION_KEYS.has(value);
@@ -130,9 +130,7 @@ function legacyAllowedStructureIssue(
 ): boolean {
   if (sectionKey === "features" && isRecord(payload)) {
     return LEGACY_FEATURE_KEYS.some(
-      (key) =>
-        hasOwn(payload, key) &&
-        value.pointer === `/features/${key}`,
+      (key) => hasOwn(payload, key) && value.pointer === `/features/${key}`,
     );
   }
   if (sectionKey === "exports" && hasNonBooleanExport(payload)) {

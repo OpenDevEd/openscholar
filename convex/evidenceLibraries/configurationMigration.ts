@@ -4,10 +4,12 @@ import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
+  LEGACY_FEATURE_KEYS,
   migrateOwnerConfiguration,
   type OwnerConfigurationIssue,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
+import { loadConfigurationSections } from "./configurationSnapshot";
 
 const AUDIT_PAGE_SIZE = 25;
 const MAX_FINDINGS_PER_ENTRY = 20;
@@ -51,6 +53,7 @@ const auditCountsValidator = v.object({
   brokenParents: v.number(),
   duplicateSections: v.number(),
   migrationValidationFailures: v.number(),
+  placeholderRevisions: v.number(),
 });
 const auditSampleValidator = v.object({
   kind: v.union(
@@ -148,6 +151,7 @@ function emptyCounts(): AuditCounts {
     brokenParents: 0,
     duplicateSections: 0,
     migrationValidationFailures: 0,
+    placeholderRevisions: 0,
   };
 }
 
@@ -160,6 +164,7 @@ type AuditCounts = {
   brokenParents: number;
   duplicateSections: number;
   migrationValidationFailures: number;
+  placeholderRevisions: number;
 };
 
 function countFor(category: AuditCategory): keyof AuditCounts {
@@ -220,34 +225,6 @@ type Header =
   | Doc<"evidenceLibraryConfigDrafts">
   | Doc<"evidenceLibraryConfigRevisions">;
 
-async function readHeaderSections(
-  ctx: QueryCtx,
-  header: Header,
-  kind: "draft" | "revision",
-) {
-  const rows =
-    kind === "draft"
-      ? await ctx.db
-          .query("evidenceLibraryConfigSections")
-          .withIndex("by_draftId_and_sectionKey", (query) =>
-            query.eq(
-              "draftId",
-              header._id as Doc<"evidenceLibraryConfigDrafts">["_id"],
-            ),
-          )
-          .take(SECTION_REGISTRY.length + 1)
-      : await ctx.db
-          .query("evidenceLibraryConfigSections")
-          .withIndex("by_revisionId_and_sectionKey", (query) =>
-            query.eq(
-              "revisionId",
-              header._id as Doc<"evidenceLibraryConfigRevisions">["_id"],
-            ),
-          )
-          .take(SECTION_REGISTRY.length + 1);
-  return rows;
-}
-
 async function auditHeader(
   ctx: QueryCtx,
   header: Header,
@@ -272,7 +249,9 @@ async function auditHeader(
     });
   }
 
-  const rows = await readHeaderSections(ctx, header, kind);
+  const rows = await loadConfigurationSections(ctx, kind, header._id);
+  const isPlaceholderRevision = kind === "revision" && rows.length === 0;
+  if (isPlaceholderRevision) counts.placeholderRevisions += 1;
   const seen = new Set<string>();
   for (const row of rows) {
     if (row.kind !== kind) {
@@ -292,7 +271,7 @@ async function auditHeader(
     }
     seen.add(row.sectionKey);
     if (row.sectionKey === "features" && isRecord(row.payload)) {
-      for (const key of ["aiSearch", "deepResearch"]) {
+      for (const key of LEGACY_FEATURE_KEYS) {
         if (!hasOwn(row.payload, key)) continue;
         addFinding(entry, counts, samples, {
           category: "staleFeatures",
@@ -359,7 +338,10 @@ async function auditHeader(
     }
   }
 
-  if (header.ownerConfigurationVersion !== undefined) {
+  if (
+    header.ownerConfigurationVersion !== undefined &&
+    !isPlaceholderRevision
+  ) {
     const version = header.ownerConfigurationVersion;
     if (
       !Number.isSafeInteger(version) ||

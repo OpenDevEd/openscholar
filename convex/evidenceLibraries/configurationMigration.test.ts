@@ -1,9 +1,9 @@
 /// <reference types="vite/client" />
 import { register as registerMigrations } from "@convex-dev/migrations/test";
-import { anyApi } from "convex/server";
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
+import { internal } from "../_generated/api";
 import schema from "../schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -15,6 +15,8 @@ type AuditPage = {
     staleFeatures: number;
     nonBooleanExports: number;
     brokenParents: number;
+    migrationValidationFailures: number;
+    placeholderRevisions: number;
   };
   samples: unknown[];
   continueCursor: string;
@@ -90,6 +92,23 @@ async function seedHeaders(t: ReturnType<typeof convexTest>) {
   });
 }
 
+async function readAuditPages(
+  t: ReturnType<typeof convexTest>,
+): Promise<AuditPage[]> {
+  const pages: AuditPage[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: AuditPage = await t.query(
+      internal.evidenceLibraries.configurationMigration.auditPage,
+      { paginationOpts: { numItems: 10, cursor } },
+    );
+    pages.push(page);
+    cursor = page.continueCursor || null;
+    if (page.isDone) break;
+  } while (pages.length < 10);
+  return pages;
+}
+
 describe("Evidence Library configuration migration", () => {
   it("tags missing draft and revision headers and leaves tagged headers alone", async () => {
     const t = convexTest(schema, modules);
@@ -116,11 +135,11 @@ describe("Evidence Library configuration migration", () => {
       oneBatchOnly: true,
     };
     await t.mutation(
-      anyApi.migrations.ownerConfiguration.tagDraftVersions,
+      internal.migrations.ownerConfiguration.tagDraftVersions,
       args,
     );
     await t.mutation(
-      anyApi.migrations.ownerConfiguration.tagRevisionVersions,
+      internal.migrations.ownerConfiguration.tagRevisionVersions,
       args,
     );
     const tagged = await t.run(async (ctx) => ({
@@ -131,11 +150,11 @@ describe("Evidence Library configuration migration", () => {
     expect(tagged.revision?.ownerConfigurationVersion).toBe(1);
 
     await t.mutation(
-      anyApi.migrations.ownerConfiguration.tagDraftVersions,
+      internal.migrations.ownerConfiguration.tagDraftVersions,
       args,
     );
     await t.mutation(
-      anyApi.migrations.ownerConfiguration.tagRevisionVersions,
+      internal.migrations.ownerConfiguration.tagRevisionVersions,
       args,
     );
     const unchanged = await t.run(async (ctx) => ({
@@ -157,6 +176,41 @@ describe("Evidence Library configuration migration", () => {
         payloadByteLength: row.payloadByteLength,
       })),
     ).toEqual(beforeRows);
+  });
+
+  it("counts a tagged header-only revision as a setup placeholder", async () => {
+    const t = convexTest(schema, modules);
+    registerMigrations(t);
+    const seeded = await seedHeaders(t);
+    await t.mutation(
+      internal.migrations.ownerConfiguration.tagRevisionVersions,
+      {
+        cursor: null,
+        batchSize: 10,
+        dryRun: false,
+        oneBatchOnly: true,
+      },
+    );
+
+    const pages = await readAuditPages(t);
+    const counts = pages.reduce(
+      (total, page) => ({
+        migrationValidationFailures:
+          total.migrationValidationFailures +
+          page.counts.migrationValidationFailures,
+        placeholderRevisions:
+          total.placeholderRevisions + page.counts.placeholderRevisions,
+      }),
+      { migrationValidationFailures: 0, placeholderRevisions: 0 },
+    );
+
+    expect(pages.at(-1)?.isDone).toBe(true);
+    expect(counts.placeholderRevisions).toBe(1);
+    expect(counts.migrationValidationFailures).toBe(0);
+    expect(
+      (await t.run(async (ctx) => ctx.db.get(seeded.revisionId)))
+        ?.ownerConfigurationVersion,
+    ).toBe(1);
   });
 
   it("reports bounded findings while paging drafts, revisions, and orphan rows", async () => {
@@ -199,17 +253,7 @@ describe("Evidence Library configuration migration", () => {
       });
     });
 
-    const pages: AuditPage[] = [];
-    let cursor: string | null = null;
-    do {
-      const page: AuditPage = await t.query(
-        anyApi.evidenceLibraries.configurationMigration.auditPage,
-        { paginationOpts: { numItems: 10, cursor } },
-      );
-      pages.push(page);
-      cursor = page.continueCursor || null;
-      if (page.isDone) break;
-    } while (pages.length < 10);
+    const pages = await readAuditPages(t);
 
     expect(pages.at(-1)?.isDone).toBe(true);
     const counts = pages.reduce(
@@ -220,6 +264,11 @@ describe("Evidence Library configuration migration", () => {
         nonBooleanExports:
           total.nonBooleanExports + page.counts.nonBooleanExports,
         brokenParents: total.brokenParents + page.counts.brokenParents,
+        migrationValidationFailures:
+          total.migrationValidationFailures +
+          page.counts.migrationValidationFailures,
+        placeholderRevisions:
+          total.placeholderRevisions + page.counts.placeholderRevisions,
       }),
       {
         scanned: 0,
@@ -227,12 +276,16 @@ describe("Evidence Library configuration migration", () => {
         staleFeatures: 0,
         nonBooleanExports: 0,
         brokenParents: 0,
+        migrationValidationFailures: 0,
+        placeholderRevisions: 0,
       },
     );
     expect(counts.missingVersions).toBe(2);
     expect(counts.staleFeatures).toBe(2);
     expect(counts.nonBooleanExports).toBe(1);
     expect(counts.brokenParents).toBe(1);
+    expect(counts.migrationValidationFailures).toBe(0);
+    expect(counts.placeholderRevisions).toBe(1);
     expect(pages.every((page) => page.samples.length <= 20)).toBe(true);
   });
 });

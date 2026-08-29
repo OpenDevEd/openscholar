@@ -63,6 +63,8 @@ import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibr
 import type * as evidenceLibraries_cloudflareSaasClient from "../evidenceLibraries/cloudflareSaasClient.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
 import type * as evidenceLibraries_configurationDeploymentActions from "../evidenceLibraries/configurationDeploymentActions.js";
+import type * as evidenceLibraries_configurationMigration from "../evidenceLibraries/configurationMigration.js";
+import type * as evidenceLibraries_configurationSnapshot from "../evidenceLibraries/configurationSnapshot.js";
 import type * as evidenceLibraries_coolifyClient from "../evidenceLibraries/coolifyClient.js";
 import type * as evidenceLibraries_credentialActions from "../evidenceLibraries/credentialActions.js";
 import type * as evidenceLibraries_credentials from "../evidenceLibraries/credentials.js";
@@ -207,6 +209,7 @@ import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_backfillBillingTypes from "../migrations/backfillBillingTypes.js";
 import type * as migrations_backfillSearchableText from "../migrations/backfillSearchableText.js";
 import type * as migrations_backfillTransactionCounters from "../migrations/backfillTransactionCounters.js";
+import type * as migrations_ownerConfiguration from "../migrations/ownerConfiguration.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
@@ -330,6 +333,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/cloudflareSaasClient": typeof evidenceLibraries_cloudflareSaasClient;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
   "evidenceLibraries/configurationDeploymentActions": typeof evidenceLibraries_configurationDeploymentActions;
+  "evidenceLibraries/configurationMigration": typeof evidenceLibraries_configurationMigration;
+  "evidenceLibraries/configurationSnapshot": typeof evidenceLibraries_configurationSnapshot;
   "evidenceLibraries/coolifyClient": typeof evidenceLibraries_coolifyClient;
   "evidenceLibraries/credentialActions": typeof evidenceLibraries_credentialActions;
   "evidenceLibraries/credentials": typeof evidenceLibraries_credentials;
@@ -474,6 +479,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillBillingTypes": typeof migrations_backfillBillingTypes;
   "migrations/backfillSearchableText": typeof migrations_backfillSearchableText;
   "migrations/backfillTransactionCounters": typeof migrations_backfillTransactionCounters;
+  "migrations/ownerConfiguration": typeof migrations_ownerConfiguration;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;
@@ -579,4 +585,5 @@ export declare const components: {
   txnBillingTypeAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"txnBillingTypeAgg">;
   balanceFreeCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"balanceFreeCounter">;
   balancePaidCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"balancePaidCounter">;
+  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
 };

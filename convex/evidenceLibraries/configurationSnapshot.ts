@@ -21,12 +21,12 @@ export type LoadedConfigurationSnapshot = {
 
 export function materializeConfigurationSnapshot(
   snapshot: OwnerConfigurationSnapshot,
-  options: OwnerConfigurationValidationOptions = {},
+  options: OwnerConfigurationValidationOptions,
 ): OwnerConfigurationMigrationResult {
   return migrateOwnerConfiguration(snapshot, options);
 }
 
-async function readSections(
+export async function loadConfigurationSections(
   ctx: SnapshotCtx,
   kind: "draft" | "revision",
   id: Id<"evidenceLibraryConfigDrafts"> | Id<"evidenceLibraryConfigRevisions">,
@@ -56,11 +56,11 @@ async function readSections(
 export async function loadDraftConfigurationSnapshot(
   ctx: SnapshotCtx,
   draftId: Id<"evidenceLibraryConfigDrafts">,
-  options: OwnerConfigurationValidationOptions = {},
+  options: OwnerConfigurationValidationOptions,
 ): Promise<LoadedConfigurationSnapshot> {
   const header = await ctx.db.get("evidenceLibraryConfigDrafts", draftId);
   if (!header) throw new Error("Evidence Library draft not found");
-  const sections = await readSections(ctx, "draft", draftId);
+  const sections = await loadConfigurationSections(ctx, "draft", draftId);
   const snapshot = {
     ownerConfigurationVersion: header.ownerConfigurationVersion,
     sections: sections.map((row) => ({
@@ -78,11 +78,11 @@ export async function loadDraftConfigurationSnapshot(
 export async function loadRevisionConfigurationSnapshot(
   ctx: SnapshotCtx,
   revisionId: Id<"evidenceLibraryConfigRevisions">,
-  options: OwnerConfigurationValidationOptions = { requireComplete: true },
+  options: OwnerConfigurationValidationOptions,
 ): Promise<LoadedConfigurationSnapshot> {
   const header = await ctx.db.get("evidenceLibraryConfigRevisions", revisionId);
   if (!header) throw new Error("Evidence Library revision not found");
-  const sections = await readSections(ctx, "revision", revisionId);
+  const sections = await loadConfigurationSections(ctx, "revision", revisionId);
   const snapshot = {
     ownerConfigurationVersion: header.ownerConfigurationVersion,
     sections: sections.map((row) => ({
@@ -96,7 +96,3 @@ export async function loadRevisionConfigurationSnapshot(
     migration: materializeConfigurationSnapshot(snapshot, options),
   };
 }
-
-export const readDraftConfigurationSnapshot = loadDraftConfigurationSnapshot;
-export const readRevisionConfigurationSnapshot =
-  loadRevisionConfigurationSnapshot;
