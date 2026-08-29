@@ -449,31 +449,36 @@ export function migrateOwnerConfiguration(
   value: OwnerConfigurationSnapshot,
   options: OwnerConfigurationValidationOptions = {},
 ): OwnerConfigurationMigrationResult {
+  const rawVersion = isRecord(value)
+    ? value.ownerConfigurationVersion
+    : undefined;
+  if (typeof rawVersion === "number" && Number.isSafeInteger(rawVersion)) {
+    if (rawVersion > CURRENT_OWNER_CONFIGURATION_VERSION) {
+      throw new OwnerConfigurationMigrationError(
+        "Evidence Library configuration snapshot is newer than this code",
+        [
+          issue(
+            "/ownerConfigurationVersion",
+            "futureVersion",
+            "Snapshot version is newer than this code supports.",
+          ),
+        ],
+      );
+    }
+    if (rawVersion < 1) {
+      throw new OwnerConfigurationMigrationError(
+        "Evidence Library configuration snapshot has an unknown version",
+        [
+          issue(
+            "/ownerConfigurationVersion",
+            "unknownVersion",
+            "Snapshot version is not supported.",
+          ),
+        ],
+      );
+    }
+  }
   const initial = requireValidSnapshot(value, options);
-  if (initial.ownerConfigurationVersion > CURRENT_OWNER_CONFIGURATION_VERSION) {
-    throw new OwnerConfigurationMigrationError(
-      "Evidence Library configuration snapshot is newer than this code",
-      [
-        issue(
-          "/ownerConfigurationVersion",
-          "futureVersion",
-          "Snapshot version is newer than this code supports.",
-        ),
-      ],
-    );
-  }
-  if (initial.ownerConfigurationVersion < 1) {
-    throw new OwnerConfigurationMigrationError(
-      "Evidence Library configuration snapshot has an unknown version",
-      [
-        issue(
-          "/ownerConfigurationVersion",
-          "unknownVersion",
-          "Snapshot version is not supported.",
-        ),
-      ],
-    );
-  }
 
   let current = cloneJson(initial);
   const changedPointers: string[] = [];
@@ -528,7 +533,10 @@ export function migrateOwnerConfiguration(
     }
     const checked = requireValidSnapshot(migrated, options);
     current = cloneJson(checked);
-    if (before.ownerConfigurationVersion !== current.ownerConfigurationVersion) {
+    if (
+      before.ownerConfigurationVersion !== current.ownerConfigurationVersion &&
+      !changedPointers.includes("/ownerConfigurationVersion")
+    ) {
       changedPointers.push("/ownerConfigurationVersion");
     }
     for (const pointer of changedSnapshotPointers(before, current)) {
