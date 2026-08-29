@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import {
   createReadySetupFixture,
@@ -664,6 +664,70 @@ describe("Evidence Library address move", () => {
         applied: false,
       },
     });
+  });
+
+  it("keeps a primary custom domain in the candidate while moving the platform address", async () => {
+    const fixture = await createReadySetupFixture("address-live-primary");
+    const canonicalBaseUrl = "https://library.example.org";
+    const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
+    stubAddressChecks(fixture.created.publicAddress);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.runtimeBindingId, { canonicalBaseUrl });
+      for (const [kind, id] of [
+        ["draft", fixture.created.draftId],
+        ["revision", fixture.activated.revisionId],
+      ] as const) {
+        const identity = await ctx.db
+          .query("evidenceLibraryConfigSections")
+          .withIndex(
+            kind === "draft"
+              ? "by_draftId_and_sectionKey"
+              : "by_revisionId_and_sectionKey",
+            (query) =>
+              kind === "draft"
+                ? query.eq("draftId", id).eq("sectionKey", "identity")
+                : query.eq("revisionId", id).eq("sectionKey", "identity"),
+          )
+          .unique();
+        if (!identity || typeof identity.payload !== "object") {
+          throw new Error("Identity fixture is missing");
+        }
+        const payload = { ...identity.payload, baseUrl: canonicalBaseUrl };
+        await ctx.db.patch(identity._id, {
+          payload,
+          payloadByteLength: new TextEncoder().encode(JSON.stringify(payload))
+            .byteLength,
+        });
+      }
+    });
+
+    const moved = await fixture.admin.action(
+      api.evidenceLibraries.addressActions.moveLibraryAddress,
+      { libraryId: fixture.created.libraryId },
+    );
+    if (moved.status !== "moving") throw new Error("Address move was refused");
+    const operation = await readMoveOperation(fixture);
+    if (!operation?.revisionId || !operation.configurationAttemptToken) {
+      throw new Error("Address move did not start");
+    }
+    const prepared = await fixture.t.mutation(
+      internal.evidenceLibraries.configurationDeployment
+        .prepareConfigurationDeployment,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: operation._id,
+        attemptToken: operation.configurationAttemptToken,
+        attemptCount: operation.attemptCount,
+      },
+    );
+    if (prepared.state !== "new") throw new Error("Target was already saved");
+    const identity = prepared.sections.find(
+      (row) => row.sectionKey === "identity",
+    );
+
+    expect(moved.movedTo).toBe(movedTo);
+    expect(prepared.targetBaseUrl).toBe(movedTo);
+    expect(identity?.payload).toMatchObject({ baseUrl: canonicalBaseUrl });
   });
 
   it("refuses a second move while the first one is still running", async () => {

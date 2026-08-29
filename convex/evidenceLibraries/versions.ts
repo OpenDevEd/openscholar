@@ -452,11 +452,14 @@ export async function startEvidenceLibraryAddressMove(
     running.activeRevisionId,
     { requireComplete: true },
   );
+  // A custom domain stays the library's public identity. This operation moves
+  // only the platform address that continues to serve and redirect it.
+  const identityBaseUrl = running.binding.canonicalBaseUrl ?? movedTo;
   const movedSnapshot = snapshotWithIdentityAddress(
     source.migration.snapshot,
-    movedTo,
+    identityBaseUrl,
   );
-  requireValidCurrentSnapshot(movedSnapshot, movedTo);
+  requireValidCurrentSnapshot(movedSnapshot, identityBaseUrl);
   // Nothing is written yet. The records take the new address only once
   // Coolify serves it, so a failed move leaves the library where it is.
   const operation = await queueCandidateOperation(ctx, {
@@ -464,7 +467,7 @@ export async function startEvidenceLibraryAddressMove(
     sourceRevisionId: running.activeRevisionId,
     snapshot: source.migration.snapshot,
     forceCandidate: true,
-    updateIdentityTo: movedTo,
+    updateIdentityTo: identityBaseUrl,
     idempotencyKey: `address-move:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:${movedFrom}:${movedTo}`,
     addressMove: {
       from: movedFrom,
