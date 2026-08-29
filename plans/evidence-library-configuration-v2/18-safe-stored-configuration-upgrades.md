@@ -307,16 +307,18 @@ Large work is parallel only where write sets are independent.
 |---|---|---|
 | 1 | M, migration foundation | `package*.json`, `convex/convex.config.ts`, schema and validators, `owner-configuration-migrations.ts`, `configurationSnapshot.ts`, audit and version-tag migration definitions, generated Convex API types, header metadata in the manual `queries.ts` return projections, and their tests |
 | 1 | Integration owner | Merge M, push Deploy A, tag all missing headers, and verify zero missing versions |
-| 2 | R, runtime wiring | Deploy B code in `mutations.ts`, `applicationSetup.ts`, `versions.ts`, `configurationDeployment.ts`, `addressRecovery.ts`, the mutable-draft migration definition, payload-reading helpers and integration tests |
-| 2 | E, error recovery | `operations.ts`, the operation projection in `queries.ts`, server-owned `retryable` enforcement, workspace Retry behavior and their tests |
+| 2 | R, runtime wiring | Deploy B code in `mutations.ts`, `applicationSetup.ts`, `versions.ts`, `addressRecovery.ts`, the mutable-draft migration definition, payload-reading helpers outside `queries.ts` and their integration tests |
+| 2 | E, deployment recovery | `configurationDeployment.ts`, `operations.ts`, all Deploy B changes in `queries.ts`, server-owned `retryable` projection and enforcement, workspace Retry behavior and their tests |
 | 3 | Integration owner | Review R and E once, merge both, push Deploy B, migrate drafts, run live gates, then commit and push Deploy C narrowing and update Outline |
 
 Lane M must finish first because Deploy A creates the version contract. After
 Deploy A tags every header, lanes R and E run together in separate worktrees and
-Convex Cloud deployments. Their write sets do not overlap. Neither may merge
-before the shared tag audit is green. All Codex agents use GPT-5.6 Luna at max
-reasoning and read `ponytail` and `unslop`. Fable-5 reviews once at the end of
-each phase.
+Convex Cloud deployments. Lane E owns the whole deployment file because the
+retry mutation and the pre-Coolify current-version check share its private
+claim and target helpers; splitting that file would make the lanes overlap.
+Their write sets therefore do not overlap. Neither may merge before the shared
+tag audit is green. All Codex agents use GPT-5.6 Luna at max reasoning and read
+`ponytail` and `unslop`. Fable-5 reviews once at the end of each phase.
 
 ## Test decision
 
@@ -503,7 +505,7 @@ For shared production, only from `dev-self`:
 3. Keep `npm run logs:convex` open. Run every audit page, dry-run and version-1
    metadata backfill. Rerun every audit page after tagging. Verify zero missing
    headers and zero migration-validation failures, and record the exact counts.
-4. Merge lane R only after step 3. Run `npm run convex:push` for Deploy B,
+4. Merge lanes R and E only after step 3. Run `npm run convex:push` for Deploy B,
    migrate drafts, verify migration status and rerun every audit page.
 5. Prove a failed current candidate leaves its old library and health answer
    unchanged, then Retry and confirm it reuses the candidate. Prove the old
