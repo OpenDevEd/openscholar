@@ -107,6 +107,48 @@ cannot rely on a Docker target's hidden `CMD` or `HEALTHCHECK`. Compose must
 declare the web command, all four worker commands, the web health check, the
 search health check and the publication health check.
 
+### Development-server benchmark
+
+Measured on 2026-08-29 on `ode-hitzner-1`, the development Coolify host. The
+host reported `linux/amd64`, 48 CPUs, 251 GiB of memory and 1.2 TiB free. The
+benchmark used commit `937bb65ecb30f5f6f22cde5d0d527f3ad9988987`, two new
+BuildKit builders, uniquely named containers and `/tmp` source copies. It did
+not change a Coolify application or use a production resource.
+
+| Check | Current five images | Unified image | Change |
+|---|---:|---:|---:|
+| Cold build with an empty BuildKit cache | 156.85 s | 144.61 s | 7.8% faster |
+| Unchanged warm build | 14.45 s | 5.36 s | 62.9% faster |
+| Start to active configuration health | 1.744 s | 1.757 s and 1.785 s | No meaningful change |
+| Loaded web/runtime image size | 462,854,546 bytes | 565,822,607 bytes | 102,968,061 bytes larger |
+
+The two unified containers used the exact same image ID,
+`sha256:37f50309c76246680a23bda720b8028fdc78038063b3b7c1b8e98858e78d3a9b`.
+Their health endpoints reported `server-benchmark-a` and
+`server-benchmark-b`, and `/lib` returned HTTP 200 with `Server Benchmark A`
+and `Server Benchmark B` respectively. This passes the pre-implementation
+same-image, different-configuration gate.
+
+After the measurements, all three benchmark containers, six image tags, both
+BuildKit builders and the temporary source directory were removed. A final
+label, image, builder and path check found no benchmark resource left behind.
+
+Using the measured warm cache for every library after the first is the
+conservative tally. One library takes 158.59 seconds with the current path and
+146.38 seconds with one unified build, saving 7.7%. Five libraries take 223.37
+seconds versus 153.47 seconds, saving 31.3%. Eighteen libraries take 433.89
+seconds versus 176.49 seconds, saving 257.40 seconds or 59.3%. A
+configuration-only replacement falls from 16.19 seconds to 1.77 seconds,
+saving 89.1% per library.
+
+Those totals deliberately count the unified build on the deployment server,
+even though the final design moves it to Blacksmith. They do not count the
+first private-GHCR pull because no release image exists yet. For eighteen
+libraries, the build-once path still wins if that one pull takes less than
+257.40 seconds when build time is counted end to end, or less than 402.01
+seconds when comparing only work on the deployment server. Measure the real
+GHCR pull in the runtime gate before changing a live library.
+
 The build prototype also enabled
 `experimental.turbopackFileSystemCacheForBuild` and skipped Next's duplicate
 TypeScript check. This is safe for release builds only because the existing CI
