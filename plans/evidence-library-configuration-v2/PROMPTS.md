@@ -824,7 +824,7 @@ STANDING RULES:
 6. A live library stays on its old active revision until the migrated candidate deploys and passes readiness. Look up an operation by its full intent key before creating a candidate; Retry reuses that candidate. Address and domain changes put the new address in the candidate and never patch a frozen revision. Migration happens before any Coolify call.
 7. Convex functions have complete args and returns validators. Read convex/_generated/ai/guidelines.md. Lanes upload only with `npx convex dev --once`; only dev-self uses `npm run convex:push`.
 8. Before any test edit, use `test-decision` and docs/test-quality.md. Test versions, rows, ids, operation states, errors and health. Never test CSS or incidental copy. Use red, green, clean up for the pure registry.
-9. Use GPT-5.6 Luna at max reasoning for every delegated Codex agent. Every prompt requires `ponytail` and `unslop`. Lane M establishes Deploy A. After its tag audit passes, lanes R and E run in parallel with the exact non-overlapping ownership from Plan 18.
+9. Use GPT-5.6 Sol at max reasoning for every delegated Codex agent. Never substitute Terra. Every prompt requires `ponytail` and `unslop`. Lane M establishes Deploy A. After its tag audit passes, lanes R and E run in parallel with the exact non-overlapping ownership from Plan 18.
 10. At the end of each complete phase, run one read-only review with `claudeekitabu --model claude-fable-5 --effort max`. Fable reads `ponytail` and `unslop`, reviews the whole phase once, and never implements or merges.
 
 EXECUTION RHYTHM: Phase 1: lane M builds the optional version, pure registry, snapshot seam, official migration definitions and focused tests. Run one Fable review, merge the green exact head, then in dev-self export → Deploy A widen/tag → audit and dry-run → backfill all missing headers → verify zero missing. Phase 2 in parallel: lane R wires save, activation, setup, update, restore, address, domain, deployment and every payload-interpreting read through the snapshot seam; lane E owns server-projected `retryable`, retry enforcement and the workspace behavior. Saving a migrated draft persists every changed section without changing `editVersion`. Run one Fable review over both complete lanes, merge only green exact heads, push Deploy B, migrate drafts, and run the live gates including `new lib`. Phase 3: commit and push Deploy C narrowing, then repeat audit, browser, logs and health gates. Commit after every working unit.
@@ -835,7 +835,7 @@ WHEN TO STOP: only when Deploy C and every completion rule in Plan 18 pass, or a
 
 DEVIATIONS: if the plan is wrong but the better path is clear, commit safe work, fix the numbered plan with the reason, commit the plan change, then continue. Never change direction silently.
 
-START NOW: read every named file and skill, fetch origin, run git status, confirm no other Convex uploader is running, record the shared row counts without writing, create lane M with its worktree and Convex Cloud deployment, and give its Luna Max agent the exact Phase 1 write set and tests from Plan 18. Do not create lanes R or E until Deploy A has tagged and verified every header.
+START NOW: read every named file and skill, fetch origin, run git status, confirm no other Convex uploader is running, record the shared row counts without writing, create lane M with its worktree and Convex Cloud deployment, and give its GPT-5.6 Sol Max agent the exact Phase 1 write set and tests from Plan 18. Do not create lanes R or E until Deploy A has tagged and verified every header.
 
 Go.
 ```

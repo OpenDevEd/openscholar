@@ -301,7 +301,7 @@ Large work is parallel only where write sets are independent.
 Lane M must finish first because Deploy A creates the version contract. After
 Deploy A tags every header, lanes R and E run together in separate worktrees and
 Convex Cloud deployments. Their write sets do not overlap. Neither may merge
-before the shared tag audit is green. All Codex agents use GPT-5.6 Luna at max
+before the shared tag audit is green. All Codex agents use GPT-5.6 Sol at max
 reasoning and read `ponytail` and `unslop`. Fable-5 reviews once at the end of
 each phase.
 
