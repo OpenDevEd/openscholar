@@ -286,8 +286,9 @@ trusted snapshots read from Convex enter the migration registry.
 - The server, not the component, decides `retryable`. It is true only for a
   failed operation with a saved target when all of these remain true: its
   revision is the current owner format, it is still the library's newest
-  revision, it is based on the active revision, and its saved runtime intent
-  still matches the ready binding. A missing target is not retryable.
+  revision, it is either the active revision or a candidate based on the active
+  revision, and its saved runtime intent still matches the ready binding. A
+  missing target is not retryable.
 - The fail-closed transient list is
   `CONFIGURATION_DEPLOYMENT_STALLED`, `COOLIFY_UNAVAILABLE`,
   `READINESS_UNAVAILABLE`, `RUNTIME_NOT_READY`, `CONFIG_NOT_READY` and
