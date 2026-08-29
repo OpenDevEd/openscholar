@@ -1,5 +1,4 @@
 /// <reference types="vite/client" />
-import { register as registerMigrations } from "@convex-dev/migrations/test";
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
@@ -9,14 +8,9 @@ import schema from "../schema";
 import { auditHeaderVersion } from "./configurationMigration";
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const TAG_DRAFT_VERSIONS = "migrations/ownerConfiguration:tagDraftVersions";
-const TAG_REVISION_VERSIONS =
-  "migrations/ownerConfiguration:tagRevisionVersions";
-
 type AuditPage = {
   counts: {
     scanned: number;
-    missingVersions: number;
     staleFeatures: number;
     nonBooleanExports: number;
     brokenParents: number;
@@ -67,7 +61,7 @@ async function seedHeaders(
     });
     const draftId = await ctx.db.insert("evidenceLibraryConfigDrafts", {
       libraryId,
-      ownerConfigurationVersion: 1,
+      ownerConfigurationVersion: 2,
       baseRevisionId: revisionId,
       editVersion: 4,
       contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
@@ -81,8 +75,8 @@ async function seedHeaders(
       libraryId,
       draftId,
       sectionKey: "features",
-      payload: { ai: false, aiSearch: true, deepResearch: false },
-      payloadByteLength: 49,
+      payload: { ai: false },
+      payloadByteLength: 12,
       contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
       updatedByClerkUserId: "user_migration",
       updatedAt: 3,
@@ -92,8 +86,8 @@ async function seedHeaders(
       libraryId,
       draftId,
       sectionKey: "exports",
-      payload: { ris: "https://feeds.example.test/library.ris" },
-      payloadByteLength: 51,
+      payload: { atom: false, bibtex: true, ris: true },
+      payloadByteLength: 42,
       contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
       updatedByClerkUserId: "user_migration",
       updatedAt: 3,
@@ -119,70 +113,10 @@ async function readAuditPages(
   return pages;
 }
 
-function runTagMigration(t: ReturnType<typeof convexTest>, fn: string) {
-  return t.mutation(internal.migrations.ownerConfiguration.run, {
-    fn,
-    batchSize: 10,
-    dryRun: false,
-  });
-}
-
 describe("Evidence Library configuration migration", () => {
-  it("leaves explicitly versioned draft and revision headers alone", async () => {
+  it("counts a versioned header-only revision as a setup placeholder", async () => {
     const t = convexTest(schema, modules);
-    registerMigrations(t);
     const seeded = await seedHeaders(t, "provisioning");
-    const beforeRows = await t.run(async (ctx) =>
-      (
-        await ctx.db
-          .query("evidenceLibraryConfigSections")
-          .withIndex("by_draftId_and_sectionKey", (query) =>
-            query.eq("draftId", seeded.draftId),
-          )
-          .collect()
-      ).map((row) => ({
-        sectionKey: row.sectionKey,
-        payload: row.payload,
-        payloadByteLength: row.payloadByteLength,
-      })),
-    );
-    await runTagMigration(t, TAG_DRAFT_VERSIONS);
-    await runTagMigration(t, TAG_REVISION_VERSIONS);
-    const tagged = await t.run(async (ctx) => ({
-      draft: await ctx.db.get(seeded.draftId),
-      revision: await ctx.db.get(seeded.revisionId),
-    }));
-    expect(tagged.draft?.ownerConfigurationVersion).toBe(1);
-    expect(tagged.revision?.ownerConfigurationVersion).toBe(1);
-
-    await runTagMigration(t, TAG_DRAFT_VERSIONS);
-    await runTagMigration(t, TAG_REVISION_VERSIONS);
-    const unchanged = await t.run(async (ctx) => ({
-      draft: await ctx.db.get(seeded.draftId),
-      revision: await ctx.db.get(seeded.revisionId),
-      rows: await ctx.db
-        .query("evidenceLibraryConfigSections")
-        .withIndex("by_draftId_and_sectionKey", (query) =>
-          query.eq("draftId", seeded.draftId),
-        )
-        .collect(),
-    }));
-    expect(unchanged.draft?.editVersion).toBe(4);
-    expect(unchanged.draft?.ownerConfigurationVersion).toBe(1);
-    expect(
-      unchanged.rows.map((row) => ({
-        sectionKey: row.sectionKey,
-        payload: row.payload,
-        payloadByteLength: row.payloadByteLength,
-      })),
-    ).toEqual(beforeRows);
-  });
-
-  it("counts a tagged header-only revision as a setup placeholder", async () => {
-    const t = convexTest(schema, modules);
-    registerMigrations(t);
-    const seeded = await seedHeaders(t, "provisioning");
-    await runTagMigration(t, TAG_REVISION_VERSIONS);
 
     const pages = await readAuditPages(t);
     const counts = pages.reduce(
@@ -212,37 +146,6 @@ describe("Evidence Library configuration migration", () => {
       message: "Header-only snapshot version is not supported by this code.",
     });
     expect(auditHeaderVersion(1, true)).toBeNull();
-  });
-
-  it("does not flag a tagged draft when version one omits Identity assets", async () => {
-    const t = convexTest(schema, modules);
-    registerMigrations(t);
-    const seeded = await seedHeaders(t, "provisioning");
-    await t.run(async (ctx) => {
-      await ctx.db.insert("evidenceLibraryConfigSections", {
-        kind: "draft",
-        libraryId: seeded.libraryId,
-        draftId: seeded.draftId,
-        sectionKey: "identity",
-        payload: {
-          name: "Migration Library",
-          shortName: "Migration",
-          baseUrl: "https://migration.example.test",
-        },
-        payloadByteLength: 120,
-        contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
-        updatedByClerkUserId: "user_migration",
-        updatedAt: 3,
-      });
-    });
-    await runTagMigration(t, TAG_DRAFT_VERSIONS);
-
-    const pages = await readAuditPages(t);
-    const migrationValidationFailures = pages.reduce(
-      (total, page) => total + page.counts.migrationValidationFailures,
-      0,
-    );
-    expect(migrationValidationFailures).toBe(0);
   });
 
   it("audits active drafts for declared rows while allowing provisioning drafts to stay partial", async () => {
@@ -314,6 +217,27 @@ describe("Evidence Library configuration migration", () => {
       });
     });
     await t.run(async (ctx) => {
+      const features = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", seeded.draftId).eq("sectionKey", "features"),
+        )
+        .unique();
+      const exports = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", seeded.draftId).eq("sectionKey", "exports"),
+        )
+        .unique();
+      if (!features || !exports) throw new Error("Seeded audit rows missing");
+      await ctx.db.patch(features._id, {
+        payload: { ai: false, aiSearch: true, deepResearch: false },
+        payloadByteLength: 49,
+      });
+      await ctx.db.patch(exports._id, {
+        payload: { ris: "https://feeds.example.test/library.ris" },
+        payloadByteLength: 51,
+      });
       await ctx.db.insert("evidenceLibraryConfigSections", {
         kind: "draft",
         libraryId: otherLibraryId,
@@ -333,7 +257,6 @@ describe("Evidence Library configuration migration", () => {
     const counts = pages.reduce(
       (total, page) => ({
         scanned: total.scanned + page.counts.scanned,
-        missingVersions: total.missingVersions + page.counts.missingVersions,
         staleFeatures: total.staleFeatures + page.counts.staleFeatures,
         nonBooleanExports:
           total.nonBooleanExports + page.counts.nonBooleanExports,
@@ -346,7 +269,6 @@ describe("Evidence Library configuration migration", () => {
       }),
       {
         scanned: 0,
-        missingVersions: 0,
         staleFeatures: 0,
         nonBooleanExports: 0,
         brokenParents: 0,
@@ -354,7 +276,6 @@ describe("Evidence Library configuration migration", () => {
         placeholderRevisions: 0,
       },
     );
-    expect(counts.missingVersions).toBe(0);
     expect(counts.staleFeatures).toBe(2);
     expect(counts.nonBooleanExports).toBe(1);
     expect(counts.brokenParents).toBe(1);

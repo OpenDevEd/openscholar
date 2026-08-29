@@ -21,7 +21,6 @@ const auditStageValidator = v.union(
   v.literal("sections"),
 );
 const auditCategoryValidator = v.union(
-  v.literal("missingVersion"),
   v.literal("unknownVersion"),
   v.literal("staleFeatures"),
   v.literal("nonBooleanExports"),
@@ -46,7 +45,6 @@ const auditEntryValidator = v.object({
 });
 const auditCountsValidator = v.object({
   scanned: v.number(),
-  missingVersions: v.number(),
   unknownVersions: v.number(),
   staleFeatures: v.number(),
   nonBooleanExports: v.number(),
@@ -79,7 +77,6 @@ export const auditPageReturnValidator = v.object({
 type AuditStage = "drafts" | "revisions" | "sections";
 type AuditKind = "draft" | "revision" | "section";
 type AuditCategory =
-  | "missingVersion"
   | "unknownVersion"
   | "staleFeatures"
   | "nonBooleanExports"
@@ -93,16 +90,9 @@ type AuditFinding = {
 };
 
 export function auditHeaderVersion(
-  version: number | undefined,
+  version: number,
   isPlaceholderRevision: boolean,
 ): AuditFinding | null {
-  if (version === undefined) {
-    return {
-      category: "missingVersion",
-      pointer: "/ownerConfigurationVersion",
-      message: "Snapshot version is missing.",
-    };
-  }
   if (
     !Number.isSafeInteger(version) ||
     version < 1 ||
@@ -172,7 +162,6 @@ function decodeCursor(value: string | null): AuditCursor {
 function emptyCounts(): AuditCounts {
   return {
     scanned: 0,
-    missingVersions: 0,
     unknownVersions: 0,
     staleFeatures: 0,
     nonBooleanExports: 0,
@@ -185,7 +174,6 @@ function emptyCounts(): AuditCounts {
 
 type AuditCounts = {
   scanned: number;
-  missingVersions: number;
   unknownVersions: number;
   staleFeatures: number;
   nonBooleanExports: number;
@@ -197,8 +185,6 @@ type AuditCounts = {
 
 function countFor(category: AuditCategory): keyof AuditCounts {
   switch (category) {
-    case "missingVersion":
-      return "missingVersions";
     case "unknownVersion":
       return "unknownVersions";
     case "staleFeatures":
@@ -266,9 +252,7 @@ async function auditHeader(
     findings: [],
   };
   counts.scanned += 1;
-  if (header.ownerConfigurationVersion !== undefined) {
-    entry.ownerConfigurationVersion = header.ownerConfigurationVersion;
-  }
+  entry.ownerConfigurationVersion = header.ownerConfigurationVersion;
 
   const rows = await loadConfigurationSections(ctx, kind, header._id);
   const isPlaceholderRevision = kind === "revision" && rows.length === 0;
@@ -371,52 +355,50 @@ async function auditHeader(
     }
   }
 
-  if (header.ownerConfigurationVersion !== undefined) {
-    const version = header.ownerConfigurationVersion;
-    const supportedVersion =
-      Number.isSafeInteger(version) &&
-      version >= 1 &&
-      version <= CURRENT_OWNER_CONFIGURATION_VERSION;
-    if (supportedVersion && !isPlaceholderRevision) {
-      try {
-        migrateOwnerConfiguration(
-          {
-            ownerConfigurationVersion: version,
-            sections: rows
-              .filter((row) => row.kind === kind)
-              .map((row) => ({
-                sectionKey: row.sectionKey,
-                payload: row.payload,
-              })),
-          },
-          {
-            requireComplete:
-              kind === "revision" ||
-              (kind === "draft" &&
-                library !== null &&
-                library.state !== "provisioning"),
-            requireDeclaredDefaults:
-              kind === "revision" ||
-              (kind === "draft" &&
-                library !== null &&
-                library.state !== "provisioning"),
-          },
+  const version = header.ownerConfigurationVersion;
+  const supportedVersion =
+    Number.isSafeInteger(version) &&
+    version >= 1 &&
+    version <= CURRENT_OWNER_CONFIGURATION_VERSION;
+  if (supportedVersion && !isPlaceholderRevision) {
+    try {
+      migrateOwnerConfiguration(
+        {
+          ownerConfigurationVersion: version,
+          sections: rows
+            .filter((row) => row.kind === kind)
+            .map((row) => ({
+              sectionKey: row.sectionKey,
+              payload: row.payload,
+            })),
+        },
+        {
+          requireComplete:
+            kind === "revision" ||
+            (kind === "draft" &&
+              library !== null &&
+              library.state !== "provisioning"),
+          requireDeclaredDefaults:
+            kind === "revision" ||
+            (kind === "draft" &&
+              library !== null &&
+              library.state !== "provisioning"),
+        },
+      );
+    } catch (error) {
+      if (error instanceof Error && "issues" in error) {
+        addValidationFindings(
+          entry,
+          counts,
+          samples,
+          (error as { issues: OwnerConfigurationIssue[] }).issues,
         );
-      } catch (error) {
-        if (error instanceof Error && "issues" in error) {
-          addValidationFindings(
-            entry,
-            counts,
-            samples,
-            (error as { issues: OwnerConfigurationIssue[] }).issues,
-          );
-        } else {
-          addFinding(entry, counts, samples, {
-            category: "migrationValidationFailure",
-            pointer: "/sections",
-            message: "Snapshot validation failed.",
-          });
-        }
+      } else {
+        addFinding(entry, counts, samples, {
+          category: "migrationValidationFailure",
+          pointer: "/sections",
+          message: "Snapshot validation failed.",
+        });
       }
     }
   }
