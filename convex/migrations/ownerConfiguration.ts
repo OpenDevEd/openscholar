@@ -119,6 +119,8 @@ export const migrateDraftsToV2 = migrations.define({
         updatedAt: now,
       });
     }
+    // Deploy A accepts only the backfill literal. Deploy B widens this field
+    // to 1 | 2 before this migration is run.
     await ctx.db.patch(draft._id, {
       ownerConfigurationVersion: 2 as never,
     });
