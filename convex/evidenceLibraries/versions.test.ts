@@ -197,6 +197,83 @@ describe("Evidence Library versions", () => {
     ]);
   });
 
+  it("migrates a historical version into a current restore candidate without rewriting history", async () => {
+    const fixture = await createReadySetupFixture("restore-v2-candidate");
+    const second = await publishSecondRevision(fixture);
+    const historicalRevisionId = fixture.activated.revisionId;
+    const historicalBefore = await fixture.t.run((ctx) =>
+      ctx.db.get(historicalRevisionId),
+    );
+
+    await fixture.t.run(async (ctx) => {
+      const identity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", historicalRevisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      if (
+        !identity ||
+        identity.payload === null ||
+        typeof identity.payload !== "object"
+      ) {
+        throw new Error("Historical identity section is missing");
+      }
+      const { assets: _assets, ...legacyIdentity } = identity.payload as Record<
+        string,
+        unknown
+      >;
+      await ctx.db.patch(historicalRevisionId, {
+        ownerConfigurationVersion: 1,
+      });
+      await ctx.db.patch(identity._id, {
+        payload: legacyIdentity,
+        payloadByteLength: new TextEncoder().encode(
+          JSON.stringify(legacyIdentity),
+        ).byteLength,
+      });
+    });
+
+    const restored = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.restoreRevision,
+      {
+        libraryId: fixture.created.libraryId,
+        revisionId: historicalRevisionId,
+      },
+    );
+    const state = await fixture.t.run(async (ctx) => {
+      const historical = await ctx.db.get(historicalRevisionId);
+      const candidate = await ctx.db.get(restored.revisionId);
+      const candidateIdentity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", restored.revisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      const library = await ctx.db.get(fixture.created.libraryId);
+      return { candidate, candidateIdentity, historical, library };
+    });
+
+    expect(state.historical?.ownerConfigurationVersion).toBe(1);
+    expect(state.historical?.revisionKey).toBe(historicalBefore?.revisionKey);
+    expect(state.historical?.revisionNumber).toBe(
+      historicalBefore?.revisionNumber,
+    );
+    expect(state.historical?.createdAt).toBe(historicalBefore?.createdAt);
+    expect(state.candidate).toMatchObject({
+      basedOnRevisionId: second.revisionId,
+      rollbackOfRevisionId: historicalRevisionId,
+      ownerConfigurationVersion: 2,
+    });
+    expect(state.candidateIdentity?.payload).toMatchObject({ assets: {} });
+    expect(state.library?.activeRevisionId).toBe(second.revisionId);
+    expect(state.library?.latestRevisionId).toBe(restored.revisionId);
+  });
+
   it("refuses to restore while a publish is running or from another library", async () => {
     const fixture = await createReadySetupFixture("restore-refused");
     const foreignRevisionId = await fixture.t.run(async (ctx) => {
