@@ -95,6 +95,8 @@ handoff.
 
 ## Plan only when it helps
 
+- Before creating, editing, or executing anything under `plans/`, read
+  `plans/AGENTS.md`.
 - Keep small and medium plans in the conversation.
 - Commit a repository plan only for multi-day work, a breaking data migration,
   a cross-repository contract, a product decision, or work that must survive a
@@ -174,3 +176,15 @@ focused checks pass, the final required CI passes when a PR is in scope, and no
 known dead path or hidden fallback remains. Report the exact checks, commit,
 deployment state, and remaining risk. Never call a unit test alone proof of a
 browser or deployed service.
+
+## Bad and good examples
+
+| Bad | Good |
+|---|---|
+| Spawn a subagent because the fourth file needs reading. | Read the connected flow in the primary session. Spawn lanes only for independent work that can run at the same time. |
+| Let two agents edit the same schema or API contract. | Give the shared contract one owner. Parallelize callers only after that contract is fixed. |
+| Copy all standing rules and model choices into every `PROMPTS.md`. | Put task decisions and checks in the plan. Link to `AGENTS.md` for workflow. |
+| Run the full suite and a review after every commit. | Run one focused check while coding, one phase review, and the full CI gate once on the final head. |
+| A reviewer is silent for eight minutes, so start another review. | Check that the process is alive and keep waiting for the same review. |
+| Keep an old field optional so saved rows still validate. | Follow the data rule: audit, migrate, verify, then narrow. |
+| Say "tests pass, so deployment works." | Run the browser or live-service gate that proves the changed boundary. |
