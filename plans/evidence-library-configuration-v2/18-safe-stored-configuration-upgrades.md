@@ -69,7 +69,10 @@ The two fields are the first migration, not the migration system.
 4. **One ordered migration registry.** Add
    `owner-configuration-migrations.ts` beside the owner rules. It receives the
    complete snapshot and applies explicit consecutive steps until it reaches
-   `CURRENT_OWNER_CONFIGURATION_VERSION`.
+   `CURRENT_OWNER_CONFIGURATION_VERSION`. Registry validation requires one
+   unique step for every `N -> N + 1` boundary from version 1 through current;
+   the highest declared target must equal the current version. There is no
+   separate migration cap or section-specific escape hatch.
 5. **Declared completion.** Each version may declare row defaults that have
    stored meaning. The completion helper applies those declarations to a full
    snapshot, adds only absent rows, preserves explicit rows, and is safe to
@@ -78,9 +81,12 @@ The two fields are the first migration, not the migration system.
    rows declared by its current-version completion rules. A provisioning draft
    may remain sparse until setup is ready for activation.
 6. **No guessing.** The runner rejects missing versions outside the temporary
-   production backfill, versions newer than this code, missing steps,
-   duplicate sections, unknown sections, invalid output, credential material
-   and values a migration cannot interpret without a product decision.
+   production backfill, versions newer than this code, an invalid migration
+   registry, missing steps, duplicate sections, invalid envelopes, invalid
+   output, credential material and values a migration cannot interpret without
+   a product decision. A historical source envelope may contain a section key
+   or payload shape that no longer exists in the current contract; its declared
+   migration must transform or remove it before the final current-schema check.
 7. **Full-snapshot changes.** A migration step may rename or remove fields,
    change types or defaults, transfer ownership, and merge, split or move
    sections. Each step contains the exact decision for that change. The runner
@@ -178,13 +184,25 @@ transforming an older snapshot, and the mutable-draft migration calls it again
 when a reset repairs a current-version draft. Future schema changes add their
 completion declarations to the next version step.
 
+Historical rows are first checked against a safe source envelope: the version,
+row objects, section-key strings, strict JSON values and size limits. The
+current section validators are not applied before a historical transform, so a
+step can intentionally rename or remove a field, convert a type, transfer
+ownership, or split and merge sections. Each step's result must still satisfy
+that envelope. Only the final current-version result is checked against the
+current section registry, owner rules, credential exclusion and declared
+completion rules.
+
 `migrateOwnerConfiguration(snapshot)`:
 
 1. Refuses an invalid, unsupported future or unsupported old version.
-2. Finds the exact `N -> N + 1` step. A gap is an error.
-3. Runs steps over the complete snapshot without mutating the input.
-4. Validates unique section keys, credential exclusion, section byte limits and
-   total size. Mutable drafts use the same incomplete-draft rules as Save
+2. Validates the registry has one unique consecutive step for every supported
+   boundary and reaches the current version.
+3. Validates the source envelope before the first step and each intermediate
+   result without imposing today's section schema on historical data.
+4. Finds the exact `N -> N + 1` step and runs steps over the complete snapshot
+   without mutating the input. The final result gets strict current validation.
+   Mutable drafts use the same incomplete-draft rules as Save
    (`requireComplete: false`). Revisions and deployment candidates use the
    complete activation and deployment rules.
 5. Returns the current snapshot and a bounded list of changed JSON pointers for
@@ -392,15 +410,20 @@ deployment targets and active-revision transitions.
   `1 -> 2`, missing Identity assets becomes an empty object while existing
   assets stay unchanged, generic missing optional/default-equivalent rows are
   completed exactly once while explicit rows and real changes stay intact,
-  chained steps, complete-snapshot section moves, collision failure, input
-  immutability, deterministic output, current no-op, missing step, unknown old
-  and newer versions, invalid output and credential-bearing output.
+  registry integrity (unique consecutive steps ending at the current version),
+  chained steps, historical field removal/rename and type conversion, section
+  rename/removal, ownership transfer, split/merge, complete-snapshot collision
+  failure, input immutability, deterministic output, current no-op, missing
+  step, unknown old and newer versions, invalid output and credential-bearing
+  output. Historical fixtures must prove that obsolete keys and payload types
+  reach their declared transform instead of being rejected by today's schema.
 - New `convex/evidenceLibraries/configurationMigration.test.ts`:
   tagging a missing header, no-op on a tagged header, reporting a header-only
-  setup revision separately without a validation failure, refusing an unknown
-  version, reporting an incomplete active-library draft under the declared
-  completion invariant, and leaving a provisioning draft partial. Do not
-  retest the component's own progress, resume or index code.
+  setup revision separately without a validation failure, reporting an unknown
+  version even for a header-only setup revision, refusing an unknown version,
+  reporting an incomplete active-library draft under the declared completion
+  invariant, and leaving a provisioning draft partial. Do not retest the
+  component's own progress, resume or index code.
 - `convex/evidenceLibraries/drafts.test.ts`: saving and activating a version-1
   draft produces only current rows and a current revision; the Deploy B
   `migrateDraftsToV2` definition rewrites one draft atomically without changing
