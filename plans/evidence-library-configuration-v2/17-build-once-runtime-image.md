@@ -25,8 +25,8 @@ access boundary as the private repository. Making it public would be a separate
 user decision because GitHub says that change cannot be undone.
 
 Run every `new-el` GitHub Actions job inside one KVM guest on the current
-48-core Hetzner Coolify host. GitHub keeps scheduling jobs and reporting
-required checks, but Blacksmith does not execute any job. The guest has 24
+48-core Hetzner Coolify host. GitHub keeps scheduling jobs and reporting the
+aggregate `CI` result, but Blacksmith does not execute any job. The guest has 24
 virtual CPUs, 48 GiB of memory and a bounded virtual disk. Use fixed runners
 instead of an autoscaler: four 2-core light runners, one 16-core runtime runner
 and one 16-core release runner. The two heavy runners share one 16-core systemd
@@ -227,8 +227,8 @@ their caches, the temporary Node image tag and
   This matches the existing runtime `LIBRARY_CONFIG_JSON` design.
 - GitHub routes a job to any idle self-hosted runner whose group and labels
   match `runs-on`. A self-hosted runner executes one job at a time. Restrict the
-  runner group to `new-el` and route light, runtime and release work with
-  separate labels
+  CI and release groups to `new-el` and route light, runtime and release work
+  with separate labels
   ([self-hosted runner reference](https://docs.github.com/en/actions/reference/runners/self-hosted-runners),
   [using self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/use-in-a-workflow)).
 - GitHub warns that self-hosted jobs do not receive a clean isolated machine.
@@ -388,9 +388,19 @@ GitHub, npm, Playwright images and GHCR, but denies the host address, Docker
 networks, private address ranges and cloud metadata addresses. Runner users
 have no host mount, host Docker socket, Coolify socket or passwordless sudo.
 
-Register one GitHub runner group that only `OpenDevEd/new-el` may use. The
-workflows keep their current required checks and GitHub UI; only the machine
-that executes a job changes.
+Register two GitHub runner groups that only `OpenDevEd/new-el` may use. The CI
+group owns the light and runtime runners. The release group owns only the
+release runner and accepts only `.github/workflows/runtime-image.yml` from
+`main`. A label is routing information, not a security boundary, so the release
+runner must not share the CI group. The workflows keep their current aggregate
+`CI` result and GitHub UI; only the machine that executes a job changes.
+
+The organization currently uses a GitHub plan that does not support branch
+protection or repository rulesets for this private repository. CI still runs on
+every push and pull request, but GitHub cannot require its result before a
+merge. This is the same enforcement limit as the current Blacksmith workflow.
+Until the organization moves to GitHub Team, the integration owner must read
+the exact-head aggregate `CI` result before merging.
 
 Provision these fixed runner services:
 
@@ -803,8 +813,8 @@ build, and cleanup returned `CLEANUP_OK`.
 Before production code changes, repeat only the checks that can change with the
 new isolated build guest:
 
-1. Prove the four light runners and runtime runner are online under the selected
-   `new-el` runner group. Prove the guest has no route to the host, Docker
+1. Prove the four light runners and runtime runner are online in the selected
+   `new-el` CI runner group. Prove the guest has no route to the host, Docker
    networks or private addresses. Prove their systemd limits admit at most 24
    CI cores. Repeat this after adding the release runner and prove the two heavy
    runners still share only 16 cores.
@@ -888,9 +898,11 @@ timestamps.
 - A commit without a registry digest is never offered or deployed.
 - All five Evidence Library processes run from one exact digest while
   Meilisearch stays separate.
-- Every `new-el` required check runs on the selected self-hosted runner group;
-  no Blacksmith workflow, action, label, package or operations instruction
-  remains.
+- Every `new-el` CI job runs on the selected self-hosted CI runner group; no
+  Blacksmith workflow, action, label, package or operations instruction remains.
+  The aggregate `CI` result is green on the exact head. GitHub cannot enforce it
+  before merge on the organization's current plan, so the integration owner
+  checks it manually until GitHub Team enables rulesets.
 - The 24-core build guest admits at most four 2-core light jobs and 16 cores of
   heavy work across the runtime and release runners. The 48-core host keeps at
   least 24 CPUs outside CI. Test jobs have no deployment keys, and only the
@@ -912,6 +924,11 @@ timestamps.
   and a release runner restricted to one default-branch workflow. If those
   boundaries cannot be proved, stop; do not move PR jobs off their current
   isolated runner.
+- GitHub cannot protect `main` or require the aggregate `CI` result for this
+  private repository on the organization's current plan. The CI move does not
+  worsen that existing limit, but it also cannot fix it. Upgrade the
+  organization to GitHub Team before allowing maintainers to merge without the
+  integration owner's exact-head check.
 - Local caches can grow without a hosted-provider quota. Record cache bytes in
   the gate and add a bounded cleanup rule by age and builder name. Never run a
   global prune and never delete an image digest that a live release can use.
