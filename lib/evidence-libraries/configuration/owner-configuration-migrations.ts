@@ -610,7 +610,7 @@ function changedSnapshotPointers(
     const beforePayload = beforeRows.get(key);
     const afterPayload = afterRows.get(key);
     if (!beforeRows.has(key) || !afterRows.has(key)) {
-      output.push(`/${key}`);
+      output.push(pointerJoin("", key));
       continue;
     }
     if (
@@ -620,7 +620,7 @@ function changedSnapshotPointers(
       output.push("/exports");
       continue;
     }
-    diffJsonPointers(beforePayload, afterPayload, `/${key}`, output);
+    diffJsonPointers(beforePayload, afterPayload, pointerJoin("", key), output);
   }
   return output;
 }

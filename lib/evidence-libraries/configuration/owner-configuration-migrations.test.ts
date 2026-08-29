@@ -412,7 +412,7 @@ describe("owner configuration migrations", () => {
           },
         },
         { sectionKey: "legacyContact", payload: { email: "owner@example.test" } },
-        { sectionKey: "legacyObsolete", payload: { old: "value" } },
+        { sectionKey: "legacy/obsolete", payload: { old: "value" } },
       ],
     };
 
@@ -436,6 +436,7 @@ describe("owner configuration migrations", () => {
         },
       ],
     });
+    expect(result.changedPointers).toContain("/legacy~1obsolete");
   });
 
   it("reports an explicit failure when a historical value cannot be interpreted", () => {
