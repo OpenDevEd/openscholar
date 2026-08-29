@@ -198,6 +198,37 @@ describe("Evidence Library configuration migration", () => {
     ).toBe(1);
   });
 
+  it("does not flag a tagged draft when version one omits Identity assets", async () => {
+    const t = convexTest(schema, modules);
+    registerMigrations(t);
+    const seeded = await seedHeaders(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryConfigSections", {
+        kind: "draft",
+        libraryId: seeded.libraryId,
+        draftId: seeded.draftId,
+        sectionKey: "identity",
+        payload: {
+          name: "Migration Library",
+          shortName: "Migration",
+          baseUrl: "https://migration.example.test",
+        },
+        payloadByteLength: 120,
+        contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+        updatedByClerkUserId: "user_migration",
+        updatedAt: 3,
+      });
+    });
+    await runTagMigration(t, TAG_DRAFT_VERSIONS);
+
+    const pages = await readAuditPages(t);
+    const migrationValidationFailures = pages.reduce(
+      (total, page) => total + page.counts.migrationValidationFailures,
+      0,
+    );
+    expect(migrationValidationFailures).toBe(0);
+  });
+
   it("reports bounded findings while paging drafts, revisions, and orphan rows", async () => {
     const t = convexTest(schema, modules);
     const seeded = await seedHeaders(t);

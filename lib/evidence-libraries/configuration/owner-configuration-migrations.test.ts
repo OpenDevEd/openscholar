@@ -83,6 +83,82 @@ describe("owner configuration migrations", () => {
     });
   });
 
+  it("adds an Identity assets container without changing its other values", () => {
+    const identity = {
+      name: "Climate",
+      shortName: "Climate",
+      baseUrl: "https://climate.example.test",
+      tagline: "Evidence for climate decisions",
+      description: "A library for climate research.",
+      fundingPartners: [{ id: "partner", name: "Partner" }],
+    };
+    const missingAssets = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 1,
+      sections: [{ sectionKey: "identity", payload: identity }],
+    });
+
+    expect(missingAssets.snapshot.sections).toEqual([
+      {
+        sectionKey: "identity",
+        payload: { ...identity, assets: {} },
+      },
+    ]);
+    expect(missingAssets.changedPointers).toEqual([
+      "/ownerConfigurationVersion",
+      "/identity/assets",
+    ]);
+
+    const existingAssets = {
+      ...identity,
+      assets: {
+        logoDark: "https://assets.example.test/logo-dark.svg",
+        favicon: "https://assets.example.test/favicon.svg",
+      },
+    };
+    expect(
+      migrateOwnerConfiguration({
+        ownerConfigurationVersion: 1,
+        sections: [{ sectionKey: "identity", payload: existingAssets }],
+      }).snapshot.sections,
+    ).toEqual([{ sectionKey: "identity", payload: existingAssets }]);
+
+    const invalidAssets = expectMigrationError(() =>
+      migrateOwnerConfiguration({
+        ownerConfigurationVersion: 1,
+        sections: [
+          {
+            sectionKey: "identity",
+            payload: { ...identity, assets: "not-an-object" },
+          },
+        ],
+      }),
+    );
+    expect(invalidAssets.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pointer: "/identity/assets",
+          keyword: "type",
+        }),
+      ]),
+    );
+
+    const { name: _name, ...withoutName } = identity;
+    const missingName = expectMigrationError(() =>
+      migrateOwnerConfiguration({
+        ownerConfigurationVersion: 1,
+        sections: [{ sectionKey: "identity", payload: withoutName }],
+      }),
+    );
+    expect(missingName.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pointer: "/identity/name",
+          keyword: "required",
+        }),
+      ]),
+    );
+  });
+
   it("does not mutate input and returns deterministic results", () => {
     const input = structuredClone(legacySnapshot);
     const first = migrateOwnerConfiguration(input);
