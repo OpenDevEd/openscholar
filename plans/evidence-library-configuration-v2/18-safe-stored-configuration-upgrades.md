@@ -61,8 +61,9 @@ The two fields are the first migration, not the migration system.
    Migration `1 -> 2` removes `features.aiSearch` and
    `features.deepResearch`; assembly derives them from platform policy. It
    also converts pre-`122a7e55` Exports file-address values to the same schema
-   defaults used by the existing `readDraft` and `rowPayload` path. It
-   preserves every remaining owner value.
+   defaults used by the existing `readDraft` and `rowPayload` path, adds the
+   missing AI row used by the current editor, and preserves every remaining
+   owner value.
 4. **One ordered migration registry.** Add
    `owner-configuration-migrations.ts` beside the owner rules. It receives the
    complete snapshot and applies explicit consecutive steps until it reaches
@@ -172,7 +173,7 @@ type OwnerConfigurationMigration = {
 5. Returns the current snapshot and a bounded list of changed JSON pointers for
    audit logs. It never logs values.
 
-Version 1 to 2 has three explicit decisions:
+Version 1 to 2 has four explicit decisions:
 
 1. Delete the two former owner switches from the Features row.
 2. When any Exports value is not a boolean, replace the Exports row with the
@@ -183,6 +184,10 @@ Version 1 to 2 has three explicit decisions:
    the container while each asset remains optional and platform branding fills
    omitted values during assembly. Preserve every existing Identity field and
    every existing asset. An invalid non-object `assets` value still fails.
+4. When the AI row is missing, add it as `{}`. This records the current
+   schema default instead of making the editor report an unsaved change on its
+   first render. If AI answers are on, normal current validation still requires
+   a real model and fails instead of choosing one.
 
 The read-only audit reports both shapes separately before writes. If both old
 and replacement representations ever exist in a future migration, that
@@ -365,19 +370,20 @@ deployment targets and active-revision transitions.
 - New
   `lib/evidence-libraries/configuration/owner-configuration-migrations.test.ts`:
   `1 -> 2`, missing Identity assets becomes an empty object while existing
-  assets stay unchanged, chained steps,
+  assets stay unchanged, a missing AI row is added exactly once, chained steps,
   complete-snapshot section moves, collision failure, input immutability,
   deterministic output, current no-op, missing step, unknown old and newer
   versions, invalid output and credential-bearing output.
 - New `convex/evidenceLibraries/configurationMigration.test.ts`:
   tagging a missing header, no-op on a tagged header, reporting a header-only
-  setup revision separately without a validation failure, and refusing an
-  unknown version. Do not retest the component's own progress, resume or index
-  code.
+  setup revision separately without a validation failure, refusing an unknown
+  version, and reporting a missing required row on an active library draft. Do
+  not retest the component's own progress, resume or index code.
 - `convex/evidenceLibraries/drafts.test.ts`: saving and activating a version-1
   draft produces only current rows and a current revision; the Deploy B
   `migrateDraftsToV2` definition rewrites one draft atomically without changing
-  `editVersion`.
+  `editVersion`, and a reset run repairs a version-2 draft created by the first
+  Deploy B pass without duplicating the AI row.
 - `convex/evidenceLibraries/versions.test.ts`: runtime update, address move,
   domain change and restore each create or reuse one current candidate; old
   revisions stay unchanged; a repeated command looks up the operation before
@@ -499,7 +505,10 @@ migration is complete. Repeat `auditPage` with the returned cursor until
    read through the explicit chain.
 5. Migrate mutable drafts to version 2 in one transaction per draft without
    changing `editVersion`. Configure the migration component with one draft per
-   batch if that is required to keep header and section writes atomic.
+   batch if that is required to keep header and section writes atomic. The
+   migration is idempotent for current version-2 drafts. If the first Deploy B
+   pass ran before the missing AI-row correction, dry-run it and run it again
+   with `reset: true`; the second pass must add only the missing row.
 6. Keep historical revision payloads at their recorded versions.
 7. Verify zero missing-version drafts or revisions and a clean audit of every
    historical revision through the full chain. Version-1 active revisions are
@@ -535,7 +544,9 @@ For shared production, only from `dev-self`:
    metadata backfill. Rerun every audit page after tagging. Verify zero missing
    headers and zero migration-validation failures, and record the exact counts.
 4. Merge lanes R and E only after step 3. Run `npm run convex:push` for Deploy B,
-   migrate drafts, verify migration status and rerun every audit page.
+   migrate drafts, verify migration status and rerun every audit page. Every
+   active version-2 draft must pass complete validation. Reload its
+   configuration page and require no unsaved section before the owner edits it.
 5. Prove a failed current candidate leaves its old library and health answer
    unchanged, then Retry and confirm it reuses the candidate. Prove the old
    failed `new lib` version-1 operation has no Retry action.
