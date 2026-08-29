@@ -817,7 +817,7 @@ Allow one working day. Create lane M (`codex/owner-config-migrations`) in its ow
 
 STANDING RULES:
 1. Production is now. Never wipe, hand-edit or silently coerce Evidence Library configuration. Use widen, migrate, verify, then narrow.
-2. Read and follow `ponytail` and `unslop` in the owner and every agent. Use the official `@convex-dev/migrations` component for batching, dry runs, progress and resume. Do not build another migration runner around it.
+2. Read and follow `ponytail` and `unslop` in the owner and every agent. Pin the official `@convex-dev/migrations@0.3.3` component and use its exported `migrations.runner()` for batching, dry runs, progress and resume. The shared backend is commit `a9a760ca10399ed42e1b4bb87c78539a235488c7`; component 0.3.4 and newer require a later `1.0/getFunctionMetadata` syscall. Do not build another migration runner or mix a backend upgrade into this rollout.
 3. Add one snapshot-level `ownerConfigurationVersion` on draft and revision headers. Do not put it on section rows and do not reuse the runtime contract `schemaVersion`.
 4. Migrations are explicit consecutive full-snapshot TypeScript steps. They may express any declared field or section change, but never guess. Version 1 to 2 removes the two old Features switches and converts pre-122a7e55 Exports address rows to the existing schema-default booleans. Missing, newer, ambiguous, invalid or credential-bearing data blocks the release.
 5. New request writes stay strict. Only trusted snapshots read from Convex enter the migration chain. Old frozen revisions never change; Restore creates a new current revision.

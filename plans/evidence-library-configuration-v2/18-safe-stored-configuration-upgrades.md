@@ -90,10 +90,15 @@ The two fields are the first migration, not the migration system.
    such as the requested runtime commit or address generation. Network,
    Coolify and readiness retries reuse that exact candidate. A migration
    failure happens before external calls and carries safe issues.
-10. **Use the official migration component.** Install
-    `@convex-dev/migrations`. Use it for the version backfill, mutable draft
-    migration and status tracking. Do not build another cursor, progress or
-    resume framework.
+10. **Use the official migration component.** Pin
+    `@convex-dev/migrations@0.3.3`. The shared self-hosted backend is commit
+    `a9a760ca10399ed42e1b4bb87c78539a235488c7` from 2026-03-24. Component
+    `0.3.4` and newer use the later `1.0/getFunctionMetadata` backend syscall
+    for direct CLI runs, so they cannot run here. Version `0.3.3` uses the
+    official explicit runner and supports this backend. Use it for the version
+    backfill, mutable draft migration and status tracking. Do not build another
+    cursor, progress or resume framework. Upgrade the backend separately; do
+    not mix a database-server upgrade into this configuration rollout.
 11. **Widen, tag, teach, migrate, narrow.** The first deployment adds the
     optional field while ordinary code keeps version-1 behavior and writes
     version 1. The migration component tags every missing header as version 1.
@@ -363,8 +368,9 @@ deployment targets and active-revision transitions.
 
 ### Deploy A: widen and tag
 
-1. Run `npm install @convex-dev/migrations` and mount it in
-   `convex/convex.config.ts`.
+1. Run `npm install --save-exact @convex-dev/migrations@0.3.3`, mount it in
+   `convex/convex.config.ts`, and export `migrations.runner()` as `run` from
+   `convex/migrations/ownerConfiguration.ts`.
 2. Add optional header versions and indexes. Keep ordinary version-1 behavior.
    Every newly created or rewritten header records version 1.
    Include the optional version in every manual draft and revision return
@@ -399,10 +405,20 @@ The implementation defines these exact entry points:
 
 - `evidenceLibraries/configurationMigration:auditPage` for the paginated,
   read-only report;
+- `migrations/ownerConfiguration:run` as the official component runner;
 - `migrations/ownerConfiguration:tagDraftVersions` and
-  `migrations/ownerConfiguration:tagRevisionVersions` for metadata backfill.
+  `migrations/ownerConfiguration:tagRevisionVersions` as the two migration
+  functions passed to that runner.
 
-Run each migration with `dryRun: true` first. During a write run, watch
+Run each migration through `run` with its full function name and `dryRun: true`
+first. For example:
+
+```sh
+npx convex run migrations/ownerConfiguration:run \
+  '{"fn":"migrations/ownerConfiguration:tagDraftVersions","dryRun":true}'
+```
+
+During a write run, omit `dryRun` and watch
 `npx convex run --component migrations lib:getStatus --watch` until the named
 migration is complete. Repeat `auditPage` with the returned cursor until
 `isDone` is true.
