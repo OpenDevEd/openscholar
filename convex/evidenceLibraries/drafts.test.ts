@@ -90,6 +90,85 @@ describe("Evidence Library draft storage", () => {
     );
   });
 
+  it("repairs missing declared rows on active current drafts and stays idempotent", async () => {
+    const fixture = await createDraftSetupFixture("draft-current-repair");
+    registerMigrations(fixture.t);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.libraryId, { state: "active" });
+      const payload = { colors: { accent: "#005A9C", tertiary: "#F2A900" } };
+      await ctx.db.insert("evidenceLibraryConfigSections", {
+        kind: "draft",
+        libraryId: fixture.created.libraryId,
+        draftId: fixture.created.draftId,
+        sectionKey: "theme",
+        payload,
+        payloadByteLength: Buffer.byteLength(JSON.stringify(payload)),
+        contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+        updatedByClerkUserId: fixture.clerkUserId,
+        updatedAt: 1,
+      });
+    });
+
+    const migrationArgs = {
+      fn: "migrations/ownerConfiguration:migrateDraftsToV2",
+      batchSize: 1,
+      cursor: null,
+      dryRun: false,
+    } as const;
+    await fixture.t.mutation(
+      internal.migrations.ownerConfiguration.run,
+      migrationArgs,
+    );
+    await fixture.t.mutation(internal.migrations.ownerConfiguration.run, {
+      ...migrationArgs,
+      reset: true,
+    });
+
+    const migrated = await fixture.t.run(async (ctx) => ({
+      draft: await ctx.db.get(fixture.created.draftId),
+      aiRows: await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", fixture.created.draftId).eq("sectionKey", "ai"),
+        )
+        .collect(),
+    }));
+    expect(migrated.draft).toMatchObject({
+      ownerConfigurationVersion: 2,
+      editVersion: 0,
+    });
+    expect(migrated.aiRows).toHaveLength(1);
+    expect(migrated.aiRows[0]?.payload).toEqual({
+      providers: [{ provider: "openrouter", enabled: false }],
+    });
+  });
+
+  it("leaves a provisioning draft sparse during current-version repair", async () => {
+    const fixture = await createDraftSetupFixture("draft-provisioning-repair");
+    registerMigrations(fixture.t);
+
+    await fixture.t.mutation(internal.migrations.ownerConfiguration.run, {
+      fn: "migrations/ownerConfiguration:migrateDraftsToV2",
+      batchSize: 1,
+      cursor: null,
+      dryRun: false,
+      reset: true,
+    });
+
+    const rows = await fixture.t.run(async (ctx) =>
+      ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", fixture.created.draftId),
+        )
+        .collect(),
+    );
+    expect(rows.map((row) => row.sectionKey).sort()).toEqual([
+      "identity",
+      "localization",
+    ]);
+  });
+
   it("migrates the whole version-one draft before saving and activating it", async () => {
     const fixture = await createDraftSetupFixture("draft-v2");
     await fixture.t.run(async (ctx) => {

@@ -2,6 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
+  completeOwnerConfigurationSnapshot,
   migrateOwnerConfiguration,
   type OwnerConfigurationMigrationResult,
   type OwnerConfigurationSnapshot,
@@ -25,6 +26,7 @@ export type LoadedConfigurationSnapshot = {
 export type PersistDraftConfigurationOptions = {
   updatedByClerkUserId?: string;
   updatedAt?: number;
+  completeCurrentVersion?: boolean;
 };
 
 export function materializeConfigurationSnapshot(
@@ -121,21 +123,35 @@ export async function persistDraftConfigurationSnapshot(
   if (!("editVersion" in loaded.header)) {
     throw new Error("Only draft configuration snapshots can be persisted");
   }
-  if (loaded.header.ownerConfigurationVersion === CURRENT_OWNER_CONFIGURATION_VERSION) {
-    return;
-  }
 
   const draft = loaded.header as Doc<"evidenceLibraryConfigDrafts">;
+  const migratedSnapshot = options.completeCurrentVersion
+    ? materializeConfigurationSnapshot(
+        completeOwnerConfigurationSnapshot(loaded.migration.snapshot),
+        { requireComplete: false },
+      ).snapshot
+    : loaded.migration.snapshot;
   const storedRows = loaded.sections.filter((row) => row.kind === "draft");
   const rowsByKey = new Map(storedRows.map((row) => [row.sectionKey, row]));
   const nextKeys = new Set(
-    loaded.migration.snapshot.sections.map((row) => row.sectionKey),
+    migratedSnapshot.sections.map((row) => row.sectionKey),
   );
+  const rowsChanged =
+    migratedSnapshot.sections.some((row) => {
+      const existing = rowsByKey.get(row.sectionKey);
+      return !existing || !samePayload(existing.payload, row.payload);
+    }) || storedRows.some((row) => !nextKeys.has(row.sectionKey));
+  const headerChanged =
+    draft.ownerConfigurationVersion !==
+      migratedSnapshot.ownerConfigurationVersion ||
+    options.updatedByClerkUserId !== undefined ||
+    options.updatedAt !== undefined;
+  if (!rowsChanged && !headerChanged) return;
   const updatedAt = options.updatedAt ?? draft.updatedAt;
   const updatedBy =
     options.updatedByClerkUserId ?? draft.updatedByClerkUserId;
 
-  for (const row of loaded.migration.snapshot.sections) {
+  for (const row of migratedSnapshot.sections) {
     const existing = rowsByKey.get(row.sectionKey);
     const payloadByteLength = validateSectionPayload(row.payload);
     if (existing && samePayload(existing.payload, row.payload)) continue;
