@@ -808,6 +808,36 @@ START NOW: read the research sections 0, C, D, the plan, the README, the Convex 
 Go.
 ```
 
+## Plan 17 — self-hosted CI and one runtime image
+
+```text
+Implement plans/evidence-library-configuration-v2/17-build-once-runtime-image.md as the integration owner. Read plans/evidence-library-configuration-v2/00-README.md, AGENTS.md in OpenScholar and new-el, new-el docs/evidence-library-operations.md, and the current CI workflow first. Before changing new-el Next.js configuration, read the matching installed Next.js 16 guides under node_modules/next/dist/docs/. Before changing OpenScholar Convex code, read convex/_generated/ai/guidelines.md. Depends on the production-safe configuration work in Plan 18 and the runtime contract pinned when implementation starts.
+
+Allow three working days. Work directly without subagents and without a separate model review, as the user requested for this build work. Use codex/* branches and separate worktrees for new-el and OpenScholar. Only the integration owner merges, pushes merged OpenScholar Convex functions and runs the shared live gate. Keep working without asking questions the plan or repository already answers.
+
+STANDING RULES:
+1. Read and follow the ponytail and unslop skills. Reuse the current CI matrix, setup-project action, Dockerfile stages, Compose application, runtime acceptance harness, runtime verifier, Coolify client, deployment receipts and release lookup. Add no scheduler, autoscaler, registry proxy, Kubernetes cluster or second deployment service.
+2. Move every new-el job off Blacksmith in one clean cut. GitHub still schedules the checks. The dedicated self-hosted 48-core server runs four 2-core light runners, one 16-core runtime runner and one 16-core release runner. Remove the Testbox workflow and replace the old Blacksmith operations document. Do not leave a fallback Blacksmith label or action.
+3. The build server is not a deployment server. It has no Convex, Coolify, Cloudflare, database, storage, SMTP, Clerk or production SSH credentials and no route to private deployment networks. Test jobs accept only same-repository PR branches and have contents: read. The release runner has its own non-root account, rootless Docker daemon and BuildKit cache, and only the default-branch runtime-image workflow may use it.
+4. Build one production-dependency library-runtime image. All five Evidence Library processes use it with explicit Compose commands and health checks. Enable the measured Turbopack filesystem cache and worker threads. Calculate Next workers from availableParallelism() instead of hard-coding a machine size. The required type-check job owns TypeScript validation before release publication.
+5. Before any test or assertion edit, use test-decision and read new-el docs/test-quality.md. Test behavior, image identity, service health, release data and real runner routing. Use red, green, clean up for pure OCI and release-identity logic. Never test YAML text, CSS classes or implementation strings.
+6. Saved runtime release data is production data. Add the commit-and-image pair with widen, migrate, verify, then narrow through the official Convex migration component already used by Plan 18. Frozen configuration revisions do not change. Unknown commits, missing digests and ambiguous pairs block narrowing.
+7. Publish only an exact green main commit to private GHCR. Coolify receives an immutable digest, never a mutable tag. Setup, config publish, software update, retry and rollback keep their current idempotent receipts and verify both commit and image before adopting a deployment.
+8. Run the plan's exact tests and every deployability gate. A passing unit suite is not enough. Record cold and warm build time, total CI time, queue time, image and cache bytes, peak memory, exact digest, service image IDs, public health and cleanup.
+
+EXECUTION RHYTHM: commit this corrected plan before dependent code. Provision and prove the six runner services first. Move CI off Blacksmith and get the exact new-el head green. Then implement the unified production image and acceptance proof. Add exact-digest publication and runtime verification. Implement the OpenScholar release pair with widen, migrate and narrow. Finish with the lane, shared Convex and throwaway-library gates. Commit after every working unit.
+
+COMMIT DISCIPLINE: use feat/fix/refactor/test/chore/docs/perf/style. Put [plan-17] on every plan commit. Never commit with a relevant failing check. Never use --no-verify or another hook bypass. Push code through PRs; only the integration owner merges exact green heads. Push documentation-only OpenScholar commits directly to dev when dev is still the checked target branch.
+
+WHEN TO STOP: only when every Plan 17 completion rule passes or a real blocker exists. For a blocker, commit safe work, write plans/evidence-library-configuration-v2/17-BLOCKER.md with the exact missing authority or system fact, and stop. Do not stop for token worry, a queued self-hosted job or a question the plan answers. Do not change a live library until the release image, cold pull, verifier, rollback and cleanup gates pass.
+
+DEVIATIONS: if repository or server evidence disproves the plan, commit safe work, update Plan 17 with the measured reason, commit docs: [plan-17] revise <section> — <reason>, then continue. Never change runner capacity, image shape, release identity or migration order silently.
+
+START NOW: read every named file and skill; fetch both origins; check both worktrees for unrelated changes; confirm the dedicated build server is not the Coolify or production host; inventory GitHub runner groups and current required checks without changing them; record the exact new-el main and OpenScholar dev commits; then provision the first light runner and prove one harmless workflow job before registering the remaining services.
+
+Go.
+```
+
 ## Plan 18 — production configuration evolution
 
 ```text

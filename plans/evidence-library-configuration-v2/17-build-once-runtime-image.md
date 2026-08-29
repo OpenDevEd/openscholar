@@ -7,8 +7,8 @@ library on that release pulls the same immutable image. Activating a library
 configuration changes `LIBRARY_CONFIG_JSON` and replaces the containers, but it
 does not run `npm install`, `next build`, or a Docker source build.
 
-Estimate: two working days across `new-el` and OpenScholar, followed by one
-shared-platform gate.
+Estimate: three working days across the build server, `new-el` and OpenScholar,
+followed by one shared-platform gate.
 
 ## Decision
 
@@ -23,6 +23,12 @@ meet the one-image requirement.
 Use a private GHCR package. This keeps the compiled contents under the same
 access boundary as the private repository. Making it public would be a separate
 user decision because GitHub says that change cannot be undone.
+
+Run every `new-el` GitHub Actions job on one dedicated self-hosted build server.
+GitHub keeps scheduling jobs and reporting required checks, but Blacksmith does
+not execute any job. Use fixed runners instead of an autoscaler: four 2-core
+light runners, one 16-core runtime runner and one 16-core release runner. This
+uses at most 40 of a 48-core server's CPUs and leaves eight for the host.
 
 ## Recommendation
 
@@ -142,20 +148,66 @@ configuration-only replacement falls from 16.19 seconds to 1.77 seconds,
 saving 89.1% per library.
 
 Those totals deliberately count the unified build on the deployment server,
-even though the final design moves it to Blacksmith. They do not count the
-first private-GHCR pull because no release image exists yet. For eighteen
+even though the final design moves it to the dedicated self-hosted build
+server. They do not count the first private-GHCR pull because no release image
+exists yet. For eighteen
 libraries, the build-once path still wins if that one pull takes less than
 257.40 seconds when build time is counted end to end, or less than 402.01
 seconds when comparing only work on the deployment server. Measure the real
 GHCR pull in the runtime gate before changing a live library.
 
+The production-dependency prototype kept the same runtime behavior while
+removing development packages from the final unified image:
+
+| Check | First unified prototype | Production-dependency image | Change |
+|---|---:|---:|---:|
+| Cold build with an empty BuildKit cache | 144.61 s | 129.60 s | 10.4% faster |
+| Unchanged warm build | 5.36 s | 3.75 s | 30.0% faster |
+| Loaded image size | 565,822,607 bytes | 465,565,934 bytes | 100,256,673 bytes smaller |
+
+Two different runtime configurations passed health and `/lib` from that image.
+Every worker entrypoint existed and loaded. The full acceptance suite remains
+the implementation gate before this Dockerfile shape can merge.
+
+Fresh isolated builders measured the Next.js options separately from image
+export. The baseline and worker-thread rows are two-run averages; the other
+rows are one clean-cache run each.
+
+| Next.js setting | Next build | Whole builder stage | Decision |
+|---|---:|---:|---|
+| Current prototype | 33.30 s | 77.62 s | Baseline |
+| `experimental.workerThreads: true` | 28.85 s | 73.24 s | Keep: 13.4% faster Next build |
+| Turbopack plugin worker threads | 34.40 s | 79.62 s | Remove: slower |
+| Static-generation batching | 33.40 s | 77.54 s | Remove: no gain |
+| Disable prerender source maps | 32.90 s | 76.76 s | Remove: noise-sized gain and worse diagnostics |
+
+CPU isolation on the same 48-core host found the useful ceiling:
+
+| CPUs available to the build | Next workers | Next build | Whole builder stage |
+|---:|---:|---:|---:|
+| 4 | 3 | 52.20 s | 99.65 s |
+| 8 | 7 | 35.00 s | 80.95 s |
+| 16 | 15 | 28.50 s | 72.23 s |
+| 48 | 47 | 28.85 s | 73.24 s |
+
+Sixteen cores matched the unrestricted machine. More cores did not improve
+this build. Do not hard-code 15 workers: set `experimental.cpus` from Node's
+`availableParallelism() - 1`, with a minimum of one, so a 16-core runner uses
+15 while local and future runners follow their real CPU limit.
+
 The build prototype also enabled
-`experimental.turbopackFileSystemCacheForBuild` and skipped Next's duplicate
-TypeScript check. This is safe for release builds only because the existing CI
-has a separate required `npm run typecheck` job and the image publisher starts
-only after every job for that exact commit is green. Next documents the build
-cache as opt-in in this installed version and says warm comparisons must retain
-`.next/cache` ([Next.js Turbopack build caching](https://nextjs.org/docs/app/api-reference/turbopack#build-caching)).
+`experimental.turbopackFileSystemCacheForBuild`, enabled worker threads and
+skipped Next's duplicate TypeScript check. This is safe for release builds only
+because CI has a separate required `npm run typecheck` job and the image
+publisher starts only after every job for that exact commit is green. Next
+documents the build cache as opt-in in this installed version and says warm
+comparisons must retain `.next/cache`
+([Next.js Turbopack build caching](https://nextjs.org/docs/app/api-reference/turbopack#build-caching)).
+
+The option and CPU benchmarks used ten isolated BuildKit builders. All ten,
+their caches, the temporary Node image tag and
+`/tmp/el-next-flags-20260829a` were removed. The final check returned
+`CLEANUP_OK`.
 
 ### Online findings
 
@@ -171,8 +223,23 @@ cache as opt-in in this installed version and says warm comparisons must retain
   Its Compose support accepts `image:` and required environment values
   ([Coolify Docker Compose](https://coolify.io/docs/knowledge-base/docker/compose)).
   This matches the existing runtime `LIBRARY_CONFIG_JSON` design.
-- GitHub documents building and publishing one image from Actions, and GHCR
-  supports exact digest pulls
+- GitHub routes a job to any idle self-hosted runner whose group and labels
+  match `runs-on`. A self-hosted runner executes one job at a time. Restrict the
+  runner group to `new-el` and route light, runtime and release work with
+  separate labels
+  ([self-hosted runner reference](https://docs.github.com/en/actions/reference/runners/self-hosted-runners),
+  [using self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/use-in-a-workflow)).
+- GitHub warns that self-hosted jobs do not receive a clean isolated machine.
+  Keep the build server dedicated, accept jobs only from branches in the same
+  private repository, give test runners no deployment secrets, and isolate the
+  release runner under its own OS account and runner-group workflow rule
+  ([secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)).
+- Docker's container driver accepts `cpuset-cpus` and keeps a persistent local
+  BuildKit cache. Use one pre-created builder for the runtime runner and a
+  separate one for the release runner
+  ([Docker container driver](https://docs.docker.com/build/builders/drivers/docker-container/)).
+- GitHub documents publishing one image from Actions, and GHCR supports exact
+  digest pulls
   ([publishing Docker images](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images),
   [GHCR digest pulls](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#pulling-container-images)).
 - Community reports describe the same operational result: build in GitHub,
@@ -308,6 +375,53 @@ checkout stayed untouched because it was on `codex/libtest` with local changes.
 
 ## Fixed design
 
+### 0. Move `new-el` CI off Blacksmith
+
+Use one dedicated Linux x64 build server in the tested hardware class: 48 CPUs,
+about 256 GiB of memory and enough local SSD space for Docker layers. Register
+one GitHub runner group that only `OpenDevEd/new-el` may use. The workflows keep
+their current required checks and GitHub UI; only the machine that executes a
+job changes.
+
+Provision these fixed runner services:
+
+| Count | Label | CPU limit | Jobs |
+|---:|---|---:|---|
+| 4 | `evidence-library-light` | 2 each | lint, type check, schemas, unit tests, code quality and the final gate |
+| 1 | `evidence-library-runtime` | 16 | Docker build and runtime acceptance |
+| 1 | `evidence-library-release` | 16 | exact-commit runtime image publication |
+
+Each service accepts one job at a time. Apply CPU limits with systemd and give
+each service its own work directory. The runtime and release users each own a
+separate rootless Docker daemon and persistent `docker-container` BuildKit
+builder. Create those two builders with a 16-core `cpuset-cpus`; do not share a
+Docker socket or cache between test and release jobs. Preinstall Node 22,
+Chromium's Linux packages, Docker, Compose and Buildx. The workflow still runs
+locked `npm ci` and installs the package-lock-selected Chromium version.
+
+Keep the server out of Coolify and production:
+
+- no Convex, Coolify, Cloudflare, database, storage, SMTP, Clerk or production
+  SSH credentials;
+- no route to private deployment networks or cloud metadata endpoints;
+- test jobs receive only `contents: read` and no repository secrets;
+- self-hosted PR jobs run only when the head repository is
+  `OpenDevEd/new-el`; a maintainer must copy an approved fork change to a branch
+  in that repository before CI runs it;
+- the release runner has a separate non-root account and group label restricted
+  to `.github/workflows/runtime-image.yml` on the default branch; its
+  `packages: write` `GITHUB_TOKEN` exists only for that job.
+
+Change `.github/workflows/ci.yml` to use the light and runtime labels. Replace
+Blacksmith's builder action with the pre-created runtime builder. Remove
+`.github/workflows/blacksmith-testbox.yml`; the existing manual CI dispatch is
+the replacement. A repository search for `blacksmith` and `useblacksmith` must
+return no workflow, action, package or documentation dependency.
+
+Use fixed services, not Kubernetes, Actions Runner Controller or a custom
+autoscaler. The measured host has enough capacity, and GitHub already queues a
+job when every matching runner is busy.
+
 ### 1. Publish one immutable release image
 
 Add a `library-runtime` Dockerfile target in `new-el`. It contains everything
@@ -316,7 +430,8 @@ publication-worker services. Keep one entrypoint and let Compose keep the five
 existing commands and worker IDs.
 
 Use a `workflow_run` release workflow triggered only when the existing CI
-workflow finishes successfully for `main`. Check out its exact 40-character
+workflow finishes successfully for `main`. Route it only to the
+`evidence-library-release` self-hosted runner. Check out its exact 40-character
 head commit, not the moving branch name. Before the first publish, record the
 development deployment host's Docker platform with
 `docker info --format '{{.OSType}}/{{.Architecture}}'`. Put that exact platform
@@ -334,18 +449,20 @@ docker buildx build \
 ```
 
 Use commit-pinned GitHub Actions, job-level `contents: read` and
-`packages: write`, and the existing BuildKit cache. The workflow's concurrency
-key is the full runtime commit and `cancel-in-progress` is false. If that tag
-already exists, resolve it, verify its revision label, and finish without
-rewriting it. Record the build action's digest output. GitHub documents the
-`packages: write` permission and digest output in its
+`packages: write`, and the release runner's persistent BuildKit builder. The
+workflow's concurrency key is the full runtime commit and `cancel-in-progress`
+is false. If that tag already exists, resolve it, verify its revision label,
+and finish without rewriting it. Record Buildx's digest output. GitHub
+documents the `packages: write` permission and digest output in its
 [image publishing guide](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images).
 
-Enable `experimental.turbopackFileSystemCacheForBuild` and retain the existing
-`/app/.next/cache` BuildKit mount. Let the required CI `npm run typecheck` job
-own TypeScript validation, and skip Next's second type check during the image
-build. The publisher must still wait for the whole exact-commit CI workflow;
-it must never publish from a build job alone.
+Enable `experimental.turbopackFileSystemCacheForBuild` and
+`experimental.workerThreads`, calculate `experimental.cpus` from
+`availableParallelism()`, and retain the existing `/app/.next/cache` BuildKit
+mount. Install only production packages in the unified final image. Let the
+required CI `npm run typecheck` job own TypeScript validation, and skip Next's
+second type check during the image build. The publisher must still wait for the
+whole exact-commit CI workflow; it must never publish from a build job alone.
 
 The workflow supports `workflow_dispatch` with an exact commit that is an
 ancestor of `main` and has a green CI run. This exists for the two-release live
@@ -507,7 +624,8 @@ even when many library containers use it. A config-only deployment uses the
 local image. Docker documents that the local image store is content-addressed
 and stores shared layers once in its
 [image pull reference](https://docs.docker.com/reference/cli/docker/image/pull/).
-Do not add a custom image cache or build server.
+The dedicated build server keeps only its two named BuildKit caches. Do not add
+a registry proxy, remote cache service or second build scheduler.
 
 Keep every published runtime image in GHCR in this plan. It is rollback data,
 not build debris. Do not add an automatic package deletion token or guess that
@@ -520,11 +638,14 @@ binding, successful version receipt or unfinished operation references it.
 
 ### Lane R · Evidence Library runtime
 
-1. Commit the plan correction in `new-el` first if repository facts change.
-2. Build the unified image target and switch the library Compose file.
-3. Make runtime acceptance use the one local image for all five processes.
-4. Extend the fixed runtime verifier with exact image-reference proof.
-5. Add the CI-gated GHCR publisher and operations guide.
+1. Provision and gate the six self-hosted runner services, then move every CI
+   job to them and remove Blacksmith.
+2. Commit the plan correction in `new-el` first if repository facts change.
+3. Build the production-dependency unified image target and switch the library
+   Compose file.
+4. Make runtime acceptance use the one local image for all five processes.
+5. Extend the fixed runtime verifier with exact image-reference proof.
+6. Add the self-hosted, CI-gated GHCR publisher and operations guide.
 
 Files:
 
@@ -538,7 +659,12 @@ Files:
 - `tools/runLibraryRuntimeVerifier.ts`
 - `tests/unit/library-runtime-verifier-{docker,http}.test.ts`
 - `.github/workflows/ci.yml`
+- `.github/workflows/blacksmith-testbox.yml` (delete)
 - `.github/workflows/runtime-image.yml` (new)
+- `.github/actions/setup-project/action.yml`
+- `README.md`
+- `docs/blacksmith-ci-optimization.md` (replace)
+- `docs/self-hosted-ci.md` (new)
 - `docs/evidence-library-operations.md`
 
 ### Lane P · OpenScholar platform
@@ -609,6 +735,7 @@ npm test -- tests/unit/library-runtime-verifier-docker.test.ts tests/unit/librar
 npm run test:acceptance
 npm run check:changed
 docker buildx build --target library-runtime --load --tag evidence-library-runtime:plan-17 .
+test -z "$(rg -l -i 'blacksmith|useblacksmith' .github README.md docs package.json package-lock.json)"
 ```
 
 The image smoke check starts each of the five current commands from that one
@@ -655,22 +782,26 @@ write time, but it must preserve `runtimeConfigSha256` and the image contract.
 
 ### Pre-implementation server benchmark
 
-Run this before production code changes:
+Completed on 2026-08-29. The exact results are recorded under **Development
+server benchmark** above. The same image ran two configurations, the optimized
+image passed both web health checks, 16 CPUs matched the unrestricted 48-core
+build, and cleanup returned `CLEANUP_OK`.
 
-1. Resolve the exact development deployment server through the supported
-   Coolify API. Confirm the benchmark does not target a production application,
-   database, bucket, index, domain or shared Zotero group.
-2. Copy the current runtime commit and the local unified-image prototype into
-   uniquely named temporary server directories. Do not change a Coolify
-   application or any existing checkout.
-3. Use benchmark-only BuildKit builders and Compose project names. Measure:
-   the current five-target cold and warm builds, the unified-image cold and warm
-   builds, first container start, and a second start with different runtime JSON
-   but the same image ID.
-4. Record wall time, image bytes, image ID, container start time and health
-   result. Report cold and warm results separately.
-5. Remove only the benchmark containers, volumes, networks, builders,
-   directories and images. Never run a global Docker prune.
+Before production code changes, repeat only the checks that can change with the
+new dedicated server:
+
+1. Prove all six runners are online under the selected `new-el` runner group,
+   each reports its expected label, and their systemd CPU limits total 40.
+2. Run CI once on an unchanged commit. All jobs must execute on the self-hosted
+   labels, and a repository search must find no Blacksmith dependency.
+3. Record cold and warm runtime-image build times, image bytes, BuildKit cache
+   bytes, peak memory, total CI time and queue time. Keep
+   `PLAYWRIGHT_WORKERS=4` for the first run; test 8 only after that run is green
+   and keep it only when all browser checks pass and wall time improves.
+4. Attempt one harmless workflow from a fork and one non-release workflow that
+   requests the release label. Neither may receive a self-hosted runner.
+5. Remove only benchmark containers, volumes, networks, builders, directories
+   and images. Never run a global Docker prune.
 
 The final tally compares:
 
@@ -741,6 +872,12 @@ timestamps.
 - A commit without a registry digest is never offered or deployed.
 - All five Evidence Library processes run from one exact digest while
   Meilisearch stays separate.
+- Every `new-el` required check runs on the selected self-hosted runner group;
+  no Blacksmith workflow, action, label, package or operations instruction
+  remains.
+- The 48-core build server admits at most four 2-core light jobs, one 16-core
+  runtime job and one 16-core release job. Test jobs have no deployment keys,
+  and only the default-branch release workflow can reach the release runner.
 - `runtimeConfigSha256` remains a hash of only the exact library JSON bytes.
 - Setup, config publish, runtime update, retry and rollback persist and verify
   both release identities without duplicate deployment starts.
@@ -752,6 +889,15 @@ timestamps.
 
 ## Known risks
 
+- A persistent self-hosted runner can keep malicious state between jobs. This
+  plan limits that risk with a dedicated server, same-repository PRs, separate
+  non-root users and Docker daemons, no production credentials or network
+  route, and a release runner restricted to one default-branch workflow. If
+  those boundaries cannot be proved, stop; do not move PR jobs off their
+  current isolated runner.
+- Local caches can grow without a hosted-provider quota. Record cache bytes in
+  the gate and add a bounded cleanup rule by age and builder name. Never run a
+  global prune and never delete an image digest that a live release can use.
 - The unified image includes both web and worker dependencies, so it is larger
   than the current web-only final image. Measure image bytes and cold-pull time
   in the gate. If the result is unacceptable, stop and return to option 2; do

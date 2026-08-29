@@ -5,7 +5,7 @@ Turn the click-through mock (branch `feat/library-interface-mock`, folder
 `plans/evidence-library-full-configuration-mock/00-README.md`) into the real
 configuration page, and add the platform pieces it needs.
 
-Decided with the user on 2026-08-26. Last checked: 2026-08-26.
+Decided with the user on 2026-08-26. Last checked: 2026-08-29.
 
 ## The problem
 
@@ -84,7 +84,7 @@ answer machine calls yet, so pickers have nothing to read.
 | 14 | `14-admin-handoff.md` | `/admin` redirects to OpenScholar, which signs in, checks access and sends the cookie back |
 | 15 | `15-runtime-ai-analytics-merge.md` | Merge `ai-modernization` into the runtime; AI section (OpenRouter only); analytics fields; logo sizing |
 | 16 | `16-custom-domains.md` (+ `16-RESEARCH.md`) | Custom domains: CNAME to `cname.opendev.space`, Cloudflare for SaaS, four verification gates, redirect toggle |
-| 17 | `17-build-once-runtime-image.md` | Build one immutable Evidence Library image per approved runtime commit and inject each library's configuration only when containers start |
+| 17 | `17-build-once-runtime-image.md` | Move `new-el` CI from Blacksmith to a dedicated self-hosted server, build one immutable runtime image per approved commit, and inject each library's configuration only when containers start |
 | 18 | `18-safe-stored-configuration-upgrades.md` | Version every stored owner configuration and migrate production snapshots before stricter rules deploy |
 
 ## Lanes and order
@@ -115,6 +115,11 @@ Plans 01-16 used two read-only reviewers per PR. Work started on or after
 the current rules in `AGENTS.md`. Agents never merge. After each merge the integration owner runs
 `npm run convex:push` from `dev-self`, reads remote logs, does the browser
 check, and updates Outline.
+
+Plan 17 is a direct integration-owner exception. The user asked for no
+subagents and no separate model review for the build research and
+implementation. It uses dedicated self-hosted GitHub Actions runners and does
+not reuse the old sprint Convex lanes.
 
 ## Existing code to reuse
 
