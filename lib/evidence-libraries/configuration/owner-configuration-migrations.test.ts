@@ -276,6 +276,16 @@ describe("owner configuration migrations", () => {
       [],
     );
     expect(
+      validateOwnerConfigurationMigrationRegistry(
+        [chained[1]!, chained[0]!],
+        3,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "outOfOrderMigration" }),
+      ]),
+    );
+    expect(
       migrateOwnerConfiguration(
         {
           ownerConfigurationVersion: 1,

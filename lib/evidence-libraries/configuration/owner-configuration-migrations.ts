@@ -411,7 +411,7 @@ function migrateVersionOneToTwo(
 export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
   {
     from: 1,
-    to: CURRENT_OWNER_CONFIGURATION_VERSION,
+    to: 2,
     migrate: migrateVersionOneToTwo,
     defaultRows: [
       {
@@ -444,6 +444,7 @@ export function validateOwnerConfigurationMigrationRegistry(
   const seenFrom = new Set<number>();
   const seenTo = new Set<number>();
   const validTargets: number[] = [];
+  let previousFrom: number | null = null;
   for (const [index, migration] of migrations.entries()) {
     const pointer = `/migrations/${index}`;
     if (
@@ -459,6 +460,19 @@ export function validateOwnerConfigurationMigrationRegistry(
       );
       continue;
     }
+    if (
+      migration.from < 1 ||
+      migration.to < 1 ||
+      migration.to > currentVersion
+    ) {
+      issues.push(
+        issue(
+          pointer,
+          "invalidRegistry",
+          "Migration versions must stay within the supported range.",
+        ),
+      );
+    }
     if (migration.to !== migration.from + 1) {
       issues.push(
         issue(
@@ -468,6 +482,16 @@ export function validateOwnerConfigurationMigrationRegistry(
         ),
       );
     }
+    if (previousFrom !== null && migration.from <= previousFrom) {
+      issues.push(
+        issue(
+          pointer,
+          "outOfOrderMigration",
+          "Migration steps must be declared in ascending order.",
+        ),
+      );
+    }
+    previousFrom = migration.from;
     if (seenFrom.has(migration.from) || seenTo.has(migration.to)) {
       issues.push(
         issue(
