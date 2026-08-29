@@ -350,6 +350,48 @@ async function deploymentArgs(
   };
 }
 
+/** Saves the target that the deployment action would persist before Coolify. */
+async function saveDeploymentTarget(
+  fixture: Fixture,
+  operationId: Id<"evidenceLibraryConfigOperations">,
+) {
+  const args = await deploymentArgs(fixture, operationId);
+  const prepared = await fixture.t.mutation(
+    internal.evidenceLibraries.configurationDeployment
+      .prepareConfigurationDeployment,
+    args,
+  );
+  if (prepared.state !== "new") throw new Error("The target is already saved");
+  const runtimeCommit = await fixture.t.run(async (ctx) => {
+    const library = await ctx.db.get(fixture.created.libraryId);
+    const binding = library?.runtimeBindingId
+      ? await ctx.db.get(library.runtimeBindingId)
+      : null;
+    if (!binding || !("runtimeCommit" in binding)) {
+      throw new Error("The runtime binding is missing its commit");
+    }
+    return binding.runtimeCommit;
+  });
+  await fixture.t.mutation(
+    internal.evidenceLibraries.configurationDeployment
+      .saveConfigurationDeploymentTarget,
+    {
+      ...args,
+      source: prepared.source,
+      target: {
+        applicationId: prepared.applicationId,
+        targetBaseUrl: prepared.targetBaseUrl,
+        customDomains: prepared.customDomains,
+        revisionKey: prepared.revision.key,
+        defaultLocale: prepared.defaultLocale,
+        runtimeCommit,
+        encryptedRuntimeConfig: "encrypted",
+        runtimeConfigSha256: "e".repeat(64),
+      },
+    },
+  );
+}
+
 /**
  * Finishes a deployment through the pipeline's own completion mutation, so
  * the work that follows a domain change runs through its real hook.
@@ -365,21 +407,40 @@ async function runDeploymentCompletion(
     const binding = library?.runtimeBindingId
       ? await ctx.db.get(library.runtimeBindingId)
       : null;
-    const revision = library?.activeRevisionId
-      ? await ctx.db.get(library.activeRevisionId)
+    const revision = operation.revisionId
+      ? await ctx.db.get(operation.revisionId)
       : null;
     if (!binding || !revision) return null;
+    const domains = await ctx.db
+      .query("evidenceLibraryDomains")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", fixture.created.libraryId),
+      )
+      .collect();
+    const customDomains = domains
+      .filter((domain) => domain.attachedAt !== undefined)
+      .map((domain) => `https://${domain.host}`)
+      .sort();
+    const targetBaseUrl =
+      operation.domainChange?.reason === "canonical"
+        ? operation.domainChange.address ?? binding.targetBaseUrl
+        : operation.addressMove?.to ?? binding.targetBaseUrl;
     // The deployment action saves this before it runs; the test stands in
     // for that one step so the real completion mutation can run.
     const target = operation.configurationDeploymentTarget ?? {
       applicationId: "coolify-domains",
       aiProviderKey: { present: false as const },
       runtimeBindingId: binding._id,
-      targetBaseUrl: binding.targetBaseUrl,
-      customDomains: [],
+      targetBaseUrl,
+      customDomains,
       revisionKey: revision.revisionKey,
       defaultLocale: "en-GB",
-      runtimeCommit: "a".repeat(40),
+      runtimeCommit:
+        operation.runtimeUpdate
+          ? operation.runtimeUpdate.to
+          : "runtimeCommit" in binding
+            ? binding.runtimeCommit
+            : "a".repeat(40),
       encryptedRuntimeConfig: "encrypted",
       runtimeConfigSha256: "e".repeat(64),
       savedAt: Date.now(),
@@ -2092,6 +2153,7 @@ describe("custom domains", () => {
     });
     const operationId = await readPendingOperationId(fixture, domainId);
     const first = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
+    await saveDeploymentTarget(fixture, operationId);
 
     // The publish fails, which gives the domain back.
     await fixture.t.mutation(
@@ -2102,7 +2164,10 @@ describe("custom domains", () => {
         operationId,
         attemptToken: first?.configurationAttemptToken ?? "",
         attemptCount: first?.attemptCount ?? 1,
-        error: { code: "TEST", message: "the deployment failed" },
+        error: {
+          code: "COOLIFY_UNAVAILABLE",
+          message: "the deployment service was unavailable",
+        },
       },
     );
     expect((await readRow(fixture, domainId))?.transition).toBeUndefined();
@@ -2325,6 +2390,7 @@ describe("custom domains", () => {
     expect(removed.status).toBe("removing");
     const operationId = await readPendingOperationId(fixture, domainId);
     const first = await fixture.t.run(async (ctx) => ctx.db.get(operationId));
+    await saveDeploymentTarget(fixture, operationId);
 
     await fixture.t.mutation(
       internal.evidenceLibraries.configurationDeployment
@@ -2334,7 +2400,10 @@ describe("custom domains", () => {
         operationId,
         attemptToken: first?.configurationAttemptToken ?? "",
         attemptCount: first?.attemptCount ?? 1,
-        error: { code: "TEST", message: "the deployment failed" },
+        error: {
+          code: "COOLIFY_UNAVAILABLE",
+          message: "the deployment service was unavailable",
+        },
       },
     );
 

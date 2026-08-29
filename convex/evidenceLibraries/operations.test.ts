@@ -75,6 +75,7 @@ async function createOperationFixture(
           revisionNumber,
           basedOnRevisionId: null,
           rollbackOfRevisionId: null,
+          ownerConfigurationVersion: 2,
           contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
           createdByClerkUserId: clerkUserId,
           createdAt: revisionNumber,
@@ -492,7 +493,7 @@ describe("Evidence Library operation state", () => {
         libraryId: created.libraryId,
         expectedEditVersion: activated.editVersion,
       }),
-    ).rejects.toThrow(/\/localization\/defaultLocale/);
+    ).rejects.toThrow(/Evidence Library configuration snapshot is invalid/);
     const afterRejected = await t.run(async (ctx) => ({
       library: await ctx.db.get(created.libraryId),
       operations: await ctx.db

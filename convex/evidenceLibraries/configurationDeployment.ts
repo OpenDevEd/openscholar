@@ -51,6 +51,7 @@ import {
 import {
   isConfigurationDeploymentOperation,
   isAcceptableSavedConfigurationTarget,
+  isCurrentConfigurationTargetBaseUrl,
   isCurrentConfigurationDeploymentTarget,
   isRetryableConfigurationDeployment,
 } from "./operations";
@@ -748,12 +749,6 @@ export const saveConfigurationDeploymentTarget = internalMutation({
     const sourceCredentials = await Promise.all(
       sourceVersions.map(({ id }) => ctx.db.get(id)),
     );
-    const pendingAddressMove = deployment.operation.addressMove;
-    const targetBaseUrlMatches =
-      args.target.targetBaseUrl === deployment.runtimeBinding.targetBaseUrl ||
-      (pendingAddressMove !== undefined &&
-        args.target.targetBaseUrl === pendingAddressMove.to &&
-        deployment.runtimeBinding.targetBaseUrl === pendingAddressMove.from);
     if (
       deployment.runtimeBinding._id !== args.source.runtimeBindingId ||
       deployment.runtimeBinding.updatedAt !== args.source.bindingUpdatedAt ||
@@ -766,7 +761,11 @@ export const saveConfigurationDeploymentTarget = internalMutation({
           credential.updatedAt !== sourceVersions[index]!.updatedAt,
       ) ||
       args.target.applicationId !== deployment.runtimeBinding.targetRuntimeId ||
-      !targetBaseUrlMatches ||
+      !isCurrentConfigurationTargetBaseUrl(
+        deployment.runtimeBinding,
+        args.target.targetBaseUrl,
+        deployment.operation,
+      ) ||
       args.target.revisionKey !== deployment.revision.revisionKey
     ) {
       throw createError(

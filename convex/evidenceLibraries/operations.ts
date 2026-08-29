@@ -21,6 +21,33 @@ type ConfigurationDeploymentTarget = NonNullable<
   Doc<"evidenceLibraryConfigOperations">["configurationDeploymentTarget"]
 >;
 
+/**
+ * A target may name the address a pending operation is about to make live.
+ * Until readiness succeeds, the binding still names the address that serves
+ * the current library.
+ */
+export function isCurrentConfigurationTargetBaseUrl(
+  runtimeBinding: Doc<"evidenceLibraryRuntimeBindings">,
+  targetBaseUrl: string,
+  operation?: Doc<"evidenceLibraryConfigOperations">,
+): boolean {
+  const pendingAddressMove = operation?.addressMove;
+  if (pendingAddressMove !== undefined) {
+    return (
+      targetBaseUrl === pendingAddressMove.to &&
+      runtimeBinding.targetBaseUrl === pendingAddressMove.from
+    );
+  }
+  const pendingCanonicalAddress =
+    operation?.domainChange?.reason === "canonical"
+      ? operation.domainChange.address
+      : undefined;
+  if (pendingCanonicalAddress !== undefined) {
+    return targetBaseUrl === pendingCanonicalAddress;
+  }
+  return targetBaseUrl === runtimeBinding.targetBaseUrl;
+}
+
 /** A publish operation owned by the configuration deployment pipeline. */
 export function isConfigurationDeploymentOperation(
   operation: Doc<"evidenceLibraryConfigOperations">,
@@ -52,16 +79,14 @@ export function isCurrentConfigurationDeploymentTarget(
   ) {
     return false;
   }
-  const pendingAddressMove = operation?.addressMove;
-  const targetBaseUrlMatches =
-    target.targetBaseUrl === runtimeBinding.targetBaseUrl ||
-    (pendingAddressMove !== undefined &&
-      target.targetBaseUrl === pendingAddressMove.to &&
-      runtimeBinding.targetBaseUrl === pendingAddressMove.from);
   return (
     target.runtimeBindingId === runtimeBinding._id &&
     target.applicationId === runtimeBinding.targetRuntimeId &&
-    targetBaseUrlMatches &&
+    isCurrentConfigurationTargetBaseUrl(
+      runtimeBinding,
+      target.targetBaseUrl,
+      operation,
+    ) &&
     target.revisionKey === revision.revisionKey
   );
 }
