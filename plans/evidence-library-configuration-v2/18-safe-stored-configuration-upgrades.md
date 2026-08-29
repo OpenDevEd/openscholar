@@ -169,10 +169,17 @@ type OwnerConfigurationSnapshot = {
   sections: OwnerSectionRow[];
 };
 
+type OwnerConfigurationMigrationSnapshot = {
+  ownerConfigurationVersion: number;
+  sections: { sectionKey: string; payload: unknown }[];
+};
+
 type OwnerConfigurationMigration = {
   from: number;
   to: number;
-  migrate(snapshot: OwnerConfigurationSnapshot): OwnerConfigurationSnapshot;
+  migrate(
+    snapshot: OwnerConfigurationMigrationSnapshot,
+  ): OwnerConfigurationMigrationSnapshot;
 };
 ```
 
