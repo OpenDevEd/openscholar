@@ -415,10 +415,14 @@ each service its own work directory. Put the runtime and release services in
 one 16-core heavy-work slice so they cannot consume 32 cores together. The
 runtime and release users each own a separate rootless Docker daemon and
 persistent `docker-container` BuildKit builder. Create those two builders with
-a 16-core `cpuset-cpus`; do not share a Docker socket or cache between test and
-release jobs. Preinstall Node 22, Chromium's Linux packages, Docker, Compose
-and Buildx. The workflow still runs locked `npm ci` and installs the
-package-lock-selected Chromium version.
+no nested CPU setting. Pin both heavy runner services and both rootless Docker
+user slices to guest CPUs 8 through 23 with systemd. Rootless Docker does not
+delegate the cpuset controller to its BuildKit container, so a second
+`cpuset-cpus` driver option fails even though the outer 16-core boundary is
+active. Do not share a Docker socket or cache between test and release jobs.
+Preinstall Node 22, Chromium's Linux packages, Docker, Compose and Buildx. The
+workflow still runs locked `npm ci` and installs the package-lock-selected
+Chromium version.
 
 Keep the guest out of Coolify and deployment systems:
 
