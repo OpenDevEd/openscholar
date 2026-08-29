@@ -569,6 +569,26 @@ migration is complete. Repeat `auditPage` with the returned cursor until
 8. Replace the failed `new lib` version-1 update with one new version-2
    candidate operation. Keep the old failed operation as immutable history.
 
+### Deploy B proof — 2026-08-29
+
+- PR #128 merged as `d34fbf97de3008d5d3ec3c057e3fcffe0a414890`.
+  Its full suite passed 4,395 tests across 428 files, and the shared upload
+  ended with `Convex functions ready!`.
+- The official reset migration completed successfully and processed all five
+  drafts. The shared audit then found five version-2 drafts, seven revisions
+  and 80 section rows. It found no unknown versions, broken parents,
+  duplicates, invalid Exports rows or migration-validation failures.
+- `new lib` Update created version-2 revision `r3` and operation
+  `r975dvaha8nhk3bdx9zf8fg2b98dcm2q`. The old failed operation stayed frozen
+  and had no Retry action. The runtime health endpoint reported active `r3`.
+- Restore from frozen version-1 revision
+  `rd7djcs5yct0tfqs5e51k0g6px8dbqza` created version-2 revision `r4`. The
+  source section hash stayed
+  `de5b42e2af1a1cf952f6f5a1dd9486e3f68442f12b25b868f98779222db06cc1`
+  before and after Restore. The runtime health endpoint reported active `r4`.
+- Reloading the configuration page showed no unsaved changes, a disabled Save
+  button, AI marked Complete and `r4` marked Live. Deploy B passes.
+
 ### Deploy C: narrow
 
 1. Restrict mutable drafts to version 2. Revisions keep `1 | 2` because frozen
@@ -580,6 +600,32 @@ migration is complete. Repeat `auditPage` with the returned cursor until
    dependency after Deploy B completes. A future owner-format version plan
    must add the component back before it runs another live backfill.
 5. Run the full checks and shared live gate again.
+
+### Deploy C proof — 2026-08-29
+
+- PR #129 merged as `530c1910d47dc7f6db6b61654ec745cdca90a604`.
+  CI passed 4,390 tests across 428 files, the build, auth E2E, billing and
+  security checks on exact head `63788334d1e2d121aa6061fbf41e7838770577d5`.
+- The lane upload to `cheerful-robin-800` ended with
+  `Convex functions ready!`. Its audit found all five drafts at version 2 and
+  no real errors.
+- A fresh shared snapshot was saved at
+  `/var/folders/hz/n4vcv2ld2zv67svmsrzy0kg80000gn/T/tmp.Bk7QKXjh1W/openscholar-before-plan18-deploy-c.zip`.
+  The runtime contract remained pinned to
+  `937bb65ecb30f5f6f22cde5d0d527f3ad9988987`.
+- The shared upload ended with `Convex functions ready!` and unmounted the
+  one-time migrations component. The eight-page audit scanned five drafts,
+  nine revisions and 118 section rows. All five drafts are version 2. Seven
+  frozen revisions remain version 1 and two newer revisions are version 2.
+  The only findings are four stale fields in two frozen version-1 revisions.
+  Unknown versions, broken parents, duplicates, invalid Exports rows and
+  migration-validation failures are all zero.
+- The first audit command omitted the required pagination arguments and was
+  rejected without reading or writing rows. Every correctly paginated call
+  then passed.
+- The final browser reload showed no unsaved changes, a disabled Save button,
+  AI marked Complete and `r4` marked Live. The runtime health endpoint answers
+  with active `r4` and no rejected candidate. Deploy C passes.
 
 ## Deployability gate
 
