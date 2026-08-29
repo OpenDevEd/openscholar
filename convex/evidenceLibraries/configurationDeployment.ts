@@ -7,6 +7,7 @@ import {
 } from "../_generated/server";
 import { v } from "convex/values";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import {
@@ -39,6 +40,7 @@ import {
   STORAGE_SERVICE_KEY_PATH,
 } from "./runtimeCredentials";
 import { applyEvidenceLibraryAddressMove } from "./addressRecovery";
+import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 import {
   evidenceLibraryAddressMoveValidator,
   evidenceLibraryConfigurationDeploymentTargetValidator,
@@ -46,6 +48,14 @@ import {
   evidenceLibraryRuntimeUpdateValidator,
   sectionRowValidator,
 } from "./validators";
+import {
+  isConfigurationDeploymentOperation,
+  isAcceptableSavedConfigurationTarget,
+  isCurrentConfigurationDeploymentTarget,
+  isRetryableConfigurationDeployment,
+} from "./operations";
+
+export { isConfigurationDeploymentOperation } from "./operations";
 
 export const CONFIGURATION_DEPLOYMENT_LEASE_MS = 20 * 60 * 1_000;
 const CONFIGURATION_DEPLOYMENT_POLL_DELAY_MS = 5_000;
@@ -96,21 +106,6 @@ function isReadyRuntimeBinding(
   binding: Doc<"evidenceLibraryRuntimeBindings">,
 ): binding is ReadyRuntimeBinding {
   return binding.state === "ready" && "targetRuntimeId" in binding;
-}
-
-// A publish operation the pipeline owns: an activation of a draft edit, a
-// runtime update of the active revision, a move to a new address, or a
-// custom domain being attached, removed or made the library's address.
-export function isConfigurationDeploymentOperation(
-  operation: Doc<"evidenceLibraryConfigOperations">,
-): boolean {
-  return (
-    operation.kind === "publish" &&
-    (operation.activationEditVersion !== undefined ||
-      operation.runtimeUpdate !== undefined ||
-      operation.addressMove !== undefined ||
-      operation.domainChange !== undefined)
-  );
 }
 
 function requireNonBlank(field: string, value: string): string {
@@ -190,11 +185,13 @@ async function readConfigurationDeployment(
   const target = operation.configurationDeploymentTarget;
   if (
     target &&
-    (library.runtimeBindingId !== target.runtimeBindingId ||
-      runtimeBinding._id !== target.runtimeBindingId ||
-      runtimeBinding.targetRuntimeId !== target.applicationId ||
-      runtimeBinding.targetBaseUrl !== target.targetBaseUrl ||
-      revision.revisionKey !== target.revisionKey)
+    !isCurrentConfigurationDeploymentTarget(
+      library,
+      revision,
+      runtimeBinding,
+      target,
+      operation,
+    )
   ) {
     throw createError(
       "CONFLICT",
@@ -202,6 +199,19 @@ async function readConfigurationDeployment(
     );
   }
   return { library, operation, revision, runtimeBinding };
+}
+
+function requireCurrentConfigurationRevision(
+  revision: Doc<"evidenceLibraryConfigRevisions">,
+): void {
+  if (
+    revision.ownerConfigurationVersion !== CURRENT_OWNER_CONFIGURATION_VERSION
+  ) {
+    throw createError(
+      "CONFLICT",
+      "Evidence Library configuration revision is not a current owner format",
+    );
+  }
 }
 
 function requireCurrentAttempt(
@@ -442,6 +452,7 @@ export const prepareConfigurationDeployment = internalMutation({
   ),
   handler: async (ctx, args) => {
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
+    requireCurrentConfigurationRevision(deployment.revision);
     if (
       deployment.operation.stage !== "assembling" &&
       deployment.operation.stage !== "publishing" &&
@@ -454,6 +465,17 @@ export const prepareConfigurationDeployment = internalMutation({
     }
     const savedTarget = deployment.operation.configurationDeploymentTarget;
     if (savedTarget) {
+      if (
+        !(await isAcceptableSavedConfigurationTarget(
+          ctx,
+          deployment.operation,
+        ))
+      ) {
+        throw createError(
+          "CONFLICT",
+          "The saved configuration target no longer matches the current runtime",
+        );
+      }
       const receipt = deployment.operation.receipt;
       if (
         receipt &&
@@ -494,34 +516,37 @@ export const prepareConfigurationDeployment = internalMutation({
         "The library moved to other software after this update was requested",
       );
     }
-    const [sectionRows, authentication, machine, database, search, storage] =
-      await Promise.all([
-        ctx.db
-          .query("evidenceLibraryConfigSections")
-          .withIndex("by_revisionId_and_sectionKey", (query) =>
-            query.eq("revisionId", deployment.revision._id),
-          )
-          .collect(),
-        ctx.db
-          .query("evidenceLibraryCredentials")
-          .withIndex("by_libraryId_and_credentialKey", (query) =>
-            query
-              .eq("libraryId", args.libraryId)
-              .eq("credentialKey", AUTHENTICATION_SECRET_PATH),
-          )
-          .unique(),
-        ctx.db
-          .query("evidenceLibraryCredentials")
-          .withIndex("by_libraryId_and_credentialKey", (query) =>
-            query
-              .eq("libraryId", args.libraryId)
-              .eq("credentialKey", LIBRARY_SERVICE_CREDENTIAL_KEY),
-          )
-          .unique(),
-        ctx.db.get(deployment.runtimeBinding.databaseCredentialId),
-        ctx.db.get(deployment.runtimeBinding.searchCredentialId),
-        ctx.db.get(deployment.runtimeBinding.storageCredentialId),
-      ]);
+    const [
+      configurationSnapshot,
+      authentication,
+      machine,
+      database,
+      search,
+      storage,
+    ] = await Promise.all([
+      loadRevisionConfigurationSnapshot(ctx, deployment.revision._id, {
+        requireComplete: true,
+      }),
+      ctx.db
+        .query("evidenceLibraryCredentials")
+        .withIndex("by_libraryId_and_credentialKey", (query) =>
+          query
+            .eq("libraryId", args.libraryId)
+            .eq("credentialKey", AUTHENTICATION_SECRET_PATH),
+        )
+        .unique(),
+      ctx.db
+        .query("evidenceLibraryCredentials")
+        .withIndex("by_libraryId_and_credentialKey", (query) =>
+          query
+            .eq("libraryId", args.libraryId)
+            .eq("credentialKey", LIBRARY_SERVICE_CREDENTIAL_KEY),
+        )
+        .unique(),
+      ctx.db.get(deployment.runtimeBinding.databaseCredentialId),
+      ctx.db.get(deployment.runtimeBinding.searchCredentialId),
+      ctx.db.get(deployment.runtimeBinding.storageCredentialId),
+    ]);
     // A change of the library's own address travels on the operation. The
     // deployment carries the new address so the running site starts using
     // it; nothing stored moves until readiness passes.
@@ -529,20 +554,28 @@ export const prepareConfigurationDeployment = internalMutation({
       deployment.operation.domainChange?.reason === "canonical"
         ? deployment.operation.domainChange.address
         : undefined;
-    const expectedBaseUrl =
+    const addressMove = deployment.operation.addressMove;
+    const candidateAddress =
       canonicalChange ??
+      (addressMove && deployment.runtimeBinding.canonicalBaseUrl === undefined
+        ? addressMove.to
+        : undefined);
+    const expectedBaseUrl =
+      candidateAddress ??
       deployment.runtimeBinding.canonicalBaseUrl ??
       deployment.runtimeBinding.targetBaseUrl;
-    const sections = sectionRows.map((section) => ({
-      sectionKey: section.sectionKey,
-      payload:
-        canonicalChange && section.sectionKey === "identity"
-          ? {
-              ...(section.payload as Record<string, unknown>),
-              baseUrl: canonicalChange,
-            }
-          : section.payload,
-    }));
+    const sections = configurationSnapshot.migration.snapshot.sections.map(
+      (section) => ({
+        sectionKey: section.sectionKey,
+        payload:
+          candidateAddress && section.sectionKey === "identity"
+            ? {
+                ...(section.payload as Record<string, unknown>),
+                baseUrl: candidateAddress,
+              }
+            : section.payload,
+      }),
+    );
     const validated = validateOwnerSections(sections, {
       expectedBaseUrl,
       requireComplete: true,
@@ -585,7 +618,9 @@ export const prepareConfigurationDeployment = internalMutation({
         ? { addressMove: deployment.operation.addressMove }
         : {}),
       applicationId: deployment.runtimeBinding.targetRuntimeId,
-      targetBaseUrl: deployment.runtimeBinding.targetBaseUrl,
+      targetBaseUrl:
+        deployment.operation.addressMove?.to ??
+        deployment.runtimeBinding.targetBaseUrl,
       customDomains: await readAttachedDomainOrigins(ctx, args.libraryId),
       revision: {
         key: deployment.revision.revisionKey,
@@ -661,71 +696,6 @@ export const prepareConfigurationDeployment = internalMutation({
   },
 });
 
-/**
- * Writes the planned address to the runtime binding, the draft and the
- * revision. The action calls this only after Coolify has answered that the
- * application serves the new domain, so a move that fails earlier leaves the
- * library on the address it had.
- */
-export const applyConfigurationAddressMove = internalMutation({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    attemptToken: v.string(),
-    attemptCount: v.number(),
-  },
-  returns: v.object({ movedTo: v.string() }),
-  handler: async (ctx, args) => {
-    const deployment = await requireCurrentConfigurationDeployment(ctx, args);
-    const move = deployment.operation.addressMove;
-    if (!move) {
-      throw createError(
-        "CONFLICT",
-        "This Evidence Library deployment is not moving the address",
-      );
-    }
-    if (move.applied) return { movedTo: move.to };
-    if (deployment.runtimeBinding.targetBaseUrl !== move.from) {
-      throw createError(
-        "CONFLICT",
-        "The Evidence Library address changed after this move was requested",
-      );
-    }
-    const taken = await ctx.db
-      .query("evidenceLibraryRuntimeBindings")
-      .withIndex("by_targetBaseUrl", (query) =>
-        query.eq("targetBaseUrl", move.to),
-      )
-      .first();
-    if (taken && taken._id !== deployment.runtimeBinding._id) {
-      throw createError(
-        "CONFLICT",
-        "Another Evidence Library took that address first",
-      );
-    }
-    const draft = await ctx.db
-      .query("evidenceLibraryConfigDrafts")
-      .withIndex("by_libraryId", (query) =>
-        query.eq("libraryId", args.libraryId),
-      )
-      .unique();
-    if (!draft) {
-      throw createError("NOT_FOUND", "Evidence Library draft not found");
-    }
-    await applyEvidenceLibraryAddressMove(ctx, {
-      bindingId: deployment.runtimeBinding._id,
-      draftId: draft._id,
-      revisionId: deployment.revision._id,
-      nextAddress: move.to,
-    });
-    await ctx.db.patch(deployment.operation._id, {
-      addressMove: { ...move, applied: true },
-      updatedAt: Date.now(),
-    });
-    return { movedTo: move.to };
-  },
-});
-
 export const saveConfigurationDeploymentTarget = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -778,6 +748,12 @@ export const saveConfigurationDeploymentTarget = internalMutation({
     const sourceCredentials = await Promise.all(
       sourceVersions.map(({ id }) => ctx.db.get(id)),
     );
+    const pendingAddressMove = deployment.operation.addressMove;
+    const targetBaseUrlMatches =
+      args.target.targetBaseUrl === deployment.runtimeBinding.targetBaseUrl ||
+      (pendingAddressMove !== undefined &&
+        args.target.targetBaseUrl === pendingAddressMove.to &&
+        deployment.runtimeBinding.targetBaseUrl === pendingAddressMove.from);
     if (
       deployment.runtimeBinding._id !== args.source.runtimeBindingId ||
       deployment.runtimeBinding.updatedAt !== args.source.bindingUpdatedAt ||
@@ -790,7 +766,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
           credential.updatedAt !== sourceVersions[index]!.updatedAt,
       ) ||
       args.target.applicationId !== deployment.runtimeBinding.targetRuntimeId ||
-      args.target.targetBaseUrl !== deployment.runtimeBinding.targetBaseUrl ||
+      !targetBaseUrlMatches ||
       args.target.revisionKey !== deployment.revision.revisionKey
     ) {
       throw createError(
@@ -1059,6 +1035,74 @@ export const scheduleConfigurationReadinessPoll = internalMutation({
   },
 });
 
+async function completeConfigurationAddressMove(
+  ctx: MutationCtx,
+  deployment: CurrentDeployment,
+): Promise<void> {
+  const move = deployment.operation.addressMove;
+  if (!move || move.applied) return;
+  if (
+    deployment.runtimeBinding.targetBaseUrl !== move.from &&
+    deployment.runtimeBinding.targetBaseUrl !== move.to
+  ) {
+    throw createError(
+      "CONFLICT",
+      "The Evidence Library address changed after this move was requested",
+    );
+  }
+  const taken = await ctx.db
+    .query("evidenceLibraryRuntimeBindings")
+    .withIndex("by_targetBaseUrl", (query) =>
+      query.eq("targetBaseUrl", move.to),
+    )
+    .first();
+  if (taken && taken._id !== deployment.runtimeBinding._id) {
+    throw createError(
+      "CONFLICT",
+      "Another Evidence Library took that address first",
+    );
+  }
+  const draft = await ctx.db
+    .query("evidenceLibraryConfigDrafts")
+    .withIndex("by_libraryId", (query) =>
+      query.eq("libraryId", deployment.library._id),
+    )
+    .unique();
+  if (!draft) {
+    throw createError("NOT_FOUND", "Evidence Library draft not found");
+  }
+  await applyEvidenceLibraryAddressMove(ctx, {
+    bindingId: deployment.runtimeBinding._id,
+    draftId: draft._id,
+    revisionId: deployment.revision._id,
+    nextAddress: move.to,
+  });
+  await ctx.db.patch(deployment.operation._id, {
+    addressMove: { ...move, applied: true },
+    updatedAt: Date.now(),
+  });
+}
+
+async function updateDraftBaseRevision(
+  ctx: MutationCtx,
+  deployment: CurrentDeployment,
+): Promise<void> {
+  const draft = await ctx.db
+    .query("evidenceLibraryConfigDrafts")
+    .withIndex("by_libraryId", (query) =>
+      query.eq("libraryId", deployment.library._id),
+    )
+    .unique();
+  if (!draft) {
+    throw createError("NOT_FOUND", "Evidence Library draft not found");
+  }
+  if (draft.baseRevisionId !== deployment.revision._id) {
+    await ctx.db.patch(draft._id, {
+      baseRevisionId: deployment.revision._id,
+    });
+  }
+}
+
 export const completeConfigurationDeployment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -1107,6 +1151,7 @@ export const completeConfigurationDeployment = internalMutation({
         "Evidence Library deployment receipt is incomplete",
       );
     }
+    await completeConfigurationAddressMove(ctx, deployment);
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       status: "succeeded",
@@ -1181,6 +1226,7 @@ export const completeConfigurationDeployment = internalMutation({
         });
       }
     }
+    await updateDraftBaseRevision(ctx, deployment);
     return { status: "succeeded" as const };
   },
 });
@@ -1299,6 +1345,18 @@ export const retryConfigurationDeployment = mutation({
   handler: async (ctx, args) => {
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const operation = await ctx.db.get(args.operationId);
+    if (!operation || operation.libraryId !== args.libraryId) {
+      throw createError(
+        "NOT_FOUND",
+        "Evidence Library configuration deployment not found",
+      );
+    }
+    if (!(await isRetryableConfigurationDeployment(ctx, operation))) {
+      throw createError(
+        "CONFLICT",
+        "This Evidence Library configuration deployment cannot be retried",
+      );
+    }
     // A domain change that failed gave the domain back, so trying again has
     // to take it afresh. Done in the same transaction that books the worker,
     // so the retry never runs holding a lease that is no longer its own.
