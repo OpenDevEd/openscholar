@@ -8,7 +8,11 @@ import {
   validateSectionStructure,
 } from "./generated-validation";
 import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
-import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
+import {
+  PLATFORM_DEFAULT_POINTERS,
+  SECTION_REGISTRY,
+  type SectionKey,
+} from "./section-registry";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
 export const CURRENT_OWNER_CONFIGURATION_VERSION = 2 as const;
@@ -140,6 +144,13 @@ function legacyAllowedStructureIssue(
     );
   }
   return false;
+}
+
+function isPlatformDefaultStructureIssue(value: ValidationIssue): boolean {
+  return (
+    value.keyword === "required" &&
+    (PLATFORM_DEFAULT_POINTERS as readonly string[]).includes(value.pointer)
+  );
 }
 
 function sectionRowsForValidation(
@@ -290,8 +301,9 @@ function validateSnapshotShape(
         row.payload,
       ).issues.filter(
         (value) =>
-          !legacy ||
-          !legacyAllowedStructureIssue(row.sectionKey, row.payload, value),
+          !isPlatformDefaultStructureIssue(value) &&
+          (!legacy ||
+            !legacyAllowedStructureIssue(row.sectionKey, row.payload, value)),
       );
       issues.push(...structureIssues.map(fromValidationIssue));
     }
@@ -345,6 +357,11 @@ function migrateVersionOneToTwo(
       const payload = { ...row.payload };
       for (const key of LEGACY_FEATURE_KEYS) delete payload[key];
       row.payload = payload;
+    }
+    if (row.sectionKey === "identity" && isRecord(row.payload)) {
+      if (!hasOwn(row.payload, "assets")) {
+        row.payload = { ...row.payload, assets: {} };
+      }
     }
     if (row.sectionKey === "exports" && hasNonBooleanExport(row.payload)) {
       row.payload = schemaDefaultExports();
