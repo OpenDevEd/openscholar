@@ -504,7 +504,8 @@ export function migrateOwnerConfiguration(
     let migrated: OwnerConfigurationSnapshot;
     try {
       migrated = migration.migrate(cloneJson(current));
-    } catch {
+    } catch (error) {
+      if (error instanceof OwnerConfigurationMigrationError) throw error;
       throw new OwnerConfigurationMigrationError(
         "Evidence Library configuration migration failed",
         [
