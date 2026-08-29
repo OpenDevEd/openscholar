@@ -84,6 +84,7 @@ answer machine calls yet, so pickers have nothing to read.
 | 14 | `14-admin-handoff.md` | `/admin` redirects to OpenScholar, which signs in, checks access and sends the cookie back |
 | 15 | `15-runtime-ai-analytics-merge.md` | Merge `ai-modernization` into the runtime; AI section (OpenRouter only); analytics fields; logo sizing |
 | 16 | `16-custom-domains.md` (+ `16-RESEARCH.md`) | Custom domains: CNAME to `cname.opendev.space`, Cloudflare for SaaS, four verification gates, redirect toggle |
+| 17 | `17-build-once-runtime-image.md` | Build one immutable Evidence Library image per approved runtime commit and inject each library's configuration only when containers start |
 | 18 | `18-safe-stored-configuration-upgrades.md` | Version every stored owner configuration and migrate production snapshots before stricter rules deploy |
 
 ## Lanes and order
