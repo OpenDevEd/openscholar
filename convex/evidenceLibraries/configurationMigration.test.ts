@@ -101,8 +101,14 @@ describe("Evidence Library configuration migration", () => {
       dryRun: false,
       oneBatchOnly: true,
     };
-    await t.mutation(anyApi.migrations.ownerConfiguration.tagDraftVersions, args);
-    await t.mutation(anyApi.migrations.ownerConfiguration.tagRevisionVersions, args);
+    await t.mutation(
+      anyApi.migrations.ownerConfiguration.tagDraftVersions,
+      args,
+    );
+    await t.mutation(
+      anyApi.migrations.ownerConfiguration.tagRevisionVersions,
+      args,
+    );
     const tagged = await t.run(async (ctx) => ({
       draft: await ctx.db.get(seeded.draftId),
       revision: await ctx.db.get(seeded.revisionId),
@@ -110,8 +116,14 @@ describe("Evidence Library configuration migration", () => {
     expect(tagged.draft?.ownerConfigurationVersion).toBe(1);
     expect(tagged.revision?.ownerConfigurationVersion).toBe(1);
 
-    await t.mutation(anyApi.migrations.ownerConfiguration.tagDraftVersions, args);
-    await t.mutation(anyApi.migrations.ownerConfiguration.tagRevisionVersions, args);
+    await t.mutation(
+      anyApi.migrations.ownerConfiguration.tagDraftVersions,
+      args,
+    );
+    await t.mutation(
+      anyApi.migrations.ownerConfiguration.tagRevisionVersions,
+      args,
+    );
     const unchanged = await t.run(async (ctx) => ({
       draft: await ctx.db.get(seeded.draftId),
       revision: await ctx.db.get(seeded.revisionId),
@@ -178,7 +190,8 @@ describe("Evidence Library configuration migration", () => {
         scanned: total.scanned + page.counts.scanned,
         missingVersions: total.missingVersions + page.counts.missingVersions,
         staleFeatures: total.staleFeatures + page.counts.staleFeatures,
-        nonBooleanExports: total.nonBooleanExports + page.counts.nonBooleanExports,
+        nonBooleanExports:
+          total.nonBooleanExports + page.counts.nonBooleanExports,
         brokenParents: total.brokenParents + page.counts.brokenParents,
       }),
       {
