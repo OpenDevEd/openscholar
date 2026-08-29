@@ -24,11 +24,13 @@ Use a private GHCR package. This keeps the compiled contents under the same
 access boundary as the private repository. Making it public would be a separate
 user decision because GitHub says that change cannot be undone.
 
-Run every `new-el` GitHub Actions job on one dedicated self-hosted build server.
-GitHub keeps scheduling jobs and reporting required checks, but Blacksmith does
-not execute any job. Use fixed runners instead of an autoscaler: four 2-core
-light runners, one 16-core runtime runner and one 16-core release runner. This
-uses at most 40 of a 48-core server's CPUs and leaves eight for the host.
+Run every `new-el` GitHub Actions job inside one KVM guest on the current
+48-core Hetzner Coolify host. GitHub keeps scheduling jobs and reporting
+required checks, but Blacksmith does not execute any job. The guest has 24
+virtual CPUs, 48 GiB of memory and a bounded virtual disk. Use fixed runners
+instead of an autoscaler: four 2-core light runners, one 16-core runtime runner
+and one 16-core release runner. The two heavy runners share one 16-core systemd
+slice, so the guest and host never admit more than 24 CI cores at once.
 
 ## Recommendation
 
@@ -148,8 +150,8 @@ configuration-only replacement falls from 16.19 seconds to 1.77 seconds,
 saving 89.1% per library.
 
 Those totals deliberately count the unified build on the deployment server,
-even though the final design moves it to the dedicated self-hosted build
-server. They do not count the first private-GHCR pull because no release image
+even though the final design moves it to the isolated self-hosted build guest.
+They do not count the first private-GHCR pull because no release image
 exists yet. For eighteen
 libraries, the build-once path still wins if that one pull takes less than
 257.40 seconds when build time is counted end to end, or less than 402.01
@@ -230,9 +232,10 @@ their caches, the temporary Node image tag and
   ([self-hosted runner reference](https://docs.github.com/en/actions/reference/runners/self-hosted-runners),
   [using self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/use-in-a-workflow)).
 - GitHub warns that self-hosted jobs do not receive a clean isolated machine.
-  Keep the build server dedicated, accept jobs only from branches in the same
-  private repository, give test runners no deployment secrets, and isolate the
-  release runner under its own OS account and runner-group workflow rule
+  Keep the build guest separate from the Coolify host, accept jobs only from
+  branches in the same private repository, give test runners no deployment
+  secrets, and isolate the release runner under its own OS account and
+  runner-group workflow rule
   ([secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)).
 - Docker's container driver accepts `cpuset-cpus` and keeps a persistent local
   BuildKit cache. Use one pre-created builder for the runtime runner and a
@@ -377,11 +380,17 @@ checkout stayed untouched because it was on `codex/libtest` with local changes.
 
 ### 0. Move `new-el` CI off Blacksmith
 
-Use one dedicated Linux x64 build server in the tested hardware class: 48 CPUs,
-about 256 GiB of memory and enough local SSD space for Docker layers. Register
-one GitHub runner group that only `OpenDevEd/new-el` may use. The workflows keep
-their current required checks and GitHub UI; only the machine that executes a
-job changes.
+Create one Ubuntu 24.04 KVM guest on the current 48-core Hetzner Coolify host.
+Give it 24 virtual CPUs, 48 GiB of memory and a 300 GiB sparse virtual disk.
+The host keeps the other 24 CPUs and more than 190 GiB of currently available
+memory for Coolify. The guest firewall permits public internet access for
+GitHub, npm, Playwright images and GHCR, but denies the host address, Docker
+networks, private address ranges and cloud metadata addresses. Runner users
+have no host mount, host Docker socket, Coolify socket or passwordless sudo.
+
+Register one GitHub runner group that only `OpenDevEd/new-el` may use. The
+workflows keep their current required checks and GitHub UI; only the machine
+that executes a job changes.
 
 Provision these fixed runner services:
 
@@ -392,14 +401,16 @@ Provision these fixed runner services:
 | 1 | `evidence-library-release` | 16 | exact-commit runtime image publication |
 
 Each service accepts one job at a time. Apply CPU limits with systemd and give
-each service its own work directory. The runtime and release users each own a
-separate rootless Docker daemon and persistent `docker-container` BuildKit
-builder. Create those two builders with a 16-core `cpuset-cpus`; do not share a
-Docker socket or cache between test and release jobs. Preinstall Node 22,
-Chromium's Linux packages, Docker, Compose and Buildx. The workflow still runs
-locked `npm ci` and installs the package-lock-selected Chromium version.
+each service its own work directory. Put the runtime and release services in
+one 16-core heavy-work slice so they cannot consume 32 cores together. The
+runtime and release users each own a separate rootless Docker daemon and
+persistent `docker-container` BuildKit builder. Create those two builders with
+a 16-core `cpuset-cpus`; do not share a Docker socket or cache between test and
+release jobs. Preinstall Node 22, Chromium's Linux packages, Docker, Compose
+and Buildx. The workflow still runs locked `npm ci` and installs the
+package-lock-selected Chromium version.
 
-Keep the server out of Coolify and production:
+Keep the guest out of Coolify and deployment systems:
 
 - no Convex, Coolify, Cloudflare, database, storage, SMTP, Clerk or production
   SSH credentials;
@@ -419,8 +430,10 @@ the replacement. A repository search for `blacksmith` and `useblacksmith` must
 return no workflow, action, package or documentation dependency.
 
 Use fixed services, not Kubernetes, Actions Runner Controller or a custom
-autoscaler. The measured host has enough capacity, and GitHub already queues a
-job when every matching runner is busy.
+autoscaler. The measured host has enough capacity, KVM provides the boundary
+from Coolify, and GitHub already queues a job when every matching runner is
+busy. Provision the four light runners and runtime runner for the CI move.
+Provision the separate release runner only when `runtime-image.yml` is ready.
 
 ### 1. Publish one immutable release image
 
@@ -624,8 +637,8 @@ even when many library containers use it. A config-only deployment uses the
 local image. Docker documents that the local image store is content-addressed
 and stores shared layers once in its
 [image pull reference](https://docs.docker.com/reference/cli/docker/image/pull/).
-The dedicated build server keeps only its two named BuildKit caches. Do not add
-a registry proxy, remote cache service or second build scheduler.
+The build guest keeps only its two named BuildKit caches. Do not add a registry
+proxy, remote cache service or second build scheduler.
 
 Keep every published runtime image in GHCR in this plan. It is rollback data,
 not build debris. Do not add an automatic package deletion token or guess that
@@ -638,8 +651,8 @@ binding, successful version receipt or unfinished operation references it.
 
 ### Lane R · Evidence Library runtime
 
-1. Provision and gate the six self-hosted runner services, then move every CI
-   job to them and remove Blacksmith.
+1. Provision and gate the four light runners and one runtime runner, then move
+   every CI job to them and remove Blacksmith.
 2. Commit the plan correction in `new-el` first if repository facts change.
 3. Build the production-dependency unified image target and switch the library
    Compose file.
@@ -788,10 +801,13 @@ image passed both web health checks, 16 CPUs matched the unrestricted 48-core
 build, and cleanup returned `CLEANUP_OK`.
 
 Before production code changes, repeat only the checks that can change with the
-new dedicated server:
+new isolated build guest:
 
-1. Prove all six runners are online under the selected `new-el` runner group,
-   each reports its expected label, and their systemd CPU limits total 40.
+1. Prove the four light runners and runtime runner are online under the selected
+   `new-el` runner group. Prove the guest has no route to the host, Docker
+   networks or private addresses. Prove their systemd limits admit at most 24
+   CI cores. Repeat this after adding the release runner and prove the two heavy
+   runners still share only 16 cores.
 2. Run CI once on an unchanged commit. All jobs must execute on the self-hosted
    labels, and a repository search must find no Blacksmith dependency.
 3. Record cold and warm runtime-image build times, image bytes, BuildKit cache
@@ -875,9 +891,10 @@ timestamps.
 - Every `new-el` required check runs on the selected self-hosted runner group;
   no Blacksmith workflow, action, label, package or operations instruction
   remains.
-- The 48-core build server admits at most four 2-core light jobs, one 16-core
-  runtime job and one 16-core release job. Test jobs have no deployment keys,
-  and only the default-branch release workflow can reach the release runner.
+- The 24-core build guest admits at most four 2-core light jobs and 16 cores of
+  heavy work across the runtime and release runners. The 48-core host keeps at
+  least 24 CPUs outside CI. Test jobs have no deployment keys, and only the
+  default-branch release workflow can reach the release runner.
 - `runtimeConfigSha256` remains a hash of only the exact library JSON bytes.
 - Setup, config publish, runtime update, retry and rollback persist and verify
   both release identities without duplicate deployment starts.
@@ -890,11 +907,11 @@ timestamps.
 ## Known risks
 
 - A persistent self-hosted runner can keep malicious state between jobs. This
-  plan limits that risk with a dedicated server, same-repository PRs, separate
-  non-root users and Docker daemons, no production credentials or network
-  route, and a release runner restricted to one default-branch workflow. If
-  those boundaries cannot be proved, stop; do not move PR jobs off their
-  current isolated runner.
+  plan limits that risk with a KVM guest, same-repository PRs, separate non-root
+  users and Docker daemons, no deployment credentials or private network route,
+  and a release runner restricted to one default-branch workflow. If those
+  boundaries cannot be proved, stop; do not move PR jobs off their current
+  isolated runner.
 - Local caches can grow without a hosted-provider quota. Record cache bytes in
   the gate and add a bounded cleanup rule by age and builder name. Never run a
   global prune and never delete an image digest that a live release can use.

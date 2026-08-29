@@ -84,7 +84,7 @@ answer machine calls yet, so pickers have nothing to read.
 | 14 | `14-admin-handoff.md` | `/admin` redirects to OpenScholar, which signs in, checks access and sends the cookie back |
 | 15 | `15-runtime-ai-analytics-merge.md` | Merge `ai-modernization` into the runtime; AI section (OpenRouter only); analytics fields; logo sizing |
 | 16 | `16-custom-domains.md` (+ `16-RESEARCH.md`) | Custom domains: CNAME to `cname.opendev.space`, Cloudflare for SaaS, four verification gates, redirect toggle |
-| 17 | `17-build-once-runtime-image.md` | Move `new-el` CI from Blacksmith to a dedicated self-hosted server, build one immutable runtime image per approved commit, and inject each library's configuration only when containers start |
+| 17 | `17-build-once-runtime-image.md` | Move `new-el` CI from Blacksmith to an isolated build guest on the Coolify host, build one immutable runtime image per approved commit, and inject each library's configuration only when containers start |
 | 18 | `18-safe-stored-configuration-upgrades.md` | Version every stored owner configuration and migrate production snapshots before stricter rules deploy |
 
 ## Lanes and order
@@ -118,8 +118,8 @@ check, and updates Outline.
 
 Plan 17 is a direct integration-owner exception. The user asked for no
 subagents and no separate model review for the build research and
-implementation. It uses dedicated self-hosted GitHub Actions runners and does
-not reuse the old sprint Convex lanes.
+implementation. It uses self-hosted GitHub Actions runners inside an isolated
+KVM guest and does not reuse the old sprint Convex lanes.
 
 ## Existing code to reuse
 
