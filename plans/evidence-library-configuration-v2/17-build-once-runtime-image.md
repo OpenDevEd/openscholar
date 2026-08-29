@@ -449,6 +449,42 @@ from Coolify, and GitHub already queues a job when every matching runner is
 busy. Provision the four light runners and runtime runner for the CI move.
 Provision the separate release runner only when `runtime-image.yml` is ready.
 
+#### CI move result, 2026-08-29
+
+Evidence Library PR #146 merged into `main` at
+`d26f4cd22fb77e7d8e4a0d070ac7a641189cf67b`. The current Hetzner host now
+runs the `new-el-ci` Ubuntu 24.04 KVM guest with 24 virtual CPUs, 48 GiB of
+memory and a 300 GiB sparse disk. The selected `Evidence Library CI` runner
+group contains four `evidence-library-light` runners and one
+`evidence-library-runtime` runner. The release runner remains deliberately
+unprovisioned until the release workflow exists.
+
+The first cold commissioning run took 10 minutes 7 seconds. Runtime acceptance
+passed in 9 minutes 56 seconds, while Fallow exposed one real runner setup
+error: its global npm install could not write to the system Node directory.
+Commit `91ef9ec9ad798b4aa78efad6ab860759a95aeebf` gives Fallow a temporary,
+job-local npm directory instead of adding sudo or making the system directory
+writable. The exact PR head then passed in 6 minutes 29 seconds. The merged
+`main` run
+[`33281691193`](https://github.com/OpenDevEd/new-el/actions/runs/33281691193)
+passed in 6 minutes 1 second, with runtime acceptance at 5 minutes 50 seconds.
+That is 4 minutes 6 seconds, or 40.5%, faster than the cold run. Initial queue
+time was 3 seconds. One of the five light jobs waited 85 seconds for one of the
+four light runners, but the runtime lane still determined the total time.
+
+The heavy user slice peaked at 28.86 GiB under its 32 GiB limit. Its persistent
+BuildKit cache held 10.05 GB after the runs. The runtime lane stayed on guest
+CPUs 8-23; the four light services stayed on 0-1, 2-3, 4-5 and 6-7. Runner
+accounts had no sudo, public GitHub access worked, and attempts to reach the
+host address and Docker private network were blocked. The host Docker service
+and the existing Evidence Library containers stayed running. A repository
+search found no remaining Blacksmith workflow, action, package or operations
+instruction.
+
+This completes only the CI move. The unified runtime image, separate release
+runner and group, image publication, per-library config injection and the
+runtime-image cold/warm measurements remain in the steps below.
+
 ### 1. Publish one immutable release image
 
 Add a `library-runtime` Dockerfile target in `new-el`. It contains everything

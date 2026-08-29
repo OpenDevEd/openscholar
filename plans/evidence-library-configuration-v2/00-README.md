@@ -121,6 +121,10 @@ subagents and no separate model review for the build research and
 implementation. It uses self-hosted GitHub Actions runners inside an isolated
 KVM guest and does not reuse the old sprint Convex lanes.
 
+Plan 17's CI move merged into Evidence Library `main` on 2026-08-29 through
+PR #146 at `d26f4cd2`. The merged self-hosted run passed in 6 minutes 1 second.
+The build-once runtime image and configuration-at-start work remain next.
+
 ## Existing code to reuse
 
 - Section registry and JSON-pointer helpers:
