@@ -1262,6 +1262,7 @@ describe("custom domains", () => {
     expect((identity?.payload as { baseUrl?: string }).baseUrl).toBe(
       `https://${CUSTOM_HOST}`,
     );
+    await saveDeploymentTarget(fixture, on.operationId);
 
     // The real hook: finishing the deployment schedules the last step.
     await runDeploymentCompletion(fixture, on.operationId);

@@ -38,13 +38,6 @@ export function isCurrentConfigurationTargetBaseUrl(
       runtimeBinding.targetBaseUrl === pendingAddressMove.from
     );
   }
-  const pendingCanonicalAddress =
-    operation?.domainChange?.reason === "canonical"
-      ? operation.domainChange.address
-      : undefined;
-  if (pendingCanonicalAddress !== undefined) {
-    return targetBaseUrl === pendingCanonicalAddress;
-  }
   return targetBaseUrl === runtimeBinding.targetBaseUrl;
 }
 
