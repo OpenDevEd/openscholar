@@ -118,11 +118,11 @@ export async function persistDraftConfigurationSnapshot(
   loaded: LoadedConfigurationSnapshot,
   options: PersistDraftConfigurationOptions = {},
 ): Promise<void> {
-  if (loaded.header.ownerConfigurationVersion === CURRENT_OWNER_CONFIGURATION_VERSION) {
-    return;
-  }
   if (!("editVersion" in loaded.header)) {
     throw new Error("Only draft configuration snapshots can be persisted");
+  }
+  if (loaded.header.ownerConfigurationVersion === CURRENT_OWNER_CONFIGURATION_VERSION) {
+    return;
   }
 
   const draft = loaded.header as Doc<"evidenceLibraryConfigDrafts">;
@@ -148,8 +148,11 @@ export async function persistDraftConfigurationSnapshot(
       payloadByteLength,
       contractProvenance:
         existing?.contractProvenance ?? EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
-      updatedByClerkUserId: updatedBy,
-      updatedAt,
+      // A migration changes the stored shape, not who last edited the
+      // setting. A save may update the draft header at the same time, but
+      // each migrated row keeps its own audit actor and timestamp.
+      updatedByClerkUserId: existing?.updatedByClerkUserId ?? updatedBy,
+      updatedAt: existing?.updatedAt ?? updatedAt,
     };
     if (existing) {
       await ctx.db.replace("evidenceLibraryConfigSections", existing._id, fields);

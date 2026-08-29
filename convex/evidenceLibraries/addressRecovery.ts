@@ -12,8 +12,14 @@ import {
   readEvidenceLibraryAddressCandidates,
   type EvidenceLibraryAddressCandidate,
 } from "./setupNaming";
+import {
+  loadDraftConfigurationSnapshot,
+  loadRevisionConfigurationSnapshot,
+  persistDraftConfigurationSnapshot,
+} from "./configurationSnapshot";
+import { validateSectionPayload } from "./sectionPayload";
 
-type AddressRecoveryCtx = Pick<QueryCtx | MutationCtx, "db">;
+type AddressRecoveryCtx = QueryCtx | MutationCtx;
 
 export const evidenceLibraryAddressCandidateValidator = v.object({
   publicAddress: v.string(),
@@ -106,12 +112,27 @@ export async function moveIdentityBaseUrl(
   ctx: MutationCtx,
   section: Doc<"evidenceLibraryConfigSections"> | null,
   nextAddress: string,
+  migratedPayload?: unknown,
 ) {
   if (!section) return;
-  const payload = section.payload as Record<string, unknown> | null;
-  if (payload === null || typeof payload !== "object") return;
+  const payload = migratedPayload ?? section.payload;
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    Array.isArray(payload)
+  ) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library identity configuration is invalid",
+    );
+  }
+  const nextPayload = {
+    ...(payload as Record<string, unknown>),
+    baseUrl: nextAddress,
+  };
   await ctx.db.patch(section._id, {
-    payload: { ...payload, baseUrl: nextAddress },
+    payload: nextPayload,
+    payloadByteLength: validateSectionPayload(nextPayload),
   });
 }
 
@@ -124,27 +145,46 @@ export async function applyEvidenceLibraryAddressMove(
   args: {
     bindingId: Id<"evidenceLibraryRuntimeBindings">;
     draftId: Id<"evidenceLibraryConfigDrafts">;
-    revisionId: Id<"evidenceLibraryConfigRevisions">;
+    revisionId?: Id<"evidenceLibraryConfigRevisions">;
     nextAddress: string;
+    /** Setup also moves its pending revision before the first deployment. */
+    updateRevision?: boolean;
   },
 ): Promise<void> {
-  const [draftIdentity, revisionIdentity] = await Promise.all([
-    ctx.db
-      .query("evidenceLibraryConfigSections")
-      .withIndex("by_draftId_and_sectionKey", (query) =>
-        query.eq("draftId", args.draftId).eq("sectionKey", "identity"),
-      )
-      .unique(),
-    ctx.db
-      .query("evidenceLibraryConfigSections")
-      .withIndex("by_revisionId_and_sectionKey", (query) =>
-        query.eq("revisionId", args.revisionId).eq("sectionKey", "identity"),
-      )
-      .unique(),
-  ]);
   const binding = await ctx.db.get(
     "evidenceLibraryRuntimeBindings",
     args.bindingId,
+  );
+  if (!binding) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library runtime binding not found",
+    );
+  }
+  const updateRevision = args.updateRevision === true;
+  if (updateRevision && !args.revisionId) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library setup revision is missing",
+    );
+  }
+  const draftSnapshot = await loadDraftConfigurationSnapshot(ctx, args.draftId, {
+    requireComplete: false,
+  });
+  await persistDraftConfigurationSnapshot(ctx, draftSnapshot);
+  const persistedDraft = await loadDraftConfigurationSnapshot(ctx, args.draftId, {
+    requireComplete: false,
+  });
+  const draftIdentity = persistedDraft.sections.find(
+    (section) => section.sectionKey === "identity",
+  );
+  const revisionSnapshot = updateRevision && args.revisionId
+    ? await loadRevisionConfigurationSnapshot(ctx, args.revisionId, {
+        requireComplete: true,
+      })
+    : null;
+  const revisionIdentity = revisionSnapshot?.sections.find(
+    (section) => section.sectionKey === "identity",
   );
   await ctx.db.patch(args.bindingId, {
     targetBaseUrl: args.nextAddress,
@@ -153,6 +193,22 @@ export async function applyEvidenceLibraryAddressMove(
   // A library whose owner made a custom domain primary keeps calling that
   // domain its address. Only the platform address moves here.
   if (binding?.canonicalBaseUrl !== undefined) return;
-  await moveIdentityBaseUrl(ctx, draftIdentity, args.nextAddress);
-  await moveIdentityBaseUrl(ctx, revisionIdentity, args.nextAddress);
+  await moveIdentityBaseUrl(
+    ctx,
+    draftIdentity ?? null,
+    args.nextAddress,
+    persistedDraft.migration.snapshot.sections.find(
+      (section) => section.sectionKey === "identity",
+    )?.payload,
+  );
+  if (updateRevision) {
+    await moveIdentityBaseUrl(
+      ctx,
+      revisionIdentity ?? null,
+      args.nextAddress,
+      revisionSnapshot?.migration.snapshot.sections.find(
+        (section) => section.sectionKey === "identity",
+      )?.payload,
+    );
+  }
 }

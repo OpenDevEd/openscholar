@@ -10,6 +10,7 @@ import {
 import { writeEvidenceLibraryCredentialRecord } from "./credentials";
 import { evidenceLibraryReconcileOutcomeValidator } from "./validators";
 import { featuresAiEnabled } from "../../lib/evidence-libraries/configuration/ai";
+import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 
 export const prepareDatabaseSetup = internalMutation({
   args: {
@@ -39,12 +40,14 @@ export const prepareDatabaseSetup = internalMutation({
     }
     // The first setup step also reports whether this library wants AI
     // answers, so the action can stop before PostgreSQL exists.
-    const features = await ctx.db
-      .query("evidenceLibraryConfigSections")
-      .withIndex("by_revisionId_and_sectionKey", (query) =>
-        query.eq("revisionId", setup.revision._id).eq("sectionKey", "features"),
-      )
-      .unique();
+    const snapshot = await loadRevisionConfigurationSnapshot(
+      ctx,
+      setup.revision._id,
+      { requireComplete: true },
+    );
+    const features = snapshot.migration.snapshot.sections.find(
+      (section) => section.sectionKey === "features",
+    );
     return {
       aiEnabled: featuresAiEnabled(features?.payload),
       encryptedPassword,

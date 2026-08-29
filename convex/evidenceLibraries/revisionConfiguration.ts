@@ -1,20 +1,20 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 
 export async function readRevisionDefaultLocale(
   ctx: MutationCtx,
   revisionId: Id<"evidenceLibraryConfigRevisions">,
 ): Promise<string> {
-  const localization = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_revisionId_and_sectionKey", (query) =>
-      query.eq("revisionId", revisionId).eq("sectionKey", "localization"),
-    )
-    .unique();
+  const snapshot = await loadRevisionConfigurationSnapshot(ctx, revisionId, {
+    requireComplete: true,
+  });
+  const localization = snapshot.migration.snapshot.sections.find(
+    (section) => section.sectionKey === "localization",
+  );
   const payload = localization?.payload;
   if (
-    localization?.kind !== "revision" ||
     !payload ||
     typeof payload !== "object" ||
     Array.isArray(payload) ||

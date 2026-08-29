@@ -81,6 +81,10 @@ describe("Evidence Library draft storage", () => {
       editVersion: 0,
     });
     expect(migrated.features?.payload).toEqual({ ai: false });
+    expect(migrated.features).toMatchObject({
+      updatedByClerkUserId: fixture.clerkUserId,
+      updatedAt: 1,
+    });
     expect(migrated.features?.payloadByteLength).toBe(
       new TextEncoder().encode(JSON.stringify({ ai: false })).byteLength,
     );
