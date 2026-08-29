@@ -63,8 +63,9 @@ The two fields are the first migration, not the migration system.
    also converts pre-`122a7e55` Exports file-address values to the same schema
    defaults used by the existing `readDraft` and `rowPayload` path, and runs
    the version-2 completion rules. Version 2 currently declares the AI row's
-   empty object as its default, so an absent AI row is added without changing
-   any other owner value.
+   disabled OpenRouter provider entry, matching the current `rowPayload`
+   output, so an absent AI row is added without changing any other owner
+   value.
 4. **One ordered migration registry.** Add
    `owner-configuration-migrations.ts` beside the owner rules. It receives the
    complete snapshot and applies explicit consecutive steps until it reaches
@@ -200,12 +201,13 @@ Version 1 to 2 has four explicit decisions:
    the container while each asset remains optional and platform branding fills
    omitted values during assembly. Preserve every existing Identity field and
    every existing asset. An invalid non-object `assets` value still fails.
-4. The version-2 completion declaration says that a missing AI row is `{}`.
-   The migration calls that declaration, so it records the current schema
-   default instead of making the editor report an unsaved change on its first
-   render. If AI answers are on, normal current validation still requires a
-   real model and fails instead of choosing one. Future versions add their own
-   declared completion rules rather than adding section-specific repair paths.
+4. The version-2 completion declaration says that a missing AI row is the
+   disabled OpenRouter provider entry already emitted by `rowPayload`. The
+   migration calls that declaration, so it records the current owner default
+   instead of making the editor report an unsaved change on its first render.
+   If AI answers are on, normal current validation still requires a real model
+   and fails instead of choosing one. Future versions add their own declared
+   completion rules rather than adding section-specific repair paths.
 
 The read-only audit reports both shapes separately before writes. If both old
 and replacement representations ever exist in a future migration, that
