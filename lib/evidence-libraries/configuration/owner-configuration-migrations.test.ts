@@ -26,7 +26,6 @@ const legacySnapshot: OwnerConfigurationSnapshot = {
 };
 
 function expectMigrationError(run: () => unknown) {
-  expect(run).toThrow(OwnerConfigurationMigrationError);
   try {
     run();
   } catch (error) {
@@ -34,6 +33,27 @@ function expectMigrationError(run: () => unknown) {
     return error as OwnerConfigurationMigrationError;
   }
   throw new Error("Expected migration to fail");
+}
+
+function withMigrations<T>(
+  migrations: typeof OWNER_CONFIGURATION_MIGRATIONS,
+  run: () => T,
+): T {
+  const original = [...OWNER_CONFIGURATION_MIGRATIONS];
+  OWNER_CONFIGURATION_MIGRATIONS.splice(
+    0,
+    OWNER_CONFIGURATION_MIGRATIONS.length,
+    ...migrations,
+  );
+  try {
+    return run();
+  } finally {
+    OWNER_CONFIGURATION_MIGRATIONS.splice(
+      0,
+      OWNER_CONFIGURATION_MIGRATIONS.length,
+      ...original,
+    );
+  }
 }
 
 describe("owner configuration migrations", () => {
@@ -77,7 +97,63 @@ describe("owner configuration migrations", () => {
     });
   });
 
-  it("rejects duplicate, unknown, credential-bearing, and invalid output rows", () => {
+  it("moves complete snapshots and rejects collisions from a migration step", () => {
+    const moved = withMigrations(
+      [
+        {
+          from: 1,
+          to: 2,
+          migrate: (snapshot) => ({
+            ...snapshot,
+            ownerConfigurationVersion: 2,
+            sections: snapshot.sections.map((row) =>
+              row.sectionKey === "features"
+                ? { ...row, sectionKey: "exports" }
+                : row,
+            ),
+          }),
+        },
+      ],
+      () =>
+        migrateOwnerConfiguration({
+          ownerConfigurationVersion: 1,
+          sections: [{ sectionKey: "features", payload: {} }],
+        }),
+    );
+    expect(moved.snapshot).toEqual({
+      ownerConfigurationVersion: 2,
+      sections: [{ sectionKey: "exports", payload: {} }],
+    });
+
+    const collision = expectMigrationError(() =>
+      withMigrations(
+        [
+          {
+            from: 1,
+            to: 2,
+            migrate: (snapshot) => ({
+              ...snapshot,
+              ownerConfigurationVersion: 2,
+              sections: [
+                ...snapshot.sections,
+                { sectionKey: "exports", payload: {} },
+              ],
+            }),
+          },
+        ],
+        () =>
+          migrateOwnerConfiguration({
+            ownerConfigurationVersion: 1,
+            sections: [{ sectionKey: "exports", payload: {} }],
+          }),
+      ),
+    );
+    expect(collision.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ keyword: "duplicate" })]),
+    );
+  });
+
+  it("rejects duplicate, unknown, and credential-bearing rows", () => {
     const duplicate = expectMigrationError(() =>
       migrateOwnerConfiguration({
         ownerConfigurationVersion: 1,
@@ -128,15 +204,58 @@ describe("owner configuration migrations", () => {
     );
 
     const invalidOutput = expectMigrationError(() =>
-      migrateOwnerConfiguration({
-        ownerConfigurationVersion: 1,
-        sections: [
-          { sectionKey: "features", payload: { ai: "on" } },
+      withMigrations(
+        [
+          {
+            from: 1,
+            to: 2,
+            migrate: (snapshot) => ({
+              ...snapshot,
+              ownerConfigurationVersion: 2,
+              sections: [{ sectionKey: "features", payload: { ai: "on" } }],
+            }),
+          },
         ],
-      }),
+        () =>
+          migrateOwnerConfiguration({
+            ownerConfigurationVersion: 1,
+            sections: [{ sectionKey: "features", payload: {} }],
+          }),
+      ),
     );
     expect(invalidOutput.issues).toEqual(
       expect.arrayContaining([expect.objectContaining({ keyword: "type" })]),
+    );
+
+    const credentialOutput = expectMigrationError(() =>
+      withMigrations(
+        [
+          {
+            from: 1,
+            to: 2,
+            migrate: (snapshot) => ({
+              ...snapshot,
+              ownerConfigurationVersion: 2,
+              sections: [
+                {
+                  sectionKey: "email",
+                  payload: { smtp: { password: "secret" } },
+                },
+              ],
+            }),
+          },
+        ],
+        () =>
+          migrateOwnerConfiguration({
+            ownerConfigurationVersion: 1,
+            sections: [{ sectionKey: "email", payload: {} }],
+          }),
+      ),
+    );
+    expect(credentialOutput.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "credentialMaterial" }),
+      ]),
     );
   });
 
@@ -151,19 +270,19 @@ describe("owner configuration migrations", () => {
       expect(error.issues[0]?.keyword).toMatch(/version/i);
     }
 
-    const original = [...OWNER_CONFIGURATION_MIGRATIONS];
-    OWNER_CONFIGURATION_MIGRATIONS[0] = {
-      from: 1,
-      to: 3,
-      migrate: (snapshot) => ({ ...snapshot, ownerConfigurationVersion: 3 }),
-    };
-    try {
-      const error = expectMigrationError(() =>
-        migrateOwnerConfiguration({ ownerConfigurationVersion: 1, sections: [] }),
-      );
-      expect(error.issues[0]?.keyword).toBe("missingMigration");
-    } finally {
-      OWNER_CONFIGURATION_MIGRATIONS.splice(0, OWNER_CONFIGURATION_MIGRATIONS.length, ...original);
-    }
+    const error = expectMigrationError(() =>
+      withMigrations(
+        [
+          {
+            from: 1,
+            to: 3,
+            migrate: (snapshot) => ({ ...snapshot, ownerConfigurationVersion: 3 }),
+          },
+        ],
+        () =>
+          migrateOwnerConfiguration({ ownerConfigurationVersion: 1, sections: [] }),
+      ),
+    );
+    expect(error.issues[0]?.keyword).toBe("missingMigration");
   });
 });

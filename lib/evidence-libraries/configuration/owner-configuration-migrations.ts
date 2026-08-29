@@ -65,6 +65,10 @@ const SECTION_KEYS = new Set<string>(
 const LEGACY_FEATURE_KEYS = ["aiSearch", "deepResearch"] as const;
 const EXPORT_KEYS = ["ris", "bibtex", "atom"] as const;
 
+function isSectionKey(value: unknown): value is SectionKey {
+  return typeof value === "string" && SECTION_KEYS.has(value);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -211,7 +215,7 @@ function validateSnapshotShape(
       continue;
     }
     const sectionKey = rawRow.sectionKey;
-    if (typeof sectionKey !== "string" || !SECTION_KEYS.has(sectionKey)) {
+    if (!isSectionKey(sectionKey)) {
       issues.push(
         issue(
           `/sections/${index}/sectionKey`,
