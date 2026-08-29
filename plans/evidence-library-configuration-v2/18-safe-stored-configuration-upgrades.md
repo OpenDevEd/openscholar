@@ -429,6 +429,34 @@ During a write run, omit `dryRun` and watch
 migration is complete. Repeat `auditPage` with the returned cursor until
 `isDone` is true.
 
+### Deploy A proof — 2026-08-29
+
+- Merged PRs #122, #123 and #124. Shared `dev` was
+  `e8872d1177f1596b939c31a6581c8177474fe214` for the final audit.
+- Exported a 5.5 MB snapshot before writes to
+  `/var/folders/hz/n4vcv2ld2zv67svmsrzy0kg80000gn/T/tmp.5nunapTE1O/openscholar-before-owner-config-v2.zip`.
+- Each shared upload ended with `Convex functions ready!`. The runtime contract
+  stayed pinned to `937bb65ecb30f5f6f22cde5d0d527f3ad9988987`.
+- The first component dry-run exposed that migrations `0.3.4+` require a
+  backend syscall absent from the shared March 24 backend. No row changed.
+  PR #123 pinned official migrations `0.3.3` and its explicit runner. Shared
+  dry-runs then reported 5 draft and 7 revision changes with
+  `No changes were committed`.
+- The real tag runs finished in one batch each. Component status reported
+  `success`, `isDone: true`, processed 5 drafts and 7 revisions.
+- The first post-tag audit correctly stopped on seven old Identity snapshots
+  without `assets`. No payload row changed. PR #124 added the explicit
+  version-1 rule: add only `identity.assets: {}` in the migrated view and keep
+  platform-filled asset paths optional in owner storage.
+- The final six-page audit scanned 5 drafts, 7 revisions and 78 section rows.
+  It found zero missing or unknown versions, broken parents, duplicate
+  sections, non-boolean Exports values or migration-validation failures. Five
+  header-only setup revisions were counted separately. Eight old Features
+  fields remain in two version-1 drafts and two version-1 complete revisions;
+  the `1 -> 2` chain removes them without mutating frozen history.
+- `npm run logs:convex` showed no matching failure during the final upload and
+  audit. Deploy A passes. Deploy B may start.
+
 ### Deploy B: teach and migrate
 
 1. Require `1 | 2` on draft and revision headers. New writes use version 2.
