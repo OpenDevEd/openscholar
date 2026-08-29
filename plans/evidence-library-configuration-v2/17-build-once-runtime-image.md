@@ -449,7 +449,7 @@ from Coolify, and GitHub already queues a job when every matching runner is
 busy. Provision the four light runners and runtime runner for the CI move.
 Provision the separate release runner only when `runtime-image.yml` is ready.
 
-#### CI move result, 2026-08-29
+#### CI move result, 2026-08-30 local time (2026-08-29 UTC)
 
 Evidence Library PR #146 merged into `main` at
 `d26f4cd22fb77e7d8e4a0d070ac7a641189cf67b`. The current Hetzner host now
