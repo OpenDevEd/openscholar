@@ -33,10 +33,14 @@ export const migrateDraftsToV2 = migrations.define({
   table: "evidenceLibraryConfigDrafts",
   batchSize: 1,
   migrateOne: async (ctx, draft) => {
+    const library = await ctx.db.get("evidenceLibraries", draft.libraryId);
+    if (!library) throw new Error("Evidence Library draft parent not found");
     const loaded = await loadDraftConfigurationSnapshot(ctx, draft._id, {
       requireComplete: false,
     });
-    await persistDraftConfigurationSnapshot(ctx, loaded);
+    await persistDraftConfigurationSnapshot(ctx, loaded, {
+      completeCurrentVersion: library.state !== "provisioning",
+    });
   },
 });
 
