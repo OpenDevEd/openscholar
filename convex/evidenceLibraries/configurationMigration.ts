@@ -138,12 +138,6 @@ function decodeCursor(value: string | null): AuditCursor {
   throw new Error("Invalid Evidence Library configuration audit cursor");
 }
 
-function nextStage(stage: AuditStage): AuditStage | null {
-  if (stage === "drafts") return "revisions";
-  if (stage === "revisions") return "sections";
-  return null;
-}
-
 function emptyCounts(): AuditCounts {
   return {
     scanned: 0,
@@ -513,16 +507,15 @@ export const auditPage = internalQuery({
       AUDIT_PAGE_SIZE,
       Math.max(1, Math.floor(args.paginationOpts.numItems)),
     );
-    let stage = decoded.stage;
-    let cursor = decoded.cursor;
-    let result = await readPage(ctx, stage, cursor, numItems, counts, samples);
-    while (result.page.length === 0 && !result.isDone) {
-      const next = nextStage(stage);
-      if (!next) break;
-      stage = next;
-      cursor = null;
-      result = await readPage(ctx, stage, cursor, numItems, counts, samples);
-    }
+    const stage = decoded.stage;
+    const result = await readPage(
+      ctx,
+      stage,
+      decoded.cursor,
+      numItems,
+      counts,
+      samples,
+    );
     return {
       stage,
       page: result.page,
