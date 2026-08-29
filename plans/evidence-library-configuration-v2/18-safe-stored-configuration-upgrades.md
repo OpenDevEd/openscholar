@@ -579,7 +579,7 @@ migration is complete. Repeat `auditPage` with the returned cursor until
 4. Remove the one-time `@convex-dev/migrations` component wrapper, mount and
    dependency after Deploy B completes. A future owner-format version plan
    must add the component back before it runs another live backfill.
-4. Run the full checks and shared live gate again.
+5. Run the full checks and shared live gate again.
 
 ## Deployability gate
 
