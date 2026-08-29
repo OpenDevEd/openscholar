@@ -4,6 +4,7 @@ import {
   validateSectionPayload,
 } from "../../../convex/evidenceLibraries/sectionPayload";
 import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
+import { AI_PROVIDER } from "./ai";
 import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
@@ -16,10 +17,16 @@ export type OwnerConfigurationSnapshot = {
   sections: OwnerSectionRow[];
 };
 
+export type OwnerConfigurationDefaultRow = {
+  sectionKey: SectionKey;
+  payload: () => unknown;
+};
+
 export type OwnerConfigurationMigration = {
   from: number;
   to: number;
   migrate: (snapshot: OwnerConfigurationSnapshot) => OwnerConfigurationSnapshot;
+  defaultRows?: OwnerConfigurationDefaultRow[];
 };
 
 export type OwnerConfigurationIssue = {
@@ -31,6 +38,7 @@ export type OwnerConfigurationIssue = {
 
 export type OwnerConfigurationValidationOptions = {
   requireComplete?: boolean;
+  requireDeclaredDefaults?: boolean;
 };
 
 export type OwnerConfigurationMigrationResult = {
@@ -266,6 +274,9 @@ function validateSnapshotShape(
       { requireComplete: options.requireComplete },
     );
     issues.push(...ownerValidation.issues.map(fromValidationIssue));
+    if (options.requireDeclaredDefaults) {
+      issues.push(...declaredDefaultIssues(rows, version));
+    }
   }
 
   const snapshot =
@@ -300,6 +311,50 @@ function requireValidSnapshot(
   return result.snapshot;
 }
 
+function defaultRowsForVersion(
+  version: number,
+): readonly OwnerConfigurationDefaultRow[] {
+  return (
+    OWNER_CONFIGURATION_MIGRATIONS.find((migration) => migration.to === version)
+      ?.defaultRows ?? []
+  );
+}
+
+export function completeOwnerConfigurationSnapshot(
+  snapshot: OwnerConfigurationSnapshot,
+): OwnerConfigurationSnapshot {
+  const next = cloneJson(snapshot);
+  const existing = new Set(next.sections.map((row) => row.sectionKey));
+  for (const defaultRow of defaultRowsForVersion(
+    next.ownerConfigurationVersion,
+  )) {
+    if (existing.has(defaultRow.sectionKey)) continue;
+    next.sections.push({
+      sectionKey: defaultRow.sectionKey,
+      payload: cloneJson(defaultRow.payload()),
+    });
+    existing.add(defaultRow.sectionKey);
+  }
+  return next;
+}
+
+function declaredDefaultIssues(
+  rows: readonly OwnerSectionRow[],
+  version: number,
+): OwnerConfigurationIssue[] {
+  const present = new Set(rows.map((row) => row.sectionKey));
+  return defaultRowsForVersion(version)
+    .filter((defaultRow) => !present.has(defaultRow.sectionKey))
+    .map((defaultRow) =>
+      issue(
+        `/${defaultRow.sectionKey}`,
+        "missingDefault",
+        "A declared default section row is missing.",
+        defaultRow.sectionKey,
+      ),
+    );
+}
+
 function migrateVersionOneToTwo(
   snapshot: OwnerConfigurationSnapshot,
 ): OwnerConfigurationSnapshot {
@@ -320,7 +375,7 @@ function migrateVersionOneToTwo(
       row.payload = schemaDefaultExports();
     }
   }
-  return next;
+  return completeOwnerConfigurationSnapshot(next);
 }
 
 export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
@@ -328,6 +383,14 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 1,
     to: CURRENT_OWNER_CONFIGURATION_VERSION,
     migrate: migrateVersionOneToTwo,
+    defaultRows: [
+      {
+        sectionKey: "ai",
+        payload: () => ({
+          providers: [{ provider: AI_PROVIDER, enabled: false }],
+        }),
+      },
+    ],
   },
 ];
 

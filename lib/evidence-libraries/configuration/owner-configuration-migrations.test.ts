@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
+  completeOwnerConfigurationSnapshot,
   OwnerConfigurationMigrationError,
   migrateOwnerConfiguration,
   OWNER_CONFIGURATION_MIGRATIONS,
@@ -68,6 +69,10 @@ describe("owner configuration migrations", () => {
           sectionKey: "exports",
           payload: { ris: true, bibtex: true, atom: false },
         },
+        {
+          sectionKey: "ai",
+          payload: { providers: [{ provider: "openrouter", enabled: false }] },
+        },
       ],
     });
     expect(result.changedPointers).toEqual([
@@ -75,6 +80,7 @@ describe("owner configuration migrations", () => {
       "/features/aiSearch",
       "/features/deepResearch",
       "/exports",
+      "/ai",
     ]);
     expect(legacySnapshot.sections[0]?.payload).toEqual({
       ai: false,
@@ -102,10 +108,15 @@ describe("owner configuration migrations", () => {
         sectionKey: "identity",
         payload: { ...identity, assets: {} },
       },
+      {
+        sectionKey: "ai",
+        payload: { providers: [{ provider: "openrouter", enabled: false }] },
+      },
     ]);
     expect(missingAssets.changedPointers).toEqual([
       "/ownerConfigurationVersion",
       "/identity/assets",
+      "/ai",
     ]);
 
     const existingAssets = {
@@ -120,7 +131,13 @@ describe("owner configuration migrations", () => {
         ownerConfigurationVersion: 1,
         sections: [{ sectionKey: "identity", payload: existingAssets }],
       }).snapshot.sections,
-    ).toEqual([{ sectionKey: "identity", payload: existingAssets }]);
+    ).toEqual([
+      { sectionKey: "identity", payload: existingAssets },
+      {
+        sectionKey: "ai",
+        payload: { providers: [{ provider: "openrouter", enabled: false }] },
+      },
+    ]);
 
     const invalidAssets = expectMigrationError(() =>
       migrateOwnerConfiguration({
@@ -157,6 +174,55 @@ describe("owner configuration migrations", () => {
         }),
       ]),
     );
+  });
+
+  it("completes declared default rows without overwriting explicit values", () => {
+    const currentMigration = OWNER_CONFIGURATION_MIGRATIONS.find(
+      ({ to }) => to === CURRENT_OWNER_CONFIGURATION_VERSION,
+    );
+    if (!currentMigration) throw new Error("Missing current migration");
+    const originalDefaults = currentMigration.defaultRows;
+    currentMigration.defaultRows = [
+      ...(originalDefaults ?? []),
+      { sectionKey: "analytics", payload: () => ({}) },
+    ];
+    try {
+      const missing = completeOwnerConfigurationSnapshot({
+        ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
+        sections: [{ sectionKey: "features", payload: { ai: false } }],
+      });
+      expect(missing.sections).toEqual([
+        { sectionKey: "features", payload: { ai: false } },
+        {
+          sectionKey: "ai",
+          payload: { providers: [{ provider: "openrouter", enabled: false }] },
+        },
+        { sectionKey: "analytics", payload: {} },
+      ]);
+      expect(
+        completeOwnerConfigurationSnapshot(missing),
+      ).toEqual(missing);
+
+      const explicit = {
+        sectionKey: "ai" as const,
+        payload: {
+          providers: [
+            { provider: "openrouter", enabled: false, defaultModel: "model" },
+          ],
+        },
+      };
+      const changed = completeOwnerConfigurationSnapshot({
+        ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
+        sections: [explicit],
+      });
+      expect(changed.sections).toContainEqual(explicit);
+      expect(changed.sections).toContainEqual({
+        sectionKey: "analytics",
+        payload: {},
+      });
+    } finally {
+      currentMigration.defaultRows = originalDefaults;
+    }
   });
 
   it("does not mutate input and returns deterministic results", () => {
