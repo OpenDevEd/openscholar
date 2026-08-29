@@ -184,6 +184,31 @@ describe("owner configuration migrations", () => {
     });
   });
 
+  it("keeps owner sources key-free until runtime assembly", () => {
+    const snapshot: OwnerConfigurationSnapshot = {
+      ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
+      sections: [
+        {
+          sectionKey: "sources",
+          payload: [
+            {
+              key: "zotero-77",
+              provider: "zotero",
+              groupId: "77",
+              enabled: true,
+              writebackEnabled: false,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(migrateOwnerConfiguration(snapshot)).toEqual({
+      snapshot,
+      changedPointers: [],
+    });
+  });
+
   it("moves complete snapshots and rejects collisions from a migration step", () => {
     const moved = withMigrations(
       [
