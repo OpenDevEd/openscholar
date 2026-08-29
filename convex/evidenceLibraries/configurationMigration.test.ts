@@ -7,6 +7,9 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
+const TAG_DRAFT_VERSIONS = "migrations/ownerConfiguration:tagDraftVersions";
+const TAG_REVISION_VERSIONS =
+  "migrations/ownerConfiguration:tagRevisionVersions";
 
 type AuditPage = {
   counts: {
@@ -109,6 +112,14 @@ async function readAuditPages(
   return pages;
 }
 
+function runTagMigration(t: ReturnType<typeof convexTest>, fn: string) {
+  return t.mutation(internal.migrations.ownerConfiguration.run, {
+    fn,
+    batchSize: 10,
+    dryRun: false,
+  });
+}
+
 describe("Evidence Library configuration migration", () => {
   it("tags missing draft and revision headers and leaves tagged headers alone", async () => {
     const t = convexTest(schema, modules);
@@ -128,20 +139,8 @@ describe("Evidence Library configuration migration", () => {
         payloadByteLength: row.payloadByteLength,
       })),
     );
-    const args = {
-      cursor: null,
-      batchSize: 10,
-      dryRun: false,
-      oneBatchOnly: true,
-    };
-    await t.mutation(
-      internal.migrations.ownerConfiguration.tagDraftVersions,
-      args,
-    );
-    await t.mutation(
-      internal.migrations.ownerConfiguration.tagRevisionVersions,
-      args,
-    );
+    await runTagMigration(t, TAG_DRAFT_VERSIONS);
+    await runTagMigration(t, TAG_REVISION_VERSIONS);
     const tagged = await t.run(async (ctx) => ({
       draft: await ctx.db.get(seeded.draftId),
       revision: await ctx.db.get(seeded.revisionId),
@@ -149,14 +148,8 @@ describe("Evidence Library configuration migration", () => {
     expect(tagged.draft?.ownerConfigurationVersion).toBe(1);
     expect(tagged.revision?.ownerConfigurationVersion).toBe(1);
 
-    await t.mutation(
-      internal.migrations.ownerConfiguration.tagDraftVersions,
-      args,
-    );
-    await t.mutation(
-      internal.migrations.ownerConfiguration.tagRevisionVersions,
-      args,
-    );
+    await runTagMigration(t, TAG_DRAFT_VERSIONS);
+    await runTagMigration(t, TAG_REVISION_VERSIONS);
     const unchanged = await t.run(async (ctx) => ({
       draft: await ctx.db.get(seeded.draftId),
       revision: await ctx.db.get(seeded.revisionId),
@@ -182,15 +175,7 @@ describe("Evidence Library configuration migration", () => {
     const t = convexTest(schema, modules);
     registerMigrations(t);
     const seeded = await seedHeaders(t);
-    await t.mutation(
-      internal.migrations.ownerConfiguration.tagRevisionVersions,
-      {
-        cursor: null,
-        batchSize: 10,
-        dryRun: false,
-        oneBatchOnly: true,
-      },
-    );
+    await runTagMigration(t, TAG_REVISION_VERSIONS);
 
     const pages = await readAuditPages(t);
     const counts = pages.reduce(

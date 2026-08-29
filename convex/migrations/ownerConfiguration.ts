@@ -22,3 +22,5 @@ export const tagRevisionVersions = migrations.define({
       ? { ownerConfigurationVersion: 1 as const }
       : undefined,
 });
+
+export const run = migrations.runner();
