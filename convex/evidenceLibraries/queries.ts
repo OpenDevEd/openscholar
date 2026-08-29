@@ -22,6 +22,7 @@ import {
   evidenceLibraryRuntimeBindingVariantFields,
   evidenceLibrarySetupIdentityFields,
   evidenceLibraryPublicOperationFields,
+  ownerConfigurationVersionValidator,
   sectionKeyValidator,
   toPublicEvidenceLibraryOperation,
 } from "./validators";
@@ -500,6 +501,7 @@ export const getDraft = query({
       libraryId: v.id("evidenceLibraries"),
       baseRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
       editVersion: v.number(),
+      ownerConfigurationVersion: ownerConfigurationVersionValidator,
       contractProvenance: configProvenanceValidator,
       createdByClerkUserId: v.string(),
       updatedByClerkUserId: v.string(),
@@ -547,6 +549,7 @@ export const getRevision = query({
         v.id("evidenceLibraryConfigRevisions"),
         v.null(),
       ),
+      ownerConfigurationVersion: ownerConfigurationVersionValidator,
       contractProvenance: configProvenanceValidator,
       createdByClerkUserId: v.string(),
       createdAt: v.number(),
