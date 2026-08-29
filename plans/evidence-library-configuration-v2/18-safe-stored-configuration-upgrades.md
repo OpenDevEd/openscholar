@@ -292,7 +292,7 @@ Large work is parallel only where write sets are independent.
 
 | Phase | Lane | Owns |
 |---|---|---|
-| 1 | M, migration foundation | `package*.json`, `convex/convex.config.ts`, schema and validators, `owner-configuration-migrations.ts`, `configurationSnapshot.ts`, audit and migration definitions and their tests |
+| 1 | M, migration foundation | `package*.json`, `convex/convex.config.ts`, schema and validators, `owner-configuration-migrations.ts`, `configurationSnapshot.ts`, audit and migration definitions, header metadata in the manual `queries.ts` return projections, and their tests |
 | 1 | Integration owner | Merge M, push Deploy A, tag all missing headers, and verify zero missing versions |
 | 2 | R, runtime wiring | Deploy B code in `mutations.ts`, `applicationSetup.ts`, `versions.ts`, `configurationDeployment.ts`, `addressRecovery.ts`, payload-reading helpers and integration tests |
 | 2 | E, error recovery | `operations.ts`, the operation projection in `queries.ts`, server-owned `retryable` enforcement, workspace Retry behavior and their tests |
@@ -361,6 +361,8 @@ deployment targets and active-revision transitions.
    `convex/convex.config.ts`.
 2. Add optional header versions and indexes. Keep ordinary version-1 behavior.
    Every newly created or rewritten header records version 1.
+   Include the optional version in every manual draft and revision return
+   validator so Convex does not strip the stored header metadata.
 3. Add the pure registry, read-only audit and migration definitions, but do not
    route normal application reads through them yet.
 4. Upload from `dev-self` with `npm run convex:push`; require
