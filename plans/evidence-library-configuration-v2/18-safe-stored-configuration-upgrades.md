@@ -33,6 +33,9 @@ The two fields are the first migration, not the migration system.
   runtime contract. It does not describe OpenScholar's saved owner format.
 - Draft and revision headers are the complete-snapshot boundaries. Section rows
   belong to one header through `draftId` or `revisionId`.
+- Initial setup creates a header-only `r1` revision. It is historical setup
+  metadata, has no section rows and is never deployable. The first activation
+  creates the first complete revision.
 - The shared deployment currently has 5 libraries, 5 drafts, 7 revisions, 78
   section rows and 7 configuration operations. These counts are small today,
   but the production mechanism must remain bounded as they grow.
@@ -292,9 +295,9 @@ Large work is parallel only where write sets are independent.
 
 | Phase | Lane | Owns |
 |---|---|---|
-| 1 | M, migration foundation | `package*.json`, `convex/convex.config.ts`, schema and validators, `owner-configuration-migrations.ts`, `configurationSnapshot.ts`, audit and migration definitions, header metadata in the manual `queries.ts` return projections, and their tests |
+| 1 | M, migration foundation | `package*.json`, `convex/convex.config.ts`, schema and validators, `owner-configuration-migrations.ts`, `configurationSnapshot.ts`, audit and version-tag migration definitions, generated Convex API types, header metadata in the manual `queries.ts` return projections, and their tests |
 | 1 | Integration owner | Merge M, push Deploy A, tag all missing headers, and verify zero missing versions |
-| 2 | R, runtime wiring | Deploy B code in `mutations.ts`, `applicationSetup.ts`, `versions.ts`, `configurationDeployment.ts`, `addressRecovery.ts`, payload-reading helpers and integration tests |
+| 2 | R, runtime wiring | Deploy B code in `mutations.ts`, `applicationSetup.ts`, `versions.ts`, `configurationDeployment.ts`, `addressRecovery.ts`, the mutable-draft migration definition, payload-reading helpers and integration tests |
 | 2 | E, error recovery | `operations.ts`, the operation projection in `queries.ts`, server-owned `retryable` enforcement, workspace Retry behavior and their tests |
 | 3 | Integration owner | Review R and E once, merge both, push Deploy B, migrate drafts, run live gates, then commit and push Deploy C narrowing and update Outline |
 
@@ -331,11 +334,14 @@ deployment targets and active-revision transitions.
   deterministic output, current no-op, missing step, unknown old and newer
   versions, invalid output and credential-bearing output.
 - New `convex/evidenceLibraries/configurationMigration.test.ts`:
-  tagging a missing header, no-op on a tagged header, rewriting one version-1
-  draft to version 2 without changing `editVersion`, and refusing an unknown
-  version. Do not retest the component's own progress, resume or index code.
+  tagging a missing header, no-op on a tagged header, reporting a header-only
+  setup revision separately without a validation failure, and refusing an
+  unknown version. Do not retest the component's own progress, resume or index
+  code.
 - `convex/evidenceLibraries/drafts.test.ts`: saving and activating a version-1
-  draft produces only current rows and a current revision.
+  draft produces only current rows and a current revision; the Deploy B
+  `migrateDraftsToV2` definition rewrites one draft atomically without changing
+  `editVersion`.
 - `convex/evidenceLibraries/versions.test.ts`: runtime update, address move,
   domain change and restore each create or reuse one current candidate; old
   revisions stay unchanged; a repeated command looks up the operation before
@@ -363,8 +369,9 @@ deployment targets and active-revision transitions.
    Every newly created or rewritten header records version 1.
    Include the optional version in every manual draft and revision return
    validator so Convex does not strip the stored header metadata.
-3. Add the pure registry, read-only audit and migration definitions, but do not
-   route normal application reads through them yet.
+3. Add the pure registry, read-only audit and the two version-tag migration
+   definitions, but do not add the version-2 draft writer or route normal
+   application reads through the registry yet.
 4. Upload from `dev-self` with `npm run convex:push`; require
    `Convex functions ready!`.
 
@@ -383,7 +390,9 @@ deployment targets and active-revision transitions.
    migrations component.
 4. Backfill every missing draft and revision header to version 1. Verify zero
    missing versions before Deploy B.
-5. Stop on an unknown version, missing parent, duplicate section, migration
+5. Rerun every audit page after the backfill. Require zero migration-validation
+   failures before Deploy B. Count header-only setup revisions separately.
+6. Stop on an unknown version, missing parent, duplicate section, migration
    error, credential value, size failure or current validation failure.
 
 The implementation defines these exact entry points:
@@ -391,8 +400,7 @@ The implementation defines these exact entry points:
 - `evidenceLibraries/configurationMigration:auditPage` for the paginated,
   read-only report;
 - `migrations/ownerConfiguration:tagDraftVersions` and
-  `migrations/ownerConfiguration:tagRevisionVersions` for metadata backfill;
-- `migrations/ownerConfiguration:migrateDraftsToV2` for mutable drafts.
+  `migrations/ownerConfiguration:tagRevisionVersions` for metadata backfill.
 
 Run each migration with `dryRun: true` first. During a write run, watch
 `npx convex run --component migrations lib:getStatus --watch` until the named
@@ -404,16 +412,18 @@ migration is complete. Repeat `auditPage` with the returned cursor until
 1. Require `1 | 2` on draft and revision headers. New writes use version 2.
 2. Route every payload-interpreting application boundary through the shared
    snapshot seam. An unsupported or missing version now fails closed.
-3. Upload from `dev-self`, rerun the audit, and prove old data can still be
+3. Add `migrations/ownerConfiguration:migrateDraftsToV2` with its Convex data
+   test now that the widened validator accepts version 2.
+4. Upload from `dev-self`, rerun the audit, and prove old data can still be
    read through the explicit chain.
-4. Migrate mutable drafts to version 2 in one transaction per draft without
+5. Migrate mutable drafts to version 2 in one transaction per draft without
    changing `editVersion`. Configure the migration component with one draft per
    batch if that is required to keep header and section writes atomic.
-5. Keep historical revision payloads at their recorded versions.
-6. Verify zero missing-version drafts or revisions and a clean audit of every
+6. Keep historical revision payloads at their recorded versions.
+7. Verify zero missing-version drafts or revisions and a clean audit of every
    historical revision through the full chain. Version-1 active revisions are
    valid until their next real operation creates a current candidate.
-7. Replace the failed `new lib` version-1 update with one new version-2
+8. Replace the failed `new lib` version-1 update with one new version-2
    candidate operation. Keep the old failed operation as immutable history.
 
 ### Deploy C: narrow
@@ -441,7 +451,8 @@ For shared production, only from `dev-self`:
 2. Run `npm run convex:push` for Deploy A and require
    `Convex functions ready!`.
 3. Keep `npm run logs:convex` open. Run every audit page, dry-run and version-1
-   metadata backfill. Verify zero missing headers and record the exact counts.
+   metadata backfill. Rerun every audit page after tagging. Verify zero missing
+   headers and zero migration-validation failures, and record the exact counts.
 4. Merge lane R only after step 3. Run `npm run convex:push` for Deploy B,
    migrate drafts, verify migration status and rerun every audit page.
 5. Prove a failed current candidate leaves its old library and health answer
