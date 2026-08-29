@@ -428,6 +428,47 @@ describe("owner configuration migrations", () => {
     });
   });
 
+  it("reports an explicit failure when a historical value cannot be interpreted", () => {
+    const error = expectMigrationError(() =>
+      migrateOwnerConfiguration(
+        {
+          ownerConfigurationVersion: 1,
+          sections: [{ sectionKey: "legacyFeatures", payload: { enabled: 1 } }],
+        },
+        {},
+        [
+          {
+            from: 1,
+            to: 2,
+            migrate: (snapshot) => {
+              const payload = snapshot.sections[0]?.payload;
+              if (
+                !payload ||
+                typeof payload !== "object" ||
+                Array.isArray(payload) ||
+                typeof (payload as Record<string, unknown>).enabled !==
+                  "string"
+              ) {
+                throw new Error("Legacy feature value is ambiguous");
+              }
+              return {
+                ownerConfigurationVersion: 2,
+                sections: [
+                  { sectionKey: "features", payload: { ai: false } },
+                ],
+              };
+            },
+          },
+        ],
+      ),
+    );
+    expect(error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "migrationFailed" }),
+      ]),
+    );
+  });
+
   it("keeps owner sources key-free until runtime assembly", () => {
     const snapshot: OwnerConfigurationSnapshot = {
       ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
