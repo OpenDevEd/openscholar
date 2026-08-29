@@ -146,6 +146,7 @@ export const moveSetupAddress = internalMutation({
       draftId: setup.draft._id,
       revisionId: setup.revision._id,
       nextAddress: movedTo,
+      updateRevision: true,
     });
     const now = Date.now();
     await ctx.db.patch(setup.setupOperation._id, {

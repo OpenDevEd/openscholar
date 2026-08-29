@@ -1,8 +1,9 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import { register as registerMigrations } from "@convex-dev/migrations/test";
 import { describe, expect, it } from "vitest";
 import schema from "../schema";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { createEvidenceLibrarySetup } from "./mutations";
 import {
@@ -10,7 +11,10 @@ import {
   readEvidenceLibraryDraft,
   readEvidenceLibraryRevision,
 } from "./queries";
-import { toSectionRows } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createDraftSetupFixture,
+  toSectionRows,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -35,6 +39,153 @@ function configurationSections(baseUrl: string, name: string) {
 }
 
 describe("Evidence Library draft storage", () => {
+  it("migrates one draft atomically without changing its edit version", async () => {
+    const fixture = await createDraftSetupFixture("draft-component-v2");
+    registerMigrations(fixture.t);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.draftId, {
+        ownerConfigurationVersion: 1,
+      });
+      const payload = { ai: false, aiSearch: true, deepResearch: false };
+      await ctx.db.insert("evidenceLibraryConfigSections", {
+        kind: "draft",
+        libraryId: fixture.created.libraryId,
+        draftId: fixture.created.draftId,
+        sectionKey: "features",
+        payload,
+        payloadByteLength: Buffer.byteLength(JSON.stringify(payload)),
+        contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+        updatedByClerkUserId: fixture.clerkUserId,
+        updatedAt: 1,
+      });
+    });
+
+    await fixture.t.mutation(internal.migrations.ownerConfiguration.run, {
+      fn: "migrations/ownerConfiguration:migrateDraftsToV2",
+      batchSize: 1,
+      cursor: null,
+      dryRun: false,
+    });
+
+    const migrated = await fixture.t.run(async (ctx) => ({
+      draft: await ctx.db.get(fixture.created.draftId),
+      features: await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", fixture.created.draftId).eq("sectionKey", "features"),
+        )
+        .unique(),
+    }));
+    expect(migrated.draft).toMatchObject({
+      ownerConfigurationVersion: 2,
+      editVersion: 0,
+    });
+    expect(migrated.features?.payload).toEqual({ ai: false });
+    expect(migrated.features).toMatchObject({
+      updatedByClerkUserId: fixture.clerkUserId,
+      updatedAt: 1,
+    });
+    expect(migrated.features?.payloadByteLength).toBe(
+      new TextEncoder().encode(JSON.stringify({ ai: false })).byteLength,
+    );
+  });
+
+  it("migrates the whole version-one draft before saving and activating it", async () => {
+    const fixture = await createDraftSetupFixture("draft-v2");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.draftId, {
+        ownerConfigurationVersion: 1,
+      });
+      const legacyFeatures = {
+        ai: false,
+        aiSearch: true,
+        deepResearch: false,
+      };
+      const legacyExports = {
+        ris: "https://feeds.example.test/library.ris",
+      };
+      for (const [sectionKey, payload] of [
+        ["features", legacyFeatures],
+        ["exports", legacyExports],
+      ] as const) {
+        await ctx.db.insert("evidenceLibraryConfigSections", {
+          kind: "draft",
+          libraryId: fixture.created.libraryId,
+          draftId: fixture.created.draftId,
+          sectionKey,
+          payload,
+          payloadByteLength: Buffer.byteLength(JSON.stringify(payload)),
+          contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+          updatedByClerkUserId: fixture.clerkUserId,
+          updatedAt: 1,
+        });
+      }
+    });
+
+    const saved = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: fixture.created.libraryId,
+        sections: [{ sectionKey: "footer", payload: { poweredBy: true } }],
+        expectedEditVersion: 0,
+      },
+    );
+
+    const migrated = await fixture.t.run(async (ctx) => ({
+      draft: await ctx.db.get(fixture.created.draftId),
+      rows: await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", fixture.created.draftId),
+        )
+        .collect(),
+    }));
+    expect(saved.editVersion).toBe(1);
+    expect(migrated.draft?.ownerConfigurationVersion).toBe(2);
+    expect(migrated.draft?.editVersion).toBe(1);
+    expect(migrated.rows.find((row) => row.sectionKey === "features")?.payload).toEqual({
+      ai: false,
+    });
+    expect(migrated.rows.find((row) => row.sectionKey === "exports")?.payload).toEqual({
+      atom: false,
+      bibtex: true,
+      ris: true,
+    });
+    expect(migrated.rows.find((row) => row.sectionKey === "identity")?.payload).toMatchObject({
+      assets: {},
+    });
+    for (const row of migrated.rows) {
+      expect(row.payloadByteLength).toBe(
+        new TextEncoder().encode(JSON.stringify(row.payload)).byteLength,
+      );
+    }
+
+    const completedSave = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: fixture.created.libraryId,
+        sections: toSectionRows(
+          configurationSections(
+            fixture.created.publicAddress,
+            "Draft v2 library",
+          ),
+        ),
+        expectedEditVersion: saved.editVersion,
+      },
+    );
+    const activated = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.activateConfiguration,
+      {
+        libraryId: fixture.created.libraryId,
+        expectedEditVersion: completedSave.editVersion,
+      },
+    );
+    const revision = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.revisionId),
+    );
+    expect(revision?.ownerConfigurationVersion).toBe(2);
+  });
+
   it("stores one provenance-locked draft with section rows", async () => {
     const t = convexTest(schema, modules);
     const stored = await t.run(async (ctx) => {
@@ -63,6 +214,7 @@ describe("Evidence Library draft storage", () => {
         libraryId,
         baseRevisionId: null,
         editVersion: 0,
+        ownerConfigurationVersion: 1,
         contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
         createdByClerkUserId: "user_123",
         updatedByClerkUserId: "user_123",
@@ -180,6 +332,7 @@ describe("Evidence Library draft storage", () => {
       expect.objectContaining({
         sectionKey: "identity",
         payload: {
+          assets: {},
           baseUrl: "https://identity-library.example.org",
           name: "Identity Library",
           shortName: "Identity Library",

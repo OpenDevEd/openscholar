@@ -14,8 +14,9 @@ import {
 } from "../../lib/evidence-libraries/setup/naming";
 import { createError } from "../lib/errors";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
+import { loadDraftConfigurationSnapshot } from "./configurationSnapshot";
 
-type SetupNamingCtx = Pick<QueryCtx | MutationCtx, "db">;
+type SetupNamingCtx = QueryCtx | MutationCtx;
 
 export type EvidenceLibrarySetupIdentity = {
   name: string;
@@ -176,13 +177,13 @@ export async function readEvidenceLibrarySetupIdentity(
   ctx: SetupNamingCtx,
   setup: Awaited<ReturnType<typeof readEvidenceLibrarySetupRecords>>,
 ): Promise<EvidenceLibrarySetupIdentity> {
-  const identitySection = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_draftId_and_sectionKey", (query) =>
-      query.eq("draftId", setup.draft._id).eq("sectionKey", "identity"),
-    )
-    .unique();
-  if (!identitySection || identitySection.kind !== "draft") {
+  const snapshot = await loadDraftConfigurationSnapshot(ctx, setup.draft._id, {
+    requireComplete: false,
+  });
+  const identitySection = snapshot.migration.snapshot.sections.find(
+    (section) => section.sectionKey === "identity",
+  );
+  if (!identitySection) {
     throw createError(
       "INVALID_DATA",
       "Evidence Library setup identity is incomplete",

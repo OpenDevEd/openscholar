@@ -16,6 +16,9 @@ import {
   type OwnerSectionRow,
   validateOwnerSections,
 } from "../../lib/evidence-libraries/configuration/owner-rules";
+import {
+  CURRENT_OWNER_CONFIGURATION_VERSION,
+} from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import {
@@ -51,6 +54,10 @@ import {
   type EvidenceLibrarySetupIdentity,
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
+import {
+  loadDraftConfigurationSnapshot,
+  persistDraftConfigurationSnapshot,
+} from "./configurationSnapshot";
 import {
   evidenceLibrarySetupIdentityFields,
   sectionRowValidator,
@@ -135,7 +142,7 @@ export async function createEvidenceLibrarySetup(
     revisionNumber: 1,
     basedOnRevisionId: null,
     rollbackOfRevisionId: null,
-    ownerConfigurationVersion: 1,
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     createdByClerkUserId: access.clerkUserId,
     createdAt: now,
@@ -144,7 +151,7 @@ export async function createEvidenceLibrarySetup(
     libraryId,
     baseRevisionId: revisionId,
     editVersion: 0,
-    ownerConfigurationVersion: 1,
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     createdByClerkUserId: access.clerkUserId,
     updatedByClerkUserId: access.clerkUserId,
@@ -258,19 +265,28 @@ export async function saveEvidenceLibraryDraftSections(
     draft.editVersion,
     args.expectedEditVersion,
   );
+  const now = Date.now();
+  const loaded = await loadDraftConfigurationSnapshot(ctx, draft._id, {
+    requireComplete: false,
+  });
+  await persistDraftConfigurationSnapshot(ctx, loaded, {
+    updatedByClerkUserId: access.clerkUserId,
+    updatedAt: now,
+  });
+  // Read the rows again after the migration write. Request edits always merge
+  // over the persisted current snapshot, never over an in-memory transform.
+  const persisted = await loadDraftConfigurationSnapshot(ctx, draft._id, {
+    requireComplete: false,
+  });
   const expectedBaseUrl = await readRuntimeBindingBaseUrl(ctx, access.library);
-  const storedSections = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_draftId_and_sectionKey", (query) =>
-      query.eq("draftId", draft._id),
-    )
-    .collect();
+  const storedSections = persisted.sections;
+  const storedSnapshotSections = persisted.migration.snapshot.sections;
   // A save carries only the cards that changed, so the AI rules read the
   // draft as it will be: the rows being written over the rows already there.
   const effectivePayload = (sectionKey: string): unknown =>
     args.sections.find((section) => section.sectionKey === sectionKey)
       ?.payload ??
-    storedSections.find((section) => section.sectionKey === sectionKey)
+    storedSnapshotSections.find((section) => section.sectionKey === sectionKey)
       ?.payload;
   const effectiveFeatures = effectivePayload("features");
   const featuresAi =
@@ -334,7 +350,6 @@ export async function saveEvidenceLibraryDraftSections(
     ) + writes.reduce((total, write) => total + write.payloadByteLength, 0);
   assertDraftPayloadBudget(totalByteLength);
 
-  const now = Date.now();
   for (const write of writes) {
     const existing = storedSections.find(
       (section) => section.sectionKey === write.sectionKey,
@@ -362,6 +377,7 @@ export async function saveEvidenceLibraryDraftSections(
   }
   await ctx.db.patch("evidenceLibraryConfigDrafts", draft._id, {
     editVersion,
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
@@ -400,6 +416,18 @@ async function finalizeEvidenceLibraryDraft(
     draft.editVersion,
     args.expectedEditVersion,
   );
+  const persistedDraft = await loadDraftConfigurationSnapshot(ctx, draft._id, {
+    requireComplete: true,
+  });
+  if (
+    persistedDraft.header.ownerConfigurationVersion !==
+    CURRENT_OWNER_CONFIGURATION_VERSION
+  ) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library draft did not migrate to the current version",
+    );
+  }
   const latestRevision = await ctx.db
     .query("evidenceLibraryConfigRevisions")
     .withIndex("by_libraryId_and_revisionNumber", (query) =>
@@ -416,17 +444,12 @@ async function finalizeEvidenceLibraryDraft(
     revisionNumber,
     basedOnRevisionId: draft.baseRevisionId,
     rollbackOfRevisionId: null,
-    ownerConfigurationVersion: 1,
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     createdByClerkUserId: access.clerkUserId,
     createdAt: now,
   });
-  const draftSections = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_draftId_and_sectionKey", (query) =>
-      query.eq("draftId", draft._id),
-    )
-    .collect();
+  const draftSections = persistedDraft.sections;
   for (const section of draftSections) {
     if (section.kind !== "draft") {
       throw new Error("Draft section index returned a revision row");
@@ -446,6 +469,7 @@ async function finalizeEvidenceLibraryDraft(
   await ctx.db.patch("evidenceLibraryConfigDrafts", draft._id, {
     baseRevisionId: revisionId,
     editVersion,
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     updatedByClerkUserId: access.clerkUserId,
     updatedAt: now,
@@ -565,12 +589,28 @@ export async function activateEvidenceLibraryConfiguration(
     if (completed) return completed;
     nextDraftEditVersion(draft.editVersion, args.expectedEditVersion);
   }
-  const rows = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_draftId_and_sectionKey", (query) =>
-      query.eq("draftId", draft._id),
-    )
-    .collect();
+  const loaded = await loadDraftConfigurationSnapshot(ctx, draft._id, {
+    requireComplete: false,
+  });
+  await persistDraftConfigurationSnapshot(ctx, loaded, {
+    updatedByClerkUserId: access.clerkUserId,
+    updatedAt: Date.now(),
+  });
+  // Activation validates rows after the migration has committed them. It
+  // never freezes an in-memory version that was not stored first.
+  const persisted = await loadDraftConfigurationSnapshot(ctx, draft._id, {
+    requireComplete: false,
+  });
+  if (
+    persisted.header.ownerConfigurationVersion !==
+    CURRENT_OWNER_CONFIGURATION_VERSION
+  ) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library draft did not migrate to the current version",
+    );
+  }
+  const rows = persisted.sections;
   // Every row must pass its own validator, and the sections the schema
   // requires must be present. The full validator runs again at assembly.
   throwFirstIssue(

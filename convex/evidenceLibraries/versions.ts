@@ -9,6 +9,10 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
+import {
+  CURRENT_OWNER_CONFIGURATION_VERSION,
+  type OwnerConfigurationSnapshot,
+} from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
@@ -32,6 +36,12 @@ import {
 } from "./operations";
 import { isFreshRuntimeRelease } from "./runtimeReleases";
 import { sectionKeyValidator, type SectionKey } from "./validators";
+import {
+  loadDraftConfigurationSnapshot,
+  loadRevisionConfigurationSnapshot,
+  persistDraftConfigurationSnapshot,
+} from "./configurationSnapshot";
+import { validateSectionPayload } from "./sectionPayload";
 
 const MAX_VERSION_ROWS = 100;
 
@@ -39,6 +49,38 @@ type RunningBinding = Extract<
   Doc<"evidenceLibraryRuntimeBindings">,
   { state: "ready" }
 >;
+
+type CandidateOperation = {
+  operationId: Id<"evidenceLibraryConfigOperations">;
+  revisionId: Id<"evidenceLibraryConfigRevisions">;
+  status: "queued" | "running" | "succeeded" | "failed";
+};
+
+type CandidateIntent = {
+  libraryId: Id<"evidenceLibraries">;
+  sourceRevisionId: Id<"evidenceLibraryConfigRevisions">;
+  snapshot: OwnerConfigurationSnapshot;
+  forceCandidate?: boolean;
+  idempotencyKey: string;
+  rollbackOfRevisionId?: Id<"evidenceLibraryConfigRevisions">;
+  updateIdentityTo?: string;
+  activationEditVersion?: number;
+  runtimeUpdate?: { from: string; to: string };
+  addressMove?: {
+    from: string;
+    to: string;
+    movedAt: number;
+    count: number;
+    applied: boolean;
+  };
+  domainChange?: {
+    host: string;
+    domainId: Id<"evidenceLibraryDomains">;
+    reason: "attach" | "detach" | "canonical";
+    address?: string;
+    token: string;
+  };
+};
 
 async function requireRunningLibrary(
   ctx: MutationCtx,
@@ -66,6 +108,267 @@ async function requireRunningLibrary(
   };
 }
 
+async function findOperationByKey(
+  ctx: MutationCtx,
+  libraryId: Id<"evidenceLibraries">,
+  idempotencyKey: string,
+) {
+  return await ctx.db
+    .query("evidenceLibraryConfigOperations")
+    .withIndex("by_libraryId_and_idempotencyKey", (query) =>
+      query.eq("libraryId", libraryId).eq("idempotencyKey", idempotencyKey),
+    )
+    .unique();
+}
+
+function snapshotWithIdentityAddress(
+  snapshot: OwnerConfigurationSnapshot,
+  address: string,
+): OwnerConfigurationSnapshot {
+  let found = false;
+  const sections = snapshot.sections.map((section) => {
+    if (section.sectionKey !== "identity") return section;
+    found = true;
+    if (
+      section.payload === null ||
+      typeof section.payload !== "object" ||
+      Array.isArray(section.payload)
+    ) {
+      throw createError(
+        "INVALID_DATA",
+        "Evidence Library identity configuration is invalid",
+      );
+    }
+    return {
+      sectionKey: section.sectionKey,
+      payload: {
+        ...(section.payload as Record<string, unknown>),
+        baseUrl: address,
+      },
+    };
+  });
+  if (!found) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library identity configuration is missing",
+    );
+  }
+  return {
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
+    sections,
+  };
+}
+
+function requireValidCurrentSnapshot(
+  snapshot: OwnerConfigurationSnapshot,
+  expectedBaseUrl: string,
+): void {
+  const validated = validateOwnerSections(snapshot.sections, {
+    expectedBaseUrl,
+    requireComplete: true,
+    platformMailConfigured: isPlatformMailConfigured(),
+  });
+  const issue = validated.issues[0];
+  if (issue) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `${issue.pointer}: ${issue.message}`,
+      { pointer: issue.pointer },
+    );
+  }
+}
+
+async function createCurrentCandidateRevision(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    sourceRevisionId: Id<"evidenceLibraryConfigRevisions">;
+    snapshot: OwnerConfigurationSnapshot;
+    rollbackOfRevisionId?: Id<"evidenceLibraryConfigRevisions">;
+    createdByClerkUserId: string;
+  },
+) {
+  const latestRevision = await ctx.db
+    .query("evidenceLibraryConfigRevisions")
+    .withIndex("by_libraryId_and_revisionNumber", (query) =>
+      query.eq("libraryId", args.libraryId),
+    )
+    .order("desc")
+    .first();
+  const revisionNumber = (latestRevision?.revisionNumber ?? 0) + 1;
+  const revisionKey = `r${revisionNumber}`;
+  const now = Date.now();
+  const revisionId = await ctx.db.insert("evidenceLibraryConfigRevisions", {
+    libraryId: args.libraryId,
+    revisionKey,
+    revisionNumber,
+    basedOnRevisionId: args.sourceRevisionId,
+    rollbackOfRevisionId: args.rollbackOfRevisionId ?? null,
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
+    contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+    createdByClerkUserId: args.createdByClerkUserId,
+    createdAt: now,
+  });
+  for (const section of args.snapshot.sections) {
+    await ctx.db.insert("evidenceLibraryConfigSections", {
+      kind: "revision",
+      libraryId: args.libraryId,
+      revisionId,
+      sectionKey: section.sectionKey,
+      payload: section.payload,
+      payloadByteLength: validateSectionPayload(section.payload),
+      contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+      createdByClerkUserId: args.createdByClerkUserId,
+      createdAt: now,
+    });
+  }
+  await ctx.db.patch(args.libraryId, {
+    latestRevisionId: revisionId,
+    updatedByClerkUserId: args.createdByClerkUserId,
+    updatedAt: now,
+  });
+  return { revisionId, revisionKey, revisionNumber };
+}
+
+function assertExistingCandidateOperation(
+  operation: Doc<"evidenceLibraryConfigOperations">,
+  intent: CandidateIntent,
+): void {
+  if (
+    operation.kind !== "publish" ||
+    operation.activationEditVersion !==
+      (intent.activationEditVersion ?? undefined) ||
+    operation.revisionId === undefined
+  ) {
+    throw createError(
+      "CONFLICT",
+      "Operation idempotency key does not match the original command",
+    );
+  }
+  if (
+    operation.runtimeUpdate?.from !== intent.runtimeUpdate?.from ||
+    operation.runtimeUpdate?.to !== intent.runtimeUpdate?.to
+  ) {
+    throw createError(
+      "CONFLICT",
+      "Operation idempotency key does not match the original command",
+    );
+  }
+  if (intent.addressMove) {
+    if (
+      operation.addressMove?.from !== intent.addressMove.from ||
+      operation.addressMove?.to !== intent.addressMove.to ||
+      operation.addressMove.count !== intent.addressMove.count
+    ) {
+      throw createError(
+        "CONFLICT",
+        "Operation idempotency key does not match the original command",
+      );
+    }
+  } else if (operation.addressMove !== undefined) {
+    throw createError(
+      "CONFLICT",
+      "Operation idempotency key does not match the original command",
+    );
+  }
+  if (intent.domainChange) {
+    if (
+      operation.domainChange?.domainId !== intent.domainChange.domainId ||
+      operation.domainChange.host !== intent.domainChange.host ||
+      operation.domainChange.reason !== intent.domainChange.reason ||
+      operation.domainChange.address !== intent.domainChange.address ||
+      operation.domainChange.token !== intent.domainChange.token
+    ) {
+      throw createError(
+        "CONFLICT",
+        "Operation idempotency key does not match the original command",
+      );
+    }
+  } else if (operation.domainChange !== undefined) {
+    throw createError(
+      "CONFLICT",
+      "Operation idempotency key does not match the original command",
+    );
+  }
+}
+
+async function queueCandidateOperation(
+  ctx: MutationCtx,
+  intent: CandidateIntent,
+): Promise<CandidateOperation> {
+  // This lookup must happen before candidate creation. A retry therefore
+  // reuses the same immutable revision instead of making a second one.
+  const existing = await findOperationByKey(
+    ctx,
+    intent.libraryId,
+    intent.idempotencyKey,
+  );
+  if (existing) {
+    assertExistingCandidateOperation(existing, intent);
+    return {
+      operationId: existing._id,
+      revisionId: existing.revisionId!,
+      status: existing.status,
+    };
+  }
+
+  const needsCandidate =
+    intent.forceCandidate === true || intent.updateIdentityTo !== undefined;
+  const candidate = needsCandidate
+    ? await createCurrentCandidateRevision(ctx, {
+        libraryId: intent.libraryId,
+        sourceRevisionId: intent.sourceRevisionId,
+        snapshot: intent.updateIdentityTo
+          ? snapshotWithIdentityAddress(
+              intent.snapshot,
+              intent.updateIdentityTo,
+            )
+          : intent.snapshot,
+        rollbackOfRevisionId: intent.rollbackOfRevisionId,
+        createdByClerkUserId: (
+          await requireEvidenceLibraryAccess(ctx, intent.libraryId, "manage")
+        ).clerkUserId,
+      })
+    : {
+        revisionId: intent.sourceRevisionId,
+        revisionKey: "",
+        revisionNumber: 0,
+      };
+
+  const queued = intent.runtimeUpdate
+    ? await queueRuntimeUpdateOperation(ctx, {
+        libraryId: intent.libraryId,
+        idempotencyKey: intent.idempotencyKey,
+        revisionId: candidate.revisionId,
+        runtimeUpdate: intent.runtimeUpdate,
+      })
+    : intent.addressMove
+      ? await queueAddressMoveOperation(ctx, {
+          libraryId: intent.libraryId,
+          idempotencyKey: intent.idempotencyKey,
+          revisionId: candidate.revisionId,
+          addressMove: intent.addressMove,
+        })
+      : intent.domainChange
+        ? await queueDomainChangeOperation(ctx, {
+            libraryId: intent.libraryId,
+            idempotencyKey: intent.idempotencyKey,
+            revisionId: candidate.revisionId,
+            domainChange: intent.domainChange,
+          })
+        : await queueConfigurationDeploymentOperation(ctx, {
+            libraryId: intent.libraryId,
+            idempotencyKey: intent.idempotencyKey,
+            revisionId: candidate.revisionId,
+            activationEditVersion: intent.activationEditVersion!,
+          });
+  return {
+    operationId: queued.operationId,
+    revisionId: candidate.revisionId,
+    status: queued.status,
+  };
+}
+
 // Publishes the active revision again at the newest Evidence Library
 // software. The owner checks for updates first; the fresh release row is
 // the only source of the target commit.
@@ -89,10 +392,23 @@ export async function startEvidenceLibraryRuntimeUpdate(
     );
   }
   await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
-  const operation = await queueRuntimeUpdateOperation(ctx, {
+  const source = await loadRevisionConfigurationSnapshot(
+    ctx,
+    running.activeRevisionId,
+    { requireComplete: true },
+  );
+  requireValidCurrentSnapshot(
+    source.migration.snapshot,
+    running.binding.canonicalBaseUrl ?? running.binding.targetBaseUrl,
+  );
+  const operation = await queueCandidateOperation(ctx, {
     libraryId: args.libraryId,
-    idempotencyKey: `runtime-update:${from}:${release.latest}`,
-    revisionId: running.activeRevisionId,
+    sourceRevisionId: running.activeRevisionId,
+    snapshot: source.migration.snapshot,
+    forceCandidate:
+      source.header.ownerConfigurationVersion !==
+      CURRENT_OWNER_CONFIGURATION_VERSION,
+    idempotencyKey: `runtime-update:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:${from}:${release.latest}`,
     runtimeUpdate: { from, to: release.latest },
   });
   const started = await claimAndScheduleConfigurationDeployment(ctx, {
@@ -131,37 +447,25 @@ export async function startEvidenceLibraryAddressMove(
     library: running.library,
     candidate: args.candidate,
   });
-  // The live sections must still pass the rules at the new address before
-  // anything is written.
-  const sourceRows = await readRevisionSectionRows(ctx, running.activeRevisionId);
-  const validated = validateOwnerSections(
-    sourceRows.map((row) => ({
-      sectionKey: row.sectionKey,
-      payload:
-        row.sectionKey === "identity"
-          ? { ...(row.payload as Record<string, unknown>), baseUrl: movedTo }
-          : row.payload,
-    })),
-    {
-      expectedBaseUrl: movedTo,
-      requireComplete: true,
-      platformMailConfigured: isPlatformMailConfigured(),
-    },
+  const source = await loadRevisionConfigurationSnapshot(
+    ctx,
+    running.activeRevisionId,
+    { requireComplete: true },
   );
-  const issue = validated.issues[0];
-  if (issue) {
-    throw createError(
-      "VALIDATION_ERROR",
-      `${issue.pointer}: ${issue.message}`,
-      { pointer: issue.pointer },
-    );
-  }
+  const movedSnapshot = snapshotWithIdentityAddress(
+    source.migration.snapshot,
+    movedTo,
+  );
+  requireValidCurrentSnapshot(movedSnapshot, movedTo);
   // Nothing is written yet. The records take the new address only once
   // Coolify serves it, so a failed move leaves the library where it is.
-  const operation = await queueAddressMoveOperation(ctx, {
+  const operation = await queueCandidateOperation(ctx, {
     libraryId: args.libraryId,
-    idempotencyKey: `address-move:${movedTo}`,
-    revisionId: running.activeRevisionId,
+    sourceRevisionId: running.activeRevisionId,
+    snapshot: source.migration.snapshot,
+    forceCandidate: true,
+    updateIdentityTo: movedTo,
+    idempotencyKey: `address-move:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:${movedFrom}:${movedTo}`,
     addressMove: {
       from: movedFrom,
       to: movedTo,
@@ -177,26 +481,8 @@ export async function startEvidenceLibraryAddressMove(
   return { ...started, movedFrom, movedTo };
 }
 
-async function readRevisionSectionRows(
-  ctx: QueryCtx | MutationCtx,
-  revisionId: Id<"evidenceLibraryConfigRevisions">,
-) {
-  const rows = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_revisionId_and_sectionKey", (query) =>
-      query.eq("revisionId", revisionId),
-    )
-    .collect();
-  return rows.map((row) => {
-    if (row.kind !== "revision") {
-      throw new Error("Revision section index returned a draft row");
-    }
-    return row;
-  });
-}
-
-// Brings a previous version back: a new revision with that version's
-// sections, the draft reset to the same sections, then the normal publish.
+// Brings a previous version back: a current-format candidate carries the
+// selected snapshot, while the live revision stays untouched until readiness.
 export async function restoreEvidenceLibraryRevision(
   ctx: MutationCtx,
   args: {
@@ -217,27 +503,55 @@ export async function restoreEvidenceLibraryRevision(
   if (!draft) {
     throw createError("NOT_FOUND", "Evidence Library draft not found");
   }
-  const sourceRows = await readRevisionSectionRows(ctx, source._id);
-  // The old sections must still pass today's rules before they go live.
-  const validated = validateOwnerSections(
-    sourceRows.map((row) => ({
-      sectionKey: row.sectionKey,
-      payload: row.payload,
-    })),
+  const sourceSnapshot = await loadRevisionConfigurationSnapshot(
+    ctx,
+    source._id,
     {
-      expectedBaseUrl:
-        running.binding.canonicalBaseUrl ?? running.binding.targetBaseUrl,
       requireComplete: true,
-      platformMailConfigured: isPlatformMailConfigured(),
     },
   );
-  const issue = validated.issues[0];
-  if (issue) {
-    throw createError(
-      "VALIDATION_ERROR",
-      `${issue.pointer}: ${issue.message}`,
-      { pointer: issue.pointer },
-    );
+  requireValidCurrentSnapshot(
+    sourceSnapshot.migration.snapshot,
+    running.binding.canonicalBaseUrl ?? running.binding.targetBaseUrl,
+  );
+  const idempotencyKey =
+    `restore:${running.activeRevisionId}:` +
+    `${source._id}:v${CURRENT_OWNER_CONFIGURATION_VERSION}`;
+  const existing = await findOperationByKey(
+    ctx,
+    args.libraryId,
+    idempotencyKey,
+  );
+  if (existing) {
+    assertExistingCandidateOperation(existing, {
+      libraryId: args.libraryId,
+      sourceRevisionId: running.activeRevisionId,
+      snapshot: sourceSnapshot.migration.snapshot,
+      idempotencyKey,
+      forceCandidate: true,
+      rollbackOfRevisionId: source._id,
+      activationEditVersion:
+        existing.activationEditVersion ?? draft.editVersion,
+    });
+    const existingRevision = existing.revisionId
+      ? await ctx.db.get(existing.revisionId)
+      : null;
+    if (!existingRevision) {
+      throw createError(
+        "INVALID_DATA",
+        "Restore candidate revision is missing",
+      );
+    }
+    const started = await claimAndScheduleConfigurationDeployment(ctx, {
+      libraryId: args.libraryId,
+      operationId: existing._id,
+    });
+    return {
+      ...started,
+      editVersion: draft.editVersion,
+      revisionKey: existingRevision.revisionKey,
+      revisionNumber: existingRevision.revisionNumber,
+    };
   }
 
   const activationEditVersion = draft.editVersion;
@@ -245,26 +559,13 @@ export async function restoreEvidenceLibraryRevision(
     draft.editVersion,
     activationEditVersion,
   );
-  const latestRevision = await ctx.db
-    .query("evidenceLibraryConfigRevisions")
-    .withIndex("by_libraryId_and_revisionNumber", (query) =>
-      query.eq("libraryId", args.libraryId),
-    )
-    .order("desc")
-    .first();
-  const revisionNumber = (latestRevision?.revisionNumber ?? 0) + 1;
-  const revisionKey = `r${revisionNumber}`;
   const now = Date.now();
-  const revisionId = await ctx.db.insert("evidenceLibraryConfigRevisions", {
+  const candidate = await createCurrentCandidateRevision(ctx, {
     libraryId: args.libraryId,
-    revisionKey,
-    revisionNumber,
-    basedOnRevisionId: draft.baseRevisionId,
+    sourceRevisionId: running.activeRevisionId,
+    snapshot: sourceSnapshot.migration.snapshot,
     rollbackOfRevisionId: source._id,
-    ownerConfigurationVersion: 1,
-    contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     createdByClerkUserId: running.clerkUserId,
-    createdAt: now,
   });
   const draftRows = await ctx.db
     .query("evidenceLibraryConfigSections")
@@ -273,53 +574,48 @@ export async function restoreEvidenceLibraryRevision(
     )
     .collect();
   for (const row of draftRows) await ctx.db.delete(row._id);
-  for (const row of sourceRows) {
-    await ctx.db.insert("evidenceLibraryConfigSections", {
-      kind: "revision",
-      libraryId: args.libraryId,
-      revisionId,
-      sectionKey: row.sectionKey,
-      payload: row.payload,
-      payloadByteLength: row.payloadByteLength,
-      contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
-      createdByClerkUserId: running.clerkUserId,
-      createdAt: now,
-    });
+  for (const section of sourceSnapshot.migration.snapshot.sections) {
     await ctx.db.insert("evidenceLibraryConfigSections", {
       kind: "draft",
       libraryId: args.libraryId,
       draftId: draft._id,
-      sectionKey: row.sectionKey,
-      payload: row.payload,
-      payloadByteLength: row.payloadByteLength,
+      sectionKey: section.sectionKey,
+      payload: section.payload,
+      payloadByteLength: validateSectionPayload(section.payload),
       contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
       updatedByClerkUserId: running.clerkUserId,
       updatedAt: now,
     });
   }
   await ctx.db.patch(draft._id, {
-    baseRevisionId: revisionId,
+    baseRevisionId: candidate.revisionId,
     editVersion,
+    ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
     updatedByClerkUserId: running.clerkUserId,
     updatedAt: now,
   });
   await ctx.db.patch(args.libraryId, {
-    latestRevisionId: revisionId,
+    latestRevisionId: candidate.revisionId,
     updatedByClerkUserId: running.clerkUserId,
     updatedAt: now,
   });
   const operation = await queueConfigurationDeploymentOperation(ctx, {
     libraryId: args.libraryId,
-    revisionId,
-    idempotencyKey: `activate:${activationEditVersion}`,
+    revisionId: candidate.revisionId,
+    idempotencyKey,
     activationEditVersion,
   });
   const started = await claimAndScheduleConfigurationDeployment(ctx, {
     libraryId: args.libraryId,
     operationId: operation.operationId,
   });
-  return { ...started, editVersion, revisionKey, revisionNumber };
+  return {
+    ...started,
+    editVersion,
+    revisionKey: candidate.revisionKey,
+    revisionNumber: candidate.revisionNumber,
+  };
 }
 
 function stableJson(value: unknown): string {
@@ -342,9 +638,14 @@ async function readSectionFingerprints(
 ) {
   const cached = cache.get(revisionId);
   if (cached) return cached;
-  const rows = await readRevisionSectionRows(ctx, revisionId);
+  const loaded = await loadRevisionConfigurationSnapshot(ctx, revisionId, {
+    requireComplete: false,
+  });
   const fingerprints = new Map<SectionKey, string>(
-    rows.map((row) => [row.sectionKey, stableJson(row.payload)]),
+    loaded.migration.snapshot.sections.map((row) => [
+      row.sectionKey,
+      stableJson(row.payload),
+    ]),
   );
   cache.set(revisionId, fingerprints);
   return fingerprints;
@@ -524,7 +825,6 @@ export const startAddressMove = internalMutation({
   handler: startEvidenceLibraryAddressMove,
 });
 
-
 /**
  * Publishes the live revision again. Coolify writes the proxy rules into the
  * container, so a domain only becomes live through a deployment.
@@ -559,24 +859,43 @@ export const startDomainDeployment = internalMutation({
     }
     requireTransition(row, args.token);
     if (row.generation !== args.generation) {
-      throw createError(
-        "CONFLICT",
-        "Another change to that domain is running",
-      );
+      throw createError("CONFLICT", "Another change to that domain is running");
     }
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
-    const operation = await queueDomainChangeOperation(ctx, {
+    const source = await loadRevisionConfigurationSnapshot(
+      ctx,
+      running.activeRevisionId,
+      { requireComplete: true },
+    );
+    const address =
+      args.reason === "canonical" ? `https://${args.host}` : undefined;
+    const operationSnapshot = address
+      ? snapshotWithIdentityAddress(source.migration.snapshot, address)
+      : source.migration.snapshot;
+    requireValidCurrentSnapshot(
+      operationSnapshot,
+      address ??
+        running.binding.canonicalBaseUrl ??
+        running.binding.targetBaseUrl,
+    );
+    const idempotencyKey =
+      `domain:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:` +
+      `${args.domainId}:${args.reason}:${args.generation}:${args.host}:${address ?? ""}`;
+    const operation = await queueCandidateOperation(ctx, {
       libraryId: args.libraryId,
-      // One key per change, not per direction: a crash between queuing the
-      // deployment and writing its id down reuses this key, while asking for
-      // the same change again is a new change with a new key.
-      idempotencyKey: `domain:${args.reason}:${args.domainId}:${args.generation}`,
-      revisionId: running.activeRevisionId,
+      sourceRevisionId: running.activeRevisionId,
+      snapshot: source.migration.snapshot,
+      forceCandidate:
+        source.header.ownerConfigurationVersion !==
+        CURRENT_OWNER_CONFIGURATION_VERSION,
+      updateIdentityTo: address,
+      idempotencyKey,
       domainChange: {
         host: args.host,
         domainId: args.domainId,
         reason: args.reason,
         token: args.token,
+        ...(address === undefined ? {} : { address }),
       },
     });
     // Written before the worker is booked, and in the same transaction, so
@@ -639,10 +958,7 @@ export const setDomainPrimary = mutation({
       );
     }
     if (!args.primary && row.role !== "primary") {
-      throw createError(
-        "CONFLICT",
-        "That domain is not the library's address",
-      );
+      throw createError("CONFLICT", "That domain is not the library's address");
     }
     // The same lease every other change to this domain takes, so becoming
     // the library's address cannot race a check or a removal. It is held
@@ -651,38 +967,31 @@ export const setDomainPrimary = mutation({
     const address = args.primary
       ? `https://${row.host}`
       : running.binding.targetBaseUrl;
-    // The live sections must still pass the rules at the new address.
-    const sourceRows = await readRevisionSectionRows(
+    const source = await loadRevisionConfigurationSnapshot(
       ctx,
       running.activeRevisionId,
+      { requireComplete: true },
     );
-    const validated = validateOwnerSections(
-      sourceRows.map((section) => ({
-        sectionKey: section.sectionKey,
-        payload:
-          section.sectionKey === "identity"
-            ? { ...(section.payload as Record<string, unknown>), baseUrl: address }
-            : section.payload,
-      })),
-      {
-        expectedBaseUrl: address,
-        requireComplete: true,
-        platformMailConfigured: isPlatformMailConfigured(),
-      },
+    const operationSnapshot = snapshotWithIdentityAddress(
+      source.migration.snapshot,
+      address,
     );
-    const issue = validated.issues[0];
-    if (issue) {
-      throw createError("VALIDATION_ERROR", `${issue.pointer}: ${issue.message}`, {
-        pointer: issue.pointer,
-      });
-    }
+    requireValidCurrentSnapshot(operationSnapshot, address);
+    const idempotencyKey =
+      `domain:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:` +
+      `${args.domainId}:canonical:${claimed.generation}:${row.host}:${address}`;
     // The lease is taken now, and held until the deployment carrying this
     // change settles the row.
     await claimed.write();
-    const operation = await queueDomainChangeOperation(ctx, {
+    const operation = await queueCandidateOperation(ctx, {
       libraryId: args.libraryId,
-      idempotencyKey: `domain:canonical:${args.domainId}:${claimed.generation}`,
-      revisionId: running.activeRevisionId,
+      sourceRevisionId: running.activeRevisionId,
+      snapshot: source.migration.snapshot,
+      forceCandidate:
+        source.header.ownerConfigurationVersion !==
+        CURRENT_OWNER_CONFIGURATION_VERSION,
+      updateIdentityTo: address,
+      idempotencyKey,
       domainChange: {
         host: row.host,
         domainId: args.domainId,
@@ -722,57 +1031,56 @@ export async function applyEvidenceLibraryCanonicalAddress(
     address: string;
   },
 ): Promise<void> {
-  {
-    const library = await ctx.db.get("evidenceLibraries", args.libraryId);
-    const binding = library?.runtimeBindingId
-      ? await ctx.db.get(
-          "evidenceLibraryRuntimeBindings",
-          library.runtimeBindingId,
-        )
-      : null;
-    if (!library || !binding || !library.activeRevisionId) return;
-    const primary = args.address !== binding.targetBaseUrl;
-    const draft = await ctx.db
-      .query("evidenceLibraryConfigDrafts")
-      .withIndex("by_libraryId", (query) =>
-        query.eq("libraryId", args.libraryId),
+  const library = await ctx.db.get("evidenceLibraries", args.libraryId);
+  const binding = library?.runtimeBindingId
+    ? await ctx.db.get(
+        "evidenceLibraryRuntimeBindings",
+        library.runtimeBindingId,
       )
-      .unique();
-    const [draftIdentity, revisionIdentity] = await Promise.all([
-      draft
-        ? ctx.db
-            .query("evidenceLibraryConfigSections")
-            .withIndex("by_draftId_and_sectionKey", (query) =>
-              query.eq("draftId", draft._id).eq("sectionKey", "identity"),
-            )
-            .unique()
-        : null,
-      ctx.db
-        .query("evidenceLibraryConfigSections")
-        .withIndex("by_revisionId_and_sectionKey", (query) =>
-          query
-            .eq("revisionId", library.activeRevisionId!)
-            .eq("sectionKey", "identity"),
-        )
-        .unique(),
-    ]);
-    await ctx.db.patch(binding._id, {
-      canonicalBaseUrl: primary ? args.address : undefined,
-      updatedAt: Date.now(),
+    : null;
+  if (!library || !binding) return;
+  const primary = args.address !== binding.targetBaseUrl;
+  const draft = await ctx.db
+    .query("evidenceLibraryConfigDrafts")
+    .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+    .unique();
+  let draftSnapshot = draft
+    ? await loadDraftConfigurationSnapshot(ctx, draft._id, {
+        requireComplete: false,
+      })
+    : null;
+  if (draftSnapshot) {
+    await persistDraftConfigurationSnapshot(ctx, draftSnapshot);
+    draftSnapshot = await loadDraftConfigurationSnapshot(ctx, draft!._id, {
+      requireComplete: false,
     });
-    await moveIdentityBaseUrl(ctx, draftIdentity, args.address);
-    await moveIdentityBaseUrl(ctx, revisionIdentity, args.address);
-    // Only one domain at a time may be the library's address; the others
-    // keep sending visitors to it.
-    const rows = await ctx.db
-      .query("evidenceLibraryDomains")
-      .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
-      .collect();
-    for (const entry of rows) {
-      const role = primary && entry._id === args.domainId ? "primary" : "redirect";
-      if (entry.role !== role) {
-        await ctx.db.patch(entry._id, { role, updatedAt: Date.now() });
-      }
+  }
+  const draftIdentity = draftSnapshot?.sections.find(
+    (section) => section.sectionKey === "identity",
+  );
+  await ctx.db.patch(binding._id, {
+    canonicalBaseUrl: primary ? args.address : undefined,
+    updatedAt: Date.now(),
+  });
+  await moveIdentityBaseUrl(
+    ctx,
+    draftIdentity ?? null,
+    args.address,
+    draftSnapshot?.migration.snapshot.sections.find(
+      (section) => section.sectionKey === "identity",
+    )?.payload,
+  );
+  // Only one domain at a time may be the library's address; the others
+  // keep sending visitors to it.
+  const rows = await ctx.db
+    .query("evidenceLibraryDomains")
+    .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+    .collect();
+  for (const entry of rows) {
+    const role =
+      primary && entry._id === args.domainId ? "primary" : "redirect";
+    if (entry.role !== role) {
+      await ctx.db.patch(entry._id, { role, updatedAt: Date.now() });
     }
   }
 }

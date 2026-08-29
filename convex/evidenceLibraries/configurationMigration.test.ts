@@ -51,6 +51,7 @@ async function seedHeaders(t: ReturnType<typeof convexTest>) {
     });
     const revisionId = await ctx.db.insert("evidenceLibraryConfigRevisions", {
       libraryId,
+      ownerConfigurationVersion: 1,
       revisionKey: "r1",
       revisionNumber: 1,
       basedOnRevisionId: null,
@@ -61,6 +62,7 @@ async function seedHeaders(t: ReturnType<typeof convexTest>) {
     });
     const draftId = await ctx.db.insert("evidenceLibraryConfigDrafts", {
       libraryId,
+      ownerConfigurationVersion: 1,
       baseRevisionId: revisionId,
       editVersion: 4,
       contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
@@ -121,7 +123,7 @@ function runTagMigration(t: ReturnType<typeof convexTest>, fn: string) {
 }
 
 describe("Evidence Library configuration migration", () => {
-  it("tags missing draft and revision headers and leaves tagged headers alone", async () => {
+  it("leaves explicitly versioned draft and revision headers alone", async () => {
     const t = convexTest(schema, modules);
     registerMigrations(t);
     const seeded = await seedHeaders(t);
@@ -296,11 +298,11 @@ describe("Evidence Library configuration migration", () => {
         placeholderRevisions: 0,
       },
     );
-    expect(counts.missingVersions).toBe(2);
+    expect(counts.missingVersions).toBe(0);
     expect(counts.staleFeatures).toBe(2);
     expect(counts.nonBooleanExports).toBe(1);
     expect(counts.brokenParents).toBe(1);
-    expect(counts.migrationValidationFailures).toBe(0);
+    expect(counts.migrationValidationFailures).toBe(2);
     expect(counts.placeholderRevisions).toBe(1);
     expect(pages.every((page) => page.samples.length <= 20)).toBe(true);
   });

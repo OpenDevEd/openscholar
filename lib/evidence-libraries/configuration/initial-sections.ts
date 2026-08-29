@@ -7,7 +7,12 @@ export function initialIdentityPayload(input: {
   shortName: string;
   baseUrl: string;
 }) {
-  return { baseUrl: input.baseUrl, name: input.name, shortName: input.shortName };
+  return {
+    assets: {},
+    baseUrl: input.baseUrl,
+    name: input.name,
+    shortName: input.shortName,
+  };
 }
 
 export function initialLocalizationPayload() {
