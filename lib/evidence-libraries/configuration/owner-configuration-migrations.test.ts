@@ -5,6 +5,9 @@ import {
   OwnerConfigurationMigrationError,
   migrateOwnerConfiguration,
   OWNER_CONFIGURATION_MIGRATIONS,
+  validateOwnerConfigurationMigrationRegistry,
+  type OwnerConfigurationMigration,
+  type OwnerConfigurationMigrationSnapshot,
   type OwnerConfigurationSnapshot,
 } from "./owner-configuration-migrations";
 
@@ -37,24 +40,10 @@ function expectMigrationError(run: () => unknown) {
 }
 
 function withMigrations<T>(
-  migrations: typeof OWNER_CONFIGURATION_MIGRATIONS,
-  run: () => T,
+  migrations: readonly OwnerConfigurationMigration[],
+  run: (migrations: readonly OwnerConfigurationMigration[]) => T,
 ): T {
-  const original = [...OWNER_CONFIGURATION_MIGRATIONS];
-  OWNER_CONFIGURATION_MIGRATIONS.splice(
-    0,
-    OWNER_CONFIGURATION_MIGRATIONS.length,
-    ...migrations,
-  );
-  try {
-    return run();
-  } finally {
-    OWNER_CONFIGURATION_MIGRATIONS.splice(
-      0,
-      OWNER_CONFIGURATION_MIGRATIONS.length,
-      ...original,
-    );
-  }
+  return run(migrations);
 }
 
 describe("owner configuration migrations", () => {
@@ -181,48 +170,56 @@ describe("owner configuration migrations", () => {
       ({ to }) => to === CURRENT_OWNER_CONFIGURATION_VERSION,
     );
     if (!currentMigration) throw new Error("Missing current migration");
-    const originalDefaults = currentMigration.defaultRows;
-    currentMigration.defaultRows = [
-      ...(originalDefaults ?? []),
-      { sectionKey: "analytics", payload: () => ({}) },
-    ];
-    try {
-      const missing = completeOwnerConfigurationSnapshot({
+    const customMigrations = OWNER_CONFIGURATION_MIGRATIONS.map((migration) =>
+      migration === currentMigration
+        ? {
+            ...migration,
+            defaultRows: [
+              ...(migration.defaultRows ?? []),
+              { sectionKey: "analytics" as const, payload: () => ({}) },
+            ],
+          }
+        : migration,
+    );
+    const missing = completeOwnerConfigurationSnapshot(
+      {
         ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
         sections: [{ sectionKey: "features", payload: { ai: false } }],
-      });
-      expect(missing.sections).toEqual([
-        { sectionKey: "features", payload: { ai: false } },
-        {
-          sectionKey: "ai",
-          payload: { providers: [{ provider: "openrouter", enabled: false }] },
-        },
-        { sectionKey: "analytics", payload: {} },
-      ]);
-      expect(
-        completeOwnerConfigurationSnapshot(missing),
-      ).toEqual(missing);
+      },
+      customMigrations,
+    );
+    expect(missing.sections).toEqual([
+      { sectionKey: "features", payload: { ai: false } },
+      {
+        sectionKey: "ai",
+        payload: { providers: [{ provider: "openrouter", enabled: false }] },
+      },
+      { sectionKey: "analytics", payload: {} },
+    ]);
+    expect(
+      completeOwnerConfigurationSnapshot(missing, customMigrations),
+    ).toEqual(missing);
 
-      const explicit = {
-        sectionKey: "ai" as const,
-        payload: {
-          providers: [
-            { provider: "openrouter", enabled: false, defaultModel: "model" },
-          ],
-        },
-      };
-      const changed = completeOwnerConfigurationSnapshot({
+    const explicit = {
+      sectionKey: "ai" as const,
+      payload: {
+        providers: [
+          { provider: "openrouter", enabled: false, defaultModel: "model" },
+        ],
+      },
+    };
+    const changed = completeOwnerConfigurationSnapshot(
+      {
         ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
         sections: [explicit],
-      });
-      expect(changed.sections).toContainEqual(explicit);
-      expect(changed.sections).toContainEqual({
-        sectionKey: "analytics",
-        payload: {},
-      });
-    } finally {
-      currentMigration.defaultRows = originalDefaults;
-    }
+      },
+      customMigrations,
+    );
+    expect(changed.sections).toContainEqual(explicit);
+    expect(changed.sections).toContainEqual({
+      sectionKey: "analytics",
+      payload: {},
+    });
   });
 
   it("does not mutate input and returns deterministic results", () => {
@@ -239,6 +236,12 @@ describe("owner configuration migrations", () => {
     expect(
       OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to]),
     ).toEqual([[1, 2]]);
+    expect(
+      validateOwnerConfigurationMigrationRegistry(
+        OWNER_CONFIGURATION_MIGRATIONS,
+        CURRENT_OWNER_CONFIGURATION_VERSION,
+      ),
+    ).toEqual([]);
     const current: OwnerConfigurationSnapshot = {
       ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
       sections: [{ sectionKey: "features", payload: { ai: false } }],
@@ -247,6 +250,181 @@ describe("owner configuration migrations", () => {
     expect(migrateOwnerConfiguration(current)).toEqual({
       snapshot: current,
       changedPointers: [],
+    });
+  });
+
+  it("validates unique consecutive chains without changing the production registry", () => {
+    const chained: OwnerConfigurationMigration[] = [
+      {
+        from: 1,
+        to: 2,
+        migrate: (snapshot) => ({
+          ownerConfigurationVersion: 2,
+          sections: [{ sectionKey: "legacy", payload: { enabled: "on" } }],
+        }),
+      },
+      {
+        from: 2,
+        to: 3,
+        migrate: (snapshot) => ({
+          ownerConfigurationVersion: 3,
+          sections: [{ sectionKey: "features", payload: { ai: false } }],
+        }),
+      },
+    ];
+    expect(validateOwnerConfigurationMigrationRegistry(chained, 3)).toEqual(
+      [],
+    );
+    expect(
+      migrateOwnerConfiguration(
+        {
+          ownerConfigurationVersion: 1,
+          sections: [{ sectionKey: "legacy", payload: "on" }],
+        },
+        {},
+        chained,
+        3,
+      ).snapshot,
+    ).toEqual({
+      ownerConfigurationVersion: 3,
+      sections: [{ sectionKey: "features", payload: { ai: false } }],
+    });
+    expect(
+      validateOwnerConfigurationMigrationRegistry(
+        [
+          ...chained,
+          {
+            from: 2,
+            to: 3,
+            migrate: (snapshot) => ({
+              ...snapshot,
+              ownerConfigurationVersion: 3,
+            }),
+          },
+        ],
+        3,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "duplicateMigration" }),
+      ]),
+    );
+    expect(
+      validateOwnerConfigurationMigrationRegistry(
+        [{ ...chained[0]!, from: 1, to: 3 }],
+        3,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "nonConsecutiveMigration" }),
+        expect.objectContaining({ keyword: "missingMigration" }),
+      ]),
+    );
+    expect(OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to])).toEqual(
+      [[1, 2]],
+    );
+  });
+
+  it("lets a historical step remove, rename, convert, transfer, split, merge, and remove sections", () => {
+    const migrations: OwnerConfigurationMigration[] = [
+      {
+        from: 1,
+        to: 2,
+        migrate: (snapshot) => {
+          const legacy = new Map(
+            snapshot.sections.map((row) => [row.sectionKey, row.payload]),
+          );
+          const features = legacy.get("legacyFeatures") as {
+            enabled: string;
+          };
+          const exports = legacy.get("legacyExports") as {
+            ris: string;
+            bibtex: boolean;
+            atom: boolean;
+          };
+          const contact = legacy.get("legacyContact") as {
+            email: string;
+          };
+          const identity = legacy.get("legacyIdentity") as {
+            first: string;
+            last: string;
+            baseUrl: string;
+          };
+          return {
+            ownerConfigurationVersion: 2,
+            sections: [
+              {
+                sectionKey: "features",
+                payload: { ai: features.enabled === "on" },
+              },
+              {
+                sectionKey: "exports",
+                payload: {
+                  ris: exports.ris === "on",
+                  bibtex: exports.bibtex,
+                  atom: exports.atom,
+                },
+              },
+              {
+                sectionKey: "identity",
+                payload: {
+                  name: `${identity.first} ${identity.last}`,
+                  baseUrl: identity.baseUrl,
+                },
+              },
+              { sectionKey: "contact", payload: { email: contact.email } },
+              {
+                sectionKey: "email",
+                payload: { contactRecipient: contact.email },
+              },
+            ],
+          };
+        },
+      },
+    ];
+    const source: OwnerConfigurationMigrationSnapshot = {
+      ownerConfigurationVersion: 1,
+      sections: [
+        {
+          sectionKey: "legacyFeatures",
+          payload: { enabled: "on", removed: "discard-me", platformOwned: true },
+        },
+        {
+          sectionKey: "legacyExports",
+          payload: { ris: "on", bibtex: false, atom: true },
+        },
+        {
+          sectionKey: "legacyIdentity",
+          payload: {
+            first: "Climate",
+            last: "Evidence",
+            baseUrl: "https://climate.example.test",
+          },
+        },
+        { sectionKey: "legacyContact", payload: { email: "owner@example.test" } },
+        { sectionKey: "legacyObsolete", payload: { old: "value" } },
+      ],
+    };
+
+    const result = migrateOwnerConfiguration(source, {}, migrations);
+    expect(result.snapshot).toEqual({
+      ownerConfigurationVersion: 2,
+      sections: [
+        { sectionKey: "features", payload: { ai: true } },
+        { sectionKey: "exports", payload: { ris: true, bibtex: false, atom: true } },
+        {
+          sectionKey: "identity",
+          payload: {
+            name: "Climate Evidence",
+            baseUrl: "https://climate.example.test",
+          },
+        },
+        { sectionKey: "contact", payload: { email: "owner@example.test" } },
+        {
+          sectionKey: "email",
+          payload: { contactRecipient: "owner@example.test" },
+        },
+      ],
     });
   });
 
@@ -292,11 +470,11 @@ describe("owner configuration migrations", () => {
           }),
         },
       ],
-      () =>
+      (migrations) =>
         migrateOwnerConfiguration({
           ownerConfigurationVersion: 1,
           sections: [{ sectionKey: "features", payload: {} }],
-        }),
+        }, {}, migrations),
     );
     expect(moved.snapshot).toEqual({
       ownerConfigurationVersion: 2,
@@ -319,11 +497,11 @@ describe("owner configuration migrations", () => {
             }),
           },
         ],
-        () =>
+        (migrations) =>
           migrateOwnerConfiguration({
             ownerConfigurationVersion: 1,
             sections: [{ sectionKey: "exports", payload: {} }],
-          }),
+          }, {}, migrations),
       ),
     );
     expect(collision.issues).toEqual(
@@ -402,11 +580,11 @@ describe("owner configuration migrations", () => {
             }),
           },
         ],
-        () =>
+        (migrations) =>
           migrateOwnerConfiguration({
             ownerConfigurationVersion: 1,
             sections: [{ sectionKey: "features", payload: {} }],
-          }),
+          }, {}, migrations),
       ),
     );
     expect(invalidOutput.issues).toEqual(
@@ -431,11 +609,11 @@ describe("owner configuration migrations", () => {
             }),
           },
         ],
-        () =>
+        (migrations) =>
           migrateOwnerConfiguration({
             ownerConfigurationVersion: 1,
             sections: [{ sectionKey: "email", payload: {} }],
-          }),
+          }, {}, migrations),
       ),
     );
     expect(credentialOutput.issues).toEqual(
@@ -468,13 +646,18 @@ describe("owner configuration migrations", () => {
             }),
           },
         ],
-        () =>
+        (migrations) =>
           migrateOwnerConfiguration({
             ownerConfigurationVersion: 1,
             sections: [],
-          }),
+          }, {}, migrations),
       ),
     );
-    expect(error.issues[0]?.keyword).toBe("missingMigration");
+    expect(error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "nonConsecutiveMigration" }),
+        expect.objectContaining({ keyword: "invalidRegistry" }),
+      ]),
+    );
   });
 });

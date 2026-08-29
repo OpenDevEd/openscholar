@@ -12,9 +12,22 @@ import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 export const CURRENT_OWNER_CONFIGURATION_VERSION = 2 as const;
 export const MAX_CHANGED_POINTERS = 100;
 
+export type OwnerConfigurationSnapshotRow = {
+  // Historical migrations may receive a section that no longer exists in the
+  // current registry. The final current-version validation narrows this to a
+  // known SectionKey before owner rules run.
+  sectionKey: string;
+  payload: unknown;
+};
+
 export type OwnerConfigurationSnapshot = {
   ownerConfigurationVersion: number;
   sections: OwnerSectionRow[];
+};
+
+export type OwnerConfigurationMigrationSnapshot = {
+  ownerConfigurationVersion: number;
+  sections: OwnerConfigurationSnapshotRow[];
 };
 
 export type OwnerConfigurationDefaultRow = {
@@ -25,7 +38,9 @@ export type OwnerConfigurationDefaultRow = {
 export type OwnerConfigurationMigration = {
   from: number;
   to: number;
-  migrate: (snapshot: OwnerConfigurationSnapshot) => OwnerConfigurationSnapshot;
+  migrate: (
+    snapshot: OwnerConfigurationMigrationSnapshot,
+  ) => OwnerConfigurationMigrationSnapshot;
   defaultRows?: OwnerConfigurationDefaultRow[];
 };
 
@@ -112,38 +127,8 @@ function schemaDefaultExports(): Record<
   };
 }
 
-function legacyValidationPayload(
-  sectionKey: string,
-  payload: unknown,
-): unknown {
-  if (!isRecord(payload)) return payload;
-  if (sectionKey === "features") {
-    const next = { ...payload };
-    for (const key of LEGACY_FEATURE_KEYS) delete next[key];
-    return next;
-  }
-  if (sectionKey === "exports" && hasNonBooleanExport(payload)) {
-    return schemaDefaultExports();
-  }
-  return payload;
-}
-
-function sectionRowsForValidation(
-  rows: readonly OwnerSectionRow[],
-  version: number,
-): OwnerSectionRow[] {
-  if (version !== 1) return rows.map((row) => ({ ...row }));
-  return rows.map((row) => ({
-    sectionKey: row.sectionKey,
-    payload: legacyValidationPayload(row.sectionKey, row.payload),
-  }));
-}
-
-function validateSnapshotShape(
-  value: unknown,
-  options: OwnerConfigurationValidationOptions,
-): {
-  snapshot: OwnerConfigurationSnapshot | null;
+function validateSnapshotEnvelope(value: unknown): {
+  snapshot: OwnerConfigurationMigrationSnapshot | null;
   issues: OwnerConfigurationIssue[];
 } {
   const issues: OwnerConfigurationIssue[] = [];
@@ -184,7 +169,7 @@ function validateSnapshotShape(
     return { snapshot: null, issues };
   }
 
-  const rows: OwnerSectionRow[] = [];
+  const rows: OwnerConfigurationSnapshotRow[] = [];
   const seen = new Set<string>();
   let totalByteLength = 0;
   for (const [index, rawRow] of rawSections.entries()) {
@@ -199,12 +184,12 @@ function validateSnapshotShape(
       continue;
     }
     const sectionKey = rawRow.sectionKey;
-    if (!isSectionKey(sectionKey)) {
+    if (typeof sectionKey !== "string" || sectionKey.length === 0) {
       issues.push(
         issue(
           `/sections/${index}/sectionKey`,
-          "unknownSection",
-          "Section is not part of the configuration contract.",
+          "invalidSectionKey",
+          "Section key must be a non-empty string.",
         ),
       );
       continue;
@@ -215,17 +200,15 @@ function validateSnapshotShape(
           `/${sectionKey}`,
           "duplicate",
           "Section appears more than once.",
-          sectionKey,
+          isSectionKey(sectionKey) ? sectionKey : null,
         ),
       );
     }
     seen.add(sectionKey);
     const payload = rawRow.payload;
-    let payloadValid = true;
     try {
       totalByteLength += validateSectionPayload(payload);
     } catch (error) {
-      payloadValid = false;
       issues.push(
         issue(
           `/${sectionKey}`,
@@ -233,26 +216,11 @@ function validateSnapshotShape(
           error instanceof Error
             ? error.message
             : "Section payload is invalid.",
-          sectionKey,
+          isSectionKey(sectionKey) ? sectionKey : null,
         ),
       );
     }
-    try {
-      assertNoCredentialMaterial(sectionKey, payload);
-    } catch {
-      issues.push(
-        issue(
-          `/${sectionKey}`,
-          "credentialMaterial",
-          "Keys and passwords cannot be stored in owner configuration.",
-          sectionKey,
-        ),
-      );
-    }
-
-    const row = { sectionKey, payload } as OwnerSectionRow;
-    rows.push(row);
-    if (!payloadValid) continue;
+    rows.push({ sectionKey, payload });
   }
 
   try {
@@ -267,18 +235,6 @@ function validateSnapshotShape(
     );
   }
 
-  const version = rawVersion;
-  if (typeof version === "number" && Number.isSafeInteger(version)) {
-    const ownerValidation = validateOwnerSections(
-      sectionRowsForValidation(rows, version),
-      { requireComplete: options.requireComplete },
-    );
-    issues.push(...ownerValidation.issues.map(fromValidationIssue));
-    if (options.requireDeclaredDefaults) {
-      issues.push(...declaredDefaultIssues(rows, version));
-    }
-  }
-
   const snapshot =
     typeof rawVersion === "number" && Number.isSafeInteger(rawVersion)
       ? {
@@ -289,19 +245,88 @@ function validateSnapshotShape(
   return { snapshot, issues };
 }
 
+function validateSnapshotShape(
+  value: unknown,
+  options: OwnerConfigurationValidationOptions,
+  migrations: readonly OwnerConfigurationMigration[],
+): {
+  snapshot: OwnerConfigurationSnapshot | null;
+  issues: OwnerConfigurationIssue[];
+} {
+  const envelope = validateSnapshotEnvelope(value);
+  const issues = [...envelope.issues];
+  if (!envelope.snapshot) return { snapshot: null, issues };
+
+  const ownerRows: OwnerSectionRow[] = [];
+  for (const [index, row] of envelope.snapshot.sections.entries()) {
+    if (!isSectionKey(row.sectionKey)) {
+      issues.push(
+        issue(
+          `/sections/${index}/sectionKey`,
+          "unknownSection",
+          "Section is not part of the configuration contract.",
+        ),
+      );
+      continue;
+    }
+    ownerRows.push({ sectionKey: row.sectionKey, payload: row.payload });
+    try {
+      assertNoCredentialMaterial(row.sectionKey, row.payload);
+    } catch {
+      issues.push(
+        issue(
+          `/${row.sectionKey}`,
+          "credentialMaterial",
+          "Keys and passwords cannot be stored in owner configuration.",
+          row.sectionKey,
+        ),
+      );
+    }
+  }
+
+  const ownerValidation = validateOwnerSections(ownerRows, {
+    requireComplete: options.requireComplete,
+  });
+  issues.push(...ownerValidation.issues.map(fromValidationIssue));
+  if (options.requireDeclaredDefaults) {
+    issues.push(
+      ...declaredDefaultIssues(
+        ownerRows,
+        envelope.snapshot.ownerConfigurationVersion,
+        migrations,
+      ),
+    );
+  }
+  if (ownerRows.length !== envelope.snapshot.sections.length) {
+    return { snapshot: null, issues };
+  }
+  return {
+    snapshot: {
+      ownerConfigurationVersion: envelope.snapshot.ownerConfigurationVersion,
+      sections: ownerRows,
+    },
+    issues,
+  };
+}
+
 export function validateOwnerConfigurationSnapshot(
   value: unknown,
   options: OwnerConfigurationValidationOptions = {},
 ): { valid: boolean; issues: OwnerConfigurationIssue[] } {
-  const result = validateSnapshotShape(value, options);
+  const result = validateSnapshotShape(
+    value,
+    options,
+    OWNER_CONFIGURATION_MIGRATIONS,
+  );
   return { valid: result.issues.length === 0, issues: result.issues };
 }
 
 function requireValidSnapshot(
   value: unknown,
   options: OwnerConfigurationValidationOptions,
+  migrations: readonly OwnerConfigurationMigration[],
 ): OwnerConfigurationSnapshot {
-  const result = validateSnapshotShape(value, options);
+  const result = validateSnapshotShape(value, options, migrations);
   if (result.issues.length > 0 || !result.snapshot) {
     throw new OwnerConfigurationMigrationError(
       "Evidence Library configuration snapshot is invalid",
@@ -313,20 +338,24 @@ function requireValidSnapshot(
 
 function defaultRowsForVersion(
   version: number,
+  migrations: readonly OwnerConfigurationMigration[],
 ): readonly OwnerConfigurationDefaultRow[] {
   return (
-    OWNER_CONFIGURATION_MIGRATIONS.find((migration) => migration.to === version)
+    migrations.find((migration) => migration.to === version)
       ?.defaultRows ?? []
   );
 }
 
-export function completeOwnerConfigurationSnapshot(
-  snapshot: OwnerConfigurationSnapshot,
-): OwnerConfigurationSnapshot {
+export function completeOwnerConfigurationSnapshot<T extends OwnerConfigurationMigrationSnapshot>(
+  snapshot: T,
+  migrations: readonly OwnerConfigurationMigration[] =
+    OWNER_CONFIGURATION_MIGRATIONS,
+): T {
   const next = cloneJson(snapshot);
   const existing = new Set(next.sections.map((row) => row.sectionKey));
   for (const defaultRow of defaultRowsForVersion(
     next.ownerConfigurationVersion,
+    migrations,
   )) {
     if (existing.has(defaultRow.sectionKey)) continue;
     next.sections.push({
@@ -341,9 +370,10 @@ export function completeOwnerConfigurationSnapshot(
 function declaredDefaultIssues(
   rows: readonly OwnerSectionRow[],
   version: number,
+  migrations: readonly OwnerConfigurationMigration[],
 ): OwnerConfigurationIssue[] {
   const present = new Set(rows.map((row) => row.sectionKey));
-  return defaultRowsForVersion(version)
+  return defaultRowsForVersion(version, migrations)
     .filter((defaultRow) => !present.has(defaultRow.sectionKey))
     .map((defaultRow) =>
       issue(
@@ -356,10 +386,10 @@ function declaredDefaultIssues(
 }
 
 function migrateVersionOneToTwo(
-  snapshot: OwnerConfigurationSnapshot,
-): OwnerConfigurationSnapshot {
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
   const next = cloneJson(snapshot);
-  next.ownerConfigurationVersion = CURRENT_OWNER_CONFIGURATION_VERSION;
+  next.ownerConfigurationVersion = 2;
   for (const row of next.sections) {
     if (row.sectionKey === "features" && isRecord(row.payload)) {
       const payload = { ...row.payload };
@@ -395,6 +425,101 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
 ];
 
 export const ownerConfigurationMigrations = OWNER_CONFIGURATION_MIGRATIONS;
+
+export function validateOwnerConfigurationMigrationRegistry(
+  migrations: readonly OwnerConfigurationMigration[],
+  currentVersion: number = CURRENT_OWNER_CONFIGURATION_VERSION,
+): OwnerConfigurationIssue[] {
+  const issues: OwnerConfigurationIssue[] = [];
+  if (!Number.isSafeInteger(currentVersion) || currentVersion < 1) {
+    return [
+      issue(
+        "/migrations",
+        "invalidRegistry",
+        "The current configuration version must be a positive whole number.",
+      ),
+    ];
+  }
+
+  const seenFrom = new Set<number>();
+  const seenTo = new Set<number>();
+  const validTargets: number[] = [];
+  for (const [index, migration] of migrations.entries()) {
+    const pointer = `/migrations/${index}`;
+    if (
+      !Number.isSafeInteger(migration.from) ||
+      !Number.isSafeInteger(migration.to)
+    ) {
+      issues.push(
+        issue(
+          pointer,
+          "invalidRegistry",
+          "Migration versions must be whole numbers.",
+        ),
+      );
+      continue;
+    }
+    if (migration.to !== migration.from + 1) {
+      issues.push(
+        issue(
+          pointer,
+          "nonConsecutiveMigration",
+          "Each migration must move exactly one version forward.",
+        ),
+      );
+    }
+    if (seenFrom.has(migration.from) || seenTo.has(migration.to)) {
+      issues.push(
+        issue(
+          pointer,
+          "duplicateMigration",
+          "Each migration boundary may be declared only once.",
+        ),
+      );
+    }
+    seenFrom.add(migration.from);
+    seenTo.add(migration.to);
+    validTargets.push(migration.to);
+  }
+
+  const maxTarget = validTargets.length > 0 ? Math.max(...validTargets) : null;
+  if (maxTarget !== currentVersion) {
+    issues.push(
+      issue(
+        "/migrations",
+        "invalidRegistry",
+        "The migration registry must end at the current configuration version.",
+      ),
+    );
+  }
+  for (let version = 1; version < currentVersion; version += 1) {
+    if (seenFrom.has(version)) continue;
+    issues.push(
+      issue(
+        `/migrations/${version}`,
+        "missingMigration",
+        "No consecutive migration exists for this configuration version.",
+      ),
+    );
+  }
+  return issues;
+}
+
+function requireValidMigrationRegistry(
+  migrations: readonly OwnerConfigurationMigration[],
+  currentVersion: number,
+): void {
+  const issues = validateOwnerConfigurationMigrationRegistry(
+    migrations,
+    currentVersion,
+  );
+  if (issues.length > 0) {
+    throw new OwnerConfigurationMigrationError(
+      "Evidence Library configuration migration registry is invalid",
+      issues,
+    );
+  }
+}
 
 function pointerJoin(pointer: string, key: string): string {
   return `${pointer}/${key.replaceAll("~", "~0").replaceAll("/", "~1")}`;
@@ -442,8 +567,8 @@ function diffJsonPointers(
 }
 
 function changedSnapshotPointers(
-  before: OwnerConfigurationSnapshot,
-  after: OwnerConfigurationSnapshot,
+  before: OwnerConfigurationMigrationSnapshot,
+  after: OwnerConfigurationMigrationSnapshot,
 ): string[] {
   const output: string[] = [];
   const beforeRows = new Map(
@@ -477,14 +602,26 @@ function changedSnapshotPointers(
 }
 
 export function migrateOwnerConfiguration(
-  value: OwnerConfigurationSnapshot,
+  value: unknown,
   options: OwnerConfigurationValidationOptions = {},
+  migrations: readonly OwnerConfigurationMigration[] =
+    OWNER_CONFIGURATION_MIGRATIONS,
+  targetVersion: number = CURRENT_OWNER_CONFIGURATION_VERSION,
 ): OwnerConfigurationMigrationResult {
+  requireValidMigrationRegistry(migrations, targetVersion);
+  const initial = validateSnapshotEnvelope(value);
+  if (initial.issues.length > 0 || !initial.snapshot) {
+    throw new OwnerConfigurationMigrationError(
+      "Evidence Library configuration snapshot is invalid",
+      initial.issues,
+    );
+  }
+
   const rawVersion = isRecord(value)
     ? value.ownerConfigurationVersion
     : undefined;
   if (typeof rawVersion === "number" && Number.isSafeInteger(rawVersion)) {
-    if (rawVersion > CURRENT_OWNER_CONFIGURATION_VERSION) {
+    if (rawVersion > targetVersion) {
       throw new OwnerConfigurationMigrationError(
         "Evidence Library configuration snapshot is newer than this code",
         [
@@ -509,14 +646,13 @@ export function migrateOwnerConfiguration(
       );
     }
   }
-  const initial = requireValidSnapshot(value, options);
 
-  let current = cloneJson(initial);
+  let current = cloneJson(initial.snapshot);
   const changedPointers: string[] = [];
   while (
-    current.ownerConfigurationVersion < CURRENT_OWNER_CONFIGURATION_VERSION
+    current.ownerConfigurationVersion < targetVersion
   ) {
-    const migration = OWNER_CONFIGURATION_MIGRATIONS.find(
+    const migration = migrations.find(
       (candidate) => candidate.from === current.ownerConfigurationVersion,
     );
     if (!migration || migration.to !== migration.from + 1) {
@@ -532,7 +668,7 @@ export function migrateOwnerConfiguration(
       );
     }
     const before = current;
-    let migrated: OwnerConfigurationSnapshot;
+    let migrated: unknown;
     try {
       migrated = migration.migrate(cloneJson(current));
     } catch (error) {
@@ -548,10 +684,7 @@ export function migrateOwnerConfiguration(
         ],
       );
     }
-    if (
-      !isRecord(migrated) ||
-      migrated.ownerConfigurationVersion !== migration.to
-    ) {
+    if (!isRecord(migrated) || migrated.ownerConfigurationVersion !== migration.to) {
       throw new OwnerConfigurationMigrationError(
         "Evidence Library configuration migration returned an invalid snapshot",
         [
@@ -563,8 +696,14 @@ export function migrateOwnerConfiguration(
         ],
       );
     }
-    const checked = requireValidSnapshot(migrated, options);
-    current = cloneJson(checked);
+    const checked = validateSnapshotEnvelope(migrated);
+    if (checked.issues.length > 0 || !checked.snapshot) {
+      throw new OwnerConfigurationMigrationError(
+        "Evidence Library configuration migration returned an invalid snapshot",
+        checked.issues,
+      );
+    }
+    current = cloneJson(checked.snapshot);
     if (
       before.ownerConfigurationVersion !== current.ownerConfigurationVersion &&
       !changedPointers.includes("/ownerConfigurationVersion")
@@ -577,7 +716,7 @@ export function migrateOwnerConfiguration(
     }
   }
 
-  const final = requireValidSnapshot(current, options);
+  const final = requireValidSnapshot(current, options, migrations);
   return {
     snapshot: cloneJson(final),
     changedPointers: changedPointers.slice(0, MAX_CHANGED_POINTERS),
