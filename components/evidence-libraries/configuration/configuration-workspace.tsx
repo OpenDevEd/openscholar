@@ -622,21 +622,23 @@ function OperationBanner({
       data-operation-issues
     >
       {operation.error ? <p>{operation.error.message}</p> : null}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="mt-3"
-        onClick={() => {
-          retry({ libraryId, operationId: operation._id })
-            .then(() => toast.success(t("retryStarted")))
-            .catch((error) =>
-              toast.error(errorMessage(error, t("retryError"))),
-            );
-        }}
-      >
-        {t("retry")}
-      </Button>
+      {operation.retryable ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() => {
+            retry({ libraryId, operationId: operation._id })
+              .then(() => toast.success(t("retryStarted")))
+              .catch((error) =>
+                toast.error(errorMessage(error, t("retryError"))),
+              );
+          }}
+        >
+          {t("retry")}
+        </Button>
+      ) : null}
       {issues.length > 0 ? (
         <ul className="mt-1 space-y-1">
           {issues.map((issue) => {

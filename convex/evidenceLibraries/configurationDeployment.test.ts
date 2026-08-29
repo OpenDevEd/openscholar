@@ -276,6 +276,9 @@ function createRuntimeNetwork(input: {
     restoreReadiness() {
       activeRevision = input.revisionKey;
     },
+    setActiveRevision(revisionKey: string) {
+      activeRevision = revisionKey;
+    },
   };
 }
 
@@ -380,6 +383,71 @@ async function activateChangedConfiguration(suffix: string) {
     attemptToken: operation.configurationAttemptToken,
     attemptCount: operation.attemptCount,
   };
+}
+
+type ChangedConfiguration = Awaited<
+  ReturnType<typeof activateChangedConfiguration>
+>;
+
+async function failConfigurationDeployment(
+  deployment: ChangedConfiguration,
+  options: { runtimeCommit?: string } = {},
+) {
+  await deployment.fixture.t.run(async (ctx) => {
+    const [operation, revision, binding] = await Promise.all([
+      ctx.db.get(deployment.activated.operationId),
+      ctx.db.get(deployment.activated.revisionId),
+      ctx.db.get(deployment.fixture.created.runtimeBindingId),
+    ]);
+    if (!operation || !revision || !binding || binding.state !== "ready") {
+      throw new Error("The deployment fixture is incomplete");
+    }
+    await ctx.db.patch(operation._id, {
+      status: "failed",
+      stage: "publishing",
+      error: {
+        code: "CONFIGURATION_DEPLOYMENT_STALLED",
+        message: "The publish stopped answering. Try again.",
+        stage: "publishing",
+      },
+      completedAt: Date.now(),
+      configurationAttemptToken: undefined,
+      configurationLeaseExpiresAt: undefined,
+      configurationDeploymentTarget: {
+        applicationId: binding.targetRuntimeId,
+        aiProviderKey: { present: false },
+        runtimeBindingId: binding._id,
+        targetBaseUrl: binding.targetBaseUrl,
+        customDomains: [],
+        revisionKey: revision.revisionKey,
+        defaultLocale: "en-GB",
+        runtimeCommit: options.runtimeCommit ?? binding.runtimeCommit,
+        encryptedRuntimeConfig: "encrypted-runtime-config",
+        runtimeConfigSha256: "4".repeat(64),
+        savedAt: Date.now(),
+      },
+    });
+  });
+}
+
+async function failSavedConfigurationDeployment(
+  deployment: ChangedConfiguration,
+) {
+  await deployment.fixture.t.run(async (ctx) => {
+    const operation = await ctx.db.get(deployment.activated.operationId);
+    if (!operation) throw new Error("The deployment operation is missing");
+    await ctx.db.patch(operation._id, {
+      status: "failed",
+      error: {
+        code: "CONFIGURATION_DEPLOYMENT_STALLED",
+        message: "The publish stopped answering. Try again.",
+        stage: "publishing",
+      },
+      completedAt: Date.now(),
+      configurationAttemptToken: undefined,
+      configurationLeaseExpiresAt: undefined,
+    });
+  });
 }
 
 describe("Evidence Library configuration deployment", () => {
@@ -696,6 +764,78 @@ describe("Evidence Library configuration deployment", () => {
     ).resolves.toMatchObject({ status: "allowed" });
   });
 
+  it("retries a failed current deployment by reusing its saved target", async () => {
+    const deployment = await activateChangedConfiguration("retry-saved-target");
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const actionArgs = {
+      libraryId: deployment.fixture.created.libraryId,
+      operationId: deployment.activated.operationId,
+      attemptToken: deployment.attemptToken,
+      attemptCount: deployment.attemptCount,
+    };
+
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).resolves.toEqual({ pollCount: 1, status: "running" });
+    await failSavedConfigurationDeployment(deployment);
+    network.finishDeployment();
+    const writesBeforeRetry = network.requests.filter(
+      ({ method, url }) =>
+        method === "PATCH" || url.pathname === "/api/v1/deploy",
+    ).length;
+
+    const retried = await deployment.fixture.admin.mutation(
+      api.evidenceLibraries.configurationDeployment
+        .retryConfigurationDeployment,
+      {
+        libraryId: deployment.fixture.created.libraryId,
+        operationId: deployment.activated.operationId,
+      },
+    );
+    const claimed = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(deployment.activated.operationId),
+    );
+    if (!claimed?.configurationAttemptToken) {
+      throw new Error("The retry did not claim the deployment");
+    }
+    expect(retried).toMatchObject({
+      operationId: deployment.activated.operationId,
+      revisionId: deployment.activated.revisionId,
+      status: "running",
+    });
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          ...actionArgs,
+          attemptToken: claimed.configurationAttemptToken,
+          attemptCount: claimed.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
+
+    const writesAfterRetry = network.requests.filter(
+      ({ method, url }) =>
+        method === "PATCH" || url.pathname === "/api/v1/deploy",
+    ).length;
+    expect(writesAfterRetry).toBe(writesBeforeRetry);
+    await expect(
+      deployment.fixture.t.run((ctx) =>
+        ctx.db.get(deployment.activated.operationId),
+      ),
+    ).resolves.toMatchObject({ status: "succeeded" });
+  });
+
   it("keeps the previous revision active while runtime readiness catches up", async () => {
     const deployment = await activateChangedConfiguration("action-failure");
     const previousRevisionId = deployment.fixture.activated.revisionId;
@@ -863,6 +1003,11 @@ describe("Evidence Library configuration deployment", () => {
     );
     if (moved.status !== "moving") throw new Error("The move did not start");
     const operation = await readMoveOperation(fixture);
+    const revision = await fixture.t.run((ctx) =>
+      ctx.db.get(operation.revisionId!),
+    );
+    if (!revision) throw new Error("The moved revision is missing");
+    network.setActiveRevision(revision.revisionKey);
     expect(moved.movedTo).toBe(movedTo);
 
     // The plan is on the operation; nothing carries the new address yet.
@@ -910,12 +1055,18 @@ describe("Evidence Library configuration deployment", () => {
         .query("evidenceLibraryConfigSections")
         .withIndex("by_revisionId_and_sectionKey", (query) =>
           query
-            .eq("revisionId", fixture.activated.revisionId)
+            .eq("revisionId", operation.revisionId!)
             .eq("sectionKey", "identity"),
         )
         .unique();
       return {
         binding: await ctx.db.get(fixture.created.runtimeBindingId),
+        draft: await ctx.db
+          .query("evidenceLibraryConfigDrafts")
+          .withIndex("by_libraryId", (query) =>
+            query.eq("libraryId", fixture.created.libraryId),
+          )
+          .unique(),
         identity,
         operation: await ctx.db.get(operation._id),
       };
@@ -926,6 +1077,10 @@ describe("Evidence Library configuration deployment", () => {
       state: "ready",
     });
     expect(state.identity?.payload).toMatchObject({ baseUrl: movedTo });
+    expect(state.draft).toMatchObject({
+      baseRevisionId: operation.revisionId,
+      editVersion: fixture.activated.editVersion,
+    });
     expect(state.operation).toMatchObject({
       status: "succeeded",
       addressMove: { to: movedTo, applied: true },
@@ -1029,7 +1184,7 @@ describe("Evidence Library configuration deployment", () => {
     ).toHaveLength(0);
   });
 
-  it("does not steal an active lease and reclaims an expired one", async () => {
+  it("does not let an owner retry a running deployment", async () => {
     const deployment = await activateChangedConfiguration("lease-recovery");
     await expect(
       deployment.fixture.admin.mutation(
@@ -1040,7 +1195,7 @@ describe("Evidence Library configuration deployment", () => {
           operationId: deployment.activated.operationId,
         },
       ),
-    ).rejects.toThrow(/already running/);
+    ).rejects.toThrow(/cannot be retried/);
 
     await deployment.fixture.t.run((ctx) =>
       ctx.db.patch(deployment.activated.operationId, {
@@ -1056,14 +1211,247 @@ describe("Evidence Library configuration deployment", () => {
           operationId: deployment.activated.operationId,
         },
       ),
-    ).resolves.toMatchObject({ status: "running" });
-    const reclaimed = await deployment.fixture.t.run((ctx) =>
+    ).rejects.toThrow(/cannot be retried/);
+    const unchanged = await deployment.fixture.t.run((ctx) =>
       ctx.db.get(deployment.activated.operationId),
     );
-    expect(reclaimed).toMatchObject({ attemptCount: 2, status: "running" });
-    expect(reclaimed?.configurationAttemptToken).not.toBe(
-      deployment.attemptToken,
+    expect(unchanged).toMatchObject({ attemptCount: 1, status: "running" });
+  });
+
+  it("keeps an old-format failed publish out of retry and marks it non-retryable", async () => {
+    const deployment = await activateChangedConfiguration("old-format-retry");
+    const { libraryId } = deployment.fixture.created;
+    await failConfigurationDeployment(deployment);
+    await deployment.fixture.t.run(async (ctx) => {
+      const operation = await ctx.db.get(deployment.activated.operationId);
+      if (!operation?.revisionId) {
+        throw new Error("The failed deployment revision is missing");
+      }
+      await ctx.db.patch(operation.revisionId, { ownerConfigurationVersion: 1 });
+    });
+
+    const projected = await deployment.fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
     );
+    expect(projected.operation).toMatchObject({
+      status: "failed",
+      retryable: false,
+    });
+
+    await expect(
+      deployment.fixture.admin.mutation(
+        api.evidenceLibraries.configurationDeployment
+          .retryConfigurationDeployment,
+        { libraryId, operationId: deployment.activated.operationId },
+      ),
+    ).rejects.toThrow(/cannot be retried/i);
+
+    await expect(
+      deployment.fixture.t.run((ctx) =>
+        ctx.db.get(deployment.activated.operationId),
+      ),
+    ).resolves.toMatchObject({ status: "failed", attemptCount: 1 });
+  });
+
+  it("does not retry a failed publish without a saved target", async () => {
+    const deployment = await activateChangedConfiguration("missing-target");
+    const { libraryId } = deployment.fixture.created;
+    await failConfigurationDeployment(deployment);
+    await deployment.fixture.t.run((ctx) =>
+      ctx.db.patch(deployment.activated.operationId, {
+        configurationDeploymentTarget: undefined,
+      }),
+    );
+
+    const projected = await deployment.fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
+    );
+    expect(projected.operation).toMatchObject({
+      status: "failed",
+      retryable: false,
+    });
+    await expect(
+      deployment.fixture.admin.mutation(
+        api.evidenceLibraries.configurationDeployment
+          .retryConfigurationDeployment,
+        { libraryId, operationId: deployment.activated.operationId },
+      ),
+    ).rejects.toThrow(/cannot be retried/i);
+  });
+
+  it("marks a failed publish stale after a later activation", async () => {
+    const deployment = await activateChangedConfiguration("stale-activation");
+    const { libraryId } = deployment.fixture.created;
+    await failConfigurationDeployment(deployment);
+
+    const before = await deployment.fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
+    );
+    expect(before.operation).toMatchObject({ retryable: true });
+
+    await deployment.fixture.t.run(async (ctx) => {
+      const operation = await ctx.db.get(deployment.activated.operationId);
+      if (!operation?.revisionId) {
+        throw new Error("The failed deployment revision is missing");
+      }
+      const revision = await ctx.db.get(operation.revisionId);
+      if (!revision) throw new Error("The failed deployment revision is missing");
+      const newerRevisionId = await ctx.db.insert(
+        "evidenceLibraryConfigRevisions",
+        {
+          libraryId,
+          revisionKey: `${revision.revisionKey}-newer`,
+          revisionNumber: revision.revisionNumber + 1,
+          basedOnRevisionId: revision._id,
+          rollbackOfRevisionId: null,
+          ownerConfigurationVersion: revision.ownerConfigurationVersion,
+          contractProvenance: revision.contractProvenance,
+          createdByClerkUserId: revision.createdByClerkUserId,
+          createdAt: Date.now(),
+        },
+      );
+      await ctx.db.patch(libraryId, {
+        activeRevisionId: newerRevisionId,
+      });
+    });
+
+    const after = await deployment.fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
+    );
+    expect(after.operation).toMatchObject({ retryable: false });
+    await expect(
+      deployment.fixture.admin.mutation(
+        api.evidenceLibraries.configurationDeployment
+          .retryConfigurationDeployment,
+        { libraryId, operationId: deployment.activated.operationId },
+      ),
+    ).rejects.toThrow(/cannot be retried/i);
+  });
+
+  it("rejects an older failed publish after a newer configuration command", async () => {
+    const deployment = await activateChangedConfiguration("newer-command");
+    const { libraryId } = deployment.fixture.created;
+    await failConfigurationDeployment(deployment);
+
+    await deployment.fixture.t.run(async (ctx) => {
+      const operation = await ctx.db.get(deployment.activated.operationId);
+      if (!operation || !operation.revisionId) {
+        throw new Error("The failed deployment is missing");
+      }
+      await ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId,
+        kind: "publish",
+        idempotencyKey: "newer-configuration-command",
+        activationEditVersion: (operation.activationEditVersion ?? 0) + 1,
+        revisionId: operation.revisionId,
+        status: "queued",
+        stage: "queued",
+        attemptCount: 0,
+        requestedByClerkUserId: "newer-command-user",
+        createdAt: operation.createdAt + 1,
+        updatedAt: operation.updatedAt + 1,
+      });
+    });
+
+    await expect(
+      deployment.fixture.admin.mutation(
+        api.evidenceLibraries.configurationDeployment
+          .retryConfigurationDeployment,
+        { libraryId, operationId: deployment.activated.operationId },
+      ),
+    ).rejects.toThrow(/cannot be retried/i);
+    await expect(
+      deployment.fixture.t.run((ctx) =>
+        ctx.db.get(deployment.activated.operationId),
+      ),
+    ).resolves.toMatchObject({ status: "failed", attemptCount: 1 });
+  });
+
+  it("marks a failed publish stale after a later runtime update", async () => {
+    const deployment = await activateChangedConfiguration("stale-runtime");
+    const { libraryId } = deployment.fixture.created;
+    await failConfigurationDeployment(deployment);
+
+    const before = await deployment.fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
+    );
+    expect(before.operation).toMatchObject({ retryable: true });
+
+    await deployment.fixture.t.run(async (ctx) => {
+      const binding = await ctx.db.get(deployment.fixture.created.runtimeBindingId);
+      if (!binding || binding.state !== "ready") {
+        throw new Error("The runtime binding is missing");
+      }
+      await ctx.db.patch(binding._id, { runtimeCommit: NEWER_COMMIT });
+    });
+
+    const after = await deployment.fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
+    );
+    expect(after.operation).toMatchObject({ retryable: false });
+    await expect(
+      deployment.fixture.admin.mutation(
+        api.evidenceLibraries.configurationDeployment
+          .retryConfigurationDeployment,
+        { libraryId, operationId: deployment.activated.operationId },
+      ),
+    ).rejects.toThrow(/cannot be retried/i);
+  });
+
+  it("refuses a claimed retry before doing any Coolify work when its target goes stale", async () => {
+    const deployment = await activateChangedConfiguration("claimed-retry-stale");
+    const { libraryId } = deployment.fixture.created;
+    await failConfigurationDeployment(deployment);
+    const network = createRuntimeNetwork({
+      libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+
+    await deployment.fixture.admin.mutation(
+      api.evidenceLibraries.configurationDeployment
+        .retryConfigurationDeployment,
+      { libraryId, operationId: deployment.activated.operationId },
+    );
+    const claimed = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(deployment.activated.operationId),
+    );
+    if (!claimed?.configurationAttemptToken) {
+      throw new Error("The retry did not claim the deployment");
+    }
+    await deployment.fixture.t.run(async (ctx) => {
+      const binding = await ctx.db.get(deployment.fixture.created.runtimeBindingId);
+      if (!binding || binding.state !== "ready") {
+        throw new Error("The runtime binding is missing");
+      }
+      await ctx.db.patch(binding._id, { runtimeCommit: NEWER_COMMIT });
+    });
+
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId,
+          operationId: deployment.activated.operationId,
+          attemptToken: claimed.configurationAttemptToken,
+          attemptCount: claimed.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    expect(network.requests).toHaveLength(0);
+    await expect(
+      deployment.fixture.t.run((ctx) =>
+        ctx.db.get(deployment.activated.operationId),
+      ),
+    ).resolves.toMatchObject({ status: "failed" });
   });
 
   it("rejects changed source credentials before saving or writing a target", async () => {

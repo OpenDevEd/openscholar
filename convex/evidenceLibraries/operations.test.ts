@@ -399,6 +399,7 @@ describe("Evidence Library operation state", () => {
     expect(draft.operation).toMatchObject({
       _id: activated.operationId,
       status: "failed",
+      retryable: false,
       error: { code: "CONFIGURATION_ASSEMBLY_FAILED", stage: "assembling" },
       issues,
     });

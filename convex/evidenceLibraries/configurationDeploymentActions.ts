@@ -108,24 +108,6 @@ export const runConfigurationDeployment = internalAction({
             nextPublicDomain: prepared.addressMove.to,
             customDomains: prepared.customDomains,
           });
-          await ctx.runMutation(
-            internal.evidenceLibraries.configurationDeployment
-              .applyConfigurationAddressMove,
-            args,
-          );
-          // Read the deployment again: the sections and the binding now
-          // carry the new address.
-          prepared = await ctx.runMutation(
-            internal.evidenceLibraries.configurationDeployment
-              .prepareConfigurationDeployment,
-            args,
-          );
-          if (prepared.state !== "new") {
-            throw new CoolifyClientError(
-              "CONFIGURATION_TARGET_INVALID",
-              "The Evidence Library move changed the deployment target",
-            );
-          }
         }
         const application = await coolify.readBoundApplication({
           applicationUuid: prepared.applicationId,
@@ -231,7 +213,7 @@ export const runConfigurationDeployment = internalAction({
             applicationUuid: target.applicationId,
             libraryId: args.libraryId,
             publicDomain: target.targetBaseUrl,
-          customDomains: target.customDomains,
+            customDomains: target.customDomains,
             runtimeCommit: target.runtimeCommit,
           });
         }
