@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import {
   createReadySetupFixture,
@@ -197,6 +197,83 @@ describe("Evidence Library versions", () => {
     ]);
   });
 
+  it("migrates a historical version into a current restore candidate without rewriting history", async () => {
+    const fixture = await createReadySetupFixture("restore-v2-candidate");
+    const second = await publishSecondRevision(fixture);
+    const historicalRevisionId = fixture.activated.revisionId;
+    const historicalBefore = await fixture.t.run((ctx) =>
+      ctx.db.get(historicalRevisionId),
+    );
+
+    await fixture.t.run(async (ctx) => {
+      const identity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", historicalRevisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      if (
+        !identity ||
+        identity.payload === null ||
+        typeof identity.payload !== "object"
+      ) {
+        throw new Error("Historical identity section is missing");
+      }
+      const { assets: _assets, ...legacyIdentity } = identity.payload as Record<
+        string,
+        unknown
+      >;
+      await ctx.db.patch(historicalRevisionId, {
+        ownerConfigurationVersion: 1,
+      });
+      await ctx.db.patch(identity._id, {
+        payload: legacyIdentity,
+        payloadByteLength: new TextEncoder().encode(
+          JSON.stringify(legacyIdentity),
+        ).byteLength,
+      });
+    });
+
+    const restored = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.restoreRevision,
+      {
+        libraryId: fixture.created.libraryId,
+        revisionId: historicalRevisionId,
+      },
+    );
+    const state = await fixture.t.run(async (ctx) => {
+      const historical = await ctx.db.get(historicalRevisionId);
+      const candidate = await ctx.db.get(restored.revisionId);
+      const candidateIdentity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", restored.revisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      const library = await ctx.db.get(fixture.created.libraryId);
+      return { candidate, candidateIdentity, historical, library };
+    });
+
+    expect(state.historical?.ownerConfigurationVersion).toBe(1);
+    expect(state.historical?.revisionKey).toBe(historicalBefore?.revisionKey);
+    expect(state.historical?.revisionNumber).toBe(
+      historicalBefore?.revisionNumber,
+    );
+    expect(state.historical?.createdAt).toBe(historicalBefore?.createdAt);
+    expect(state.candidate).toMatchObject({
+      basedOnRevisionId: second.revisionId,
+      rollbackOfRevisionId: historicalRevisionId,
+      ownerConfigurationVersion: 2,
+    });
+    expect(state.candidateIdentity?.payload).toMatchObject({ assets: {} });
+    expect(state.library?.activeRevisionId).toBe(second.revisionId);
+    expect(state.library?.latestRevisionId).toBe(restored.revisionId);
+  });
+
   it("refuses to restore while a publish is running or from another library", async () => {
     const fixture = await createReadySetupFixture("restore-refused");
     const foreignRevisionId = await fixture.t.run(async (ctx) => {
@@ -249,6 +326,250 @@ describe("Evidence Library versions", () => {
         revisionId: fixture.activated.revisionId,
       }),
     ).rejects.toThrow(/already running/);
+  });
+
+  it("creates one current runtime candidate for an old active revision and reuses it", async () => {
+    const fixture = await createReadySetupFixture("runtime-v2-candidate");
+    const activeRevisionId = fixture.activated.revisionId;
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(activeRevisionId, {
+        ownerConfigurationVersion: 1,
+      });
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: newer runtime" }],
+        checkedAt: Date.now(),
+      });
+    });
+
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const firstState = await fixture.t.run(async (ctx) => ({
+      active: await ctx.db.get(activeRevisionId),
+      candidate: await ctx.db.get(started.revisionId),
+      library: await ctx.db.get(fixture.created.libraryId),
+      operations: await ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_createdAt", (query) =>
+          query.eq("libraryId", fixture.created.libraryId),
+        )
+        .collect(),
+    }));
+    expect(started.revisionId).not.toBe(activeRevisionId);
+    expect(firstState.active?.ownerConfigurationVersion).toBe(1);
+    expect(firstState.candidate).toMatchObject({
+      basedOnRevisionId: activeRevisionId,
+      ownerConfigurationVersion: 2,
+    });
+    expect(firstState.library?.activeRevisionId).toBe(activeRevisionId);
+    expect(firstState.library?.latestRevisionId).toBe(started.revisionId);
+    expect(
+      firstState.operations.filter((operation) => operation.runtimeUpdate),
+    ).toHaveLength(1);
+    expect(
+      firstState.operations.find((operation) => operation.runtimeUpdate)
+        ?.idempotencyKey,
+    ).toContain(`${activeRevisionId}:v2:${RUNTIME_COMMIT}:${NEWER_COMMIT}`);
+
+    await markFailed(fixture, started.operationId);
+    const repeated = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(repeated.revisionId).toBe(started.revisionId);
+    const repeatedState = await fixture.t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("evidenceLibraryConfigOperations")
+          .withIndex("by_libraryId_and_createdAt", (query) =>
+            query.eq("libraryId", fixture.created.libraryId),
+          )
+          .collect()
+      ).filter((operation) => operation.runtimeUpdate),
+    );
+    expect(repeatedState).toHaveLength(1);
+    expect(repeatedState[0]?.revisionId).toBe(started.revisionId);
+  });
+
+  it("reissues a stale restore operation with its candidate after a newer command", async () => {
+    const fixture = await createReadySetupFixture("restore-reissue");
+    const sourceRevisionId = fixture.activated.revisionId;
+    const first = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.restoreRevision,
+      {
+        libraryId: fixture.created.libraryId,
+        revisionId: sourceRevisionId,
+      },
+    );
+    const candidate = await fixture.t.run((ctx) =>
+      ctx.db.get(first.revisionId),
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(first.operationId),
+    );
+    if (!candidate || !operation) {
+      throw new Error("The restore candidate is missing");
+    }
+
+    const newerCommand = await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(operation._id, {
+        status: "failed",
+        stage: "publishing",
+        error: {
+          code: "COOLIFY_DEPLOYMENT_FAILED",
+          message: "Coolify could not deploy the Evidence Library",
+          stage: "publishing",
+        },
+        receipt: {
+          revisionKey: candidate.revisionKey,
+          targetConfigSha256: "1".repeat(64),
+          runtimeReceiptId: "deployment-restore",
+          runtimeCommit: RUNTIME_COMMIT,
+          coolifyConfigHash: "2".repeat(32),
+        },
+        configurationDeploymentTarget: {
+          applicationId: "restore-application",
+          aiProviderKey: { present: false },
+          runtimeBindingId: fixture.created.runtimeBindingId,
+          targetBaseUrl: fixture.created.publicAddress,
+          customDomains: [],
+          revisionKey: candidate.revisionKey,
+          defaultLocale: "en-GB",
+          runtimeCommit: RUNTIME_COMMIT,
+          encryptedRuntimeConfig: "encrypted-runtime-config",
+          runtimeConfigSha256: "1".repeat(64),
+          savedAt: Date.now(),
+        },
+        completedAt: Date.now(),
+        configurationAttemptToken: undefined,
+        configurationLeaseExpiresAt: undefined,
+        updatedAt: Date.now(),
+      });
+      const domainId = await ctx.db.insert("evidenceLibraryDomains", {
+        libraryId: fixture.created.libraryId,
+        host: "newer-restore-command.example.org",
+        verificationToken: "domain-token",
+        role: "redirect",
+        state: "added",
+        generation: 0,
+        createdByClerkUserId: fixture.clerkUserId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return await ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId: fixture.created.libraryId,
+        kind: "publish",
+        idempotencyKey: "newer-restore-domain-command",
+        domainChange: {
+          domainId,
+          host: "newer-restore-command.example.org",
+          reason: "attach",
+          token: "domain-token",
+        },
+        revisionId: sourceRevisionId,
+        status: "succeeded",
+        stage: "completed",
+        attemptCount: 1,
+        requestedByClerkUserId: fixture.clerkUserId,
+        createdAt: operation.createdAt + 1,
+        updatedAt: operation.updatedAt + 1,
+      });
+    });
+    vi.setSystemTime(Date.now() + 1_000);
+
+    const repeated = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.restoreRevision,
+      {
+        libraryId: fixture.created.libraryId,
+        revisionId: sourceRevisionId,
+      },
+    );
+    expect(repeated).toMatchObject({
+      operationId: first.operationId,
+      revisionId: first.revisionId,
+      status: "running",
+    });
+    const reissued = await fixture.t.run((ctx) =>
+      ctx.db.get(first.operationId),
+    );
+    expect(reissued).toMatchObject({
+      status: "running",
+      attemptCount: 2,
+    });
+    expect(reissued!.createdAt).toBeGreaterThan(
+      (await fixture.t.run((ctx) => ctx.db.get(newerCommand)))!.createdAt,
+    );
+    expect(reissued).not.toHaveProperty("configurationDeploymentTarget");
+    expect(reissued).not.toHaveProperty("receipt");
+    expect(reissued?.revisionId).toBe(candidate._id);
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(fixture.created.libraryId)),
+    ).resolves.toMatchObject({ activeRevisionId: sourceRevisionId });
+  });
+
+  it("migrates an old active source before creating a domain candidate", async () => {
+    const fixture = await createReadySetupFixture("domain-v2-candidate");
+    const activeRevisionId = fixture.activated.revisionId;
+    const domainId = await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(activeRevisionId, {
+        ownerConfigurationVersion: 1,
+      });
+      return await ctx.db.insert("evidenceLibraryDomains", {
+        libraryId: fixture.created.libraryId,
+        host: "climate.example.org",
+        verificationToken: "domain-token",
+        generation: 0,
+        role: "redirect",
+        state: "active",
+        attachedAt: Date.now(),
+        createdByClerkUserId: fixture.clerkUserId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.setDomainPrimary,
+      {
+        libraryId: fixture.created.libraryId,
+        domainId,
+        primary: true,
+      },
+    );
+    const state = await fixture.t.run(async (ctx) => {
+      const active = await ctx.db.get(activeRevisionId);
+      const candidate = await ctx.db.get(started.revisionId);
+      const candidateIdentity = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_revisionId_and_sectionKey", (query) =>
+          query
+            .eq("revisionId", started.revisionId)
+            .eq("sectionKey", "identity"),
+        )
+        .unique();
+      const library = await ctx.db.get(fixture.created.libraryId);
+      const operation = await ctx.db.get(started.operationId);
+      return { active, candidate, candidateIdentity, library, operation };
+    });
+
+    expect(state.active?.ownerConfigurationVersion).toBe(1);
+    expect(state.candidate).toMatchObject({
+      basedOnRevisionId: activeRevisionId,
+      ownerConfigurationVersion: 2,
+    });
+    expect(state.candidateIdentity?.payload).toMatchObject({
+      baseUrl: "https://climate.example.org",
+    });
+    expect(state.library?.activeRevisionId).toBe(activeRevisionId);
+    expect(state.library?.latestRevisionId).toBe(started.revisionId);
+    expect(state.operation?.domainChange).toMatchObject({
+      reason: "canonical",
+      host: "climate.example.org",
+      address: "https://climate.example.org",
+    });
   });
 
   it("lists failed publishes and software updates with who started them", async () => {
@@ -344,10 +665,10 @@ describe("Evidence Library address move", () => {
       vi.fn<typeof fetch>(async (request) => {
         const url = new URL(String(request));
         if (url.origin === "http://coolify:8080") {
-          return new Response(
-            JSON.stringify([{ fqdn: currentAddress }]),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
+          return new Response(JSON.stringify([{ fqdn: currentAddress }]), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
         }
         if (url.hostname === new URL(currentAddress).hostname) {
           return new Response("served", { status: 200 });
@@ -386,10 +707,24 @@ describe("Evidence Library address move", () => {
       status: "moving",
     });
     const movedOperation = await readMoveOperation(fixture);
+    expect(movedOperation?.revisionId).toBeDefined();
 
     const state = await fixture.t.run(async (ctx) => {
       const binding = await ctx.db.get(fixture.created.runtimeBindingId);
+      const candidate = movedOperation?.revisionId
+        ? await ctx.db.get(movedOperation.revisionId)
+        : null;
       const operation = movedOperation;
+      const candidateIdentity = movedOperation?.revisionId
+        ? await ctx.db
+            .query("evidenceLibraryConfigSections")
+            .withIndex("by_revisionId_and_sectionKey", (query) =>
+              query
+                .eq("revisionId", movedOperation.revisionId!)
+                .eq("sectionKey", "identity"),
+            )
+            .unique()
+        : null;
       const identity = await ctx.db
         .query("evidenceLibraryConfigSections")
         .withIndex("by_revisionId_and_sectionKey", (query) =>
@@ -406,7 +741,16 @@ describe("Evidence Library address move", () => {
             .eq("sectionKey", "identity"),
         )
         .unique();
-      return { binding, draftIdentity, identity, operation };
+      const library = await ctx.db.get(fixture.created.libraryId);
+      return {
+        binding,
+        candidate,
+        candidateIdentity,
+        draftIdentity,
+        identity,
+        library,
+        operation,
+      };
     });
     // The library keeps its address until Coolify serves the new one.
     expect(state.binding).toMatchObject({
@@ -418,6 +762,15 @@ describe("Evidence Library address move", () => {
     expect(state.draftIdentity?.payload).toMatchObject({
       baseUrl: fixture.created.publicAddress,
     });
+    expect(state.candidate).toMatchObject({
+      basedOnRevisionId: fixture.activated.revisionId,
+      ownerConfigurationVersion: 2,
+    });
+    expect(state.candidateIdentity?.payload).toMatchObject({
+      baseUrl: movedTo,
+    });
+    expect(state.library?.activeRevisionId).toBe(fixture.activated.revisionId);
+    expect(state.library?.latestRevisionId).toBe(state.candidate?._id);
     expect(state.operation).toMatchObject({
       kind: "publish",
       status: "running",
@@ -427,6 +780,70 @@ describe("Evidence Library address move", () => {
         applied: false,
       },
     });
+  });
+
+  it("keeps a primary custom domain in the candidate while moving the platform address", async () => {
+    const fixture = await createReadySetupFixture("address-live-primary");
+    const canonicalBaseUrl = "https://library.example.org";
+    const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
+    stubAddressChecks(fixture.created.publicAddress);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.runtimeBindingId, { canonicalBaseUrl });
+      for (const [kind, id] of [
+        ["draft", fixture.created.draftId],
+        ["revision", fixture.activated.revisionId],
+      ] as const) {
+        const identity = await ctx.db
+          .query("evidenceLibraryConfigSections")
+          .withIndex(
+            kind === "draft"
+              ? "by_draftId_and_sectionKey"
+              : "by_revisionId_and_sectionKey",
+            (query) =>
+              kind === "draft"
+                ? query.eq("draftId", id).eq("sectionKey", "identity")
+                : query.eq("revisionId", id).eq("sectionKey", "identity"),
+          )
+          .unique();
+        if (!identity || typeof identity.payload !== "object") {
+          throw new Error("Identity fixture is missing");
+        }
+        const payload = { ...identity.payload, baseUrl: canonicalBaseUrl };
+        await ctx.db.patch(identity._id, {
+          payload,
+          payloadByteLength: new TextEncoder().encode(JSON.stringify(payload))
+            .byteLength,
+        });
+      }
+    });
+
+    const moved = await fixture.admin.action(
+      api.evidenceLibraries.addressActions.moveLibraryAddress,
+      { libraryId: fixture.created.libraryId },
+    );
+    if (moved.status !== "moving") throw new Error("Address move was refused");
+    const operation = await readMoveOperation(fixture);
+    if (!operation?.revisionId || !operation.configurationAttemptToken) {
+      throw new Error("Address move did not start");
+    }
+    const prepared = await fixture.t.mutation(
+      internal.evidenceLibraries.configurationDeployment
+        .prepareConfigurationDeployment,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: operation._id,
+        attemptToken: operation.configurationAttemptToken,
+        attemptCount: operation.attemptCount,
+      },
+    );
+    if (prepared.state !== "new") throw new Error("Target was already saved");
+    const identity = prepared.sections.find(
+      (row) => row.sectionKey === "identity",
+    );
+
+    expect(moved.movedTo).toBe(movedTo);
+    expect(prepared.targetBaseUrl).toBe(movedTo);
+    expect(identity?.payload).toMatchObject({ baseUrl: canonicalBaseUrl });
   });
 
   it("refuses a second move while the first one is still running", async () => {

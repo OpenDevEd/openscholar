@@ -687,6 +687,7 @@ describe("<ConfigurationWorkspace>", () => {
           kind: "publish",
           status: "failed",
           stage: "assembling",
+          retryable: false,
           error: { code: "VALIDATION_ERROR", message: "The configuration is not valid", stage: "assembling" },
           issues: [
             { pointer: "/theme/colors/accent", message: "Value must match the pattern." },
@@ -708,6 +709,60 @@ describe("<ConfigurationWorkspace>", () => {
       "aria-current",
       "location",
     );
+  });
+
+  it("does not show Retry for a failed operation the server marked non-retryable", async () => {
+    queryMock.mockReturnValue(
+      draftResult({
+        operation: {
+          _id: "operation_old",
+          kind: "publish",
+          status: "failed",
+          stage: "publishing",
+          retryable: false,
+          error: {
+            code: "CONFIGURATION_DEPLOYMENT_STALLED",
+            message: "The publish stopped answering. Try again.",
+            stage: "publishing",
+          },
+        },
+      }),
+    );
+    await renderWorkspace();
+
+    const notice = screen
+      .getByText("operationFailed")
+      .closest("[data-operation-issues]")!;
+    expect(
+      within(notice as HTMLElement).queryByRole("button", { name: "retry" }),
+    ).toBeNull();
+  });
+
+  it("shows Retry for a failed operation the server marked retryable", async () => {
+    queryMock.mockReturnValue(
+      draftResult({
+        operation: {
+          _id: "operation_current",
+          kind: "publish",
+          status: "failed",
+          stage: "publishing",
+          retryable: true,
+          error: {
+            code: "CONFIGURATION_DEPLOYMENT_STALLED",
+            message: "The publish stopped answering. Try again.",
+            stage: "publishing",
+          },
+        },
+      }),
+    );
+    await renderWorkspace();
+
+    const notice = screen
+      .getByText("operationFailed")
+      .closest("[data-operation-issues]")!;
+    expect(
+      within(notice as HTMLElement).getByRole("button", { name: "retry" }),
+    ).toBeInTheDocument();
   });
 
   it("lets a new library be set up while its setup operation waits for the owner", async () => {

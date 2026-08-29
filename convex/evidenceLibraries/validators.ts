@@ -148,9 +148,13 @@ export const configProvenanceValidator = v.object({
   catalogsSha256: v.string(),
 });
 
-// Deploy A widens the snapshot boundary. The field is tagged by the
-// migrations component before Deploy B makes version handling strict.
-export const ownerConfigurationVersionValidator = v.optional(v.literal(1));
+// Deploy B requires every stored snapshot to name a version understood by the
+// owner-configuration migration registry. Historical revisions may still be
+// version 1 while new writes use version 2.
+export const ownerConfigurationVersionValidator = v.union(
+  v.literal(1),
+  v.literal(2),
+);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),

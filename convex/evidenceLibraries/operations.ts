@@ -1,17 +1,254 @@
 import {
   mutation,
   type MutationCtx,
+  type QueryCtx,
 } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
+import { readAttachedDomainOrigins } from "./domains";
 import {
   type EvidenceLibraryOperationKind,
   evidenceLibraryOperationFailureValidator,
   evidenceLibraryOperationReceiptValidator,
   evidenceLibraryRequestableOperationKindValidator,
 } from "./validators";
+
+type OperationReadCtx = QueryCtx | MutationCtx;
+type ConfigurationDeploymentTarget = NonNullable<
+  Doc<"evidenceLibraryConfigOperations">["configurationDeploymentTarget"]
+>;
+
+/**
+ * A target may name the address a pending operation is about to make live.
+ * Until readiness succeeds, the binding still names the address that serves
+ * the current library.
+ */
+export function isCurrentConfigurationTargetBaseUrl(
+  runtimeBinding: Doc<"evidenceLibraryRuntimeBindings">,
+  targetBaseUrl: string,
+  operation?: Doc<"evidenceLibraryConfigOperations">,
+): boolean {
+  const pendingAddressMove = operation?.addressMove;
+  if (pendingAddressMove !== undefined) {
+    return (
+      targetBaseUrl === pendingAddressMove.to &&
+      runtimeBinding.targetBaseUrl === pendingAddressMove.from
+    );
+  }
+  return targetBaseUrl === runtimeBinding.targetBaseUrl;
+}
+
+/** A publish operation owned by the configuration deployment pipeline. */
+export function isConfigurationDeploymentOperation(
+  operation: Doc<"evidenceLibraryConfigOperations">,
+): boolean {
+  return (
+    operation.kind === "publish" &&
+    (operation.activationEditVersion !== undefined ||
+      operation.runtimeUpdate !== undefined ||
+      operation.addressMove !== undefined ||
+      operation.domainChange !== undefined)
+  );
+}
+
+/** The target still describes the ready runtime and the revision being sent. */
+export function isCurrentConfigurationDeploymentTarget(
+  library: Doc<"evidenceLibraries">,
+  revision: Doc<"evidenceLibraryConfigRevisions">,
+  runtimeBinding: Doc<"evidenceLibraryRuntimeBindings"> | null,
+  target: ConfigurationDeploymentTarget | undefined,
+  operation?: Doc<"evidenceLibraryConfigOperations">,
+): boolean {
+  if (
+    !target ||
+    library.state !== "active" ||
+    !runtimeBinding ||
+    library.runtimeBindingId !== runtimeBinding._id ||
+    runtimeBinding.libraryId !== library._id ||
+    runtimeBinding.state !== "ready"
+  ) {
+    return false;
+  }
+  return (
+    target.runtimeBindingId === runtimeBinding._id &&
+    target.applicationId === runtimeBinding.targetRuntimeId &&
+    isCurrentConfigurationTargetBaseUrl(
+      runtimeBinding,
+      target.targetBaseUrl,
+      operation,
+    ) &&
+    target.revisionKey === revision.revisionKey
+  );
+}
+
+const RETRYABLE_CONFIGURATION_FAILURE_CODES = new Set([
+  "CONFIGURATION_DEPLOYMENT_STALLED",
+  "COOLIFY_UNAVAILABLE",
+  "READINESS_UNAVAILABLE",
+  "RUNTIME_NOT_READY",
+  "CONFIG_NOT_READY",
+  "PAGE_NOT_READY",
+]);
+
+function isRetryableConfigurationFailure(
+  error: Doc<"evidenceLibraryConfigOperations">["error"],
+): boolean {
+  return (
+    error !== undefined && RETRYABLE_CONFIGURATION_FAILURE_CODES.has(error.code)
+  );
+}
+
+/**
+ * The saved target still belongs to the current configuration deployment.
+ * This check is independent of operation status so it can fence a claimed
+ * retry before the worker contacts Coolify.
+ */
+export async function isAcceptableSavedConfigurationTarget(
+  ctx: OperationReadCtx,
+  operation: Doc<"evidenceLibraryConfigOperations">,
+): Promise<boolean> {
+  if (
+    !isConfigurationDeploymentOperation(operation) ||
+    !operation.revisionId ||
+    !operation.configurationDeploymentTarget
+  ) {
+    return false;
+  }
+  const [library, revision] = await Promise.all([
+    ctx.db.get("evidenceLibraries", operation.libraryId),
+    ctx.db.get("evidenceLibraryConfigRevisions", operation.revisionId),
+  ]);
+  if (
+    !library ||
+    !revision ||
+    revision.libraryId !== operation.libraryId ||
+    revision.ownerConfigurationVersion !==
+      CURRENT_OWNER_CONFIGURATION_VERSION ||
+    (revision._id !== library.activeRevisionId &&
+      revision.basedOnRevisionId !== library.activeRevisionId)
+  ) {
+    return false;
+  }
+  const operations = ctx.db
+    .query("evidenceLibraryConfigOperations")
+    .withIndex("by_libraryId_and_createdAt", (query) =>
+      query.eq("libraryId", operation.libraryId),
+    )
+    .order("desc");
+  let newestConfigurationOperation:
+    | Doc<"evidenceLibraryConfigOperations">
+    | undefined;
+  for await (const candidate of operations) {
+    if (isConfigurationDeploymentOperation(candidate)) {
+      newestConfigurationOperation = candidate;
+      break;
+    }
+  }
+  if (newestConfigurationOperation?._id !== operation._id) return false;
+  const runtimeBinding = library.runtimeBindingId
+    ? await ctx.db.get(
+        "evidenceLibraryRuntimeBindings",
+        library.runtimeBindingId,
+      )
+    : null;
+  if (
+    !runtimeBinding ||
+    runtimeBinding.state !== "ready" ||
+    !isCurrentConfigurationDeploymentTarget(
+      library,
+      revision,
+      runtimeBinding,
+      operation.configurationDeploymentTarget,
+      operation,
+    )
+  ) {
+    return false;
+  }
+  const target = operation.configurationDeploymentTarget;
+  if (!target) return false;
+  if (operation.runtimeUpdate) {
+    if (
+      target.runtimeCommit !== operation.runtimeUpdate.to ||
+      runtimeBinding.runtimeCommit !== operation.runtimeUpdate.from
+    ) {
+      return false;
+    }
+  } else if (target.runtimeCommit !== runtimeBinding.runtimeCommit) {
+    return false;
+  }
+  const attachedDomains = await readAttachedDomainOrigins(
+    ctx,
+    operation.libraryId,
+  );
+  const targetDomains = [...target.customDomains].sort();
+  if (attachedDomains.length !== targetDomains.length) return false;
+  return attachedDomains.every(
+    (domain, index) => domain === targetDomains[index],
+  );
+}
+
+/**
+ * Reopens a failed same-key command when another configuration command made
+ * its saved target stale. The candidate and attempt history stay attached to
+ * this operation, but the next attempt must assemble and save a new target.
+ */
+export async function reissueConfigurationDeploymentOperation(
+  ctx: MutationCtx,
+  operation: Doc<"evidenceLibraryConfigOperations">,
+): Promise<void> {
+  if (
+    operation.status !== "failed" ||
+    !isConfigurationDeploymentOperation(operation)
+  ) {
+    return;
+  }
+  if (
+    operation.configurationDeploymentTarget &&
+    (await isAcceptableSavedConfigurationTarget(ctx, operation))
+  ) {
+    return;
+  }
+
+  let newestCreatedAt = operation.createdAt;
+  const operations = ctx.db
+    .query("evidenceLibraryConfigOperations")
+    .withIndex("by_libraryId_and_createdAt", (query) =>
+      query.eq("libraryId", operation.libraryId),
+    )
+    .order("desc");
+  for await (const candidate of operations) {
+    if (isConfigurationDeploymentOperation(candidate)) {
+      newestCreatedAt = Math.max(newestCreatedAt, candidate.createdAt);
+      break;
+    }
+  }
+  const commandAt = Math.max(Date.now(), newestCreatedAt) + 1;
+  await ctx.db.patch(operation._id, {
+    configurationDeploymentTarget: undefined,
+    receipt: undefined,
+    createdAt: commandAt,
+    updatedAt: commandAt,
+  });
+}
+
+/**
+ * One server decision shared by the owner projection and the retry mutation.
+ * It never inspects an error message or exposes the saved target.
+ */
+export async function isRetryableConfigurationDeployment(
+  ctx: OperationReadCtx,
+  operation: Doc<"evidenceLibraryConfigOperations">,
+): Promise<boolean> {
+  return (
+    operation.status === "failed" &&
+    isConfigurationDeploymentOperation(operation) &&
+    isRetryableConfigurationFailure(operation.error) &&
+    (await isAcceptableSavedConfigurationTarget(ctx, operation))
+  );
+}
 
 type OperationReceipt = {
   revisionKey?: string;

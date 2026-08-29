@@ -32,6 +32,77 @@ import {
   readEvidenceLibrarySetupIdentity,
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
+import {
+  loadDraftConfigurationSnapshot,
+  loadRevisionConfigurationSnapshot,
+} from "./configurationSnapshot";
+import { isRetryableConfigurationDeployment } from "./operations";
+import { validateSectionPayload } from "./sectionPayload";
+
+type SnapshotSection = {
+  sectionKey: Doc<"evidenceLibraryConfigSections">["sectionKey"];
+  payload: unknown;
+};
+type DraftSectionMetadata = Pick<
+  Extract<Doc<"evidenceLibraryConfigSections">, { kind: "draft" }>,
+  "kind" | "sectionKey" | "contractProvenance" | "updatedAt"
+>;
+type RevisionSectionMetadata = Pick<
+  Extract<Doc<"evidenceLibraryConfigSections">, { kind: "revision" }>,
+  "kind" | "sectionKey" | "contractProvenance" | "createdAt"
+>;
+
+export function projectDraftConfigurationSections(
+  snapshotSections: readonly SnapshotSection[],
+  storedRows: readonly DraftSectionMetadata[],
+  header: Pick<
+    Doc<"evidenceLibraryConfigDrafts">,
+    "contractProvenance" | "updatedAt"
+  >,
+) {
+  const storedByKey = new Map(
+    storedRows
+      .filter((row) => row.kind === "draft")
+      .map((row) => [row.sectionKey, row]),
+  );
+  return snapshotSections.map(({ sectionKey, payload }) => {
+    const stored = storedByKey.get(sectionKey);
+    return {
+      contractProvenance:
+        stored?.contractProvenance ?? header.contractProvenance,
+      payload,
+      payloadByteLength: validateSectionPayload(payload),
+      sectionKey,
+      updatedAt: stored?.updatedAt ?? header.updatedAt,
+    };
+  });
+}
+
+export function projectRevisionConfigurationSections(
+  snapshotSections: readonly SnapshotSection[],
+  storedRows: readonly RevisionSectionMetadata[],
+  header: Pick<
+    Doc<"evidenceLibraryConfigRevisions">,
+    "contractProvenance" | "createdAt"
+  >,
+) {
+  const storedByKey = new Map(
+    storedRows
+      .filter((row) => row.kind === "revision")
+      .map((row) => [row.sectionKey, row]),
+  );
+  return snapshotSections.map(({ sectionKey, payload }) => {
+    const stored = storedByKey.get(sectionKey);
+    return {
+      contractProvenance:
+        stored?.contractProvenance ?? header.contractProvenance,
+      createdAt: stored?.createdAt ?? header.createdAt,
+      payload,
+      payloadByteLength: validateSectionPayload(payload),
+      sectionKey,
+    };
+  });
+}
 
 export async function readEvidenceLibraries(ctx: QueryCtx) {
   const access = await requireOrganizationAccess(ctx, "read");
@@ -116,25 +187,21 @@ const libraryOverviewValidator = v.object({
   faviconUrl: v.union(v.string(), v.null()),
 });
 
-/**
- * The favicon URL from a draft's identity section, or null when none is
- * uploaded. The platform default PNG is for browser tabs on the published
- * site; our own pages draw the app icon instead, which has no background.
- */
-async function readDraftFavicon(
+/** Read the migrated draft payloads used by list and setup pages. */
+async function readDraftConfigurationPayloads(
   ctx: QueryCtx,
   draftId: Id<"evidenceLibraryConfigDrafts"> | undefined,
-): Promise<string | null> {
+): Promise<Map<string, unknown> | null> {
   if (!draftId) return null;
-  const identity = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_draftId_and_sectionKey", (query) =>
-      query.eq("draftId", draftId).eq("sectionKey", "identity"),
-    )
-    .unique();
-  const favicon = (identity?.payload as { assets?: { favicon?: unknown } } | undefined)
-    ?.assets?.favicon;
-  return typeof favicon === "string" && favicon !== "" ? favicon : null;
+  const snapshot = await loadDraftConfigurationSnapshot(ctx, draftId, {
+    requireComplete: false,
+  });
+  return new Map(
+    snapshot.migration.snapshot.sections.map((section) => [
+      section.sectionKey,
+      section.payload,
+    ]),
+  );
 }
 
 /** One row per library for the list page: status, address and the facts under the title. */
@@ -142,7 +209,7 @@ async function readLibraryOverview(
   ctx: QueryCtx,
   library: Doc<"evidenceLibraries">,
 ) {
-  const [runtimeBinding, setupOperation, activeDeployment, draftTheme, faviconUrl] =
+  const [runtimeBinding, setupOperation, activeDeployment, draftPayloads] =
     await Promise.all([
       library.runtimeBindingId
         ? ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId)
@@ -156,15 +223,7 @@ async function readLibraryOverview(
             library.activeDeploymentOperationId,
           )
         : null,
-      library.draftId
-        ? ctx.db
-            .query("evidenceLibraryConfigSections")
-            .withIndex("by_draftId_and_sectionKey", (query) =>
-              query.eq("draftId", library.draftId!).eq("sectionKey", "theme"),
-            )
-            .unique()
-        : null,
-      readDraftFavicon(ctx, library.draftId ?? undefined),
+      readDraftConfigurationPayloads(ctx, library.draftId ?? undefined),
     ]);
   const status = libraryOverviewStatus(library, setupOperation);
   let teardownStage: TeardownStage | null = null;
@@ -190,8 +249,18 @@ async function readLibraryOverview(
         ? teardown.teardownFailedStep
         : undefined;
   }
-  const themeColors = (draftTheme?.payload as { colors?: { accent?: unknown } } | undefined)
-    ?.colors;
+  const identity = draftPayloads?.get("identity") as
+    | { assets?: { favicon?: unknown } }
+    | undefined;
+  const theme = draftPayloads?.get("theme") as
+    | { colors?: { accent?: unknown } }
+    | undefined;
+  const themeColors = theme?.colors;
+  const faviconUrl =
+    typeof identity?.assets?.favicon === "string" &&
+    identity.assets.favicon !== ""
+      ? identity.assets.favicon
+      : null;
   return {
     _id: library._id,
     name: library.name,
@@ -360,12 +429,24 @@ async function readEvidenceLibrarySetupForLibrary(
   library: Doc<"evidenceLibraries">,
 ) {
   const setup = await readEvidenceLibrarySetupRecords(ctx, library);
+  const [identity, draftPayloads] = await Promise.all([
+    readEvidenceLibrarySetupIdentity(ctx, setup),
+    readDraftConfigurationPayloads(ctx, setup.draft._id),
+  ]);
+  const identityPayload = draftPayloads?.get("identity") as
+    | { assets?: { favicon?: unknown } }
+    | undefined;
+  const faviconUrl =
+    typeof identityPayload?.assets?.favicon === "string" &&
+    identityPayload.assets.favicon !== ""
+      ? identityPayload.assets.favicon
+      : null;
   return {
     ...setup,
     setupOperation: toPublicEvidenceLibraryOperation(setup.setupOperation),
-    identity: await readEvidenceLibrarySetupIdentity(ctx, setup),
+    identity,
     status: libraryOverviewStatus(setup.library, setup.setupOperation),
-    faviconUrl: await readDraftFavicon(ctx, setup.draft._id),
+    faviconUrl,
   };
 }
 
@@ -419,24 +500,19 @@ export async function readEvidenceLibraryDraft(
   if (!draft) {
     throw createError("NOT_FOUND", "Evidence Library draft not found");
   }
-  const sectionRows = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_draftId_and_sectionKey", (query) =>
-      query.eq("draftId", draft._id),
-    )
-    .collect();
-  const sections = sectionRows.map((section) => {
-    if (section.kind !== "draft") {
-      throw new Error("Draft section index returned a revision row");
-    }
-    return {
-      contractProvenance: section.contractProvenance,
-      payload: section.payload,
-      payloadByteLength: section.payloadByteLength,
-      sectionKey: section.sectionKey,
-      updatedAt: section.updatedAt,
-    };
-  });
+  const configurationSnapshot = await loadDraftConfigurationSnapshot(
+    ctx,
+    draft._id,
+    { requireComplete: false },
+  );
+  const sections = projectDraftConfigurationSections(
+    configurationSnapshot.migration.snapshot.sections,
+    configurationSnapshot.sections.filter((row) => row.kind === "draft"),
+    {
+      contractProvenance: draft.contractProvenance,
+      updatedAt: draft.updatedAt,
+    },
+  );
   // The newest operation carries the assembly issues the page lists.
   const latestOperation = await ctx.db
     .query("evidenceLibraryConfigOperations")
@@ -446,7 +522,13 @@ export async function readEvidenceLibraryDraft(
     .order("desc")
     .first();
   const operation = latestOperation
-    ? toPublicEvidenceLibraryOperation(latestOperation)
+    ? {
+        ...toPublicEvidenceLibraryOperation(latestOperation),
+        retryable: await isRetryableConfigurationDeployment(
+          ctx,
+          latestOperation,
+        ),
+      }
     : null;
   return { draft, library: access.library, operation, sections };
 }
@@ -466,24 +548,19 @@ export async function readEvidenceLibraryRevision(
   if (!revision || revision.libraryId !== args.libraryId) {
     throw createError("NOT_FOUND", "Evidence Library revision not found");
   }
-  const sectionRows = await ctx.db
-    .query("evidenceLibraryConfigSections")
-    .withIndex("by_revisionId_and_sectionKey", (query) =>
-      query.eq("revisionId", args.revisionId),
-    )
-    .collect();
-  const sections = sectionRows.map((section) => {
-    if (section.kind !== "revision") {
-      throw new Error("Revision section index returned a draft row");
-    }
-    return {
-      contractProvenance: section.contractProvenance,
-      createdAt: section.createdAt,
-      payload: section.payload,
-      payloadByteLength: section.payloadByteLength,
-      sectionKey: section.sectionKey,
-    };
-  });
+  const configurationSnapshot = await loadRevisionConfigurationSnapshot(
+    ctx,
+    args.revisionId,
+    { requireComplete: false },
+  );
+  const sections = projectRevisionConfigurationSections(
+    configurationSnapshot.migration.snapshot.sections,
+    configurationSnapshot.sections.filter((row) => row.kind === "revision"),
+    {
+      contractProvenance: revision.contractProvenance,
+      createdAt: revision.createdAt,
+    },
+  );
   return { revision, sections };
 }
 
@@ -514,6 +591,7 @@ export const getDraft = query({
         _id: v.id("evidenceLibraryConfigOperations"),
         _creationTime: v.number(),
         ...evidenceLibraryPublicOperationFields,
+        retryable: v.boolean(),
       }),
     ),
     sections: v.array(

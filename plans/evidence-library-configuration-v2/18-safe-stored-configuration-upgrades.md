@@ -278,6 +278,12 @@ trusted snapshots read from Convex enter the migration registry.
   external call.
 - Retry never reruns a migration. It reuses the operation's immutable current
   candidate and saved target.
+- Repeating the same user command after a later configuration command made its
+  saved target stale is a reissue, not Retry. Reuse the same idempotency key,
+  immutable candidate and attempt history. Clear the stale target and receipt,
+  move that operation after the newest configuration command in the same
+  transaction, then assemble a fresh target. Do not create another revision or
+  weaken the newest-command check.
 - A failed old-format operation, including the current failed `new lib`
   operation, stays as history. The server projects `retryable: false` because
   its revision is not current. The migration-aware update creates a new
@@ -381,8 +387,11 @@ deployment targets and active-revision transitions.
   for an old or stale candidate; a failed current candidate with an allowlisted
   transient code reuses its saved target, while a missing target, unknown code,
   later deployment command, changed active source or changed runtime intent blocks
-  Retry; completion alone switches the active revision; the runtime hash comes
-  from migrated data.
+  Retry; a repeated runtime-update command after a later configuration command
+  reuses its candidate, clears its stale target and becomes newest before it
+  contacts Coolify; completion alone switches the active revision; the runtime
+  hash comes from migrated data. `convex/evidenceLibraries/versions.test.ts`
+  proves the same reissue rule for Restore.
 - `convex/evidenceLibraries/applicationSetup.test.ts`,
   `convex/evidenceLibraries/databaseSetup.test.ts`,
   `convex/evidenceLibraries/setup.test.ts` and the existing query coverage in

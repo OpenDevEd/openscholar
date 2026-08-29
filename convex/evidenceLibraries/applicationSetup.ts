@@ -36,6 +36,7 @@ import {
 } from "./aiProviderKey";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
 import { aiProviderKeySourceValidator } from "./validators";
+import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 
 function requireRuntimeCommit(value: string): string {
   const commit = requireNonBlankProvisioningValue("runtimeCommit", value);
@@ -96,13 +97,17 @@ export const prepareApplicationSetup = internalMutation({
       ...args,
       expectedStage: "application",
     });
+    const revisionSnapshot = await loadRevisionConfigurationSnapshot(
+      ctx,
+      setup.revision._id,
+      { requireComplete: true },
+    );
     const [
       existingSearch,
       existingAuthentication,
       existingMachine,
       databaseCredential,
       storageCredential,
-      sectionRows,
     ] = await Promise.all([
       ctx.db
         .query("evidenceLibraryCredentials")
@@ -144,12 +149,6 @@ export const prepareApplicationSetup = internalMutation({
             .eq("credentialKey", STORAGE_SERVICE_KEY_PATH),
         )
         .unique(),
-      ctx.db
-        .query("evidenceLibraryConfigSections")
-        .withIndex("by_revisionId_and_sectionKey", (query) =>
-          query.eq("revisionId", setup.revision._id),
-        )
-        .collect(),
     ]);
 
     if (!databaseCredential || !storageCredential) {
@@ -165,10 +164,7 @@ export const prepareApplicationSetup = internalMutation({
         "Evidence Library storage receipt is missing",
       );
     }
-    const sections = sectionRows.map((section) => ({
-      sectionKey: section.sectionKey,
-      payload: section.payload,
-    }));
+    const sections = revisionSnapshot.migration.snapshot.sections;
     const validatedSections = validateOwnerSections(sections, {
       expectedBaseUrl: setup.runtimeBinding.targetBaseUrl,
       requireComplete: true,

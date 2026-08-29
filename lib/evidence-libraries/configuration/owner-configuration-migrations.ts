@@ -3,16 +3,9 @@ import {
   assertNoCredentialMaterial,
   validateSectionPayload,
 } from "../../../convex/evidenceLibraries/sectionPayload";
-import {
-  type ValidationIssue,
-  validateSectionStructure,
-} from "./generated-validation";
 import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
-import {
-  PLATFORM_DEFAULT_POINTERS,
-  SECTION_REGISTRY,
-  type SectionKey,
-} from "./section-registry";
+import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
+import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
 export const CURRENT_OWNER_CONFIGURATION_VERSION = 2 as const;
@@ -125,32 +118,6 @@ function legacyValidationPayload(
     return schemaDefaultExports();
   }
   return payload;
-}
-
-function legacyAllowedStructureIssue(
-  sectionKey: string,
-  payload: unknown,
-  value: ValidationIssue,
-): boolean {
-  if (sectionKey === "features" && isRecord(payload)) {
-    return LEGACY_FEATURE_KEYS.some(
-      (key) => hasOwn(payload, key) && value.pointer === `/features/${key}`,
-    );
-  }
-  if (sectionKey === "exports" && hasNonBooleanExport(payload)) {
-    return (
-      value.keyword === "type" &&
-      EXPORT_FORMATS.some((key) => value.pointer === `/exports/${key}`)
-    );
-  }
-  return false;
-}
-
-function isPlatformDefaultStructureIssue(value: ValidationIssue): boolean {
-  return (
-    value.keyword === "required" &&
-    (PLATFORM_DEFAULT_POINTERS as readonly string[]).includes(value.pointer)
-  );
 }
 
 function sectionRowsForValidation(
@@ -294,20 +261,6 @@ function validateSnapshotShape(
 
   const version = rawVersion;
   if (typeof version === "number" && Number.isSafeInteger(version)) {
-    const legacy = version === 1;
-    for (const row of rows) {
-      const structureIssues = validateSectionStructure(
-        row.sectionKey,
-        row.payload,
-      ).issues.filter(
-        (value) =>
-          !isPlatformDefaultStructureIssue(value) &&
-          (!legacy ||
-            !legacyAllowedStructureIssue(row.sectionKey, row.payload, value)),
-      );
-      issues.push(...structureIssues.map(fromValidationIssue));
-    }
-
     const ownerValidation = validateOwnerSections(
       sectionRowsForValidation(rows, version),
       { requireComplete: options.requireComplete },
