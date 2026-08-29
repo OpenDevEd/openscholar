@@ -148,6 +148,10 @@ export const configProvenanceValidator = v.object({
   catalogsSha256: v.string(),
 });
 
+// Deploy A widens the snapshot boundary. The field is tagged by the
+// migrations component before Deploy B makes version handling strict.
+export const ownerConfigurationVersionValidator = v.optional(v.literal(1));
+
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),
   v.literal("active"),
@@ -326,6 +330,7 @@ export const evidenceLibraryConfigDraftFields = {
   libraryId: v.id("evidenceLibraries"),
   baseRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
   editVersion: v.number(),
+  ownerConfigurationVersion: ownerConfigurationVersionValidator,
   contractProvenance: configProvenanceValidator,
   createdByClerkUserId: v.string(),
   updatedByClerkUserId: v.string(),
@@ -342,6 +347,7 @@ export const evidenceLibraryConfigRevisionFields = {
     v.id("evidenceLibraryConfigRevisions"),
     v.null(),
   ),
+  ownerConfigurationVersion: ownerConfigurationVersionValidator,
   contractProvenance: configProvenanceValidator,
   createdByClerkUserId: v.string(),
   createdAt: v.number(),
@@ -845,4 +851,3 @@ export function toPublicEvidenceLibraryOperation(
     "_id" | "_creationTime" | (typeof PUBLIC_OPERATION_FIELDS)[number]
   >;
 }
-

@@ -7,15 +7,9 @@ import {
   type ValidationIssue,
   validateSectionStructure,
 } from "./generated-validation";
-import { readDraft, type SectionRow } from "./rules";
-import {
-  SECTION_REGISTRY,
-  type SectionKey,
-} from "./section-registry";
-import {
-  type OwnerSectionRow,
-  validateOwnerSections,
-} from "./owner-rules";
+import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
+import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
+import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
 export const CURRENT_OWNER_CONFIGURATION_VERSION = 2 as const;
 export const MAX_CHANGED_POINTERS = 100;
@@ -28,9 +22,7 @@ export type OwnerConfigurationSnapshot = {
 export type OwnerConfigurationMigration = {
   from: number;
   to: number;
-  migrate: (
-    snapshot: OwnerConfigurationSnapshot,
-  ) => OwnerConfigurationSnapshot;
+  migrate: (snapshot: OwnerConfigurationSnapshot) => OwnerConfigurationSnapshot;
 };
 
 export type OwnerConfigurationIssue = {
@@ -62,8 +54,9 @@ export class OwnerConfigurationMigrationError extends Error {
 const SECTION_KEYS = new Set<string>(
   SECTION_REGISTRY.map((section) => section.key),
 );
+// These names are frozen in the version-1 to version-2 contract. A future
+// platform-owned feature must get its own migration decision.
 const LEGACY_FEATURE_KEYS = ["aiSearch", "deepResearch"] as const;
-const EXPORT_KEYS = ["ris", "bibtex", "atom"] as const;
 
 function isSectionKey(value: unknown): value is SectionKey {
   return typeof value === "string" && SECTION_KEYS.has(value);
@@ -104,11 +97,13 @@ function hasNonBooleanExport(value: unknown): boolean {
   return Object.values(value).some((entry) => typeof entry !== "boolean");
 }
 
-function schemaDefaultExports(): Record<(typeof EXPORT_KEYS)[number], boolean> {
+function schemaDefaultExports(): Record<
+  (typeof EXPORT_FORMATS)[number],
+  boolean
+> {
   return {
-    ...readDraft([
-      { sectionKey: "exports", payload: {} } satisfies SectionRow,
-    ]).exports,
+    ...readDraft([{ sectionKey: "exports", payload: {} } satisfies SectionRow])
+      .exports,
   };
 }
 
@@ -136,14 +131,14 @@ function legacyAllowedStructureIssue(
   if (sectionKey === "features" && isRecord(payload)) {
     return LEGACY_FEATURE_KEYS.some(
       (key) =>
-        typeof payload[key] === "boolean" &&
+        hasOwn(payload, key) &&
         value.pointer === `/features/${key}`,
     );
   }
   if (sectionKey === "exports" && hasNonBooleanExport(payload)) {
     return (
       value.keyword === "type" &&
-      EXPORT_KEYS.some((key) => value.pointer === `/exports/${key}`)
+      EXPORT_FORMATS.some((key) => value.pointer === `/exports/${key}`)
     );
   }
   return false;
@@ -163,7 +158,10 @@ function sectionRowsForValidation(
 function validateSnapshotShape(
   value: unknown,
   options: OwnerConfigurationValidationOptions,
-): { snapshot: OwnerConfigurationSnapshot | null; issues: OwnerConfigurationIssue[] } {
+): {
+  snapshot: OwnerConfigurationSnapshot | null;
+  issues: OwnerConfigurationIssue[];
+} {
   const issues: OwnerConfigurationIssue[] = [];
   if (!isRecord(value)) {
     return {
@@ -196,7 +194,9 @@ function validateSnapshotShape(
 
   const rawSections = value.sections;
   if (!Array.isArray(rawSections)) {
-    issues.push(issue("/sections", "invalidSections", "Sections must be an array."));
+    issues.push(
+      issue("/sections", "invalidSections", "Sections must be an array."),
+    );
     return { snapshot: null, issues };
   }
 
@@ -348,10 +348,7 @@ function migrateVersionOneToTwo(
       for (const key of LEGACY_FEATURE_KEYS) delete payload[key];
       row.payload = payload;
     }
-    if (
-      row.sectionKey === "exports" &&
-      hasNonBooleanExport(row.payload)
-    ) {
+    if (row.sectionKey === "exports" && hasNonBooleanExport(row.payload)) {
       row.payload = schemaDefaultExports();
     }
   }
@@ -436,7 +433,10 @@ function changedSnapshotPointers(
       output.push(`/${key}`);
       continue;
     }
-    if (key === "exports" && JSON.stringify(beforePayload) !== JSON.stringify(afterPayload)) {
+    if (
+      key === "exports" &&
+      JSON.stringify(beforePayload) !== JSON.stringify(afterPayload)
+    ) {
       output.push("/exports");
       continue;
     }
@@ -450,9 +450,7 @@ export function migrateOwnerConfiguration(
   options: OwnerConfigurationValidationOptions = {},
 ): OwnerConfigurationMigrationResult {
   const initial = requireValidSnapshot(value, options);
-  if (
-    initial.ownerConfigurationVersion > CURRENT_OWNER_CONFIGURATION_VERSION
-  ) {
+  if (initial.ownerConfigurationVersion > CURRENT_OWNER_CONFIGURATION_VERSION) {
     throw new OwnerConfigurationMigrationError(
       "Evidence Library configuration snapshot is newer than this code",
       [

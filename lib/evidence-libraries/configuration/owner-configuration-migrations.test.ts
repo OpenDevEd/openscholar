@@ -12,7 +12,7 @@ const legacySnapshot: OwnerConfigurationSnapshot = {
   sections: [
     {
       sectionKey: "features",
-      payload: { ai: false, aiSearch: true, deepResearch: false },
+      payload: { ai: false, aiSearch: "legacy", deepResearch: false },
     },
     {
       sectionKey: "exports",
@@ -77,15 +77,25 @@ describe("owner configuration migrations", () => {
     ]);
     expect(legacySnapshot.sections[0]?.payload).toEqual({
       ai: false,
-      aiSearch: true,
+      aiSearch: "legacy",
       deepResearch: false,
     });
   });
 
+  it("does not mutate input and returns deterministic results", () => {
+    const input = structuredClone(legacySnapshot);
+    const first = migrateOwnerConfiguration(input);
+    const second = migrateOwnerConfiguration(input);
+
+    expect(input).toEqual(legacySnapshot);
+    expect(first).toEqual(second);
+    expect(first.snapshot).not.toBe(input);
+  });
+
   it("has an explicit consecutive registry and leaves current snapshots alone", () => {
-    expect(OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to])).toEqual([
-      [1, 2],
-    ]);
+    expect(
+      OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to]),
+    ).toEqual([[1, 2]]);
     const current: OwnerConfigurationSnapshot = {
       ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
       sections: [{ sectionKey: "features", payload: { ai: false } }],
@@ -149,7 +159,9 @@ describe("owner configuration migrations", () => {
       ),
     );
     expect(collision.issues).toEqual(
-      expect.arrayContaining([expect.objectContaining({ keyword: "duplicate" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "duplicate" }),
+      ]),
     );
   });
 
@@ -164,7 +176,9 @@ describe("owner configuration migrations", () => {
       }),
     );
     expect(duplicate.issues).toEqual(
-      expect.arrayContaining([expect.objectContaining({ keyword: "duplicate" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "duplicate" }),
+      ]),
     );
 
     const unknown = expectMigrationError(() =>
@@ -174,7 +188,9 @@ describe("owner configuration migrations", () => {
       }),
     );
     expect(unknown.issues).toEqual(
-      expect.arrayContaining([expect.objectContaining({ keyword: "unknownSection" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "unknownSection" }),
+      ]),
     );
 
     const credential = expectMigrationError(() =>
@@ -200,7 +216,9 @@ describe("owner configuration migrations", () => {
       }),
     );
     expect(credential.issues).toEqual(
-      expect.arrayContaining([expect.objectContaining({ keyword: "credentialMaterial" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ keyword: "credentialMaterial" }),
+      ]),
     );
 
     const invalidOutput = expectMigrationError(() =>
@@ -276,11 +294,17 @@ describe("owner configuration migrations", () => {
           {
             from: 1,
             to: 3,
-            migrate: (snapshot) => ({ ...snapshot, ownerConfigurationVersion: 3 }),
+            migrate: (snapshot) => ({
+              ...snapshot,
+              ownerConfigurationVersion: 3,
+            }),
           },
         ],
         () =>
-          migrateOwnerConfiguration({ ownerConfigurationVersion: 1, sections: [] }),
+          migrateOwnerConfiguration({
+            ownerConfigurationVersion: 1,
+            sections: [],
+          }),
       ),
     );
     expect(error.issues[0]?.keyword).toBe("missingMigration");
