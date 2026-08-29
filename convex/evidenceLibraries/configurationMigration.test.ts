@@ -95,6 +95,20 @@ describe("Evidence Library configuration migration", () => {
     const t = convexTest(schema, modules);
     registerMigrations(t);
     const seeded = await seedHeaders(t);
+    const beforeRows = await t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("evidenceLibraryConfigSections")
+          .withIndex("by_draftId_and_sectionKey", (query) =>
+            query.eq("draftId", seeded.draftId),
+          )
+          .collect()
+      ).map((row) => ({
+        sectionKey: row.sectionKey,
+        payload: row.payload,
+        payloadByteLength: row.payloadByteLength,
+      })),
+    );
     const args = {
       cursor: null,
       batchSize: 10,
@@ -127,9 +141,22 @@ describe("Evidence Library configuration migration", () => {
     const unchanged = await t.run(async (ctx) => ({
       draft: await ctx.db.get(seeded.draftId),
       revision: await ctx.db.get(seeded.revisionId),
+      rows: await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", seeded.draftId),
+        )
+        .collect(),
     }));
     expect(unchanged.draft?.editVersion).toBe(4);
     expect(unchanged.draft?.ownerConfigurationVersion).toBe(1);
+    expect(
+      unchanged.rows.map((row) => ({
+        sectionKey: row.sectionKey,
+        payload: row.payload,
+        payloadByteLength: row.payloadByteLength,
+      })),
+    ).toEqual(beforeRows);
   });
 
   it("reports bounded findings while paging drafts, revisions, and orphan rows", async () => {
