@@ -32,13 +32,14 @@ v2, August 2026) fixed most of that. These are the rules that came out of both.
 - After a merge, the integration owner runs `npm run convex:push` from
   `dev-self` and checks the logs and the browser. Agents do not.
 
-## 4. Poll agents; do not wait for them to report
+## 4. Delegate only when it shortens the work
 
-- Agents that run for a long time may stop without a final message. Check
-  their worktree (`git log`, `git status`, open PR) on a schedule instead of
-  waiting.
-- When an agent goes quiet, read the worktree state first. It is the truth;
-  the agent's last message is not.
+- Do not create a lane because a task needs several reads or searches.
+- Create lanes only for independent work that can run at the same time without
+  sharing an invariant or write-set.
+- Give every lane a bounded result and stop it when it no longer saves time.
+- For a running implementation lane, check its worktree before relying on a
+  status message. Git is the durable handoff.
 
 ## 5. Keep write-sets disjoint
 
@@ -50,23 +51,22 @@ v2, August 2026) fixed most of that. These are the rules that came out of both.
   page) get one small, additive edit per lane, announced to the integration
   owner first.
 
-## 6. Agents die on session limits; resume from the worktree
+## 6. Resume from the worktree
 
-- Sessions have a usage limit that resets at a fixed time. Every agent in
-  the sprint died at once when it hit.
-- Resume by starting a fresh session in the same worktree with the same
-  prompt from `PROMPTS.md`. The agent reads `git status` and `git log` and
-  continues from the last commit. Do not try to rebuild its memory.
-- This only works because every unit of work is committed as soon as it is
-  green. Uncommitted work is lost work.
+- If a lane stops, start from its named goal, plan when one exists, `git
+  status`, and `git log`.
+- Do not copy a large standing-rules prompt into every plan. `AGENTS.md` and
+  `docs/agents/project.md` already own the workflow.
+- Commit each working unit. Leave a short resume note only when the remaining
+  work cannot be understood from the plan and Git.
 
-## 7. Local checks are the gate; GitHub Actions can be down
+## 7. Focus locally; run the full gate once
 
-- GitHub Actions was unavailable for part of the sprint. A green or missing
-  check on GitHub proves nothing on its own.
-- Before a PR is opened, and again before it is merged, run locally:
-  `npx vitest run` for the touched areas, `npx tsc --noEmit`, the lane
-  upload (`npx convex dev --once` ending in `Convex functions ready!`), and
-  the browser check on the lane port.
-- Two read-only reviewers look at each PR. The integration owner merges;
-  agents never merge.
+- During coding, run only the focused tests and checks that own the changed
+  behavior.
+- A lane checks its isolated boundary. It does not run the whole suite or touch
+  the shared deployment.
+- The primary agent integrates the phase, runs the final browser or deployment
+  gate, and requests one read-only Fable review of the integrated diff.
+- GitHub CI runs the full required suite once on the exact PR head. Only the
+  integration owner merges.
