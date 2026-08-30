@@ -811,11 +811,12 @@ export function countGrantTransactionsByInvoice(
   ).length;
 }
 
-export function listGrantTransactions(
+export function listInvoiceGrantTransactions(
   snapshot: BillingSnapshot,
 ): BillingSnapshot["creditTransactions"] {
   return snapshot.creditTransactions.filter(
-    (transaction) => transaction.type === "grant",
+    (transaction) =>
+      transaction.type === "grant" && transaction.stripeInvoiceId !== undefined,
   );
 }
 

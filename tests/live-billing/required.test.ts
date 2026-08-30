@@ -12,7 +12,7 @@ import {
   ensureBillingTestUser,
   getBillingSnapshotForUser,
   listRefundTransactionsByPaymentIntent,
-  listGrantTransactions,
+  listInvoiceGrantTransactions,
   loadBillingLiveEnv,
   resetBillingArtifacts,
   resetBillingStateForUser,
@@ -179,7 +179,7 @@ describe.sequential("live billing required regressions", () => {
       },
     });
 
-    expect(listGrantTransactions(initialSnapshot)).toHaveLength(1);
+    expect(listInvoiceGrantTransactions(initialSnapshot)).toHaveLength(1);
 
     const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
     const periodEndSec = stripeSubscription.items.data[0]?.current_period_end;
@@ -228,7 +228,7 @@ describe.sequential("live billing required regressions", () => {
           current,
           renewalInvoice.id,
         );
-        const totalGrantCount = listGrantTransactions(current).length;
+        const totalGrantCount = listInvoiceGrantTransactions(current).length;
         if (renewalGrantCount === 1 && totalGrantCount === 2) {
           return current;
         }
@@ -237,7 +237,7 @@ describe.sequential("live billing required regressions", () => {
     });
 
     expect(countGrantTransactionsByInvoice(renewalSnapshot, renewalInvoice.id)).toBe(1);
-    expect(listGrantTransactions(renewalSnapshot)).toHaveLength(2);
+    expect(listInvoiceGrantTransactions(renewalSnapshot)).toHaveLength(2);
 
     const replayResult = await runConvexFunction<{
       outcome: string;

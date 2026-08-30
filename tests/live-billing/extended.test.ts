@@ -19,7 +19,7 @@ import {
   attachDefaultFailingPaymentMethod,
   attachDefaultVisaPaymentMethod,
   countGrantTransactionsByInvoice,
-  listGrantTransactions,
+  listInvoiceGrantTransactions,
   type BillingIdentity,
 } from "./support";
 
@@ -213,7 +213,7 @@ describe.sequential("live billing extended regressions", () => {
     });
 
     const beforeAdvanceSnapshot = await getBillingSnapshotForUser(userId);
-    expect(listGrantTransactions(beforeAdvanceSnapshot)).toHaveLength(1);
+    expect(listInvoiceGrantTransactions(beforeAdvanceSnapshot)).toHaveLength(1);
 
     const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
     const periodEndSec = stripeSubscription.items.data[0]?.current_period_end;
@@ -261,7 +261,7 @@ describe.sequential("live billing extended regressions", () => {
           current,
           renewalInvoice.id,
         );
-        const totalGrantCount = listGrantTransactions(current).length;
+        const totalGrantCount = listInvoiceGrantTransactions(current).length;
         if (renewalGrantCount === 1 && totalGrantCount === 2) {
           return current;
         }
