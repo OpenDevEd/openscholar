@@ -170,6 +170,7 @@ jobs:
       NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
       CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
       CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
       STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
@@ -201,6 +202,7 @@ jobs:
         run: |
           required_vars=(
             NEXT_PUBLIC_CONVEX_URL
+            CONVEX_DEPLOY_KEY
             STRIPE_SECRET_KEY
             STRIPE_GO_PRICE_ID
           )
@@ -283,6 +285,7 @@ jobs:
       NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
       CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
       CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
       STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
@@ -409,6 +412,7 @@ jobs:
       NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
       CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
       CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
       STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
@@ -437,6 +441,7 @@ jobs:
         run: |
           required_vars=(
             NEXT_PUBLIC_CONVEX_URL
+            CONVEX_DEPLOY_KEY
             STRIPE_SECRET_KEY
             STRIPE_GO_PRICE_ID
           )
