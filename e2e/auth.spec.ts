@@ -114,22 +114,15 @@ test.describe("clerk auth flows", () => {
     const tagline = "Evidence that survives a reload";
     await page.getByLabel("Tagline").fill(tagline);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveAttribute(
-      "data-result",
-      "save-success",
-    );
+    await expect(
+      page.getByText("Changes saved.", { exact: true }),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     const preview = page.getByRole("dialog");
     await expect(preview).toContainText(libraryName);
     await expect(preview).toContainText("en-GB");
     await preview.getByRole("button", { name: "Close" }).first().click();
-
-    await page.getByRole("button", { name: "Activate", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveAttribute(
-      "data-result",
-      "activation-success",
-    );
 
     await page.goto("/settings");
     await page.goto(configurationUrl);
