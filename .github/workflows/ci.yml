@@ -308,9 +308,11 @@ jobs:
       - name: Run required live and browser billing checks
         if: steps.billing-environment.outputs.available == 'true'
         run: |
+          BILLING_LIVE_PUSH_CONVEX=true npm run test:billing:preflight -- --push-convex
+
           set +e
 
-          npm run test:billing:live:ci &
+          npm run test:billing:live &
           live_pid=$!
           npm run test:billing:e2e &
           browser_pid=$!
