@@ -106,6 +106,26 @@ task page, and the browser case times out. Keep the disposable user isolation.
 Add each user to the existing E2E organization as `org:member`, make that
 organization active in the browser, then run the unchanged billing assertions.
 
+Exact-head run
+[33291851509](https://github.com/OpenDevEd/openalex-count/actions/runs/33291851509)
+ran all 42 billing browser cases on `openscholar-ci-secret-2`. Seventeen passed,
+two passed on retry, one used its existing skip rule, and 22 failed. The first
+setup timeout happened while waiting for Playwright's global `networkidle`
+state. That timeout occurred before the fixture reached its teardown, so three
+disposable Clerk users leaked into the five-member test organization. With the
+two fixed E2E members, later membership requests were rejected as forbidden.
+Delete the three leaked `billing-e2e-*` users. Put the complete disposable-user
+fixture in `try/finally`, and wait for the billing page's real ready state
+instead of global network silence.
+
+The cases that ran before the Clerk limit exposed two application defects.
+`CreditBalanceCard` renders the cap message but omits the stable
+`billing-credit-cap-banner` marker used by the existing browser contract. The
+transactions panel keeps `role="list"` when it renders an empty `role="status"`
+child, which violates ARIA required-child rules. Add the existing marker to the
+visible cap message. Apply list keyboard semantics only when transaction rows
+exist. Do not change, skip, or soften any billing assertion.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
@@ -309,6 +329,16 @@ In `ci-jobs.yml`:
    with Clerk's existing browser API and reload before opening billing. Keep a
    fresh user and cleanup for every case; do not share the auth test user and do
    not change any billing assertion.
+9. Wrap every step after disposable Clerk-user creation in `try/finally`, so a
+   sign-in, organization, navigation, readiness, test, or teardown failure still
+   deletes that exact user. Replace `waitForLoadState("networkidle")` with the
+   billing page's existing visible ready state. A hosted Convex subscription is
+   expected to keep network requests open.
+10. In `CreditBalanceCard`, add `data-testid="billing-credit-cap-banner"` to
+    the cap message that is already shown at 100 percent. In
+    `TransactionsPanelClient`, expose `role="list"`, focus, and active-row
+    semantics only when real transaction rows are rendered. Keep the empty
+    status available to assistive technology without nesting it in a list.
 
 Every job uses the current full action SHAs already proven in `new-el/main`:
 
@@ -380,7 +410,8 @@ live-test loader, and invoice-grant assertions change only as recorded above.
   `npx playwright test --project=billing --list`.
 - Run the complete billing browser project with the real Clerk organization,
   Convex dev deployment, and Stripe test services. All 42 cases must pass
-  without a pending Clerk organization task.
+  without a pending Clerk organization task, a leaked `billing-e2e-*` member,
+  or an ARIA required-child violation.
 
 ### Runner checks
 
