@@ -525,6 +525,14 @@ and finish without rewriting it. Record Buildx's digest output. GitHub
 documents the `packages: write` permission and digest output in its
 [image publishing guide](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images).
 
+The first live publish on 2026-08-30 showed that Buildx returns the selected
+single-platform configuration at `.image.config`, even though the pushed
+manifest is an OCI index. Read the revision from
+`.image.config.Labels["org.opencontainers.image.revision"]`. The earlier
+`.image["linux/amd64"]` assumption returned no label and would reject a safe
+rerun. Prove this path by dispatching the already published commit again; the
+workflow must reuse the existing digest without pushing it again.
+
 Enable `experimental.turbopackFileSystemCacheForBuild` and
 `experimental.workerThreads`, calculate `experimental.cpus` from
 `availableParallelism()`, and retain the existing `/app/.next/cache` BuildKit
