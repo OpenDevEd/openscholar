@@ -367,7 +367,10 @@ In `ci-jobs.yml`:
    `E2E_CLERK_ORGANIZATION_ID`, then preserve the original new-library flow:
    Reserve, Save, Preview, Activate, and revisit the activated configuration.
    Do not replace this with a fixed draft. Do not run the activation case until
-   the disposable runtime environment in `01-BLOCKER.md` exists.
+   the disposable runtime environment in `01-BLOCKER.md` exists. Name the
+   concurrency group `auth-e2e-runtime-provisioning`. Remove the fixed draft ID
+   from the workflow environment and validation because the restored test does
+   not use it.
 6. Keep every timeout, artifact path, artifact name, `if: always()` rule, and
    the existing `continue-on-error` only on push extended billing. Move each
    billing artifact upload after its live and browser test commands. Artifact
