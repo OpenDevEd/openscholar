@@ -119,7 +119,10 @@ import {
   useProtectedQuery,
 } from "@/lib/auth/use-auth-query";
 import { createEnrichmentCache } from "@/lib/billing/transactions/enrichment-cache";
-import { buildFilterPredicate, isFilterActive } from "@/lib/billing/transactions/filters";
+import {
+  buildFilterPredicate,
+  isFilterActive,
+} from "@/lib/billing/transactions/filters";
 import {
   partitionByGroup,
   shouldRenderGroups,
@@ -143,10 +146,7 @@ import { TransactionsEmptyState } from "./transactions-empty-state";
 import { TransactionsErrorBoundary } from "./transactions-error-boundary";
 import { useTransactionsKeyboard } from "./use-transactions-keyboard";
 import { useTransactionsLoadMore } from "./use-transactions-load-more";
-import {
-  useTransactionsState,
-  type Density,
-} from "./use-transactions-state";
+import { useTransactionsState, type Density } from "./use-transactions-state";
 
 const TransactionDetailDrawer = dynamic(
   () =>
@@ -170,13 +170,22 @@ interface Props {
 }
 
 function foldFacetCounts(
-  facet: { type: Record<string, number>; creditPool: Record<string, number>; billingType: Record<string, number> } | null | undefined,
+  facet:
+    | {
+        type: Record<string, number>;
+        creditPool: Record<string, number>;
+        billingType: Record<string, number>;
+      }
+    | null
+    | undefined,
 ): Record<string, number> {
   if (!facet) return {};
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(facet.type)) out[`type:${k}`] = v;
-  for (const [k, v] of Object.entries(facet.creditPool)) out[`creditPool:${k}`] = v;
-  for (const [k, v] of Object.entries(facet.billingType)) out[`billingType:${k}`] = v;
+  for (const [k, v] of Object.entries(facet.creditPool))
+    out[`creditPool:${k}`] = v;
+  for (const [k, v] of Object.entries(facet.billingType))
+    out[`billingType:${k}`] = v;
   return out;
 }
 
@@ -292,7 +301,10 @@ function TransactionsPanelClientInner({ jobId }: Props) {
               state.creditPools.length > 0 ? state.creditPools : undefined,
             billingTypes:
               state.billingTypes.length > 0 ? state.billingTypes : undefined,
-            q: deferredQuery.trim().length > 0 ? deferredQuery.trim() : undefined,
+            q:
+              deferredQuery.trim().length > 0
+                ? deferredQuery.trim()
+                : undefined,
             from: state.from ? state.from.getTime() : undefined,
             to: state.to ? state.to.getTime() : undefined,
           }
@@ -367,7 +379,9 @@ function TransactionsPanelClientInner({ jobId }: Props) {
               ? cache.getPaperTitleByOpenalex(doc.metadata.openalexId)
               : null) ??
             null;
-          const jobName = doc.jobId ? (cache.getJobName(doc.jobId) ?? null) : null;
+          const jobName = doc.jobId
+            ? (cache.getJobName(doc.jobId) ?? null)
+            : null;
           collected.push(toViewModel({ ...doc, paperTitle, jobName }));
         }
 
@@ -383,8 +397,7 @@ function TransactionsPanelClientInner({ jobId }: Props) {
     () => ({
       jobId,
       types: state.types.length > 0 ? state.types : undefined,
-      creditPools:
-        state.creditPools.length > 0 ? state.creditPools : undefined,
+      creditPools: state.creditPools.length > 0 ? state.creditPools : undefined,
       billingTypes:
         state.billingTypes.length > 0 ? state.billingTypes : undefined,
       q: deferredQuery.trim().length > 0 ? deferredQuery.trim() : undefined,
@@ -545,8 +558,7 @@ function TransactionsPanelClientInner({ jobId }: Props) {
   // banner flicker on top of each other for every empty page.
   const isWalkingEmpty =
     rowCount === 0 &&
-    (paginated.status === "CanLoadMore" ||
-      paginated.status === "LoadingMore");
+    (paginated.status === "CanLoadMore" || paginated.status === "LoadingMore");
   const showSkeleton = isAwaitingFirstData || isWalkingEmpty;
   const isEmpty = !showSkeleton && rowCount === 0;
   const filterActive = isFilterActive({
@@ -561,7 +573,9 @@ function TransactionsPanelClientInner({ jobId }: Props) {
   });
   const hasJobScope = jobId != null;
   const emptyKind: "no-data" | "no-matches" =
-    filterActive || hasJobScope || baseRows.length > 0 ? "no-matches" : "no-data";
+    filterActive || hasJobScope || baseRows.length > 0
+      ? "no-matches"
+      : "no-data";
 
   const [announcedCount, setAnnouncedCount] = useState("");
   useEffect(() => {
@@ -647,9 +661,13 @@ function TransactionsPanelClientInner({ jobId }: Props) {
       >
         <div
           ref={listRef}
-          role="list"
-          tabIndex={0}
-          aria-activedescendant={activeId ? `txn-row-${activeId}` : undefined}
+          role={!showSkeleton && !isEmpty ? "list" : undefined}
+          tabIndex={!showSkeleton && !isEmpty ? 0 : undefined}
+          aria-activedescendant={
+            !showSkeleton && !isEmpty && activeId
+              ? `txn-row-${activeId}`
+              : undefined
+          }
           data-transactions-list=""
           data-search-deferred={isSearchStale ? "true" : "false"}
           aria-busy={isSearchStale ? "true" : "false"}

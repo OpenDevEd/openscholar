@@ -41,9 +41,15 @@ test.describe("Transactions panel — axe matrix", () => {
           // Apply density via the toolbar dropdown so the axe pass sees
           // the same DOM the user would.
           await page.locator("[data-transactions-density-trigger]").click();
-          await page.locator(`[data-density-option="${density}"]`).click();
+          const densityOption = page.locator(
+            `[data-density-option="${density}"]`,
+          );
+          await densityOption.click();
+          await expect(densityOption).toBeHidden();
           await expect(
-            page.locator(`[data-transactions-panel][data-transactions-density="${density}"]`),
+            page.locator(
+              `[data-transactions-panel][data-transactions-density="${density}"]`,
+            ),
           ).toBeVisible();
 
           if (drawerState === "open") {
@@ -51,7 +57,9 @@ test.describe("Transactions panel — axe matrix", () => {
             const rowCount = await page.locator("[data-txn-row]").count();
             test.skip(rowCount === 0, "no rows to open the drawer on");
             await firstRow.click();
-            await expect(page.locator("[data-transaction-drawer]")).toBeVisible();
+            await expect(
+              page.locator("[data-transaction-drawer]"),
+            ).toBeVisible();
           }
 
           const builder = new AxeBuilder({ page })
