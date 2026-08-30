@@ -2,9 +2,14 @@
 
 ## Goal
 
-Mark a library active only after the exact deployment, all six Compose
+Mark a library active only after the exact deployment, all seven Compose
 services, the requested configuration revision, the public library, and the
 admin page are ready.
+
+Decision update (2026-08-31): the original contract required six services.
+Redis is now the seventh required service because browser AI rate limits use
+the tenant runtime's Redis instance. The deployed verifier and OpenScholar must
+both enforce this seven-service contract.
 
 ## Scope
 
@@ -16,10 +21,10 @@ admin page are ready.
    accept a command, label, service list, host, socket path, or container ID
    from the caller.
 3. Require exactly one current container for `web`, `search-indexer`,
-   `source-sync`, `source-writeback`, `publication-worker`, and `meilisearch`.
-   Web, search, publication, and Meilisearch must be healthy. The two source
-   workers must be running; their current Compose definitions intentionally
-   have no Docker health check.
+   `source-sync`, `source-writeback`, `publication-worker`, `meilisearch`, and
+   `redis`. Web, search, publication, Meilisearch, and Redis must be healthy.
+   The two source workers must be running; their current Compose definitions
+   intentionally have no Docker health check.
 4. Require the saved Coolify deployment to be `finished` for the saved app,
    commit, and Coolify configuration hash. Require every container's
    repository-owned release label to match that commit and reject a public
@@ -60,7 +65,7 @@ has separately proved that a new deployment is required.
    ready binding is written when any one boundary fails, the release label is
    stale, Meilisearch is public, or config health reports a rejected revision.
 5. Run one disposable library through activation twice. Prove one app, one
-   volume, two buckets, one database, six services, one active revision, and a
+   volume, two buckets, one database, seven services, one active revision, and a
    successful second reconciliation. Remove every resource through Plan 06.
 
 ## Files
@@ -111,7 +116,7 @@ npm run schema:check:evidence-library-config
 
 Deploy the verifier only to the development Coolify environment. Read back its
 commit, token settings, and healthy state. Run the disposable end-to-end setup,
-inspect the six host-side service results and three HTTP results, then run the
+inspect the seven host-side service results and three HTTP results, then run the
 Plan 06 teardown and prove the app, volume, buckets, database, login, and
 Convex library records are gone. Leave the singleton provisioner and verifier
 running for later sprints.

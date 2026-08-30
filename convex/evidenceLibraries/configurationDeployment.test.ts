@@ -225,7 +225,15 @@ function createRuntimeNetwork(input: {
           commit,
           runtimeImage: environments.find(({ key }) => key === "RUNTIME_IMAGE")
             ?.value,
-          services: ["web", "worker", "search", "storage", "db", "proxy"],
+          services: [
+            "web",
+            "search-indexer",
+            "source-sync",
+            "source-writeback",
+            "publication-worker",
+            "meilisearch",
+            "redis",
+          ].map((service) => ({ service })),
         });
       }
       if (

@@ -195,7 +195,8 @@ describe("Evidence Library readiness completion", () => {
                     "source-writeback",
                     "publication-worker",
                     "meilisearch",
-                  ],
+                    "redis",
+                  ].map((service) => ({ service })),
                 })
               : JSON.stringify({ ready: false }),
             {
@@ -349,7 +350,8 @@ describe("Evidence Library address recovery during setup", () => {
                 "source-writeback",
                 "publication-worker",
                 "meilisearch",
-              ],
+                "redis",
+              ].map((service) => ({ service })),
             }),
             { status: 200, headers: { "content-type": "application/json" } },
           );
