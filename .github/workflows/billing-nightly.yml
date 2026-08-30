@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   billing:
-    uses: OpenDevEd/openalex-count/.github/workflows/ci-jobs.yml@a77fa586001c50b9415f8efb0400657ee640a9ec
+    uses: OpenDevEd/openalex-count/.github/workflows/ci-jobs.yml@ebf7a06f6df797536865511a341f66eb6462b6c7
     with:
       mode: nightly
     secrets: inherit
