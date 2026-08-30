@@ -38,7 +38,7 @@ function configurationSections(baseUrl: string, name: string) {
 }
 
 describe("Evidence Library draft storage", () => {
-  it("accepts current drafts and historical revisions but rejects v1 drafts", async () => {
+  it("projects rollout drafts as current while keeping v1 revisions historical", async () => {
     const fixture = await createDraftSetupFixture("draft-version-contract");
 
     const currentDraft = await fixture.admin.query(
@@ -54,6 +54,36 @@ describe("Evidence Library draft storage", () => {
     );
     expect(currentDraft.draft.ownerConfigurationVersion).toBe(3);
     expect(currentRevision.revision.ownerConfigurationVersion).toBe(3);
+
+    await fixture.t.run((ctx) =>
+      ctx.db.patch(fixture.created.draftId, {
+        ownerConfigurationVersion: 2,
+      }),
+    );
+    const rolloutDraft = await fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId: fixture.created.libraryId },
+    );
+    const storedRolloutDraft = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.draftId),
+    );
+    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(3);
+    expect(storedRolloutDraft?.ownerConfigurationVersion).toBe(2);
+
+    await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: fixture.created.libraryId,
+        sections: [
+          { sectionKey: "footer", payload: { poweredBy: true } },
+        ],
+        expectedEditVersion: rolloutDraft.draft.editVersion,
+      },
+    );
+    const migratedDraft = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.draftId),
+    );
+    expect(migratedDraft?.ownerConfigurationVersion).toBe(3);
 
     await expect(
       fixture.t.run((ctx) =>
