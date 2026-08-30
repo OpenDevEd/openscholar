@@ -582,6 +582,17 @@ challenge, sends the OCI/Docker manifest `Accept` values, bounds responses and
 timeouts, and returns only
 `ghcr.io/opendeved/evidence-library-runtime@sha256:<64 hex>`.
 
+Reuse the existing `GITHUB_TOKEN`; do not add another registry secret. Read the
+token owner's login from GitHub's authenticated-user endpoint, exchange that
+login and token at the exact bearer realm from GHCR's challenge, then repeat
+the manifest `HEAD` with the short-lived bearer token. On 2026-08-30 the shared
+token completed that flow for commit
+`9dd3e7b36ca8b29dace3fdcaffb9ecc833932d09` and returned
+`sha256:eca9917bdd28bd4691242553b3b8f5c012077e3d4daafef976c7bee4b304feb3`.
+An anonymous request returned the expected pull challenge. This proves the
+package is private and the existing token has the required repository and
+package access.
+
 `runtimeReleases.ts` checks the newest `new-el/main` commit, then resolves that
 commit's image. A missing tag means “the newest release is still being built”;
 it is not saved as deployable and is not offered to an owner. Transport,
@@ -709,7 +720,9 @@ Keep GHCR private unless the user chooses public. Before the gate, the
 integration owner logs the deployment server's configured Coolify OS user into
 `ghcr.io` with a read-only package token and proves an exact digest pull. The
 GitHub Actions publisher uses `GITHUB_TOKEN`; OpenScholar's registry resolver
-uses a token with repository read and package read access.
+uses the existing `GITHUB_TOKEN`, whose repository and package read access was
+proved against the live private package. Do not add a duplicate GHCR token to
+Convex.
 
 The host login and cold-pull checks are:
 
@@ -949,7 +962,8 @@ can run two configurations and shows the measured break-even point.
 
 ### Shared-platform gate
 
-1. From `dev-self`, set the approved release pair and registry token, run
+1. From `dev-self`, set the approved release pair, confirm the existing
+   `GITHUB_TOKEN` still resolves its exact private GHCR digest, run
    `npm run convex:push`, and confirm `✔ Convex functions ready!`. Keep
    `npm run logs:convex` open.
 2. Create `el-gate-<date><letter>`. Record the Coolify deployment start/end
