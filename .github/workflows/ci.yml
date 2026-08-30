@@ -166,15 +166,6 @@ jobs:
         if: steps.auth-environment.outputs.available == 'true'
         run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Restore the Next.js build cache
-        if: steps.auth-environment.outputs.available == 'true'
-        uses: actions/cache@v5
-        with:
-          path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**/*', 'components/**/*', 'convex/**/*', 'i18n/**/*', 'lib/**/*', 'next.config.ts', 'package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
-
       - name: Install Playwright browser
         if: steps.auth-environment.outputs.available == 'true'
         run: npx playwright install chromium
@@ -283,15 +274,6 @@ jobs:
       - name: Install dependencies
         if: steps.billing-environment.outputs.available == 'true'
         run: npm ci --prefer-offline --no-audit --no-fund
-
-      - name: Restore the Next.js build cache
-        if: steps.billing-environment.outputs.available == 'true'
-        uses: actions/cache@v5
-        with:
-          path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**/*', 'components/**/*', 'convex/**/*', 'i18n/**/*', 'lib/**/*', 'next.config.ts', 'package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
       - name: Run billing preflight + required live regressions
         if: steps.billing-environment.outputs.available == 'true'
