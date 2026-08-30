@@ -70,13 +70,15 @@ build three times, and run Playwright's Linux package installer twice.
     development data, preserve existing balances in the current ledger and
     counters, then route every same-repository secret job to `OpenScholar
 Secret CI`. No OpenScholar job may use a paid GitHub runner.
-14. Keep the full Clerk browser suite on `OpenScholar Secret CI`, including
+14. Keep the full Clerk browser suite, including
     Reserve, Save, Preview, Activate, and revisit. Do not replace it with the
     smaller fixed-draft Save and reopen check. Activation now provisions a real
     runtime, and CI has no safe disposable provider environment. Record that
     exact conflict in `01-BLOCKER.md` and stop before claiming the pull request
-    is complete. Never give this runner shared Coolify, database, storage, or
-    production credentials.
+    is complete. Route the blocked job to `openscholar-activation`, which has no
+    runner today. A future runner must have its own OpenScholar-only account,
+    work directory, providers, and network boundary. Never give an existing
+    runner shared Coolify, database, storage, or production credentials.
     Set the required non-secret `EVIDENCE_LIBRARY_PLATFORM_DOMAIN` in the cloud
     dev deployment to the shared development value `opendev.space`; do not add
     an `EL_*` provisioning value.

@@ -44,7 +44,9 @@ Clerk E2E organization through the production projection function. Keep the
 original auth browser contract: reserve a new library, save it, preview it,
 activate it, and revisit it. Do not replace that contract with a fixed draft.
 If the disposable runtime environment in 01-BLOCKER.md does not exist, keep
-the original test and stop with the blocker instead of weakening it.
+the original test, route its job to the unassigned `openscholar-activation`
+label, and stop with the blocker instead of weakening it. Do not put that label
+on an existing runner.
 
 COMMIT DISCIPLINE
 

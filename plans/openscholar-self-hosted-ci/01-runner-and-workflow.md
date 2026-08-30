@@ -363,7 +363,11 @@ In `ci-jobs.yml`:
    16 route Proxy requests through its expected localhost name.
 4. Keep billing concurrency named `billing-live-shared-test-user` with
    `cancel-in-progress: false`.
-5. Serialize auth with cancellation off. Make the test select
+5. Route auth to `openscholar-activation`. No current runner has that label, so
+   the job remains queued instead of running against shared providers. A future
+   runner with this label must live in its own OpenScholar Activation CI group
+   and have the disposable environment in `01-BLOCKER.md`. Serialize auth with
+   cancellation off. Make the test select
    `E2E_CLERK_ORGANIZATION_ID`, then preserve the original new-library flow:
    Reserve, Save, Preview, Activate, and revisit the activated configuration.
    Do not replace this with a fixed draft. Do not run the activation case until
@@ -578,8 +582,10 @@ part of rollback.
 
 - The original auth case activates a new library and therefore needs the
   isolated disposable runtime environment in `01-BLOCKER.md`. The final pull
-  request cannot be called complete until that environment exists and the case
-  passes twice on the exact head.
+  request cannot be called complete until that environment and its dedicated
+  `openscholar-activation` runner exist and the case passes twice on the exact
+  head. No existing runner has that label, so the job queues safely instead of
+  receiving shared provider access.
 - Live billing pushes the tested commit to the checked Convex Cloud dev
   deployment and mutates Stripe test data. The shared billing concurrency key
   must remain uncancelled.

@@ -52,6 +52,10 @@ The sandbox must support two exact-head runs and simultaneous `new-el` CI
 without sharing accounts, work directories, Docker sockets, writable tool
 paths, or deployment credentials.
 
+Until that sandbox exists, the auth job targets `openscholar-activation`. No
+runner has that label. The required check therefore stays queued instead of
+running against shared providers or being skipped.
+
 ## Options
 
 1. Provision the isolated sandbox above. This preserves the original browser
@@ -69,7 +73,7 @@ paths, or deployment credentials.
 
 Unit tests, the production build, all live billing tests, and all billing
 browser tests run on the four isolated OpenScholar runners. The original Clerk
-activation test is routed only to the OpenScholar secret runners, but it cannot
-run safely without the disposable environment above. No paid GitHub runner is
-used. Artifact uploads stay required while GitHub recalculates storage after
-the expired artifacts were deleted.
+activation test targets the unassigned `openscholar-activation` label and
+cannot run until the disposable environment above exists. It is not skipped.
+No paid GitHub runner is used. Artifact uploads stay required while GitHub
+recalculates storage after the expired artifacts were deleted.
