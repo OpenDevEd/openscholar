@@ -2,6 +2,7 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   internalMutation,
+  internalQuery,
   mutation,
   type MutationCtx,
 } from "../_generated/server";
@@ -61,6 +62,28 @@ export { isConfigurationDeploymentOperation } from "./operations";
 
 export const CONFIGURATION_DEPLOYMENT_LEASE_MS = 20 * 60 * 1_000;
 const CONFIGURATION_DEPLOYMENT_POLL_DELAY_MS = 5_000;
+
+export const isFailedRuntimeTarget = internalQuery({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    runtimeCommit: v.string(),
+    runtimeImage: v.string(),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_failed_runtime", (query) =>
+        query
+          .eq("libraryId", args.libraryId)
+          .eq("status", "failed")
+          .eq("runtimeUpdate.to", args.runtimeCommit)
+          .eq("runtimeUpdate.toImage", args.runtimeImage),
+      )
+      .first();
+    return operation !== null;
+  },
+});
 
 /**
  * Puts the deployment's lease forward and books the watchdog that will pick

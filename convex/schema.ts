@@ -153,6 +153,12 @@ export default defineSchema({
       "libraryId",
       "status",
       "updatedAt",
+    ])
+    .index("by_libraryId_and_failed_runtime", [
+      "libraryId",
+      "status",
+      "runtimeUpdate.to",
+      "runtimeUpdate.toImage",
     ]),
 
   // Rate limiting (convex-helpers)

@@ -23,6 +23,8 @@ const COOLIFY_ORIGIN = "http://coolify:8080";
 const RUNTIME_COMMIT = "a".repeat(40);
 const NEWER_COMMIT = "b".repeat(40);
 const NEWER_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"f".repeat(64)}`;
+const LATEST_COMMIT = "c".repeat(40);
+const LATEST_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"e".repeat(64)}`;
 const INITIAL_CONFIG_HASH = "1".repeat(32);
 const UPDATED_CONFIG_HASH = "2".repeat(32);
 const FINISHED_CONFIG_HASH = "3".repeat(64);
@@ -62,8 +64,10 @@ function createRuntimeNetwork(input: {
   libraryId: string;
   publicAddress: string;
   revisionKey: string;
+  runtimeCommit?: string;
+  runtimeImage?: string;
 }) {
-  let commit = RUNTIME_COMMIT;
+  let commit = input.runtimeCommit ?? RUNTIME_COMMIT;
   // The address Coolify serves. A move patches it, and every later request
   // has to be answered on the new one.
   let publicDomain = input.publicAddress;
@@ -78,8 +82,11 @@ function createRuntimeNetwork(input: {
       JSON.stringify({ revision: "old" }),
     ),
     runtimeEnvironment("MEILISEARCH_MASTER_KEY", "search-master-key"),
-    runtimeEnvironment("SOURCE_COMMIT", RUNTIME_COMMIT),
-    runtimeEnvironment("RUNTIME_IMAGE", TEST_RUNTIME_IMAGE),
+    runtimeEnvironment("SOURCE_COMMIT", commit),
+    runtimeEnvironment(
+      "RUNTIME_IMAGE",
+      input.runtimeImage ?? TEST_RUNTIME_IMAGE,
+    ),
   ];
   const deploymentUuid = "deployment-configuration-65";
 
@@ -1099,6 +1106,149 @@ describe("Evidence Library configuration deployment", () => {
     expect(completed.operation).toMatchObject({
       status: "succeeded",
       receipt: { runtimeCommit: NEWER_COMMIT },
+    });
+  });
+
+  it("continues from the exact target of this library's failed software update", async () => {
+    const fixture = await createReadyLibrary("runtime-update-intermediate");
+    const releaseId = await fixture.t.run(async (ctx) =>
+      ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: first image" }],
+        checkedAt: Date.now(),
+      }),
+    );
+    const first = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const firstOperation = await fixture.t.run((ctx) =>
+      ctx.db.get(first.operationId),
+    );
+    if (!firstOperation?.configurationAttemptToken) {
+      throw new Error("The first software update did not start");
+    }
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: "r1",
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: first.operationId,
+          attemptToken: firstOperation.configurationAttemptToken,
+          attemptCount: firstOperation.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ pollCount: 1, status: "running" });
+    expect(network.commit).toBe(NEWER_COMMIT);
+
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(first.operationId, {
+        status: "failed",
+        error: {
+          code: "RUNTIME_NOT_READY",
+          message: "The verifier was unavailable",
+          stage: "publishing",
+        },
+        completedAt: Date.now(),
+        configurationAttemptToken: undefined,
+        configurationLeaseExpiresAt: undefined,
+        updatedAt: Date.now(),
+      });
+      await ctx.db.patch(releaseId, {
+        latest: LATEST_COMMIT,
+        latestImage: LATEST_RUNTIME_IMAGE,
+        changes: [{ sha: LATEST_COMMIT, message: "feat: newest image" }],
+        checkedAt: Date.now(),
+      });
+    });
+
+    const second = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const secondOperation = await fixture.t.run((ctx) =>
+      ctx.db.get(second.operationId),
+    );
+    if (!secondOperation?.configurationAttemptToken) {
+      throw new Error("The second software update did not start");
+    }
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: second.operationId,
+          attemptToken: secondOperation.configurationAttemptToken,
+          attemptCount: secondOperation.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ pollCount: 1, status: "running" });
+    expect(network.commit).toBe(LATEST_COMMIT);
+    expect(
+      network.environments.find(({ key }) => key === "RUNTIME_IMAGE")?.value,
+    ).toBe(LATEST_RUNTIME_IMAGE);
+  });
+
+  it("refuses an intermediate release that is not in this library's failed update history", async () => {
+    const fixture = await createReadyLibrary("runtime-update-unknown");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: LATEST_COMMIT,
+        latestImage: LATEST_RUNTIME_IMAGE,
+        changes: [{ sha: LATEST_COMMIT, message: "feat: newest image" }],
+        checkedAt: Date.now(),
+      });
+    });
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    if (!operation?.configurationAttemptToken) {
+      throw new Error("The software update did not start");
+    }
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: "r1",
+      runtimeCommit: NEWER_COMMIT,
+      runtimeImage: NEWER_RUNTIME_IMAGE,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: started.operationId,
+          attemptToken: operation.configurationAttemptToken,
+          attemptCount: operation.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    expect(
+      network.requests.filter(({ method }) => method === "PATCH"),
+    ).toHaveLength(0);
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(started.operationId)),
+    ).resolves.toMatchObject({
+      error: { code: "COOLIFY_APPLICATION_CONFLICT", stage: "assembling" },
+      status: "failed",
     });
   });
 
