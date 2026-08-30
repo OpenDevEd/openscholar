@@ -1,8 +1,10 @@
 # OpenScholar self-hosted CI
 
-Move OpenScholar CI to fixed self-hosted runners where it is safe, restore the
+Move OpenScholar's secret-free CI to fixed self-hosted runners, restore the
 live checks that GitHub currently skips, and shorten the workflow without
-removing a check or artifact.
+removing a check or artifact. Keep secret-bearing jobs on GitHub-hosted runners
+until their existing live-service failures are fixed and a clean hosted
+baseline passes.
 
 Decided with the user on 2026-08-30. Evidence checked on 2026-08-30.
 
@@ -59,6 +61,12 @@ build three times, and run Playwright's Linux package installer twice.
     on direct pushes to either branch.
 12. Do not change a test or assertion. The proof is the real GitHub workflow,
     its artifacts, the live services, and the runner boundary.
+13. Revised on 2026-08-30 after the first real hosted baseline: route only unit,
+    contract, build, and aggregate work to `OpenScholar CI`. Keep Clerk auth and
+    every billing job on `ubuntu-latest`. The hosted baseline exposed failures
+    in Clerk/Convex state and organization artifact storage before any
+    self-hosted job ran. Moving those failing checks would mix migration proof
+    with unrelated live-service repair.
 
 ## Plan
 
@@ -88,6 +96,11 @@ build three times, and run Playwright's Linux package installer twice.
   worker for the stateful auth and billing suites.
 - Next.js 16.2.4's installed CI cache guide under
   `node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md`.
+
+The dedicated `OpenScholar Secret CI` group and two secret runner accounts were
+provisioned before the hosted baseline completed. They stay online and idle but
+no workflow routes work to them. They are not proof that the secret jobs are
+ready to move.
 
 ## Checks
 
