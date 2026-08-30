@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - name: Unit and contract tests
-            command: npm run test
+            command: npm run test -- --maxWorkers=4
             cache_next: false
           - name: Production build
             command: npm run build
