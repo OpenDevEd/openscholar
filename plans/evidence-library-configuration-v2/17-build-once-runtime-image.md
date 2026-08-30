@@ -885,6 +885,25 @@ remain byte-for-byte unchanged because the image is release metadata, not
 owner configuration. Unknown commits, missing registry images and ambiguous
 release pairs block narrowing.
 
+The 2026-08-30 shared-data audit found five runtime bindings, six release-cache
+rows and nine operations. Two bindings are ready on pre-image commits, three
+are unassigned setup rows, and every release-cache row lacks an image. Four
+terminal publish operations contain commit-only target, receipt or update
+metadata. Those old commits never had a unified image, so a migration must not
+attach the new image to them and pretend that pair ran.
+
+Delete the stale commit-only release cache so the normal check writes fresh
+pairs. Move each ready library to the approved pair through the real update
+flow. For terminal operations only, remove an unverifiable saved deployment
+target, runtime update, or receipt release identity while keeping the operation
+result and frozen revision. Terminal setup recovery receipts may also drop
+their old application/deployment details; they are retry state, not version
+history. A queued or running operation with incomplete release identity blocks
+the migration. Unassigned pending bindings legitimately have no release pair;
+every provisioned pending or ready binding must have both values after
+narrowing. Operation receipts then allow either both release values or neither,
+while deployment targets and runtime updates require the full pair.
+
 Starting with the widen deployment, every new runtime release, binding,
 receipt and operation target writes the strict commit-and-image pair. Temporary
 optional reads and fields exist only across the three deployment stages and
