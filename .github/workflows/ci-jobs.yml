@@ -13,9 +13,9 @@ permissions:
 
 jobs:
   static-checks:
-    if: inputs.mode == 'ci'
+    if: inputs.mode == 'ci' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     name: ${{ matrix.name }}
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openscholar-light' }}
+    runs-on: openscholar-light
     timeout-minutes: 20
     concurrency:
       group: openscholar-static-${{ github.event.pull_request.number || github.ref }}-${{ matrix.name }}
@@ -26,10 +26,8 @@ jobs:
         include:
           - name: Unit and contract tests
             command: npm run test -- --maxWorkers=4
-            cache_next: false
           - name: Production build
             command: npm run build
-            cache_next: true
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
       CLERK_SECRET_KEY: sk_test_placeholder
@@ -46,15 +44,6 @@ jobs:
           node-version: 22
           package-manager-cache: false
 
-      - name: Restore the public Next.js build cache
-        if: matrix.cache_next
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
-        with:
-          path: .next/cache
-          key: openscholar-public-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
-          restore-keys: |
-            openscholar-public-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
-
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --no-fund
 
@@ -62,8 +51,8 @@ jobs:
         run: ${{ matrix.command }}
 
   e2e-auth:
-    if: inputs.mode == 'ci'
-    runs-on: ubuntu-latest
+    if: inputs.mode == 'ci' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: openscholar-secret
     timeout-minutes: 30
     needs: static-checks
     env:
@@ -86,7 +75,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false
 
       - name: Check auth test environment
         id: auth-environment
@@ -123,22 +112,13 @@ jobs:
           printf '::error::Missing required auth secret/env: %s\n' "${missing_vars[*]}"
           exit 1
 
-      - name: Restore the secret Next.js build cache
-        if: steps.auth-environment.outputs.available == 'true'
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
-        with:
-          path: .next/cache
-          key: openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
-          restore-keys: |
-            openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
-
       - name: Install dependencies
         if: steps.auth-environment.outputs.available == 'true'
         run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Install the lockfile-selected Chromium
         if: steps.auth-environment.outputs.available == 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run auth E2E
         if: steps.auth-environment.outputs.available == 'true'
@@ -161,8 +141,8 @@ jobs:
           if-no-files-found: ignore
 
   billing-live:
-    if: inputs.mode == 'ci'
-    runs-on: ubuntu-latest
+    if: inputs.mode == 'ci' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: openscholar-secret
     timeout-minutes: 45
     needs: static-checks
     concurrency:
@@ -196,7 +176,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false
 
       - name: Check billing test environment
         id: billing-environment
@@ -233,15 +213,6 @@ jobs:
             exit 1
           fi
 
-      - name: Restore the secret Next.js build cache
-        if: steps.billing-environment.outputs.available == 'true'
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
-        with:
-          path: .next/cache
-          key: openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
-          restore-keys: |
-            openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
-
       - name: Install dependencies
         if: steps.billing-environment.outputs.available == 'true'
         run: npm ci --prefer-offline --no-audit --no-fund
@@ -260,7 +231,7 @@ jobs:
 
       - name: Install the lockfile-selected Chromium
         if: steps.billing-environment.outputs.available == 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run billing E2E tests
         if: steps.billing-environment.outputs.available == 'true'
@@ -275,8 +246,8 @@ jobs:
           if-no-files-found: ignore
 
   billing-live-extended:
-    if: inputs.mode == 'ci' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    runs-on: ubuntu-latest
+    if: inputs.mode == 'ci' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: openscholar-secret
     timeout-minutes: 60
     needs: billing-live
     continue-on-error: true
@@ -311,15 +282,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-          cache: npm
-
-      - name: Restore the secret Next.js build cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
-        with:
-          path: .next/cache
-          key: openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
-          restore-keys: |
-            openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --no-fund
@@ -343,7 +306,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Install the lockfile-selected Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run billing E2E tests
         run: npm run test:billing:e2e
@@ -357,9 +320,9 @@ jobs:
           if-no-files-found: ignore
 
   ci:
-    if: always() && inputs.mode == 'ci'
+    if: always() && inputs.mode == 'ci' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     name: CI
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openscholar-light' }}
+    runs-on: openscholar-light
     timeout-minutes: 5
     needs:
       - static-checks
@@ -405,7 +368,7 @@ jobs:
 
   billing-live-extended-nightly:
     if: inputs.mode == 'nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 60
     concurrency:
       group: billing-live-shared-test-user
@@ -438,7 +401,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false
 
       - name: Validate required billing-nightly secrets
         run: |
@@ -463,14 +426,6 @@ jobs:
             exit 1
           fi
 
-      - name: Restore the secret Next.js build cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
-        with:
-          path: .next/cache
-          key: openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
-          restore-keys: |
-            openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
-
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --no-fund
 
@@ -486,7 +441,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Install the lockfile-selected Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run billing E2E tests
         run: npm run test:billing:e2e
