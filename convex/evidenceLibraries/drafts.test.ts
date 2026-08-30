@@ -55,11 +55,48 @@ describe("Evidence Library draft storage", () => {
     expect(currentDraft.draft.ownerConfigurationVersion).toBe(3);
     expect(currentRevision.revision.ownerConfigurationVersion).toBe(3);
 
-    await fixture.t.run((ctx) =>
-      ctx.db.patch(fixture.created.draftId, {
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.draftId, {
         ownerConfigurationVersion: 2,
-      }),
-    );
+      });
+      const rows = await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_draftId_and_sectionKey", (query) =>
+          query.eq("draftId", fixture.created.draftId),
+        )
+        .collect();
+      for (const sectionKey of ["features", "ai"] as const) {
+        const existing = rows.find((row) => row.sectionKey === sectionKey);
+        const payload =
+          sectionKey === "features"
+            ? { ...((existing?.payload as object | undefined) ?? {}), ai: true }
+            : {
+                providers: [
+                  {
+                    provider: "openrouter",
+                    enabled: true,
+                    defaultModel: "anthropic/claude-sonnet-5",
+                  },
+                ],
+              };
+        const payloadByteLength = Buffer.byteLength(JSON.stringify(payload));
+        if (existing) {
+          await ctx.db.patch(existing._id, { payload, payloadByteLength });
+        } else {
+          await ctx.db.insert("evidenceLibraryConfigSections", {
+            kind: "draft",
+            libraryId: fixture.created.libraryId,
+            draftId: fixture.created.draftId,
+            sectionKey,
+            payload,
+            payloadByteLength,
+            contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
+            updatedByClerkUserId: "user_rollout_migration",
+            updatedAt: 4,
+          });
+        }
+      }
+    });
     const rolloutDraft = await fixture.admin.query(
       api.evidenceLibraries.queries.getDraft,
       { libraryId: fixture.created.libraryId },
@@ -69,6 +106,15 @@ describe("Evidence Library draft storage", () => {
     );
     expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(3);
     expect(storedRolloutDraft?.ownerConfigurationVersion).toBe(2);
+    expect(
+      rolloutDraft.sections.find((row) => row.sectionKey === "features")
+        ?.payload,
+    ).toMatchObject({ ai: false });
+    expect(
+      rolloutDraft.sections.find((row) => row.sectionKey === "ai")?.payload,
+    ).toEqual({
+      providers: [{ provider: "openrouter", enabled: false, models: [] }],
+    });
 
     await fixture.admin.mutation(
       api.evidenceLibraries.mutations.saveDraftSections,

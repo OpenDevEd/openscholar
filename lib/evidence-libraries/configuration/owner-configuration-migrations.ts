@@ -413,6 +413,7 @@ function migrateVersionTwoToThree(
 ): OwnerConfigurationMigrationSnapshot {
   const next = cloneJson(snapshot);
   const activeModels = new Set(AI_MODELS);
+  let disableAiAnswers = false;
   next.ownerConfigurationVersion = 3;
   for (const row of next.sections) {
     if (row.sectionKey !== "ai" || !isRecord(row.payload)) continue;
@@ -446,6 +447,10 @@ function migrateVersionTwoToThree(
           selectedModels.add(model);
           models.push(model);
         }
+        if (models.length === 0) {
+          disableAiAnswers = true;
+          return { provider: provider.provider, enabled: false, models: [] };
+        }
         const defaultModel =
           savedDefault && models.includes(savedDefault)
             ? savedDefault
@@ -458,6 +463,14 @@ function migrateVersionTwoToThree(
         };
       }),
     };
+  }
+  if (disableAiAnswers) {
+    const features = next.sections.find(
+      (row) => row.sectionKey === "features" && isRecord(row.payload),
+    );
+    if (features && isRecord(features.payload)) {
+      features.payload = { ...features.payload, ai: false };
+    }
   }
   return completeOwnerConfigurationSnapshot(next);
 }

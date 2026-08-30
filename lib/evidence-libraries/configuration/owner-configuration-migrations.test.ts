@@ -340,32 +340,37 @@ describe("owner configuration migrations", () => {
     });
   });
 
-  it("blocks a version 2 AI row when no selected model remains active", () => {
-    const error = expectMigrationError(() =>
-      migrateOwnerConfiguration({
-        ownerConfigurationVersion: 2,
-        sections: [
-          {
-            sectionKey: "ai",
-            payload: {
-              providers: [
-                {
-                  provider: "openrouter",
-                  enabled: true,
-                  defaultModel: "anthropic/claude-sonnet-5",
-                },
-              ],
-            },
+  it("switches AI off when no selected model remains active", () => {
+    const result = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 2,
+      sections: [
+        { sectionKey: "features", payload: { ai: true } },
+        {
+          sectionKey: "ai",
+          payload: {
+            providers: [
+              {
+                provider: "openrouter",
+                enabled: true,
+                defaultModel: "anthropic/claude-sonnet-5",
+              },
+            ],
           },
-        ],
-      }),
-    );
+        },
+      ],
+    });
 
-    expect(error.issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ pointer: "/ai/providers/0/models" }),
-      ]),
-    );
+    expect(result.snapshot.sections).toEqual([
+      { sectionKey: "features", payload: { ai: false } },
+      {
+        sectionKey: "ai",
+        payload: {
+          providers: [
+            { provider: "openrouter", enabled: false, models: [] },
+          ],
+        },
+      },
+    ]);
   });
 
   it("clears obsolete AI fields when a version 2 provider is disabled", () => {
