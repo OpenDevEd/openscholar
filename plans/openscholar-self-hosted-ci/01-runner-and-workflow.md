@@ -191,7 +191,7 @@ page's live query showed Go as current, so the upgrade dialog did not exist.
 Reuse the existing current-plan badge wait from `upgrade.spec.ts` before the
 click in `credits.spec.ts`. Keep every credit and dialog assertion unchanged.
 
-Final-head nightly run
+Candidate nightly run
 [33297529259](https://github.com/OpenDevEd/openalex-count/actions/runs/33297529259)
 ran all four extended live cases on `openscholar-ci-secret-2`. Three passed.
 The upgrade-cycle case expected the nominal 15,000-credit Pro grant, but the
@@ -200,6 +200,29 @@ credit service correctly applied the 30,000 free-credit cap and granted the
 the test calculate the exact remaining cap from its before-renewal snapshot and
 the checked Pro plan constant. Also assert that the resulting free balance is
 exactly the Pro cap. Do not add a tolerance or change production billing code.
+
+### Blocked-head proof
+
+Commit `1980a196c7a362f659c76760cbf62d96facf08cc` is the last code head before
+the blocker documentation correction.
+
+| Run                                                                                                                  | Runner                                                                        | Result before the required report upload                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [PR 33298331824](https://github.com/OpenDevEd/openalex-count/actions/runs/33298331824)                               | `openscholar-ci-light-1`, `openscholar-ci-light-2`, `openscholar-ci-secret-1` | Unit and contract tests passed in 3m04s. The production build passed in 2m00s. Required billing passed 5 live and 42 browser tests with no skips or retries in a 15m37s job. |
+| [Nightly 33298474774](https://github.com/OpenDevEd/openalex-count/actions/runs/33298474774)                          | `openscholar-ci-secret-1`                                                     | Extended billing passed 4 live and 42 browser tests with no skips or retries in a 16m09s job.                                                                                |
+| [Required billing 33296591056](https://github.com/OpenDevEd/openalex-count/actions/runs/33296591056/job/99217565990) | `openscholar-ci-secret-2`                                                     | The second physical secret runner passed the same 5 live and 42 browser tests.                                                                                               |
+
+Both final report uploads failed only because GitHub had not recalculated
+artifact storage after all 144 expired records were deleted. GitHub reported
+zero stored artifacts in the checked repositories. The auth job remained
+queued on the unassigned `openscholar-activation` label. It did not skip or
+receive a paid runner.
+
+Run [33299183864](https://github.com/OpenDevEd/new-el/actions/runs/33299183864)
+proved simultaneous capacity. Its full `new-el` workflow ran from 07:25:50 to
+07:34:00 UTC while OpenScholar nightly billing was running from 07:22:52 to
+07:39:01 UTC. Both guests stayed healthy and no runner service recorded an OOM
+kill.
 
 ### Live runner capacity
 
@@ -349,6 +372,9 @@ Create four locked-down accounts and services:
 Each account has its own home and runner work directory, mode `0750`, and no
 sudo or Docker group. Put all four services in `openscholar-ci.slice` so four
 overlapping runs cannot exceed the guest's 8-CPU and 14-GiB runner allowance.
+
+The live runner groups are `OpenScholar CI` ID 8 and
+`OpenScholar Secret CI` ID 9.
 
 ### 3. Make the runner workflow immutable
 
@@ -590,7 +616,7 @@ part of rollback.
 - All 42 billing browser cases pass with a fresh organization member per case.
 - Every old artifact and failure rule still works.
 - Forks cannot reach either self-hosted group.
-- `new-el` run 33281691193 still passes during the warm proof.
+- `new-el` run 33299183864 passes during the simultaneous capacity proof.
 - Before and after timings come from GitHub run IDs, not estimates.
 - The final report gives the PR URL, head SHA, timing table, runner layout,
   proof links, hosted remainder, and any integration-owner step.

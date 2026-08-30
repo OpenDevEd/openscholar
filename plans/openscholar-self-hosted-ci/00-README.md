@@ -75,10 +75,13 @@ Secret CI`. No OpenScholar job may use a paid GitHub runner.
     smaller fixed-draft Save and reopen check. Activation now provisions a real
     runtime, and CI has no safe disposable provider environment. Record that
     exact conflict in `01-BLOCKER.md` and stop before claiming the pull request
-    is complete. Route the blocked job to `openscholar-activation`, which has no
-    runner today. A future runner must have its own OpenScholar-only account,
-    work directory, providers, and network boundary. Never give an existing
-    runner shared Coolify, database, storage, or production credentials.
+    is complete. The restored test also uses configuration controls removed by
+    the current UI. Update those locators only when the complete flow can run
+    against the disposable environment; do not guess from source text. Route
+    the blocked job to `openscholar-activation`, which has no runner today. A
+    future runner must have its own OpenScholar-only account, work directory,
+    providers, and network boundary. Never give an existing runner shared
+    Coolify, database, storage, or production credentials.
     Set the required non-secret `EVIDENCE_LIBRARY_PLATFORM_DOMAIN` in the cloud
     dev deployment to the shared development value `opendev.space`; do not add
     an `EL_*` provisioning value.

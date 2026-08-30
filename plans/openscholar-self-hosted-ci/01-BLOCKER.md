@@ -34,6 +34,21 @@ shared deployment to make CI pass. They also forbid weakening the auth check.
 GitHub-hosted runners would not solve this and are forbidden for this pull
 request anyway.
 
+## The restored test also needs the current UI contract
+
+The source test preserves the old behavior, but some of its controls no longer
+exist in the current configuration page. It looks for Logo URL and Favicon URL
+text fields, save and activation status attributes, and an Activate button.
+The current page uses file uploads, a Changes saved toast, and a Set up and
+activate flow that routes to the setup page.
+
+Do not repair those locators from source text alone. The test-decision gate
+requires the complete browser boundary. Update the test against the current
+accessible controls only after the disposable providers below exist, then run
+Reserve, Save, Preview, setup, readiness, and revisit as one real flow. This UI
+contract mismatch and the missing provider sandbox must both be resolved before
+the auth result can pass.
+
 ## Exact environment that would unblock it
 
 Provide one disposable provisioning sandbox owned only by OpenScholar CI:
@@ -47,6 +62,9 @@ Provide one disposable provisioning sandbox owned only by OpenScholar CI:
    test, including its runtime, database, storage, and Convex rows.
 5. Secrets available only to the `OpenScholar Secret CI` runner group and an
    explicit network allowlist for those provider endpoints.
+
+6. The current configuration UI available to Playwright so the stale locators
+   can be replaced and verified against the complete activation flow.
 
 The sandbox must support two exact-head runs and simultaneous `new-el` CI
 without sharing accounts, work directories, Docker sockets, writable tool
