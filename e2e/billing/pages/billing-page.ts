@@ -24,9 +24,15 @@ export class BillingPage {
     this.planName = page.locator('[data-testid="billing-plan-name"]');
     this.statusBadge = page.locator('[data-testid="billing-status-badge"]');
     this.renewalDate = page.locator('[data-testid="billing-renewal-date"]');
-    this.pendingChangeBanner = page.locator('[data-testid="billing-pending-change-banner"]');
-    this.keepPlanButton = page.locator('[data-testid="billing-keep-plan-button"]');
-    this.creditCapBanner = page.locator('[data-testid="billing-credit-cap-banner"]');
+    this.pendingChangeBanner = page.locator(
+      '[data-testid="billing-pending-change-banner"]',
+    );
+    this.keepPlanButton = page.locator(
+      '[data-testid="billing-keep-plan-button"]',
+    );
+    this.creditCapBanner = page.locator(
+      '[data-testid="billing-credit-cap-banner"]',
+    );
     this.manageButton = page.locator('[data-testid="billing-manage-button"]');
     this.creditBalance = page.locator('[data-testid="billing-credit-balance"]');
     this.freeCredits = page.locator('[data-testid="billing-free-credits"]');
@@ -39,7 +45,18 @@ export class BillingPage {
    */
   async goto(): Promise<void> {
     await this.page.goto("/settings/billing");
-    await this.planName.waitFor({ state: "visible", timeout: 30_000 });
+    try {
+      await this.planName.waitFor({ state: "visible", timeout: 30_000 });
+    } catch (error) {
+      const visibleText = await this.page
+        .locator("body")
+        .innerText()
+        .catch(() => "");
+      throw new Error(
+        `Billing page did not become ready at ${this.page.url()}. Visible text: ${visibleText.slice(0, 2_000)}`,
+        { cause: error },
+      );
+    }
   }
 
   /**
