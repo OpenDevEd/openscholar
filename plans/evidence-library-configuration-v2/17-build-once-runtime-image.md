@@ -718,6 +718,12 @@ library revision is active, and the public and admin pages answer.
 - Persist the release pair and deployment receipt before polling. A retry
   resumes or adopts only the exact commit, image, library config and Coolify
   hash.
+- A later software update may recover from a replacement that reached Coolify
+  but failed before OpenScholar saved the new binding. Accept the running
+  commit and image only when that exact pair is the target of this library's
+  own earlier software-update operation. Continue to the requested release
+  through the normal deploy and readiness path. Arbitrary Coolify drift still
+  blocks the update.
 - A failed configuration-only replacement leaves the old containers running
   and retries the same saved target.
 - A failed software update restores the `from` commit and image through the
@@ -727,6 +733,15 @@ library revision is active, and the public and admin pages answer.
 - Add an integration-owner-only internal action to select the last successful
   release pair from the library's own receipts and run the same rollback path.
   Do not expose arbitrary image or commit input to owners.
+
+Live correction, 2026-08-30: `new lib` reached the `9dd3e7b3` image while its
+binding still recorded the pre-image `937bb65e` release because the old runtime
+verifier returned 502. After `062bb121` became current, the next update safely
+needed to cross that proven intermediate release. The earlier plan covered
+rollback but omitted this crash-recovery case, and the pre-image release had no
+digest to restore. The implementation must therefore prove the intermediate
+pair from the same library's operation history and test both that recovery and
+the rejection of an unrelated pair.
 
 ### 7. Registry auth, cache and cleanup
 
