@@ -61,14 +61,26 @@ queued remote cleanup finished.
 - Rejected `delete_configurations=false`. It can preserve the Compose file long
   enough for `down -v`, but then permanently leaves the application directory.
 
-## What unblocks it
+## Chosen resolution, 2026-08-30
 
-Fix Coolify's application deletion so it removes Compose volumes before the
-Compose directory and reports remote cleanup completion before the application
-becomes unverifiable. Then OpenScholar must wait for that completion result,
-not an immediate application 404, and the live gate must prove the exact app,
-volume and directory are gone.
+Build the narrow cleanup API in `new-el` beside its existing fixed database
+provisioner and runtime verifier, then call it from OpenScholar teardown after
+Coolify application deletion.
 
-This needs a change to the Coolify control plane or a new narrow cleanup API.
-It is outside the two repositories in Plan 17. Do not hide it with an
-OpenScholar SSH command or a privileged Docker proxy.
+The endpoint accepts only a Coolify application UUID. It derives
+`<application-uuid>_meilisearch-data`, refuses an in-use volume, deletes it
+without force, verifies that Docker reports it absent and treats an already
+absent volume as success. It exposes no arbitrary name, shell, Docker API,
+container, image, network or prune input.
+
+Do not use the stock Docker socket proxy for this write path. Its write switch
+also allows delete methods across every enabled API section, and its container
+section is broader than the one filtered list request required here. The fixed
+service owns the socket and contains only the three hard-coded Docker calls
+needed to check references, inspect the derived volume and delete it.
+
+OpenScholar must keep teardown pending while the service reports that the
+volume is in use or temporarily unavailable. Completion requires the Coolify
+application to be absent and the fixed service to confirm that the derived
+volume is absent. Plan 17 remains blocked until the shared live deletion gate
+passes through the normal product path.

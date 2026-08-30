@@ -57,6 +57,35 @@ Do not convert the stack to six separate Coolify resources. Do not put a
 process supervisor into one container. Do not create a second deployment
 service.
 
+### Cleanup decision, 2026-08-30
+
+Add one fixed-purpose volume deletion service beside the existing Evidence
+Library database provisioner and runtime verifier. OpenScholar calls it only
+after Coolify application deletion and does not finish library teardown until
+the service confirms that the exact application volume is absent.
+
+The authenticated request contains only a Coolify application UUID. The
+service validates that UUID, derives
+`<application-uuid>_meilisearch-data`, refuses deletion while any container
+references the volume, removes it without Docker's force option, then inspects
+it again and succeeds only when Docker reports it absent. An already absent
+volume is an idempotent success. The caller cannot supply a volume name,
+Docker path, command, container, image, network or prune operation.
+
+The service owns the only Docker socket connection. Its code makes three
+fixed Docker Engine requests: list all containers with the derived volume
+filter, inspect the derived volume and delete the derived volume. Do not put a
+general Docker API proxy or shell behind the endpoint. The stock Docker socket
+proxy is not narrow enough: enabling writes permits every write method in each
+enabled API section, while enabling its container section grants much more
+than the one list call needed here.
+
+Keep the service separate from the runtime verifier. The verifier remains
+read-only, and the deletion service receives no Coolify, Convex, database,
+storage, registry or application credentials. Deploy it on the development
+Coolify host as an internal fixed service with one public authenticated HTTPS
+endpoint so hosted Convex actions can reach it.
+
 ## Options, best to worst
 
 | Rank | Option | Exact Coolify shape | Result |
@@ -1039,7 +1068,10 @@ can run two configurations and shows the measured break-even point.
 5. Update to the second release pair, roll back to the first pair, then return
    to the approved latest pair. After each step prove the exact image through
    the verifier and the exact revision through health. Delete the library
-   through the app and confirm the Coolify application and volume are gone.
+   through the app. Confirm the Coolify application is absent, the fixed
+   deletion service reports the derived volume absent, a direct host check
+   finds no such volume, and a second deletion-service request succeeds as an
+   idempotent absence.
 
 Record the measured setup and config-only deployment times beside the former
 per-library build time. Do not claim a speed improvement without those exact
@@ -1102,6 +1134,9 @@ deletion also removes and proves removal of its exact Compose volume.
   both release identities without duplicate deployment starts.
 - Exact tests, `new-el` CI, lane Convex upload, shared Convex upload, remote
   logs, shared live gate and cleanup all pass.
+- Normal library teardown cannot complete while the exact application volume
+  exists or is still referenced by a container. It retries the fixed deletion
+  request and records a real failure if confirmed removal never arrives.
 - Update the smallest existing Outline current-state and integration-contract
   pages after both repositories are pushed and the shared gate passes. Read
   both pages back before reporting the change.
