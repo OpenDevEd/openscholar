@@ -5,6 +5,8 @@ const REPOSITORY = "opendeved/evidence-library-runtime";
 const IMAGE = "ghcr.io/opendeved/evidence-library-runtime";
 const PULL_SCOPE = `repository:${REPOSITORY}:pull`;
 const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_REQUEST_ATTEMPTS = 3;
+const MAX_RETRY_DELAY_MS = 5_000;
 const MAX_JSON_BYTES = 64 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const DIGEST = /^sha256:[a-f0-9]{64}$/u;
@@ -77,19 +79,71 @@ async function request(
   fetchImpl: typeof fetch,
   input: URL | string,
   init: RequestInit,
+  retry: {
+    sleepImpl: (delayMs: number) => Promise<void>;
+    randomImpl: () => number;
+  },
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetchImpl(input, { ...init, signal: controller.signal });
-  } catch {
-    throw new RuntimeImageRegistryError(
-      "REGISTRY_UNAVAILABLE",
-      "The runtime image registry could not be reached",
+  for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetchImpl(input, {
+        ...init,
+        signal: controller.signal,
+      });
+    } catch {
+      if (attempt === MAX_REQUEST_ATTEMPTS - 1) {
+        throw new RuntimeImageRegistryError(
+          "REGISTRY_UNAVAILABLE",
+          "The runtime image registry could not be reached",
+        );
+      }
+      await retry.sleepImpl(retryDelayMs(null, attempt, retry.randomImpl));
+      continue;
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (
+      response.status !== 429 &&
+      (response.status < 500 || response.status > 599)
+    ) {
+      return response;
+    }
+    if (attempt === MAX_REQUEST_ATTEMPTS - 1) return response;
+    await response.body?.cancel();
+    await retry.sleepImpl(
+      retryDelayMs(
+        response.headers.get("retry-after"),
+        attempt,
+        retry.randomImpl,
+      ),
     );
-  } finally {
-    clearTimeout(timeout);
   }
+  throw new RuntimeImageRegistryError(
+    "REGISTRY_UNAVAILABLE",
+    "The runtime image registry could not be reached",
+  );
+}
+
+function retryDelayMs(
+  retryAfter: string | null,
+  attempt: number,
+  randomImpl: () => number,
+): number {
+  if (retryAfter !== null) {
+    const seconds = Number(retryAfter);
+    const delay = Number.isFinite(seconds)
+      ? seconds * 1_000
+      : Date.parse(retryAfter) - Date.now();
+    if (Number.isFinite(delay) && delay >= 0) {
+      return Math.min(delay, MAX_RETRY_DELAY_MS);
+    }
+  }
+  const exponential = 250 * 2 ** attempt;
+  const jitter = Math.floor(Math.max(0, Math.min(1, randomImpl())) * 100);
+  return Math.min(exponential + jitter, MAX_RETRY_DELAY_MS);
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -121,16 +175,25 @@ function digestFrom(response: Response): RuntimeImageReference {
   return `${IMAGE}@${digest}` as RuntimeImageReference;
 }
 
-async function readTokenOwner(fetchImpl: typeof fetch, githubToken: string) {
-  const response = await request(fetchImpl, GITHUB_USER_URL, {
-    method: "GET",
-    headers: {
-      accept: "application/vnd.github+json",
-      authorization: `Bearer ${githubToken}`,
-      "user-agent": "OpenScholar",
-      "x-github-api-version": "2022-11-28",
+async function readTokenOwner(
+  fetchImpl: typeof fetch,
+  githubToken: string,
+  retry: Parameters<typeof request>[3],
+) {
+  const response = await request(
+    fetchImpl,
+    GITHUB_USER_URL,
+    {
+      method: "GET",
+      headers: {
+        accept: "application/vnd.github+json",
+        authorization: `Bearer ${githubToken}`,
+        "user-agent": "OpenScholar",
+        "x-github-api-version": "2022-11-28",
+      },
     },
-  });
+    retry,
+  );
   if (response.status === 401 || response.status === 403) {
     throw new RuntimeImageRegistryError(
       "REGISTRY_AUTHENTICATION_FAILED",
@@ -156,18 +219,24 @@ async function exchangeBearerToken(
   githubToken: string,
   login: string,
   challenge: BearerChallenge,
+  retry: Parameters<typeof request>[3],
 ) {
   const tokenUrl = new URL(challenge.realm);
   tokenUrl.searchParams.set("service", challenge.service);
   tokenUrl.searchParams.set("scope", challenge.scope);
-  const response = await request(fetchImpl, tokenUrl, {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-      authorization: `Basic ${btoa(`${login}:${githubToken}`)}`,
-      "user-agent": "OpenScholar",
+  const response = await request(
+    fetchImpl,
+    tokenUrl,
+    {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        authorization: `Basic ${btoa(`${login}:${githubToken}`)}`,
+        "user-agent": "OpenScholar",
+      },
     },
-  });
+    retry,
+  );
   if (response.status === 401 || response.status === 403) {
     throw new RuntimeImageRegistryError(
       "REGISTRY_AUTHENTICATION_FAILED",
@@ -196,6 +265,8 @@ export async function resolveRuntimeImage(input: {
   commit: string;
   githubToken: string;
   fetchImpl?: typeof fetch;
+  sleepImpl?: (delayMs: number) => Promise<void>;
+  randomImpl?: () => number;
 }): Promise<RuntimeImageReference | null> {
   if (!COMMIT.test(input.commit)) {
     throw new RuntimeImageRegistryError(
@@ -211,6 +282,13 @@ export async function resolveRuntimeImage(input: {
     );
   }
   const fetchImpl = input.fetchImpl ?? fetch;
+  const retry = {
+    sleepImpl:
+      input.sleepImpl ??
+      ((delayMs: number) =>
+        new Promise<void>((resolve) => setTimeout(resolve, delayMs))),
+    randomImpl: input.randomImpl ?? Math.random,
+  };
   const manifestUrl = new URL(
     `/v2/${REPOSITORY}/manifests/${input.commit}`,
     REGISTRY_ORIGIN,
@@ -219,10 +297,15 @@ export async function resolveRuntimeImage(input: {
     accept: MANIFEST_ACCEPT,
     "user-agent": "OpenScholar",
   };
-  const anonymous = await request(fetchImpl, manifestUrl, {
-    method: "HEAD",
-    headers: manifestHeaders,
-  });
+  const anonymous = await request(
+    fetchImpl,
+    manifestUrl,
+    {
+      method: "HEAD",
+      headers: manifestHeaders,
+    },
+    retry,
+  );
   if (anonymous.status === 200) return digestFrom(anonymous);
   if (anonymous.status === 404) return null;
   if (anonymous.status !== 401) {
@@ -235,17 +318,23 @@ export async function resolveRuntimeImage(input: {
   const challenge = parseRegistryChallenge(
     anonymous.headers.get("www-authenticate"),
   );
-  const login = await readTokenOwner(fetchImpl, githubToken);
+  const login = await readTokenOwner(fetchImpl, githubToken, retry);
   const bearer = await exchangeBearerToken(
     fetchImpl,
     githubToken,
     login,
     challenge,
+    retry,
   );
-  const authenticated = await request(fetchImpl, manifestUrl, {
-    method: "HEAD",
-    headers: { ...manifestHeaders, authorization: `Bearer ${bearer}` },
-  });
+  const authenticated = await request(
+    fetchImpl,
+    manifestUrl,
+    {
+      method: "HEAD",
+      headers: { ...manifestHeaders, authorization: `Bearer ${bearer}` },
+    },
+    retry,
+  );
   if (authenticated.status === 404) return null;
   if (authenticated.status === 401 || authenticated.status === 403) {
     throw new RuntimeImageRegistryError(

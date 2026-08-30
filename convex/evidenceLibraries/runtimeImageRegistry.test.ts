@@ -120,6 +120,52 @@ describe("runtime image registry", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it("retries safe registry reads and honors Retry-After", async () => {
+    const fetchImpl: typeof fetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response(null, 429, { "retry-after": "2" }))
+      .mockResolvedValueOnce(
+        response(null, 200, { "docker-content-digest": DIGEST }),
+      );
+    const sleepImpl = vi.fn(async () => undefined);
+
+    await expect(
+      resolveRuntimeImage({
+        commit: COMMIT,
+        githubToken: "github-token",
+        fetchImpl,
+        sleepImpl,
+        randomImpl: () => 0,
+      }),
+    ).resolves.toBe(`ghcr.io/opendeved/evidence-library-runtime@${DIGEST}`);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(sleepImpl).toHaveBeenCalledWith(2_000);
+  });
+
+  it("does not retry authentication or malformed registry answers", async () => {
+    const authFetch: typeof fetch = vi.fn(async () => response(null, 403));
+    const malformedFetch: typeof fetch = vi.fn(async () =>
+      response(null, 200, { "docker-content-digest": "invalid" }),
+    );
+
+    await expect(
+      resolveRuntimeImage({
+        commit: COMMIT,
+        githubToken: "github-token",
+        fetchImpl: authFetch,
+      }),
+    ).rejects.toMatchObject({ code: "REGISTRY_UNAVAILABLE" });
+    await expect(
+      resolveRuntimeImage({
+        commit: COMMIT,
+        githubToken: "github-token",
+        fetchImpl: malformedFetch,
+      }),
+    ).rejects.toMatchObject({ code: "REGISTRY_INVALID_RESPONSE" });
+    expect(authFetch).toHaveBeenCalledTimes(1);
+    expect(malformedFetch).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects an unexpected authentication challenge", async () => {
     const fetchImpl: typeof fetch = vi.fn(async () =>
       response(null, 401, {
