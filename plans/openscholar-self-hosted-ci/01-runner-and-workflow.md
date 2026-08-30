@@ -144,12 +144,21 @@ temporary user and left only the two fixed E2E organization members.
 The keyboard case failed on all three attempts because the transactions client
 creates `searchRef` and the keyboard hook focuses it, but the toolbar never
 receives or attaches that ref to its search input. Pass that existing ref
-through `TransactionsPanelToolbar`; do not change the assertion. The Go-to-Pro
-case reached the new Pro subscription but timed out waiting for the expected
-credit increase. The Pro-to-Go case passed on retry after its scheduled badge
-was absent on the first page load. Trace both cases through the existing Stripe
-event and Convex state helpers, fix the shared settlement or readiness boundary,
-and keep the browser assertions unchanged.
+through `TransactionsPanelToolbar`; do not change the assertion.
+
+The Go-to-Pro case stopped before the upgrade. Its fixture waited for 5,000
+credits after creating Go, but the checked constants grant 500 signup credits
+and 3,000 Go credits. Stripe shows that all three Go subscriptions and invoices
+succeeded. Replace the impossible fixture precondition with
+`FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth`; keep every Pro
+upgrade assertion unchanged.
+
+The Pro-to-Go case passed on retry. `PricingPage.clickSubscribe()` returns as
+soon as the browser dispatches the click, while the component still awaits the
+Stripe change and refreshed subscription details. The test then leaves the page
+and can cancel that refresh. Wait for the existing scheduled badge before
+navigating away in both downgrade cases. Keep the later persisted badge and
+pending-banner assertions unchanged. Do not add a fixed sleep.
 
 The auth suite passed all six browser cases in the same run. Its required report
 upload still failed because GitHub had not recalculated artifact storage after
