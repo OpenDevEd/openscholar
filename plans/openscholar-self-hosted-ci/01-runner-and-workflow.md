@@ -59,6 +59,16 @@ Stripe invoice ID while keeping every per-invoice idempotency check. The exact
 required suite then passed locally: five tests in 91.52 seconds against
 `formal-rabbit-271` and Stripe test mode.
 
+Final candidate run
+[33287588678](https://github.com/OpenDevEd/openalex-count/actions/runs/33287588678)
+showed that binding Next.js 16.2.4 to the numeric address breaks this
+repository's `proxy.ts` request path. Next repeatedly tried to proxy the health
+request back to `http://localhost:3000/` and Playwright reached its five-minute
+web-server timeout before collecting auth tests. The same production build
+returned HTTP 200 when started with `--hostname localhost`; the process listened
+only on the loopback interface. Keep the separate ports, but use the hostname
+Next expects.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
@@ -217,9 +227,10 @@ In `ci-jobs.yml`:
    light runners.
 2. Make auth and required billing need the whole matrix. Keep them parallel on
    the two secret runners.
-3. Bind the auth web server to `127.0.0.1:3000`. Bind required, extended, and
-   nightly billing web servers to `127.0.0.1:3001`. This prevents a port clash
-   and keeps both test servers off the guest's libvirt interface.
+3. Bind the auth web server to `localhost:3000`. Bind required, extended, and
+   nightly billing web servers to `localhost:3001`. This prevents a port clash,
+   keeps both test servers off the guest's libvirt interface, and lets Next.js
+   16 route Proxy requests through its expected localhost name.
 4. Keep billing concurrency named `billing-live-shared-test-user` with
    `cancel-in-progress: false`.
 5. Keep the existing extended and nightly order, timeouts, artifact paths,

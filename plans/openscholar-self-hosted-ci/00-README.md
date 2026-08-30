@@ -32,9 +32,10 @@ build three times, and run Playwright's Linux package installer twice.
    cache, browser cache, or writable tool directory.
 4. Run two secret-free jobs in parallel: unit and contract tests, and the
    production build. Run auth and required billing in parallel after both pass.
-   Bind auth to loopback port 3000 and every billing browser job to loopback
-   port 3001 so the two secret runners cannot collide in the shared guest
-   network namespace.
+   Bind auth to `localhost:3000` and every billing browser job to
+   `localhost:3001` so the two secret runners cannot collide in the shared
+   guest network namespace. `localhost` keeps Next.js 16's internal Proxy path
+   working while still listening only on loopback.
    Keep live billing, extended billing, and nightly billing in their existing
    shared concurrency group with cancellation off.
 5. Keep fork pull-request workflows disabled at the repository setting. The
@@ -134,4 +135,6 @@ compatibility field remains in the pull request.
 - [GitHub fork events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
 - [Playwright CI guide](https://playwright.dev/docs/ci)
 - Installed Next.js CI build-cache guide named above
+- Installed Next.js CLI guide at
+  `node_modules/next/dist/docs/01-app/03-api-reference/06-cli/next.md`
 - `plans/evidence-library-configuration-v2/17-build-once-runtime-image.md`
