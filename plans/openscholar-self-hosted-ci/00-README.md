@@ -52,8 +52,9 @@ build three times, and run Playwright's Linux package installer twice.
    `node_modules`. Preinstall Playwright's Linux packages in the guest, then let
    each job install the lockfile-selected Chromium with
    `playwright install chromium`.
-9. Keep public and secret `.next/cache` keys separate. Do not share a writable
-   cache across the two runner accounts.
+9. Do not upload `.next/cache`. The first two self-hosted builds saved only
+   about 292 KiB, and the restore-prefix run was seven seconds slower. Keep the
+   runner-local npm caches separate through the existing accounts.
 10. Add one blocking `CI` result for exact-head checks. Keep every current job,
     artifact name, timeout, validation, and the existing non-blocking status of
     main-branch extended billing.

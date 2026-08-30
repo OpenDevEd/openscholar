@@ -185,12 +185,14 @@ Every job uses the current full action SHAs already proven in `new-el/main`:
 - `actions/cache@caa296126883cff596d87d8935842f9db880ef25`
 - `actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`
 
-Use `npm ci --prefer-offline --no-audit --no-fund`. Cache only `.next/cache` on
-self-hosted jobs. Their separate runner accounts keep independent npm caches;
-do not upload the roughly 400 MiB npm cache for each pull-request head. Hosted
-secret jobs may use setup-node's npm cache because their disks are ephemeral.
-Use the lock hash and head SHA in the Next cache key, plus a lock-hash restore
-prefix.
+Use `npm ci --prefer-offline --no-audit --no-fund`. The separate self-hosted
+accounts keep independent npm caches; do not upload the roughly 400 MiB npm
+cache for each pull-request head. Hosted secret jobs may use setup-node's npm
+cache because their disks are ephemeral.
+
+The first public Next cache was 291,962 bytes. The next build restored it by
+prefix, saved 291,999 bytes, and took 152 seconds instead of 145 seconds. Remove
+the public and secret Next cache steps. They added work without a measured win.
 
 For same-repository pull requests, a missing auth or billing secret is an
 error. Only a fork event may keep the current no-secret skip path.
@@ -203,13 +205,12 @@ The installed Next.js guide confirms that CI should persist `.next/cache`.
 Production Turbopack filesystem caching is still marked experimental in this
 installed version.
 
-First measure two self-hosted runs without a `next.config.ts` change. Then make
-an isolated commit enabling only
-`experimental.turbopackFileSystemCacheForBuild`, and run the same head twice.
-Keep it only if both warm build samples improve by at least 10% and 10 seconds,
-with the same build output and no new warning or failure. Otherwise revert that
-commit before review. Do not add worker-count settings without a separate
-measured result.
+The cache A/B result above did not meet the gate, so do not change
+`next.config.ts` or enable experimental Turbopack filesystem caching. Vitest's
+installed CLI and official guide state that it uses every available CPU by
+default. The guest exposes eight CPUs while each runner is capped at four. The
+first static run passed 4,389 tests but one five-second test timed out. Set the
+CI command to `npm run test -- --maxWorkers=4`, then require two passing runs.
 
 ## Files that change
 
