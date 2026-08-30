@@ -65,7 +65,10 @@ export function CreditBalanceCard({
             className="h-2 bg-background"
           />
           {freeCapPercentage >= 100 && (
-            <p className="text-xs text-amber-600">
+            <p
+              data-testid="billing-credit-cap-banner"
+              className="text-xs text-amber-600"
+            >
               {t("freeCapReached")}
             </p>
           )}

@@ -3,6 +3,10 @@ import {
   createSubscriptionBypass,
   cleanupStripeCustomer,
 } from "../stripe-helpers";
+import {
+  FREE_SIGNUP_CREDIT_GRANT,
+  PLAN_CONFIG,
+} from "../../../convex/lib/constants";
 
 test.describe("Upgrade: Go to Pro", () => {
   test("upgrade from Go to Pro via confirmation dialog", async ({
@@ -22,7 +26,10 @@ test.describe("Upgrade: Go to Pro", () => {
       priceId: goPriceId,
     });
     await webhookWaiter.waitForSubscriptionPlan("go");
-    await webhookWaiter.waitForCreditBalance((total) => total >= 5_000);
+    await webhookWaiter.waitForCreditBalance(
+      (total) =>
+        total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth,
+    );
 
     // Step 2: Navigate to pricing page and verify Go is current
     await pricingPage.goto();
