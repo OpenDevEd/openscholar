@@ -65,11 +65,9 @@ export const test = base.extend<BillingFixtures>({
     // Sign in to the browser session
     await signInClerkTestUser(page, user);
 
-    // Navigate to a protected page to trigger ensureUser in Convex
-    // This creates the Convex user row via the Clerk webhook
-    await page.goto("/settings/billing");
-    // Wait for the page to finish loading (subscription state settles)
-    await page.waitForLoadState("networkidle");
+    // Load the billing state before the test starts. This also triggers the
+    // protected-route user setup in Convex.
+    await new BillingPage(page).goto();
 
     await use({ id: user.id, email: user.email });
 

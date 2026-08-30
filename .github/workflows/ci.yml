@@ -175,9 +175,9 @@ jobs:
         run: npm run test:e2e:auth
 
       - name: Upload Playwright report
-        if: always() && steps.auth-environment.outputs.available == 'true'
+        if: failure() && steps.auth-environment.outputs.available == 'true'
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: playwright-report
@@ -186,7 +186,7 @@ jobs:
       - name: Upload app logs
         if: failure() && steps.auth-environment.outputs.available == 'true'
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-output
           path: test-results
@@ -280,9 +280,9 @@ jobs:
         run: npm run test:billing:live:ci
 
       - name: Upload billing-live artifacts
-        if: always() && steps.billing-environment.outputs.available == 'true'
+        if: failure() && steps.billing-environment.outputs.available == 'true'
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: billing-live-artifacts
           path: test-results/billing-live
@@ -297,9 +297,9 @@ jobs:
         run: npm run test:billing:e2e
 
       - name: Upload billing E2E report
-        if: always() && steps.billing-environment.outputs.available == 'true'
+        if: failure() && steps.billing-environment.outputs.available == 'true'
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: billing-e2e-report-${{ github.job }}
           path: playwright-report
@@ -360,7 +360,7 @@ jobs:
       - name: Upload billing-live-extended artifacts
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: billing-live-extended-artifacts
           path: test-results/billing-live
