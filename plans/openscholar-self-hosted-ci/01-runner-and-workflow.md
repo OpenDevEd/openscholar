@@ -39,7 +39,9 @@ field removed by commit `105ba308`. The first widened-schema upload then found
 the rest of the stale rollout: 14 of 15 `credits` rows still use the old
 `freeBalance`, `paidBalance`, `lifetimeUsed`, and `lastUpdatedAt` columns, and
 14 rows have no `createdAt`. The table has 15 rows and the transaction table
-has 4,569 rows, of which 2,110 retain `balanceAfter`.
+has 4,569 rows, of which 2,110 retain `balanceAfter`. The next schema check
+found 170 of 431 `extractionPaperQueue` rows without the now-required `userId`.
+All 170 belong to one existing extraction job, whose `userId` is present.
 
 The organization artifact inventory found no OpenScholar artifacts. Eight
 expired `OpenDevEd/oneatatime` release artifacts still total 1,127,845,193
@@ -128,7 +130,9 @@ between those values and its ledger sums before removing the old columns:
    Rebuild both sharded counters from that corrected ledger, set `createdAt` to
    the row's `_creationTime` when missing, then remove the four old fields.
    Separately remove every transaction `balanceAfter`. Reuse the repository's
-   existing cursor and scheduler pattern.
+   existing cursor and scheduler pattern. Also fill each missing
+   `extractionPaperQueue.userId` from its required owning extraction job; stop
+   instead of guessing if any owning job is missing.
 4. Deploy the widened schema using the checked `dev-cloud/.env.local`. Run the
    read-only audit, then the real migration. Verify all 15 anchor rows, all
    ledger sums, both sharded counters, and the count of remaining removed
