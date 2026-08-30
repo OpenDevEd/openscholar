@@ -84,3 +84,20 @@ volume is in use or temporarily unavailable. Completion requires the Coolify
 application to be absent and the fixed service to confirm that the derived
 volume is absent. Plan 17 remains blocked until the shared live deletion gate
 passes through the normal product path.
+
+## Resolved on 2026-08-30
+
+OpenScholar merge `3da935276215c39115732554c25e9a044914ac8b` and Evidence
+Library deletion-service merge `c909a3849d04f471110d3f2ebbdb1f75f2a3198d`
+passed the normal product gate with throwaway `el-gate-20260830c`.
+
+The service returned HTTP 409 `volume_in_use` while Coolify application
+`tsghdlxpvvzmxf3lrpp7wcnf` existed. The library then activated and its health
+endpoint returned 200. Product teardown operation
+`r971vwg1x7c0awm2srfgvfdv298df1fh` completed without manual cleanup. The
+library disappeared from OpenScholar, the Coolify application returned 404,
+the public address returned 503, direct host inspection reported no derived
+volume, and two later service calls both returned HTTP 200 `absent`.
+
+The blocker is closed. The full evidence is recorded in
+[`17-build-once-runtime-image.md`](17-build-once-runtime-image.md#cleanup-result-2026-08-30).

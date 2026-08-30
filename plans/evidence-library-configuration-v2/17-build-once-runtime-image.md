@@ -1112,6 +1112,28 @@ removed only those two verified throwaway volumes. See
 [`17-BLOCKER.md`](17-BLOCKER.md). Do not mark Plan 17 complete until normal app
 deletion also removes and proves removal of its exact Compose volume.
 
+### Cleanup result, 2026-08-30
+
+The normal product path now passes the cleanup gate at OpenScholar merge
+`3da935276215c39115732554c25e9a044914ac8b` and Evidence Library deletion
+service merge `c909a3849d04f471110d3f2ebbdb1f75f2a3198d`.
+
+Throwaway `el-gate-20260830c` activated as library
+`r17e85vgx9b2yntdeqhs8c77g58dedtc` on Coolify application
+`tsghdlxpvvzmxf3lrpp7wcnf`. Its configuration health endpoint returned 200
+with active revision `r2`. Before teardown, the fixed deletion service refused
+the exact application volume with HTTP 409 `volume_in_use`.
+
+The product teardown completed through operation
+`r971vwg1x7c0awm2srfgvfdv298df1fh`. After completion, the library was absent
+from the owner's list, the Coolify application returned 404, the public address
+returned the unassigned 503 response, and a direct host inspection returned
+`no such volume` for
+`tsghdlxpvvzmxf3lrpp7wcnf_meilisearch-data`. Two consecutive authenticated
+deletion-service requests both returned HTTP 200 `absent`, proving retry
+idempotency. No manual cleanup was used. The Plan 17 shared-platform cleanup
+gate now passes and Plan 17 is complete.
+
 ## Completion rules
 
 - One unified private runtime image is the fixed release shape.
