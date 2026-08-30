@@ -29,8 +29,9 @@ Run every `new-el` GitHub Actions job inside one KVM guest on the current
 aggregate `CI` result, but Blacksmith does not execute any job. The guest has 24
 virtual CPUs, 48 GiB of memory and a bounded virtual disk. Use fixed runners
 instead of an autoscaler: four 2-core light runners, one 16-core runtime runner
-and one 16-core release runner. The two heavy runners share one 16-core systemd
-slice, so the guest and host never admit more than 24 CI cores at once.
+and one 16-core release runner. Both heavy Docker users are pinned to the same
+guest CPUs 8 through 23, so together they can use only those 16 cores. The
+guest and host never admit more than 24 CI cores at once.
 
 ## Recommendation
 
@@ -411,15 +412,20 @@ Provision these fixed runner services:
 | 1 | `evidence-library-release` | 16 | exact-commit runtime image publication |
 
 Each service accepts one job at a time. Apply CPU limits with systemd and give
-each service its own work directory. Put the runtime and release services in
-one 16-core heavy-work slice so they cannot consume 32 cores together. The
-runtime and release users each own a separate rootless Docker daemon and
-persistent `docker-container` BuildKit builder. Create those two builders with
-no nested CPU setting. Pin both heavy runner services and both rootless Docker
-user slices to guest CPUs 8 through 23 with systemd. Rootless Docker does not
-delegate the cpuset controller to its BuildKit container, so a second
-`cpuset-cpus` driver option fails even though the outer 16-core boundary is
-active. Do not share a Docker socket or cache between test and release jobs.
+each service its own work directory. Put the two runner listener services in
+one 16-core heavy-work slice. The runtime and release users each own a separate
+rootless Docker daemon and persistent `docker-container` BuildKit builder.
+Create those two builders with no nested CPU setting. Pin both heavy runner
+services and both rootless Docker user slices to the same guest CPUs 8 through
+23 with systemd. That shared CPU set limits their combined work to those 16
+cores even though the Docker daemons remain in separate user slices.
+
+Do not move a rootless Docker user manager out of `user.slice`. The first
+release build proved that Docker's supported systemd cgroup driver then cannot
+create its container scopes. Rootless Docker also does not delegate the cpuset
+controller to its BuildKit container, so a second `cpuset-cpus` driver option
+fails even though the outer 16-core boundary is active. Do not share a Docker
+socket or cache between test and release jobs.
 Preinstall Node 22, Chromium's Linux packages, Docker, Compose and Buildx. The
 workflow still runs locked `npm ci` and installs the package-lock-selected
 Chromium version.
