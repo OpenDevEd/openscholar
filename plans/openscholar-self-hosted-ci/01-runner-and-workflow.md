@@ -95,6 +95,17 @@ subscription master, Go, Pro, and Enterprise flags as disabled. The existing
 source defaults the first three to enabled. Repair those three rows with the
 existing internal upsert and leave Enterprise disabled.
 
+Exact-head run
+[33289949830](https://github.com/OpenDevEd/openalex-count/actions/runs/33289949830)
+proved that all five required live billing tests run on
+`openscholar-ci-secret-2`. It also exposed a browser-fixture bug already present
+on `dev`: each billing case creates a Clerk user without an organization, but
+this Clerk instance requires organization membership. The session stays
+pending on the `choose-organization` task, `/settings/billing` redirects to the
+task page, and the browser case times out. Keep the disposable user isolation.
+Add each user to the existing E2E organization as `org:member`, make that
+organization active in the browser, then run the unchanged billing assertions.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
@@ -292,6 +303,12 @@ In `ci-jobs.yml`:
 7. Add `CI`, with `if: always()`, which fails unless the static, auth, and
    required billing lanes passed. Do not make it wait for or validate the
    non-blocking extended lane.
+8. Pass `E2E_CLERK_ORGANIZATION_ID` to required, extended, and nightly billing.
+   Extend the existing disposable Clerk-user helper to create an `org:member`
+   membership in that organization. After sign-in, activate that organization
+   with Clerk's existing browser API and reload before opening billing. Keep a
+   fresh user and cleanup for every case; do not share the auth test user and do
+   not change any billing assertion.
 
 Every job uses the current full action SHAs already proven in `new-el/main`:
 
@@ -338,6 +355,8 @@ CI command to `npm run test -- --maxWorkers=4`, then require two passing runs.
 - `README.md`
 - `vitest.live.config.ts`
 - `e2e/auth.spec.ts`
+- `e2e/clerk-test-user.ts`
+- `e2e/billing/fixtures.ts`
 - `tests/live-billing/support.ts`
 - `tests/live-billing/required.test.ts`
 - `tests/live-billing/extended.test.ts`
@@ -357,6 +376,11 @@ live-test loader, and invoice-grant assertions change only as recorded above.
 - Search the exact tree for `ubuntu-latest`, mutable action tags, old branch
   triggers, obsolete runner names, and stale CI instructions. No
   `ubuntu-latest` value is allowed.
+- Collect all 42 billing browser cases with
+  `npx playwright test --project=billing --list`.
+- Run the complete billing browser project with the real Clerk organization,
+  Convex dev deployment, and Stripe test services. All 42 cases must pass
+  without a pending Clerk organization task.
 
 ### Runner checks
 
@@ -450,6 +474,7 @@ part of rollback.
 - The PR targets `dev` and is not merged.
 - A real GitHub-hosted full baseline exists.
 - The final exact head is green twice with every live check executed.
+- All 42 billing browser cases pass with a fresh organization member per case.
 - Every old artifact and failure rule still works.
 - Forks cannot reach either self-hosted group.
 - `new-el` run 33281691193 still passes during the warm proof.
