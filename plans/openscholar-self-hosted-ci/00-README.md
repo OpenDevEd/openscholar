@@ -8,9 +8,8 @@ Decided with the user on 2026-08-30. Evidence checked on 2026-08-30.
 
 ## The problem
 
-The current workflow runs on GitHub-hosted `ubuntu-latest`. It runs pull
-requests and pushes to `main`, but not pushes to the active integration branch
-`dev`.
+Before this work, the workflow ran on paid GitHub runners. It ran pull requests
+and pushes to `main`, but not pushes to the active integration branch `dev`.
 
 Recent successful pull-request runs take 590 to 876 seconds. Those totals are
 misleading. GitHub has no repository, organization, or environment secrets for
@@ -58,19 +57,14 @@ build three times, and run Playwright's Linux package installer twice.
     main-branch extended billing.
 11. Add `dev` to the push trigger without removing `main`. Run extended billing
     on direct pushes to either branch.
-12. Do not change a test or assertion. The proof is the real GitHub workflow,
-    its artifacts, the live services, and the runner boundary.
-13. Revised on 2026-08-30 after the first real hosted baseline: route only unit,
-    contract, build, and aggregate work to `OpenScholar CI`. Keep Clerk auth and
-    every billing job on `ubuntu-latest`. The hosted baseline exposed failures
-    in Clerk/Convex state and organization artifact storage before any
-    self-hosted job ran. Moving those failing checks would mix migration proof
-    with unrelated live-service repair.
-14. Revised again on 2026-08-30 after the user authorized the two repairs:
+12. Reuse the repository alias in the live Vitest config so billing tests
+    collect. Count only Stripe invoice grants in recurrence checks; the signup
+    grant is a separate behavior. Keep every per-invoice assertion.
+13. After the user authorized the two repairs:
     delete the eight expired `OpenDevEd/oneatatime` artifacts, remove the stale
-    `balanceAfter` field from the development Convex data, then route every
-    same-repository secret job to `OpenScholar Secret CI`. No OpenScholar job
-    may use `ubuntu-latest`.
+    Convex fields from development data, preserve existing balances in the
+    current ledger and counters, then route every same-repository secret job to
+    `OpenScholar Secret CI`. No OpenScholar job may use a paid GitHub runner.
 
 ## Plan
 
@@ -109,9 +103,9 @@ the authorized artifact and Convex repairs pass their checks.
 
 Follow [`AGENTS.md`](../../AGENTS.md),
 [`docs/agents/project.md`](../../docs/agents/project.md), and
-[`docs/test-quality.md`](../../docs/test-quality.md). No test file change belongs
-in this migration. Run the existing unit, contract, auth, billing, extended
-billing, and browser checks unchanged.
+[`docs/test-quality.md`](../../docs/test-quality.md). The test-decision gate
+approved only the live-config alias and invoice-grant scope described above.
+Run the unit, contract, auth, billing, extended billing, and browser checks.
 
 Workflow checks must observe commands, exit status, artifacts, remote service
 state, runner assignment, queue time, CPU, memory, cache bytes, and disk growth.
@@ -119,8 +113,12 @@ Do not add a source-text or CSS assertion.
 
 ## Data migration
 
-No application or stored configuration data changes. GitHub secret creation and
-runner registration are infrastructure changes, not product-data migrations.
+The development Convex deployment needed a temporary widen, migrate, and
+narrow repair before billing could execute. The migration removed 2,110 stale
+transaction snapshots, converted 14 legacy credit rows to the current anchor
+shape, preserved all 15 balances in the ledger and sharded counters, and filled
+170 queue owners from their required extraction job. No migration code or
+compatibility field remains in the pull request.
 
 ## Sources
 
