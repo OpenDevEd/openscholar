@@ -17,6 +17,9 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openscholar-light' }}
     timeout-minutes: 20
+    concurrency:
+      group: openscholar-static-${{ github.event.pull_request.number || github.ref }}-${{ matrix.name }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
