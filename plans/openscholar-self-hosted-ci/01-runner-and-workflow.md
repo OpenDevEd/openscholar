@@ -49,6 +49,16 @@ bytes. The user authorized deleting exactly those eight expired artifacts on
 2026-08-30. GitHub reports zero remaining artifacts in that repository after
 the deletion.
 
+The first all-self-hosted run reached the real billing command, but
+`vitest.live.config.ts` could not resolve the repository's existing `@/`
+imports and collected zero tests. Reusing the alias from the main and
+performance Vitest configs made all five required tests execute. The
+recurrence check then counted the separate signup grant as an invoice grant.
+The test-decision gate approved narrowing that assertion to grants with a
+Stripe invoice ID while keeping every per-invoice idempotency check. The exact
+required suite then passed locally: five tests in 91.52 seconds against
+`formal-rabbit-271` and Stripe test mode.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
@@ -254,10 +264,15 @@ CI command to `npm run test -- --maxWorkers=4`, then require two passing runs.
 - `.github/workflows/ci-jobs.yml` new, immutable reusable workflow
 - `.github/workflows/ci.yml`
 - `.github/workflows/billing-nightly.yml`
+- `vitest.live.config.ts`
+- `tests/live-billing/support.ts`
+- `tests/live-billing/required.test.ts`
+- `tests/live-billing/extended.test.ts`
 - `next.config.ts` only if the A/B gate above passes
 
-No test file, test assertion, package, lockfile, application route, Convex
-function, or deployment configuration changes.
+No package, lockfile, application route, Convex function, or deployment
+configuration changes remain in the pull request. The live-test loader and
+invoice-grant assertions change only as recorded above.
 
 ## Checks
 
@@ -368,7 +383,8 @@ part of rollback.
 ## Known risks
 
 - Auth and billing use one Clerk test user. Keep their current behavior and
-  watch for a real race. Do not change tests during this migration.
+  watch for a real race. The only test changes are the loader and focused
+  invoice-grant assertion described in the evidence section.
 - Live billing pushes the tested commit to the checked Convex Cloud dev
   deployment and mutates Stripe test data. The shared billing concurrency key
   must remain uncancelled.
