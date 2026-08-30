@@ -65,33 +65,32 @@ export const test = base.extend<BillingFixtures>({
       organizationId,
     });
 
-    // Sign in to the browser session
-    await page.goto("/");
-    await clerk.loaded({ page });
-    await clerk.signIn({
-      page,
-      emailAddress: user.email,
-    });
-    await page.evaluate(async (activeOrganizationId) => {
-      await window.Clerk.setActive({ organization: activeOrganizationId });
-    }, organizationId);
-    await page.reload();
-
-    // Navigate to a protected page to trigger ensureUser in Convex
-    // This creates the Convex user row via the Clerk webhook
-    await page.goto("/settings/billing");
-    // Wait for the page to finish loading (subscription state settles)
-    await page.waitForLoadState("networkidle");
-
-    await use({ id: user.id, email: user.email });
-
-    // Teardown: sign out and delete the Clerk user
     try {
-      await clerk.signOut({ page });
-    } catch {
-      // Best-effort -- page may have navigated away
+      // Sign in to the browser session.
+      await page.goto("/");
+      await clerk.loaded({ page });
+      await clerk.signIn({
+        page,
+        emailAddress: user.email,
+      });
+      await page.evaluate(async (activeOrganizationId) => {
+        await window.Clerk.setActive({ organization: activeOrganizationId });
+      }, organizationId);
+      await page.reload();
+
+      // A visible plan proves Clerk, Convex, and billing data are ready.
+      // Network idle never settles reliably while Convex is subscribed.
+      await new BillingPage(page).goto();
+
+      await use({ id: user.id, email: user.email });
+    } finally {
+      try {
+        await clerk.signOut({ page });
+      } catch {
+        // The page can close or navigate while a failed test is unwinding.
+      }
+      await deleteClerkUser(user.id);
     }
-    await deleteClerkUser(user.id);
   },
 
   // --- stripeClient fixture ---
