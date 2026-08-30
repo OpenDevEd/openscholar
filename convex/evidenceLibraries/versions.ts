@@ -66,7 +66,12 @@ type CandidateIntent = {
   rollbackOfRevisionId?: Id<"evidenceLibraryConfigRevisions">;
   updateIdentityTo?: string;
   activationEditVersion?: number;
-  runtimeUpdate?: { from: string; to: string };
+  runtimeUpdate?: {
+    from: string;
+    to: string;
+    fromImage?: string;
+    toImage: string;
+  };
   addressMove?: {
     from: string;
     to: string;
@@ -384,7 +389,11 @@ export async function startEvidenceLibraryRuntimeUpdate(
     .query("evidenceLibraryRuntimeReleases")
     .withIndex("by_running", (query) => query.eq("running", from))
     .first();
-  if (!release || !isFreshRuntimeRelease(release.checkedAt, Date.now())) {
+  if (
+    !release ||
+    typeof release.latestImage !== "string" ||
+    !isFreshRuntimeRelease(release.checkedAt, Date.now())
+  ) {
     throw createError("CONFLICT", "Check for updates before updating");
   }
   if (release.latest === from) {
@@ -411,7 +420,14 @@ export async function startEvidenceLibraryRuntimeUpdate(
       source.header.ownerConfigurationVersion !==
       CURRENT_OWNER_CONFIGURATION_VERSION,
     idempotencyKey: `runtime-update:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:${from}:${release.latest}`,
-    runtimeUpdate: { from, to: release.latest },
+    runtimeUpdate: {
+      from,
+      to: release.latest,
+      ...(running.binding.runtimeImage === undefined
+        ? {}
+        : { fromImage: running.binding.runtimeImage }),
+      toImage: release.latestImage,
+    },
   });
   const started = await claimAndScheduleConfigurationDeployment(ctx, {
     libraryId: args.libraryId,

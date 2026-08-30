@@ -5,11 +5,13 @@ import type { Id } from "../_generated/dataModel";
 import {
   createReadySetupFixture,
   essentialSetupSections,
+  TEST_RUNTIME_IMAGE,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const RUNTIME_COMMIT = "a".repeat(40);
 const NEWER_COMMIT = "b".repeat(40);
+const NEWER_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"f".repeat(64)}`;
 
 type Fixture = Awaited<ReturnType<typeof createReadySetupFixture>>;
 
@@ -338,6 +340,7 @@ describe("Evidence Library versions", () => {
       await ctx.db.insert("evidenceLibraryRuntimeReleases", {
         running: RUNTIME_COMMIT,
         latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
         changes: [{ sha: NEWER_COMMIT, message: "feat: newer runtime" }],
         checkedAt: Date.now(),
       });
@@ -428,6 +431,7 @@ describe("Evidence Library versions", () => {
           targetConfigSha256: "1".repeat(64),
           runtimeReceiptId: "deployment-restore",
           runtimeCommit: RUNTIME_COMMIT,
+          runtimeImage: TEST_RUNTIME_IMAGE,
           coolifyConfigHash: "2".repeat(32),
         },
         configurationDeploymentTarget: {
@@ -439,6 +443,7 @@ describe("Evidence Library versions", () => {
           revisionKey: candidate.revisionKey,
           defaultLocale: "en-GB",
           runtimeCommit: RUNTIME_COMMIT,
+          runtimeImage: TEST_RUNTIME_IMAGE,
           encryptedRuntimeConfig: "encrypted-runtime-config",
           runtimeConfigSha256: "1".repeat(64),
           savedAt: Date.now(),
@@ -788,7 +793,9 @@ describe("Evidence Library address move", () => {
     const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
     stubAddressChecks(fixture.created.publicAddress);
     await fixture.t.run(async (ctx) => {
-      await ctx.db.patch(fixture.created.runtimeBindingId, { canonicalBaseUrl });
+      await ctx.db.patch(fixture.created.runtimeBindingId, {
+        canonicalBaseUrl,
+      });
       for (const [kind, id] of [
         ["draft", fixture.created.draftId],
         ["revision", fixture.activated.revisionId],

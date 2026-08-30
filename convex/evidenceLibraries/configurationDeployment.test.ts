@@ -13,6 +13,7 @@ import { createCoolifyLibraryTag } from "./coolifyClient";
 import {
   createDeployedSetupFixture,
   essentialSetupSections,
+  TEST_RUNTIME_IMAGE,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
@@ -21,6 +22,7 @@ const APPLICATION_UUID = "app000000000000000000001";
 const COOLIFY_ORIGIN = "http://coolify:8080";
 const RUNTIME_COMMIT = "a".repeat(40);
 const NEWER_COMMIT = "b".repeat(40);
+const NEWER_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"f".repeat(64)}`;
 const INITIAL_CONFIG_HASH = "1".repeat(32);
 const UPDATED_CONFIG_HASH = "2".repeat(32);
 const FINISHED_CONFIG_HASH = "3".repeat(64);
@@ -76,6 +78,8 @@ function createRuntimeNetwork(input: {
       JSON.stringify({ revision: "old" }),
     ),
     runtimeEnvironment("MEILISEARCH_MASTER_KEY", "search-master-key"),
+    runtimeEnvironment("SOURCE_COMMIT", RUNTIME_COMMIT),
+    runtimeEnvironment("RUNTIME_IMAGE", TEST_RUNTIME_IMAGE),
   ];
   const deploymentUuid = "deployment-configuration-65";
 
@@ -212,6 +216,8 @@ function createRuntimeNetwork(input: {
           ready: true,
           applicationUuid: APPLICATION_UUID,
           commit,
+          runtimeImage: environments.find(({ key }) => key === "RUNTIME_IMAGE")
+            ?.value,
           services: ["web", "worker", "search", "storage", "db", "proxy"],
         });
       }
@@ -669,11 +675,13 @@ describe("Evidence Library configuration deployment", () => {
         applicationId: APPLICATION_UUID,
         revisionKey: deployment.activated.revisionKey,
         runtimeCommit: RUNTIME_COMMIT,
+        runtimeImage: TEST_RUNTIME_IMAGE,
       },
       receipt: {
         revisionKey: deployment.activated.revisionKey,
         runtimeReceiptId: "deployment-configuration-65",
         runtimeCommit: RUNTIME_COMMIT,
+        runtimeImage: TEST_RUNTIME_IMAGE,
         coolifyConfigHash: UPDATED_CONFIG_HASH,
       },
     });
@@ -996,6 +1004,7 @@ describe("Evidence Library configuration deployment", () => {
       await ctx.db.insert("evidenceLibraryRuntimeReleases", {
         running: RUNTIME_COMMIT,
         latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
         changes: [{ sha: NEWER_COMMIT, message: "feat: faster search" }],
         checkedAt: Date.now(),
       });
@@ -1016,7 +1025,12 @@ describe("Evidence Library configuration deployment", () => {
     );
     expect(operation).toMatchObject({
       kind: "publish",
-      runtimeUpdate: { from: RUNTIME_COMMIT, to: NEWER_COMMIT },
+      runtimeUpdate: {
+        from: RUNTIME_COMMIT,
+        to: NEWER_COMMIT,
+        fromImage: TEST_RUNTIME_IMAGE,
+        toImage: NEWER_RUNTIME_IMAGE,
+      },
       revisionId: activeRevision!._id,
     });
     expect(operation).not.toHaveProperty("activationEditVersion");
@@ -1101,6 +1115,7 @@ describe("Evidence Library configuration deployment", () => {
       await ctx.db.insert("evidenceLibraryRuntimeReleases", {
         running: RUNTIME_COMMIT,
         latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
         changes: [{ sha: NEWER_COMMIT, message: "feat: newer runtime" }],
         checkedAt: Date.now(),
       });
@@ -1424,6 +1439,7 @@ describe("Evidence Library configuration deployment", () => {
       ctx.db.insert("evidenceLibraryRuntimeReleases", {
         running: RUNTIME_COMMIT,
         latest: RUNTIME_COMMIT,
+        latestImage: TEST_RUNTIME_IMAGE,
         changes: [],
         checkedAt: Date.now(),
       }),
@@ -1492,7 +1508,9 @@ describe("Evidence Library configuration deployment", () => {
       if (!operation?.revisionId) {
         throw new Error("The failed deployment revision is missing");
       }
-      await ctx.db.patch(operation.revisionId, { ownerConfigurationVersion: 1 });
+      await ctx.db.patch(operation.revisionId, {
+        ownerConfigurationVersion: 1,
+      });
     });
 
     const projected = await deployment.fixture.admin.query(
@@ -1563,7 +1581,8 @@ describe("Evidence Library configuration deployment", () => {
         throw new Error("The failed deployment revision is missing");
       }
       const revision = await ctx.db.get(operation.revisionId);
-      if (!revision) throw new Error("The failed deployment revision is missing");
+      if (!revision)
+        throw new Error("The failed deployment revision is missing");
       const newerRevisionId = await ctx.db.insert(
         "evidenceLibraryConfigRevisions",
         {
@@ -1648,7 +1667,9 @@ describe("Evidence Library configuration deployment", () => {
     expect(before.operation).toMatchObject({ retryable: true });
 
     await deployment.fixture.t.run(async (ctx) => {
-      const binding = await ctx.db.get(deployment.fixture.created.runtimeBindingId);
+      const binding = await ctx.db.get(
+        deployment.fixture.created.runtimeBindingId,
+      );
       if (!binding || binding.state !== "ready") {
         throw new Error("The runtime binding is missing");
       }
@@ -1670,7 +1691,9 @@ describe("Evidence Library configuration deployment", () => {
   });
 
   it("refuses a claimed retry before doing any Coolify work when its target goes stale", async () => {
-    const deployment = await activateChangedConfiguration("claimed-retry-stale");
+    const deployment = await activateChangedConfiguration(
+      "claimed-retry-stale",
+    );
     const { libraryId } = deployment.fixture.created;
     await failConfigurationDeployment(deployment);
     const network = createRuntimeNetwork({
@@ -1692,7 +1715,9 @@ describe("Evidence Library configuration deployment", () => {
       throw new Error("The retry did not claim the deployment");
     }
     await deployment.fixture.t.run(async (ctx) => {
-      const binding = await ctx.db.get(deployment.fixture.created.runtimeBindingId);
+      const binding = await ctx.db.get(
+        deployment.fixture.created.runtimeBindingId,
+      );
       if (!binding || binding.state !== "ready") {
         throw new Error("The runtime binding is missing");
       }
@@ -1752,6 +1777,7 @@ describe("Evidence Library configuration deployment", () => {
             revisionKey: prepared.revision.key,
             defaultLocale: prepared.defaultLocale,
             runtimeCommit: RUNTIME_COMMIT,
+            runtimeImage: TEST_RUNTIME_IMAGE,
             encryptedRuntimeConfig: encrypt("{}", ENCRYPTION_KEY),
             runtimeConfigSha256: createHash("sha256")
               .update("{}")
@@ -1823,7 +1849,10 @@ describe("Evidence Library configuration deployment", () => {
         });
       });
     };
-    vi.stubGlobal("fetch", (async (input: RequestInfo | URL, init?: RequestInit) => {
+    vi.stubGlobal("fetch", (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
       const answer = await network.fetchImpl(input, init);
       if (url.pathname === "/api/library-config/health") await replaceKey();

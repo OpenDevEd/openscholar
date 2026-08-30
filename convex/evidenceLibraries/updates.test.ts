@@ -13,7 +13,10 @@ import {
 
 const RUNNING = "a".repeat(40);
 const LATEST = "b".repeat(40);
+const DIGEST = `sha256:${"c".repeat(64)}`;
+const IMAGE = `ghcr.io/opendeved/evidence-library-runtime@${DIGEST}`;
 const GITHUB = "https://api.github.com";
+const GHCR = "https://ghcr.io";
 const REPO = "/repos/OpenDevEd/new-el";
 
 type RecordedRequest = { url: URL; headers: Headers };
@@ -35,6 +38,7 @@ const ourHealthAnswer = () =>
 
 function createGithub(input: {
   latest: string;
+  imageStatus?: number;
   compareStatus?: number;
   commitsStatus?: number;
   addressAnswer?: Response;
@@ -53,9 +57,35 @@ function createGithub(input: {
         return input.addressAnswer ?? ourHealthAnswer();
       }
       requests.push({ url, headers: new Headers(init?.headers) });
+      if (url.origin === GHCR) {
+        if (url.pathname === "/token") {
+          return jsonResponse({ token: "registry-bearer" });
+        }
+        if (
+          url.pathname ===
+          `/v2/opendeved/evidence-library-runtime/manifests/${input.latest}`
+        ) {
+          if (input.imageStatus === 404)
+            return new Response(null, { status: 404 });
+          if (new Headers(init?.headers).get("authorization")) {
+            return new Response(null, {
+              status: 200,
+              headers: { "docker-content-digest": DIGEST },
+            });
+          }
+          return new Response(null, {
+            status: 401,
+            headers: {
+              "www-authenticate":
+                'Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:opendeved/evidence-library-runtime:pull"',
+            },
+          });
+        }
+      }
       if (url.origin !== GITHUB) {
         return jsonResponse({ message: "Unexpected test request" }, 500);
       }
+      if (url.pathname === "/user") return jsonResponse({ login: "builder" });
       if (url.pathname === `${REPO}/commits/main`) {
         if (input.commitsStatus && input.commitsStatus !== 200) {
           return jsonResponse({ message: "Not Found" }, input.commitsStatus);
@@ -103,8 +133,8 @@ describe("Evidence Library software release lookup", () => {
         token: "github-token",
         fetchImpl: github.fetchImpl,
       }),
-    ).resolves.toEqual({ latest: RUNNING, changes: [] });
-    expect(github.requests).toHaveLength(1);
+    ).resolves.toEqual({ latest: RUNNING, image: IMAGE, changes: [] });
+    expect(github.requests).toHaveLength(5);
     expect(github.requests[0]?.headers.get("authorization")).toBe(
       "Bearer github-token",
     );
@@ -120,6 +150,7 @@ describe("Evidence Library software release lookup", () => {
       }),
     ).resolves.toEqual({
       latest: LATEST,
+      image: IMAGE,
       changes: [
         {
           sha: "c".repeat(40),
@@ -130,6 +161,10 @@ describe("Evidence Library software release lookup", () => {
     });
     expect(github.requests.map(({ url }) => url.pathname)).toEqual([
       `${REPO}/commits/main`,
+      `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
+      "/user",
+      "/token",
+      `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
       `${REPO}/compare/${RUNNING}...${LATEST}`,
     ]);
   });
@@ -142,7 +177,7 @@ describe("Evidence Library software release lookup", () => {
         token: "github-token",
         fetchImpl: github.fetchImpl,
       }),
-    ).resolves.toEqual({ latest: LATEST, changes: [] });
+    ).resolves.toEqual({ latest: LATEST, image: IMAGE, changes: [] });
   });
 
   it("fails clearly when GitHub cannot be read", async () => {
@@ -154,6 +189,21 @@ describe("Evidence Library software release lookup", () => {
         fetchImpl: github.fetchImpl,
       }),
     ).rejects.toMatchObject({ code: "GITHUB_UNAVAILABLE" });
+  });
+
+  it("does not offer a commit until its runtime image exists", async () => {
+    const github = createGithub({ latest: LATEST, imageStatus: 404 });
+    await expect(
+      fetchRuntimeRelease({
+        running: RUNNING,
+        token: "github-token",
+        fetchImpl: github.fetchImpl,
+      }),
+    ).rejects.toMatchObject({ code: "RUNTIME_IMAGE_PENDING" });
+    expect(github.requests.map(({ url }) => url.pathname)).toEqual([
+      `${REPO}/commits/main`,
+      `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
+    ]);
   });
 
   it("treats a release row as fresh for ten minutes", () => {
@@ -198,6 +248,7 @@ describe("Evidence Library update check", () => {
     expect(first).toEqual({
       running: RUNNING,
       latest: LATEST,
+      latestImage: IMAGE,
       changes: [
         {
           sha: "c".repeat(40),
@@ -207,13 +258,13 @@ describe("Evidence Library update check", () => {
       ],
       checkedAt: Date.now(),
     });
-    expect(github.requests).toHaveLength(2);
+    expect(github.requests).toHaveLength(6);
 
     vi.setSystemTime(Date.now() + RUNTIME_RELEASE_CACHE_MS - 1_000);
     await expect(
       fixture.admin.action(api.evidenceLibraries.updates.check, args),
     ).resolves.toEqual(first);
-    expect(github.requests).toHaveLength(2);
+    expect(github.requests).toHaveLength(6);
 
     vi.setSystemTime(Date.now() + 2_000);
     const refreshed = await fixture.admin.action(
@@ -221,7 +272,7 @@ describe("Evidence Library update check", () => {
       args,
     );
     expect(refreshed.checkedAt).toBe(Date.now());
-    expect(github.requests).toHaveLength(4);
+    expect(github.requests).toHaveLength(12);
     const rows = await fixture.t.run((ctx) =>
       ctx.db.query("evidenceLibraryRuntimeReleases").collect(),
     );
@@ -284,7 +335,7 @@ describe("Evidence Library update check", () => {
         libraryId: fixture.created.libraryId,
       }),
     ).resolves.toMatchObject({ latest: LATEST, checkedAt: Date.now() });
-    expect(github.requests).toHaveLength(2);
+    expect(github.requests).toHaveLength(6);
   });
 
   it("refuses the check for a member who cannot manage the library", async () => {
@@ -379,7 +430,6 @@ describe("Evidence Library address notices", () => {
     ).resolves.toEqual([]);
   });
 });
-
 
 describe("Evidence Library address ownership check", () => {
   beforeEach(() => {

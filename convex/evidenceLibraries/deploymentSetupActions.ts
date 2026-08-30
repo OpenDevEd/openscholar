@@ -56,8 +56,13 @@ export const runDeploymentSetup = internalAction({
         publicDomain: prepared.targetBaseUrl,
         // A library being set up has no custom domains yet.
         customDomains: [],
+        runtimeCommit: prepared.runtimeCommit,
+        runtimeImage: prepared.runtimeImage,
       });
-      if (application.runtimeCommit !== prepared.runtimeCommit) {
+      if (
+        application.runtimeCommit !== prepared.runtimeCommit ||
+        application.runtimeImage !== prepared.runtimeImage
+      ) {
         throw new CoolifyClientError(
           "COOLIFY_DEPLOYMENT_CONFLICT",
           "The bound Coolify application changed before deployment",

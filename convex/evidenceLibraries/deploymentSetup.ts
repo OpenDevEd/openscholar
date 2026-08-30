@@ -18,13 +18,13 @@ function requireApplicationReceipt(
   setup: Awaited<ReturnType<typeof requireCurrentEvidenceLibrarySetupAttempt>>,
 ) {
   const receipt = setup.setupOperation.setupReceipts?.application;
-  if (!receipt) {
+  if (!receipt || typeof receipt.runtimeImage !== "string") {
     throw createError(
       "INVALID_DATA",
       "Evidence Library application receipt is missing",
     );
   }
-  return receipt;
+  return { ...receipt, runtimeImage: receipt.runtimeImage };
 }
 
 export const prepareDeploymentSetup = internalMutation({
@@ -38,6 +38,7 @@ export const prepareDeploymentSetup = internalMutation({
     applicationId: v.string(),
     targetBaseUrl: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.string(),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
     deploymentNotBefore: v.number(),
@@ -55,6 +56,7 @@ export const prepareDeploymentSetup = internalMutation({
       applicationId: application.applicationId,
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
       runtimeCommit: application.runtimeCommit,
+      runtimeImage: application.runtimeImage,
       runtimeConfigSha256: application.runtimeConfigSha256,
       coolifyConfigHash: application.coolifyConfigHash,
       deploymentNotBefore:
@@ -194,6 +196,7 @@ export const completeDeploymentSetup = internalMutation({
         applicationId: application.applicationId,
         deploymentId: args.deploymentId,
         runtimeCommit: application.runtimeCommit,
+        runtimeImage: application.runtimeImage,
         runtimeConfigSha256: application.runtimeConfigSha256,
         coolifyConfigHash: requireNonBlankProvisioningValue(
           "coolifyConfigHash",

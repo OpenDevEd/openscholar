@@ -41,6 +41,7 @@ import {
 } from "./runtimeCredentials";
 import { applyEvidenceLibraryAddressMove } from "./addressRecovery";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
+import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import {
   evidenceLibraryAddressMoveValidator,
   evidenceLibraryConfigurationDeploymentTargetValidator,
@@ -137,6 +138,16 @@ function requireCommit(value: string): string {
     );
   }
   return commit;
+}
+
+function requireRuntimeImage(value: string | undefined): string {
+  if (!isRuntimeImageReference(value)) {
+    throw createError(
+      "INVALID_DATA",
+      "Evidence Library runtime image is missing or invalid",
+    );
+  }
+  return value;
 }
 
 async function readConfigurationDeployment(
@@ -449,6 +460,8 @@ export const prepareConfigurationDeployment = internalMutation({
       // never written to the operation, which owners can read.
       aiProviderKey: v.optional(v.object({ encryptedApiKey: v.string() })),
       defaultLocale: v.string(),
+      runtimeCommit: v.string(),
+      runtimeImage: v.string(),
     }),
   ),
   handler: async (ctx, args) => {
@@ -467,10 +480,7 @@ export const prepareConfigurationDeployment = internalMutation({
     const savedTarget = deployment.operation.configurationDeploymentTarget;
     if (savedTarget) {
       if (
-        !(await isAcceptableSavedConfigurationTarget(
-          ctx,
-          deployment.operation,
-        ))
+        !(await isAcceptableSavedConfigurationTarget(ctx, deployment.operation))
       ) {
         throw createError(
           "CONFLICT",
@@ -483,6 +493,7 @@ export const prepareConfigurationDeployment = internalMutation({
         (receipt.revisionKey !== savedTarget.revisionKey ||
           receipt.targetConfigSha256 !== savedTarget.runtimeConfigSha256 ||
           receipt.runtimeCommit !== savedTarget.runtimeCommit ||
+          receipt.runtimeImage !== savedTarget.runtimeImage ||
           !receipt.runtimeReceiptId ||
           !receipt.coolifyConfigHash)
       ) {
@@ -510,7 +521,9 @@ export const prepareConfigurationDeployment = internalMutation({
     const runtimeUpdate = deployment.operation.runtimeUpdate;
     if (
       runtimeUpdate &&
-      runtimeUpdate.from !== deployment.runtimeBinding.runtimeCommit
+      (runtimeUpdate.from !== deployment.runtimeBinding.runtimeCommit ||
+        (runtimeUpdate.fromImage !== undefined &&
+          runtimeUpdate.fromImage !== deployment.runtimeBinding.runtimeImage))
     ) {
       throw createError(
         "CONFLICT",
@@ -693,6 +706,11 @@ export const prepareConfigurationDeployment = internalMutation({
         ctx,
         deployment.revision._id,
       ),
+      runtimeCommit:
+        runtimeUpdate?.to ?? deployment.runtimeBinding.runtimeCommit,
+      runtimeImage: requireRuntimeImage(
+        runtimeUpdate?.toImage ?? deployment.runtimeBinding.runtimeImage,
+      ),
     };
   },
 });
@@ -721,6 +739,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
       revisionKey: v.string(),
       defaultLocale: v.string(),
       runtimeCommit: v.string(),
+      runtimeImage: v.string(),
       encryptedRuntimeConfig: v.string(),
       runtimeConfigSha256: v.string(),
     }),
@@ -794,6 +813,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
         args.target.defaultLocale,
       ),
       runtimeCommit: requireCommit(args.target.runtimeCommit),
+      runtimeImage: requireRuntimeImage(args.target.runtimeImage),
       encryptedRuntimeConfig: requireNonBlank(
         "encryptedRuntimeConfig",
         args.target.encryptedRuntimeConfig,
@@ -842,6 +862,7 @@ export const saveConfigurationDeploymentReceipt = internalMutation({
       targetConfigSha256: target.runtimeConfigSha256,
       runtimeReceiptId: args.deploymentId,
       runtimeCommit: target.runtimeCommit,
+      runtimeImage: target.runtimeImage,
       coolifyConfigHash: args.coolifyConfigHash,
     })!;
     const existingDeploymentId = deployment.operation.receipt?.runtimeReceiptId;
@@ -929,6 +950,7 @@ export const prepareConfigurationActivation = internalMutation({
     applicationId: v.string(),
     deploymentId: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.string(),
     coolifyConfigHash: v.string(),
     revisionKey: v.string(),
     targetBaseUrl: v.string(),
@@ -944,6 +966,7 @@ export const prepareConfigurationActivation = internalMutation({
       receipt?.revisionKey !== target.revisionKey ||
       receipt.targetConfigSha256 !== target.runtimeConfigSha256 ||
       receipt.runtimeCommit !== target.runtimeCommit ||
+      receipt.runtimeImage !== target.runtimeImage ||
       !receipt.runtimeReceiptId ||
       !receipt.coolifyConfigHash
     ) {
@@ -973,6 +996,7 @@ export const prepareConfigurationActivation = internalMutation({
       applicationId: target.applicationId,
       deploymentId: receipt.runtimeReceiptId,
       runtimeCommit: target.runtimeCommit,
+      runtimeImage: requireRuntimeImage(target.runtimeImage),
       coolifyConfigHash: receipt.coolifyConfigHash,
       revisionKey: target.revisionKey,
       // Readiness reads the address the library calls its own, which is the
@@ -983,7 +1007,8 @@ export const prepareConfigurationActivation = internalMutation({
           ? (deployment.operation.domainChange.address ??
             deployment.runtimeBinding.canonicalBaseUrl ??
             target.targetBaseUrl)
-          : (deployment.runtimeBinding.canonicalBaseUrl ?? target.targetBaseUrl),
+          : (deployment.runtimeBinding.canonicalBaseUrl ??
+            target.targetBaseUrl),
       platformBaseUrl: target.targetBaseUrl,
       customDomains: target.customDomains,
     };
@@ -1142,6 +1167,7 @@ export const completeConfigurationDeployment = internalMutation({
       receipt?.revisionKey !== target.revisionKey ||
       receipt.targetConfigSha256 !== target.runtimeConfigSha256 ||
       receipt.runtimeCommit !== target.runtimeCommit ||
+      receipt.runtimeImage !== target.runtimeImage ||
       !receipt.runtimeReceiptId ||
       !receipt.coolifyConfigHash
     ) {
@@ -1165,6 +1191,7 @@ export const completeConfigurationDeployment = internalMutation({
     });
     await ctx.db.patch(deployment.runtimeBinding._id, {
       runtimeCommit: receipt.runtimeCommit,
+      runtimeImage: requireRuntimeImage(receipt.runtimeImage),
       lastVerifiedAt: args.checkedAt,
       // Readiness just read our own health answer at this address.
       addressState: "ours",
@@ -1279,7 +1306,6 @@ export const failConfigurationDeployment = internalMutation({
     return "failed" as const;
   },
 });
-
 
 /**
  * Marks a deployment failed when the worker that held it stopped answering.

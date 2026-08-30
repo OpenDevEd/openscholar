@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
-import { createDeployedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createDeployedSetupFixture,
+  TEST_RUNTIME_IMAGE,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 
 describe("Evidence Library readiness completion", () => {
@@ -86,6 +89,7 @@ describe("Evidence Library readiness completion", () => {
       applicationId: fixture.applicationId,
       deploymentId: fixture.deploymentId,
       runtimeCommit: "a".repeat(40),
+      runtimeImage: TEST_RUNTIME_IMAGE,
       runtimeConfigSha256: "b".repeat(64),
       coolifyConfigHash: "d".repeat(64),
       revisionKey: fixture.activated.revisionKey,
@@ -182,6 +186,7 @@ describe("Evidence Library readiness completion", () => {
               ? JSON.stringify({
                   applicationUuid: applicationId,
                   commit: "a".repeat(40),
+                  runtimeImage: TEST_RUNTIME_IMAGE,
                   ready: true,
                   services: [
                     "web",
@@ -335,6 +340,7 @@ describe("Evidence Library address recovery during setup", () => {
             JSON.stringify({
               applicationUuid: applicationId,
               commit: "a".repeat(40),
+              runtimeImage: TEST_RUNTIME_IMAGE,
               ready: true,
               services: [
                 "web",

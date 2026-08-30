@@ -34,9 +34,22 @@ import {
   assembleEvidenceLibraryRuntimePayload,
   buildEvidenceLibraryLoginPageUrl,
 } from "./runtimeConfiguration";
+import { isRuntimeImageReference } from "./runtimeImageRegistry";
+import type { RuntimeImageReference } from "./runtimeImageRegistry";
 
 const invalidConfiguration = (message: string) =>
   new CoolifyClientError("INVALID_CONFIGURATION_DEPLOYMENT_CONFIG", message);
+
+function requireTargetRuntimeImage(
+  value: string | undefined,
+): RuntimeImageReference {
+  if (!isRuntimeImageReference(value)) {
+    throw invalidConfiguration(
+      "The saved Evidence Library runtime image is missing or invalid",
+    );
+  }
+  return value;
+}
 
 type ConfigurationDeploymentActionResult =
   | { status: "failed" }
@@ -114,6 +127,12 @@ export const runConfigurationDeployment = internalAction({
           libraryId: args.libraryId,
           publicDomain: prepared.targetBaseUrl,
           customDomains: prepared.customDomains,
+          ...(runtimeUpdate
+            ? {}
+            : {
+                runtimeCommit: prepared.runtimeCommit,
+                runtimeImage: prepared.runtimeImage,
+              }),
         });
         if (
           runtimeUpdate &&
@@ -164,7 +183,8 @@ export const runConfigurationDeployment = internalAction({
               customDomains: prepared.customDomains,
               revisionKey: prepared.revision.key,
               defaultLocale: prepared.defaultLocale,
-              runtimeCommit: runtimeUpdate?.to ?? application.runtimeCommit,
+              runtimeCommit: prepared.runtimeCommit,
+              runtimeImage: prepared.runtimeImage,
               encryptedRuntimeConfig: encrypt(
                 payload.runtimeConfigJson,
                 encryptionKey,
@@ -188,6 +208,7 @@ export const runConfigurationDeployment = internalAction({
           "The saved Evidence Library configuration target is invalid",
         );
       }
+      const runtimeImage = requireTargetRuntimeImage(target.runtimeImage);
 
       let application: CoolifyConfigurationUpdateResult;
       if (savedDeployment) {
@@ -197,11 +218,13 @@ export const runConfigurationDeployment = internalAction({
           publicDomain: target.targetBaseUrl,
           customDomains: target.customDomains,
           runtimeCommit: target.runtimeCommit,
+          runtimeImage,
           libraryConfigJson: runtimeConfigJson,
         });
         application = {
           applicationUuid: target.applicationId,
           runtimeCommit: target.runtimeCommit,
+          runtimeImage,
           runtimeConfigSha256: target.runtimeConfigSha256,
           coolifyConfigHash: current.coolifyConfigHash,
         };
@@ -215,6 +238,7 @@ export const runConfigurationDeployment = internalAction({
             publicDomain: target.targetBaseUrl,
             customDomains: target.customDomains,
             runtimeCommit: target.runtimeCommit,
+            runtimeImage,
           });
         }
         application = await coolify.updateApplicationConfiguration({
@@ -224,9 +248,11 @@ export const runConfigurationDeployment = internalAction({
           customDomains: target.customDomains,
           libraryConfigJson: runtimeConfigJson,
           expectedRuntimeCommit: target.runtimeCommit,
+          expectedRuntimeImage: runtimeImage,
         });
         if (
           application.runtimeCommit !== target.runtimeCommit ||
+          application.runtimeImage !== runtimeImage ||
           application.runtimeConfigSha256 !== target.runtimeConfigSha256
         ) {
           throw new CoolifyClientError(
@@ -338,6 +364,7 @@ export const runConfigurationDeployment = internalAction({
         publicDomain: target.targetBaseUrl,
         customDomains: target.customDomains,
         runtimeCommit: target.runtimeCommit,
+        runtimeImage,
         libraryConfigJson: runtimeConfigJson,
       });
       await ctx.runMutation(
@@ -377,6 +404,7 @@ export const runConfigurationDeployment = internalAction({
         ...(targetFetchImpl ? { targetFetchImpl } : {}),
         applicationUuid: readiness.applicationId,
         runtimeCommit: readiness.runtimeCommit,
+        runtimeImage: readiness.runtimeImage,
         revisionKey: readiness.revisionKey,
         targetBaseUrl: readiness.targetBaseUrl,
         platformBaseUrl: readiness.platformBaseUrl,

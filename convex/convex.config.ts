@@ -7,8 +7,10 @@ import extractionPaperWorkpool from "@convex-dev/workpool/convex.config.js";
 import aggregate from "@convex-dev/aggregate/convex.config.js";
 import agent from "@convex-dev/agent/convex.config.js";
 import shardedCounter from "@convex-dev/sharded-counter/convex.config.js";
+import migrations from "@convex-dev/migrations/convex.config.js";
 
 const app = defineApp();
+app.use(migrations);
 app.use(stripe);
 app.use(rag);
 app.use(workpool);

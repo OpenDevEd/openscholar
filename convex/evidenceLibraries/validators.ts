@@ -422,6 +422,8 @@ const evidenceLibraryRuntimeBindingProvisionedFields = {
   // The Evidence Library software commit the library runs. Setup writes it;
   // every completed publish rewrites it from the operation receipt.
   runtimeCommit: v.string(),
+  // Temporary during Plan 17's widen stage. Every new binding includes it.
+  runtimeImage: v.optional(v.string()),
   searchHost: v.string(),
   searchIndex: v.string(),
   storageUrl: v.string(),
@@ -482,6 +484,8 @@ export const runtimeReleaseChangeValidator = v.object({
 export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),
+  // Temporary during Plan 17's widen stage. Every new write includes it.
+  latestImage: v.optional(v.string()),
   changes: v.array(runtimeReleaseChangeValidator),
   checkedAt: v.number(),
 };
@@ -572,6 +576,7 @@ const evidenceLibrarySetupResultVariantFields = {
     step: v.literal("application"),
     applicationId: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.optional(v.string()),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
   },
@@ -581,6 +586,7 @@ const evidenceLibrarySetupResultVariantFields = {
     applicationId: v.string(),
     deploymentId: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.optional(v.string()),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
   },
@@ -659,12 +665,12 @@ export type EvidenceLibrarySetupReceipts = Infer<
   typeof evidenceLibrarySetupReceiptsValidator
 >;
 
-
 export const evidenceLibraryOperationReceiptValidator = v.object({
   revisionKey: v.optional(v.string()),
   targetConfigSha256: v.optional(v.string()),
   runtimeReceiptId: v.optional(v.string()),
   runtimeCommit: v.optional(v.string()),
+  runtimeImage: v.optional(v.string()),
   coolifyConfigHash: v.optional(v.string()),
   activatedAt: v.optional(v.number()),
 });
@@ -682,6 +688,7 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   revisionKey: v.string(),
   defaultLocale: v.string(),
   runtimeCommit: v.string(),
+  runtimeImage: v.optional(v.string()),
   encryptedRuntimeConfig: v.string(),
   runtimeConfigSha256: v.string(),
   savedAt: v.number(),
@@ -692,6 +699,9 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
 export const evidenceLibraryRuntimeUpdateValidator = v.object({
   from: v.string(),
   to: v.string(),
+  // Temporary during Plan 17's widen stage. New updates write both images.
+  fromImage: v.optional(v.string()),
+  toImage: v.optional(v.string()),
 });
 
 // Where the platform is sending a library after another site answered its
@@ -712,7 +722,11 @@ export const evidenceLibraryAddressMoveValidator = v.object({
 export const evidenceLibraryDomainChangeValidator = v.object({
   host: v.string(),
   domainId: v.id("evidenceLibraryDomains"),
-  reason: v.union(v.literal("attach"), v.literal("detach"), v.literal("canonical")),
+  reason: v.union(
+    v.literal("attach"),
+    v.literal("detach"),
+    v.literal("canonical"),
+  ),
   // For a canonical change: the address the library should call its own once
   // this deployment is live. Nothing is written until it is.
   address: v.optional(v.string()),
@@ -739,6 +753,7 @@ export const evidenceLibraryOperationFields = {
   // last step can refuse a key that moved on the way.
   setupAiProviderKey: v.optional(aiProviderKeySourceValidator),
   setupRuntimeCommit: v.optional(v.string()),
+  setupRuntimeImage: v.optional(v.string()),
   setupDeploymentId: v.optional(v.string()),
   setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
   setupDeploymentNotBefore: v.optional(v.number()),
@@ -829,7 +844,10 @@ const PUBLIC_OPERATION_FIELDS = [
 ] as const satisfies readonly (keyof typeof evidenceLibraryOperationFields)[];
 
 export const evidenceLibraryPublicOperationFields = Object.fromEntries(
-  PUBLIC_OPERATION_FIELDS.map((key) => [key, evidenceLibraryOperationFields[key]]),
+  PUBLIC_OPERATION_FIELDS.map((key) => [
+    key,
+    evidenceLibraryOperationFields[key],
+  ]),
 ) as Pick<
   typeof evidenceLibraryOperationFields,
   (typeof PUBLIC_OPERATION_FIELDS)[number]
@@ -837,7 +855,10 @@ export const evidenceLibraryPublicOperationFields = Object.fromEntries(
 
 type EvidenceLibraryOperationRow = Infer<
   ReturnType<typeof v.object<typeof evidenceLibraryOperationFields>>
-> & { _id: GenericId<"evidenceLibraryConfigOperations">; _creationTime: number };
+> & {
+  _id: GenericId<"evidenceLibraryConfigOperations">;
+  _creationTime: number;
+};
 
 /** The operation as an owner sees it: the allowlisted fields and nothing else. */
 export function toPublicEvidenceLibraryOperation(

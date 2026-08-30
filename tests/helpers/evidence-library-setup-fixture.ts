@@ -1,5 +1,7 @@
 import { convexTest } from "convex-test";
 import { api, internal } from "../../convex/_generated/api";
+
+export const TEST_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"e".repeat(64)}`;
 import schema from "../../convex/schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -187,6 +189,7 @@ export async function createDeployedSetupFixture(suffix: string) {
       candidateMachineCredentialDigest: "machine-digest",
       candidateMachineCredentialHint: "els_key...",
       candidateRuntimeCommit: "a".repeat(40),
+      candidateRuntimeImage: TEST_RUNTIME_IMAGE,
     },
   );
   await fixture.t.mutation(
@@ -199,6 +202,7 @@ export async function createDeployedSetupFixture(suffix: string) {
       outcome: "created",
       applicationId: `coolify-${suffix}`,
       runtimeCommit: prepared.runtimeCommit,
+      runtimeImage: prepared.runtimeImage,
       runtimeConfigSha256: "b".repeat(64),
       coolifyConfigHash: "c".repeat(64),
       searchHost: "http://meilisearch:7700",
