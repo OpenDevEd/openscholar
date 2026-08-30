@@ -191,6 +191,16 @@ page's live query showed Go as current, so the upgrade dialog did not exist.
 Reuse the existing current-plan badge wait from `upgrade.spec.ts` before the
 click in `credits.spec.ts`. Keep every credit and dialog assertion unchanged.
 
+Final-head nightly run
+[33297529259](https://github.com/OpenDevEd/openalex-count/actions/runs/33297529259)
+ran all four extended live cases on `openscholar-ci-secret-2`. Three passed.
+The upgrade-cycle case expected the nominal 15,000-credit Pro grant, but the
+credit service correctly applied the 30,000 free-credit cap and granted the
+14,501 credits still available after the signup, Go, and pro-rata grants. Make
+the test calculate the exact remaining cap from its before-renewal snapshot and
+the checked Pro plan constant. Also assert that the resulting free balance is
+exactly the Pro cap. Do not add a tolerance or change production billing code.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
