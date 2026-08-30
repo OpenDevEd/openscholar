@@ -297,6 +297,7 @@ describe("the OpenRouter key", () => {
           revisionKey: "r2",
           defaultLocale: "en-GB",
           runtimeCommit: "a".repeat(40),
+          runtimeImage: `ghcr.io/opendeved/evidence-library-runtime@sha256:${"c".repeat(64)}`,
           encryptedRuntimeConfig,
           runtimeConfigSha256: "b".repeat(64),
           savedAt: 1,

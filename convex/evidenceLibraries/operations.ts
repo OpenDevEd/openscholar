@@ -386,7 +386,7 @@ async function queueOperationRecord(
     runtimeUpdate?: {
       from: string;
       to: string;
-      fromImage?: string;
+      fromImage: string;
       toImage: string;
     };
   },
@@ -498,7 +498,7 @@ export async function queueRuntimeUpdateOperation(
     runtimeUpdate: {
       from: string;
       to: string;
-      fromImage?: string;
+      fromImage: string;
       toImage: string;
     };
   },

@@ -513,7 +513,8 @@ export const prepareConfigurationDeployment = internalMutation({
       const receipt = deployment.operation.receipt;
       if (
         receipt &&
-        (receipt.revisionKey !== savedTarget.revisionKey ||
+        (!("runtimeCommit" in receipt) ||
+          receipt.revisionKey !== savedTarget.revisionKey ||
           receipt.targetConfigSha256 !== savedTarget.runtimeConfigSha256 ||
           receipt.runtimeCommit !== savedTarget.runtimeCommit ||
           receipt.runtimeImage !== savedTarget.runtimeImage ||
@@ -986,6 +987,8 @@ export const prepareConfigurationActivation = internalMutation({
     const receipt = deployment.operation.receipt;
     if (
       !target ||
+      !receipt ||
+      !("runtimeCommit" in receipt) ||
       receipt?.revisionKey !== target.revisionKey ||
       receipt.targetConfigSha256 !== target.runtimeConfigSha256 ||
       receipt.runtimeCommit !== target.runtimeCommit ||

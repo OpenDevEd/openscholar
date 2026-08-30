@@ -422,8 +422,7 @@ const evidenceLibraryRuntimeBindingProvisionedFields = {
   // The Evidence Library software commit the library runs. Setup writes it;
   // every completed publish rewrites it from the operation receipt.
   runtimeCommit: v.string(),
-  // Temporary during Plan 17's widen stage. Every new binding includes it.
-  runtimeImage: v.optional(v.string()),
+  runtimeImage: v.string(),
   searchHost: v.string(),
   searchIndex: v.string(),
   storageUrl: v.string(),
@@ -484,8 +483,7 @@ export const runtimeReleaseChangeValidator = v.object({
 export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),
-  // Temporary during Plan 17's widen stage. Every new write includes it.
-  latestImage: v.optional(v.string()),
+  latestImage: v.string(),
   changes: v.array(runtimeReleaseChangeValidator),
   checkedAt: v.number(),
 };
@@ -576,7 +574,7 @@ const evidenceLibrarySetupResultVariantFields = {
     step: v.literal("application"),
     applicationId: v.string(),
     runtimeCommit: v.string(),
-    runtimeImage: v.optional(v.string()),
+    runtimeImage: v.string(),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
   },
@@ -586,7 +584,7 @@ const evidenceLibrarySetupResultVariantFields = {
     applicationId: v.string(),
     deploymentId: v.string(),
     runtimeCommit: v.string(),
-    runtimeImage: v.optional(v.string()),
+    runtimeImage: v.string(),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
   },
@@ -665,15 +663,22 @@ export type EvidenceLibrarySetupReceipts = Infer<
   typeof evidenceLibrarySetupReceiptsValidator
 >;
 
-export const evidenceLibraryOperationReceiptValidator = v.object({
+const evidenceLibraryOperationReceiptBaseFields = {
   revisionKey: v.optional(v.string()),
   targetConfigSha256: v.optional(v.string()),
   runtimeReceiptId: v.optional(v.string()),
-  runtimeCommit: v.optional(v.string()),
-  runtimeImage: v.optional(v.string()),
   coolifyConfigHash: v.optional(v.string()),
   activatedAt: v.optional(v.number()),
-});
+};
+
+export const evidenceLibraryOperationReceiptValidator = v.union(
+  v.object({
+    ...evidenceLibraryOperationReceiptBaseFields,
+    runtimeCommit: v.string(),
+    runtimeImage: v.string(),
+  }),
+  v.object(evidenceLibraryOperationReceiptBaseFields),
+);
 
 export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   applicationId: v.string(),
@@ -688,7 +693,7 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   revisionKey: v.string(),
   defaultLocale: v.string(),
   runtimeCommit: v.string(),
-  runtimeImage: v.optional(v.string()),
+  runtimeImage: v.string(),
   encryptedRuntimeConfig: v.string(),
   runtimeConfigSha256: v.string(),
   savedAt: v.number(),
@@ -699,9 +704,8 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
 export const evidenceLibraryRuntimeUpdateValidator = v.object({
   from: v.string(),
   to: v.string(),
-  // Temporary during Plan 17's widen stage. New updates write both images.
-  fromImage: v.optional(v.string()),
-  toImage: v.optional(v.string()),
+  fromImage: v.string(),
+  toImage: v.string(),
 });
 
 // Where the platform is sending a library after another site answered its

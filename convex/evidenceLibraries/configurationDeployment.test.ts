@@ -435,6 +435,7 @@ async function failConfigurationDeployment(
         revisionKey: revision.revisionKey,
         defaultLocale: "en-GB",
         runtimeCommit: options.runtimeCommit ?? binding.runtimeCommit,
+        runtimeImage: binding.runtimeImage,
         encryptedRuntimeConfig: "encrypted-runtime-config",
         runtimeConfigSha256: "4".repeat(64),
         savedAt: Date.now(),

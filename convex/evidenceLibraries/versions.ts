@@ -69,7 +69,7 @@ type CandidateIntent = {
   runtimeUpdate?: {
     from: string;
     to: string;
-    fromImage?: string;
+    fromImage: string;
     toImage: string;
   };
   addressMove?: {
@@ -423,9 +423,7 @@ export async function startEvidenceLibraryRuntimeUpdate(
     runtimeUpdate: {
       from,
       to: release.latest,
-      ...(running.binding.runtimeImage === undefined
-        ? {}
-        : { fromImage: running.binding.runtimeImage }),
+      fromImage: running.binding.runtimeImage,
       toImage: release.latestImage,
     },
   });
@@ -787,7 +785,10 @@ export async function readEvidenceLibraryVersions(
         .sort();
     }
     const runtimeCommit =
-      operation.runtimeUpdate?.to ?? operation.receipt?.runtimeCommit;
+      operation.runtimeUpdate?.to ??
+      (operation.receipt && "runtimeCommit" in operation.receipt
+        ? operation.receipt.runtimeCommit
+        : undefined);
     rows.push({
       operationId: operation._id,
       revisionId: revision._id,
