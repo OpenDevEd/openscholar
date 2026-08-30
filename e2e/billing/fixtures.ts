@@ -5,10 +5,7 @@ import { createStripeClient, cleanupStripeCustomer } from "./stripe-helpers";
 import { WebhookWaiter } from "./webhook-waiter";
 import { BillingPage } from "./pages/billing-page";
 import { PricingPage } from "./pages/pricing-page";
-import {
-  createDisposableClerkUser,
-  deleteClerkUser,
-} from "../clerk-test-user";
+import { createDisposableClerkUser, deleteClerkUser } from "../clerk-test-user";
 
 /**
  * Shape of the Clerk test user created by the fixture.
@@ -54,11 +51,18 @@ export const test = base.extend<BillingFixtures>({
     if (!process.env.CLERK_SECRET_KEY) {
       throw new Error("Missing CLERK_SECRET_KEY for billing E2E tests");
     }
+    const organizationId = process.env.E2E_CLERK_ORGANIZATION_ID;
+    if (!organizationId) {
+      throw new Error(
+        "Missing E2E_CLERK_ORGANIZATION_ID for billing E2E tests",
+      );
+    }
 
     const user = await createDisposableClerkUser({
       prefix: "billing-e2e",
       firstName: "E2E",
       lastName: "Billing",
+      organizationId,
     });
 
     // Sign in to the browser session
@@ -68,6 +72,10 @@ export const test = base.extend<BillingFixtures>({
       page,
       emailAddress: user.email,
     });
+    await page.evaluate(async (activeOrganizationId) => {
+      await window.Clerk.setActive({ organization: activeOrganizationId });
+    }, organizationId);
+    await page.reload();
 
     // Navigate to a protected page to trigger ensureUser in Convex
     // This creates the Convex user row via the Clerk webhook

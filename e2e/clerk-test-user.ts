@@ -24,13 +24,15 @@ export async function createDisposableClerkUser(args?: {
   prefix?: string;
   firstName?: string;
   lastName?: string;
+  organizationId?: string;
 }): Promise<ClerkTestUser> {
   const prefix = args?.prefix ?? "e2e";
   const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const email = `${prefix}-${uniqueId}@test.example.com`;
   const password = `E2E${prefix.replace(/[^a-z0-9]/gi, "")}${uniqueId}!`;
 
-  const user = await getClerkClient().users.createUser({
+  const clerkClient = getClerkClient();
+  const user = await clerkClient.users.createUser({
     emailAddress: [email],
     password,
     skipPasswordChecks: true,
@@ -38,6 +40,19 @@ export async function createDisposableClerkUser(args?: {
     firstName: args?.firstName ?? "E2E",
     lastName: args?.lastName ?? "User",
   });
+
+  if (args?.organizationId) {
+    try {
+      await clerkClient.organizations.createOrganizationMembership({
+        organizationId: args.organizationId,
+        userId: user.id,
+        role: "org:member",
+      });
+    } catch (error) {
+      await clerkClient.users.deleteUser(user.id);
+      throw error;
+    }
+  }
 
   return {
     id: user.id,
