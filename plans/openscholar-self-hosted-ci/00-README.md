@@ -89,11 +89,13 @@ build three times, and run Playwright's Linux package installer twice.
 - Next.js 16.2.4's installed CI cache guide under
   `node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md`.
 
-## Test rules
+## Checks
 
-No test file changes belong in this migration. Run the existing unit, contract,
-auth, billing, extended billing, and browser checks unchanged. If a test change
-becomes unavoidable, stop and use the `test-decision` skill before editing it.
+Follow [`AGENTS.md`](../../AGENTS.md),
+[`docs/agents/project.md`](../../docs/agents/project.md), and
+[`docs/test-quality.md`](../../docs/test-quality.md). No test file change belongs
+in this migration. Run the existing unit, contract, auth, billing, extended
+billing, and browser checks unchanged.
 
 Workflow checks must observe commands, exit status, artifacts, remote service
 state, runner assignment, queue time, CPU, memory, cache bytes, and disk growth.
@@ -103,13 +105,6 @@ Do not add a source-text or CSS assertion.
 
 No application or stored configuration data changes. GitHub secret creation and
 runner registration are infrastructure changes, not product-data migrations.
-
-## Agent use
-
-Three read-only Luna Max lanes mapped the repository, GitHub timings and docs,
-and the live runner host. The main session owns plan edits, commits,
-infrastructure, workflow changes, final measurements, and the PR. One Fable 5
-review runs after implementation and before the final two exact-head runs.
 
 ## Sources
 

@@ -195,7 +195,6 @@ measured result.
 
 - `plans/openscholar-self-hosted-ci/00-README.md`
 - `plans/openscholar-self-hosted-ci/01-runner-and-workflow.md`
-- `plans/openscholar-self-hosted-ci/PROMPTS.md`
 - `.github/workflows/ci-jobs.yml` new, immutable reusable workflow
 - `.github/workflows/ci.yml`
 - `.github/workflows/billing-nightly.yml`
@@ -280,17 +279,9 @@ The gate is:
 
 ## Review
 
-After the implementation and preliminary measurements, run one read-only
-review:
-
-```sh
-claudeekitabu --model claude-fable-5 --effort max
-```
-
-The prompt must tell Fable to read and follow `ponytail` and `unslop`, inspect
-the complete diff and live proof, and report only concrete correctness,
-security, workflow, rollback, or measurement problems. Fable does not edit or
-merge. Fix findings, commit, then run the final exact head twice.
+Run the one read-only phase review required by [`AGENTS.md`](../../AGENTS.md)
+after implementation and preliminary measurements. Fix valid findings, then
+run the final exact head twice as required by this task.
 
 ## Rollback
 
