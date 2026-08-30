@@ -30,6 +30,7 @@ function readyVerifierBody() {
       "source-writeback",
       "publication-worker",
       "meilisearch",
+      "redis",
     ].map((service) => ({ service })),
   };
 }
@@ -122,6 +123,21 @@ describe("Evidence Library readiness client", () => {
     expect(requests.every(({ init }) => init?.redirect === "manual")).toBe(
       true,
     );
+  });
+
+  it("rejects the old six-service runtime contract", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      const body = readyVerifierBody();
+      return json({ ...body, services: body.services.slice(0, -1) });
+    });
+
+    await expect(
+      requireLibraryRuntimeReady(input(fetchImpl)),
+    ).rejects.toMatchObject({
+      code: "READINESS_INVALID_RESPONSE",
+      message: "The runtime verifier returned an invalid response",
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("rejects a healthy runtime that activated another revision", async () => {

@@ -353,7 +353,7 @@ async function requireVerifierReady(
     body.commit !== input.runtimeCommit ||
     body.runtimeImage !== input.runtimeImage ||
     !Array.isArray(body.services) ||
-    body.services.length !== 6
+    body.services.length !== 7
   ) {
     throw new ReadinessClientError(
       "READINESS_INVALID_RESPONSE",
