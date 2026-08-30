@@ -1,9 +1,9 @@
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
+import { isCoolifyApplicationUuid } from "./coolifyApplication";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
-const APPLICATION_UUID = /^[a-z0-9]{24}$/u;
 
 export class ReadinessClientError extends Error {
   constructor(
@@ -75,7 +75,7 @@ function requireHttpsOrigin(label: string, value: string): URL {
 }
 
 function requireInput(input: ReadinessCheckInput) {
-  if (!APPLICATION_UUID.test(input.applicationUuid)) {
+  if (!isCoolifyApplicationUuid(input.applicationUuid)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
       "Coolify application UUID is invalid",

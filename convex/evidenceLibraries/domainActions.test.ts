@@ -27,6 +27,7 @@ const TARGET = "cname.openscholar.test";
 const TARGET_ADDRESSES = ["188.114.96.6", "188.114.97.6"];
 const CUSTOM_HOST = "evidence.example.org";
 const PLATFORM_HOST = "climate-evidence-lib.libraries.example.test";
+const COOLIFY_APPLICATION_UUID = "coolifydomain00000000001";
 
 type Fixture = Awaited<ReturnType<typeof createReadySetupFixture>>;
 
@@ -50,6 +51,8 @@ type World = {
   coolifyOffline?: boolean;
   /** The Coolify application is already gone, so that step has nothing to do. */
   coolifyApplicationGone?: boolean;
+  /** The application container still holds its search volume. */
+  volumeInUse?: boolean;
   /** Answer the file store, which only a library being taken apart talks to. */
   emptyFileStore?: boolean;
   /** The host owns its zone, so it can carry no alias. */
@@ -122,6 +125,7 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
   const coolifyPatches: unknown[] = [];
   const coolifyCalls: { method: string; url: string }[] = [];
   const cloudflareCalls: { method: string; url: string; body: unknown }[] = [];
+  const volumeCalls: { method: string; body: unknown }[] = [];
   const probedHosts: string[] = [];
   let composeDomains = [
     `https://${PLATFORM_HOST}`,
@@ -173,6 +177,25 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
       return Response.json({ success: true, result: hostname });
     }
 
+    if (url.hostname === "volume-deleter.example.test") {
+      volumeCalls.push({ method, body });
+      if (world.volumeInUse) {
+        return Response.json(
+          {
+            error: {
+              code: "volume_in_use",
+              message: "The library volume is still in use.",
+            },
+          },
+          { status: 409 },
+        );
+      }
+      return Response.json({
+        applicationUuid: (body as { applicationUuid: string }).applicationUuid,
+        outcome: "deleted",
+      });
+    }
+
     // A file store with nothing left in it, for the tests that ask for one.
     // Only the four things taking a library apart really does are answered,
     // so anything else shows up as a failure instead of passing quietly.
@@ -222,7 +245,7 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
         if (patched.docker_compose_domains?.[0]) {
           composeDomains = patched.docker_compose_domains[0].domain;
         }
-        return Response.json({ uuid: "coolify-domains" });
+        return Response.json({ uuid: COOLIFY_APPLICATION_UUID });
       }
       if (url.pathname.endsWith("/tags")) {
         return Response.json([{ uuid: "tag00000000000000000001", name: tag }]);
@@ -257,12 +280,19 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
     throw new Error(`unexpected request ${url.href}`);
   }) as unknown as typeof fetch;
 
-  return { fetchImpl, coolifyPatches, coolifyCalls, cloudflareCalls, probedHosts };
+  return {
+    fetchImpl,
+    coolifyPatches,
+    coolifyCalls,
+    cloudflareCalls,
+    probedHosts,
+    volumeCalls,
+  };
 }
 
 function coolifyApplication(composeDomains: string, tag: string) {
   return {
-    uuid: "coolify-domains",
+    uuid: COOLIFY_APPLICATION_UUID,
     name: tag,
     config_hash: "1".repeat(64),
     git_repository: "OpenDevEd/new-el",
@@ -298,7 +328,9 @@ async function bindApplication(fixture: Fixture) {
       )
       .unique();
     if (binding) {
-      await ctx.db.patch(binding._id, { targetRuntimeId: "coolify-domains" });
+      await ctx.db.patch(binding._id, {
+        targetRuntimeId: COOLIFY_APPLICATION_UUID,
+      });
     }
   });
   return `openscholar-library-${fixture.created.libraryId}`;
@@ -432,7 +464,7 @@ async function runDeploymentCompletion(
     // The deployment action saves this before it runs; the test stands in
     // for that one step so the real completion mutation can run.
     const target = operation.configurationDeploymentTarget ?? {
-      applicationId: "coolify-domains",
+      applicationId: COOLIFY_APPLICATION_UUID,
       aiProviderKey: { present: false as const },
       runtimeBindingId: binding._id,
       targetBaseUrl,
@@ -626,6 +658,8 @@ describe("custom domains", () => {
     vi.stubEnv("EL_STORAGE_SERVICE_KEY", "storage-key");
     vi.stubEnv("EL_DATABASE_PROVISIONER_URL", "https://database.example.test");
     vi.stubEnv("EL_DATABASE_PROVISIONER_TOKEN", "database-token");
+    vi.stubEnv("EL_VOLUME_DELETER_URL", "https://volume-deleter.example.test");
+    vi.stubEnv("EL_VOLUME_DELETER_TOKEN", "volume-deleter-token");
   });
 
   afterEach(async () => {
@@ -3053,6 +3087,64 @@ describe("custom domains", () => {
     expect(await readRow(fixture, added.domainId)).not.toBeNull();
   });
 
+  it("waits while the deleted application still holds its data volume", async () => {
+    const fixture = await createReadySetupFixture("teardown-volume-in-use");
+    const tag = await bindApplication(fixture);
+    const world = createWorld(
+      { coolifyApplicationGone: true, volumeInUse: true },
+      tag,
+    );
+    vi.stubGlobal("fetch", world.fetchImpl);
+    await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      const buckets = createLibraryStorageBucketNames(
+        fixture.created.libraryId,
+      );
+      if (library?.runtimeBindingId) {
+        await ctx.db.patch(library.runtimeBindingId, {
+          storagePrivateBucket: buckets.privateBucket,
+          storagePublicBucket: buckets.publicBucket,
+        });
+      }
+      await ctx.db.patch(fixture.created.libraryId, { state: "disabled" });
+    });
+    const operationId = await fixture.t.run(async (ctx) =>
+      ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId: fixture.created.libraryId,
+        kind: "teardown",
+        idempotencyKey: "teardown:volume-in-use",
+        status: "queued",
+        stage: "coolify",
+        attemptCount: 0,
+        requestedByClerkUserId: "someone",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+    );
+
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+        { libraryId: fixture.created.libraryId, operationId },
+      ),
+    ).resolves.toEqual({ status: "pending" });
+
+    const operation = await fixture.t.run(async (ctx) =>
+      ctx.db.get(operationId),
+    );
+    expect(operation).toMatchObject({
+      attemptCount: 1,
+      stage: "coolify",
+      status: "queued",
+    });
+    expect(world.volumeCalls).toEqual([
+      {
+        method: "POST",
+        body: { applicationUuid: COOLIFY_APPLICATION_UUID },
+      },
+    ]);
+  });
+
   it("blames the domains when the certificate service is not set up", async () => {
     // The custom domains come down first, so a platform with no certificate
     // account stops there — and the page has to say so, not blame the
@@ -3135,6 +3227,7 @@ describe("custom domains", () => {
   });
   it.each([
     { missing: "EL_COOLIFY_TOKEN", step: "runtime" },
+    { missing: "EL_VOLUME_DELETER_TOKEN", step: "runtime" },
     { missing: "EL_STORAGE_SERVICE_KEY", step: "files" },
     { missing: "EL_DATABASE_PROVISIONER_TOKEN", step: "database" },
   ])(
@@ -3143,14 +3236,19 @@ describe("custom domains", () => {
       // Driven through the real teardown, failing at the real stage, then
       // read back the way the page reads it.
       const fixture = await createReadySetupFixture(`teardown-${step}`);
+      const tag = await bindApplication(fixture);
       // The running site is already gone for the later stages, so the
       // deletion really reaches the step under test.
       vi.stubGlobal(
         "fetch",
-        createWorld({
-          coolifyApplicationGone: step !== "runtime",
-          emptyFileStore: step === "database",
-        }).fetchImpl,
+        createWorld(
+          {
+            coolifyApplicationGone:
+              step !== "runtime" || missing === "EL_VOLUME_DELETER_TOKEN",
+            emptyFileStore: step === "database",
+          },
+          tag,
+        ).fetchImpl,
       );
       await fixture.t.run(async (ctx) => {
         await ctx.db.patch(fixture.created.libraryId, { state: "disabled" });
