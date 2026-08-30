@@ -229,7 +229,7 @@ jobs:
       group: billing-live-shared-test-user
       cancel-in-progress: false
     env:
-      PLAYWRIGHT_WORKERS: "6"
+      PLAYWRIGHT_WORKERS: "8"
       NEXT_BUILD_SKIP_VERIFIED_TYPES: "1"
       NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
       NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
