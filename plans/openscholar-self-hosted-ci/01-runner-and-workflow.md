@@ -133,6 +133,29 @@ while their controls remained focusable. Keep the zero-violation assertion and
 the real density control. Wait for the selected density menu item to leave the
 visible accessibility tree before running axe.
 
+Exact-head run
+[33293322222](https://github.com/OpenDevEd/openalex-count/actions/runs/33293322222)
+ran the five required live billing tests and all 42 billing browser cases on
+`openscholar-ci-secret-1`. The live tests passed in 100 seconds. The browser
+suite finished in 15.4 minutes with 33 passed, one passed on retry, six existing
+runtime skips, and two failures. The disposable Clerk fixture removed every
+temporary user and left only the two fixed E2E organization members.
+
+The keyboard case failed on all three attempts because the transactions client
+creates `searchRef` and the keyboard hook focuses it, but the toolbar never
+receives or attaches that ref to its search input. Pass that existing ref
+through `TransactionsPanelToolbar`; do not change the assertion. The Go-to-Pro
+case reached the new Pro subscription but timed out waiting for the expected
+credit increase. The Pro-to-Go case passed on retry after its scheduled badge
+was absent on the first page load. Trace both cases through the existing Stripe
+event and Convex state helpers, fix the shared settlement or readiness boundary,
+and keep the browser assertions unchanged.
+
+The auth suite passed all six browser cases in the same run. Its required report
+upload still failed because GitHub had not recalculated artifact storage after
+the 144 expired records were deleted. Keep both auth and billing report uploads
+blocking. Rerun after GitHub's stated 6-to-12-hour quota refresh.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
