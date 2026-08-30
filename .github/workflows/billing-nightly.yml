@@ -5,89 +5,12 @@ on:
     - cron: "0 7 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  billing-live-extended-nightly:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    concurrency:
-      group: billing-live-shared-test-user
-      cancel-in-progress: false
-    env:
-      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
-      NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
-      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
-      CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
-      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-      STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
-      STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
-      CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
-      BILLING_TEST_USER_SUBJECT: billing_live_test_subject
-      BILLING_TEST_USER_EMAIL: billing-live-test@example.com
-      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
-      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
-      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
-      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Validate required billing-nightly secrets
-        run: |
-          required_vars=(
-            NEXT_PUBLIC_CONVEX_URL
-            CONVEX_DEPLOY_KEY
-            STRIPE_SECRET_KEY
-            STRIPE_GO_PRICE_ID
-          )
-          for var_name in "${required_vars[@]}"; do
-            if [ -z "${!var_name}" ]; then
-              echo "::error::Missing required secret/env: ${var_name}"
-              exit 1
-            fi
-          done
-          if [ -z "${CONVEX_DEPLOYMENT}" ] && [ -z "${CONVEX_DEPLOYMENT_NAME}" ]; then
-            echo "::error::Missing deployment target. Set CONVEX_DEPLOYMENT or CONVEX_DEPLOYMENT_NAME."
-            exit 1
-          fi
-
-          if [ "$NEXT_PUBLIC_CREDITS_ENABLED" = "false" ]; then
-            echo "::error::NEXT_PUBLIC_CREDITS_ENABLED is set to 'false' — credit cap banner tests (CRED-05) will fail"
-            exit 1
-          fi
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run extended live billing regressions
-        run: npm run test:billing:extended:ci
-
-      - name: Upload billing-nightly artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: billing-nightly-artifacts
-          path: test-results/billing-live
-          if-no-files-found: ignore
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
-      - name: Run billing E2E tests
-        run: npm run test:billing:e2e
-
-      - name: Upload billing E2E report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: billing-e2e-report-${{ github.job }}
-          path: playwright-report
-          if-no-files-found: ignore
+  billing:
+    uses: OpenDevEd/openalex-count/.github/workflows/ci-jobs.yml@1fe7a6300af9b07c1f51c2b521fc1d1c2576b813
+    with:
+      mode: nightly
+    secrets: inherit
