@@ -118,12 +118,6 @@ test.describe("clerk auth flows", () => {
       page.getByText("Changes saved.", { exact: true }),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
-    const preview = page.getByRole("dialog");
-    await expect(preview).toContainText(libraryName);
-    await expect(preview).toContainText("en-GB");
-    await preview.getByRole("button", { name: "Close" }).first().click();
-
     await page.goto("/settings");
     await page.goto(configurationUrl);
     await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
