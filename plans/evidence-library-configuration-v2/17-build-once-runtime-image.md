@@ -730,9 +730,18 @@ library revision is active, and the public and admin pages answer.
   same reconcile/deploy/readiness path. Persist the rollback deployment ID so a
   retry cannot start a second rollback. Mark the update failed only after the
   previous release is live again; otherwise report a real rollback blocker.
-- Add an integration-owner-only internal action to select the last successful
-  release pair from the library's own receipts and run the same rollback path.
-  Do not expose arbitrary image or commit input to owners.
+- After a software change passes readiness, save the release pair it replaced
+  as one optional `previousRuntime` object on the binding. Add an
+  integration-owner-only internal command that queues that saved pair through
+  the same deployment path. Do not scan an unbounded operation history and do
+  not accept an image or commit from the caller. A successful rollback swaps
+  the two pairs, so the exact release it replaced remains available.
+
+Plan correction, 2026-08-30: the earlier receipt-history lookup had no safe
+bound once a library accumulated years of configuration publishes. The
+binding already owns the current release identity, so keeping its one previous
+pair there gives rollback a constant-time, atomic source without another
+release-history table.
 
 Live correction, 2026-08-30: `new lib` reached the `9dd3e7b3` image while its
 binding still recorded the pre-image `937bb65e` release because the old runtime
