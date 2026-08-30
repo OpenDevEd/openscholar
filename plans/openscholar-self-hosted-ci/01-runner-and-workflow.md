@@ -165,6 +165,21 @@ upload still failed because GitHub had not recalculated artifact storage after
 the 144 expired records were deleted. Keep both auth and billing report uploads
 blocking. Rerun after GitHub's stated 6-to-12-hour quota refresh.
 
+Exact-head run
+[33294447371](https://github.com/OpenDevEd/openalex-count/actions/runs/33294447371)
+proved the repaired billing path on `openscholar-ci-secret-2`. All five required
+live tests passed. The browser command had 36 passes, no failures, no retries,
+and six existing runtime skips in 12 minutes. The skips are the drawer-open axe
+cases whose purchase or search filter returns no rows for a fresh user.
+
+Run every planned axe combination. Reuse
+`credits/internal:grantPurchasedCreditsFromPaymentIntent` through the existing
+`WebhookWaiter` to seed one disposable purchase row for filtered matrix cases.
+Put `abc` in the existing searchable `metadata.model` field so the search case
+has a real result. Keep all 24 matrix names, tags, disabled rules, and zero-
+violation assertions. Remove only the conditional skip. The existing fixture
+must hard-delete the user and its seeded transaction after every case.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
