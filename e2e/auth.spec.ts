@@ -93,7 +93,9 @@ test.describe("clerk auth flows", () => {
     await page.goto("/evidence-libraries/new");
 
     const libraryName = `E2E Library ${Date.now()}`;
-    await page.getByRole("textbox", { name: "Name", exact: true }).fill(libraryName);
+    await page
+      .getByRole("textbox", { name: "Name", exact: true })
+      .fill(libraryName);
     // Reserve waits for the server's answer about the address.
     const reserveButton = page.getByRole("button", { name: "Reserve address" });
     await expect(reserveButton).toBeEnabled({ timeout: 30_000 });
@@ -102,9 +104,9 @@ test.describe("clerk auth flows", () => {
       "data-address-state",
       "reserved",
     );
-    await expect(page.getByRole("textbox", { name: "Public address" })).toHaveText(
-      /-lib\./,
-    );
+    await expect(
+      page.getByRole("textbox", { name: "Public address" }),
+    ).toHaveText(/-lib\./);
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page).toHaveURL(/\/evidence-libraries\/[^/]+\/configuration$/);
     const configurationUrl = page.url();
@@ -131,7 +133,9 @@ test.describe("clerk auth flows", () => {
 
     await page.goto("/settings");
     await page.goto(configurationUrl);
-    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(libraryName);
+    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+      libraryName,
+    );
     await expect(page.getByLabel("Tagline")).toHaveValue(tagline);
   });
 
