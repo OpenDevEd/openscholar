@@ -16,7 +16,7 @@ concurrency:
 jobs:
   changes:
     name: Changes
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: openscholar-secret
     timeout-minutes: 5
     outputs:
       runtime_required: ${{ steps.detect.outputs.runtime_required }}
@@ -67,7 +67,7 @@ jobs:
           echo "runtime_required=$runtime_required" >> "$GITHUB_OUTPUT"
 
   unit-and-build:
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: openscholar-secret
     timeout-minutes: 20
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
@@ -368,7 +368,7 @@ jobs:
 
   ci:
     name: CI
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: openscholar-secret
     timeout-minutes: 5
     if: always()
     needs:
