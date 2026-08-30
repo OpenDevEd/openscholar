@@ -35,7 +35,11 @@ uploads then failed because the organization artifact quota was full. Run
 [33283770731](https://github.com/OpenDevEd/openalex-count/actions/runs/33283770731)
 proved the deployment-scoped Convex key works, then failed schema validation
 because `formal-rabbit-271` still contains a `creditTransactions.balanceAfter`
-field removed by commit `105ba308`.
+field removed by commit `105ba308`. The first widened-schema upload then found
+the rest of the stale rollout: 14 of 15 `credits` rows still use the old
+`freeBalance`, `paidBalance`, `lifetimeUsed`, and `lastUpdatedAt` columns, and
+14 rows have no `createdAt`. The table has 15 rows and the transaction table
+has 4,569 rows, of which 2,110 retain `balanceAfter`.
 
 The organization artifact inventory found no OpenScholar artifacts. Eight
 expired `OpenDevEd/oneatatime` release artifacts still total 1,127,845,193
@@ -108,19 +112,30 @@ Delete only expired artifact IDs `6832729991`, `6832689523`, `6781401513`,
 `6781368933`, `6761504640`, `6761495260`, `6761431240`, and `6761420490` from
 `OpenDevEd/oneatatime`. Verify that repository then reports zero artifacts.
 
-Repair `formal-rabbit-271` with widen, migrate, then narrow:
+Repair `formal-rabbit-271` with widen, migrate, then narrow. Preserve each
+legacy row's current free and paid balance by adding the exact difference
+between those values and its ledger sums before removing the old columns:
 
 1. Confirm no other Convex uploader is running.
-2. In a temporary isolated worktree from the current source tree, add
-   `balanceAfter: v.optional(v.number())` back to `creditTransactionFields` and
-   add one paginated internal migration that patches only
-   `{ balanceAfter: undefined }`. Reuse the cursor and scheduler pattern in
-   `convex/migrations/backfillSearchableText.ts`.
-3. Deploy the widened schema using the checked `dev-cloud/.env.local`. Run one
-   dry batch, then the real migration.
-4. Deploy the unchanged final branch schema. Convex accepting that narrow
-   schema proves no stored row retains the field.
-5. Remove the temporary worktree. Do not add migration code or a compatibility
+2. In a temporary isolated worktree from the current source tree, widen
+   `creditTransactionFields` for optional `balanceAfter`. Widen `creditsFields`
+   for optional `createdAt`, `freeBalance`, `paidBalance`, `lifetimeUsed`, and
+   `lastUpdatedAt`.
+3. Add a paginated internal migration. For each legacy `credits` row, sum its
+   free and paid transaction amounts. Insert one signed migration transaction
+   per non-zero difference so the ledger equals the stored balances. Use
+   `grant` for a positive difference and `usage` for a negative difference.
+   Rebuild both sharded counters from that corrected ledger, set `createdAt` to
+   the row's `_creationTime` when missing, then remove the four old fields.
+   Separately remove every transaction `balanceAfter`. Reuse the repository's
+   existing cursor and scheduler pattern.
+4. Deploy the widened schema using the checked `dev-cloud/.env.local`. Run the
+   read-only audit, then the real migration. Verify all 15 anchor rows, all
+   ledger sums, both sharded counters, and the count of remaining removed
+   fields before narrowing.
+5. Deploy the unchanged final branch schema. Convex accepting that narrow
+   schema proves no stored row retains any removed field.
+6. Remove the temporary worktree. Do not add migration code or a compatibility
    field to the final pull request.
 
 ### 2. Create the isolated guest
