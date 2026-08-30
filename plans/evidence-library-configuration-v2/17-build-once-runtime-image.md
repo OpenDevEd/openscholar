@@ -330,6 +330,20 @@ checkout stayed untouched because it was on `codex/libtest` with local changes.
   its `RepoDigests` to contain the expected registry digest. Checking only
   `Config.Image` would prove the requested text, not the content Docker ran.
 
+### Live verifier correction checked on 2026-08-30
+
+The first shared-platform canary exposed one missing permission in the runtime
+verifier Compose file. The verifier now reads `/images/{id}/json` to prove the
+content digest, but `docker-socket-proxy` allowed only container reads. The
+proxy returned a failure and the public verifier endpoint answered 502 even
+though all six library services were healthy.
+
+Set `IMAGES: "1"` as well as `CONTAINERS: "1"` on the read-only socket proxy.
+Keep `POST: "0"`, the read-only socket mount and the existing capability
+drops. Add a Compose contract test that parses the rendered service
+environment and proves both read permissions are present while writes remain
+disabled. A source-text assertion is not enough.
+
 ### What the platforms support
 
 - Docker Compose accepts `image` as `registry/name:tag` or
@@ -835,7 +849,9 @@ The smallest honest boundaries are:
    update, deployment adoption and persisted rollback receipts.
 3. Runtime verifier tests over Docker inspect facts for five matching runtime
    images, one wrong image, missing and duplicate services, and Meilisearch not
-   being mistaken for the runtime image.
+   being mistaken for the runtime image. The rendered verifier Compose test
+   must also prove that its socket proxy allows container and image reads but
+   not Docker writes.
 4. The existing production-image runtime acceptance suite using one local
    image for all five processes.
 5. One real shared-platform flow that reads the deployment log and host
