@@ -77,6 +77,9 @@ build three times, and run Playwright's Linux package installer twice.
     edited values after each run. The browser still proves the enabled owner
     gate, Save, and reopen behavior. It must never receive Coolify, database,
     storage, or production credentials.
+    Set the required non-secret `EVIDENCE_LIBRARY_PLATFORM_DOMAIN` in the cloud
+    dev deployment to the shared development value `opendev.space`; do not add
+    an `EL_*` provisioning value.
 15. Enable the existing `subscriptions.enabled`, `subscriptions.plan.go`, and
     `subscriptions.plan.pro` rows only in `formal-rabbit-271`. Their source
     defaults are already enabled. Keep Enterprise disabled. Put required

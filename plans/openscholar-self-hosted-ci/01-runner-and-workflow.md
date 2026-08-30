@@ -199,8 +199,11 @@ rerunning extended billing.
 Project the existing Clerk E2E organization and admin membership through
 `webhooks/projections:applyOrganizationMembershipEvent`. Reserve one fixed
 draft with `evidenceLibraries/mutations:reserveAddress` and the real Clerk
-identity. This internal reservation writes only Convex draft/setup rows and
-does not run an address check or schedule setup. Store its ID and the Clerk
+identity. Set `EVIDENCE_LIBRARY_PLATFORM_DOMAIN=opendev.space`, matching the
+shared development deployment. Prime the existing served-host cache for this
+one reservation so the action does not need a Coolify credential; it still
+probes the real public candidate before writing. The reservation writes only
+Convex draft/setup rows and does not schedule setup. Store its ID and the Clerk
 organization ID as repository Actions secrets. Do not set any `EL_*` value in
 the cloud deployment or GitHub.
 
