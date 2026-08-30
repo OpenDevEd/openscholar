@@ -134,10 +134,35 @@ export const runConfigurationDeployment = internalAction({
                 runtimeImage: prepared.runtimeImage,
               }),
         });
+        const runningRuntimeImage = application.runtimeImage;
+        const runsUpdateSource =
+          runtimeUpdate !== undefined &&
+          application.runtimeCommit === runtimeUpdate.from &&
+          (runtimeUpdate.fromImage === undefined ||
+            runningRuntimeImage === runtimeUpdate.fromImage);
+        const runsUpdateTarget =
+          runtimeUpdate !== undefined &&
+          application.runtimeCommit === runtimeUpdate.to &&
+          runningRuntimeImage === runtimeUpdate.toImage;
+        const runsFailedTarget =
+          runtimeUpdate !== undefined &&
+          !runsUpdateSource &&
+          !runsUpdateTarget &&
+          runningRuntimeImage !== undefined &&
+          (await ctx.runQuery(
+            internal.evidenceLibraries.configurationDeployment
+              .isFailedRuntimeTarget,
+            {
+              libraryId: args.libraryId,
+              runtimeCommit: application.runtimeCommit,
+              runtimeImage: runningRuntimeImage,
+            },
+          ));
         if (
           runtimeUpdate &&
-          application.runtimeCommit !== runtimeUpdate.from &&
-          application.runtimeCommit !== runtimeUpdate.to
+          !runsUpdateSource &&
+          !runsUpdateTarget &&
+          !runsFailedTarget
         ) {
           throw new CoolifyClientError(
             "COOLIFY_APPLICATION_CONFLICT",

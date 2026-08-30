@@ -1817,9 +1817,48 @@ export function createCoolifyClient(input: {
           coolifyConfigHash: application.configHash,
         };
       }
+      const environments = await readEnvironments(client, applicationUuid);
+      const managedValue = (key: "SOURCE_COMMIT" | "RUNTIME_IMAGE") => {
+        const matches = environments.filter(
+          (environment) =>
+            !isPlatformEnvironment(environment) &&
+            !environment.isShared &&
+            !environment.isPreview &&
+            environment.key === key,
+        );
+        if (matches.length === 0) return undefined;
+        if (
+          matches.length !== 1 ||
+          !hasExpectedEnvironment(matches[0]!, {
+            key,
+            value: matches[0]!.value,
+          })
+        ) {
+          throw new CoolifyClientError(
+            "COOLIFY_ENVIRONMENT_CONFLICT",
+            "The bound Coolify application has conflicting runtime identity",
+          );
+        }
+        return matches[0]!.value;
+      };
+      const sourceCommit = managedValue("SOURCE_COMMIT");
+      const savedRuntimeImage = managedValue("RUNTIME_IMAGE");
+      if (
+        (sourceCommit !== undefined &&
+          sourceCommit !== application.gitCommitSha) ||
+        (savedRuntimeImage !== undefined && sourceCommit === undefined)
+      ) {
+        throw new CoolifyClientError(
+          "COOLIFY_APPLICATION_CONFLICT",
+          "The bound Coolify application has inconsistent runtime identity",
+        );
+      }
       return {
         applicationUuid,
         runtimeCommit: application.gitCommitSha,
+        ...(savedRuntimeImage === undefined
+          ? {}
+          : { runtimeImage: requireRuntimeImage(savedRuntimeImage) }),
         coolifyConfigHash: application.configHash,
       };
     },
