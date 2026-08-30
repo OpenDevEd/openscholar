@@ -32,6 +32,7 @@ test.describe("Downgrade: Pro to Go", () => {
 
     // 3. Click Go plan button to trigger downgrade (no dialog, calls changePlan directly)
     await pricingPage.clickSubscribe("go");
+    await expect(pricingPage.scheduledBadge).toBeVisible();
 
     // 4. Re-navigate to pricing page to see scheduled badge on Go card
     await pricingPage.goto();
@@ -66,6 +67,7 @@ test.describe("Downgrade: Pro to Go", () => {
     // 2. Trigger downgrade to Go via pricing page
     await pricingPage.goto();
     await pricingPage.clickSubscribe("go");
+    await expect(pricingPage.scheduledBadge).toBeVisible();
 
     // 3. Navigate to billing page and verify pending-change banner appears
     await billingPage.goto();
