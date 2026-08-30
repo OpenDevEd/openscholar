@@ -776,6 +776,10 @@ export const evidenceLibraryOperationFields = {
   // it, so a replacement worker after the claim expired cannot be written
   // over by the attempt it replaced.
   teardownAttemptToken: v.optional(v.string()),
+  // Saved before Coolify is asked to delete the application. A later retry
+  // still needs the UUID to remove the application's exact data volume after
+  // the Coolify row and tag have gone.
+  teardownApplicationId: v.optional(v.string()),
   setupReadinessPollCount: v.optional(v.number()),
   configurationDeploymentTarget: v.optional(
     evidenceLibraryConfigurationDeploymentTargetValidator,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useTransition } from "react";
+import type { RefObject } from "react";
 
 import {
   ArrowDown,
@@ -50,9 +51,10 @@ const DENSITY_STORAGE_KEY = "billing.transactions.density";
 
 interface Props {
   counts: Record<string, number>;
+  searchRef?: RefObject<HTMLInputElement | null>;
 }
 
-export function TransactionsPanelToolbar({ counts }: Props) {
+export function TransactionsPanelToolbar({ counts, searchRef }: Props) {
   const t = useTranslations("billingPage.transactions");
   const tType = useTranslations("billingPage.transactions.type");
   const tBilling = useTranslations("billingPage.transactions.billingType");
@@ -119,6 +121,7 @@ export function TransactionsPanelToolbar({ counts }: Props) {
             aria-hidden="true"
           />
           <Input
+            ref={searchRef}
             type="search"
             defaultValue={state.q}
             onChange={(e) => void setState({ q: e.target.value })}

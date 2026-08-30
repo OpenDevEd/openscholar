@@ -1556,6 +1556,7 @@ export function createCoolifyClient(input: {
       applicationUuid?: string;
       environmentName: string;
       libraryId: Id<"evidenceLibraries">;
+      onApplicationResolved: (applicationUuid: string) => Promise<void>;
       projectUuid: string;
       publicDomain: string;
       customDomains: readonly string[];
@@ -1587,6 +1588,9 @@ export function createCoolifyClient(input: {
       }
       const applicationUuid = savedApplicationUuid ?? taggedApplications[0];
       if (!applicationUuid) return { applicationUuid: null, outcome: "absent" };
+      // Persist the UUID before any provider call can remove the row and its
+      // tag. Volume cleanup retries cannot rediscover it after that point.
+      await input.onApplicationResolved(applicationUuid);
       const environmentName = requireInputText(
         "Coolify environment name",
         input.environmentName,

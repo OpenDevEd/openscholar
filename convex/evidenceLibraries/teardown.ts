@@ -473,9 +473,10 @@ export const prepareDevelopmentTeardown = internalMutation({
       .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
       .collect();
     const applicationId =
-      binding && "targetRuntimeId" in binding
+      operation.teardownApplicationId ??
+      (binding && "targetRuntimeId" in binding
         ? binding.targetRuntimeId
-        : setupOperation?.setupReceipts?.application?.applicationId;
+        : setupOperation?.setupReceipts?.application?.applicationId);
     const now = Date.now();
     const attemptToken = crypto.randomUUID();
     await ctx.db.patch(operation._id, {
@@ -523,6 +524,37 @@ export const prepareDevelopmentTeardown = internalMutation({
         .map((row) => row.certificateHostnameId)
         .filter((id): id is string => typeof id === "string"),
     };
+  },
+});
+
+export const rememberDevelopmentTeardownApplication = internalMutation({
+  args: {
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+    applicationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(
+      "evidenceLibraryConfigOperations",
+      args.operationId,
+    );
+    if (!operation || operation.kind !== "teardown") {
+      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+    }
+    requireTeardownAttempt(operation, args.attemptToken);
+    if (
+      operation.teardownApplicationId &&
+      operation.teardownApplicationId !== args.applicationId
+    ) {
+      throw createError(
+        "CONFLICT",
+        "The Evidence Library teardown resolved a different application",
+      );
+    }
+    await ctx.db.patch(operation._id, {
+      teardownApplicationId: args.applicationId,
+      updatedAt: Date.now(),
+    });
   },
 });
 

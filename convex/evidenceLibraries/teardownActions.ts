@@ -21,6 +21,11 @@ import {
   StorageSetupError,
 } from "./storageSetupClient";
 import { deleteLibraryUploads } from "./uploadsClient";
+import {
+  deleteLibraryVolume,
+  isRetryableVolumeDeletionError,
+  VolumeDeletionClientError,
+} from "./volumeDeletionClient";
 
 function requireEnvironment(name: string) {
   const value = process.env[name]?.trim();
@@ -155,18 +160,38 @@ export const runDevelopmentTeardown = internalAction({
         );
       }
       await holdTeardown(ctx, args.operationId, attemptToken);
-      await createCoolifyClient({
+      const applicationDeletion = await createCoolifyClient({
         origin: requireEnvironment("EL_COOLIFY_URL"),
         token: requireEnvironment("EL_COOLIFY_TOKEN"),
       }).deleteLibraryApplication({
         applicationUuid: prepared.applicationId,
         environmentName: requireEnvironment("EL_COOLIFY_ENVIRONMENT"),
         libraryId: args.libraryId,
+        onApplicationResolved: async (applicationId) => {
+          await holdTeardown(ctx, args.operationId, attemptToken);
+          await ctx.runMutation(
+            internal.evidenceLibraries.teardown
+              .rememberDevelopmentTeardownApplication,
+            {
+              applicationId,
+              attemptToken,
+              operationId: args.operationId,
+            },
+          );
+        },
         projectUuid: requireEnvironment("EL_COOLIFY_PROJECT_UUID"),
         publicDomain: prepared.targetBaseUrl,
         customDomains: prepared.customDomains,
         serverUuid: requireEnvironment("EL_COOLIFY_SERVER_UUID"),
       });
+      if (applicationDeletion.applicationUuid) {
+        await holdTeardown(ctx, args.operationId, attemptToken);
+        await deleteLibraryVolume({
+          applicationUuid: applicationDeletion.applicationUuid,
+          deleterUrl: requireEnvironment("EL_VOLUME_DELETER_URL"),
+          token: requireEnvironment("EL_VOLUME_DELETER_TOKEN"),
+        });
+      }
       stage = "storage";
       await ctx.runMutation(
         internal.evidenceLibraries.teardown.setDevelopmentTeardownStage,
@@ -230,7 +255,8 @@ export const runDevelopmentTeardown = internalAction({
         error instanceof CoolifyClientError ||
         error instanceof StorageSetupError ||
         error instanceof DatabaseProvisionerError ||
-        error instanceof CloudflareSaasError
+        error instanceof CloudflareSaasError ||
+        error instanceof VolumeDeletionClientError
           ? { code: error.code, message: error.message }
           : {
               code: "DEVELOPMENT_TEARDOWN_FAILED",
@@ -240,12 +266,14 @@ export const runDevelopmentTeardown = internalAction({
       // page says that; the provider's own message is kept for the log only.
       const failedStep = readTeardownStep(stage, removingDomains);
       if (!attemptToken) return { status: "pending" as const };
-      // The certificate service being unreachable is usually a moment, not a
-      // decision. The library keeps its records and waits, and only says so
-      // after the last try.
+      // A provider that is temporarily unavailable, or a container still
+      // releasing its volume, needs time rather than a second state machine.
+      // The library keeps its records and waits, and only says so after the
+      // last try.
       if (
-        error instanceof CloudflareSaasError &&
-        error.code === "CLOUDFLARE_UNAVAILABLE"
+        (error instanceof CloudflareSaasError &&
+          error.code === "CLOUDFLARE_UNAVAILABLE") ||
+        isRetryableVolumeDeletionError(error)
       ) {
         const again = await ctx.runMutation(
           internal.evidenceLibraries.teardown.retryDevelopmentTeardown,

@@ -8,6 +8,7 @@ import { PricingPage } from "./pages/pricing-page";
 import {
   createDisposableClerkUser,
   deleteClerkUser,
+  signInClerkTestUser,
 } from "../clerk-test-user";
 
 /**
@@ -62,12 +63,7 @@ export const test = base.extend<BillingFixtures>({
     });
 
     // Sign in to the browser session
-    await page.goto("/");
-    await clerk.loaded({ page });
-    await clerk.signIn({
-      page,
-      emailAddress: user.email,
-    });
+    await signInClerkTestUser(page, user);
 
     // Navigate to a protected page to trigger ensureUser in Convex
     // This creates the Convex user row via the Clerk webhook

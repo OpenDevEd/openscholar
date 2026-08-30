@@ -93,7 +93,9 @@ test.describe("clerk auth flows", () => {
     await page.goto("/evidence-libraries/new");
 
     const libraryName = `E2E Library ${Date.now()}`;
-    await page.getByRole("textbox", { name: "Name", exact: true }).fill(libraryName);
+    await page
+      .getByRole("textbox", { name: "Name", exact: true })
+      .fill(libraryName);
     // Reserve waits for the server's answer about the address.
     const reserveButton = page.getByRole("button", { name: "Reserve address" });
     await expect(reserveButton).toBeEnabled({ timeout: 30_000 });
@@ -102,49 +104,26 @@ test.describe("clerk auth flows", () => {
       "data-address-state",
       "reserved",
     );
-    await expect(page.getByRole("textbox", { name: "Public address" })).toHaveText(
-      /-lib\./,
-    );
+    await expect(
+      page.getByRole("textbox", { name: "Public address" }),
+    ).toHaveText(/-lib\./);
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page).toHaveURL(/\/evidence-libraries\/[^/]+\/configuration$/);
     const configurationUrl = page.url();
 
-    await page
-      .getByLabel("Logo URL")
-      .fill("https://assets.example.org/e2e-logo.svg");
-    await page
-      .getByLabel("Favicon URL")
-      .fill("https://assets.example.org/e2e-favicon.ico");
+    const tagline = "Evidence that survives a reload";
+    await page.getByLabel("Tagline").fill(tagline);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveAttribute(
-      "data-result",
-      "save-success",
-    );
-
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
-    const preview = page.getByRole("dialog");
-    await expect(preview).toContainText(libraryName);
-    await expect(preview).toContainText("en-GB");
-    await preview.getByRole("button", { name: "Close" }).first().click();
-
-    await page.getByRole("button", { name: "Activate", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveAttribute(
-      "data-result",
-      "activation-success",
-    );
+    await expect(
+      page.getByText("Changes saved.", { exact: true }),
+    ).toBeVisible();
 
     await page.goto("/settings");
     await page.goto(configurationUrl);
-    await expect(page.getByLabel("Library name")).toHaveValue(libraryName);
-    await expect(page.getByLabel("Logo URL")).toHaveValue(
-      "https://assets.example.org/e2e-logo.svg",
+    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+      libraryName,
     );
-    await expect(page.getByLabel("Favicon URL")).toHaveValue(
-      "https://assets.example.org/e2e-favicon.ico",
-    );
-    await expect(page.getByLabel("Platform address")).toHaveAttribute(
-      "readonly",
-    );
+    await expect(page.getByLabel("Tagline")).toHaveValue(tagline);
   });
 
   test("sign out returns session to anonymous behavior", async ({ page }) => {

@@ -1,11 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
-import { clerk } from "@clerk/testing/playwright";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import {
   createDisposableClerkUser,
   deleteClerkUser,
+  signInClerkTestUser,
   type ClerkTestUser,
 } from "./clerk-test-user";
 
@@ -17,13 +17,8 @@ function requireEnv(name: string): string {
   return value;
 }
 
-async function signIn(page: Page, emailAddress: string) {
-  await page.goto("/");
-  await clerk.loaded({ page });
-  await clerk.signIn({
-    page,
-    emailAddress,
-  });
+async function signIn(page: Page, user: ClerkTestUser) {
+  await signInClerkTestUser(page, user);
   await page.waitForFunction(() => Boolean(window.Clerk?.session));
 }
 
@@ -126,7 +121,7 @@ test.describe("library smoke", () => {
     });
 
     try {
-      await signIn(page, clerkUser.email);
+      await signIn(page, clerkUser);
 
       const token = await getConvexToken(page);
       const seedId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

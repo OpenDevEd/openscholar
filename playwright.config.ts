@@ -3,9 +3,11 @@ import path from "node:path";
 import { accessSync, constants } from "node:fs";
 
 function loadEnvironmentFromFiles(): void {
-  const loadEnvFile = (process as typeof process & {
-    loadEnvFile?: (file?: string) => void;
-  }).loadEnvFile;
+  const loadEnvFile = (
+    process as typeof process & {
+      loadEnvFile?: (file?: string) => void;
+    }
+  ).loadEnvFile;
 
   if (typeof loadEnvFile !== "function") {
     return;
@@ -27,7 +29,8 @@ if (
   !process.env.CLERK_PUBLISHABLE_KEY &&
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ) {
-  process.env.CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  process.env.CLERK_PUBLISHABLE_KEY =
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 }
 
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
@@ -43,6 +46,7 @@ export default defineConfig({
   },
   fullyParallel: false,
   retries: process.env.CI ? 2 : 0,
+  maxFailures: process.env.CI ? 1 : undefined,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   globalSetup: "./e2e/global.setup.ts",

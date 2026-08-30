@@ -603,7 +603,7 @@ function TransactionsPanelClientInner({ jobId }: Props) {
         }
       />
       <TransactionsPanelTabs />
-      <TransactionsPanelToolbar counts={counts} />
+      <TransactionsPanelToolbar counts={counts} searchRef={searchRef} />
 
       {jobId && (
         <div
@@ -647,9 +647,11 @@ function TransactionsPanelClientInner({ jobId }: Props) {
       >
         <div
           ref={listRef}
-          role="list"
-          tabIndex={0}
-          aria-activedescendant={activeId ? `txn-row-${activeId}` : undefined}
+          role={rowCount > 0 ? "list" : undefined}
+          tabIndex={rowCount > 0 ? 0 : undefined}
+          aria-activedescendant={
+            rowCount > 0 && activeId ? `txn-row-${activeId}` : undefined
+          }
           data-transactions-list=""
           data-search-deferred={isSearchStale ? "true" : "false"}
           aria-busy={isSearchStale ? "true" : "false"}

@@ -8,7 +8,7 @@ on:
 
 jobs:
   unit-and-build:
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 20
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
@@ -34,7 +34,7 @@ jobs:
         run: npm run build
 
   e2e-auth:
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 30
     needs: unit-and-build
     env:
@@ -43,12 +43,14 @@ jobs:
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
       NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
-      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.AUTH_E2E_CONVEX_URL }}
       CLERK_JWT_ISSUER_DOMAIN: ${{ secrets.CLERK_JWT_ISSUER_DOMAIN }}
       CLERK_WEBHOOK_SIGNING_SECRET: ${{ secrets.CLERK_WEBHOOK_SIGNING_SECRET }}
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
+      E2E_BASE_URL: http://localhost:3000
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3000
     steps:
       - uses: actions/checkout@v4
 
@@ -95,7 +97,7 @@ jobs:
 
       - name: Install Playwright browser
         if: steps.auth-environment.outputs.available == 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run auth E2E
         if: steps.auth-environment.outputs.available == 'true'
@@ -103,6 +105,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always() && steps.auth-environment.outputs.available == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -111,6 +114,7 @@ jobs:
 
       - name: Upload app logs
         if: failure() && steps.auth-environment.outputs.available == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: playwright-output
@@ -118,7 +122,7 @@ jobs:
           if-no-files-found: ignore
 
   billing-live:
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 45
     needs: unit-and-build
     concurrency:
@@ -129,6 +133,7 @@ jobs:
       NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
       CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
       CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
       STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
@@ -142,7 +147,9 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
+      E2E_BASE_URL: http://localhost:3001
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
       - uses: actions/checkout@v4
 
@@ -156,8 +163,14 @@ jobs:
         run: |
           required_vars=(
             NEXT_PUBLIC_CONVEX_URL
+            CONVEX_DEPLOY_KEY
             STRIPE_SECRET_KEY
             STRIPE_GO_PRICE_ID
+            CLERK_SECRET_KEY
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+            E2E_CLERK_USER_EMAIL
+            E2E_CLERK_USER_PASSWORD
+            E2E_CLERK_ORGANIZATION_ID
           )
           missing_vars=()
           for var_name in "${required_vars[@]}"; do
@@ -192,6 +205,7 @@ jobs:
 
       - name: Upload billing-live artifacts
         if: always() && steps.billing-environment.outputs.available == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: billing-live-artifacts
@@ -200,7 +214,7 @@ jobs:
 
       - name: Install Playwright browser
         if: steps.billing-environment.outputs.available == 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run billing E2E tests
         if: steps.billing-environment.outputs.available == 'true'
@@ -208,6 +222,7 @@ jobs:
 
       - name: Upload billing E2E report
         if: always() && steps.billing-environment.outputs.available == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: billing-e2e-report-${{ github.job }}
@@ -216,7 +231,7 @@ jobs:
 
   billing-live-extended:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 60
     needs: billing-live
     continue-on-error: true
@@ -228,6 +243,7 @@ jobs:
       NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
       CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
       CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
       STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
@@ -241,7 +257,9 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
+      E2E_BASE_URL: http://localhost:3001
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
       - uses: actions/checkout@v4
 
@@ -265,6 +283,7 @@ jobs:
 
       - name: Upload billing-live-extended artifacts
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: billing-live-extended-artifacts
@@ -272,13 +291,14 @@ jobs:
           if-no-files-found: ignore
 
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run billing E2E tests
         run: npm run test:billing:e2e
 
       - name: Upload billing E2E report
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: billing-e2e-report-${{ github.job }}
