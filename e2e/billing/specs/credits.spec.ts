@@ -4,7 +4,10 @@ import {
   cleanupStripeCustomer,
   createTopupBypass,
 } from "../stripe-helpers";
-import { FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "../../../convex/lib/constants";
+import {
+  FREE_SIGNUP_CREDIT_GRANT,
+  PLAN_CONFIG,
+} from "../../../convex/lib/constants";
 
 test.describe("Credits", () => {
   test(`free user sees ${FREE_SIGNUP_CREDIT_GRANT} signup credits on billing page`, async ({
@@ -34,7 +37,10 @@ test.describe("Credits", () => {
       priceId: goPriceId,
     });
     await webhookWaiter.waitForSubscriptionPlan("go");
-    await webhookWaiter.waitForCreditBalance((total) => total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth);
+    await webhookWaiter.waitForCreditBalance(
+      (total) =>
+        total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth,
+    );
 
     // 2. Read subscription timestamps for pro-rata calculation
     //    In Stripe API 2026-01-28 (clover), period fields moved to subscription items
@@ -49,6 +55,10 @@ test.describe("Credits", () => {
 
     // 3. Upgrade to Pro via pricing page confirmation dialog
     await pricingPage.goto();
+    const goCard = pricingPage.planCard("go");
+    await expect(
+      goCard.locator('[data-testid="pricing-current-badge"]'),
+    ).toBeVisible();
     await pricingPage.clickSubscribe("pro");
     await expect(pricingPage.upgradeConfirmButton).toBeVisible({
       timeout: 15_000,
@@ -64,8 +74,14 @@ test.describe("Credits", () => {
     //    and creditDelta = PLAN_CONFIG.pro.creditsPerMonth - PLAN_CONFIG.go.creditsPerMonth
     const now = Date.now();
     const remainingRatio = (periodEnd - now) / (periodEnd - periodStart);
-    const expectedProRata = Math.floor(remainingRatio * (PLAN_CONFIG.pro.creditsPerMonth - PLAN_CONFIG.go.creditsPerMonth));
-    const expectedTotal = FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth + expectedProRata; // free + Go + proRata
+    const expectedProRata = Math.floor(
+      remainingRatio *
+        (PLAN_CONFIG.pro.creditsPerMonth - PLAN_CONFIG.go.creditsPerMonth),
+    );
+    const expectedTotal =
+      FREE_SIGNUP_CREDIT_GRANT +
+      PLAN_CONFIG.go.creditsPerMonth +
+      expectedProRata; // free + Go + proRata
 
     // 6. Wait for credits to be updated (pro-rata grant may arrive after plan change)
     await webhookWaiter.waitForCreditBalance(
@@ -99,11 +115,15 @@ test.describe("Credits", () => {
       priceId: goPriceId,
     });
     await webhookWaiter.waitForSubscriptionPlan("go");
-    await webhookWaiter.waitForCreditBalance((total) => total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth);
+    await webhookWaiter.waitForCreditBalance(
+      (total) =>
+        total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth,
+    );
 
     // 2. Record current balance
     const balanceBefore = await webhookWaiter.waitForCreditBalance(
-      (total) => total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth,
+      (total) =>
+        total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth,
     );
 
     // 3. Purchase 10,000 credits via topup checkout-bypass
