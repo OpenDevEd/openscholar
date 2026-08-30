@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { PLAN_CONFIG } from "../../convex/lib/constants";
 import {
   advanceTestClockAndWaitReady,
   appendBillingArtifactLog,
@@ -132,7 +133,7 @@ describe.sequential("live billing extended regressions", () => {
     });
   });
 
-  it("upgrade applies immediately and next cycle grants the upgraded monthly credits once", async () => {
+  it("upgrade applies immediately and next cycle grants upgraded credits once up to the free cap", async () => {
     if (!env.stripeProPriceId) {
       appendBillingArtifactLog(
         "Skipping upgrade cycle-credit test because STRIPE_PRO_PRICE_ID is not configured.",
@@ -166,7 +167,9 @@ describe.sequential("live billing extended regressions", () => {
       timeoutMs: env.webhookWaitTimeoutMs,
       check: async () => {
         const current = await getBillingSnapshotForUser(userId);
-        return countGrantTransactionsByInvoice(current, invoiceId) === 1 ? current : null;
+        return countGrantTransactionsByInvoice(current, invoiceId) === 1
+          ? current
+          : null;
       },
     });
 
@@ -214,11 +217,18 @@ describe.sequential("live billing extended regressions", () => {
 
     const beforeAdvanceSnapshot = await getBillingSnapshotForUser(userId);
     expect(listInvoiceGrantTransactions(beforeAdvanceSnapshot)).toHaveLength(1);
+    const [beforeRenewalCredits] = beforeAdvanceSnapshot.credits;
+    if (!beforeRenewalCredits) {
+      throw new Error(`Missing credits row before renewal for ${userId}`);
+    }
 
-    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const stripeSubscription =
+      await stripe.subscriptions.retrieve(subscriptionId);
     const periodEndSec = stripeSubscription.items.data[0]?.current_period_end;
     if (!periodEndSec) {
-      throw new Error(`Unable to resolve current_period_end for ${subscriptionId}`);
+      throw new Error(
+        `Unable to resolve current_period_end for ${subscriptionId}`,
+      );
     }
 
     await advanceTestClockAndWaitReady({
@@ -280,7 +290,19 @@ describe.sequential("live billing extended regressions", () => {
     );
     const expectedRenewalCredits = syncedSubscription?.creditsPerMonth ?? null;
     expect(expectedRenewalCredits).not.toBeNull();
-    expect(renewalGrant?.amount).toBe(expectedRenewalCredits);
+    const remainingFreeCreditCap = Math.max(
+      0,
+      PLAN_CONFIG.pro.freeCreditCap - beforeRenewalCredits.free,
+    );
+    const expectedCappedRenewalGrant = Math.min(
+      expectedRenewalCredits ?? 0,
+      remainingFreeCreditCap,
+    );
+    expect(renewalGrant?.amount).toBe(expectedCappedRenewalGrant);
+    expect(postRenewalSnapshot.credits).toHaveLength(1);
+    expect(postRenewalSnapshot.credits[0]?.free).toBe(
+      PLAN_CONFIG.pro.freeCreditCap,
+    );
 
     const invoices = await stripe.invoices.list({
       subscription: subscriptionId,
@@ -290,7 +312,9 @@ describe.sequential("live billing extended regressions", () => {
       (invoice) => invoice.billing_reason === "subscription_update",
     );
     for (const updateInvoice of updateInvoices) {
-      expect(countGrantTransactionsByInvoice(postRenewalSnapshot, updateInvoice.id)).toBe(0);
+      expect(
+        countGrantTransactionsByInvoice(postRenewalSnapshot, updateInvoice.id),
+      ).toBe(0);
     }
 
     writeBillingArtifactJson("extended-upgrade-cycle-credit.json", {
@@ -384,11 +408,12 @@ describe.sequential("live billing extended regressions", () => {
     expect(scheduled.mode).toBe("scheduled");
     expect(typeof scheduled.effectiveDate).toBe("number");
 
-    const stillProBeforeBoundary = await runConvexFunction<TestSubscription | null>({
-      functionPath: "subscriptions/queries:getMy",
-      payload: {},
-      identity,
-    });
+    const stillProBeforeBoundary =
+      await runConvexFunction<TestSubscription | null>({
+        functionPath: "subscriptions/queries:getMy",
+        payload: {},
+        identity,
+      });
     expect(stillProBeforeBoundary?.plan).toBe("pro");
 
     const effectiveDateSec = Math.floor((scheduled.effectiveDate ?? 0) / 1000);
