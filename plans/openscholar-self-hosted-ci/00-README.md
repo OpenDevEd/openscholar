@@ -1,10 +1,8 @@
 # OpenScholar self-hosted CI
 
-Move OpenScholar's secret-free CI to fixed self-hosted runners, restore the
-live checks that GitHub currently skips, and shorten the workflow without
-removing a check or artifact. Keep secret-bearing jobs on GitHub-hosted runners
-until their existing live-service failures are fixed and a clean hosted
-baseline passes.
+Move all same-repository OpenScholar CI to fixed self-hosted runners, restore
+the live checks that GitHub previously skipped, and shorten the workflow
+without removing a check or artifact.
 
 Decided with the user on 2026-08-30. Evidence checked on 2026-08-30.
 
@@ -38,9 +36,9 @@ build three times, and run Playwright's Linux package installer twice.
    Keep live billing, extended billing, and nightly billing in their existing
    shared concurrency group with cancellation off.
 5. Keep fork pull-request workflows disabled at the repository setting. The
-   immutable reusable workflow also routes a fork event to GitHub-hosted Linux
-   if that setting changes later. A fork cannot edit the workflow that has
-   access to the runner groups.
+   immutable reusable workflow also skips every job before runner assignment if
+   that setting changes later. A fork cannot edit the workflow that has access
+   to the runner groups.
 6. Restore the required dev-service secrets from the checked `dev-cloud`
    environment. Create one deployment-scoped Convex key for
    `formal-rabbit-271` because the live billing command pushes the tested
@@ -68,6 +66,11 @@ build three times, and run Playwright's Linux package installer twice.
     in Clerk/Convex state and organization artifact storage before any
     self-hosted job ran. Moving those failing checks would mix migration proof
     with unrelated live-service repair.
+14. Revised again on 2026-08-30 after the user authorized the two repairs:
+    delete the eight expired `OpenDevEd/oneatatime` artifacts, remove the stale
+    `balanceAfter` field from the development Convex data, then route every
+    same-repository secret job to `OpenScholar Secret CI`. No OpenScholar job
+    may use `ubuntu-latest`.
 
 ## Plan
 
@@ -99,9 +102,8 @@ build three times, and run Playwright's Linux package installer twice.
   `node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md`.
 
 The dedicated `OpenScholar Secret CI` group and two secret runner accounts were
-provisioned before the hosted baseline completed. They stay online and idle but
-no workflow routes work to them. They are not proof that the secret jobs are
-ready to move.
+provisioned before the hosted baseline completed. They become active only after
+the authorized artifact and Convex repairs pass their checks.
 
 ## Checks
 

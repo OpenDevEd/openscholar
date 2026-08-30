@@ -2,10 +2,9 @@
 
 ## Goal
 
-Run same-repository secret-free OpenScholar CI on isolated fixed runners, keep
-fork code off those runners, restore every live check, and record a real
-before-and-after result from GitHub. Keep secret-bearing jobs hosted until the
-existing live-service and artifact-storage failures are fixed.
+Run all same-repository OpenScholar CI on isolated fixed runners, keep fork code
+off every runner, restore every live check, and record a real before-and-after
+result from GitHub.
 
 Estimate: one working day, including guest setup and four to six full workflow
 runs.
@@ -40,7 +39,9 @@ field removed by commit `105ba308`.
 
 The organization artifact inventory found no OpenScholar artifacts. Eight
 expired `OpenDevEd/oneatatime` release artifacts still total 1,127,845,193
-bytes. Removing another repository's release output is not part of this task.
+bytes. The user authorized deleting exactly those eight expired artifacts on
+2026-08-30. GitHub reports zero remaining artifacts in that repository after
+the deletion.
 
 ### Live runner capacity
 
@@ -62,17 +63,16 @@ outside the two CI guests at their assigned maximums.
 | Job | Trigger | Secrets and outside services | Code trust | Runner | CPU and memory | Persistent state |
 |---|---|---|---|---|---|---|
 | Unit and contract tests | Same-repo PR; push to `dev` or `main` | Placeholder Clerk and Convex values only | Same-repo branch code, no secrets | `OpenScholar CI`, `openscholar-light` | 4 CPU, 6 GiB max | Own account, workdir and npm cache |
-| Production build | Same as unit | Placeholder values only | Same-repo branch code, no secrets | Second `openscholar-light` runner | 4 CPU, 6 GiB max | Separate account and workdir; public Next cache key |
-| Clerk auth E2E | Same-repo PR; push to `dev` or `main` | Clerk secret, test user, public Convex URL | Same-repo code that already receives these secrets | `ubuntu-latest` until a full hosted baseline passes | GitHub-hosted | GitHub-hosted workspace only |
-| Required live billing | Same-repo PR; push to `dev` or `main` | Convex dev deployment, Stripe test, Clerk test | Same-repo code; pushes current Convex code and mutates test rows | `ubuntu-latest` until a full hosted baseline passes | GitHub-hosted | Shared test user protected by job concurrency |
-| Extended billing | Direct push to `dev` or `main` | Same as required billing | Integration branch code | `ubuntu-latest` until a full hosted baseline passes | GitHub-hosted | Same billing concurrency group; current non-blocking result kept |
-| Nightly billing | Schedule or manual dispatch | Same as required billing | Default-branch workflow code | `ubuntu-latest` until a full hosted baseline passes | GitHub-hosted | Same billing concurrency group; blocking nightly result |
+| Production build | Same as unit | Placeholder values only | Same-repo branch code, no secrets | Second `openscholar-light` runner | 4 CPU, 6 GiB max | Separate account, workdir, and npm cache |
+| Clerk auth E2E | Same-repo PR; push to `dev` or `main` | Clerk secret, test user, public Convex URL | Same-repo code that already receives these secrets | `OpenScholar Secret CI`, `openscholar-secret` | 4 CPU, 6 GiB max | Secret account only; secret browser and npm cache |
+| Required live billing | Same-repo PR; push to `dev` or `main` | Convex dev deployment, Stripe test, Clerk test | Same-repo code; pushes current Convex code and mutates test rows | Second `openscholar-secret` runner | 4 CPU, 6 GiB max | Separate secret account; shared test user protected by job concurrency |
+| Extended billing | Direct push to `dev` or `main` | Same as required billing | Integration branch code | Either secret runner | 4 CPU, 6 GiB max | Same billing concurrency group; current non-blocking result kept |
+| Nightly billing | Schedule or manual dispatch | Same as required billing | Default-branch workflow code | Either secret runner | 4 CPU, 6 GiB max | Same billing concurrency group; blocking nightly result |
 | Aggregate `CI` | Same-repo PR; push to `dev` or `main` | None | Immutable workflow only | `openscholar-light` | Small shell check | No checkout or cache |
-| Fork pull request | Disabled by repository setting | No secrets | Fork code | No runner. If later enabled, immutable workflow selects `ubuntu-latest` | GitHub-hosted | No self-hosted state |
+| Fork pull request | Disabled by repository setting | No secrets | Fork code | No runner. Every reusable-workflow job has a same-repository guard | None | None |
 
 No job receives a host SSH key, Coolify token, host Docker socket, production
-Convex credential, or another repository's credential. The two provisioned
-secret runners receive no jobs in this plan revision.
+Convex credential, or another repository's credential.
 
 ## Design
 
@@ -102,7 +102,26 @@ Do not set `CONVEX_DEPLOYMENT_NAME`. The checked environment already names
 Push only the committed plan and open the PR to `dev`. Record the first complete
 GitHub-hosted run and one rerun. Both auth and billing must execute. A skip is a
 failed baseline. The resulting failures are recorded above; do not move those
-jobs until an unchanged hosted rerun passes.
+jobs until the authorized repairs below pass.
+
+Delete only expired artifact IDs `6832729991`, `6832689523`, `6781401513`,
+`6781368933`, `6761504640`, `6761495260`, `6761431240`, and `6761420490` from
+`OpenDevEd/oneatatime`. Verify that repository then reports zero artifacts.
+
+Repair `formal-rabbit-271` with widen, migrate, then narrow:
+
+1. Confirm no other Convex uploader is running.
+2. In a temporary isolated worktree from the current source tree, add
+   `balanceAfter: v.optional(v.number())` back to `creditTransactionFields` and
+   add one paginated internal migration that patches only
+   `{ balanceAfter: undefined }`. Reuse the cursor and scheduler pattern in
+   `convex/migrations/backfillSearchableText.ts`.
+3. Deploy the widened schema using the checked `dev-cloud/.env.local`. Run one
+   dry batch, then the real migration.
+4. Deploy the unchanged final branch schema. Convex accepting that narrow
+   schema proves no stored row retains the field.
+5. Remove the temporary worktree. Do not add migration code or a compatibility
+   field to the final pull request.
 
 ### 2. Create the isolated guest
 
@@ -154,14 +173,12 @@ that first contains `ci-jobs.yml`. The runner groups allow only:
 `OpenDevEd/openalex-count/.github/workflows/ci-jobs.yml@<full SHA>`
 
 Both groups use selected-repository access for repository ID `959785076`, deny
-public repositories, and set `restricted_to_workflows: true`. Only
-`OpenScholar CI` is active in the workflow. `OpenScholar Secret CI` stays
-restricted and idle. A pull request may edit the caller, but it cannot edit the
-workflow that GitHub allows onto the active runners.
+public repositories, and set `restricted_to_workflows: true`. A pull request
+may edit the caller, but it cannot edit the workflow that GitHub allows onto
+the runners.
 
-The immutable workflow chooses `ubuntu-latest` when a pull-request head
-repository differs from `github.repository`. This is a second fork guard. The
-current private-fork setting remains disabled.
+Every job in the immutable workflow requires a same-repository event. A fork
+event receives no runner. The current private-fork setting remains disabled.
 
 ### 4. Keep the checks and shorten the path
 
@@ -170,7 +187,7 @@ In `ci-jobs.yml`:
 1. Run unit tests and the production build as a two-entry matrix on the two
    light runners.
 2. Make auth and required billing need the whole matrix. Keep them parallel on
-   separate GitHub-hosted runners.
+   the two secret runners.
 3. Keep billing concurrency named `billing-live-shared-test-user` with
    `cancel-in-progress: false`.
 4. Keep the existing extended and nightly order, timeouts, artifact paths,
@@ -182,20 +199,19 @@ Every job uses the current full action SHAs already proven in `new-el/main`:
 
 - `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1`
 - `actions/setup-node@820762786026740c76f36085b0efc47a31fe5020`
-- `actions/cache@caa296126883cff596d87d8935842f9db880ef25`
 - `actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`
 
 Use `npm ci --prefer-offline --no-audit --no-fund`. The separate self-hosted
 accounts keep independent npm caches; do not upload the roughly 400 MiB npm
-cache for each pull-request head. Hosted secret jobs may use setup-node's npm
-cache because their disks are ephemeral.
+cache for each pull-request head. Secret jobs use their separate runner-local
+npm caches.
 
 The first public Next cache was 291,962 bytes. The next build restored it by
 prefix, saved 291,999 bytes, and took 152 seconds instead of 145 seconds. Remove
 the public and secret Next cache steps. They added work without a measured win.
 
 For same-repository pull requests, a missing auth or billing secret is an
-error. Only a fork event may keep the current no-secret skip path.
+error. Fork events skip every job before runner assignment.
 
 Add `dev` beside `main` in the push trigger. Do not remove `main`.
 
@@ -232,8 +248,8 @@ function, or deployment configuration changes.
 - Parse the YAML and inspect every external `uses:` value for a 40-character
   commit SHA.
 - Search the exact tree for `ubuntu-latest`, mutable action tags, old branch
-  triggers, obsolete runner names, and stale CI instructions. The only allowed
-  `ubuntu-latest` value is the immutable fork fallback.
+  triggers, obsolete runner names, and stale CI instructions. No
+  `ubuntu-latest` value is allowed.
 
 ### Runner checks
 
@@ -251,7 +267,7 @@ function, or deployment configuration changes.
 
 ### GitHub workflow checks
 
-Run the complete workflow on the final exact head and record:
+Run the complete workflow twice on the final exact head and record:
 
 - run ID, URL, head SHA, created, started, and completed timestamps;
 - dispatch or dependency delay for every job;
@@ -263,10 +279,7 @@ Run the complete workflow on the final exact head and record:
 - guest CPU use, service CPU time, memory peak, disk before and after;
 - the `CI` result for the exact head.
 
-Run the self-hosted static matrix twice on the same exact head to record cold
-and warm timing. A full green exact-head run remains blocked until the hosted
-jobs pass and GitHub accepts their required artifacts. Do not claim the full
-workflow is green from the static matrix result.
+The first final run is cold and the second is warm. Both must be fully green.
 
 Create one harmless fork pull request to this branch. Confirm the repository
 fork setting creates no workflow run. Also read the runner group policy and
@@ -287,19 +300,19 @@ Before and after the concurrent gate, confirm:
 
 ## Deployability gate
 
-This plan changes workflows and runner infrastructure, not `convex/`, `app/`,
-or `components/`.
+This plan changes workflows, runner infrastructure, and development Convex
+data. The temporary migration code is not part of the final tree.
 
 The gate is:
 
 1. checksum-verified `actionlint` passes;
-2. one cold and one warm self-hosted static matrix result on the final exact
-   head;
-3. auth, required live billing, and billing E2E execute rather than skip and
-   remain visibly blocking when they fail;
-4. every job lands on its approved runner boundary;
-5. the concurrent `new-el` reference run passes;
-6. the host and both guests stay healthy.
+2. the narrowed final schema deploys to `formal-rabbit-271` with no validation
+   error;
+3. one cold and one warm complete workflow pass on the final exact head;
+4. auth, required live billing, and billing E2E execute rather than skip;
+5. every job lands on its approved runner boundary;
+6. the concurrent `new-el` reference run passes;
+7. the host and both guests stay healthy.
 
 ## Review
 
@@ -325,9 +338,7 @@ part of rollback.
 - The plan commit predates every workflow and infrastructure change.
 - The PR targets `dev` and is not merged.
 - A real GitHub-hosted full baseline exists.
-- The static self-hosted matrix passes twice on the final exact head.
-- `01-BLOCKER.md` states why the full exact head cannot be green twice and the
-  exact integration-owner actions needed to unblock it.
+- The final exact head is green twice with every live check executed.
 - Every old artifact and failure rule still works.
 - Forks cannot reach either self-hosted group.
 - `new-el` run 33281691193 still passes during the warm proof.
@@ -347,8 +358,7 @@ part of rollback.
   private networks limit that risk. They do not make the machines ephemeral.
 - Adding a second guest uses host CPU time. The concurrent final gate decides
   whether the fixed layout is acceptable. If either repository or Coolify
-  fails under that load, keep secret jobs GitHub-hosted, write
-  `01-BLOCKER.md`, and stop.
-- The current hosted secret checks fail independently of runner choice. Do not
-  route them to `OpenScholar Secret CI` until the same unchanged checks pass on
-  `ubuntu-latest` and required artifact uploads succeed.
+  fails under that load, stop and revise the fixed self-hosted capacity. Do not
+  fall back to paid GitHub runners.
+- GitHub may take several hours to recalculate artifact storage after deletion.
+  Keep the required uploads unchanged and rerun after storage accepts them.
