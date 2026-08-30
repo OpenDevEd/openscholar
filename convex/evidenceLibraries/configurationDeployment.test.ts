@@ -1099,7 +1099,13 @@ describe("Evidence Library configuration deployment", () => {
       binding: await ctx.db.get(fixture.created.runtimeBindingId),
       operation: await ctx.db.get(started.operationId),
     }));
-    expect(completed.binding).toMatchObject({ runtimeCommit: NEWER_COMMIT });
+    expect(completed.binding).toMatchObject({
+      runtimeCommit: NEWER_COMMIT,
+      previousRuntime: {
+        commit: RUNTIME_COMMIT,
+        image: TEST_RUNTIME_IMAGE,
+      },
+    });
     expect(completed.library).toMatchObject({
       activeRevisionId: activeRevision!._id,
       activeDeploymentOperationId: started.operationId,

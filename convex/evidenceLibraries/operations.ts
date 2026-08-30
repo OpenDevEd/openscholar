@@ -383,6 +383,7 @@ async function queueOperationRecord(
     idempotencyKey: string;
     revisionId?: Id<"evidenceLibraryConfigRevisions">;
     activationEditVersion?: number;
+    requestedByClerkUserId?: string;
     runtimeUpdate?: {
       from: string;
       to: string;
@@ -391,11 +392,10 @@ async function queueOperationRecord(
     };
   },
 ) {
-  const access = await requireEvidenceLibraryAccess(
-    ctx,
-    args.libraryId,
-    "manage",
-  );
+  const requestedByClerkUserId =
+    args.requestedByClerkUserId ??
+    (await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage"))
+      .clerkUserId;
   if (
     (args.kind === "publish" || args.kind === "rollback") &&
     !args.revisionId
@@ -455,7 +455,7 @@ async function queueOperationRecord(
     status: "queued",
     stage: "queued",
     attemptCount: 0,
-    requestedByClerkUserId: access.clerkUserId,
+    requestedByClerkUserId,
     createdAt: now,
     updatedAt: now,
   });
@@ -504,6 +504,27 @@ export async function queueRuntimeUpdateOperation(
   },
 ) {
   return await queueOperationRecord(ctx, { ...args, kind: "publish" });
+}
+
+export async function queueInternalRuntimeRollbackOperation(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    idempotencyKey: string;
+    revisionId: Id<"evidenceLibraryConfigRevisions">;
+    runtimeUpdate: {
+      from: string;
+      to: string;
+      fromImage: string;
+      toImage: string;
+    };
+  },
+) {
+  return await queueOperationRecord(ctx, {
+    ...args,
+    kind: "publish",
+    requestedByClerkUserId: "integration-owner",
+  });
 }
 
 // An address move publishes the active revision again at a new address. No

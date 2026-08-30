@@ -24,6 +24,7 @@ import {
 } from "./addressRecovery";
 import {
   claimAndScheduleConfigurationDeployment,
+  claimAndScheduleInternalConfigurationDeployment,
   isConfigurationDeploymentOperation,
   requireNoActiveConfigurationDeployment,
 } from "./configurationDeployment";
@@ -32,10 +33,12 @@ import {
   queueAddressMoveOperation,
   queueConfigurationDeploymentOperation,
   queueDomainChangeOperation,
+  queueInternalRuntimeRollbackOperation,
   queueRuntimeUpdateOperation,
   reissueConfigurationDeploymentOperation,
 } from "./operations";
 import { isFreshRuntimeRelease } from "./runtimeReleases";
+import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { sectionKeyValidator, type SectionKey } from "./validators";
 import {
   loadDraftConfigurationSnapshot,
@@ -815,6 +818,73 @@ export const startRuntimeUpdate = mutation({
     to: v.string(),
   }),
   handler: startEvidenceLibraryRuntimeUpdate,
+});
+
+export const startRuntimeRollback = internalMutation({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.object({
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+    status: v.literal("running"),
+    from: v.string(),
+    to: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const library = await ctx.db.get(args.libraryId);
+    const binding = library?.runtimeBindingId
+      ? await ctx.db.get(library.runtimeBindingId)
+      : null;
+    if (
+      !library?.activeRevisionId ||
+      library.state !== "active" ||
+      !binding ||
+      binding.libraryId !== args.libraryId ||
+      binding.state !== "ready"
+    ) {
+      throw createError("CONFLICT", "This library is not running yet");
+    }
+    const previous = binding.previousRuntime;
+    if (
+      !previous ||
+      !/^[a-f0-9]{40}$/u.test(previous.commit) ||
+      !isRuntimeImageReference(previous.image)
+    ) {
+      throw createError(
+        "CONFLICT",
+        "This library does not have an earlier software release to restore",
+      );
+    }
+    if (
+      previous.commit === binding.runtimeCommit &&
+      previous.image === binding.runtimeImage
+    ) {
+      throw createError("CONFLICT", "The earlier software is already live");
+    }
+    await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+    const operation = await queueInternalRuntimeRollbackOperation(ctx, {
+      libraryId: args.libraryId,
+      revisionId: library.activeRevisionId,
+      idempotencyKey:
+        `runtime-rollback:${library.activeRevisionId}:` +
+        `${binding.runtimeCommit}:${binding.runtimeImage}:` +
+        `${previous.commit}:${previous.image}`,
+      runtimeUpdate: {
+        from: binding.runtimeCommit,
+        fromImage: binding.runtimeImage,
+        to: previous.commit,
+        toImage: previous.image,
+      },
+    });
+    const started = await claimAndScheduleInternalConfigurationDeployment(ctx, {
+      libraryId: args.libraryId,
+      operationId: operation.operationId,
+    });
+    return {
+      ...started,
+      from: binding.runtimeCommit,
+      to: previous.commit,
+    };
+  },
 });
 
 export const restoreRevision = mutation({

@@ -306,14 +306,13 @@ export async function requireNoActiveConfigurationDeployment(
   }
 }
 
-export async function claimAndScheduleConfigurationDeployment(
+async function claimAndScheduleAuthorizedConfigurationDeployment(
   ctx: MutationCtx,
   args: {
     libraryId: Id<"evidenceLibraries">;
     operationId: Id<"evidenceLibraryConfigOperations">;
   },
 ) {
-  await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
   await requireNoActiveConfigurationDeployment(
     ctx,
     args.libraryId,
@@ -371,6 +370,27 @@ export async function claimAndScheduleConfigurationDeployment(
     revisionId: deployment.revision._id,
     status: "running" as const,
   };
+}
+
+export async function claimAndScheduleConfigurationDeployment(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+  },
+) {
+  await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  return await claimAndScheduleAuthorizedConfigurationDeployment(ctx, args);
+}
+
+export async function claimAndScheduleInternalConfigurationDeployment(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+  },
+) {
+  return await claimAndScheduleAuthorizedConfigurationDeployment(ctx, args);
 }
 
 function requireCredential(
@@ -1218,6 +1238,14 @@ export const completeConfigurationDeployment = internalMutation({
     await ctx.db.patch(deployment.runtimeBinding._id, {
       runtimeCommit: receipt.runtimeCommit,
       runtimeImage: requireRuntimeImage(receipt.runtimeImage),
+      ...(deployment.operation.runtimeUpdate
+        ? {
+            previousRuntime: {
+              commit: deployment.runtimeBinding.runtimeCommit,
+              image: deployment.runtimeBinding.runtimeImage,
+            },
+          }
+        : {}),
       lastVerifiedAt: args.checkedAt,
       // Readiness just read our own health answer at this address.
       addressState: "ours",
