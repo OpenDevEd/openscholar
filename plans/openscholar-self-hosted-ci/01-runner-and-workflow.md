@@ -126,6 +126,13 @@ child, which violates ARIA required-child rules. Add the existing marker to the
 visible cap message. Apply list keyboard semantics only when transaction rows
 exist. Do not change, skip, or soften any billing assertion.
 
+The first focused repair run passed the cap-banner case and removed its
+disposable Clerk member. The empty-list axe case then caught the density menu
+during its close animation: Radix still marked the page regions `aria-hidden`
+while their controls remained focusable. Keep the zero-violation assertion and
+the real density control. Wait for the selected density menu item to leave the
+visible accessibility tree before running axe.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
@@ -338,7 +345,10 @@ In `ci-jobs.yml`:
     the cap message that is already shown at 100 percent. In
     `TransactionsPanelClient`, expose `role="list"`, focus, and active-row
     semantics only when real transaction rows are rendered. Keep the empty
-    status available to assistive technology without nesting it in a list.
+    status available to assistive technology without nesting it in a list. In
+    the axe matrix setup, wait until the density menu has closed before the
+    scan. Keep its 24 cases, tags, disabled-rule list, and zero-violation
+    assertion unchanged.
 
 Every job uses the current full action SHAs already proven in `new-el/main`:
 
