@@ -401,7 +401,7 @@ jobs:
           fi
 
   billing-live-extended-nightly:
-    if: inputs.mode == 'nightly'
+    if: inputs.mode == 'nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: openscholar-secret
     timeout-minutes: 60
     concurrency:
