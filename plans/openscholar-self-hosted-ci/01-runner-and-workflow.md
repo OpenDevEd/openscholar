@@ -182,6 +182,15 @@ for the search case. Keep all 24 matrix names, tags, disabled rules, and zero-
 violation assertions. Remove only the conditional skip. The existing fixture
 must hard-delete the user and its seeded transaction after every case.
 
+Exact-head run
+[33295724101](https://github.com/OpenDevEd/openalex-count/actions/runs/33295724101)
+ran all five required live tests and all 42 browser cases with zero skips on
+`openscholar-ci-secret-1`. The browser result was 41 passed and one passed on
+retry. The retry clicked Pro after the Convex CLI saw Go but before the pricing
+page's live query showed Go as current, so the upgrade dialog did not exist.
+Reuse the existing current-plan badge wait from `upgrade.spec.ts` before the
+click in `credits.spec.ts`. Keep every credit and dialog assertion unchanged.
+
 ### Live runner capacity
 
 Runner group 6 is `Evidence Library CI`, selected only for
@@ -199,16 +208,16 @@ outside the two CI guests at their assigned maximums.
 
 ## Job trust table
 
-| Job                     | Trigger                               | Secrets and outside services                   | Code trust                                                       | Runner                                                             | CPU and memory    | Persistent state                                                       |
-| ----------------------- | ------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------- | ---------------------------------------------------------------------- |
-| Unit and contract tests | Same-repo PR; push to `dev` or `main` | Placeholder Clerk and Convex values only       | Same-repo branch code, no secrets                                | `OpenScholar CI`, `openscholar-light`                              | 4 CPU, 6 GiB max  | Own account, workdir and npm cache                                     |
-| Production build        | Same as unit                          | Placeholder values only                        | Same-repo branch code, no secrets                                | Second `openscholar-light` runner                                  | 4 CPU, 6 GiB max  | Separate account, workdir, and npm cache                               |
-| Clerk auth E2E          | Same-repo PR; push to `dev` or `main` | Clerk secret, test user, public Convex URL     | Same-repo code that already receives these secrets               | `OpenScholar Secret CI`, `openscholar-secret`                      | 4 CPU, 6 GiB max  | Secret account only; secret browser and npm cache                      |
-| Required live billing   | Same-repo PR; push to `dev` or `main` | Convex dev deployment, Stripe test, Clerk test | Same-repo code; pushes current Convex code and mutates test rows | Second `openscholar-secret` runner                                 | 4 CPU, 6 GiB max  | Separate secret account; shared test user protected by job concurrency |
-| Extended billing        | Direct push to `dev` or `main`        | Same as required billing                       | Integration branch code                                          | Either secret runner                                               | 4 CPU, 6 GiB max  | Same billing concurrency group; current non-blocking result kept       |
-| Nightly billing         | Schedule or manual dispatch           | Same as required billing                       | Default-branch workflow code                                     | Either secret runner                                               | 4 CPU, 6 GiB max  | Same billing concurrency group; blocking nightly result                |
-| Aggregate `CI`          | Same-repo PR; push to `dev` or `main` | None                                           | Immutable workflow only                                          | `openscholar-light`                                                | Small shell check | No checkout or cache                                                   |
-| Fork pull request       | Disabled by repository setting        | No secrets                                     | Fork code                                                        | No runner. Every reusable-workflow job has a same-repository guard | None              | None                                                                   |
+| Job                     | Trigger                               | Secrets and outside services                                           | Code trust                                                       | Runner                                                                      | CPU and memory      | Persistent state                                                       |
+| ----------------------- | ------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------- |
+| Unit and contract tests | Same-repo PR; push to `dev` or `main` | Placeholder Clerk and Convex values only                               | Same-repo branch code, no secrets                                | `OpenScholar CI`, `openscholar-light`                                       | 4 CPU, 6 GiB max    | Own account, workdir and npm cache                                     |
+| Production build        | Same as unit                          | Placeholder values only                                                | Same-repo branch code, no secrets                                | Second `openscholar-light` runner                                           | 4 CPU, 6 GiB max    | Separate account, workdir, and npm cache                               |
+| Clerk auth E2E          | Same-repo PR; push to `dev` or `main` | Needs isolated Clerk, Convex, database, storage, and runtime providers | Same-repo code inside a disposable activation sandbox            | Unassigned `openscholar-activation`; future OpenScholar Activation CI group | 4 CPU, 6 GiB target | No runner or persistent state exists until the sandbox is provided     |
+| Required live billing   | Same-repo PR; push to `dev` or `main` | Convex dev deployment, Stripe test, Clerk test                         | Same-repo code; pushes current Convex code and mutates test rows | Second `openscholar-secret` runner                                          | 4 CPU, 6 GiB max    | Separate secret account; shared test user protected by job concurrency |
+| Extended billing        | Direct push to `dev` or `main`        | Same as required billing                                               | Integration branch code                                          | Either secret runner                                                        | 4 CPU, 6 GiB max    | Same billing concurrency group; current non-blocking result kept       |
+| Nightly billing         | Schedule or manual dispatch           | Same as required billing                                               | Default-branch workflow code                                     | Either secret runner                                                        | 4 CPU, 6 GiB max    | Same billing concurrency group; blocking nightly result                |
+| Aggregate `CI`          | Same-repo PR; push to `dev` or `main` | None                                                                   | Immutable workflow only                                          | `openscholar-light`                                                         | Small shell check   | No checkout or cache                                                   |
+| Fork pull request       | Disabled by repository setting        | No secrets                                                             | Fork code                                                        | No runner. Every reusable-workflow job has a same-repository guard          | None                | None                                                                   |
 
 No job receives a host SSH key, Coolify token, host Docker socket, production
 Convex credential, or another repository's credential.
