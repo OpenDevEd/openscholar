@@ -16,7 +16,7 @@ concurrency:
 jobs:
   changes:
     name: Changes
-    runs-on: openscholar-secret
+    runs-on: openscholar-light
     timeout-minutes: 5
     outputs:
       runtime_required: ${{ steps.detect.outputs.runtime_required }}
@@ -66,7 +66,32 @@ jobs:
 
           echo "runtime_required=$runtime_required" >> "$GITHUB_OUTPUT"
 
-  unit-and-build:
+  unit-tests:
+    name: Unit tests
+    runs-on: openscholar-secret
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+      CLERK_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      NEXT_PUBLIC_CONVEX_URL: https://example.convex.cloud
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run unit and contract tests
+        run: npm run test
+
+  build:
+    name: Build
     runs-on: openscholar-secret
     timeout-minutes: 20
     env:
@@ -94,9 +119,6 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Run unit and contract tests
-        run: npm run test
-
       - name: Build
         run: npm run build
 
@@ -105,7 +127,8 @@ jobs:
     timeout-minutes: 30
     needs:
       - changes
-      - unit-and-build
+      - unit-tests
+      - build
     if: needs.changes.outputs.runtime_required == 'true'
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -197,7 +220,8 @@ jobs:
     timeout-minutes: 45
     needs:
       - changes
-      - unit-and-build
+      - unit-tests
+      - build
     if: needs.changes.outputs.runtime_required == 'true'
     concurrency:
       group: billing-live-shared-test-user
@@ -380,25 +404,28 @@ jobs:
 
   ci:
     name: CI
-    runs-on: openscholar-secret
+    runs-on: openscholar-light
     timeout-minutes: 5
     if: always()
     needs:
       - changes
-      - unit-and-build
+      - unit-tests
+      - build
       - e2e-auth
       - billing-live
     steps:
       - name: Require every selected CI lane to pass
         env:
           CHANGES: ${{ needs.changes.result }}
-          UNIT_AND_BUILD: ${{ needs.unit-and-build.result }}
+          UNIT_TESTS: ${{ needs.unit-tests.result }}
+          BUILD: ${{ needs.build.result }}
           RUNTIME_REQUIRED: ${{ needs.changes.outputs.runtime_required }}
           AUTH: ${{ needs.e2e-auth.result }}
           BILLING: ${{ needs.billing-live.result }}
         run: |
           test "$CHANGES" = success
-          test "$UNIT_AND_BUILD" = success
+          test "$UNIT_TESTS" = success
+          test "$BUILD" = success
           if test "$RUNTIME_REQUIRED" = true; then
             test "$AUTH" = success
             test "$BILLING" = success
