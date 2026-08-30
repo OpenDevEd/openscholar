@@ -65,11 +65,23 @@ build three times, and run Playwright's Linux package installer twice.
 12. Reuse the repository alias in the live Vitest config so billing tests
     collect. Count only Stripe invoice grants in recurrence checks; the signup
     grant is a separate behavior. Keep every per-invoice assertion.
-13. After the user authorized the two repairs:
-    delete the eight expired `OpenDevEd/oneatatime` artifacts, remove the stale
-    Convex fields from development data, preserve existing balances in the
-    current ledger and counters, then route every same-repository secret job to
-    `OpenScholar Secret CI`. No OpenScholar job may use a paid GitHub runner.
+13. After the user authorized the repairs, delete every expired Actions
+    artifact in the organization, remove the stale Convex fields from
+    development data, preserve existing balances in the current ledger and
+    counters, then route every same-repository secret job to `OpenScholar
+    Secret CI`. No OpenScholar job may use a paid GitHub runner.
+14. Keep the Clerk browser suite on `OpenScholar Secret CI`, but stop using it
+    to provision an Evidence Library runtime. Project the existing Clerk E2E
+    organization into `formal-rabbit-271`, create one fixed draft through the
+    existing internal setup mutation, serialize the auth job, and restore its
+    edited values after each run. The browser still proves the enabled owner
+    gate, Save, and reopen behavior. It must never receive Coolify, database,
+    storage, or production credentials.
+15. Enable the existing `subscriptions.enabled`, `subscriptions.plan.go`, and
+    `subscriptions.plan.pro` rows only in `formal-rabbit-271`. Their source
+    defaults are already enabled. Keep Enterprise disabled. Put required
+    artifact uploads after the billing commands so a full quota still fails
+    the job without preventing the browser billing tests from running first.
 
 ## Plan
 
@@ -97,6 +109,9 @@ build three times, and run Playwright's Linux package installer twice.
 - `scripts/billing-preflight.mjs` and the existing billing concurrency group.
 - `playwright.config.ts`, which already builds production code and runs one CI
   worker for the stateful auth and billing suites.
+- `convex/webhooks/projections.ts` and
+  `convex/evidenceLibraries/mutations.ts`, which already project Clerk state
+  and create a draft without starting runtime setup.
 - Next.js 16.2.4's installed CI cache guide under
   `node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md`.
 
@@ -124,6 +139,12 @@ transaction snapshots, converted 14 legacy credit rows to the current anchor
 shape, preserved all 15 balances in the ledger and sharded counters, and filled
 170 queue owners from their required extraction job. No migration code or
 compatibility field remains in the pull request.
+
+The same deployment had its subscription master, Go, and Pro flags stored as
+disabled even though the current source defaults them to enabled. Enable those
+three deployment rows so the real extended billing suite can exercise plan
+changes. This is a development-only configuration repair, not a schema or code
+migration.
 
 ## Sources
 

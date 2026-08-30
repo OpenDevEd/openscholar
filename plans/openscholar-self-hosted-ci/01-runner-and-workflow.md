@@ -43,11 +43,13 @@ has 4,569 rows, of which 2,110 retain `balanceAfter`. The next schema check
 found 170 of 431 `extractionPaperQueue` rows without the now-required `userId`.
 All 170 belong to one existing extraction job, whose `userId` is present.
 
-The organization artifact inventory found no OpenScholar artifacts. Eight
-expired `OpenDevEd/oneatatime` release artifacts still total 1,127,845,193
-bytes. The user authorized deleting exactly those eight expired artifacts on
-2026-08-30. GitHub reports zero remaining artifacts in that repository after
-the deletion.
+The first inventory found eight expired `OpenDevEd/oneatatime` artifacts. A
+full inventory then checked all 235 organization repositories and found 144
+expired records and no active records: 118 in `OpenDevEd/beewriter` and 26 in
+`OpenDevEd/deep-search-v1`, totalling 19,160,652 recorded bytes. The user
+authorized deleting the expired artifacts on 2026-08-30. GitHub now reports
+zero artifacts in all three repositories. Its quota error says usage is
+recalculated every 6 to 12 hours.
 
 The first all-self-hosted run reached the real billing command, but
 `vitest.live.config.ts` could not resolve the repository's existing `@/`
@@ -68,6 +70,30 @@ web-server timeout before collecting auth tests. The same production build
 returned HTTP 200 when started with `--hostname localhost`; the process listened
 only on the loopback interface. Keep the separate ports, but use the hostname
 Next expects.
+
+Exact-head run
+[33288183507](https://github.com/OpenDevEd/openalex-count/actions/runs/33288183507)
+ran all five required live billing tests on `openscholar-ci-secret-2` and they
+passed in 94 seconds. The following required artifact upload hit GitHub's stale
+quota counter, so the later browser billing command did not run. Put required
+uploads after the test commands. Their failure remains blocking.
+
+The same run reached the real Clerk suite on `openscholar-ci-secret-1`. Five
+tests passed. The library test stopped at the owner gate because the cloud dev
+deployment has no Clerk organization projection. Its later steps are also
+stale: the current configuration page has no top-level Preview control or
+`activation-success` result, and the current activation command schedules real
+database, storage, Coolify, and runtime work. CI must not receive those
+credentials. Use one serialized development draft to keep the real enabled
+owner, Save, and reopen browser contract without provisioning a runtime.
+
+Nightly run
+[33288815763](https://github.com/OpenDevEd/openalex-count/actions/runs/33288815763)
+ran all four extended live billing tests on `openscholar-ci-secret-1`. Two
+passed. Upgrade and downgrade failed because `formal-rabbit-271` stores the
+subscription master, Go, Pro, and Enterprise flags as disabled. The existing
+source defaults the first three to enabled. Repair those three rows with the
+existing internal upsert and leave Enterprise disabled.
 
 ### Live runner capacity
 
@@ -130,9 +156,11 @@ GitHub-hosted run and one rerun. Both auth and billing must execute. A skip is a
 failed baseline. The resulting failures are recorded above; do not move those
 jobs until the authorized repairs below pass.
 
-Delete only expired artifact IDs `6832729991`, `6832689523`, `6781401513`,
-`6781368933`, `6761504640`, `6761495260`, `6761431240`, and `6761420490` from
-`OpenDevEd/oneatatime`. Verify that repository then reports zero artifacts.
+Delete every expired Actions artifact returned by the organization-wide
+inventory. Refuse any record whose API response says `expired: false`. Verify
+`OpenDevEd/beewriter`, `OpenDevEd/deep-search-v1`, and
+`OpenDevEd/oneatatime` each report zero artifacts. Do not delete Actions
+caches or any package version.
 
 Repair `formal-rabbit-271` with widen, migrate, then narrow. Preserve each
 legacy row's current free and paid balance by adding the exact difference
@@ -161,6 +189,20 @@ between those values and its ledger sums before removing the old columns:
    schema proves no stored row retains any removed field.
 6. Remove the temporary worktree. Do not add migration code or a compatibility
    field to the final pull request.
+
+Use `featureFlags/internal:upsert` to enable exactly
+`subscriptions.enabled`, `subscriptions.plan.go`, and
+`subscriptions.plan.pro` in `formal-rabbit-271`, all at minimum tier zero.
+Leave `subscriptions.plan.enterprise` disabled. Read all four rows back before
+rerunning extended billing.
+
+Project the existing Clerk E2E organization and admin membership through
+`webhooks/projections:applyOrganizationMembershipEvent`. Reserve one fixed
+draft with `evidenceLibraries/mutations:reserveAddress` and the real Clerk
+identity. This internal reservation writes only Convex draft/setup rows and
+does not run an address check or schedule setup. Store its ID and the Clerk
+organization ID as repository Actions secrets. Do not set any `EL_*` value in
+the cloud deployment or GitHub.
 
 ### 2. Create the isolated guest
 
@@ -233,10 +275,18 @@ In `ci-jobs.yml`:
    16 route Proxy requests through its expected localhost name.
 4. Keep billing concurrency named `billing-live-shared-test-user` with
    `cancel-in-progress: false`.
-5. Keep the existing extended and nightly order, timeouts, artifact paths,
-   artifact names, `if: always()` rules, and the existing `continue-on-error`
-   only on push extended billing.
-6. Add `CI`, with `if: always()`, which fails unless the static, auth, and
+5. Serialize auth as `auth-e2e-shared-library` with cancellation off. Make the
+   test select `E2E_CLERK_ORGANIZATION_ID`, open the fixed
+   `E2E_EVIDENCE_LIBRARY_ID` draft, save unique logo and favicon values, reopen
+   the page, verify both values, then restore the values it read at the start.
+   Keep a browser check that the current `Set up and activate` control is
+   available, but never click it in CI.
+6. Keep every timeout, artifact path, artifact name, `if: always()` rule, and
+   the existing `continue-on-error` only on push extended billing. Move each
+   billing artifact upload after its live and browser test commands. Artifact
+   quota failures stay blocking, but cannot prevent a later test command from
+   starting.
+7. Add `CI`, with `if: always()`, which fails unless the static, auth, and
    required billing lanes passed. Do not make it wait for or validate the
    non-blocking extended lane.
 
@@ -277,20 +327,22 @@ CI command to `npm run test -- --maxWorkers=4`, then require two passing runs.
 
 - `plans/openscholar-self-hosted-ci/00-README.md`
 - `plans/openscholar-self-hosted-ci/01-runner-and-workflow.md`
+- `plans/openscholar-self-hosted-ci/PROMPTS.md`
 - `.github/actionlint.yaml`
 - `.github/workflows/ci-jobs.yml` new, immutable reusable workflow
 - `.github/workflows/ci.yml`
 - `.github/workflows/billing-nightly.yml`
 - `README.md`
 - `vitest.live.config.ts`
+- `e2e/auth.spec.ts`
 - `tests/live-billing/support.ts`
 - `tests/live-billing/required.test.ts`
 - `tests/live-billing/extended.test.ts`
 - `next.config.ts` only if the A/B gate above passes
 
 No package, lockfile, application route, Convex function, or deployment
-configuration changes remain in the pull request. The live-test loader and
-invoice-grant assertions change only as recorded above.
+configuration file changes remain in the pull request. The auth browser case,
+live-test loader, and invoice-grant assertions change only as recorded above.
 
 ## Checks
 
@@ -361,7 +413,8 @@ The gate is:
 2. the narrowed final schema deploys to `formal-rabbit-271` with no validation
    error;
 3. one cold and one warm complete workflow pass on the final exact head;
-4. auth, required live billing, and billing E2E execute rather than skip;
+4. auth, required and extended live billing, and billing E2E execute rather
+   than skip;
 5. every job lands on its approved runner boundary;
 6. the concurrent `new-el` reference run passes;
 7. the host and both guests stay healthy.
@@ -405,9 +458,9 @@ part of rollback.
 
 ## Known risks
 
-- Auth and billing use one Clerk test user. Keep their current behavior and
-  watch for a real race. The only test changes are the loader and focused
-  invoice-grant assertion described in the evidence section.
+- Auth uses one fixed cloud development draft. Its uncancelled concurrency
+  group prevents simultaneous edits, and the browser restores the values it
+  read. It never activates the draft or receives runtime credentials.
 - Live billing pushes the tested commit to the checked Convex Cloud dev
   deployment and mutates Stripe test data. The shared billing concurrency key
   must remain uncancelled.
