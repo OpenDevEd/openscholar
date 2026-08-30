@@ -275,9 +275,29 @@ jobs:
         if: steps.billing-environment.outputs.available == 'true'
         run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Run billing preflight + required live regressions
+      - name: Install Playwright browser
         if: steps.billing-environment.outputs.available == 'true'
-        run: npm run test:billing:live:ci
+        run: npx playwright install chromium
+
+      - name: Run required live and browser billing checks
+        if: steps.billing-environment.outputs.available == 'true'
+        run: |
+          set +e
+
+          npm run test:billing:live:ci &
+          live_pid=$!
+          npm run test:billing:e2e &
+          browser_pid=$!
+
+          wait "$live_pid"
+          live_status=$?
+          wait "$browser_pid"
+          browser_status=$?
+
+          if (( live_status != 0 || browser_status != 0 )); then
+            printf '::error::Billing checks failed: live=%s browser=%s\n' "$live_status" "$browser_status"
+            exit 1
+          fi
 
       - name: Upload billing-live artifacts
         if: failure() && steps.billing-environment.outputs.available == 'true'
@@ -287,14 +307,6 @@ jobs:
           name: billing-live-artifacts
           path: test-results/billing-live
           if-no-files-found: ignore
-
-      - name: Install Playwright browser
-        if: steps.billing-environment.outputs.available == 'true'
-        run: npx playwright install chromium
-
-      - name: Run billing E2E tests
-        if: steps.billing-environment.outputs.available == 'true'
-        run: npm run test:billing:e2e
 
       - name: Upload billing E2E report
         if: failure() && steps.billing-environment.outputs.available == 'true'
