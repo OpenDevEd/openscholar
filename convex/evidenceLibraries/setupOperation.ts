@@ -11,6 +11,7 @@ import {
 import { requireNonBlankProvisioningValue } from "./provisioning";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import { isSetupLeaseHeld } from "./operationLeases";
+import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import {
   evidenceLibraryOperationFailureValidator,
   evidenceLibrarySetupResultValidator,
@@ -57,6 +58,16 @@ function requireRuntimeCommit(value: string): string {
     );
   }
   return commit;
+}
+
+function requireRuntimeImage(value: string | undefined): string {
+  if (!isRuntimeImageReference(value)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "runtimeImage must use the fixed GHCR repository and an exact digest",
+    );
+  }
+  return value;
 }
 
 function requireSha256(field: string, value: string): string {
@@ -118,6 +129,7 @@ function validateSetupReceipt(
           result.applicationId,
         ),
         runtimeCommit: requireRuntimeCommit(result.runtimeCommit),
+        runtimeImage: requireRuntimeImage(result.runtimeImage),
         runtimeConfigSha256: requireSha256(
           "runtimeConfigSha256",
           result.runtimeConfigSha256,
@@ -137,6 +149,7 @@ function validateSetupReceipt(
           result.deploymentId,
         ),
         runtimeCommit: requireRuntimeCommit(result.runtimeCommit),
+        runtimeImage: requireRuntimeImage(result.runtimeImage),
         runtimeConfigSha256: requireSha256(
           "runtimeConfigSha256",
           result.runtimeConfigSha256,
@@ -199,6 +212,9 @@ function provisionedRuntimeBindingFields(
     ...baseRuntimeBindingFields(binding),
     targetRuntimeId: binding.targetRuntimeId,
     runtimeCommit: binding.runtimeCommit,
+    ...(binding.runtimeImage === undefined
+      ? {}
+      : { runtimeImage: binding.runtimeImage }),
     searchHost: binding.searchHost,
     searchIndex: binding.searchIndex,
     storageUrl: binding.storageUrl,
@@ -416,6 +432,7 @@ export async function recordEvidenceLibrarySetupStep(
     const sameTarget =
       previous?.applicationId === receipt.applicationId &&
       previous.runtimeCommit === receipt.runtimeCommit &&
+      previous.runtimeImage === receipt.runtimeImage &&
       previous.runtimeConfigSha256 === receipt.runtimeConfigSha256 &&
       previous.coolifyConfigHash === receipt.coolifyConfigHash;
     setupDeploymentNotBefore =
@@ -431,9 +448,7 @@ export async function recordEvidenceLibrarySetupStep(
       setupReceipts,
       stage: nextStep!,
       setupLeaseExpiresAt: now + EVIDENCE_LIBRARY_SETUP_LEASE_MS,
-      ...(receipt.step === "application"
-        ? { setupDeploymentNotBefore }
-        : {}),
+      ...(receipt.step === "application" ? { setupDeploymentNotBefore } : {}),
       updatedAt: now,
     });
     return { nextStep, status: "running" as const };
@@ -461,6 +476,8 @@ export async function recordEvidenceLibrarySetupStep(
     application.applicationId !== setup.runtimeBinding.targetRuntimeId ||
     deployment.applicationId !== application.applicationId ||
     deployment.runtimeCommit !== application.runtimeCommit ||
+    deployment.runtimeImage !== application.runtimeImage ||
+    setup.runtimeBinding.runtimeImage !== application.runtimeImage ||
     deployment.runtimeConfigSha256 !== application.runtimeConfigSha256 ||
     receipt.applicationId !== application.applicationId ||
     receipt.deploymentId !== deployment.deploymentId
@@ -486,6 +503,8 @@ export async function recordEvidenceLibrarySetupStep(
     receipt: {
       revisionKey: receipt.revisionKey,
       runtimeReceiptId: receipt.deploymentId,
+      runtimeCommit: application.runtimeCommit,
+      runtimeImage: application.runtimeImage,
       activatedAt: receipt.checkedAt,
     },
     completedAt: now,
@@ -494,6 +513,7 @@ export async function recordEvidenceLibrarySetupStep(
     setupEncryptedDatabasePassword: undefined,
     setupAiProviderKey: undefined,
     setupRuntimeCommit: undefined,
+    setupRuntimeImage: undefined,
     setupDeploymentId: undefined,
     setupDeploymentOutcome: undefined,
     setupDeploymentNotBefore: undefined,

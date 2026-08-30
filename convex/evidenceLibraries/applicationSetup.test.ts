@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createActivatedSetupFixture,
+  TEST_RUNTIME_IMAGE,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 
 describe("Evidence Library application setup", () => {
   beforeEach(() => {
@@ -50,6 +53,7 @@ describe("Evidence Library application setup", () => {
         candidateMachineCredentialDigest: "digest-1",
         candidateMachineCredentialHint: "els_one...",
         candidateRuntimeCommit: "a".repeat(40),
+        candidateRuntimeImage: TEST_RUNTIME_IMAGE,
       },
     );
     const repeated = await fixture.t.mutation(
@@ -65,6 +69,7 @@ describe("Evidence Library application setup", () => {
         candidateMachineCredentialDigest: "digest-2",
         candidateMachineCredentialHint: "els_two...",
         candidateRuntimeCommit: "b".repeat(40),
+        candidateRuntimeImage: `ghcr.io/opendeved/evidence-library-runtime@sha256:${"f".repeat(64)}`,
       },
     );
 
@@ -78,6 +83,7 @@ describe("Evidence Library application setup", () => {
       storagePrivateBucket: "el-private-application",
       storagePublicBucket: "el-public-application",
       runtimeCommit: "a".repeat(40),
+      runtimeImage: TEST_RUNTIME_IMAGE,
       revisionKey: fixture.activated.revisionKey,
       targetBaseUrl: fixture.created.publicAddress,
       sections: expect.arrayContaining([
@@ -130,6 +136,7 @@ describe("Evidence Library application setup", () => {
         outcome: "created",
         applicationId: "coolify-application-1",
         runtimeCommit: first.runtimeCommit,
+        runtimeImage: first.runtimeImage,
         runtimeConfigSha256: "c".repeat(64),
         coolifyConfigHash: "d".repeat(64),
         searchHost: "http://meilisearch:7700",

@@ -2,7 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { createReadySetupFixture as createFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createReadySetupFixture as createFixture,
+  TEST_RUNTIME_IMAGE,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 import { createLibraryStorageBucketNames } from "./storageSetupClient";
 import { readTeardownStep } from "./teardownActions";
 
@@ -385,6 +388,7 @@ async function saveDeploymentTarget(
         revisionKey: prepared.revision.key,
         defaultLocale: prepared.defaultLocale,
         runtimeCommit,
+        runtimeImage: TEST_RUNTIME_IMAGE,
         encryptedRuntimeConfig: "encrypted",
         runtimeConfigSha256: "e".repeat(64),
       },
@@ -441,6 +445,10 @@ async function runDeploymentCompletion(
           : "runtimeCommit" in binding
             ? binding.runtimeCommit
             : "a".repeat(40),
+      runtimeImage:
+        operation.runtimeUpdate?.toImage ??
+        binding.runtimeImage ??
+        TEST_RUNTIME_IMAGE,
       encryptedRuntimeConfig: "encrypted",
       runtimeConfigSha256: "e".repeat(64),
       savedAt: Date.now(),
@@ -452,6 +460,7 @@ async function runDeploymentCompletion(
         revisionKey: target.revisionKey,
         targetConfigSha256: target.runtimeConfigSha256,
         runtimeCommit: target.runtimeCommit,
+        runtimeImage: target.runtimeImage,
         runtimeReceiptId: "deployment-1",
         coolifyConfigHash: "d".repeat(64),
       },

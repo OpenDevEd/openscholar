@@ -1,6 +1,9 @@
 /// <reference types="vite/client" />
 import { describe, expect, it, vi } from "vitest";
-import { resolveRuntimeImage } from "./runtimeImageRegistry";
+import {
+  isRuntimeImageReference,
+  resolveRuntimeImage,
+} from "./runtimeImageRegistry";
 
 const COMMIT = "9dd3e7b36ca8b29dace3fdcaffb9ecc833932d09";
 const DIGEST =
@@ -55,6 +58,22 @@ function registryFetch() {
 }
 
 describe("runtime image registry", () => {
+  it("accepts only the fixed repository at an exact digest", () => {
+    expect(
+      isRuntimeImageReference(
+        `ghcr.io/opendeved/evidence-library-runtime@${DIGEST}`,
+      ),
+    ).toBe(true);
+    expect(
+      isRuntimeImageReference(
+        "ghcr.io/opendeved/evidence-library-runtime:latest",
+      ),
+    ).toBe(false);
+    expect(isRuntimeImageReference(`ghcr.io/another/image@${DIGEST}`)).toBe(
+      false,
+    );
+  });
+
   it("resolves a private commit tag to one immutable digest reference", async () => {
     const registry = registryFetch();
 

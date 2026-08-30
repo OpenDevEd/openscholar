@@ -4,9 +4,7 @@ import { describe, expect, it } from "vitest";
 import schema from "../schema";
 import { api, internal } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
-import {
-  queueConfigurationDeploymentOperation,
-} from "./operations";
+import { queueConfigurationDeploymentOperation } from "./operations";
 import { createEvidenceLibrarySetup } from "./mutations";
 import { toSectionRows } from "../../tests/helpers/evidence-library-setup-fixture";
 
@@ -372,8 +370,14 @@ describe("Evidence Library operation state", () => {
       ctx.db.get("evidenceLibraryConfigOperations", activated.operationId),
     );
     const issues = [
-      { pointer: "/authentication/secret", message: "Required field is missing." },
-      { pointer: "/identity/assets/favicon", message: "Value must match the uri format." },
+      {
+        pointer: "/authentication/secret",
+        message: "Required field is missing.",
+      },
+      {
+        pointer: "/identity/assets/favicon",
+        message: "Value must match the uri format.",
+      },
     ];
 
     await expect(

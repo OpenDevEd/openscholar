@@ -8,6 +8,8 @@ const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_JSON_BYTES = 64 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const DIGEST = /^sha256:[a-f0-9]{64}$/u;
+const IMAGE_REFERENCE =
+  /^ghcr\.io\/opendeved\/evidence-library-runtime@sha256:[a-f0-9]{64}$/u;
 const GITHUB_LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
 const MANIFEST_ACCEPT = [
   "application/vnd.oci.image.index.v1+json",
@@ -27,6 +29,12 @@ export class RuntimeImageRegistryError extends Error {
     super(message);
     this.name = "RuntimeImageRegistryError";
   }
+}
+
+export function isRuntimeImageReference(
+  value: unknown,
+): value is RuntimeImageReference {
+  return typeof value === "string" && IMAGE_REFERENCE.test(value);
 }
 
 type BearerChallenge = {

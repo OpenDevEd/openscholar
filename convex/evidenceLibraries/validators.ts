@@ -422,6 +422,8 @@ const evidenceLibraryRuntimeBindingProvisionedFields = {
   // The Evidence Library software commit the library runs. Setup writes it;
   // every completed publish rewrites it from the operation receipt.
   runtimeCommit: v.string(),
+  // Temporary during Plan 17's widen stage. Every new binding includes it.
+  runtimeImage: v.optional(v.string()),
   searchHost: v.string(),
   searchIndex: v.string(),
   storageUrl: v.string(),
@@ -574,6 +576,7 @@ const evidenceLibrarySetupResultVariantFields = {
     step: v.literal("application"),
     applicationId: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.optional(v.string()),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
   },
@@ -583,6 +586,7 @@ const evidenceLibrarySetupResultVariantFields = {
     applicationId: v.string(),
     deploymentId: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.optional(v.string()),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
   },
@@ -666,6 +670,7 @@ export const evidenceLibraryOperationReceiptValidator = v.object({
   targetConfigSha256: v.optional(v.string()),
   runtimeReceiptId: v.optional(v.string()),
   runtimeCommit: v.optional(v.string()),
+  runtimeImage: v.optional(v.string()),
   coolifyConfigHash: v.optional(v.string()),
   activatedAt: v.optional(v.number()),
 });
@@ -683,6 +688,7 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   revisionKey: v.string(),
   defaultLocale: v.string(),
   runtimeCommit: v.string(),
+  runtimeImage: v.optional(v.string()),
   encryptedRuntimeConfig: v.string(),
   runtimeConfigSha256: v.string(),
   savedAt: v.number(),
@@ -693,6 +699,9 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
 export const evidenceLibraryRuntimeUpdateValidator = v.object({
   from: v.string(),
   to: v.string(),
+  // Temporary during Plan 17's widen stage. New updates write both images.
+  fromImage: v.optional(v.string()),
+  toImage: v.optional(v.string()),
 });
 
 // Where the platform is sending a library after another site answered its
@@ -744,6 +753,7 @@ export const evidenceLibraryOperationFields = {
   // last step can refuse a key that moved on the way.
   setupAiProviderKey: v.optional(aiProviderKeySourceValidator),
   setupRuntimeCommit: v.optional(v.string()),
+  setupRuntimeImage: v.optional(v.string()),
   setupDeploymentId: v.optional(v.string()),
   setupDeploymentOutcome: v.optional(evidenceLibraryDeploymentOutcomeValidator),
   setupDeploymentNotBefore: v.optional(v.number()),

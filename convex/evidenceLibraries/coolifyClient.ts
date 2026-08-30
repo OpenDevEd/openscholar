@@ -2,6 +2,10 @@
 
 import { createHash } from "node:crypto";
 import type { Id } from "../_generated/dataModel";
+import {
+  isRuntimeImageReference,
+  type RuntimeImageReference,
+} from "./runtimeImageRegistry";
 
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -45,6 +49,7 @@ const ENVIRONMENT_VALUES = [
   "LIBRARY_CONFIG_JSON",
   "MEILISEARCH_MASTER_KEY",
   "SOURCE_COMMIT",
+  "RUNTIME_IMAGE",
 ] as const;
 
 export type CoolifyReconcileOutcome = "created" | "matched" | "updated";
@@ -60,6 +65,7 @@ export type CoolifyApplicationResult = {
 export type CoolifyConfigurationUpdateResult = {
   applicationUuid: string;
   runtimeCommit: string;
+  runtimeImage: RuntimeImageReference;
   runtimeConfigSha256: string;
   coolifyConfigHash: string;
 };
@@ -67,6 +73,8 @@ export type CoolifyConfigurationUpdateResult = {
 export type CoolifyBoundApplication = {
   applicationUuid: string;
   runtimeCommit: string;
+  // Temporary during Plan 17's widen stage. Release-aware calls require it.
+  runtimeImage?: RuntimeImageReference;
   coolifyConfigHash: string;
 };
 
@@ -291,6 +299,16 @@ function requireCommit(value: string): string {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
       "Evidence Library commit must be a lowercase 40-character commit",
+    );
+  }
+  return value;
+}
+
+function requireRuntimeImage(value: string): RuntimeImageReference {
+  if (!isRuntimeImageReference(value)) {
+    throw new CoolifyClientError(
+      "INVALID_COOLIFY_CONFIG",
+      "Evidence Library image must use the fixed GHCR repository and an exact digest",
     );
   }
   return value;
@@ -1638,6 +1656,7 @@ export function createCoolifyClient(input: {
       environmentName: string;
       githubAppUuid: string;
       runtimeCommit: string;
+      runtimeImage: string;
       publicDomain: string;
       customDomains: readonly string[];
       libraryConfigJson: string;
@@ -1661,6 +1680,7 @@ export function createCoolifyClient(input: {
         input.githubAppUuid,
       );
       const runtimeCommit = requireCommit(input.runtimeCommit);
+      const runtimeImage = requireRuntimeImage(input.runtimeImage);
       const publicDomain = requirePublicDomain(input.publicDomain);
       const libraryConfigJson = requireLibraryConfigJson(
         input.libraryConfigJson,
@@ -1710,6 +1730,7 @@ export function createCoolifyClient(input: {
           { key: "LIBRARY_CONFIG_JSON", value: libraryConfigJson },
           { key: "MEILISEARCH_MASTER_KEY", value: meilisearchMasterKey },
           { key: "SOURCE_COMMIT", value: runtimeCommit },
+          { key: "RUNTIME_IMAGE", value: runtimeImage },
         ],
       );
       const finalApplication = await readApplication(client, applicationUuid);
@@ -1742,6 +1763,8 @@ export function createCoolifyClient(input: {
       libraryId: Id<"evidenceLibraries">;
       publicDomain: string;
       customDomains: readonly string[];
+      runtimeCommit?: string;
+      runtimeImage?: string;
     }): Promise<CoolifyBoundApplication> {
       const applicationUuid = requireInputIdentifier(
         "Coolify application UUID",
@@ -1758,6 +1781,42 @@ export function createCoolifyClient(input: {
         applicationTag,
         publicDomains: [publicDomains],
       });
+      if (
+        (input.runtimeCommit === undefined) !==
+        (input.runtimeImage === undefined)
+      ) {
+        throw new CoolifyClientError(
+          "INVALID_COOLIFY_CONFIG",
+          "Evidence Library commit and image must be checked together",
+        );
+      }
+      if (
+        input.runtimeCommit !== undefined &&
+        input.runtimeImage !== undefined
+      ) {
+        const runtimeCommit = requireCommit(input.runtimeCommit);
+        const runtimeImage = requireRuntimeImage(input.runtimeImage);
+        if (application.gitCommitSha !== runtimeCommit) {
+          throw new CoolifyClientError(
+            "COOLIFY_APPLICATION_CONFLICT",
+            "The bound Coolify application no longer matches this library",
+          );
+        }
+        await requireEnvironmentReadback(client, applicationUuid, {
+          key: "SOURCE_COMMIT",
+          value: runtimeCommit,
+        });
+        await requireEnvironmentReadback(client, applicationUuid, {
+          key: "RUNTIME_IMAGE",
+          value: runtimeImage,
+        });
+        return {
+          applicationUuid,
+          runtimeCommit,
+          runtimeImage,
+          coolifyConfigHash: application.configHash,
+        };
+      }
       return {
         applicationUuid,
         runtimeCommit: application.gitCommitSha,
@@ -1771,6 +1830,7 @@ export function createCoolifyClient(input: {
       publicDomain: string;
       customDomains: readonly string[];
       runtimeCommit: string;
+      runtimeImage: string;
       libraryConfigJson: string;
     }): Promise<CoolifyBoundApplication> {
       const applicationUuid = requireInputIdentifier(
@@ -1784,6 +1844,7 @@ export function createCoolifyClient(input: {
         input.customDomains.map(requirePublicDomain),
       );
       const runtimeCommit = requireCommit(input.runtimeCommit);
+      const runtimeImage = requireRuntimeImage(input.runtimeImage);
       const libraryConfigJson = requireLibraryConfigJson(
         input.libraryConfigJson,
       );
@@ -1806,6 +1867,10 @@ export function createCoolifyClient(input: {
         key: "SOURCE_COMMIT",
         value: runtimeCommit,
       });
+      await requireEnvironmentReadback(client, applicationUuid, {
+        key: "RUNTIME_IMAGE",
+        value: runtimeImage,
+      });
       const finalApplication = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
@@ -1820,6 +1885,7 @@ export function createCoolifyClient(input: {
       return {
         applicationUuid,
         runtimeCommit,
+        runtimeImage,
         coolifyConfigHash: finalApplication.configHash,
       };
     },
@@ -1842,7 +1908,9 @@ export function createCoolifyClient(input: {
         input.applicationUuid,
       );
       const applicationTag = createCoolifyLibraryTag(input.libraryId);
-      const currentPublicDomain = requirePublicDomain(input.currentPublicDomain);
+      const currentPublicDomain = requirePublicDomain(
+        input.currentPublicDomain,
+      );
       const nextPublicDomain = requirePublicDomain(input.nextPublicDomain);
       // The library's custom domains stay on the application; only the
       // platform address at the front of the list changes.
@@ -1943,7 +2011,7 @@ export function createCoolifyClient(input: {
               docker_compose_domains: [
                 { name: "web", domain: expected.join(",") },
               ],
-                      instant_deploy: false,
+              instant_deploy: false,
             },
           }),
           applicationUuid,
@@ -1969,6 +2037,7 @@ export function createCoolifyClient(input: {
       publicDomain: string;
       customDomains: readonly string[];
       runtimeCommit: string;
+      runtimeImage: string;
     }): Promise<CoolifyBoundApplication> {
       const applicationUuid = requireInputIdentifier(
         "Coolify application UUID",
@@ -1981,6 +2050,7 @@ export function createCoolifyClient(input: {
         input.customDomains.map(requirePublicDomain),
       );
       const runtimeCommit = requireCommit(input.runtimeCommit);
+      const runtimeImage = requireRuntimeImage(input.runtimeImage);
       let application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
@@ -2008,9 +2078,23 @@ export function createCoolifyClient(input: {
           );
         }
       }
+      await reconcileEnvironmentValue(client, applicationUuid, {
+        key: "SOURCE_COMMIT",
+        value: runtimeCommit,
+      });
+      await reconcileEnvironmentValue(client, applicationUuid, {
+        key: "RUNTIME_IMAGE",
+        value: runtimeImage,
+      });
+      application = await readExpectedBoundApplication(client, {
+        applicationUuid,
+        applicationTag,
+        publicDomains: [publicDomains],
+      });
       return {
         applicationUuid,
         runtimeCommit,
+        runtimeImage,
         coolifyConfigHash: application.configHash,
       };
     },
@@ -2022,6 +2106,7 @@ export function createCoolifyClient(input: {
       customDomains: readonly string[];
       libraryConfigJson: string;
       expectedRuntimeCommit: string;
+      expectedRuntimeImage: string;
     }): Promise<CoolifyConfigurationUpdateResult> {
       const applicationUuid = requireInputIdentifier(
         "Coolify application UUID",
@@ -2037,6 +2122,9 @@ export function createCoolifyClient(input: {
         input.libraryConfigJson,
       );
       const expectedRuntimeCommit = requireCommit(input.expectedRuntimeCommit);
+      const expectedRuntimeImage = requireRuntimeImage(
+        input.expectedRuntimeImage,
+      );
       const application = await readExpectedBoundApplication(client, {
         applicationUuid,
         applicationTag,
@@ -2048,13 +2136,25 @@ export function createCoolifyClient(input: {
           "The bound Coolify application no longer matches this library",
         );
       }
+      await requireEnvironmentReadback(client, applicationUuid, {
+        key: "SOURCE_COMMIT",
+        value: expectedRuntimeCommit,
+      });
+      await requireEnvironmentReadback(client, applicationUuid, {
+        key: "RUNTIME_IMAGE",
+        value: expectedRuntimeImage,
+      });
       await reconcileEnvironmentValue(client, applicationUuid, {
         key: "LIBRARY_CONFIG_JSON",
         value: libraryConfigJson,
       });
-      await reconcileEnvironmentValue(client, applicationUuid, {
+      await requireEnvironmentReadback(client, applicationUuid, {
         key: "SOURCE_COMMIT",
         value: expectedRuntimeCommit,
+      });
+      await requireEnvironmentReadback(client, applicationUuid, {
+        key: "RUNTIME_IMAGE",
+        value: expectedRuntimeImage,
       });
       const finalApplication = await readExpectedBoundApplication(client, {
         applicationUuid,
@@ -2078,6 +2178,7 @@ export function createCoolifyClient(input: {
       return {
         applicationUuid,
         runtimeCommit: application.gitCommitSha,
+        runtimeImage: expectedRuntimeImage,
         runtimeConfigSha256: createHash("sha256")
           .update(libraryConfigJson)
           .digest("hex"),
@@ -2226,6 +2327,7 @@ export async function reconcileCoolifyApplication(input: {
   libraryId: Id<"evidenceLibraries">;
   targetBaseUrl: string;
   runtimeCommit: string;
+  runtimeImage: string;
   runtimeConfigJson: string;
   searchKey: string;
   fetchImpl?: typeof fetch;
@@ -2245,6 +2347,7 @@ export async function reconcileCoolifyApplication(input: {
     environmentName: input.environmentName,
     githubAppUuid: input.githubAppUuid,
     runtimeCommit: input.runtimeCommit,
+    runtimeImage: input.runtimeImage,
     publicDomain: input.targetBaseUrl,
     // Application setup runs before a library can hold a custom domain.
     customDomains: [],

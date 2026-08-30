@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
-import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createActivatedSetupFixture,
+  TEST_RUNTIME_IMAGE,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 
 const runtimeCommit = "a".repeat(40);
 const runtimeConfigSha256 = "b".repeat(64);
@@ -41,6 +44,7 @@ async function record(
         outcome: "created" | "matched" | "updated";
         applicationId: string;
         runtimeCommit: string;
+        runtimeImage: string;
         runtimeConfigSha256: string;
         coolifyConfigHash: string;
       }
@@ -50,6 +54,7 @@ async function record(
         applicationId: string;
         deploymentId: string;
         runtimeCommit: string;
+        runtimeImage: string;
         runtimeConfigSha256: string;
         coolifyConfigHash: string;
       }
@@ -314,6 +319,7 @@ describe("fixed Evidence Library setup operation", () => {
       outcome: "created" as const,
       applicationId: "coolify-app-cutoff",
       runtimeCommit,
+      runtimeImage: TEST_RUNTIME_IMAGE,
       runtimeConfigSha256,
       coolifyConfigHash,
     };
@@ -378,6 +384,7 @@ describe("fixed Evidence Library setup operation", () => {
       await ctx.db.patch(fixture.created.runtimeBindingId, {
         targetRuntimeId: "coolify-app-1",
         runtimeCommit: "a".repeat(40),
+        runtimeImage: TEST_RUNTIME_IMAGE,
         searchHost: "http://meilisearch:7700",
         searchIndex: "evidence",
         storageUrl: "https://storage.example.test",
@@ -412,6 +419,7 @@ describe("fixed Evidence Library setup operation", () => {
       outcome: "created",
       applicationId: "coolify-app-1",
       runtimeCommit,
+      runtimeImage: TEST_RUNTIME_IMAGE,
       runtimeConfigSha256,
       coolifyConfigHash,
     });
@@ -421,6 +429,7 @@ describe("fixed Evidence Library setup operation", () => {
       applicationId: "coolify-app-1",
       deploymentId: "coolify-deploy-1",
       runtimeCommit,
+      runtimeImage: TEST_RUNTIME_IMAGE,
       runtimeConfigSha256,
       coolifyConfigHash,
     });

@@ -7,6 +7,7 @@ import {
 
 const APPLICATION_UUID = "a1b2c3d4e5f6g7h8i9j0k1l2";
 const RUNTIME_COMMIT = "a".repeat(40);
+const RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"e".repeat(64)}`;
 const REVISION = "revision-7";
 
 function json(body: unknown, status = 200) {
@@ -20,6 +21,7 @@ function readyVerifierBody() {
   return {
     applicationUuid: APPLICATION_UUID,
     commit: RUNTIME_COMMIT,
+    runtimeImage: RUNTIME_IMAGE,
     ready: true,
     services: [
       "web",
@@ -51,6 +53,7 @@ function input(fetchImpl: typeof fetch) {
   return {
     applicationUuid: APPLICATION_UUID,
     runtimeCommit: RUNTIME_COMMIT,
+    runtimeImage: RUNTIME_IMAGE,
     revisionKey: REVISION,
     targetBaseUrl: "https://climate.libraries.example.test",
     loginPageUrl: LOGIN_PAGE_URL,
@@ -114,6 +117,7 @@ describe("Evidence Library readiness client", () => {
     expect(JSON.parse(String(verifierRequest.body))).toEqual({
       applicationUuid: APPLICATION_UUID,
       commit: RUNTIME_COMMIT,
+      runtimeImage: RUNTIME_IMAGE,
     });
     expect(requests.every(({ init }) => init?.redirect === "manual")).toBe(
       true,
@@ -352,9 +356,9 @@ describe("Evidence Library address ownership", () => {
   });
 
   it("reads a network failure as unreachable", () => {
-    expect(classifyEvidenceLibraryAddress({ kind: "unreachable" })).toMatchObject(
-      { state: "unreachable" },
-    );
+    expect(
+      classifyEvidenceLibraryAddress({ kind: "unreachable" }),
+    ).toMatchObject({ state: "unreachable" });
   });
 
   it.each([
@@ -418,7 +422,8 @@ describe("Evidence Library address ownership", () => {
         if (url.pathname.startsWith("/v1/library-runtime")) {
           return Response.json(readyVerifierBody());
         }
-        if (url.pathname === "/lib") return new Response("<html>", { status: 200 });
+        if (url.pathname === "/lib")
+          return new Response("<html>", { status: 200 });
         if (url.pathname === "/admin") {
           return new Response("", {
             status: 302,
@@ -450,7 +455,10 @@ describe("Evidence Library address ownership", () => {
     // never finished held the check open for ever.
     vi.useFakeTimers();
     try {
-      const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const fetchImpl = (async (
+        _url: RequestInfo | URL,
+        init?: RequestInit,
+      ) => {
         const signal = init?.signal;
         return new Response(
           new ReadableStream({

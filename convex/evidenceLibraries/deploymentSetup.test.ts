@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
-import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createActivatedSetupFixture,
+  TEST_RUNTIME_IMAGE,
+} from "../../tests/helpers/evidence-library-setup-fixture";
 
 async function createApplicationSetupFixture() {
   const fixture = await createActivatedSetupFixture("deployment");
@@ -44,6 +47,7 @@ async function createApplicationSetupFixture() {
       candidateMachineCredentialDigest: "machine-digest",
       candidateMachineCredentialHint: "els_key...",
       candidateRuntimeCommit: "a".repeat(40),
+      candidateRuntimeImage: TEST_RUNTIME_IMAGE,
     },
   );
   await fixture.t.mutation(
@@ -56,6 +60,7 @@ async function createApplicationSetupFixture() {
       outcome: "created",
       applicationId: "coolify-application-deployment",
       runtimeCommit: prepared.runtimeCommit,
+      runtimeImage: prepared.runtimeImage,
       runtimeConfigSha256: "b".repeat(64),
       coolifyConfigHash: "c".repeat(64),
       searchHost: "http://meilisearch:7700",
@@ -94,6 +99,7 @@ describe("Evidence Library deployment setup", () => {
       applicationId: "coolify-application-deployment",
       deploymentNotBefore: expect.any(Number),
       runtimeCommit: "a".repeat(40),
+      runtimeImage: TEST_RUNTIME_IMAGE,
       runtimeConfigSha256: "b".repeat(64),
       coolifyConfigHash: "c".repeat(64),
       pollCount: 0,

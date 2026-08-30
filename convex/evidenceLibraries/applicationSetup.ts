@@ -37,6 +37,7 @@ import {
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
 import { aiProviderKeySourceValidator } from "./validators";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
+import { isRuntimeImageReference } from "./runtimeImageRegistry";
 
 function requireRuntimeCommit(value: string): string {
   const commit = requireNonBlankProvisioningValue("runtimeCommit", value);
@@ -47,6 +48,16 @@ function requireRuntimeCommit(value: string): string {
     );
   }
   return commit;
+}
+
+function requireRuntimeImage(value: string): string {
+  if (!isRuntimeImageReference(value)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "runtimeImage must use the fixed GHCR repository and an exact digest",
+    );
+  }
+  return value;
 }
 
 export const prepareApplicationSetup = internalMutation({
@@ -61,6 +72,7 @@ export const prepareApplicationSetup = internalMutation({
     candidateMachineCredentialDigest: v.string(),
     candidateMachineCredentialHint: v.string(),
     candidateRuntimeCommit: v.string(),
+    candidateRuntimeImage: v.string(),
   },
   returns: v.object({
     searchCredentialId: v.id("evidenceLibraryCredentials"),
@@ -76,6 +88,7 @@ export const prepareApplicationSetup = internalMutation({
     storagePrivateBucket: v.string(),
     storagePublicBucket: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.string(),
     revisionKey: v.string(),
     revisionCreatedAt: v.number(),
     targetBaseUrl: v.string(),
@@ -179,9 +192,16 @@ export const prepareApplicationSetup = internalMutation({
     const runtimeCommit =
       setup.setupOperation.setupRuntimeCommit ??
       requireRuntimeCommit(args.candidateRuntimeCommit);
-    if (!setup.setupOperation.setupRuntimeCommit) {
+    const runtimeImage =
+      setup.setupOperation.setupRuntimeImage ??
+      requireRuntimeImage(args.candidateRuntimeImage);
+    if (
+      !setup.setupOperation.setupRuntimeCommit ||
+      !setup.setupOperation.setupRuntimeImage
+    ) {
       await ctx.db.patch(setup.setupOperation._id, {
         setupRuntimeCommit: runtimeCommit,
+        setupRuntimeImage: runtimeImage,
         updatedAt: Date.now(),
       });
     }
@@ -266,6 +286,7 @@ export const prepareApplicationSetup = internalMutation({
       storagePrivateBucket: storageReceipt.privateBucket,
       storagePublicBucket: storageReceipt.publicBucket,
       runtimeCommit,
+      runtimeImage,
       revisionKey: setup.revision.revisionKey,
       revisionCreatedAt: setup.revision.createdAt,
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
@@ -289,6 +310,7 @@ export const completeApplicationSetup = internalMutation({
     outcome: evidenceLibraryReconcileOutcomeValidator,
     applicationId: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.string(),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
     searchHost: v.string(),
@@ -313,7 +335,10 @@ export const completeApplicationSetup = internalMutation({
       ...args,
       expectedStage: "application",
     });
-    if (setup.setupOperation.setupRuntimeCommit !== args.runtimeCommit) {
+    if (
+      setup.setupOperation.setupRuntimeCommit !== args.runtimeCommit ||
+      setup.setupOperation.setupRuntimeImage !== args.runtimeImage
+    ) {
       throw createError(
         "CONFLICT",
         "Evidence Library release commit changed during setup",
@@ -388,7 +413,11 @@ export const completeApplicationSetup = internalMutation({
     // A key replaced or removed while the library was being set up must not
     // reach it, the same rule a later publish follows. The snapshot stays on
     // the operation so the final step can check it once more.
-    await requireUnchangedAiProviderKey(ctx, args.libraryId, args.aiProviderKey);
+    await requireUnchangedAiProviderKey(
+      ctx,
+      args.libraryId,
+      args.aiProviderKey,
+    );
     await ctx.db.patch(setup.setupOperation._id, {
       setupAiProviderKey: args.aiProviderKey,
     });
@@ -413,6 +442,7 @@ export const completeApplicationSetup = internalMutation({
       targetBaseUrl: setup.runtimeBinding.targetBaseUrl,
       targetRuntimeId: applicationId,
       runtimeCommit: args.runtimeCommit,
+      runtimeImage: requireRuntimeImage(args.runtimeImage),
       searchHost,
       searchIndex,
       storageUrl,
@@ -437,6 +467,7 @@ export const completeApplicationSetup = internalMutation({
         outcome: args.outcome,
         applicationId,
         runtimeCommit: args.runtimeCommit,
+        runtimeImage: args.runtimeImage,
         runtimeConfigSha256: args.runtimeConfigSha256,
         coolifyConfigHash: args.coolifyConfigHash,
       },

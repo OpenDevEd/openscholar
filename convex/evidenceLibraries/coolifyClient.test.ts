@@ -21,6 +21,8 @@ const GITHUB_APP_ID = 7;
 const ENVIRONMENT_NAME = "development";
 const RUNTIME_COMMIT = "a".repeat(40);
 const OTHER_COMMIT = "b".repeat(40);
+const RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"c".repeat(64)}`;
+const OTHER_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"d".repeat(64)}`;
 const PUBLIC_DOMAIN = "https://library.example.test";
 const LIBRARY_CONFIG_JSON = JSON.stringify({
   revision: "rev-1",
@@ -519,6 +521,7 @@ function reconcileInput() {
     environmentName: ENVIRONMENT_NAME,
     githubAppUuid: GITHUB_APP_UUID,
     runtimeCommit: RUNTIME_COMMIT,
+    runtimeImage: RUNTIME_IMAGE,
     publicDomain: PUBLIC_DOMAIN,
     customDomains: [],
     libraryConfigJson: LIBRARY_CONFIG_JSON,
@@ -666,7 +669,7 @@ describe("Coolify Evidence Library client", () => {
       expect.objectContaining({ method: "DELETE" }),
     );
   });
-  it("creates one fixed Compose app, writes its three runtime values, and reads everything back", async () => {
+  it("creates one fixed Compose app, writes its four runtime values, and reads everything back", async () => {
     const server = createCoolifyServer();
     const client = createClient(server.fetchImpl);
 
@@ -740,6 +743,14 @@ describe("Coolify Evidence Library client", () => {
       {
         key: "SOURCE_COMMIT",
         value: RUNTIME_COMMIT,
+        is_preview: false,
+        is_literal: true,
+        is_runtime: true,
+        is_buildtime: true,
+      },
+      {
+        key: "RUNTIME_IMAGE",
+        value: RUNTIME_IMAGE,
         is_preview: false,
         is_literal: true,
         is_runtime: true,
@@ -901,6 +912,14 @@ describe("Coolify Evidence Library client", () => {
         is_runtime: true,
         is_buildtime: true,
       },
+      {
+        key: "RUNTIME_IMAGE",
+        value: RUNTIME_IMAGE,
+        is_preview: false,
+        is_literal: true,
+        is_runtime: true,
+        is_buildtime: true,
+      },
     ]);
     expect(server.environments).toContainEqual(coolifyOwned);
   });
@@ -912,6 +931,8 @@ describe("Coolify Evidence Library client", () => {
       environments: [
         environment("LIBRARY_CONFIG_JSON", LIBRARY_CONFIG_JSON),
         environment("MEILISEARCH_MASTER_KEY", MEILISEARCH_MASTER_KEY),
+        environment("SOURCE_COMMIT", OTHER_COMMIT),
+        environment("RUNTIME_IMAGE", OTHER_IMAGE),
         environment("KEEP_EXISTING_VALUE", "unchanged"),
       ],
     });
@@ -925,11 +946,13 @@ describe("Coolify Evidence Library client", () => {
       customDomains: [],
       libraryConfigJson: UPDATED_LIBRARY_CONFIG_JSON,
       expectedRuntimeCommit: OTHER_COMMIT,
+      expectedRuntimeImage: OTHER_IMAGE,
     });
 
     expect(result).toEqual({
       applicationUuid: APPLICATION_UUID,
       runtimeCommit: OTHER_COMMIT,
+      runtimeImage: OTHER_IMAGE,
       runtimeConfigSha256: createHash("sha256")
         .update(UPDATED_LIBRARY_CONFIG_JSON)
         .digest("hex"),
@@ -942,8 +965,9 @@ describe("Coolify Evidence Library client", () => {
     ).toEqual([
       { key: "LIBRARY_CONFIG_JSON", value: UPDATED_LIBRARY_CONFIG_JSON },
       { key: "MEILISEARCH_MASTER_KEY", value: MEILISEARCH_MASTER_KEY },
-      { key: "KEEP_EXISTING_VALUE", value: "unchanged" },
       { key: "SOURCE_COMMIT", value: OTHER_COMMIT },
+      { key: "RUNTIME_IMAGE", value: OTHER_IMAGE },
+      { key: "KEEP_EXISTING_VALUE", value: "unchanged" },
     ]);
     expect(
       server.requests.filter(
@@ -976,11 +1000,13 @@ describe("Coolify Evidence Library client", () => {
       publicDomain: PUBLIC_DOMAIN,
       customDomains: [],
       runtimeCommit: OTHER_COMMIT,
+      runtimeImage: OTHER_IMAGE,
     });
 
     expect(result).toEqual({
       applicationUuid: APPLICATION_UUID,
       runtimeCommit: OTHER_COMMIT,
+      runtimeImage: OTHER_IMAGE,
       coolifyConfigHash: server.application?.config_hash,
     });
     expect(server.application?.git_commit_sha).toBe(OTHER_COMMIT);
@@ -995,7 +1021,11 @@ describe("Coolify Evidence Library client", () => {
       instant_deploy: false,
     });
     expect(
-      server.requests.filter(({ method }) => method === "POST"),
+      server.requests.filter(
+        ({ method, path }) =>
+          method === "POST" &&
+          path === "/api/v1/applications/private-github-app",
+      ),
     ).toHaveLength(0);
   });
 
@@ -1003,6 +1033,10 @@ describe("Coolify Evidence Library client", () => {
     const server = createCoolifyServer({
       application: expectedApplication({ git_commit_sha: OTHER_COMMIT }),
       tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      environments: [
+        environment("SOURCE_COMMIT", OTHER_COMMIT),
+        environment("RUNTIME_IMAGE", OTHER_IMAGE),
+      ],
     });
 
     await expect(
@@ -1012,6 +1046,7 @@ describe("Coolify Evidence Library client", () => {
         publicDomain: PUBLIC_DOMAIN,
         customDomains: [],
         runtimeCommit: OTHER_COMMIT,
+        runtimeImage: OTHER_IMAGE,
       }),
     ).resolves.toMatchObject({ runtimeCommit: OTHER_COMMIT });
     expect(
@@ -1033,6 +1068,7 @@ describe("Coolify Evidence Library client", () => {
         publicDomain: PUBLIC_DOMAIN,
         customDomains: [],
         runtimeCommit: OTHER_COMMIT,
+        runtimeImage: OTHER_IMAGE,
       }),
     ).rejects.toMatchObject({ code: "COOLIFY_APPLICATION_MISMATCH" });
   });
@@ -1055,6 +1091,7 @@ describe("Coolify Evidence Library client", () => {
         customDomains: [],
         libraryConfigJson: UPDATED_LIBRARY_CONFIG_JSON,
         expectedRuntimeCommit: RUNTIME_COMMIT,
+        expectedRuntimeImage: RUNTIME_IMAGE,
       }),
     ).rejects.toMatchObject({ code: "COOLIFY_APPLICATION_CONFLICT" });
     expect(

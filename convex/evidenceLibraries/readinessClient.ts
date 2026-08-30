@@ -1,3 +1,5 @@
+import { isRuntimeImageReference } from "./runtimeImageRegistry";
+
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
@@ -83,6 +85,12 @@ function requireInput(input: ReadinessCheckInput) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
       "Evidence Library commit is invalid",
+    );
+  }
+  if (!isRuntimeImageReference(input.runtimeImage)) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library image is invalid",
     );
   }
   if (!input.revisionKey.trim()) {
@@ -325,6 +333,7 @@ async function requireVerifierReady(
       body: JSON.stringify({
         applicationUuid: input.applicationUuid,
         commit: input.runtimeCommit,
+        runtimeImage: input.runtimeImage,
       }),
     },
     async (response) => {
@@ -342,6 +351,7 @@ async function requireVerifierReady(
     body.ready !== true ||
     body.applicationUuid !== input.applicationUuid ||
     body.commit !== input.runtimeCommit ||
+    body.runtimeImage !== input.runtimeImage ||
     !Array.isArray(body.services) ||
     body.services.length !== 6
   ) {
@@ -445,18 +455,18 @@ async function requireAdminPage(
     url,
     { headers: { accept: "text/html" }, method: "GET" },
     async (response) => {
-  // The runtime contract is one exact answer: a 307 to the login page.
-  if (response.status !== 307) throw notReady;
+      // The runtime contract is one exact answer: a 307 to the login page.
+      if (response.status !== 307) throw notReady;
 
-  const location = response.headers.get("location");
-  if (!location) throw notReady;
-  let destination: URL;
-  try {
-    destination = new URL(location, url);
-  } catch {
-    throw notReady;
-  }
-  if (!isLibraryLoginPage(destination, loginPageUrl)) throw notReady;
+      const location = response.headers.get("location");
+      if (!location) throw notReady;
+      let destination: URL;
+      try {
+        destination = new URL(location, url);
+      } catch {
+        throw notReady;
+      }
+      if (!isLibraryLoginPage(destination, loginPageUrl)) throw notReady;
     },
   );
 }
@@ -477,7 +487,8 @@ async function requireRedirectToCanonical(
       fetchImpl,
       new URL("/lib", platformOrigin),
       { headers: { accept: "text/html" }, method: "GET", redirect: "manual" },
-      async (response) => readsAsRedirectTo(response, platformOrigin, canonicalOrigin),
+      async (response) =>
+        readsAsRedirectTo(response, platformOrigin, canonicalOrigin),
     );
   } catch {
     throw new ReadinessClientError(
@@ -506,6 +517,7 @@ function readsAsRedirectTo(response: Response, from: URL, to: URL): boolean {
 export type ReadinessCheckInput = {
   applicationUuid: string;
   runtimeCommit: string;
+  runtimeImage: string;
   revisionKey: string;
   /** The address the library calls its own. Everything is read here. */
   targetBaseUrl: string;
@@ -547,7 +559,10 @@ export async function requireLibraryRuntimeReady(
   if (input.platformBaseUrl && input.platformBaseUrl !== targetOrigin.origin) {
     await requireRedirectToCanonical(
       fetchImpl,
-      requireHttpsOrigin("Evidence Library platform URL", input.platformBaseUrl),
+      requireHttpsOrigin(
+        "Evidence Library platform URL",
+        input.platformBaseUrl,
+      ),
       targetOrigin,
     );
   }

@@ -26,13 +26,21 @@ function requireReadinessReceipts(
 ) {
   const application = setup.setupOperation.setupReceipts?.application;
   const deployment = setup.setupOperation.setupReceipts?.deployment;
-  if (!application || !deployment) {
+  if (
+    !application ||
+    !deployment ||
+    typeof application.runtimeImage !== "string" ||
+    deployment.runtimeImage !== application.runtimeImage
+  ) {
     throw createError(
       "INVALID_DATA",
       "Evidence Library deployment receipts are incomplete",
     );
   }
-  return { application, deployment };
+  return {
+    application: { ...application, runtimeImage: application.runtimeImage },
+    deployment,
+  };
 }
 
 export const prepareReadinessSetup = internalMutation({
@@ -46,6 +54,7 @@ export const prepareReadinessSetup = internalMutation({
     applicationId: v.string(),
     deploymentId: v.string(),
     runtimeCommit: v.string(),
+    runtimeImage: v.string(),
     runtimeConfigSha256: v.string(),
     coolifyConfigHash: v.string(),
     revisionKey: v.string(),
@@ -61,6 +70,7 @@ export const prepareReadinessSetup = internalMutation({
       applicationId: application.applicationId,
       deploymentId: deployment.deploymentId,
       runtimeCommit: application.runtimeCommit,
+      runtimeImage: application.runtimeImage,
       runtimeConfigSha256: application.runtimeConfigSha256,
       coolifyConfigHash: deployment.coolifyConfigHash,
       revisionKey: setup.revision.revisionKey,

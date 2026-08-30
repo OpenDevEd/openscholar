@@ -7,6 +7,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
+import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { requireEvidenceLibraryAccess } from "./access";
 import { readAttachedDomainOrigins } from "./domains";
 import {
@@ -172,11 +173,19 @@ export async function isAcceptableSavedConfigurationTarget(
   if (operation.runtimeUpdate) {
     if (
       target.runtimeCommit !== operation.runtimeUpdate.to ||
-      runtimeBinding.runtimeCommit !== operation.runtimeUpdate.from
+      runtimeBinding.runtimeCommit !== operation.runtimeUpdate.from ||
+      (operation.runtimeUpdate.toImage !== undefined &&
+        target.runtimeImage !== operation.runtimeUpdate.toImage) ||
+      (operation.runtimeUpdate.fromImage !== undefined &&
+        runtimeBinding.runtimeImage !== operation.runtimeUpdate.fromImage)
     ) {
       return false;
     }
-  } else if (target.runtimeCommit !== runtimeBinding.runtimeCommit) {
+  } else if (
+    target.runtimeCommit !== runtimeBinding.runtimeCommit ||
+    (target.runtimeImage !== undefined &&
+      target.runtimeImage !== runtimeBinding.runtimeImage)
+  ) {
     return false;
   }
   const attachedDomains = await readAttachedDomainOrigins(
@@ -255,6 +264,7 @@ type OperationReceipt = {
   targetConfigSha256?: string;
   runtimeReceiptId?: string;
   runtimeCommit?: string;
+  runtimeImage?: string;
   coolifyConfigHash?: string;
   activatedAt?: number;
 };
@@ -301,6 +311,15 @@ export function validateOperationReceipt(
       );
     }
     normalized.runtimeCommit = receipt.runtimeCommit;
+  }
+  if (receipt.runtimeImage !== undefined) {
+    if (!isRuntimeImageReference(receipt.runtimeImage)) {
+      throw createError(
+        "VALIDATION_ERROR",
+        "Operation receipt runtimeImage must use the fixed GHCR repository and an exact digest",
+      );
+    }
+    normalized.runtimeImage = receipt.runtimeImage;
   }
   if (receipt.coolifyConfigHash !== undefined) {
     if (!/^(?:[a-f0-9]{32}|[a-f0-9]{64})$/iu.test(receipt.coolifyConfigHash)) {
@@ -364,7 +383,12 @@ async function queueOperationRecord(
     idempotencyKey: string;
     revisionId?: Id<"evidenceLibraryConfigRevisions">;
     activationEditVersion?: number;
-    runtimeUpdate?: { from: string; to: string };
+    runtimeUpdate?: {
+      from: string;
+      to: string;
+      fromImage?: string;
+      toImage: string;
+    };
   },
 ) {
   const access = await requireEvidenceLibraryAccess(
@@ -406,7 +430,12 @@ async function queueOperationRecord(
         (args.activationEditVersion ?? null) ||
       (existing.runtimeUpdate?.from ?? null) !==
         (args.runtimeUpdate?.from ?? null) ||
-      (existing.runtimeUpdate?.to ?? null) !== (args.runtimeUpdate?.to ?? null)
+      (existing.runtimeUpdate?.to ?? null) !==
+        (args.runtimeUpdate?.to ?? null) ||
+      (existing.runtimeUpdate?.fromImage ?? null) !==
+        (args.runtimeUpdate?.fromImage ?? null) ||
+      (existing.runtimeUpdate?.toImage ?? null) !==
+        (args.runtimeUpdate?.toImage ?? null)
     ) {
       throw createError(
         "CONFLICT",
@@ -466,7 +495,12 @@ export async function queueRuntimeUpdateOperation(
     libraryId: Id<"evidenceLibraries">;
     idempotencyKey: string;
     revisionId: Id<"evidenceLibraryConfigRevisions">;
-    runtimeUpdate: { from: string; to: string };
+    runtimeUpdate: {
+      from: string;
+      to: string;
+      fromImage?: string;
+      toImage: string;
+    };
   },
 ) {
   return await queueOperationRecord(ctx, { ...args, kind: "publish" });

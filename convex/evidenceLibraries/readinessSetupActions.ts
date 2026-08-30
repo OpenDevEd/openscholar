@@ -89,6 +89,7 @@ export const runReadinessSetup = internalAction({
       await requireLibraryRuntimeReady({
         applicationUuid: prepared.applicationId,
         runtimeCommit: prepared.runtimeCommit,
+        runtimeImage: prepared.runtimeImage,
         revisionKey: prepared.revisionKey,
         targetBaseUrl: prepared.targetBaseUrl,
         loginPageUrl: buildEvidenceLibraryLoginPageUrl({

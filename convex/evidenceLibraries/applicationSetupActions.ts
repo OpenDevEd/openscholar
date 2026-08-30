@@ -82,6 +82,10 @@ export const runApplicationSetup = internalAction({
             "EL_RUNTIME_COMMIT_SHA",
             invalidData,
           ),
+          candidateRuntimeImage: requireRuntimeEnvironment(
+            "EL_RUNTIME_IMAGE",
+            invalidData,
+          ),
         },
       );
       const appOrigin = requireRuntimeHttpsOrigin(
@@ -161,6 +165,7 @@ export const runApplicationSetup = internalAction({
         libraryId: args.libraryId,
         targetBaseUrl: prepared.targetBaseUrl,
         runtimeCommit: prepared.runtimeCommit,
+        runtimeImage: prepared.runtimeImage,
         runtimeConfigJson: configuration.runtimeConfigJson,
         searchKey: configuration.runtimeConfig.services.search.key,
       });
@@ -171,6 +176,7 @@ export const runApplicationSetup = internalAction({
           outcome: application.outcome,
           applicationId: application.applicationId,
           runtimeCommit: prepared.runtimeCommit,
+          runtimeImage: prepared.runtimeImage,
           runtimeConfigSha256: configuration.runtimeConfigSha256,
           coolifyConfigHash: application.coolifyConfigHash,
           searchHost: EVIDENCE_LIBRARY_SEARCH_HOST,
