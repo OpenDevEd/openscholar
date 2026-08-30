@@ -1,0 +1,492 @@
+name: OpenScholar CI jobs
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: Run the pull-request CI suite or the nightly billing suite.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    if: inputs.mode == 'ci'
+    name: ${{ matrix.name }}
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openscholar-light' }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Unit and contract tests
+            command: npm run test
+            cache_next: false
+          - name: Production build
+            command: npm run build
+            cache_next: true
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+      CLERK_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      NEXT_PUBLIC_CONVEX_URL: https://example.convex.cloud
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Restore the public Next.js build cache
+        if: matrix.cache_next
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
+        with:
+          path: .next/cache
+          key: openscholar-public-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            openscholar-public-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.command }}
+
+  e2e-auth:
+    if: inputs.mode == 'ci'
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openscholar-secret' }}
+    timeout-minutes: 30
+    needs: static-checks
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+      CLERK_JWT_ISSUER_DOMAIN: ${{ secrets.CLERK_JWT_ISSUER_DOMAIN }}
+      CLERK_WEBHOOK_SIGNING_SECRET: ${{ secrets.CLERK_WEBHOOK_SIGNING_SECRET }}
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check auth test environment
+        id: auth-environment
+        env:
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          required_vars=(
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+            CLERK_PUBLISHABLE_KEY
+            CLERK_SECRET_KEY
+            NEXT_PUBLIC_CLERK_SIGN_IN_URL
+            NEXT_PUBLIC_CLERK_SIGN_UP_URL
+            NEXT_PUBLIC_CONVEX_URL
+            CLERK_JWT_ISSUER_DOMAIN
+            CLERK_WEBHOOK_SIGNING_SECRET
+            E2E_CLERK_USER_EMAIL
+            E2E_CLERK_USER_PASSWORD
+          )
+          missing_vars=()
+          for var_name in "${required_vars[@]}"; do
+            if [ -z "${!var_name}" ]; then
+              missing_vars+=("$var_name")
+            fi
+          done
+          if [ "${#missing_vars[@]}" -eq 0 ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$IS_FORK" = "true" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            printf '::notice::Skipping auth E2E for a fork pull request because secrets are unavailable: %s\n' "${missing_vars[*]}"
+            exit 0
+          fi
+          printf '::error::Missing required auth secret/env: %s\n' "${missing_vars[*]}"
+          exit 1
+
+      - name: Restore the secret Next.js build cache
+        if: steps.auth-environment.outputs.available == 'true'
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
+        with:
+          path: .next/cache
+          key: openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Install dependencies
+        if: steps.auth-environment.outputs.available == 'true'
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Install the lockfile-selected Chromium
+        if: steps.auth-environment.outputs.available == 'true'
+        run: npx playwright install chromium
+
+      - name: Run auth E2E
+        if: steps.auth-environment.outputs.available == 'true'
+        run: npm run test:e2e:auth
+
+      - name: Upload Playwright report
+        if: always() && steps.auth-environment.outputs.available == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload app logs
+        if: failure() && steps.auth-environment.outputs.available == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: playwright-output
+          path: test-results
+          if-no-files-found: ignore
+
+  billing-live:
+    if: inputs.mode == 'ci'
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openscholar-secret' }}
+    timeout-minutes: 45
+    needs: static-checks
+    concurrency:
+      group: billing-live-shared-test-user
+      cancel-in-progress: false
+    env:
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+      NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+      CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
+      STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
+      CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
+      BILLING_TEST_USER_SUBJECT: billing_live_test_subject
+      BILLING_TEST_USER_EMAIL: billing-live-test@example.com
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check billing test environment
+        id: billing-environment
+        env:
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          required_vars=(
+            NEXT_PUBLIC_CONVEX_URL
+            STRIPE_SECRET_KEY
+            STRIPE_GO_PRICE_ID
+          )
+          missing_vars=()
+          for var_name in "${required_vars[@]}"; do
+            if [ -z "${!var_name}" ]; then
+              missing_vars+=("$var_name")
+            fi
+          done
+          if [ -z "${CONVEX_DEPLOYMENT}" ] && [ -z "${CONVEX_DEPLOYMENT_NAME}" ]; then
+            missing_vars+=("CONVEX_DEPLOYMENT or CONVEX_DEPLOYMENT_NAME")
+          fi
+          if [ "${#missing_vars[@]}" -eq 0 ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_FORK" = "true" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            printf '::notice::Skipping live billing checks for a fork pull request because secrets are unavailable: %s\n' "${missing_vars[*]}"
+            exit 0
+          else
+            printf '::error::Missing required billing secret/env: %s\n' "${missing_vars[*]}"
+            exit 1
+          fi
+          if [ "$NEXT_PUBLIC_CREDITS_ENABLED" = "false" ]; then
+            echo "::error::NEXT_PUBLIC_CREDITS_ENABLED is set to 'false' — credit cap banner tests (CRED-05) will fail"
+            exit 1
+          fi
+
+      - name: Restore the secret Next.js build cache
+        if: steps.billing-environment.outputs.available == 'true'
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
+        with:
+          path: .next/cache
+          key: openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Install dependencies
+        if: steps.billing-environment.outputs.available == 'true'
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run billing preflight and required live regressions
+        if: steps.billing-environment.outputs.available == 'true'
+        run: npm run test:billing:live:ci
+
+      - name: Upload billing-live artifacts
+        if: always() && steps.billing-environment.outputs.available == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: billing-live-artifacts
+          path: test-results/billing-live
+          if-no-files-found: ignore
+
+      - name: Install the lockfile-selected Chromium
+        if: steps.billing-environment.outputs.available == 'true'
+        run: npx playwright install chromium
+
+      - name: Run billing E2E tests
+        if: steps.billing-environment.outputs.available == 'true'
+        run: npm run test:billing:e2e
+
+      - name: Upload billing E2E report
+        if: always() && steps.billing-environment.outputs.available == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: billing-e2e-report-${{ github.job }}
+          path: playwright-report
+          if-no-files-found: ignore
+
+  billing-live-extended:
+    if: inputs.mode == 'ci' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: openscholar-secret
+    timeout-minutes: 60
+    needs: billing-live
+    continue-on-error: true
+    concurrency:
+      group: billing-live-shared-test-user
+      cancel-in-progress: false
+    env:
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+      NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+      CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
+      STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
+      CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
+      BILLING_TEST_USER_SUBJECT: billing_live_test_subject
+      BILLING_TEST_USER_EMAIL: billing-live-test@example.com
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Restore the secret Next.js build cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
+        with:
+          path: .next/cache
+          key: openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Validate billing environment
+        run: |
+          if [ "$NEXT_PUBLIC_CREDITS_ENABLED" = "false" ]; then
+            echo "::error::NEXT_PUBLIC_CREDITS_ENABLED is set to 'false' — credit cap banner tests (CRED-05) will fail"
+            exit 1
+          fi
+
+      - name: Run extended live billing regressions (non-blocking)
+        run: npm run test:billing:extended:ci
+
+      - name: Upload billing-live-extended artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: billing-live-extended-artifacts
+          path: test-results/billing-live
+          if-no-files-found: ignore
+
+      - name: Install the lockfile-selected Chromium
+        run: npx playwright install chromium
+
+      - name: Run billing E2E tests
+        run: npm run test:billing:e2e
+
+      - name: Upload billing E2E report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: billing-e2e-report-${{ github.job }}
+          path: playwright-report
+          if-no-files-found: ignore
+
+  ci:
+    if: always() && inputs.mode == 'ci'
+    name: CI
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openscholar-light' }}
+    timeout-minutes: 5
+    needs:
+      - static-checks
+      - e2e-auth
+      - billing-live
+      - billing-live-extended
+    steps:
+      - name: Require every blocking CI job
+        env:
+          STATIC_RESULT: ${{ needs.static-checks.result }}
+          AUTH_RESULT: ${{ needs.e2e-auth.result }}
+          BILLING_RESULT: ${{ needs.billing-live.result }}
+          EXTENDED_RESULT: ${{ needs.billing-live-extended.result }}
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ "$STATIC_RESULT" != "success" ]; then
+            echo "::error::Unit tests or the production build did not pass."
+            exit 1
+          fi
+          if [ "$IS_FORK" = "true" ]; then
+            if [ "$AUTH_RESULT" != "success" ] && [ "$AUTH_RESULT" != "skipped" ]; then
+              echo "::error::Auth E2E did not pass or skip safely for the fork."
+              exit 1
+            fi
+            if [ "$BILLING_RESULT" != "success" ] && [ "$BILLING_RESULT" != "skipped" ]; then
+              echo "::error::Billing checks did not pass or skip safely for the fork."
+              exit 1
+            fi
+          else
+            if [ "$AUTH_RESULT" != "success" ]; then
+              echo "::error::Auth E2E did not pass."
+              exit 1
+            fi
+            if [ "$BILLING_RESULT" != "success" ]; then
+              echo "::error::Required billing checks did not pass."
+              exit 1
+            fi
+          fi
+          if [ "$EXTENDED_RESULT" != "success" ] && [ "$EXTENDED_RESULT" != "skipped" ]; then
+            echo "::error::The extended billing job ended unexpectedly."
+            exit 1
+          fi
+
+  billing-live-extended-nightly:
+    if: inputs.mode == 'nightly'
+    runs-on: openscholar-secret
+    timeout-minutes: 60
+    concurrency:
+      group: billing-live-shared-test-user
+      cancel-in-progress: false
+    env:
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+      NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+      CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
+      STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
+      CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
+      BILLING_TEST_USER_SUBJECT: billing_live_test_subject
+      BILLING_TEST_USER_EMAIL: billing-live-test@example.com
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validate required billing-nightly secrets
+        run: |
+          required_vars=(
+            NEXT_PUBLIC_CONVEX_URL
+            STRIPE_SECRET_KEY
+            STRIPE_GO_PRICE_ID
+          )
+          for var_name in "${required_vars[@]}"; do
+            if [ -z "${!var_name}" ]; then
+              echo "::error::Missing required secret/env: ${var_name}"
+              exit 1
+            fi
+          done
+          if [ -z "${CONVEX_DEPLOYMENT}" ] && [ -z "${CONVEX_DEPLOYMENT_NAME}" ]; then
+            echo "::error::Missing deployment target. Set CONVEX_DEPLOYMENT or CONVEX_DEPLOYMENT_NAME."
+            exit 1
+          fi
+          if [ "$NEXT_PUBLIC_CREDITS_ENABLED" = "false" ]; then
+            echo "::error::NEXT_PUBLIC_CREDITS_ENABLED is set to 'false' — credit cap banner tests (CRED-05) will fail"
+            exit 1
+          fi
+
+      - name: Restore the secret Next.js build cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.0.3
+        with:
+          path: .next/cache
+          key: openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            openscholar-secret-next-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run extended live billing regressions
+        run: npm run test:billing:extended:ci
+
+      - name: Upload billing-nightly artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: billing-nightly-artifacts
+          path: test-results/billing-live
+          if-no-files-found: ignore
+
+      - name: Install the lockfile-selected Chromium
+        run: npx playwright install chromium
+
+      - name: Run billing E2E tests
+        run: npm run test:billing:e2e
+
+      - name: Upload billing E2E report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: billing-e2e-report-${{ github.job }}
+          path: playwright-report
+          if-no-files-found: ignore
