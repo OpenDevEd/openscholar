@@ -545,6 +545,34 @@ The workflow supports `workflow_dispatch` with an exact commit that is an
 ancestor of `main` and has a green CI run. This exists for the two-release live
 gate and release recovery, not for arbitrary branch images.
 
+#### Runtime image result, 2026-08-30
+
+`new-el` PRs
+[147](https://github.com/OpenDevEd/new-el/pull/147) and
+[149](https://github.com/OpenDevEd/new-el/pull/149) merged after exact-head CI.
+Main CI run `33285051052` published merge commit
+`3b84f8c44db0b35049bcae6b780992c829fc66ed` as
+`sha256:e03c0792e2ac2b2517956a0e2129ef29ae3ad79902d8090810ca793a9baacbd0`.
+Main CI run `33285713625` published the final fix merge
+`9dd3e7b36ca8b29dace3fdcaffb9ecc833932d09` as
+`sha256:eca9917bdd28bd4691242553b3b8f5c012077e3d4daafef976c7bee4b304feb3`.
+Direct registry inspection returned `linux/amd64`, the exact revision label and
+the expected source label for both images.
+
+The first automatic publish run `33285278327` took 67 seconds and pushed its
+manifest in 30.9 seconds. With the persistent cache warm, run `33285960766`
+took 14 seconds and pushed its new commit tag in 3.8 seconds. Manual recovery
+run `33285715918` selected the already published first commit, returned the
+same digest in 12 seconds and left the package version timestamp unchanged.
+This proves an existing immutable tag is reused rather than rebuilt or
+rewritten.
+
+Runner group `Evidence Library Release` is selected for only
+`OpenDevEd/new-el`, permits no public repository and accepts only
+`.github/workflows/runtime-image.yml` from `refs/heads/main`. Job
+`99187286311` reported runner `new-el-ci-release`, group
+`evidence library release` and label `evidence-library-release`.
+
 ### 2. Make image availability part of the release contract
 
 Add `convex/evidenceLibraries/runtimeImageRegistry.ts`. It is a small pure
