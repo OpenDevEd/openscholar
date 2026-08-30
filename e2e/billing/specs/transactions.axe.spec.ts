@@ -31,7 +31,6 @@ test.describe("Transactions panel — axe matrix", () => {
         test(`${density} × ${filter.label} × drawer-${drawerState}`, async ({
           page,
           clerkUser: _clerkUser,
-          billingPage,
           webhookWaiter,
         }) => {
           void _clerkUser;
@@ -42,7 +41,6 @@ test.describe("Transactions panel — axe matrix", () => {
               await webhookWaiter.seedPurchase();
             }
           }
-          await billingPage.goto();
           await page.goto(`/settings/billing${filter.query}`);
           await page.waitForSelector("[data-transactions-panel]");
 
