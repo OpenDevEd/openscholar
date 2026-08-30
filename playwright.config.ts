@@ -37,6 +37,14 @@ const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const defaultWebServerCommand = "npm run build && npm run start -- --port 3000";
 const webServerCommand =
   process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ?? defaultWebServerCommand;
+const billingWorkers = Number.parseInt(
+  process.env.CI ? (process.env.PLAYWRIGHT_WORKERS ?? "1") : "1",
+  10,
+);
+
+if (!Number.isSafeInteger(billingWorkers) || billingWorkers < 1) {
+  throw new Error("PLAYWRIGHT_WORKERS must be a positive integer");
+}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -47,7 +55,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: process.env.CI ? 2 : 0,
   maxFailures: process.env.CI ? 1 : undefined,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? billingWorkers : undefined,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   globalSetup: "./e2e/global.setup.ts",
   webServer: {
@@ -73,8 +81,7 @@ export default defineConfig({
       name: "billing",
       testDir: "./e2e/billing",
       timeout: 180_000,
-      workers: 1,
-      fullyParallel: false,
+      fullyParallel: billingWorkers > 1,
       use: {
         locale: "en-US",
       },
