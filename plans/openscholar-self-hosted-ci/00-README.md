@@ -40,9 +40,10 @@ build three times, and run Playwright's Linux package installer twice.
    if that setting changes later. A fork cannot edit the workflow that has
    access to the runner groups.
 6. Restore the required dev-service secrets from the checked `dev-cloud`
-   environment. `formal-rabbit-271` passed the read-only Convex and Stripe
-   preflight on 2026-08-30. Store these only as GitHub Actions secrets. Runner
-   disks contain no deployment credential.
+   environment. Create one deployment-scoped Convex key for
+   `formal-rabbit-271` because the live billing command pushes the tested
+   functions before it runs. Store these only as GitHub Actions secrets.
+   Runner disks contain no deployment credential after a job ends.
 7. Pin every external action to a full commit SHA. Set workflow token access to
    `contents: read`.
 8. Keep `npm ci`. Use `--prefer-offline --no-audit --no-fund`, but never cache
@@ -121,4 +122,3 @@ review runs after implementation and before the final two exact-head runs.
 - [Playwright CI guide](https://playwright.dev/docs/ci)
 - Installed Next.js CI build-cache guide named above
 - `plans/evidence-library-configuration-v2/17-build-once-runtime-image.md`
-

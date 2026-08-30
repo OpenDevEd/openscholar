@@ -26,7 +26,7 @@ STANDING RULES
 
 EXECUTION RHYTHM
 
-1. Restore repository test secrets from the checked dev-cloud environment. Push the already-committed plan, open the PR to dev, and record two full GitHub-hosted baseline runs where auth and billing execute.
+1. Restore repository test secrets from the checked dev-cloud environment. Create the plan's deployment-scoped `CONVEX_DEPLOY_KEY` for the live billing push. Push the already-committed plan, open the PR to dev, and record two full GitHub-hosted baseline runs where auth and billing execute.
 2. Create the fresh bounded guest, groups, accounts, and runners. Read every setting back before changing workflow routing.
 3. Add and commit the immutable reusable workflow. Restrict both runner groups to its exact commit. Then change and commit the two caller workflows.
 4. Run checksum-verified actionlint and preliminary cold/warm runs. Keep a Next build setting only if it passes the plan's A/B rule.

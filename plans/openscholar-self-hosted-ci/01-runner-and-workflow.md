@@ -74,8 +74,15 @@ Create these repository Actions secrets from the checked
 `STRIPE_SECRET_KEY`, `STRIPE_GO_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, and
 `CREDITS_PER_USD`.
 
+The first full hosted run, [33283092691](https://github.com/OpenDevEd/openalex-count/actions/runs/33283092691),
+proved that `CONVEX_DEPLOYMENT` selects the deployment but does not authorize
+the billing command's `npx convex run --push`. Create one deployment-scoped
+key named `openscholar-github-ci-20260830` for `formal-rabbit-271`, store it as
+the repository Actions secret `CONVEX_DEPLOY_KEY`, and pass it only to billing
+jobs. Do not use a personal account token or a project-wide key.
+
 Do not set `CONVEX_DEPLOYMENT_NAME`. The checked environment already names
-`dev:formal-rabbit-271`, and its Stripe webhook preflight passed.
+`dev:formal-rabbit-271`, and its read-only Stripe and Convex preflight passed.
 
 Push only the committed plan and open the PR to `dev`. Record the first complete
 GitHub-hosted run and one rerun. Both auth and billing must execute. A skip is a
