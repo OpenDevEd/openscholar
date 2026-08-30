@@ -482,6 +482,8 @@ export const runtimeReleaseChangeValidator = v.object({
 export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),
+  // Temporary during Plan 17's widen stage. Every new write includes it.
+  latestImage: v.optional(v.string()),
   changes: v.array(runtimeReleaseChangeValidator),
   checkedAt: v.number(),
 };
@@ -659,7 +661,6 @@ export type EvidenceLibrarySetupReceipts = Infer<
   typeof evidenceLibrarySetupReceiptsValidator
 >;
 
-
 export const evidenceLibraryOperationReceiptValidator = v.object({
   revisionKey: v.optional(v.string()),
   targetConfigSha256: v.optional(v.string()),
@@ -712,7 +713,11 @@ export const evidenceLibraryAddressMoveValidator = v.object({
 export const evidenceLibraryDomainChangeValidator = v.object({
   host: v.string(),
   domainId: v.id("evidenceLibraryDomains"),
-  reason: v.union(v.literal("attach"), v.literal("detach"), v.literal("canonical")),
+  reason: v.union(
+    v.literal("attach"),
+    v.literal("detach"),
+    v.literal("canonical"),
+  ),
   // For a canonical change: the address the library should call its own once
   // this deployment is live. Nothing is written until it is.
   address: v.optional(v.string()),
@@ -829,7 +834,10 @@ const PUBLIC_OPERATION_FIELDS = [
 ] as const satisfies readonly (keyof typeof evidenceLibraryOperationFields)[];
 
 export const evidenceLibraryPublicOperationFields = Object.fromEntries(
-  PUBLIC_OPERATION_FIELDS.map((key) => [key, evidenceLibraryOperationFields[key]]),
+  PUBLIC_OPERATION_FIELDS.map((key) => [
+    key,
+    evidenceLibraryOperationFields[key],
+  ]),
 ) as Pick<
   typeof evidenceLibraryOperationFields,
   (typeof PUBLIC_OPERATION_FIELDS)[number]
@@ -837,7 +845,10 @@ export const evidenceLibraryPublicOperationFields = Object.fromEntries(
 
 type EvidenceLibraryOperationRow = Infer<
   ReturnType<typeof v.object<typeof evidenceLibraryOperationFields>>
-> & { _id: GenericId<"evidenceLibraryConfigOperations">; _creationTime: number };
+> & {
+  _id: GenericId<"evidenceLibraryConfigOperations">;
+  _creationTime: number;
+};
 
 /** The operation as an owner sees it: the allowlisted fields and nothing else. */
 export function toPublicEvidenceLibraryOperation(

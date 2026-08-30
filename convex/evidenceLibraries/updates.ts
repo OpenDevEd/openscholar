@@ -25,6 +25,7 @@ import {
 const runtimeUpdateStateValidator = v.object({
   running: v.string(),
   latest: v.string(),
+  latestImage: v.string(),
   changes: v.array(runtimeReleaseChangeValidator),
   checkedAt: v.number(),
 });
@@ -32,6 +33,7 @@ const runtimeUpdateStateValidator = v.object({
 type RuntimeUpdateState = {
   running: string;
   latest: string;
+  latestImage: string;
   changes: { sha: string; message: string }[];
   checkedAt: number;
 };
@@ -70,10 +72,13 @@ export const readRunningRelease = internalQuery({
       bindingId: binding._id,
       targetBaseUrl: binding.targetBaseUrl,
       cached:
-        cached && isFreshRuntimeRelease(cached.checkedAt, Date.now())
+        cached &&
+        typeof cached.latestImage === "string" &&
+        isFreshRuntimeRelease(cached.checkedAt, Date.now())
           ? {
               running,
               latest: cached.latest,
+              latestImage: cached.latestImage,
               changes: cached.changes,
               checkedAt: cached.checkedAt,
             }
@@ -123,6 +128,7 @@ async function refreshRuntimeRelease(
   const state = {
     running,
     latest: release.latest,
+    latestImage: release.image,
     changes: release.changes,
     checkedAt: Date.now(),
   };

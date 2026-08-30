@@ -2,6 +2,12 @@
 // of commits between the commit a library runs and that newest commit.
 // The repository is private, so every request carries a token.
 
+import {
+  resolveRuntimeImage,
+  RuntimeImageRegistryError,
+  type RuntimeImageReference,
+} from "./runtimeImageRegistry";
+
 const GITHUB_ORIGIN = "https://api.github.com";
 const RUNTIME_REPOSITORY = "OpenDevEd/new-el";
 const RUNTIME_BRANCH = "main";
@@ -16,6 +22,7 @@ export const RUNTIME_RELEASE_CACHE_MS = 10 * 60 * 1_000;
 export type RuntimeReleaseChange = { sha: string; message: string };
 export type RuntimeRelease = {
   latest: string;
+  image: RuntimeImageReference;
   changes: RuntimeReleaseChange[];
 };
 
@@ -134,7 +141,26 @@ export async function fetchRuntimeRelease(input: {
     );
   }
   const latest = requireCommit("latest commit", head.body.sha);
-  if (latest === running) return { latest, changes: [] };
+  let image: RuntimeImageReference | null;
+  try {
+    image = await resolveRuntimeImage({
+      commit: latest,
+      githubToken: token,
+      fetchImpl,
+    });
+  } catch (error) {
+    if (error instanceof RuntimeImageRegistryError) {
+      throw new RuntimeReleaseError(error.code, error.message);
+    }
+    throw error;
+  }
+  if (!image) {
+    throw new RuntimeReleaseError(
+      "RUNTIME_IMAGE_PENDING",
+      "The newest Evidence Library update is still being prepared",
+    );
+  }
+  if (latest === running) return { latest, image, changes: [] };
 
   const compare = await readGithub(
     fetchImpl,
@@ -143,7 +169,7 @@ export async function fetchRuntimeRelease(input: {
   );
   // 404 means the running commit is no longer on the branch. The update is
   // still available; only the change list is unknown.
-  if (compare.status === 404) return { latest, changes: [] };
+  if (compare.status === 404) return { latest, image, changes: [] };
   if (
     compare.status !== 200 ||
     !isRecord(compare.body) ||
@@ -162,5 +188,5 @@ export async function fetchRuntimeRelease(input: {
       message: firstLine(entry.commit.message),
     });
   }
-  return { latest, changes };
+  return { latest, image, changes };
 }
