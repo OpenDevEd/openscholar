@@ -447,7 +447,7 @@ async function runDeploymentCompletion(
             : "a".repeat(40),
       runtimeImage:
         operation.runtimeUpdate?.toImage ??
-        binding.runtimeImage ??
+        ("runtimeImage" in binding ? binding.runtimeImage : undefined) ??
         TEST_RUNTIME_IMAGE,
       encryptedRuntimeConfig: "encrypted",
       runtimeConfigSha256: "e".repeat(64),
