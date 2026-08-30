@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   ci:
-    uses: OpenDevEd/openalex-count/.github/workflows/ci-jobs.yml@9b24ca346a1f80196c6b269ad97cb5b6f3621b49
+    uses: OpenDevEd/openalex-count/.github/workflows/ci-jobs.yml@6a233fbbfbb981be845fb7658eb0bb3668adea87
     with:
       mode: ci
     secrets: inherit
