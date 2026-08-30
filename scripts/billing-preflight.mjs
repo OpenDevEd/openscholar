@@ -2,6 +2,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { createClerkClient } from "@clerk/backend";
 import Stripe from "stripe";
 import fs from "node:fs";
 import path from "node:path";
@@ -40,6 +41,7 @@ const REQUIRED_WEBHOOK_EVENTS = [
 const DEFAULT_CREDITS_PER_USD = 10_000;
 const DEFAULT_BILLING_TEST_MIN_CHARGE_CENTS = 50;
 const DEFAULT_BILLING_TEST_TOPUP_CREDITS = 1_000;
+const BILLING_TEST_ORGANIZATION_MEMBERSHIP_LIMIT = 20;
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -69,10 +71,19 @@ function validateLiveTopupChargeConfig() {
     process.env.BILLING_TEST_TOPUP_CREDITS,
     DEFAULT_BILLING_TEST_TOPUP_CREDITS,
   );
-  const minimumCreditsForCharge = Math.ceil((minChargeCents * creditsPerUsd) / 100);
-  const requestedAmountCents = Math.ceil((requestedTopupCredits * 100) / creditsPerUsd);
-  const effectiveTopupCredits = Math.max(requestedTopupCredits, minimumCreditsForCharge);
-  const effectiveAmountCents = Math.ceil((effectiveTopupCredits * 100) / creditsPerUsd);
+  const minimumCreditsForCharge = Math.ceil(
+    (minChargeCents * creditsPerUsd) / 100,
+  );
+  const requestedAmountCents = Math.ceil(
+    (requestedTopupCredits * 100) / creditsPerUsd,
+  );
+  const effectiveTopupCredits = Math.max(
+    requestedTopupCredits,
+    minimumCreditsForCharge,
+  );
+  const effectiveAmountCents = Math.ceil(
+    (effectiveTopupCredits * 100) / creditsPerUsd,
+  );
 
   if (
     process.env.BILLING_TEST_TOPUP_CREDITS &&
@@ -118,8 +129,10 @@ function normalizeUrl(value) {
 
 async function runConvexReachabilityCheck({ shouldPush }) {
   const identity = {
-    subject: process.env.BILLING_TEST_USER_SUBJECT ?? "billing_live_test_subject",
-    email: process.env.BILLING_TEST_USER_EMAIL ?? "billing-live-test@example.com",
+    subject:
+      process.env.BILLING_TEST_USER_SUBJECT ?? "billing_live_test_subject",
+    email:
+      process.env.BILLING_TEST_USER_EMAIL ?? "billing-live-test@example.com",
     givenName: process.env.BILLING_TEST_USER_FIRST_NAME ?? "Billing",
     familyName: process.env.BILLING_TEST_USER_LAST_NAME ?? "Live",
   };
@@ -152,7 +165,9 @@ async function runConvexReachabilityCheck({ shouldPush }) {
   });
 
   if (stderr.trim().length > 0) {
-    console.log(`[preflight] convex stderr: ${stderr.trim().split("\n").join(" | ")}`);
+    console.log(
+      `[preflight] convex stderr: ${stderr.trim().split("\n").join(" | ")}`,
+    );
   }
 
   const output = stdout.trim();
@@ -160,7 +175,43 @@ async function runConvexReachabilityCheck({ shouldPush }) {
     throw new Error("Convex reachability check returned empty output.");
   }
 
-  console.log(`[preflight] convex run reachable (subscriptions/queries:getTier => ${output})`);
+  console.log(
+    `[preflight] convex run reachable (subscriptions/queries:getTier => ${output})`,
+  );
+}
+
+async function ensureClerkTestOrganizationCapacity() {
+  const workerCount = parsePositiveInteger(process.env.PLAYWRIGHT_WORKERS, 1);
+  const organizationId = requireEnv("E2E_CLERK_ORGANIZATION_ID");
+  const clerkClient = createClerkClient({
+    secretKey: requireEnv("CLERK_SECRET_KEY"),
+  });
+  const organization = await clerkClient.organizations.getOrganization({
+    organizationId,
+    includeMembersCount: true,
+  });
+  const memberCount = organization.membersCount ?? 0;
+  let membershipLimit = organization.maxAllowedMemberships;
+
+  if (
+    membershipLimit !== 0 &&
+    membershipLimit < BILLING_TEST_ORGANIZATION_MEMBERSHIP_LIMIT
+  ) {
+    await clerkClient.organizations.updateOrganization(organizationId, {
+      maxAllowedMemberships: BILLING_TEST_ORGANIZATION_MEMBERSHIP_LIMIT,
+    });
+    membershipLimit = BILLING_TEST_ORGANIZATION_MEMBERSHIP_LIMIT;
+  }
+
+  if (membershipLimit !== 0 && memberCount + workerCount > membershipLimit) {
+    throw new Error(
+      `Clerk test organization ${organizationId} has ${memberCount} members and cannot reserve ${workerCount} disposable test memberships within its ${membershipLimit}-member limit.`,
+    );
+  }
+
+  console.log(
+    `[preflight] Clerk organization has room for ${workerCount} parallel billing workers`,
+  );
 }
 
 async function verifyStripeWebhookEndpoint({ stripe, convexSiteUrl }) {
@@ -207,7 +258,11 @@ async function main() {
   requireEnv("STRIPE_SECRET_KEY");
   requireEnv("STRIPE_GO_PRICE_ID");
 
-  if (process.env.CI && !process.env.CONVEX_DEPLOYMENT && !process.env.CONVEX_DEPLOYMENT_NAME) {
+  if (
+    process.env.CI &&
+    !process.env.CONVEX_DEPLOYMENT &&
+    !process.env.CONVEX_DEPLOYMENT_NAME
+  ) {
     throw new Error(
       "CI billing preflight requires CONVEX_DEPLOYMENT or CONVEX_DEPLOYMENT_NAME to target the shared dev deployment.",
     );
@@ -217,6 +272,10 @@ async function main() {
   console.log(`[preflight] convex site resolved to ${convexSiteUrl}`);
 
   validateLiveTopupChargeConfig();
+
+  if (process.env.PLAYWRIGHT_WORKERS) {
+    await ensureClerkTestOrganizationCapacity();
+  }
 
   await runConvexReachabilityCheck({ shouldPush });
 
@@ -230,6 +289,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`[preflight] FAILED: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(
+    `[preflight] FAILED: ${error instanceof Error ? error.message : String(error)}`,
+  );
   process.exit(1);
 });
