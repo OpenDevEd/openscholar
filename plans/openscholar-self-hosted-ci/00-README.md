@@ -69,14 +69,16 @@ build three times, and run Playwright's Linux package installer twice.
     artifact in the organization, remove the stale Convex fields from
     development data, preserve existing balances in the current ledger and
     counters, then route every same-repository secret job to `OpenScholar
-    Secret CI`. No OpenScholar job may use a paid GitHub runner.
-14. Keep the Clerk browser suite on `OpenScholar Secret CI`, but stop using it
-    to provision an Evidence Library runtime. Project the existing Clerk E2E
-    organization into `formal-rabbit-271`, create one fixed draft through the
-    existing internal setup mutation, serialize the auth job, and restore its
-    tagline and description after each run. The browser still proves the enabled owner
-    gate, Save, and reopen behavior. It must never receive Coolify, database,
-    storage, or production credentials.
+Secret CI`. No OpenScholar job may use a paid GitHub runner.
+14. Keep the Clerk browser suite on `OpenScholar Secret CI`. The safe current
+    suite uses one fixed draft, serializes the auth job, restores its tagline
+    and description after each run, and proves the enabled owner gate, Save,
+    and reopen behavior. It does not preserve the old Reserve, Preview,
+    Activate, and revisit check. Activation now provisions a real runtime, and
+    CI has no safe disposable provider environment. Record that conflict in
+    `01-BLOCKER.md`; do not hide it by claiming the smaller check is equal.
+    Never give this runner Coolify, database, storage, or production
+    credentials.
     Set the required non-secret `EVIDENCE_LIBRARY_PLATFORM_DOMAIN` in the cloud
     dev deployment to the shared development value `opendev.space`; do not add
     an `EL_*` provisioning value.
@@ -88,9 +90,10 @@ build three times, and run Playwright's Linux package installer twice.
 
 ## Plan
 
-| Plan | File | Work |
-|---|---|---|
-| 01 | `01-runner-and-workflow.md` | Baseline, guest, runners, workflow, measurements, review, and proof |
+| Plan    | File                        | Work                                                                |
+| ------- | --------------------------- | ------------------------------------------------------------------- |
+| 01      | `01-runner-and-workflow.md` | Baseline, guest, runners, workflow, measurements, review, and proof |
+| Blocker | `01-BLOCKER.md`             | Exact environment needed to restore the original activation check   |
 
 ## Dependencies
 
