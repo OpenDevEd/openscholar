@@ -32,6 +32,9 @@ build three times, and run Playwright's Linux package installer twice.
    cache, browser cache, or writable tool directory.
 4. Run two secret-free jobs in parallel: unit and contract tests, and the
    production build. Run auth and required billing in parallel after both pass.
+   Bind auth to loopback port 3000 and every billing browser job to loopback
+   port 3001 so the two secret runners cannot collide in the shared guest
+   network namespace.
    Keep live billing, extended billing, and nightly billing in their existing
    shared concurrency group with cancellation off.
 5. Keep fork pull-request workflows disabled at the repository setting. The
@@ -52,9 +55,10 @@ build three times, and run Playwright's Linux package installer twice.
 9. Do not upload `.next/cache`. The first two self-hosted builds saved only
    about 292 KiB, and the restore-prefix run was seven seconds slower. Keep the
    runner-local npm caches separate through the existing accounts.
-10. Add one blocking `CI` result for exact-head checks. Keep every current job,
-    artifact name, timeout, validation, and the existing non-blocking status of
-    main-branch extended billing.
+10. Add one blocking `CI` result for exact-head checks. It covers the static,
+    auth, and required billing lanes. Extended billing stays outside that
+    aggregate because its direct-push result is already non-blocking. Keep every
+    current job, artifact name, timeout, validation, and that existing status.
 11. Add `dev` to the push trigger without removing `main`. Run extended billing
     on direct pushes to either branch.
 12. Reuse the repository alias in the live Vitest config so billing tests

@@ -169,13 +169,17 @@ It's designed for systematic reviews and complex queries, not just keyword match
   - `E2E_CLERK_USER_PASSWORD`
   - Optional: `E2E_BASE_URL` (defaults to `http://localhost:3000`)
 
-- CI workflow:
-  - `.github/workflows/ci.yml` runs:
-    - `unit-and-build` (`npm run test`, `npm run build`)
-    - `e2e-auth` (`npm run test:e2e:auth`)
-    - `billing-live` (`npm run test:billing:live:ci`) against shared Convex dev + Stripe sandbox
-  - `.github/workflows/billing-nightly.yml` runs `npm run test:billing:extended:ci` nightly
-  - Branch protection should require all required CI checks on pull requests.
+- Self-hosted CI:
+  - `.github/workflows/ci.yml` calls the immutable reusable workflow in
+    `.github/workflows/ci-jobs.yml`.
+  - Pull requests run `ci / Unit and contract tests`, `ci / Production build`,
+    `ci / e2e-auth`, and `ci / billing-live`.
+  - Branch protection should require the aggregate `ci / CI` check.
+  - `.github/workflows/billing-nightly.yml` calls the same reusable workflow for
+    `npm run test:billing:extended:ci`.
+  - When `ci-jobs.yml` changes, commit and push that immutable file first,
+    update both runner-group allowlists to its full SHA, then repin both caller
+    workflows to the same SHA.
 
 ## Billing Live Regression Suite
 

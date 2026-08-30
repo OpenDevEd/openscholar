@@ -197,7 +197,7 @@ Add `.github/workflows/ci-jobs.yml` with `workflow_call`. It directly defines
 all self-hosted jobs. Commit it before the caller workflows refer to it.
 
 Pin `.github/workflows/ci.yml` and `billing-nightly.yml` to the full commit SHA
-that first contains `ci-jobs.yml`. The runner groups allow only:
+whose `ci-jobs.yml` the runner groups allow. The runner groups allow only:
 
 `OpenDevEd/openalex-count/.github/workflows/ci-jobs.yml@<full SHA>`
 
@@ -217,12 +217,17 @@ In `ci-jobs.yml`:
    light runners.
 2. Make auth and required billing need the whole matrix. Keep them parallel on
    the two secret runners.
-3. Keep billing concurrency named `billing-live-shared-test-user` with
+3. Bind the auth web server to `127.0.0.1:3000`. Bind required, extended, and
+   nightly billing web servers to `127.0.0.1:3001`. This prevents a port clash
+   and keeps both test servers off the guest's libvirt interface.
+4. Keep billing concurrency named `billing-live-shared-test-user` with
    `cancel-in-progress: false`.
-4. Keep the existing extended and nightly order, timeouts, artifact paths,
+5. Keep the existing extended and nightly order, timeouts, artifact paths,
    artifact names, `if: always()` rules, and the existing `continue-on-error`
    only on push extended billing.
-5. Add `CI`, with `if: always()`, which fails unless every required lane passed.
+6. Add `CI`, with `if: always()`, which fails unless the static, auth, and
+   required billing lanes passed. Do not make it wait for or validate the
+   non-blocking extended lane.
 
 Every job uses the current full action SHAs already proven in `new-el/main`:
 
@@ -261,9 +266,11 @@ CI command to `npm run test -- --maxWorkers=4`, then require two passing runs.
 
 - `plans/openscholar-self-hosted-ci/00-README.md`
 - `plans/openscholar-self-hosted-ci/01-runner-and-workflow.md`
+- `.github/actionlint.yaml`
 - `.github/workflows/ci-jobs.yml` new, immutable reusable workflow
 - `.github/workflows/ci.yml`
 - `.github/workflows/billing-nightly.yml`
+- `README.md`
 - `vitest.live.config.ts`
 - `tests/live-billing/support.ts`
 - `tests/live-billing/required.test.ts`
@@ -356,11 +363,14 @@ run the final exact head twice as required by this task.
 
 ## Rollback
 
-1. Change the two callers back to the last hosted workflow from `origin/dev`.
-2. Rerun the hosted workflow and require its full credentialed result.
-3. Remove the four runners from GitHub, then stop their services.
-4. Delete only the two new OpenScholar runner groups and the
-   `openscholar-ci` guest after confirming no job is busy.
+1. Pin both callers and both runner groups to the last fully green immutable
+   self-hosted workflow SHA.
+2. If no safe immutable workflow exists, disable the affected trigger until a
+   self-hosted repair is ready. Do not return any job to a paid GitHub runner.
+3. Rerun the exact self-hosted workflow and require its full credentialed
+   result.
+4. Remove a runner or guest only after every assigned job is idle and a
+   replacement self-hosted boundary is ready.
 5. Keep the restored GitHub test secrets unless the integration owner asks to
    remove them. They fix an existing false-green CI defect.
 
@@ -379,6 +389,8 @@ part of rollback.
 - Before and after timings come from GitHub run IDs, not estimates.
 - The final report gives the PR URL, head SHA, timing table, runner layout,
   proof links, hosted remainder, and any integration-owner step.
+- The integration owner changes branch protection to require only the
+  aggregate `ci / CI` check after the final exact-head proofs pass.
 
 ## Known risks
 
@@ -397,3 +409,6 @@ part of rollback.
   fall back to paid GitHub runners.
 - GitHub may take several hours to recalculate artifact storage after deletion.
   Keep the required uploads unchanged and rerun after storage accepts them.
+- GitHub concurrency keeps only one running and one pending billing job. If a
+  third run cancels the pending job, rerun that same head after the active
+  billing job finishes.
