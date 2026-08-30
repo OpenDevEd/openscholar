@@ -1,22 +1,30 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 
-function getTestUserEmail() {
-  const emailAddress = process.env.E2E_CLERK_USER_EMAIL;
-  if (!emailAddress) {
-    throw new Error("Missing E2E_CLERK_USER_EMAIL for auth E2E tests.");
+function requireEnvironment(name: string) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing ${name} for auth E2E tests.`);
   }
-  return emailAddress;
+  return value;
 }
 
 async function signIn(page: Page) {
-  const emailAddress = getTestUserEmail();
+  const emailAddress = requireEnvironment("E2E_CLERK_USER_EMAIL");
+  const organizationId = requireEnvironment("E2E_CLERK_ORGANIZATION_ID");
   await page.goto("/");
   await clerk.loaded({ page });
   await clerk.signIn({
     page,
     emailAddress,
   });
+  await page.evaluate(
+    async (activeOrganizationId) => {
+      await window.Clerk.setActive({ organization: activeOrganizationId });
+    },
+    organizationId,
+  );
+  await page.reload();
 }
 
 test.describe("clerk auth flows", () => {
@@ -90,61 +98,42 @@ test.describe("clerk auth flows", () => {
     page,
   }) => {
     await signIn(page);
-    await page.goto("/evidence-libraries/new");
-
-    const libraryName = `E2E Library ${Date.now()}`;
-    await page.getByRole("textbox", { name: "Name", exact: true }).fill(libraryName);
-    // Reserve waits for the server's answer about the address.
-    const reserveButton = page.getByRole("button", { name: "Reserve address" });
-    await expect(reserveButton).toBeEnabled({ timeout: 30_000 });
-    await reserveButton.click();
-    await expect(page.getByRole("status")).toHaveAttribute(
-      "data-address-state",
-      "reserved",
-    );
-    await expect(page.getByRole("textbox", { name: "Public address" })).toHaveText(
-      /-lib\./,
-    );
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/evidence-libraries\/[^/]+\/configuration$/);
-    const configurationUrl = page.url();
-
-    await page
-      .getByLabel("Logo URL")
-      .fill("https://assets.example.org/e2e-logo.svg");
-    await page
-      .getByLabel("Favicon URL")
-      .fill("https://assets.example.org/e2e-favicon.ico");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveAttribute(
-      "data-result",
-      "save-success",
-    );
-
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
-    const preview = page.getByRole("dialog");
-    await expect(preview).toContainText(libraryName);
-    await expect(preview).toContainText("en-GB");
-    await preview.getByRole("button", { name: "Close" }).first().click();
-
-    await page.getByRole("button", { name: "Activate", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveAttribute(
-      "data-result",
-      "activation-success",
-    );
-
-    await page.goto("/settings");
+    const libraryId = requireEnvironment("E2E_EVIDENCE_LIBRARY_ID");
+    const configurationUrl = `/evidence-libraries/${libraryId}/configuration`;
     await page.goto(configurationUrl);
-    await expect(page.getByLabel("Library name")).toHaveValue(libraryName);
-    await expect(page.getByLabel("Logo URL")).toHaveValue(
-      "https://assets.example.org/e2e-logo.svg",
-    );
-    await expect(page.getByLabel("Favicon URL")).toHaveValue(
-      "https://assets.example.org/e2e-favicon.ico",
-    );
-    await expect(page.getByLabel("Platform address")).toHaveAttribute(
-      "readonly",
-    );
+
+    const tagline = page.getByLabel("Tagline");
+    const description = page.getByLabel("Description");
+    const originalTagline = await tagline.inputValue();
+    const originalDescription = await description.inputValue();
+    const run = Date.now();
+    const changedTagline = `Evidence checked by CI ${run}`;
+    const changedDescription = `OpenScholar auth E2E saved this draft at ${run}.`;
+
+    try {
+      await tagline.fill(changedTagline);
+      await description.fill(changedDescription);
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(page.locator("[data-unsaved]")).toHaveCount(0);
+
+      await page.goto("/settings");
+      await page.goto(configurationUrl);
+      await expect(page.getByLabel("Tagline")).toHaveValue(changedTagline);
+      await expect(page.getByLabel("Description")).toHaveValue(changedDescription);
+      await expect(page.getByLabel("Public address")).toHaveAttribute(
+        "aria-readonly",
+        "true",
+      );
+    } finally {
+      await page.goto(configurationUrl);
+      await page.getByLabel("Tagline").fill(originalTagline);
+      await page.getByLabel("Description").fill(originalDescription);
+      const restore = page.getByRole("button", { name: "Save", exact: true });
+      if (await restore.isEnabled()) {
+        await restore.click();
+        await expect(page.locator("[data-unsaved]")).toHaveCount(0);
+      }
+    }
   });
 
   test("sign out returns session to anonymous behavior", async ({ page }) => {

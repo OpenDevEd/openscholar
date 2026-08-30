@@ -55,6 +55,9 @@ jobs:
     runs-on: openscholar-secret
     timeout-minutes: 30
     needs: static-checks
+    concurrency:
+      group: auth-e2e-shared-library
+      cancel-in-progress: false
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
       CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -66,6 +69,8 @@ jobs:
       CLERK_WEBHOOK_SIGNING_SECRET: ${{ secrets.CLERK_WEBHOOK_SIGNING_SECRET }}
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
+      E2E_EVIDENCE_LIBRARY_ID: ${{ secrets.E2E_EVIDENCE_LIBRARY_ID }}
       E2E_BASE_URL: http://localhost:3000
       PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3000
     steps:
@@ -92,6 +97,8 @@ jobs:
             CLERK_WEBHOOK_SIGNING_SECRET
             E2E_CLERK_USER_EMAIL
             E2E_CLERK_USER_PASSWORD
+            E2E_CLERK_ORGANIZATION_ID
+            E2E_EVIDENCE_LIBRARY_ID
           )
           missing_vars=()
           for var_name in "${required_vars[@]}"; do
@@ -210,14 +217,6 @@ jobs:
         if: steps.billing-environment.outputs.available == 'true'
         run: npm run test:billing:live:ci
 
-      - name: Upload billing-live artifacts
-        if: always() && steps.billing-environment.outputs.available == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
-        with:
-          name: billing-live-artifacts
-          path: test-results/billing-live
-          if-no-files-found: ignore
-
       - name: Install the lockfile-selected Chromium
         if: steps.billing-environment.outputs.available == 'true'
         run: npx playwright install chromium
@@ -225,6 +224,14 @@ jobs:
       - name: Run billing E2E tests
         if: steps.billing-environment.outputs.available == 'true'
         run: npm run test:billing:e2e
+
+      - name: Upload billing-live artifacts
+        if: always() && steps.billing-environment.outputs.available == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: billing-live-artifacts
+          path: test-results/billing-live
+          if-no-files-found: ignore
 
       - name: Upload billing E2E report
         if: always() && steps.billing-environment.outputs.available == 'true'
@@ -287,6 +294,12 @@ jobs:
       - name: Run extended live billing regressions (non-blocking)
         run: npm run test:billing:extended:ci
 
+      - name: Install the lockfile-selected Chromium
+        run: npx playwright install chromium
+
+      - name: Run billing E2E tests
+        run: npm run test:billing:e2e
+
       - name: Upload billing-live-extended artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
@@ -294,12 +307,6 @@ jobs:
           name: billing-live-extended-artifacts
           path: test-results/billing-live
           if-no-files-found: ignore
-
-      - name: Install the lockfile-selected Chromium
-        run: npx playwright install chromium
-
-      - name: Run billing E2E tests
-        run: npm run test:billing:e2e
 
       - name: Upload billing E2E report
         if: always()
@@ -405,6 +412,12 @@ jobs:
       - name: Run extended live billing regressions
         run: npm run test:billing:extended:ci
 
+      - name: Install the lockfile-selected Chromium
+        run: npx playwright install chromium
+
+      - name: Run billing E2E tests
+        run: npm run test:billing:e2e
+
       - name: Upload billing-nightly artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
@@ -412,12 +425,6 @@ jobs:
           name: billing-nightly-artifacts
           path: test-results/billing-live
           if-no-files-found: ignore
-
-      - name: Install the lockfile-selected Chromium
-        run: npx playwright install chromium
-
-      - name: Run billing E2E tests
-        run: npm run test:billing:e2e
 
       - name: Upload billing E2E report
         if: always()
