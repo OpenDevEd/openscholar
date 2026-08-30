@@ -109,12 +109,8 @@ test.describe("clerk auth flows", () => {
     await expect(page).toHaveURL(/\/evidence-libraries\/[^/]+\/configuration$/);
     const configurationUrl = page.url();
 
-    await page
-      .getByLabel("Logo URL")
-      .fill("https://assets.example.org/e2e-logo.svg");
-    await page
-      .getByLabel("Favicon URL")
-      .fill("https://assets.example.org/e2e-favicon.ico");
+    const tagline = "Evidence that survives a reload";
+    await page.getByLabel("Tagline").fill(tagline);
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByRole("status")).toHaveAttribute(
       "data-result",
@@ -135,16 +131,8 @@ test.describe("clerk auth flows", () => {
 
     await page.goto("/settings");
     await page.goto(configurationUrl);
-    await expect(page.getByLabel("Library name")).toHaveValue(libraryName);
-    await expect(page.getByLabel("Logo URL")).toHaveValue(
-      "https://assets.example.org/e2e-logo.svg",
-    );
-    await expect(page.getByLabel("Favicon URL")).toHaveValue(
-      "https://assets.example.org/e2e-favicon.ico",
-    );
-    await expect(page.getByLabel("Platform address")).toHaveAttribute(
-      "readonly",
-    );
+    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(libraryName);
+    await expect(page.getByLabel("Tagline")).toHaveValue(tagline);
   });
 
   test("sign out returns session to anonymous behavior", async ({ page }) => {
