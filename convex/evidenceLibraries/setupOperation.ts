@@ -213,6 +213,7 @@ function provisionedRuntimeBindingFields(
     targetRuntimeId: binding.targetRuntimeId,
     runtimeCommit: binding.runtimeCommit,
     runtimeImage: binding.runtimeImage,
+    previousRuntime: binding.previousRuntime,
     searchHost: binding.searchHost,
     searchIndex: binding.searchIndex,
     storageUrl: binding.storageUrl,

@@ -423,6 +423,12 @@ const evidenceLibraryRuntimeBindingProvisionedFields = {
   // every completed publish rewrites it from the operation receipt.
   runtimeCommit: v.string(),
   runtimeImage: v.string(),
+  previousRuntime: v.optional(
+    v.object({
+      commit: v.string(),
+      image: v.string(),
+    }),
+  ),
   searchHost: v.string(),
   searchIndex: v.string(),
   storageUrl: v.string(),

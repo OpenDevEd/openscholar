@@ -397,6 +397,40 @@ describe("Evidence Library versions", () => {
     expect(repeatedState[0]?.revisionId).toBe(started.revisionId);
   });
 
+  it("queues only the previous release pair saved on the runtime binding", async () => {
+    const fixture = await createReadySetupFixture("runtime-rollback");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.runtimeBindingId, {
+        previousRuntime: {
+          commit: NEWER_COMMIT,
+          image: NEWER_RUNTIME_IMAGE,
+        },
+      });
+    });
+
+    const started = await fixture.t.mutation(
+      internal.evidenceLibraries.versions.startRuntimeRollback,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(started).toMatchObject({
+      status: "running",
+      from: RUNTIME_COMMIT,
+      to: NEWER_COMMIT,
+    });
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(started.operationId)),
+    ).resolves.toMatchObject({
+      kind: "publish",
+      requestedByClerkUserId: "integration-owner",
+      runtimeUpdate: {
+        from: RUNTIME_COMMIT,
+        fromImage: TEST_RUNTIME_IMAGE,
+        to: NEWER_COMMIT,
+        toImage: NEWER_RUNTIME_IMAGE,
+      },
+    });
+  });
+
   it("reissues a stale restore operation with its candidate after a newer command", async () => {
     const fixture = await createReadySetupFixture("restore-reissue");
     const sourceRevisionId = fixture.activated.revisionId;
