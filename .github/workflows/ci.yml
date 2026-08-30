@@ -16,7 +16,7 @@ concurrency:
 jobs:
   changes:
     name: Changes
-    runs-on: openscholar-light
+    runs-on: openscholar-secret
     timeout-minutes: 5
     outputs:
       runtime_required: ${{ steps.detect.outputs.runtime_required }}
@@ -404,7 +404,7 @@ jobs:
 
   ci:
     name: CI
-    runs-on: openscholar-light
+    runs-on: openscholar-secret
     timeout-minutes: 5
     if: always()
     needs:
