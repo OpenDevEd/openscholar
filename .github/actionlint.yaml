@@ -2,3 +2,4 @@ self-hosted-runner:
   labels:
     - openscholar-light
     - openscholar-secret
+    - openscholar-activation
