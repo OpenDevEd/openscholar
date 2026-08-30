@@ -1045,6 +1045,41 @@ Record the measured setup and config-only deployment times beside the former
 per-library build time. Do not claim a speed improvement without those exact
 timestamps.
 
+### Shared-platform result, 2026-08-30
+
+The build-once, update and rollback paths passed on the shared development
+platform at OpenScholar merge `2d2fc947fd30ddf2b0fb7461385077d4c59d32cd`
+and Evidence Library merge `062bb121e6e85491181e9c1df1ba736a8cfab8b3`.
+The approved image was
+`ghcr.io/opendeved/evidence-library-runtime@sha256:14360b1a043ecb34aaf902de16214a87498ec9a358fc47ed3cfdf77a2e8b8b09`.
+
+Throwaway `el-gate-20260830a` started on the older approved pair
+`9dd3e7b3` / `sha256:eca9917b`. Setup took 63.840 seconds from the saved
+operation start to the ready binding. The public health route returned 200,
+and the runtime verifier found all five runtime services on that exact image.
+The normal update action moved it to `062bb121` / `sha256:14360b`; the binding
+saved the exact older pair as `previousRuntime`. The integration-owner rollback
+then restored the older pair through the same deployment path and swapped
+`previousRuntime` back to the newer pair. Health and the verifier passed after
+both changes.
+
+Throwaway `el-gate-20260830b` proved the config-only path on the approved
+image. Its first setup attempt exposed a Coolify Compose race after all six
+containers were created. The normal Retry action recovered it without owner
+repair. The successful retry took 60.754 seconds in OpenScholar; Coolify ran
+from `03:40:10Z` to `03:40:57Z`. Changing the visible library name moved the
+health revision from `r2` to `r3` in 46.646 seconds. Coolify ran that deployment
+from `03:41:22Z` to `03:42:00Z`, reported `No services to build`, and kept the
+same exact image. `/api/library-config/health` and `/lib` returned 200, `/lib`
+showed the new name, and `/admin` returned its expected sign-in redirect.
+
+Both app records and OpenScholar rows were deleted, and both public addresses
+returned the unassigned 503 response. The cleanup gate did not pass: Coolify
+left each throwaway Meilisearch volume on the host. The integration owner
+removed only those two verified throwaway volumes. See
+[`17-BLOCKER.md`](17-BLOCKER.md). Do not mark Plan 17 complete until normal app
+deletion also removes and proves removal of its exact Compose volume.
+
 ## Completion rules
 
 - One unified private runtime image is the fixed release shape.
