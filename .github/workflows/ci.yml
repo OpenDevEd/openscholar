@@ -8,7 +8,7 @@ on:
 
 jobs:
   unit-and-build:
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 20
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
@@ -34,7 +34,7 @@ jobs:
         run: npm run build
 
   e2e-auth:
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 30
     needs: unit-and-build
     env:
@@ -120,7 +120,7 @@ jobs:
           if-no-files-found: ignore
 
   billing-live:
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 45
     needs: unit-and-build
     concurrency:
@@ -222,7 +222,7 @@ jobs:
 
   billing-live-extended:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: openscholar-secret
     timeout-minutes: 60
     needs: billing-live
     continue-on-error: true
