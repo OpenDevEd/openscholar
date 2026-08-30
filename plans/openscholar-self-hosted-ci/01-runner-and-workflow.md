@@ -17,12 +17,12 @@ There is no fully credentialed successful GitHub baseline. The current 99
 successful pull-request runs all skipped auth and billing after their
 environment checks.
 
-| Run | Total | `npm ci` | Unit and contract tests | Build | Real auth or billing |
-|---|---:|---:|---:|---:|---|
-| [33241824814](https://github.com/OpenDevEd/openalex-count/actions/runs/33241824814) | 590 s | 119 s | 334 s | 97 s | No, skipped |
-| [33239685845](https://github.com/OpenDevEd/openalex-count/actions/runs/33239685845) | 876 s | 176 s | 528 s | 130 s | No, skipped |
-| [33236605043](https://github.com/OpenDevEd/openalex-count/actions/runs/33236605043) | 876 s | 174 s | 532 s | 136 s | No, skipped |
-| [32742065180](https://github.com/OpenDevEd/openalex-count/actions/runs/32742065180) | 668 s | 170 s | 346 s | 112 s | No, skipped |
+| Run                                                                                 | Total | `npm ci` | Unit and contract tests | Build | Real auth or billing |
+| ----------------------------------------------------------------------------------- | ----: | -------: | ----------------------: | ----: | -------------------- |
+| [33241824814](https://github.com/OpenDevEd/openalex-count/actions/runs/33241824814) | 590 s |    119 s |                   334 s |  97 s | No, skipped          |
+| [33239685845](https://github.com/OpenDevEd/openalex-count/actions/runs/33239685845) | 876 s |    176 s |                   528 s | 130 s | No, skipped          |
+| [33236605043](https://github.com/OpenDevEd/openalex-count/actions/runs/33236605043) | 876 s |    174 s |                   532 s | 136 s | No, skipped          |
+| [32742065180](https://github.com/OpenDevEd/openalex-count/actions/runs/32742065180) | 668 s |    170 s |                   346 s | 112 s | No, skipped          |
 
 The first plan-only PR run used GitHub-hosted runners with the restored secrets.
 It is the honest full-workflow baseline even though it failed. Do not compare a
@@ -123,16 +123,16 @@ outside the two CI guests at their assigned maximums.
 
 ## Job trust table
 
-| Job | Trigger | Secrets and outside services | Code trust | Runner | CPU and memory | Persistent state |
-|---|---|---|---|---|---|---|
-| Unit and contract tests | Same-repo PR; push to `dev` or `main` | Placeholder Clerk and Convex values only | Same-repo branch code, no secrets | `OpenScholar CI`, `openscholar-light` | 4 CPU, 6 GiB max | Own account, workdir and npm cache |
-| Production build | Same as unit | Placeholder values only | Same-repo branch code, no secrets | Second `openscholar-light` runner | 4 CPU, 6 GiB max | Separate account, workdir, and npm cache |
-| Clerk auth E2E | Same-repo PR; push to `dev` or `main` | Clerk secret, test user, public Convex URL | Same-repo code that already receives these secrets | `OpenScholar Secret CI`, `openscholar-secret` | 4 CPU, 6 GiB max | Secret account only; secret browser and npm cache |
-| Required live billing | Same-repo PR; push to `dev` or `main` | Convex dev deployment, Stripe test, Clerk test | Same-repo code; pushes current Convex code and mutates test rows | Second `openscholar-secret` runner | 4 CPU, 6 GiB max | Separate secret account; shared test user protected by job concurrency |
-| Extended billing | Direct push to `dev` or `main` | Same as required billing | Integration branch code | Either secret runner | 4 CPU, 6 GiB max | Same billing concurrency group; current non-blocking result kept |
-| Nightly billing | Schedule or manual dispatch | Same as required billing | Default-branch workflow code | Either secret runner | 4 CPU, 6 GiB max | Same billing concurrency group; blocking nightly result |
-| Aggregate `CI` | Same-repo PR; push to `dev` or `main` | None | Immutable workflow only | `openscholar-light` | Small shell check | No checkout or cache |
-| Fork pull request | Disabled by repository setting | No secrets | Fork code | No runner. Every reusable-workflow job has a same-repository guard | None | None |
+| Job                     | Trigger                               | Secrets and outside services                   | Code trust                                                       | Runner                                                             | CPU and memory    | Persistent state                                                       |
+| ----------------------- | ------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------- | ---------------------------------------------------------------------- |
+| Unit and contract tests | Same-repo PR; push to `dev` or `main` | Placeholder Clerk and Convex values only       | Same-repo branch code, no secrets                                | `OpenScholar CI`, `openscholar-light`                              | 4 CPU, 6 GiB max  | Own account, workdir and npm cache                                     |
+| Production build        | Same as unit                          | Placeholder values only                        | Same-repo branch code, no secrets                                | Second `openscholar-light` runner                                  | 4 CPU, 6 GiB max  | Separate account, workdir, and npm cache                               |
+| Clerk auth E2E          | Same-repo PR; push to `dev` or `main` | Clerk secret, test user, public Convex URL     | Same-repo code that already receives these secrets               | `OpenScholar Secret CI`, `openscholar-secret`                      | 4 CPU, 6 GiB max  | Secret account only; secret browser and npm cache                      |
+| Required live billing   | Same-repo PR; push to `dev` or `main` | Convex dev deployment, Stripe test, Clerk test | Same-repo code; pushes current Convex code and mutates test rows | Second `openscholar-secret` runner                                 | 4 CPU, 6 GiB max  | Separate secret account; shared test user protected by job concurrency |
+| Extended billing        | Direct push to `dev` or `main`        | Same as required billing                       | Integration branch code                                          | Either secret runner                                               | 4 CPU, 6 GiB max  | Same billing concurrency group; current non-blocking result kept       |
+| Nightly billing         | Schedule or manual dispatch           | Same as required billing                       | Default-branch workflow code                                     | Either secret runner                                               | 4 CPU, 6 GiB max  | Same billing concurrency group; blocking nightly result                |
+| Aggregate `CI`          | Same-repo PR; push to `dev` or `main` | None                                           | Immutable workflow only                                          | `openscholar-light`                                                | Small shell check | No checkout or cache                                                   |
+| Fork pull request       | Disabled by repository setting        | No secrets                                     | Fork code                                                        | No runner. Every reusable-workflow job has a same-repository guard | None              | None                                                                   |
 
 No job receives a host SSH key, Coolify token, host Docker socket, production
 Convex credential, or another repository's credential.
@@ -223,14 +223,14 @@ the cloud deployment or GitHub.
 Create `openscholar-ci` from a fresh Ubuntu 24.04 cloud image. Do not clone
 `new-el-ci`.
 
-| Setting | Value |
-|---|---|
-| vCPU | 8, host CPU model |
-| RAM | 16 GiB, no balloon overcommit target |
-| Disk | 160 GiB sparse qcow2 |
-| Network | libvirt NAT, virtio, no forwarded port |
-| Admin access | SSH from `192.168.122.1` only |
-| Runner CPU pool | guest CPUs 0 through 7 |
+| Setting          | Value                                           |
+| ---------------- | ----------------------------------------------- |
+| vCPU             | 8, host CPU model                               |
+| RAM              | 16 GiB, no balloon overcommit target            |
+| Disk             | 160 GiB sparse qcow2                            |
+| Network          | libvirt NAT, virtio, no forwarded port          |
+| Admin access     | SSH from `192.168.122.1` only                   |
+| Runner CPU pool  | guest CPUs 0 through 7                          |
 | Runner aggregate | `openscholar-ci.slice`, 800% CPU, 14 GiB memory |
 
 Install the current GitHub Actions runner version with its published checksum,
@@ -246,12 +246,12 @@ downloads.
 
 Create four locked-down accounts and services:
 
-| Runner | Account | Group | Label | CPU quota | Memory max |
-|---|---|---|---|---:|---:|
-| `openscholar-ci-light-1` | `gha-os-light-1` | `OpenScholar CI` | `openscholar-light` | 400% | 6 GiB |
-| `openscholar-ci-light-2` | `gha-os-light-2` | `OpenScholar CI` | `openscholar-light` | 400% | 6 GiB |
-| `openscholar-ci-secret-1` | `gha-os-secret-1` | `OpenScholar Secret CI` | `openscholar-secret` | 400% | 6 GiB |
-| `openscholar-ci-secret-2` | `gha-os-secret-2` | `OpenScholar Secret CI` | `openscholar-secret` | 400% | 6 GiB |
+| Runner                    | Account           | Group                   | Label                | CPU quota | Memory max |
+| ------------------------- | ----------------- | ----------------------- | -------------------- | --------: | ---------: |
+| `openscholar-ci-light-1`  | `gha-os-light-1`  | `OpenScholar CI`        | `openscholar-light`  |      400% |      6 GiB |
+| `openscholar-ci-light-2`  | `gha-os-light-2`  | `OpenScholar CI`        | `openscholar-light`  |      400% |      6 GiB |
+| `openscholar-ci-secret-1` | `gha-os-secret-1` | `OpenScholar Secret CI` | `openscholar-secret` |      400% |      6 GiB |
+| `openscholar-ci-secret-2` | `gha-os-secret-2` | `OpenScholar Secret CI` | `openscholar-secret` |      400% |      6 GiB |
 
 Each account has its own home and runner work directory, mode `0750`, and no
 sudo or Docker group. Put all four services in `openscholar-ci.slice` so four
