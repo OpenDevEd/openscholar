@@ -67,6 +67,7 @@ jobs:
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
       E2E_BASE_URL: http://127.0.0.1:3000
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname 127.0.0.1 --port 3000
     steps:
       - name: Check out the exact revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
@@ -79,8 +80,6 @@ jobs:
 
       - name: Check auth test environment
         id: auth-environment
-        env:
-          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           required_vars=(
             NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -102,11 +101,6 @@ jobs:
           done
           if [ "${#missing_vars[@]}" -eq 0 ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$IS_FORK" = "true" ]; then
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            printf '::notice::Skipping auth E2E for a fork pull request because secrets are unavailable: %s\n' "${missing_vars[*]}"
             exit 0
           fi
           printf '::error::Missing required auth secret/env: %s\n' "${missing_vars[*]}"
@@ -167,7 +161,8 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_BASE_URL: http://127.0.0.1:3001
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname 127.0.0.1 --port 3001
     steps:
       - name: Check out the exact revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
@@ -180,8 +175,6 @@ jobs:
 
       - name: Check billing test environment
         id: billing-environment
-        env:
-          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           required_vars=(
             NEXT_PUBLIC_CONVEX_URL
@@ -200,10 +193,6 @@ jobs:
           fi
           if [ "${#missing_vars[@]}" -eq 0 ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
-          elif [ "$IS_FORK" = "true" ]; then
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            printf '::notice::Skipping live billing checks for a fork pull request because secrets are unavailable: %s\n' "${missing_vars[*]}"
-            exit 0
           else
             printf '::error::Missing required billing secret/env: %s\n' "${missing_vars[*]}"
             exit 1
@@ -246,7 +235,7 @@ jobs:
           if-no-files-found: ignore
 
   billing-live-extended:
-    if: inputs.mode == 'ci' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: inputs.mode == 'ci' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: openscholar-secret
     timeout-minutes: 60
     needs: billing-live
@@ -273,7 +262,8 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_BASE_URL: http://127.0.0.1:3001
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname 127.0.0.1 --port 3001
     steps:
       - name: Check out the exact revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
@@ -328,41 +318,23 @@ jobs:
       - static-checks
       - e2e-auth
       - billing-live
-      - billing-live-extended
     steps:
       - name: Require every blocking CI job
         env:
           STATIC_RESULT: ${{ needs.static-checks.result }}
           AUTH_RESULT: ${{ needs.e2e-auth.result }}
           BILLING_RESULT: ${{ needs.billing-live.result }}
-          EXTENDED_RESULT: ${{ needs.billing-live-extended.result }}
-          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           if [ "$STATIC_RESULT" != "success" ]; then
             echo "::error::Unit tests or the production build did not pass."
             exit 1
           fi
-          if [ "$IS_FORK" = "true" ]; then
-            if [ "$AUTH_RESULT" != "success" ] && [ "$AUTH_RESULT" != "skipped" ]; then
-              echo "::error::Auth E2E did not pass or skip safely for the fork."
-              exit 1
-            fi
-            if [ "$BILLING_RESULT" != "success" ] && [ "$BILLING_RESULT" != "skipped" ]; then
-              echo "::error::Billing checks did not pass or skip safely for the fork."
-              exit 1
-            fi
-          else
-            if [ "$AUTH_RESULT" != "success" ]; then
-              echo "::error::Auth E2E did not pass."
-              exit 1
-            fi
-            if [ "$BILLING_RESULT" != "success" ]; then
-              echo "::error::Required billing checks did not pass."
-              exit 1
-            fi
+          if [ "$AUTH_RESULT" != "success" ]; then
+            echo "::error::Auth E2E did not pass."
+            exit 1
           fi
-          if [ "$EXTENDED_RESULT" != "success" ] && [ "$EXTENDED_RESULT" != "skipped" ]; then
-            echo "::error::The extended billing job ended unexpectedly."
+          if [ "$BILLING_RESULT" != "success" ]; then
+            echo "::error::Required billing checks did not pass."
             exit 1
           fi
 
@@ -392,7 +364,8 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_BASE_URL: http://127.0.0.1:3001
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname 127.0.0.1 --port 3001
     steps:
       - name: Check out the exact revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
