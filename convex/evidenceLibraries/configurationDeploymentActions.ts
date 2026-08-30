@@ -138,8 +138,7 @@ export const runConfigurationDeployment = internalAction({
         const runsUpdateSource =
           runtimeUpdate !== undefined &&
           application.runtimeCommit === runtimeUpdate.from &&
-          (runtimeUpdate.fromImage === undefined ||
-            runningRuntimeImage === runtimeUpdate.fromImage);
+          runningRuntimeImage === runtimeUpdate.fromImage;
         const runsUpdateTarget =
           runtimeUpdate !== undefined &&
           application.runtimeCommit === runtimeUpdate.to &&
@@ -148,7 +147,6 @@ export const runConfigurationDeployment = internalAction({
           runtimeUpdate !== undefined &&
           !runsUpdateSource &&
           !runsUpdateTarget &&
-          runningRuntimeImage !== undefined &&
           (await ctx.runQuery(
             internal.evidenceLibraries.configurationDeployment
               .isFailedRuntimeTarget,

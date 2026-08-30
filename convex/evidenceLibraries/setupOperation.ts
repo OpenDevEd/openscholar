@@ -212,9 +212,7 @@ function provisionedRuntimeBindingFields(
     ...baseRuntimeBindingFields(binding),
     targetRuntimeId: binding.targetRuntimeId,
     runtimeCommit: binding.runtimeCommit,
-    ...(binding.runtimeImage === undefined
-      ? {}
-      : { runtimeImage: binding.runtimeImage }),
+    runtimeImage: binding.runtimeImage,
     searchHost: binding.searchHost,
     searchIndex: binding.searchIndex,
     storageUrl: binding.storageUrl,

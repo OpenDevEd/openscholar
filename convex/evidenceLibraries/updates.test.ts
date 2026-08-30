@@ -312,6 +312,7 @@ describe("Evidence Library update check", () => {
         await ctx.db.insert("evidenceLibraryRuntimeReleases", {
           running: RUNNING,
           latest,
+          latestImage: IMAGE,
           changes: [],
           checkedAt: stale,
         });

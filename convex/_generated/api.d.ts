@@ -94,7 +94,6 @@ import type * as evidenceLibraries_revisionConfiguration from "../evidenceLibrar
 import type * as evidenceLibraries_runtimeActionConfig from "../evidenceLibraries/runtimeActionConfig.js";
 import type * as evidenceLibraries_runtimeConfiguration from "../evidenceLibraries/runtimeConfiguration.js";
 import type * as evidenceLibraries_runtimeCredentials from "../evidenceLibraries/runtimeCredentials.js";
-import type * as evidenceLibraries_runtimeImageMigration from "../evidenceLibraries/runtimeImageMigration.js";
 import type * as evidenceLibraries_runtimeImageRegistry from "../evidenceLibraries/runtimeImageRegistry.js";
 import type * as evidenceLibraries_runtimeReleases from "../evidenceLibraries/runtimeReleases.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
@@ -211,7 +210,6 @@ import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_backfillBillingTypes from "../migrations/backfillBillingTypes.js";
 import type * as migrations_backfillSearchableText from "../migrations/backfillSearchableText.js";
 import type * as migrations_backfillTransactionCounters from "../migrations/backfillTransactionCounters.js";
-import type * as migrations_runtimeImageReleaseIdentity from "../migrations/runtimeImageReleaseIdentity.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
@@ -366,7 +364,6 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/runtimeActionConfig": typeof evidenceLibraries_runtimeActionConfig;
   "evidenceLibraries/runtimeConfiguration": typeof evidenceLibraries_runtimeConfiguration;
   "evidenceLibraries/runtimeCredentials": typeof evidenceLibraries_runtimeCredentials;
-  "evidenceLibraries/runtimeImageMigration": typeof evidenceLibraries_runtimeImageMigration;
   "evidenceLibraries/runtimeImageRegistry": typeof evidenceLibraries_runtimeImageRegistry;
   "evidenceLibraries/runtimeReleases": typeof evidenceLibraries_runtimeReleases;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
@@ -483,7 +480,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillBillingTypes": typeof migrations_backfillBillingTypes;
   "migrations/backfillSearchableText": typeof migrations_backfillSearchableText;
   "migrations/backfillTransactionCounters": typeof migrations_backfillTransactionCounters;
-  "migrations/runtimeImageReleaseIdentity": typeof migrations_runtimeImageReleaseIdentity;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;

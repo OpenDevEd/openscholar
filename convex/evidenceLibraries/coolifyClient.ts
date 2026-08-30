@@ -73,8 +73,7 @@ export type CoolifyConfigurationUpdateResult = {
 export type CoolifyBoundApplication = {
   applicationUuid: string;
   runtimeCommit: string;
-  // Temporary during Plan 17's widen stage. Release-aware calls require it.
-  runtimeImage?: RuntimeImageReference;
+  runtimeImage: RuntimeImageReference;
   coolifyConfigHash: string;
 };
 
@@ -1844,9 +1843,8 @@ export function createCoolifyClient(input: {
       const sourceCommit = managedValue("SOURCE_COMMIT");
       const savedRuntimeImage = managedValue("RUNTIME_IMAGE");
       if (
-        (sourceCommit !== undefined &&
-          sourceCommit !== application.gitCommitSha) ||
-        (savedRuntimeImage !== undefined && sourceCommit === undefined)
+        sourceCommit !== application.gitCommitSha ||
+        savedRuntimeImage === undefined
       ) {
         throw new CoolifyClientError(
           "COOLIFY_APPLICATION_CONFLICT",
@@ -1856,9 +1854,7 @@ export function createCoolifyClient(input: {
       return {
         applicationUuid,
         runtimeCommit: application.gitCommitSha,
-        ...(savedRuntimeImage === undefined
-          ? {}
-          : { runtimeImage: requireRuntimeImage(savedRuntimeImage) }),
+        runtimeImage: requireRuntimeImage(savedRuntimeImage),
         coolifyConfigHash: application.configHash,
       };
     },
@@ -1941,7 +1937,7 @@ export function createCoolifyClient(input: {
       currentPublicDomain: string;
       nextPublicDomain: string;
       customDomains: readonly string[];
-    }): Promise<CoolifyBoundApplication> {
+    }): Promise<Omit<CoolifyBoundApplication, "runtimeImage">> {
       const applicationUuid = requireInputIdentifier(
         "Coolify application UUID",
         input.applicationUuid,
@@ -2013,7 +2009,7 @@ export function createCoolifyClient(input: {
       currentCustomDomains: readonly (readonly string[])[];
       /** The list it should hold when this call returns. */
       customDomains: readonly string[];
-    }): Promise<CoolifyBoundApplication> {
+    }): Promise<Omit<CoolifyBoundApplication, "runtimeImage">> {
       const applicationUuid = requireInputIdentifier(
         "Coolify application UUID",
         input.applicationUuid,

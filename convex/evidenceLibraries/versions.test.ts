@@ -599,7 +599,12 @@ describe("Evidence Library versions", () => {
         libraryId: fixture.created.libraryId,
         kind: "publish",
         idempotencyKey: `runtime-update:${RUNTIME_COMMIT}:${NEWER_COMMIT}`,
-        runtimeUpdate: { from: RUNTIME_COMMIT, to: NEWER_COMMIT },
+        runtimeUpdate: {
+          from: RUNTIME_COMMIT,
+          to: NEWER_COMMIT,
+          fromImage: TEST_RUNTIME_IMAGE,
+          toImage: NEWER_RUNTIME_IMAGE,
+        },
         revisionId: fixture.activated.revisionId,
         status: "queued",
         stage: "queued",
