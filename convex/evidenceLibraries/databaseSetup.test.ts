@@ -199,8 +199,12 @@ describe("Evidence Library database setup", () => {
       features: { ai: true },
       ai: {
         providers: [
-          { provider: AI_PROVIDER, enabled: true,
-            models: [AI_MODELS[0]], defaultModel: AI_MODELS[0], },
+          {
+            provider: AI_PROVIDER,
+            enabled: true,
+            models: [AI_MODELS[0]],
+            defaultModel: AI_MODELS[0],
+          },
         ],
       },
     });

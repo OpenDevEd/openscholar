@@ -61,7 +61,9 @@ describe("owner configuration migrations", () => {
         },
         {
           sectionKey: "ai",
-          payload: { providers: [{ provider: "openrouter", enabled: false, models: [] }], },
+          payload: {
+            providers: [{ provider: "openrouter", enabled: false, models: [] }],
+          },
         },
       ],
     });
@@ -101,7 +103,9 @@ describe("owner configuration migrations", () => {
       },
       {
         sectionKey: "ai",
-        payload: { providers: [{ provider: "openrouter", enabled: false, models: [] }], },
+        payload: {
+          providers: [{ provider: "openrouter", enabled: false, models: [] }],
+        },
       },
     ]);
     expect(missingAssets.changedPointers).toEqual([
@@ -127,7 +131,9 @@ describe("owner configuration migrations", () => {
       { sectionKey: "identity", payload: existingAssets },
       {
         sectionKey: "ai",
-        payload: { providers: [{ provider: "openrouter", enabled: false, models: [] }], },
+        payload: {
+          providers: [{ provider: "openrouter", enabled: false, models: [] }],
+        },
       },
     ]);
 
@@ -195,7 +201,9 @@ describe("owner configuration migrations", () => {
       { sectionKey: "features", payload: { ai: false } },
       {
         sectionKey: "ai",
-        payload: { providers: [{ provider: "openrouter", enabled: false, models: [] }], },
+        payload: {
+          providers: [{ provider: "openrouter", enabled: false, models: [] }],
+        },
       },
       { sectionKey: "analytics", payload: {} },
     ]);
@@ -206,9 +214,7 @@ describe("owner configuration migrations", () => {
     const explicit = {
       sectionKey: "ai" as const,
       payload: {
-        providers: [
-          { provider: "openrouter", enabled: false, models: [] }
-        ],
+        providers: [{ provider: "openrouter", enabled: false, models: [] }],
       },
     };
     const changed = completeOwnerConfigurationSnapshot(
@@ -238,7 +244,8 @@ describe("owner configuration migrations", () => {
   it("has an explicit consecutive registry and leaves current snapshots alone", () => {
     expect(
       OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to]),
-    ).toEqual([[1, 2],
+    ).toEqual([
+      [1, 2],
       [2, 3],
     ]);
     expect(
@@ -466,7 +473,8 @@ describe("owner configuration migrations", () => {
     );
     expect(
       OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to]),
-    ).toEqual([[1, 2],
+    ).toEqual([
+      [1, 2],
       [2, 3],
     ]);
   });

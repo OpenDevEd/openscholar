@@ -24,10 +24,15 @@ import {
 import { Field, FieldError } from "../section-card";
 import {
   ChoiceChips,
-  EmptyList, FieldGroup,
+  EmptyList,
+  FieldGroup,
   ListRow,
-  move, Panel, ReadOnlyValue,
-  SortableList, ToggleRow, } from "../fields";
+  move,
+  Panel,
+  ReadOnlyValue,
+  SortableList,
+  ToggleRow,
+} from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 
 const KEY_INSTANCE = "openrouter";
@@ -54,7 +59,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
         d.ai.defaultModel = d.ai.models[0] ?? "";
       }
 
-  return d;
+      return d;
     });
   }
 

@@ -406,8 +406,11 @@ export type AnalyticsDraft = {
  * `keySaved` says whether the credential store holds an OpenRouter key for
  * this library, so the card can ask for one. It is in no saved row.
  */
-export type AiDraft = { keySaved: boolean;
-  models: string[]; defaultModel: string; };
+export type AiDraft = {
+  keySaved: boolean;
+  models: string[];
+  defaultModel: string;
+};
 
 export type ConfigurationDraft = {
   identity: IdentityDraft;
@@ -840,10 +843,13 @@ function readAi(payload: unknown): AiDraft {
   const entry = list(record(payload).providers)
     .map((provider) => record(provider))
     .find((provider) => provider.provider === AI_PROVIDER);
-  return { keySaved: false,
+  return {
+    keySaved: false,
     models: list(entry?.models).filter(
       (model): model is string => typeof model === "string",
-    ), defaultModel: text(entry?.defaultModel), };
+    ),
+    defaultModel: text(entry?.defaultModel),
+  };
 }
 
 /**
@@ -1067,7 +1073,8 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
             enabled: draft.features.ai,
             models: draft.features.ai ? [...draft.ai.models] : [],
             defaultModel:
-              draft.features.ai && draft.ai.defaultModel !== "" ? draft.ai.defaultModel
+              draft.features.ai && draft.ai.defaultModel !== ""
+                ? draft.ai.defaultModel
                 : undefined,
           }),
         ],
@@ -1160,8 +1167,11 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
     case "analytics":
       return draft.analytics;
     case "ai":
-      return { enabled: draft.features.ai,
-        models: draft.ai.models, defaultModel: draft.ai.defaultModel };
+      return {
+        enabled: draft.features.ai,
+        models: draft.ai.models,
+        defaultModel: draft.ai.defaultModel,
+      };
     case "footer":
       return draft.footer;
     case "contact":
@@ -1385,8 +1395,9 @@ export function sectionProblems(
       const { keySaved, models, defaultModel } = draft.ai;
       if (draft.features.ai) {
         if (!keySaved) problems.push("aiKey");
-        if (models.length === 0 ||defaultModel === "") { problems.push("aiModel");
-      }
+        if (models.length === 0 || defaultModel === "") {
+          problems.push("aiModel");
+        }
       }
       if (
         new Set(models).size !== models.length ||
@@ -1478,8 +1489,11 @@ export function resetSection(
       break;
     case "ai":
       next.features.ai = saved.features.ai;
-      next.ai = { ...next.ai,
-        models: [...saved.ai.models], defaultModel: saved.ai.defaultModel, };
+      next.ai = {
+        ...next.ai,
+        models: [...saved.ai.models],
+        defaultModel: saved.ai.defaultModel,
+      };
       break;
   }
   // A reset can take away what a feature needs (an export, a second language, a search option).

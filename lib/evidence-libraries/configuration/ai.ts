@@ -128,8 +128,8 @@ export function aiProviderIssues(
     );
   } else {
     const seen = new Set<string>();
-  for (const [index, model] of models.entries()) {
-    if (typeof model !== "string" || !AI_MODELS.includes(model)) {
+    for (const [index, model] of models.entries()) {
+      if (typeof model !== "string" || !AI_MODELS.includes(model)) {
         issues.push(
           issue(
             `/ai/providers/0/models/${index}`,
@@ -168,8 +168,9 @@ export function aiProviderIssues(
         "Choose the model that answers questions.",
       ),
     );
-  } else if (typeof model === "string" &&
-    ( !Array.isArray(models) || !models.includes(model))
+  } else if (
+    typeof model === "string" &&
+    (!Array.isArray(models) || !models.includes(model))
   ) {
     issues.push(
       issue(

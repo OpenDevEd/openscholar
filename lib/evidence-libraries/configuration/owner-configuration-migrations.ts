@@ -412,6 +412,7 @@ function migrateVersionTwoToThree(
   snapshot: OwnerConfigurationMigrationSnapshot,
 ): OwnerConfigurationMigrationSnapshot {
   const next = cloneJson(snapshot);
+  const activeModels = new Set(AI_MODELS);
   next.ownerConfigurationVersion = 3;
   for (const row of next.sections) {
     if (row.sectionKey !== "ai" || !isRecord(row.payload)) continue;
@@ -434,13 +435,17 @@ function migrateVersionTwoToThree(
           typeof provider.defaultModel === "string"
             ? provider.defaultModel
             : undefined;
-        const models = [
+        const candidates = [
           ...listedModels,
           ...(savedDefault ? [savedDefault] : []),
-        ].filter(
-          (model, index, all) =>
-            AI_MODELS.includes(model) && all.indexOf(model) === index,
-        );
+        ];
+        const selectedModels = new Set<string>();
+        const models: string[] = [];
+        for (const model of candidates) {
+          if (!activeModels.has(model) || selectedModels.has(model)) continue;
+          selectedModels.add(model);
+          models.push(model);
+        }
         const defaultModel =
           savedDefault && models.includes(savedDefault)
             ? savedDefault
@@ -479,8 +484,7 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
       {
         sectionKey: "ai",
         payload: () => ({
-          providers: [{ provider: AI_PROVIDER, enabled: false, models: [
-] }],
+          providers: [{ provider: AI_PROVIDER, enabled: false, models: [] }],
         }),
       },
     ],
