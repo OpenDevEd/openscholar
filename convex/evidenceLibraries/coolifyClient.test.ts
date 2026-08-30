@@ -33,6 +33,7 @@ const UPDATED_LIBRARY_CONFIG_JSON = JSON.stringify({
   services: { search: { host: "http://meilisearch:7700" } },
 });
 const MEILISEARCH_MASTER_KEY = "meilisearch-key";
+const rememberApplication = async () => {};
 
 type FakeApplication = {
   uuid: string;
@@ -541,12 +542,17 @@ describe("Coolify Evidence Library client", () => {
       application: expectedApplication(),
       tags: [tag],
     });
+    const onApplicationResolved = vi.fn(async (applicationUuid: string) => {
+      expect(applicationUuid).toBe(APPLICATION_UUID);
+      expect(server.application).not.toBeNull();
+    });
 
     await expect(
       createClient(server.fetchImpl).deleteLibraryApplication({
         applicationUuid: APPLICATION_UUID,
         environmentName: ENVIRONMENT_NAME,
         libraryId: LIBRARY_ID,
+        onApplicationResolved,
         projectUuid: PROJECT_UUID,
         publicDomain: PUBLIC_DOMAIN,
         customDomains: [],
@@ -557,6 +563,7 @@ describe("Coolify Evidence Library client", () => {
       outcome: "deleted",
     });
     expect(server.application).toBeNull();
+    expect(onApplicationResolved).toHaveBeenCalledOnce();
     expect(
       server.requests.find(({ method }) => method === "DELETE"),
     ).toMatchObject({
@@ -578,6 +585,7 @@ describe("Coolify Evidence Library client", () => {
       applicationUuid: APPLICATION_UUID,
       environmentName: ENVIRONMENT_NAME,
       libraryId: LIBRARY_ID,
+      onApplicationResolved: rememberApplication,
       projectUuid: PROJECT_UUID,
       publicDomain: PUBLIC_DOMAIN,
       customDomains: [],
@@ -606,6 +614,7 @@ describe("Coolify Evidence Library client", () => {
       applicationUuid: APPLICATION_UUID,
       environmentName: ENVIRONMENT_NAME,
       libraryId: LIBRARY_ID,
+      onApplicationResolved: rememberApplication,
       projectUuid: PROJECT_UUID,
       publicDomain: PUBLIC_DOMAIN,
       customDomains: [],
@@ -631,6 +640,7 @@ describe("Coolify Evidence Library client", () => {
       createClient(server.fetchImpl).deleteLibraryApplication({
         environmentName: ENVIRONMENT_NAME,
         libraryId: LIBRARY_ID,
+        onApplicationResolved: rememberApplication,
         projectUuid: PROJECT_UUID,
         publicDomain: PUBLIC_DOMAIN,
         customDomains: [],
@@ -659,6 +669,7 @@ describe("Coolify Evidence Library client", () => {
         applicationUuid: APPLICATION_UUID,
         environmentName: ENVIRONMENT_NAME,
         libraryId: LIBRARY_ID,
+        onApplicationResolved: rememberApplication,
         projectUuid: PROJECT_UUID,
         publicDomain: PUBLIC_DOMAIN,
         customDomains: [],

@@ -167,6 +167,18 @@ export const runDevelopmentTeardown = internalAction({
         applicationUuid: prepared.applicationId,
         environmentName: requireEnvironment("EL_COOLIFY_ENVIRONMENT"),
         libraryId: args.libraryId,
+        onApplicationResolved: async (applicationId) => {
+          await holdTeardown(ctx, args.operationId, attemptToken);
+          await ctx.runMutation(
+            internal.evidenceLibraries.teardown
+              .rememberDevelopmentTeardownApplication,
+            {
+              applicationId,
+              attemptToken,
+              operationId: args.operationId,
+            },
+          );
+        },
         projectUuid: requireEnvironment("EL_COOLIFY_PROJECT_UUID"),
         publicDomain: prepared.targetBaseUrl,
         customDomains: prepared.customDomains,

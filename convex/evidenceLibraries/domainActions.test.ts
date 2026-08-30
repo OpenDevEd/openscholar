@@ -3090,10 +3090,11 @@ describe("custom domains", () => {
   it("waits while the deleted application still holds its data volume", async () => {
     const fixture = await createReadySetupFixture("teardown-volume-in-use");
     const tag = await bindApplication(fixture);
-    const world = createWorld(
-      { coolifyApplicationGone: true, volumeInUse: true },
-      tag,
-    );
+    const worldState: World = {
+      coolifyApplicationGone: true,
+      volumeInUse: true,
+    };
+    const world = createWorld(worldState, tag);
     vi.stubGlobal("fetch", world.fetchImpl);
     await fixture.t.run(async (ctx) => {
       const library = await ctx.db.get(fixture.created.libraryId);
@@ -3136,6 +3137,7 @@ describe("custom domains", () => {
       attemptCount: 1,
       stage: "coolify",
       status: "queued",
+      teardownApplicationId: COOLIFY_APPLICATION_UUID,
     });
     expect(world.volumeCalls).toEqual([
       {
@@ -3143,6 +3145,54 @@ describe("custom domains", () => {
         body: { applicationUuid: COOLIFY_APPLICATION_UUID },
       },
     ]);
+
+    // Reproduce the crash window this retry protects: Coolify and the setup
+    // receipt no longer expose the UUID after the first attempt removed the
+    // app. The teardown operation must still carry it into volume cleanup.
+    await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      if (!library?.runtimeBindingId) throw new Error("missing runtime binding");
+      const binding = await ctx.db.get(library.runtimeBindingId);
+      if (!binding) throw new Error("missing runtime binding");
+      const replacement = await ctx.db.insert("evidenceLibraryRuntimeBindings", {
+        libraryId: fixture.created.libraryId,
+        targetBaseUrl: binding.targetBaseUrl,
+        state: "pending",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      await ctx.db.patch(fixture.created.libraryId, {
+        runtimeBindingId: replacement,
+        setupOperationId: undefined,
+      });
+      await ctx.db.delete(binding._id);
+    });
+    worldState.volumeInUse = false;
+    vi.stubEnv("EL_STORAGE_SERVICE_KEY", "");
+
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
+        { libraryId: fixture.created.libraryId, operationId },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    expect(world.volumeCalls).toEqual([
+      {
+        method: "POST",
+        body: { applicationUuid: COOLIFY_APPLICATION_UUID },
+      },
+      {
+        method: "POST",
+        body: { applicationUuid: COOLIFY_APPLICATION_UUID },
+      },
+    ]);
+    expect(
+      await fixture.t.run(async (ctx) => ctx.db.get(operationId)),
+    ).toMatchObject({
+      stage: "storage",
+      status: "failed",
+      teardownApplicationId: COOLIFY_APPLICATION_UUID,
+    });
   });
 
   it("blames the domains when the certificate service is not set up", async () => {
