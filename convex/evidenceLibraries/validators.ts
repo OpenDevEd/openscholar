@@ -153,8 +153,10 @@ export const configProvenanceValidator = v.object({
 export const ownerConfigurationVersionValidator = v.union(
   v.literal(1),
   v.literal(2),
+  v.literal(3
+),
 );
-export const currentOwnerConfigurationVersionValidator = v.literal(2);
+export const currentOwnerConfigurationVersionValidator = v.literal(3);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),

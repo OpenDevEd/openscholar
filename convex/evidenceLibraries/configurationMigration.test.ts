@@ -61,7 +61,7 @@ async function seedHeaders(
     });
     const draftId = await ctx.db.insert("evidenceLibraryConfigDrafts", {
       libraryId,
-      ownerConfigurationVersion: 2,
+      ownerConfigurationVersion: 3,
       baseRevisionId: revisionId,
       editVersion: 4,
       contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,

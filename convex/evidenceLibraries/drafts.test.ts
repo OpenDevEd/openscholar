@@ -52,8 +52,8 @@ describe("Evidence Library draft storage", () => {
         revisionId: fixture.created.revisionId,
       },
     );
-    expect(currentDraft.draft.ownerConfigurationVersion).toBe(2);
-    expect(currentRevision.revision.ownerConfigurationVersion).toBe(2);
+    expect(currentDraft.draft.ownerConfigurationVersion).toBe(3);
+    expect(currentRevision.revision.ownerConfigurationVersion).toBe(3);
 
     await expect(
       fixture.t.run((ctx) =>
@@ -106,7 +106,7 @@ describe("Evidence Library draft storage", () => {
         libraryId,
         baseRevisionId: null,
         editVersion: 0,
-        ownerConfigurationVersion: 2,
+        ownerConfigurationVersion: 3,
         contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
         createdByClerkUserId: "user_123",
         updatedByClerkUserId: "user_123",

@@ -990,6 +990,7 @@ describe("changedSectionRows for the platform sections", () => {
 /* ------------------------------------------------------------------ */
 
 const approvedModel = AI_MODELS[0]!;
+const secondApprovedModel = AI_MODELS[1]!;
 
 const aiRows = [
   ...savedRows.filter(
@@ -998,7 +999,16 @@ const aiRows = [
   { sectionKey: "features", payload: { ai: true } },
   {
     sectionKey: "ai",
-    payload: { providers: [{ provider: AI_PROVIDER, enabled: true, defaultModel: approvedModel }] },
+    payload: {
+      providers: [
+        {
+          provider: AI_PROVIDER,
+          enabled: true,
+          models: [approvedModel],
+          defaultModel: approvedModel,
+        },
+      ],
+    },
   },
 ];
 
@@ -1006,7 +1016,7 @@ describe("AI answers", () => {
   it("reads no key and no model from a library that has never saved one", () => {
     const draft = savedDraft();
     expect(draft.features.ai).toBe(false);
-    expect(draft.ai).toEqual({ keySaved: false, defaultModel: "" });
+    expect(draft.ai).toEqual({ keySaved: false, models: [], defaultModel: "" });
     expect(sectionProblems(draft, "ai")).toEqual([]);
   });
 
@@ -1016,6 +1026,7 @@ describe("AI answers", () => {
     expect(sectionProblems(draft, "ai")).toEqual(["aiKey", "aiModel"]);
     draft.ai.keySaved = true;
     expect(sectionProblems(draft, "ai")).toEqual(["aiModel"]);
+    draft.ai.models = ["made-up/model"];
     draft.ai.defaultModel = "made-up/model";
     expect(sectionProblems(draft, "ai")).toEqual(["aiModelUnknown"]);
   });
@@ -1024,6 +1035,7 @@ describe("AI answers", () => {
     const draft = savedDraft();
     draft.features.ai = true;
     draft.ai.keySaved = true;
+    draft.ai.models = [secondApprovedModel, approvedModel];
     draft.ai.defaultModel = approvedModel;
     expect(sectionProblems(draft, "ai")).toEqual([]);
     const rows = changedSectionRows(draft, savedRows);
@@ -1031,7 +1043,14 @@ describe("AI answers", () => {
     expect(rows.find((row) => row.sectionKey === "ai")).toEqual({
       sectionKey: "ai",
       payload: {
-        providers: [{ provider: AI_PROVIDER, enabled: true, defaultModel: approvedModel }],
+        providers: [
+          {
+            provider: AI_PROVIDER,
+            enabled: true,
+            models: [secondApprovedModel, approvedModel],
+            defaultModel: approvedModel,
+          },
+        ],
       },
     });
   });
@@ -1039,18 +1058,17 @@ describe("AI answers", () => {
   it("reads a saved provider entry back and clears the row when AI goes off", () => {
     const draft = readDraft(aiRows);
     expect(draft.features.ai).toBe(true);
+    expect(draft.ai.models).toEqual([approvedModel]);
     expect(draft.ai.defaultModel).toBe(approvedModel);
     expect(sectionChanged(draft, aiRows, "ai")).toBe(false);
     draft.features.ai = false;
     expect(sectionProblems(draft, "ai")).toEqual([]);
     expect(sectionState(draft, aiRows, "ai")).toBe("edited");
-    // Switching off still writes one provider, now off, keeping the model.
+    // Switching off clears the model configuration from the saved provider.
     expect(changedSectionRows(draft, aiRows)).toContainEqual({
       sectionKey: "ai",
       payload: {
-        providers: [
-          { provider: AI_PROVIDER, enabled: false, defaultModel: approvedModel },
-        ],
+        providers: [{ provider: AI_PROVIDER, enabled: false, models: [] }],
       },
     });
   });
@@ -1058,9 +1076,11 @@ describe("AI answers", () => {
   it("puts the AI card back the way it was saved", () => {
     const draft = readDraft(aiRows);
     draft.features.ai = false;
+    draft.ai.models = [];
     draft.ai.defaultModel = "";
     const back = resetSection(draft, aiRows, "ai");
     expect(back.features.ai).toBe(true);
+    expect(back.ai.models).toEqual([approvedModel]);
     expect(back.ai.defaultModel).toBe(approvedModel);
   });
 

@@ -21,8 +21,13 @@ import {
   AI_MODELS,
   AI_PROVIDER_KEY_PATH,
 } from "@/lib/evidence-libraries/configuration/ai";
-import { Field } from "../section-card";
-import { FieldGroup, Panel, ReadOnlyValue, ToggleRow } from "../fields";
+import { Field, FieldError } from "../section-card";
+import {
+  ChoiceChips,
+  EmptyList, FieldGroup,
+  ListRow,
+  move, Panel, ReadOnlyValue,
+  SortableList, ToggleRow, } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 
 const KEY_INSTANCE = "openrouter";
@@ -35,8 +40,23 @@ const KEY_INSTANCE = "openrouter";
 export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.ai");
   const enabled = draft.features.ai;
-  const { keySaved, defaultModel } = draft.ai;
+  const { keySaved, models, defaultModel } = draft.ai;
   const runtimeReady = AI_MODELS.length > 0;
+
+  function setModels(next: string[]) {
+    patch((d) => {
+      const selected = new Set(next);
+      const current = new Set(d.ai.models);
+      const kept = d.ai.models.filter((model) => selected.has(model));
+      const added = next.filter((model) => !current.has(model));
+      d.ai.models = [...kept, ...added];
+      if (!d.ai.models.includes(d.ai.defaultModel)) {
+        d.ai.defaultModel = d.ai.models[0] ?? "";
+      }
+
+  return d;
+    });
+  }
 
   return (
     <SectionShell
@@ -64,12 +84,71 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
         {enabled ? (
           <Panel tone="muted" className="ml-4 space-y-4">
             <ProviderKeyField libraryId={libraryId} keySaved={keySaved} />
+            <FieldGroup title={t("modelsLabel")} hint={t("modelsHint")}>
+              <ChoiceChips
+                ariaLabel={t("modelsLabel")}
+                values={models}
+                onChange={setModels}
+                options={AI_MODELS.map((model) => ({
+                  value: model,
+                  label: model,
+                }))}
+              />
+              {models.some((model) => !AI_MODELS.includes(model)) ? (
+                <FieldError>{t("modelError")}</FieldError>
+              ) : null}
+            </FieldGroup>
+            <FieldGroup title={t("orderLabel")} hint={t("orderHint")}>
+              {models.length === 0 ? (
+                <EmptyList>{t("modelsEmpty")}</EmptyList>
+              ) : (
+                <SortableList
+                  ids={models}
+                  onMove={(from, to) =>
+                    patch((d) => {
+                      d.ai.models = move(d.ai.models, from, to);
+                      return d;
+                    })
+                  }
+                >
+                  {models.map((model, index) => (
+                    <ListRow
+                      key={model}
+                      id={model}
+                      removeLabel={t("removeModel", { model })}
+                      onRemove={() =>
+                        patch((d) => {
+                          d.ai.models = d.ai.models.filter(
+                            (candidate) => candidate !== model,
+                          );
+                          if (d.ai.defaultModel === model) {
+                            d.ai.defaultModel = d.ai.models[0] ?? "";
+                          }
+                          return d;
+                        })
+                      }
+                      className="items-center py-2"
+                      data-model={model}
+                    >
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="w-5 font-mono text-xs text-muted-foreground">
+                          {index + 1}.
+                        </span>
+                        <code className="font-mono text-xs text-muted-foreground">
+                          {model}
+                        </code>
+                      </div>
+                    </ListRow>
+                  ))}
+                </SortableList>
+              )}
+            </FieldGroup>
             <Field
               label={t("modelLabel")}
               hint={t("modelHint")}
               className="max-w-sm"
               error={
-                defaultModel !== "" && !AI_MODELS.includes(defaultModel)
+                defaultModel !== "" && !models.includes(defaultModel)
                   ? t("modelError")
                   : null
               }
@@ -78,7 +157,8 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                 <Select
                   // "" keeps the control controlled while showing the
                   // placeholder for a model the runtime no longer offers.
-                  value={AI_MODELS.includes(defaultModel) ? defaultModel : ""}
+                  value={models.includes(defaultModel) ? defaultModel : ""}
+                  disabled={models.length === 0}
                   onValueChange={(value) =>
                     patch((d) => {
                       d.ai.defaultModel = value;
@@ -90,7 +170,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                     <SelectValue placeholder={t("modelPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {AI_MODELS.map((model) => (
+                    {models.map((model) => (
                       <SelectItem key={model} value={model}>
                         {model}
                       </SelectItem>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AI_MODELS } from "./ai";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
   completeOwnerConfigurationSnapshot,
@@ -47,7 +48,7 @@ function withMigrations<T>(
 }
 
 describe("owner configuration migrations", () => {
-  it("moves version 1 to version 2 and preserves the owner values", () => {
+  it("moves version 1 to the current version and preserves the owner values", () => {
     const result = migrateOwnerConfiguration(legacySnapshot);
 
     expect(result.snapshot).toEqual({
@@ -60,7 +61,7 @@ describe("owner configuration migrations", () => {
         },
         {
           sectionKey: "ai",
-          payload: { providers: [{ provider: "openrouter", enabled: false }] },
+          payload: { providers: [{ provider: "openrouter", enabled: false, models: [] }], },
         },
       ],
     });
@@ -70,6 +71,7 @@ describe("owner configuration migrations", () => {
       "/features/deepResearch",
       "/exports",
       "/ai",
+      "/ai/providers/0/models",
     ]);
     expect(legacySnapshot.sections[0]?.payload).toEqual({
       ai: false,
@@ -99,13 +101,14 @@ describe("owner configuration migrations", () => {
       },
       {
         sectionKey: "ai",
-        payload: { providers: [{ provider: "openrouter", enabled: false }] },
+        payload: { providers: [{ provider: "openrouter", enabled: false, models: [] }], },
       },
     ]);
     expect(missingAssets.changedPointers).toEqual([
       "/ownerConfigurationVersion",
       "/identity/assets",
       "/ai",
+      "/ai/providers/0/models",
     ]);
 
     const existingAssets = {
@@ -124,7 +127,7 @@ describe("owner configuration migrations", () => {
       { sectionKey: "identity", payload: existingAssets },
       {
         sectionKey: "ai",
-        payload: { providers: [{ provider: "openrouter", enabled: false }] },
+        payload: { providers: [{ provider: "openrouter", enabled: false, models: [] }], },
       },
     ]);
 
@@ -192,7 +195,7 @@ describe("owner configuration migrations", () => {
       { sectionKey: "features", payload: { ai: false } },
       {
         sectionKey: "ai",
-        payload: { providers: [{ provider: "openrouter", enabled: false }] },
+        payload: { providers: [{ provider: "openrouter", enabled: false, models: [] }], },
       },
       { sectionKey: "analytics", payload: {} },
     ]);
@@ -204,7 +207,7 @@ describe("owner configuration migrations", () => {
       sectionKey: "ai" as const,
       payload: {
         providers: [
-          { provider: "openrouter", enabled: false, defaultModel: "model" },
+          { provider: "openrouter", enabled: false, models: [] }
         ],
       },
     };
@@ -235,7 +238,9 @@ describe("owner configuration migrations", () => {
   it("has an explicit consecutive registry and leaves current snapshots alone", () => {
     expect(
       OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to]),
-    ).toEqual([[1, 2]]);
+    ).toEqual([[1, 2],
+      [2, 3],
+    ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
         OWNER_CONFIGURATION_MIGRATIONS,
@@ -250,6 +255,137 @@ describe("owner configuration migrations", () => {
     expect(migrateOwnerConfiguration(current)).toEqual({
       snapshot: current,
       changedPointers: [],
+    });
+  });
+
+  it("migrates version 2 AI selections to the active ordered model contract", () => {
+    const result = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 2,
+      sections: [
+        {
+          sectionKey: "ai",
+          payload: {
+            providers: [
+              {
+                provider: "openrouter",
+                enabled: true,
+                models: [
+                  "anthropic/claude-sonnet-5",
+                  AI_MODELS[2],
+                  AI_MODELS[2],
+                ],
+                defaultModel: "anthropic/claude-sonnet-5",
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(result.snapshot.sections).toEqual([
+      {
+        sectionKey: "ai",
+        payload: {
+          providers: [
+            {
+              provider: "openrouter",
+              enabled: true,
+              models: [AI_MODELS[2]],
+              defaultModel: AI_MODELS[2],
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it("migrates a version 2 default into the selected model list", () => {
+    const result = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 2,
+      sections: [
+        {
+          sectionKey: "ai",
+          payload: {
+            providers: [
+              {
+                provider: "openrouter",
+                enabled: true,
+                defaultModel: AI_MODELS[1],
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(result.snapshot.sections[0]).toEqual({
+      sectionKey: "ai",
+      payload: {
+        providers: [
+          {
+            provider: "openrouter",
+            enabled: true,
+            models: [AI_MODELS[1]],
+            defaultModel: AI_MODELS[1],
+          },
+        ],
+      },
+    });
+  });
+
+  it("blocks a version 2 AI row when no selected model remains active", () => {
+    const error = expectMigrationError(() =>
+      migrateOwnerConfiguration({
+        ownerConfigurationVersion: 2,
+        sections: [
+          {
+            sectionKey: "ai",
+            payload: {
+              providers: [
+                {
+                  provider: "openrouter",
+                  enabled: true,
+                  defaultModel: "anthropic/claude-sonnet-5",
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ pointer: "/ai/providers/0/models" }),
+      ]),
+    );
+  });
+
+  it("clears obsolete AI fields when a version 2 provider is disabled", () => {
+    const result = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 2,
+      sections: [
+        {
+          sectionKey: "ai",
+          payload: {
+            providers: [
+              {
+                provider: "openrouter",
+                enabled: false,
+                models: [AI_MODELS[0]],
+                defaultModel: AI_MODELS[0],
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(result.snapshot.sections[0]).toEqual({
+      sectionKey: "ai",
+      payload: {
+        providers: [{ provider: "openrouter", enabled: false, models: [] }],
+      },
     });
   });
 
@@ -330,7 +466,9 @@ describe("owner configuration migrations", () => {
     );
     expect(
       OWNER_CONFIGURATION_MIGRATIONS.map(({ from, to }) => [from, to]),
-    ).toEqual([[1, 2]]);
+    ).toEqual([[1, 2],
+      [2, 3],
+    ]);
   });
 
   it("lets a historical step remove, rename, convert, transfer, split, merge, and remove sections", () => {
@@ -421,7 +559,7 @@ describe("owner configuration migrations", () => {
       ],
     };
 
-    const result = migrateOwnerConfiguration(source, {}, migrations);
+    const result = migrateOwnerConfiguration(source, {}, migrations, 2);
     expect(result.snapshot).toEqual({
       ownerConfigurationVersion: 2,
       sections: [
@@ -476,6 +614,7 @@ describe("owner configuration migrations", () => {
             },
           },
         ],
+        2,
       ),
     );
     expect(error.issues).toEqual(
@@ -535,6 +674,7 @@ describe("owner configuration migrations", () => {
           },
           {},
           migrations,
+          2,
         ),
     );
     expect(moved.snapshot).toEqual({
@@ -566,6 +706,7 @@ describe("owner configuration migrations", () => {
             },
             {},
             migrations,
+            2,
           ),
       ),
     );
@@ -653,6 +794,7 @@ describe("owner configuration migrations", () => {
             },
             {},
             migrations,
+            2,
           ),
       ),
     );
@@ -686,6 +828,7 @@ describe("owner configuration migrations", () => {
             },
             {},
             migrations,
+            2,
           ),
       ),
     );
@@ -697,7 +840,7 @@ describe("owner configuration migrations", () => {
   });
 
   it("rejects missing, unknown, newer, and gapped versions", () => {
-    for (const version of [undefined, 0, 3]) {
+    for (const version of [undefined, 0, 4]) {
       const error = expectMigrationError(() =>
         migrateOwnerConfiguration({
           ownerConfigurationVersion: version as never,
@@ -733,7 +876,7 @@ describe("owner configuration migrations", () => {
     expect(error.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ keyword: "nonConsecutiveMigration" }),
-        expect.objectContaining({ keyword: "invalidRegistry" }),
+        expect.objectContaining({ keyword: "missingMigration" }),
       ]),
     );
   });

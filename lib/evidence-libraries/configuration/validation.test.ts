@@ -357,12 +357,14 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     const apply = createAiProviderKey("sk-or-stored");
     expect(
       apply([
-        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+        { provider: AI_PROVIDER, enabled: true,
+          models: [AI_MODELS[0]], defaultModel: AI_MODELS[0], },
       ]),
     ).toEqual([
       {
         provider: AI_PROVIDER,
         enabled: true,
+        models: [AI_MODELS[0]],
         defaultModel: AI_MODELS[0],
         apiKey: "sk-or-stored",
       },
@@ -410,17 +412,19 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       "no model on a switched-on entry",
       [{ provider: AI_PROVIDER, enabled: true }],
       true,
-      "/ai/providers/0/defaultModel",
+      "/ai/providers/0/models",
     ],
     [
       "a model the runtime does not offer",
-      [{ provider: AI_PROVIDER, enabled: true, defaultModel: "made-up/model" }],
+      [{ provider: AI_PROVIDER, enabled: true,
+          models: ["made-up/model"], defaultModel: "made-up/model", },],
       true,
-      "/ai/providers/0/defaultModel",
+      "/ai/providers/0/models/0",
     ],
     [
       "a provider switched on while AI answers are off",
-      [{ provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] }],
+      [{ provider: AI_PROVIDER, enabled: true,
+          models: [AI_MODELS[0]], defaultModel: AI_MODELS[0], },],
       false,
       "/ai/providers/0/enabled",
     ],
@@ -462,7 +466,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
           features: { ...ownerSections.features, ai: true },
           ai: {
             providers: [
-              { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+              { provider: AI_PROVIDER, enabled: true,
+              models: [AI_MODELS[0]], defaultModel: AI_MODELS[0] },
             ],
           },
         },
@@ -478,6 +483,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
           {
             provider: AI_PROVIDER,
             enabled: true,
+          models: [AI_MODELS[0]],
             defaultModel: AI_MODELS[0],
             apiKey: "sk-or-stored",
           },
@@ -494,7 +500,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         features: { ...ownerSections.features, ai: true },
         ai: {
           providers: [
-            { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+            { provider: AI_PROVIDER, enabled: true,
+              models: [AI_MODELS[0]], defaultModel: AI_MODELS[0] },
           ],
         },
       },
@@ -548,7 +555,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         features: { ...ownerSections.features, ai: true },
         ai: {
           providers: [
-            { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+            { provider: AI_PROVIDER, enabled: true,
+              models: [AI_MODELS[0]], defaultModel: AI_MODELS[0] },
           ],
         },
       },
@@ -577,7 +585,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         features: { ...ownerSections.features, ai: true, deepResearch: true },
         ai: {
           providers: [
-            { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+            { provider: AI_PROVIDER, enabled: true,
+              models: [AI_MODELS[0]], defaultModel: AI_MODELS[0] },
           ],
         },
       },
@@ -810,6 +819,7 @@ describe("platform-owned fields an owner may not save", () => {
             {
               provider: AI_PROVIDER,
               enabled: true,
+              models: [AI_MODELS[0]],
               defaultModel: AI_MODELS[0],
               [field]: AI_MODELS[0],
             },

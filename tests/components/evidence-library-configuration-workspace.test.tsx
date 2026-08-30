@@ -1239,8 +1239,10 @@ describe("<ConfigurationWorkspace>", () => {
           ]),
         );
 
-        await user.click(ai.getByRole("combobox", { name: "ai.modelLabel" }));
-        await user.click(await screen.findByRole("option", { name: AI_MODELS[0] }));
+        await user.click(ai.getByRole("checkbox", { name: AI_MODELS[0] }));
+      await user.click(ai.getByRole("checkbox", { name: AI_MODELS[1] }));
+      await user.click(ai.getByRole("combobox", { name: "ai.modelLabel" }));
+        await user.click(await screen.findByRole("option", { name: AI_MODELS[1] }));
         await user.click(screen.getByRole("button", { name: "save" }));
 
         await waitFor(() => expect(saved).toHaveLength(1));
@@ -1252,7 +1254,8 @@ describe("<ConfigurationWorkspace>", () => {
               {
                 provider: "openrouter",
                 enabled: true,
-                defaultModel: AI_MODELS[0],
+              models: [ AI_MODELS[0], AI_MODELS[1]],
+              defaultModel: AI_MODELS[1],
               },
             ],
           },
