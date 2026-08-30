@@ -124,15 +124,64 @@ export class WebhookWaiter {
     );
   }
 
+  /** Seed one disposable purchase row for filtered transaction UI checks. */
+  async seedPurchase(): Promise<void> {
+    const creditsPerUsd = Number(process.env.CREDITS_PER_USD);
+    if (!Number.isFinite(creditsPerUsd) || creditsPerUsd <= 0) {
+      throw new Error(
+        "Missing or invalid CREDITS_PER_USD for billing E2E tests",
+      );
+    }
+
+    const credits = 100;
+    const amountCents = Math.ceil((credits / creditsPerUsd) * 100);
+    const result = await this.runConvexQuery<{
+      outcome: string;
+      grantedCredits: number;
+    }>("credits/internal:grantPurchasedCreditsFromPaymentIntent", {
+      stripePaymentIntentId: `pi_billing_e2e_${crypto.randomUUID().replaceAll("-", "")}`,
+      amountReceived: amountCents,
+      currency: "usd",
+      metadata: {
+        billingType: "credit_topup",
+        userId: this.convexUserId,
+        credits: String(credits),
+        amountCents: String(amountCents),
+        creditsPerUsd: String(creditsPerUsd),
+      },
+    });
+
+    if (result.outcome !== "granted" || result.grantedCredits !== credits) {
+      throw new Error(`Failed to seed billing purchase: ${result.outcome}`);
+    }
+  }
+
+  /** Seed one disposable row whose visible description matches a search. */
+  async seedSearchableGrant(searchToken: string): Promise<void> {
+    const balance = await this.runConvexQuery<number>(
+      "credits/internal:addCredits",
+      {
+        userId: this.convexUserId,
+        amount: 1,
+        type: "grant",
+        creditType: "paid",
+        description: `${searchToken} billing test grant`,
+      },
+    );
+
+    if (!Number.isFinite(balance)) {
+      throw new Error("Failed to seed searchable billing grant");
+    }
+  }
+
   /**
    * Reset all billing state for the user in Convex.
    * Called during fixture teardown.
    */
   async resetBillingState(): Promise<void> {
-    await this.runConvexQuery(
-      "testing/billing:resetBillingStateForUser",
-      { userId: this.convexUserId },
-    );
+    await this.runConvexQuery("testing/billing:resetBillingStateForUser", {
+      userId: this.convexUserId,
+    });
   }
 
   /**
@@ -140,10 +189,9 @@ export class WebhookWaiter {
    * Called during fixture teardown to prevent test user accumulation.
    */
   async deleteTestUser(): Promise<void> {
-    await this.runConvexQuery(
-      "testing/billing:deleteTestUser",
-      { userId: this.convexUserId },
-    );
+    await this.runConvexQuery("testing/billing:deleteTestUser", {
+      userId: this.convexUserId,
+    });
   }
 
   /**
