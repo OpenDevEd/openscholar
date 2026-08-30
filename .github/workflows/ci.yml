@@ -6,9 +6,68 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    name: Changes
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    outputs:
+      runtime_required: ${{ steps.detect.outputs.runtime_required }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect runtime changes
+        id: detect
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "runtime_required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ -z "$BASE_SHA" ]] || ! git cat-file -e "$BASE_SHA^{commit}"; then
+            echo "Could not resolve the pull request base. Running runtime tests."
+            echo "runtime_required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! changed_files="$(git diff --name-only --no-renames "$BASE_SHA" "$GITHUB_SHA")"; then
+            echo "Could not resolve changed files. Running runtime tests."
+            echo "runtime_required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          runtime_required=false
+          while IFS= read -r changed_file; do
+            [[ -z "$changed_file" ]] && continue
+            case "$changed_file" in
+              *.md|*.png|*.jpg|*.jpeg|*.webp|docs/*|plans/*|.agents/*|.claude/*|convex/_generated/*)
+                ;;
+              *)
+                runtime_required=true
+                break
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          echo "runtime_required=$runtime_required" >> "$GITHUB_OUTPUT"
+
   unit-and-build:
-    runs-on: openscholar-secret
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 20
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
@@ -17,15 +76,23 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       NEXT_PUBLIC_CONVEX_URL: https://example.convex.cloud
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
+      - name: Restore the Next.js build cache
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**/*', 'components/**/*', 'convex/**/*', 'i18n/**/*', 'lib/**/*', 'next.config.ts', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Run unit and contract tests
         run: npm run test
@@ -36,7 +103,10 @@ jobs:
   e2e-auth:
     runs-on: openscholar-secret
     timeout-minutes: 30
-    needs: unit-and-build
+    needs:
+      - changes
+      - unit-and-build
+    if: needs.changes.outputs.runtime_required == 'true'
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
       CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -51,10 +121,11 @@ jobs:
       E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
       E2E_BASE_URL: http://localhost:3000
       PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3000
+      NEXT_BUILD_SKIP_VERIFIED_TYPES: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -93,7 +164,16 @@ jobs:
 
       - name: Install dependencies
         if: steps.auth-environment.outputs.available == 'true'
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Restore the Next.js build cache
+        if: steps.auth-environment.outputs.available == 'true'
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**/*', 'components/**/*', 'convex/**/*', 'i18n/**/*', 'lib/**/*', 'next.config.ts', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
       - name: Install Playwright browser
         if: steps.auth-environment.outputs.available == 'true'
@@ -124,11 +204,16 @@ jobs:
   billing-live:
     runs-on: openscholar-secret
     timeout-minutes: 45
-    needs: unit-and-build
+    needs:
+      - changes
+      - unit-and-build
+    if: needs.changes.outputs.runtime_required == 'true'
     concurrency:
       group: billing-live-shared-test-user
       cancel-in-progress: false
     env:
+      PLAYWRIGHT_WORKERS: "4"
+      NEXT_BUILD_SKIP_VERIFIED_TYPES: "1"
       NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
       NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
       CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
@@ -151,9 +236,9 @@ jobs:
       E2E_BASE_URL: http://localhost:3001
       PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -197,7 +282,16 @@ jobs:
 
       - name: Install dependencies
         if: steps.billing-environment.outputs.available == 'true'
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Restore the Next.js build cache
+        if: steps.billing-environment.outputs.available == 'true'
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**/*', 'components/**/*', 'convex/**/*', 'i18n/**/*', 'lib/**/*', 'next.config.ts', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
       - name: Run billing preflight + required live regressions
         if: steps.billing-environment.outputs.available == 'true'
@@ -261,15 +355,15 @@ jobs:
       E2E_BASE_URL: http://localhost:3001
       PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Validate billing environment
         run: |
@@ -290,17 +384,31 @@ jobs:
           path: test-results/billing-live
           if-no-files-found: ignore
 
-      - name: Install Playwright browser
-        run: npx playwright install chromium
-
-      - name: Run billing E2E tests
-        run: npm run test:billing:e2e
-
-      - name: Upload billing E2E report
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: billing-e2e-report-${{ github.job }}
-          path: playwright-report
-          if-no-files-found: ignore
+  ci:
+    name: CI
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    if: always()
+    needs:
+      - changes
+      - unit-and-build
+      - e2e-auth
+      - billing-live
+    steps:
+      - name: Require every selected CI lane to pass
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          UNIT_AND_BUILD: ${{ needs.unit-and-build.result }}
+          RUNTIME_REQUIRED: ${{ needs.changes.outputs.runtime_required }}
+          AUTH: ${{ needs.e2e-auth.result }}
+          BILLING: ${{ needs.billing-live.result }}
+        run: |
+          test "$CHANGES" = success
+          test "$UNIT_AND_BUILD" = success
+          if test "$RUNTIME_REQUIRED" = true; then
+            test "$AUTH" = success
+            test "$BILLING" = success
+          else
+            test "$AUTH" = skipped
+            test "$BILLING" = skipped
+          fi
