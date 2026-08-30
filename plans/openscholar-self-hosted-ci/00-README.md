@@ -74,7 +74,7 @@ build three times, and run Playwright's Linux package installer twice.
     to provision an Evidence Library runtime. Project the existing Clerk E2E
     organization into `formal-rabbit-271`, create one fixed draft through the
     existing internal setup mutation, serialize the auth job, and restore its
-    edited values after each run. The browser still proves the enabled owner
+    tagline and description after each run. The browser still proves the enabled owner
     gate, Save, and reopen behavior. It must never receive Coolify, database,
     storage, or production credentials.
     Set the required non-secret `EVIDENCE_LIBRARY_PLATFORM_DOMAIN` in the cloud

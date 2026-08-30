@@ -280,7 +280,7 @@ In `ci-jobs.yml`:
    `cancel-in-progress: false`.
 5. Serialize auth as `auth-e2e-shared-library` with cancellation off. Make the
    test select `E2E_CLERK_ORGANIZATION_ID`, open the fixed
-   `E2E_EVIDENCE_LIBRARY_ID` draft, save unique logo and favicon values, reopen
+   `E2E_EVIDENCE_LIBRARY_ID` draft, save a unique tagline and description, reopen
    the page, verify both values, then restore the values it read at the start.
    Keep a browser check that the current `Set up and activate` control is
    available, but never click it in CI.
