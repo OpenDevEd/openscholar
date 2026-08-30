@@ -375,6 +375,7 @@
 			"services.publication.crossref.loginId",
 			"services.publication.crossref.password",
 			"services.publication.zenodo.token",
+			"services.redis.url",
 			"services.search.key",
 			"services.storage.serviceRoleKey",
 			"sources[].apiKey"
@@ -518,12 +519,6 @@
 				"active": [
 					"gpt-5.4",
 					"gpt-5.4-mini"
-				],
-				"large": [
-					"gpt-5.4"
-				],
-				"small": [
-					"gpt-5.4-mini"
 				]
 			},
 			{
@@ -531,24 +526,12 @@
 				"active": [
 					"gemini-2.5-flash",
 					"gemini-2.5-pro"
-				],
-				"large": [
-					"gemini-2.5-pro"
-				],
-				"small": [
-					"gemini-2.5-flash"
 				]
 			},
 			{
 				"provider": "anthropic",
 				"active": [
 					"claude-sonnet-4-6",
-					"claude-haiku-4-5"
-				],
-				"large": [
-					"claude-sonnet-4-6"
-				],
-				"small": [
 					"claude-haiku-4-5"
 				]
 			},
@@ -557,24 +540,12 @@
 				"active": [
 					"mistral-large-latest",
 					"mistral-small-latest"
-				],
-				"large": [
-					"mistral-large-latest"
-				],
-				"small": [
-					"mistral-small-latest"
 				]
 			},
 			{
 				"provider": "deepseek",
 				"active": [
 					"deepseek-v4-pro",
-					"deepseek-v4-flash"
-				],
-				"large": [
-					"deepseek-v4-pro"
-				],
-				"small": [
 					"deepseek-v4-flash"
 				]
 			},
@@ -583,18 +554,7 @@
 				"active": [
 					"openai/gpt-5.6-luna",
 					"google/gemini-3.7-flash",
-					"x-ai/grok-4.6",
-					"anthropic/claude-sonnet-5",
-					"anthropic/claude-opus-5"
-				],
-				"large": [
-					"openai/gpt-5.6-luna",
-					"x-ai/grok-4.6",
-					"anthropic/claude-opus-5"
-				],
-				"small": [
-					"google/gemini-3.7-flash",
-					"anthropic/claude-sonnet-5"
+					"x-ai/grok-4.6"
 				]
 			}
 		],

@@ -6,6 +6,9 @@ import {
 import type { Doc, Id } from "../_generated/dataModel";
 import { type Infer, v } from "convex/values";
 import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
+import {
+  CURRENT_OWNER_CONFIGURATION_VERSION,
+} from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
 import { evidenceLibraryTeardownStepValidator } from "./validators";
 import {
@@ -531,7 +534,15 @@ export async function readEvidenceLibraryDraft(
         ),
       }
     : null;
-  return { draft, library: access.library, operation, sections };
+  return {
+    draft: {
+      ...draft,
+      ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
+    },
+    library: access.library,
+    operation,
+    sections,
+  };
 }
 
 export async function readEvidenceLibraryRevision(

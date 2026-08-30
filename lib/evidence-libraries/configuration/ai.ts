@@ -11,9 +11,6 @@ import type { ValidationIssue } from "./generated-validation";
  */
 export const AI_PROVIDER = "openrouter";
 
-/** Provider models the runtime decides. OpenScholar never writes them. */
-export const PLATFORM_AI_MODEL_FIELDS = ["largeModel", "smallModel"] as const;
-
 /**
  * Feature switches the platform decides, not the owner. AI search follows the
  * AI answers switch and deep research stays off until it is a decision of its
@@ -60,7 +57,8 @@ export const passThroughAiProviderKey: ApplyAiProviderKey = (providers) =>
 
 /**
  * The one shape OpenScholar saves: a single OpenRouter entry, switched on
- * exactly when AI answers are, carrying a model the runtime approves.
+ * exactly when AI answers are, carrying an ordered model list and a default
+ * from that list.
  *
  * The page cannot be trusted to be the only caller, so this runs on the
  * server twice: when a section is saved, and again when the configuration is
@@ -123,14 +121,41 @@ export function aiProviderIssues(
       ),
     );
   }
-  // The runtime picks the large and small models. Offering them would be a
-  // setting OpenScholar does not show and cannot check.
-  for (const field of PLATFORM_AI_MODEL_FIELDS) {
-    if (entry?.[field] !== undefined) {
+  const models = entry?.models;
+  if (!Array.isArray(models)) {
+    issues.push(
+      issue("/ai/providers/0/models", "Choose the models readers can use."),
+    );
+  } else {
+    const seen = new Set<string>();
+    for (const [index, model] of models.entries()) {
+      if (typeof model !== "string" || !AI_MODELS.includes(model)) {
+        issues.push(
+          issue(
+            `/ai/providers/0/models/${index}`,
+            `${String(model)} is not a model your library software offers.`,
+          ),
+        );
+      } else if (seen.has(model)) {
+        issues.push(
+          issue(
+            `/ai/providers/0/models/${index}`,
+            `${model} appears more than once.`,
+          ),
+        );
+      }
+      if (typeof model === "string") seen.add(model);
+    }
+    if (entry?.enabled === true && models.length === 0) {
+      issues.push(
+        issue("/ai/providers/0/models", "Choose the models readers can use."),
+      );
+    }
+    if (entry?.enabled !== true && models.length > 0) {
       issues.push(
         issue(
-          `/ai/providers/0/${field}`,
-          "Your library software chooses this model.",
+          "/ai/providers/0/models",
+          "Switch on AI answers before choosing models.",
         ),
       );
     }
@@ -143,11 +168,21 @@ export function aiProviderIssues(
         "Choose the model that answers questions.",
       ),
     );
-  } else if (typeof model === "string" && !AI_MODELS.includes(model)) {
+  } else if (
+    typeof model === "string" &&
+    (!Array.isArray(models) || !models.includes(model))
+  ) {
     issues.push(
       issue(
         "/ai/providers/0/defaultModel",
-        `${model} is not a model your library software offers.`,
+        "The answer model must be in the selected model list.",
+      ),
+    );
+  } else if (entry?.enabled !== true && model !== undefined) {
+    issues.push(
+      issue(
+        "/ai/providers/0/defaultModel",
+        "Switch on AI answers before choosing an answer model.",
       ),
     );
   }

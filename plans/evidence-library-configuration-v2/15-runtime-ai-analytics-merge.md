@@ -110,6 +110,36 @@ height of its bar, whatever its shape.
    env, never committed) → logo PR merged → bump again → check the three
    logo shapes on the test library → tear down.
 
+### Decision 8 — ordered OpenRouter model list (2026-08-30)
+
+The earlier single-model decision was wrong. Owners choose an ordered list of
+OpenRouter models and choose the default answer model from that list. The
+runtime manifest uses one provider entry shaped as
+`{ provider: "openrouter", enabled, apiKey, models, defaultModel }`.
+`models` is the exact public picker allowlist. The runtime rejects request
+models outside it. The fixed starter-question model is
+`openai/gpt-5.6-luna`; it is an internal runtime choice and does not need to
+appear in the owner's list.
+
+The runtime removes the old `largeModel` and `smallModel` slots. Its generated
+catalog lists only owner-selectable models, so hidden models cannot be saved or
+sent through a public AI route. OpenScholar owner configuration moves from
+version 2 to version 3. Before migration, audit every saved provider against
+the pinned version 3 catalog and drop models that are no longer active. If the
+saved default was removed, use the first surviving active model; block the
+release for an owner choice when none survive. The migration writes that
+surviving ordered list and default, removes the old slot fields, and leaves
+disabled providers with an empty list and no default model. Never write a
+removed catalog model into a version 3 document. Frozen revisions stay
+unchanged and move through the same migration chain when restored or deployed.
+
+Release order is strict: Evidence Library schema, runtime resolution, and
+Redis-backed limits merge to `new-el/main`; OpenScholar then re-pins that exact
+commit and implements the version-3 migration and model-list editor. The
+contract synchronizer deliberately refuses an unmerged runtime commit, so the
+OpenScholar implementation must not use hand-copied generated files or false
+provenance.
+
 ## Lanes
 
 | Lane | Repo | Branch | Owns |

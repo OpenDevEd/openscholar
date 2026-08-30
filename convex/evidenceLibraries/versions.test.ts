@@ -269,7 +269,7 @@ describe("Evidence Library versions", () => {
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: second.revisionId,
       rollbackOfRevisionId: historicalRevisionId,
-      ownerConfigurationVersion: 2,
+      ownerConfigurationVersion: 3,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({ assets: {} });
     expect(state.library?.activeRevisionId).toBe(second.revisionId);
@@ -365,7 +365,7 @@ describe("Evidence Library versions", () => {
     expect(firstState.active?.ownerConfigurationVersion).toBe(1);
     expect(firstState.candidate).toMatchObject({
       basedOnRevisionId: activeRevisionId,
-      ownerConfigurationVersion: 2,
+      ownerConfigurationVersion: 3,
     });
     expect(firstState.library?.activeRevisionId).toBe(activeRevisionId);
     expect(firstState.library?.latestRevisionId).toBe(started.revisionId);
@@ -375,7 +375,7 @@ describe("Evidence Library versions", () => {
     expect(
       firstState.operations.find((operation) => operation.runtimeUpdate)
         ?.idempotencyKey,
-    ).toContain(`${activeRevisionId}:v2:${RUNTIME_COMMIT}:${NEWER_COMMIT}`);
+    ).toContain(`${activeRevisionId}:v3:${RUNTIME_COMMIT}:${NEWER_COMMIT}`);
 
     await markFailed(fixture, started.operationId);
     const repeated = await fixture.admin.mutation(
@@ -597,7 +597,7 @@ describe("Evidence Library versions", () => {
     expect(state.active?.ownerConfigurationVersion).toBe(1);
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: activeRevisionId,
-      ownerConfigurationVersion: 2,
+      ownerConfigurationVersion: 3,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({
       baseUrl: "https://climate.example.org",
@@ -808,7 +808,7 @@ describe("Evidence Library address move", () => {
     });
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: fixture.activated.revisionId,
-      ownerConfigurationVersion: 2,
+      ownerConfigurationVersion: 3,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({
       baseUrl: movedTo,

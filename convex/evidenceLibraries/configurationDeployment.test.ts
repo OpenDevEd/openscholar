@@ -500,6 +500,7 @@ describe("Evidence Library configuration deployment", () => {
               {
                 provider: AI_PROVIDER,
                 enabled: true,
+                models: [AI_MODELS[0]],
                 defaultModel: AI_MODELS[0],
               },
             ],
@@ -582,6 +583,7 @@ describe("Evidence Library configuration deployment", () => {
               {
                 provider: AI_PROVIDER,
                 enabled: true,
+                models: [AI_MODELS[0]],
                 defaultModel: AI_MODELS[0],
               },
             ],

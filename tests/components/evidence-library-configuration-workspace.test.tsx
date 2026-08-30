@@ -1239,24 +1239,31 @@ describe("<ConfigurationWorkspace>", () => {
           ]),
         );
 
+        await user.click(ai.getByRole("checkbox", { name: AI_MODELS[0] }));
+        await user.click(ai.getByRole("checkbox", { name: AI_MODELS[1] }));
         await user.click(ai.getByRole("combobox", { name: "ai.modelLabel" }));
-        await user.click(await screen.findByRole("option", { name: AI_MODELS[0] }));
+        await user.click(
+          await screen.findByRole("option", { name: AI_MODELS[1] }),
+        );
         await user.click(screen.getByRole("button", { name: "save" }));
 
         await waitFor(() => expect(saved).toHaveLength(1));
         const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
-        expect(request.sections.find((row) => row.sectionKey === "ai")).toEqual({
-          sectionKey: "ai",
-          payload: {
-            providers: [
-              {
-                provider: "openrouter",
-                enabled: true,
-                defaultModel: AI_MODELS[0],
-              },
-            ],
+        expect(request.sections.find((row) => row.sectionKey === "ai")).toEqual(
+          {
+            sectionKey: "ai",
+            payload: {
+              providers: [
+                {
+                  provider: "openrouter",
+                  enabled: true,
+                  models: [AI_MODELS[0], AI_MODELS[1]],
+                  defaultModel: AI_MODELS[1],
+                },
+              ],
+            },
           },
-        });
+        );
         expect(request.sections.find((row) => row.sectionKey === "features")?.payload)
           .toMatchObject({ ai: true });
       },

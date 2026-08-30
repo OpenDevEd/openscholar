@@ -178,7 +178,11 @@ describe("the OpenRouter key", () => {
   it.each([
     [
       "another vendor",
-      { providers: [{ provider: "openai", enabled: true, defaultModel: "gpt-5.4" }] },
+      {
+        providers: [
+          { provider: "openai", enabled: true, defaultModel: "gpt-5.4" },
+        ],
+      },
       true,
     ],
     [
@@ -200,21 +204,27 @@ describe("the OpenRouter key", () => {
       "a model the runtime does not offer",
       {
         providers: [
-          { provider: AI_PROVIDER, enabled: true, defaultModel: "made-up/model" },
+          {
+            provider: AI_PROVIDER,
+            enabled: true,
+            models: ["made-up/model"],
+            defaultModel: "made-up/model",
+          },
         ],
       },
       true,
     ],
-    [
-      "a saved AI row with no provider",
-      { providers: [] },
-      false,
-    ],
+    ["a saved AI row with no provider", { providers: [] }, false],
     [
       "a provider switched on while AI answers are off",
       {
         providers: [
-          { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+          {
+            provider: AI_PROVIDER,
+            enabled: true,
+            models: [AI_MODELS[0]],
+            defaultModel: AI_MODELS[0],
+          },
         ],
       },
       false,
@@ -239,7 +249,12 @@ describe("the OpenRouter key", () => {
     const fixture = await createReadySetupFixture("ai_save_good");
     const ai = {
       providers: [
-        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+        {
+          provider: AI_PROVIDER,
+          enabled: true,
+          models: [AI_MODELS[0]],
+          defaultModel: AI_MODELS[0],
+        },
       ],
     };
     await fixture.admin.mutation(
@@ -524,6 +539,7 @@ describe("the OpenRouter key", () => {
           {
             provider: AI_PROVIDER,
             enabled: true,
+            models: [AI_MODELS[0]],
             defaultModel: AI_MODELS[0],
           },
         ],
@@ -607,6 +623,7 @@ describe("the OpenRouter key", () => {
           {
             provider: AI_PROVIDER,
             enabled: true,
+            models: [AI_MODELS[0]],
             defaultModel: AI_MODELS[0],
             apiKey: OPENROUTER_KEY,
           },

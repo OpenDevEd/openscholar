@@ -4,12 +4,12 @@ import {
   validateSectionPayload,
 } from "../../../convex/evidenceLibraries/sectionPayload";
 import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
-import { AI_PROVIDER } from "./ai";
+import { AI_MODELS, AI_PROVIDER } from "./ai";
 import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 2 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 3 as const;
 export const MAX_CHANGED_POINTERS = 100;
 
 export type OwnerConfigurationSnapshotRow = {
@@ -408,6 +408,73 @@ function migrateVersionOneToTwo(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+function migrateVersionTwoToThree(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  const activeModels = new Set(AI_MODELS);
+  let disableAiAnswers = false;
+  next.ownerConfigurationVersion = 3;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "ai" || !isRecord(row.payload)) continue;
+    const providers = Array.isArray(row.payload.providers)
+      ? row.payload.providers
+      : [];
+    row.payload = {
+      providers: providers.map((value) => {
+        const provider = isRecord(value) ? value : {};
+        const enabled = provider.enabled === true;
+        if (!enabled) {
+          return { provider: provider.provider, enabled: false, models: [] };
+        }
+        const listedModels = Array.isArray(provider.models)
+          ? provider.models.filter(
+              (model): model is string => typeof model === "string",
+            )
+          : [];
+        const savedDefault =
+          typeof provider.defaultModel === "string"
+            ? provider.defaultModel
+            : undefined;
+        const candidates = [
+          ...listedModels,
+          ...(savedDefault ? [savedDefault] : []),
+        ];
+        const selectedModels = new Set<string>();
+        const models: string[] = [];
+        for (const model of candidates) {
+          if (!activeModels.has(model) || selectedModels.has(model)) continue;
+          selectedModels.add(model);
+          models.push(model);
+        }
+        if (models.length === 0) {
+          disableAiAnswers = true;
+          return { provider: provider.provider, enabled: false, models: [] };
+        }
+        const defaultModel =
+          savedDefault && models.includes(savedDefault)
+            ? savedDefault
+            : models[0];
+        return {
+          provider: provider.provider,
+          enabled: true,
+          models,
+          ...(defaultModel ? { defaultModel } : {}),
+        };
+      }),
+    };
+  }
+  if (disableAiAnswers) {
+    const features = next.sections.find(
+      (row) => row.sectionKey === "features" && isRecord(row.payload),
+    );
+    if (features && isRecord(features.payload)) {
+      features.payload = { ...features.payload, ai: false };
+    }
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
   {
     from: 1,
@@ -418,6 +485,19 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
         sectionKey: "ai",
         payload: () => ({
           providers: [{ provider: AI_PROVIDER, enabled: false }],
+        }),
+      },
+    ],
+  },
+  {
+    from: 2,
+    to: 3,
+    migrate: migrateVersionTwoToThree,
+    defaultRows: [
+      {
+        sectionKey: "ai",
+        payload: () => ({
+          providers: [{ provider: AI_PROVIDER, enabled: false, models: [] }],
         }),
       },
     ],

@@ -148,13 +148,19 @@ export const configProvenanceValidator = v.object({
   catalogsSha256: v.string(),
 });
 
-// Historical revisions may still be version 1 while mutable drafts are always
-// stored in the current version.
+// Revisions preserve every supported historical version. Draft storage accepts
+// the previous version during the widen-migrate-narrow rollout so existing rows
+// can be loaded and migrated transactionally before this is narrowed again.
 export const ownerConfigurationVersionValidator = v.union(
   v.literal(1),
   v.literal(2),
+  v.literal(3),
 );
-export const currentOwnerConfigurationVersionValidator = v.literal(2);
+export const draftOwnerConfigurationVersionValidator = v.union(
+  v.literal(2),
+  v.literal(3),
+);
+export const currentOwnerConfigurationVersionValidator = v.literal(3);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),
@@ -334,7 +340,7 @@ export const evidenceLibraryConfigDraftFields = {
   libraryId: v.id("evidenceLibraries"),
   baseRevisionId: v.union(v.id("evidenceLibraryConfigRevisions"), v.null()),
   editVersion: v.number(),
-  ownerConfigurationVersion: currentOwnerConfigurationVersionValidator,
+  ownerConfigurationVersion: draftOwnerConfigurationVersionValidator,
   contractProvenance: configProvenanceValidator,
   createdByClerkUserId: v.string(),
   updatedByClerkUserId: v.string(),

@@ -1562,6 +1562,22 @@
 		"services": {
 			"type": "object",
 			"properties": {
+				"redis": {
+					"type": "object",
+					"properties": {
+						"url": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 4096,
+							"format": "uri",
+							"writeOnly": true
+						}
+					},
+					"required": [
+						"url"
+					],
+					"additionalProperties": false
+				},
 				"database": {
 					"type": "object",
 					"properties": {
@@ -1835,19 +1851,18 @@
 								"maxLength": 512,
 								"writeOnly": true
 							},
+							"models": {
+								"default": [],
+								"maxItems": 20,
+								"type": "array",
+								"items": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 128,
+									"pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+								}
+							},
 							"defaultModel": {
-								"type": "string",
-								"minLength": 1,
-								"maxLength": 128,
-								"pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
-							},
-							"largeModel": {
-								"type": "string",
-								"minLength": 1,
-								"maxLength": 128,
-								"pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
-							},
-							"smallModel": {
 								"type": "string",
 								"minLength": 1,
 								"maxLength": 128,
