@@ -174,9 +174,10 @@ cases whose purchase or search filter returns no rows for a fresh user.
 
 Run every planned axe combination. Reuse
 `credits/internal:grantPurchasedCreditsFromPaymentIntent` through the existing
-`WebhookWaiter` to seed one disposable purchase row for filtered matrix cases.
-Put `abc` in the existing searchable `metadata.model` field so the search case
-has a real result. Keep all 24 matrix names, tags, disabled rules, and zero-
+`WebhookWaiter` to seed one disposable purchase row for purchase-filter cases.
+The browser also narrows server search results by visible description, so use
+the existing `credits/internal:addCredits` grant with `abc` in its description
+for the search case. Keep all 24 matrix names, tags, disabled rules, and zero-
 violation assertions. Remove only the conditional skip. The existing fixture
 must hard-delete the user and its seeded transaction after every case.
 
