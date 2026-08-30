@@ -48,7 +48,8 @@ jobs:
       CLERK_WEBHOOK_SIGNING_SECRET: ${{ secrets.CLERK_WEBHOOK_SIGNING_SECRET }}
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_BASE_URL: http://localhost:3000
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3000
     steps:
       - uses: actions/checkout@v4
 
@@ -145,7 +146,8 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_BASE_URL: http://localhost:3001
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
       - uses: actions/checkout@v4
 
@@ -248,7 +250,8 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_BASE_URL: http://localhost:3001
+      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
       - uses: actions/checkout@v4
 
