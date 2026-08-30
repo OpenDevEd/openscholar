@@ -617,7 +617,7 @@ function TransactionsPanelClientInner({ jobId }: Props) {
         }
       />
       <TransactionsPanelTabs />
-      <TransactionsPanelToolbar counts={counts} />
+      <TransactionsPanelToolbar counts={counts} searchRef={searchRef} />
 
       {jobId && (
         <div
