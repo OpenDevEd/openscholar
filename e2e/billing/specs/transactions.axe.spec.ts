@@ -31,10 +31,16 @@ test.describe("Transactions panel — axe matrix", () => {
         test(`${density} × ${filter.label} × drawer-${drawerState}`, async ({
           page,
           clerkUser: _clerkUser,
-          billingPage,
+          webhookWaiter,
         }) => {
           void _clerkUser;
-          await billingPage.goto();
+          if (drawerState === "open") {
+            if (filter.label === "search=abc") {
+              await webhookWaiter.seedSearchableGrant("abc");
+            } else if (filter.query) {
+              await webhookWaiter.seedPurchase();
+            }
+          }
           await page.goto(`/settings/billing${filter.query}`);
           await page.waitForSelector("[data-transactions-panel]");
 
@@ -47,15 +53,18 @@ test.describe("Transactions panel — axe matrix", () => {
           await densityOption.click();
           await expect(densityOption).toBeHidden();
           await expect(
-            page.locator(`[data-transactions-panel][data-transactions-density="${density}"]`),
+            page.locator(
+              `[data-transactions-panel][data-transactions-density="${density}"]`,
+            ),
           ).toBeVisible();
 
           if (drawerState === "open") {
             const firstRow = page.locator("[data-txn-row]").first();
-            const rowCount = await page.locator("[data-txn-row]").count();
-            test.skip(rowCount === 0, "no rows to open the drawer on");
+            await expect(firstRow).toBeVisible();
             await firstRow.click();
-            await expect(page.locator("[data-transaction-drawer]")).toBeVisible();
+            await expect(
+              page.locator("[data-transaction-drawer]"),
+            ).toBeVisible();
           }
 
           const builder = new AxeBuilder({ page })

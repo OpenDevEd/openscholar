@@ -175,7 +175,9 @@ It's designed for systematic reviews and complex queries, not just keyword match
     - `e2e-auth` (`npm run test:e2e:auth`)
     - `billing-live` (`npm run test:billing:live:ci`) against shared Convex dev + Stripe sandbox
   - `.github/workflows/billing-nightly.yml` runs `npm run test:billing:extended:ci` nightly
-  - Branch protection should require all required CI checks on pull requests.
+  - Branch protection should require the aggregate `CI` check. It covers the
+    required jobs while allowing runtime E2E to skip documentation-only pull
+    requests.
 
 ## Billing Live Regression Suite
 
