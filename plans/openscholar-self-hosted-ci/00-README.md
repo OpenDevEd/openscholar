@@ -70,15 +70,13 @@ build three times, and run Playwright's Linux package installer twice.
     development data, preserve existing balances in the current ledger and
     counters, then route every same-repository secret job to `OpenScholar
 Secret CI`. No OpenScholar job may use a paid GitHub runner.
-14. Keep the Clerk browser suite on `OpenScholar Secret CI`. The safe current
-    suite uses one fixed draft, serializes the auth job, restores its tagline
-    and description after each run, and proves the enabled owner gate, Save,
-    and reopen behavior. It does not preserve the old Reserve, Preview,
-    Activate, and revisit check. Activation now provisions a real runtime, and
-    CI has no safe disposable provider environment. Record that conflict in
-    `01-BLOCKER.md`; do not hide it by claiming the smaller check is equal.
-    Never give this runner Coolify, database, storage, or production
-    credentials.
+14. Keep the full Clerk browser suite on `OpenScholar Secret CI`, including
+    Reserve, Save, Preview, Activate, and revisit. Do not replace it with the
+    smaller fixed-draft Save and reopen check. Activation now provisions a real
+    runtime, and CI has no safe disposable provider environment. Record that
+    exact conflict in `01-BLOCKER.md` and stop before claiming the pull request
+    is complete. Never give this runner shared Coolify, database, storage, or
+    production credentials.
     Set the required non-secret `EVIDENCE_LIBRARY_PLATFORM_DOMAIN` in the cloud
     dev deployment to the shared development value `opendev.space`; do not add
     an `EL_*` provisioning value.
@@ -116,8 +114,8 @@ Secret CI`. No OpenScholar job may use a paid GitHub runner.
 - `playwright.config.ts`, which already builds production code and runs one CI
   worker for the stateful auth and billing suites.
 - `convex/webhooks/projections.ts` and
-  `convex/evidenceLibraries/mutations.ts`, which already project Clerk state
-  and create a draft without starting runtime setup.
+  `convex/evidenceLibraries/mutations.ts`, which project Clerk state and expose
+  the real reservation and activation paths used by the original browser test.
 - Next.js 16.2.4's installed CI cache guide under
   `node_modules/next/dist/docs/01-app/02-guides/ci-build-caching.md`.
 

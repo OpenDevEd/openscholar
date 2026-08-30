@@ -6,10 +6,11 @@ The original `dev` auth browser test did more than sign in. It reserved a new
 Evidence Library, saved its configuration, previewed it, activated it, and
 revisited the activated library.
 
-The current self-hosted auth job safely runs six Clerk and configuration cases.
-It uses a fixed draft, saves it, reopens it, and restores its original values.
-That does not preserve the old activation check. Calling the smaller suite a
-full replacement would weaken CI.
+A temporary self-hosted run proved that a smaller fixed-draft Save and reopen
+case can pass. That case does not preserve the original activation check, so it
+is not the final test. The branch restores the original Reserve, Save, Preview,
+Activate, and revisit case. That case cannot safely run until the environment
+below exists.
 
 ## Why activation cannot run in the current environment
 
@@ -66,7 +67,9 @@ paths, or deployment credentials.
 
 ## Safe work that continues
 
-Unit tests, the production build, all live billing tests, all billing browser
-tests, and the safe Clerk suite run on the four isolated OpenScholar runners.
-No paid GitHub runner is used. Artifact uploads stay required while GitHub
-recalculates storage after the expired artifacts were deleted.
+Unit tests, the production build, all live billing tests, and all billing
+browser tests run on the four isolated OpenScholar runners. The original Clerk
+activation test is routed only to the OpenScholar secret runners, but it cannot
+run safely without the disposable environment above. No paid GitHub runner is
+used. Artifact uploads stay required while GitHub recalculates storage after
+the expired artifacts were deleted.

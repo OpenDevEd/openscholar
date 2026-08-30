@@ -40,10 +40,11 @@ uploads required, but put billing uploads after every billing test command.
 
 Repair only formal-rabbit-271 development data. Use the existing feature-flag
 upsert for the subscription master, Go, and Pro flags. Project the existing
-Clerk E2E organization through the production projection function. Create one
-fixed, never-activated draft through the internal reservation mutation. The
-auth browser test must select that organization, prove Save and reopen against
-real Convex state, restore its old values, and never call runtime setup.
+Clerk E2E organization through the production projection function. Keep the
+original auth browser contract: reserve a new library, save it, preview it,
+activate it, and revisit it. Do not replace that contract with a fixed draft.
+If the disposable runtime environment in 01-BLOCKER.md does not exist, keep
+the original test and stop with the blocker instead of weakening it.
 
 COMMIT DISCIPLINE
 

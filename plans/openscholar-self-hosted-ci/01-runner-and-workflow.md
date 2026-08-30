@@ -80,12 +80,13 @@ uploads after the test commands. Their failure remains blocking.
 
 The same run reached the real Clerk suite on `openscholar-ci-secret-1`. Five
 tests passed. The library test stopped at the owner gate because the cloud dev
-deployment has no Clerk organization projection. Its later steps are also
-stale: the current configuration page has no top-level Preview control or
-`activation-success` result, and the current activation command schedules real
-database, storage, Coolify, and runtime work. CI must not receive those
-credentials. Use one serialized development draft to keep the real enabled
-owner, Save, and reopen browser contract without provisioning a runtime.
+deployment had no Clerk organization projection. The projection was repaired,
+but the original test must still reserve, save, preview, activate, and revisit
+a new library. Activation schedules real database, storage, Coolify, and
+runtime work. CI must not receive shared provider credentials. Keep the
+original browser contract and record the missing disposable activation
+environment in `01-BLOCKER.md`; a smaller fixed-draft check is not a valid
+replacement.
 
 Nightly run
 [33288815763](https://github.com/OpenDevEd/openalex-count/actions/runs/33288815763)
@@ -283,15 +284,13 @@ Leave `subscriptions.plan.enterprise` disabled. Read all four rows back before
 rerunning extended billing.
 
 Project the existing Clerk E2E organization and admin membership through
-`webhooks/projections:applyOrganizationMembershipEvent`. Reserve one fixed
-draft with `evidenceLibraries/mutations:reserveAddress` and the real Clerk
-identity. Set `EVIDENCE_LIBRARY_PLATFORM_DOMAIN=opendev.space`, matching the
-shared development deployment. Prime the existing served-host cache for this
-one reservation so the action does not need a Coolify credential; it still
-probes the real public candidate before writing. The reservation writes only
-Convex draft/setup rows and does not schedule setup. Store its ID and the Clerk
-organization ID as repository Actions secrets. Do not set any `EL_*` value in
-the cloud deployment or GitHub.
+`webhooks/projections:applyOrganizationMembershipEvent`. Set
+`EVIDENCE_LIBRARY_PLATFORM_DOMAIN=opendev.space`, matching the shared
+development deployment, and store the Clerk organization ID as a repository
+Actions secret. Do not create a fixed draft to replace the original test. Do
+not set any `EL_*` value in the cloud deployment or GitHub. The original test
+remains blocked until it has the disposable providers listed in
+`01-BLOCKER.md`.
 
 ### 2. Create the isolated guest
 
@@ -364,12 +363,11 @@ In `ci-jobs.yml`:
    16 route Proxy requests through its expected localhost name.
 4. Keep billing concurrency named `billing-live-shared-test-user` with
    `cancel-in-progress: false`.
-5. Serialize auth as `auth-e2e-shared-library` with cancellation off. Make the
-   test select `E2E_CLERK_ORGANIZATION_ID`, open the fixed
-   `E2E_EVIDENCE_LIBRARY_ID` draft, save a unique tagline and description, reopen
-   the page, verify both values, then restore the values it read at the start.
-   Keep a browser check that the current `Set up and activate` control is
-   available, but never click it in CI.
+5. Serialize auth with cancellation off. Make the test select
+   `E2E_CLERK_ORGANIZATION_ID`, then preserve the original new-library flow:
+   Reserve, Save, Preview, Activate, and revisit the activated configuration.
+   Do not replace this with a fixed draft. Do not run the activation case until
+   the disposable runtime environment in `01-BLOCKER.md` exists.
 6. Keep every timeout, artifact path, artifact name, `if: always()` rule, and
    the existing `continue-on-error` only on push extended billing. Move each
    billing artifact upload after its live and browser test commands. Artifact
@@ -575,9 +573,10 @@ part of rollback.
 
 ## Known risks
 
-- Auth uses one fixed cloud development draft. Its uncancelled concurrency
-  group prevents simultaneous edits, and the browser restores the values it
-  read. It never activates the draft or receives runtime credentials.
+- The original auth case activates a new library and therefore needs the
+  isolated disposable runtime environment in `01-BLOCKER.md`. The final pull
+  request cannot be called complete until that environment exists and the case
+  passes twice on the exact head.
 - Live billing pushes the tested commit to the checked Convex Cloud dev
   deployment and mutates Stripe test data. The shared billing concurrency key
   must remain uncancelled.
