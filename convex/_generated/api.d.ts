@@ -65,6 +65,7 @@ import type * as evidenceLibraries_configurationDeployment from "../evidenceLibr
 import type * as evidenceLibraries_configurationDeploymentActions from "../evidenceLibraries/configurationDeploymentActions.js";
 import type * as evidenceLibraries_configurationMigration from "../evidenceLibraries/configurationMigration.js";
 import type * as evidenceLibraries_configurationSnapshot from "../evidenceLibraries/configurationSnapshot.js";
+import type * as evidenceLibraries_coolifyApplication from "../evidenceLibraries/coolifyApplication.js";
 import type * as evidenceLibraries_coolifyClient from "../evidenceLibraries/coolifyClient.js";
 import type * as evidenceLibraries_credentialActions from "../evidenceLibraries/credentialActions.js";
 import type * as evidenceLibraries_credentials from "../evidenceLibraries/credentials.js";
@@ -112,6 +113,7 @@ import type * as evidenceLibraries_uploads from "../evidenceLibraries/uploads.js
 import type * as evidenceLibraries_uploadsClient from "../evidenceLibraries/uploadsClient.js";
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
 import type * as evidenceLibraries_versions from "../evidenceLibraries/versions.js";
+import type * as evidenceLibraries_volumeDeletionClient from "../evidenceLibraries/volumeDeletionClient.js";
 import type * as extraction_access from "../extraction/access.js";
 import type * as extraction_actions from "../extraction/actions.js";
 import type * as extraction_aggregates from "../extraction/aggregates.js";
@@ -335,6 +337,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/configurationDeploymentActions": typeof evidenceLibraries_configurationDeploymentActions;
   "evidenceLibraries/configurationMigration": typeof evidenceLibraries_configurationMigration;
   "evidenceLibraries/configurationSnapshot": typeof evidenceLibraries_configurationSnapshot;
+  "evidenceLibraries/coolifyApplication": typeof evidenceLibraries_coolifyApplication;
   "evidenceLibraries/coolifyClient": typeof evidenceLibraries_coolifyClient;
   "evidenceLibraries/credentialActions": typeof evidenceLibraries_credentialActions;
   "evidenceLibraries/credentials": typeof evidenceLibraries_credentials;
@@ -382,6 +385,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/uploadsClient": typeof evidenceLibraries_uploadsClient;
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
   "evidenceLibraries/versions": typeof evidenceLibraries_versions;
+  "evidenceLibraries/volumeDeletionClient": typeof evidenceLibraries_volumeDeletionClient;
   "extraction/access": typeof extraction_access;
   "extraction/actions": typeof extraction_actions;
   "extraction/aggregates": typeof extraction_aggregates;
