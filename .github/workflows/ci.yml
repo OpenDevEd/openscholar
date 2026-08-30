@@ -70,6 +70,7 @@ jobs:
     name: Unit tests
     runs-on: openscholar-secret
     timeout-minutes: 20
+    needs: changes
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
       CLERK_SECRET_KEY: sk_test_placeholder
@@ -94,6 +95,7 @@ jobs:
     name: Build
     runs-on: openscholar-secret
     timeout-minutes: 20
+    needs: changes
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
       CLERK_SECRET_KEY: sk_test_placeholder
