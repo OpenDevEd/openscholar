@@ -395,10 +395,23 @@ function Workspace({
       .finally(() => setActivating(false));
   }
 
+  const operationLabel =
+    operationRunning && operation
+      ? `${operation.runtimeUpdate
+          ? t("updatingSoftware", {
+              rev: shortCommit(operation.runtimeUpdate.to),
+            })
+          : t("applying")} · ${t(`stages.${operation.stage}`)}`
+      : null;
   const activateButton = (
     <Button disabled={!canActivate} onClick={() => setActivateOpen(true)}>
-      {activating ? <Spinner /> : <Rocket />}
-      {isDraftLibrary ? t("setUpAndActivate") : t("activate")}
+      {activating || operationRunning ? <Spinner /> : <Rocket />}
+      {operationLabel ??
+        (activating
+          ? t("applying")
+          : isDraftLibrary
+            ? t("setUpAndActivate")
+            : t("activate"))}
     </Button>
   );
 
@@ -432,6 +445,17 @@ function Workspace({
                 {saving ? <Spinner /> : <Save />}
                 {saving ? t("saving") : t("save")}
               </Button>
+              {operationLabel ? (
+                <span
+                  role="status"
+                  aria-live="polite"
+                  aria-label={operationLabel}
+                  data-operation-stage={operation?.stage}
+                  className="sr-only"
+                >
+                  {operationLabel}
+                </span>
+              ) : null}
               {problems ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -444,9 +468,8 @@ function Workspace({
               )}
             </PanelHeader>
             {operation ? (
-              <OperationBanner
+              <OperationFailureNotice
                 operation={operation}
-                running={operationRunning}
                 libraryId={libraryId}
                 onJump={jumpTo}
               />
@@ -596,18 +619,15 @@ function Workspace({
 }
 
 /**
- * The latest platform operation: progress while it runs (a publish, a restore
- * or a software update), the failure and any assembly issues when it stopped.
- * Each issue links to its section.
+ * The latest failed platform operation and any assembly issues. Running state
+ * is shown in the Activate button, where the owner started the work.
  */
-function OperationBanner({
+function OperationFailureNotice({
   operation,
-  running,
   libraryId,
   onJump,
 }: {
   operation: NonNullable<Operation>;
-  running: boolean;
   libraryId: Id<"evidenceLibraries">;
   onJump: (key: PageSectionKey) => void;
 }) {
@@ -616,26 +636,6 @@ function OperationBanner({
     api.evidenceLibraries.configurationDeployment.retryConfigurationDeployment,
   );
   const issues = operation.issues ?? [];
-  if (running) {
-    return (
-      <div
-        role="status"
-        aria-live="polite"
-        data-operation-stage={operation.stage}
-        className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border/50 bg-muted/30 p-4 text-sm"
-      >
-        <Spinner className="h-4 w-4 text-primary" />
-        <span className="font-medium">
-          {operation.runtimeUpdate
-            ? t("updatingSoftware", {
-                rev: shortCommit(operation.runtimeUpdate.to),
-              })
-            : t("applying")}
-        </span>
-        <StatusChip tone="running">{t(`stages.${operation.stage}`)}</StatusChip>
-      </div>
-    );
-  }
   if (operation.status !== "failed") return null;
   const hostingFallback = operation.runtimeUpdate
     ? t("versions.updateError")
