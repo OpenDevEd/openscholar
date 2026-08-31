@@ -5,7 +5,7 @@ import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { History, RefreshCw } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Suspense, use, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -158,8 +158,10 @@ export function VersionsSection({
 
   // Opening the page checks for updates once; "Check again" asks once more.
   const [, setCheckCount] = useState(0);
+  const previousOperationRunning = useRef(operationRunning);
+  const checkError = t("versions.checkError");
   const checkPromise = live
-    ? runtimeCheck(check, libraryId, t("versions.checkError"))
+    ? runtimeCheck(check, libraryId, checkError)
     : null;
   const [busy, setBusy] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
@@ -168,8 +170,18 @@ export function VersionsSection({
 
   const blocked = busy || operationRunning;
 
+  useEffect(() => {
+    const operationFinished =
+      previousOperationRunning.current && !operationRunning;
+    previousOperationRunning.current = operationRunning;
+    if (!live || !operationFinished) return;
+
+    runtimeCheck(check, libraryId, checkError, { fresh: true });
+    setCheckCount((count) => count + 1);
+  }, [check, checkError, libraryId, live, operationRunning]);
+
   function checkAgain() {
-    runtimeCheck(check, libraryId, t("versions.checkError"), { fresh: true });
+    runtimeCheck(check, libraryId, checkError, { fresh: true });
     setCheckCount((count) => count + 1);
   }
 
