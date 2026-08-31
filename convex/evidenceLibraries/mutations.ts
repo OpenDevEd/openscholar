@@ -734,6 +734,13 @@ export async function retryEvidenceLibrarySetup(
       "Only a failed Evidence Library setup can be retried",
     );
   }
+  // A failed setup must follow the platform's current supported release.
+  // Keeping the first attempt's pin can make every retry rebuild against a
+  // runtime that no longer accepts the current configuration contract.
+  await ctx.db.patch(setup.setupOperation._id, {
+    setupRuntimeCommit: undefined,
+    setupRuntimeImage: undefined,
+  });
   const started = await claimAndScheduleEvidenceLibrarySetupOperation(ctx, {
     libraryId: args.libraryId,
     operationId: setup.setupOperation._id,

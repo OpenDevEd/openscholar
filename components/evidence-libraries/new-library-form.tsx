@@ -2,20 +2,20 @@
 
 import { useOrganization } from "@clerk/nextjs";
 import { useAction } from "convex/react";
-import { Check, Lock, RotateCw } from "lucide-react";
+import { Building2, Check, Lock, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { initialsOf } from "@/lib/evidence-libraries/initials";
 import {
   createInitialEvidenceLibraryShortName,
   MAX_EVIDENCE_LIBRARY_NAME_LENGTH,
@@ -94,10 +94,22 @@ export function NewLibraryForm() {
     );
   }
   // Switching organisation starts a fresh form.
-  return <OwnerForm key={organization.id} organizationName={organization.name} />;
+  return (
+    <OwnerForm
+      key={organization.id}
+      organizationName={organization.name}
+      organizationImageUrl={organization.imageUrl}
+    />
+  );
 }
 
-function OwnerForm({ organizationName }: { organizationName: string }) {
+function OwnerForm({
+  organizationName,
+  organizationImageUrl,
+}: {
+  organizationName: string;
+  organizationImageUrl: string;
+}) {
   const t = useTranslations("evidenceLibraries.new");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -255,12 +267,16 @@ function OwnerForm({ organizationName }: { organizationName: string }) {
         <FieldGroup title={t("ownerTitle")}>
           <PanelRow
             leading={
-              <span
-                aria-hidden="true"
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-white"
-              >
-                {initialsOf(organizationName)}
-              </span>
+              <Avatar className="size-7 rounded-md">
+                <AvatarImage
+                  src={organizationImageUrl}
+                  alt=""
+                  className="rounded-md object-cover"
+                />
+                <AvatarFallback className="rounded-md">
+                  <Building2 className="size-4" aria-hidden />
+                </AvatarFallback>
+              </Avatar>
             }
             title={t("ownedBy", { organization: organizationName })}
             hint={t("ownerHint")}

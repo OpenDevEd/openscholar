@@ -868,10 +868,14 @@ describe("<ConfigurationWorkspace>", () => {
       }),
     );
     await renderWorkspace();
-    const banner = document.querySelector("[data-operation-stage='deployment']");
-    expect(banner).toHaveAttribute("role", "status");
-    expect(banner).toHaveTextContent("stages.deployment");
-    expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
+    const activate = screen.getByRole("button", {
+      name: /applying · stages\.deployment/,
+    });
+    expect(activate).toBeDisabled();
+    expect(within(activate).getByRole("status", { name: "Loading" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "applying · stages.deployment" }),
+    ).toHaveAttribute("data-operation-stage", "deployment");
   });
 
   it("names the software update while it runs and blocks Activate", async () => {
@@ -888,10 +892,16 @@ describe("<ConfigurationWorkspace>", () => {
       }),
     );
     await renderWorkspace();
-    const banner = document.querySelector("[data-operation-stage]");
-    expect(banner).toHaveTextContent("updatingSoftware");
-    expect(banner).toHaveAttribute("data-operation-stage", "deployment");
-    expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
+    const activate = screen.getByRole("button", {
+      name: /updatingSoftware · stages\.deployment/,
+    });
+    expect(activate).toBeDisabled();
+    expect(within(activate).getByRole("status", { name: "Loading" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", {
+        name: "updatingSoftware · stages.deployment",
+      }),
+    ).toHaveAttribute("data-operation-stage", "deployment");
     expect(screen.getByRole("link", { name: "sections.versions" })).toHaveAttribute(
       "href",
       "#sec-versions",

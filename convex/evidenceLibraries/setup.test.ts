@@ -66,6 +66,13 @@ describe("Evidence Library setup draft", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-25T00:00:00Z"));
     const fixture = await createActivatedSetupFixture("saved_status_retry");
+    await fixture.t.run((ctx) =>
+      ctx.db.patch(fixture.created.setupOperationId, {
+        setupRuntimeCommit: "1".repeat(40),
+        setupRuntimeImage:
+          "ghcr.io/opendeved/evidence-library-runtime@sha256:" + "1".repeat(64),
+      }),
+    );
     await fixture.t.mutation(
       internal.evidenceLibraries.setupOperation.failSetupOperation,
       {
@@ -127,6 +134,8 @@ describe("Evidence Library setup draft", () => {
     expect(refreshed?.setupOperation).not.toHaveProperty("error");
     expect(operations).toHaveLength(1);
     expect(operations[0]?._id).toBe(fixture.created.setupOperationId);
+    expect(operations[0]).not.toHaveProperty("setupRuntimeCommit");
+    expect(operations[0]).not.toHaveProperty("setupRuntimeImage");
   });
 
   it("creates one linked setup draft and refuses a second under the same name", async () => {
