@@ -2811,6 +2811,22 @@
       "consentVersionError": "Use a whole number, 1 or higher."
     },
     "updatingSoftware": "Updating the Evidence Library software to {rev}",
+    "operationFlow": {
+      "saving": "सहेज रहे हैं",
+      "queued": "प्रतीक्षा",
+      "assembling": "तैयारी",
+      "validating": "जाँच",
+      "publishing": "लाइब्रेरी बन रही है",
+      "activating": "ऑनलाइन हो रही है",
+      "database": "डेटाबेस बन रहा है",
+      "storage": "फ़ाइलें तैयार हो रही हैं",
+      "application": "लाइब्रेरी बन रही है",
+      "deployment": "लाइब्रेरी बन रही है",
+      "health_check": "ऑनलाइन हो रही है",
+      "coolify": "लाइब्रेरी हट रही है",
+      "convex": "काम पूरा हो रहा है",
+      "completed": "लाइव"
+    },
     "versions": {
       "description": "Every activation makes a version. Restore an older one at any time.",
       "softwareHeading": "Evidence Library software",

@@ -2811,6 +2811,22 @@
       "consentVersionError": "Use a whole number, 1 or higher."
     },
     "updatingSoftware": "Updating the Evidence Library software to {rev}",
+    "operationFlow": {
+      "saving": "Enregistrement",
+      "queued": "En attente",
+      "assembling": "Préparation",
+      "validating": "Vérification",
+      "publishing": "Construction",
+      "activating": "Mise en ligne",
+      "database": "Création de la base",
+      "storage": "Préparation des fichiers",
+      "application": "Création en cours",
+      "deployment": "Construction",
+      "health_check": "Mise en ligne",
+      "coolify": "Suppression",
+      "convex": "Finalisation",
+      "completed": "En ligne"
+    },
     "versions": {
       "description": "Every activation makes a version. Restore an older one at any time.",
       "softwareHeading": "Evidence Library software",

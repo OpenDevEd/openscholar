@@ -2811,6 +2811,22 @@
       "consentVersionError": "Use a whole number, 1 or higher."
     },
     "updatingSoftware": "Updating the Evidence Library software to {rev}",
+    "operationFlow": {
+      "saving": "正在保存更改",
+      "queued": "等待开始",
+      "assembling": "正在准备发布",
+      "validating": "正在检查设置",
+      "publishing": "正在构建证据库",
+      "activating": "正在上线",
+      "database": "正在创建数据库",
+      "storage": "正在准备文件",
+      "application": "正在创建证据库",
+      "deployment": "正在构建证据库",
+      "health_check": "正在上线",
+      "coolify": "正在删除证据库",
+      "convex": "正在完成删除",
+      "completed": "已上线"
+    },
     "versions": {
       "description": "Every activation makes a version. Restore an older one at any time.",
       "softwareHeading": "Evidence Library software",
