@@ -118,7 +118,7 @@ type Operation = DraftResult["operation"];
  * A new library's setup operation is created queued and only starts once the
  * owner activates; until it holds a revision it is waiting, not running.
  */
-function isOperationRunning(operation: Operation): operation is NonNullable<Operation> {
+function isOperationRunning(operation: Operation): boolean {
   if (!operation) return false;
   if (operation.kind === "setup" && !operation.revisionId) return false;
   return operation.status === "queued" || operation.status === "running";
@@ -293,6 +293,10 @@ function Workspace({
   const dirty = isDirty(draft, saved);
   const problems = hasProblems(draft);
   const operationRunning = isOperationRunning(operation);
+  const runtimeRefreshKey =
+    operation?.runtimeUpdate && !operationRunning
+      ? `${operation._id}:${operation.status}:${operation.updatedAt}`
+      : "base";
   const isDraftLibrary = libraryState === "provisioning";
   const canActivate = !activating && !saving && !problems && !operationRunning;
 
@@ -516,6 +520,7 @@ function Workspace({
                 libraryId={libraryId}
                 live={libraryState === "active"}
                 operationRunning={operationRunning}
+                refreshKey={runtimeRefreshKey}
               />
               <TeamSection libraryId={libraryId} />
               <DangerSection onDelete={() => setDeleteOpen(true)} />

@@ -117,6 +117,7 @@ async function renderSection(props: Partial<Parameters<typeof VersionsSection>[0
         libraryId={"library_123" as never}
         live
         operationRunning={false}
+        refreshKey="base"
         {...props}
       />,
     );
@@ -331,6 +332,7 @@ describe("<VersionsSection>", () => {
           libraryId={"library_123" as never}
           live
           operationRunning
+          refreshKey="base"
         />,
       ));
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -343,6 +345,7 @@ describe("<VersionsSection>", () => {
           libraryId={"library_123" as never}
           live
           operationRunning={false}
+          refreshKey="runtime-update-succeeded"
         />,
       );
       await new Promise((resolve) => setTimeout(resolve, 0));
