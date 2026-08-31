@@ -492,6 +492,46 @@ describe("Evidence Library configuration deployment", () => {
     vi.unstubAllGlobals();
   });
 
+  it("does not activate an unchanged live configuration", async () => {
+    const fixture = await createReadyLibrary("unchanged");
+    const unchanged = await fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(unchanged.hasUnpublishedChanges).toBe(false);
+
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.mutations.activateConfiguration,
+        {
+          libraryId: fixture.created.libraryId,
+          expectedEditVersion: fixture.activated.editVersion,
+        },
+      ),
+    ).rejects.toThrow(/CONFLICT.*no saved changes to activate/i);
+
+    const saved = await fixture.admin.mutation(
+      api.evidenceLibraries.mutations.saveDraftSections,
+      {
+        libraryId: fixture.created.libraryId,
+        sections: toSectionRows({
+          ...essentialSetupSections,
+          identity: {
+            ...essentialSetupSections.identity,
+            name: "Changed unchanged",
+          },
+        }),
+        expectedEditVersion: fixture.activated.editVersion,
+      },
+    );
+    const changed = await fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(changed.hasUnpublishedChanges).toBe(true);
+    expect(saved.editVersion).toBe(changed.draft.editVersion);
+  });
+
   it("refuses to publish before touching Coolify when the platform has no embedding key", async () => {
     vi.stubEnv("EL_EMBEDDING_OPENROUTER_KEY", "");
     vi.stubEnv("OPENROUTER_API_KEY", "");

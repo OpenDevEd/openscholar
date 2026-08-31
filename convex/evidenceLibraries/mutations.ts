@@ -58,7 +58,9 @@ import {
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import {
+  configurationSnapshotsEqual,
   loadDraftConfigurationSnapshot,
+  loadRevisionConfigurationSnapshot,
   persistDraftConfigurationSnapshot,
 } from "./configurationSnapshot";
 import {
@@ -638,6 +640,27 @@ export async function activateEvidenceLibraryConfiguration(
       "INVALID_DATA",
       "Evidence Library draft did not migrate to the current version",
     );
+  }
+  if (access.library.state === "active") {
+    if (!access.library.activeRevisionId) {
+      throw createError(
+        "INVALID_DATA",
+        "Active Evidence Library revision not found",
+      );
+    }
+    const active = await loadRevisionConfigurationSnapshot(
+      ctx,
+      access.library.activeRevisionId,
+      { requireComplete: false },
+    );
+    if (
+      configurationSnapshotsEqual(
+        persisted.migration.snapshot,
+        active.migration.snapshot,
+      )
+    ) {
+      throw createError("CONFLICT", "There are no saved changes to activate");
+    }
   }
   const rows = persisted.sections;
   // Every row must pass its own validator, and the sections the schema

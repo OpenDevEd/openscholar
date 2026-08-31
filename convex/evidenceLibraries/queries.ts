@@ -37,6 +37,7 @@ import {
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import {
+  configurationSnapshotsEqual,
   loadDraftConfigurationSnapshot,
   loadRevisionConfigurationSnapshot,
 } from "./configurationSnapshot";
@@ -519,6 +520,18 @@ export async function readEvidenceLibraryDraft(
       updatedAt: draft.updatedAt,
     },
   );
+  const hasUnpublishedChanges = access.library.activeRevisionId
+    ? !configurationSnapshotsEqual(
+        configurationSnapshot.migration.snapshot,
+        (
+          await loadRevisionConfigurationSnapshot(
+            ctx,
+            access.library.activeRevisionId,
+            { requireComplete: false },
+          )
+        ).migration.snapshot,
+      )
+    : true;
   // The newest operation carries the assembly issues the page lists.
   const latestOperation = await ctx.db
     .query("evidenceLibraryConfigOperations")
@@ -543,6 +556,7 @@ export async function readEvidenceLibraryDraft(
     },
     library: access.library,
     operation,
+    hasUnpublishedChanges,
     sections,
   };
 }
@@ -608,6 +622,7 @@ export const getDraft = query({
         retryable: v.boolean(),
       }),
     ),
+    hasUnpublishedChanges: v.boolean(),
     sections: v.array(
       v.object({
         sectionKey: sectionKeyValidator,

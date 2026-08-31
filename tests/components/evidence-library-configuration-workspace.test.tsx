@@ -250,6 +250,7 @@ function draftResult(
   overrides: {
     operation?: unknown;
     state?: string;
+    hasUnpublishedChanges?: boolean;
     sections?: { sectionKey: string; payload: unknown }[];
     editVersion?: number;
   } = {},
@@ -268,6 +269,7 @@ function draftResult(
         editVersion: overrides.editVersion ?? 4,
       },
       operation: overrides.operation ?? null,
+      hasUnpublishedChanges: overrides.hasUnpublishedChanges ?? false,
       sections: overrides.sections ?? savedRows,
     },
     isReady: true,
@@ -296,6 +298,7 @@ async function renderWorkspace() {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
   return {
+    unmount: () => result?.unmount(),
     // The Convex query is mocked, so a fresh read needs a render from the top.
     reread: async () => {
       await act(async () => {
@@ -421,7 +424,7 @@ describe("<ConfigurationWorkspace>", () => {
   it("shows Needs attention for a section with a problem and blocks Activate and Save", async () => {
     const user = userEvent.setup();
     await renderWorkspace();
-    expect(screen.getByRole("button", { name: "activate" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
 
     await user.clear(identityCard().getByLabelText("identity.nameLabel"));
 
@@ -436,6 +439,25 @@ describe("<ConfigurationWorkspace>", () => {
     await user.click(screen.getByRole("button", { name: "save" }));
     expect(saved).toEqual([]);
     expect(toastMock.error).toHaveBeenCalledWith("fixFirstToast", expect.anything());
+  });
+
+  it("enables Activate only for a saved or local change", async () => {
+    const user = userEvent.setup();
+    const { unmount } = await renderWorkspace();
+    expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
+
+    await user.clear(identityCard().getByLabelText("identity.nameLabel"));
+    await fillField(
+      user,
+      identityCard().getByLabelText("identity.nameLabel"),
+      "Renamed Library",
+    );
+    expect(screen.getByRole("button", { name: "activate" })).toBeEnabled();
+
+    unmount();
+    queryMock.mockReturnValue(draftResult({ hasUnpublishedChanges: true }));
+    await renderWorkspace();
+    expect(screen.getByRole("button", { name: "activate" })).toBeEnabled();
   });
 
   /** Every save is refused, with a pointer that belongs to the Identity card. */
@@ -723,6 +745,7 @@ describe("<ConfigurationWorkspace>", () => {
           error: { code: "VALIDATION_ERROR", message: "The configuration is not valid", stage: "assembling" },
           issues: [
             { pointer: "/theme/colors/accent", message: "Value must match the pattern." },
+            { pointer: "/identity/name", message: "Value must match the pattern." },
             { pointer: "/localization/locales", message: "Choose at least one language." },
           ],
         },
@@ -734,6 +757,9 @@ describe("<ConfigurationWorkspace>", () => {
     expect(notice).toHaveTextContent("The configuration is not valid");
     expect(within(notice as HTMLElement).getByText("/localization/locales")).toBeInTheDocument();
     expect(notice).toHaveTextContent("Choose at least one language.");
+    expect(
+      within(notice as HTMLElement).getAllByText("Value must match the pattern."),
+    ).toHaveLength(2);
     const link = within(notice as HTMLElement).getByRole("link", { name: "/theme/colors/accent" });
     expect(link).toHaveAttribute("href", "#sec-theme");
     await user.click(link);
@@ -768,6 +794,32 @@ describe("<ConfigurationWorkspace>", () => {
     expect(
       within(notice as HTMLElement).queryByRole("button", { name: "retry" }),
     ).toBeNull();
+  });
+
+  it("does not name the hosting provider in a failed activation", async () => {
+    queryMock.mockReturnValue(
+      draftResult({
+        operation: {
+          _id: "operation_hosting",
+          kind: "publish",
+          status: "failed",
+          stage: "deployment",
+          retryable: true,
+          error: {
+            code: "INVALID_COOLIFY_CONFIG",
+            message: "EL_COOLIFY_URL is not configured",
+            stage: "deployment",
+          },
+        },
+      }),
+    );
+    await renderWorkspace();
+
+    const notice = screen
+      .getByText("operationFailed")
+      .closest("[data-operation-issues]")!;
+    expect(notice).toHaveTextContent("activationError");
+    expect(notice).not.toHaveTextContent(/Coolify/i);
   });
 
   it("shows Retry for a failed operation the server marked retryable", async () => {

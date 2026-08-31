@@ -27,6 +27,46 @@ export type PersistDraftConfigurationOptions = {
   updatedAt?: number;
 };
 
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJson).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) =>
+        left < right ? -1 : left > right ? 1 : 0,
+      )
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+export function configurationSectionFingerprints(
+  snapshot: OwnerConfigurationSnapshot,
+) {
+  return new Map(
+    snapshot.sections.map((row) => [
+      row.sectionKey,
+      stableJson(row.payload),
+    ]),
+  );
+}
+
+/** Whether two migrated configuration snapshots would publish the same rows. */
+export function configurationSnapshotsEqual(
+  left: OwnerConfigurationSnapshot,
+  right: OwnerConfigurationSnapshot,
+): boolean {
+  const leftRows = configurationSectionFingerprints(left);
+  const rightRows = configurationSectionFingerprints(right);
+  if (leftRows.size !== rightRows.size) return false;
+  return [...leftRows].every(
+    ([sectionKey, fingerprint]) =>
+      rightRows.get(sectionKey) === fingerprint,
+  );
+}
+
 export function materializeConfigurationSnapshot(
   snapshot: OwnerConfigurationSnapshot,
   options: OwnerConfigurationValidationOptions,

@@ -41,6 +41,7 @@ import { isFreshRuntimeRelease } from "./runtimeReleases";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { sectionKeyValidator, type SectionKey } from "./validators";
 import {
+  configurationSectionFingerprints,
   loadDraftConfigurationSnapshot,
   loadRevisionConfigurationSnapshot,
   persistDraftConfigurationSnapshot,
@@ -641,19 +642,6 @@ export async function restoreEvidenceLibraryRevision(
   };
 }
 
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableJson).join(",")}]`;
-  }
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
-
 async function readSectionFingerprints(
   ctx: QueryCtx,
   revisionId: Id<"evidenceLibraryConfigRevisions">,
@@ -664,11 +652,8 @@ async function readSectionFingerprints(
   const loaded = await loadRevisionConfigurationSnapshot(ctx, revisionId, {
     requireComplete: false,
   });
-  const fingerprints = new Map<SectionKey, string>(
-    loaded.migration.snapshot.sections.map((row) => [
-      row.sectionKey,
-      stableJson(row.payload),
-    ]),
+  const fingerprints = configurationSectionFingerprints(
+    loaded.migration.snapshot,
   );
   cache.set(revisionId, fingerprints);
   return fingerprints;

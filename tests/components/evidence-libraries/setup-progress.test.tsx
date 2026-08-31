@@ -151,6 +151,33 @@ describe("<SetupProgress>", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not name the hosting provider when initial setup fails", () => {
+    mocks.query.mockReturnValue({
+      data: setup("provisioning", {
+        status: "failed",
+        stage: "deployment",
+        error: {
+          code: "INVALID_COOLIFY_CONFIG",
+          message: "EL_COOLIFY_URL is not configured",
+          stage: "deployment",
+        },
+        issues: [
+          {
+            pointer: "/deployment",
+            message: "Coolify returned a temporary error.",
+          },
+        ],
+      }),
+      isReady: true,
+    });
+
+    render(<SetupProgress libraryId="lib_1" />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("deploymentError");
+    expect(alert).not.toHaveTextContent(/Coolify/i);
+  });
+
   it("shows every step done and the admin link once the library is live", () => {
     mocks.query.mockReturnValue({
       data: setup("active", { status: "succeeded", stage: "completed" }),

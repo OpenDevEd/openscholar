@@ -76,6 +76,10 @@ import {
 } from "@/lib/evidence-libraries/configuration/rules";
 import { AI_PROVIDER_CREDENTIAL_KEY } from "@/lib/evidence-libraries/configuration/ai";
 import { shortCommit } from "@/lib/evidence-libraries/configuration/versions";
+import {
+  namesHostingProvider,
+  publicOperationErrorMessage,
+} from "@/lib/evidence-libraries/public-operation-error";
 import { cn } from "@/lib/utils";
 import { AiSection } from "./sections/ai-section";
 import { AnalyticsSection } from "./sections/analytics-section";
@@ -215,7 +219,13 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   if (draftQuery.data === undefined) {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
-  const { draft, library, operation, sections } = draftQuery.data;
+  const {
+    draft,
+    hasUnpublishedChanges,
+    library,
+    operation,
+    sections,
+  } = draftQuery.data;
   // A new edit version means the platform has newer rows; the draft restarts from them.
   return (
     <Workspace
@@ -225,6 +235,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       libraryState={library.state}
       editVersion={draft.editVersion}
       saved={sections}
+      hasUnpublishedChanges={hasUnpublishedChanges}
       operation={operation}
       refusal={refusal}
       setRefusal={setRefusal}
@@ -238,6 +249,7 @@ function Workspace({
   libraryState,
   editVersion,
   saved,
+  hasUnpublishedChanges,
   operation,
   refusal,
   setRefusal,
@@ -247,6 +259,7 @@ function Workspace({
   libraryState: DraftResult["library"]["state"];
   editVersion: number;
   saved: readonly SectionRow[];
+  hasUnpublishedChanges: boolean;
   operation: Operation;
   refusal: SaveRefusal | null;
   setRefusal: (refusal: SaveRefusal | null) => void;
@@ -298,7 +311,12 @@ function Workspace({
       ? `${operation._id}:${operation.status}:${operation.updatedAt}`
       : "base";
   const isDraftLibrary = libraryState === "provisioning";
-  const canActivate = !activating && !saving && !problems && !operationRunning;
+  const canActivate =
+    (isDraftLibrary || dirty || hasUnpublishedChanges) &&
+    !activating &&
+    !saving &&
+    !problems &&
+    !operationRunning;
 
   // Editing, resetting or moving on answers the last refusal, so it goes away.
   const patch: SectionProps["patch"] = (update) => {
@@ -619,6 +637,38 @@ function OperationBanner({
     );
   }
   if (operation.status !== "failed") return null;
+  const hostingFallback = operation.runtimeUpdate
+    ? t("versions.updateError")
+    : operation.kind === "rollback"
+      ? t("versions.restoreError")
+      : t("activationError");
+  const publicError = publicOperationErrorMessage(
+    operation.error,
+    hostingFallback,
+  );
+  const publicIssues = issues.reduce<
+    {
+      issue: (typeof issues)[number];
+      message: string;
+      providerDetailRemoved: boolean;
+    }[]
+  >((visible, issue) => {
+    const providerDetailRemoved = namesHostingProvider(issue);
+    const message = publicOperationErrorMessage(issue, hostingFallback);
+    if (
+      !message ||
+      (providerDetailRemoved &&
+        (message === publicError ||
+          visible.some(
+            (entry) =>
+              entry.providerDetailRemoved && entry.message === message,
+          )))
+    ) {
+      return visible;
+    }
+    visible.push({ issue, message, providerDetailRemoved });
+    return visible;
+  }, []);
   return (
     <InlineNotice
       tone="danger"
@@ -626,7 +676,7 @@ function OperationBanner({
       className="mb-4"
       data-operation-issues
     >
-      {operation.error ? <p>{operation.error.message}</p> : null}
+      {publicError ? <p>{publicError}</p> : null}
       {operation.retryable ? (
         <Button
           type="button"
@@ -644,13 +694,13 @@ function OperationBanner({
           {t("retry")}
         </Button>
       ) : null}
-      {issues.length > 0 ? (
+      {publicIssues.length > 0 ? (
         <ul className="mt-1 space-y-1">
-          {issues.map((issue) => {
+          {publicIssues.map(({ issue, message }) => {
             const target = cardForPointer(issue.pointer);
             return (
               <li
-                key={`${issue.pointer}:${issue.message}`}
+                key={`${issue.pointer}:${message}`}
                 className="flex flex-wrap items-center gap-2"
               >
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -668,7 +718,7 @@ function OperationBanner({
                 ) : (
                   <code className="font-mono">{issue.pointer}</code>
                 )}
-                <span>{issue.message}</span>
+                <span>{message}</span>
               </li>
             );
           })}

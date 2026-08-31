@@ -16,6 +16,10 @@ import {
   setupPercent,
   setupSteps,
 } from "@/lib/evidence-libraries/setup/steps";
+import {
+  publicOperationErrorMessage,
+  publicOperationIssueMessages,
+} from "@/lib/evidence-libraries/public-operation-error";
 import { cn } from "@/lib/utils";
 import { AdminAreaLink } from "./admin-area-link";
 import { FieldGroup } from "./configuration/fields";
@@ -72,6 +76,18 @@ export function SetupProgressView({
   // a library being deleted only says so.
   const hero = status === "setting_up" || failed || active;
   const deleting = status === "deleting";
+  const publicError = failed
+    ? publicOperationErrorMessage(
+        setup.setupOperation.error,
+        t("deploymentError"),
+      )
+    : undefined;
+  const publicReasons = failed
+    ? publicOperationIssueMessages(
+        setup.setupOperation.issues,
+        t("deploymentError"),
+      )?.filter((reason) => reason !== publicError)
+    : undefined;
 
   function retry() {
     if (retrying) return;
@@ -128,12 +144,8 @@ export function SetupProgressView({
             steps={steps}
             percent={percent}
             currentStep={current}
-            errorMessage={failed ? setup.setupOperation.error?.message : undefined}
-            errorReasons={
-              failed
-                ? setup.setupOperation.issues?.map((issue) => issue.message)
-                : undefined
-            }
+            errorMessage={publicError}
+            errorReasons={publicReasons}
             onRetry={retry}
             retrying={retrying}
           />
