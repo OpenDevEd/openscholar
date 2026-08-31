@@ -6,8 +6,8 @@ import {
   ConfigurationAssemblyError,
   assembleEvidenceLibraryConfiguration,
 } from "./assembly";
+import { TEST_AI_MODELS } from "./test-models";
 import {
-  AI_MODELS,
   AI_PROVIDER,
   PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
   platformEmbeddingKey,
@@ -60,6 +60,8 @@ const managedConfiguration = {
   storagePrivateBucket: "climate-private",
   storagePublicBucket: "climate-public",
   storageMaxPdfBytes: 52_428_800,
+  allowedAiModels: TEST_AI_MODELS,
+  aiModelCatalogReady: true,
   zoteroTranslationUrl: "https://translation.example.test",
 };
 
@@ -360,16 +362,16 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         {
           provider: AI_PROVIDER,
           enabled: true,
-          models: [AI_MODELS[0]],
-          defaultModel: AI_MODELS[0],
+          models: [TEST_AI_MODELS[0]],
+          defaultModel: TEST_AI_MODELS[0],
         },
       ]),
     ).toEqual([
       {
         provider: AI_PROVIDER,
         enabled: true,
-        models: [AI_MODELS[0]],
-        defaultModel: AI_MODELS[0],
+        models: [TEST_AI_MODELS[0]],
+        defaultModel: TEST_AI_MODELS[0],
         apiKey: "sk-or-stored",
       },
     ]);
@@ -390,10 +392,46 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     );
     expect(() =>
       apply([
-        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
-        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+        { provider: AI_PROVIDER, enabled: true, defaultModel: TEST_AI_MODELS[0] },
+        { provider: AI_PROVIDER, enabled: true, defaultModel: TEST_AI_MODELS[0] },
       ]),
     ).toThrow(ConfigurationAssemblyError);
+  });
+
+  test("explains when OpenRouter models have not synced yet", () => {
+    try {
+      assembleEvidenceLibraryConfiguration({
+        sections: {
+          ...ownerSections,
+          features: { ...ownerSections.features, ai: true },
+          ai: {
+            providers: [
+              {
+                provider: AI_PROVIDER,
+                enabled: true,
+                models: [TEST_AI_MODELS[0]],
+                defaultModel: TEST_AI_MODELS[0],
+              },
+            ],
+          },
+        },
+        managed: {
+          ...managedConfiguration,
+          allowedAiModels: [],
+          aiModelCatalogReady: false,
+        },
+      });
+      throw new Error("Expected assembly to refuse an empty model catalog");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigurationAssemblyError);
+      expect((error as ConfigurationAssemblyError).issues).toContainEqual(
+        expect.objectContaining({
+          pointer: "/ai/providers/0/models",
+          message:
+            "OpenRouter models have not synced to OpenScholar yet. Try again shortly.",
+        }),
+      );
+    }
   });
 
   test.each([
@@ -406,7 +444,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     [
       "two providers",
       [
-        { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+        { provider: AI_PROVIDER, enabled: true, defaultModel: TEST_AI_MODELS[0] },
         { provider: AI_PROVIDER, enabled: false },
       ],
       true,
@@ -419,7 +457,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       "/ai/providers/0/models",
     ],
     [
-      "a model the runtime does not offer",
+      "a model outside the synced OpenRouter catalog",
       [
         {
           provider: AI_PROVIDER,
@@ -437,8 +475,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         {
           provider: AI_PROVIDER,
           enabled: true,
-          models: [AI_MODELS[0]],
-          defaultModel: AI_MODELS[0],
+          models: [TEST_AI_MODELS[0]],
+          defaultModel: TEST_AI_MODELS[0],
         },
       ],
       false,
@@ -485,8 +523,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
               {
                 provider: AI_PROVIDER,
                 enabled: true,
-                models: [AI_MODELS[0]],
-                defaultModel: AI_MODELS[0],
+                models: [TEST_AI_MODELS[0]],
+                defaultModel: TEST_AI_MODELS[0],
               },
             ],
           },
@@ -503,8 +541,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
           {
             provider: AI_PROVIDER,
             enabled: true,
-            models: [AI_MODELS[0]],
-            defaultModel: AI_MODELS[0],
+            models: [TEST_AI_MODELS[0]],
+            defaultModel: TEST_AI_MODELS[0],
             apiKey: "sk-or-stored",
           },
         ],
@@ -523,8 +561,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
             {
               provider: AI_PROVIDER,
               enabled: true,
-              models: [AI_MODELS[0]],
-              defaultModel: AI_MODELS[0],
+              models: [TEST_AI_MODELS[0]],
+              defaultModel: TEST_AI_MODELS[0],
             },
           ],
         },
@@ -582,8 +620,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
             {
               provider: AI_PROVIDER,
               enabled: true,
-              models: [AI_MODELS[0]],
-              defaultModel: AI_MODELS[0],
+              models: [TEST_AI_MODELS[0]],
+              defaultModel: TEST_AI_MODELS[0],
             },
           ],
         },
@@ -616,8 +654,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
             {
               provider: AI_PROVIDER,
               enabled: true,
-              models: [AI_MODELS[0]],
-              defaultModel: AI_MODELS[0],
+              models: [TEST_AI_MODELS[0]],
+              defaultModel: TEST_AI_MODELS[0],
             },
           ],
         },
@@ -851,9 +889,9 @@ describe("platform-owned fields an owner may not save", () => {
             {
               provider: AI_PROVIDER,
               enabled: true,
-              models: [AI_MODELS[0]],
-              defaultModel: AI_MODELS[0],
-              [field]: AI_MODELS[0],
+              models: [TEST_AI_MODELS[0]],
+              defaultModel: TEST_AI_MODELS[0],
+              [field]: TEST_AI_MODELS[0],
             },
           ],
         },

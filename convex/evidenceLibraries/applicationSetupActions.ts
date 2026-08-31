@@ -5,6 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
+import { selectedAiModelIds } from "../../lib/evidence-libraries/configuration/ai";
 import { encrypt, getKeyPrefix } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import { generateOpaqueToken } from "../lib/opaqueToken";
@@ -100,6 +101,13 @@ export const runApplicationSetup = internalAction({
         "EL_STORAGE_MAX_PDF_BYTES",
         invalidData,
       );
+      const sections = Object.fromEntries(
+        prepared.sections.map((row) => [row.sectionKey, row.payload]),
+      );
+      const modelCatalog = await ctx.runQuery(
+        internal.models.queries.resolveEvidenceLibrarySelection,
+        { modelIds: selectedAiModelIds(sections.ai) },
+      );
       const configuration = assembleEvidenceLibraryRuntimePayload({
         encryptionKey,
         libraryId: args.libraryId,
@@ -114,9 +122,7 @@ export const runApplicationSetup = internalAction({
             invalidData,
           ),
         },
-        sections: Object.fromEntries(
-          prepared.sections.map((row) => [row.sectionKey, row.payload]),
-        ),
+        sections,
         credentials: {
           encryptedMachine: prepared.encryptedMachineCredential,
           encryptedAuthentication: prepared.encryptedAuthenticationSecret,
@@ -142,6 +148,8 @@ export const runApplicationSetup = internalAction({
         embeddingApiKey: optionalPlatformEmbeddingKey(),
         zoteroGroups: prepared.zoteroGroups,
         aiProviderKey: prepared.aiProviderApiKey,
+        allowedAiModels: modelCatalog.allowedModelIds,
+        aiModelCatalogReady: modelCatalog.catalogReady,
       });
       const application = await reconcileCoolifyApplication({
         coolifyUrl: requireRuntimeEnvironment("EL_COOLIFY_URL", invalidData),

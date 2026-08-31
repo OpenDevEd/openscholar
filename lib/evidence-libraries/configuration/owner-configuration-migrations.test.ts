@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AI_MODELS } from "./ai";
+import { TEST_AI_MODELS } from "./test-models";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
   completeOwnerConfigurationSnapshot,
@@ -278,8 +278,8 @@ describe("owner configuration migrations", () => {
                 enabled: true,
                 models: [
                   "anthropic/claude-sonnet-5",
-                  AI_MODELS[2],
-                  AI_MODELS[2],
+                  TEST_AI_MODELS[2],
+                  TEST_AI_MODELS[2],
                 ],
                 defaultModel: "anthropic/claude-sonnet-5",
               },
@@ -297,8 +297,8 @@ describe("owner configuration migrations", () => {
             {
               provider: "openrouter",
               enabled: true,
-              models: [AI_MODELS[2]],
-              defaultModel: AI_MODELS[2],
+              models: [TEST_AI_MODELS[2]],
+              defaultModel: TEST_AI_MODELS[2],
             },
           ],
         },
@@ -317,7 +317,7 @@ describe("owner configuration migrations", () => {
               {
                 provider: "openrouter",
                 enabled: true,
-                defaultModel: AI_MODELS[1],
+                defaultModel: TEST_AI_MODELS[1],
               },
             ],
           },
@@ -332,8 +332,8 @@ describe("owner configuration migrations", () => {
           {
             provider: "openrouter",
             enabled: true,
-            models: [AI_MODELS[1]],
-            defaultModel: AI_MODELS[1],
+            models: [TEST_AI_MODELS[1]],
+            defaultModel: TEST_AI_MODELS[1],
           },
         ],
       },
@@ -384,8 +384,8 @@ describe("owner configuration migrations", () => {
               {
                 provider: "openrouter",
                 enabled: false,
-                models: [AI_MODELS[0]],
-                defaultModel: AI_MODELS[0],
+                models: [TEST_AI_MODELS[0]],
+                defaultModel: TEST_AI_MODELS[0],
               },
             ],
           },

@@ -270,6 +270,8 @@ describe("Evidence Library Zotero groups", () => {
         maxPdfBytes: 10_485_760,
       },
       zoteroGroups: prepared,
+      allowedAiModels: [],
+      aiModelCatalogReady: true,
     });
     expect(payload.runtimeConfig.sources).toEqual([
       expect.objectContaining({

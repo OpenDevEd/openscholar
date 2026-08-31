@@ -2,7 +2,6 @@ import {
   credentialKeyFor,
   writeOnlyPatternFor,
 } from "./credential-paths";
-import catalogs from "./generated/library-config.catalogs.json";
 import type { ValidationIssue } from "./generated-validation";
 
 /**
@@ -20,19 +19,6 @@ export const PLATFORM_FEATURE_KEYS = ["aiSearch", "deepResearch"] as const;
 
 /** Where the provider key sits in an assembled runtime configuration. */
 export const AI_PROVIDER_KEY_PATH = "/ai/providers/0/apiKey";
-
-/**
- * The models the runtime approves for OpenRouter, from the pinned catalog.
- * Empty until the contract is re-pinned to a `main` commit that carries the
- * `ai-modernization` merge; AI answers stay off until then.
- */
-export const AI_MODELS: readonly string[] =
-  (
-    catalogs.options.aiProviders as readonly {
-      provider: string;
-      active: readonly string[];
-    }[]
-  ).find((entry) => entry.provider === AI_PROVIDER)?.active ?? [];
 
 export const AI_PROVIDER_KEY_PATTERN = writeOnlyPatternFor(AI_PROVIDER_KEY_PATH);
 if (!AI_PROVIDER_KEY_PATTERN) {
@@ -72,6 +58,8 @@ export function aiProviderIssues(
    * saved one may have no provider; a row that is there holds exactly one.
    */
   rowSaved = true,
+  allowedModelIds?: ReadonlySet<string>,
+  modelCatalogReady = true,
 ): ValidationIssue[] {
   const issue = (pointer: string, message: string): ValidationIssue => ({
     pointer,
@@ -121,6 +109,18 @@ export function aiProviderIssues(
       ),
     );
   }
+  const catalogUnavailable =
+    entry?.enabled === true &&
+    allowedModelIds !== undefined &&
+    !modelCatalogReady;
+  if (catalogUnavailable) {
+    issues.push(
+      issue(
+        "/ai/providers/0/models",
+        "OpenRouter models have not synced to OpenScholar yet. Try again shortly.",
+      ),
+    );
+  }
   const models = entry?.models;
   if (!Array.isArray(models)) {
     issues.push(
@@ -129,11 +129,15 @@ export function aiProviderIssues(
   } else {
     const seen = new Set<string>();
     for (const [index, model] of models.entries()) {
-      if (typeof model !== "string" || !AI_MODELS.includes(model)) {
+      if (
+        typeof model !== "string" ||
+        !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model) ||
+        (allowedModelIds !== undefined && !allowedModelIds.has(model))
+      ) {
         issues.push(
           issue(
             `/ai/providers/0/models/${index}`,
-            `${String(model)} is not a model your library software offers.`,
+            `${String(model)} is not in OpenScholar's synced OpenRouter catalog.`,
           ),
         );
       } else if (seen.has(model)) {
@@ -187,6 +191,18 @@ export function aiProviderIssues(
     );
   }
   return issues;
+}
+
+/** Model ids selected in an owner AI section, bounded by the runtime schema. */
+export function selectedAiModelIds(aiSection: unknown): string[] {
+  if (typeof aiSection !== "object" || aiSection === null) return [];
+  const providers = (aiSection as { providers?: unknown }).providers;
+  if (!Array.isArray(providers) || providers.length !== 1) return [];
+  const models = (providers[0] as { models?: unknown } | undefined)?.models;
+  if (!Array.isArray(models)) return [];
+  return Array.from(
+    new Set(models.filter((model): model is string => typeof model === "string")),
+  ).slice(0, 20);
 }
 
 /* ------------------------------------------------------------------ */

@@ -1,12 +1,28 @@
 "use client";
 
-import { useAction, useMutation } from "convex/react";
-import { Sparkles } from "lucide-react";
+import {
+  useAction,
+  useMutation,
+  usePaginatedQuery,
+  useQuery,
+} from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { ChevronDown, Plus, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -15,20 +31,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { getModelIcon, OpenRouterIcon } from "@/components/icons/provider-icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import {
-  AI_MODELS,
-  AI_PROVIDER_KEY_PATH,
-} from "@/lib/evidence-libraries/configuration/ai";
+import { AI_PROVIDER_KEY_PATH } from "@/lib/evidence-libraries/configuration/ai";
+import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { Field, FieldError } from "../section-card";
 import {
-  ChoiceChips,
   EmptyList,
   FieldGroup,
   ListRow,
   move,
-  Panel,
   ReadOnlyValue,
   SortableList,
   ToggleRow,
@@ -46,7 +59,31 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
   const t = useTranslations("evidenceLibraryConfiguration.ai");
   const enabled = draft.features.ai;
   const { keySaved, models, defaultModel } = draft.ai;
-  const runtimeReady = AI_MODELS.length > 0;
+  const {
+    results: catalog,
+    status: catalogStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.models.queries.paginateCatalogOptions,
+    {},
+    { initialNumItems: 500 },
+  );
+  const selectedOptions = useQuery(
+    api.models.queries.getCatalogOptionsByModelIds,
+    { modelIds: models },
+  );
+  const allOptions = [...catalog];
+  const loadedIds = new Set(allOptions.map((model) => model.modelId));
+  for (const option of selectedOptions ?? []) {
+    if (!loadedIds.has(option.modelId)) allOptions.push(option);
+  }
+  const catalogIds = new Set(allOptions.map((model) => model.modelId));
+  const catalogLoading = catalogStatus === "LoadingFirstPage";
+  const runtimeReady = !catalogLoading && catalog.length > 0;
+  const unavailableModels =
+    catalogLoading || selectedOptions === undefined
+      ? []
+      : models.filter((model) => !catalogIds.has(model));
 
   function setModels(next: string[]) {
     patch((d) => {
@@ -72,43 +109,50 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
       saved={saved}
       reset={reset}
     >
-      <FieldGroup title={t("answersLabel")} data-ai-enabled={enabled}>
-        <ToggleRow
-          label={t("answersLabel")}
-          hint={t("answersHint")}
-          checked={enabled}
-          disabled={!runtimeReady}
-          disabledReason={runtimeReady ? null : t("notReady")}
-          onChange={(next) =>
-            patch((d) => {
-              d.features.ai = next;
-              return d;
-            })
-          }
-        />
-        {enabled ? (
-          <Panel tone="muted" className="ml-4 space-y-4">
-            <ProviderKeyField libraryId={libraryId} keySaved={keySaved} />
-            <FieldGroup title={t("modelsLabel")} hint={t("modelsHint")}>
-              <ChoiceChips
-                ariaLabel={t("modelsLabel")}
-                values={models}
-                onChange={setModels}
-                options={AI_MODELS.map((model) => ({
-                  value: model,
-                  label: model,
-                }))}
+      <ToggleRow
+        label={t("answersLabel")}
+        hint={t("answersHint")}
+        checked={enabled}
+        disabled={!enabled && !runtimeReady}
+        disabledReason={catalogLoading ? t("loadingModels") : t("notReady")}
+        onChange={(next) =>
+          patch((d) => {
+            d.features.ai = next;
+            return d;
+          })
+        }
+        data-ai-enabled={enabled}
+      />
+      {enabled ? (
+        <div className="space-y-6 border-l-2 border-primary/20 pl-4 sm:pl-5">
+          <ProviderKeyField libraryId={libraryId} keySaved={keySaved} />
+          <FieldGroup
+            title={t("modelsLabel")}
+            hint={t("modelsHint")}
+            action={
+              <ModelPicker
+                catalog={catalog}
+                selected={models}
+                onAdd={(model) => setModels([...models, model])}
+                canLoadMore={catalogStatus === "CanLoadMore"}
+                loadingMore={catalogStatus === "LoadingMore"}
+                onLoadMore={() => loadMore(500)}
+                labels={{
+                  add: t("addModel"),
+                  empty: t("noModels"),
+                  loadMore: t("loadMoreModels"),
+                  search: t("searchModels"),
+                }}
               />
-              {models.some((model) => !AI_MODELS.includes(model)) ? (
-                <FieldError>{t("modelError")}</FieldError>
-              ) : null}
-            </FieldGroup>
-            <FieldGroup title={t("orderLabel")} hint={t("orderHint")}>
-              {models.length === 0 ? (
-                <EmptyList>{t("modelsEmpty")}</EmptyList>
-              ) : (
+            }
+          >
+            {models.length === 0 ? (
+              <EmptyList>{t("modelsEmpty")}</EmptyList>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-border/60 bg-background">
                 <SortableList
                   ids={models}
+                  className="space-y-0"
                   onMove={(from, to) =>
                     patch((d) => {
                       d.ai.models = move(d.ai.models, from, to);
@@ -116,42 +160,51 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                     })
                   }
                 >
-                  {models.map((model, index) => (
-                    <ListRow
-                      key={model}
-                      id={model}
-                      removeLabel={t("removeModel", { model })}
-                      onRemove={() =>
-                        patch((d) => {
-                          d.ai.models = d.ai.models.filter(
-                            (candidate) => candidate !== model,
-                          );
-                          if (d.ai.defaultModel === model) {
-                            d.ai.defaultModel = d.ai.models[0] ?? "";
-                          }
-                          return d;
-                        })
-                      }
-                      className="items-center py-2"
-                      data-model={model}
-                    >
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="w-5 font-mono text-xs text-muted-foreground">
-                          {index + 1}.
-                        </span>
-                        <code className="font-mono text-xs text-muted-foreground">
-                          {model}
-                        </code>
-                      </div>
-                    </ListRow>
-                  ))}
+                  {models.map((model, index) => {
+                    const option = allOptions.find((candidate) => candidate.modelId === model);
+                    const Icon = getModelIcon(model);
+                    return (
+                      <ListRow
+                        key={model}
+                        id={model}
+                        removeLabel={t("removeModel", { model })}
+                        onRemove={() =>
+                          patch((d) => {
+                            d.ai.models = d.ai.models.filter((candidate) => candidate !== model);
+                            if (d.ai.defaultModel === model) {
+                              d.ai.defaultModel = d.ai.models[0] ?? "";
+                            }
+                            return d;
+                          })
+                        }
+                        className="items-center rounded-none border-x-0 border-t-0 border-b border-border/50 bg-transparent px-2.5 py-2 last:border-b-0"
+                        data-model={model}
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="w-4 shrink-0 text-right font-mono text-xs text-muted-foreground">
+                            {index + 1}
+                          </span>
+                          <Icon className="size-4 shrink-0 text-foreground/75" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">
+                              {option ? stripProviderPrefix(option.name) : model}
+                            </span>
+                            <code className="block truncate font-mono text-[11px] text-muted-foreground">
+                              {model}
+                            </code>
+                          </span>
+                        </div>
+                      </ListRow>
+                    );
+                  })}
                 </SortableList>
-              )}
-            </FieldGroup>
+              </div>
+            )}
+            {unavailableModels.length > 0 ? <FieldError>{t("modelError")}</FieldError> : null}
             <Field
               label={t("modelLabel")}
               hint={t("modelHint")}
-              className="max-w-sm"
+              className="max-w-md border-t border-border/50 pt-4"
               error={
                 defaultModel !== "" && !models.includes(defaultModel)
                   ? t("modelError")
@@ -160,8 +213,6 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
             >
               {(id) => (
                 <Select
-                  // "" keeps the control controlled while showing the
-                  // placeholder for a model the runtime no longer offers.
                   value={models.includes(defaultModel) ? defaultModel : ""}
                   disabled={models.length === 0}
                   onValueChange={(value) =>
@@ -175,19 +226,127 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                     <SelectValue placeholder={t("modelPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {models.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
+                    {models.map((model) => {
+                      const Icon = getModelIcon(model);
+                      const option = allOptions.find((candidate) => candidate.modelId === model);
+                      return (
+                        <SelectItem key={model} value={model}>
+                          <span className="flex items-center gap-2">
+                            <Icon className="size-3.5" />
+                            {option ? stripProviderPrefix(option.name) : model}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               )}
             </Field>
-          </Panel>
-        ) : null}
-      </FieldGroup>
+          </FieldGroup>
+        </div>
+      ) : null}
     </SectionShell>
+  );
+}
+
+type ModelOption = FunctionReturnType<
+  typeof api.models.queries.paginateCatalogOptions
+>["page"][number];
+
+function ModelPicker({
+  catalog,
+  selected,
+  onAdd,
+  canLoadMore,
+  loadingMore,
+  onLoadMore,
+  labels,
+}: {
+  catalog: ModelOption[];
+  selected: string[];
+  onAdd: (modelId: string) => void;
+  canLoadMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
+  labels: { add: string; empty: string; loadMore: string; search: string };
+}) {
+  const [open, setOpen] = useState(false);
+  const available = catalog.filter((model) => !selected.includes(model.modelId));
+  const groups = new Map<string, ModelOption[]>();
+  for (const model of available) {
+    groups.set(model.provider, [...(groups.get(model.provider) ?? []), model]);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={available.length === 0}
+          aria-label={labels.add}
+        >
+          <Plus className="size-3.5" />
+          {labels.add}
+          <ChevronDown className="size-3.5 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(24rem,calc(100vw-2rem))] p-0">
+        <Command>
+          <CommandInput placeholder={labels.search} />
+          <CommandList className="max-h-80">
+            <CommandEmpty>{labels.empty}</CommandEmpty>
+            {Array.from(groups.entries()).map(([provider, options], index) => (
+              <div key={provider}>
+                {index > 0 ? <CommandSeparator /> : null}
+                <CommandGroup heading={provider}>
+                  {options.map((model) => {
+                    const Icon = getModelIcon(model.modelId);
+                    return (
+                      <CommandItem
+                        key={model.modelId}
+                        value={`${provider} ${model.name} ${model.modelId}`}
+                        className="gap-2.5 py-2"
+                        onSelect={() => {
+                          onAdd(model.modelId);
+                          setOpen(false);
+                        }}
+                      >
+                        <Icon className="size-4 shrink-0 text-foreground/75" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">
+                            {stripProviderPrefix(model.name)}
+                          </span>
+                          <code className="block truncate text-[11px] text-muted-foreground">
+                            {model.modelId}
+                          </code>
+                        </span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </div>
+            ))}
+          </CommandList>
+          {canLoadMore || loadingMore ? (
+            <div className="border-t border-border/60 p-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                disabled={loadingMore}
+                onClick={onLoadMore}
+              >
+                {loadingMore ? <Spinner /> : <Plus className="size-3.5" />}
+                {labels.loadMore}
+              </Button>
+            </div>
+          ) : null}
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -243,7 +402,16 @@ function ProviderKeyField({
   }
 
   return (
-    <Field label={t("keyLabel")} hint={t("keyHint")} className="max-w-sm">
+    <Field
+      label={
+        <span className="inline-flex items-center gap-2">
+          <OpenRouterIcon className="size-4" />
+          {t("keyLabel")}
+        </span>
+      }
+      hint={t("keyHint")}
+      className="max-w-md"
+    >
       {(id) =>
         editing ? (
           <div className="flex items-center gap-2">

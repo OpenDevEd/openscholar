@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { TEST_AI_MODELS } from "./test-models";
 import {
-  AI_MODELS,
   AI_PROVIDER,
   cardForRow,
   collectionOptions,
@@ -989,8 +989,8 @@ describe("changedSectionRows for the platform sections", () => {
 /* Plan 15: AI answers and the two analytics fields                    */
 /* ------------------------------------------------------------------ */
 
-const approvedModel = AI_MODELS[0]!;
-const secondApprovedModel = AI_MODELS[1]!;
+const approvedModel = TEST_AI_MODELS[0]!;
+const secondApprovedModel = TEST_AI_MODELS[1]!;
 
 const aiRows = [
   ...savedRows.filter(
@@ -1026,9 +1026,9 @@ describe("AI answers", () => {
     expect(sectionProblems(draft, "ai")).toEqual(["aiKey", "aiModel"]);
     draft.ai.keySaved = true;
     expect(sectionProblems(draft, "ai")).toEqual(["aiModel"]);
-    draft.ai.models = ["made-up/model"];
-    draft.ai.defaultModel = "made-up/model";
-    expect(sectionProblems(draft, "ai")).toEqual(["aiModelUnknown"]);
+    draft.ai.models = [approvedModel];
+    draft.ai.defaultModel = approvedModel;
+    expect(sectionProblems(draft, "ai")).toEqual([]);
   });
 
   it("accepts an approved model and writes exactly one provider entry", () => {

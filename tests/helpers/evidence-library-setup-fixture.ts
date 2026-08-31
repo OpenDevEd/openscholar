@@ -3,6 +3,7 @@ import { api, internal } from "../../convex/_generated/api";
 
 export const TEST_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"e".repeat(64)}`;
 import schema from "../../convex/schema";
+import { TEST_AI_MODELS } from "../../lib/evidence-libraries/configuration/test-models";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -67,6 +68,22 @@ async function reserveLibraryAddress(
 // queued and has never started.
 export async function createDraftSetupFixture(suffix: string) {
   const t = convexTest(schema, modules);
+  await t.run(async (ctx) => {
+    const now = Date.now();
+    await ctx.db.insert("models", {
+      modelId: TEST_AI_MODELS[0]!,
+      name: "Test answer model",
+      provider: "openai",
+      inputPricePerMillion: 1,
+      outputPricePerMillion: 2,
+      costMarkup: 1.3,
+      isServed: true,
+      sortOrder: 1,
+      syncedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
   const clerkOrganizationId = `org_${suffix}`;
   const clerkUserId = `user_${suffix}`;
   const { membershipId, organizationId } = await t.run(async (ctx) => {

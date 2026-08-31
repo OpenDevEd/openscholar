@@ -1,5 +1,7 @@
-import { query, internalQuery } from "../_generated/server";
+import { query, internalQuery, type QueryCtx } from "../_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 
 const catalogOptionValidator = v.object({
   _id: v.id("models"),
@@ -14,6 +16,34 @@ const catalogOptionValidator = v.object({
   modality: v.optional(v.string()),
   tokenizer: v.optional(v.string()),
 });
+
+function catalogOption(model: Doc<"models">) {
+  return {
+    _id: model._id,
+    modelId: model.modelId,
+    name: model.name,
+    provider: model.provider,
+    description: model.description,
+    contextLength: model.contextLength,
+    inputPricePerMillion: model.inputPricePerMillion,
+    outputPricePerMillion: model.outputPricePerMillion,
+    category: model.category,
+    modality: model.modality,
+    tokenizer: model.tokenizer,
+  };
+}
+
+async function modelsById(ctx: QueryCtx, modelIds: readonly string[]) {
+  const models: Doc<"models">[] = [];
+  for (const modelId of new Set(modelIds.slice(0, 20))) {
+    const model = await ctx.db
+      .query("models")
+      .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
+      .unique();
+    if (model) models.push(model);
+  }
+  return models;
+}
 
 /**
  * Public query: list models filtered by provider.
@@ -48,19 +78,40 @@ export const listCatalogOptions = query({
           .take(500)
       : await ctx.db.query("models").take(1000);
 
-    return rows.map((model) => ({
-      _id: model._id,
-      modelId: model.modelId,
-      name: model.name,
-      provider: model.provider,
-      description: model.description,
-      contextLength: model.contextLength,
-      inputPricePerMillion: model.inputPricePerMillion,
-      outputPricePerMillion: model.outputPricePerMillion,
-      category: model.category,
-      modality: model.modality,
-      tokenizer: model.tokenizer,
-    }));
+    return rows.map(catalogOption);
+  },
+});
+
+/** Complete catalog page for the Evidence Library model picker. */
+export const paginateCatalogOptions = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const result = await ctx.db.query("models").paginate(paginationOpts);
+    return { ...result, page: result.page.map(catalogOption) };
+  },
+});
+
+/** Catalog details for already-selected models, including later pages. */
+export const getCatalogOptionsByModelIds = query({
+  args: { modelIds: v.array(v.string()) },
+  returns: v.array(catalogOptionValidator),
+  handler: async (ctx, { modelIds }) =>
+    (await modelsById(ctx, modelIds)).map(catalogOption),
+});
+
+/** Resolve only the configured ids, avoiding a full-table validation read. */
+export const resolveEvidenceLibrarySelection = internalQuery({
+  args: { modelIds: v.array(v.string()) },
+  returns: v.object({
+    catalogReady: v.boolean(),
+    allowedModelIds: v.array(v.string()),
+  }),
+  handler: async (ctx, { modelIds }) => {
+    const catalogReady = (await ctx.db.query("models").first()) !== null;
+    const allowedModelIds = (await modelsById(ctx, modelIds)).map(
+      (model) => model.modelId,
+    );
+    return { catalogReady, allowedModelIds };
   },
 });
 
