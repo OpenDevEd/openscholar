@@ -115,6 +115,57 @@ describe("library overviews", () => {
     });
   });
 
+  it("keeps a deleting library listable after its draft is removed", async () => {
+    const fixture = await createDraftSetupFixture("overview_teardown_draft");
+    const requested = await fixture.admin.mutation(
+      api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        confirmationName: "Climate Evidence",
+      },
+    );
+    const claim = await fixture.t.mutation(
+      internal.evidenceLibraries.teardown.prepareDevelopmentTeardown,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: requested.operationId,
+      },
+    );
+    if (!claim.claimed) throw new Error("teardown was not claimed");
+
+    let reachedDraftDeletion = false;
+    for (let batch = 0; batch < 20; batch += 1) {
+      await fixture.t.mutation(
+        internal.evidenceLibraries.teardown.deleteDevelopmentTeardownBatch,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: requested.operationId,
+          attemptToken: claim.attemptToken,
+        },
+      );
+      const state = await fixture.t.run(async (ctx) => ({
+        draft: await ctx.db.get(fixture.created.draftId),
+        library: await ctx.db.get(fixture.created.libraryId),
+      }));
+      if (!state.draft && state.library) {
+        reachedDraftDeletion = true;
+        break;
+      }
+    }
+    expect(reachedDraftDeletion).toBe(true);
+
+    const overviews = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraryOverviews,
+      {},
+    );
+    expect(overviews).toEqual([
+      expect.objectContaining({
+        _id: fixture.created.libraryId,
+        status: "deleting",
+      }),
+    ]);
+  });
+
   it("tells the pages whether Evidence Libraries are switched on", async () => {
     const fixture = await createDraftSetupFixture("overview_switch");
 
