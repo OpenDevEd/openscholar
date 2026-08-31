@@ -5,7 +5,10 @@ import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { featuresAiEnabled } from "../../lib/evidence-libraries/configuration/ai";
+import {
+  featuresAiEnabled,
+  selectedAiModelIds,
+} from "../../lib/evidence-libraries/configuration/ai";
 import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
 import { decrypt, encrypt } from "../lib/crypto";
 import {
@@ -167,6 +170,13 @@ export const runConfigurationDeployment = internalAction({
             "The bound Coolify application runs unexpected software",
           );
         }
+        const sections = Object.fromEntries(
+          prepared.sections.map((row) => [row.sectionKey, row.payload]),
+        );
+        const modelCatalog = await ctx.runQuery(
+          internal.models.queries.resolveEvidenceLibrarySelection,
+          { modelIds: selectedAiModelIds(sections.ai) },
+        );
         const payload = assembleEvidenceLibraryRuntimePayload({
           encryptionKey,
           libraryId: args.libraryId,
@@ -181,9 +191,7 @@ export const runConfigurationDeployment = internalAction({
               invalidConfiguration,
             ),
           },
-          sections: Object.fromEntries(
-            prepared.sections.map((row) => [row.sectionKey, row.payload]),
-          ),
+          sections,
           credentials: prepared.credentials,
           search: prepared.search,
           storage: prepared.storage,
@@ -193,6 +201,8 @@ export const runConfigurationDeployment = internalAction({
           embeddingApiKey: optionalPlatformEmbeddingKey(),
           zoteroGroups: prepared.zoteroGroups,
           aiProviderKey: prepared.aiProviderKey,
+          allowedAiModels: modelCatalog.allowedModelIds,
+          aiModelCatalogReady: modelCatalog.catalogReady,
         });
         target = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment

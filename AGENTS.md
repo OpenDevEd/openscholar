@@ -154,8 +154,9 @@ handoff.
   refusal, or confirmation that the process ended without a result. Never
   restart a live review or call a second reviewer because the first is slow.
 - Fix valid findings, rerun the affected focused checks, and use the final CI
-  result as the merge gate. A second review is needed only when the fix changes
-  the phase's design or security boundary.
+  result as the merge gate. The primary agent verifies every review fix itself.
+  Never call a second reviewer for the same phase, even when a fix changes the
+  phase's design, security boundary, code, tests, or interface.
 
 ## Git and pull requests
 

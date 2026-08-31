@@ -2894,7 +2894,7 @@
       "description": "Let visitors ask questions about the evidence in your library.",
       "answersLabel": "AI answers",
       "answersHint": "Adds question answering to the library. You pay OpenRouter for what it uses.",
-      "notReady": "Your library software does not offer AI answers yet. Update it first.",
+      "notReady": "OpenRouter models are still syncing. Try again shortly.",
       "keyLabel": "OpenRouter key",
       "keyHint": "Create one at openrouter.ai. It is stored encrypted and never shown again.",
       "keyStored": "Key saved",
@@ -2907,6 +2907,11 @@
       "keyRemoveError": "The key could not be removed. Try again.",
       "modelsLabel": "Available models",
       "modelsHint": "Select every model readers may use.",
+      "addModel": "Add model",
+      "searchModels": "Search OpenRouter models…",
+      "loadingModels": "Loading OpenRouter models…",
+      "loadMoreModels": "Load more models",
+      "noModels": "No models found.",
       "orderLabel": "Model order",
       "orderHint": "Drag the selected models into the order shown in the library.",
       "modelsEmpty": "Select at least one model.",
@@ -2914,7 +2919,7 @@
       "modelLabel": "Default answer model",
       "modelHint": "The model selected when a reader starts a new answer.",
       "modelPlaceholder": "Choose a model",
-      "modelError": "That model is not one your library software offers."
+      "modelError": "Choose a model from the synced OpenRouter catalog."
     },
     "domain": {
       "description": "Use your own web address for the library.",

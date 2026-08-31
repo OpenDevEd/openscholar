@@ -1,7 +1,11 @@
-import { convexTest } from "convex-test";
+/// <reference types="vite/client" />
+import { convexTest as createConvexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { internal, api } from "../_generated/api";
 import schema from "../schema";
+
+const modules = import.meta.glob("/convex/**/*.ts");
+const convexTest = (_schema: typeof schema) => createConvexTest(schema, modules);
 
 // ─── Seed helpers ────────────────────────────────────────────
 
@@ -123,6 +127,44 @@ describe("models.queries.list", () => {
 });
 
 describe("models.queries.listCatalogOptions", () => {
+  it("returns the whole synced catalog without a fixed row ceiling", async () => {
+    const t = convexTest(schema);
+    await t.run(async (ctx) => {
+      const now = Date.now();
+      for (let index = 0; index < 1001; index += 1) {
+        await ctx.db.insert("models", {
+          modelId: `provider/model-${index}`,
+          name: `Model ${index}`,
+          provider: "provider",
+          inputPricePerMillion: 1,
+          outputPricePerMillion: 2,
+          costMarkup: 1.3,
+          isServed: true,
+          sortOrder: index,
+          syncedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    });
+
+    const first = await t.query(api.models.queries.paginateCatalogOptions, {
+      paginationOpts: { numItems: 500, cursor: null },
+    });
+    const second = await t.query(api.models.queries.paginateCatalogOptions, {
+      paginationOpts: { numItems: 501, cursor: first.continueCursor },
+    });
+    expect([...first.page, ...second.page]).toHaveLength(1001);
+    expect(
+      await t.query(internal.models.queries.resolveEvidenceLibrarySelection, {
+        modelIds: ["provider/model-1000", "provider/missing"],
+      }),
+    ).toEqual({
+      catalogReady: true,
+      allowedModelIds: ["provider/model-1000"],
+    });
+  });
+
   it("returns a compact settings catalog shape for a provider", async () => {
     const t = convexTest(schema);
     await seedModel(t, {

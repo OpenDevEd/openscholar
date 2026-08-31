@@ -29,6 +29,9 @@ export type ManagedEvidenceLibraryConfiguration = {
   storagePrivateBucket: string;
   storagePublicBucket: string;
   storageMaxPdfBytes: number;
+  // OpenScholar model ids from the OpenRouter-backed models table.
+  allowedAiModels: readonly string[];
+  aiModelCatalogReady: boolean;
   zoteroTranslationUrl?: string;
   // The platform pays for meaning-based search. Assembly builds the embedder
   // from this key; owners never see it. Undefined means no key is set up.
@@ -298,6 +301,8 @@ export function assembleEvidenceLibraryConfiguration({
       ? candidate.features.ai === true
       : undefined,
     aiRowSaved,
+    new Set(managed.allowedAiModels),
+    managed.aiModelCatalogReady,
   );
   if (aiIssues.length === 0 && aiRowSaved && isObject(candidate.ai)) {
     // The AI provider key is added here and nowhere earlier, like a source key.

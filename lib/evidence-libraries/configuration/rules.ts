@@ -12,7 +12,7 @@
  * shared by cards (the Navigation card owns `features.navbarSearch`).
  */
 
-import { AI_MODELS, AI_PROVIDER, PLATFORM_FEATURE_KEYS } from "./ai";
+import { AI_PROVIDER, PLATFORM_FEATURE_KEYS } from "./ai";
 import schema from "./generated/library-config.schema.json";
 import {
   HTTPS_URL,
@@ -161,7 +161,7 @@ function schemaEnum<T extends string>(pointer: string): readonly T[] {
   return values as T[];
 }
 
-export { AI_MODELS, AI_PROVIDER };
+export { AI_PROVIDER };
 
 /** The consent version every library starts from, as the runtime sets it. */
 export const CONSENT_POLICY_VERSION_DEFAULT = schemaNode(
@@ -1401,7 +1401,6 @@ export function sectionProblems(
       }
       if (
         new Set(models).size !== models.length ||
-        models.some((model) => !AI_MODELS.includes(model)) ||
         (defaultModel !== "" && !models.includes(defaultModel))
       ) {
         problems.push("aiModelUnknown");

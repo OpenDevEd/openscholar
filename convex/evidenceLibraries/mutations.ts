@@ -7,7 +7,10 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { createInitialEvidenceLibraryShortName } from "../../lib/evidence-libraries/setup/naming";
-import { aiProviderIssues } from "../../lib/evidence-libraries/configuration/ai";
+import {
+  aiProviderIssues,
+  selectedAiModelIds,
+} from "../../lib/evidence-libraries/configuration/ai";
 import {
   initialIdentityPayload,
   initialLocalizationPayload,
@@ -293,29 +296,52 @@ export async function saveEvidenceLibraryDraftSections(
     typeof effectiveFeatures === "object" &&
     effectiveFeatures !== null &&
     (effectiveFeatures as { ai?: unknown }).ai === true;
+  const storedFeatures = storedSnapshotSections.find(
+    (section) => section.sectionKey === "features",
+  )?.payload;
+  const storedFeaturesAi =
+    typeof storedFeatures === "object" &&
+    storedFeatures !== null &&
+    (storedFeatures as { ai?: unknown }).ai === true;
+  const validatesAi =
+    args.sections.some((section) => section.sectionKey === "ai") ||
+    (args.sections.some((section) => section.sectionKey === "features") &&
+      storedFeaturesAi !== featuresAi);
+  const effectiveAi = effectivePayload("ai");
+  let modelCatalogReady: boolean | undefined;
+  let allowedAiModels: Set<string> | undefined;
+  if (validatesAi) {
+    modelCatalogReady = (await ctx.db.query("models").first()) !== null;
+    allowedAiModels = new Set<string>();
+    for (const modelId of selectedAiModelIds(effectiveAi)) {
+      const model = await ctx.db
+        .query("models")
+        .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
+        .unique();
+      if (model) allowedAiModels.add(model.modelId);
+    }
+  }
   throwFirstIssue(
     validateOwnerSections(args.sections, {
       expectedBaseUrl,
       platformMailConfigured: isPlatformMailConfigured(),
       featuresAi,
+      allowedAiModels,
+      modelCatalogReady,
     }).issues,
   );
   // AI answers and the provider entry live in two rows. Either one changing
   // is checked against the other, so they can never drift apart.
-  if (
-    args.sections.some(
-      (section) =>
-        section.sectionKey === "ai" || section.sectionKey === "features",
-    )
-  ) {
-    const ai = effectivePayload("ai");
+  if (validatesAi) {
     throwFirstIssue(
       aiProviderIssues(
-        typeof ai === "object" && ai !== null
-          ? (ai as { providers?: unknown }).providers
+        typeof effectiveAi === "object" && effectiveAi !== null
+          ? (effectiveAi as { providers?: unknown }).providers
           : undefined,
         featuresAi,
-        ai !== undefined,
+        effectiveAi !== undefined,
+        allowedAiModels,
+        modelCatalogReady,
       ),
     );
   }

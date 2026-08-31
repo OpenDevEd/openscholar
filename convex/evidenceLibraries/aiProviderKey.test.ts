@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
+import { TEST_AI_MODELS } from "../../lib/evidence-libraries/configuration/test-models";
 import {
-  AI_MODELS,
   AI_PROVIDER,
   AI_PROVIDER_CREDENTIAL_KEY,
   AI_PROVIDER_KEY_PATH,
@@ -189,7 +189,7 @@ describe("the OpenRouter key", () => {
       "two providers",
       {
         providers: [
-          { provider: AI_PROVIDER, enabled: true, defaultModel: AI_MODELS[0] },
+          { provider: AI_PROVIDER, enabled: true, defaultModel: TEST_AI_MODELS[0] },
           { provider: AI_PROVIDER, enabled: false },
         ],
       },
@@ -222,8 +222,8 @@ describe("the OpenRouter key", () => {
           {
             provider: AI_PROVIDER,
             enabled: true,
-            models: [AI_MODELS[0]],
-            defaultModel: AI_MODELS[0],
+            models: [TEST_AI_MODELS[0]],
+            defaultModel: TEST_AI_MODELS[0],
           },
         ],
       },
@@ -245,15 +245,32 @@ describe("the OpenRouter key", () => {
     ).rejects.toThrow();
   });
 
-  it("saves one OpenRouter entry with an approved model", async () => {
+  it("saves a synced OpenRouter model outside the generated runtime catalog", async () => {
     const fixture = await createReadySetupFixture("ai_save_good");
+    const syncedModel = "meta-llama/llama-4-maverick";
+    await fixture.t.run(async (ctx) => {
+      const now = Date.now();
+      await ctx.db.insert("models", {
+        modelId: syncedModel,
+        name: "Llama 4 Maverick",
+        provider: "meta-llama",
+        inputPricePerMillion: 1,
+        outputPricePerMillion: 2,
+        costMarkup: 1.3,
+        isServed: true,
+        sortOrder: 2,
+        syncedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
     const ai = {
       providers: [
         {
           provider: AI_PROVIDER,
           enabled: true,
-          models: [AI_MODELS[0]],
-          defaultModel: AI_MODELS[0],
+          models: [syncedModel],
+          defaultModel: syncedModel,
         },
       ],
     };
@@ -539,8 +556,8 @@ describe("the OpenRouter key", () => {
           {
             provider: AI_PROVIDER,
             enabled: true,
-            models: [AI_MODELS[0]],
-            defaultModel: AI_MODELS[0],
+            models: [TEST_AI_MODELS[0]],
+            defaultModel: TEST_AI_MODELS[0],
           },
         ],
       };
@@ -597,6 +614,8 @@ describe("the OpenRouter key", () => {
         zoteroGroups: [],
         aiProviderKey: aiProviderKey ?? undefined,
         embeddingApiKey: EMBEDDING_KEY as string | undefined,
+        allowedAiModels: TEST_AI_MODELS,
+        aiModelCatalogReady: true,
       };
       const payload = assembleEvidenceLibraryRuntimePayload(payloadInput);
       expect(payload.runtimeConfig.search).toMatchObject({
@@ -623,8 +642,8 @@ describe("the OpenRouter key", () => {
           {
             provider: AI_PROVIDER,
             enabled: true,
-            models: [AI_MODELS[0]],
-            defaultModel: AI_MODELS[0],
+            models: [TEST_AI_MODELS[0]],
+            defaultModel: TEST_AI_MODELS[0],
             apiKey: OPENROUTER_KEY,
           },
         ],

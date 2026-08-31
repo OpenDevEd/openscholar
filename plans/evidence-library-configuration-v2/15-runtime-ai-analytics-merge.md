@@ -140,6 +140,15 @@ contract synchronizer deliberately refuses an unmerged runtime commit, so the
 OpenScholar implementation must not use hand-copied generated files or false
 provenance.
 
+### Decision 9 — live OpenScholar OpenRouter catalog (2026-08-31)
+
+This replaces Decision 8's fixed picker source. The three models in the
+generated runtime catalog are not the owner picker. OpenScholar already syncs
+the full OpenRouter catalog into its `models` table. Evidence Library settings
+read that table and let the owner add an ordered subset. Save and deployment
+validate the selected ids against the same table. The form has no preset or
+last-known-good list. Luna remains hardcoded only for starter questions.
+
 ## Lanes
 
 | Lane | Repo | Branch | Owns |

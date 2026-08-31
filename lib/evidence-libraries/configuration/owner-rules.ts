@@ -41,6 +41,9 @@ export type OwnerRuleOptions = {
   // Whether AI answers are on for this library, counting the rows being
   // saved. The AI provider entry has to agree with it.
   featuresAi?: boolean;
+  // Current OpenScholar models available to Evidence Libraries.
+  allowedAiModels?: ReadonlySet<string>;
+  modelCatalogReady?: boolean;
 };
 
 function objectValue(value: unknown): Record<string, unknown> | undefined {
@@ -116,7 +119,15 @@ function ownerRuleIssues(
   }
   // Reaching here means the row is being saved, so it must hold one provider.
   if (sectionKey === "ai") {
-    issues.push(...aiProviderIssues(record?.providers, options.featuresAi, true));
+    issues.push(
+      ...aiProviderIssues(
+        record?.providers,
+        options.featuresAi,
+        true,
+        options.allowedAiModels,
+        options.modelCatalogReady,
+      ),
+    );
   }
   if (
     sectionKey === "email" &&
@@ -193,7 +204,15 @@ export function validateOwnerSections(
   // provider. Only the complete set can tell; a partial save has no `ai` row
   // simply because that card did not change.
   if (options.requireComplete && ruleOptions.featuresAi === true && !seen.has("ai")) {
-    issues.push(...aiProviderIssues(undefined, true, false));
+    issues.push(
+      ...aiProviderIssues(
+        undefined,
+        true,
+        false,
+        options.allowedAiModels,
+        options.modelCatalogReady,
+      ),
+    );
   }
   if (options.requireComplete) {
     for (const sectionKey of REQUIRED_OWNER_SECTION_KEYS) {

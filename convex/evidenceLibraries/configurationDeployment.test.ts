@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { encrypt } from "../lib/crypto";
+import { TEST_AI_MODELS } from "../../lib/evidence-libraries/configuration/test-models";
 import {
-  AI_MODELS,
   AI_PROVIDER,
   AI_PROVIDER_CREDENTIAL_KEY,
   PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
@@ -508,8 +508,8 @@ describe("Evidence Library configuration deployment", () => {
               {
                 provider: AI_PROVIDER,
                 enabled: true,
-                models: [AI_MODELS[0]],
-                defaultModel: AI_MODELS[0],
+                models: [TEST_AI_MODELS[0]],
+                defaultModel: TEST_AI_MODELS[0],
               },
             ],
           },
@@ -591,8 +591,8 @@ describe("Evidence Library configuration deployment", () => {
               {
                 provider: AI_PROVIDER,
                 enabled: true,
-                models: [AI_MODELS[0]],
-                defaultModel: AI_MODELS[0],
+                models: [TEST_AI_MODELS[0]],
+                defaultModel: TEST_AI_MODELS[0],
               },
             ],
           },

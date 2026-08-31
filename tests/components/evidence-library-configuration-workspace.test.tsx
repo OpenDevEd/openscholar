@@ -103,6 +103,12 @@ vi.mock("@/convex/_generated/api", () => ({
         resolveLibraryCollections: "resolveLibraryCollections",
       },
     },
+    models: {
+      queries: {
+        listCatalogOptions: "listCatalogOptions",
+        paginateCatalogOptions: "paginateCatalogOptions",
+      },
+    },
   },
 }));
 
@@ -115,6 +121,32 @@ const resolveCollectionsMock = vi.hoisted(() => vi.fn(async () => ({ items: [] }
 
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
+  useQuery: (query: unknown) =>
+    query === "listCatalogOptions"
+      ? TEST_AI_MODELS.map((modelId, index) => ({
+          _id: `display_model_${index}`,
+          modelId,
+          name: modelId,
+          provider: modelId.split("/")[0],
+          inputPricePerMillion: 1,
+          outputPricePerMillion: 2,
+        }))
+      : undefined,
+  usePaginatedQuery: (query: unknown) => ({
+    results:
+      query === "paginateCatalogOptions"
+        ? [...TEST_AI_MODELS, "meta-llama/llama-4-maverick"].map((modelId, index) => ({
+          _id: `model_${index}`,
+          modelId,
+          name: modelId,
+          provider: modelId.split("/")[0],
+          inputPricePerMillion: 1,
+          outputPricePerMillion: 2,
+        }))
+        : [],
+    status: "Exhausted",
+    loadMore: vi.fn(),
+  }),
   useAction: (action: unknown) =>
     action === "check"
       ? checkAction
@@ -159,9 +191,9 @@ vi.mock("@/components/auth/auth-state-panel", () => ({
 
 import { ConfigurationWorkspace } from "@/components/evidence-libraries/configuration/configuration-workspace";
 import {
-  AI_MODELS,
   AI_PROVIDER_CREDENTIAL_KEY,
 } from "@/lib/evidence-libraries/configuration/ai";
+import { TEST_AI_MODELS } from "@/lib/evidence-libraries/configuration/test-models";
 
 const savedIdentity = {
   name: "Saved Library",
@@ -1239,11 +1271,20 @@ describe("<ConfigurationWorkspace>", () => {
           ]),
         );
 
-        await user.click(ai.getByRole("checkbox", { name: AI_MODELS[0] }));
-        await user.click(ai.getByRole("checkbox", { name: AI_MODELS[1] }));
+        const syncedModel = "meta-llama/llama-4-maverick";
+        await user.click(ai.getByRole("button", { name: "ai.addModel" }));
+        await user.click(
+          await screen.findByRole("option", { name: new RegExp(syncedModel) }),
+        );
+        await user.click(ai.getByRole("button", { name: "ai.addModel" }));
+        await user.click(
+          await screen.findByRole("option", {
+            name: new RegExp(TEST_AI_MODELS[1]!),
+          }),
+        );
         await user.click(ai.getByRole("combobox", { name: "ai.modelLabel" }));
         await user.click(
-          await screen.findByRole("option", { name: AI_MODELS[1] }),
+          await screen.findByRole("option", { name: TEST_AI_MODELS[1] }),
         );
         await user.click(screen.getByRole("button", { name: "save" }));
 
@@ -1257,8 +1298,8 @@ describe("<ConfigurationWorkspace>", () => {
                 {
                   provider: "openrouter",
                   enabled: true,
-                  models: [AI_MODELS[0], AI_MODELS[1]],
-                  defaultModel: AI_MODELS[1],
+                  models: [syncedModel, TEST_AI_MODELS[1]],
+                  defaultModel: TEST_AI_MODELS[1],
                 },
               ],
             },

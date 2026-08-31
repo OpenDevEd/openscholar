@@ -56,3 +56,20 @@ export function getProviderIcon(provider: AIProvider): React.ComponentType<{ cla
       return OpenAIIcon
   }
 }
+
+/** Provider mark for an OpenRouter model id such as `openai/gpt-5`. */
+export function getModelIcon(modelId: string): React.ComponentType<{ className?: string }> {
+  const provider = modelId.split("/", 1)[0]?.toLowerCase();
+  switch (provider) {
+    case "openai":
+      return OpenAIIcon;
+    case "google":
+      return GoogleIcon;
+    case "anthropic":
+      return AnthropicIcon;
+    case "deepseek":
+      return DeepSeekIcon;
+    default:
+      return OpenRouterIcon;
+  }
+}
