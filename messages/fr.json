@@ -2244,6 +2244,7 @@
       "limits": "{accepts}.",
       "accepts": {
         "image": "SVG, PNG or WEBP",
+        "icon": "SVG, PNG or ICO",
         "shareImage": "PNG, JPG or WEBP",
         "legal": "Markdown or text"
       },
@@ -2316,8 +2317,12 @@
       "logoDefaultHint": "Uses the OpenScholar logo until you upload one.",
       "logoLightLabel": "Logo for light backgrounds",
       "logoLightHint": "Uses the dark-background logo until you upload one.",
-      "faviconLabel": "Browser tab icon (favicon)",
-      "faviconHint": "Uses the OpenScholar icon until you upload one. We create all favicon sizes for you.",
+      "faviconLabel": "Default browser icon",
+      "faviconHint": "Uses the full OpenScholar browser icon set until you upload one.",
+      "faviconLightLabel": "Light-mode browser icon",
+      "faviconLightHint": "Optional override for visitors using light mode.",
+      "faviconDarkLabel": "Dark-mode browser icon",
+      "faviconDarkHint": "Optional override for visitors using dark mode.",
       "coloursHeading": "Colours",
       "presetsLabel": "Presets",
       "accentLabel": "Accent colour",

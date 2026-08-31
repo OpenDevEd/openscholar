@@ -97,21 +97,35 @@ export function optionalPlatformMailService(
   };
 }
 
-// The OpenScholar logo and favicon used when an owner uploads nothing.
-// Returns undefined when neither value is set; assembly then refuses a
-// library without its own uploads. Both must be set together.
+// The OpenScholar logo and browser icon set used when an owner uploads nothing.
+// Returns undefined when none are set; assembly then refuses a library without
+// its own uploads. All three values must be set together.
 export function optionalPlatformBrandAssets(
   createError: ErrorFactory,
 ): PlatformBrandAssets | undefined {
   const logoUrl = optionalRuntimeEnvironment("EL_DEFAULT_LOGO_URL");
   const faviconUrl = optionalRuntimeEnvironment("EL_DEFAULT_FAVICON_URL");
-  if (!logoUrl && !faviconUrl) return undefined;
-  if (!logoUrl || !faviconUrl) {
+  const iconUrlsJson = optionalRuntimeEnvironment("EL_DEFAULT_ICON_URLS_JSON");
+  if (!logoUrl && !faviconUrl && !iconUrlsJson) return undefined;
+  if (!logoUrl || !faviconUrl || !iconUrlsJson) {
     throw createError(
-      "EL_DEFAULT_LOGO_URL and EL_DEFAULT_FAVICON_URL must be set together",
+      "EL_DEFAULT_LOGO_URL, EL_DEFAULT_FAVICON_URL, and EL_DEFAULT_ICON_URLS_JSON must be set together",
     );
   }
-  return { logoUrl, faviconUrl };
+  let iconUrls: unknown;
+  try {
+    iconUrls = JSON.parse(iconUrlsJson);
+  } catch {
+    throw createError("EL_DEFAULT_ICON_URLS_JSON must be a JSON array of URLs");
+  }
+  if (
+    !Array.isArray(iconUrls) ||
+    iconUrls.length === 0 ||
+    iconUrls.some((value) => typeof value !== "string" || value.trim() === "")
+  ) {
+    throw createError("EL_DEFAULT_ICON_URLS_JSON must be a non-empty JSON array of URLs");
+  }
+  return { logoUrl, faviconUrl, iconUrls };
 }
 
 // The key that pays for meaning-based search. A separate embedding key keeps

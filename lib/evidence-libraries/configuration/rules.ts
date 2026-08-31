@@ -330,6 +330,8 @@ type IdentityDraft = {
     logoDark: string;
     logoLight: string;
     favicon: string;
+    faviconLight: string;
+    faviconDark: string;
     shareImage: string;
   };
 };
@@ -560,6 +562,8 @@ function readIdentity(payload: unknown): IdentityDraft {
       logoDark: text(assets.logoDark),
       logoLight: text(assets.logoLight),
       favicon: text(assets.favicon),
+      faviconLight: text(assets.faviconLight),
+      faviconDark: text(assets.faviconDark),
       shareImage: text(assets.shareImage),
     },
   };
@@ -906,6 +910,8 @@ function identityPayload(identity: IdentityDraft) {
       logoDark: optional(identity.assets.logoDark),
       logoLight: optional(identity.assets.logoLight),
       favicon: optional(identity.assets.favicon),
+      faviconLight: optional(identity.assets.faviconLight),
+      faviconDark: optional(identity.assets.faviconDark),
       shareImage: optional(identity.assets.shareImage),
     }),
   });
@@ -1141,7 +1147,13 @@ export function staleUploads(
 
 // The logos live in `identity.assets` on the runtime but the owner edits
 // them on the Theme card, so the card slices differ from the saved rows.
-const LOGO_KEYS = ["logoDark", "logoLight", "favicon"] as const;
+const LOGO_KEYS = [
+  "logoDark",
+  "logoLight",
+  "favicon",
+  "faviconLight",
+  "faviconDark",
+] as const;
 
 function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
   switch (sectionKey) {

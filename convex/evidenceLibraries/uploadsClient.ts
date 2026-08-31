@@ -95,6 +95,7 @@ export async function ensureUploadBucket(input: StorageInput) {
   const allowedMimeTypes = [
     "image/svg+xml",
     "image/png",
+    "image/x-icon",
     "image/webp",
     "image/jpeg",
   ];

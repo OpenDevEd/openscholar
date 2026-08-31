@@ -227,7 +227,9 @@ async function readLibraryOverview(
             library.activeDeploymentOperationId,
           )
         : null,
-      readDraftConfigurationPayloads(ctx, library.draftId ?? undefined),
+      library.state === "disabled"
+        ? null
+        : readDraftConfigurationPayloads(ctx, library.draftId ?? undefined),
     ]);
   const status = libraryOverviewStatus(library, setupOperation);
   let teardownStage: TeardownStage | null = null;

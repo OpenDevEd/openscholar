@@ -117,6 +117,7 @@ async function renderSection(props: Partial<Parameters<typeof VersionsSection>[0
         libraryId={"library_123" as never}
         live
         operationRunning={false}
+        refreshKey="base"
         {...props}
       />,
     );
@@ -308,4 +309,51 @@ describe("<VersionsSection>", () => {
     expect(mocks.check).not.toHaveBeenCalled();
     expect(screen.getByText("versions.notRunning")).toBeInTheDocument();
   });
+
+  it("checks again when a runtime update finishes", async () => {
+    mocks.check
+      .mockResolvedValueOnce({
+        running: "old-commit",
+        latest: "new-commit",
+        changes: [],
+        checkedAt: 1,
+      })
+      .mockResolvedValueOnce({
+        running: "new-commit",
+        latest: "new-commit",
+        changes: [],
+        checkedAt: 2,
+      });
+
+    let rerender!: ReturnType<typeof render>["rerender"];
+    await act(async () => {
+      ({ rerender } = render(
+        <VersionsSection
+          libraryId={"library_123" as never}
+          live
+          operationRunning
+          refreshKey="base"
+        />,
+      ));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.getByText("versions.updateAvailable")).toBeInTheDocument();
+
+    await act(async () => {
+      rerender(
+        <VersionsSection
+          libraryId={"library_123" as never}
+          live
+          operationRunning={false}
+          refreshKey="runtime-update-succeeded"
+        />,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(screen.getByText("versions.upToDate")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "versions.update" })).toBeNull();
+    expect(mocks.check).toHaveBeenCalledTimes(2);
+  });
+
 });

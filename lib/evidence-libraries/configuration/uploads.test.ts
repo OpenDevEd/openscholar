@@ -24,6 +24,9 @@ describe("Evidence Library upload checks", () => {
       checkEvidenceLibraryUpload({ kind: "image", name: "logo.webp", bytes: 10 }),
     ).toEqual({ ok: true, extension: "webp", contentType: "image/webp" });
     expect(
+      checkEvidenceLibraryUpload({ kind: "icon", name: "favicon.ico", bytes: 10 }),
+    ).toEqual({ ok: true, extension: "ico", contentType: "image/x-icon" });
+    expect(
       checkEvidenceLibraryUpload({
         kind: "shareImage",
         name: "card.jpeg",
@@ -56,6 +59,7 @@ describe("Evidence Library upload checks", () => {
   test("rejects files over each kind's limit and empty files", () => {
     expect(EVIDENCE_LIBRARY_UPLOAD_LIMITS).toEqual({
       image: 1_048_576,
+      icon: 1_048_576,
       shareImage: 2_097_152,
       legal: 204_800,
     });
@@ -201,6 +205,13 @@ describe("Evidence Library upload content detection", () => {
     expect(
       checkEvidenceLibraryUploadContent({ kind: "image", name: "logo.svg", content: SVG }),
     ).toEqual({ ok: true, extension: "svg", contentType: "image/svg+xml" });
+    expect(
+      checkEvidenceLibraryUploadContent({
+        kind: "icon",
+        name: "favicon.ico",
+        content: new Uint8Array([0, 0, 1, 0, 1, 0]),
+      }),
+    ).toEqual({ ok: true, extension: "ico", contentType: "image/x-icon" });
     expect(
       checkEvidenceLibraryUploadContent({ kind: "shareImage", name: "card.jpeg", content: JPG }),
     ).toEqual({ ok: true, extension: "jpg", contentType: "image/jpeg" });

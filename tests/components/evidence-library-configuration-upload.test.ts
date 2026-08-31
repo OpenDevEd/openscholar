@@ -28,6 +28,7 @@ describe("checkUploadFile", () => {
   it("accepts the platform's allowed types", () => {
     expect(checkUploadFile("image", { name: "logo.svg", size: 10 })).toBeNull();
     expect(checkUploadFile("image", { name: "logo.webp", size: 10 })).toBeNull();
+    expect(checkUploadFile("icon", { name: "favicon.ico", size: 10 })).toBeNull();
     expect(checkUploadFile("shareImage", { name: "card.jpeg", size: 10 })).toBeNull();
   });
 

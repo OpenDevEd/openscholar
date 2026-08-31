@@ -99,6 +99,7 @@ const runtimeChecks = new WeakMap<CheckAction, Map<string, Promise<RuntimeCheck>
 function runtimeCheck(
   check: CheckAction,
   libraryId: Id<"evidenceLibraries">,
+  refreshKey: string,
   fallback: string,
   { fresh = false } = {},
 ): Promise<RuntimeCheck> {
@@ -107,10 +108,11 @@ function runtimeCheck(
     byLibrary = new Map();
     runtimeChecks.set(check, byLibrary);
   }
-  const cached = byLibrary.get(libraryId);
+  const cacheKey = `${libraryId}:${refreshKey}`;
+  const cached = byLibrary.get(cacheKey);
   if (cached && !fresh) return cached;
   const promise = settle(check({ libraryId }), fallback);
-  byLibrary.set(libraryId, promise);
+  byLibrary.set(cacheKey, promise);
   return promise;
 }
 
@@ -123,12 +125,15 @@ export function VersionsSection({
   libraryId,
   live,
   operationRunning,
+  refreshKey,
 }: {
   libraryId: Id<"evidenceLibraries">;
   /** The library is active and running; drafts have no software to check. */
   live: boolean;
   /** A platform operation is applying; no update or restore may start. */
   operationRunning: boolean;
+  /** Changes after a runtime update finishes, causing one fresh software check. */
+  refreshKey: string;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const tc = useTranslations("common");
@@ -158,8 +163,9 @@ export function VersionsSection({
 
   // Opening the page checks for updates once; "Check again" asks once more.
   const [, setCheckCount] = useState(0);
+  const checkError = t("versions.checkError");
   const checkPromise = live
-    ? runtimeCheck(check, libraryId, t("versions.checkError"))
+    ? runtimeCheck(check, libraryId, refreshKey, checkError)
     : null;
   const [busy, setBusy] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
@@ -169,7 +175,7 @@ export function VersionsSection({
   const blocked = busy || operationRunning;
 
   function checkAgain() {
-    runtimeCheck(check, libraryId, t("versions.checkError"), { fresh: true });
+    runtimeCheck(check, libraryId, refreshKey, checkError, { fresh: true });
     setCheckCount((count) => count + 1);
   }
 

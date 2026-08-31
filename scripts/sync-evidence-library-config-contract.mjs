@@ -20,7 +20,7 @@ function parseArgs(argv) {
     check: false,
     commit: undefined,
     outputRoot: resolve(projectRoot, "lib/evidence-libraries/configuration"),
-    sourceRoot: resolve(projectRoot, "../../new-el-optimize"),
+    sourceRoot: undefined,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -60,6 +60,9 @@ async function main() {
   const commit = options.commit ?? existingLock?.source?.commit;
   if (!commit) {
     throw new Error("The committed contract lock does not contain a source commit");
+  }
+  if (!options.sourceRoot) {
+    throw new Error("--source-root is required for contract synchronization");
   }
   const checkout = await inspectContractCheckout({
     sourceRoot: options.sourceRoot,
