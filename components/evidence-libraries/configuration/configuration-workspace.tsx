@@ -7,21 +7,29 @@ import {
   AlertCircle,
   ArrowUp,
   BarChart3,
+  Boxes,
   Building2,
+  CheckCircle2,
+  Clock3,
   Database,
   FolderTree,
   Globe,
+  Hammer,
+  HardDrive,
+  HeartPulse,
   History,
   Languages,
   Layers,
   Link2,
+  ListChecks,
   type LucideIcon,
   Mail,
   Menu,
+  PackageOpen,
   Palette,
   PanelBottom,
   Quote,
-  Rocket,
+  RadioTower,
   Save,
   Search,
   Sparkles,
@@ -112,11 +120,29 @@ import { PanelHeader } from "./panel-header";
 import { STATUS_DOT, StatusChip } from "./status-chip";
 import { FileUploadsProvider } from "./use-file-uploads";
 import { useScrollSpy } from "./use-scroll-spy";
+import { ActivationControl } from "./activation-control";
 
 type DraftResult = NonNullable<
   FunctionReturnType<typeof api.evidenceLibraries.queries.getDraft>
 >;
 type Operation = DraftResult["operation"];
+type OperationStage = NonNullable<Operation>["stage"];
+
+const OPERATION_STAGE_ICONS: Record<OperationStage, LucideIcon> = {
+  queued: Clock3,
+  assembling: PackageOpen,
+  validating: ListChecks,
+  publishing: Hammer,
+  activating: RadioTower,
+  database: Database,
+  storage: HardDrive,
+  application: Boxes,
+  deployment: Hammer,
+  health_check: HeartPulse,
+  coolify: Trash2,
+  convex: Clock3,
+  completed: CheckCircle2,
+};
 
 /**
  * A new library's setup operation is created queued and only starts once the
@@ -403,16 +429,31 @@ function Workspace({
             })
           : t("applying")} · ${t(`stages.${operation.stage}`)}`
       : null;
+  const operationFlowLabel =
+    operationRunning && operation
+      ? t(`operationFlow.${operation.stage}`)
+      : activating
+        ? t("operationFlow.saving")
+        : null;
   const activateButton = (
-    <Button disabled={!canActivate} onClick={() => setActivateOpen(true)}>
-      {activating || operationRunning ? <Spinner /> : <Rocket />}
-      {operationLabel ??
-        (activating
-          ? t("applying")
-          : isDraftLibrary
-            ? t("setUpAndActivate")
-            : t("activate"))}
-    </Button>
+    <ActivationControl
+      disabled={!canActivate}
+      onActivate={() => setActivateOpen(true)}
+      idleLabel={isDraftLibrary ? t("setUpAndActivate") : t("activate")}
+      busy={
+        operationFlowLabel
+          ? {
+              accessibleLabel:
+                operationLabel ?? t("operationFlow.saving"),
+              icon:
+                operationRunning && operation
+                  ? OPERATION_STAGE_ICONS[operation.stage]
+                  : Save,
+              label: operationFlowLabel,
+            }
+          : null
+      }
+    />
   );
 
   return (

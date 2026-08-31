@@ -2811,6 +2811,22 @@
       "consentVersionError": "Use a whole number, 1 or higher."
     },
     "updatingSoftware": "Updating the Evidence Library software to {rev}",
+    "operationFlow": {
+      "saving": "変更を保存中",
+      "queued": "開始待ち",
+      "assembling": "リリースを準備中",
+      "validating": "設定を確認中",
+      "publishing": "ライブラリをビルド中",
+      "activating": "公開準備中",
+      "database": "データベースを作成中",
+      "storage": "ファイルを準備中",
+      "application": "ライブラリを作成中",
+      "deployment": "ライブラリをビルド中",
+      "health_check": "公開準備中",
+      "coolify": "ライブラリを削除中",
+      "convex": "削除を完了中",
+      "completed": "公開中"
+    },
     "versions": {
       "description": "Every activation makes a version. Restore an older one at any time.",
       "softwareHeading": "Evidence Library software",
