@@ -468,6 +468,16 @@ async function requestCoolify(
           "That domain is already used by another site",
         );
       }
+      if (
+        response.status === 408 ||
+        response.status === 429 ||
+        response.status >= 500
+      ) {
+        throw new CoolifyClientError(
+          "COOLIFY_UNAVAILABLE",
+          "Coolify could not be reached",
+        );
+      }
       throw new CoolifyClientError(
         "COOLIFY_REQUEST_FAILED",
         "Coolify rejected the request",

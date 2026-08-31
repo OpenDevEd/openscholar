@@ -1605,7 +1605,7 @@ describe("Coolify Evidence Library client", () => {
   it("does not copy a rejected response body or environment value into errors", async () => {
     const remoteSecret = `remote failure ${LIBRARY_CONFIG_JSON}`;
     const fetchImpl: typeof fetch = vi.fn(async () =>
-      jsonResponse({ message: remoteSecret, token: COOLIFY_TOKEN }, 503),
+      jsonResponse({ message: remoteSecret, token: COOLIFY_TOKEN }, 422),
     );
 
     const error = await createClient(fetchImpl)
@@ -1621,6 +1621,22 @@ describe("Coolify Evidence Library client", () => {
     expect(String(error)).not.toContain(COOLIFY_TOKEN);
     expect(String(error)).not.toContain(LIBRARY_CONFIG_JSON);
   });
+
+  it.each([408, 429, 503])(
+    "treats transient HTTP %s responses as unavailable",
+    async (status) => {
+      const fetchImpl: typeof fetch = vi.fn(async () =>
+        jsonResponse({ message: "temporary hosting failure" }, status),
+      );
+
+      await expect(
+        createClient(fetchImpl).reconcileApplication(reconcileInput()),
+      ).rejects.toMatchObject({
+        code: "COOLIFY_UNAVAILABLE",
+        message: "Coolify could not be reached",
+      });
+    },
+  );
 
   it("rejects an oversized successful response before parsing it", async () => {
     const fetchImpl: typeof fetch = vi.fn(
