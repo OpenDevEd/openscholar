@@ -367,7 +367,7 @@ const contentRows = [
           id: "nav_1",
           label: "Library",
           href: "/lib",
-          icon: "EvidenceLibrary",
+          icon: "LibraryIcon",
           target: "self",
           visible: true,
           children: [
@@ -535,7 +535,7 @@ describe("changedSectionRows for the content sections", () => {
               id: "nav_1",
               label: "Library",
               href: "/lib",
-              icon: "EvidenceLibrary",
+              icon: "LibraryIcon",
               target: "self",
               visible: true,
               children: [

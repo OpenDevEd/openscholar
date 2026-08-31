@@ -1,4 +1,4 @@
-import catalogs from "./generated/library-config.catalogs.json";
+import catalogs from "./generated/library-config.client.catalogs.json";
 
 // The rows a new library starts with. Every other section stays absent until
 // the owner saves it; absent means the schema defaults apply at assembly.

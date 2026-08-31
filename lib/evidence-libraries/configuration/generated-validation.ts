@@ -38,6 +38,9 @@ function issueMessage(error: ErrorObject) {
   }
   if (error.keyword === "enum") {
     const { allowedValues } = error.params as { allowedValues: unknown[] };
+    if (allowedValues.length > 10) {
+      return `Value must be one of ${allowedValues.length.toLocaleString("en-US")} allowed values.`;
+    }
     return `Value must be one of: ${allowedValues.join(", ")}.`;
   }
   if (error.keyword === "type") {

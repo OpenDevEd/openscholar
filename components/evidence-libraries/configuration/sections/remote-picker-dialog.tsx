@@ -76,6 +76,8 @@ type CommonProps = {
   /** Offered as sortable column headers; the value goes to the server. */
   sorts?: readonly PickerSort[];
   source: PickerSource;
+  /** Optional visual shown before a loaded row's title. */
+  renderLeading?: (row: PickerRow) => ReactNode;
   /** Extra controls under the search box, given the rows loaded so far. */
   controls?: (rows: PickerRow[]) => ReactNode;
   /** Hides rows of the loaded page; for chips and "hide already shown". */
@@ -125,6 +127,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
     columns,
     sorts,
     source,
+    renderLeading,
     controls,
     rowFilter,
     usedIds,
@@ -488,10 +491,19 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                         )}
                       </TableCell>
                       <TableCell className="min-w-0">
-                        <p className="truncate font-medium" title={row.title}>
-                          {row.title}
-                        </p>
-                        {row.detail}
+                        <div className="flex min-w-0 items-center gap-3">
+                          {renderLeading ? (
+                            <span className="shrink-0 text-muted-foreground">
+                              {renderLeading(row)}
+                            </span>
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium" title={row.title}>
+                              {row.title}
+                            </p>
+                            {row.detail}
+                          </div>
+                        </div>
                       </TableCell>
                       {columns.meta ? (
                         <TableCell className="min-w-0">

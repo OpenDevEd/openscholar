@@ -133,6 +133,18 @@ describe("validateLibraryConfigStructure", () => {
 });
 
 describe("validateOwnerSection", () => {
+  test("keeps large icon-enum failures small", () => {
+    const result = validateOwnerSection("navigation", {
+      links: [{ id: "home", label: "Home", href: "/", icon: "LegacyIcon" }],
+    });
+    expect(result.issues).toContainEqual({
+      pointer: "/navigation/links/0/icon",
+      section: "navigation",
+      keyword: "enum",
+      message: "Value must be one of 6,025 allowed values.",
+    });
+  });
+
   test("checks a payload against its own schema slice with root pointers", () => {
     const result = validateOwnerSection("navigation", {
       links: [{ id: "home", label: "Home", href: "/", target: "nowhere" }],

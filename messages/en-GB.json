@@ -2428,22 +2428,15 @@
       "noIcon": "No icon",
       "newTab": "Open in new tab",
       "visible": "Visible",
-      "icons": {
-        "AboutUs": "About us",
-        "EvidenceLibrary": "Evidence library",
-        "Programs": "Programs",
-        "Blog": "Blog",
-        "Team": "Team",
-        "ContactUs": "Contact us",
-        "TeamFill": "Team (solid)",
-        "ToolsFill": "Tools",
-        "BookOpenFill": "Open book",
-        "Bookshelf": "Bookshelf",
-        "ChatRightDotsFill": "Chat",
-        "BsMapFill": "Map",
-        "LuX": "X",
-        "FaQuestionCircle": "Question",
-        "IoStatsChart": "Statistics"
+      "iconPicker": {
+        "title": "Choose an icon",
+        "description": "All Hugeicons available on the public site.",
+        "search": "Search icons…",
+        "colTitle": "Icon",
+        "empty": "No icons are available.",
+        "noMatch": "No icon matches.",
+        "loading": "Loading icons…",
+        "failed": "Could not load the icons."
       },
       "collectionPicker": {
         "title": "Choose a collection",

@@ -46,7 +46,7 @@ describe("readLink and linkPayload", () => {
       id: "nav_1",
       label: "Topics",
       href: "/lib",
-      icon: "Bookshelf",
+      icon: "Books01Icon",
       target: "self",
       visible: true,
       children: [
@@ -58,7 +58,7 @@ describe("readLink and linkPayload", () => {
       id: "nav_1",
       label: "Topics",
       target: { kind: "page", page: "library" },
-      icon: "Bookshelf",
+      icon: "Books01Icon",
       newTab: false,
       visible: true,
       children: [

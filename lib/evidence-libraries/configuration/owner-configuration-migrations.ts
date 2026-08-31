@@ -5,7 +5,7 @@ import {
 } from "../../../convex/evidenceLibraries/sectionPayload";
 import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
 import { AI_PROVIDER } from "./ai";
-import catalogs from "./generated/library-config.catalogs.json";
+import catalogs from "./generated/library-config.client.catalogs.json";
 import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
