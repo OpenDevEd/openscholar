@@ -83,6 +83,8 @@ describe("readDraft", () => {
     const draft = savedDraft();
     expect(draft.identity.description).toBe("");
     expect(draft.identity.assets.logoLight).toBe("");
+    expect(draft.identity.assets.faviconLight).toBe("");
+    expect(draft.identity.assets.faviconDark).toBe("");
     expect(draft.identity.assets.shareImage).toBe("");
     expect(draft.theme.layout).toBe("wide");
     expect(draft.theme.defaultMode).toBe(THEME_DEFAULTS.defaultMode);
@@ -110,6 +112,8 @@ describe("readDraft", () => {
       logoDark: "",
       logoLight: "",
       favicon: "",
+      faviconLight: "",
+      faviconDark: "",
       shareImage: "",
     });
     expect(draft.theme.colors.accent).toBe(THEME_DEFAULTS.colors.accent);
@@ -192,15 +196,21 @@ describe("changedSectionRows", () => {
     ]);
   });
 
-  it("leaves out a logo or favicon the owner has not uploaded", () => {
+  it("sends theme-specific favicons and leaves out missing uploads", () => {
     const draft = savedDraft();
     draft.identity.assets.favicon = "";
     draft.identity.assets.logoLight = "https://assets.example.test/logo-light.svg";
+    draft.identity.assets.faviconLight =
+      "https://assets.example.test/favicon-light.svg";
+    draft.identity.assets.faviconDark =
+      "https://assets.example.test/favicon-dark.svg";
     const rows = changedSectionRows(draft, savedRows);
     expect(rows).toHaveLength(1);
     expect((rows[0]?.payload as { assets: unknown }).assets).toEqual({
       logoDark: "https://assets.example.test/logo-dark.svg",
       logoLight: "https://assets.example.test/logo-light.svg",
+      faviconLight: "https://assets.example.test/favicon-light.svg",
+      faviconDark: "https://assets.example.test/favicon-dark.svg",
     });
   });
 

@@ -54,7 +54,10 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
     });
   }
 
-  function setLogo(key: "logoDark" | "logoLight" | "favicon", url: string | null) {
+  function setLogo(
+    key: "logoDark" | "logoLight" | "favicon" | "faviconLight" | "faviconDark",
+    url: string | null,
+  ) {
     patch((d) => {
       d.identity.assets[key] = url ?? "";
       return d;
@@ -150,9 +153,25 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
           <UploadField
             label={t("faviconLabel")}
             hint={t("faviconHint")}
-            kind="image"
+            kind="icon"
             value={assets.favicon || null}
             onChange={(url) => setLogo("favicon", url)}
+          />
+          <UploadField
+            label={t("faviconLightLabel")}
+            hint={t("faviconLightHint")}
+            kind="icon"
+            value={assets.faviconLight || null}
+            onChange={(url) => setLogo("faviconLight", url)}
+            optional
+          />
+          <UploadField
+            label={t("faviconDarkLabel")}
+            hint={t("faviconDarkHint")}
+            kind="icon"
+            value={assets.faviconDark || null}
+            onChange={(url) => setLogo("faviconDark", url)}
+            optional
           />
         </div>
       </FieldGroup>

@@ -11,6 +11,7 @@ export const EVIDENCE_LIBRARY_UPLOAD_BUCKET = "openscholar";
 /** Used by the page's upload field (lane C, plan 05) to build its controls. */
 export const EVIDENCE_LIBRARY_UPLOAD_KINDS = [
   "image",
+  "icon",
   "shareImage",
   "legal",
 ] as const;
@@ -23,6 +24,7 @@ export const EVIDENCE_LIBRARY_UPLOAD_LIMITS: Record<
   number
 > = {
   image: 1 * 1024 * 1024,
+  icon: 1 * 1024 * 1024,
   shareImage: 2 * 1024 * 1024,
   legal: 200 * 1024,
 };
@@ -34,6 +36,11 @@ const ACCEPTED_TYPES: Record<EvidenceLibraryUploadKind, AcceptedType[]> = {
     { extension: "svg", contentType: "image/svg+xml" },
     { extension: "png", contentType: "image/png" },
     { extension: "webp", contentType: "image/webp" },
+  ],
+  icon: [
+    { extension: "svg", contentType: "image/svg+xml" },
+    { extension: "png", contentType: "image/png" },
+    { extension: "ico", contentType: "image/x-icon" },
   ],
   shareImage: [
     { extension: "png", contentType: "image/png" },
@@ -61,6 +68,11 @@ export const EVIDENCE_LIBRARY_UPLOAD_ACCEPT: Record<
     "image/svg+xml": [".svg"],
     "image/png": [".png"],
     "image/webp": [".webp"],
+  },
+  icon: {
+    "image/svg+xml": [".svg"],
+    "image/png": [".png"],
+    "image/x-icon": [".ico"],
   },
   shareImage: {
     "image/png": [".png"],
@@ -166,6 +178,7 @@ export type EvidenceLibraryUploadContent =
   | "jpg"
   | "webp"
   | "svg"
+  | "ico"
   | "text";
 
 function startsWithBytes(content: Uint8Array, prefix: number[], at = 0) {
@@ -213,6 +226,7 @@ export function detectEvidenceLibraryUploadContent(
     return "png";
   }
   if (startsWithBytes(content, [0xff, 0xd8, 0xff])) return "jpg";
+  if (startsWithBytes(content, [0x00, 0x00, 0x01, 0x00])) return "ico";
   if (
     startsWithBytes(content, [0x52, 0x49, 0x46, 0x46]) &&
     startsWithBytes(content, [0x57, 0x45, 0x42, 0x50], 8)
@@ -229,6 +243,7 @@ const CONTENT_FOR_EXTENSION: Record<string, EvidenceLibraryUploadContent> = {
   jpg: "jpg",
   webp: "webp",
   svg: "svg",
+  ico: "ico",
   md: "text",
   txt: "text",
 };

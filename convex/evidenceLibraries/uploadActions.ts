@@ -19,6 +19,7 @@ import {
 
 const uploadKindValidator = v.union(
   v.literal("image"),
+  v.literal("icon"),
   v.literal("shareImage"),
   v.literal("legal"),
 );
@@ -51,7 +52,10 @@ function storageConfig() {
   };
 }
 
-function rejectUpload(reason: "type" | "size", kind: "image" | "shareImage" | "legal"): never {
+function rejectUpload(
+  reason: "type" | "size",
+  kind: "image" | "icon" | "shareImage" | "legal",
+): never {
   const limitMb = EVIDENCE_LIBRARY_UPLOAD_LIMITS[kind] / (1024 * 1024);
   const limit = limitMb >= 1 ? `${limitMb} MB` : `${Math.round(limitMb * 1024)} KB`;
   throw createError(

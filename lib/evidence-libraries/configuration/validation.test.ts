@@ -76,7 +76,11 @@ const platformMail = {
 
 const platformBrand = {
   logoUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-logo.svg",
-  faviconUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-favicon.png",
+  faviconUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-favicon.ico",
+  iconUrls: [
+    "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-icon.svg",
+    "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-icon-96.png",
+  ],
 };
 
 const emailWithRecipients = {
@@ -686,7 +690,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
   });
 
-  test("fills a missing logo and favicon from the platform brand, owner uploads win", () => {
+  test("fills the platform icon set until the owner uploads a favicon", () => {
     const { assets: _assets, ...identityWithoutAssets } = ownerSections.identity;
     const filled = assembleEvidenceLibraryConfiguration({
       sections: { ...ownerSections, identity: identityWithoutAssets },
@@ -694,7 +698,11 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     });
     expect(validateLibraryConfigStructure(filled).valid).toBe(true);
     expect(filled.identity).toMatchObject({
-      assets: { logoDark: platformBrand.logoUrl, favicon: platformBrand.faviconUrl },
+      assets: {
+        logoDark: platformBrand.logoUrl,
+        favicon: platformBrand.faviconUrl,
+        icons: platformBrand.iconUrls,
+      },
     });
 
     const partial = assembleEvidenceLibraryConfiguration({
@@ -713,6 +721,9 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         favicon: "https://assets.example.test/own-favicon.svg",
       },
     });
+    expect(
+      (partial.identity as { assets: Record<string, unknown> }).assets.icons,
+    ).toEqual([]);
 
     const own = assembleEvidenceLibraryConfiguration({
       sections: ownerSections,

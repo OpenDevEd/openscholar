@@ -92,6 +92,18 @@
 							"maxLength": 2048,
 							"format": "uri"
 						},
+						"faviconLight": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 2048,
+							"format": "uri"
+						},
+						"faviconDark": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 2048,
+							"format": "uri"
+						},
 						"icons": {
 							"default": [],
 							"maxItems": 12,

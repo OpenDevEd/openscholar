@@ -39,12 +39,16 @@ export type ManagedEvidenceLibraryConfiguration = {
   // The platform mail service. Owners only choose who receives the emails.
   // Undefined means the mail service is not set up yet.
   mail?: PlatformMailService;
-  // The OpenScholar logo and favicon, used when the owner uploads nothing.
+  // The OpenScholar logo and browser icon set, used when the owner uploads nothing.
   // Undefined means the platform brand is not set up yet.
   brand?: PlatformBrandAssets;
 };
 
-export type PlatformBrandAssets = { logoUrl: string; faviconUrl: string };
+export type PlatformBrandAssets = {
+  logoUrl: string;
+  faviconUrl: string;
+  iconUrls: readonly string[];
+};
 
 export const PLATFORM_BRAND_MISSING_MESSAGE =
   "The library has no logo or favicon and the OpenScholar defaults are not set up yet. Upload one or ask support.";
@@ -73,6 +77,7 @@ export function fillBrandAssets(
   brand: PlatformBrandAssets | undefined,
 ): { assets: Record<string, unknown>; missing: (typeof BRAND_ASSET_KEYS)[number][] } {
   const own = isObject(assets) ? assets : {};
+  const hasOwnerFavicon = typeof own.favicon === "string" && own.favicon !== "";
   const defaults: Record<(typeof BRAND_ASSET_KEYS)[number], string | undefined> = {
     logoDark: brand?.logoUrl,
     favicon: brand?.faviconUrl,
@@ -83,6 +88,13 @@ export function fillBrandAssets(
     if (typeof own[key] === "string" && own[key] !== "") continue;
     if (defaults[key]) filled[key] = defaults[key];
     else missing.push(key);
+  }
+  if (
+    !hasOwnerFavicon &&
+    (!Array.isArray(own.icons) || own.icons.length === 0) &&
+    brand
+  ) {
+    filled.icons = [...brand.iconUrls];
   }
   return { assets: filled, missing };
 }
@@ -224,7 +236,7 @@ export function assembleEvidenceLibraryConfiguration({
   const email = managed.mail
     ? { ...ownerEmail, smtp: managed.mail }
     : ownerEmail;
-  // The owner may upload nothing; the OpenScholar logo and favicon fill in.
+  // The owner may upload nothing; the OpenScholar logo and browser icons fill in.
   const ownerIdentity = isObject(owner.identity) ? owner.identity : {};
   const brand = fillBrandAssets(ownerIdentity.assets, managed.brand);
   const identity = { ...ownerIdentity, assets: brand.assets };
