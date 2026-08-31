@@ -116,7 +116,7 @@ export function LibraryList() {
       description={t("description")}
       actions={
         <>
-          <OrganisationPill name={organization.name} />
+          <OrganisationPill />
           {isOwner ? newButton : null}
         </>
       }
@@ -158,26 +158,19 @@ export function LibraryList() {
 }
 
 /**
- * Clerk's organisation switcher for behaviour, drawn as the outlined pill with
- * initials from the mock instead of Clerk's default trigger.
+ * Clerk owns both the organisation switcher behaviour and its current image.
  */
-function OrganisationPill({ name }: { name: string }) {
+function OrganisationPill() {
   return (
-    <div className="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background pl-2 shadow-xs">
-      <span
-        aria-hidden="true"
-        className="inline-flex size-5 shrink-0 items-center justify-center rounded-md bg-primary text-[9px] font-bold text-white"
-      >
-        {initialsOf(name)}
-      </span>
+    <div className="inline-flex h-9 items-center rounded-md border border-input bg-background shadow-xs">
       <OrganizationSwitcher
         hidePersonal
         appearance={{
           elements: {
             rootBox: "flex",
             organizationSwitcherTrigger:
-              "h-9 rounded-md px-2 pl-0 text-sm font-medium text-foreground hover:bg-accent focus:shadow-none",
-            organizationPreviewAvatarBox: { display: "none" },
+              "h-9 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent focus:shadow-none",
+            organizationPreviewAvatarBox: "size-5 rounded-md",
             organizationPreviewMainIdentifier: "text-sm font-medium text-foreground",
             organizationSwitcherTriggerIcon: "text-muted-foreground",
           },
