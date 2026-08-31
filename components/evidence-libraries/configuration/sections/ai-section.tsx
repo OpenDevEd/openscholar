@@ -36,7 +36,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { AI_PROVIDER_KEY_PATH } from "@/lib/evidence-libraries/configuration/ai";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
-import { Field, FieldError } from "../section-card";
+import { Field } from "../section-card";
 import {
   EmptyList,
   FieldGroup,
@@ -59,31 +59,13 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
   const t = useTranslations("evidenceLibraryConfiguration.ai");
   const enabled = draft.features.ai;
   const { keySaved, models, defaultModel } = draft.ai;
-  const {
-    results: catalog,
-    status: catalogStatus,
-    loadMore,
-  } = usePaginatedQuery(
-    api.models.queries.paginateCatalogOptions,
-    {},
-    { initialNumItems: 500 },
+  const displayCatalog = useQuery(
+    api.models.queries.listCatalogOptions,
+    enabled && models.length > 0 ? {} : "skip",
   );
-  const selectedOptions = useQuery(
-    api.models.queries.getCatalogOptionsByModelIds,
-    { modelIds: models },
+  const displayNames = new Map(
+    (displayCatalog ?? []).map((model) => [model.modelId, model.name]),
   );
-  const allOptions = [...catalog];
-  const loadedIds = new Set(allOptions.map((model) => model.modelId));
-  for (const option of selectedOptions ?? []) {
-    if (!loadedIds.has(option.modelId)) allOptions.push(option);
-  }
-  const catalogIds = new Set(allOptions.map((model) => model.modelId));
-  const catalogLoading = catalogStatus === "LoadingFirstPage";
-  const runtimeReady = !catalogLoading && catalog.length > 0;
-  const unavailableModels =
-    catalogLoading || selectedOptions === undefined
-      ? []
-      : models.filter((model) => !catalogIds.has(model));
 
   function setModels(next: string[]) {
     patch((d) => {
@@ -113,8 +95,6 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
         label={t("answersLabel")}
         hint={t("answersHint")}
         checked={enabled}
-        disabled={!enabled && !runtimeReady}
-        disabledReason={catalogLoading ? t("loadingModels") : t("notReady")}
         onChange={(next) =>
           patch((d) => {
             d.features.ai = next;
@@ -131,16 +111,13 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
             hint={t("modelsHint")}
             action={
               <ModelPicker
-                catalog={catalog}
                 selected={models}
                 onAdd={(model) => setModels([...models, model])}
-                canLoadMore={catalogStatus === "CanLoadMore"}
-                loadingMore={catalogStatus === "LoadingMore"}
-                onLoadMore={() => loadMore(500)}
                 labels={{
                   add: t("addModel"),
                   empty: t("noModels"),
                   loadMore: t("loadMoreModels"),
+                  loading: t("loadingModels"),
                   search: t("searchModels"),
                 }}
               />
@@ -161,8 +138,8 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                   }
                 >
                   {models.map((model, index) => {
-                    const option = allOptions.find((candidate) => candidate.modelId === model);
                     const Icon = getModelIcon(model);
+                    const name = displayNames.get(model) ?? model;
                     return (
                       <ListRow
                         key={model}
@@ -187,7 +164,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                           <Icon className="size-4 shrink-0 text-foreground/75" />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium">
-                              {option ? stripProviderPrefix(option.name) : model}
+                              {stripProviderPrefix(name)}
                             </span>
                             <code className="block truncate font-mono text-[11px] text-muted-foreground">
                               {model}
@@ -200,7 +177,6 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                 </SortableList>
               </div>
             )}
-            {unavailableModels.length > 0 ? <FieldError>{t("modelError")}</FieldError> : null}
             <Field
               label={t("modelLabel")}
               hint={t("modelHint")}
@@ -228,12 +204,12 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                   <SelectContent>
                     {models.map((model) => {
                       const Icon = getModelIcon(model);
-                      const option = allOptions.find((candidate) => candidate.modelId === model);
+                      const name = displayNames.get(model) ?? model;
                       return (
                         <SelectItem key={model} value={model}>
                           <span className="flex items-center gap-2">
                             <Icon className="size-3.5" />
-                            {option ? stripProviderPrefix(option.name) : model}
+                            {stripProviderPrefix(name)}
                           </span>
                         </SelectItem>
                       );
@@ -254,23 +230,30 @@ type ModelOption = FunctionReturnType<
 >["page"][number];
 
 function ModelPicker({
-  catalog,
   selected,
   onAdd,
-  canLoadMore,
-  loadingMore,
-  onLoadMore,
   labels,
 }: {
-  catalog: ModelOption[];
   selected: string[];
   onAdd: (modelId: string) => void;
-  canLoadMore: boolean;
-  loadingMore: boolean;
-  onLoadMore: () => void;
-  labels: { add: string; empty: string; loadMore: string; search: string };
+  labels: {
+    add: string;
+    empty: string;
+    loadMore: string;
+    loading: string;
+    search: string;
+  };
 }) {
   const [open, setOpen] = useState(false);
+  const {
+    results: catalog,
+    status: catalogStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.models.queries.paginateCatalogOptions,
+    open ? {} : "skip",
+    { initialNumItems: 500 },
+  );
   const available = catalog.filter((model) => !selected.includes(model.modelId));
   const groups = new Map<string, ModelOption[]>();
   for (const model of available) {
@@ -284,7 +267,7 @@ function ModelPicker({
           type="button"
           variant="outline"
           size="sm"
-          disabled={available.length === 0}
+          disabled={catalogStatus === "Exhausted" && available.length === 0}
           aria-label={labels.add}
         >
           <Plus className="size-3.5" />
@@ -296,50 +279,63 @@ function ModelPicker({
         <Command>
           <CommandInput placeholder={labels.search} />
           <CommandList className="max-h-80">
-            <CommandEmpty>{labels.empty}</CommandEmpty>
-            {Array.from(groups.entries()).map(([provider, options], index) => (
-              <div key={provider}>
-                {index > 0 ? <CommandSeparator /> : null}
-                <CommandGroup heading={provider}>
-                  {options.map((model) => {
-                    const Icon = getModelIcon(model.modelId);
-                    return (
-                      <CommandItem
-                        key={model.modelId}
-                        value={`${provider} ${model.name} ${model.modelId}`}
-                        className="gap-2.5 py-2"
-                        onSelect={() => {
-                          onAdd(model.modelId);
-                          setOpen(false);
-                        }}
-                      >
-                        <Icon className="size-4 shrink-0 text-foreground/75" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">
-                            {stripProviderPrefix(model.name)}
-                          </span>
-                          <code className="block truncate text-[11px] text-muted-foreground">
-                            {model.modelId}
-                          </code>
-                        </span>
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
+            {catalogStatus === "LoadingFirstPage" ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                <Spinner />
+                {labels.loading}
               </div>
-            ))}
+            ) : (
+              <>
+                <CommandEmpty>{labels.empty}</CommandEmpty>
+                {Array.from(groups.entries()).map(([provider, options], index) => (
+                  <div key={provider}>
+                    {index > 0 ? <CommandSeparator /> : null}
+                    <CommandGroup heading={provider}>
+                      {options.map((model) => {
+                        const Icon = getModelIcon(model.modelId);
+                        return (
+                          <CommandItem
+                            key={model.modelId}
+                            value={`${provider} ${model.name} ${model.modelId}`}
+                            className="gap-2.5 py-2"
+                            onSelect={() => {
+                              onAdd(model.modelId);
+                              setOpen(false);
+                            }}
+                          >
+                            <Icon className="size-4 shrink-0 text-foreground/75" />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium">
+                                {stripProviderPrefix(model.name)}
+                              </span>
+                              <code className="block truncate text-[11px] text-muted-foreground">
+                                {model.modelId}
+                              </code>
+                            </span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </div>
+                ))}
+              </>
+            )}
           </CommandList>
-          {canLoadMore || loadingMore ? (
+          {catalogStatus === "CanLoadMore" || catalogStatus === "LoadingMore" ? (
             <div className="border-t border-border/60 p-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="w-full"
-                disabled={loadingMore}
-                onClick={onLoadMore}
+                disabled={catalogStatus === "LoadingMore"}
+                onClick={() => loadMore(500)}
               >
-                {loadingMore ? <Spinner /> : <Plus className="size-3.5" />}
+                {catalogStatus === "LoadingMore" ? (
+                  <Spinner />
+                ) : (
+                  <Plus className="size-3.5" />
+                )}
                 {labels.loadMore}
               </Button>
             </div>

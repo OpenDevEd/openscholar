@@ -105,7 +105,7 @@ vi.mock("@/convex/_generated/api", () => ({
     },
     models: {
       queries: {
-        getCatalogOptionsByModelIds: "getCatalogOptionsByModelIds",
+        listCatalogOptions: "listCatalogOptions",
         paginateCatalogOptions: "paginateCatalogOptions",
       },
     },
@@ -121,10 +121,10 @@ const resolveCollectionsMock = vi.hoisted(() => vi.fn(async () => ({ items: [] }
 
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
-  useQuery: (query: unknown, args: { modelIds?: string[] }) =>
-    query === "getCatalogOptionsByModelIds"
-      ? (args.modelIds ?? []).map((modelId, index) => ({
-          _id: `selected_model_${index}`,
+  useQuery: (query: unknown) =>
+    query === "listCatalogOptions"
+      ? TEST_AI_MODELS.map((modelId, index) => ({
+          _id: `display_model_${index}`,
           modelId,
           name: modelId,
           provider: modelId.split("/")[0],

@@ -91,14 +91,6 @@ export const paginateCatalogOptions = query({
   },
 });
 
-/** Catalog details for already-selected models, including later pages. */
-export const getCatalogOptionsByModelIds = query({
-  args: { modelIds: v.array(v.string()) },
-  returns: v.array(catalogOptionValidator),
-  handler: async (ctx, { modelIds }) =>
-    (await modelsById(ctx, modelIds)).map(catalogOption),
-});
-
 /** Resolve only the configured ids, avoiding a full-table validation read. */
 export const resolveEvidenceLibrarySelection = internalQuery({
   args: { modelIds: v.array(v.string()) },
