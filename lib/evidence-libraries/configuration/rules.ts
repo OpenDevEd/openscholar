@@ -13,7 +13,7 @@
  */
 
 import { AI_PROVIDER, PLATFORM_FEATURE_KEYS } from "./ai";
-import schema from "./generated/library-config.schema.json";
+import schema from "./generated/library-config.client.schema.json";
 import {
   HTTPS_URL,
   type LinkDraft,

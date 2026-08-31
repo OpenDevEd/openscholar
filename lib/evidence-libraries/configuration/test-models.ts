@@ -1,4 +1,4 @@
-import catalogs from "./generated/library-config.catalogs.json";
+import catalogs from "./generated/library-config.client.catalogs.json";
 
 /** Stable historical ids for configuration fixtures. Not used by the app. */
 export const TEST_AI_MODELS =

@@ -19,6 +19,7 @@ function parseArgs(argv) {
   const options = {
     check: false,
     commit: undefined,
+    iconOutputRoot: resolve(projectRoot, "public/library-icons"),
     outputRoot: resolve(projectRoot, "lib/evidence-libraries/configuration"),
     sourceRoot: undefined,
   };
@@ -29,13 +30,22 @@ function parseArgs(argv) {
       options.check = true;
       continue;
     }
-    if (["--commit", "--output-root", "--source-root"].includes(argument)) {
+    if (
+      [
+        "--commit",
+        "--icon-output-root",
+        "--output-root",
+        "--source-root",
+      ].includes(argument)
+    ) {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) {
         throw new Error(`${argument} requires a value`);
       }
       index += 1;
       if (argument === "--commit") options.commit = value;
+      if (argument === "--icon-output-root")
+        options.iconOutputRoot = resolve(value);
       if (argument === "--output-root") options.outputRoot = resolve(value);
       if (argument === "--source-root") options.sourceRoot = resolve(value);
       continue;
@@ -47,19 +57,28 @@ function parseArgs(argv) {
 }
 
 async function readExistingLock(outputRoot) {
-  const text = await readFile(resolve(outputRoot, "contract-lock.json"), "utf8");
+  const text = await readFile(
+    resolve(outputRoot, "contract-lock.json"),
+    "utf8",
+  );
   return JSON.parse(text);
 }
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const existingLock = options.check ? await readExistingLock(options.outputRoot) : undefined;
+  const existingLock = options.check
+    ? await readExistingLock(options.outputRoot)
+    : undefined;
   if (!options.check && !options.commit) {
-    throw new Error("--commit is required for mutating contract synchronization");
+    throw new Error(
+      "--commit is required for mutating contract synchronization",
+    );
   }
   const commit = options.commit ?? existingLock?.source?.commit;
   if (!commit) {
-    throw new Error("The committed contract lock does not contain a source commit");
+    throw new Error(
+      "The committed contract lock does not contain a source commit",
+    );
   }
   if (!options.sourceRoot) {
     throw new Error("--source-root is required for contract synchronization");
@@ -82,6 +101,7 @@ async function main() {
       ? {
           schema: existingLock.artifacts?.schema?.sha256,
           catalogs: existingLock.artifacts?.catalogs?.sha256,
+          icons: existingLock.artifacts?.icons?.sha256,
         }
       : undefined,
   });
@@ -89,11 +109,14 @@ async function main() {
   await synchronizeContractSnapshot({
     snapshot,
     outputRoot: options.outputRoot,
+    iconOutputRoot: options.iconOutputRoot,
     check: options.check,
   });
 
   const verb = options.check ? "verified" : "synchronized";
-  process.stdout.write(`Evidence Library configuration contract ${verb} at ${commit}\n`);
+  process.stdout.write(
+    `Evidence Library configuration contract ${verb} at ${commit}\n`,
+  );
 }
 
 main().catch((error) => {

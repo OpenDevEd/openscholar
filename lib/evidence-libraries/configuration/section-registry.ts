@@ -1,5 +1,5 @@
-import catalogs from "./generated/library-config.catalogs.json";
-import schema from "./generated/library-config.schema.json";
+import catalogs from "./generated/library-config.client.catalogs.json";
+import schema from "./generated/library-config.client.schema.json";
 import {
   escapeJsonPointerToken,
   jsonPointerPatternMatches,

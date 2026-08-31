@@ -18,17 +18,13 @@ import {
   HTTPS_URL,
   type LinkDraft,
   type LinkTarget,
-  NAV_ICONS,
-  type NavIcon,
 } from "@/lib/evidence-libraries/configuration/links";
 import { SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
 import { InlineSwitch } from "../fields";
-import { NAV_ICON_GLYPHS } from "../nav-icons";
 import { Field } from "../section-card";
 import { useCollectionFacts } from "./collection-facts";
 import { localPickerSource, RemotePickerDialog } from "./remote-picker-dialog";
-
-const NO_ICON = "__none";
+import { NavbarIconPicker } from "./navbar-icon-picker";
 
 /** A collection the site shows, with the owner's own title when it has one. */
 type CollectionOption = { id: string; title?: string };
@@ -172,28 +168,11 @@ export function LinkEditor({
         {showIcon ? (
           <Field label={t("iconLabel")} className="min-w-44 flex-1">
             {(id) => (
-              <Select
-                value={link.icon || NO_ICON}
-                onValueChange={(icon) =>
-                  onChange({ ...link, icon: icon === NO_ICON ? "" : (icon as NavIcon) })
-                }
-              >
-                <SelectTrigger id={id} className="w-full bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_ICON}>{t("noIcon")}</SelectItem>
-                  {NAV_ICONS.map((icon) => {
-                    const Glyph = NAV_ICON_GLYPHS[icon];
-                    return (
-                      <SelectItem key={icon} value={icon}>
-                        <Glyph className="h-4 w-4 text-muted-foreground" aria-hidden />
-                        {t(`icons.${icon}`)}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              <NavbarIconPicker
+                id={id}
+                value={link.icon}
+                onChange={(icon) => onChange({ ...link, icon })}
+              />
             )}
           </Field>
         ) : null}

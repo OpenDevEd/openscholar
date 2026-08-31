@@ -29,15 +29,81 @@ const schemaText = `${JSON.stringify({
     localization: { type: "object" },
     footer: { type: "object" },
   },
+  $defs: {
+    PlatformNavbarIconId: { type: "string", enum: ["TestIcon"] },
+  },
 })}\n`;
 
 const catalogText = `${JSON.stringify({
   schemaVersion: 1,
   catalogVersion: 1,
   fields: { writeOnlyPaths: [] },
+  options: { navbarIconIds: ["TestIcon"] },
 })}\n`;
 
+const iconFiles = new Map([
+  ["catalog.json", `${JSON.stringify({ TestIcon: "00" })}\n`],
+  [
+    "00.svg",
+    '<svg xmlns="http://www.w3.org/2000/svg"><symbol id="TestIcon" viewBox="0 0 24 24"/></svg>\n',
+  ],
+]);
+
+async function writeSourceArtifacts(publicRoot: string) {
+  await mkdir(join(publicRoot, "library-icons"), { recursive: true });
+  await writeFile(join(publicRoot, "library-config.schema.json"), schemaText, "utf8");
+  await writeFile(join(publicRoot, "library-config.catalogs.json"), catalogText, "utf8");
+  for (const [name, contents] of iconFiles) {
+    await writeFile(join(publicRoot, "library-icons", name), contents, "utf8");
+  }
+}
+
 describe("createContractSnapshot", () => {
+  test("locks every icon asset into the pinned contract", () => {
+    const snapshot = createContractSnapshot({
+      repository: "https://github.com/OpenDevEd/new-el",
+      commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+      schemaText,
+      catalogText,
+      iconFiles,
+    });
+
+    expect(snapshot.lock.artifacts.icons).toMatchObject({
+      path: "public/library-icons",
+      files: 2,
+    });
+  });
+
+  test("keeps the full icon enum out of browser contract artifacts", () => {
+    const snapshot = createContractSnapshot({
+      repository: "https://github.com/OpenDevEd/new-el",
+      commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+      schemaText,
+      catalogText,
+      iconFiles,
+    });
+
+    const browserSchema = JSON.parse(snapshot.clientSchemaText);
+    const browserCatalog = JSON.parse(snapshot.clientCatalogText);
+    expect(browserSchema.$defs.PlatformNavbarIconId).toEqual({
+      type: "string",
+      pattern: "^[A-Za-z0-9]+Icon$",
+    });
+    expect(browserCatalog.options.navbarIconIds).toBeUndefined();
+  });
+
+  test("rejects icon files that do not match their catalog", () => {
+    expect(() =>
+      createContractSnapshot({
+        repository: "https://github.com/OpenDevEd/new-el",
+        commit: "4a07fd6176d827d3382b392f847639167ec741ed",
+        schemaText,
+        catalogText,
+        iconFiles: new Map([["catalog.json", '{"TestIcon":"00"}\n']]),
+      }),
+    ).toThrow(/icon assets do not match/i);
+  });
+
   test("rejects a moving branch name", () => {
     expect(() =>
       createContractSnapshot({
@@ -110,17 +176,20 @@ describe("createContractSnapshot", () => {
 
 test("writes exact artifact bytes and verifies them without rewriting", async () => {
   const outputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-contract-"));
+  const iconOutputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-icons-"));
   const snapshot = createContractSnapshot({
     repository: "https://github.com/OpenDevEd/new-el",
     commit: "4a07fd6176d827d3382b392f847639167ec741ed",
     schemaText,
     catalogText,
+    iconFiles,
   });
 
   try {
     await synchronizeContractSnapshot({
       snapshot,
       outputRoot,
+      iconOutputRoot,
       check: false,
     });
 
@@ -131,8 +200,14 @@ test("writes exact artifact bytes and verifies them without rewriting", async ()
       readFile(join(outputRoot, "generated/library-config.catalogs.json"), "utf8"),
     ).resolves.toBe(catalogText);
     await expect(
+      readFile(join(outputRoot, "generated/library-config.client.catalogs.json"), "utf8"),
+    ).resolves.not.toContain("TestIcon");
+    await expect(
       readFile(join(outputRoot, "generated/library-config.validator.cjs"), "utf8"),
     ).resolves.toContain("exports.fullValidator");
+    await expect(readFile(join(iconOutputRoot, "00.svg"), "utf8")).resolves.toBe(
+      iconFiles.get("00.svg"),
+    );
     const { createRequire } = await import("node:module");
     const generated = createRequire(import.meta.url)(
       join(outputRoot, "generated/library-config.validator.cjs"),
@@ -157,23 +232,24 @@ test("writes exact artifact bytes and verifies them without rewriting", async ()
       synchronizeContractSnapshot({
         snapshot,
         outputRoot,
+        iconOutputRoot,
         check: true,
       }),
     ).resolves.toEqual({ changed: false });
   } finally {
     await rm(outputRoot, { recursive: true, force: true });
+    await rm(iconOutputRoot, { recursive: true, force: true });
   }
 });
 
 test("produces identical output when only the local checkout HEAD changes", async () => {
   const sourceRoot = await mkdtemp(join(tmpdir(), "evidence-library-source-"));
   const outputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-contract-"));
+  const iconOutputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-icons-"));
   const publicRoot = join(sourceRoot, "public");
 
   try {
-    await mkdir(publicRoot, { recursive: true });
-    await writeFile(join(publicRoot, "library-config.schema.json"), schemaText, "utf8");
-    await writeFile(join(publicRoot, "library-config.catalogs.json"), catalogText, "utf8");
+    await writeSourceArtifacts(publicRoot);
     execFileSync("git", ["init", "--quiet", sourceRoot]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
@@ -215,7 +291,7 @@ test("produces identical output when only the local checkout HEAD changes", asyn
         commit: artifactCommit,
         ...artifacts,
       });
-      await synchronizeContractSnapshot({ snapshot, outputRoot, check: false });
+      await synchronizeContractSnapshot({ snapshot, outputRoot, iconOutputRoot, check: false });
     };
 
     await synchronizeFromCheckout();
@@ -236,6 +312,7 @@ test("produces identical output when only the local checkout HEAD changes", asyn
   } finally {
     await rm(sourceRoot, { recursive: true, force: true });
     await rm(outputRoot, { recursive: true, force: true });
+    await rm(iconOutputRoot, { recursive: true, force: true });
   }
 });
 
@@ -275,9 +352,7 @@ test("reads contract bytes from the exact commit instead of the worktree", async
   const publicRoot = join(sourceRoot, "public");
 
   try {
-    await mkdir(publicRoot, { recursive: true });
-    await writeFile(join(publicRoot, "library-config.schema.json"), schemaText, "utf8");
-    await writeFile(join(publicRoot, "library-config.catalogs.json"), catalogText, "utf8");
+    await writeSourceArtifacts(publicRoot);
     execFileSync("git", ["init", "--quiet", sourceRoot]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.email", "test@example.com"]);
     execFileSync("git", ["-C", sourceRoot, "config", "user.name", "Contract Test"]);
@@ -291,6 +366,7 @@ test("reads contract bytes from the exact commit instead of the worktree", async
     await expect(readContractArtifactsAtCommit({ sourceRoot, commit })).resolves.toEqual({
       schemaText,
       catalogText,
+      iconFiles,
     });
   } finally {
     await rm(sourceRoot, { recursive: true, force: true });
