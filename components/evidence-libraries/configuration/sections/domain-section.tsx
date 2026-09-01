@@ -6,7 +6,7 @@ import {
   Copy01Icon,
   Delete02Icon,
   Globe02Icon,
-  Pin02Icon,
+  Home01Icon,
   Refresh01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -27,6 +27,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -123,6 +128,7 @@ export const DomainSection = memo(function DomainSection({
   const suggestedWwwHost = domains.find(
     (domain) => domain.suggestedWwwHost,
   )?.suggestedWwwHost;
+  const hasDnsSetup = domains.some((domain) => domain.state !== "active");
 
   async function run<T>(key: string, work: () => Promise<T>) {
     setBusy(key);
@@ -248,10 +254,14 @@ export const DomainSection = memo(function DomainSection({
 
       {domains.length > 0 ? (
         <div className="space-y-2">
-          <div>
-            <p className="text-sm font-medium">{t("recordsHeading")}</p>
-            <p className="text-xs text-muted-foreground">{t("recordsHint")}</p>
-          </div>
+          {hasDnsSetup ? (
+            <div>
+              <p className="text-sm font-medium">{t("recordsHeading")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("recordsHint")}
+              </p>
+            </div>
+          ) : null}
           <div className="overflow-hidden rounded-xl border border-border/60 bg-background">
             {domains.map((domain: DomainRow, index) => {
               const checking = busy === domain.domainId;
@@ -277,27 +287,13 @@ export const DomainSection = memo(function DomainSection({
                         <p className="truncate font-mono text-sm font-medium">
                           {domain.host}
                         </p>
-                        {status !== "failed" ? (
+                        {status !== "failed" && status !== "verified" ? (
                           <StatusChip
                             tone={STATUS_TONE[status]}
                             data-dns-status={status}
                           >
                             {checking ? <Spinner /> : null}
                             {t(`status.${status}`)}
-                          </StatusChip>
-                        ) : null}
-                        {domain.attached ? (
-                          <StatusChip
-                            tone={
-                              domain.state === "active" ? "success" : "neutral"
-                            }
-                            data-certificate={
-                              domain.state === "active" ? "active" : "pending"
-                            }
-                          >
-                            {domain.state === "active"
-                              ? t("tlsActive")
-                              : t("tlsPending")}
                           </StatusChip>
                         ) : null}
                       </div>
@@ -310,31 +306,63 @@ export const DomainSection = memo(function DomainSection({
                         </p>
                       ) : null}
                     </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {status === "verified" ? (
+                        <StatusChip
+                          tone={STATUS_TONE.verified}
+                          data-dns-status={status}
+                        >
+                          {t("status.verified")}
+                        </StatusChip>
+                      ) : null}
+                      {domain.attached ? (
+                        <StatusChip
+                          tone={
+                            domain.state === "active" ? "success" : "neutral"
+                          }
+                          data-certificate={
+                            domain.state === "active" ? "active" : "pending"
+                          }
+                        >
+                          {domain.state === "active"
+                            ? t("tlsActive")
+                            : t("tlsPending")}
+                        </StatusChip>
+                      ) : null}
+                    </div>
                     {canChooseAsPrimary ? (
-                      <Button
-                        type="button"
-                        variant={
-                          domain.role === "primary" ? "secondary" : "ghost"
-                        }
-                        size="icon"
-                        className="size-8"
-                        aria-label={
-                          domain.role === "primary"
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant={
+                              domain.role === "primary" ? "secondary" : "ghost"
+                            }
+                            size="icon"
+                            className="size-8"
+                            aria-label={
+                              domain.role === "primary"
+                                ? t("confirmOffTitle")
+                                : t("redirectLabel")
+                            }
+                            disabled={busy !== null}
+                            onClick={() =>
+                              setConfirming({
+                                domainId: domain.domainId,
+                                host: domain.host,
+                                primary: domain.role !== "primary",
+                              })
+                            }
+                          >
+                            <HugeiconsIcon icon={Home01Icon} size={16} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {domain.role === "primary"
                             ? t("confirmOffTitle")
-                            : t("redirectLabel")
-                        }
-                        title={t("redirectHint")}
-                        disabled={busy !== null}
-                        onClick={() =>
-                          setConfirming({
-                            domainId: domain.domainId,
-                            host: domain.host,
-                            primary: domain.role !== "primary",
-                          })
-                        }
-                      >
-                        <HugeiconsIcon icon={Pin02Icon} size={16} />
-                      </Button>
+                            : t("redirectLabel")}
+                        </TooltipContent>
+                      </Tooltip>
                     ) : null}
                     <Button
                       type="button"
@@ -350,66 +378,74 @@ export const DomainSection = memo(function DomainSection({
                       )}
                       {t("checkDns")}
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-muted-foreground hover:text-destructive"
-                      aria-label={
-                        domain.removing ? t("removeAgain") : t("remove")
-                      }
-                      title={domain.removing ? t("removeAgain") : t("remove")}
-                      disabled={busy !== null}
-                      onClick={() =>
-                        void run(domain.domainId, () =>
-                          removeDomain({
-                            libraryId,
-                            domainId: domain.domainId,
-                          }),
-                        )
-                      }
-                    >
-                      <HugeiconsIcon icon={Delete02Icon} size={16} />
-                    </Button>
-                  </header>
-
-                  <div className="border-t border-border/50 bg-muted/10 px-3">
-                    {domain.records.map((record, recordIndex) => (
-                      <div
-                        key={record.type}
-                        className={`grid grid-cols-[3.25rem_minmax(0,1fr)_2rem] items-center gap-2 py-2 ${
-                          recordIndex === 0 ? "" : "border-t border-border/40"
-                        }`}
-                      >
-                        <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
-                          {record.type}
-                        </span>
-                        <div className="grid min-w-0 items-center gap-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
-                          <span className="truncate font-mono text-xs">
-                            {record.name}
-                          </span>
-                          <HugeiconsIcon
-                            icon={ArrowRight01Icon}
-                            size={14}
-                            className="hidden text-muted-foreground/60 sm:block"
-                          />
-                          <span className="truncate font-mono text-xs text-muted-foreground">
-                            {record.value}
-                          </span>
-                        </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="size-8"
-                          aria-label={t("copyValue", { type: record.type })}
-                          onClick={() => copy(record.value)}
+                          className="size-8 text-muted-foreground hover:text-destructive"
+                          aria-label={
+                            domain.removing ? t("removeAgain") : t("remove")
+                          }
+                          disabled={busy !== null}
+                          onClick={() =>
+                            void run(domain.domainId, () =>
+                              removeDomain({
+                                libraryId,
+                                domainId: domain.domainId,
+                              }),
+                            )
+                          }
                         >
-                          <HugeiconsIcon icon={Copy01Icon} size={15} />
+                          <HugeiconsIcon icon={Delete02Icon} size={16} />
                         </Button>
-                      </div>
-                    ))}
-                  </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {domain.removing ? t("removeAgain") : t("remove")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </header>
+
+                  {domain.state !== "active" ? (
+                    <div className="border-t border-border/50 bg-muted/10 px-3">
+                      {domain.records.map((record, recordIndex) => (
+                        <div
+                          key={record.type}
+                          className={`grid grid-cols-[3.25rem_minmax(0,1fr)_2rem] items-center gap-2 py-2 ${
+                            recordIndex === 0 ? "" : "border-t border-border/40"
+                          }`}
+                        >
+                          <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
+                            {record.type}
+                          </span>
+                          <div className="grid min-w-0 items-center gap-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
+                            <span className="truncate font-mono text-xs">
+                              {record.name}
+                            </span>
+                            <HugeiconsIcon
+                              icon={ArrowRight01Icon}
+                              size={14}
+                              className="hidden text-muted-foreground/60 sm:block"
+                            />
+                            <span className="truncate font-mono text-xs text-muted-foreground">
+                              {record.value}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            aria-label={t("copyValue", { type: record.type })}
+                            onClick={() => copy(record.value)}
+                          >
+                            <HugeiconsIcon icon={Copy01Icon} size={15} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </article>
               );
             })}
