@@ -18,7 +18,8 @@ application's domain configuration and issues its certificate with the
 - Keep Cloudflare DNS-only on `cname.openscholar.ai`. Customer domains may be
   ordinary CNAME records.
 - Do not expose the origin address in customer-facing DNS.
-- Require a TXT ownership record before attaching a host.
+- Require one TXT ownership record per authoritative DNS zone before attaching
+  any host in that zone.
 - Permit only `letsencrypt.org` when a domain publishes CAA records.
 - Treat a successful HTTPS health response with the active revision as proof
   that both TLS and routing work.
@@ -30,6 +31,10 @@ application's domain configuration and issues its certificate with the
   for apex-to-`www`. This replaces the earlier flattening-only guidance because
   the stable Hetzner load balancer can safely own the public address without
   exposing an Evidence Library server.
+- **Changed 2026-09-01:** place the ownership TXT at the authoritative zone
+  apex and show it once. The same record verifies the apex and `www`, matching
+  GitHub Pages' zone-level ownership model. This replaces the earlier
+  per-host TXT because it made owners add duplicate proof for one DNS zone.
 - This is pre-production. The old certificate fields and cleanup state are
   removed rather than migrated or kept for compatibility.
 
@@ -41,11 +46,12 @@ application's domain configuration and issues its certificate with the
 3. OpenScholar shows the record that matches the host:
    - apex: `A <host> <EL_CUSTOM_DOMAIN_APEX_IPV4>`
    - subdomain: `CNAME <host> cname.openscholar.ai`
-   - `TXT _openscholar.<host> os-verify=<token>`
-   When the host is an apex, OpenScholar recommends adding its `www`
-   counterpart. After both domains are active, making `www` canonical uses the
-   existing runtime redirect for the apex and every other attached address.
-4. **Check DNS** verifies the target, TXT token, and CAA rules.
+   - once per authoritative zone:
+     `TXT _openscholar.<zone-apex> os-verify=<token>`
+     When the host is an apex, OpenScholar recommends adding its `www`
+     counterpart. After both domains are active, making `www` canonical uses the
+     existing runtime redirect for the apex and every other attached address.
+4. **Check DNS** verifies the target, shared zone TXT token, and CAA rules.
 5. A second check adds the domain to the library application's complete domain
    list and queues a deployment.
 6. After the deployment succeeds, another check makes a pinned HTTPS request.
@@ -77,7 +83,7 @@ finishes or loses its lease.
 
 `evidenceLibraryDomains` keeps:
 
-- host, library, role, and verification token
+- host, authoritative verification zone, library, role, and verification token
 - state and failure
 - attached, removal, and deployment receipts
 - transition fencing and generation
@@ -87,8 +93,9 @@ finishes or loses its lease.
 It does not keep provider hostname IDs, certificate state, or certificate
 cleanup retries.
 
-The shared development table was checked before narrowing the schema and held
-zero rows, so no data migration is needed.
+The shared development table now has domain rows. Widen the schema, backfill
+their authoritative verification zones, verify every row, then require the new
+field.
 
 ## Configuration
 
@@ -107,7 +114,7 @@ No Cloudflare API token or zone ID is required.
 
 Focused automated checks cover:
 
-- DNS target, TXT ownership, CAA, and resolver agreement
+- DNS target, one zone-level TXT, CAA, and resolver agreement
 - platform and cross-library host conflicts
 - application-domain attach and deployment fencing
 - HTTPS revision activation
