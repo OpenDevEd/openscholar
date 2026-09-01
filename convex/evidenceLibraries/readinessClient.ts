@@ -6,6 +6,11 @@ const ROUTE_REQUEST_TIMEOUT_MS = 30_000;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const RUNTIME_ROUTE_HEADER = "x-openscholar-route";
+const BROWSER_CHECK_COOKIE = "ode_browser_check=1";
+
+function publicLibraryHeaders(accept: "application/json" | "text/html") {
+  return { accept, cookie: BROWSER_CHECK_COOKIE };
+}
 
 export type LibraryRuntimeRouteOperation =
   | "maintenance"
@@ -323,7 +328,7 @@ export async function probeEvidenceLibraryAddress(input: {
     return await fetchWithTimeout(
       fetchImpl,
       new URL("/api/library-config/health", origin),
-      { headers: { accept: "application/json" }, method: "GET" },
+      { headers: publicLibraryHeaders("application/json"), method: "GET" },
       async (response) =>
         classifyEvidenceLibraryAddress({
           kind: "answer",
@@ -624,7 +629,7 @@ async function requireActiveRuntimeRoute(
   await fetchWithTimeout(
     fetchImpl,
     new URL("/api/library-config/health", targetOrigin),
-    { headers: { accept: "application/json" }, method: "GET" },
+    { headers: publicLibraryHeaders("application/json"), method: "GET" },
     async (response) => {
       if (
         response.headers.get(RUNTIME_ROUTE_HEADER) !==
@@ -648,7 +653,7 @@ async function requirePage(
   await fetchWithTimeout(
     fetchImpl,
     url,
-    { headers: { accept: "text/html" }, method: "HEAD" },
+    { headers: publicLibraryHeaders("text/html"), method: "HEAD" },
     async (response) => {
       if (!response.ok) {
         throw new ReadinessClientError(
@@ -697,7 +702,7 @@ async function requireAdminPage(
   await fetchWithTimeout(
     fetchImpl,
     url,
-    { headers: { accept: "text/html" }, method: "GET" },
+    { headers: publicLibraryHeaders("text/html"), method: "GET" },
     async (response) => {
       // The runtime contract is one exact answer: a 307 to the login page.
       if (response.status !== 307) throw notReady;
@@ -730,7 +735,11 @@ async function requireRedirectToCanonical(
     redirected = await fetchWithTimeout(
       fetchImpl,
       new URL("/lib", platformOrigin),
-      { headers: { accept: "text/html" }, method: "GET", redirect: "manual" },
+      {
+        headers: publicLibraryHeaders("text/html"),
+        method: "GET",
+        redirect: "manual",
+      },
       async (response) =>
         readsAsRedirectTo(response, platformOrigin, canonicalOrigin),
     );
