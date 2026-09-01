@@ -249,7 +249,7 @@ function createRuntimeNetwork(input: {
       }
       if (
         url.origin === new URL(publicDomain).origin &&
-        method === "GET" &&
+        method === "HEAD" &&
         url.pathname === "/lib"
       ) {
         return new Response("ready", { status: 200 });
