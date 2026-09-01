@@ -118,7 +118,7 @@ function presentDomain(
     records: customDomainDnsRecords({
       host: row.host,
       isApex,
-      verificationHost: row.verificationHost ?? row.host,
+      verificationHost: row.verificationHost,
       includeVerificationRecord,
       token: row.verificationToken,
     }),
@@ -174,7 +174,7 @@ export const listDomains = query({
       canonicalAddress: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
       live: access.library.state === "active" && binding.state === "ready",
       domains: sortedRows.map((row) => {
-        const verificationHost = row.verificationHost ?? row.host;
+        const verificationHost = row.verificationHost;
         const includeVerificationRecord =
           !shownVerificationHosts.has(verificationHost) &&
           (row.isApex || !apexHosts.has(verificationHost));
@@ -293,7 +293,7 @@ export const readDomainContext = internalQuery({
             role: row.role,
             state: row.state,
             verificationToken: row.verificationToken,
-            verificationHost: row.verificationHost ?? row.host,
+            verificationHost: row.verificationHost,
             isApex: row.isApex === true,
             attached: row.attachedAt !== undefined,
             // The proxy was asked to hold this host and never confirmed, so
