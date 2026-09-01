@@ -119,6 +119,16 @@ function coolify() {
   });
 }
 
+/** Finds the closest DNS zone that owns a host, without following its CNAME. */
+async function readVerificationHost(host: string): Promise<string> {
+  for (const candidate of caaScanNames(host)) {
+    if (readsAsApex(await lookupHost(fetch, candidate, "SOA"), candidate)) {
+      return candidate;
+    }
+  }
+  throw new DnsLookupError("The domain could not be checked");
+}
+
 /**
  * Adds one custom domain. The host has to be free everywhere we can look
  * before a row exists at all: not held by another library, and not already
@@ -174,15 +184,17 @@ export const addDomain = action({
       return { status: "refused" as const, reason: "host-taken" as const };
     }
     let isApex: boolean;
+    let verificationHost: string;
     try {
-      isApex = readsAsApex(await lookupHost(fetch, host, "SOA"), host);
+      verificationHost = await readVerificationHost(host);
+      isApex = verificationHost === host;
       if (isApex) readCustomDomainApexIpv4();
     } catch {
       return { status: "refused" as const, reason: "check-failed" as const };
     }
     const claimed = await ctx.runMutation(
       internal.evidenceLibraries.domains.claimDomainHost,
-      { libraryId: args.libraryId, host, isApex },
+      { libraryId: args.libraryId, host, isApex, verificationHost },
     );
     if (claimed.status !== "added") {
       return { status: "refused" as const, reason: claimed.status };
@@ -222,17 +234,17 @@ async function readCaaGate(
 /** Reads the two records the owner was asked to add. */
 async function readRecordGates(
   host: string,
+  verificationHost: string,
   token: string,
   renewLease: () => Promise<void>,
 ): Promise<DomainOutcome & { isApex: boolean }> {
   const target = readCustomDomainTarget();
-  const [targetAnswers, tokenAnswers, soaAnswers] = await Promise.all([
+  const [targetAnswers, tokenAnswers] = await Promise.all([
     lookupHost(fetch, host, "A"),
-    lookupHost(fetch, verificationRecordName(host), "TXT"),
-    lookupHost(fetch, host, "SOA"),
+    lookupHost(fetch, verificationRecordName(verificationHost), "TXT"),
   ]);
   const targetAddresses = await readTargetAddresses(target);
-  const isApex = readsAsApex(soaAnswers, host);
+  const isApex = verificationHost === host;
   const targetReading = readAgreedAnswer(targetAnswers, (answer) =>
     classifyTargetReading(answer, {
       target,
@@ -486,6 +498,7 @@ export const checkDomain = action({
         if (step === "records") {
           outcome = await readRecordGates(
             row.host,
+            row.verificationHost,
             row.verificationToken,
             renewLease,
           );

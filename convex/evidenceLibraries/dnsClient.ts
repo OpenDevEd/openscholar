@@ -83,7 +83,12 @@ export function normaliseDomainHost(value: string): string {
       throw new DnsLookupError("That does not look like a domain");
     }
     // `ab--cd` is reserved; only `xn--` carries a punycode name.
-    if (label.length > 3 && label[2] === "-" && label[3] === "-" && !label.startsWith("xn--")) {
+    if (
+      label.length > 3 &&
+      label[2] === "-" &&
+      label[3] === "-" &&
+      !label.startsWith("xn--")
+    ) {
       throw new DnsLookupError("That does not look like a domain");
     }
   }
@@ -145,8 +150,7 @@ export function parseDohAnswer(payload: unknown): DnsAnswer {
       throw new DnsLookupError("The domain could not be checked");
     }
     const data = record.data;
-    const name =
-      typeof record.name === "string" ? record.name : "";
+    const name = typeof record.name === "string" ? record.name : "";
     if (typeof data !== "string") {
       throw new DnsLookupError("The domain could not be checked");
     }
@@ -231,10 +235,7 @@ export function classifyTarget(
   // The apex may use the explicit public load-balancer address we show, or
   // flatten our CNAME target. Either way the whole answer set must match;
   // one shared address proves nothing.
-  for (const expected of [
-    input.apexAddresses ?? [],
-    input.targetAddresses,
-  ]) {
+  for (const expected of [input.apexAddresses ?? [], input.targetAddresses]) {
     const ours = new Set(expected.map((value) => value.toLowerCase()));
     if (
       ours.size > 0 &&
@@ -250,7 +251,10 @@ export function classifyTarget(
 /** How the ownership record reads. */
 export type TokenReading = "match" | "mismatch" | "missing";
 
-export function classifyToken(answer: DnsAnswer, expected: string): TokenReading {
+export function classifyToken(
+  answer: DnsAnswer,
+  expected: string,
+): TokenReading {
   if (!answer.exists || answer.texts.length === 0) return "missing";
   return answer.texts.includes(expected) ? "match" : "mismatch";
 }
@@ -491,7 +495,9 @@ export function isReservedPlatformHost(
 ): boolean {
   return reservedSuffixes.some((suffix) => {
     const reserved = normaliseRecordName(suffix);
-    return reserved !== "" && (host === reserved || host.endsWith(`.${reserved}`));
+    return (
+      reserved !== "" && (host === reserved || host.endsWith(`.${reserved}`))
+    );
   });
 }
 
