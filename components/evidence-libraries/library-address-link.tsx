@@ -59,7 +59,7 @@ export function LibraryAddressLink({
             type="button"
             variant="ghost"
             size="icon-xs"
-            className="shrink-0 text-muted-foreground"
+            className="shrink-0"
             aria-label={t("copyAddress")}
             onClick={() => void copyAddress()}
           >
