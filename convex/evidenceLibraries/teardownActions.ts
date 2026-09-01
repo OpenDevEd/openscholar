@@ -21,6 +21,10 @@ import {
   isRetryableVolumeDeletionError,
   VolumeDeletionClientError,
 } from "./volumeDeletionClient";
+import {
+  ReadinessClientError,
+  removeLibraryRuntimeRoute,
+} from "./readinessClient";
 
 function requireEnvironment(name: string) {
   const value = process.env[name]?.trim();
@@ -131,6 +135,11 @@ export const runDevelopmentTeardown = internalAction({
               operationId: args.operationId,
             },
           );
+          await removeLibraryRuntimeRoute({
+            applicationUuid: applicationId,
+            verifierUrl: requireEnvironment("EL_RUNTIME_VERIFIER_URL"),
+            verifierToken: requireEnvironment("EL_RUNTIME_VERIFIER_TOKEN"),
+          });
         },
         projectUuid: requireEnvironment("EL_COOLIFY_PROJECT_UUID"),
         publicDomain: prepared.targetBaseUrl,
@@ -206,6 +215,7 @@ export const runDevelopmentTeardown = internalAction({
     } catch (error) {
       const safe =
         error instanceof CoolifyClientError ||
+        error instanceof ReadinessClientError ||
         error instanceof StorageSetupError ||
         error instanceof DatabaseProvisionerError ||
         error instanceof VolumeDeletionClientError

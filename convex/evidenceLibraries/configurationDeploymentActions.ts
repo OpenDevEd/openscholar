@@ -20,9 +20,12 @@ import {
 } from "./coolifyClient";
 import { openPinnedDomainClient } from "./domainEgressNode";
 import {
+  changeLibraryRuntimeRoute,
   isRetryableReadinessError,
   ReadinessClientError,
-  requireLibraryRuntimeReady,
+  requireLibraryRuntimePublicReady,
+  requireLibraryRuntimeServicesReady,
+  type LibraryRuntimeRouteInput,
 } from "./readinessClient";
 import {
   optionalPlatformBrandAssets,
@@ -76,6 +79,7 @@ export const runConfigurationDeployment = internalAction({
     v.object({ status: v.literal("succeeded") }),
   ),
   handler: async (ctx, args): Promise<ConfigurationDeploymentActionResult> => {
+    let protectionRoute: LibraryRuntimeRouteInput | undefined;
     try {
       const encryptionKey = requireRuntimeEnvironment(
         "ENCRYPTION_KEY",
@@ -101,18 +105,60 @@ export const runConfigurationDeployment = internalAction({
       const savedDeployment =
         prepared.state === "saved" ? prepared.deployment : undefined;
       const runtimeUpdate = prepared.runtimeUpdate;
-      if (prepared.state === "saved") {
-        target = prepared.target;
-      } else {
-        // Before Coolify hears anything: a library with AI answers on cannot
-        // be published without the platform embedding key, so refuse here
-        // rather than after the domain or the application has changed.
+      if (prepared.state === "new") {
+        // Refuse an incomplete AI deployment before the continuity route or
+        // the application is changed.
         requirePlatformEmbeddingKey(
           prepared.sections.some(
             (row) =>
               row.sectionKey === "features" && featuresAiEnabled(row.payload),
           ),
         );
+      }
+      const verifierUrl = requireRuntimeHttpsOrigin(
+        "EL_RUNTIME_VERIFIER_URL",
+        invalidConfiguration,
+      );
+      const verifierToken = requireRuntimeEnvironment(
+        "EL_RUNTIME_VERIFIER_TOKEN",
+        invalidConfiguration,
+      );
+      const pendingTarget =
+        prepared.state === "saved"
+          ? prepared.target
+          : {
+              customDomains: prepared.customDomains,
+              targetBaseUrl: prepared.targetBaseUrl,
+            };
+      const platformOrigins = [
+        ...new Set([
+          prepared.continuity.platformOrigin,
+          pendingTarget.targetBaseUrl,
+        ]),
+      ];
+      const platformOriginSet = new Set(platformOrigins);
+      const customOrigins = [
+        ...new Set([
+          ...prepared.continuity.customOrigins,
+          ...pendingTarget.customDomains,
+        ]),
+      ].filter((origin) => !platformOriginSet.has(origin));
+      protectionRoute = {
+        applicationUuid: prepared.continuity.applicationId,
+        customOrigins,
+        platformOrigins,
+        revisionKey: prepared.continuity.revisionKey,
+        runtimeCommit: prepared.continuity.runtimeCommit,
+        runtimeImage: prepared.continuity.runtimeImage,
+        verifierToken,
+        verifierUrl,
+      };
+      if (!savedDeployment) {
+        await changeLibraryRuntimeRoute("protection", protectionRoute);
+      }
+      if (prepared.state === "saved") {
+        target = prepared.target;
+      } else {
         // A move changes Coolify's domain first. Only when the application
         // answers on the new address do the records take it, so a failure
         // here leaves the library on the address it has.
@@ -242,6 +288,16 @@ export const runConfigurationDeployment = internalAction({
         );
       }
       const runtimeImage = requireTargetRuntimeImage(target.runtimeImage);
+      const targetRoute = {
+        applicationUuid: target.applicationId,
+        customOrigins,
+        platformOrigins,
+        revisionKey: target.revisionKey,
+        runtimeCommit: target.runtimeCommit,
+        runtimeImage,
+        verifierToken,
+        verifierUrl,
+      };
 
       let application: CoolifyConfigurationUpdateResult;
       if (savedDeployment) {
@@ -430,7 +486,7 @@ export const runConfigurationDeployment = internalAction({
           : await openPinnedDomainClient({
               host: new URL(readiness.targetBaseUrl).hostname,
             });
-      await requireLibraryRuntimeReady({
+      const readinessInput = {
         // Only the requests to the library's own address are pinned. The
         // verifier and the platform address are ours, so they use the
         // ordinary client.
@@ -448,21 +504,24 @@ export const runConfigurationDeployment = internalAction({
             invalidConfiguration,
           ),
         }),
-        verifierUrl: requireRuntimeHttpsOrigin(
-          "EL_RUNTIME_VERIFIER_URL",
-          invalidConfiguration,
-        ),
-        verifierToken: requireRuntimeEnvironment(
-          "EL_RUNTIME_VERIFIER_TOKEN",
-          invalidConfiguration,
-        ),
-      });
+        verifierUrl,
+        verifierToken,
+      };
+      await requireLibraryRuntimeServicesReady(readinessInput);
+      await changeLibraryRuntimeRoute("activation", targetRoute);
+      await requireLibraryRuntimePublicReady(readinessInput);
+      await changeLibraryRuntimeRoute("finalization", targetRoute);
       return await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .completeConfigurationDeployment,
         { ...args, checkedAt: Date.now() },
       );
     } catch (error) {
+      if (protectionRoute) {
+        await changeLibraryRuntimeRoute("protection", protectionRoute).catch(
+          () => undefined,
+        );
+      }
       if (isRetryableReadinessError(error)) {
         const retry = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment

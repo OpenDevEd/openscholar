@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  changeLibraryRuntimeRoute,
   classifyEvidenceLibraryAddress,
   probeEvidenceLibraryAddress,
+  removeLibraryRuntimeRoute,
   requireLibraryRuntimeReady,
 } from "./readinessClient";
 
@@ -81,6 +83,88 @@ function adminAnswer(answer: Response) {
 describe("Evidence Library readiness client", () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it.each([
+    ["maintenance", "maintenance"],
+    ["protection", "protected"],
+    ["activation", "active"],
+    ["finalization", "finalized"],
+  ] as const)(
+    "sends the fixed %s route contract",
+    async (operation, status) => {
+      const fetchImpl = vi.fn<typeof fetch>(async () => json({ status }));
+
+      await expect(
+        changeLibraryRuntimeRoute(operation, {
+          applicationUuid: APPLICATION_UUID,
+          customOrigins: ["https://library.example.test"],
+          platformOrigins: ["https://climate.libraries.example.test"],
+          revisionKey: REVISION,
+          runtimeCommit: RUNTIME_COMMIT,
+          runtimeImage: RUNTIME_IMAGE,
+          verifierUrl: "https://runtime-verifier.example.test",
+          verifierToken: "verifier-token-value",
+          fetchImpl,
+        }),
+      ).resolves.toEqual({ status });
+      const [url, init] = fetchImpl.mock.calls[0]!;
+      expect(String(url)).toBe(
+        `https://runtime-verifier.example.test/v1/library-runtime/${operation}`,
+      );
+      expect(JSON.parse(String(init?.body))).toEqual({
+        applicationUuid: APPLICATION_UUID,
+        commit: RUNTIME_COMMIT,
+        customOrigins: ["https://library.example.test"],
+        platformOrigins: ["https://climate.libraries.example.test"],
+        revision: REVISION,
+        runtimeImage: RUNTIME_IMAGE,
+      });
+    },
+  );
+
+  it("retries one temporary route failure", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(json({ error: "temporary" }, 502))
+      .mockResolvedValueOnce(json({ status: "protected" }));
+
+    await expect(
+      changeLibraryRuntimeRoute("protection", {
+        applicationUuid: APPLICATION_UUID,
+        customOrigins: [],
+        platformOrigins: ["https://climate.libraries.example.test"],
+        revisionKey: REVISION,
+        runtimeCommit: RUNTIME_COMMIT,
+        runtimeImage: RUNTIME_IMAGE,
+        verifierUrl: "https://runtime-verifier.example.test",
+        verifierToken: "verifier-token-value",
+        fetchImpl,
+      }),
+    ).resolves.toEqual({ status: "protected" });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("removes one library route with no caller-controlled runtime fields", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      json({ status: "removed" }),
+    );
+
+    await expect(
+      removeLibraryRuntimeRoute({
+        applicationUuid: APPLICATION_UUID,
+        verifierUrl: "https://runtime-verifier.example.test",
+        verifierToken: "verifier-token-value",
+        fetchImpl,
+      }),
+    ).resolves.toEqual({ status: "removed" });
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(String(url)).toBe(
+      "https://runtime-verifier.example.test/v1/library-runtime/removal",
+    );
+    expect(JSON.parse(String(init?.body))).toEqual({
+      applicationUuid: APPLICATION_UUID,
+    });
   });
 
   it("checks the fixed verifier, active revision, public page, and admin page", async () => {

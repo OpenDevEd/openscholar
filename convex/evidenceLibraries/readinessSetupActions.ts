@@ -7,10 +7,13 @@ import { v } from "convex/values";
 import { findFreeEvidenceLibraryAddress } from "./addressActions";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
+  changeLibraryRuntimeRoute,
   isAddressNotOursError,
   isRetryableReadinessError,
   ReadinessClientError,
-  requireLibraryRuntimeReady,
+  requireLibraryRuntimePublicReady,
+  requireLibraryRuntimeServicesReady,
+  type LibraryRuntimeRouteInput,
 } from "./readinessClient";
 import { buildEvidenceLibraryLoginPageUrl } from "./runtimeConfiguration";
 import {
@@ -66,6 +69,7 @@ export const runReadinessSetup = internalAction({
     v.object({ status: v.literal("succeeded") }),
   ),
   handler: async (ctx, args): Promise<ReadinessSetupActionResult> => {
+    let routeTarget: LibraryRuntimeRouteInput | undefined;
     try {
       const prepared = await ctx.runMutation(
         internal.evidenceLibraries.readinessSetup.prepareReadinessSetup,
@@ -86,7 +90,25 @@ export const runReadinessSetup = internalAction({
         runtimeCommit: prepared.runtimeCommit,
         coolifyConfigHash: prepared.coolifyConfigHash,
       });
-      await requireLibraryRuntimeReady({
+      const verifierUrl = requireRuntimeEnvironment(
+        "EL_RUNTIME_VERIFIER_URL",
+        invalidReadinessConfig,
+      );
+      const verifierToken = requireRuntimeEnvironment(
+        "EL_RUNTIME_VERIFIER_TOKEN",
+        invalidReadinessConfig,
+      );
+      routeTarget = {
+        applicationUuid: prepared.applicationId,
+        customOrigins: [],
+        platformOrigins: [prepared.targetBaseUrl],
+        revisionKey: prepared.revisionKey,
+        runtimeCommit: prepared.runtimeCommit,
+        runtimeImage: prepared.runtimeImage,
+        verifierToken,
+        verifierUrl,
+      };
+      const readinessInput = {
         applicationUuid: prepared.applicationId,
         runtimeCommit: prepared.runtimeCommit,
         runtimeImage: prepared.runtimeImage,
@@ -99,21 +121,24 @@ export const runReadinessSetup = internalAction({
             invalidReadinessConfig,
           ),
         }),
-        verifierUrl: requireRuntimeEnvironment(
-          "EL_RUNTIME_VERIFIER_URL",
-          invalidReadinessConfig,
-        ),
-        verifierToken: requireRuntimeEnvironment(
-          "EL_RUNTIME_VERIFIER_TOKEN",
-          invalidReadinessConfig,
-        ),
-      });
+        verifierUrl,
+        verifierToken,
+      };
+      await requireLibraryRuntimeServicesReady(readinessInput);
+      await changeLibraryRuntimeRoute("activation", routeTarget);
+      await requireLibraryRuntimePublicReady(readinessInput);
+      await changeLibraryRuntimeRoute("finalization", routeTarget);
       return await ctx.runMutation(
         internal.evidenceLibraries.readinessSetup.completeReadinessSetup,
         args,
       );
     } catch (error) {
       if (isRetryableReadinessError(error)) {
+        if (routeTarget) {
+          await changeLibraryRuntimeRoute("maintenance", routeTarget).catch(
+            () => undefined,
+          );
+        }
         const retry = await ctx.runMutation(
           internal.evidenceLibraries.readinessSetup.scheduleReadinessPoll,
           args,

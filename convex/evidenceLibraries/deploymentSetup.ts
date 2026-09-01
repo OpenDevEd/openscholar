@@ -40,6 +40,7 @@ export const prepareDeploymentSetup = internalMutation({
     runtimeCommit: v.string(),
     runtimeImage: v.string(),
     runtimeConfigSha256: v.string(),
+    revisionKey: v.string(),
     coolifyConfigHash: v.string(),
     deploymentNotBefore: v.number(),
     deploymentId: v.optional(v.string()),
@@ -58,6 +59,7 @@ export const prepareDeploymentSetup = internalMutation({
       runtimeCommit: application.runtimeCommit,
       runtimeImage: application.runtimeImage,
       runtimeConfigSha256: application.runtimeConfigSha256,
+      revisionKey: setup.revision.revisionKey,
       coolifyConfigHash: application.coolifyConfigHash,
       deploymentNotBefore:
         setup.setupOperation.setupDeploymentNotBefore ?? application.checkedAt,

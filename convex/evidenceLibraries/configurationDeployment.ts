@@ -440,6 +440,15 @@ const savedDeploymentValidator = v.object({
   coolifyConfigHash: v.string(),
 });
 
+const runtimeContinuityValidator = v.object({
+  applicationId: v.string(),
+  platformOrigin: v.string(),
+  customOrigins: v.array(v.string()),
+  revisionKey: v.string(),
+  runtimeCommit: v.string(),
+  runtimeImage: v.string(),
+});
+
 export const prepareConfigurationDeployment = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -453,6 +462,7 @@ export const prepareConfigurationDeployment = internalMutation({
       target: evidenceLibraryConfigurationDeploymentTargetValidator,
       deployment: v.optional(savedDeploymentValidator),
       runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
+      continuity: runtimeContinuityValidator,
     }),
     v.object({
       state: v.literal("new"),
@@ -505,6 +515,7 @@ export const prepareConfigurationDeployment = internalMutation({
       defaultLocale: v.string(),
       runtimeCommit: v.string(),
       runtimeImage: v.string(),
+      continuity: runtimeContinuityValidator,
     }),
   ),
   handler: async (ctx, args) => {
@@ -520,6 +531,27 @@ export const prepareConfigurationDeployment = internalMutation({
         "Evidence Library configuration deployment is not publishing",
       );
     }
+    const activeRevision = deployment.library.activeRevisionId
+      ? await ctx.db.get(deployment.library.activeRevisionId)
+      : null;
+    if (!activeRevision || activeRevision.libraryId !== args.libraryId) {
+      throw createError(
+        "INVALID_DATA",
+        "Evidence Library active revision not found",
+      );
+    }
+    const attachedDomainOrigins = await readAttachedDomainOrigins(
+      ctx,
+      args.libraryId,
+    );
+    const continuity = {
+      applicationId: deployment.runtimeBinding.targetRuntimeId,
+      platformOrigin: deployment.runtimeBinding.targetBaseUrl,
+      customOrigins: attachedDomainOrigins,
+      revisionKey: activeRevision.revisionKey,
+      runtimeCommit: deployment.runtimeBinding.runtimeCommit,
+      runtimeImage: requireRuntimeImage(deployment.runtimeBinding.runtimeImage),
+    };
     const savedTarget = deployment.operation.configurationDeploymentTarget;
     if (savedTarget) {
       if (
@@ -549,6 +581,7 @@ export const prepareConfigurationDeployment = internalMutation({
       return {
         state: "saved" as const,
         target: savedTarget,
+        continuity,
         ...(deployment.operation.runtimeUpdate
           ? { runtimeUpdate: deployment.operation.runtimeUpdate }
           : {}),
@@ -679,7 +712,7 @@ export const prepareConfigurationDeployment = internalMutation({
       targetBaseUrl:
         deployment.operation.addressMove?.to ??
         deployment.runtimeBinding.targetBaseUrl,
-      customDomains: await readAttachedDomainOrigins(ctx, args.libraryId),
+      customDomains: attachedDomainOrigins,
       revision: {
         key: deployment.revision.revisionKey,
         createdAt: deployment.revision.createdAt,
@@ -755,6 +788,7 @@ export const prepareConfigurationDeployment = internalMutation({
       runtimeImage: requireRuntimeImage(
         runtimeUpdate?.toImage ?? deployment.runtimeBinding.runtimeImage,
       ),
+      continuity,
     };
   },
 });
