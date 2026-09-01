@@ -221,6 +221,56 @@ describe("Evidence Library readiness client", () => {
     );
   });
 
+  it("passes the browser shield on every public readiness request", async () => {
+    const targetOrigin = "https://evidence.example.org";
+    const platformOrigin = "https://climate-lib.opendev.space";
+    const seen: string[] = [];
+    const fetchImpl = vi.fn<typeof fetch>(async (request, init) => {
+      const url = new URL(String(request));
+      if (url.hostname === "runtime-verifier.example.test") {
+        expect(new Headers(init?.headers).get("cookie")).toBeNull();
+        return json(readyVerifierBody());
+      }
+      if (
+        new Headers(init?.headers).get("cookie") !== "ode_browser_check=1"
+      ) {
+        return new Response("Forbidden", { status: 403 });
+      }
+      seen.push(url.href);
+      if (url.pathname === "/api/library-config/health") {
+        return activeHealthResponse();
+      }
+      if (url.origin === platformOrigin && url.pathname === "/lib") {
+        return new Response(null, {
+          status: 308,
+          headers: { location: `${targetOrigin}/lib` },
+        });
+      }
+      if (url.pathname === "/lib") {
+        return new Response("ready", { status: 200 });
+      }
+      return new Response(null, {
+        status: 307,
+        headers: { location: LOGIN_PAGE_URL },
+      });
+    });
+
+    await expect(
+      requireLibraryRuntimeReady({
+        ...input(fetchImpl),
+        targetBaseUrl: targetOrigin,
+        platformBaseUrl: platformOrigin,
+      }),
+    ).resolves.toEqual({ status: "ready" });
+    expect(seen).toEqual([
+      `${targetOrigin}/api/library-config/health`,
+      `${targetOrigin}/api/library-config/health`,
+      `${platformOrigin}/lib`,
+      `${targetOrigin}/lib`,
+      `${targetOrigin}/admin`,
+    ]);
+  });
+
   it("rejects the old six-service runtime contract", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => {
       const body = readyVerifierBody();
