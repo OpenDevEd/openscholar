@@ -9,7 +9,11 @@ import {
   requireMatchingCoolifyDeployment,
   type CoolifyDeployment,
 } from "./coolifyClient";
-import { requireRuntimeEnvironment } from "./runtimeActionConfig";
+import {
+  requireRuntimeEnvironment,
+  requireRuntimeHttpsOrigin,
+} from "./runtimeActionConfig";
+import { changeLibraryRuntimeRoute } from "./readinessClient";
 
 const invalidCoolifyConfig = (message: string) =>
   new CoolifyClientError("INVALID_COOLIFY_CONFIG", message);
@@ -40,6 +44,22 @@ export const runDeploymentSetup = internalAction({
         internal.evidenceLibraries.deploymentSetup.prepareDeploymentSetup,
         args,
       );
+      await changeLibraryRuntimeRoute("maintenance", {
+        applicationUuid: prepared.applicationId,
+        customOrigins: [],
+        platformOrigins: [prepared.targetBaseUrl],
+        revisionKey: prepared.revisionKey,
+        runtimeCommit: prepared.runtimeCommit,
+        runtimeImage: prepared.runtimeImage,
+        verifierUrl: requireRuntimeHttpsOrigin(
+          "EL_RUNTIME_VERIFIER_URL",
+          invalidCoolifyConfig,
+        ),
+        verifierToken: requireRuntimeEnvironment(
+          "EL_RUNTIME_VERIFIER_TOKEN",
+          invalidCoolifyConfig,
+        ),
+      });
       const client = createCoolifyClient({
         origin: requireRuntimeEnvironment(
           "EL_COOLIFY_URL",

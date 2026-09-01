@@ -22,7 +22,6 @@ vi.mock("./domainEgressNode", async () => {
     },
   };
 });
-
 const TARGET = "cname.openscholar.test";
 const TARGET_ADDRESSES = ["188.114.96.6", "188.114.97.6"];
 const CUSTOM_HOST = "evidence.example.org";
@@ -163,6 +162,17 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
         applicationUuid: (body as { applicationUuid: string }).applicationUuid,
         outcome: "deleted",
       });
+    }
+
+    if (url.hostname === "runtime-verifier.example.test") {
+      const statuses: Record<string, string> = {
+        "/v1/library-runtime/activation": "active",
+        "/v1/library-runtime/finalization": "finalized",
+        "/v1/library-runtime/maintenance": "maintenance",
+        "/v1/library-runtime/protection": "protected",
+        "/v1/library-runtime/removal": "removed",
+      };
+      return Response.json({ status: statuses[url.pathname] ?? "unknown" });
     }
 
     // A file store with nothing left in it, for the tests that ask for one.
@@ -626,6 +636,11 @@ describe("custom domains", () => {
     vi.stubEnv("EL_DATABASE_PROVISIONER_TOKEN", "database-token");
     vi.stubEnv("EL_VOLUME_DELETER_URL", "https://volume-deleter.example.test");
     vi.stubEnv("EL_VOLUME_DELETER_TOKEN", "volume-deleter-token");
+    vi.stubEnv(
+      "EL_RUNTIME_VERIFIER_URL",
+      "https://runtime-verifier.example.test",
+    );
+    vi.stubEnv("EL_RUNTIME_VERIFIER_TOKEN", "runtime-verifier-token");
   });
 
   afterEach(async () => {

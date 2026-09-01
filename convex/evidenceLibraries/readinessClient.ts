@@ -2,8 +2,27 @@ import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { isCoolifyApplicationUuid } from "./coolifyApplication";
 
 const REQUEST_TIMEOUT_MS = 15_000;
+const ROUTE_REQUEST_TIMEOUT_MS = 30_000;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
+
+export type LibraryRuntimeRouteOperation =
+  | "maintenance"
+  | "protection"
+  | "activation"
+  | "finalization";
+
+export type LibraryRuntimeRouteInput = {
+  applicationUuid: string;
+  runtimeCommit: string;
+  runtimeImage: string;
+  revisionKey: string;
+  platformOrigins: readonly string[];
+  customOrigins: readonly string[];
+  verifierUrl: string;
+  verifierToken: string;
+  fetchImpl?: typeof fetch;
+};
 
 export class ReadinessClientError extends Error {
   constructor(
@@ -78,7 +97,7 @@ function requireInput(input: ReadinessCheckInput) {
   if (!isCoolifyApplicationUuid(input.applicationUuid)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Coolify application UUID is invalid",
+      "Evidence Library application ID is invalid",
     );
   }
   if (!COMMIT.test(input.runtimeCommit)) {
@@ -126,9 +145,10 @@ async function fetchWithTimeout<T>(
   url: URL,
   init: RequestInit,
   use: (response: Response) => Promise<T>,
+  timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response: Response | undefined;
   try {
     response = await fetchImpl(url, {
@@ -362,6 +382,204 @@ async function requireVerifierReady(
   }
 }
 
+const runtimeRouteStatuses = {
+  activation: "active",
+  finalization: "finalized",
+  maintenance: "maintenance",
+  protection: "protected",
+} as const satisfies Record<LibraryRuntimeRouteOperation, string>;
+
+function requireRuntimeRouteInput(input: LibraryRuntimeRouteInput) {
+  if (!isCoolifyApplicationUuid(input.applicationUuid)) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library application ID is invalid",
+    );
+  }
+  if (!COMMIT.test(input.runtimeCommit)) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library commit is invalid",
+    );
+  }
+  if (!isRuntimeImageReference(input.runtimeImage)) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library image is invalid",
+    );
+  }
+  if (!input.revisionKey.trim()) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library revision is missing",
+    );
+  }
+  if (input.platformOrigins.length < 1 || input.platformOrigins.length > 2) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library platform addresses are invalid",
+    );
+  }
+  if (input.customOrigins.length > 20) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library custom addresses are invalid",
+    );
+  }
+  const origins = [
+    ...input.platformOrigins.map(
+      (origin) =>
+        requireHttpsOrigin("Evidence Library platform URL", origin).origin,
+    ),
+    ...input.customOrigins.map(
+      (origin) =>
+        requireHttpsOrigin("Evidence Library custom URL", origin).origin,
+    ),
+  ];
+  if (new Set(origins).size !== origins.length) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library addresses must be unique",
+    );
+  }
+  if (!input.verifierToken.trim()) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Runtime verifier token is missing",
+    );
+  }
+  return {
+    customOrigins: origins.slice(input.platformOrigins.length),
+    platformOrigins: origins.slice(0, input.platformOrigins.length),
+  };
+}
+
+export async function changeLibraryRuntimeRoute(
+  operation: LibraryRuntimeRouteOperation,
+  input: LibraryRuntimeRouteInput,
+): Promise<{ status: string }> {
+  const origins = requireRuntimeRouteInput(input);
+  const verifierOrigin = requireHttpsOrigin(
+    "Runtime verifier URL",
+    input.verifierUrl,
+  );
+  const expectedStatus = runtimeRouteStatuses[operation];
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const url = new URL(`/v1/library-runtime/${operation}`, verifierOrigin);
+  const init = {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${input.verifierToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      applicationUuid: input.applicationUuid,
+      commit: input.runtimeCommit,
+      customOrigins: origins.customOrigins,
+      platformOrigins: origins.platformOrigins,
+      revision: input.revisionKey,
+      runtimeImage: input.runtimeImage,
+    }),
+  } satisfies RequestInit;
+  let body: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      body = await fetchWithTimeout(
+        fetchImpl,
+        url,
+        init,
+        async (response) => {
+          if (response.status !== 200) {
+            throw new ReadinessClientError(
+              response.status === 409 || response.status >= 500
+                ? "RUNTIME_ROUTE_UNAVAILABLE"
+                : "RUNTIME_ROUTE_FAILED",
+              "Evidence Library traffic could not be updated",
+            );
+          }
+          return await readBoundedJson(response);
+        },
+        ROUTE_REQUEST_TIMEOUT_MS,
+      );
+      break;
+    } catch (error) {
+      const transient =
+        error instanceof ReadinessClientError &&
+        (error.code === "READINESS_UNAVAILABLE" ||
+          error.code === "RUNTIME_ROUTE_UNAVAILABLE");
+      if (transient && attempt === 0) continue;
+      if (transient) {
+        throw new ReadinessClientError(
+          "RUNTIME_ROUTE_FAILED",
+          "Evidence Library traffic could not be updated",
+        );
+      }
+      throw error;
+    }
+  }
+  if (!isRecord(body) || body.status !== expectedStatus) {
+    throw new ReadinessClientError(
+      "READINESS_INVALID_RESPONSE",
+      "The runtime verifier returned an invalid route response",
+    );
+  }
+  return { status: expectedStatus };
+}
+
+export async function removeLibraryRuntimeRoute(input: {
+  applicationUuid: string;
+  verifierUrl: string;
+  verifierToken: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ status: "removed" }> {
+  if (!isCoolifyApplicationUuid(input.applicationUuid)) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library application ID is invalid",
+    );
+  }
+  if (!input.verifierToken.trim()) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Runtime verifier token is missing",
+    );
+  }
+  const verifierOrigin = requireHttpsOrigin(
+    "Runtime verifier URL",
+    input.verifierUrl,
+  );
+  const body = await fetchWithTimeout(
+    input.fetchImpl ?? fetch,
+    new URL("/v1/library-runtime/removal", verifierOrigin),
+    {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${input.verifierToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ applicationUuid: input.applicationUuid }),
+    },
+    async (response) => {
+      if (response.status !== 200) {
+        throw new ReadinessClientError(
+          "RUNTIME_ROUTE_FAILED",
+          "Evidence Library traffic could not be removed",
+        );
+      }
+      return await readBoundedJson(response);
+    },
+  );
+  if (!isRecord(body) || body.status !== "removed") {
+    throw new ReadinessClientError(
+      "READINESS_INVALID_RESPONSE",
+      "The runtime verifier returned an invalid route response",
+    );
+  }
+  return { status: "removed" };
+}
+
 /**
  * The address must answer as this library. The Coolify application is already
  * running by the time this runs, so an answer from anything else means the
@@ -544,18 +762,34 @@ export type ReadinessCheckInput = {
 export async function requireLibraryRuntimeReady(
   input: ReadinessCheckInput,
 ): Promise<{ status: "ready" }> {
+  await requireLibraryRuntimeServicesReady(input);
+  await requireLibraryRuntimePublicReady(input);
+  return { status: "ready" };
+}
+
+export async function requireLibraryRuntimeServicesReady(
+  input: ReadinessCheckInput,
+): Promise<{ status: "ready" }> {
   requireInput(input);
   const fetchImpl = input.fetchImpl ?? fetch;
-  const targetFetchImpl = input.targetFetchImpl ?? fetchImpl;
   const verifierOrigin = requireHttpsOrigin(
     "Runtime verifier URL",
     input.verifierUrl,
   );
+  await requireVerifierReady(fetchImpl, verifierOrigin, input);
+  return { status: "ready" };
+}
+
+export async function requireLibraryRuntimePublicReady(
+  input: ReadinessCheckInput,
+): Promise<{ status: "ready" }> {
+  requireInput(input);
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const targetFetchImpl = input.targetFetchImpl ?? fetchImpl;
   const targetOrigin = requireHttpsOrigin(
     "Evidence Library URL",
     input.targetBaseUrl,
   );
-  await requireVerifierReady(fetchImpl, verifierOrigin, input);
   await requireActiveRevision(targetFetchImpl, targetOrigin, input.revisionKey);
   if (input.platformBaseUrl && input.platformBaseUrl !== targetOrigin.origin) {
     await requireRedirectToCanonical(

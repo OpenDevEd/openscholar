@@ -214,11 +214,19 @@ function createRuntimeNetwork(input: {
         }
       }
 
-      if (
-        url.origin === "https://verifier.example.test" &&
-        method === "POST" &&
-        url.pathname === "/v1/library-runtime/readiness"
-      ) {
+      if (url.origin === "https://verifier.example.test" && method === "POST") {
+        const routeStatus: Record<string, string> = {
+          "/v1/library-runtime/activation": "active",
+          "/v1/library-runtime/finalization": "finalized",
+          "/v1/library-runtime/maintenance": "maintenance",
+          "/v1/library-runtime/protection": "protected",
+        };
+        if (routeStatus[url.pathname]) {
+          return jsonResponse({ status: routeStatus[url.pathname] });
+        }
+        if (url.pathname !== "/v1/library-runtime/readiness") {
+          return jsonResponse({ message: "Unexpected verifier request" }, 404);
+        }
         return jsonResponse({
           ready: true,
           applicationUuid: APPLICATION_UUID,
@@ -818,6 +826,24 @@ describe("Evidence Library configuration deployment", () => {
         ({ url }) => url.pathname === "/api/library-config/health",
       ),
     ).toBe(true);
+    const paths = network.requests.map(({ url }) => url.pathname);
+    expect(paths.indexOf("/v1/library-runtime/protection")).toBeLessThan(
+      network.requests.findIndex(
+        ({ method, url }) => method !== "GET" && url.pathname.endsWith("/envs"),
+      ),
+    );
+    expect(paths.indexOf("/v1/library-runtime/readiness")).toBeLessThan(
+      paths.indexOf("/v1/library-runtime/activation"),
+    );
+    expect(paths.indexOf("/v1/library-runtime/activation")).toBeLessThan(
+      paths.indexOf("/api/library-config/health"),
+    );
+    expect(paths.indexOf("/api/library-config/health")).toBeLessThan(
+      paths.indexOf("/v1/library-runtime/finalization"),
+    );
+    expect(
+      paths.filter((path) => path === "/v1/library-runtime/protection"),
+    ).toHaveLength(1);
     expect(
       network.environments.find(({ key }) => key === "LIBRARY_CONFIG_JSON")!
         .value,
@@ -1527,6 +1553,16 @@ describe("Evidence Library configuration deployment", () => {
       ),
     ).resolves.toMatchObject({ status: "running" });
     expect(network.publicDomain).toBe(movedTo);
+    const protectionIndex = network.requests.findIndex(
+      ({ url }) => url.pathname === "/v1/library-runtime/protection",
+    );
+    const domainChangeIndex = network.requests.findIndex(
+      ({ method, url }) =>
+        method === "PATCH" &&
+        url.pathname === `/api/v1/applications/${APPLICATION_UUID}`,
+    );
+    expect(protectionIndex).toBeGreaterThanOrEqual(0);
+    expect(protectionIndex).toBeLessThan(domainChangeIndex);
 
     network.finishDeployment();
     await expect(

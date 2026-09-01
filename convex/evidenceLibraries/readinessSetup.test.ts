@@ -7,6 +7,22 @@ import {
 } from "../../tests/helpers/evidence-library-setup-fixture";
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 
+function runtimeRouteResponse(url: URL) {
+  const statuses: Record<string, string> = {
+    "/v1/library-runtime/activation": "active",
+    "/v1/library-runtime/finalization": "finalized",
+    "/v1/library-runtime/maintenance": "maintenance",
+    "/v1/library-runtime/protection": "protected",
+  };
+  const status = statuses[url.pathname];
+  return status
+    ? new Response(JSON.stringify({ status }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    : null;
+}
+
 describe("Evidence Library readiness completion", () => {
   beforeEach(() => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
@@ -181,6 +197,8 @@ describe("Evidence Library readiness completion", () => {
           );
         }
         if (url.origin === "https://verifier.example.test") {
+          const route = runtimeRouteResponse(url);
+          if (route) return route;
           return new Response(
             verifierReady
               ? JSON.stringify({
@@ -337,6 +355,8 @@ describe("Evidence Library address recovery during setup", () => {
           return new Response("no available server", { status: 503 });
         }
         if (url.origin === "https://verifier.example.test") {
+          const route = runtimeRouteResponse(url);
+          if (route) return route;
           return new Response(
             JSON.stringify({
               applicationUuid: applicationId,

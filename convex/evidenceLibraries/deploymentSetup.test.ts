@@ -1,10 +1,12 @@
 /// <reference types="vite/client" />
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import {
   createActivatedSetupFixture,
   TEST_RUNTIME_IMAGE,
 } from "../../tests/helpers/evidence-library-setup-fixture";
+
+const APPLICATION_UUID = "app000000000000000000003";
 
 async function createApplicationSetupFixture() {
   const fixture = await createActivatedSetupFixture("deployment");
@@ -58,7 +60,7 @@ async function createApplicationSetupFixture() {
       attemptToken: fixture.attemptToken,
       attemptCount: fixture.attemptCount,
       outcome: "created",
-      applicationId: "coolify-application-deployment",
+      applicationId: APPLICATION_UUID,
       runtimeCommit: prepared.runtimeCommit,
       runtimeImage: prepared.runtimeImage,
       runtimeConfigSha256: "b".repeat(64),
@@ -83,6 +85,57 @@ describe("Evidence Library deployment setup", () => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("publishes maintenance before asking for the first deployment", async () => {
+    const fixture = await createApplicationSetupFixture();
+    vi.stubEnv("EL_COOLIFY_URL", "https://coolify.example.test");
+    vi.stubEnv("EL_COOLIFY_TOKEN", "coolify-token");
+    vi.stubEnv("EL_RUNTIME_VERIFIER_URL", "https://verifier.example.test");
+    vi.stubEnv("EL_RUNTIME_VERIFIER_TOKEN", "verifier-token");
+    const requests: Array<{ body: unknown; url: URL }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (request, init) => {
+        const url = new URL(String(request));
+        requests.push({
+          body: init?.body ? JSON.parse(String(init.body)) : null,
+          url,
+        });
+        if (url.origin === "https://verifier.example.test") {
+          return Response.json({ status: "maintenance" });
+        }
+        return Response.json({ message: "unavailable" }, { status: 503 });
+      }),
+    );
+
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.deploymentSetupActions.runDeploymentSetup,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: fixture.created.setupOperationId,
+          attemptToken: fixture.attemptToken,
+          attemptCount: fixture.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    expect(requests[0]).toMatchObject({
+      body: {
+        applicationUuid: APPLICATION_UUID,
+        commit: "a".repeat(40),
+        customOrigins: [],
+        platformOrigins: [fixture.created.publicAddress],
+        revision: fixture.activated.revisionKey,
+        runtimeImage: TEST_RUNTIME_IMAGE,
+      },
+    });
+    expect(requests[0]!.url.pathname).toBe("/v1/library-runtime/maintenance");
+  });
+
   it("saves one deployment, polls without sleeping, and queues readiness", async () => {
     const fixture = await createApplicationSetupFixture();
     expect(
@@ -96,7 +149,7 @@ describe("Evidence Library deployment setup", () => {
         },
       ),
     ).toMatchObject({
-      applicationId: "coolify-application-deployment",
+      applicationId: APPLICATION_UUID,
       deploymentNotBefore: expect.any(Number),
       runtimeCommit: "a".repeat(40),
       runtimeImage: TEST_RUNTIME_IMAGE,
@@ -182,7 +235,7 @@ describe("Evidence Library deployment setup", () => {
       stage: "health_check",
       setupReceipts: {
         deployment: {
-          applicationId: "coolify-application-deployment",
+          applicationId: APPLICATION_UUID,
           deploymentId: "deployment-1",
           runtimeCommit: "a".repeat(40),
           runtimeConfigSha256: "b".repeat(64),
