@@ -175,7 +175,6 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
                   data: {
                     platformAddress: savedIdentity.baseUrl,
                     canonicalAddress: savedIdentity.baseUrl,
-                    target: "cname.openscholar.ai",
                     live: true,
                     domains: [],
                   },

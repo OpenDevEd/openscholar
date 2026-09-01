@@ -19,7 +19,10 @@ import {
   type DnsAnswer,
   type DnsRecordType,
 } from "./dnsClient";
-import { readCustomDomainTarget } from "./domainConfig";
+import {
+  readCustomDomainApexIpv4,
+  readCustomDomainTarget,
+} from "./domainConfig";
 
 /** The domain answered something we will not connect to. A real answer. */
 export class DomainEgressRefused extends Error {
@@ -106,6 +109,7 @@ export async function readSafeDomainAddresses(input: {
         target,
         targetAddresses: family.targetAddresses,
         isApex,
+        apexAddresses: isApex ? [readCustomDomainApexIpv4()] : [],
       }),
     );
     if (reading !== "pointing") {

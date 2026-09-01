@@ -210,6 +210,8 @@ export function classifyTarget(
   input: {
     target: string;
     targetAddresses: readonly string[];
+    /** Explicit public load-balancer addresses shown in apex instructions. */
+    apexAddresses?: readonly string[];
     /**
      * Whether the name is the top of its own zone. Only such a name may
      * pass on matching addresses alone: it cannot carry the alias we ask
@@ -225,17 +227,22 @@ export function classifyTarget(
   if (answer.addresses.length === 0) return "no-records";
   // Only the top of a zone may pass on addresses alone.
   if (input.isApex !== true) return "wrong-target";
-  // A flattened apex has to answer with the target's whole address set. One
-  // address in common proves nothing: a shared proxy hands the same anycast
-  // addresses to everybody on it.
-  const ours = new Set(input.targetAddresses.map((value) => value.toLowerCase()));
   const theirs = new Set(answer.addresses);
-  if (
-    ours.size > 0 &&
-    ours.size === theirs.size &&
-    [...theirs].every((address) => ours.has(address))
-  ) {
-    return "pointing";
+  // The apex may use the explicit public load-balancer address we show, or
+  // flatten our CNAME target. Either way the whole answer set must match;
+  // one shared address proves nothing.
+  for (const expected of [
+    input.apexAddresses ?? [],
+    input.targetAddresses,
+  ]) {
+    const ours = new Set(expected.map((value) => value.toLowerCase()));
+    if (
+      ours.size > 0 &&
+      ours.size === theirs.size &&
+      [...theirs].every((address) => ours.has(address))
+    ) {
+      return "pointing";
+    }
   }
   return "wrong-target";
 }

@@ -22,9 +22,7 @@ import { requireEvidenceLibraryAccess } from "./access";
 import { rateLimit } from "../lib/rateLimit";
 import { internal } from "../_generated/api";
 import {
-  readCustomDomainTarget,
-  verificationRecordName,
-  verificationRecordValue,
+  customDomainDnsRecords,
 } from "./domainConfig";
 import {
   evidenceLibraryDomainFailureValidator,
@@ -54,8 +52,14 @@ const domainRowValidator = v.object({
   deploymentPending: v.boolean(),
   isApex: v.boolean(),
   checkedAt: v.optional(v.number()),
-  recordName: v.string(),
-  recordValue: v.string(),
+  suggestedWwwHost: v.optional(v.string()),
+  records: v.array(
+    v.object({
+      type: v.union(v.literal("A"), v.literal("CNAME"), v.literal("TXT")),
+      name: v.string(),
+      value: v.string(),
+    }),
+  ),
 });
 
 export async function readEvidenceLibraryDomains(
@@ -91,7 +95,12 @@ export async function readAttachedDomainOrigins(
     .sort();
 }
 
-function presentDomain(row: Doc<"evidenceLibraryDomains">) {
+function presentDomain(
+  row: Doc<"evidenceLibraryDomains">,
+  existingHosts: ReadonlySet<string>,
+) {
+  const isApex = row.isApex === true;
+  const suggestedWwwHost = `www.${row.host}`;
   return {
     domainId: row._id,
     host: row.host,
@@ -102,10 +111,16 @@ function presentDomain(row: Doc<"evidenceLibraryDomains">) {
     removing: row.removingAt !== undefined,
     deploymentPending:
       row.deploymentPending === true || row.pendingDeployment !== undefined,
-    isApex: row.isApex === true,
+    isApex,
     ...(row.checkedAt === undefined ? {} : { checkedAt: row.checkedAt }),
-    recordName: verificationRecordName(row.host),
-    recordValue: verificationRecordValue(row.verificationToken),
+    ...(isApex && !existingHosts.has(suggestedWwwHost)
+      ? { suggestedWwwHost }
+      : {}),
+    records: customDomainDnsRecords({
+      host: row.host,
+      isApex,
+      token: row.verificationToken,
+    }),
   };
 }
 
@@ -134,7 +149,6 @@ export const listDomains = query({
   returns: v.object({
     platformAddress: v.string(),
     canonicalAddress: v.string(),
-    target: v.string(),
     live: v.boolean(),
     domains: v.array(domainRowValidator),
   }),
@@ -146,14 +160,14 @@ export const listDomains = query({
     );
     const binding = await readRuntimeBinding(ctx, access.library);
     const rows = await readEvidenceLibraryDomains(ctx, args.libraryId);
+    const existingHosts = new Set(rows.map(({ host }) => host));
     return {
       platformAddress: binding.targetBaseUrl,
       canonicalAddress: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
-      target: readCustomDomainTarget(),
       live: access.library.state === "active" && binding.state === "ready",
       domains: rows
         .sort((left, right) => left.createdAt - right.createdAt)
-        .map(presentDomain),
+        .map((row) => presentDomain(row, existingHosts)),
     };
   },
 });
@@ -310,6 +324,7 @@ export const claimDomainHost = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
     host: v.string(),
+    isApex: v.boolean(),
   },
   returns: v.union(
     v.object({
@@ -345,6 +360,7 @@ export const claimDomainHost = internalMutation({
       generation: 0,
       libraryId: args.libraryId,
       host: args.host,
+      isApex: args.isApex,
       verificationToken,
       role: "redirect",
       state: "added",

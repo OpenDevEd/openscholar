@@ -624,6 +624,7 @@ describe("custom domains", () => {
   beforeEach(() => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
     vi.stubEnv("EL_CUSTOM_DOMAIN_TARGET", TARGET);
+    vi.stubEnv("EL_CUSTOM_DOMAIN_APEX_IPV4", "203.0.113.80");
     vi.stubEnv("EL_COOLIFY_URL", "https://coolify.example.test");
     vi.stubEnv("EL_COOLIFY_TOKEN", "coolify-token");
     vi.stubEnv("EL_ALLOW_DEVELOPMENT_TEARDOWN", "true");
@@ -687,7 +688,11 @@ describe("custom domains", () => {
     // The action checked a moment ago; this is the transaction that decides.
     const claimed = await fixture.admin.mutation(
       internal.evidenceLibraries.domains.claimDomainHost,
-      { libraryId: fixture.created.libraryId, host: CUSTOM_HOST },
+      {
+        libraryId: fixture.created.libraryId,
+        host: CUSTOM_HOST,
+        isApex: false,
+      },
     );
     expect(claimed).toEqual({ status: "host-taken" });
     await expect(addDomain(fixture)).resolves.toEqual({
@@ -705,14 +710,45 @@ describe("custom domains", () => {
       api.evidenceLibraries.domains.listDomains,
       { libraryId: fixture.created.libraryId },
     );
-    expect(listed.target).toBe(TARGET);
     expect(listed.domains[0]).toMatchObject({
       host: CUSTOM_HOST,
       state: "added",
       attached: false,
-      recordName: `_openscholar.${CUSTOM_HOST}`,
+      records: [
+        { type: "CNAME", name: CUSTOM_HOST, value: TARGET },
+        {
+          type: "TXT",
+          name: `_openscholar.${CUSTOM_HOST}`,
+        },
+      ],
     });
-    expect(listed.domains[0]!.recordValue).toMatch(/^os-verify=[0-9a-f]{32}$/);
+    expect(listed.domains[0]!.records[1]!.value).toMatch(
+      /^os-verify=[0-9a-f]{32}$/,
+    );
+  });
+
+  it("shows an A record and recommends www as soon as an apex is added", async () => {
+    const fixture = await createReadySetupFixture("domain-apex-records");
+    vi.stubGlobal("fetch", createWorld({ apex: true }).fetchImpl);
+
+    await expect(addDomain(fixture, "example.org")).resolves.toMatchObject({
+      status: "added",
+      isApex: true,
+    });
+
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.domains[0]).toMatchObject({
+      host: "example.org",
+      isApex: true,
+      suggestedWwwHost: "www.example.org",
+      records: [
+        { type: "A", name: "example.org", value: "203.0.113.80" },
+        { type: "TXT", name: "_openscholar.example.org" },
+      ],
+    });
   });
 
   it("reads the records and reports each failure by name", async () => {
@@ -760,7 +796,7 @@ describe("custom domains", () => {
     ).resolves.toMatchObject({ state: "verified" });
   });
 
-  it("passes the top of a zone that answers with the target's own addresses", async () => {
+  it("passes the top of a zone that answers with the configured apex address", async () => {
     const fixture = await createReadySetupFixture("domain-apex");
     vi.stubGlobal("fetch", createWorld({}).fetchImpl);
     const added = await addDomain(fixture, "example.org");
@@ -770,7 +806,7 @@ describe("custom domains", () => {
     vi.stubGlobal(
       "fetch",
       createWorld({
-        addresses: [...TARGET_ADDRESSES],
+        addresses: ["203.0.113.80"],
         token: `os-verify=${token}`,
         apex: true,
       }).fetchImpl,
@@ -781,6 +817,22 @@ describe("custom domains", () => {
         domainId: added.domainId,
       }),
     ).resolves.toMatchObject({ state: "verified" });
+  });
+
+  it("refuses an apex before claiming it when its platform target is missing", async () => {
+    const fixture = await createReadySetupFixture("domain-apex-config-missing");
+    vi.stubEnv("EL_CUSTOM_DOMAIN_APEX_IPV4", "");
+    vi.stubGlobal("fetch", createWorld({ apex: true }).fetchImpl);
+
+    await expect(addDomain(fixture, "example.org")).resolves.toEqual({
+      status: "refused",
+      reason: "check-failed",
+    });
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.domains).toEqual([]);
   });
 
   it("leaves the domain exactly as it was when the check could not run", async () => {

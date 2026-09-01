@@ -52,8 +52,12 @@ type DomainRow = {
   removing: boolean;
   deploymentPending: boolean;
   isApex: boolean;
-  recordName: string;
-  recordValue: string;
+  suggestedWwwHost?: string;
+  records: Array<{
+    type: "A" | "CNAME" | "TXT";
+    name: string;
+    value: string;
+  }>;
 };
 
 /** How the mock draws a domain's state. The server's five states map onto it. */
@@ -106,6 +110,9 @@ export const DomainSection = memo(function DomainSection({
 
   const domains = data?.domains ?? [];
   const canAdd = domains.length < 5;
+  const suggestedWwwHost = domains.find(
+    (domain) => domain.suggestedWwwHost,
+  )?.suggestedWwwHost;
 
   async function run<T>(key: string, work: () => Promise<T>) {
     setBusy(key);
@@ -121,8 +128,8 @@ export const DomainSection = memo(function DomainSection({
     }
   }
 
-  async function onAdd() {
-    const typed = custom.trim();
+  async function onAdd(host = custom) {
+    const typed = host.trim();
     if (!typed) return;
     const added = await run("add", () => addDomain({ libraryId, host: typed }));
     if (!added) return;
@@ -207,13 +214,29 @@ export const DomainSection = memo(function DomainSection({
         </Field>
       ) : null}
 
+      {suggestedWwwHost ? (
+        <Panel tone="muted" className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">{t("wwwTitle")}</p>
+            <p className="text-sm text-muted-foreground">{t("wwwHint")}</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy !== null || !canAdd}
+            onClick={() => void onAdd(suggestedWwwHost)}
+          >
+            {busy === "add" ? <Spinner /> : null}
+            {t("addWww", {
+              host: suggestedWwwHost,
+            })}
+          </Button>
+        </Panel>
+      ) : null}
+
       {domains.map((domain: DomainRow) => {
         const checking = busy === domain.domainId;
         const status = dnsStatusOf(domain, checking);
-        const records = [
-          { type: "CNAME", name: domain.host, value: data?.target ?? "" },
-          { type: "TXT", name: domain.recordName, value: domain.recordValue },
-        ];
         return (
           <FieldGroup
             key={domain.domainId}
@@ -261,7 +284,7 @@ export const DomainSection = memo(function DomainSection({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {records.map((record) => (
+                  {domain.records.map((record) => (
                     <TableRow key={record.type}>
                       <TableCell className="font-mono text-xs">
                         {record.type}

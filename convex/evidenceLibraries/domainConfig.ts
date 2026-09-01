@@ -5,6 +5,8 @@
  */
 
 export const CUSTOM_DOMAIN_TARGET_ENV = "EL_CUSTOM_DOMAIN_TARGET";
+/** Public load-balancer address used by DNS zones that cannot carry CNAME. */
+export const CUSTOM_DOMAIN_APEX_IPV4_ENV = "EL_CUSTOM_DOMAIN_APEX_IPV4";
 /** Extra names nobody may claim, beyond the target and the platform domain. */
 export const RESERVED_DOMAIN_SUFFIXES_ENV = "EL_RESERVED_DOMAIN_SUFFIXES";
 
@@ -22,6 +24,23 @@ export function readCustomDomainTarget(env: Environment = process.env): string {
     env[CUSTOM_DOMAIN_TARGET_ENV]?.trim().toLowerCase().replace(/\.$/u, "") ||
     DEFAULT_CUSTOM_DOMAIN_TARGET
   );
+}
+
+export function readCustomDomainApexIpv4(
+  env: Environment = process.env,
+): string {
+  const value = env[CUSTOM_DOMAIN_APEX_IPV4_ENV]?.trim();
+  const parts = value?.split(".") ?? [];
+  if (
+    parts.length !== 4 ||
+    parts.some(
+      (part) =>
+        !/^\d{1,3}$/u.test(part) || Number(part) > 255 || Number(part) < 0,
+    )
+  ) {
+    throw new Error(`${CUSTOM_DOMAIN_APEX_IPV4_ENV} must be an IPv4 address`);
+  }
+  return value!;
 }
 
 /**
@@ -55,4 +74,37 @@ export function verificationRecordName(host: string): string {
 
 export function verificationRecordValue(token: string): string {
   return `${VERIFICATION_VALUE_PREFIX}${token}`;
+}
+
+export type CustomDomainDnsRecord = {
+  type: "A" | "CNAME" | "TXT";
+  name: string;
+  value: string;
+};
+
+/** Exact public DNS instructions for one custom host. */
+export function customDomainDnsRecords(input: {
+  host: string;
+  isApex: boolean;
+  token: string;
+  env?: Environment;
+}): CustomDomainDnsRecord[] {
+  return [
+    input.isApex
+      ? {
+          type: "A",
+          name: input.host,
+          value: readCustomDomainApexIpv4(input.env),
+        }
+      : {
+          type: "CNAME",
+          name: input.host,
+          value: readCustomDomainTarget(input.env),
+        },
+    {
+      type: "TXT",
+      name: verificationRecordName(input.host),
+      value: verificationRecordValue(input.token),
+    },
+  ];
 }
