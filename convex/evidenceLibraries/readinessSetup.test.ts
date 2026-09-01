@@ -230,7 +230,13 @@ describe("Evidence Library readiness completion", () => {
               active: { revision: fixture.activated.revisionKey },
               rejected: null,
             }),
-            { status: 200, headers: { "content-type": "application/json" } },
+            {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+                "X-OpenScholar-Route": `${"a".repeat(40)}:${fixture.activated.revisionKey}`,
+              },
+            },
           );
         }
         if (url.pathname === "/admin") {

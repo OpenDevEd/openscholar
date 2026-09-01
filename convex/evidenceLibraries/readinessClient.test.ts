@@ -12,10 +12,13 @@ const RUNTIME_COMMIT = "a".repeat(40);
 const RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"e".repeat(64)}`;
 const REVISION = "revision-7";
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, headers?: HeadersInit) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...Object.fromEntries(new Headers(headers)),
+    },
   });
 }
 
@@ -49,6 +52,13 @@ function activeHealth(revision = REVISION) {
   };
 }
 
+function activeHealthResponse(
+  revision = REVISION,
+  marker = `${RUNTIME_COMMIT}:${REVISION}`,
+) {
+  return json(activeHealth(revision), 200, { "X-OpenScholar-Route": marker });
+}
+
 const LOGIN_PAGE_URL =
   "https://app.example.test/evidence-libraries/kh74ezgjwdv2nkbq/admin";
 
@@ -73,7 +83,7 @@ function adminAnswer(answer: Response) {
     const url = String(request);
     if (url.includes("runtime-verifier")) return json(readyVerifierBody());
     if (url.endsWith("/api/library-config/health")) {
-      return json(activeHealth());
+      return activeHealthResponse();
     }
     if (url.endsWith("/admin")) return answer.clone();
     return new Response("ready", { status: 200 });
@@ -174,7 +184,7 @@ describe("Evidence Library readiness client", () => {
       requests.push({ url, init });
       if (url.includes("runtime-verifier")) return json(readyVerifierBody());
       if (url.endsWith("/api/library-config/health")) {
-        return json(activeHealth());
+        return activeHealthResponse();
       }
       if (url.endsWith("/admin")) {
         return new Response(null, {
@@ -191,10 +201,11 @@ describe("Evidence Library readiness client", () => {
     expect(requests.map(({ url }) => url)).toEqual([
       "https://runtime-verifier.example.test/v1/library-runtime/readiness",
       "https://climate.libraries.example.test/api/library-config/health",
+      "https://climate.libraries.example.test/api/library-config/health",
       "https://climate.libraries.example.test/lib",
       "https://climate.libraries.example.test/admin",
     ]);
-    expect(requests[2]!.init!.method).toBe("HEAD");
+    expect(requests[3]!.init!.method).toBe("HEAD");
     const verifierRequest = requests[0]!.init!;
     expect(verifierRequest.method).toBe("POST");
     expect(new Headers(verifierRequest.headers).get("authorization")).toBe(
@@ -230,7 +241,7 @@ describe("Evidence Library readiness client", () => {
       if (String(request).includes("runtime-verifier")) {
         return json(readyVerifierBody());
       }
-      return json(activeHealth("older-revision"));
+      return activeHealthResponse("older-revision");
     });
 
     await expect(
@@ -240,6 +251,23 @@ describe("Evidence Library readiness client", () => {
       message: "The Evidence Library has not activated the requested revision",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits for the proxy to apply the target runtime route", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      if (String(request).includes("runtime-verifier")) {
+        return json(readyVerifierBody());
+      }
+      return activeHealthResponse(REVISION, `${"b".repeat(40)}:${REVISION}`);
+    });
+
+    await expect(
+      requireLibraryRuntimeReady(input(fetchImpl)),
+    ).rejects.toMatchObject({
+      code: "CONFIG_NOT_READY",
+      message: "The Evidence Library traffic route is not active",
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
   it("accepts the admin route sending a signed-out visitor to this library's login page", async () => {
@@ -334,7 +362,7 @@ describe("Evidence Library readiness client", () => {
       const url = String(request);
       if (url.includes("runtime-verifier")) return json(readyVerifierBody());
       if (url.endsWith("/api/library-config/health")) {
-        return json(activeHealth());
+        return activeHealthResponse();
       }
       if (url.endsWith("/lib")) {
         return new Response(null, {
@@ -478,7 +506,7 @@ describe("Evidence Library address ownership", () => {
     const requests: string[] = [];
     const fetchImpl = vi.fn<typeof fetch>(async (request) => {
       requests.push(String(request));
-      return json(activeHealth("revision-12"));
+      return activeHealthResponse("revision-12");
     });
 
     expect(
@@ -518,7 +546,7 @@ describe("Evidence Library address ownership", () => {
         const url = new URL(String(input));
         bucket.push(url.hostname);
         if (url.pathname === "/api/library-config/health") {
-          return Response.json(activeHealth());
+          return activeHealthResponse();
         }
         if (url.pathname.startsWith("/v1/library-runtime")) {
           return Response.json(readyVerifierBody());
