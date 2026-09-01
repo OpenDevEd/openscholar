@@ -401,10 +401,11 @@ async function requirePage(
   url: URL,
   description: string,
 ) {
+  // A valid page can exceed the pinned client's 256 KiB response cap.
   await fetchWithTimeout(
     fetchImpl,
     url,
-    { headers: { accept: "text/html" }, method: "GET" },
+    { headers: { accept: "text/html" }, method: "HEAD" },
     async (response) => {
       if (!response.ok) {
         throw new ReadinessClientError(

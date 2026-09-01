@@ -110,6 +110,7 @@ describe("Evidence Library readiness client", () => {
       "https://climate.libraries.example.test/lib",
       "https://climate.libraries.example.test/admin",
     ]);
+    expect(requests[2]!.init!.method).toBe("HEAD");
     const verifierRequest = requests[0]!.init!;
     expect(verifierRequest.method).toBe("POST");
     expect(new Headers(verifierRequest.headers).get("authorization")).toBe(
