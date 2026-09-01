@@ -49,8 +49,9 @@ workflow.
 
 - Search before building. Extend the deepest existing component, helper,
   contract, fixture, workflow, or document that already owns the behavior.
-- Check facts instead of guessing. If a claim feels uncertain, inspect the
-  code, use `find-skills`, read current package docs, and research the web.
+- Check facts instead of guessing. Use current code first, installed package
+  documentation second, and the web only for facts those sources do not
+  resolve. Do not run several research tools as a checklist.
 - Read installed framework docs before changing a framework contract.
 - Do not add compatibility layers, fallback paths, dead code, or speculative
   abstractions unless the user asks for them.
@@ -76,6 +77,16 @@ workflow.
 One primary agent owns the task, integrated diff, final verification, and
 handoff.
 
+- Optimize elapsed wall-clock time. Run independent repository reads,
+  dependency installs, focused checks, builds, and deployment preparation at
+  the same time instead of serially.
+- Batch related searches, file reads, status checks, and API queries. Prefer
+  one bounded command or parallel tool call over a long sequence of tiny
+  calls. Reaching 50 completed tool calls in one phase is a trigger to
+  consolidate the remaining work, not to pause or stop.
+- Start a slow external gate as soon as its exact inputs are stable. Use one
+  watcher instead of repeated polling, and continue other independent work
+  while the gate runs.
 - Do not delegate routine work or delegate merely because an investigation has
   several reads or searches.
 - Parallelize only when there are at least two independent workstreams and doing
@@ -92,6 +103,13 @@ handoff.
 - Stop or redirect a lane that is no longer saving time.
 - The primary agent integrates lane results. Subagents do not merge their own
   work.
+- After an unexpected integration or deployment failure, collect the relevant
+  logs, runtime state, configuration, and connected code paths in one pass.
+  Test independent hypotheses at the same time when safe, then make one
+  combined root-cause fix. Do not release one patch per newly discovered clue.
+- Code that introduces an external service boundary must record useful
+  internal diagnostics in its first version. Do not require a separate release
+  merely to reveal the real error.
 
 ## Plan only when it helps
 
@@ -121,6 +139,12 @@ handoff.
   or behavior-preserving refactors.
 - Run the repository's full required suite once in CI on the final PR head.
   Do not make every lane or commit repeat it.
+- Use focused checks for intermediate branch commits. Run expensive acceptance
+  and live-service jobs only for the final ready head when the workflow can
+  distinguish it.
+- When a change needs runtime proof, test the unmerged commit in an isolated or
+  preview deployment before merge. Merge must not be the first way to exercise
+  the real boundary.
 - The primary agent runs one final browser, deployment, or live-service gate
   when the changed boundary needs one.
 - Subagents do not repeat full suites, browser runs, or shared deployment checks
@@ -186,6 +210,8 @@ browser or deployed service.
 | Let two agents edit the same schema or API contract. | Give the shared contract one owner. Parallelize callers only after that contract is fixed. |
 | Copy all standing rules and model choices into every `PROMPTS.md`. | Put task decisions and checks in the plan. Link to `AGENTS.md` for workflow. |
 | Run the full suite and a review after every commit. | Run one focused check while coding, one phase review, and the full CI gate once on the final head. |
+| Run related reads, checks, and repository work one after another. | Batch related tool calls and run independent work at the same time. |
+| Release one patch for every error exposed by the previous patch. | After the first failure, inspect the connected boundary once and ship one combined root-cause fix. |
 | A reviewer is silent for eight minutes, so start another review. | Check that the process is alive and keep waiting for the same review. |
 | Keep an old field optional so saved rows still validate. | Follow the data rule: audit, migrate, verify, then narrow. |
 | Say "tests pass, so deployment works." | Run the browser or live-service gate that proves the changed boundary. |

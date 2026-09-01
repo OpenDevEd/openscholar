@@ -5,6 +5,7 @@ const REQUEST_TIMEOUT_MS = 15_000;
 const ROUTE_REQUEST_TIMEOUT_MS = 30_000;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
+const RUNTIME_ROUTE_HEADER = "x-openscholar-route";
 
 export type LibraryRuntimeRouteOperation =
   | "maintenance"
@@ -614,6 +615,30 @@ async function requireActiveRevision(
   }
 }
 
+async function requireActiveRuntimeRoute(
+  fetchImpl: typeof fetch,
+  targetOrigin: URL,
+  runtimeCommit: string,
+  revisionKey: string,
+) {
+  await fetchWithTimeout(
+    fetchImpl,
+    new URL("/api/library-config/health", targetOrigin),
+    { headers: { accept: "application/json" }, method: "GET" },
+    async (response) => {
+      if (
+        response.headers.get(RUNTIME_ROUTE_HEADER) !==
+        `${runtimeCommit}:${revisionKey}`
+      ) {
+        throw new ReadinessClientError(
+          "CONFIG_NOT_READY",
+          "The Evidence Library traffic route is not active",
+        );
+      }
+    },
+  );
+}
+
 async function requirePage(
   fetchImpl: typeof fetch,
   url: URL,
@@ -791,6 +816,12 @@ export async function requireLibraryRuntimePublicReady(
     input.targetBaseUrl,
   );
   await requireActiveRevision(targetFetchImpl, targetOrigin, input.revisionKey);
+  await requireActiveRuntimeRoute(
+    targetFetchImpl,
+    targetOrigin,
+    input.runtimeCommit,
+    input.revisionKey,
+  );
   if (input.platformBaseUrl && input.platformBaseUrl !== targetOrigin.origin) {
     await requireRedirectToCanonical(
       fetchImpl,

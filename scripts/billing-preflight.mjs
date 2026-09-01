@@ -6,6 +6,7 @@ import { createClerkClient } from "@clerk/backend";
 import Stripe from "stripe";
 import fs from "node:fs";
 import path from "node:path";
+import { cleanupStaleBillingClerkUsers } from "./clerk-test-organization.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -186,6 +187,15 @@ async function ensureClerkTestOrganizationCapacity() {
   const clerkClient = createClerkClient({
     secretKey: requireEnv("CLERK_SECRET_KEY"),
   });
+  const removedUserCount = await cleanupStaleBillingClerkUsers(
+    clerkClient,
+    organizationId,
+  );
+  if (removedUserCount > 0) {
+    console.log(
+      `[preflight] removed ${removedUserCount} abandoned billing test users`,
+    );
+  }
   const organization = await clerkClient.organizations.getOrganization({
     organizationId,
     includeMembersCount: true,

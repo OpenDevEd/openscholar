@@ -35,10 +35,17 @@ type RecordedRequest = {
   url: URL;
 };
 
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResponse(
+  body: unknown,
+  status = 200,
+  headers?: HeadersInit,
+): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...Object.fromEntries(new Headers(headers)),
+    },
   });
 }
 
@@ -249,11 +256,15 @@ function createRuntimeNetwork(input: {
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
-        return jsonResponse({
-          state: "active",
-          rejected: null,
-          active: { revision: activeRevision },
-        });
+        return jsonResponse(
+          {
+            state: "active",
+            rejected: null,
+            active: { revision: activeRevision },
+          },
+          200,
+          { "X-OpenScholar-Route": `${commit}:${activeRevision}` },
+        );
       }
       if (
         url.origin === new URL(publicDomain).origin &&
