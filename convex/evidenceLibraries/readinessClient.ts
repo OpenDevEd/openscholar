@@ -3,6 +3,8 @@ import { isCoolifyApplicationUuid } from "./coolifyApplication";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const ROUTE_REQUEST_TIMEOUT_MS = 30_000;
+const RUNTIME_ROUTE_POLL_DELAY_MS = 500;
+const MAX_RUNTIME_ROUTE_POLLS = 10;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const RUNTIME_ROUTE_HEADER = "x-openscholar-route";
@@ -626,21 +628,25 @@ async function requireActiveRuntimeRoute(
   runtimeCommit: string,
   revisionKey: string,
 ) {
-  await fetchWithTimeout(
-    fetchImpl,
-    new URL("/api/library-config/health", targetOrigin),
-    { headers: publicLibraryHeaders("application/json"), method: "GET" },
-    async (response) => {
-      if (
-        response.headers.get(RUNTIME_ROUTE_HEADER) !==
-        `${runtimeCommit}:${revisionKey}`
-      ) {
-        throw new ReadinessClientError(
-          "CONFIG_NOT_READY",
-          "The Evidence Library traffic route is not active",
-        );
-      }
-    },
+  const expectedRoute = `${runtimeCommit}:${revisionKey}`;
+  for (let pollCount = 0; pollCount < MAX_RUNTIME_ROUTE_POLLS; pollCount += 1) {
+    const active = await fetchWithTimeout(
+      fetchImpl,
+      new URL("/api/library-config/health", targetOrigin),
+      { headers: publicLibraryHeaders("application/json"), method: "GET" },
+      async (response) =>
+        response.headers.get(RUNTIME_ROUTE_HEADER) === expectedRoute,
+    );
+    if (active) return;
+    if (pollCount < MAX_RUNTIME_ROUTE_POLLS - 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, RUNTIME_ROUTE_POLL_DELAY_MS),
+      );
+    }
+  }
+  throw new ReadinessClientError(
+    "CONFIG_NOT_READY",
+    "The Evidence Library traffic route is not active",
   );
 }
 
