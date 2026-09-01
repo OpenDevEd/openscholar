@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Rocket } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,8 @@ export function ActivationControl({
   disabled,
   idleLabel,
   onActivate,
+  className,
+  size,
 }: {
   busy: {
     accessibleLabel: string;
@@ -20,6 +23,8 @@ export function ActivationControl({
   disabled: boolean;
   idleLabel: string;
   onActivate: () => void;
+  className?: string;
+  size?: ComponentProps<typeof Button>["size"];
 }) {
   const reduceMotion = useReducedMotion();
   const BusyIcon = busy?.icon;
@@ -28,11 +33,13 @@ export function ActivationControl({
     <Button
       disabled={disabled}
       onClick={onActivate}
+      size={size}
       variant={busy ? "outline" : "default"}
       aria-label={busy?.accessibleLabel}
       className={cn(
         busy &&
           "relative w-48 overflow-hidden bg-muted/50 px-3 text-foreground shadow-none disabled:opacity-100 dark:bg-muted/40",
+        className,
       )}
     >
       {busy && BusyIcon ? (

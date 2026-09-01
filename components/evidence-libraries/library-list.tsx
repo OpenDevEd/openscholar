@@ -6,7 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { ExternalLink, MoreHorizontal, Plus, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { DeleteLibraryDialog } from "./configuration/delete-library-dialog";
 import { ActivationControl } from "./configuration/activation-control";
 import { EmptyList, MetaList, type MetaItem } from "./configuration/fields";
 import { OPERATION_STAGE_ICONS } from "./configuration/operation-stage-icons";
+import { LibraryAddressLink } from "./library-address-link";
 import { LibraryImage } from "./library-image";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
@@ -204,7 +205,6 @@ function LibraryRow({
   const format = useFormatter();
   const isDeleting = library.status === "deleting";
   const base = `/evidence-libraries/${library._id}`;
-  const address = library.publicAddress.replace(/^https?:\/\//, "");
   // Owners land on the configuration; editors only get the admin area once it is live.
   const titleGoesToAdmin = !isOwner && library.status === "active";
   const titleHref = isOwner ? `${base}/configuration` : null;
@@ -222,7 +222,12 @@ function LibraryRow({
     {
       key: "address",
       label: t("addressLabel"),
-      value: <span className="font-mono">{address}</span>,
+      value: (
+        <LibraryAddressLink
+          address={library.publicAddress}
+          className="font-mono"
+        />
+      ),
     },
     library.lastActivatedAt
       ? {
@@ -252,6 +257,21 @@ function LibraryRow({
       value: tStages(library.setupStage),
     });
   }
+  const operationControl =
+    library.operation && operationLabel ? (
+      <ActivationControl
+        busy={{
+          accessibleLabel: operationLabel,
+          icon: OPERATION_STAGE_ICONS[library.operation.stage],
+          label: tConfiguration(`operationFlow.${library.operation.stage}`),
+        }}
+        className="w-auto bg-background shadow-xs dark:bg-input/30"
+        disabled
+        idleLabel=""
+        onActivate={() => undefined}
+        size="sm"
+      />
+    ) : null;
 
   return (
     <li
@@ -325,29 +345,22 @@ function LibraryRow({
 
       {!isDeleting ? (
         <div className="flex flex-wrap items-center gap-2">
-          {library.operation && operationLabel ? (
-            <ActivationControl
-              busy={{
-                accessibleLabel: operationLabel,
-                icon: OPERATION_STAGE_ICONS[library.operation.stage],
-                label: tConfiguration(
-                  `operationFlow.${library.operation.stage}`,
-                ),
-              }}
-              disabled
-              idleLabel=""
-              onActivate={() => undefined}
-            />
-          ) : null}
           {isOwner ? (
-            <OwnerActions library={library} base={base} onDelete={onDelete} />
+            <OwnerActions
+              library={library}
+              base={base}
+              onDelete={onDelete}
+              operationControl={operationControl}
+            />
           ) : library.status === "active" ? (
-            <Button asChild size="sm" variant="outline">
-              <AdminAreaLink libraryId={library._id}>
-                {t("openAdmin")}
-                <ExternalLink />
-              </AdminAreaLink>
-            </Button>
+            operationControl ?? (
+              <Button asChild size="sm" variant="outline">
+                <AdminAreaLink libraryId={library._id}>
+                  {t("openAdmin")}
+                  <ExternalLink />
+                </AdminAreaLink>
+              </Button>
+            )
           ) : null}
         </div>
       ) : null}
@@ -359,10 +372,12 @@ function OwnerActions({
   library,
   base,
   onDelete,
+  operationControl,
 }: {
   library: Overview;
   base: string;
   onDelete: () => void;
+  operationControl: ReactNode;
 }) {
   const t = useTranslations("evidenceLibraries.list");
   const retrySetup = useMutation(api.evidenceLibraries.mutations.retrySetup);
@@ -393,12 +408,14 @@ function OwnerActions({
       {library.status === "active" ? (
         <>
           {configure}
-          <Button asChild size="sm" variant="ghost">
-            <AdminAreaLink libraryId={library._id}>
-              {t("openAdmin")}
-              <ExternalLink />
-            </AdminAreaLink>
-          </Button>
+          {operationControl ?? (
+            <Button asChild size="sm" variant="ghost">
+              <AdminAreaLink libraryId={library._id}>
+                {t("openAdmin")}
+                <ExternalLink />
+              </AdminAreaLink>
+            </Button>
+          )}
         </>
       ) : null}
       {library.status === "setting_up" ? viewProgress : null}
