@@ -35,6 +35,7 @@ import {
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { LibraryAddressLink } from "../../library-address-link";
 import { SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
 
@@ -284,9 +285,10 @@ export const DomainSection = memo(function DomainSection({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-mono text-sm font-medium">
-                          {domain.host}
-                        </p>
+                        <LibraryAddressLink
+                          address={`https://${domain.host}`}
+                          className="max-w-full font-mono text-sm font-medium"
+                        />
                         {status !== "failed" && status !== "verified" ? (
                           <StatusChip
                             tone={STATUS_TONE[status]}
