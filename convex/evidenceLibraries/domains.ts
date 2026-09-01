@@ -21,9 +21,7 @@ import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import { rateLimit } from "../lib/rateLimit";
 import { internal } from "../_generated/api";
-import {
-  customDomainDnsRecords,
-} from "./domainConfig";
+import { customDomainDnsRecords } from "./domainConfig";
 import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
@@ -98,6 +96,7 @@ export async function readAttachedDomainOrigins(
 function presentDomain(
   row: Doc<"evidenceLibraryDomains">,
   existingHosts: ReadonlySet<string>,
+  includeVerificationRecord: boolean,
 ) {
   const isApex = row.isApex === true;
   const suggestedWwwHost = `www.${row.host}`;
@@ -119,6 +118,8 @@ function presentDomain(
     records: customDomainDnsRecords({
       host: row.host,
       isApex,
+      verificationHost: row.verificationHost ?? row.host,
+      includeVerificationRecord,
       token: row.verificationToken,
     }),
   };
@@ -160,14 +161,28 @@ export const listDomains = query({
     );
     const binding = await readRuntimeBinding(ctx, access.library);
     const rows = await readEvidenceLibraryDomains(ctx, args.libraryId);
+    const sortedRows = rows.sort(
+      (left, right) => left.createdAt - right.createdAt,
+    );
     const existingHosts = new Set(rows.map(({ host }) => host));
+    const apexHosts = new Set(
+      rows.filter((row) => row.isApex).map(({ host }) => host),
+    );
+    const shownVerificationHosts = new Set<string>();
     return {
       platformAddress: binding.targetBaseUrl,
       canonicalAddress: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
       live: access.library.state === "active" && binding.state === "ready",
-      domains: rows
-        .sort((left, right) => left.createdAt - right.createdAt)
-        .map((row) => presentDomain(row, existingHosts)),
+      domains: sortedRows.map((row) => {
+        const verificationHost = row.verificationHost ?? row.host;
+        const includeVerificationRecord =
+          !shownVerificationHosts.has(verificationHost) &&
+          (row.isApex || !apexHosts.has(verificationHost));
+        if (includeVerificationRecord) {
+          shownVerificationHosts.add(verificationHost);
+        }
+        return presentDomain(row, existingHosts, includeVerificationRecord);
+      }),
     };
   },
 });
@@ -190,6 +205,8 @@ type DomainContext = {
     role: "primary" | "redirect";
     state: "added" | "pointing" | "verified" | "active" | "failed";
     verificationToken: string;
+    verificationHost: string;
+    isApex: boolean;
     attached: boolean;
     attachIntent: boolean;
     removing: boolean;
@@ -217,6 +234,8 @@ export const readDomainContext = internalQuery({
         role: v.union(v.literal("primary"), v.literal("redirect")),
         state: evidenceLibraryDomainStateValidator,
         verificationToken: v.string(),
+        verificationHost: v.string(),
+        isApex: v.boolean(),
         attached: v.boolean(),
         attachIntent: v.boolean(),
         removing: v.boolean(),
@@ -274,6 +293,8 @@ export const readDomainContext = internalQuery({
             role: row.role,
             state: row.state,
             verificationToken: row.verificationToken,
+            verificationHost: row.verificationHost ?? row.host,
+            isApex: row.isApex === true,
             attached: row.attachedAt !== undefined,
             // The proxy was asked to hold this host and never confirmed, so
             // a removal has to take it back out to be sure.
@@ -325,6 +346,7 @@ export const claimDomainHost = internalMutation({
     libraryId: v.id("evidenceLibraries"),
     host: v.string(),
     isApex: v.boolean(),
+    verificationHost: v.string(),
   },
   returns: v.union(
     v.object({
@@ -361,6 +383,7 @@ export const claimDomainHost = internalMutation({
       libraryId: args.libraryId,
       host: args.host,
       isApex: args.isApex,
+      verificationHost: args.verificationHost,
       verificationToken,
       role: "redirect",
       state: "added",
@@ -598,7 +621,6 @@ export const writeDomainCheck = internalMutation({
     token: v.string(),
     state: evidenceLibraryDomainStateValidator,
     failure: v.optional(evidenceLibraryDomainFailureValidator),
-    isApex: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -612,7 +634,6 @@ export const writeDomainCheck = internalMutation({
     await ctx.db.patch(args.domainId, {
       state: args.state,
       failure: args.failure,
-      isApex: args.isApex ?? row.isApex,
       checkedAt: now,
       updatedAt: now,
       ...(args.state === "active" && row.activatedAt === undefined

@@ -86,10 +86,12 @@ export type CustomDomainDnsRecord = {
 export function customDomainDnsRecords(input: {
   host: string;
   isApex: boolean;
+  verificationHost: string;
+  includeVerificationRecord: boolean;
   token: string;
   env?: Environment;
 }): CustomDomainDnsRecord[] {
-  return [
+  const records: CustomDomainDnsRecord[] = [
     input.isApex
       ? {
           type: "A",
@@ -101,10 +103,13 @@ export function customDomainDnsRecords(input: {
           name: input.host,
           value: readCustomDomainTarget(input.env),
         },
-    {
-      type: "TXT",
-      name: verificationRecordName(input.host),
-      value: verificationRecordValue(input.token),
-    },
   ];
+  if (input.includeVerificationRecord) {
+    records.push({
+      type: "TXT",
+      name: verificationRecordName(input.verificationHost),
+      value: verificationRecordValue(input.token),
+    });
+  }
+  return records;
 }

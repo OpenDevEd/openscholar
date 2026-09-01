@@ -99,8 +99,16 @@ describe("parseDohAnswer", () => {
     const answer = parseDohAnswer({
       Status: 0,
       Answer: [
-        { name: "_openscholar.evidence.example.org.", type: 16, data: '"os-verify=abc123"' },
-        { name: "_openscholar.evidence.example.org.", type: 16, data: '"part-one" "part-two"' },
+        {
+          name: "_openscholar.evidence.example.org.",
+          type: 16,
+          data: '"os-verify=abc123"',
+        },
+        {
+          name: "_openscholar.evidence.example.org.",
+          type: 16,
+          data: '"part-one" "part-two"',
+        },
       ],
     });
     expect(answer.texts).toEqual(["os-verify=abc123", "part-onepart-two"]);
@@ -120,7 +128,11 @@ describe("parseDohAnswer", () => {
       Answer: [
         { name: "example.org", type: 257, data: '0 issue "digicert.com"' },
         { name: "example.org", type: 257, data: '0 issue "letsencrypt.org"' },
-        { name: "example.org", type: 257, data: '0 iodef "mailto:a@example.org"' },
+        {
+          name: "example.org",
+          type: 257,
+          data: '0 iodef "mailto:a@example.org"',
+        },
         { name: "example.org", type: 257, data: '0 issuewild "pki.goog"' },
       ],
     });
@@ -128,7 +140,12 @@ describe("parseDohAnswer", () => {
   });
 
   it("refuses an answer that is not a DNS answer", () => {
-    for (const payload of [null, "no", { Answer: [] }, { Status: 0, Answer: {} }]) {
+    for (const payload of [
+      null,
+      "no",
+      { Answer: [] },
+      { Status: 0, Answer: {} },
+    ]) {
       expect(() => parseDohAnswer(payload)).toThrow(DnsLookupError);
     }
   });
@@ -141,7 +158,14 @@ describe("classifyTarget", () => {
   it("passes a CNAME chain that reaches the target", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: ["cname.opendev.space"], addresses: ["188.114.96.6"], texts: [], caaIssuers: [], soaOwners: [] },
+        {
+          exists: true,
+          cnames: ["cname.opendev.space"],
+          addresses: ["188.114.96.6"],
+          texts: [],
+          caaIssuers: [],
+          soaOwners: [],
+        },
         { target, targetAddresses },
       ),
     ).toBe("pointing");
@@ -184,7 +208,14 @@ describe("classifyTarget", () => {
   it("refuses an apex that shares only one address with the target", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: [], addresses: ["188.114.97.6"], texts: [], caaIssuers: [], soaOwners: [] },
+        {
+          exists: true,
+          cnames: [],
+          addresses: ["188.114.97.6"],
+          texts: [],
+          caaIssuers: [],
+          soaOwners: [],
+        },
         { target, targetAddresses },
       ),
     ).toBe("wrong-target");
@@ -193,7 +224,14 @@ describe("classifyTarget", () => {
   it("tells a name that does not exist apart from one with no address", () => {
     expect(
       classifyTarget(
-        { exists: false, cnames: [], addresses: [], texts: [], caaIssuers: [], soaOwners: [] },
+        {
+          exists: false,
+          cnames: [],
+          addresses: [],
+          texts: [],
+          caaIssuers: [],
+          soaOwners: [],
+        },
         { target, targetAddresses },
       ),
     ).toBe("no-name");
@@ -202,7 +240,14 @@ describe("classifyTarget", () => {
   it("reports a name with no address at all", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: [], addresses: [], texts: [], caaIssuers: [], soaOwners: [] },
+        {
+          exists: true,
+          cnames: [],
+          addresses: [],
+          texts: [],
+          caaIssuers: [],
+          soaOwners: [],
+        },
         { target, targetAddresses },
       ),
     ).toBe("no-records");
@@ -211,7 +256,14 @@ describe("classifyTarget", () => {
   it("reports a name pointing somewhere else", () => {
     expect(
       classifyTarget(
-        { exists: true, cnames: ["cname.other.example"], addresses: ["203.0.113.9"], texts: [], caaIssuers: [], soaOwners: [] },
+        {
+          exists: true,
+          cnames: ["cname.other.example"],
+          addresses: ["203.0.113.9"],
+          texts: [],
+          caaIssuers: [],
+          soaOwners: [],
+        },
         { target, targetAddresses },
       ),
     ).toBe("wrong-target");
@@ -229,13 +281,19 @@ describe("classifyToken", () => {
   });
 
   it("matches the exact token", () => {
-    expect(classifyToken(answer(["os-verify=abc123"]), "os-verify=abc123")).toBe("match");
+    expect(
+      classifyToken(answer(["os-verify=abc123"]), "os-verify=abc123"),
+    ).toBe("match");
   });
 
   it("reports a missing record and a wrong token apart", () => {
-    expect(classifyToken(answer([], false), "os-verify=abc123")).toBe("missing");
+    expect(classifyToken(answer([], false), "os-verify=abc123")).toBe(
+      "missing",
+    );
     expect(classifyToken(answer([]), "os-verify=abc123")).toBe("missing");
-    expect(classifyToken(answer(["os-verify=other"]), "os-verify=abc123")).toBe("mismatch");
+    expect(classifyToken(answer(["os-verify=other"]), "os-verify=abc123")).toBe(
+      "mismatch",
+    );
   });
 });
 
@@ -245,11 +303,15 @@ describe("classifyCaaChain", () => {
   });
 
   it("passes when the closest name with issuers permits one of ours", () => {
-    expect(classifyCaaChain([[], ["letsencrypt.org", "digicert.com"], []])).toBe("ok");
+    expect(
+      classifyCaaChain([[], ["letsencrypt.org", "digicert.com"], []]),
+    ).toBe("ok");
   });
 
   it("fails when the closest name with issuers permits none of ours", () => {
-    expect(classifyCaaChain([[], ["amazon.com"], ["letsencrypt.org"]])).toBe("blocked");
+    expect(classifyCaaChain([[], ["amazon.com"], ["letsencrypt.org"]])).toBe(
+      "blocked",
+    );
   });
 
   it("fails when the domain permits nobody at all", () => {
@@ -257,7 +319,9 @@ describe("classifyCaaChain", () => {
   });
 
   it("only reads the closest name that has issuers", () => {
-    expect(classifyCaaChain([["ssl.com"], ["letsencrypt.org"]])).toBe("blocked");
+    expect(classifyCaaChain([["ssl.com"], ["letsencrypt.org"]])).toBe(
+      "blocked",
+    );
   });
 });
 
@@ -309,7 +373,13 @@ describe("lookupHost", () => {
       seen.push(url.hostname);
       return dohResponse({
         Status: 0,
-        Answer: [{ name: "evidence.example.org", type: 5, data: "cname.opendev.space." }],
+        Answer: [
+          {
+            name: "evidence.example.org",
+            type: 5,
+            data: "cname.opendev.space.",
+          },
+        ],
       });
     }) as unknown as typeof fetch;
     const answers = await lookupHost(fetchImpl, "evidence.example.org", "A");
@@ -322,18 +392,18 @@ describe("lookupHost", () => {
       if (String(input).includes("dns.google")) throw new Error("offline");
       return dohResponse({ Status: 0 });
     }) as unknown as typeof fetch;
-    await expect(lookupHost(fetchImpl, "evidence.example.org", "A")).rejects.toThrow(
-      DnsLookupError,
-    );
+    await expect(
+      lookupHost(fetchImpl, "evidence.example.org", "A"),
+    ).rejects.toThrow(DnsLookupError);
   });
 
   it("refuses to answer when a resolver returns an error status", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response("nope", { status: 500 }),
+    const fetchImpl = vi.fn(
+      async () => new Response("nope", { status: 500 }),
     ) as unknown as typeof fetch;
-    await expect(lookupHost(fetchImpl, "evidence.example.org", "A")).rejects.toThrow(
-      DnsLookupError,
-    );
+    await expect(
+      lookupHost(fetchImpl, "evidence.example.org", "A"),
+    ).rejects.toThrow(DnsLookupError);
   });
 });
 
@@ -392,12 +462,14 @@ describe("readAgreedIssuers", () => {
 
 describe("readAgreedAnswer", () => {
   it("returns the reading when both resolvers read the same thing", () => {
-    expect(readAgreedAnswer([1, 2], (value) => (value > 0 ? "yes" : "no"))).toBe("yes");
+    expect(
+      readAgreedAnswer([1, 2], (value) => (value > 0 ? "yes" : "no")),
+    ).toBe("yes");
   });
 
   it("refuses when the two resolvers disagree", () => {
-    expect(() => readAgreedAnswer([1, -1], (value) => (value > 0 ? "yes" : "no"))).toThrow(
-      DnsLookupError,
-    );
+    expect(() =>
+      readAgreedAnswer([1, -1], (value) => (value > 0 ? "yes" : "no")),
+    ).toThrow(DnsLookupError);
   });
 });
