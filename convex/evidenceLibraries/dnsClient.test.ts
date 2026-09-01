@@ -156,6 +156,20 @@ describe("classifyTarget", () => {
     ).toBe("pointing");
   });
 
+  it("passes the configured apex address when the CNAME target has other addresses", () => {
+    expect(
+      classifyTarget(
+        { ...emptyAnswer, addresses: ["203.0.113.80"] },
+        {
+          target,
+          targetAddresses,
+          apexAddresses: ["203.0.113.80"],
+          isApex: true,
+        },
+      ),
+    ).toBe("pointing");
+  });
+
   it("refuses an ordinary subdomain that only copies the addresses", () => {
     // Anywhere but the top of a zone the alias is the proof; matching
     // addresses would let a plain subdomain skip it.

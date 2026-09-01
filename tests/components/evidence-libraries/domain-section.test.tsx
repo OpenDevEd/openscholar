@@ -15,15 +15,18 @@ type DomainRow = {
   removing: boolean;
   deploymentPending: boolean;
   isApex: boolean;
-  recordName: string;
-  recordValue: string;
+  suggestedWwwHost?: string;
+  records: Array<{
+    type: "A" | "CNAME" | "TXT";
+    name: string;
+    value: string;
+  }>;
 };
 
 const mocks = vi.hoisted(() => ({
   data: {
     platformAddress: "https://climate-lib.opendev.space",
     canonicalAddress: "https://climate-lib.opendev.space",
-    target: "cname.openscholar.ai",
     live: true,
     domains: [] as DomainRow[],
   },
@@ -87,8 +90,18 @@ function row(overrides: Partial<DomainRow> = {}): DomainRow {
     removing: false,
     deploymentPending: false,
     isApex: false,
-    recordName: "_openscholar.evidence.example.org",
-    recordValue: "os-verify=7f3a9c1e5b2d4a8f",
+    records: [
+      {
+        type: "CNAME",
+        name: "evidence.example.org",
+        value: "cname.openscholar.ai",
+      },
+      {
+        type: "TXT",
+        name: "_openscholar.evidence.example.org",
+        value: "os-verify=7f3a9c1e5b2d4a8f",
+      },
+    ],
     ...overrides,
   };
 }
@@ -145,6 +158,42 @@ describe("DomainSection", () => {
         name: "evidenceLibraryConfiguration.domain.add",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the apex A record and adds the recommended www host", async () => {
+    mocks.data.domains = [
+      row({
+        host: "example.org",
+        isApex: true,
+        suggestedWwwHost: "www.example.org",
+        records: [
+          { type: "A", name: "example.org", value: "203.0.113.80" },
+          {
+            type: "TXT",
+            name: "_openscholar.example.org",
+            value: "os-verify=7f3a9c1e5b2d4a8f",
+          },
+        ],
+      }),
+    ];
+    mocks.addDomain.mockResolvedValue({
+      status: "added",
+      domainId: "domain_2",
+      isApex: false,
+    });
+
+    render(<DomainSection libraryId={libraryId} />);
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.getByText("203.0.113.80")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.addWww",
+      }),
+    );
+    expect(mocks.addDomain).toHaveBeenCalledWith({
+      libraryId,
+      host: "www.example.org",
+    });
   });
 
   it("stops offering another domain at the limit", () => {
@@ -244,7 +293,7 @@ describe("DomainSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("explains that the top of a zone cannot carry the record", () => {
+  it("explains that the top of a zone uses an apex record", () => {
     // Whether a name is the top of its zone is read from its records on the
     // server; the section renders what it was told.
     mocks.data.domains = [row({ host: "example.co.uk", isApex: true })];

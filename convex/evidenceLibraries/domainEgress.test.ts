@@ -63,6 +63,7 @@ function createFetch(world: World): typeof fetch {
 describe("readSafeDomainAddresses", () => {
   beforeEach(() => {
     vi.stubEnv("EL_CUSTOM_DOMAIN_TARGET", TARGET);
+    vi.stubEnv("EL_CUSTOM_DOMAIN_APEX_IPV4", "203.0.113.80");
   });
 
   it("returns the addresses a domain that reaches us answers with", async () => {
@@ -88,6 +89,15 @@ describe("readSafeDomainAddresses", () => {
         }),
       }),
     ).resolves.toEqual([...TARGET_ADDRESSES, ...TARGET_V6]);
+  });
+
+  it("accepts the configured load-balancer address for an apex", async () => {
+    await expect(
+      readSafeDomainAddresses({
+        host: HOST,
+        fetchImpl: createFetch({ a: ["203.0.113.80"], apex: true }),
+      }),
+    ).resolves.toEqual(["203.0.113.80"]);
   });
 
   it("refuses a domain that answers an address inside our own network", async () => {

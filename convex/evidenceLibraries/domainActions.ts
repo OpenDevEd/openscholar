@@ -31,6 +31,7 @@ import {
 import { DomainEgressRefused, DomainEgressUnavailable } from "./domainEgress";
 import { openPinnedDomainClient } from "./domainEgressNode";
 import {
+  readCustomDomainApexIpv4,
   readCustomDomainTarget,
   readReservedDomainSuffixes,
   verificationRecordName,
@@ -69,7 +70,11 @@ import {
 } from "./validators";
 
 type AddDomainResult =
-  | { status: "added"; domainId: Id<"evidenceLibraryDomains"> }
+  | {
+      status: "added";
+      domainId: Id<"evidenceLibraryDomains">;
+      isApex: boolean;
+    }
   | {
       status: "refused";
       reason:
@@ -125,6 +130,7 @@ export const addDomain = action({
     v.object({
       status: v.literal("added"),
       domainId: v.id("evidenceLibraryDomains"),
+      isApex: v.boolean(),
     }),
     v.object({
       status: v.literal("refused"),
@@ -167,14 +173,25 @@ export const addDomain = action({
     if (served.has(host)) {
       return { status: "refused" as const, reason: "host-taken" as const };
     }
+    let isApex: boolean;
+    try {
+      isApex = readsAsApex(await lookupHost(fetch, host, "SOA"), host);
+      if (isApex) readCustomDomainApexIpv4();
+    } catch {
+      return { status: "refused" as const, reason: "check-failed" as const };
+    }
     const claimed = await ctx.runMutation(
       internal.evidenceLibraries.domains.claimDomainHost,
-      { libraryId: args.libraryId, host },
+      { libraryId: args.libraryId, host, isApex },
     );
     if (claimed.status !== "added") {
       return { status: "refused" as const, reason: claimed.status };
     }
-    return { status: "added" as const, domainId: claimed.domainId };
+    return {
+      status: "added" as const,
+      domainId: claimed.domainId,
+      isApex,
+    };
   },
 });
 
@@ -217,7 +234,12 @@ async function readRecordGates(
   const targetAddresses = await readTargetAddresses(target);
   const isApex = readsAsApex(soaAnswers, host);
   const targetReading = readAgreedAnswer(targetAnswers, (answer) =>
-    classifyTargetReading(answer, { target, targetAddresses, isApex }),
+    classifyTargetReading(answer, {
+      target,
+      targetAddresses,
+      isApex,
+      apexAddresses: isApex ? [readCustomDomainApexIpv4()] : [],
+    }),
   );
   const tokenReading = readAgreedAnswer(tokenAnswers, (answer) =>
     classifyToken(answer, verificationRecordValue(token)),
