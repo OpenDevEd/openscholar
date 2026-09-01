@@ -4,6 +4,7 @@ import { api, internal } from "../_generated/api";
 import {
   createActivatedSetupFixture,
   createDraftSetupFixture,
+  createReadySetupFixture,
   reserveLibraryAddressByName,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
@@ -54,6 +55,7 @@ describe("library overviews", () => {
         status: "setting_up",
         setupStage: "database",
         teardownStage: null,
+        operation: { stage: "database" },
         lastActivatedAt: null,
         accentColor: "#005A9C",
         faviconUrl: "https://assets.example.test/favicon.ico",
@@ -109,9 +111,47 @@ describe("library overviews", () => {
       status: "draft",
       setupStage: null,
       teardownStage: null,
+      operation: null,
       lastActivatedAt: null,
       accentColor: null,
       faviconUrl: null,
+    });
+  });
+
+  it("reports the build currently running for an active library", async () => {
+    const fixture = await createReadySetupFixture("overview_build");
+    const runtimeUpdate = {
+      from: "a".repeat(40),
+      to: "b".repeat(40),
+      fromImage: "runtime:old",
+      toImage: "runtime:new",
+    };
+    await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      if (!library?.activeRevisionId) throw new Error("active revision missing");
+      await ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId: library._id,
+        kind: "publish",
+        idempotencyKey: "overview:running-build",
+        revisionId: library.activeRevisionId,
+        runtimeUpdate,
+        status: "running",
+        stage: "publishing",
+        attemptCount: 1,
+        requestedByClerkUserId: fixture.clerkUserId,
+        createdAt: Date.now() + 1_000,
+        updatedAt: Date.now() + 1_000,
+      });
+    });
+
+    const overviews = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraryOverviews,
+      {},
+    );
+
+    expect(overviews[0]).toMatchObject({
+      status: "active",
+      operation: { stage: "publishing", runtimeUpdate },
     });
   });
 

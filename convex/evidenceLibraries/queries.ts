@@ -183,6 +183,14 @@ const libraryOverviewValidator = v.object({
   setupStage: v.union(setupStageValidator, v.null()),
   /** The teardown stage while the library is being deleted. */
   teardownStage: v.union(teardownStageValidator, v.null()),
+  /** The build currently running for this library, if there is one. */
+  operation: v.union(
+    v.null(),
+    v.object({
+      stage: evidenceLibraryPublicOperationFields.stage,
+      runtimeUpdate: evidenceLibraryPublicOperationFields.runtimeUpdate,
+    }),
+  ),
   // Present only on a deletion that stopped, which always records which
   // part stopped. Nothing is invented when it is absent.
   teardownFailedStep: v.optional(evidenceLibraryTeardownStepValidator),
@@ -214,7 +222,13 @@ async function readLibraryOverview(
   ctx: QueryCtx,
   library: Doc<"evidenceLibraries">,
 ) {
-  const [runtimeBinding, setupOperation, activeDeployment, draftPayloads] =
+  const [
+    runtimeBinding,
+    setupOperation,
+    activeDeployment,
+    draftPayloads,
+    latestOperation,
+  ] =
     await Promise.all([
       library.runtimeBindingId
         ? ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId)
@@ -231,6 +245,13 @@ async function readLibraryOverview(
       library.state === "disabled"
         ? null
         : readDraftConfigurationPayloads(ctx, library.draftId ?? undefined),
+      ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_createdAt", (query) =>
+          query.eq("libraryId", library._id),
+        )
+        .order("desc")
+        .first(),
     ]);
   const status = libraryOverviewStatus(library, setupOperation);
   let teardownStage: TeardownStage | null = null;
@@ -238,13 +259,7 @@ async function readLibraryOverview(
     | Infer<typeof evidenceLibraryTeardownStepValidator>
     | undefined;
   if (status === "deleting") {
-    const teardown = await ctx.db
-      .query("evidenceLibraryConfigOperations")
-      .withIndex("by_libraryId_and_createdAt", (query) =>
-        query.eq("libraryId", library._id),
-      )
-      .order("desc")
-      .first();
+    const teardown = latestOperation;
     teardownStage =
       teardown?.kind === "teardown" && isTeardownStage(teardown.stage)
         ? teardown.stage
@@ -268,6 +283,13 @@ async function readLibraryOverview(
     identity.assets.favicon !== ""
       ? identity.assets.favicon
       : null;
+  const runningOperation =
+    latestOperation &&
+    latestOperation.kind !== "teardown" &&
+    (latestOperation.kind !== "setup" || latestOperation.revisionId) &&
+    (latestOperation.status === "queued" || latestOperation.status === "running")
+      ? latestOperation
+      : null;
   return {
     _id: library._id,
     name: library.name,
@@ -281,6 +303,14 @@ async function readLibraryOverview(
         ? setupOperation.stage
         : null,
     teardownStage,
+    operation: runningOperation
+      ? {
+          stage: runningOperation.stage,
+          ...(runningOperation.runtimeUpdate
+            ? { runtimeUpdate: runningOperation.runtimeUpdate }
+            : {}),
+        }
+      : null,
     ...(teardownFailedStep ? { teardownFailedStep } : {}),
     lastActivatedAt: activeDeployment?.receipt?.activatedAt ?? null,
     accentColor:

@@ -19,11 +19,14 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { shortCommit } from "@/lib/evidence-libraries/configuration/versions";
 import { initialsOf } from "@/lib/evidence-libraries/initials";
 import { cn } from "@/lib/utils";
 import { AdminAreaLink } from "./admin-area-link";
 import { DeleteLibraryDialog } from "./configuration/delete-library-dialog";
+import { ActivationControl } from "./configuration/activation-control";
 import { EmptyList, MetaList, type MetaItem } from "./configuration/fields";
+import { OPERATION_STAGE_ICONS } from "./configuration/operation-stage-icons";
 import { LibraryImage } from "./library-image";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
@@ -193,6 +196,7 @@ function LibraryRow({
   onDelete: () => void;
 }) {
   const t = useTranslations("evidenceLibraries.list");
+  const tConfiguration = useTranslations("evidenceLibraryConfiguration");
   const restartTeardown = useMutation(
     api.evidenceLibraries.teardown.restartDevelopmentTeardown,
   );
@@ -204,6 +208,15 @@ function LibraryRow({
   // Owners land on the configuration; editors only get the admin area once it is live.
   const titleGoesToAdmin = !isOwner && library.status === "active";
   const titleHref = isOwner ? `${base}/configuration` : null;
+  const operationLabel = library.operation
+    ? `${library.operation.runtimeUpdate
+        ? tConfiguration("updatingSoftware", {
+            rev: shortCommit(library.operation.runtimeUpdate.to),
+          })
+        : tConfiguration("applying")} · ${tConfiguration(
+        `stages.${library.operation.stage}`,
+      )}`
+    : null;
 
   const meta: MetaItem[] = [
     {
@@ -312,6 +325,20 @@ function LibraryRow({
 
       {!isDeleting ? (
         <div className="flex flex-wrap items-center gap-2">
+          {library.operation && operationLabel ? (
+            <ActivationControl
+              busy={{
+                accessibleLabel: operationLabel,
+                icon: OPERATION_STAGE_ICONS[library.operation.stage],
+                label: tConfiguration(
+                  `operationFlow.${library.operation.stage}`,
+                ),
+              }}
+              disabled
+              idleLabel=""
+              onActivate={() => undefined}
+            />
+          ) : null}
           {isOwner ? (
             <OwnerActions library={library} base={base} onDelete={onDelete} />
           ) : library.status === "active" ? (

@@ -7,29 +7,20 @@ import {
   AlertCircle,
   ArrowUp,
   BarChart3,
-  Boxes,
   Building2,
-  CheckCircle2,
-  Clock3,
   Database,
   FolderTree,
   Globe,
-  Hammer,
-  HardDrive,
-  HeartPulse,
   History,
   Languages,
   Layers,
   Link2,
-  ListChecks,
   type LucideIcon,
   Mail,
   Menu,
-  PackageOpen,
   Palette,
   PanelBottom,
   Quote,
-  RadioTower,
   Save,
   Search,
   Sparkles,
@@ -121,29 +112,12 @@ import { STATUS_DOT, StatusChip } from "./status-chip";
 import { FileUploadsProvider } from "./use-file-uploads";
 import { useScrollSpy } from "./use-scroll-spy";
 import { ActivationControl } from "./activation-control";
+import { OPERATION_STAGE_ICONS } from "./operation-stage-icons";
 
 type DraftResult = NonNullable<
   FunctionReturnType<typeof api.evidenceLibraries.queries.getDraft>
 >;
 type Operation = DraftResult["operation"];
-type OperationStage = NonNullable<Operation>["stage"];
-
-const OPERATION_STAGE_ICONS: Record<OperationStage, LucideIcon> = {
-  queued: Clock3,
-  assembling: PackageOpen,
-  validating: ListChecks,
-  publishing: Hammer,
-  activating: RadioTower,
-  database: Database,
-  storage: HardDrive,
-  application: Boxes,
-  deployment: Hammer,
-  health_check: HeartPulse,
-  coolify: Trash2,
-  convex: Clock3,
-  completed: CheckCircle2,
-};
-
 /**
  * A new library's setup operation is created queued and only starts once the
  * owner activates; until it holds a revision it is waiting, not running.
