@@ -287,6 +287,7 @@ describe("Evidence Library readiness client", () => {
   });
 
   it("rejects a healthy runtime that activated another revision", async () => {
+    vi.useFakeTimers();
     const fetchImpl = vi.fn<typeof fetch>(async (request) => {
       if (String(request).includes("runtime-verifier")) {
         return json(readyVerifierBody());
@@ -294,13 +295,14 @@ describe("Evidence Library readiness client", () => {
       return activeHealthResponse("older-revision");
     });
 
-    await expect(
-      requireLibraryRuntimeReady(input(fetchImpl)),
-    ).rejects.toMatchObject({
+    const readiness = requireLibraryRuntimeReady(input(fetchImpl));
+    const result = expect(readiness).rejects.toMatchObject({
       code: "CONFIG_NOT_READY",
       message: "The Evidence Library has not activated the requested revision",
     });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    await vi.runAllTimersAsync();
+    await result;
+    expect(fetchImpl).toHaveBeenCalledTimes(11);
   });
 
   it("waits for the proxy to apply the target runtime route", async () => {
@@ -333,6 +335,35 @@ describe("Evidence Library readiness client", () => {
     await vi.runAllTimersAsync();
     await expect(readiness).resolves.toEqual({ status: "ready" });
     expect(healthRequests).toBe(3);
+  });
+
+  it("waits for the failover to serve the target revision", async () => {
+    vi.useFakeTimers();
+    let healthRequests = 0;
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      const url = String(request);
+      if (url.includes("runtime-verifier")) {
+        return json(readyVerifierBody());
+      }
+      if (url.endsWith("/api/library-config/health")) {
+        healthRequests += 1;
+        return activeHealthResponse(
+          healthRequests < 3 ? "previous-revision" : REVISION,
+        );
+      }
+      if (url.endsWith("/admin")) {
+        return new Response(null, {
+          status: 307,
+          headers: { location: LOGIN_PAGE_URL },
+        });
+      }
+      return new Response("ready", { status: 200 });
+    });
+
+    const readiness = requireLibraryRuntimeReady(input(fetchImpl));
+    await vi.runAllTimersAsync();
+    await expect(readiness).resolves.toEqual({ status: "ready" });
+    expect(healthRequests).toBe(4);
   });
 
   it("stops waiting when the proxy does not apply the target runtime route", async () => {

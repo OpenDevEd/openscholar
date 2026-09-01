@@ -598,28 +598,34 @@ async function requireActiveRevision(
   targetOrigin: URL,
   revisionKey: string,
 ) {
-  const address = await probeEvidenceLibraryAddress({
-    targetBaseUrl: targetOrigin.origin,
-    fetchImpl,
-  });
-  if (address.state === "not-ours") {
-    throw new ReadinessClientError(
-      ADDRESS_NOT_OURS_CODE,
-      "Another site answers this Evidence Library address",
-    );
+  for (let pollCount = 0; pollCount < MAX_RUNTIME_ROUTE_POLLS; pollCount += 1) {
+    const address = await probeEvidenceLibraryAddress({
+      targetBaseUrl: targetOrigin.origin,
+      fetchImpl,
+    });
+    if (address.state === "not-ours") {
+      throw new ReadinessClientError(
+        ADDRESS_NOT_OURS_CODE,
+        "Another site answers this Evidence Library address",
+      );
+    }
+    if (address.state === "unreachable") {
+      throw new ReadinessClientError(
+        "CONFIG_NOT_READY",
+        "The Evidence Library configuration is not active",
+      );
+    }
+    if (address.activeAndAccepted && address.revision === revisionKey) return;
+    if (pollCount < MAX_RUNTIME_ROUTE_POLLS - 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, RUNTIME_ROUTE_POLL_DELAY_MS),
+      );
+    }
   }
-  if (address.state === "unreachable") {
-    throw new ReadinessClientError(
-      "CONFIG_NOT_READY",
-      "The Evidence Library configuration is not active",
-    );
-  }
-  if (!address.activeAndAccepted || address.revision !== revisionKey) {
-    throw new ReadinessClientError(
-      "CONFIG_NOT_READY",
-      "The Evidence Library has not activated the requested revision",
-    );
-  }
+  throw new ReadinessClientError(
+    "CONFIG_NOT_READY",
+    "The Evidence Library has not activated the requested revision",
+  );
 }
 
 async function requireActiveRuntimeRoute(
