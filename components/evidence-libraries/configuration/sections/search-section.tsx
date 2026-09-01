@@ -11,7 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  currentYear,
   type FiltersDraft,
   INSTITUTION_MODES,
   type InstitutionMode,
@@ -26,13 +25,10 @@ import { ChoiceChips, FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { FeaturedInstitutionPicker } from "./institution-pickers";
 
-const YEAR_MIN = SCHEMA_LIMITS.filters.yearMinimum;
-
 export function SearchSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.search");
   const { search, filters } = draft;
   const featuredMode = filters.institution.mode === "facet-with-featured-value";
-  const yearMax = currentYear();
 
   // Some features need a search option or filter; they switch off with it.
   const setSearch = <K extends keyof SearchDraft>(key: K, value: SearchDraft[K]) =>
@@ -204,44 +200,6 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
             })
           }
         />
-        {filters.years.enabled ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <YearField
-              label={t("yearMin")}
-              value={filters.years.minimum}
-              max={yearMax}
-              error={
-                filters.years.minimum === undefined
-                  ? t("yearRequired")
-                  : filters.years.maximum !== undefined && filters.years.minimum > filters.years.maximum
-                    ? t("yearsError")
-                    : null
-              }
-              onChange={(year) =>
-                setFilters((f) => {
-                  f.years.minimum = year;
-                })
-              }
-            />
-            <YearField
-              label={t("yearMax")}
-              value={filters.years.maximum}
-              max={yearMax}
-              error={
-                filters.years.maximum === undefined
-                  ? t("yearRequired")
-                  : filters.years.maximum > yearMax
-                    ? t("yearFuture")
-                    : null
-              }
-              onChange={(year) =>
-                setFilters((f) => {
-                  f.years.maximum = year;
-                })
-              }
-            />
-          </div>
-        ) : null}
 
         <ToggleRow
           label={t("collectionsExpanded")}
@@ -255,44 +213,5 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
         />
       </FieldGroup>
     </SectionShell>
-  );
-}
-
-function YearField({
-  label,
-  value,
-  max,
-  error,
-  onChange,
-}: {
-  label: string;
-  value: number | undefined;
-  max: number;
-  error: string | null;
-  onChange: (year: number | undefined) => void;
-}) {
-  return (
-    <Field label={label} error={error}>
-      {(id, invalid) => (
-        <Input
-          id={id}
-          type="number"
-          inputMode="numeric"
-          min={YEAR_MIN}
-          max={max}
-          className="bg-background font-mono text-sm"
-          value={value ?? ""}
-          aria-invalid={invalid || undefined}
-          onChange={(e) => {
-            if (e.target.value === "") {
-              onChange(undefined);
-              return;
-            }
-            const next = Number(e.target.value);
-            if (Number.isInteger(next)) onChange(next);
-          }}
-        />
-      )}
-    </Field>
   );
 }

@@ -1133,18 +1133,6 @@
 						"enabled": {
 							"default": true,
 							"type": "boolean"
-						},
-						"minimum": {
-							"default": 1900,
-							"type": "integer",
-							"minimum": 1900,
-							"maximum": 9007199254740991
-						},
-						"maximum": {
-							"x-dynamicDefault": "currentUtcYear",
-							"type": "integer",
-							"minimum": 1900,
-							"maximum": 9007199254740991
 						}
 					},
 					"additionalProperties": false

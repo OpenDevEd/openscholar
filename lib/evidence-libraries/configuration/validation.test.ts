@@ -38,7 +38,7 @@ const ownerSections = {
   navigation: {
     links: [{ id: "home", label: "Home", href: "/", target: "blank" }],
   },
-  filters: { years: { minimum: 2000 } },
+  filters: { years: { enabled: true } },
   features: { collections: false, countryFocus: false },
 };
 
@@ -308,7 +308,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       localization: ownerSections.localization,
       navigation: ownerSections.navigation,
       footer: { poweredBy: true, disclaimer: "Views are the authors' own." },
-      filters: { years: { minimum: 2000, maximum: 2026 } },
+      filters: { years: { enabled: true } },
       features: { collections: false, countryFocus: false, login: false },
       // Sections that were never saved come from the schema defaults.
       institutions: [],

@@ -668,7 +668,7 @@ const discoveryRows = [
     sectionKey: "filters",
     payload: {
       institution: { mode: "facet-with-featured-value", label: "Partners", featuredValue: "EdTech Hub" },
-      years: { enabled: true, minimum: 1990, maximum: 2020 },
+      years: { enabled: true },
     },
   },
   { sectionKey: "sources", payload: [{ key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: true }] },
@@ -687,7 +687,7 @@ describe("readDraft for the discovery sections", () => {
       defaultScope: "title",
     });
     expect(draft.filters.institution).toEqual({ mode: "facet-with-featured-value", label: "Partners", featuredValue: "EdTech Hub" });
-    expect(draft.filters.years).toEqual({ enabled: true, minimum: 1990, maximum: 2020 });
+    expect(draft.filters.years).toEqual({ enabled: true });
     expect(draft.filters.collectionsExpanded).toBe(true);
     expect(draft.sources).toEqual([{ key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: true }]);
     expect(draft.content.tags).toEqual({ publish: ["_publish"], hidden: [] });
@@ -702,27 +702,25 @@ describe("readDraft for the discovery sections", () => {
     expect(draft.search.scopes).toEqual(SEARCH_SCOPES);
     expect(draft.search.defaultScope).toBe(SEARCH_SCOPES[0]);
     expect(draft.filters.institution).toEqual({ mode: "facet", label: "institutions", featuredValue: "" });
-    expect(draft.filters.years).toEqual({ enabled: true, minimum: 1900, maximum: new Date().getUTCFullYear() });
+    expect(draft.filters.years).toEqual({ enabled: true });
     expect(draft.sources).toEqual([]);
     expect(draft.content.tags).toEqual({});
   });
 });
 
 describe("sectionProblems for the discovery sections", () => {
-  it("flags scopes, the default scope, the pinned institution and the years", () => {
+  it("flags scopes, the default scope and the pinned institution", () => {
     const draft = readDraft(discoveryRows);
     draft.search.defaultScope = "everywhere";
     draft.filters.institution.featuredValue = " ";
-    draft.filters.years.minimum = 2021;
-    expect(sectionProblems(draft, "search")).toEqual(["defaultScope", "featuredInstitution", "years"]);
+    expect(sectionProblems(draft, "search")).toEqual(["defaultScope", "featuredInstitution"]);
     draft.search.scopes = [];
     expect(sectionProblems(draft, "search")[0]).toBe("searchScopes");
   });
 
-  it("ignores the years when the filter is off and the pin when the mode is plain", () => {
+  it("ignores the pin when the institution mode is plain", () => {
     const draft = readDraft(discoveryRows);
     draft.filters.years.enabled = false;
-    draft.filters.years.minimum = 2021;
     draft.filters.institution.mode = "facet";
     draft.filters.institution.featuredValue = "";
     expect(sectionProblems(draft, "search")).toEqual([]);
@@ -739,15 +737,6 @@ describe("sectionProblems for the discovery sections", () => {
     expect(stray.content.tags).toEqual({ hidden: ["hide"] });
   });
 
-  it("treats a cleared year box as a problem and never writes it", () => {
-    const draft = readDraft(discoveryRows);
-    draft.filters.years.maximum = undefined;
-    expect(sectionProblems(draft, "search")).toEqual(["years"]);
-    draft.filters.years.enabled = false;
-    expect(sectionProblems(draft, "search")).toEqual([]);
-    const rows = changedSectionRows(draft, discoveryRows);
-    expect((rows[0]?.payload as { years: object }).years).toEqual({ enabled: false, minimum: 1990 });
-  });
 });
 
 describe("changedSectionRows for the discovery sections", () => {
@@ -766,7 +755,7 @@ describe("changedSectionRows for the discovery sections", () => {
         payload: {
           institution: { mode: "facet", label: "Partners" },
           collectionsExpanded: true,
-          years: { enabled: true, minimum: 1990, maximum: 2020 },
+          years: { enabled: true },
         },
       },
     ]);

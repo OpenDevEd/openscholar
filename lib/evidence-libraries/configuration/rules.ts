@@ -96,7 +96,6 @@ type SectionProblem =
   | "searchScopes"
   | "defaultScope"
   | "featuredInstitution"
-  | "years"
   | "tagRules"
   | "featureDependency"
   | "languages"
@@ -199,11 +198,6 @@ export const SCHEMA_LIMITS = {
   },
   filters: {
     institutionLabel: schemaNumber("/filters/institution/label", "maxLength"),
-    yearMinimum: (() => {
-      const value = schemaNode("/filters/years/minimum").minimum;
-      if (typeof value !== "number") throw new Error("Configuration schema has no minimum year");
-      return value;
-    })(),
   },
 } as const;
 
@@ -247,8 +241,6 @@ export type InstitutionMode = (typeof INSTITUTION_MODES)[number];
 /** The runtime's default scope list: every scope, minus full text when full-text search is off. */
 const defaultScopes = (fullText: boolean): SearchScope[] =>
   SEARCH_SCOPES.filter((scope) => fullText || scope !== "documents");
-export const currentYear = () => new Date().getUTCFullYear();
-
 /** An email address the runtime accepts. */
 export const EMAIL = schemaPattern("/contact/email");
 /** A phone number in international format, as the runtime requires. */
@@ -384,8 +376,7 @@ export type SearchDraft = {
 export type FiltersDraft = {
   institution: { mode: InstitutionMode; label: string; featuredValue: string };
   collectionsExpanded: boolean;
-  /** A cleared year box is undefined until the owner types a year again. */
-  years: { enabled: boolean; minimum: number | undefined; maximum: number | undefined };
+  years: { enabled: boolean };
 };
 type CollectionDraft = { id: string; title?: string; enabled?: boolean; order?: number };
 
@@ -744,8 +735,6 @@ function readFilters(payload: unknown): FiltersDraft {
     collectionsExpanded: flag(filters.collectionsExpanded, true),
     years: {
       enabled: flag(years.enabled, true),
-      minimum: typeof years.minimum === "number" ? years.minimum : SCHEMA_LIMITS.filters.yearMinimum,
-      maximum: typeof years.maximum === "number" ? years.maximum : currentYear(),
     },
   };
 }
@@ -1349,19 +1338,6 @@ export function sectionProblems(
         !filters.institution.featuredValue.trim()
       ) {
         problems.push("featuredInstitution");
-      }
-      const { minimum, maximum } = filters.years;
-      if (
-        filters.years.enabled &&
-        (minimum === undefined ||
-          maximum === undefined ||
-          minimum > maximum ||
-          minimum < SCHEMA_LIMITS.filters.yearMinimum ||
-          maximum > currentYear() ||
-          !Number.isInteger(minimum) ||
-          !Number.isInteger(maximum))
-      ) {
-        problems.push("years");
       }
       break;
     }
