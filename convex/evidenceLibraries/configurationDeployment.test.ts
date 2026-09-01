@@ -1430,6 +1430,7 @@ describe("Evidence Library configuration deployment", () => {
         libraryId: fixture.created.libraryId,
         host: "newer-command.example.org",
         verificationToken: "domain-token",
+        verificationHost: "example.org",
         role: "redirect",
         state: "added",
         generation: 0,

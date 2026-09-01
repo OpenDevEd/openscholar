@@ -233,9 +233,7 @@ export const evidenceLibraryDomainFields = {
   libraryId: v.id("evidenceLibraries"),
   host: v.string(),
   verificationToken: v.string(),
-  // Optional only for the rollout that backfills the existing development
-  // rows. The final schema makes it required.
-  verificationHost: v.optional(v.string()),
+  verificationHost: v.string(),
   role: v.union(v.literal("primary"), v.literal("redirect")),
   state: evidenceLibraryDomainStateValidator,
   failure: v.optional(evidenceLibraryDomainFailureValidator),

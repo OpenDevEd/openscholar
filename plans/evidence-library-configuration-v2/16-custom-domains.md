@@ -96,9 +96,9 @@ finishes or loses its lease.
 It does not keep provider hostname IDs, certificate state, or certificate
 cleanup retries.
 
-The shared development table now has domain rows. Widen the schema, backfill
-their authoritative verification zones, verify every row, then require the new
-field.
+On 2026-09-01, all four existing shared development rows were backfilled and
+verified with their authoritative verification zones. The field is now
+required.
 
 ## Configuration
 
