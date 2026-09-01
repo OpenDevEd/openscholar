@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  Copy01Icon,
-  SquareArrowUpRight02Icon,
-} from "@hugeicons/core-free-icons";
+import { Copy01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -46,12 +43,6 @@ export function LibraryAddressLink({
         data-library-address
       >
         <span className="truncate">{host}</span>
-        <HugeiconsIcon
-          icon={SquareArrowUpRight02Icon}
-          size={14}
-          className="shrink-0"
-          aria-hidden
-        />
       </a>
       <Tooltip>
         <TooltipTrigger asChild>
