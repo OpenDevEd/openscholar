@@ -23,7 +23,6 @@ export type DomainFailure =
   | "token-mismatch"
   | "host-taken"
   | "not-served"
-  | "certificate"
   | "caa-blocked";
 
 export type DomainOutcome =
@@ -39,8 +38,8 @@ export type DomainRecordsReading = {
 
 /**
  * Gates 2 and 3. The address record decides first, because nothing else
- * matters until the name reaches us; then the certificate rules, because a
- * blocked authority cannot be worked around; then the ownership record.
+ * matters until the name reaches us; then the CAA rules, because a blocked
+ * authority cannot be worked around; then the ownership record.
  */
 export function readDomainRecords(reading: DomainRecordsReading): DomainOutcome {
   if (reading.target === "no-name") {
@@ -70,26 +69,21 @@ export type DomainAnswerReading = {
   address: "ours" | "not-ours" | "unreachable";
   /** Whether the answer carried the revision the library is running. */
   liveRevision: boolean;
-  certificate: "pending" | "active" | "failed";
 };
 
 /**
- * Gate 4b. The domain is only active once our own runtime answers on it
- * with the revision it is running and the certificate is in place.
+ * Gate 4b. The domain is only active once an HTTPS request reaches our own
+ * runtime and answers with the revision it is running. A successful HTTPS
+ * response proves that Traefik has also issued the certificate.
  */
 export function readDomainAnswer(reading: DomainAnswerReading): DomainOutcome {
-  if (reading.certificate === "failed") {
-    return { state: "failed", failure: "certificate" };
-  }
   if (reading.address === "not-ours") {
     return { state: "failed", failure: "host-taken" };
   }
   if (reading.address === "unreachable" || !reading.liveRevision) {
-    // The deployment that adds the domain has not finished, or the
-    // certificate is still being issued. Both are waiting, not failing.
+    // The deployment that adds the domain has not finished yet.
     return { state: "verified" };
   }
-  if (reading.certificate === "pending") return { state: "verified" };
   return { state: "active" };
 }
 

@@ -14,13 +14,6 @@ import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { readServedHosts } from "./addressActions";
-import {
-  CloudflareSaasError,
-  createPlatformCloudflareSaasClient,
-  type CertificateState,
-  type CloudflareSaasClient,
-  type CustomHostname,
-} from "./cloudflareSaasClient";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
   caaScanNames,
@@ -65,14 +58,12 @@ function isUnavailable(error: unknown): boolean {
     error instanceof DomainCheckUnavailable ||
     error instanceof DomainEgressUnavailable ||
     error instanceof DnsLookupError ||
-    error instanceof CloudflareSaasError ||
     error instanceof CoolifyClientError
   );
 }
 import { probeEvidenceLibraryAddress } from "./readinessClient";
 import { requireRuntimeEnvironment } from "./runtimeActionConfig";
 import {
-  evidenceLibraryCertificateStateValidator,
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
 } from "./validators";
@@ -86,7 +77,6 @@ type AddDomainResult =
         | "platform-host"
         | "host-taken"
         | "too-many"
-        | "not-set-up"
         | "check-failed";
     };
 
@@ -95,7 +85,6 @@ type CheckDomainResult =
       status: "checked";
       state: "added" | "pointing" | "verified" | "active" | "failed";
       failure?: DomainFailure;
-      certificateState?: CertificateState;
     }
   // The check could not run, or another one is already running, or the
   // domain is mid-change. None of these moves the domain's state.
@@ -109,7 +98,6 @@ const checkedValidator = v.union(
     status: v.literal("checked"),
     state: evidenceLibraryDomainStateValidator,
     failure: v.optional(evidenceLibraryDomainFailureValidator),
-    certificateState: v.optional(evidenceLibraryCertificateStateValidator),
   }),
   v.object({ status: v.literal("check-failed") }),
   v.object({ status: v.literal("busy") }),
@@ -145,15 +133,11 @@ export const addDomain = action({
         v.literal("platform-host"),
         v.literal("host-taken"),
         v.literal("too-many"),
-        v.literal("not-set-up"),
         v.literal("check-failed"),
       ),
     }),
   ),
   handler: async (ctx, args): Promise<AddDomainResult> => {
-    if (!createPlatformCloudflareSaasClient()) {
-      return { status: "refused" as const, reason: "not-set-up" as const };
-    }
     let host: string;
     try {
       host = normaliseDomainHost(args.host);
@@ -196,12 +180,26 @@ export const addDomain = action({
 
 /** The addresses our CNAME target answers with, as both resolvers see them. */
 async function readTargetAddresses(target: string): Promise<string[]> {
-  return readAgreedAnswer(
-    await lookupHost(fetch, target, "A"),
-    (answer) => answer.addresses.slice().sort().join(","),
+  return readAgreedAnswer(await lookupHost(fetch, target, "A"), (answer) =>
+    answer.addresses.slice().sort().join(","),
   )
     .split(",")
     .filter(Boolean);
+}
+
+/** Reads the closest CAA set and checks that Traefik may renew the certificate. */
+async function readCaaGate(
+  host: string,
+  renewLease: () => Promise<void>,
+): Promise<"ok" | "blocked"> {
+  const chain: string[][] = [];
+  for (const name of caaScanNames(host)) {
+    // The issuers travel as an array: an issuer that permits nobody is
+    // written as an empty value, which joining would lose.
+    chain.push(readAgreedIssuers(await lookupHost(fetch, name, "CAA")));
+    await renewLease();
+  }
+  return classifyCaaChain(chain);
 }
 
 /** Reads the two records the owner was asked to add. */
@@ -224,17 +222,10 @@ async function readRecordGates(
   const tokenReading = readAgreedAnswer(tokenAnswers, (answer) =>
     classifyToken(answer, verificationRecordValue(token)),
   );
-  // The certificate rules only matter once the name reaches us.
+  // CAA only matters once the name reaches us.
   let caa: "ok" | "blocked" = "ok";
   if (targetReading === "pointing") {
-    const chain: string[][] = [];
-    for (const name of caaScanNames(host)) {
-      // The issuers travel as an array: an issuer that permits nobody is
-      // written as an empty value, which joining would lose.
-      chain.push(readAgreedIssuers(await lookupHost(fetch, name, "CAA")));
-      await renewLease();
-    }
-    caa = classifyCaaChain(chain);
+    caa = await readCaaGate(host, renewLease);
   }
   return {
     ...readDomainRecords({ target: targetReading, caa, token: tokenReading }),
@@ -245,8 +236,8 @@ async function readRecordGates(
 }
 
 /**
- * Hands a verified domain to the certificate service and the proxy, then
- * publishes the library again so the proxy rules reach the running site.
+ * Hands a verified domain to the proxy, then publishes the library again so
+ * the router and its Let's Encrypt resolver reach the running site.
  *
  * Every step saves its receipt the moment it succeeds, so a failure halfway
  * through leaves a record of what already happened and pressing Check again
@@ -264,56 +255,10 @@ async function attachDomain(
     attachedHosts: readonly string[];
     /** Hosts the proxy was asked to hold and never confirmed. */
     uncertainHosts: readonly string[];
-    certificateHostnameId: string | null;
     generation: number;
   },
-): Promise<DomainOutcome & { certificateState?: CertificateState }> {
-  const cloudflare = createPlatformCloudflareSaasClient();
-  if (!cloudflare) throw new DomainCheckUnavailable();
-
-  // Step one: the certificate service. Reading first means an action that
-  // died after creating a hostname finds it again instead of orphaning it.
-  const originHost = new URL(input.platformAddress).hostname;
-  const existing = await cloudflare.readCustomHostname(input.host);
-  let hostname: CustomHostname;
-  if (!existing) {
-    // Proved immediately before the write, not before the read that came
-    // first: a slow read must not be the gap a stale worker writes through.
-    await holdDomain(ctx, input.domainId, input.token);
-    hostname = await cloudflare.createCustomHostname({
-      host: input.host,
-      // The library's own platform address answers the request, so the
-      // runtime serves the certificate it already has and never asks for
-      // one in the customer's name.
-      originHost,
-    });
-  } else if (existing.originHost !== originHost) {
-    // A hostname left over from another library, or from before this
-    // library moved, would send visitors to the wrong site.
-    await holdDomain(ctx, input.domainId, input.token);
-    hostname = await cloudflare.setCustomHostnameOrigin({
-      hostnameId: existing.hostnameId,
-      originHost,
-    });
-  } else {
-    hostname = existing;
-  }
-  if (input.certificateHostnameId !== hostname.hostnameId) {
-    await ctx.runMutation(
-      internal.evidenceLibraries.domains.writeDomainAttachment,
-      {
-        libraryId: input.libraryId,
-        domainId: input.domainId,
-        token: input.token,
-        attached: false,
-        deploymentPending: false,
-        certificateHostnameId: hostname.hostnameId,
-        certificateState: hostname.certificate,
-      },
-    );
-  }
-
-  // Step two: the proxy. Running it again with the host already in the list
+): Promise<DomainOutcome> {
+  // Running this again with the host already in the list
   // writes nothing, so a retry is safe.
   // A set, not a list: this host may already be in the proxy from an attempt
   // that stopped before its receipt, and asking for it twice would be wrong.
@@ -364,8 +309,6 @@ async function attachDomain(
       token: input.token,
       attached: true,
       deploymentPending: true,
-      certificateHostnameId: hostname.hostnameId,
-      certificateState: hostname.certificate,
     },
   );
 
@@ -377,7 +320,7 @@ async function attachDomain(
     host: input.host,
     reason: "attach",
   });
-  return { state: "verified", certificateState: hostname.certificate };
+  return { state: "verified" };
 }
 
 /**
@@ -414,10 +357,17 @@ async function queueDomainDeployment(
 async function readAnswerGate(input: {
   host: string;
   liveRevisionKey: string | null;
-}): Promise<DomainOutcome & { certificateState?: CertificateState }> {
+  renewLease: () => Promise<void>;
+}): Promise<DomainOutcome> {
+  // CAA can change after a domain is attached. Read it before HTTPS so a
+  // blocked renewal has a useful answer instead of looking unreachable for
+  // ever.
+  if ((await readCaaGate(input.host, input.renewLease)) === "blocked") {
+    return { state: "failed", failure: "caa-blocked" };
+  }
   // Where the domain points is settled first, because it is conclusive on
   // its own: a domain repointed somewhere else, or at an address inside our
-  // own network, has stopped working whatever the certificate says.
+  // own network, has stopped working before an HTTPS probe is attempted.
   let pinned: typeof fetch;
   try {
     pinned = await openPinnedDomainClient({ host: input.host });
@@ -427,12 +377,6 @@ async function readAnswerGate(input: {
     }
     throw error;
   }
-  const cloudflare = createPlatformCloudflareSaasClient();
-  // Without the certificate service there is no certificate answer, so this
-  // step cannot run. Guessing "pending" would push a working domain back.
-  if (!cloudflare) throw new DomainCheckUnavailable();
-  const hostname = await cloudflare.readCustomHostname(input.host);
-  if (!hostname) throw new DomainCheckUnavailable();
   const address = await probeEvidenceLibraryAddress({
     targetBaseUrl: `https://${input.host}`,
     fetchImpl: pinned,
@@ -440,13 +384,11 @@ async function readAnswerGate(input: {
   // Nothing answered. That is not an answer about the domain, so nothing is
   // written and a working domain is never pushed back by a bad moment.
   if (address.state === "unreachable") throw new DomainCheckUnavailable();
-  const outcome = readDomainAnswer({
+  return readDomainAnswer({
     address: address.state,
     liveRevision:
       address.revision !== null && address.revision === input.liveRevisionKey,
-    certificate: hostname.certificate,
   });
-  return { ...outcome, certificateState: hostname.certificate };
 }
 
 /**
@@ -500,10 +442,7 @@ export const checkDomain = action({
       // removal that is already running.
       if (step === "blocked") return { status: "removing" as const };
 
-      let outcome: DomainOutcome & {
-        certificateState?: CertificateState;
-        isApex?: boolean;
-      };
+      let outcome: DomainOutcome & { isApex?: boolean };
       try {
         if (step === "deploy") {
           // The proxy was changed but the deployment carrying it was never
@@ -541,7 +480,6 @@ export const checkDomain = action({
               applicationUuid: context.applicationUuid,
               attachedHosts: context.attachedHosts,
               uncertainHosts: context.uncertainHosts,
-              certificateHostnameId: row.certificateHostnameId,
               generation: row.generation,
             });
             // Attaching queues a deployment, which now holds the domain.
@@ -551,6 +489,7 @@ export const checkDomain = action({
           outcome = await readAnswerGate({
             host: row.host,
             liveRevisionKey: context.liveRevisionKey,
+            renewLease,
           });
         }
       } catch (error) {
@@ -572,18 +511,12 @@ export const checkDomain = action({
           state: outcome.state,
           ...(outcome.isApex === undefined ? {} : { isApex: outcome.isApex }),
           ...(failure ? { failure } : {}),
-          ...(outcome.certificateState
-            ? { certificateState: outcome.certificateState }
-            : {}),
         },
       );
       return {
         status: "checked" as const,
         state: outcome.state,
         ...(failure ? { failure } : {}),
-        ...(outcome.certificateState
-          ? { certificateState: outcome.certificateState }
-          : {}),
       };
     } finally {
       if (!heldByDeployment) {
@@ -602,8 +535,8 @@ export const checkDomain = action({
  * The order matters. OpenScholar refuses a domain the library calls its own
  * before it touches anything outside itself, then the proxy loses the host,
  * then the deployment that applies it runs, and only when that deployment is
- * live do the certificate and the row go. Doing it the other way round would
- * take a working site down between the steps.
+ * live does the row go. Doing it the other way round would take a working
+ * site down between the steps.
  */
 export const removeDomain = action({
   args: {
@@ -659,10 +592,7 @@ export const removeDomain = action({
           currentCustomDomains: [
             [...context.attachedHosts].sort(),
             [
-              ...new Set([
-                ...context.attachedHosts,
-                ...context.uncertainHosts,
-              ]),
+              ...new Set([...context.attachedHosts, ...context.uncertainHosts]),
             ].sort(),
           ],
           customDomains: [
@@ -700,19 +630,17 @@ export const removeDomain = action({
           host: row.host,
           reason: "detach",
         });
-        // The certificate and the row survive until that deployment is live,
-        // and the lease is held until then so nothing else touches the row.
+        // The row survives until that deployment is live, and the lease is
+        // held until then so nothing else touches it.
         releaseLease = false;
         return { status: "removing" as const };
       }
 
       // The proxy never had it, so nothing has to be redeployed.
-      await finishRemoval(ctx, {
-        domainId: args.domainId,
-        host: row.host,
-        certificateHostnameId: row.certificateHostnameId,
-        token,
-      });
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.finishDomainRemoval,
+        { domainId: args.domainId, token },
+      );
       return { status: "removed" as const };
     } finally {
       if (releaseLease) {
@@ -724,157 +652,6 @@ export const removeDomain = action({
     }
   },
 });
-
-/**
- * Deletes the custom hostname and the row. The hostname is looked up by name
- * when no id was saved, so an attempt that died between creating it and
- * writing the id down still cleans it up.
- */
-async function finishRemoval(
-  ctx: ActionCtx,
-  input: {
-    domainId: Id<"evidenceLibraryDomains">;
-    host: string;
-    certificateHostnameId: string | null;
-    token: string;
-    /** Told just before the certificate service is asked to do anything. */
-    onProviderCall?: () => void;
-  },
-): Promise<void> {
-  const cloudflare = createPlatformCloudflareSaasClient();
-  // The row is the only record that a hostname exists. Dropping it while
-  // the certificate service cannot be reached would leave that hostname
-  // behind for ever with nothing pointing at it.
-  if (!cloudflare) {
-    throw new DomainCheckUnavailable();
-  }
-  // Deleting a certificate is destructive and cannot be taken back, so the
-  // removal proves it still owns the domain immediately before it.
-  await holdDomain(ctx, input.domainId, input.token);
-  input.onProviderCall?.();
-  await deleteCustomHostname(cloudflare, input);
-  await ctx.runMutation(
-    internal.evidenceLibraries.domains.finishDomainRemoval,
-    { domainId: input.domainId, token: input.token },
-  );
-}
-
-/** Removes one custom hostname, by id when we have one and by name otherwise. */
-export async function deleteCustomHostname(
-  cloudflare: CloudflareSaasClient,
-  input: { host: string; certificateHostnameId: string | null },
-): Promise<void> {
-  const hostnameId =
-    input.certificateHostnameId ??
-    (await cloudflare.readCustomHostname(input.host))?.hostnameId ??
-    null;
-  if (hostnameId) await cloudflare.deleteCustomHostname(hostnameId);
-}
-
-/**
- * The last step of a domain change, run once its deployment is live.
- *
- * A removal only now loses its certificate and its row, because until this
- * point the running site was still serving the host. A change of the
- * library's own address is only now written down, so a failed deployment
- * never leaves OpenScholar claiming an address the site does not answer on.
- *
- * Convex does not retry a scheduled action, so a failure here reschedules
- * itself, up to a fixed number of attempts recorded on the row.
- */
-export const completeDomainChange = internalAction({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    domainId: v.id("evidenceLibraryDomains"),
-    /** The deployment this cleanup belongs to; attempts are counted per one. */
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    reason: v.literal("detach"),
-  },
-  returns: v.object({
-    status: v.union(
-      v.literal("done"),
-      v.literal("retrying"),
-      v.literal("stale"),
-    ),
-  }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{ status: "done" | "retrying" | "stale" }> => {
-    // Set once this cleanup holds the domain, so a failure can hand the
-    // lease straight back with the retry it books.
-    let cleanupToken: string | null = null;
-    // Set the moment the certificate service is actually about to be
-    // called. Taking our own lease is not an attempt at it.
-    let calledProvider = false;
-    try {
-      // Takes the domain before anything outside OpenScholar is touched: a
-      // domain that has moved on since this was booked must not lose a
-      // hostname it now needs.
-      const receipt = await ctx.runMutation(
-        internal.evidenceLibraries.domains.claimDomainCleanup,
-        {
-          libraryId: args.libraryId,
-          domainId: args.domainId,
-          operationId: args.operationId,
-        },
-      );
-      if (!receipt) return { status: "stale" as const };
-      cleanupToken = receipt.token;
-      await finishRemoval(ctx, {
-        domainId: args.domainId,
-        host: receipt.host,
-        certificateHostnameId: receipt.certificateHostnameId,
-        token: receipt.token,
-        onProviderCall: () => {
-          calledProvider = true;
-        },
-      });
-      return { status: "done" as const };
-    } catch (error) {
-      // Convex does not retry a scheduled action, so the attempt and the
-      // next run are recorded in one mutation: a crash between them cannot
-      // lose the retry, and two completions cannot both schedule one.
-      const retry = await ctx.runMutation(
-        internal.evidenceLibraries.domains.scheduleDomainCleanupRetry,
-        {
-          libraryId: args.libraryId,
-          domainId: args.domainId,
-          operationId: args.operationId,
-          // Given back in the same write, so the retry is not waiting on the
-          // attempt that booked it.
-          ...(cleanupToken ? { token: cleanupToken } : {}),
-          // A failure before the certificate service was reached does not
-          // use up one of the tries.
-          calledProvider,
-          failure: readCleanupFailure(error),
-        },
-      );
-      if (retry.status === "given-up") throw error;
-      // A call about a deployment this domain has moved past changes nothing.
-      if (retry.status === "stale") return { status: "stale" as const };
-      return { status: "retrying" as const };
-    }
-  },
-});
-
-/**
- * Turns whatever went wrong into one of this library's own short names, so
- * the page never shows a message written by another service.
- */
-function readCleanupFailure(
-  error: unknown,
-): "certificate-service-unreachable" | "certificate-service-refused" | "unknown" {
-  if (error instanceof DomainCheckUnavailable) {
-    return "certificate-service-unreachable";
-  }
-  if (error instanceof CloudflareSaasError) {
-    return error.code === "CLOUDFLARE_UNAVAILABLE"
-      ? "certificate-service-unreachable"
-      : "certificate-service-refused";
-  }
-  return "unknown";
-}
 
 /**
  * Proves this change still owns the domain, immediately before writing
@@ -903,7 +680,7 @@ const SWEEP_DEADLINE_MS = 20_000;
  * working, rather than leaving a route open for ever. Each run stops at a
  * fixed deadline and schedules the next page, so a long list is walked
  * completely and no run outstays its welcome. Nothing else changes: the
- * proxy and the certificate stay until an owner removes the domain.
+ * proxy route stays until an owner removes the domain.
  */
 export const sweepWorkingDomains = internalAction({
   args: {
@@ -952,11 +729,12 @@ export const sweepWorkingDomains = internalAction({
       }
       // Something else is already changing this domain.
       if (row.busy) continue;
-      let outcome: DomainOutcome & { certificateState?: CertificateState };
+      let outcome: DomainOutcome;
       try {
         outcome = await readAnswerGate({
           host: row.host,
           liveRevisionKey: row.liveRevisionKey,
+          renewLease: async () => undefined,
         });
       } catch (error) {
         // A sweep that could not read a domain leaves it exactly as it was,
@@ -975,9 +753,6 @@ export const sweepWorkingDomains = internalAction({
           expectedGeneration: row.generation,
           state: outcome.state,
           ...(outcome.state === "failed" ? { failure: outcome.failure } : {}),
-          ...(outcome.certificateState
-            ? { certificateState: outcome.certificateState }
-            : {}),
         },
       );
     }

@@ -11,7 +11,6 @@ type DomainRow = {
   role: "primary" | "redirect";
   state: "added" | "pointing" | "verified" | "active" | "failed";
   failure?: string;
-  certificateState?: "pending" | "active" | "failed";
   attached: boolean;
   removing: boolean;
   deploymentPending: boolean;
@@ -22,7 +21,6 @@ type DomainRow = {
 
 const mocks = vi.hoisted(() => ({
   data: {
-    platformReady: true,
     platformAddress: "https://climate-lib.opendev.space",
     canonicalAddress: "https://climate-lib.opendev.space",
     target: "cname.openscholar.ai",
@@ -98,21 +96,7 @@ function row(overrides: Partial<DomainRow> = {}): DomainRow {
 describe("DomainSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.data.platformReady = true;
     mocks.data.domains = [];
-  });
-
-  it("says custom domains are not set up when the platform has no account for them", () => {
-    mocks.data.platformReady = false;
-    render(<DomainSection libraryId={libraryId} />);
-    expect(
-      screen.getByText("evidenceLibraryConfiguration.domain.notSetUp"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "evidenceLibraryConfiguration.domain.add",
-      }),
-    ).toBeNull();
   });
 
   it("shows the platform address and asks for a domain when there is none", () => {
@@ -238,16 +222,25 @@ describe("DomainSection", () => {
     expect(document.querySelector("[data-certificate]")).toBeNull();
     unmount();
 
-    mocks.data.domains = [
-      row({ state: "verified", attached: true, certificateState: "pending" }),
-    ];
-    render(<DomainSection libraryId={libraryId} />);
+    mocks.data.domains = [row({ state: "verified", attached: true })];
+    const pending = render(<DomainSection libraryId={libraryId} />);
     expect(document.querySelector("[data-certificate]")).toHaveAttribute(
       "data-certificate",
       "pending",
     );
     expect(
       screen.getByText("evidenceLibraryConfiguration.domain.tlsPending"),
+    ).toBeInTheDocument();
+    pending.unmount();
+
+    mocks.data.domains = [row({ state: "active", attached: true })];
+    render(<DomainSection libraryId={libraryId} />);
+    expect(document.querySelector("[data-certificate]")).toHaveAttribute(
+      "data-certificate",
+      "active",
+    );
+    expect(
+      screen.getByText("evidenceLibraryConfiguration.domain.tlsActive"),
     ).toBeInTheDocument();
   });
 

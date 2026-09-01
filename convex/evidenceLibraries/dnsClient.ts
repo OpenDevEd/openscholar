@@ -249,19 +249,10 @@ export function classifyToken(answer: DnsAnswer, expected: string): TokenReading
 }
 
 /**
- * The certificate authorities that may issue for a custom domain. Cloudflare
- * issues custom hostname certificates from Google Trust Services, Let's
- * Encrypt, SSL.com or Sectigo, and falls back between them, so any one of
- * these being permitted is enough.
- * https://developers.cloudflare.com/ssl/edge-certificates/caa-records/
+ * Traefik's configured resolver uses Let's Encrypt, so an existing CAA set
+ * must permit that authority. An empty CAA set still permits every issuer.
  */
-export const PERMITTED_CERTIFICATE_ISSUERS = [
-  "pki.goog",
-  "letsencrypt.org",
-  "ssl.com",
-  "sectigo.com",
-  "digicert.com",
-] as const;
+export const PERMITTED_CERTIFICATE_ISSUERS = ["letsencrypt.org"] as const;
 
 /**
  * RFC 8659: the CAA record set is the one on the closest name that has any.

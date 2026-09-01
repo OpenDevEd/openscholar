@@ -213,21 +213,10 @@ export const evidenceLibraryDomainStateValidator = v.union(
 // nothing at all, so it has no stored reason.
 /** Which part of deleting a library stopped, as a name the page can say. */
 export const evidenceLibraryTeardownStepValidator = v.union(
-  v.literal("domains"),
   v.literal("runtime"),
   v.literal("files"),
   v.literal("database"),
   v.literal("records"),
-);
-
-/** Why a domain's last step could not be finished. */
-export const evidenceLibraryCleanupFailureValidator = v.union(
-  // The certificate service could not be reached at all.
-  v.literal("certificate-service-unreachable"),
-  // It answered, but refused.
-  v.literal("certificate-service-refused"),
-  // Something else went wrong.
-  v.literal("unknown"),
 );
 
 export const evidenceLibraryDomainFailureValidator = v.union(
@@ -237,14 +226,7 @@ export const evidenceLibraryDomainFailureValidator = v.union(
   v.literal("token-mismatch"),
   v.literal("host-taken"),
   v.literal("not-served"),
-  v.literal("certificate"),
   v.literal("caa-blocked"),
-);
-
-export const evidenceLibraryCertificateStateValidator = v.union(
-  v.literal("pending"),
-  v.literal("active"),
-  v.literal("failed"),
 );
 
 export const evidenceLibraryDomainFields = {
@@ -258,8 +240,6 @@ export const evidenceLibraryDomainFields = {
   // `state` so a check that has not run yet cannot silently drop a host the
   // proxy is already serving.
   attachedAt: v.optional(v.number()),
-  certificateState: v.optional(evidenceLibraryCertificateStateValidator),
-  certificateHostnameId: v.optional(v.string()),
   // One lease covers every change to this domain: checking, attaching,
   // becoming the library's address, and being removed. Whoever holds it is
   // the only one who may write, and every write carries the same token, so a
@@ -289,22 +269,6 @@ export const evidenceLibraryDomainFields = {
       ),
     }),
   ),
-  // The work owed after one deployment: which deployment it belongs to, how
-  // many attempts it has had, and the run already booked. All three together,
-  // so a stale call cannot count an attempt or book a second run.
-  cleanup: v.optional(
-    v.object({
-      operationId: v.id("evidenceLibraryConfigOperations"),
-      attempts: v.number(),
-      // Every trip round, including ones that never reached the certificate
-      // service, so this can never go round for ever.
-      rounds: v.number(),
-      scheduledId: v.optional(v.id("_scheduled_functions")),
-      // Set once the tries run out. A short name, not a message from
-      // another service, so the page can say it in plain words.
-      failure: v.optional(evidenceLibraryCleanupFailureValidator),
-    }),
-  ),
   // Counts every change this domain has been through. It goes into each
   // operation's key, so the same change asked for twice is two operations
   // rather than one that already succeeded and will not run again.
@@ -317,7 +281,7 @@ export const evidenceLibraryDomainFields = {
   // than guessed from how many parts it has.
   isApex: v.optional(v.boolean()),
   // Set once the owner asked for the domain to go. The row survives until
-  // the proxy has been redeployed without it and the certificate is gone.
+  // the proxy has been redeployed without it.
   removingAt: v.optional(v.number()),
   // Set just before the proxy is asked to hold this host, so a crash between
   // the proxy accepting it and the receipt being saved is still visible.

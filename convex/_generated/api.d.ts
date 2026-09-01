@@ -60,7 +60,6 @@ import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/ad
 import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
-import type * as evidenceLibraries_cloudflareSaasClient from "../evidenceLibraries/cloudflareSaasClient.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
 import type * as evidenceLibraries_configurationDeploymentActions from "../evidenceLibraries/configurationDeploymentActions.js";
 import type * as evidenceLibraries_configurationMigration from "../evidenceLibraries/configurationMigration.js";
@@ -332,7 +331,6 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
-  "evidenceLibraries/cloudflareSaasClient": typeof evidenceLibraries_cloudflareSaasClient;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
   "evidenceLibraries/configurationDeploymentActions": typeof evidenceLibraries_configurationDeploymentActions;
   "evidenceLibraries/configurationMigration": typeof evidenceLibraries_configurationMigration;

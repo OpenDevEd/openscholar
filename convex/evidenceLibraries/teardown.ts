@@ -69,7 +69,6 @@ async function renewTeardownLease(
   return leaseExpiresAt;
 }
 
-
 const BATCH_SIZE = 50;
 
 function requireDevelopmentTeardownEnabled() {
@@ -109,7 +108,7 @@ async function requestTeardown(
       query.eq("libraryId", args.libraryId),
     )
     .collect();
-  // A domain change that is still running owns provider state this teardown
+  // A domain change that is still running owns router state this teardown
   // would delete underneath it. It finishes or expires first.
   const domains = await readEvidenceLibraryDomains(ctx, args.libraryId);
   const busy = domains.find(
@@ -279,7 +278,10 @@ export const restartDevelopmentTeardown = mutation({
       .order("desc")
       .first();
     if (operation?.kind !== "teardown" || operation.status !== "failed") {
-      throw createError("CONFLICT", "That library is not waiting to be deleted");
+      throw createError(
+        "CONFLICT",
+        "That library is not waiting to be deleted",
+      );
     }
     await ctx.db.patch(operation._id, {
       status: "queued",
@@ -332,8 +334,6 @@ export const holdDevelopmentTeardown = internalMutation({
 
 /** How many times a teardown waits for something it needs before giving up. */
 const MAX_TEARDOWN_RETRIES = 5;
-
-
 
 /**
  * Hands the teardown back and books another attempt, up to a fixed number.
@@ -431,8 +431,6 @@ export const prepareDevelopmentTeardown = internalMutation({
       publicBucket: v.optional(v.string()),
       targetBaseUrl: v.optional(v.string()),
       customDomains: v.array(v.string()),
-      customDomainHosts: v.array(v.string()),
-      certificateHostnameIds: v.array(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -468,10 +466,6 @@ export const prepareDevelopmentTeardown = internalMutation({
           library.setupOperationId,
         )
       : null;
-    const domainRows = await ctx.db
-      .query("evidenceLibraryDomains")
-      .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
-      .collect();
     const applicationId =
       operation.teardownApplicationId ??
       (binding && "targetRuntimeId" in binding
@@ -511,18 +505,10 @@ export const prepareDevelopmentTeardown = internalMutation({
           : setupOperation?.setupReceipts?.storage?.publicBucket,
       targetBaseUrl: binding?.targetBaseUrl,
       customDomains: await readAttachedDomainOrigins(ctx, args.libraryId, {
-      // Taking a library apart has to account for a host the proxy was
-      // only asked to hold.
-      includeUncertain: true,
-    }),
-      // Custom domains are removed from the certificate service before the
-      // application goes, so a deleted library can never keep a name. The
-      // host names travel too, so a hostname created before its id was saved
-      // is still found and deleted.
-      customDomainHosts: domainRows.map((row) => row.host),
-      certificateHostnameIds: domainRows
-        .map((row) => row.certificateHostnameId)
-        .filter((id): id is string => typeof id === "string"),
+        // Taking a library apart has to account for a host the proxy was
+        // only asked to hold.
+        includeUncertain: true,
+      }),
     };
   },
 });
@@ -688,7 +674,9 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
     }
     const domains = await ctx.db
       .query("evidenceLibraryDomains")
-      .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
       .take(BATCH_SIZE);
     if (domains.length > 0) {
       await Promise.all(domains.map((row) => ctx.db.delete(row._id)));

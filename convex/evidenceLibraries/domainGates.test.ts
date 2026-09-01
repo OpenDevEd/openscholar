@@ -52,38 +52,26 @@ describe("readDomainRecords", () => {
 describe("readDomainAnswer", () => {
   it("activates when our library answers with its live version", () => {
     expect(
-      readDomainAnswer({ address: "ours", liveRevision: true, certificate: "active" }),
+      readDomainAnswer({ address: "ours", liveRevision: true }),
     ).toEqual({ state: "active" });
   });
 
   it("waits while the deployment has not reached the domain", () => {
     expect(
-      readDomainAnswer({ address: "unreachable", liveRevision: false, certificate: "pending" }),
-    ).toEqual({ state: "verified" });
-  });
-
-  it("waits while the certificate is still being issued", () => {
-    expect(
-      readDomainAnswer({ address: "ours", liveRevision: true, certificate: "pending" }),
+      readDomainAnswer({ address: "unreachable", liveRevision: false }),
     ).toEqual({ state: "verified" });
   });
 
   it("waits while the library answers an older version", () => {
     expect(
-      readDomainAnswer({ address: "ours", liveRevision: false, certificate: "active" }),
+      readDomainAnswer({ address: "ours", liveRevision: false }),
     ).toEqual({ state: "verified" });
   });
 
   it("fails when another site answers the domain", () => {
     expect(
-      readDomainAnswer({ address: "not-ours", liveRevision: false, certificate: "active" }),
+      readDomainAnswer({ address: "not-ours", liveRevision: false }),
     ).toEqual({ state: "failed", failure: "host-taken" });
-  });
-
-  it("fails when the certificate could not be issued", () => {
-    expect(
-      readDomainAnswer({ address: "ours", liveRevision: true, certificate: "failed" }),
-    ).toEqual({ state: "failed", failure: "certificate" });
   });
 });
 

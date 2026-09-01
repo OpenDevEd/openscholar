@@ -5,11 +5,6 @@ import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import {
-  CloudflareSaasError,
-  createPlatformCloudflareSaasClient,
-} from "./cloudflareSaasClient";
-import { deleteCustomHostname } from "./domainActions";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
   DatabaseProvisionerError,
@@ -42,7 +37,6 @@ function requireDevelopmentEnvironment() {
   }
 }
 
-
 /**
  * Proves this attempt still holds the teardown and puts its lease forward.
  *
@@ -64,15 +58,12 @@ async function holdTeardown(
 /**
  * The part of the deletion a stage belongs to, as a name the page can say.
  *
- * The custom domains and their certificates are taken down inside the first
- * stage, so a failure there is reported as the domains when that is what was
- * being removed, and as the running site otherwise.
+ * Maps the teardown's technical stage to the part the page names.
  */
 export function readTeardownStep(
   stage: "convex" | "coolify" | "database" | "storage",
-  duringDomains: boolean,
-): "domains" | "runtime" | "files" | "database" | "records" {
-  if (stage === "coolify") return duringDomains ? "domains" : "runtime";
+): "runtime" | "files" | "database" | "records" {
+  if (stage === "coolify") return "runtime";
   if (stage === "storage") return "files";
   if (stage === "database") return "database";
   return "records";
@@ -92,8 +83,6 @@ export const runDevelopmentTeardown = internalAction({
   }),
   handler: async (ctx, args) => {
     let stage: "convex" | "coolify" | "database" | "storage" = "coolify";
-    // True while the custom domains and their certificates are coming down.
-    let removingDomains = false;
     // Empty until this attempt holds the teardown. A failure before then has
     // nothing to write: another attempt owns the operation.
     let attemptToken = "";
@@ -105,42 +94,6 @@ export const runDevelopmentTeardown = internalAction({
       );
       if (!prepared.claimed) return { status: "pending" as const };
       attemptToken = prepared.attemptToken;
-      // The custom domains come down first, so anything that fails from here
-      // until the storage step is a failure to remove them — including not
-      // finding the certificate service at all.
-      removingDomains = true;
-      const cloudflare = createPlatformCloudflareSaasClient();
-      if (!cloudflare && prepared.customDomainHosts.length > 0) {
-        // The library's records are the only note that these hostnames
-        // exist, so they are kept until the certificate service can say the
-        // hostnames are gone. A few more tries first: the account may be
-        // being set up.
-        const again = await ctx.runMutation(
-          internal.evidenceLibraries.teardown.retryDevelopmentTeardown,
-          { libraryId: args.libraryId, operationId: args.operationId, attemptToken },
-        );
-        if (again.status === "retrying") return { status: "pending" as const };
-        throw new Error(
-          "Custom domains are set up on this library but not on this platform",
-        );
-      }
-      if (cloudflare) {
-        // By name as well as by id: a hostname created before its id was
-        // written down would otherwise be left behind for ever.
-        for (const host of prepared.customDomainHosts) {
-          await holdTeardown(ctx, args.operationId, attemptToken);
-          await deleteCustomHostname(cloudflare, {
-            host,
-            certificateHostnameId: null,
-          });
-        }
-        for (const hostnameId of prepared.certificateHostnameIds) {
-          await holdTeardown(ctx, args.operationId, attemptToken);
-          await cloudflare.deleteCustomHostname(hostnameId);
-        }
-      }
-
-      removingDomains = false;
       const expectedBuckets = createLibraryStorageBucketNames(args.libraryId);
       if (
         (prepared.privateBucket &&
@@ -255,7 +208,6 @@ export const runDevelopmentTeardown = internalAction({
         error instanceof CoolifyClientError ||
         error instanceof StorageSetupError ||
         error instanceof DatabaseProvisionerError ||
-        error instanceof CloudflareSaasError ||
         error instanceof VolumeDeletionClientError
           ? { code: error.code, message: error.message }
           : {
@@ -264,17 +216,13 @@ export const runDevelopmentTeardown = internalAction({
             };
       // Which part of the deletion stopped, in this library's own words. The
       // page says that; the provider's own message is kept for the log only.
-      const failedStep = readTeardownStep(stage, removingDomains);
+      const failedStep = readTeardownStep(stage);
       if (!attemptToken) return { status: "pending" as const };
       // A provider that is temporarily unavailable, or a container still
       // releasing its volume, needs time rather than a second state machine.
       // The library keeps its records and waits, and only says so after the
       // last try.
-      if (
-        (error instanceof CloudflareSaasError &&
-          error.code === "CLOUDFLARE_UNAVAILABLE") ||
-        isRetryableVolumeDeletionError(error)
-      ) {
+      if (isRetryableVolumeDeletionError(error)) {
         const again = await ctx.runMutation(
           internal.evidenceLibraries.teardown.retryDevelopmentTeardown,
           {
