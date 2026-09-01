@@ -795,6 +795,26 @@ describe("custom domains", () => {
         .flatMap((domain) => domain.records)
         .filter((record) => record.type === "TXT"),
     ).toEqual([expect.objectContaining({ name: "_openscholar.example.org" })]);
+
+    const www = listed.domains.find(
+      (domain) => domain.host === "www.example.org",
+    );
+    if (!www) throw new Error("www domain not added");
+    const token = (await readRow(fixture, www.domainId))!.verificationToken;
+    vi.stubGlobal(
+      "fetch",
+      createWorld({
+        cname: TARGET,
+        token: `os-verify=${token}`,
+        tokenName: "_openscholar.example.org",
+      }).fetchImpl,
+    );
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.checkDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId: www.domainId,
+      }),
+    ).resolves.toMatchObject({ state: "verified" });
   });
 
   it("does not mistake a CNAME target for the customer's verification zone", async () => {
@@ -819,6 +839,21 @@ describe("custom domains", () => {
         name: "_openscholar.example.org",
       }),
     );
+  });
+
+  it("does not offer a public suffix as an ownership record", async () => {
+    const fixture = await createReadySetupFixture("domain-public-suffix");
+    vi.stubGlobal("fetch", createWorld({ zoneApex: "co.uk" }).fetchImpl);
+
+    await expect(addDomain(fixture, "unregistered.co.uk")).resolves.toEqual({
+      status: "refused",
+      reason: "check-failed",
+    });
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.domains).toEqual([]);
   });
 
   it("shows an A record and recommends www as soon as an apex is added", async () => {

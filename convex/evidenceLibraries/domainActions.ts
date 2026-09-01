@@ -10,6 +10,7 @@
  */
 
 import { v } from "convex/values";
+import { getDomain } from "tldts";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -122,6 +123,9 @@ function coolify() {
 /** Finds the closest DNS zone that owns a host, without following its CNAME. */
 async function readVerificationHost(host: string): Promise<string> {
   for (const candidate of caaScanNames(host)) {
+    // A public suffix such as `co.uk` is a DNS zone, but no customer can add
+    // an ownership record there.
+    if (getDomain(candidate) === null) continue;
     if (readsAsApex(await lookupHost(fetch, candidate, "SOA"), candidate)) {
       return candidate;
     }
@@ -235,16 +239,16 @@ async function readCaaGate(
 async function readRecordGates(
   host: string,
   verificationHost: string,
+  isApex: boolean,
   token: string,
   renewLease: () => Promise<void>,
-): Promise<DomainOutcome & { isApex: boolean }> {
+): Promise<DomainOutcome> {
   const target = readCustomDomainTarget();
   const [targetAnswers, tokenAnswers] = await Promise.all([
     lookupHost(fetch, host, "A"),
     lookupHost(fetch, verificationRecordName(verificationHost), "TXT"),
   ]);
   const targetAddresses = await readTargetAddresses(target);
-  const isApex = verificationHost === host;
   const targetReading = readAgreedAnswer(targetAnswers, (answer) =>
     classifyTargetReading(answer, {
       target,
@@ -263,9 +267,6 @@ async function readRecordGates(
   }
   return {
     ...readDomainRecords({ target: targetReading, caa, token: tokenReading }),
-    // The top of a zone cannot carry the alias we ask for. Which names are
-    // tops of zones is read from DNS, not counted from the parts of a name.
-    isApex,
   };
 }
 
@@ -476,7 +477,7 @@ export const checkDomain = action({
       // removal that is already running.
       if (step === "blocked") return { status: "removing" as const };
 
-      let outcome: DomainOutcome & { isApex?: boolean };
+      let outcome: DomainOutcome;
       try {
         if (step === "deploy") {
           // The proxy was changed but the deployment carrying it was never
@@ -499,6 +500,7 @@ export const checkDomain = action({
           outcome = await readRecordGates(
             row.host,
             row.verificationHost,
+            row.isApex,
             row.verificationToken,
             renewLease,
           );
@@ -544,7 +546,6 @@ export const checkDomain = action({
           domainId: args.domainId,
           token,
           state: outcome.state,
-          ...(outcome.isApex === undefined ? {} : { isApex: outcome.isApex }),
           ...(failure ? { failure } : {}),
         },
       );

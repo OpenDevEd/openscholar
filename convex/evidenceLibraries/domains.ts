@@ -206,6 +206,7 @@ type DomainContext = {
     state: "added" | "pointing" | "verified" | "active" | "failed";
     verificationToken: string;
     verificationHost: string;
+    isApex: boolean;
     attached: boolean;
     attachIntent: boolean;
     removing: boolean;
@@ -234,6 +235,7 @@ export const readDomainContext = internalQuery({
         state: evidenceLibraryDomainStateValidator,
         verificationToken: v.string(),
         verificationHost: v.string(),
+        isApex: v.boolean(),
         attached: v.boolean(),
         attachIntent: v.boolean(),
         removing: v.boolean(),
@@ -292,6 +294,7 @@ export const readDomainContext = internalQuery({
             state: row.state,
             verificationToken: row.verificationToken,
             verificationHost: row.verificationHost ?? row.host,
+            isApex: row.isApex === true,
             attached: row.attachedAt !== undefined,
             // The proxy was asked to hold this host and never confirmed, so
             // a removal has to take it back out to be sure.
@@ -618,7 +621,6 @@ export const writeDomainCheck = internalMutation({
     token: v.string(),
     state: evidenceLibraryDomainStateValidator,
     failure: v.optional(evidenceLibraryDomainFailureValidator),
-    isApex: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -632,7 +634,6 @@ export const writeDomainCheck = internalMutation({
     await ctx.db.patch(args.domainId, {
       state: args.state,
       failure: args.failure,
-      isApex: args.isApex ?? row.isApex,
       checkedAt: now,
       updatedAt: now,
       ...(args.state === "active" && row.activatedAt === undefined

@@ -35,6 +35,9 @@ application's domain configuration and issues its certificate with the
   apex and show it once. The same record verifies the apex and `www`, matching
   GitHub Pages' zone-level ownership model. This replaces the earlier
   per-host TXT because it made owners add duplicate proof for one DNS zone.
+- Domains inside a shared hosted zone are unsupported when the owner cannot
+  add a TXT at that zone's apex. Public suffixes are never accepted as
+  verification zones.
 - This is pre-production. The old certificate fields and cleanup state are
   removed rather than migrated or kept for compatibility.
 
