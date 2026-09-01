@@ -1,11 +1,10 @@
 /**
  * Platform settings for custom domains. Read from the environment so the
- * target name and the Cloudflare account are never written into the code.
+ * target name is kept outside the domain workflow so infrastructure can move
+ * without changing the records owners are shown.
  */
 
 export const CUSTOM_DOMAIN_TARGET_ENV = "EL_CUSTOM_DOMAIN_TARGET";
-export const CLOUDFLARE_API_TOKEN_ENV = "EL_CLOUDFLARE_API_TOKEN";
-export const CLOUDFLARE_ZONE_ID_ENV = "EL_CLOUDFLARE_ZONE_ID";
 /** Extra names nobody may claim, beyond the target and the platform domain. */
 export const RESERVED_DOMAIN_SUFFIXES_ENV = "EL_RESERVED_DOMAIN_SUFFIXES";
 
@@ -23,30 +22,6 @@ export function readCustomDomainTarget(env: Environment = process.env): string {
     env[CUSTOM_DOMAIN_TARGET_ENV]?.trim().toLowerCase().replace(/\.$/u, "") ||
     DEFAULT_CUSTOM_DOMAIN_TARGET
   );
-}
-
-/**
- * Custom domains only work once the platform's Cloudflare account is set up.
- * Without it the Domain section says so and adds nothing.
- */
-export function isCustomDomainPlatformReady(
-  env: Environment = process.env,
-): boolean {
-  const account = readCloudflareAccount(env);
-  return account !== null;
-}
-
-/**
- * The platform's certificate account, or null when it is not set up. One
- * place reads it, so the section, the actions and the teardown all agree.
- */
-export function readCloudflareAccount(
-  env: Environment = process.env,
-): { apiToken: string; zoneId: string } | null {
-  const apiToken = env[CLOUDFLARE_API_TOKEN_ENV]?.trim();
-  const zoneId = env[CLOUDFLARE_ZONE_ID_ENV]?.trim();
-  if (!apiToken || !zoneId) return null;
-  return { apiToken, zoneId };
 }
 
 /**

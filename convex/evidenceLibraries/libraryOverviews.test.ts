@@ -231,7 +231,6 @@ describe("library overviews", () => {
 
     // Every stage the deletion can stop in, and the words the page uses.
     for (const failedStep of [
-      "domains",
       "runtime",
       "files",
       "database",
@@ -257,8 +256,8 @@ describe("library overviews", () => {
           stage: "coolify",
           attemptCount: 5,
           error: {
-            code: "CLOUDFLARE_UNAVAILABLE",
-            message: "Cloudflare returned 503 for zone 9f2c",
+            code: "RUNTIME_UNAVAILABLE",
+            message: "The runtime service returned 503",
             stage: "coolify",
           },
           teardownFailedStep: failedStep,

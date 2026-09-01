@@ -1280,31 +1280,6 @@ export const completeConfigurationDeployment = internalMutation({
           address: domainChange.address,
         });
       }
-      // Deleting the certificate and the row talks to another service, so it
-      // is the one part that has to run outside this transaction.
-      if (domainChange.reason === "detach") {
-        const scheduledId = await ctx.scheduler.runAfter(
-          0,
-          internal.evidenceLibraries.domainActions.completeDomainChange,
-          {
-            libraryId: args.libraryId,
-            domainId: domainChange.domainId,
-            operationId: deployment.operation._id,
-            reason: "detach",
-          },
-        );
-        // Written here, with the run it books, so the final step can prove
-        // which deployment it belongs to from its very first attempt.
-        await ctx.db.patch(domainChange.domainId, {
-          cleanup: {
-            operationId: deployment.operation._id,
-            attempts: 0,
-            rounds: 0,
-            scheduledId,
-          },
-          updatedAt: now,
-        });
-      }
     }
     await updateDraftBaseRevision(ctx, deployment);
     return { status: "succeeded" as const };

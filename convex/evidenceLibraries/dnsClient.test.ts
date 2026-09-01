@@ -243,7 +243,7 @@ describe("classifyCaaChain", () => {
   });
 
   it("only reads the closest name that has issuers", () => {
-    expect(classifyCaaChain([["ssl.com"], ["amazon.com"]])).toBe("ok");
+    expect(classifyCaaChain([["ssl.com"], ["letsencrypt.org"]])).toBe("blocked");
   });
 });
 
