@@ -22,8 +22,14 @@ application's domain configuration and issues its certificate with the
 - Permit only `letsencrypt.org` when a domain publishes CAA records.
 - Treat a successful HTTPS health response with the active revision as proof
   that both TLS and routing work.
-- Keep the question of apex-domain flattening with the customer's DNS provider.
-  OpenScholar shows the existing apex guidance.
+- Keep the load balancer, rather than an origin server, as the public apex
+  target.
+- **Changed 2026-09-01:** support apex domains directly. Show the load
+  balancer's configured IPv4 address as an `A` record, suggest the `www`
+  counterpart, and use the existing domain roles and runtime `308` redirect
+  for apex-to-`www`. This replaces the earlier flattening-only guidance because
+  the stable Hetzner load balancer can safely own the public address without
+  exposing an Evidence Library server.
 - This is pre-production. The old certificate fields and cleanup state are
   removed rather than migrated or kept for compatibility.
 
@@ -32,9 +38,13 @@ application's domain configuration and issues its certificate with the
 1. The owner enters a domain.
 2. OpenScholar rejects invalid, reserved, already claimed, or already served
    hosts.
-3. OpenScholar shows:
-   - `CNAME <host> cname.openscholar.ai`
+3. OpenScholar shows the record that matches the host:
+   - apex: `A <host> <EL_CUSTOM_DOMAIN_APEX_IPV4>`
+   - subdomain: `CNAME <host> cname.openscholar.ai`
    - `TXT _openscholar.<host> os-verify=<token>`
+   When the host is an apex, OpenScholar recommends adding its `www`
+   counterpart. After both domains are active, making `www` canonical uses the
+   existing runtime redirect for the apex and every other attached address.
 4. **Check DNS** verifies the target, TXT token, and CAA rules.
 5. A second check adds the domain to the library application's complete domain
    list and queues a deployment.
@@ -85,6 +95,8 @@ zero rows, so no data migration is needed.
 Required platform settings:
 
 - `EL_CUSTOM_DOMAIN_TARGET=cname.openscholar.ai`
+- `EL_CUSTOM_DOMAIN_APEX_IPV4` for the public load balancer address shown in
+  apex DNS instructions
 - `EL_RESERVED_DOMAIN_SUFFIXES` for any additional platform-owned suffixes
 - the existing Evidence Library runtime settings used by the application-domain
   and deployment clients
